@@ -1,0 +1,35 @@
+{
+  "name": "chaosengine-desktop",
+  "private": true,
+  "version": "0.4.23",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "release:macos": "node ./scripts/release-macos.mjs",
+    "stage:runtime": "node ./scripts/stage-runtime.mjs --mode=development",
+    "stage:runtime:release": "node ./scripts/stage-runtime.mjs --mode=release",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "tauri:dev": "npm run stage:runtime && tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.1.0",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@tauri-apps/plugin-process": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}

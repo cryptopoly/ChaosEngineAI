@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5173", "--directory", "/Users/dan/ChaosEngineAI-Site"],
+      "port": 5173
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7392", "--directory", "/Users/dan/ChaosEngineAI-Site"],
+      "port": 7392
+    },
+    {
+      "name": "desktop",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/dan/ChaosEngineAI/desktop",
+      "port": 1420
+    }
+  ]
+}

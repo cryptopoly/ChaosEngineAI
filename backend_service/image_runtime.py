@@ -1,0 +1,576 @@
+from __future__ import annotations
+
+import json
+import importlib.util
+import io
+import os
+import textwrap
+import time
+import gc
+import secrets
+from colorsys import hsv_to_rgb
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from threading import RLock
+from typing import Any
+
+
+WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
+MAX_IMAGE_SEED = 2147483647
+
+
+def _snapshot_retry_guidance(repo: str | None = None) -> str:
+    guidance = "Re-download the model and keep ChaosEngineAI open until the download completes."
+    if repo:
+        guidance += (
+            f" If this model is gated, accept access on https://huggingface.co/{repo} if prompted, "
+            "add HF_TOKEN in Settings, then retry."
+        )
+    return guidance
+
+
+def _snapshot_visible_label(local_root: Path) -> str:
+    try:
+        visible_files = sorted(
+            candidate.name
+            for candidate in local_root.iterdir()
+            if not candidate.name.startswith(".")
+        )
+    except OSError:
+        visible_files = []
+    return ", ".join(visible_files[:6]) if visible_files else "no files"
+
+
+def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None) -> str | None:
+    model_index_path = local_root / "model_index.json"
+    if not model_index_path.exists():
+        visible_label = _snapshot_visible_label(local_root)
+        return (
+            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+            f"(missing model_index.json; found {visible_label}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    broken_links: list[str] = []
+    weight_index_paths: list[Path] = []
+    try:
+        for candidate in local_root.rglob("*"):
+            if candidate.is_dir():
+                continue
+            if candidate.is_symlink() and not candidate.exists():
+                broken_links.append(candidate.relative_to(local_root).as_posix())
+            if candidate.name.endswith(".index.json"):
+                weight_index_paths.append(candidate)
+    except OSError as exc:
+        return (
+            "The local snapshot could not be inspected before loading "
+            f"({exc}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    if broken_links:
+        label = ", ".join(broken_links[:3])
+        if len(broken_links) > 3:
+            label += f" (+{len(broken_links) - 3} more)"
+        return (
+            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+            f"(missing local files: {label}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    missing_shards: list[str] = []
+    for index_path in weight_index_paths:
+        try:
+            payload = json.loads(index_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            rel_path = index_path.relative_to(local_root).as_posix()
+            return (
+                "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+                f"(could not read {rel_path}: {exc}). {_snapshot_retry_guidance(repo)}"
+            )
+        weight_map = payload.get("weight_map")
+        if not isinstance(weight_map, dict):
+            continue
+        shard_names = sorted({value for value in weight_map.values() if isinstance(value, str) and value})
+        for shard_name in shard_names:
+            shard_path = index_path.parent / shard_name
+            if shard_path.exists():
+                continue
+            missing_shards.append(shard_path.relative_to(local_root).as_posix())
+
+    if missing_shards:
+        label = ", ".join(missing_shards[:3])
+        if len(missing_shards) > 3:
+            label += f" (+{len(missing_shards) - 3} more)"
+        return (
+            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+            f"(missing weight shards: {label}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    return None
+
+
+def _resolve_image_python() -> str:
+    override = os.getenv("CHAOSENGINE_MLX_PYTHON")
+    if override:
+        return override
+    candidate = WORKSPACE_ROOT / ".venv" / "bin" / "python"
+    if candidate.exists():
+        return str(candidate)
+    return os.getenv("PYTHON", "python3")
+
+
+def _stable_hash(value: str) -> int:
+    acc = 0
+    for index, char in enumerate(value):
+        acc = (acc + ord(char) * (index + 17)) % 0xFFFFFF
+    return acc
+
+
+def _resolve_base_seed(seed: int | None) -> int:
+    if seed is not None:
+        return seed
+    return secrets.randbelow(MAX_IMAGE_SEED + 1)
+
+
+def _mix_channel(left: int, right: int, factor: float) -> int:
+    return max(0, min(255, round((left * (1 - factor)) + (right * factor))))
+
+
+def _rgb_from_hsv(hue: int, saturation: float, value: float) -> tuple[int, int, int]:
+    red, green, blue = hsv_to_rgb((hue % 360) / 360.0, saturation, value)
+    return (round(red * 255), round(green * 255), round(blue * 255))
+
+
+@dataclass(frozen=True)
+class ImageRuntimeStatus:
+    activeEngine: str
+    realGenerationAvailable: bool
+    message: str
+    device: str | None = None
+    pythonExecutable: str | None = None
+    missingDependencies: list[str] = field(default_factory=list)
+    loadedModelRepo: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ImageGenerationConfig:
+    modelId: str
+    modelName: str
+    repo: str
+    prompt: str
+    negativePrompt: str
+    width: int
+    height: int
+    steps: int
+    guidance: float
+    batchSize: int
+    seed: int | None = None
+    qualityPreset: str | None = None
+
+
+@dataclass(frozen=True)
+class GeneratedImage:
+    seed: int
+    bytes: bytes
+    extension: str
+    mimeType: str
+    durationSeconds: float
+    runtimeLabel: str
+    runtimeNote: str | None = None
+
+
+class PlaceholderImageEngine:
+    runtime_label = "Placeholder image engine"
+
+    def generate(
+        self,
+        config: ImageGenerationConfig,
+        *,
+        runtime_note: str | None = None,
+    ) -> list[GeneratedImage]:
+        base_seed = _resolve_base_seed(config.seed)
+        duration_base = max(1.2, (config.steps / 14.0) + 1.5)
+        return [
+            GeneratedImage(
+                seed=base_seed + index,
+                bytes=self._render_image_bytes(config, base_seed + index),
+                extension="png",
+                mimeType="image/png",
+                durationSeconds=round(duration_base + index * 0.35, 1),
+                runtimeLabel=self.runtime_label,
+                runtimeNote=runtime_note,
+            )
+            for index in range(config.batchSize)
+        ]
+
+    def _render_image_bytes(self, config: ImageGenerationConfig, seed: int) -> bytes:
+        from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+        width = max(256, config.width)
+        height = max(256, config.height)
+        hash_value = _stable_hash(f"{config.modelName}:{config.prompt}:{seed}")
+        hue_a = hash_value % 360
+        hue_b = (hash_value * 7) % 360
+        hue_c = (hash_value * 13) % 360
+        base_a = _rgb_from_hsv(hue_a, 0.72, 0.94)
+        base_b = _rgb_from_hsv(hue_b, 0.68, 0.62)
+        accent = _rgb_from_hsv(hue_c, 0.55, 0.88)
+
+        image = Image.new("RGBA", (width, height), base_a)
+        pixels = image.load()
+        for y in range(height):
+            blend = y / max(1, height - 1)
+            row_color = tuple(_mix_channel(base_a[i], base_b[i], blend) for i in range(3))
+            glow = tuple(_mix_channel(channel, accent[idx], 0.18) for idx, channel in enumerate(row_color))
+            for x in range(width):
+                horizontal = x / max(1, width - 1)
+                color = tuple(_mix_channel(row_color[i], glow[i], horizontal * 0.24) for i in range(3))
+                pixels[x, y] = (*color, 255)
+
+        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        draw.ellipse(
+            (
+                width * 0.08,
+                height * 0.1,
+                width * 0.46,
+                height * 0.48,
+            ),
+            fill=(*accent, 84),
+        )
+        draw.ellipse(
+            (
+                width * 0.48,
+                height * 0.32,
+                width * 0.92,
+                height * 0.86,
+            ),
+            fill=(255, 255, 255, 32),
+        )
+        draw.rounded_rectangle(
+            (
+                28,
+                max(24, height - 180),
+                width - 28,
+                height - 28,
+            ),
+            radius=28,
+            fill=(10, 14, 24, 126),
+            outline=(255, 255, 255, 36),
+            width=1,
+        )
+        for index in range(7):
+            offset = ((seed >> (index * 2)) % 120) - 30
+            draw.line(
+                (
+                    width * 0.05,
+                    height * (0.12 + index * 0.1),
+                    width * 0.95,
+                    height * (0.06 + index * 0.1) + offset,
+                ),
+                fill=(255, 255, 255, 18),
+                width=max(1, round(width * 0.004)),
+            )
+
+        overlay = overlay.filter(ImageFilter.GaussianBlur(radius=max(8, round(width * 0.01))))
+        image = Image.alpha_composite(image, overlay)
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.load_default()
+        title_y = max(38, height - 160)
+        draw.text((48, title_y), config.modelName, fill=(255, 255, 255, 240), font=font)
+        wrapped_prompt = textwrap.wrap(config.prompt.strip() or "Generated image preview", width=max(22, width // 18))
+        prompt_lines = wrapped_prompt[:3]
+        for index, line in enumerate(prompt_lines):
+            draw.text((48, title_y + 28 + (index * 18)), line, fill=(232, 239, 255, 220), font=font)
+        footer = f"seed {seed} · {width}x{height} · {config.steps} steps"
+        draw.text((48, height - 52), footer, fill=(205, 214, 232, 192), font=font)
+
+        final_image = image.convert("RGB")
+        buffer = io.BytesIO()
+        final_image.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+
+
+class DiffusersTextToImageEngine:
+    runtime_label = "Diffusers local engine"
+
+    def __init__(self) -> None:
+        self._lock = RLock()
+        self._pipeline: Any | None = None
+        self._torch: Any | None = None
+        self._loaded_repo: str | None = None
+        self._loaded_path: str | None = None
+        self._device: str | None = None
+
+    def probe(self) -> ImageRuntimeStatus:
+        missing = [
+            package
+            for package, module_name in (
+                ("diffusers", "diffusers"),
+                ("torch", "torch"),
+                ("accelerate", "accelerate"),
+                ("huggingface_hub", "huggingface_hub"),
+                ("pillow", "PIL"),
+            )
+            if importlib.util.find_spec(module_name) is None
+        ]
+        if missing:
+            message = (
+                "Install the optional image runtime packages to enable real local generation: "
+                "pip install -e '.[desktop,images]'"
+            )
+            return ImageRuntimeStatus(
+                activeEngine="placeholder",
+                realGenerationAvailable=False,
+                missingDependencies=missing,
+                pythonExecutable=_resolve_image_python(),
+                message=message,
+                loadedModelRepo=self._loaded_repo,
+            )
+
+        try:
+            import torch  # type: ignore
+        except Exception as exc:
+            return ImageRuntimeStatus(
+                activeEngine="placeholder",
+                realGenerationAvailable=False,
+                missingDependencies=["torch"],
+                pythonExecutable=_resolve_image_python(),
+                message=f"PyTorch could not be imported cleanly: {exc}",
+                loadedModelRepo=self._loaded_repo,
+            )
+
+        device = self._detect_device(torch)
+        return ImageRuntimeStatus(
+            activeEngine="diffusers",
+            realGenerationAvailable=True,
+            device=device,
+            pythonExecutable=_resolve_image_python(),
+            message=(
+                "Real local generation is available. Download a curated image model locally, then Image Studio "
+                "will use the diffusers runtime instead of the placeholder engine."
+            ),
+            loadedModelRepo=self._loaded_repo,
+        )
+
+    def generate(self, config: ImageGenerationConfig) -> list[GeneratedImage]:
+        pipeline = self._ensure_pipeline(config.repo)
+        torch = self._torch
+        if torch is None:
+            raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
+        generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
+        base_seed = _resolve_base_seed(config.seed)
+        generators = [
+            torch.Generator(device=generator_device).manual_seed(base_seed + index)
+            for index in range(config.batchSize)
+        ]
+
+        kwargs: dict[str, Any] = {
+            "prompt": config.prompt,
+            "width": config.width,
+            "height": config.height,
+            "num_inference_steps": config.steps,
+            "guidance_scale": config.guidance,
+            "num_images_per_prompt": config.batchSize,
+            "generator": generators if len(generators) > 1 else generators[0],
+        }
+        if config.negativePrompt.strip():
+            kwargs["negative_prompt"] = config.negativePrompt
+        lowered_repo = config.repo.lower()
+        if "flux" in lowered_repo:
+            kwargs.pop("negative_prompt", None)
+            kwargs["num_inference_steps"] = min(config.steps, 8)
+        if "turbo" in lowered_repo:
+            kwargs["num_inference_steps"] = min(config.steps, 8)
+            kwargs["guidance_scale"] = min(config.guidance, 2.5)
+
+        started = time.perf_counter()
+        try:
+            result = pipeline(**kwargs)
+        except TypeError:
+            kwargs.pop("negative_prompt", None)
+            result = pipeline(**kwargs)
+        elapsed = max(0.1, time.perf_counter() - started)
+
+        artifacts: list[GeneratedImage] = []
+        for index, image in enumerate(getattr(result, "images", []) or []):
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            if image.getbbox() is None:
+                raise RuntimeError(
+                    "The image runtime returned an all-black frame instead of a real image. "
+                    f"Model: {config.repo}. Device: {self._device or 'cpu'}. "
+                    "Try restarting the backend and generating again. If this keeps happening on Apple Silicon, "
+                    "the model likely needs a safer precision path."
+                )
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG", optimize=True)
+            artifacts.append(
+                GeneratedImage(
+                    seed=base_seed + index,
+                    bytes=buffer.getvalue(),
+                    extension="png",
+                    mimeType="image/png",
+                    durationSeconds=round(elapsed / max(1, config.batchSize), 1),
+                    runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                )
+            )
+        if not artifacts:
+            raise RuntimeError("Diffusers returned no images.")
+        return artifacts
+
+    def preload(self, repo: str) -> ImageRuntimeStatus:
+        self._ensure_pipeline(repo)
+        return self.probe()
+
+    def unload(self, repo: str | None = None) -> ImageRuntimeStatus:
+        with self._lock:
+            if repo and self._loaded_repo != repo:
+                return self.probe()
+            self._release_pipeline()
+            return self.probe()
+
+    def _ensure_pipeline(self, repo: str) -> Any:
+        with self._lock:
+            if self._pipeline is not None and self._loaded_repo == repo:
+                return self._pipeline
+
+            if self._pipeline is not None and self._loaded_repo != repo:
+                self._release_pipeline()
+
+            import torch  # type: ignore
+            from diffusers import AutoPipelineForText2Image  # type: ignore
+            from huggingface_hub import snapshot_download  # type: ignore
+
+            local_path = snapshot_download(
+                repo_id=repo,
+                local_files_only=True,
+                resume_download=True,
+            )
+            local_root = Path(local_path)
+            validation_error = validate_local_diffusers_snapshot(local_root, repo)
+            if validation_error is not None:
+                raise RuntimeError(validation_error)
+            device = self._detect_device(torch)
+            dtype = self._preferred_torch_dtype(torch, repo, device)
+            pipeline = AutoPipelineForText2Image.from_pretrained(
+                local_path,
+                torch_dtype=dtype,
+                local_files_only=True,
+            )
+            # The safety checker adds extra vision-model dependencies and can
+            # fail on tiny or oddly shaped test pipelines. For the local app
+            # MVP we prioritize generation reliability over post-filtering.
+            if hasattr(pipeline, "safety_checker"):
+                pipeline.safety_checker = None
+            if hasattr(pipeline, "feature_extractor"):
+                pipeline.feature_extractor = None
+            if hasattr(pipeline, "requires_safety_checker"):
+                pipeline.requires_safety_checker = False
+            if hasattr(pipeline, "set_progress_bar_config"):
+                pipeline.set_progress_bar_config(disable=True)
+            if hasattr(pipeline, "enable_attention_slicing"):
+                pipeline.enable_attention_slicing()
+            vae = getattr(pipeline, "vae", None)
+            if vae is not None and hasattr(vae, "enable_slicing"):
+                vae.enable_slicing()
+            if device != "cpu":
+                pipeline = pipeline.to(device)
+
+            self._pipeline = pipeline
+            self._torch = torch
+            self._loaded_repo = repo
+            self._loaded_path = local_path
+            self._device = device
+            return pipeline
+
+    def _release_pipeline(self) -> None:
+        pipeline = self._pipeline
+        torch = self._torch
+        device = self._device
+        self._pipeline = None
+        self._torch = None
+        self._loaded_repo = None
+        self._loaded_path = None
+        self._device = None
+        if pipeline is not None:
+            del pipeline
+        gc.collect()
+        if torch is not None:
+            try:
+                if device == "cuda" and getattr(torch.cuda, "is_available", lambda: False)():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+            try:
+                mps_backend = getattr(getattr(torch, "mps", None), "empty_cache", None)
+                if device == "mps" and callable(mps_backend):
+                    mps_backend()
+            except Exception:
+                pass
+
+    def _preferred_torch_dtype(self, torch: Any, repo: str, device: str) -> Any:
+        if device == "cuda":
+            return torch.float16
+        if device == "mps":
+            lowered_repo = repo.lower()
+            # SDXL / Stable Diffusion on MPS can silently decode to black
+            # images in fp16. Favor correctness over speed for those repos.
+            if any(token in lowered_repo for token in ("stable-diffusion", "sdxl", "sd_xl")):
+                return torch.float32
+            return torch.float16
+        return torch.float32
+
+    def _detect_device(self, torch: Any) -> str:
+        if getattr(torch.cuda, "is_available", lambda: False)():
+            return "cuda"
+        mps_backend = getattr(getattr(torch, "backends", None), "mps", None)
+        if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
+            return "mps"
+        return "cpu"
+
+
+class ImageRuntimeManager:
+    def __init__(self) -> None:
+        self._lock = RLock()
+        self._placeholder = PlaceholderImageEngine()
+        self._diffusers = DiffusersTextToImageEngine()
+
+    def capabilities(self) -> dict[str, Any]:
+        return self._diffusers.probe().to_dict()
+
+    def preload(self, repo: str) -> dict[str, Any]:
+        with self._lock:
+            status = self._diffusers.probe()
+            if not status.realGenerationAvailable:
+                raise RuntimeError(status.message)
+            return self._diffusers.preload(repo).to_dict()
+
+    def unload(self, repo: str | None = None) -> dict[str, Any]:
+        with self._lock:
+            return self._diffusers.unload(repo).to_dict()
+
+    def generate(self, config: ImageGenerationConfig) -> tuple[list[GeneratedImage], dict[str, Any]]:
+        status = self._diffusers.probe()
+        if status.realGenerationAvailable:
+            try:
+                images = self._diffusers.generate(config)
+                return images, self._diffusers.probe().to_dict()
+            except Exception as exc:
+                fallback_note = (
+                    "The diffusers runtime failed, so ChaosEngineAI fell back to the placeholder engine for this run. "
+                    f"Details: {exc}"
+                )
+                fallback_status = ImageRuntimeStatus(
+                    activeEngine="placeholder",
+                    realGenerationAvailable=False,
+                    device=status.device,
+                    pythonExecutable=status.pythonExecutable,
+                    missingDependencies=[],
+                    loadedModelRepo=status.loadedModelRepo,
+                    message=fallback_note,
+                )
+                return self._placeholder.generate(config, runtime_note=fallback_note), fallback_status.to_dict()
+
+        return self._placeholder.generate(config, runtime_note=status.message), status.to_dict()

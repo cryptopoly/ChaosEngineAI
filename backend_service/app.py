@@ -673,11 +673,11 @@ CATALOG: list[dict[str, Any]] = _flatten_catalog()
 IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "flux-fast",
-        "name": "FLUX Fast",
+        "name": "FLUX.1 Schnell",
         "provider": "Black Forest Labs",
-        "headline": "Rapid prompt-to-image drafting for concepts, moodboards, and early direction.",
-        "summary": "Starter pick for the first image-generation tab: faster iteration, lower friction, and a clean path into a future real runtime.",
-        "updatedLabel": "Phase 0 starter model",
+        "headline": "Fast prompt-to-image path for quick concepting and moodboards.",
+        "summary": "Best starter option for rapid local ideation when you care more about speed and iteration than maximum fidelity.",
+        "updatedLabel": "Curated starter pick",
         "badges": ["Fast", "General", "Photoreal"],
         "defaultVariantId": "black-forest-labs/FLUX.1-schnell",
         "variants": [
@@ -693,8 +693,89 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "taskSupport": ["txt2img"],
                 "sizeGb": 23.7,
                 "recommendedResolution": "1024x1024",
-                "note": "Fastest concepting option in the scaffolded image catalog.",
+                "note": "Fastest concepting option in the curated image catalog.",
                 "estimatedGenerationSeconds": 4.2,
+            }
+        ],
+    },
+    {
+        "id": "flux-dev",
+        "name": "FLUX.1 Dev",
+        "provider": "Black Forest Labs",
+        "headline": "High-fidelity guidance-distilled model for detailed, prompt-faithful generation.",
+        "summary": "Balanced option for the eventual production runtime when you want stronger final image quality than the fast path.",
+        "updatedLabel": "Curated quality pick",
+        "badges": ["Balanced", "General", "Detailed"],
+        "defaultVariantId": "black-forest-labs/FLUX.1-dev",
+        "variants": [
+            {
+                "id": "black-forest-labs/FLUX.1-dev",
+                "familyId": "flux-dev",
+                "name": "FLUX.1 Dev",
+                "provider": "Black Forest Labs",
+                "repo": "black-forest-labs/FLUX.1-dev",
+                "link": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+                "runtime": "Stub diffusion pipeline",
+                "styleTags": ["general", "detailed", "balanced"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 23.8,
+                "recommendedResolution": "1024x1024",
+                "note": "Quality-oriented generalist for the curated image lineup.",
+                "estimatedGenerationSeconds": 7.4,
+            }
+        ],
+    },
+    {
+        "id": "sd35-medium",
+        "name": "Stable Diffusion 3.5 Medium",
+        "provider": "Stability AI",
+        "headline": "Latest Stability model optimised for consumer hardware with MMDiT architecture.",
+        "summary": "Modern architecture with strong prompt adherence and detail at a manageable model size for local use.",
+        "updatedLabel": "Curated balanced pick",
+        "badges": ["MMDiT", "Balanced", "Modern"],
+        "defaultVariantId": "stabilityai/stable-diffusion-3.5-medium",
+        "variants": [
+            {
+                "id": "stabilityai/stable-diffusion-3.5-medium",
+                "familyId": "sd35-medium",
+                "name": "Stable Diffusion 3.5 Medium",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-diffusion-3.5-medium",
+                "link": "https://huggingface.co/stabilityai/stable-diffusion-3.5-medium",
+                "runtime": "Stub diffusion pipeline",
+                "styleTags": ["general", "detailed", "modern"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 11.9,
+                "recommendedResolution": "1024x1024",
+                "note": "Latest Stability offering targeting a good quality-to-resource balance.",
+                "estimatedGenerationSeconds": 5.8,
+            }
+        ],
+    },
+    {
+        "id": "sd35-turbo",
+        "name": "Stable Diffusion 3.5 Large Turbo",
+        "provider": "Stability AI",
+        "headline": "Distilled large model for fast, high-quality generation in fewer inference steps.",
+        "summary": "Best pick when you want near-instant drafts at higher fidelity than older turbo models.",
+        "updatedLabel": "Curated speed pick",
+        "badges": ["Turbo", "Fast", "High quality"],
+        "defaultVariantId": "stabilityai/stable-diffusion-3.5-large-turbo",
+        "variants": [
+            {
+                "id": "stabilityai/stable-diffusion-3.5-large-turbo",
+                "familyId": "sd35-turbo",
+                "name": "Stable Diffusion 3.5 Large Turbo",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-diffusion-3.5-large-turbo",
+                "link": "https://huggingface.co/stabilityai/stable-diffusion-3.5-large-turbo",
+                "runtime": "Stub diffusion pipeline",
+                "styleTags": ["fast", "quality", "general"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 16.5,
+                "recommendedResolution": "1024x1024",
+                "note": "Fastest high-fidelity model in the curated set.",
+                "estimatedGenerationSeconds": 3.1,
             }
         ],
     },
@@ -702,9 +783,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "sdxl-balanced",
         "name": "SDXL Balanced",
         "provider": "Stability AI",
-        "headline": "General-purpose SDXL-style model for higher quality everyday generations.",
-        "summary": "Balanced option for the eventual production runtime when you want stronger final image quality than the fast path.",
-        "updatedLabel": "Phase 0 quality pick",
+        "headline": "General-purpose SDXL model for reliable, high-quality everyday image generation.",
+        "summary": "Established baseline with wide ecosystem support, LoRA compatibility, and proven quality.",
+        "updatedLabel": "Curated classic",
         "badges": ["Balanced", "General", "Detailed"],
         "defaultVariantId": "stabilityai/stable-diffusion-xl-base-1.0",
         "variants": [
@@ -720,107 +801,14 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "taskSupport": ["txt2img"],
                 "sizeGb": 13.1,
                 "recommendedResolution": "1024x1024",
-                "note": "Quality-oriented generalist for the starter image lineup.",
+                "note": "Widely adopted SDXL baseline with strong community and LoRA ecosystem.",
                 "estimatedGenerationSeconds": 7.4,
-            }
-        ],
-    },
-    {
-        "id": "sdxl-turbo",
-        "name": "SDXL Turbo",
-        "provider": "Stability AI",
-        "headline": "Ultra-fast draft rendering for trying prompt ideas quickly.",
-        "summary": "Useful for quick iteration and before/after prompt changes without waiting on a full high-quality render.",
-        "updatedLabel": "Phase 0 speed pick",
-        "badges": ["Turbo", "Drafting", "Fast"],
-        "defaultVariantId": "stabilityai/sdxl-turbo",
-        "variants": [
-            {
-                "id": "stabilityai/sdxl-turbo",
-                "familyId": "sdxl-turbo",
-                "name": "SDXL Turbo",
-                "provider": "Stability AI",
-                "repo": "stabilityai/sdxl-turbo",
-                "link": "https://huggingface.co/stabilityai/sdxl-turbo",
-                "runtime": "Stub diffusion pipeline",
-                "styleTags": ["fast", "draft", "general"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 5.2,
-                "recommendedResolution": "1024x1024",
-                "note": "Fastest image iteration path in the scaffolded experience.",
-                "estimatedGenerationSeconds": 2.9,
-            }
-        ],
-    },
-    {
-        "id": "sd15-light",
-        "name": "SD 1.5 Lightweight",
-        "provider": "Runway",
-        "headline": "Compact fallback for broader compatibility and lower-end local hardware.",
-        "summary": "Smaller checkpoint option for users who want a lighter local image model and a familiar ecosystem.",
-        "updatedLabel": "Phase 0 lightweight pick",
-        "badges": ["Lightweight", "Classic", "Compatible"],
-        "defaultVariantId": "runwayml/stable-diffusion-v1-5",
-        "variants": [
-            {
-                "id": "runwayml/stable-diffusion-v1-5",
-                "familyId": "sd15-light",
-                "name": "Stable Diffusion v1.5",
-                "provider": "Runway",
-                "repo": "runwayml/stable-diffusion-v1-5",
-                "link": "https://huggingface.co/runwayml/stable-diffusion-v1-5",
-                "runtime": "Stub diffusion pipeline",
-                "styleTags": ["lightweight", "classic", "general"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 4.3,
-                "recommendedResolution": "768x768",
-                "note": "Lower-barrier model for a future compatibility path.",
-                "estimatedGenerationSeconds": 3.8,
             }
         ],
     },
 ]
 
 LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
-    {
-        "repo": "black-forest-labs/FLUX.1-dev",
-        "name": "FLUX.1 Dev",
-        "provider": "Black Forest Labs",
-        "styleTags": ["flux", "detailed", "quality"],
-        "taskSupport": ["txt2img"],
-        "sizeGb": 23.8,
-        "recommendedResolution": "1024x1024",
-        "note": "Higher-quality FLUX tracked lane for users who want more than the fast starter catalog.",
-        "gated": True,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-    },
-    {
-        "repo": "stabilityai/stable-diffusion-3.5-medium",
-        "name": "Stable Diffusion 3.5 Medium",
-        "provider": "Stability AI",
-        "styleTags": ["general", "detailed"],
-        "taskSupport": ["txt2img"],
-        "sizeGb": 5.11,
-        "recommendedResolution": "1024x1024",
-        "note": "Tracked newer Stability lane that sits above SDXL in the current ecosystem.",
-        "gated": True,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-    },
-    {
-        "repo": "stabilityai/stable-diffusion-3.5-large-turbo",
-        "name": "Stable Diffusion 3.5 Large Turbo",
-        "provider": "Stability AI",
-        "styleTags": ["turbo", "fast", "detailed"],
-        "taskSupport": ["txt2img"],
-        "sizeGb": 16.5,
-        "recommendedResolution": "1024x1024",
-        "note": "Tracked turbo-oriented SD 3.5 lane for faster higher-end prompting.",
-        "gated": True,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-    },
     {
         "repo": "Qwen/Qwen-Image",
         "name": "Qwen-Image",
@@ -950,14 +938,17 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                 executor.submit(_image_repo_live_metadata, repo): repo
                 for repo in repos
             }
-            for future in as_completed(future_map):
-                repo = future_map[future]
-                try:
-                    repo_metadata[repo] = future.result()
-                except Exception:
-                    repo_metadata[repo] = {
-                        "metadataWarning": "Live Hugging Face metadata is temporarily unavailable. Showing curated defaults.",
-                    }
+            try:
+                for future in as_completed(future_map, timeout=8):
+                    repo = future_map[future]
+                    try:
+                        repo_metadata[repo] = future.result(timeout=2)
+                    except Exception:
+                        repo_metadata[repo] = {
+                            "metadataWarning": "Live Hugging Face metadata is temporarily unavailable. Showing curated defaults.",
+                        }
+            except TimeoutError:
+                pass  # Return whatever we have so far; missing repos get curated defaults
 
     families: list[dict[str, Any]] = []
     for family in IMAGE_MODEL_FAMILIES:
@@ -968,6 +959,7 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                 "source": "curated",
                 "familyName": family.get("name"),
                 "availableLocally": _image_variant_available_locally(variant, library),
+                "hasLocalData": _hf_repo_snapshot_dir(str(variant.get("repo") or "")) is not None,
             }
             for variant in family["variants"]
         ]
@@ -5163,6 +5155,16 @@ class ChaosEngineState:
             self._persist_sessions()
             return {"deleted": doc_id}
 
+    def delete_session(self, session_id: str) -> dict[str, Any]:
+        with self._lock:
+            target = next((s for s in self.chat_sessions if s.get("id") == session_id), None)
+            if not target:
+                raise HTTPException(status_code=404, detail="Session not found.")
+            self.chat_sessions = [s for s in self.chat_sessions if s.get("id") != session_id]
+            self.add_log("chat", "info", f"Session deleted: {target.get('title', session_id)}")
+            self._persist_sessions()
+            return {"deleted": session_id}
+
     def _retrieve_session_context(self, session_id: str, prompt: str, top_k: int = 5) -> str:
         """Load all chunks from session documents and return the most relevant joined as context."""
         session_dir = self._session_docs_dir(session_id)
@@ -6305,6 +6307,10 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
     @app.delete("/api/chat/sessions/{session_id}/documents/{doc_id}")
     def delete_session_document(session_id: str, doc_id: str) -> dict[str, Any]:
         return app.state.chaosengine.delete_document(session_id, doc_id)
+
+    @app.delete("/api/chat/sessions/{session_id}")
+    def delete_session(session_id: str) -> dict[str, Any]:
+        return app.state.chaosengine.delete_session(session_id)
 
     @app.post("/api/models/download")
     def download_model(request: DownloadModelRequest) -> dict[str, Any]:

@@ -20,7 +20,17 @@ export interface SystemStats {
   hardwareSummary: string;
   backendLabel: string;
   appVersion: string;
-  availableCacheStrategies: Array<{id: string; name: string; available: boolean; bitRange: number[] | null; defaultBits: number | null; supportsFp16Layers: boolean}>;
+  availableCacheStrategies: Array<{
+    id: string;
+    name: string;
+    available: boolean;
+    bitRange: number[] | null;
+    defaultBits: number | null;
+    supportsFp16Layers: boolean;
+    availabilityBadge?: string | null;
+    availabilityTone?: string | null;
+    availabilityReason?: string | null;
+  }>;
   mlxAvailable: boolean;
   mlxLmAvailable: boolean;
   totalMemoryGb: number;
@@ -565,6 +575,7 @@ export interface ImageModelVariant {
   recommendedResolution: string;
   note: string;
   availableLocally: boolean;
+  hasLocalData?: boolean;
   estimatedGenerationSeconds: number | null;
   downloads?: number | null;
   likes?: number | null;

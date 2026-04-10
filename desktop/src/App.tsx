@@ -19,6 +19,7 @@ import {
   downloadModel,
   cancelDownload,
   uploadSessionDocument,
+  deleteSession,
   deleteSessionDocument,
   getTauriBackendInfo,
   getCachePreview,
@@ -48,7 +49,7 @@ import { StatCard } from "./components/StatCard";
 import { ModelPicker } from "./components/ModelPicker";
 import { RuntimeControls } from "./components/RuntimeControls";
 import { SliderField } from "./components/SliderField";
-import { mockWorkspace } from "./mockData";
+import { mockWorkspace, mockImageCatalog } from "./mockData";
 import type {
   AppSettings,
   BenchmarkRunPayload,
@@ -124,14 +125,14 @@ function renderModelLoadingProgress(loading: ModelLoadingState) {
 
 const tabs: Array<{ id: TabId; label: string; caption: string }> = [
   { id: "dashboard", label: "Dashboard", caption: "System overview" },
+  { id: "chat", label: "Chat", caption: "Local AI chat" },
   { id: "online-models", label: "Discover", caption: "Browse and download AI models" },
   { id: "my-models", label: "My Models", caption: "Models on this machine" },
-  { id: "image-discover", label: "Image Discover", caption: "Curated local image models" },
+  { id: "image-discover", label: "Image Discover", caption: "Browse image models" },
   { id: "image-models", label: "Image Models", caption: "Installed image generators" },
   { id: "image-studio", label: "Image Studio", caption: "Prompt, generate, and iterate" },
   { id: "image-gallery", label: "Image Gallery", caption: "Saved outputs and filters" },
   { id: "server", label: "Server", caption: "OpenAI-compatible local API" },
-  { id: "chat", label: "Chat", caption: "Local AI chat" },
   { id: "benchmarks", label: "Benchmarks", caption: "Run a new benchmark" },
   { id: "benchmark-history", label: "History", caption: "Compare saved runs" },
   { id: "conversion", label: "Conversion", caption: "Convert models to MLX format" },
@@ -214,7 +215,6 @@ function formatImageTimestamp(value: string) {
 type ImageGalleryRuntimeFilter = "all" | "diffusers" | "placeholder" | "warning";
 type ImageGalleryOrientationFilter = "all" | "square" | "portrait" | "landscape";
 type ImageGallerySort = "newest" | "oldest";
-type ImageDiscoverSourceFilter = "all" | "curated" | "latest";
 type ImageDiscoverTaskFilter = "all" | "txt2img" | "img2img" | "inpaint";
 type ImageDiscoverAccessFilter = "all" | "open" | "gated";
 
@@ -822,7 +822,6 @@ export default function App() {
   const [selectedLibraryPath, setSelectedLibraryPath] = useState(mockWorkspace.library[0]?.path ?? "");
   const [imageCatalog, setImageCatalog] = useState<ImageModelFamily[]>([]);
   const [latestImageDiscoverResults, setLatestImageDiscoverResults] = useState<ImageModelVariant[]>([]);
-  const [imageDiscoverSourceFilter, setImageDiscoverSourceFilter] = useState<ImageDiscoverSourceFilter>("all");
   const [imageDiscoverTaskFilter, setImageDiscoverTaskFilter] = useState<ImageDiscoverTaskFilter>("all");
   const [imageDiscoverAccessFilter, setImageDiscoverAccessFilter] = useState<ImageDiscoverAccessFilter>("all");
   const [imageDiscoverSearchInput, setImageDiscoverSearchInput] = useState("");
@@ -1019,6 +1018,9 @@ export default function App() {
     if (catalog.status === "fulfilled") {
       setImageCatalog(catalog.value.families);
       setLatestImageDiscoverResults(catalog.value.latest ?? []);
+    } else if (imageCatalog.length === 0) {
+      // Fallback to mock data so Image Discover is never empty on first load
+      setImageCatalog(mockImageCatalog);
     }
     if (outputs.status === "fulfilled") {
       setImageOutputs(outputs.value);
@@ -1354,7 +1356,7 @@ export default function App() {
     imageGenerationArtifacts.find((artifact) => artifact.artifactId === selectedImageGenerationArtifactId) ??
     imageGenerationArtifacts[0] ??
     null;
-  const installedImageVariants = imageVariants.filter((variant) => variant.availableLocally);
+  const installedImageVariants = imageVariants.filter((variant) => variant.availableLocally || variant.hasLocalData);
   const imageDiscoverSearchQuery = deferredImageDiscoverSearch.trim().toLowerCase();
   const filteredImageDiscoverFamilies = imageCatalog
     .map((family) => ({
@@ -1374,10 +1376,22 @@ export default function App() {
     imageVariantMatchesDiscoverFilters(variant, imageDiscoverTaskFilter, imageDiscoverAccessFilter) &&
     imageDiscoverVariantMatchesQuery(variant, imageDiscoverSearchQuery),
   );
-  const showCuratedImageDiscoverSection = imageDiscoverSourceFilter !== "latest";
-  const showLatestImageDiscoverSection = imageDiscoverSourceFilter !== "curated";
+  // Combined list: extract default variant from each curated family + all latest results, sorted by date
+  const combinedImageDiscoverResults: ImageModelVariant[] = [
+    ...filteredImageDiscoverFamilies.flatMap((family) => {
+      const variant = defaultImageVariantForFamily(family);
+      return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
+    }),
+    ...filteredLatestImageDiscoverResults,
+  ].sort((a, b) => {
+    const dateA = a.lastModified ?? "";
+    const dateB = b.lastModified ?? "";
+    if (dateB && dateA) return dateB.localeCompare(dateA);
+    if (dateB) return 1;
+    if (dateA) return -1;
+    return 0;
+  });
   const imageDiscoverHasActiveFilters =
-    imageDiscoverSourceFilter !== "all" ||
     imageDiscoverTaskFilter !== "all" ||
     imageDiscoverAccessFilter !== "all" ||
     imageDiscoverSearchQuery.length > 0;
@@ -2702,6 +2716,22 @@ export default function App() {
       pinned: !session.pinned,
       updatedAt: new Date().toLocaleString(),
     });
+  }
+
+  async function handleDeleteSession(sessionId: string) {
+    try {
+      await deleteSession(sessionId);
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: current.chatSessions.filter((s) => s.id !== sessionId),
+      }));
+      if (activeChatId === sessionId) {
+        const remaining = workspace.chatSessions.filter((s) => s.id !== sessionId);
+        setActiveChatId(remaining[0]?.id ?? "");
+      }
+    } catch {
+      setError("Failed to delete session.");
+    }
   }
 
   async function handleSelectThreadModel(nextKey: string) {
@@ -4318,15 +4348,13 @@ export default function App() {
       <div className="image-discover-stack">
         <Panel
           title="Image Discover"
-          subtitle={`${imageVariants.length} curated starter models / ${latestImageDiscoverResults.length} tracked latest models / live Hugging Face metadata`}
+          subtitle={`${combinedImageDiscoverResults.length} models / live Hugging Face metadata`}
         >
           <div className="image-hero">
             <div>
-              <span className="eyebrow">Curated</span>
-              <h3>Discover curated local image models, then scout newer live releases without leaving ChaosEngineAI.</h3>
+              <h3>Browse and download image models for local generation.</h3>
               <p className="muted-text">
-                The curated lane stays optimized for ChaosEngineAI workflows, while the latest lane keeps an eye on newer
-                diffusers-compatible image releases with live metadata and access signals.
+                Models are sorted by most recently updated. Download any model to use it in Image Studio.
               </p>
             </div>
             <div className="image-hero-actions">
@@ -4382,18 +4410,6 @@ export default function App() {
               />
             </label>
             <label>
-              Show
-              <select
-                className="text-input"
-                value={imageDiscoverSourceFilter}
-                onChange={(event) => setImageDiscoverSourceFilter(event.target.value as ImageDiscoverSourceFilter)}
-              >
-                <option value="all">Curated + Latest</option>
-                <option value="curated">Curated only</option>
-                <option value="latest">Latest only</option>
-              </select>
-            </label>
-            <label>
               Task
               <select
                 className="text-input"
@@ -4424,7 +4440,6 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setImageDiscoverSearchInput("");
-                  setImageDiscoverSourceFilter("all");
                   setImageDiscoverTaskFilter("all");
                   setImageDiscoverAccessFilter("all");
                 }}
@@ -4437,17 +4452,10 @@ export default function App() {
 
           <div className="image-discover-results-summary">
             <span>
-              Showing {filteredImageDiscoverFamilies.length} curated{" "}
-              {filteredImageDiscoverFamilies.length === 1 ? "family" : "families"} and {filteredLatestImageDiscoverResults.length} latest release
-              {filteredLatestImageDiscoverResults.length === 1 ? "" : "s"}.
+              {combinedImageDiscoverResults.length} model{combinedImageDiscoverResults.length !== 1 ? "s" : ""} sorted by most recent
             </span>
             {imageDiscoverSearchQuery ? (
               <span className="badge subtle">Search: {imageDiscoverSearchInput.trim()}</span>
-            ) : null}
-            {imageDiscoverSourceFilter !== "all" ? (
-              <span className="badge muted">
-                {imageDiscoverSourceFilter === "curated" ? "Curated only" : "Latest only"}
-              </span>
             ) : null}
             {imageDiscoverTaskFilter !== "all" ? (
               <span className="badge muted">Task: {imageDiscoverTaskFilter}</span>
@@ -4460,158 +4468,17 @@ export default function App() {
           </div>
         </Panel>
 
-        {showCuratedImageDiscoverSection ? (
-          <Panel
-            title="Curated Picks"
-            subtitle={filteredImageDiscoverFamilies.length > 0
-              ? `${filteredImageDiscoverFamilies.length} curated families ready for local-first workflows`
-              : "No curated image models match the current filters"}
-            className="image-discover-section-panel"
-          >
-            {filteredImageDiscoverFamilies.length === 0 ? (
-              <div className="empty-state image-empty-state">
-                <p>Try broadening the filters or search terms to bring curated image models back into view.</p>
-              </div>
-            ) : (
-              <div className="image-discover-grid image-discover-grid--curated">
-                {filteredImageDiscoverFamilies.map((family) => {
-                  const variant = defaultImageVariantForFamily(family);
-                  if (!variant) return null;
-                  const downloadState = activeImageDownloads[variant.repo];
-                  const isDownloadPaused = downloadState?.state === "cancelled";
-                  const isDownloadComplete = downloadState?.state === "completed";
-                  const isDownloadFailed = downloadState?.state === "failed";
-                  const friendlyDownloadError = formatImageAccessError(downloadState?.error, variant);
-                  const needsGatedAccess = isGatedImageAccessError(downloadState?.error);
-                  return (
-                    <article key={family.id} className="image-family-card">
-                      <div className="image-family-card-head">
-                        <div>
-                          <div className="image-family-title-row">
-                            <h3>{family.name}</h3>
-                            <span className="badge muted">{family.provider}</span>
-                            {variant.availableLocally ? <span className="badge success">Installed</span> : null}
-                            {!variant.availableLocally && isDownloadComplete ? <span className="badge success">Downloaded</span> : null}
-                            {isDownloadPaused ? <span className="badge warning">Paused</span> : null}
-                            {isDownloadFailed ? <span className="badge warning">Download Failed</span> : null}
-                          </div>
-                          <p>{family.headline}</p>
-                        </div>
-                        <span className="badge accent">{family.updatedLabel}</span>
-                      </div>
-
-                      <div className="image-family-meta">
-                        <span>{imagePrimarySizeLabel(variant)}</span>
-                        {imageSecondarySizeLabel(variant) ? <span>{imageSecondarySizeLabel(variant)}</span> : null}
-                        <span>{variant.recommendedResolution}</span>
-                        <span>{variant.estimatedGenerationSeconds ? `~${number(variant.estimatedGenerationSeconds)}s` : "Stub timing"}</span>
-                      </div>
-
-                      <div className="image-family-meta">
-                        {variant.downloadsLabel ? <span>{variant.downloadsLabel}</span> : null}
-                        {variant.likesLabel ? <span>{variant.likesLabel}</span> : null}
-                        {variant.license ? <span>{formatImageLicenseLabel(variant.license)}</span> : null}
-                        {typeof variant.gated === "boolean" ? <span>{variant.gated ? "Gated access" : "Open access"}</span> : null}
-                      </div>
-
-                      <div className="chip-row">
-                        {family.badges.map((badge) => (
-                          <span key={badge} className="badge muted">{badge}</span>
-                        ))}
-                        {variant.styleTags.map((tag) => (
-                          <span key={tag} className="badge subtle">{tag}</span>
-                        ))}
-                        {variant.pipelineTag ? <span className="badge subtle">{variant.pipelineTag}</span> : null}
-                      </div>
-
-                      <p className="muted-text">{family.summary}</p>
-                      <p className="muted-text">{variant.note}</p>
-                      {isDownloadFailed && downloadState?.error ? (
-                        <div className="callout error image-callout">
-                          <p>{friendlyDownloadError}</p>
-                          {needsGatedAccess ? (
-                            <div className="button-row">
-                              <button className="secondary-button" type="button" onClick={() => void handleOpenExternalUrl(variant.link)}>
-                                Hugging Face
-                              </button>
-                              <button className="secondary-button" type="button" onClick={() => setActiveTab("settings")}>
-                                Settings
-                              </button>
-                            </div>
-                          ) : null}
-                          {friendlyDownloadError !== downloadState.error ? (
-                            <details className="debug-details">
-                              <summary>Technical details</summary>
-                              <p className="mono-text">{downloadState.error}</p>
-                            </details>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      <div className="button-row">
-                        {variant.availableLocally ? (
-                          <button className="primary-button" type="button" onClick={() => openImageStudio(variant.id)}>
-                            Generate
-                          </button>
-                        ) : downloadState?.state === "downloading" ? (
-                          <>
-                            <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                            <button className="secondary-button" type="button" onClick={() => void handleCancelImageDownload(variant.repo)}>
-                              Pause
-                            </button>
-                          </>
-                        ) : isDownloadPaused ? (
-                          <>
-                            <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                            <button className="secondary-button" type="button" onClick={() => void handleImageDownload(variant.repo)}>
-                              Resume
-                            </button>
-                          </>
-                        ) : isDownloadComplete ? (
-                          <span className="badge success">Download complete</span>
-                        ) : (
-                          <button className="secondary-button" type="button" onClick={() => void handleImageDownload(variant.repo)}>
-                            {isDownloadFailed ? "Retry Download" : "Download"}
-                          </button>
-                        )}
-                        <button className="secondary-button" type="button" onClick={() => openImageStudio(variant.id)}>
-                          Use In Studio
-                        </button>
-                        <button className="secondary-button" type="button" onClick={() => void handleOpenExternalUrl(variant.link)}>
-                          Hugging Face
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+        {combinedImageDiscoverResults.length === 0 ? (
+          <Panel title="Image Models" subtitle="No models match the current filters" className="image-discover-section-panel">
+            <div className="empty-state image-empty-state">
+              <p>Try broadening the filters or search terms.</p>
+            </div>
           </Panel>
-        ) : null}
-
-        {showLatestImageDiscoverSection ? (
-          <Panel
-            title="Latest Releases"
-            subtitle={filteredLatestImageDiscoverResults.length > 0
-              ? `${filteredLatestImageDiscoverResults.length} live diffusers-compatible image releases`
-              : "No latest tracked image releases match the current filters"}
-            className="image-discover-section-panel image-discover-section-panel--latest"
-          >
-            <p className="muted-text image-discover-section-note">
-              Latest Releases is a live scouting lane. These cards help you track newer official image repos before they are
-              fully curated into ChaosEngineAI Studio defaults.
-            </p>
-            {filteredLatestImageDiscoverResults.length === 0 ? (
-              <div className="empty-state image-empty-state">
-                <p>Try broadening the filters or search terms to see the latest tracked image releases again.</p>
-              </div>
-            ) : (
-              <div className="image-discover-grid image-discover-grid--latest">
-                {filteredLatestImageDiscoverResults.map((variant) => renderLatestImageDiscoverCard(variant))}
-              </div>
-            )}
-          </Panel>
-        ) : null}
+        ) : (
+          <div className="image-discover-grid image-discover-grid--latest">
+            {combinedImageDiscoverResults.map((variant) => renderLatestImageDiscoverCard(variant))}
+          </div>
+        )}
       </div>
     );
   }
@@ -4622,8 +4489,8 @@ export default function App() {
         <Panel
           title="Installed Image Models"
           subtitle={installedImageVariants.length > 0
-            ? `${installedImageVariants.length} curated models ready for Image Studio`
-            : "No curated image models detected locally yet"}
+            ? `${installedImageVariants.length} model${installedImageVariants.length !== 1 ? "s" : ""} with local data`
+            : "No image models detected locally yet"}
           className="span-2"
           actions={
             <button className="secondary-button" type="button" onClick={() => setActiveTab("image-discover")}>
@@ -4633,36 +4500,66 @@ export default function App() {
         >
           {installedImageVariants.length === 0 ? (
             <div className="empty-state image-empty-state">
-              <p>Download one of the curated image models from Image Discover to build out the local image library.</p>
+              <p>Download an image model from Image Discover to get started.</p>
             </div>
           ) : (
             <div className="image-library-grid">
               {installedImageVariants.map((variant) => {
                 const family = imageCatalog.find((item) => item.variants.some((candidate) => candidate.id === variant.id));
+                const isComplete = variant.availableLocally;
+                const isPartial = !isComplete && variant.hasLocalData;
+                const downloadState = activeImageDownloads[variant.repo];
+                const isDownloading = downloadState?.state === "downloading";
+                const isPaused = downloadState?.state === "cancelled";
+                const isDownloadComplete = downloadState?.state === "completed";
+                const isDownloadFailed = downloadState?.state === "failed";
                 return (
                   <article key={variant.id} className="image-library-card">
                     <div className="image-library-card-head">
                       <div>
                         <h3>{variant.name}</h3>
-                        <p>{family?.name ?? "Curated image model"}</p>
+                        <p>{family?.name ?? variant.provider}</p>
                       </div>
-                      <span className="badge success">Installed</span>
+                      {isComplete || isDownloadComplete ? (
+                        <span className="badge success">Installed</span>
+                      ) : isDownloading ? (
+                        <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
+                      ) : isPaused ? (
+                        <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
+                      ) : isDownloadFailed ? (
+                        <span className="badge warning">Download Failed</span>
+                      ) : isPartial ? (
+                        <span className="badge warning">Incomplete</span>
+                      ) : null}
                     </div>
                     <div className="image-library-stats">
                       <span>{sizeLabel(variant.sizeGb)}</span>
-                      <span>{variant.runtime}</span>
                       <span>{variant.recommendedResolution}</span>
-                    </div>
-                    <div className="chip-row">
-                      {variant.styleTags.map((tag) => (
+                      {variant.styleTags.slice(0, 3).map((tag) => (
                         <span key={tag} className="badge subtle">{tag}</span>
                       ))}
                     </div>
-                    <p className="muted-text">{variant.note}</p>
+                    {isDownloadFailed && downloadState?.error ? (
+                      <p className="muted-text" style={{ color: "var(--error, #e26d6d)" }}>{downloadState.error}</p>
+                    ) : null}
                     <div className="button-row">
-                      <button className="primary-button" type="button" onClick={() => openImageStudio(variant.id)}>
-                        Generate
-                      </button>
+                      {isComplete || isDownloadComplete ? (
+                        <button className="primary-button" type="button" onClick={() => openImageStudio(variant.id)}>
+                          Generate
+                        </button>
+                      ) : isDownloading ? (
+                        <button className="secondary-button" type="button" onClick={() => void handleCancelImageDownload(variant.repo)}>
+                          Pause
+                        </button>
+                      ) : isPaused ? (
+                        <button className="secondary-button" type="button" onClick={() => void handleImageDownload(variant.repo)}>
+                          Resume
+                        </button>
+                      ) : (
+                        <button className="secondary-button" type="button" onClick={() => void handleImageDownload(variant.repo)}>
+                          {isDownloadFailed ? "Retry" : isPartial ? "Resume Download" : "Download"}
+                        </button>
+                      )}
                       <button className="secondary-button" type="button" onClick={() => void handleOpenExternalUrl(variant.link)}>
                         Model Card
                       </button>
@@ -4691,7 +4588,7 @@ export default function App() {
             <div className="image-family-title-row">
               <h3>{variant.name}</h3>
               <span className="badge muted">{variant.provider}</span>
-              <span className="badge accent">Latest</span>
+              {variant.source === "curated" ? <span className="badge accent">Curated</span> : null}
               {variant.availableLocally ? <span className="badge success">Installed</span> : null}
               {!variant.availableLocally && isDownloadComplete ? <span className="badge success">Downloaded</span> : null}
               {isDownloadPaused ? <span className="badge warning">Paused</span> : null}
@@ -4724,11 +4621,6 @@ export default function App() {
             <span key={tag} className="badge subtle">{tag}</span>
           ))}
         </div>
-
-        <p className="muted-text">
-          Latest Releases is a live scouting lane for newer official image repos. These models are visible here before they
-          become fully curated ChaosEngineAI Studio defaults.
-        </p>
 
         {isDownloadFailed && downloadState?.error ? (
           <div className="callout error image-callout">
@@ -4824,11 +4716,6 @@ export default function App() {
             <div>
               <span className="eyebrow">Current Runtime</span>
               <h3>{selectedImageVariant?.name ?? "Select an image model"}</h3>
-              <p className="muted-text">
-                This screen is the MVP vertical slice from the image plan: local model selection, prompt controls, saved
-                outputs, and quick iteration actions. When the optional image runtime packages are installed, this view can
-                generate locally; otherwise it falls back to placeholder outputs while keeping the same contract stable.
-              </p>
             </div>
             {selectedImageVariant ? (
               <div className="image-studio-hero-stats">
@@ -4844,7 +4731,6 @@ export default function App() {
             ) : null}
           </div>
           <div className="callout image-callout image-runtime-callout">
-            <p>{imageRuntimeStatus.message}</p>
             <div className="chip-row">
               <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
                 {imageRuntimeStatus.realGenerationAvailable
@@ -4855,25 +4741,22 @@ export default function App() {
               </span>
               <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
               {imageRuntimeStatus.device ? <span className="badge muted">Device: {imageRuntimeStatus.device}</span> : null}
-              {(imageRuntimeStatus.missingDependencies ?? []).slice(0, 4).map((dependency) => (
-                <span key={dependency} className="badge subtle">{dependency}</span>
-              ))}
             </div>
             {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
               <div className="image-runtime-summary">
                 <p className="muted-text">
                   {selectedImageLoaded
-                    ? `${selectedImageVariant.name} is loaded in memory and ready to generate immediately.`
+                    ? `${selectedImageVariant.name} is loaded and ready to generate.`
                     : imageRuntimeLoadedDifferentModel && loadedImageVariant
-                      ? `${loadedImageVariant.name} is currently loaded in memory. Generating with ${selectedImageVariant.name} will swap the pipeline and take a little longer.`
+                      ? `${loadedImageVariant.name} is loaded. Generating with ${selectedImageVariant.name} will swap the pipeline.`
                       : selectedImageWillLoadOnGenerate
                         ? `${selectedImageVariant.name} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.`
                         : !selectedImageVariant.availableLocally
-                          ? `${selectedImageVariant.name} is not installed locally yet, so Studio cannot keep it loaded in memory on this machine.`
-                          : "This model will load on demand when you generate."}
+                          ? `${selectedImageVariant.name} is not installed locally. Download it from Discover to enable local generation.`
+                          : "Model will load on demand when you generate."}
                 </p>
                 {imageBusy && selectedImageWillLoadOnGenerate ? (
-                  <p className="busy-indicator"><span className="busy-dot" />First run may take longer while the model loads into memory.</p>
+                  <p className="busy-indicator"><span className="busy-dot" />Loading model into memory...</p>
                 ) : null}
                 {(selectedImageVariant.availableLocally || loadedImageVariant) ? (
                   <div className="button-row image-runtime-control-row">
@@ -4914,15 +4797,11 @@ export default function App() {
             {!imageRuntimeStatus.realGenerationAvailable ? (
               <div className="image-runtime-actions">
                 <p className="muted-text">
-                  If you installed the image packages recently, restart the backend so Image Studio can re-probe the
-                  Python environment instead of quietly staying on placeholders.
+                  {imageRuntimeStatus.activeEngine === "unavailable"
+                    ? "Install the diffusers runtime to enable local image generation."
+                    : "Restart the backend if you recently installed image packages."}
                 </p>
                 <div className="button-row">
-                  {imageRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable ? (
-                    <span className="mono-text muted-text">
-                      Backend Python: {imageRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable}
-                    </span>
-                  ) : null}
                   {tauriBackend?.managedByTauri ? (
                     <button className="secondary-button" type="button" onClick={() => void handleRestartServer()} disabled={busy}>
                       {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
@@ -4936,7 +4815,7 @@ export default function App() {
 
         <Panel
           title="Prompt"
-          subtitle="Choose a curated model, set the aspect ratio and quality, then generate into the local gallery."
+          subtitle="Choose a model, set the aspect ratio and quality, then generate into the local gallery."
           className="image-studio-form-panel"
           actions={
             <button
@@ -4978,7 +4857,7 @@ export default function App() {
                     ? `${selectedImageVariant.name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.`
                     : selectedImageDownloadComplete
                     ? `${selectedImageVariant.name} finished downloading. The installed-model scan will refresh automatically.`
-                    : `${selectedImageVariant.name} is not installed locally yet, so the real runtime cannot use it on this machine yet. You can still browse the studio flow now, then download the curated weights before generating for real.`}
+                    : `${selectedImageVariant.name} is not installed locally. Download it from Discover to enable local generation.`}
                 </p>
                 {selectedImageDownloadFailed && selectedImageDownload?.error ? (
                   <>
@@ -6048,15 +5927,27 @@ export default function App() {
                   >
                     <div className="session-title-row">
                       <strong>{session.title}</strong>
-                      <span
-                        className={`pin-icon${session.pinned ? " pinned" : ""}`}
-                        role="button"
-                        tabIndex={0}
-                        title={session.pinned ? "Unpin" : "Pin"}
-                        onClick={(e) => { e.stopPropagation(); void handleToggleThreadPin(session); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void handleToggleThreadPin(session); } }}
-                      >
-                        {"\uD83D\uDCCC"}
+                      <span className="session-actions">
+                        <span
+                          className={`pin-icon${session.pinned ? " pinned" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          title={session.pinned ? "Unpin" : "Pin"}
+                          onClick={(e) => { e.stopPropagation(); void handleToggleThreadPin(session); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void handleToggleThreadPin(session); } }}
+                        >
+                          {"\uD83D\uDCCC"}
+                        </span>
+                        <span
+                          className="session-delete-icon"
+                          role="button"
+                          tabIndex={0}
+                          title="Delete chat"
+                          onClick={(e) => { e.stopPropagation(); void handleDeleteSession(session.id); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void handleDeleteSession(session.id); } }}
+                        >
+                          {"\u2715"}
+                        </span>
                       </span>
                     </div>
                     <div className="session-meta-row">
@@ -6843,8 +6734,8 @@ export default function App() {
         >
           <div className="benchmark-run-page">
             <div className="benchmark-run-config scrollable-panel-content">
-              <div className="field-grid">
-                <label>
+              <div className="benchmark-run-header-grid">
+                <label className="field">
                   Benchmark model
                   <div className="model-selected-card">
                     <div className="model-selected-info">
@@ -6859,88 +6750,90 @@ export default function App() {
                     </button>
                   </div>
                 </label>
-                <label>
-                  Benchmark mode
-                  <select
-                    className="text-input"
-                    value={benchmarkDraft.mode ?? "throughput"}
-                    onChange={(event) => updateBenchmarkDraft("mode", event.target.value as any)}
-                  >
-                    <option value="throughput">Throughput (tok/s)</option>
-                    <option value="perplexity">Perplexity (quality)</option>
-                    <option value="task_accuracy">Task Accuracy (MMLU / HellaSwag)</option>
-                  </select>
-                </label>
-                {(!benchmarkDraft.mode || benchmarkDraft.mode === "throughput") ? (
-                  <label>
-                    Prompt preset
+                <div className="benchmark-run-mode-stack">
+                  <label className="field">
+                    Benchmark mode
                     <select
                       className="text-input"
-                      value={benchmarkPromptId}
-                      onChange={(event) => setBenchmarkPromptId(event.target.value)}
+                      value={benchmarkDraft.mode ?? "throughput"}
+                      onChange={(event) => updateBenchmarkDraft("mode", event.target.value as any)}
                     >
-                      {BENCHMARK_PROMPTS.map((preset) => (
-                        <option key={preset.id} value={preset.id}>
-                          {preset.label}
-                        </option>
-                      ))}
+                      <option value="throughput">Throughput (tok/s)</option>
+                      <option value="perplexity">Perplexity (quality)</option>
+                      <option value="task_accuracy">Task Accuracy (MMLU / HellaSwag)</option>
                     </select>
                   </label>
-                ) : null}
-                {benchmarkDraft.mode === "perplexity" ? (
-                  <>
-                    <label>
-                      Dataset
+                  {(!benchmarkDraft.mode || benchmarkDraft.mode === "throughput") ? (
+                    <label className="field">
+                      Prompt preset
                       <select
                         className="text-input"
-                        value={benchmarkDraft.perplexityDataset ?? "wikitext-2"}
-                        onChange={(event) => updateBenchmarkDraft("perplexityDataset", event.target.value as any)}
+                        value={benchmarkPromptId}
+                        onChange={(event) => setBenchmarkPromptId(event.target.value)}
                       >
-                        <option value="wikitext-2">WikiText-2</option>
+                        {BENCHMARK_PROMPTS.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </option>
+                        ))}
                       </select>
                     </label>
-                    <label>
-                      Samples
-                      <input
-                        className="text-input"
-                        type="number"
-                        min="8"
-                        max="1024"
-                        step="8"
-                        value={benchmarkDraft.perplexityNumSamples ?? 64}
-                        onChange={(event) => updateBenchmarkDraft("perplexityNumSamples", Number(event.target.value) as any)}
-                      />
-                    </label>
-                  </>
-                ) : null}
-                {benchmarkDraft.mode === "task_accuracy" ? (
-                  <>
-                    <label>
-                      Task
-                      <select
-                        className="text-input"
-                        value={benchmarkDraft.taskName ?? "mmlu"}
-                        onChange={(event) => updateBenchmarkDraft("taskName", event.target.value as any)}
-                      >
-                        <option value="mmlu">MMLU (multiple choice)</option>
-                        <option value="hellaswag">HellaSwag (sentence completion)</option>
-                      </select>
-                    </label>
-                    <label>
-                      Questions
-                      <input
-                        className="text-input"
-                        type="number"
-                        min="10"
-                        max="5000"
-                        step="10"
-                        value={benchmarkDraft.taskLimit ?? 100}
-                        onChange={(event) => updateBenchmarkDraft("taskLimit", Number(event.target.value) as any)}
-                      />
-                    </label>
-                  </>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
+              {benchmarkDraft.mode === "perplexity" ? (
+                <div className="field-grid">
+                  <label>
+                    Dataset
+                    <select
+                      className="text-input"
+                      value={benchmarkDraft.perplexityDataset ?? "wikitext-2"}
+                      onChange={(event) => updateBenchmarkDraft("perplexityDataset", event.target.value as any)}
+                    >
+                      <option value="wikitext-2">WikiText-2</option>
+                    </select>
+                  </label>
+                  <label>
+                    Samples
+                    <input
+                      className="text-input"
+                      type="number"
+                      min="8"
+                      max="1024"
+                      step="8"
+                      value={benchmarkDraft.perplexityNumSamples ?? 64}
+                      onChange={(event) => updateBenchmarkDraft("perplexityNumSamples", Number(event.target.value) as any)}
+                    />
+                  </label>
+                </div>
+              ) : null}
+              {benchmarkDraft.mode === "task_accuracy" ? (
+                <div className="field-grid">
+                  <label>
+                    Task
+                    <select
+                      className="text-input"
+                      value={benchmarkDraft.taskName ?? "mmlu"}
+                      onChange={(event) => updateBenchmarkDraft("taskName", event.target.value as any)}
+                    >
+                      <option value="mmlu">MMLU (multiple choice)</option>
+                      <option value="hellaswag">HellaSwag (sentence completion)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Questions
+                    <input
+                      className="text-input"
+                      type="number"
+                      min="10"
+                      max="5000"
+                      step="10"
+                      value={benchmarkDraft.taskLimit ?? 100}
+                      onChange={(event) => updateBenchmarkDraft("taskLimit", Number(event.target.value) as any)}
+                    />
+                  </label>
+                </div>
+              ) : null}
 
               {selectedPrompt && (!benchmarkDraft.mode || benchmarkDraft.mode === "throughput") ? (
                 <div className="callout quiet benchmark-prompt-preview">
@@ -7333,11 +7226,27 @@ export default function App() {
                           <th>Metric</th>
                           <th>
                             <span className="bm-col-label">Selected</span>
-                            <span className="bm-col-model">{effectiveSelected.model}</span>
+                            <select
+                              className="bm-run-select"
+                              value={effectiveSelected.id}
+                              onChange={(e) => setSelectedBenchmarkId(e.target.value)}
+                            >
+                              {filteredBenchmarks.map(b => (
+                                <option key={b.id} value={b.id}>{b.label} — {b.model}</option>
+                              ))}
+                            </select>
                           </th>
                           <th>
                             <span className="bm-col-label">Baseline</span>
-                            <span className="bm-col-model">{effectiveCompare.model}</span>
+                            <select
+                              className="bm-run-select"
+                              value={effectiveCompare.id}
+                              onChange={(e) => setCompareBenchmarkId(e.target.value)}
+                            >
+                              {filteredBenchmarks.filter(b => b.id !== effectiveSelected.id).map(b => (
+                                <option key={b.id} value={b.id}>{b.label} — {b.model}</option>
+                              ))}
+                            </select>
                           </th>
                           <th>Delta</th>
                         </tr>
@@ -7365,7 +7274,23 @@ export default function App() {
                         <strong>{number(effectiveSelected.tokS)}</strong> <span>tok/s</span>
                       </div>
                     </div>
-                    <p className="muted-text">Double-click a run in the table to set a comparison baseline.</p>
+                    {filteredBenchmarks.length > 1 ? (
+                      <div className="bm-pick-baseline">
+                        <label className="muted-text">Compare against:</label>
+                        <select
+                          className="bm-run-select"
+                          value=""
+                          onChange={(e) => setCompareBenchmarkId(e.target.value)}
+                        >
+                          <option value="" disabled>Pick a baseline run...</option>
+                          {filteredBenchmarks.filter(b => b.id !== effectiveSelected.id).map(b => (
+                            <option key={b.id} value={b.id}>{b.label} — {b.model}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <p className="muted-text">Run another benchmark to enable comparison.</p>
+                    )}
                   </div>
                 )}
 
@@ -7428,6 +7353,7 @@ export default function App() {
                             className={`table-row table-button-row benchmark-history-row bm-history-row-wide${isSelected ? " active" : ""}${isCompare ? " compare" : ""}`}
                             onClick={() => setSelectedBenchmarkId(result.id)}
                             onDoubleClick={() => setCompareBenchmarkId(result.id)}
+                            onContextMenu={(e) => { e.preventDefault(); setCompareBenchmarkId(result.id); }}
                           >
                             <div>
                               <strong>{result.label}</strong>

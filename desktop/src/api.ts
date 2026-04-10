@@ -243,7 +243,7 @@ export async function searchModels(query: string): Promise<SearchResults> {
 
 export async function getImageCatalog(): Promise<ImageCatalogResponse> {
   try {
-    return await fetchJson<ImageCatalogResponse>("/api/images/catalog");
+    return await fetchJson<ImageCatalogResponse>("/api/images/catalog", 25000);
   } catch (error) {
     if (!canUseMockImageFallback()) {
       throw error;
@@ -474,6 +474,13 @@ export async function listSessionDocuments(sessionId: string): Promise<SessionDo
 export async function deleteSessionDocument(sessionId: string, docId: string): Promise<void> {
   const apiBase = await resolveApiBase();
   await fetch(`${apiBase}/api/chat/sessions/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(docId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  const apiBase = await resolveApiBase();
+  await fetch(`${apiBase}/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
   });
 }

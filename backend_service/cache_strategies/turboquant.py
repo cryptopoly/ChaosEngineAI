@@ -3,25 +3,59 @@
 TurboQuant provides PolarQuant KV cache compression with fused Metal
 kernels for MLX on Apple Silicon, and cache-type flags for llama.cpp.
 
-Install: ``pip install turboquant-mlx``
+Install: ``./.venv/bin/python3 -m pip install turboquant-mlx``
 """
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
+from pathlib import Path
 from typing import Any
 
 from backend_service.cache_strategies import CacheStrategy
 
 
-_available = False
-_make_adaptive_cache = None
-_apply_patch = None
-try:
-    from turboquant_mlx import make_adaptive_cache as _make_adaptive_cache  # type: ignore[import-untyped]
-    from turboquant_mlx import apply_patch as _apply_patch  # type: ignore[import-untyped]
-    _available = True
-except ImportError:
-    pass
+_REQUIRED_HOOKS = ("make_adaptive_cache", "apply_patch")
+
+
+def _turboquant_mlx_source_blobs() -> list[str]:
+    spec = importlib.util.find_spec("turboquant_mlx")
+    if spec is None or spec.origin is None:
+        return []
+
+    origin = Path(spec.origin)
+    package_dir = origin.parent
+    candidates: list[Path] = []
+    if origin.exists():
+        candidates.append(origin)
+    if package_dir.exists():
+        candidates.extend(sorted(path for path in package_dir.rglob("*.py") if path != origin))
+
+    sources: list[str] = []
+    for path in candidates:
+        try:
+            sources.append(path.read_text(encoding="utf-8", errors="ignore"))
+        except OSError:
+            continue
+    return sources
+
+
+def _has_required_turboquant_mlx_hooks() -> bool:
+    sources = _turboquant_mlx_source_blobs()
+    if not sources:
+        return False
+    return all(any(hook in source for source in sources) for hook in _REQUIRED_HOOKS)
+
+
+def _load_turboquant_mlx_hooks() -> tuple[Any | None, Any | None]:
+    if not _has_required_turboquant_mlx_hooks():
+        return None, None
+    try:
+        module = importlib.import_module("turboquant_mlx")
+    except ImportError:
+        return None, None
+    return getattr(module, "make_adaptive_cache", None), getattr(module, "apply_patch", None)
 
 
 class TurboQuantStrategy(CacheStrategy):
@@ -35,7 +69,24 @@ class TurboQuantStrategy(CacheStrategy):
         return "TurboQuant"
 
     def is_available(self) -> bool:
-        return _available
+        # Keep availability probing side-effect free. Some MLX packages touch
+        # Metal during import, so we only report ready when the expected hooks
+        # are present in the installed source tree.
+        return _has_required_turboquant_mlx_hooks()
+
+    def availability_badge(self) -> str:
+        return "Ready" if self.is_available() else "Experimental"
+
+    def availability_tone(self) -> str:
+        return "ready" if self.is_available() else "warning"
+
+    def availability_reason(self) -> str | None:
+        if self.is_available():
+            return None
+        return (
+            "The current PyPI turboquant-mlx package does not expose the MLX adapter hooks "
+            "ChaosEngineAI expects yet, so this option stays disabled in the current build."
+        )
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (1, 4)
@@ -52,10 +103,14 @@ class TurboQuantStrategy(CacheStrategy):
 
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
         """Create adaptive TurboQuant cache for mlx-lm."""
-        if _make_adaptive_cache is None or _apply_patch is None:
-            raise NotImplementedError("turboquant-mlx is not installed.")
-        _apply_patch()
-        return _make_adaptive_cache(
+        make_adaptive_cache, apply_patch = _load_turboquant_mlx_hooks()
+        if make_adaptive_cache is None or apply_patch is None:
+            raise NotImplementedError(
+                "turboquant-mlx is not installed, or the installed package does not "
+                "expose ChaosEngineAI's required MLX adapter hooks yet."
+            )
+        apply_patch()
+        return make_adaptive_cache(
             num_layers,
             bits=bits,
             fp16_layers=fp16_layers,

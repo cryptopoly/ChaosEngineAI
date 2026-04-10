@@ -15,7 +15,7 @@ const LAUNCH_PRESETS: Array<{
   { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 2048, fusedAttention: true, fitModelInMemory: false } },
 ];
 
-const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string }> = {
+const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string }> = {
   native: {
     description: "Full-precision FP16 KV cache. No compression, maximum quality. Works with all backends.",
     install: "",
@@ -23,18 +23,21 @@ const STRATEGY_INFO: Record<string, { description: string; install: string; requ
   },
   rotorquant: {
     description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
-    install: "pip install turboquant",
+    install: "./.venv/bin/python3 -m pip install turboquant",
     requires: "llama.cpp (RotorQuant fork) + CUDA/Metal GPU",
+    installHint: "Install into ChaosEngineAI's backend Python, then restart ChaosEngineAI.",
   },
   triattention: {
-    description: "Transparent KV cache compression integrated via vLLM. Automatically manages cache budget across attention heads.",
-    install: "pip install triattention vllm",
-    requires: "vLLM + CUDA GPU (Linux)",
+    description: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
+    install: "./.venv/bin/python3 -m pip install triattention vllm",
+    requires: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
+    installHint: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
   },
   turboquant: {
-    description: "PolarQuant KV cache compression with fused Metal kernels. 1-4 bit adaptive quantisation with layer-aware FP16 preservation.",
-    install: "pip install turboquant-mlx",
-    requires: "MLX (Apple Silicon) or llama.cpp fork",
+    description: "PolarQuant KV cache compression for MLX. Experimental: the current PyPI turboquant-mlx package does not expose the MLX adapter hooks ChaosEngineAI expects, so this option can remain disabled even after install.",
+    install: "./.venv/bin/python3 -m pip install turboquant-mlx",
+    requires: "Apple Silicon + MLX. Additional ChaosEngineAI adapter support is required in the current build.",
+    installHint: "Install into ChaosEngineAI's backend Python. In the current build, the PyPI package alone may still leave this option disabled after restart.",
   },
 };
 
@@ -75,6 +78,9 @@ interface CacheStrategyOption {
   bitRange: number[] | null;
   defaultBits: number | null;
   supportsFp16Layers: boolean;
+  availabilityBadge?: string | null;
+  availabilityTone?: string | null;
+  availabilityReason?: string | null;
 }
 
 interface RuntimeControlsProps {
@@ -134,6 +140,67 @@ export function RuntimeControls({
 
   return (
     <>
+      <span className="eyebrow">Cache strategy</span>
+      <div className="cache-strategy-cards">
+        {strategies.map((strategy) => {
+          const info = STRATEGY_INFO[strategy.id];
+          const isSelected = settings.cacheStrategy === strategy.id;
+          const isExpanded = expandedInfo === strategy.id;
+
+          return (
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${!strategy.available ? " cache-strategy-card--disabled" : ""}`}>
+              <div className="cache-strategy-card-header">
+                <button
+                  type="button"
+                  className="cache-strategy-card-select"
+                  disabled={!strategy.available}
+                  onClick={() => selectStrategy(strategy)}
+                >
+                  <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
+                  <span className="cache-strategy-card-name">{strategy.name}</span>
+                  <span
+                    className={`cache-strategy-badge cache-strategy-badge--${
+                      strategy.available ? "ready" : strategy.availabilityTone ?? "install"
+                    }`}
+                  >
+                    {strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                  </span>
+                </button>
+                {info ? (
+                  <button
+                    type="button"
+                    className="cache-strategy-info-btn"
+                    onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
+                    title="More info"
+                  >
+                    i
+                  </button>
+                ) : null}
+              </div>
+              {isExpanded && info ? (
+                <div className="cache-strategy-info-panel">
+                  <p>{info.description}</p>
+                  {!strategy.available && strategy.availabilityReason ? (
+                    <p className="cache-strategy-status-note">{strategy.availabilityReason}</p>
+                  ) : null}
+                  <div className="cache-strategy-meta">
+                    <span className="cache-strategy-meta-label">Requires:</span>
+                    <span>{info.requires}</span>
+                  </div>
+                  {info.install ? (
+                    <div className="cache-strategy-install">
+                      <span className="cache-strategy-meta-label">Install:</span>
+                      <code>{info.install}</code>
+                      <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
       <div className="preset-row">
         {LAUNCH_PRESETS.map((preset) => (
           <button
@@ -201,62 +268,6 @@ export function RuntimeControls({
             onChange={(v) => onChange("temperature", v)}
           />
         ) : null}
-      </div>
-
-      <span className="eyebrow">Cache strategy</span>
-      <div className="cache-strategy-cards">
-        {strategies.map((strategy) => {
-          const info = STRATEGY_INFO[strategy.id];
-          const isSelected = settings.cacheStrategy === strategy.id;
-          const isExpanded = expandedInfo === strategy.id;
-
-          return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${!strategy.available ? " cache-strategy-card--disabled" : ""}`}>
-              <div className="cache-strategy-card-header">
-                <button
-                  type="button"
-                  className="cache-strategy-card-select"
-                  disabled={!strategy.available}
-                  onClick={() => selectStrategy(strategy)}
-                >
-                  <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
-                  <span className="cache-strategy-card-name">{strategy.name}</span>
-                  {strategy.available ? (
-                    <span className="cache-strategy-badge cache-strategy-badge--ready">Ready</span>
-                  ) : (
-                    <span className="cache-strategy-badge cache-strategy-badge--install">Not installed</span>
-                  )}
-                </button>
-                {info ? (
-                  <button
-                    type="button"
-                    className="cache-strategy-info-btn"
-                    onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
-                    title="More info"
-                  >
-                    i
-                  </button>
-                ) : null}
-              </div>
-              {isExpanded && info ? (
-                <div className="cache-strategy-info-panel">
-                  <p>{info.description}</p>
-                  <div className="cache-strategy-meta">
-                    <span className="cache-strategy-meta-label">Requires:</span>
-                    <span>{info.requires}</span>
-                  </div>
-                  {info.install ? (
-                    <div className="cache-strategy-install">
-                      <span className="cache-strategy-meta-label">Install:</span>
-                      <code>{info.install}</code>
-                      <p className="cache-strategy-install-hint">Run in your terminal, then restart ChaosEngineAI.</p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
       </div>
 
       <div className="toggle-row">

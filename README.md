@@ -32,7 +32,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 - **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images.
 - **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation.
-- **Pluggable cache compression.** Native f16 cache out of the box, with optional support for cutting-edge KV cache compression — [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), and [TurboQuant](https://pypi.org/project/turboquant-mlx/). Install a backend, restart, and it appears in the UI — no config needed.
+- **Pluggable cache compression.** Native f16 cache out of the box, with optional support for cutting-edge KV cache compression — [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), and [TurboQuant](https://pypi.org/project/turboquant-mlx/). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
 - **Built for power users.** Live runtime telemetry, structured logs, side-by-side benchmark history with model filtering and red/green delta comparisons, and granular launch preferences.
 - **Polished, fast UI.** A focused dark workspace that gets out of the way and never blocks on the backend.
 - **Self-updating.** Ships with a signed in-app updater — no more manual re-downloads when a new release drops.
@@ -237,11 +237,11 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 | Backend | Install | Bits | Platforms | Description |
 |---|---|---|---|---|
 | **Native f16** | Built-in | — | All | Full-precision KV cache. Maximum quality, no compression. |
-| **[RotorQuant](https://github.com/scrya-com/rotorquant)** | `pip install turboquant` | 3-4 | CUDA, Metal (via llama.cpp fork) | IsoQuant (4D quaternion) and PlanarQuant (2D Givens) rotation-based cache compression. |
-| **[TriAttention](https://github.com/WeianMao/triattention)** | `pip install triattention vllm` | 1-4 | Linux + CUDA (via vLLM) | Transparent KV cache compression integrated into vLLM's scheduler. |
-| **[TurboQuant](https://pypi.org/project/turboquant-mlx/)** | `pip install turboquant-mlx` | 1-4 | Apple Silicon (MLX), llama.cpp | PolarQuant adaptive cache with fused Metal kernels for MLX. |
+| **[RotorQuant](https://github.com/scrya-com/rotorquant)** | `./.venv/bin/python3 -m pip install turboquant` | 3-4 | CUDA, Metal (via llama.cpp fork) | IsoQuant (4D quaternion) and PlanarQuant (2D Givens) rotation-based cache compression. |
+| **[TriAttention](https://github.com/WeianMao/triattention)** | `./.venv/bin/python3 -m pip install triattention vllm` | 1-4 | Linux + CUDA only (via vLLM) | Transparent KV cache compression integrated into vLLM's scheduler. Not supported on macOS. |
+| **[TurboQuant](https://pypi.org/project/turboquant-mlx/)** | `./.venv/bin/python3 -m pip install turboquant-mlx` | 1-4 | Apple Silicon (MLX), llama.cpp | Experimental. The current PyPI package does not yet expose the MLX adapter hooks ChaosEngineAI expects, so this option may remain disabled in the current build. |
 
-After installing, restart ChaosEngineAI. The new strategy will show as **Ready** in the cache selector with its bit-depth slider and FP16 layer controls.
+Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only, and the current PyPI `turboquant-mlx` package may still leave TurboQuant disabled in the current build.
 
 The system is designed so new compression methods can be added as single-file adapters in `backend_service/cache_strategies/` without touching any other code.
 

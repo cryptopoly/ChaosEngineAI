@@ -348,7 +348,7 @@ class DiffusersTextToImageEngine:
             device=device,
             pythonExecutable=_resolve_image_python(),
             message=(
-                "Real local generation is available. Download a curated image model locally, then Image Studio "
+                "Real local generation is available. Download an image model locally, then Image Studio "
                 "will use the diffusers runtime instead of the placeholder engine."
             ),
             loadedModelRepo=self._loaded_repo,

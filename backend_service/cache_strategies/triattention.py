@@ -39,6 +39,27 @@ class TriAttentionStrategy(CacheStrategy):
     def is_available(self) -> bool:
         return _triattention is not None and _vllm is not None
 
+    def availability_badge(self) -> str:
+        if self.is_available():
+            return "Ready"
+        if self.on_macos():
+            return "Linux only"
+        return "Install"
+
+    def availability_tone(self) -> str:
+        if self.is_available():
+            return "ready"
+        if self.on_macos():
+            return "unsupported"
+        return "install"
+
+    def availability_reason(self) -> str | None:
+        if self.is_available():
+            return None
+        if self.on_macos():
+            return "TriAttention requires Linux + CUDA + vLLM and is not supported on macOS."
+        return "Install triattention and vllm in ChaosEngineAI's backend runtime on a Linux/CUDA machine."
+
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (1, 4)
 

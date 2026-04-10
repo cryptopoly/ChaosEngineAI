@@ -8,6 +8,7 @@ llama.cpp engines can use it without knowing the details.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import platform
 from typing import Any
 
 
@@ -27,6 +28,18 @@ class CacheStrategy(ABC):
     @abstractmethod
     def is_available(self) -> bool:
         """Return ``True`` when the backing library is importable."""
+
+    def availability_badge(self) -> str:
+        return "Ready" if self.is_available() else "Install"
+
+    def availability_tone(self) -> str:
+        return "ready" if self.is_available() else "install"
+
+    def availability_reason(self) -> str | None:
+        return None
+
+    def on_macos(self) -> bool:
+        return platform.system() == "Darwin"
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         """Min/max quantisation bits, or ``None`` if the concept does not apply."""
@@ -123,6 +136,9 @@ class CacheStrategyRegistry:
                 "bitRange": list(s.supported_bit_range()) if s.supported_bit_range() else None,
                 "defaultBits": s.default_bits(),
                 "supportsFp16Layers": s.supports_fp16_layers(),
+                "availabilityBadge": s.availability_badge(),
+                "availabilityTone": s.availability_tone(),
+                "availabilityReason": s.availability_reason(),
             })
         return out
 

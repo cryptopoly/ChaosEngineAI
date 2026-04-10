@@ -20,6 +20,12 @@ class NativeStrategy(CacheStrategy):
     def is_available(self) -> bool:
         return True
 
+    def availability_badge(self) -> str:
+        return "Ready"
+
+    def availability_tone(self) -> str:
+        return "ready"
+
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
         return None  # mlx-lm uses its own default KVCache
 

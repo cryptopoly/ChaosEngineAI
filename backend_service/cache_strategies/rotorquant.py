@@ -12,17 +12,26 @@ Install: ``pip install chaosengine-ai[rotorquant]``
 
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 from backend_service.cache_strategies import CacheStrategy
 
 
-_available = False
-try:
-    from turboquant import IsoQuantMSE, PlanarQuantMSE  # type: ignore[import-untyped]
-    _available = True
-except ImportError:
-    pass
+def _load_turboquant_module() -> Any | None:
+    try:
+        return importlib.import_module("turboquant")
+    except ImportError:
+        return None
+
+
+def _has_rotorquant_marker(module: Any | None) -> bool:
+    if module is None:
+        return False
+    return any(
+        hasattr(module, name)
+        for name in ("IsoQuantMSE", "PlanarQuantMSE", "TurboQuantMSE", "TurboQuantIP", "TurboQuantCache")
+    )
 
 
 class RotorQuantStrategy(CacheStrategy):
@@ -36,7 +45,20 @@ class RotorQuantStrategy(CacheStrategy):
         return "RotorQuant"
 
     def is_available(self) -> bool:
-        return _available
+        # The Python package is only used as an installation marker here.
+        # Actual execution still routes through the RotorQuant llama.cpp fork.
+        return _has_rotorquant_marker(_load_turboquant_module())
+
+    def availability_badge(self) -> str:
+        return "Ready" if self.is_available() else "Install"
+
+    def availability_tone(self) -> str:
+        return "ready" if self.is_available() else "install"
+
+    def availability_reason(self) -> str | None:
+        if self.is_available():
+            return None
+        return "Install turboquant into ChaosEngineAI's backend runtime, then restart the app."
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (3, 4)

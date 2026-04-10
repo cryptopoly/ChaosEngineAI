@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ChaosEngineAI",
+  "mainBinaryName": "ChaosEngineAI",
+  "version": "0.5.0",
+  "identifier": "com.chaosengineai.desktop",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeBundleCommand": "npm run stage:runtime",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5174",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ChaosEngineAI",
+        "width": 1400,
+        "height": 920,
+        "minWidth": 1100,
+        "minHeight": 760,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExM0JCRTc2RTlGOTUxNTYKUldSV1VmbnBkcjQ3RVIwaXpqV1VIbW03akdkSzh5dWFtTEpEMk0xUXB6bVYyQ0pyaU5lVzFvQjYK",
+      "endpoints": [
+        "https://github.com/cryptopoly/ChaosEngineAI/releases/latest/download/latest.json"
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "shortDescription": "ChaosEngineAI desktop shell for local AI model inference",
+    "category": "DeveloperTool",
+    "macOS": {
+      "hardenedRuntime": true,
+      "entitlements": "macos/ChaosEngineAI.entitlements"
+    },
+    "resources": {
+      "resources/": ""
+    }
+  }
+}

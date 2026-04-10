@@ -1,0 +1,363 @@
+import { useState } from "react";
+import type { LaunchPreferences, PreviewMetrics } from "../types";
+import { SliderField } from "./SliderField";
+import { PerformancePreview } from "./PerformancePreview";
+
+const LAUNCH_PRESETS: Array<{
+  id: string;
+  label: string;
+  hint: string;
+  values: Partial<LaunchPreferences>;
+}> = [
+  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
+  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
+  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
+  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
+];
+
+const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string }> = {
+  native: {
+    description: "Full-precision FP16 KV cache. No compression, maximum quality. Works with all backends.",
+    install: "",
+    requires: "Built-in",
+  },
+  rotorquant: {
+    description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
+    install: "./.venv/bin/python3 -m pip install turboquant",
+    requires: "llama.cpp (RotorQuant fork) + CUDA/Metal GPU",
+    installHint: "Install into ChaosEngineAI's backend Python, then restart ChaosEngineAI.",
+    autoInstallPackage: "turboquant",
+  },
+  triattention: {
+    description: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
+    install: "./.venv/bin/python3 -m pip install triattention vllm",
+    requires: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
+    installHint: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
+    autoInstallPackage: "triattention",
+  },
+  turboquant: {
+    description: "PolarQuant KV cache compression for MLX. Experimental: the current PyPI turboquant-mlx package does not expose the MLX adapter hooks ChaosEngineAI expects, so this option can remain disabled even after install.",
+    install: "./.venv/bin/python3 -m pip install turboquant-mlx",
+    requires: "Apple Silicon + MLX. Additional ChaosEngineAI adapter support is required in the current build.",
+    installHint: "Install into ChaosEngineAI's backend Python. In the current build, the PyPI package alone may still leave this option disabled after restart.",
+    autoInstallPackage: "turboquant-mlx",
+  },
+  chaosengine: {
+    description: "PCA-based decorrelation + channel truncation + hybrid quantization. Achieves ~3.7x KV cache compression with minimal quality loss (0.034 avg attention error). Supports 2-8 bit compression tiers.",
+    install: "Bundled automatically in desktop builds when vendor/ChaosEngine is present; otherwise ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine",
+    requires: "PyTorch 2.2+ (CUDA recommended, MPS/CPU supported). llama.cpp or vLLM backend.",
+    installHint: "Desktop builds can bundle a vendored ChaosEngine checkout automatically. For source/dev installs, clone the repo, pip install it into ChaosEngineAI's backend Python, then restart.",
+  },
+};
+
+function activePresetId(settings: LaunchPreferences): string | null {
+  for (const preset of LAUNCH_PRESETS) {
+    const match = Object.entries(preset.values).every(
+      ([key, value]) => settings[key as keyof LaunchPreferences] === value,
+    );
+    if (match) return preset.id;
+  }
+  return null;
+}
+
+function contextTicksFor(max: number): Array<{ value: number; label: string }> {
+  const fmt = (v: number) =>
+    v >= 1_000_000 ? `${(v / 1_048_576).toFixed(0)}M` : v >= 1024 ? `${Math.round(v / 1024)}K` : String(v);
+  let raw: number[];
+  if (max >= 524288) raw = [8192, 32768, 131072, 524288, max];
+  else if (max >= 131072) raw = [2048, 8192, 32768, 131072, max];
+  else if (max >= 32768) raw = [2048, 8192, 16384, max];
+  else if (max >= 8192) raw = [1024, 2048, 4096, max];
+  else if (max >= 2048) raw = [512, 1024, 2048, max];
+  else raw = [256, max];
+  const seen = new Set<number>();
+  const out: Array<{ value: number; label: string }> = [];
+  for (const v of raw) {
+    if (v > max || seen.has(v)) continue;
+    seen.add(v);
+    out.push({ value: v, label: fmt(v) });
+  }
+  return out;
+}
+
+interface CacheStrategyOption {
+  id: string;
+  name: string;
+  available: boolean;
+  bitRange: number[] | null;
+  defaultBits: number | null;
+  supportsFp16Layers: boolean;
+  availabilityBadge?: string | null;
+  availabilityTone?: string | null;
+  availabilityReason?: string | null;
+}
+
+interface RuntimeControlsProps {
+  settings: LaunchPreferences;
+  onChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
+  maxContext?: number | null;
+  diskSizeGb?: number;
+  preview: PreviewMetrics;
+  availableMemoryGb: number;
+  totalMemoryGb: number;
+  compact?: boolean;
+  showTemperature?: boolean;
+  showPreview?: boolean;
+  availableCacheStrategies?: CacheStrategyOption[];
+  onInstallPackage?: (strategyId: string) => void;
+  installingPackage?: string | null;
+}
+
+export function RuntimeControls({
+  settings,
+  onChange,
+  maxContext,
+  diskSizeGb,
+  preview,
+  availableMemoryGb,
+  totalMemoryGb,
+  compact,
+  showTemperature = true,
+  showPreview = true,
+  availableCacheStrategies,
+  onInstallPackage,
+  installingPackage,
+}: RuntimeControlsProps) {
+  const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
+  const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
+  const clampedContext = Math.max(contextMin, Math.min(settings.contextTokens, effectiveMaxContext));
+  const contextStep = effectiveMaxContext >= 131072 ? 2048 : effectiveMaxContext >= 16384 ? 1024 : 256;
+  const currentPreset = activePresetId(settings);
+  const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
+  const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
+  const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
+
+  function applyPreset(presetId: string) {
+    const preset = LAUNCH_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    for (const [key, value] of Object.entries(preset.values)) {
+      onChange(key as keyof LaunchPreferences, value as any);
+    }
+    // Set strategy-appropriate cache parameters based on preset intent.
+    // The currently selected strategy is preserved — only bits/fp16 are tuned.
+    if (selectedStrategy.bitRange != null && selectedStrategy.defaultBits != null) {
+      const minBits = selectedStrategy.bitRange[0];
+      const maxBits = selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1];
+      const midBits = selectedStrategy.defaultBits;
+      // Gradual steps: quality → balanced → speed → memory
+      const bits =
+        presetId === "quality" ? maxBits :
+        presetId === "balanced" ? Math.min(maxBits, Math.max(minBits, midBits + 1)) :
+        presetId === "speed" ? midBits :
+        minBits;
+      onChange("cacheBits", bits);
+      if (selectedStrategy.supportsFp16Layers) {
+        const fp16 =
+          presetId === "quality" ? 8 :
+          presetId === "balanced" ? 6 :
+          presetId === "speed" ? 2 :
+          0;
+        onChange("fp16Layers", fp16);
+      }
+    } else {
+      // Native strategy: no compression
+      onChange("cacheBits", 0);
+      onChange("fp16Layers", 0);
+    }
+  }
+
+  function selectStrategy(strategy: CacheStrategyOption) {
+    if (!strategy.available) return;
+    onChange("cacheStrategy", strategy.id);
+    if (strategy.defaultBits != null) {
+      onChange("cacheBits", strategy.defaultBits);
+    } else {
+      onChange("cacheBits", 0);
+    }
+    if (strategy.supportsFp16Layers) {
+      if (settings.fp16Layers === 0) onChange("fp16Layers", 4);
+    } else {
+      onChange("fp16Layers", 0);
+    }
+    // Re-apply the active preset with this strategy's parameters so the
+    // preview updates immediately (fixes stale preview after strategy switch).
+    const active = currentPreset;
+    if (active) {
+      // Defer so the strategy change propagates first
+      setTimeout(() => applyPreset(active), 0);
+    }
+  }
+
+  return (
+    <>
+      <span className="eyebrow">Cache strategy</span>
+      <div className="cache-strategy-cards">
+        {strategies.map((strategy) => {
+          const info = STRATEGY_INFO[strategy.id];
+          const isSelected = settings.cacheStrategy === strategy.id;
+          const isExpanded = expandedInfo === strategy.id;
+
+          return (
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${!strategy.available ? " cache-strategy-card--disabled" : ""}`}>
+              <div className="cache-strategy-card-header">
+                <button
+                  type="button"
+                  className="cache-strategy-card-select"
+                  disabled={!strategy.available}
+                  onClick={() => selectStrategy(strategy)}
+                >
+                  <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
+                  <span className="cache-strategy-card-name">{strategy.name}</span>
+                  <span
+                    className={`cache-strategy-badge cache-strategy-badge--${
+                      strategy.available ? "ready" : strategy.availabilityTone ?? "install"
+                    }`}
+                  >
+                    {strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                  </span>
+                </button>
+                {info ? (
+                  <button
+                    type="button"
+                    className="cache-strategy-info-btn"
+                    onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
+                    title="More info"
+                  >
+                    i
+                  </button>
+                ) : null}
+              </div>
+              {isExpanded && info ? (
+                <div className="cache-strategy-info-panel">
+                  <p>{info.description}</p>
+                  {!strategy.available && strategy.availabilityReason ? (
+                    <p className="cache-strategy-status-note">{strategy.availabilityReason}</p>
+                  ) : null}
+                  <div className="cache-strategy-meta">
+                    <span className="cache-strategy-meta-label">Requires:</span>
+                    <span>{info.requires}</span>
+                  </div>
+                  {info.install ? (
+                    <div className="cache-strategy-install">
+                      <span className="cache-strategy-meta-label">Install:</span>
+                      <code>{info.install}</code>
+                      {info.autoInstallPackage && onInstallPackage && !strategy.available ? (
+                        <button
+                          type="button"
+                          className="cache-strategy-install-btn"
+                          disabled={installingPackage != null}
+                          onClick={() => onInstallPackage(strategy.id)}
+                        >
+                          {installingPackage === strategy.id ? "Installing..." : "Install now"}
+                        </button>
+                      ) : (
+                        <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="preset-row">
+        {LAUNCH_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            className={`preset-button${currentPreset === preset.id ? " preset-button--active" : ""}`}
+            type="button"
+            onClick={() => applyPreset(preset.id)}
+          >
+            <strong>{preset.label}</strong>
+            <small>{preset.hint}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="slider-grid">
+        {selectedStrategy?.bitRange != null ? (
+          <SliderField
+            label="Cache bits"
+            value={settings.cacheBits}
+            min={selectedStrategy.bitRange[0]} max={selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1]} step={1}
+            ticks={selectedStrategy.bitRange.map((v) => ({ value: v, label: String(v) }))}
+            formatValue={(v) => `${v}-bit`}
+            onChange={(v) => onChange("cacheBits", v)}
+          />
+        ) : null}
+        {selectedStrategy?.supportsFp16Layers ? (
+          <SliderField
+            label="FP16 layers"
+            value={settings.fp16Layers}
+            min={0} max={16} step={1}
+            ticks={[{ value: 0, label: "0" }, { value: 4, label: "4" }, { value: 8, label: "8" }, { value: 12, label: "12" }, { value: 16, label: "16" }]}
+            onChange={(v) => onChange("fp16Layers", v)}
+          />
+        ) : null}
+        <SliderField
+          label="Context"
+          value={clampedContext}
+          min={contextMin} max={effectiveMaxContext} step={contextStep}
+          ticks={contextTicksFor(effectiveMaxContext)}
+          formatValue={(v) => v >= 1_000_000 ? `${(v / 1_048_576).toFixed(1)}M` : v >= 1024 ? `${(v / 1024).toFixed(0)}K` : String(v)}
+          onChange={(v) => onChange("contextTokens", Math.min(v, effectiveMaxContext))}
+        />
+        <SliderField
+          label="Max tokens"
+          value={settings.maxTokens}
+          min={256} max={32768} step={256}
+          ticks={[
+            { value: 256, label: "256" },
+            { value: 2048, label: "2K" },
+            { value: 4096, label: "4K" },
+            { value: 8192, label: "8K" },
+            { value: 16384, label: "16K" },
+            { value: 32768, label: "32K" },
+          ]}
+          formatValue={(v) => v >= 1024 ? `${(v / 1024).toFixed(0)}K` : String(v)}
+          onChange={(v) => onChange("maxTokens", v)}
+        />
+        {showTemperature ? (
+          <SliderField
+            label="Temperature"
+            value={settings.temperature}
+            min={0} max={2} step={0.1}
+            ticks={[{ value: 0, label: "0" }, { value: 0.5, label: "0.5" }, { value: 1, label: "1.0" }, { value: 1.5, label: "1.5" }, { value: 2, label: "2.0" }]}
+            formatValue={(v) => v.toFixed(1)}
+            onChange={(v) => onChange("temperature", v)}
+          />
+        ) : null}
+      </div>
+
+      <div className="toggle-row">
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={settings.fitModelInMemory}
+            onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
+          />
+          Fit in memory
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={settings.fusedAttention}
+            onChange={(event) => onChange("fusedAttention", event.target.checked)}
+          />
+          Fused attention
+        </label>
+      </div>
+      {showPreview ? (
+        <PerformancePreview
+          preview={preview}
+          availableMemoryGb={availableMemoryGb}
+          totalMemoryGb={totalMemoryGb}
+          actualDiskSizeGb={diskSizeGb}
+          compact={compact}
+        />
+      ) : null}
+    </>
+  );
+}

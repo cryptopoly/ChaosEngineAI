@@ -1,0 +1,137 @@
+"""Data persistence: benchmark runs and chat sessions."""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+MAX_CHAT_SESSIONS = 200
+MAX_BENCHMARK_RUNS = 48
+LEGACY_SEEDED_CHAT_IDS = {"ui-direction", "model-shortlist"}
+LEGACY_SEEDED_BENCHMARK_IDS = {"baseline", "native-34", "native-36", "native-44"}
+
+
+def _default_chat_variant() -> dict[str, Any]:
+    from backend_service.catalog import CATALOG
+
+    direct_variants = sorted(
+        [entry for entry in CATALOG if entry.get("launchMode") == "direct"],
+        key=lambda entry: (float(entry.get("paramsB") or 0), float(entry.get("sizeGb") or 0)),
+    )
+    return direct_variants[0] if direct_variants else CATALOG[0]
+
+
+def _seed_chat_sessions() -> list[dict[str, Any]]:
+    return []
+
+
+def _seed_benchmark_runs() -> list[dict[str, Any]]:
+    return []
+
+
+def _load_benchmark_runs(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    if not isinstance(payload, list):
+        return []
+
+    valid_runs = [
+        item
+        for item in payload
+        if isinstance(item, dict)
+        and item.get("id")
+        and item.get("label")
+        and item.get("id") not in LEGACY_SEEDED_BENCHMARK_IDS
+    ]
+    return valid_runs[:MAX_BENCHMARK_RUNS]
+
+
+def _save_benchmark_runs(runs: list[dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(runs[:MAX_BENCHMARK_RUNS], indent=2), encoding="utf-8")
+
+
+def _load_chat_sessions(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    if not isinstance(payload, list):
+        return []
+
+    valid = [
+        s
+        for s in payload
+        if isinstance(s, dict)
+        and s.get("id")
+        and s.get("title")
+        and s.get("id") not in LEGACY_SEEDED_CHAT_IDS
+    ]
+    return valid[:MAX_CHAT_SESSIONS]
+
+
+def _save_chat_sessions(sessions: list[dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(sessions[:MAX_CHAT_SESSIONS], indent=2, default=str), encoding="utf-8")
+    try:
+        tmp.chmod(0o600)
+    except OSError:
+        pass
+    os.replace(str(tmp), str(path))
+
+
+def _build_benchmarks() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "baseline",
+            "label": "FP16 baseline",
+            "bits": 16,
+            "fp16Layers": 32,
+            "cacheGb": 14.0,
+            "compression": 1.0,
+            "tokS": 52.1,
+            "quality": 100,
+        },
+        {
+            "id": "native-34",
+            "label": "Native 3-bit 4+4",
+            "bits": 3,
+            "fp16Layers": 4,
+            "cacheGb": 5.9,
+            "compression": 2.4,
+            "tokS": 30.7,
+            "quality": 98,
+        },
+        {
+            "id": "native-36",
+            "label": "Native 3-bit 6+6",
+            "bits": 3,
+            "fp16Layers": 6,
+            "cacheGb": 7.5,
+            "compression": 1.9,
+            "tokS": 33.0,
+            "quality": 98,
+        },
+        {
+            "id": "native-44",
+            "label": "Native 4-bit 4+4",
+            "bits": 4,
+            "fp16Layers": 4,
+            "cacheGb": 7.1,
+            "compression": 2.0,
+            "tokS": 35.8,
+            "quality": 99,
+        },
+    ]

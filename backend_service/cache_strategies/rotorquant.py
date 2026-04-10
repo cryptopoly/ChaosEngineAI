@@ -1,6 +1,13 @@
 """Optional adapter for RotorQuant (scrya-com/rotorquant).
 
-Install: ``pip install rotorquant``
+RotorQuant provides IsoQuant (4D quaternion rotation) and PlanarQuant
+(2D Givens rotation) KV cache compression.  PyTorch/CUDA only — no MLX.
+
+The llama.cpp integration uses cache-type flags like ``iso3`` / ``planar3``
+via the RotorQuant llama.cpp fork.
+
+Install: ``pip install chaosengine-ai[rotorquant]``
+(installs the ``turboquant`` PyPI package)
 """
 
 from __future__ import annotations
@@ -10,9 +17,10 @@ from typing import Any
 from backend_service.cache_strategies import CacheStrategy
 
 
-_rotorquant = None
+_available = False
 try:
-    import rotorquant as _rotorquant  # type: ignore[import-untyped]
+    from turboquant import IsoQuantMSE, PlanarQuantMSE  # type: ignore[import-untyped]
+    _available = True
 except ImportError:
     pass
 
@@ -28,10 +36,10 @@ class RotorQuantStrategy(CacheStrategy):
         return "RotorQuant"
 
     def is_available(self) -> bool:
-        return _rotorquant is not None
+        return _available
 
     def supported_bit_range(self) -> tuple[int, int] | None:
-        return (1, 4)
+        return (3, 4)
 
     def default_bits(self) -> int | None:
         return 3
@@ -40,23 +48,33 @@ class RotorQuantStrategy(CacheStrategy):
         return True
 
     # ------------------------------------------------------------------
-    # Engine integration — fill in once the rotorquant API is stable
+    # Engine integration
     # ------------------------------------------------------------------
 
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
-        """Create a RotorQuant cache list for mlx-lm.
-
-        Expected to return a ``list[KVCache]`` of length *num_layers*.
-        """
+        """RotorQuant is PyTorch/CUDA only — no MLX support."""
         raise NotImplementedError(
-            "RotorQuant MLX cache adapter not yet implemented. "
-            "See https://github.com/scrya-com/rotorquant for the upstream API."
+            "RotorQuant requires PyTorch/CUDA and does not support MLX. "
+            "Use the llama.cpp (GGUF) backend with RotorQuant cache types, "
+            "or the vLLM backend."
         )
 
     def llama_cpp_cache_flags(self, bits: int) -> list[str]:
-        raise NotImplementedError(
-            "RotorQuant llama.cpp flags not yet implemented."
-        )
+        """Return cache-type flags for the RotorQuant llama.cpp fork.
+
+        The fork (github.com/johndpope/llama-cpp-turboquant, branch
+        ``planarquant-kv-cache``) supports ``iso3``, ``iso4``, ``planar3``,
+        ``planar4`` as cache-type values.
+
+        IsoQuant (4D rotation) is used by default for better quality.
+        """
+        clamped = max(3, min(4, bits))
+        return ["--cache-type-k", f"iso{clamped}", "--cache-type-v", f"iso{clamped}"]
+
+    def llama_cpp_cache_flags_planar(self, bits: int) -> list[str]:
+        """Alternative: use PlanarQuant (2D rotation, faster, slightly lower quality)."""
+        clamped = max(3, min(4, bits))
+        return ["--cache-type-k", f"planar{clamped}", "--cache-type-v", f"planar{clamped}"]
 
     def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers):
         kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens

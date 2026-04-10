@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LaunchPreferences, PreviewMetrics } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
@@ -8,11 +9,34 @@ const LAUNCH_PRESETS: Array<{
   hint: string;
   values: Partial<LaunchPreferences>;
 }> = [
-  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 8192, fusedAttention: false, fitModelInMemory: true } },
+  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 32768, fusedAttention: false, fitModelInMemory: true } },
   { id: "balanced", label: "Balanced", hint: "General chat", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 8192, fusedAttention: false, fitModelInMemory: true } },
   { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 4096, fusedAttention: true, fitModelInMemory: true } },
-  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 2048, fusedAttention: true, fitModelInMemory: true } },
+  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 2048, fusedAttention: true, fitModelInMemory: false } },
 ];
+
+const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string }> = {
+  native: {
+    description: "Full-precision FP16 KV cache. No compression, maximum quality. Works with all backends.",
+    install: "",
+    requires: "Built-in",
+  },
+  rotorquant: {
+    description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
+    install: "pip install turboquant",
+    requires: "llama.cpp (RotorQuant fork) + CUDA/Metal GPU",
+  },
+  triattention: {
+    description: "Transparent KV cache compression integrated via vLLM. Automatically manages cache budget across attention heads.",
+    install: "pip install triattention vllm",
+    requires: "vLLM + CUDA GPU (Linux)",
+  },
+  turboquant: {
+    description: "PolarQuant KV cache compression with fused Metal kernels. 1-4 bit adaptive quantisation with layer-aware FP16 preservation.",
+    install: "pip install turboquant-mlx",
+    requires: "MLX (Apple Silicon) or llama.cpp fork",
+  },
+};
 
 function activePresetId(settings: LaunchPreferences): string | null {
   for (const preset of LAUNCH_PRESETS) {
@@ -87,12 +111,24 @@ export function RuntimeControls({
   const currentPreset = activePresetId(settings);
   const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
+  const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
 
   function applyPreset(presetId: string) {
     const preset = LAUNCH_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
     for (const [key, value] of Object.entries(preset.values)) {
       onChange(key as keyof LaunchPreferences, value as any);
+    }
+  }
+
+  function selectStrategy(strategy: CacheStrategyOption) {
+    if (!strategy.available) return;
+    onChange("cacheStrategy", strategy.id);
+    if (strategy.defaultBits != null) {
+      onChange("cacheBits", strategy.defaultBits);
+    }
+    if (strategy.supportsFp16Layers && settings.fp16Layers === 0) {
+      onChange("fp16Layers", 4);
     }
   }
 
@@ -167,20 +203,62 @@ export function RuntimeControls({
         ) : null}
       </div>
 
-      <div className="field-grid compact-field-grid">
-        <label>
-          Cache
-          <select
-            className="text-input"
-            value={settings.cacheStrategy}
-            onChange={(event) => onChange("cacheStrategy", event.target.value)}
-          >
-            {(availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true}]).map(s => (
-              <option key={s.id} value={s.id} disabled={!s.available}>{s.name}{!s.available ? " (not installed)" : ""}</option>
-            ))}
-          </select>
-        </label>
+      <span className="eyebrow">Cache strategy</span>
+      <div className="cache-strategy-cards">
+        {strategies.map((strategy) => {
+          const info = STRATEGY_INFO[strategy.id];
+          const isSelected = settings.cacheStrategy === strategy.id;
+          const isExpanded = expandedInfo === strategy.id;
+
+          return (
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${!strategy.available ? " cache-strategy-card--disabled" : ""}`}>
+              <div className="cache-strategy-card-header">
+                <button
+                  type="button"
+                  className="cache-strategy-card-select"
+                  disabled={!strategy.available}
+                  onClick={() => selectStrategy(strategy)}
+                >
+                  <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
+                  <span className="cache-strategy-card-name">{strategy.name}</span>
+                  {strategy.available ? (
+                    <span className="cache-strategy-badge cache-strategy-badge--ready">Ready</span>
+                  ) : (
+                    <span className="cache-strategy-badge cache-strategy-badge--install">Not installed</span>
+                  )}
+                </button>
+                {info ? (
+                  <button
+                    type="button"
+                    className="cache-strategy-info-btn"
+                    onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
+                    title="More info"
+                  >
+                    i
+                  </button>
+                ) : null}
+              </div>
+              {isExpanded && info ? (
+                <div className="cache-strategy-info-panel">
+                  <p>{info.description}</p>
+                  <div className="cache-strategy-meta">
+                    <span className="cache-strategy-meta-label">Requires:</span>
+                    <span>{info.requires}</span>
+                  </div>
+                  {info.install ? (
+                    <div className="cache-strategy-install">
+                      <span className="cache-strategy-meta-label">Install:</span>
+                      <code>{info.install}</code>
+                      <p className="cache-strategy-install-hint">Run in your terminal, then restart ChaosEngineAI.</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
+
       <div className="toggle-row">
         <label className="check-row">
           <input

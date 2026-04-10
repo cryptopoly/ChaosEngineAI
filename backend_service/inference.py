@@ -392,6 +392,8 @@ class BackendCapabilities:
     llamaCliPath: str | None = None
     llamaServerPath: str | None = None
     converterAvailable: bool = False
+    vllmAvailable: bool = False
+    vllmVersion: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -406,6 +408,8 @@ class BackendCapabilities:
             "llamaCliPath": self.llamaCliPath,
             "llamaServerPath": self.llamaServerPath,
             "converterAvailable": self.converterAvailable,
+            "vllmAvailable": self.vllmAvailable,
+            "vllmVersion": self.vllmVersion,
         }
 
 
@@ -433,6 +437,8 @@ def _probe_native_backends() -> BackendCapabilities:
     if probe_message is None and code != 0:
         probe_message = message or f"probe exited with code {code}"
 
+    from backend_service.vllm_engine import _vllm_importable, _vllm_version
+
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=mlx_available,
@@ -445,6 +451,8 @@ def _probe_native_backends() -> BackendCapabilities:
         llamaCliPath=llama_cli_path,
         llamaServerPath=llama_server_path,
         converterAvailable=mlx_usable,
+        vllmAvailable=_vllm_importable(),
+        vllmVersion=_vllm_version(),
     )
 
 
@@ -1736,6 +1744,11 @@ class RuntimeController:
             return MLXWorkerEngine(self.capabilities) if self.capabilities.mlxUsable else self._make_mock_engine()
         if hint in {"gguf", "llama.cpp", "llama-cpp"}:
             return LlamaCppEngine(self.capabilities) if self.capabilities.ggufAvailable else self._make_mock_engine()
+        if hint == "vllm":
+            if self.capabilities.vllmAvailable:
+                from backend_service.vllm_engine import VLLMEngine
+                return VLLMEngine(self.capabilities)
+            return self._make_mock_engine()
 
         if _looks_like_gguf(target) and self.capabilities.ggufAvailable:
             return LlamaCppEngine(self.capabilities)

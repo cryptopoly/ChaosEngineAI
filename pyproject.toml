@@ -23,9 +23,10 @@ mlx-lm = [
     "gguf>=0.18.0",
     "mlx-lm>=0.20.0",
 ]
-triattention = ["triattention>=0.1.0"]
-rotorquant = ["rotorquant>=0.1.0"]
-megakernel = ["luce-megakernel>=0.1.0"]
+triattention = ["triattention>=0.1.0", "vllm>=0.8.0"]
+rotorquant = ["turboquant>=0.2.0"]
+turboquant = ["turboquant-mlx>=0.2.0"]
+vllm = ["vllm>=0.8.0"]
 desktop = [
     "fastapi>=0.115.0",
     "huggingface-hub>=0.26.0",

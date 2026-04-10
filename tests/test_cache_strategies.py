@@ -4,7 +4,6 @@ from backend_service.cache_strategies import CacheStrategyRegistry
 from backend_service.cache_strategies.native import NativeStrategy
 from backend_service.cache_strategies.triattention import TriAttentionStrategy
 from backend_service.cache_strategies.rotorquant import RotorQuantStrategy
-from backend_service.cache_strategies.megakernel import MegaKernelStrategy
 
 
 class CacheStrategyRegistryTests(unittest.TestCase):
@@ -21,19 +20,19 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         default = self.registry.default()
         self.assertEqual(default.strategy_id, "native")
 
-    def test_external_strategies_report_unavailable(self):
-        for strategy_id in ("triattention", "rotorquant", "megakernel"):
+    def test_external_strategies_registered(self):
+        for strategy_id in ("triattention", "rotorquant"):
             strategy = self.registry.get(strategy_id)
             self.assertIsNotNone(strategy, f"Strategy '{strategy_id}' not found in registry")
-            self.assertFalse(strategy.is_available(), f"Strategy '{strategy_id}' should not be available")
 
     def test_available_returns_all_strategies(self):
         available = self.registry.available()
         ids = [s["id"] for s in available]
         self.assertIn("native", ids)
-        self.assertIn("triattention", ids)
         self.assertIn("rotorquant", ids)
-        self.assertIn("megakernel", ids)
+        self.assertIn("triattention", ids)
+        self.assertIn("turboquant", ids)
+        self.assertEqual(len(ids), 4)
 
     def test_native_cache_flags(self):
         native = self.registry.get("native")
@@ -53,38 +52,87 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         self.assertEqual(baseline, optimised)
         self.assertGreater(baseline, 0)
 
-    def test_stub_strategies_have_bit_ranges(self):
-        for strategy_id in ("triattention", "rotorquant", "megakernel"):
-            strategy = self.registry.get(strategy_id)
-            bit_range = strategy.supported_bit_range()
-            self.assertIsNotNone(bit_range)
-            self.assertEqual(len(bit_range), 2)
-            self.assertLessEqual(bit_range[0], bit_range[1])
-
-    def test_stub_strategies_support_fp16_layers(self):
-        for strategy_id in ("triattention", "rotorquant", "megakernel"):
-            strategy = self.registry.get(strategy_id)
-            self.assertTrue(strategy.supports_fp16_layers())
-
-    def test_stub_estimate_compresses(self):
-        for strategy_id in ("triattention", "rotorquant", "megakernel"):
-            strategy = self.registry.get(strategy_id)
-            baseline, optimised = strategy.estimate_cache_bytes(
-                num_layers=32, num_heads=32, hidden_size=4096,
-                context_tokens=8192, bits=3, fp16_layers=4,
-            )
-            self.assertLess(optimised, baseline)
-
-    def test_stub_make_mlx_cache_raises(self):
-        for strategy_id in ("triattention", "rotorquant", "megakernel"):
-            strategy = self.registry.get(strategy_id)
-            with self.assertRaises(NotImplementedError):
-                strategy.make_mlx_cache(32, 3, 4, False, None)
-
     def test_native_make_mlx_cache_returns_none(self):
         native = self.registry.get("native")
         result = native.make_mlx_cache(32, 0, 0, False, None)
         self.assertIsNone(result)
+
+    # ------------------------------------------------------------------
+    # TriAttention
+    # ------------------------------------------------------------------
+
+    def test_triattention_requires_vllm(self):
+        tri = self.registry.get("triattention")
+        self.assertIsNotNone(tri.supported_bit_range())
+        self.assertTrue(tri.supports_fp16_layers())
+
+    def test_triattention_mlx_raises(self):
+        tri = self.registry.get("triattention")
+        with self.assertRaises(NotImplementedError) as ctx:
+            tri.make_mlx_cache(32, 3, 4, False, None)
+        self.assertIn("vLLM", str(ctx.exception))
+
+    def test_triattention_llama_raises(self):
+        tri = self.registry.get("triattention")
+        with self.assertRaises(NotImplementedError) as ctx:
+            tri.llama_cpp_cache_flags(3)
+        self.assertIn("vLLM", str(ctx.exception))
+
+    def test_triattention_estimate_compresses(self):
+        tri = self.registry.get("triattention")
+        baseline, optimised = tri.estimate_cache_bytes(
+            num_layers=32, num_heads=32, hidden_size=4096,
+            context_tokens=8192, bits=3, fp16_layers=4,
+        )
+        self.assertLess(optimised, baseline)
+
+    # ------------------------------------------------------------------
+    # RotorQuant
+    # ------------------------------------------------------------------
+
+    def test_rotorquant_bit_range(self):
+        rq = self.registry.get("rotorquant")
+        self.assertEqual(rq.supported_bit_range(), (3, 4))
+
+    def test_rotorquant_llama_flags(self):
+        rq = self.registry.get("rotorquant")
+        flags = rq.llama_cpp_cache_flags(3)
+        self.assertEqual(flags, ["--cache-type-k", "iso3", "--cache-type-v", "iso3"])
+        flags4 = rq.llama_cpp_cache_flags(4)
+        self.assertEqual(flags4, ["--cache-type-k", "iso4", "--cache-type-v", "iso4"])
+
+    def test_rotorquant_llama_flags_planar(self):
+        rq = self.registry.get("rotorquant")
+        flags = rq.llama_cpp_cache_flags_planar(3)
+        self.assertEqual(flags, ["--cache-type-k", "planar3", "--cache-type-v", "planar3"])
+
+    def test_rotorquant_mlx_raises_helpful_message(self):
+        rq = self.registry.get("rotorquant")
+        with self.assertRaises(NotImplementedError) as ctx:
+            rq.make_mlx_cache(32, 3, 4, False, None)
+        self.assertIn("PyTorch/CUDA", str(ctx.exception))
+        self.assertIn("llama.cpp", str(ctx.exception))
+
+    def test_rotorquant_estimate_compresses(self):
+        rq = self.registry.get("rotorquant")
+        baseline, optimised = rq.estimate_cache_bytes(
+            num_layers=32, num_heads=32, hidden_size=4096,
+            context_tokens=8192, bits=3, fp16_layers=4,
+        )
+        self.assertLess(optimised, baseline)
+
+    def test_rotorquant_label(self):
+        rq = self.registry.get("rotorquant")
+        self.assertEqual(rq.label(3, 4), "Rotor 3-bit 4+4")
+
+    def test_rotorquant_bits_clamped(self):
+        rq = self.registry.get("rotorquant")
+        # Bits below 3 should clamp to 3
+        flags = rq.llama_cpp_cache_flags(1)
+        self.assertEqual(flags, ["--cache-type-k", "iso3", "--cache-type-v", "iso3"])
+        # Bits above 4 should clamp to 4
+        flags = rq.llama_cpp_cache_flags(8)
+        self.assertEqual(flags, ["--cache-type-k", "iso4", "--cache-type-v", "iso4"])
 
 
 if __name__ == "__main__":

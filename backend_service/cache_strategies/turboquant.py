@@ -1,6 +1,9 @@
-"""Optional adapter for MegaKernel (Luce-Org/luce-megakernel).
+"""Optional adapter for TurboQuant (arozanov/turboquant-mlx).
 
-Install: ``pip install luce-megakernel``
+TurboQuant provides PolarQuant KV cache compression with fused Metal
+kernels for MLX on Apple Silicon, and cache-type flags for llama.cpp.
+
+Install: ``pip install turboquant-mlx``
 """
 
 from __future__ import annotations
@@ -10,25 +13,29 @@ from typing import Any
 from backend_service.cache_strategies import CacheStrategy
 
 
-_luce_megakernel = None
+_available = False
+_make_adaptive_cache = None
+_apply_patch = None
 try:
-    import luce_megakernel as _luce_megakernel  # type: ignore[import-untyped]
+    from turboquant_mlx import make_adaptive_cache as _make_adaptive_cache  # type: ignore[import-untyped]
+    from turboquant_mlx import apply_patch as _apply_patch  # type: ignore[import-untyped]
+    _available = True
 except ImportError:
     pass
 
 
-class MegaKernelStrategy(CacheStrategy):
+class TurboQuantStrategy(CacheStrategy):
 
     @property
     def strategy_id(self) -> str:
-        return "megakernel"
+        return "turboquant"
 
     @property
     def name(self) -> str:
-        return "MegaKernel"
+        return "TurboQuant"
 
     def is_available(self) -> bool:
-        return _luce_megakernel is not None
+        return _available
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (1, 4)
@@ -40,23 +47,26 @@ class MegaKernelStrategy(CacheStrategy):
         return True
 
     # ------------------------------------------------------------------
-    # Engine integration — fill in once the luce-megakernel API is stable
+    # Engine integration
     # ------------------------------------------------------------------
 
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
-        """Create a MegaKernel cache list for mlx-lm.
-
-        Expected to return a ``list[KVCache]`` of length *num_layers*.
-        """
-        raise NotImplementedError(
-            "MegaKernel MLX cache adapter not yet implemented. "
-            "See https://github.com/Luce-Org/luce-megakernel for the upstream API."
+        """Create adaptive TurboQuant cache for mlx-lm."""
+        if _make_adaptive_cache is None or _apply_patch is None:
+            raise NotImplementedError("turboquant-mlx is not installed.")
+        _apply_patch()
+        return _make_adaptive_cache(
+            num_layers,
+            bits=bits,
+            fp16_layers=fp16_layers,
+            fused=fused,
+            model=model,
         )
 
     def llama_cpp_cache_flags(self, bits: int) -> list[str]:
-        raise NotImplementedError(
-            "MegaKernel llama.cpp flags not yet implemented."
-        )
+        """Cache-type flags for the TurboQuant llama.cpp fork."""
+        clamped = max(2, min(4, bits))
+        return ["--cache-type-k", f"turbo{clamped}", "--cache-type-v", f"turbo{clamped}"]
 
     def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers):
         kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens
@@ -68,4 +78,4 @@ class MegaKernelStrategy(CacheStrategy):
         return baseline, int(optimised)
 
     def label(self, bits: int, fp16_layers: int) -> str:
-        return f"MegaK {bits}-bit {fp16_layers}+{fp16_layers}"
+        return f"TurboQ {bits}-bit {fp16_layers}+{fp16_layers}"

@@ -1778,6 +1778,11 @@ def _hf_repo_from_link(link: str | None) -> str | None:
     return repo.split("/tree/", 1)[0].split("/blob/", 1)[0].strip("/")
 
 
+def _get_cache_strategies() -> list[dict[str, Any]]:
+    from backend_service.cache_strategies import registry
+    return registry.available()
+
+
 def _runtime_label(capabilities: dict[str, Any] | None = None) -> str:
     native = capabilities or get_backend_capabilities().to_dict()
     on_apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
@@ -2057,6 +2062,9 @@ def _build_system_snapshot() -> dict[str, Any]:
         "hardwareSummary": hardware_summary,
         "backendLabel": _runtime_label(native),
         "appVersion": app_version,
+        "availableCacheStrategies": _get_cache_strategies(),
+        "vllmAvailable": native.get("vllmAvailable", False),
+        "vllmVersion": native.get("vllmVersion"),
         "mlxAvailable": native["mlxAvailable"],
         "mlxLmAvailable": native["mlxLmAvailable"],
         "mlxUsable": native["mlxUsable"],

@@ -1,6 +1,10 @@
 """Optional adapter for TriAttention (WeianMao/triattention).
 
-Install: ``pip install triattention``
+TriAttention integrates via vLLM monkeypatching — it does NOT provide
+standalone KV cache objects.  Both ``triattention`` and ``vllm`` must be
+installed for this strategy to report as available.
+
+Install: ``pip install chaosengine-ai[triattention]``
 """
 
 from __future__ import annotations
@@ -11,8 +15,13 @@ from backend_service.cache_strategies import CacheStrategy
 
 
 _triattention = None
+_vllm = None
 try:
     import triattention as _triattention  # type: ignore[import-untyped]
+except ImportError:
+    pass
+try:
+    import vllm as _vllm  # type: ignore[import-untyped]
 except ImportError:
     pass
 
@@ -28,7 +37,7 @@ class TriAttentionStrategy(CacheStrategy):
         return "TriAttention"
 
     def is_available(self) -> bool:
-        return _triattention is not None
+        return _triattention is not None and _vllm is not None
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (1, 4)
@@ -40,28 +49,43 @@ class TriAttentionStrategy(CacheStrategy):
         return True
 
     # ------------------------------------------------------------------
-    # Engine integration — fill in once the triattention API is stable
+    # vLLM integration
+    # ------------------------------------------------------------------
+
+    def apply_vllm_patches(self) -> None:
+        """Install TriAttention monkeypatches into vLLM.
+
+        Must be called BEFORE creating a ``vllm.LLM`` instance.
+        """
+        if _triattention is None:
+            raise RuntimeError("triattention is not installed.")
+        try:
+            from triattention.vllm.runtime.integration_monkeypatch import (
+                install_vllm_integration_monkeypatches,
+            )
+            install_vllm_integration_monkeypatches(
+                patch_scheduler=True, patch_worker=True,
+            )
+        except ImportError as exc:
+            raise NotImplementedError(
+                "TriAttention vLLM integration module not found. "
+                "Ensure triattention is installed with vLLM support."
+            ) from exc
+
+    # ------------------------------------------------------------------
+    # Engine integration
     # ------------------------------------------------------------------
 
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
-        """Create a TriAttention cache list for mlx-lm.
-
-        Expected to return a ``list[KVCache]`` of length *num_layers* where
-        the first/last *fp16_layers* use standard FP16 caches and the middle
-        layers use TriAttention compressed caches.
-        """
         raise NotImplementedError(
-            "TriAttention MLX cache adapter not yet implemented. "
-            "See https://github.com/WeianMao/triattention for the upstream API."
+            "TriAttention does not provide standalone KV cache objects. "
+            "Use the vLLM backend with TriAttention enabled instead."
         )
 
     def llama_cpp_cache_flags(self, bits: int) -> list[str]:
-        """Return llama-server cache-type flags for TriAttention.
-
-        Fill in once llama.cpp ships TriAttention cache types.
-        """
         raise NotImplementedError(
-            "TriAttention llama.cpp flags not yet implemented."
+            "TriAttention does not support llama.cpp. "
+            "Use the vLLM backend instead."
         )
 
     def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers):

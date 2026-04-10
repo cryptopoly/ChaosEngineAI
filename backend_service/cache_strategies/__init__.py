@@ -81,6 +81,13 @@ class CacheStrategy(ABC):
         baseline = kv_elements * 2  # FP16 = 2 bytes
         return baseline, baseline
 
+    def apply_vllm_patches(self) -> None:
+        """Hook for strategies that monkeypatch vLLM (e.g. TriAttention).
+
+        Called by ``VLLMEngine.load_model()`` before creating the LLM instance.
+        Default is a no-op.
+        """
+
     def label(self, bits: int, fp16_layers: int) -> str:
         """Short UI label, e.g. ``"Native f16"`` or ``"TriAttn 3-bit 4+4"``."""
         return self.name
@@ -122,11 +129,11 @@ class CacheStrategyRegistry:
     def discover(self) -> list[CacheStrategy]:
         """Import all known adapter modules and return available strategies."""
         from backend_service.cache_strategies.native import NativeStrategy
-        from backend_service.cache_strategies.triattention import TriAttentionStrategy
         from backend_service.cache_strategies.rotorquant import RotorQuantStrategy
-        from backend_service.cache_strategies.megakernel import MegaKernelStrategy
+        from backend_service.cache_strategies.triattention import TriAttentionStrategy
+        from backend_service.cache_strategies.turboquant import TurboQuantStrategy
 
-        for cls in (NativeStrategy, TriAttentionStrategy, RotorQuantStrategy, MegaKernelStrategy):
+        for cls in (NativeStrategy, RotorQuantStrategy, TriAttentionStrategy, TurboQuantStrategy):
             instance = cls()
             self.register(instance)
         return list(self._strategies.values())

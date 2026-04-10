@@ -911,6 +911,8 @@ export default function App() {
   const [benchmarkModelKey, setBenchmarkModelKey] = useState("");
   const [selectedBenchmarkId, setSelectedBenchmarkId] = useState(mockWorkspace.benchmarks[0]?.id ?? "");
   const [compareBenchmarkId, setCompareBenchmarkId] = useState(mockWorkspace.benchmarks[1]?.id ?? "");
+  const [benchmarkModelFilter, setBenchmarkModelFilter] = useState<string | null>(null);
+  const [benchmarkViewMode, setBenchmarkViewMode] = useState<"table" | "chart" | "both">("both");
   const [logQuery, setLogQuery] = useState("");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [conversionStartedAt, setConversionStartedAt] = useState<number | null>(null);
@@ -7203,133 +7205,185 @@ export default function App() {
   }
 
   function renderBenchmarkHistory() {
-    const latestRun = workspace.benchmarks[0] ?? null;
-    const fastestRun = [...workspace.benchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
-    const mostEfficientRun = [...workspace.benchmarks].sort(
+    const benchmarkModels = [...new Set(workspace.benchmarks.map(b => b.model))];
+    const filteredBenchmarks = benchmarkModelFilter
+      ? workspace.benchmarks.filter(b => b.model === benchmarkModelFilter)
+      : workspace.benchmarks;
+
+    const latestRun = filteredBenchmarks[0] ?? null;
+    const fastestRun = [...filteredBenchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
+    const mostEfficientRun = [...filteredBenchmarks].sort(
       (left, right) => left.cacheGb - right.cacheGb || right.quality - left.quality,
     )[0] ?? null;
-    const bestQualityRun = [...workspace.benchmarks].sort((a, b) => b.quality - a.quality)[0] ?? null;
-    const bestValueRun = [...workspace.benchmarks].sort(
+    const bestQualityRun = [...filteredBenchmarks].sort((a, b) => b.quality - a.quality)[0] ?? null;
+    const bestValueRun = [...filteredBenchmarks].sort(
       (a, b) => (b.tokS / Math.max(b.cacheGb, 0.1)) - (a.tokS / Math.max(a.cacheGb, 0.1)),
     )[0] ?? null;
 
-    const pctDelta = (a: number, b: number) => {
-      if (b === 0) return 0;
-      return ((a - b) / b) * 100;
-    };
+    const selectedInFilter = filteredBenchmarks.find(b => b.id === selectedBenchmarkId);
+    const effectiveSelected = selectedInFilter ?? filteredBenchmarks[0] ?? null;
+    const effectiveCompare = filteredBenchmarks.find(b => b.id === compareBenchmarkId && b.id !== effectiveSelected?.id)
+      ?? filteredBenchmarks.find(b => b.id !== effectiveSelected?.id) ?? null;
+
+    type DeltaRow = { label: string; selected: string; baseline: string; delta: number; pct: number; lowerIsBetter?: boolean; unit?: string };
+
+    function buildComparisonRows(): DeltaRow[] {
+      if (!effectiveSelected || !effectiveCompare) return [];
+      const s = effectiveSelected;
+      const c = effectiveCompare;
+      const pct = (a: number, b: number) => b === 0 ? 0 : ((a - b) / b) * 100;
+      const mode = s.mode ?? "throughput";
+
+      const rows: DeltaRow[] = [];
+      if (mode === "perplexity") {
+        rows.push({ label: "Perplexity", selected: number(s.perplexity ?? 0), baseline: number(c.perplexity ?? 0), delta: (s.perplexity ?? 0) - (c.perplexity ?? 0), pct: pct(s.perplexity ?? 0, c.perplexity ?? 0), lowerIsBetter: true });
+        rows.push({ label: "Eval speed", selected: `${number(s.evalTokensPerSecond ?? 0)} tok/s`, baseline: `${number(c.evalTokensPerSecond ?? 0)} tok/s`, delta: (s.evalTokensPerSecond ?? 0) - (c.evalTokensPerSecond ?? 0), pct: pct(s.evalTokensPerSecond ?? 0, c.evalTokensPerSecond ?? 0) });
+        rows.push({ label: "Eval time", selected: `${number(s.evalSeconds ?? 0)} s`, baseline: `${number(c.evalSeconds ?? 0)} s`, delta: (s.evalSeconds ?? 0) - (c.evalSeconds ?? 0), pct: pct(s.evalSeconds ?? 0, c.evalSeconds ?? 0), lowerIsBetter: true });
+      } else if (mode === "task_accuracy") {
+        rows.push({ label: "Accuracy", selected: `${((s.taskAccuracy ?? 0) * 100).toFixed(1)}%`, baseline: `${((c.taskAccuracy ?? 0) * 100).toFixed(1)}%`, delta: (s.taskAccuracy ?? 0) - (c.taskAccuracy ?? 0), pct: pct(s.taskAccuracy ?? 0, c.taskAccuracy ?? 0) });
+        rows.push({ label: "Correct", selected: `${s.taskCorrect ?? 0}/${s.taskTotal ?? 0}`, baseline: `${c.taskCorrect ?? 0}/${c.taskTotal ?? 0}`, delta: (s.taskCorrect ?? 0) - (c.taskCorrect ?? 0), pct: 0 });
+      } else {
+        rows.push({ label: "Speed", selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
+        rows.push({ label: "Response", selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
+      }
+      rows.push({ label: "Cache", selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
+      rows.push({ label: "Quality", selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
+      rows.push({ label: "Compression", selected: `${number(s.compression)}x`, baseline: `${number(c.compression)}x`, delta: s.compression - c.compression, pct: pct(s.compression, c.compression) });
+      rows.push({ label: "Context", selected: `${Math.round((s.contextTokens ?? 0) / 1024)}K`, baseline: `${Math.round((c.contextTokens ?? 0) / 1024)}K`, delta: 0, pct: 0 });
+      rows.push({ label: "Strategy", selected: s.cacheLabel, baseline: c.cacheLabel, delta: 0, pct: 0 });
+      return rows;
+    }
+
+    function deltaClass(delta: number, lowerIsBetter?: boolean) {
+      if (delta === 0) return "";
+      const good = lowerIsBetter ? delta < 0 : delta > 0;
+      return good ? "bm-delta--good" : "bm-delta--bad";
+    }
+
+    function deltaArrow(delta: number, lowerIsBetter?: boolean) {
+      if (Math.abs(delta) < 0.001) return "";
+      const good = lowerIsBetter ? delta < 0 : delta > 0;
+      return good ? " \u25B2" : " \u25BC";
+    }
+
+    const comparisonRows = buildComparisonRows();
 
     return (
       <div className="content-grid">
         <Panel
           title="Benchmark History"
-          subtitle="Click any run to inspect; double-click to set as the comparison baseline."
+          subtitle={`${filteredBenchmarks.length} run${filteredBenchmarks.length !== 1 ? "s" : ""}${benchmarkModelFilter ? ` for ${benchmarkModelFilter}` : ""}`}
           className="span-2 benchmark-history-page-panel"
           actions={
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => {
-                if (!selectedBenchmark || !compareBenchmark) return;
-                const a = selectedBenchmark.id;
-                const b = compareBenchmark.id;
-                setSelectedBenchmarkId(b);
-                setCompareBenchmarkId(a);
-              }}
-              disabled={!selectedBenchmark || !compareBenchmark}
-            >
-              ⇄ Swap
-            </button>
+            <div className="bm-toolbar">
+              <select
+                className="text-input bm-model-filter"
+                value={benchmarkModelFilter ?? ""}
+                onChange={(e) => setBenchmarkModelFilter(e.target.value || null)}
+              >
+                <option value="">All models</option>
+                {benchmarkModels.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <div className="bm-view-toggle">
+                {(["table", "chart", "both"] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`bm-view-btn${benchmarkViewMode === mode ? " bm-view-btn--active" : ""}`}
+                    onClick={() => setBenchmarkViewMode(mode)}
+                  >
+                    {mode === "table" ? "Table" : mode === "chart" ? "Chart" : "Both"}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  if (!effectiveSelected || !effectiveCompare) return;
+                  const a = effectiveSelected.id;
+                  const b = effectiveCompare.id;
+                  setSelectedBenchmarkId(b);
+                  setCompareBenchmarkId(a);
+                }}
+                disabled={!effectiveSelected || !effectiveCompare}
+              >
+                Swap
+              </button>
+            </div>
           }
         >
           <div className="benchmark-history-page">
             <div className="benchmark-summary-row">
-              <StatCard label="Total runs" value={String(workspace.benchmarks.length)} hint="Persistent history" />
-              <StatCard label="Latest" value={latestRun ? `${number(latestRun.tokS)} tok/s` : "None"} hint={latestRun?.cacheLabel ?? "No runs"} />
-              <StatCard label="Fastest" value={fastestRun ? `${number(fastestRun.tokS)} tok/s` : "None"} hint={fastestRun?.label ?? "No runs"} />
-              <StatCard label="Leanest cache" value={mostEfficientRun ? `${number(mostEfficientRun.cacheGb)} GB` : "None"} hint={mostEfficientRun?.label ?? "No runs"} />
-              <StatCard label="Best quality" value={bestQualityRun ? `${bestQualityRun.quality}%` : "None"} hint={bestQualityRun?.cacheLabel ?? "No runs"} />
-              <StatCard label="Best value" value={bestValueRun ? `${number(bestValueRun.tokS / Math.max(bestValueRun.cacheGb, 0.1))} tok/s/GB` : "None"} hint={bestValueRun?.cacheLabel ?? "No runs"} />
+              <StatCard label="Total runs" value={String(filteredBenchmarks.length)} hint="Persistent history" />
+              <StatCard label="Latest" value={latestRun ? `${number(latestRun.tokS)} tok/s` : "None"} hint={latestRun?.cacheLabel ?? "No runs"} onClick={latestRun ? () => setSelectedBenchmarkId(latestRun.id) : undefined} />
+              <StatCard label="Fastest" value={fastestRun ? `${number(fastestRun.tokS)} tok/s` : "None"} hint={fastestRun?.label ?? "No runs"} onClick={fastestRun ? () => setSelectedBenchmarkId(fastestRun.id) : undefined} />
+              <StatCard label="Leanest cache" value={mostEfficientRun ? `${number(mostEfficientRun.cacheGb)} GB` : "None"} hint={mostEfficientRun?.label ?? "No runs"} onClick={mostEfficientRun ? () => setSelectedBenchmarkId(mostEfficientRun.id) : undefined} />
+              <StatCard label="Best quality" value={bestQualityRun ? `${bestQualityRun.quality}%` : "None"} hint={bestQualityRun?.cacheLabel ?? "No runs"} onClick={bestQualityRun ? () => setSelectedBenchmarkId(bestQualityRun.id) : undefined} />
+              <StatCard label="Best value" value={bestValueRun ? `${number(bestValueRun.tokS / Math.max(bestValueRun.cacheGb, 0.1))} tok/s/GB` : "None"} hint={bestValueRun?.cacheLabel ?? "No runs"} onClick={bestValueRun ? () => setSelectedBenchmarkId(bestValueRun.id) : undefined} />
             </div>
 
-            {selectedBenchmark ? (
-              <div className="benchmark-compare-row">
-                <div className="benchmark-compare-card benchmark-compare-card--selected">
-                  <div className="benchmark-compare-header">
-                    <span className="eyebrow">Selected</span>
-                    <span className="badge accent">{selectedBenchmark.cacheLabel}</span>
-                  </div>
-                  <h3>{selectedBenchmark.model}</h3>
-                  <div className="benchmark-compare-headline">
-                    <strong>{number(selectedBenchmark.tokS)}</strong>
-                    <span>tok/s</span>
-                  </div>
-                  <div className="benchmark-compare-mini-stats">
-                    <div><span className="eyebrow">Response</span><p>{number(selectedBenchmark.responseSeconds)} s</p></div>
-                    <div><span className="eyebrow">Cache</span><p>{number(selectedBenchmark.cacheGb)} GB</p></div>
-                    <div><span className="eyebrow">Quality</span><p>{selectedBenchmark.quality}%</p></div>
-                    <div><span className="eyebrow">Compression</span><p>{number(selectedBenchmark.compression)}x</p></div>
-                  </div>
-                </div>
-
-                <div className="benchmark-compare-divider">
-                  {compareBenchmark ? (
-                    <>
-                      <div className="compare-delta">
-                        <span className="eyebrow">Speed</span>
-                        <span className={`delta-badge-large ${benchmarkSpeedDelta > 0 ? "delta-badge--positive" : benchmarkSpeedDelta < 0 ? "delta-badge--negative" : ""}`}>
-                          {signedDelta(benchmarkSpeedDelta)} tok/s
-                        </span>
-                        <small>{signedDelta(pctDelta(selectedBenchmark.tokS, compareBenchmark.tokS), 0)}%</small>
-                      </div>
-                      <div className="compare-delta">
-                        <span className="eyebrow">Cache</span>
-                        <span className={`delta-badge-large ${benchmarkCacheDelta < 0 ? "delta-badge--positive" : benchmarkCacheDelta > 0 ? "delta-badge--negative" : ""}`}>
-                          {signedDelta(benchmarkCacheDelta)} GB
-                        </span>
-                        <small>{signedDelta(pctDelta(selectedBenchmark.cacheGb, compareBenchmark.cacheGb), 0)}%</small>
-                      </div>
-                      <div className="compare-delta">
-                        <span className="eyebrow">Latency</span>
-                        <span className={`delta-badge-large ${benchmarkLatencyDelta < 0 ? "delta-badge--positive" : benchmarkLatencyDelta > 0 ? "delta-badge--negative" : ""}`}>
-                          {signedDelta(benchmarkLatencyDelta)} s
-                        </span>
-                        <small>{signedDelta(pctDelta(selectedBenchmark.responseSeconds, compareBenchmark.responseSeconds), 0)}%</small>
-                      </div>
-                      <div className="compare-delta">
-                        <span className="eyebrow">Quality</span>
-                        <span className={`delta-badge-large ${selectedBenchmark.quality - compareBenchmark.quality > 0 ? "delta-badge--positive" : selectedBenchmark.quality - compareBenchmark.quality < 0 ? "delta-badge--negative" : ""}`}>
-                          {signedDelta(selectedBenchmark.quality - compareBenchmark.quality)}%
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="muted-text">Pick a run below<br />to compare.</p>
-                  )}
-                </div>
-
-                {compareBenchmark ? (
-                  <div className="benchmark-compare-card">
-                    <div className="benchmark-compare-header">
-                      <span className="eyebrow">Compare against</span>
-                      <span className="badge muted">{compareBenchmark.cacheLabel}</span>
-                    </div>
-                    <h3>{compareBenchmark.model}</h3>
-                    <div className="benchmark-compare-headline">
-                      <strong>{number(compareBenchmark.tokS)}</strong>
-                      <span>tok/s</span>
-                    </div>
-                    <div className="benchmark-compare-mini-stats">
-                      <div><span className="eyebrow">Response</span><p>{number(compareBenchmark.responseSeconds)} s</p></div>
-                      <div><span className="eyebrow">Cache</span><p>{number(compareBenchmark.cacheGb)} GB</p></div>
-                      <div><span className="eyebrow">Quality</span><p>{compareBenchmark.quality}%</p></div>
-                      <div><span className="eyebrow">Compression</span><p>{number(compareBenchmark.compression)}x</p></div>
-                    </div>
+            {effectiveSelected ? (
+              <div className="bm-comparison-section">
+                {effectiveCompare ? (
+                  <div className="bm-comparison-table-wrap">
+                    <table className="bm-comparison-table">
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>
+                            <span className="bm-col-label">Selected</span>
+                            <span className="bm-col-model">{effectiveSelected.model}</span>
+                          </th>
+                          <th>
+                            <span className="bm-col-label">Baseline</span>
+                            <span className="bm-col-model">{effectiveCompare.model}</span>
+                          </th>
+                          <th>Delta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comparisonRows.map((row) => (
+                          <tr key={row.label}>
+                            <td className="bm-metric-label">{row.label}</td>
+                            <td className="bm-metric-val">{row.selected}</td>
+                            <td className="bm-metric-val">{row.baseline}</td>
+                            <td className={`bm-metric-delta ${deltaClass(row.delta, row.lowerIsBetter)}`}>
+                              {row.pct !== 0 ? `${row.pct > 0 ? "+" : ""}${row.pct.toFixed(1)}%${deltaArrow(row.delta, row.lowerIsBetter)}` : row.selected !== row.baseline ? "—" : ""}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="benchmark-compare-card benchmark-compare-card--empty">
-                    <p className="muted-text">Double-click any run in the table to set as comparison baseline.</p>
+                  <div className="bm-comparison-empty">
+                    <div className="bm-selected-summary">
+                      <h3>{effectiveSelected.model}</h3>
+                      <span className="badge accent">{effectiveSelected.cacheLabel}</span>
+                      <div className="bm-selected-headline">
+                        <strong>{number(effectiveSelected.tokS)}</strong> <span>tok/s</span>
+                      </div>
+                    </div>
+                    <p className="muted-text">Double-click a run in the table to set a comparison baseline.</p>
                   </div>
                 )}
+
+                <div className="bm-run-properties">
+                  <span className="eyebrow">Run properties</span>
+                  <div className="bm-props-grid">
+                    <div><span>Model</span><span>{effectiveSelected.model}</span></div>
+                    <div><span>Backend</span><span>{effectiveSelected.backend}</span></div>
+                    <div><span>Cache</span><span>{effectiveSelected.cacheLabel}</span></div>
+                    <div><span>Strategy</span><span>{effectiveSelected.cacheStrategy}</span></div>
+                    <div><span>Bits</span><span>{effectiveSelected.bits}</span></div>
+                    <div><span>FP16 layers</span><span>{effectiveSelected.fp16Layers}</span></div>
+                    <div><span>Context</span><span>{Math.round((effectiveSelected.contextTokens ?? 0) / 1024)}K</span></div>
+                    <div><span>Max tokens</span><span>{effectiveSelected.maxTokens}</span></div>
+                    <div><span>Measured</span><span>{effectiveSelected.measuredAt}</span></div>
+                    {effectiveSelected.notes ? <div className="bm-prop-full"><span>Notes</span><span>{effectiveSelected.notes}</span></div> : null}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="empty-state">
@@ -7337,57 +7391,77 @@ export default function App() {
               </div>
             )}
 
-            <div className="benchmark-bottom-row">
-              <div className="benchmark-history-table-wrap">
-                <div className="benchmark-history-table">
-                  <div className="table-row table-head benchmark-history-row">
-                    <span>Run</span>
-                    <span>Mode</span>
-                    <span>Result</span>
-                    <span>Time</span>
-                    <span>Cache</span>
-                  </div>
-                  <div className="benchmark-history-list">
-                    {workspace.benchmarks.map((result) => {
-                      const isSelected = result.id === selectedBenchmark?.id;
-                      const isCompare = result.id === compareBenchmark?.id;
-                      const mode = result.mode ?? "throughput";
-                      const resultValue = mode === "perplexity"
-                        ? `${number(result.perplexity ?? 0)} ppl`
-                        : mode === "task_accuracy"
-                        ? `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`
-                        : `${number(result.tokS)} tok/s`;
-                      const modeLabel = mode === "perplexity" ? "PPL" : mode === "task_accuracy" ? (result.taskName ?? "mmlu").toUpperCase() : "Speed";
-                      return (
-                        <button
-                          key={result.id}
-                          type="button"
-                          className={`table-row table-button-row benchmark-history-row${isSelected ? " active" : ""}${isCompare ? " compare" : ""}`}
-                          onClick={() => setSelectedBenchmarkId(result.id)}
-                          onDoubleClick={() => setCompareBenchmarkId(result.id)}
-                        >
-                          <div>
-                            <strong>{result.label}</strong>
-                            <small>{result.measuredAt} · {result.model}</small>
-                          </div>
-                          <span className="badge muted">{modeLabel}</span>
-                          <span>{resultValue}</span>
-                          <span>{number(result.responseSeconds)} s</span>
-                          <span>{number(result.cacheGb)} GB</span>
-                        </button>
-                      );
-                    })}
+            <div className={`benchmark-bottom-row${benchmarkViewMode === "table" ? " bm-bottom--table-only" : benchmarkViewMode === "chart" ? " bm-bottom--chart-only" : ""}`}>
+              {benchmarkViewMode !== "chart" ? (
+                <div className="benchmark-history-table-wrap">
+                  <div className="benchmark-history-table">
+                    <div className="table-row table-head benchmark-history-row bm-history-row-wide">
+                      <span>Run</span>
+                      <span>Mode</span>
+                      <span>Result</span>
+                      <span>Time</span>
+                      <span>Cache</span>
+                      {benchmarkViewMode === "table" ? (
+                        <>
+                          <span>Strategy</span>
+                          <span>Bits</span>
+                          <span>Context</span>
+                          <span>Quality</span>
+                        </>
+                      ) : null}
+                    </div>
+                    <div className="benchmark-history-list">
+                      {filteredBenchmarks.map((result) => {
+                        const isSelected = result.id === effectiveSelected?.id;
+                        const isCompare = result.id === effectiveCompare?.id;
+                        const mode = result.mode ?? "throughput";
+                        const resultValue = mode === "perplexity"
+                          ? `${number(result.perplexity ?? 0)} ppl`
+                          : mode === "task_accuracy"
+                          ? `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`
+                          : `${number(result.tokS)} tok/s`;
+                        const modeLabel = mode === "perplexity" ? "PPL" : mode === "task_accuracy" ? (result.taskName ?? "mmlu").toUpperCase() : "Speed";
+                        return (
+                          <button
+                            key={result.id}
+                            type="button"
+                            className={`table-row table-button-row benchmark-history-row bm-history-row-wide${isSelected ? " active" : ""}${isCompare ? " compare" : ""}`}
+                            onClick={() => setSelectedBenchmarkId(result.id)}
+                            onDoubleClick={() => setCompareBenchmarkId(result.id)}
+                          >
+                            <div>
+                              <strong>{result.label}</strong>
+                              <small>{result.measuredAt} · {result.model}</small>
+                            </div>
+                            <span className="badge muted">{modeLabel}</span>
+                            <span>{resultValue}</span>
+                            <span>{number(result.responseSeconds)} s</span>
+                            <span>{number(result.cacheGb)} GB</span>
+                            {benchmarkViewMode === "table" ? (
+                              <>
+                                <span>{result.cacheStrategy}</span>
+                                <span>{result.bits > 0 ? `${result.bits}-bit / ${result.fp16Layers}` : "—"}</span>
+                                <span>{Math.round((result.contextTokens ?? 0) / 1024)}K</span>
+                                <span>{result.quality}%</span>
+                              </>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className="benchmark-scatter-panel">
-                <div className="benchmark-scatter-header">
-                  <span className="eyebrow">Cache vs Speed</span>
-                  <small>Click a dot to select</small>
+              {benchmarkViewMode !== "table" ? (
+                <div className="benchmark-scatter-panel">
+                  <div className="benchmark-scatter-header">
+                    <span className="eyebrow">Cache vs Speed</span>
+                    <small>Click a dot to select</small>
+                  </div>
+                  {renderBenchmarkScatter(filteredBenchmarks, effectiveSelected?.id ?? null, effectiveCompare?.id ?? null, (id) => setSelectedBenchmarkId(id))}
                 </div>
-                {renderBenchmarkScatter(workspace.benchmarks, selectedBenchmark?.id ?? null, compareBenchmark?.id ?? null, (id) => setSelectedBenchmarkId(id))}
-              </div>
+              ) : null}
             </div>
           </div>
         </Panel>

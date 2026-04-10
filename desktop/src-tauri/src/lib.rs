@@ -132,6 +132,11 @@ fn stop_backend_sidecar(state: State<'_, BackendManager>) -> BackendRuntimeInfo 
 #[tauri::command]
 fn restart_backend_sidecar(app: AppHandle, state: State<'_, BackendManager>) -> BackendRuntimeInfo {
     state.shutdown();
+    // Wait for the OS to release the port after the process is killed.
+    // Without this, bootstrap() may probe the dying process's port and
+    // take the "attached to existing backend" early-return path instead
+    // of spawning a fresh sidecar.
+    thread::sleep(Duration::from_millis(1500));
     state.bootstrap(&app);
     state.runtime_info()
 }
@@ -749,7 +754,7 @@ fn resolve_python_executable(workspace_root: &Path) -> Option<PathBuf> {
     find_in_path(&["python3", "python"])
 }
 
-fn resolve_llama_server(workspace_root: &Path) -> Option<PathBuf> {
+fn resolve_llama_server(_workspace_root: &Path) -> Option<PathBuf> {
     if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_SERVER") {
         if let Some(path) = resolve_candidate(value) {
             return Some(path);
@@ -759,7 +764,7 @@ fn resolve_llama_server(workspace_root: &Path) -> Option<PathBuf> {
     find_in_path(&["llama-server"])
 }
 
-fn resolve_llama_cli(workspace_root: &Path) -> Option<PathBuf> {
+fn resolve_llama_cli(_workspace_root: &Path) -> Option<PathBuf> {
     if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_CLI") {
         if let Some(path) = resolve_candidate(value) {
             return Some(path);

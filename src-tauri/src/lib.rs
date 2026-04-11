@@ -521,7 +521,7 @@ fn prepend_env_paths(variable: &str, entries: &[PathBuf]) -> Option<OsString> {
 }
 
 fn source_workspace_root() -> PathBuf {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     root.canonicalize().unwrap_or(root)
 }
 

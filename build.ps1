@@ -28,7 +28,7 @@ Write-Host "==> Building Tauri app (NSIS installer)..."
 npx tauri build --bundles nsis
 
 # Restore tauri.conf.json
-git checkout src-tauri/tauri.conf.json 2>$null
+git checkout src-tauri/tauri.conf.json 2>&1 | Out-Null
 
 Write-Host ""
 Write-Host "==> Build complete!"

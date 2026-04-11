@@ -48,10 +48,8 @@ node -e "
   const fs = require('fs');
   const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
   conf.build.beforeBundleCommand = 'npm run stage:runtime';
-  // Disable updater signing for local builds (requires CI-only secrets)
-  if (conf.plugins && conf.plugins.updater) {
-    delete conf.plugins.updater.pubkey;
-  }
+  // Disable updater artifact signing for local builds (requires CI-only secrets)
+  // Keep the pubkey and endpoints intact — the updater plugin needs them at runtime.
   conf.bundle = conf.bundle || {};
   conf.bundle.createUpdaterArtifacts = false;
   fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');

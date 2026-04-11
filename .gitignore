@@ -10,5 +10,6 @@ src-tauri/target/
 src-tauri/resources/embedded/
 .runtime-stage/
 releases/
+src-tauri/gen/
 .env
 .env.local

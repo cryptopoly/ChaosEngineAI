@@ -1,15 +1,18 @@
 name: Release
 
-# Tag-driven release: pushing `v0.4.20` (etc.) builds signed bundles for
+# Tag-driven release: pushing `v0.5.0` (etc.) builds signed bundles for
 # every supported target, generates `latest.json` (the Tauri updater
-# manifest), and publishes everything to a draft GitHub Release. Review
-# the draft, then click Publish — existing installs pick the update up
-# on next launch via the endpoint configured in tauri.conf.json.
+# manifest), and publishes everything to a GitHub Release. If a release
+# already exists for the tag (e.g. created manually via the UI) it reuses
+# that; otherwise it creates a new draft.
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 env:
   NODE_VERSION: "20"
@@ -19,15 +22,30 @@ jobs:
   create-release:
     runs-on: ubuntu-22.04
     outputs:
-      release_id: ${{ steps.create.outputs.result }}
+      release_id: ${{ steps.find-or-create.outputs.result }}
     steps:
       - uses: actions/checkout@v4
-      - name: Create draft release
-        id: create
+      - name: Find or create release
+        id: find-or-create
         uses: actions/github-script@v7
         with:
           script: |
             const tag = context.ref.replace('refs/tags/', '');
+
+            // Check if a release already exists for this tag
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag,
+              });
+              core.notice(`Found existing release ${data.id} for tag ${tag}`);
+              return data.id;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            // No existing release — create a draft
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -37,6 +55,7 @@ jobs:
               draft: true,
               prerelease: false,
             });
+            core.notice(`Created draft release ${data.id} for tag ${tag}`);
             return data.id;
 
   build:

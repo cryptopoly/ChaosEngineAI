@@ -42,12 +42,18 @@ esac
 echo "==> Installing npm dependencies..."
 npm ci --silent
 
-# ── Override bundle command to skip llama.cpp requirement ─
-echo "==> Patching tauri.conf.json for dev-mode staging..."
+# ── Patch tauri.conf.json for local builds ───────────────
+echo "==> Patching tauri.conf.json for local build..."
 node -e "
   const fs = require('fs');
   const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
   conf.build.beforeBundleCommand = 'npm run stage:runtime';
+  // Disable updater signing for local builds (requires CI-only secrets)
+  if (conf.plugins && conf.plugins.updater) {
+    delete conf.plugins.updater.pubkey;
+  }
+  conf.bundle = conf.bundle || {};
+  conf.bundle.createUpdaterArtifacts = false;
   fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
 "
 

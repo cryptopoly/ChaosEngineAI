@@ -6,7 +6,7 @@
   "identifier": "com.chaosengineai.desktop",
   "build": {
     "beforeBuildCommand": "npm run build",
-    "beforeBundleCommand": "npm run stage:runtime:release",
+    "beforeBundleCommand": "npm run stage:runtime",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist"

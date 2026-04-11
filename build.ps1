@@ -19,9 +19,9 @@ $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 Write-Host "==> Installing npm dependencies..."
 npm ci --silent
 
-# ── Override bundle command to skip llama.cpp requirement ─
-Write-Host "==> Patching tauri.conf.json for dev-mode staging..."
-node -e "const fs = require('fs'); const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); conf.build.beforeBundleCommand = 'npm run stage:runtime'; fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');"
+# ── Patch tauri.conf.json for local builds ───────────────
+Write-Host "==> Patching tauri.conf.json for local build..."
+node -e "const fs = require('fs'); const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); conf.build.beforeBundleCommand = 'npm run stage:runtime'; if (conf.plugins && conf.plugins.updater) { delete conf.plugins.updater.pubkey; } conf.bundle = conf.bundle || {}; conf.bundle.createUpdaterArtifacts = false; fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');"
 
 # ── Build ────────────────────────────────────────────────
 Write-Host "==> Building Tauri app (NSIS installer)..."

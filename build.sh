@@ -42,6 +42,15 @@ esac
 echo "==> Installing npm dependencies..."
 npm ci --silent
 
+# ── Override bundle command to skip llama.cpp requirement ─
+echo "==> Patching tauri.conf.json for dev-mode staging..."
+node -e "
+  const fs = require('fs');
+  const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+  conf.build.beforeBundleCommand = 'npm run stage:runtime';
+  fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+"
+
 # ── Build ────────────────────────────────────────────────
 case "$PLATFORM" in
   darwin)  BUNDLES="app,dmg"     ;;
@@ -51,6 +60,9 @@ esac
 
 echo "==> Building Tauri app (bundles: $BUNDLES)..."
 npx tauri build --bundles "$BUNDLES"
+
+# Restore tauri.conf.json
+git checkout src-tauri/tauri.conf.json 2>/dev/null || true
 
 echo ""
 echo "==> Build complete!"

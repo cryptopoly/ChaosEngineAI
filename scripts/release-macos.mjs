@@ -8,18 +8,18 @@ import { fileURLToPath } from "node:url";
 import { loadEnvFiles } from "./load-env.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
-const desktopRoot = path.resolve(scriptRoot, "..");
-const tauriRoot = path.join(desktopRoot, "src-tauri");
+const projectRoot = path.resolve(scriptRoot, "..");
+const tauriRoot = path.join(projectRoot, "src-tauri");
 const tauriConfigPath = path.join(tauriRoot, "tauri.conf.json");
 const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
 loadEnvFiles([
-  path.join(desktopRoot, ".env"),
-  path.join(desktopRoot, ".env.local"),
+  path.join(projectRoot, ".env"),
+  path.join(projectRoot, ".env.local"),
 ]);
 const productName = tauriConfig.productName || "ChaosEngineAI";
 const version = tauriConfig.version || "0.1.0";
 const arch = normalizeArch(process.arch);
-const releaseRoot = path.join(desktopRoot, "releases", "macos");
+const releaseRoot = path.join(projectRoot, "releases", "macos");
 const builtAppPath = path.join(tauriRoot, "target", "release", "bundle", "macos", `${productName}.app`);
 const releaseAppPath = path.join(releaseRoot, `${productName}.app`);
 const releaseDmgPath = path.join(releaseRoot, `${productName}_${version}_${arch}.dmg`);
@@ -47,7 +47,7 @@ function main() {
   const { buildArgs, cleanupConfigPath } = prepareTauriBuildArgs();
   try {
     run("npx", buildArgs, {
-      cwd: desktopRoot,
+      cwd: projectRoot,
       env: process.env,
     });
   } finally {
@@ -211,7 +211,7 @@ function notarizeArtifact(targetPath, authArgs) {
     "xcrun",
     ["notarytool", "submit", targetPath, "--wait", "--output-format", "json", ...authArgs],
     {
-      cwd: desktopRoot,
+      cwd: projectRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
     },
@@ -228,7 +228,7 @@ function notarizeArtifact(targetPath, authArgs) {
 
 function run(command, commandArgs, options = {}) {
   execFileSync(command, commandArgs, {
-    cwd: desktopRoot,
+    cwd: projectRoot,
     stdio: "inherit",
     ...options,
   });

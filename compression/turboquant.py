@@ -13,7 +13,7 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-from backend_service.cache_strategies import CacheStrategy
+from compression import CacheStrategy
 
 
 _REQUIRED_HOOKS = ("make_adaptive_cache", "apply_patch")

@@ -17,7 +17,7 @@
       "name": "desktop",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5175"],
-      "cwd": "/Users/dan/ChaosEngineAI/desktop",
+      "cwd": "/Users/dan/ChaosEngineAI",
       "port": 5175
     }
   ]

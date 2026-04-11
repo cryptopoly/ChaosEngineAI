@@ -79,7 +79,7 @@ class VLLMEngine(BaseInferenceEngine):
 
         # Apply cache strategy patches (e.g. TriAttention monkeypatches)
         # BEFORE creating the LLM instance.
-        from backend_service.cache_strategies import registry
+        from compression import registry
         strategy = registry.get(cache_strategy)
         runtime_note = None
         if strategy and hasattr(strategy, "apply_vllm_patches"):

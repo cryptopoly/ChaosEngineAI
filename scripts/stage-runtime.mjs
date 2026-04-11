@@ -11,16 +11,16 @@ const mode = modeArg ? modeArg.split("=", 2)[1] : "development";
 const strict = mode === "release";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
-const desktopRoot = path.resolve(scriptRoot, "..");
-const workspaceRoot = path.resolve(desktopRoot, "..");
-const tauriRoot = path.join(desktopRoot, "src-tauri");
+const projectRoot = path.resolve(scriptRoot, "..");
+const workspaceRoot = projectRoot;
+const tauriRoot = path.join(projectRoot, "src-tauri");
 const resourcesRoot = path.join(tauriRoot, "resources");
 const embeddedResourcesRoot = path.join(resourcesRoot, "embedded");
-const stagingRoot = path.join(desktopRoot, ".runtime-stage");
+const stagingRoot = path.join(projectRoot, ".runtime-stage");
 
 loadEnvFiles([
-  path.join(desktopRoot, ".env"),
-  path.join(desktopRoot, ".env.local"),
+  path.join(projectRoot, ".env"),
+  path.join(projectRoot, ".env.local"),
 ]);
 const signingIdentity = process.env.CHAOSENGINE_APPLE_SIGNING_IDENTITY || process.env.APPLE_SIGNING_IDENTITY || "";
 
@@ -58,7 +58,7 @@ function main() {
   copyTree(sitePackagesSource, sitePackagesDest);
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service"]) {
+  for (const relativePath of ["backend_service", "compression"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {

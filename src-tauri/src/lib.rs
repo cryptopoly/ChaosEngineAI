@@ -14,6 +14,8 @@ use std::{
 };
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use tauri::{AppHandle, Manager, State};
 use tar::Archive;
 
@@ -438,7 +440,18 @@ impl BackendManager {
                     libc::killpg(pid, libc::SIGKILL);
                 }
             }
-            #[cfg(not(unix))]
+            #[cfg(windows)]
+            {
+                // On Windows, child.kill() only kills the parent Python
+                // process, not its children (MLX worker, etc.).  Use
+                // `taskkill /T` to terminate the entire process tree.
+                let pid = child.id();
+                let _ = std::process::Command::new("taskkill")
+                    .args(["/F", "/T", "/PID", &pid.to_string()])
+                    .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                    .output();
+            }
+            #[cfg(not(any(unix, windows)))]
             {
                 let _ = child.kill();
             }
@@ -738,11 +751,14 @@ fn resolve_python_executable(workspace_root: &Path) -> Option<PathBuf> {
     }
 
     let candidates = vec![
-        workspace_root.join(".venv/bin/python"),
-        workspace_root.join(".venv/bin/python3"),
-        workspace_root.join("bin/python3"),
-        workspace_root.join("bin/python"),
-        workspace_root.join("Scripts/python.exe"),
+        // Windows
+        workspace_root.join(".venv").join("Scripts").join("python.exe"),
+        workspace_root.join("Scripts").join("python.exe"),
+        // Unix
+        workspace_root.join(".venv").join("bin").join("python"),
+        workspace_root.join(".venv").join("bin").join("python3"),
+        workspace_root.join("bin").join("python3"),
+        workspace_root.join("bin").join("python"),
     ];
 
     for candidate in candidates {
@@ -821,7 +837,12 @@ fn read_log_tail(path: &Path) -> String {
 }
 
 fn settings_path() -> Option<PathBuf> {
-    env::var_os("HOME").map(PathBuf::from).map(|home| home.join(".chaosengine").join("settings.json"))
+    let base = if cfg!(windows) {
+        env::var_os("APPDATA").map(PathBuf::from)
+    } else {
+        env::var_os("HOME").map(PathBuf::from)
+    };
+    base.map(|dir| dir.join(".chaosengine").join("settings.json"))
 }
 
 fn saved_backend_port() -> Option<u16> {

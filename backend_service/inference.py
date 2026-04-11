@@ -823,7 +823,7 @@ class MockInferenceEngine(BaseInferenceEngine):
 
         prompt_excerpt = " ".join(prompt.strip().split())[:220]
         history_turns = len([message for message in history if message.get("role") == "user"])
-        from backend_service.cache_strategies import registry as _strategy_registry
+        from compression import registry as _strategy_registry
         _strat = _strategy_registry.get(self.loaded_model.cacheStrategy) or _strategy_registry.default()
         cache_label = _strat.label(self.loaded_model.cacheBits, self.loaded_model.fp16Layers)
 
@@ -1286,7 +1286,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         if not self.capabilities.llamaServerPath:
             raise RuntimeError("llama-server was not found on this machine.")
 
-        from backend_service.cache_strategies import registry as _strategy_registry
+        from compression import registry as _strategy_registry
         strategy = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
 
         runtime_note = None
@@ -1431,7 +1431,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             raise RuntimeError(last_error or "llama.cpp server failed to start.")
 
-        from backend_service.cache_strategies import registry as _strategy_registry
+        from compression import registry as _strategy_registry
         strat = _strategy_registry.get(actual_strategy) or _strategy_registry.default()
         if runtime_note is None:
             runtime_note = f"GGUF generation is running through the local llama.cpp server with {strat.label(cache_bits, fp16_layers)} cache."

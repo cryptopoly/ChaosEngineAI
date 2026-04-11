@@ -4,24 +4,24 @@ This document covers the repeatable macOS release path for ChaosEngineAI's nativ
 
 ## Outputs
 
-- `desktop/releases/macos/ChaosEngineAI.app`
-- `desktop/releases/macos/ChaosEngineAI_<version>_aarch64.dmg`
+- `releases/macos/ChaosEngineAI.app`
+- `releases/macos/ChaosEngineAI_<version>_aarch64.dmg`
 
 ## Recommended command
 
 ```bash
-cd desktop
+
 npm run release:macos
 ```
 
-The release scripts automatically read `desktop/.env` and `desktop/.env.local` if present.
+The release scripts automatically read `.env` and `.env.local` if present.
 
 The release script performs these steps:
 
 1. Builds the production frontend and native Tauri app bundle.
 2. Stages the embedded Python, MLX, and llama.cpp runtime archive.
 3. Signs embedded runtime binaries when a signing identity is configured.
-4. Copies the built `.app` into `desktop/releases/macos/`.
+4. Copies the built `.app` into `releases/macos/`.
 5. Signs and verifies the `.app` when a signing identity is configured.
 6. Creates a distribution DMG with an `Applications` shortcut.
 7. Signs, notarizes, staples, and validates the DMG when Apple credentials are configured.
@@ -91,25 +91,25 @@ export CHAOSENGINE_APPLE_TEAM_ID="TEAMID1234"
 Examples:
 
 ```bash
-cd desktop
+
 npm run release:macos -- --skip-sign
 ```
 
 ```bash
-cd desktop
+
 CHAOSENGINE_SKIP_NOTARIZE=1 npm run release:macos
 ```
 
 ## Release checklist
 
 - Confirm `python3 -m unittest tests/test_backend_service.py` passes.
-- Confirm `cd desktop && npm test` passes.
-- Confirm `cd desktop && npm run build` passes.
-- Confirm `cd desktop/src-tauri && cargo check` passes.
-- Run `cd desktop && npm run release:macos`.
-- Verify the signed app with `codesign --verify --deep --strict --verbose=2 desktop/releases/macos/ChaosEngineAI.app`.
-- Verify Gatekeeper with `spctl --assess --type execute -vv desktop/releases/macos/ChaosEngineAI.app`.
-- If notarized, verify stapling with `xcrun stapler validate -v desktop/releases/macos/ChaosEngineAI_<version>_aarch64.dmg`.
+- Confirm `npm test` passes.
+- Confirm `npm run build` passes.
+- Confirm `/src-tauri && cargo check` passes.
+- Run `npm run release:macos`.
+- Verify the signed app with `codesign --verify --deep --strict --verbose=2 releases/macos/ChaosEngineAI.app`.
+- Verify Gatekeeper with `spctl --assess --type execute -vv releases/macos/ChaosEngineAI.app`.
+- If notarized, verify stapling with `xcrun stapler validate -v releases/macos/ChaosEngineAI_<version>_aarch64.dmg`.
 - Launch the packaged app and smoke:
   - `GET /api/health`
   - MLX model load and generate

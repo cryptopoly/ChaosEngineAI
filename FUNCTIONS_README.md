@@ -5,7 +5,7 @@ Auto-generated from the current repository source tree.
 ## Scope
 
 - Inventories first-party functions, classes, methods, components, scripts, and Rust handlers.
-- Covers backend_service, desktop/src, desktop/src-tauri/src, desktop/scripts, tests, and demo scripts.
+- Covers backend_service, src, src-tauri/src, scripts, tests, and demo scripts.
 - Excludes vendored/build output such as node_modules, dist, .venv, and .git.
 
 ## Totals
@@ -273,7 +273,7 @@ Auto-generated from the current repository source tree.
 
 ## Frontend and build scripts
 
-### `desktop/scripts/load-env.mjs`
+### `scripts/load-env.mjs`
 
 - Exported symbols found: 1
 - Function-like declarations found: 2
@@ -288,7 +288,7 @@ Auto-generated from the current repository source tree.
 - Line 14: `loadEnvFile` — `function loadEnvFile(filePath) {`
 - Line 37: `normalizeValue` — `function normalizeValue(rawValue) {`
 
-### `desktop/scripts/release-macos.mjs`
+### `scripts/release-macos.mjs`
 
 - Exported symbols found: 0
 - Function-like declarations found: 11
@@ -308,7 +308,7 @@ Auto-generated from the current repository source tree.
 - Line 204: `ensureDir` — `function ensureDir(targetPath) {`
 - Line 208: `assertPathExists` — `function assertPathExists(targetPath, label) {`
 
-### `desktop/scripts/stage-runtime.mjs`
+### `scripts/stage-runtime.mjs`
 
 - Exported symbols found: 0
 - Function-like declarations found: 25
@@ -342,7 +342,7 @@ Auto-generated from the current repository source tree.
 - Line 392: `shouldIgnorePath` — `function shouldIgnorePath(currentPath) {`
 - Line 408: `ensureDir` — `function ensureDir(targetPath) {`
 
-### `desktop/src/App.tsx`
+### `src/App.tsx`
 
 - Exported symbols found: 1
 - Function-like declarations found: 83
@@ -438,13 +438,13 @@ Auto-generated from the current repository source tree.
 - Line 3409: `renderLogs` — `function renderLogs() {`
 - Line 3450: `renderSettings` — `function renderSettings() {`
 
-### `desktop/src/api.test.ts`
+### `src/api.test.ts`
 
 - Exported symbols found: 0
 - Function-like declarations found: 0
 - Classes found: 0
 
-### `desktop/src/api.ts`
+### `src/api.ts`
 
 - Exported symbols found: 0
 - Function-like declarations found: 5
@@ -458,7 +458,7 @@ Auto-generated from the current repository source tree.
 - Line 78: `patchJson<T>` — `async function patchJson<T>(path: string, body?: object): Promise<T> {`
 - Line 82: `sendJson<T>` — `async function sendJson<T>(method: "POST" | "PATCH", path: string, body?: object): Promise<T> {`
 
-### `desktop/src/components/Panel.tsx`
+### `src/components/Panel.tsx`
 
 - Exported symbols found: 1
 - Function-like declarations found: 0
@@ -468,7 +468,7 @@ Auto-generated from the current repository source tree.
 
 - Line 10: `function Panel`
 
-### `desktop/src/components/PerformancePreview.tsx`
+### `src/components/PerformancePreview.tsx`
 
 - Exported symbols found: 1
 - Function-like declarations found: 3
@@ -484,7 +484,7 @@ Auto-generated from the current repository source tree.
 - Line 15: `getFitStatus` — `function getFitStatus(optimizedCacheGb: number, diskSizeGb: number, availableGb: number) {`
 - Line 23: `getSpeedLabel` — `function getSpeedLabel(tokS: number): { label: string; className: string } | null {`
 
-### `desktop/src/components/ProgressRow.tsx`
+### `src/components/ProgressRow.tsx`
 
 - Exported symbols found: 1
 - Function-like declarations found: 0
@@ -494,7 +494,7 @@ Auto-generated from the current repository source tree.
 
 - Line 12: `function ProgressRow`
 
-### `desktop/src/components/StatCard.tsx`
+### `src/components/StatCard.tsx`
 
 - Exported symbols found: 1
 - Function-like declarations found: 0
@@ -504,13 +504,13 @@ Auto-generated from the current repository source tree.
 
 - Line 7: `function StatCard`
 
-### `desktop/src/main.tsx`
+### `src/main.tsx`
 
 - Exported symbols found: 0
 - Function-like declarations found: 0
 - Classes found: 0
 
-### `desktop/src/mockData.ts`
+### `src/mockData.ts`
 
 - Exported symbols found: 1
 - Function-like declarations found: 0
@@ -520,13 +520,13 @@ Auto-generated from the current repository source tree.
 
 - Line 3: `const mockWorkspace`
 
-### `desktop/src/types.ts`
+### `src/types.ts`
 
 - Exported symbols found: 0
 - Function-like declarations found: 0
 - Classes found: 0
 
-### `desktop/src/vite-env.d.ts`
+### `src/vite-env.d.ts`
 
 - Exported symbols found: 0
 - Function-like declarations found: 0
@@ -534,7 +534,7 @@ Auto-generated from the current repository source tree.
 
 ## Native desktop backend (Rust)
 
-### `desktop/src-tauri/src/lib.rs`
+### `src-tauri/src/lib.rs`
 
 - Structs: 6
 - Enums: 0
@@ -596,7 +596,7 @@ Auto-generated from the current repository source tree.
 - Line 739: `wait_for_port` — `fn wait_for_port(port: u16, timeout: Duration) -> bool {`
 - Line 750: `run` — `pub fn run() {`
 
-### `desktop/src-tauri/src/main.rs`
+### `src-tauri/src/main.rs`
 
 - Structs: 0
 - Enums: 0

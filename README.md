@@ -65,97 +65,97 @@ ChaosEngineAI is a desktop control plane for running large language models local
 ## A Tour of the App
 
 ### Dashboard — *System overview*
-![Dashboard](./desktop/Screenshots/1.%20Dashboard_v2.png)
+![Dashboard](./Screenshots/1.%20Dashboard_v2.png)
 
 The launchpad. Surfaces backend health, the engine in use, the currently loaded model, hardware (platform, arch, memory), and quick stats from the warm pool. Big colored badges tell you instantly whether the runtime is online and what cache mode it will use on the next launch.
 
 ### Discover — *Browse and download AI models*
-![Discover](./desktop/Screenshots/2.%20Discover_v2.png)
+![Discover](./Screenshots/2.%20Discover_v2.png)
 
 Browse curated model families with capability tags (chat, coding, vision, reasoning, tools, multilingual, video, thinking). Expand a family to see every variant with its format, parameter count, and quant level, then queue downloads. Filter by format and capability across the whole catalog.
 
 ### Model Selection — *Configure and launch*
-![Model Selection](./desktop/Screenshots/4.%20Model_Selection_Modal_v2.png)
+![Model Selection](./Screenshots/4.%20Model_Selection_Modal_v2.png)
 
 The launch modal. Pick a variant, set context length, choose the engine, and tune runtime strategy knobs in one place, pre-populated from your defaults.
 
 ### My Models — *Models on this machine*
-![My Models](./desktop/Screenshots/3.%20My_Models_v2.png)
+![My Models](./Screenshots/3.%20My_Models_v2.png)
 
 Your local library. Sort by name, format, size, context length, or last-modified date. Each entry shows where it lives on disk, its quant scheme, and a one-click **Launch** that opens the launch modal with the right defaults pre-populated.
 
 ### Image Discover — *Browse and download image models*
-![Image Discover](./desktop/Screenshots/5.%20Image%20Discover.png)
+![Image Discover](./Screenshots/5.%20Image%20Discover.png)
 
 Curated catalog of local image models. Discover Stable Diffusion models optimized for ChaosEngineAI, scout new releases from Hugging Face, and install them with one click. Filter by compatibility tags and see metadata at a glance.
 
 ### Image Models — *Installed image models*
-![Image Models](./desktop/Screenshots/6.%20Image%20Models.png)
+![Image Models](./Screenshots/6.%20Image%20Models.png)
 
 Your installed image model library. See which Stable Diffusion models are ready for generation — each card shows size, diffusion pipeline, resolution, and a one-click **Generate** to jump straight into Image Studio.
 
 ### Image Studio — *Generate images from text*
-![Image Studio](./desktop/Screenshots/7.%20Image%20Studio.png)
+![Image Studio](./Screenshots/7.%20Image%20Studio.png)
 
 Prompt-based image generation with full control. Choose a model, set aspect ratio and quality presets (square, portrait, landscape, wide), write positive and negative prompts, and generate. Recent outputs appear in the right panel with metadata and re-run options.
 
-![Image Processing](./desktop/Screenshots/8.%20Image%20Processing.png)
+![Image Processing](./Screenshots/8.%20Image%20Processing.png)
 
 Live progress while the diffusion pipeline runs — step-by-step denoising visualization, elapsed time, and a running status log.
 
-![Image Completion](./desktop/Screenshots/9.%20Image%20Completion.png)
+![Image Completion](./Screenshots/9.%20Image%20Completion.png)
 
 Completed image with full generation metadata — model, prompt, seed, steps, resolution, and timing. Open, reveal on disk, clone settings, or save directly from the completion modal.
 
 ### Image Gallery — *Browse and reuse generated images*
-![Image Gallery](./desktop/Screenshots/10.%20Image%20Gallery.png)
+![Image Gallery](./Screenshots/10.%20Image%20Gallery.png)
 
 All your generated images in one place. Search by prompt, model, or runtime; filter by frame size and sort order. Each card shows the source model, generation settings, and quick actions to re-run with the same seed or open in Image Studio.
 
 ### Chat — *Local AI chat*
-![Chat](./desktop/Screenshots/12.%20Chat_v2.png)
+![Chat](./Screenshots/12.%20Chat_v2.png)
 
 A focused chat surface with multi-thread sessions in the left rail, streaming responses, document and image attachments, and inline thread renaming. Threads persist across launches and are scoped to the model that produced them.
 
 ### Server — *OpenAI-compatible local API*
-![Server](./desktop/Screenshots/11.%20Server_v2.png)
+![Server](./Screenshots/11.%20Server_v2.png)
 
 Start, stop, and inspect a local OpenAI-compatible HTTP server backed by the loaded model. Shows the bind address, current model, request count, and a remote-test panel for firing a sample completion against `/v1/chat/completions` without leaving the app.
 
 ### Benchmarks — *Run a new benchmark*
-![Benchmarks](./desktop/Screenshots/13.%20Benchmarks_v2.png)
+![Benchmarks](./Screenshots/13.%20Benchmarks_v2.png)
 
 Configure a benchmark run: choose a model, prompt set, token budget, and decoding parameters, then watch live progress as the runner streams tokens-per-second, time-to-first-token, and memory usage.
 
-![Benchmark running](./desktop/Screenshots/14.%20Benchmark_Running_v2.png)
+![Benchmark running](./Screenshots/14.%20Benchmark_Running_v2.png)
 
 Live progress while a run is in flight — token/sec, TTFT, current prompt, and memory pressure all update in real time.
 
-![Benchmark complete](./desktop/Screenshots/15.%20Benchmark_Complete_v2.png)
+![Benchmark complete](./Screenshots/15.%20Benchmark_Complete_v2.png)
 
 Final report card: throughput, latency percentiles, generation samples, and the exact run parameters — saved automatically to history.
 
 ### History — *Compare saved runs*
-![Benchmark History](./desktop/Screenshots/16.%20Benchmark_History_v2.png)
+![Benchmark History](./Screenshots/16.%20Benchmark_History_v2.png)
 
 Every benchmark you've ever run, side-by-side. Pick two runs and the page diffs them across throughput, latency, and quality metrics — perfect for proving that your new quant actually pays its keep.
 
 ### Conversion — *Convert models to MLX format* (macOS only)
-![Conversion](./desktop/Screenshots/17.%20Conversion_v2.png)
+![Conversion](./Screenshots/17.%20Conversion_v2.png)
 
 Apple Silicon only. Point at a Hugging Face checkpoint or local directory and convert it to MLX with optional runtime-specific compression settings. A conversion picker surfaces eligible source models.
 
-![Conversion running](./desktop/Screenshots/18.%20Conversion_Running_v2.png)
+![Conversion running](./Screenshots/18.%20Conversion_Running_v2.png)
 
 Layer-by-layer live progress while the conversion runs — bit budget per block, memory footprint, and a running log tail.
 
 ### Logs — *Runtime events*
-![Logs](./desktop/Screenshots/19.%20Logs_v2.png)
+![Logs](./Screenshots/19.%20Logs_v2.png)
 
 A live tail of the backend log stream — load events, server requests, errors, and runtime warnings — with level filtering. The first place to look when something feels off.
 
 ### Settings — *Directories and defaults*
-![Settings](./desktop/Screenshots/20.%20Settings_v2.png)
+![Settings](./Screenshots/20.%20Settings_v2.png)
 
 Configure model and cache directories, default launch preferences (cache strategy, FP16 layers, fused attention, context tokens, fit-in-memory toggle), and advanced runtime knobs. Every default in this panel is reused as the starting state for the launch modal.
 
@@ -182,7 +182,7 @@ Prereqs: Rust toolchain, Node 20+, Python 3.11+, and (on macOS) Xcode command-li
 
 ```bash
 # 1. Install JS dependencies
-cd desktop
+
 npm install
 
 # 2. Stage the bundled Python runtime + llama.cpp binaries into src-tauri/
@@ -203,7 +203,7 @@ ChaosEngineAI is three cooperating layers:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Tauri shell  (Rust)                                    │
-│  ├─ React + TypeScript UI  (desktop/src)                │
+│  ├─ React + TypeScript UI  (src/)                       │
 │  ├─ In-app updater (signed releases from GitHub)        │
 │  └─ Spawns and supervises the Python backend            │
 └─────────────────────────────────────────────────────────┘
@@ -224,9 +224,10 @@ ChaosEngineAI is three cooperating layers:
         └──────────────┘    └──────────────────┘
 ```
 
-- **`desktop/`** — Tauri 2 + React 18 + TypeScript UI. Single-window workspace with a sidebar nav covering LLM and image generation screens.
+- **`src/`** — React 18 + TypeScript UI. Single-window workspace with a sidebar nav covering LLM and image generation screens.
+- **`src-tauri/`** — Tauri 2 Rust shell + bundled runtime.
 - **`backend_service/`** — Python service that owns model lifecycle, the warm pool, the OpenAI-compatible API, and the benchmark runner.
-- **`backend_service/cache_strategies/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), and [TurboQuant](https://pypi.org/project/turboquant-mlx/).
+- **`compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), and [TurboQuant](https://pypi.org/project/turboquant-mlx/).
 
 ---
 
@@ -253,21 +254,21 @@ Releases are tag-driven. Push `vX.Y.Z` and the GitHub Actions release workflow b
 
 ```bash
 # locally, if you want to cut a build by hand:
-cd desktop
+
 npm run stage:runtime:release
 npm run tauri:build
 ```
 
-Release artifacts land in `desktop/src-tauri/target/release/bundle/`.
+Release artifacts land in `src-tauri/target/release/bundle/`.
 
 For an unsigned local macOS app + DMG without Apple signing/notarization or Tauri updater signing configured:
 
 ```bash
-cd desktop
+
 npm run release:macos -- --skip-sign --skip-notarize
 ```
 
-That writes the local app + DMG to `desktop/releases/macos/`.
+That writes the local app + DMG to `releases/macos/`.
 
 ---
 
@@ -275,14 +276,13 @@ That writes the local app + DMG to `desktop/releases/macos/`.
 
 ```
 ChaosEngineAI/
-├── desktop/              Tauri + React desktop app
-│   ├── src/              React UI (App.tsx is the workspace shell)
-│   ├── src-tauri/        Rust shell + bundled runtime
-│   ├── scripts/          Release + runtime staging
-│   └── Screenshots/      UI screenshots used by this README
+├── src/                  React UI (App.tsx is the workspace shell)
+├── src-tauri/            Tauri Rust shell + bundled runtime
+├── scripts/              Build, release + runtime staging scripts
 ├── backend_service/      Python backend (engine adapters + HTTP server)
-├── backend_service/cache_strategies/  Pluggable cache/compression strategy adapters
+├── compression/          Pluggable cache/compression strategy adapters
 ├── tests/                Backend integration tests
+├── Screenshots/          UI screenshots used by this README
 ├── docs/                 Tour GIF + supporting docs
 └── ChaosEngineAI_AppIcon.svg
 ```

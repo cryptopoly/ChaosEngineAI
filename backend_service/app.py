@@ -1771,7 +1771,7 @@ def _hf_repo_from_link(link: str | None) -> str | None:
 
 
 def _get_cache_strategies() -> list[dict[str, Any]]:
-    from backend_service.cache_strategies import registry
+    from compression import registry
     return registry.available()
 
 
@@ -3742,7 +3742,7 @@ def _detect_model_max_context(path: Path, fmt: str) -> int | None:
 
 
 def _benchmark_label(model_name: str, *, cache_strategy: str, bits: int, fp16_layers: int, context_tokens: int) -> str:
-    from backend_service.cache_strategies import registry as _strategy_registry
+    from compression import registry as _strategy_registry
     strat = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
     cache_label = strat.label(bits, fp16_layers)
     return f"{model_name} / {cache_label} / {_context_label(context_tokens)} ctx"
@@ -6576,7 +6576,8 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
         import threading
         def _delayed_shutdown():
             time.sleep(0.5)
-            os.kill(os.getpid(), signal.SIGTERM)
+            sig = signal.SIGTERM if hasattr(signal, "SIGTERM") else signal.SIGINT
+            os.kill(os.getpid(), sig)
         threading.Thread(target=_delayed_shutdown, daemon=True).start()
         return {"status": "shutting_down"}
 
@@ -6612,8 +6613,12 @@ def _watch_parent_and_exit():
             if current_ppid != initial_ppid or current_ppid == 1:
                 # Parent died — kill ourselves and any subprocess children
                 try:
-                    # Kill our entire process group (includes MLX worker children)
-                    os.killpg(os.getpgrp(), signal.SIGTERM)
+                    if hasattr(os, "killpg"):
+                        # Unix: kill our entire process group (includes MLX worker children)
+                        os.killpg(os.getpgrp(), signal.SIGTERM)
+                    else:
+                        # Windows: terminate our own process
+                        os.kill(os.getpid(), signal.SIGTERM)
                 except Exception:
                     pass
                 os._exit(0)

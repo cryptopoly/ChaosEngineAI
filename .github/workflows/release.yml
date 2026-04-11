@@ -98,10 +98,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install npm dependencies
-        working-directory: desktop
         run: npm ci
 
       - uses: dtolnay/rust-toolchain@stable
@@ -112,19 +111,14 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            desktop/src-tauri/target
-          key: cargo-release-${{ matrix.os }}-${{ hashFiles('desktop/src-tauri/Cargo.lock') }}
+            src-tauri/target
+          key: cargo-release-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: cargo-release-${{ matrix.os }}-
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # Import the Developer ID cert into a temp keychain *before* the
-      # Tauri build runs. Tauri normally imports it itself, but only at
-      # bundle time — we need codesign available earlier, from inside our
-      # `beforeBundleCommand` stage-runtime script, so it can sign the
-      # hundreds of Mach-O files inside the embedded Python runtime.
       - name: Import Apple certificate (macOS)
         if: matrix.platform == 'darwin'
         env:
@@ -194,12 +188,8 @@ jobs:
         if: matrix.platform == 'windows'
         run: echo "CHAOSENGINE_EMBED_PYTHON_BIN=${{ github.workspace }}\.venv\Scripts\python.exe" >> $env:GITHUB_ENV
 
-      # Mirror the dev-mode staging override used in build.yml so we don't
-      # need llama.cpp binaries in CI. Remove this once llama.cpp is built
-      # alongside the release.
       - name: Override bundle command to dev mode staging
         shell: bash
-        working-directory: desktop
         run: |
           node -e "
             const fs = require('fs');
@@ -212,22 +202,15 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tauri updater signing
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS: cert is already imported into the temp keychain by
-          # the "Import Apple certificate" step, and APPLE_SIGNING_IDENTITY
-          # + CHAOSENGINE_APPLE_SIGNING_IDENTITY are already in GITHUB_ENV.
-          # We only need to pass the notarization credentials here.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          projectPath: desktop
           releaseId: ${{ needs.create-release.outputs.release_id }}
           tauriScript: npx tauri
           args: --bundles ${{ matrix.bundle_targets }} --ci
-          # Generates `latest.json` and uploads it as a release asset.
           updaterJsonPreferNsis: false
 
   publish-manifest:

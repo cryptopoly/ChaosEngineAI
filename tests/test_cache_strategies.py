@@ -2,11 +2,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from backend_service.cache_strategies import CacheStrategyRegistry
-from backend_service.cache_strategies.native import NativeStrategy
-from backend_service.cache_strategies.rotorquant import RotorQuantStrategy
-from backend_service.cache_strategies.triattention import TriAttentionStrategy
-from backend_service.cache_strategies.turboquant import TurboQuantStrategy
+from compression import CacheStrategyRegistry
+from compression.native import NativeStrategy
+from compression.rotorquant import RotorQuantStrategy
+from compression.triattention import TriAttentionStrategy
+from compression.turboquant import TurboQuantStrategy
 
 
 class CacheStrategyRegistryTests(unittest.TestCase):
@@ -140,12 +140,12 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     def test_rotorquant_is_available_with_current_turboquant_exports(self):
         rq = RotorQuantStrategy()
         module = SimpleNamespace(TurboQuantMSE=object(), TurboQuantCache=object())
-        with patch("backend_service.cache_strategies.rotorquant._load_turboquant_module", return_value=module):
+        with patch("compression.rotorquant._load_turboquant_module", return_value=module):
             self.assertTrue(rq.is_available())
 
     def test_rotorquant_is_unavailable_without_supported_marker(self):
         rq = RotorQuantStrategy()
-        with patch("backend_service.cache_strategies.rotorquant._load_turboquant_module", return_value=object()):
+        with patch("compression.rotorquant._load_turboquant_module", return_value=object()):
             self.assertFalse(rq.is_available())
 
     # ------------------------------------------------------------------
@@ -155,7 +155,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     def test_turboquant_is_available_when_required_hooks_exist(self):
         tq = TurboQuantStrategy()
         with patch(
-            "backend_service.cache_strategies.turboquant._turboquant_mlx_source_blobs",
+            "compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["def make_adaptive_cache():\n    pass", "def apply_patch():\n    pass"],
         ):
             self.assertTrue(tq.is_available())
@@ -163,7 +163,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     def test_turboquant_is_unavailable_without_required_hooks(self):
         tq = TurboQuantStrategy()
         with patch(
-            "backend_service.cache_strategies.turboquant._turboquant_mlx_source_blobs",
+            "compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["TurboQuant = PolarQuant"],
         ):
             self.assertFalse(tq.is_available())
@@ -171,7 +171,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     def test_turboquant_mlx_cache_raises_helpful_message_without_hooks(self):
         tq = TurboQuantStrategy()
         with patch(
-            "backend_service.cache_strategies.turboquant._turboquant_mlx_source_blobs",
+            "compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["TurboQuant = PolarQuant"],
         ):
             with self.assertRaises(NotImplementedError) as ctx:

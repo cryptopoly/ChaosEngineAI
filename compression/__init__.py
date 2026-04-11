@@ -144,10 +144,10 @@ class CacheStrategyRegistry:
 
     def discover(self) -> list[CacheStrategy]:
         """Import all known adapter modules and return available strategies."""
-        from backend_service.cache_strategies.native import NativeStrategy
-        from backend_service.cache_strategies.rotorquant import RotorQuantStrategy
-        from backend_service.cache_strategies.triattention import TriAttentionStrategy
-        from backend_service.cache_strategies.turboquant import TurboQuantStrategy
+        from compression.native import NativeStrategy
+        from compression.rotorquant import RotorQuantStrategy
+        from compression.triattention import TriAttentionStrategy
+        from compression.turboquant import TurboQuantStrategy
 
         for cls in (NativeStrategy, RotorQuantStrategy, TriAttentionStrategy, TurboQuantStrategy):
             instance = cls()

@@ -1,4 +1,4 @@
-This directory is populated by `desktop/scripts/stage-runtime.mjs`.
+This directory is populated by `./scripts/stage-runtime.mjs`.
 
 ChaosEngineAI stages an embedded runtime archive here before `tauri dev` and `tauri build`:
 

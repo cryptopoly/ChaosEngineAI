@@ -44,4 +44,4 @@ images = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["backend_service*"]
+include = ["backend_service*", "compression*"]

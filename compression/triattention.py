@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend_service.cache_strategies import CacheStrategy
+from compression import CacheStrategy
 
 
 _triattention = None

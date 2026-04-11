@@ -425,10 +425,10 @@ Errors should always tell the user what to do next.
 
 Expected files/modules to touch:
 
-- [desktop/src/App.tsx](/Users/dan/ChaosEngineAI/desktop/src/App.tsx)
-- [desktop/src/types.ts](/Users/dan/ChaosEngineAI/desktop/src/types.ts)
-- [desktop/src/api.ts](/Users/dan/ChaosEngineAI/desktop/src/api.ts)
-- [desktop/src/styles.css](/Users/dan/ChaosEngineAI/desktop/src/styles.css)
+- [src/App.tsx](/Users/dan/ChaosEngineAI/src/App.tsx)
+- [src/types.ts](/Users/dan/ChaosEngineAI/src/types.ts)
+- [src/api.ts](/Users/dan/ChaosEngineAI/src/api.ts)
+- [src/styles.css](/Users/dan/ChaosEngineAI/src/styles.css)
 - [backend_service/app.py](/Users/dan/ChaosEngineAI/backend_service/app.py)
 - [backend_service/inference.py](/Users/dan/ChaosEngineAI/backend_service/inference.py)
 
@@ -436,7 +436,7 @@ Possible later additions:
 
 - `backend_service/image_runtime.py`
 - `backend_service/image_catalog.py`
-- `desktop/src/components/Image*.tsx`
+- `src/components/Image*.tsx`
 
 ## Risks
 

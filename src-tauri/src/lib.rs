@@ -331,6 +331,13 @@ impl BackendManager {
                 });
             }
 
+            // On Windows, prevent the Python backend from opening a visible
+            // console window.  CREATE_NO_WINDOW = 0x08000000.
+            #[cfg(windows)]
+            {
+                command.creation_flags(0x08000000);
+            }
+
             match command.spawn() {
                 Ok(child) => {
                     let lease = ManagedBackendLease {

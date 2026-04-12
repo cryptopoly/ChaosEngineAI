@@ -3635,6 +3635,26 @@ select.text-input {
   user-select: all;
 }
 
+.cache-strategy-install-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cache-strategy-install-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--bg-primary, #0d1117);
+}
+.cache-strategy-install-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .cache-strategy-install-hint {
   width: 100%;
   margin: 4px 0 0;
@@ -4948,7 +4968,7 @@ select.text-input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .image-family-card,
@@ -4964,6 +4984,20 @@ select.text-input {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.18);
+}
+
+.image-family-card > .button-row:last-child {
+  margin-top: auto;
+}
+
+.icon-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.icon-link-button svg {
+  flex-shrink: 0;
 }
 
 .image-family-title-row,

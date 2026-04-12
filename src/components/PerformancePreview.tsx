@@ -85,7 +85,7 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
 
         {/* Arrow divider */}
         <div className="perf-preview__arrow" aria-hidden="true">
-          <span>{preview.bits}-bit</span>
+          <span>{preview.bits > 0 ? `${preview.bits}-bit` : "f16"}</span>
         </div>
 
         {/* Optimized column */}

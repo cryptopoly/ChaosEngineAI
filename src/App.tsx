@@ -38,6 +38,8 @@ import {
   unloadModel,
   updateSettings,
   updateSession,
+  installPipPackage,
+  installSystemPackage,
 } from "./api";
 import type { DownloadStatus } from "./api";
 import { checkForUpdates } from "./updater";
@@ -461,7 +463,7 @@ function failedDownloadStatus(repo: string, error: string): DownloadStatus {
   };
 }
 
-function downloadProgressLabel(download?: DownloadStatus | null) {
+function downloadProgressLabel(download?: DownloadStatus | null): string {
   if (!download) return "Preparing download...";
   const prefix = download.state === "cancelled" ? "Paused" : download.state === "downloading" ? "Downloading" : "";
   if (!prefix) return "";
@@ -475,6 +477,16 @@ function downloadProgressLabel(download?: DownloadStatus | null) {
     return download.state === "cancelled" ? `${prefix} at ${number(downloadedGb)} GB` : `${prefix} ${number(downloadedGb)} GB`;
   }
   return download.state === "cancelled" ? "Paused" : "Preparing download...";
+}
+
+function downloadSizeTooltip(download?: DownloadStatus | null): string {
+  if (!download) return "";
+  const downloadedGb = Math.max(0, download.downloadedGb ?? 0);
+  const totalGb = typeof download.totalGb === "number" && download.totalGb > 0 ? download.totalGb : null;
+  if (totalGb !== null && downloadedGb > 0) return `${number(downloadedGb)} / ${number(totalGb)} GB`;
+  if (totalGb !== null) return `${number(totalGb)} GB total`;
+  if (downloadedGb > 0) return `${number(downloadedGb)} GB downloaded`;
+  return "";
 }
 
 function imageRuntimeErrorStatus(error: unknown): ImageRuntimeStatus {
@@ -874,6 +886,7 @@ export default function App() {
     hiddenSize: mockWorkspace.preview.hiddenSize,
     contextTokens: mockWorkspace.settings.launchPreferences.contextTokens,
     paramsB: mockWorkspace.preview.paramsB,
+    strategy: mockWorkspace.settings.launchPreferences.cacheStrategy,
   });
   const [activeChatId, setActiveChatId] = useState(mockWorkspace.chatSessions[0]?.id ?? "");
   const [threadTitleDraft, setThreadTitleDraft] = useState(mockWorkspace.chatSessions[0]?.title ?? "");
@@ -985,6 +998,7 @@ export default function App() {
   const [showBenchmarkModal, setShowBenchmarkModal] = useState(false);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadStatus>>({});
+  const [installingPackage, setInstallingPackage] = useState<string | null>(null);
 
   async function refreshWorkspace(preferredChatId?: string) {
     const [online, payload] = await Promise.all([checkBackend(), getWorkspace()]);
@@ -1083,6 +1097,7 @@ export default function App() {
             hiddenSize: payload.preview.hiddenSize,
             contextTokens: payload.settings.launchPreferences.contextTokens,
             paramsB: payload.preview.paramsB,
+            strategy: payload.settings.launchPreferences.cacheStrategy,
           });
           setActiveChatId(payload.chatSessions[0]?.id ?? "");
           setThreadTitleDraft(payload.chatSessions[0]?.title ?? "");
@@ -1202,12 +1217,23 @@ export default function App() {
 
   useEffect(() => {
     setPreviewControls((current) => {
-      if (current.bits === launchSettings.cacheBits && current.fp16Layers === launchSettings.fp16Layers && current.contextTokens === launchSettings.contextTokens) {
+      if (
+        current.bits === launchSettings.cacheBits &&
+        current.fp16Layers === launchSettings.fp16Layers &&
+        current.contextTokens === launchSettings.contextTokens &&
+        current.strategy === launchSettings.cacheStrategy
+      ) {
         return current;
       }
-      return { ...current, bits: launchSettings.cacheBits, fp16Layers: launchSettings.fp16Layers, contextTokens: launchSettings.contextTokens };
+      return {
+        ...current,
+        bits: launchSettings.cacheBits,
+        fp16Layers: launchSettings.fp16Layers,
+        contextTokens: launchSettings.contextTokens,
+        strategy: launchSettings.cacheStrategy,
+      };
     });
-  }, [launchSettings.contextTokens, launchSettings.fp16Layers, launchSettings.cacheBits]);
+  }, [launchSettings.contextTokens, launchSettings.fp16Layers, launchSettings.cacheBits, launchSettings.cacheStrategy]);
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls so PerformancePreview reflects them live
   useEffect(() => {
@@ -1216,7 +1242,8 @@ export default function App() {
       if (
         current.bits === benchmarkDraft.cacheBits &&
         current.fp16Layers === benchmarkDraft.fp16Layers &&
-        current.contextTokens === benchmarkDraft.contextTokens
+        current.contextTokens === benchmarkDraft.contextTokens &&
+        current.strategy === benchmarkDraft.cacheStrategy
       ) {
         return current;
       }
@@ -1225,9 +1252,10 @@ export default function App() {
         bits: benchmarkDraft.cacheBits,
         fp16Layers: benchmarkDraft.fp16Layers,
         contextTokens: benchmarkDraft.contextTokens,
+        strategy: benchmarkDraft.cacheStrategy,
       };
     });
-  }, [activeTab, benchmarkDraft.cacheBits, benchmarkDraft.fp16Layers, benchmarkDraft.contextTokens]);
+  }, [activeTab, benchmarkDraft.cacheBits, benchmarkDraft.fp16Layers, benchmarkDraft.contextTokens, benchmarkDraft.cacheStrategy]);
 
 
   useEffect(() => {
@@ -2604,7 +2632,7 @@ export default function App() {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
       // Use shell open via Tauri plugin or just open the parent directory
       const parentDir = path.replace(/\/[^/]+$/, "");
-      await tauriInvoke("plugin:shell|open", { path: parentDir });
+      await tauriInvoke("plugin:opener|open_path", { path: parentDir });
     } catch {
       // Last resort: just set error
       setError("Could not open file location. Try navigating manually to: " + path);
@@ -2614,7 +2642,7 @@ export default function App() {
   async function handleOpenExternalUrl(url: string) {
     try {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:shell|open", { path: url });
+      await tauriInvoke("plugin:opener|open_url", { url });
       return;
     } catch {
       // Fall through to browser open for non-Tauri runs.
@@ -2659,6 +2687,47 @@ export default function App() {
       setError(actionError instanceof Error ? actionError.message : "Failed to unload model.");
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function handleInstallPackage(strategyId: string) {
+    const pipPackageMap: Record<string, string> = {
+      rotorquant: "turboquant",
+      turboquant: "turboquant-mlx",
+      triattention: "triattention",
+    };
+    const pipName = pipPackageMap[strategyId];
+    if (!pipName) return;
+    setInstallingPackage(strategyId);
+    setError(null);
+    try {
+      const result = await installPipPackage(pipName);
+      if (result.ok) {
+        await refreshWorkspace(activeChatId || undefined);
+      } else {
+        setError(`Install failed: ${result.output.slice(0, 300)}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Install failed.");
+    } finally {
+      setInstallingPackage(null);
+    }
+  }
+
+  async function handleInstallSystemPackage(packageName: string) {
+    setInstallingPackage(packageName);
+    setError(null);
+    try {
+      const result = await installSystemPackage(packageName);
+      if (result.ok) {
+        await refreshWorkspace(activeChatId || undefined);
+      } else {
+        setError(`Install failed: ${result.output.slice(0, 300)}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Install failed.");
+    } finally {
+      setInstallingPackage(null);
     }
   }
 
@@ -3188,14 +3257,27 @@ export default function App() {
 
   function handleDeleteMessage(index: number) {
     if (!activeChat) return;
+    const sessionId = activeChat.id;
+    const updatedMessages = activeChat.messages.filter((_, i) => i !== index);
+    // Optimistic update — remove the message immediately in the UI
     setWorkspace((current) => ({
       ...current,
       chatSessions: current.chatSessions.map((s) =>
-        s.id === activeChat.id
-          ? { ...s, messages: s.messages.filter((_, i) => i !== index) }
-          : s,
+        s.id === sessionId ? { ...s, messages: updatedMessages } : s,
       ),
     }));
+    // Persist to backend and confirm with the server response
+    void updateSession(sessionId, { messages: updatedMessages })
+      .then((session) => {
+        // Update with server-confirmed messages so the next poll doesn't revert the deletion
+        setWorkspace((current) => ({
+          ...current,
+          chatSessions: upsertSession(current.chatSessions, session),
+        }));
+      })
+      .catch(() => {
+        // If offline or backend unavailable, the optimistic state stands until next poll
+      });
   }
 
   async function handleRetryMessage(index: number) {
@@ -3380,6 +3462,26 @@ export default function App() {
         },
         onError: (errMsg) => {
           setError(`Chat error: ${errMsg}`);
+          // Remove the empty placeholder assistant message added for streaming,
+          // and roll back the optimistic user message so the conversation stays clean.
+          if (streamingChatId) {
+            setWorkspace((current) => ({
+              ...current,
+              chatSessions: current.chatSessions.map((s) => {
+                if (s.id !== streamingChatId) return s;
+                let msgs = [...s.messages];
+                // Drop trailing empty assistant placeholder
+                if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].text) {
+                  msgs = msgs.slice(0, -1);
+                }
+                // Drop trailing user message that failed (backend rolled it back)
+                if (msgs.length > 0 && msgs[msgs.length - 1].role === "user" && msgs[msgs.length - 1].text === trimmed) {
+                  msgs = msgs.slice(0, -1);
+                }
+                return { ...s, messages: msgs };
+              }),
+            }));
+          }
         },
       });
       setDraftMessage("");
@@ -3390,17 +3492,23 @@ export default function App() {
       } else {
         setError(`Chat error: ${detail}`);
       }
-      // Rollback the optimistic user message on failure
+      // Rollback optimistic messages (user message + streaming placeholder) on failure.
+      // Use sendingSessionId (available in catch scope) — streamingChatId is block-scoped to try.
       if (sendingSessionId) {
         setWorkspace((current) => ({
           ...current,
           chatSessions: current.chatSessions.map((s) => {
             if (s.id !== sendingSessionId) return s;
-            const last = s.messages[s.messages.length - 1];
-            if (last?.role === "user" && last.text === trimmed) {
-              return { ...s, messages: s.messages.slice(0, -1) };
+            let msgs = [...s.messages];
+            // Remove trailing empty assistant placeholder (if streaming had started)
+            if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].text) {
+              msgs = msgs.slice(0, -1);
             }
-            return s;
+            // Remove trailing user message that failed
+            if (msgs.length > 0 && msgs[msgs.length - 1].role === "user" && msgs[msgs.length - 1].text === trimmed) {
+              msgs = msgs.slice(0, -1);
+            }
+            return { ...s, messages: msgs };
           }),
         }));
       }
@@ -3526,6 +3634,8 @@ export default function App() {
                 availableMemoryGb={workspace.system.availableMemoryGb}
                 totalMemoryGb={workspace.system.totalMemoryGb}
                 availableCacheStrategies={workspace.system.availableCacheStrategies}
+                onInstallPackage={handleInstallPackage}
+                installingPackage={installingPackage}
                 compact
               />
             </div>
@@ -4589,7 +4699,6 @@ export default function App() {
               <h3>{variant.name}</h3>
               <span className="badge muted">{variant.provider}</span>
               {variant.source === "curated" ? <span className="badge accent">Curated</span> : null}
-              {variant.availableLocally ? <span className="badge success">Installed</span> : null}
               {!variant.availableLocally && isDownloadComplete ? <span className="badge success">Downloaded</span> : null}
               {isDownloadPaused ? <span className="badge warning">Paused</span> : null}
               {isDownloadFailed ? <span className="badge warning">Download Failed</span> : null}
@@ -4646,17 +4755,17 @@ export default function App() {
 
         <div className="button-row">
           {variant.availableLocally ? (
-            <span className="badge success">Downloaded locally</span>
+            <span className="badge success">Installed</span>
           ) : downloadState?.state === "downloading" ? (
             <>
-              <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
+              <span className="badge accent" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>
               <button className="secondary-button" type="button" onClick={() => void handleCancelImageDownload(variant.repo)}>
                 Pause
               </button>
             </>
           ) : isDownloadPaused ? (
             <>
-              <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
+              <span className="badge warning" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>
               <button className="secondary-button" type="button" onClick={() => void handleImageDownload(variant.repo)}>
                 Resume
               </button>
@@ -4668,8 +4777,8 @@ export default function App() {
               {isDownloadFailed ? "Retry Download" : "Download"}
             </button>
           )}
-          <button className="secondary-button" type="button" onClick={() => void handleOpenExternalUrl(variant.link)}>
-            Open on Hugging Face
+          <button className="secondary-button icon-link-button" type="button" onClick={() => void handleOpenExternalUrl(variant.link)}>
+            Hugging Face <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </button>
         </div>
       </article>
@@ -5249,18 +5358,23 @@ export default function App() {
     const activeArtifactVariant = activeArtifact ? findImageVariantById(imageCatalog, activeArtifact.modelId) : null;
     const activeArtifactRuntimeNote = formatImageAccessError(activeArtifact?.runtimeNote, activeArtifactVariant);
     const activeArtifactNeedsGatedAccess = isGatedImageAccessError(activeArtifact?.runtimeNote);
+    const steps = runInfo?.steps ?? imageSteps;
+    const batch = runInfo?.batchSize ?? 1;
+    // Generous time estimates so the progress bar doesn't outrun the actual generation.
+    // Diffusion is the bottleneck: ~2-6s per step depending on model size and hardware.
+    const diffuseEstimate = Math.max(30, Math.round(steps * 3 * batch));
     const imagePhases: LiveProgressPhase[] = [
       ...(runInfo?.needsPipelineLoad
-        ? [{ id: "load", label: "Loading model into memory", estimatedSeconds: 12 }]
+        ? [{ id: "load", label: "Loading model into memory", estimatedSeconds: 30 }]
         : []),
-      { id: "prompt", label: "Encoding prompt", estimatedSeconds: 3 },
+      { id: "prompt", label: "Encoding prompt", estimatedSeconds: 5 },
       {
         id: "diffuse",
-        label: `Diffusing ${runInfo?.batchSize ?? 1} image${(runInfo?.batchSize ?? 1) > 1 ? "s" : ""}`,
-        estimatedSeconds: Math.max(10, Math.round(((runInfo?.steps ?? imageSteps) * 0.9) + ((runInfo?.batchSize ?? 1) * 4))),
+        label: `Diffusing ${batch} image${batch > 1 ? "s" : ""}`,
+        estimatedSeconds: diffuseEstimate,
       },
-      { id: "decode", label: "Decoding pixels", estimatedSeconds: 4 },
-      { id: "save", label: "Saving to output gallery", estimatedSeconds: 2 },
+      { id: "decode", label: "Decoding pixels", estimatedSeconds: 8 },
+      { id: "save", label: "Saving to output gallery", estimatedSeconds: 3 },
     ];
 
     return (
@@ -6863,6 +6977,8 @@ export default function App() {
                 availableMemoryGb={workspace.system.availableMemoryGb}
                 totalMemoryGb={workspace.system.totalMemoryGb}
                 availableCacheStrategies={workspace.system.availableCacheStrategies}
+                onInstallPackage={handleInstallPackage}
+                installingPackage={installingPackage}
                 showTemperature={false}
                 showPreview={false}
               />

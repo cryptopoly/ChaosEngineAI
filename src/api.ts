@@ -671,6 +671,29 @@ export async function shutdownServer(): Promise<void> {
   await postJson<{ status: string }>("/api/server/shutdown");
 }
 
+// ------------------------------------------------------------------
+// Setup / install
+// ------------------------------------------------------------------
+
+export interface InstallResult {
+  ok: boolean;
+  output: string;
+  capabilities: Record<string, unknown>;
+}
+
+export async function installPipPackage(packageName: string): Promise<InstallResult> {
+  return await postJson<InstallResult>("/api/setup/install-package", { package: packageName }, 360000);
+}
+
+export async function installSystemPackage(packageName: string): Promise<InstallResult> {
+  return await postJson<InstallResult>("/api/setup/install-system-package", { package: packageName }, 660000);
+}
+
+export async function refreshCapabilities(): Promise<Record<string, unknown>> {
+  const result = await postJson<{ capabilities: Record<string, unknown> }>("/api/setup/refresh-capabilities");
+  return result.capabilities;
+}
+
 export async function stopManagedBackend(): Promise<TauriBackendInfo | null> {
   if (!isTauri()) {
     return null;

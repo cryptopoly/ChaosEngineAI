@@ -9,10 +9,10 @@ const LAUNCH_PRESETS: Array<{
   hint: string;
   values: Partial<LaunchPreferences>;
 }> = [
-  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 32768, fusedAttention: false, fitModelInMemory: true } },
-  { id: "balanced", label: "Balanced", hint: "General chat", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 8192, fusedAttention: false, fitModelInMemory: true } },
-  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 4096, fusedAttention: true, fitModelInMemory: true } },
-  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { cacheStrategy: "native", cacheBits: 0, fp16Layers: 0, contextTokens: 2048, fusedAttention: true, fitModelInMemory: false } },
+  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true } },
+  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 8192, fusedAttention: false, fitModelInMemory: true } },
+  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: true } },
+  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 2048, fusedAttention: true, fitModelInMemory: false } },
 ];
 
 const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string }> = {
@@ -95,6 +95,8 @@ interface RuntimeControlsProps {
   showTemperature?: boolean;
   showPreview?: boolean;
   availableCacheStrategies?: CacheStrategyOption[];
+  onInstallPackage?: (strategyId: string) => void;
+  installingPackage?: string | null;
 }
 
 export function RuntimeControls({
@@ -109,6 +111,8 @@ export function RuntimeControls({
   showTemperature = true,
   showPreview = true,
   availableCacheStrategies,
+  onInstallPackage,
+  installingPackage,
 }: RuntimeControlsProps) {
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
@@ -124,6 +128,28 @@ export function RuntimeControls({
     if (!preset) return;
     for (const [key, value] of Object.entries(preset.values)) {
       onChange(key as keyof LaunchPreferences, value as any);
+    }
+    // Set strategy-appropriate cache parameters based on preset intent.
+    // The currently selected strategy is preserved — only bits/fp16 are tuned.
+    if (selectedStrategy.bitRange != null && selectedStrategy.defaultBits != null) {
+      const minBits = selectedStrategy.bitRange[0];
+      const maxBits = selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1];
+      const bits =
+        presetId === "quality" ? maxBits :
+        presetId === "memory" ? minBits :
+        selectedStrategy.defaultBits;
+      onChange("cacheBits", bits);
+      if (selectedStrategy.supportsFp16Layers) {
+        const fp16 =
+          presetId === "quality" ? 8 :
+          presetId === "balanced" ? 4 :
+          0;
+        onChange("fp16Layers", fp16);
+      }
+    } else {
+      // Native strategy: no compression
+      onChange("cacheBits", 0);
+      onChange("fp16Layers", 0);
     }
   }
 
@@ -191,7 +217,18 @@ export function RuntimeControls({
                     <div className="cache-strategy-install">
                       <span className="cache-strategy-meta-label">Install:</span>
                       <code>{info.install}</code>
-                      <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                      {onInstallPackage && !strategy.available ? (
+                        <button
+                          type="button"
+                          className="cache-strategy-install-btn"
+                          disabled={installingPackage != null}
+                          onClick={() => onInstallPackage(strategy.id)}
+                        >
+                          {installingPackage === strategy.id ? "Installing..." : "Install now"}
+                        </button>
+                      ) : (
+                        <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                      )}
                     </div>
                   ) : null}
                 </div>

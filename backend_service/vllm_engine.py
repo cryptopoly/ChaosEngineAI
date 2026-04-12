@@ -206,6 +206,9 @@ class VLLMEngine(BaseInferenceEngine):
                     content = " ".join(str(p.get("text", p) if isinstance(p, dict) else p) for p in content)
                 messages.append({"role": role, "content": str(content)})
         messages.append({"role": "user", "content": prompt})
+        # Sanitize: remove empty assistant messages, merge consecutive same-role messages
+        from backend_service.mlx_worker import _sanitize_messages
+        messages = _sanitize_messages(messages)
         return messages
 
     @staticmethod

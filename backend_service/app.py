@@ -1387,6 +1387,7 @@ class UpdateSessionRequest(BaseModel):
     modelPath: str | None = None
     modelBackend: str | None = None
     pinned: bool | None = None
+    messages: list[dict[str, Any]] | None = None
 
 
 class GenerateRequest(BaseModel):
@@ -3240,6 +3241,13 @@ def _hf_hub_cache_root() -> Path:
     hf_home = os.environ.get("HF_HOME")
     if hf_home:
         return Path(os.path.expanduser(hf_home)).expanduser() / "hub"
+    # Use huggingface_hub's own cache constant when available — it handles
+    # platform differences (Windows uses LOCALAPPDATA or userprofile).
+    try:
+        from huggingface_hub import constants as _hf_constants
+        return Path(_hf_constants.HF_HUB_CACHE)
+    except Exception:
+        pass
     return Path.home() / ".cache" / "huggingface" / "hub"
 
 
@@ -4008,6 +4016,26 @@ def _estimate_baseline_tok_s(system_stats: dict[str, Any]) -> float:
     return round(baseline, 1)
 
 
+def _strategy_speed_map(strategy: str) -> dict[int, float]:
+    """Speed ratio maps by strategy and bit count (fraction of baseline FP16 speed)."""
+    maps: dict[str, dict[int, float]] = {
+        "rotorquant":   {1: 0.42, 2: 0.50, 3: 0.57, 4: 0.65},
+        "triattention": {1: 0.48, 2: 0.56, 3: 0.63, 4: 0.70},
+        "turboquant":   {1: 0.44, 2: 0.52, 3: 0.60, 4: 0.67},
+    }
+    return maps.get(strategy, {1: 0.45, 2: 0.53, 3: 0.59, 4: 0.68})
+
+
+def _strategy_quality_base(strategy: str) -> dict[int, float]:
+    """Base quality percentage by strategy and bit count (before fp16_layers bonus)."""
+    maps: dict[str, dict[int, float]] = {
+        "rotorquant":   {1: 88.0, 2: 91.0, 3: 93.5, 4: 96.0},
+        "triattention": {1: 89.5, 2: 92.0, 3: 94.5, 4: 97.0},
+        "turboquant":   {1: 87.5, 2: 90.5, 3: 93.0, 4: 95.5},
+    }
+    return maps.get(strategy, {1: 87.0, 2: 90.0, 3: 92.0, 4: 95.6})
+
+
 def compute_cache_preview(
     *,
     bits: int = 3,
@@ -4018,28 +4046,40 @@ def compute_cache_preview(
     context_tokens: int = 8192,
     params_b: float = 7.0,
     system_stats: dict[str, Any] | None = None,
+    strategy: str = "native",
 ) -> dict[str, Any]:
-    bits = max(1, min(bits, 4))
+    from compression import registry as _cache_registry
+
     num_layers = max(1, num_layers)
     num_heads = max(1, num_heads)
     hidden_size = max(num_heads, hidden_size)
     context_tokens = max(256, context_tokens)
-    fp16_layer_count = min(num_layers, fp16_layers * 2)
-    compressed_layer_count = max(0, num_layers - fp16_layer_count)
 
-    bytes_per_fp16_layer = context_tokens * hidden_size * 2 * 2
-    baseline_bytes = num_layers * bytes_per_fp16_layer
+    strat = _cache_registry.get(strategy) or _cache_registry.default()
 
-    quantized_vector_bytes = hidden_size * (bits / 8.0)
-    norm_overhead_bytes = num_heads * 4
-    quantized_layer_bytes = context_tokens * 2 * (quantized_vector_bytes + norm_overhead_bytes)
-    optimized_bytes = fp16_layer_count * bytes_per_fp16_layer + compressed_layer_count * quantized_layer_bytes
+    if strategy == "native" or bits <= 0:
+        # Native FP16: no compression
+        baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
+            num_layers, num_heads, hidden_size, context_tokens, 0, 0,
+        )
+        compression_ratio = 1.0
+        speed_ratio = 1.0
+        quality_percent = 100.0
+        bits = 0
+    else:
+        bits = max(1, min(bits, 8))
+        baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
+            num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers,
+        )
+        compression_ratio = baseline_bytes / optimized_bytes if optimized_bytes else 1.0
 
-    compression_ratio = baseline_bytes / optimized_bytes if optimized_bytes else 1.0
+        speed_map = _strategy_speed_map(strategy)
+        clamped_bits = max(min(bits, max(speed_map.keys())), min(speed_map.keys()))
+        speed_ratio = speed_map.get(clamped_bits, 0.6) + min(fp16_layers, 8) * 0.012
+        speed_ratio = min(speed_ratio, 0.92)
 
-    speed_map = {1: 0.45, 2: 0.53, 3: 0.59, 4: 0.68}
-    speed_ratio = speed_map[bits] + min(fp16_layers, 8) * 0.012
-    speed_ratio = min(speed_ratio, 0.92)
+        quality_map = _strategy_quality_base(strategy)
+        quality_percent = min(99.5, quality_map.get(clamped_bits, 94.0) + min(fp16_layers, 8) * 0.35)
 
     preview_system = system_stats or _build_system_snapshot()
     baseline_tok_s = _estimate_baseline_tok_s(preview_system)
@@ -4047,16 +4087,21 @@ def compute_cache_preview(
     baseline_tok_s *= model_scale
     estimated_tok_s = round(baseline_tok_s * speed_ratio, 1)
 
-    quality_percent = min(99.5, 92.0 + bits * 1.4 + min(fp16_layers, 8) * 0.35)
     # Estimate on-disk size: BF16 models are ~2 bytes/param, 4-bit quant ~0.5 bytes/param.
-    # Use a middle estimate since we don't know the on-disk quantization here.
     disk_size_gb = round(params_b * 1.2, 1)
 
-    summary = (
-        f"{bits}-bit cache ({fp16_layers}+{fp16_layers}) lowers cache use to "
-        f"{_bytes_to_gb(optimized_bytes):.1f} GB from {_bytes_to_gb(baseline_bytes):.1f} GB, "
-        f"about {compression_ratio:.1f}x smaller, with an estimated {estimated_tok_s:.1f} tok/s on this machine."
-    )
+    strat_label = strat.label(bits, fp16_layers) if bits > 0 else "Native f16"
+    if strategy == "native" or bits <= 0:
+        summary = (
+            f"Native f16 cache uses {_bytes_to_gb(baseline_bytes):.1f} GB "
+            f"with an estimated {estimated_tok_s:.1f} tok/s on this machine."
+        )
+    else:
+        summary = (
+            f"{strat_label} lowers cache use to "
+            f"{_bytes_to_gb(optimized_bytes):.1f} GB from {_bytes_to_gb(baseline_bytes):.1f} GB, "
+            f"about {compression_ratio:.1f}x smaller, with an estimated {estimated_tok_s:.1f} tok/s on this machine."
+        )
 
     return {
         "bits": bits,
@@ -4461,6 +4506,8 @@ class ChaosEngineState:
                 session["modelBackend"] = request.modelBackend
             if request.pinned is not None:
                 session["pinned"] = request.pinned
+            if request.messages is not None:
+                session["messages"] = request.messages
             session["updatedAt"] = self._time_label()
             self._promote_session(session)
             self.add_activity("Thread updated", session["title"])
@@ -5290,6 +5337,14 @@ class ChaosEngineState:
             )
         except RuntimeError as exc:
             with self._lock:
+                # Roll back the user message that was appended before generation started,
+                # so a failed request does not corrupt the conversation history.
+                if (session["messages"]
+                        and session["messages"][-1].get("role") == "user"
+                        and session["messages"][-1].get("text") == request.prompt):
+                    session["messages"].pop()
+                    session["updatedAt"] = self._time_label()
+                    self._persist_sessions()
                 self.active_requests = max(0, self.active_requests - 1)
                 self.add_log("chat", "error", f"[{model_tag}] Generation failed: {exc}")
             raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -5406,6 +5461,13 @@ class ChaosEngineState:
                         final_chunk = chunk
             except RuntimeError as exc:
                 with chaosengine._lock:
+                    # Roll back the user message appended before streaming started.
+                    if (session["messages"]
+                            and session["messages"][-1].get("role") == "user"
+                            and session["messages"][-1].get("text") == request.prompt):
+                        session["messages"].pop()
+                        session["updatedAt"] = chaosengine._time_label()
+                        chaosengine._persist_sessions()
                     chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
                     chaosengine.add_log("chat", "error", f"[{model_tag}] Streaming failed: {exc}")
                 yield f"data: {json.dumps({'error': str(exc)})}\n\n"
@@ -6545,13 +6607,14 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
 
     @app.get("/api/cache/preview")
     def cache_preview(
-        bits: int = Query(3, ge=1, le=4),
+        bits: int = Query(3, ge=0, le=8),
         fp16_layers: int = Query(4, ge=0, le=16),
         num_layers: int = Query(32, ge=1, le=160),
         num_heads: int = Query(32, ge=1, le=256),
         hidden_size: int = Query(4096, ge=256, le=32768),
         context_tokens: int = Query(8192, ge=256, le=262144),
         params_b: float = Query(7.0, ge=0.5, le=1000.0),
+        strategy: str = Query("native"),
     ) -> dict[str, Any]:
         system_stats = _build_system_snapshot()
         return compute_cache_preview(
@@ -6563,6 +6626,7 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
             context_tokens=context_tokens,
             params_b=params_b,
             system_stats=system_stats,
+            strategy=strategy,
         )
 
     @app.get("/api/server/status")
@@ -6580,6 +6644,96 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
             os.kill(os.getpid(), sig)
         threading.Thread(target=_delayed_shutdown, daemon=True).start()
         return {"status": "shutting_down"}
+
+    # ------------------------------------------------------------------
+    # Setup / install endpoints
+    # ------------------------------------------------------------------
+
+    _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
+        "turboquant": "turboquant",
+        "turboquant-mlx": "turboquant-mlx",
+        "triattention": "triattention",
+        "vllm": "vllm",
+        "mlx": "mlx",
+        "mlx-lm": "mlx-lm",
+    }
+
+    _INSTALLABLE_SYSTEM_PACKAGES: dict[str, list[str]] = {
+        "llama.cpp": ["brew", "install", "llama.cpp"],
+    }
+
+    class InstallPackageRequest(BaseModel):
+        package: str
+
+    @app.post("/api/setup/install-package")
+    def install_pip_package(request: InstallPackageRequest) -> dict[str, Any]:
+        """Install a whitelisted pip package into the backend's Python environment."""
+        pip_name = _INSTALLABLE_PIP_PACKAGES.get(request.package)
+        if pip_name is None:
+            raise HTTPException(status_code=400, detail=f"Package '{request.package}' is not in the allowed install list.")
+
+        python = app.state.chaosengine.runtime.capabilities.pythonExecutable
+        cmd = [python, "-m", "pip", "install", "--upgrade", pip_name]
+        app.state.chaosengine.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            output = (result.stdout + "\n" + result.stderr).strip()
+            ok = result.returncode == 0
+        except subprocess.TimeoutExpired:
+            output = "Installation timed out after 5 minutes."
+            ok = False
+        except OSError as exc:
+            output = str(exc)
+            ok = False
+
+        # Re-probe capabilities after install
+        app.state.chaosengine.runtime.refresh_capabilities(force=True)
+        caps = app.state.chaosengine.runtime.capabilities.to_dict()
+        app.state.chaosengine.add_log(
+            "server", "info" if ok else "error",
+            f"pip install {pip_name}: {'succeeded' if ok else 'failed'}",
+        )
+        return {"ok": ok, "output": output, "capabilities": caps}
+
+    @app.post("/api/setup/install-system-package")
+    def install_system_package(request: InstallPackageRequest) -> dict[str, Any]:
+        """Install a whitelisted system package (e.g. llama.cpp via brew)."""
+        cmd_template = _INSTALLABLE_SYSTEM_PACKAGES.get(request.package)
+        if cmd_template is None:
+            raise HTTPException(status_code=400, detail=f"System package '{request.package}' is not in the allowed install list.")
+
+        app.state.chaosengine.add_log("server", "info", f"Installing system package: {' '.join(cmd_template)}")
+        try:
+            result = subprocess.run(cmd_template, capture_output=True, text=True, timeout=600)
+            output = (result.stdout + "\n" + result.stderr).strip()
+            ok = result.returncode == 0
+        except FileNotFoundError:
+            output = f"'{cmd_template[0]}' is not installed. Install Homebrew first: https://brew.sh"
+            ok = False
+        except subprocess.TimeoutExpired:
+            output = "Installation timed out after 10 minutes."
+            ok = False
+        except OSError as exc:
+            output = str(exc)
+            ok = False
+
+        app.state.chaosengine.runtime.refresh_capabilities(force=True)
+        caps = app.state.chaosengine.runtime.capabilities.to_dict()
+        app.state.chaosengine.add_log(
+            "server", "info" if ok else "error",
+            f"System install {request.package}: {'succeeded' if ok else 'failed'}",
+        )
+        return {"ok": ok, "output": output, "capabilities": caps}
+
+    @app.post("/api/setup/refresh-capabilities")
+    def refresh_capabilities_endpoint() -> dict[str, Any]:
+        """Force re-probe all backend capabilities."""
+        caps = app.state.chaosengine.runtime.refresh_capabilities(force=True)
+        return {"capabilities": caps.to_dict()}
+
+    # ------------------------------------------------------------------
+    # OpenAI-compatible endpoints
+    # ------------------------------------------------------------------
 
     @app.get("/v1/models")
     def list_openai_models() -> dict[str, Any]:

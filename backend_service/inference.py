@@ -748,112 +748,44 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
 
 
 class MockInferenceEngine(BaseInferenceEngine):
+    """Placeholder engine used only as the initial default before any model is loaded.
+
+    All methods raise ``RuntimeError`` — this engine never produces fake results.
+    If ``_select_engine()`` is implemented correctly, the mock engine is never
+    chosen for real model loads; these raises are a safety net.
+    """
+
     engine_name = "mock"
-    engine_label = "Mock runtime"
+    engine_label = "No backend"
 
     def __init__(self, capabilities: BackendCapabilities) -> None:
         self.capabilities = capabilities
         self.loaded_model: LoadedModelInfo | None = None
 
-    def load_model(
-        self,
-        *,
-        model_ref: str,
-        model_name: str,
-        source: str,
-        backend: str,
-        path: str | None,
-        runtime_target: str | None,
-        cache_strategy: str,
-        cache_bits: int,
-        fp16_layers: int,
-        fused_attention: bool,
-        fit_model_in_memory: bool,
-        context_tokens: int,
-        progress_callback: Callable[[dict[str, Any]], None] | None = None,
-    ) -> LoadedModelInfo:
-        if self.capabilities.mlxAvailable and self.capabilities.mlxLmAvailable and not self.capabilities.mlxUsable:
-            runtime_note = (
-                "MLX and mlx-lm are installed, but the native probe could not initialize Metal cleanly. "
-                f"ChaosEngineAI is using the mock runtime instead. Details: {self.capabilities.mlxMessage or 'probe failed'}"
-            )
-        elif self.capabilities.ggufAvailable:
-            runtime_note = (
-                "Native inference backends are available, but the current request fell back to the mock runtime."
-            )
-        else:
-            runtime_note = (
-                "Native MLX generation is unavailable in this environment, so ChaosEngineAI is using the built-in mock runtime."
-            )
-        self.loaded_model = LoadedModelInfo(
-            ref=model_ref,
-            name=model_name,
-            backend=backend,
-            source=source,
-            engine=self.engine_name,
-            cacheStrategy=cache_strategy,
-            cacheBits=cache_bits,
-            fp16Layers=fp16_layers,
-            fusedAttention=fused_attention,
-            fitModelInMemory=fit_model_in_memory,
-            contextTokens=context_tokens,
-            loadedAt=_now_label(),
-            path=path,
-            runtimeTarget=runtime_target,
-            runtimeNote=runtime_note,
+    def _missing_backend_message(self) -> str:
+        hints: list[str] = []
+        if not self.capabilities.mlxUsable:
+            hints.append("MLX is not available" + (f" ({self.capabilities.mlxMessage})" if self.capabilities.mlxMessage else ""))
+        if not self.capabilities.ggufAvailable:
+            hints.append("llama-server not found (install with: brew install llama.cpp)")
+        if not self.capabilities.vllmAvailable:
+            hints.append("vLLM not installed")
+        return (
+            "No inference backend is available. " + " | ".join(hints) + ". "
+            "Install llama.cpp for GGUF models or ensure MLX is working for safetensors models."
         )
-        return self.loaded_model
+
+    def load_model(self, **kwargs: Any) -> LoadedModelInfo:
+        raise RuntimeError(self._missing_backend_message())
 
     def unload_model(self) -> None:
         self.loaded_model = None
 
-    def generate(
-        self,
-        *,
-        prompt: str,
-        history: list[dict[str, Any]],
-        system_prompt: str | None,
-        max_tokens: int,
-        temperature: float,
-        images: list[str] | None = None,
-        tools: list[dict[str, Any]] | None = None,
-    ) -> GenerationResult:
-        if self.loaded_model is None:
-            raise RuntimeError("No model is loaded.")
+    def generate(self, **kwargs: Any) -> GenerationResult:
+        raise RuntimeError(self._missing_backend_message())
 
-        prompt_excerpt = " ".join(prompt.strip().split())[:220]
-        history_turns = len([message for message in history if message.get("role") == "user"])
-        from compression import registry as _strategy_registry
-        _strat = _strategy_registry.get(self.loaded_model.cacheStrategy) or _strategy_registry.default()
-        cache_label = _strat.label(self.loaded_model.cacheBits, self.loaded_model.fp16Layers)
-
-        details = [
-            f"{self.loaded_model.name} is ready, but this machine is using ChaosEngineAI's fallback runtime rather than native inference.",
-            f"Request received: {prompt_excerpt or 'No prompt text provided.'}",
-            f"Active cache profile: {cache_label}.",
-            f"Conversation context includes {history_turns} prior user turn(s).",
-        ]
-
-        if "benchmark" in prompt.lower():
-            details.append("The benchmark view is the right place to validate whether a lower-bit profile still meets your quality target.")
-        else:
-            details.append("Use the repo-local .venv runtime to enable real MLX or GGUF inference paths.")
-
-        text = " ".join(details)
-        words = text.split()
-        limited = " ".join(words[: max(24, min(max_tokens, len(words)))])
-        completion_tokens = max(1, len(limited.split()))
-        prompt_tokens = max(1, len(prompt.split()))
-        return GenerationResult(
-            text=limited,
-            finishReason="stop",
-            promptTokens=prompt_tokens,
-            completionTokens=completion_tokens,
-            totalTokens=prompt_tokens + completion_tokens,
-            tokS=48.0,
-            responseSeconds=round(completion_tokens / 48.0, 2),
-            runtimeNote=self.loaded_model.runtimeNote,
-        )
+    def stream_generate(self, **kwargs: Any) -> Iterator[StreamChunk]:
+        raise RuntimeError(self._missing_backend_message())
 
 
 class JsonRpcProcess:
@@ -906,6 +838,10 @@ class JsonRpcProcess:
                 self.process.kill()
                 self.process.wait(timeout=5)
         self.process = None
+
+    def is_alive(self) -> bool:
+        """Return True if the worker process is running."""
+        return self.process is not None and self.process.poll() is None
 
     def request(self, payload: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
         return self.request_with_progress(payload, on_progress=None, timeout=timeout)
@@ -1112,6 +1048,13 @@ class MLXWorkerEngine(BaseInferenceEngine):
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
+        # Detect worker process restart: if the process died, the model is gone.
+        if not self.worker.is_alive():
+            self.loaded_model = None
+            raise RuntimeError(
+                "The MLX worker process was restarted and the model is no longer loaded. "
+                "Please reload the model from My Models."
+            )
 
         started_at = time.perf_counter()
         payload: dict[str, Any] = {
@@ -1152,6 +1095,12 @@ class MLXWorkerEngine(BaseInferenceEngine):
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
+        if not self.worker.is_alive():
+            self.loaded_model = None
+            raise RuntimeError(
+                "The MLX worker process was restarted and the model is no longer loaded. "
+                "Please reload the model from My Models."
+            )
 
         payload: dict[str, Any] = {
             "op": "stream_generate",
@@ -1723,9 +1672,6 @@ class RuntimeController:
         self.capabilities = get_backend_capabilities(force=force)
         return self.capabilities
 
-    def _make_mock_engine(self) -> MockInferenceEngine:
-        return MockInferenceEngine(self.capabilities)
-
     def _select_engine(
         self,
         *,
@@ -1736,27 +1682,49 @@ class RuntimeController:
         hint = (backend or "auto").lower()
         target = runtime_target or path
 
-        if hint in {"mock", "fallback"}:
-            return self._make_mock_engine()
         if hint in {"remote", "openai", "cloud"}:
             return RemoteOpenAIEngine(self.capabilities)
         if hint == "mlx":
-            return MLXWorkerEngine(self.capabilities) if self.capabilities.mlxUsable else self._make_mock_engine()
+            if self.capabilities.mlxUsable:
+                return MLXWorkerEngine(self.capabilities)
+            reason = self.capabilities.mlxMessage or "MLX is not available in this environment"
+            raise RuntimeError(
+                f"MLX backend requested but unavailable: {reason}. "
+                f"Use a GGUF model with llama.cpp instead, or check your Python environment."
+            )
         if hint in {"gguf", "llama.cpp", "llama-cpp"}:
-            return LlamaCppEngine(self.capabilities) if self.capabilities.ggufAvailable else self._make_mock_engine()
+            if self.capabilities.ggufAvailable:
+                return LlamaCppEngine(self.capabilities)
+            raise RuntimeError(
+                "This model requires llama-server (llama.cpp) which is not installed. "
+                "Install with: brew install llama.cpp"
+            )
         if hint == "vllm":
             if self.capabilities.vllmAvailable:
                 from backend_service.vllm_engine import VLLMEngine
                 return VLLMEngine(self.capabilities)
-            return self._make_mock_engine()
+            raise RuntimeError(
+                "vLLM backend requested but not installed. "
+                "Install with: pip install vllm (Linux + CUDA only)."
+            )
 
-        if _looks_like_gguf(target) and self.capabilities.ggufAvailable:
-            return LlamaCppEngine(self.capabilities)
+        # Auto-detect: try to find a real backend
+        if _looks_like_gguf(target):
+            if self.capabilities.ggufAvailable:
+                return LlamaCppEngine(self.capabilities)
+            raise RuntimeError(
+                f"This is a GGUF model which requires llama-server. "
+                f"Install with: brew install llama.cpp"
+            )
         if self.capabilities.mlxUsable:
             return MLXWorkerEngine(self.capabilities)
         if self.capabilities.ggufAvailable:
             return LlamaCppEngine(self.capabilities)
-        return self._make_mock_engine()
+        raise RuntimeError(
+            "No inference backend is available. "
+            "Install llama.cpp (brew install llama.cpp) for GGUF models, "
+            "or ensure MLX is working for safetensors models on Apple Silicon."
+        )
 
     @staticmethod
     def _display_name(model_ref: str, model_name: str | None = None, path: str | None = None) -> str:

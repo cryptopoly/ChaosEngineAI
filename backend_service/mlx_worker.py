@@ -51,6 +51,27 @@ def _normalize_message_content(content: Any) -> str:
     return str(content or "")
 
 
+def _sanitize_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Ensure strict role alternation (user/assistant) after an optional system message.
+
+    - Removes empty assistant messages.
+    - Merges consecutive same-role messages with a newline separator.
+    """
+    sanitized: list[dict[str, str]] = []
+    for msg in messages:
+        content = msg.get("content", "").strip()
+        role = msg.get("role", "")
+        # Drop empty assistant messages (from failed/mock responses)
+        if role == "assistant" and not content:
+            continue
+        # Merge consecutive same-role messages
+        if sanitized and sanitized[-1]["role"] == role and role != "system":
+            sanitized[-1]["content"] += "\n" + content
+        else:
+            sanitized.append({"role": role, "content": content})
+    return sanitized
+
+
 def _build_prompt_text(
     tokenizer: Any,
     history: list[dict[str, Any]],
@@ -66,6 +87,7 @@ def _build_prompt_text(
             continue
         messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
     messages.append({"role": "user", "content": prompt})
+    messages = _sanitize_messages(messages)
 
     apply_template = getattr(tokenizer, "apply_chat_template", None)
     if callable(apply_template):
@@ -391,19 +413,43 @@ class WorkerState:
         sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
 
-        text_parts: list[str] = []
-        last_response = None
-        for response in stream_generate(
-            self.model,
-            self.tokenizer,
-            prompt_text,
-            max_tokens=int(request.get("maxTokens") or 256),
-            sampler=sampler,
-            prompt_cache=prompt_cache,
-        ):
-            if response.text:
-                text_parts.append(response.text)
-            last_response = response
+        try:
+            text_parts: list[str] = []
+            last_response = None
+            for response in stream_generate(
+                self.model,
+                self.tokenizer,
+                prompt_text,
+                max_tokens=int(request.get("maxTokens") or 256),
+                sampler=sampler,
+                prompt_cache=prompt_cache,
+            ):
+                if response.text:
+                    text_parts.append(response.text)
+                last_response = response
+        except (ValueError, RuntimeError) as exc:
+            if prompt_cache is not None and ("broadcast" in str(exc).lower() or "shape" in str(exc).lower()):
+                # Cache strategy produced incompatible shapes for this model.
+                # Retry with the model's default (native) cache.
+                runtime_note = (
+                    f"Cache strategy failed ({exc}). "
+                    f"Fell back to native f16 cache."
+                )
+                text_parts = []
+                last_response = None
+                for response in stream_generate(
+                    self.model,
+                    self.tokenizer,
+                    prompt_text,
+                    max_tokens=int(request.get("maxTokens") or 256),
+                    sampler=sampler,
+                    prompt_cache=None,
+                ):
+                    if response.text:
+                        text_parts.append(response.text)
+                    last_response = response
+            else:
+                raise
 
         if last_response is None:
             raise RuntimeError("MLX generation did not return a response.")
@@ -441,18 +487,39 @@ class WorkerState:
         sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
 
-        last_response = None
-        for response in mlx_stream_generate(
-            self.model,
-            self.tokenizer,
-            prompt_text,
-            max_tokens=int(request.get("maxTokens") or 256),
-            sampler=sampler,
-            prompt_cache=prompt_cache,
-        ):
-            if response.text:
-                _emit({"ok": True, "chunk": {"text": response.text}})
-            last_response = response
+        try:
+            last_response = None
+            for response in mlx_stream_generate(
+                self.model,
+                self.tokenizer,
+                prompt_text,
+                max_tokens=int(request.get("maxTokens") or 256),
+                sampler=sampler,
+                prompt_cache=prompt_cache,
+            ):
+                if response.text:
+                    _emit({"ok": True, "chunk": {"text": response.text}})
+                last_response = response
+        except (ValueError, RuntimeError) as exc:
+            if prompt_cache is not None and ("broadcast" in str(exc).lower() or "shape" in str(exc).lower()):
+                runtime_note = (
+                    f"Cache strategy failed ({exc}). "
+                    f"Fell back to native f16 cache."
+                )
+                last_response = None
+                for response in mlx_stream_generate(
+                    self.model,
+                    self.tokenizer,
+                    prompt_text,
+                    max_tokens=int(request.get("maxTokens") or 256),
+                    sampler=sampler,
+                    prompt_cache=None,
+                ):
+                    if response.text:
+                        _emit({"ok": True, "chunk": {"text": response.text}})
+                    last_response = response
+            else:
+                raise
 
         if last_response is None:
             raise RuntimeError("MLX generation did not return a response.")

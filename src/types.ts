@@ -431,6 +431,7 @@ export interface UpdateSessionPayload {
   modelPath?: string | null;
   modelBackend?: string | null;
   pinned?: boolean | null;
+  messages?: ChatMessage[];
 }
 
 export interface GeneratePayload {

@@ -5,7 +5,9 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from backend_service.app import ChaosEngineState, _discover_local_models, compute_cache_preview, create_app
+from backend_service.app import compute_cache_preview, create_app
+from backend_service.state import ChaosEngineState
+from backend_service.helpers.discovery import _discover_local_models
 
 
 def fake_system_snapshot():
@@ -381,7 +383,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         target = Path(self.tempdir.name) / "example.gguf"
         target.write_bytes(b"model")
 
-        with mock.patch("backend_service.app.subprocess.Popen") as popen:
+        with mock.patch("backend_service.helpers.discovery.subprocess.Popen") as popen:
             response = self.client.post("/api/models/reveal", json={"path": str(target)})
 
         self.assertEqual(response.status_code, 200)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import gc
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from typing import Any
 
 from backend_service.inference import (
@@ -18,7 +18,6 @@ from backend_service.inference import (
     BaseInferenceEngine,
     GenerationResult,
     LoadedModelInfo,
-    StreamChunk,
 )
 
 

@@ -1713,8 +1713,8 @@ class RuntimeController:
             if self.capabilities.ggufAvailable:
                 return LlamaCppEngine(self.capabilities)
             raise RuntimeError(
-                f"This is a GGUF model which requires llama-server. "
-                f"Install with: brew install llama.cpp"
+                "This is a GGUF model which requires llama-server. "
+                "Install with: brew install llama.cpp"
             )
         if self.capabilities.mlxUsable:
             return MLXWorkerEngine(self.capabilities)

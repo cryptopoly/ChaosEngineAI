@@ -13,7 +13,7 @@ import {
   unloadImageModel,
 } from "../api";
 import type { DownloadStatus } from "../api";
-import { mockImageCatalog } from "../mockData";
+
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
   flattenImageVariants,
@@ -291,8 +291,6 @@ export function useImageState(
     if (catalog.status === "fulfilled") {
       setImageCatalog(catalog.value.families);
       setLatestImageDiscoverResults(catalog.value.latest ?? []);
-    } else if (imageCatalog.length === 0) {
-      setImageCatalog(mockImageCatalog);
     }
     if (outputs.status === "fulfilled") setImageOutputs(outputs.value);
     if (statuses.status === "fulfilled") setActiveImageDownloads(buildDownloadStatusMap(statuses.value));

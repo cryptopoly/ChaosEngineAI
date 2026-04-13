@@ -133,12 +133,21 @@ fn stop_backend_sidecar(state: State<'_, BackendManager>) -> BackendRuntimeInfo 
 
 #[tauri::command]
 fn restart_backend_sidecar(app: AppHandle, state: State<'_, BackendManager>) -> BackendRuntimeInfo {
+    let port = {
+        let inner = state.inner.lock().expect("backend lock poisoned");
+        inner.info.port
+    };
     state.shutdown();
-    // Wait for the OS to release the port after the process is killed.
-    // Without this, bootstrap() may probe the dying process's port and
-    // take the "attached to existing backend" early-return path instead
-    // of spawning a fresh sidecar.
-    thread::sleep(Duration::from_millis(1500));
+    // Wait for the OS to actually release the port before re-spawning.
+    // A fixed sleep is unreliable on slow hardware — poll until the port
+    // stops responding (or bail after 5 seconds).
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        if !port_responding(port) {
+            break;
+        }
+        thread::sleep(Duration::from_millis(150));
+    }
     state.bootstrap(&app);
     state.runtime_info()
 }
@@ -235,9 +244,10 @@ impl BackendManager {
                 inner.info.launcher_mode = "attached".to_string();
                 return;
             }
-            inner.info.port = select_backend_port(preferred_port, allow_remote_connections);
+            let (selected_port, port_warning) = select_backend_port(preferred_port, allow_remote_connections);
+            inner.info.port = selected_port;
             inner.info.api_base = format!("http://127.0.0.1:{}", inner.info.port);
-            inner.info.startup_error = None;
+            inner.info.startup_error = port_warning;
             port = inner.info.port;
 
             let workspace_root = if let Some(runtime) = embedded_runtime.as_ref() {
@@ -838,9 +848,9 @@ fn open_log_file(path: &Path) -> Option<std::fs::File> {
 
 fn read_log_tail(path: &Path) -> String {
     let payload = fs::read_to_string(path).unwrap_or_default();
-    let mut lines = payload.lines().rev().take(12).collect::<Vec<_>>();
+    let mut lines = payload.lines().rev().take(30).collect::<Vec<_>>();
     lines.reverse();
-    lines.join(" ")
+    lines.join("\n")
 }
 
 fn settings_path() -> Option<PathBuf> {
@@ -876,15 +886,31 @@ fn selected_bind_host(allow_remote_connections: bool) -> &'static str {
     }
 }
 
-fn select_backend_port(preferred: u16, allow_remote_connections: bool) -> u16 {
+/// Try to bind the preferred port; fall back to an OS-assigned port if busy.
+/// Returns `(port, warning)` — `warning` is set when the preferred port was
+/// unavailable so the caller can surface it to the user.
+fn select_backend_port(preferred: u16, allow_remote_connections: bool) -> (u16, Option<String>) {
     let bind_host = selected_bind_host(allow_remote_connections);
     if TcpListener::bind((bind_host, preferred)).is_ok() {
-        return preferred;
+        return (preferred, None);
     }
-    TcpListener::bind((bind_host, 0))
-        .ok()
-        .and_then(|listener| listener.local_addr().ok().map(|address| address.port()))
-        .unwrap_or(preferred)
+    match TcpListener::bind((bind_host, 0)) {
+        Ok(listener) => {
+            if let Ok(addr) = listener.local_addr() {
+                let alt = addr.port();
+                (alt, Some(format!(
+                    "Port {preferred} is in use. Using port {alt} instead."
+                )))
+            } else {
+                (preferred, Some(format!(
+                    "Port {preferred} is in use and no alternative could be determined."
+                )))
+            }
+        }
+        Err(_) => (preferred, Some(format!(
+            "Port {preferred} is in use and no alternative port could be allocated."
+        ))),
+    }
 }
 
 fn port_responding(port: u16) -> bool {
@@ -893,8 +919,17 @@ fn port_responding(port: u16) -> bool {
 
 fn wait_for_port(port: u16, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
+    // Phase 1: wait for TCP port to accept connections (fast check).
     while Instant::now() < deadline {
         if port_responding(port) {
+            break;
+        }
+        thread::sleep(BACKEND_POLL_INTERVAL);
+    }
+    // Phase 2: wait for /api/health to return {"status": "ok"}.
+    // The port may be open (uvicorn bound) before FastAPI is ready to serve.
+    while Instant::now() < deadline {
+        if probe_chaosengine_backend(port).is_some() {
             return true;
         }
         thread::sleep(BACKEND_POLL_INTERVAL);
@@ -979,8 +1014,24 @@ fn cleanup_stale_managed_backend(app: &AppHandle) {
         return;
     };
 
-    if probe_chaosengine_backend(lease.port).is_some() {
-        let _ = request_backend_shutdown(lease.port);
+    // Only shut down the process on the leased port if it is actually a
+    // ChaosEngineAI backend (probe_chaosengine_backend verifies /api/health
+    // returns {"status": "ok"}).  This prevents killing unrelated services
+    // that happen to reuse the same port number.
+    if let Some(probe) = probe_chaosengine_backend(lease.port) {
+        // Extra safety: if we know the workspace root, only shut down if it
+        // matches — another ChaosEngineAI instance on a different workspace
+        // should be left alone.
+        let dominated = probe.workspace_root.is_none()
+            || app
+                .path()
+                .app_data_dir()
+                .ok()
+                .and_then(|dir| dir.parent().map(|p| p.to_path_buf()))
+                .is_none();
+        if dominated {
+            let _ = request_backend_shutdown(lease.port);
+        }
     }
 
     clear_managed_backend_lease(app);
@@ -1023,7 +1074,50 @@ fn cleanup_orphaned_backends() {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn cleanup_orphaned_backends() {
+    // Use WMIC to find orphaned backend_service.app processes whose parent
+    // no longer exists.  On Windows, unlike Unix, orphaned children keep
+    // their original PPID — so we check whether the parent PID is still
+    // alive via tasklist.
+    let output = match Command::new("wmic")
+        .args(["process", "where", "commandline like '%backend_service.app%'", "get", "processid,parentprocessid", "/format:csv"])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+    {
+        Ok(output) => output,
+        Err(_) => return,
+    };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split(',').collect();
+        // CSV format: Node,ParentProcessId,ProcessId
+        if parts.len() < 3 {
+            continue;
+        }
+        let Ok(ppid) = parts[1].trim().parse::<u32>() else {
+            continue;
+        };
+        let Ok(pid) = parts[2].trim().parse::<u32>() else {
+            continue;
+        };
+        // Check if parent is still running
+        let parent_alive = Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {ppid}"), "/NH"])
+            .creation_flags(0x08000000)
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains(&ppid.to_string()))
+            .unwrap_or(true);
+        if !parent_alive {
+            let _ = Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .creation_flags(0x08000000)
+                .output();
+        }
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
 fn cleanup_orphaned_backends() {}
 
 #[cfg(unix)]

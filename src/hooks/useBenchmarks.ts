@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { runBenchmark } from "../api";
-import { mockWorkspace } from "../mockData";
+import { emptyWorkspace } from "../defaults";
 import { BENCHMARK_PROMPTS } from "../constants";
 import { syncRuntime } from "../utils";
 import type {
@@ -20,18 +20,18 @@ export function useBenchmarks(
   setBusyAction: (action: string | null) => void,
 ) {
   const [benchmarkDraft, setBenchmarkDraft] = useState<BenchmarkRunPayload>({
-    cacheBits: mockWorkspace.settings.launchPreferences.cacheBits,
-    fp16Layers: mockWorkspace.settings.launchPreferences.fp16Layers,
-    fusedAttention: mockWorkspace.settings.launchPreferences.fusedAttention,
-    cacheStrategy: mockWorkspace.settings.launchPreferences.cacheStrategy,
-    fitModelInMemory: mockWorkspace.settings.launchPreferences.fitModelInMemory,
-    contextTokens: mockWorkspace.settings.launchPreferences.contextTokens,
+    cacheBits: emptyWorkspace.settings.launchPreferences.cacheBits,
+    fp16Layers: emptyWorkspace.settings.launchPreferences.fp16Layers,
+    fusedAttention: emptyWorkspace.settings.launchPreferences.fusedAttention,
+    cacheStrategy: emptyWorkspace.settings.launchPreferences.cacheStrategy,
+    fitModelInMemory: emptyWorkspace.settings.launchPreferences.fitModelInMemory,
+    contextTokens: emptyWorkspace.settings.launchPreferences.contextTokens,
     maxTokens: 4096,
     temperature: 0.2,
   });
   const [benchmarkModelKey, setBenchmarkModelKey] = useState("");
-  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState(mockWorkspace.benchmarks[0]?.id ?? "");
-  const [compareBenchmarkId, setCompareBenchmarkId] = useState(mockWorkspace.benchmarks[1]?.id ?? "");
+  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState("");
+  const [compareBenchmarkId, setCompareBenchmarkId] = useState("");
   const [benchmarkModelFilter, setBenchmarkModelFilter] = useState<string | null>(null);
   const [benchmarkViewMode, setBenchmarkViewMode] = useState<"table" | "chart" | "both">("both");
   const [benchmarkPromptId, setBenchmarkPromptId] = useState(BENCHMARK_PROMPTS[0]?.id ?? "balanced");

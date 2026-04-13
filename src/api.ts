@@ -1,10 +1,4 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import {
-  createMockImageArtifact,
-  mockImageCatalog,
-  mockImageOutputs,
-  mockWorkspace,
-} from "./mockData";
 import type {
   AppSettings,
   BenchmarkRunPayload,
@@ -20,8 +14,6 @@ import type {
   ImageCatalogResponse,
   ImageGenerationPayload,
   ImageGenerationResponse,
-  ImageModelFamily,
-  ImageModelVariant,
   ImageOutputArtifact,
   ImageRuntimeStatus,
   LibraryItem,
@@ -39,18 +31,6 @@ import type {
 const DEFAULT_API_BASE = (import.meta.env.VITE_CHAOSENGINE_API_BASE as string | undefined) ?? "http://127.0.0.1:8876";
 let apiBasePromise: Promise<string> | null = null;
 let tauriBackendInfoPromise: Promise<TauriBackendInfo | null> | null = null;
-let mockImageOutputState: ImageOutputArtifact[] = [...mockImageOutputs];
-let mockImageDownloadState: Record<string, DownloadStatus> = {};
-const mockImageRuntimeStatus: ImageRuntimeStatus = {
-  activeEngine: "placeholder",
-  realGenerationAvailable: false,
-  message: "Optional image runtime packages are not installed, so Image Studio is using the placeholder engine on this machine.",
-  missingDependencies: ["diffusers", "torch", "accelerate"],
-};
-
-function canUseMockImageFallback() {
-  return !isTauri();
-}
 
 function resetBackendRuntimeCache() {
   apiBasePromise = null;
@@ -177,14 +157,7 @@ async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, bo
 }
 
 export async function getWorkspace(): Promise<WorkspaceData> {
-  try {
-    return await fetchJson<WorkspaceData>("/api/workspace");
-  } catch (error) {
-    if (isTauri()) {
-      throw error;
-    }
-    return mockWorkspace;
-  }
+  return await fetchJson<WorkspaceData>("/api/workspace");
 }
 
 export async function checkBackend(): Promise<boolean> {
@@ -197,15 +170,8 @@ export async function checkBackend(): Promise<boolean> {
 }
 
 export async function getSettings(): Promise<AppSettings> {
-  try {
-    const result = await fetchJson<{ settings: AppSettings }>("/api/settings");
-    return result.settings;
-  } catch (error) {
-    if (isTauri()) {
-      throw error;
-    }
-    return mockWorkspace.settings;
-  }
+  const result = await fetchJson<{ settings: AppSettings }>("/api/settings");
+  return result.settings;
 }
 
 export async function updateSettings(payload: UpdateSettingsPayload): Promise<SettingsUpdateResponse> {
@@ -218,81 +184,25 @@ export interface SearchResults {
 }
 
 export async function searchModels(query: string): Promise<SearchResults> {
-  try {
-    const result = await fetchJson<{ results: ModelFamily[]; hubResults?: HubModel[] }>(
-      `/api/models/search?q=${encodeURIComponent(query)}`,
-      60000,
-    );
-    return { families: result.results, hubModels: result.hubResults ?? [] };
-  } catch (error) {
-    if (isTauri()) {
-      throw error;
-    }
-    if (!query.trim()) {
-      return { families: mockWorkspace.featuredModels, hubModels: [] };
-    }
-    const lowered = query.toLowerCase();
-    const filtered = mockWorkspace.featuredModels.filter(
-      (family) =>
-        family.name.toLowerCase().includes(lowered) ||
-        family.provider.toLowerCase().includes(lowered) ||
-        family.capabilities.some((capability) => capability.includes(lowered)) ||
-        family.variants.some(
-          (variant) =>
-            variant.name.toLowerCase().includes(lowered) ||
-            variant.format.toLowerCase().includes(lowered) ||
-            variant.quantization.toLowerCase().includes(lowered),
-        ),
-    );
-    return { families: filtered, hubModels: [] };
-  }
+  const result = await fetchJson<{ results: ModelFamily[]; hubResults?: HubModel[] }>(
+    `/api/models/search?q=${encodeURIComponent(query)}`,
+    60000,
+  );
+  return { families: result.results, hubModels: result.hubResults ?? [] };
 }
 
 export async function getImageCatalog(): Promise<ImageCatalogResponse> {
-  try {
-    return await fetchJson<ImageCatalogResponse>("/api/images/catalog", 25000);
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const families = mockImageCatalog.map((family) => ({
-      ...family,
-      variants: family.variants.map((variant) => ({
-        ...variant,
-        source: "curated" as const,
-        familyName: family.name,
-        availableLocally:
-          variant.availableLocally ||
-          mockImageDownloadState[variant.repo]?.state === "completed",
-      })),
-    }));
-    const latest: ImageModelVariant[] = [];
-    return { families, latest };
-  }
+  return await fetchJson<ImageCatalogResponse>("/api/images/catalog", 25000);
 }
 
 export async function getImageOutputs(): Promise<ImageOutputArtifact[]> {
-  try {
-    const result = await fetchJson<{ outputs: ImageOutputArtifact[] }>("/api/images/outputs");
-    return result.outputs;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    return mockImageOutputState;
-  }
+  const result = await fetchJson<{ outputs: ImageOutputArtifact[] }>("/api/images/outputs");
+  return result.outputs;
 }
 
 export async function getImageRuntime(): Promise<ImageRuntimeStatus> {
-  try {
-    const result = await fetchJson<{ runtime: ImageRuntimeStatus }>("/api/images/runtime");
-    return result.runtime;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    return mockImageRuntimeStatus;
-  }
+  const result = await fetchJson<{ runtime: ImageRuntimeStatus }>("/api/images/runtime");
+  return result.runtime;
 }
 
 export async function getCachePreview(options: {
@@ -322,10 +232,21 @@ export async function getCachePreview(options: {
     return await fetchJson<PreviewMetrics>(`/api/cache/preview?${search.toString()}`);
   } catch {
     return {
-      ...mockWorkspace.preview,
-      ...options,
-      summary:
-        "The live preview fell back to local mock values. Start the FastAPI sidecar to replace these with machine-specific estimates.",
+      bits: options.bits,
+      fp16Layers: options.fp16Layers,
+      numLayers: options.numLayers,
+      numHeads: options.numHeads,
+      hiddenSize: options.hiddenSize,
+      contextTokens: options.contextTokens,
+      paramsB: options.paramsB,
+      baselineCacheGb: 0,
+      optimizedCacheGb: 0,
+      compressionRatio: 0,
+      estimatedTokS: 0,
+      speedRatio: 0,
+      qualityPercent: 0,
+      diskSizeGb: 0,
+      summary: "Cache preview unavailable \u2014 connect the backend to calculate machine-specific estimates.",
     };
   }
 }
@@ -538,154 +459,46 @@ export async function deleteModelDownload(repo: string): Promise<DeleteDownloadR
 }
 
 export async function downloadImageModel(repo: string): Promise<DownloadStatus> {
-  try {
-    const result = await postJson<{ download: DownloadStatus }>("/api/images/download", { repo });
-    return result.download;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const download: DownloadStatus = {
-      repo,
-      state: "completed",
-      progress: 1,
-      downloadedGb: 0,
-      totalGb: 0,
-      error: null,
-    };
-    mockImageDownloadState = { ...mockImageDownloadState, [repo]: download };
-    return download;
-  }
+  const result = await postJson<{ download: DownloadStatus }>("/api/images/download", { repo });
+  return result.download;
 }
 
 export async function getImageDownloadStatus(): Promise<DownloadStatus[]> {
-  try {
-    const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/images/download/status");
-    return result.downloads;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    return Object.values(mockImageDownloadState);
-  }
+  const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/images/download/status");
+  return result.downloads;
 }
 
 export async function cancelImageDownload(repo: string): Promise<DownloadStatus> {
-  try {
-    const result = await postJson<{ download: DownloadStatus }>("/api/images/download/cancel", { repo });
-    return result.download;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const existing = mockImageDownloadState[repo];
-    const download: DownloadStatus = {
-      repo,
-      state: "cancelled",
-      progress: existing?.progress ?? 0,
-      downloadedGb: existing?.downloadedGb ?? 0,
-      totalGb: existing?.totalGb ?? null,
-      error: null,
-    };
-    mockImageDownloadState = { ...mockImageDownloadState, [repo]: download };
-    return download;
-  }
+  const result = await postJson<{ download: DownloadStatus }>("/api/images/download/cancel", { repo });
+  return result.download;
 }
 
 export async function deleteImageDownload(repo: string): Promise<DeleteDownloadResult> {
-  try {
-    const result = await postJson<{ result: DeleteDownloadResult }>("/api/images/download/delete", { repo });
-    return result.result;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const exists = repo in mockImageDownloadState;
-    if (exists) {
-      const next = { ...mockImageDownloadState };
-      delete next[repo];
-      mockImageDownloadState = next;
-    }
-    return {
-      repo,
-      state: exists ? "deleted" : "not_found",
-    };
-  }
+  const result = await postJson<{ result: DeleteDownloadResult }>("/api/images/download/delete", { repo });
+  return result.result;
 }
 
 export async function preloadImageModel(modelId: string): Promise<ImageRuntimeStatus> {
-  try {
-    const result = await postJson<{ runtime: ImageRuntimeStatus }>("/api/images/preload", { modelId }, null);
-    return result.runtime;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const model =
-      mockImageCatalog.flatMap((family) => family.variants).find((variant) => variant.id === modelId) ??
-      mockImageCatalog[0]?.variants[0];
-    mockImageRuntimeStatus.loadedModelRepo = model?.repo ?? null;
-    return { ...mockImageRuntimeStatus };
-  }
+  const result = await postJson<{ runtime: ImageRuntimeStatus }>("/api/images/preload", { modelId }, null);
+  return result.runtime;
 }
 
 export async function unloadImageModel(modelId?: string): Promise<ImageRuntimeStatus> {
-  try {
-    const result = await postJson<{ runtime: ImageRuntimeStatus }>(
-      "/api/images/unload",
-      modelId ? { modelId } : undefined,
-    );
-    return result.runtime;
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const model =
-      modelId
-        ? mockImageCatalog.flatMap((family) => family.variants).find((variant) => variant.id === modelId) ?? null
-        : null;
-    if (!modelId || mockImageRuntimeStatus.loadedModelRepo === model?.repo) {
-      mockImageRuntimeStatus.loadedModelRepo = null;
-    }
-    return { ...mockImageRuntimeStatus };
-  }
+  const result = await postJson<{ runtime: ImageRuntimeStatus }>(
+    "/api/images/unload",
+    modelId ? { modelId } : undefined,
+  );
+  return result.runtime;
 }
 
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
-  try {
-    return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    const model =
-      mockImageCatalog.flatMap((family) => family.variants).find((variant) => variant.id === payload.modelId) ??
-      mockImageCatalog[0]?.variants[0];
-    const batchSize = Math.max(1, Math.min(payload.batchSize ?? 1, 4));
-    const artifacts = Array.from({ length: batchSize }, (_, index) =>
-      createMockImageArtifact(payload, model?.name ?? "Image model", index),
-    );
-    mockImageOutputState = [...artifacts, ...mockImageOutputState].slice(0, 24);
-    mockImageRuntimeStatus.loadedModelRepo = model?.repo ?? null;
-    return { artifacts, outputs: mockImageOutputState, runtime: { ...mockImageRuntimeStatus } };
-  }
+  return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
 }
 
 export async function deleteImageOutput(artifactId: string): Promise<{ deleted: string; outputs: ImageOutputArtifact[] }> {
-  try {
-    return await deleteJson<{ deleted: string; outputs: ImageOutputArtifact[] }>(
-      `/api/images/outputs/${encodeURIComponent(artifactId)}`,
-    );
-  } catch (error) {
-    if (!canUseMockImageFallback()) {
-      throw error;
-    }
-    mockImageOutputState = mockImageOutputState.filter((artifact) => artifact.artifactId !== artifactId);
-    return {
-      deleted: artifactId,
-      outputs: mockImageOutputState,
-    };
-  }
+  return await deleteJson<{ deleted: string; outputs: ImageOutputArtifact[] }>(
+    `/api/images/outputs/${encodeURIComponent(artifactId)}`,
+  );
 }
 
 export async function convertModel(payload: ConvertModelPayload): Promise<ConvertModelResponse> {

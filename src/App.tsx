@@ -448,7 +448,7 @@ export default function App() {
   // Backend polling
   const isModelLoading = workspace.server.loading !== null;
   useEffect(() => {
-    const pollInterval = !backendOnline ? 2500 : isModelLoading ? 2000 : 10000;
+    const pollInterval = !backendOnline ? 2500 : isModelLoading ? 2000 : 5000;
     const interval = window.setInterval(() => {
       if ((busy || chatBusySessionId !== null) && !isModelLoading) return;
       void (async () => {
@@ -1612,7 +1612,21 @@ export default function App() {
                 try {
                   const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
                   await tauriInvoke("restart_backend_sidecar");
-                  await refreshWorkspace(activeChatId || undefined);
+                  // Backend may still be starting — retry until healthy.
+                  let online = await checkBackend();
+                  if (!online) {
+                    for (let i = 0; i < 5; i++) {
+                      await new Promise((r) => setTimeout(r, 2000));
+                      online = await checkBackend();
+                      if (online) break;
+                    }
+                  }
+                  if (online) {
+                    setBackendOnline(true);
+                    await refreshWorkspace(activeChatId || undefined);
+                  } else {
+                    setError("Backend did not come back online after restart.");
+                  }
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Failed to restart backend.");
                 } finally {

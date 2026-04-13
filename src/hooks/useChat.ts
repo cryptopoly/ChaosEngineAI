@@ -8,7 +8,6 @@ import {
   uploadSessionDocument,
   updateSession,
 } from "../api";
-import { mockWorkspace } from "../mockData";
 import {
   upsertSession,
   sortSessions,
@@ -49,8 +48,8 @@ export function useChat(
   loadedModelCacheLabel: string,
   refreshWorkspace: (preferredChatId?: string) => Promise<unknown>,
 ) {
-  const [activeChatId, setActiveChatId] = useState(mockWorkspace.chatSessions[0]?.id ?? "");
-  const [threadTitleDraft, setThreadTitleDraft] = useState(mockWorkspace.chatSessions[0]?.title ?? "");
+  const [activeChatId, setActiveChatId] = useState("");
+  const [threadTitleDraft, setThreadTitleDraft] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [chatBusySessionId, setChatBusySessionId] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<string[]>([]);

@@ -1,3 +1,7 @@
+/**
+ * Test-only fixtures. NOT imported by production code.
+ * Production hooks use empty defaults from src/defaults.ts instead.
+ */
 import type {
   ImageGenerationPayload,
   ImageModelFamily,

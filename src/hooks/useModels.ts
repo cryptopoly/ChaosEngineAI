@@ -8,7 +8,6 @@ import {
   listHubFiles,
 } from "../api";
 import type { DownloadStatus } from "../api";
-import { mockWorkspace } from "../mockData";
 import {
   defaultVariantForFamily,
   buildDownloadStatusMap,
@@ -30,17 +29,15 @@ export function useModels(
 ) {
   const [searchInput, setSearchInput] = useState("");
   const deferredSearch = useDeferredValue(searchInput);
-  const [searchResults, setSearchResults] = useState<ModelFamily[]>(mockWorkspace.featuredModels);
+  const [searchResults, setSearchResults] = useState<ModelFamily[]>([]);
   const [hubResults, setHubResults] = useState<HubModel[]>([]);
   const [expandedHubId, setExpandedHubId] = useState<string | null>(null);
   const [hubFileCache, setHubFileCache] = useState<Record<string, HubFileListResponse>>({});
   const [hubFileLoading, setHubFileLoading] = useState<Record<string, boolean>>({});
   const [hubFileError, setHubFileError] = useState<Record<string, string>>({});
   const [detailFamilyId, setDetailFamilyId] = useState<string | null>(null);
-  const [selectedFamilyId, setSelectedFamilyId] = useState(mockWorkspace.featuredModels[0]?.id ?? "");
-  const [selectedVariantId, setSelectedVariantId] = useState(
-    defaultVariantForFamily(mockWorkspace.featuredModels[0])?.id ?? "",
-  );
+  const [selectedFamilyId, setSelectedFamilyId] = useState("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
   const [expandedFamilyId, setExpandedFamilyId] = useState<string | null>(null);
   const [expandedVariantId, setExpandedVariantId] = useState<string | null>(null);
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadStatus>>({});

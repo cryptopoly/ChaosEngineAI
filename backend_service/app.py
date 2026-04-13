@@ -333,7 +333,7 @@ def _watch_parent_and_exit():
 
     def _watcher():
         while True:
-            time.sleep(2)
+            time.sleep(0.5)
             current_ppid = os.getppid()
             if current_ppid != initial_ppid or current_ppid == 1:
                 # Parent died — kill ourselves and any subprocess children

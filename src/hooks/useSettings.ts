@@ -9,7 +9,7 @@ import {
   installPipPackage,
   installSystemPackage,
 } from "../api";
-import { mockWorkspace } from "../mockData";
+import { emptyWorkspace, emptyLaunchPreferences, emptyPreview } from "../defaults";
 import {
   settingsDraftFromWorkspace,
   syncStoppedBackend,
@@ -37,18 +37,18 @@ export function useSettings(
   refreshWorkspace: (preferredChatId?: string) => Promise<unknown>,
   refreshImageData: () => Promise<void>,
 ) {
-  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(settingsDraftFromWorkspace(mockWorkspace.settings));
-  const [launchSettings, setLaunchSettings] = useState<LaunchPreferences>(mockWorkspace.settings.launchPreferences);
-  const [preview, setPreview] = useState<PreviewMetrics>(mockWorkspace.preview);
+  const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(settingsDraftFromWorkspace(emptyWorkspace.settings));
+  const [launchSettings, setLaunchSettings] = useState<LaunchPreferences>(emptyLaunchPreferences);
+  const [preview, setPreview] = useState<PreviewMetrics>(emptyPreview);
   const [previewControls, setPreviewControls] = useState({
-    bits: mockWorkspace.settings.launchPreferences.cacheBits,
-    fp16Layers: mockWorkspace.settings.launchPreferences.fp16Layers,
-    numLayers: mockWorkspace.preview.numLayers,
-    numHeads: mockWorkspace.preview.numHeads,
-    hiddenSize: mockWorkspace.preview.hiddenSize,
-    contextTokens: mockWorkspace.settings.launchPreferences.contextTokens,
-    paramsB: mockWorkspace.preview.paramsB,
-    strategy: mockWorkspace.settings.launchPreferences.cacheStrategy,
+    bits: emptyLaunchPreferences.cacheBits,
+    fp16Layers: emptyLaunchPreferences.fp16Layers,
+    numLayers: emptyPreview.numLayers,
+    numHeads: emptyPreview.numHeads,
+    hiddenSize: emptyPreview.hiddenSize,
+    contextTokens: emptyLaunchPreferences.contextTokens,
+    paramsB: emptyPreview.paramsB,
+    strategy: emptyLaunchPreferences.cacheStrategy,
   });
   const [dataDirRestartPrompt, setDataDirRestartPrompt] = useState<DataDirRestartPrompt | null>(null);
   const [newDirectoryLabel, setNewDirectoryLabel] = useState("");
@@ -289,7 +289,19 @@ export function useSettings(
         const runtimeInfo = await restartManagedBackend();
         if (!runtimeInfo) throw new Error("The desktop sidecar could not be restarted.");
         setTauriBackend(runtimeInfo);
-        if (!runtimeInfo.started) {
+        // The Rust side already waits BACKEND_START_TIMEOUT (12 s) for the
+        // port to respond, but on slow machines the backend may still be
+        // finishing FastAPI init.  Retry a few times before giving up.
+        let online = runtimeInfo.started;
+        if (!online) {
+          const { checkBackend } = await import("../api");
+          for (let i = 0; i < 5; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            online = await checkBackend();
+            if (online) break;
+          }
+        }
+        if (!online) {
           throw new Error(runtimeInfo.startupError ?? "The API service did not come back online.");
         }
         await refreshWorkspace(activeChatId || undefined);

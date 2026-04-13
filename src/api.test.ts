@@ -5,7 +5,6 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { isTauri } from "@tauri-apps/api/core";
 import { convertModel, generateChat, getWorkspace, loadModel } from "./api";
 import { mockWorkspace } from "./mockData";
 
@@ -31,17 +30,7 @@ afterEach(() => {
 });
 
 describe("desktop api helpers", () => {
-  it("falls back to mock workspace when the sidecar is unavailable", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
-
-    const result = await getWorkspace();
-
-    expect(result.runtime.engine).toBe(mockWorkspace.runtime.engine);
-    expect(result.featuredModels.length).toBeGreaterThan(0);
-  });
-
-  it("does not fall back to mock workspace inside the desktop app", async () => {
-    vi.mocked(isTauri).mockReturnValue(true);
+  it("throws when the sidecar is unavailable (no mock fallback)", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
 
     await expect(getWorkspace()).rejects.toThrow("offline");

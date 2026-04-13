@@ -5,12 +5,12 @@ import {
   getTauriBackendInfo,
 } from "../api";
 import { checkForUpdates } from "../updater";
-import { mockWorkspace } from "../mockData";
+import { emptyWorkspace } from "../defaults";
 import { settingsDraftFromWorkspace } from "../utils";
 import type { TauriBackendInfo, WorkspaceData } from "../types";
 
 export function useWorkspace() {
-  const [workspace, setWorkspace] = useState<WorkspaceData>(mockWorkspace);
+  const [workspace, setWorkspace] = useState<WorkspaceData>(emptyWorkspace);
   const [loading, setLoading] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
   const [tauriBackend, setTauriBackend] = useState<TauriBackendInfo | null>(null);

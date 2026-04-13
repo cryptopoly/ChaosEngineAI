@@ -472,10 +472,8 @@ export function useChat(
               chatSessions: current.chatSessions.map((s) => {
                 if (s.id !== streamingChatId) return s;
                 let msgs = [...s.messages];
+                // Remove the empty assistant placeholder, but keep the user message
                 if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].text) {
-                  msgs = msgs.slice(0, -1);
-                }
-                if (msgs.length > 0 && msgs[msgs.length - 1].role === "user" && msgs[msgs.length - 1].text === trimmed) {
                   msgs = msgs.slice(0, -1);
                 }
                 return { ...s, messages: msgs };
@@ -498,10 +496,8 @@ export function useChat(
           chatSessions: current.chatSessions.map((s) => {
             if (s.id !== sendingSessionId) return s;
             let msgs = [...s.messages];
+            // Remove the empty assistant placeholder, but keep the user message
             if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].text) {
-              msgs = msgs.slice(0, -1);
-            }
-            if (msgs.length > 0 && msgs[msgs.length - 1].role === "user" && msgs[msgs.length - 1].text === trimmed) {
               msgs = msgs.slice(0, -1);
             }
             return { ...s, messages: msgs };

@@ -9,10 +9,10 @@ const LAUNCH_PRESETS: Array<{
   hint: string;
   values: Partial<LaunchPreferences>;
 }> = [
-  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true } },
-  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 8192, fusedAttention: false, fitModelInMemory: true } },
-  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: true } },
-  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 2048, fusedAttention: true, fitModelInMemory: false } },
+  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
+  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
+  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
+  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
 ];
 
 const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string }> = {
@@ -134,15 +134,19 @@ export function RuntimeControls({
     if (selectedStrategy.bitRange != null && selectedStrategy.defaultBits != null) {
       const minBits = selectedStrategy.bitRange[0];
       const maxBits = selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1];
+      const midBits = selectedStrategy.defaultBits;
+      // Gradual steps: quality → balanced → speed → memory
       const bits =
         presetId === "quality" ? maxBits :
-        presetId === "memory" ? minBits :
-        selectedStrategy.defaultBits;
+        presetId === "balanced" ? Math.min(maxBits, Math.max(minBits, midBits + 1)) :
+        presetId === "speed" ? midBits :
+        minBits;
       onChange("cacheBits", bits);
       if (selectedStrategy.supportsFp16Layers) {
         const fp16 =
           presetId === "quality" ? 8 :
-          presetId === "balanced" ? 4 :
+          presetId === "balanced" ? 6 :
+          presetId === "speed" ? 2 :
           0;
         onChange("fp16Layers", fp16);
       }
@@ -158,9 +162,20 @@ export function RuntimeControls({
     onChange("cacheStrategy", strategy.id);
     if (strategy.defaultBits != null) {
       onChange("cacheBits", strategy.defaultBits);
+    } else {
+      onChange("cacheBits", 0);
     }
-    if (strategy.supportsFp16Layers && settings.fp16Layers === 0) {
-      onChange("fp16Layers", 4);
+    if (strategy.supportsFp16Layers) {
+      if (settings.fp16Layers === 0) onChange("fp16Layers", 4);
+    } else {
+      onChange("fp16Layers", 0);
+    }
+    // Re-apply the active preset with this strategy's parameters so the
+    // preview updates immediately (fixes stale preview after strategy switch).
+    const active = currentPreset;
+    if (active) {
+      // Defer so the strategy change propagates first
+      setTimeout(() => applyPreset(active), 0);
     }
   }
 

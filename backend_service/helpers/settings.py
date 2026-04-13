@@ -247,7 +247,7 @@ def _normalize_launch_preferences(payload: dict[str, Any] | None) -> dict[str, A
         payload["cacheBits"] = payload["turboQuantBits"]
 
     integer_fields = {
-        "contextTokens": (256, 262144),
+        "contextTokens": (256, 2097152),
         "maxTokens": (1, 32768),
         "cacheBits": (0, 8),
         "fp16Layers": (0, 16),

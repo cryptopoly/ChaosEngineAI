@@ -1098,7 +1098,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
         if not self.worker.is_alive():
             self.loaded_model = None
             raise RuntimeError(
-                "The MLX worker process was restarted and the model is no longer loaded. "
+                "The MLX worker process exited and the model is no longer loaded. "
                 "Please reload the model from My Models."
             )
 
@@ -1114,21 +1114,40 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["images"] = images
         if tools:
             payload["tools"] = tools
-        for response in self.worker.stream_request(payload):
-            chunk = response.get("chunk")
-            if chunk and chunk.get("text"):
-                yield StreamChunk(text=chunk["text"])
-            if response.get("done"):
-                result = response.get("result") or {}
-                yield StreamChunk(
-                    done=True,
-                    finish_reason=str(result.get("finishReason") or "stop"),
-                    prompt_tokens=int(result.get("promptTokens") or 0),
-                    completion_tokens=int(result.get("completionTokens") or 0),
-                    total_tokens=int(result.get("totalTokens") or 0),
-                    tok_s=float(result.get("tokS") or 0.0),
-                    runtime_note=str(result.get("runtimeNote") or self.loaded_model.runtimeNote),
-                )
+        try:
+            request_iter = self.worker.stream_request(payload)
+        except RuntimeError as exc:
+            if "No MLX model is loaded" in str(exc):
+                self.loaded_model = None
+                raise RuntimeError(
+                    "The MLX worker lost the loaded model. "
+                    "Please reload the model from My Models."
+                ) from exc
+            raise
+        try:
+            for response in request_iter:
+                chunk = response.get("chunk")
+                if chunk and chunk.get("text"):
+                    yield StreamChunk(text=chunk["text"])
+                if response.get("done"):
+                    result = response.get("result") or {}
+                    yield StreamChunk(
+                        done=True,
+                        finish_reason=str(result.get("finishReason") or "stop"),
+                        prompt_tokens=int(result.get("promptTokens") or 0),
+                        completion_tokens=int(result.get("completionTokens") or 0),
+                        total_tokens=int(result.get("totalTokens") or 0),
+                        tok_s=float(result.get("tokS") or 0.0),
+                        runtime_note=str(result.get("runtimeNote") or self.loaded_model.runtimeNote),
+                    )
+        except RuntimeError as exc:
+            if "No MLX model is loaded" in str(exc):
+                self.loaded_model = None
+                raise RuntimeError(
+                    "The MLX worker lost the loaded model. "
+                    "Please reload the model from My Models."
+                ) from exc
+            raise
 
     def eval_perplexity(
         self,

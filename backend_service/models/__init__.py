@@ -16,7 +16,7 @@ class LoadModelRequest(BaseModel):
     fp16Layers: int = Field(default=0, ge=0, le=16)
     fusedAttention: bool = False
     fitModelInMemory: bool = True
-    contextTokens: int = Field(default=8192, ge=256, le=262144)
+    contextTokens: int = Field(default=8192, ge=256, le=2097152)
 
 
 class ModelDirectoryRequest(BaseModel):
@@ -28,7 +28,7 @@ class ModelDirectoryRequest(BaseModel):
 
 
 class LaunchPreferencesRequest(BaseModel):
-    contextTokens: int = Field(default=8192, ge=256, le=262144)
+    contextTokens: int = Field(default=8192, ge=256, le=2097152)
     maxTokens: int = Field(default=4096, ge=1, le=32768)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     cacheStrategy: str = "native"
@@ -71,7 +71,7 @@ class GenerateRequest(BaseModel):
     fp16Layers: int | None = Field(default=None, ge=0, le=16)
     fusedAttention: bool | None = None
     fitModelInMemory: bool | None = None
-    contextTokens: int | None = Field(default=None, ge=256, le=262144)
+    contextTokens: int | None = Field(default=None, ge=256, le=2097152)
 
 
 class RemoteProviderRequest(BaseModel):
@@ -136,7 +136,7 @@ class BenchmarkRunRequest(BaseModel):
     fp16Layers: int = Field(default=0, ge=0, le=16)
     fusedAttention: bool = False
     fitModelInMemory: bool = True
-    contextTokens: int = Field(default=8192, ge=256, le=262144)
+    contextTokens: int = Field(default=8192, ge=256, le=2097152)
     maxTokens: int = Field(default=512, ge=32, le=32768)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     # Perplexity mode

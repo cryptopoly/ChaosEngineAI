@@ -215,6 +215,7 @@ export async function searchModels(query: string): Promise<SearchResults> {
   try {
     const result = await fetchJson<{ results: ModelFamily[]; hubResults?: HubModel[] }>(
       `/api/models/search?q=${encodeURIComponent(query)}`,
+      30000,
     );
     return { families: result.results, hubModels: result.hubResults ?? [] };
   } catch (error) {
@@ -377,7 +378,11 @@ export async function generateChatStream(payload: GeneratePayload, callbacks: St
       let detail = `Request failed with status ${response.status}`;
       try {
         const errorBody = await response.json();
-        if (errorBody?.detail) detail = String(errorBody.detail);
+        if (errorBody?.detail) {
+          detail = typeof errorBody.detail === "string"
+            ? errorBody.detail
+            : JSON.stringify(errorBody.detail);
+        }
       } catch { /* ignore */ }
       callbacks.onError(detail);
       return;
@@ -408,7 +413,10 @@ export async function generateChatStream(payload: GeneratePayload, callbacks: St
         try {
           const event = JSON.parse(jsonStr);
           if (event.error) {
-            callbacks.onError(event.error);
+            const errDetail = typeof event.error === "string"
+              ? event.error
+              : event.error?.detail ?? event.error?.message ?? JSON.stringify(event.error);
+            callbacks.onError(errDetail);
             return;
           }
           if (event.token) {

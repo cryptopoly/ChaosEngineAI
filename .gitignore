@@ -13,3 +13,4 @@ releases/
 src-tauri/gen/
 .env
 .env.local
+.claude

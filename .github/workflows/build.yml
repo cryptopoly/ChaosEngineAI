@@ -1,0 +1,235 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+  RUST_TOOLCHAIN: "stable"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm test
+      - name: Python tests
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -e ".[desktop,dev]"
+          python -m pytest tests/ -v --tb=short
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: aarch64
+            bundle_targets: app,dmg
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x86_64
+            bundle_targets: deb,appimage
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            bundle_targets: msi,nsis
+
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.os }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # ── Linux system dependencies ──────────────────────────────
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # ── Node.js ────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # ── Rust ───────────────────────────────────────────────────
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.os }}-
+
+      # ── Python + venv ──────────────────────────────────────────
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # See release.yml for the full explanation — cert must be in the
+      # keychain before beforeBundleCommand runs so stage-runtime.mjs can
+      # sign the embedded Python runtime for notarization.
+      - name: Import Apple certificate (macOS)
+        if: matrix.platform == 'darwin'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 20)"
+
+          echo "$CSC_LINK" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$RUNNER_TEMP/certificate.p12" \
+            -P "$CSC_KEY_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | xargs)
+
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep 'Developer ID Application' | head -1 | awk -F'"' '{print $2}')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No Developer ID Application identity found in keychain"
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+            exit 1
+          fi
+          echo "Resolved signing identity: $IDENTITY"
+          echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "CHAOSENGINE_APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
+      - name: Create Python venv (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+
+      - name: Create Python venv (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+
+      - name: Create Python venv (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          python -m venv .venv
+          .venv\Scripts\pip install --upgrade pip
+          .venv\Scripts\pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+
+      # ── Configure runtime staging ──────────────────────────────
+      - name: Set Python embed path (Unix)
+        if: matrix.platform != 'windows'
+        run: echo "CHAOSENGINE_EMBED_PYTHON_BIN=${{ github.workspace }}/.venv/bin/python3" >> $GITHUB_ENV
+
+      - name: Set Python embed path (Windows)
+        if: matrix.platform == 'windows'
+        run: echo "CHAOSENGINE_EMBED_PYTHON_BIN=${{ github.workspace }}\.venv\Scripts\python.exe" >> $env:GITHUB_ENV
+
+      # Use dev mode staging to skip llama.cpp binary requirement.
+      # To enable llama.cpp, build the binaries and set CHAOSENGINE_LLAMA_BIN_DIR.
+      - name: Override bundle command to dev mode staging
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.build.beforeBundleCommand = 'npm run stage:runtime';
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
+
+      # ── Build ──────────────────────────────────────────────────
+      - name: Build Tauri app (macOS, signed)
+        if: matrix.platform == 'darwin'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --bundles ${{ matrix.bundle_targets }} --ci
+
+      - name: Build Tauri app (Linux / Windows)
+        if: matrix.platform != 'darwin'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --bundles ${{ matrix.bundle_targets }}
+
+      # ── Upload artifacts ───────────────────────────────────────
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'darwin'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChaosEngineAI-macos
+          path: |
+            src-tauri/target/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/dmg/*.dmg
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChaosEngineAI-linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChaosEngineAI-windows
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe

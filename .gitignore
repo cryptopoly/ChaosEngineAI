@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+.DS_Store
+node_modules/
+src-tauri/target/
+src-tauri/resources/embedded/
+.runtime-stage/
+releases/
+src-tauri/gen/
+.env
+.env.local
+.claude

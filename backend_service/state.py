@@ -1096,6 +1096,18 @@ class ChaosEngineState:
             except Exception:
                 pass
 
+        # When speculative decoding is active, force native cache strategy
+        # because DFLASH manages its own KV caches with rollback, which
+        # conflicts with compression strategies.
+        effective_cache_strategy = request.cacheStrategy
+        effective_cache_bits = request.cacheBits
+        effective_fp16_layers = request.fp16Layers
+        speculative_decoding = getattr(request, "speculativeDecoding", False)
+        if speculative_decoding:
+            effective_cache_strategy = "native"
+            effective_cache_bits = 0
+            effective_fp16_layers = 0
+
         try:
             loaded = self.runtime.load_model(
                 model_ref=request.modelRef,
@@ -1104,12 +1116,13 @@ class ChaosEngineState:
                 backend=resolved_backend,
                 path=request.path,
                 runtime_target=runtime_target,
-                cache_strategy=request.cacheStrategy,
-                cache_bits=request.cacheBits,
-                fp16_layers=request.fp16Layers,
+                cache_strategy=effective_cache_strategy,
+                cache_bits=effective_cache_bits,
+                fp16_layers=effective_fp16_layers,
                 fused_attention=request.fusedAttention,
                 fit_model_in_memory=request.fitModelInMemory,
                 context_tokens=request.contextTokens,
+                speculative_decoding=speculative_decoding,
                 progress_callback=_on_load_progress,
             )
         except Exception:

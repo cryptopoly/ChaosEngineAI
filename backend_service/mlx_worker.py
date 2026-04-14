@@ -417,6 +417,8 @@ class WorkerState:
         self.fp16_layers = 0
         self.fused_attention = False
         self.context_tokens = 8192
+        self.speculative_decoding = False
+        self._dflash_generator = None  # DFlashGenerator instance when active
 
     def handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
         op = request.get("op")
@@ -444,6 +446,9 @@ class WorkerState:
         self.fp16_layers = int(request.get("fp16Layers", 0))
         self.fused_attention = bool(request.get("fusedAttention", False))
         self.context_tokens = int(request.get("contextTokens", 8192))
+        self.speculative_decoding = bool(request.get("speculativeDecoding", False))
+        dflash_draft_model = request.get("dflashDraftModel")
+        self._dflash_generator = None
 
         emit_progress("resolving", 5.0, f"Resolving model target: {target}")
 
@@ -564,6 +569,25 @@ class WorkerState:
             load_done.set()
             heartbeat_thread.join(timeout=0.5)
         emit_progress("ready", 95.0, "Finalising")
+
+        # Initialise DFLASH speculative decoding if requested
+        dflash_note = None
+        if self.speculative_decoding and dflash_draft_model:
+            try:
+                from dflash_mlx import DFlashGenerator
+                emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
+                self._dflash_generator = DFlashGenerator(
+                    target_model=local_path,
+                    draft_model=dflash_draft_model,
+                )
+                dflash_note = f"DFLASH active with draft {dflash_draft_model}."
+            except ImportError:
+                dflash_note = "dflash-mlx is not installed. Falling back to standard generation."
+                self.speculative_decoding = False
+            except Exception as exc:
+                dflash_note = f"DFLASH initialisation failed: {exc}. Falling back to standard generation."
+                self.speculative_decoding = False
+
         return {
             "resolvedTarget": target,
             "layerCount": len(getattr(self.model, "layers", [])),
@@ -572,11 +596,14 @@ class WorkerState:
                 "numAttentionHeads": (self.config or {}).get("num_attention_heads"),
                 "hiddenSize": (self.config or {}).get("hidden_size"),
             },
+            "note": dflash_note,
         }
 
     def unload_model(self) -> dict[str, Any]:
         self.model = None
         self.tokenizer = None
+        self._dflash_generator = None
+        self.speculative_decoding = False
         self.config = None
         import gc
         gc.collect()
@@ -608,10 +635,74 @@ class WorkerState:
                 f"so generation fell back to the model's default cache. ({exc})"
             )
 
+    def _generate_dflash(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Generate using DFLASH speculative decoding."""
+        # Build prompt text
+        system_prompt = request.get("systemPrompt")
+        tools_block = _format_tools_for_prompt(request.get("tools"))
+        if tools_block:
+            system_prompt = (tools_block + "\n\n" + (system_prompt or "")).strip()
+
+        prompt_text, prompt_note = _build_prompt_text(
+            self.tokenizer,
+            history=list(request.get("history") or []),
+            prompt=str(request.get("prompt") or ""),
+            system_prompt=system_prompt,
+        )
+
+        started = time.monotonic()
+        result = self._dflash_generator.generate(
+            prompt_text,
+            max_new_tokens=int(request.get("maxTokens") or 256),
+            temperature=float(request.get("temperature") or 0.0),
+        )
+        elapsed = time.monotonic() - started
+
+        text = _strip_thinking_tokens(result.text.strip()) if result.text else ""
+        if not text:
+            text = "Generation completed without decoded text."
+
+        metrics = getattr(result, "metrics", None) or {}
+        acceptance_rate = metrics.get("avg_acceptance_length") or metrics.get("acceptance_rate")
+        output_tokens = getattr(result, "output_tokens", 0) or len(text.split())
+        tok_s = round(output_tokens / max(elapsed, 1e-6), 1)
+
+        runtime_note = _merge_runtime_notes(
+            prompt_note,
+            f"DFLASH speculative decoding. Acceptance rate: {acceptance_rate:.1f} avg tokens." if acceptance_rate else "DFLASH speculative decoding.",
+        )
+
+        return {
+            "text": text,
+            "finishReason": "stop",
+            "promptTokens": 0,
+            "completionTokens": output_tokens,
+            "totalTokens": output_tokens,
+            "tokS": tok_s,
+            "promptTokS": 0.0,
+            "peakMemoryGb": 0.0,
+            "runtimeNote": runtime_note,
+            "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
+        }
+
     def generate(self, request: dict[str, Any]) -> dict[str, Any]:
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("No MLX model is loaded.")
 
+        # Use DFLASH if active
+        if self.speculative_decoding and self._dflash_generator is not None:
+            try:
+                return self._generate_dflash(request)
+            except Exception as exc:
+                # Fall back to standard generation on DFLASH failure
+                runtime_fallback_note = f"DFLASH generation failed ({exc}). Fell back to standard generation."
+                result = self._generate_standard(request)
+                result["runtimeNote"] = _merge_runtime_notes(result.get("runtimeNote"), runtime_fallback_note)
+                return result
+
+        return self._generate_standard(request)
+
+    def _generate_standard(self, request: dict[str, Any]) -> dict[str, Any]:
         from mlx_lm import stream_generate
         from mlx_lm.sample_utils import make_sampler
 
@@ -711,6 +802,32 @@ class WorkerState:
     def stream_generate(self, request: dict[str, Any]) -> None:
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("No MLX model is loaded.")
+
+        # DFLASH doesn't support token-level streaming natively, so emit
+        # the full result as a single chunk in the streaming protocol.
+        if self.speculative_decoding and self._dflash_generator is not None:
+            try:
+                result = self._generate_dflash(request)
+                if result.get("text"):
+                    _emit({"ok": True, "chunk": {"text": result["text"]}})
+                _emit({
+                    "ok": True,
+                    "done": True,
+                    "result": {
+                        "finishReason": result.get("finishReason", "stop"),
+                        "promptTokens": result.get("promptTokens", 0),
+                        "completionTokens": result.get("completionTokens", 0),
+                        "totalTokens": result.get("totalTokens", 0),
+                        "tokS": result.get("tokS", 0.0),
+                        "promptTokS": result.get("promptTokS", 0.0),
+                        "peakMemoryGb": result.get("peakMemoryGb", 0.0),
+                        "runtimeNote": result.get("runtimeNote"),
+                        "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
+                    },
+                })
+                return
+            except Exception:
+                pass  # Fall through to standard streaming
 
         from mlx_lm import stream_generate as mlx_stream_generate
         from mlx_lm.sample_utils import make_sampler

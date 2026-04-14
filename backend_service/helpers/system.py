@@ -349,6 +349,13 @@ def _build_system_snapshot(app_version: str, app_started_at: float) -> dict[str,
         from compression import registry
         return registry.available()
 
+    def _get_dflash_info():
+        try:
+            from dflash import availability_info
+            return availability_info()
+        except ImportError:
+            return {"available": False, "mlxAvailable": False, "vllmAvailable": False, "supportedModels": []}
+
     return {
         "platform": platform.system(),
         "arch": platform.machine(),
@@ -356,6 +363,7 @@ def _build_system_snapshot(app_version: str, app_started_at: float) -> dict[str,
         "backendLabel": _runtime_label(native),
         "appVersion": app_version,
         "availableCacheStrategies": _get_cache_strategies(),
+        "dflash": _get_dflash_info(),
         "vllmAvailable": native.get("vllmAvailable", False),
         "vllmVersion": native.get("vllmVersion"),
         "mlxAvailable": native["mlxAvailable"],

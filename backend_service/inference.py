@@ -614,6 +614,8 @@ class LoadedModelInfo:
     path: str | None = None
     runtimeTarget: str | None = None
     runtimeNote: str | None = None
+    speculativeDecoding: bool = False
+    dflashDraftModel: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -632,6 +634,8 @@ class LoadedModelInfo:
             "path": self.path,
             "runtimeTarget": self.runtimeTarget,
             "runtimeNote": self.runtimeNote,
+            "speculativeDecoding": self.speculativeDecoding,
+            "dflashDraftModel": self.dflashDraftModel,
         }
 
 
@@ -645,9 +649,10 @@ class GenerationResult:
     tokS: float
     responseSeconds: float
     runtimeNote: str | None = None
+    dflashAcceptanceRate: float | None = None
 
     def to_metrics(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "finishReason": self.finishReason,
             "promptTokens": self.promptTokens,
             "completionTokens": self.completionTokens,
@@ -656,6 +661,9 @@ class GenerationResult:
             "responseSeconds": self.responseSeconds,
             "runtimeNote": self.runtimeNote,
         }
+        if self.dflashAcceptanceRate is not None:
+            d["dflashAcceptanceRate"] = self.dflashAcceptanceRate
+        return d
 
 
 @dataclass
@@ -689,6 +697,7 @@ class BaseInferenceEngine:
         fused_attention: bool,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool = False,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         raise NotImplementedError
@@ -777,7 +786,8 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
     def load_model(
         self, *, model_ref, model_name, source, backend, path, runtime_target,
         cache_strategy, cache_bits, fp16_layers, fused_attention,
-        fit_model_in_memory, context_tokens, progress_callback=None,
+        fit_model_in_memory, context_tokens, speculative_decoding=False,
+        progress_callback=None,
     ) -> LoadedModelInfo:
         # The model_ref encodes the remote provider config: "remote:<base>|<key>|<model>"
         if not model_ref.startswith("remote:"):
@@ -1111,10 +1121,21 @@ class MLXWorkerEngine(BaseInferenceEngine):
         fused_attention: bool,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool = False,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         if not self.capabilities.mlxUsable:
             raise RuntimeError(self.capabilities.mlxMessage or "MLX is not available.")
+
+        # Resolve DFLASH draft model when speculative decoding is requested
+        draft_model: str | None = None
+        if speculative_decoding:
+            try:
+                from dflash import get_draft_model, is_mlx_available
+                if is_mlx_available():
+                    draft_model = get_draft_model(model_ref)
+            except ImportError:
+                pass
 
         target = runtime_target or path or model_ref
         result = self.worker.request_with_progress(
@@ -1126,6 +1147,8 @@ class MLXWorkerEngine(BaseInferenceEngine):
                 "fp16Layers": fp16_layers,
                 "fusedAttention": fused_attention,
                 "contextTokens": context_tokens,
+                "speculativeDecoding": speculative_decoding and draft_model is not None,
+                "dflashDraftModel": draft_model,
             },
             on_progress=progress_callback,
             timeout=MLX_LOAD_TIMEOUT_SECONDS,
@@ -1136,6 +1159,10 @@ class MLXWorkerEngine(BaseInferenceEngine):
         )
         if result.get("note"):
             runtime_note = f"{runtime_note} {result['note']}"
+        if speculative_decoding and draft_model:
+            runtime_note += f" DFLASH speculative decoding active (draft: {draft_model})."
+        elif speculative_decoding and not draft_model:
+            runtime_note += " DFLASH speculative decoding requested but no compatible draft model found."
 
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
@@ -1153,6 +1180,8 @@ class MLXWorkerEngine(BaseInferenceEngine):
             path=path,
             runtimeTarget=target,
             runtimeNote=runtime_note,
+            speculativeDecoding=speculative_decoding and draft_model is not None,
+            dflashDraftModel=draft_model,
         )
         return self.loaded_model
 
@@ -1216,6 +1245,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
             tokS=float(result.get("tokS") or 0.0),
             responseSeconds=round(float(result.get("responseSeconds") or elapsed), 2),
             runtimeNote=str(result.get("runtimeNote") or self.loaded_model.runtimeNote),
+            dflashAcceptanceRate=result.get("dflashAcceptanceRate"),
         )
 
     def stream_generate(
@@ -1484,6 +1514,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         fused_attention: bool,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool = False,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         if not self.capabilities.ggufAvailable:
@@ -1797,6 +1828,7 @@ class RuntimeController:
         fused_attention: bool,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool = False,
     ) -> str:
         target = runtime_target or path or model_ref or ""
         return json.dumps(
@@ -1808,6 +1840,7 @@ class RuntimeController:
                 "fusedAttention": fused_attention,
                 "fitModelInMemory": fit_model_in_memory,
                 "contextTokens": context_tokens,
+                "speculativeDecoding": speculative_decoding,
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -1825,6 +1858,7 @@ class RuntimeController:
             fused_attention=info.fusedAttention,
             fit_model_in_memory=info.fitModelInMemory,
             context_tokens=info.contextTokens,
+            speculative_decoding=info.speculativeDecoding,
         )
 
     @staticmethod
@@ -2100,6 +2134,7 @@ class RuntimeController:
         fused_attention: bool = False,
         fit_model_in_memory: bool = True,
         context_tokens: int = 8192,
+        speculative_decoding: bool = False,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         self.refresh_capabilities()
@@ -2141,6 +2176,7 @@ class RuntimeController:
             fused_attention=fused_attention,
             fit_model_in_memory=fit_model_in_memory,
             context_tokens=context_tokens,
+            speculative_decoding=speculative_decoding,
         )
         if pool_key in self._warm_pool:
             cached_engine, cached_info = self._warm_pool.pop(pool_key)
@@ -2178,6 +2214,7 @@ class RuntimeController:
                 fused_attention=fused_attention,
                 fit_model_in_memory=fit_model_in_memory,
                 context_tokens=context_tokens,
+                speculative_decoding=speculative_decoding,
                 progress_callback=_internal_progress,
             )
         except Exception:

@@ -676,6 +676,7 @@ export const mockWorkspace: WorkspaceData = {
       fusedAttention: false,
       cacheStrategy: "native",
       fitModelInMemory: true,
+      speculativeDecoding: false,
     },
   },
   chatSessions: [],

@@ -305,6 +305,7 @@ export default function App() {
         cacheStrategy: launchSettings.cacheStrategy,
         fitModelInMemory: launchSettings.fitModelInMemory,
         contextTokens: launchSettings.contextTokens,
+        speculativeDecoding: launchSettings.speculativeDecoding,
       };
 
       let loadSucceeded = false;
@@ -1454,6 +1455,7 @@ export default function App() {
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}

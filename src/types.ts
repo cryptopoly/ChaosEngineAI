@@ -43,6 +43,12 @@ export interface SystemStats {
   cpuUtilizationPercent: number;
   gpuUtilizationPercent: number | null;
   spareHeadroomGb: number;
+  dflash?: {
+    available: boolean;
+    mlxAvailable: boolean;
+    vllmAvailable: boolean;
+    supportedModels: string[];
+  };
   runningLlmProcesses: Array<{
     pid: number;
     name: string;
@@ -153,6 +159,7 @@ export interface LaunchPreferences {
   fusedAttention: boolean;
   cacheStrategy: string;
   fitModelInMemory: boolean;
+  speculativeDecoding: boolean;
 }
 
 export interface RemoteProvider {
@@ -291,6 +298,8 @@ export interface LoadedModel {
   path: string | null;
   runtimeTarget?: string | null;
   runtimeNote: string | null;
+  speculativeDecoding: boolean;
+  dflashDraftModel?: string | null;
 }
 
 export interface WarmModel {
@@ -337,6 +346,7 @@ export interface GenerationMetrics {
   tokS: number;
   responseSeconds?: number | null;
   runtimeNote: string | null;
+  dflashAcceptanceRate?: number | null;
   model?: string | null;
   modelRef?: string | null;
   backend?: string | null;
@@ -448,6 +458,7 @@ export interface LoadModelPayload {
   cacheStrategy?: string;
   fitModelInMemory?: boolean;
   contextTokens?: number;
+  speculativeDecoding?: boolean;
 }
 
 export interface CreateSessionResponse {
@@ -488,6 +499,7 @@ export interface GeneratePayload {
   cacheStrategy?: string;
   fitModelInMemory?: boolean;
   contextTokens?: number;
+  speculativeDecoding?: boolean;
   // Agent tool-use
   enableTools?: boolean;
   availableTools?: string[];
@@ -564,6 +576,7 @@ export interface BenchmarkRunPayload {
   fusedAttention: boolean;
   cacheStrategy: string;
   fitModelInMemory: boolean;
+  speculativeDecoding: boolean;
   contextTokens: number;
   maxTokens: number;
   temperature: number;

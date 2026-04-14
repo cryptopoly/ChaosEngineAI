@@ -67,6 +67,7 @@ class VLLMEngine(BaseInferenceEngine):
         fused_attention: bool,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool = False,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         try:
@@ -93,15 +94,35 @@ class VLLMEngine(BaseInferenceEngine):
         if progress_callback:
             progress_callback({"phase": "loading", "percent": 20.0, "message": f"Loading {target} via vLLM..."})
 
-        self._llm = LLM(
-            model=target,
-            max_model_len=context_tokens,
-            trust_remote_code=True,
-        )
+        # Resolve DFLASH speculative config when requested
+        draft_model: str | None = None
+        llm_kwargs: dict[str, Any] = {
+            "model": target,
+            "max_model_len": context_tokens,
+            "trust_remote_code": True,
+        }
+        if speculative_decoding:
+            try:
+                from dflash import get_draft_model, is_vllm_available as dflash_vllm_ok
+                if dflash_vllm_ok():
+                    draft_model = get_draft_model(model_ref)
+                    if draft_model:
+                        llm_kwargs["speculative_config"] = {
+                            "method": "dflash",
+                            "model": draft_model,
+                        }
+            except ImportError:
+                pass
+
+        self._llm = LLM(**llm_kwargs)
 
         version = _vllm_version() or "unknown"
         if runtime_note is None:
             runtime_note = f"Model loaded via vLLM {version}."
+        if speculative_decoding and draft_model:
+            runtime_note += f" DFLASH speculative decoding active (draft: {draft_model})."
+        elif speculative_decoding and not draft_model:
+            runtime_note += " DFLASH speculative decoding requested but no compatible draft model found."
 
         if progress_callback:
             progress_callback({"phase": "ready", "percent": 100.0, "message": "vLLM model ready."})
@@ -122,6 +143,8 @@ class VLLMEngine(BaseInferenceEngine):
             path=path,
             runtimeTarget=target,
             runtimeNote=runtime_note,
+            speculativeDecoding=speculative_decoding and draft_model is not None,
+            dflashDraftModel=draft_model,
         )
         return self.loaded_model
 

@@ -369,7 +369,7 @@ export function ChatTab({
                     <summary>
                       <span>Model details</span>
                       <small className="message-meta">
-                        {(message.metrics.model ?? activeChat.model) || "Unknown"} | {number(message.metrics.tokS)} tok/s | {number(message.metrics.responseSeconds ?? 0)} s
+                        {(message.metrics.model ?? activeChat.model) || "Unknown"} | {number(message.metrics.tokS)} tok/s{message.metrics.dflashAcceptanceRate != null ? ` | DFLASH ${number(message.metrics.dflashAcceptanceRate)} avg accepted` : ""} | {number(message.metrics.responseSeconds ?? 0)} s
                       </small>
                     </summary>
                     <div className="message-detail-grid">
@@ -401,6 +401,12 @@ export function ChatTab({
                         <span className="eyebrow">Decode speed</span>
                         <p>{number(message.metrics.tokS)} tok/s</p>
                       </div>
+                      {message.metrics.dflashAcceptanceRate != null ? (
+                        <div>
+                          <span className="eyebrow">DFLASH acceptance</span>
+                          <p>{number(message.metrics.dflashAcceptanceRate)} avg tokens</p>
+                        </div>
+                      ) : null}
                       <div>
                         <span className="eyebrow">Context</span>
                         <p>{message.metrics.contextTokens?.toLocaleString() ?? launchSettings.contextTokens.toLocaleString()}</p>

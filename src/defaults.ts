@@ -22,6 +22,7 @@ export const emptyLaunchPreferences: LaunchPreferences = {
   fusedAttention: false,
   cacheStrategy: "native",
   fitModelInMemory: true,
+  speculativeDecoding: false,
 };
 
 export const emptySettings: AppSettings = {

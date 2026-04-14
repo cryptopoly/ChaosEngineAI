@@ -123,6 +123,7 @@ class FakeRuntime:
         fused_attention: bool = False,
         fit_model_in_memory: bool = True,
         context_tokens: int = 8192,
+        speculative_decoding: bool = False,
         progress_callback=None,
     ) -> LoadedModelInfo:
         if callable(progress_callback):

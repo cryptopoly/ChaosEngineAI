@@ -18,6 +18,7 @@ export interface LaunchModalProps {
   availableMemoryGb: number;
   totalMemoryGb: number;
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
+  dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
   onPendingLaunchChange: (value: PendingLaunch | null | ((prev: PendingLaunch | null) => PendingLaunch | null)) => void;
   onLaunchModelSearchChange: (value: string) => void;
@@ -36,6 +37,7 @@ export function LaunchModal({
   availableMemoryGb,
   totalMemoryGb,
   availableCacheStrategies,
+  dflashInfo,
   installingPackage,
   onPendingLaunchChange,
   onLaunchModelSearchChange,
@@ -140,6 +142,7 @@ export function LaunchModal({
               availableCacheStrategies={availableCacheStrategies}
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
+              dflashInfo={dflashInfo}
               compact
             />
           </div>

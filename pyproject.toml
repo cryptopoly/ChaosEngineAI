@@ -27,6 +27,8 @@ triattention = ["triattention>=0.1.0", "vllm>=0.8.0"]
 rotorquant = ["turboquant>=0.2.0"]
 turboquant = ["turboquant-mlx>=0.2.0"]
 vllm = ["vllm>=0.8.0"]
+dflash-mlx = ["dflash-mlx>=0.1.0"]
+dflash = ["dflash>=0.1.0"]
 desktop = [
     "fastapi>=0.115.0",
     "huggingface-hub>=0.26.0",
@@ -44,4 +46,4 @@ images = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["backend_service*", "compression*"]
+include = ["backend_service*", "compression*", "dflash*"]

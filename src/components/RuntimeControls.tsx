@@ -92,6 +92,13 @@ interface CacheStrategyOption {
   availabilityReason?: string | null;
 }
 
+interface DFlashInfo {
+  available: boolean;
+  mlxAvailable: boolean;
+  vllmAvailable: boolean;
+  supportedModels: string[];
+}
+
 interface RuntimeControlsProps {
   settings: LaunchPreferences;
   onChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -106,6 +113,7 @@ interface RuntimeControlsProps {
   availableCacheStrategies?: CacheStrategyOption[];
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
+  dflashInfo?: DFlashInfo;
 }
 
 export function RuntimeControls({
@@ -122,12 +130,15 @@ export function RuntimeControls({
   availableCacheStrategies,
   onInstallPackage,
   installingPackage,
+  dflashInfo,
 }: RuntimeControlsProps) {
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
   const clampedContext = Math.max(contextMin, Math.min(settings.contextTokens, effectiveMaxContext));
   const contextStep = effectiveMaxContext >= 131072 ? 2048 : effectiveMaxContext >= 16384 ? 1024 : 256;
   const currentPreset = activePresetId(settings);
+  const dflashAvailable = dflashInfo?.available ?? false;
+  const specActive = settings.speculativeDecoding;
   const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
@@ -190,20 +201,21 @@ export function RuntimeControls({
 
   return (
     <>
-      <span className="eyebrow">Cache strategy</span>
+      <span className="eyebrow">Cache strategy {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> (locked to Native during speculative decoding)</small> : null}</span>
       <div className="cache-strategy-cards">
         {strategies.map((strategy) => {
           const info = STRATEGY_INFO[strategy.id];
-          const isSelected = settings.cacheStrategy === strategy.id;
+          const isSelected = specActive ? strategy.id === "native" : settings.cacheStrategy === strategy.id;
           const isExpanded = expandedInfo === strategy.id;
+          const isDisabled = !strategy.available || (specActive && strategy.id !== "native");
 
           return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${!strategy.available ? " cache-strategy-card--disabled" : ""}`}>
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`}>
               <div className="cache-strategy-card-header">
                 <button
                   type="button"
                   className="cache-strategy-card-select"
-                  disabled={!strategy.available}
+                  disabled={isDisabled}
                   onClick={() => selectStrategy(strategy)}
                 >
                   <span className={`cache-strategy-radio${isSelected ? " cache-strategy-radio--checked" : ""}`} />
@@ -347,6 +359,26 @@ export function RuntimeControls({
             onChange={(event) => onChange("fusedAttention", event.target.checked)}
           />
           Fused attention
+        </label>
+        <label className="check-row" title={dflashAvailable ? "Use DFLASH speculative decoding for 3-5x faster generation with zero quality loss. Requires a compatible draft model." : "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable speculative decoding."}>
+          <input
+            type="checkbox"
+            checked={settings.speculativeDecoding}
+            disabled={!dflashAvailable}
+            onChange={(event) => {
+              const enabled = event.target.checked;
+              onChange("speculativeDecoding", enabled);
+              if (enabled) {
+                onChange("cacheStrategy", "native");
+                onChange("cacheBits", 0);
+                onChange("fp16Layers", 0);
+              }
+            }}
+          />
+          Speculative decoding
+          {!dflashAvailable ? (
+            <span className="cache-strategy-badge cache-strategy-badge--install" style={{ marginLeft: 4, fontSize: "0.7em" }}>Install</span>
+          ) : null}
         </label>
       </div>
       {showPreview ? (

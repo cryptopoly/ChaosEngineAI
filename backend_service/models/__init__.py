@@ -17,6 +17,7 @@ class LoadModelRequest(BaseModel):
     fusedAttention: bool = False
     fitModelInMemory: bool = True
     contextTokens: int = Field(default=8192, ge=256, le=2097152)
+    speculativeDecoding: bool = False
     adapterPath: str | None = None
 
 
@@ -37,6 +38,7 @@ class LaunchPreferencesRequest(BaseModel):
     fp16Layers: int = Field(default=0, ge=0, le=16)
     fusedAttention: bool = False
     fitModelInMemory: bool = True
+    speculativeDecoding: bool = False
 
 
 class CreateSessionRequest(BaseModel):
@@ -75,6 +77,7 @@ class GenerateRequest(BaseModel):
     fusedAttention: bool | None = None
     fitModelInMemory: bool | None = None
     contextTokens: int | None = Field(default=None, ge=256, le=2097152)
+    speculativeDecoding: bool | None = None
     # Agent tool-use
     enableTools: bool = False
     availableTools: list[str] | None = None  # None = all registered tools
@@ -144,6 +147,7 @@ class BenchmarkRunRequest(BaseModel):
     fusedAttention: bool = False
     fitModelInMemory: bool = True
     contextTokens: int = Field(default=8192, ge=256, le=2097152)
+    speculativeDecoding: bool = False
     maxTokens: int = Field(default=512, ge=32, le=32768)
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     # Perplexity mode

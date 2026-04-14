@@ -25,6 +25,7 @@ export function useBenchmarks(
     fusedAttention: emptyWorkspace.settings.launchPreferences.fusedAttention,
     cacheStrategy: emptyWorkspace.settings.launchPreferences.cacheStrategy,
     fitModelInMemory: emptyWorkspace.settings.launchPreferences.fitModelInMemory,
+    speculativeDecoding: emptyWorkspace.settings.launchPreferences.speculativeDecoding,
     contextTokens: emptyWorkspace.settings.launchPreferences.contextTokens,
     maxTokens: 4096,
     temperature: 0.2,

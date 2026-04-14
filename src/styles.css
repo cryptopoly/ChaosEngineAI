@@ -1916,6 +1916,7 @@ select.text-input {
 }
 
 .check-row {
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 8px;
@@ -1924,6 +1925,12 @@ select.text-input {
 .check-row input[type="checkbox"] {
   margin: 0;
   accent-color: var(--accent);
+}
+
+.toggle-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* Launch modal */

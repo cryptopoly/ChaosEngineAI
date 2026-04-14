@@ -15,6 +15,8 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
+    "dflash-mlx": "dflash-mlx",
+    "dflash": "dflash",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {

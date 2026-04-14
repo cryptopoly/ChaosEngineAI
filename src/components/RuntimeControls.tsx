@@ -343,14 +343,14 @@ export function RuntimeControls({
         ) : null}
       </div>
 
-      <div className="toggle-row">
+      <div className="toggle-column">
         <label className="check-row">
           <input
             type="checkbox"
             checked={settings.fitModelInMemory}
             onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
           />
-          Fit in memory
+          <span>Fit in memory</span>
         </label>
         <label className="check-row">
           <input
@@ -358,28 +358,64 @@ export function RuntimeControls({
             checked={settings.fusedAttention}
             onChange={(event) => onChange("fusedAttention", event.target.checked)}
           />
-          Fused attention
+          <span>Fused attention</span>
         </label>
-        <label className="check-row" title={dflashAvailable ? "Use DFLASH speculative decoding for 3-5x faster generation with zero quality loss. Requires a compatible draft model." : "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable speculative decoding."}>
-          <input
-            type="checkbox"
-            checked={settings.speculativeDecoding}
-            disabled={!dflashAvailable}
-            onChange={(event) => {
-              const enabled = event.target.checked;
-              onChange("speculativeDecoding", enabled);
-              if (enabled) {
-                onChange("cacheStrategy", "native");
-                onChange("cacheBits", 0);
-                onChange("fp16Layers", 0);
-              }
-            }}
-          />
-          Speculative decoding
-          {!dflashAvailable ? (
-            <span className="cache-strategy-badge cache-strategy-badge--install" style={{ marginLeft: 4, fontSize: "0.7em" }}>Install</span>
+        <div className="check-row">
+          <label className="check-row" style={{ margin: 0 }}>
+            <input
+              type="checkbox"
+              checked={settings.speculativeDecoding}
+              disabled={!dflashAvailable}
+              onChange={(event) => {
+                const enabled = event.target.checked;
+                onChange("speculativeDecoding", enabled);
+                if (enabled) {
+                  onChange("cacheStrategy", "native");
+                  onChange("cacheBits", 0);
+                  onChange("fp16Layers", 0);
+                }
+              }}
+            />
+            <span>DFlash</span>
+          </label>
+          {!dflashAvailable && onInstallPackage ? (
+            <button
+              type="button"
+              className="cache-strategy-install-btn"
+              disabled={installingPackage != null}
+              onClick={() => onInstallPackage("dflash-mlx")}
+            >
+              {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
+            </button>
           ) : null}
-        </label>
+          <button
+            type="button"
+            className="cache-strategy-info-btn"
+            onClick={() => setExpandedInfo(expandedInfo === "dflash" ? null : "dflash")}
+            title="About DFlash speculative decoding"
+          >
+            i
+          </button>
+        </div>
+        {expandedInfo === "dflash" ? (
+          <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
+            <p>DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.</p>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">Requires:</span>
+              <span>Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.</span>
+            </div>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">Supported models:</span>
+              <span>Qwen3, Qwen3.5, Qwen3-Coder, LLaMA 3.1, gpt-oss families.</span>
+            </div>
+            {!dflashAvailable ? (
+              <div className="cache-strategy-install">
+                <span className="cache-strategy-meta-label">Install:</span>
+                <code>./.venv/bin/python3 -m pip install dflash-mlx</code>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       {showPreview ? (
         <PerformancePreview

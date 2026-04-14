@@ -340,6 +340,8 @@ export function useSettings(
       rotorquant: "turboquant",
       turboquant: "turboquant-mlx",
       triattention: "triattention",
+      "dflash-mlx": "dflash-mlx",
+      dflash: "dflash",
     };
     const pipName = pipPackageMap[strategyId];
     if (!pipName) {

@@ -1,0 +1,3 @@
+[submodule "vendor/ChaosEngine"]
+	path = vendor/ChaosEngine
+	url = https://github.com/Cryptopoly/ChaosEngine

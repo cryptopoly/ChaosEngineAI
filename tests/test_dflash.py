@@ -64,6 +64,28 @@ class DraftModelLookupTests(unittest.TestCase):
             self.assertEqual(result, expected_draft, f"Failed for target: {target}")
 
 
+class ModelResolutionTests(unittest.TestCase):
+    def test_resolve_dflash_target_prefers_canonical_repo(self):
+        from backend_service.model_resolution import resolve_dflash_target_ref
+
+        resolved = resolve_dflash_target_ref(
+            canonical_repo="mlx-community/Qwen3.5-9B-4bit",
+            path="/tmp/models--someone--else/snapshots/1234",
+            model_ref="Qwen 3.5 local copy",
+        )
+
+        self.assertEqual(resolved, "mlx-community/Qwen3.5-9B-4bit")
+
+    def test_infer_hf_repo_from_local_path_reads_snapshot_layout(self):
+        from backend_service.model_resolution import infer_hf_repo_from_local_path
+
+        resolved = infer_hf_repo_from_local_path(
+            "/Users/test/.cache/huggingface/hub/models--mlx-community--Qwen3.5-9B-4bit/snapshots/abcd"
+        )
+
+        self.assertEqual(resolved, "mlx-community/Qwen3.5-9B-4bit")
+
+
 class AvailabilityDetectionTests(unittest.TestCase):
     """Tests for DFLASH backend availability checks."""
 

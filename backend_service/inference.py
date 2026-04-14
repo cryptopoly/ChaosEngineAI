@@ -18,6 +18,12 @@ from threading import Lock, RLock, Thread
 from collections.abc import Callable, Iterator
 from typing import Any
 
+from backend_service.reasoning_split import (
+    ThinkingStreamResult,
+    ThinkingTokenFilter,
+    strip_thinking_tokens as _strip_thinking_tokens,
+)
+from backend_service.model_resolution import resolve_dflash_target_ref
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MLX_TIMEOUT_SECONDS = 120.0
@@ -26,8 +32,6 @@ DEFAULT_MLX_TIMEOUT_SECONDS = 120.0
 MLX_LOAD_TIMEOUT_SECONDS = 1800.0
 DEFAULT_LLAMA_TIMEOUT_SECONDS = 120.0
 CAPABILITY_CACHE_TTL_SECONDS = 10.0
-_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
-_THINK_OPEN_RE = re.compile(r"<think>.*", re.DOTALL)
 _LLAMA_HELP_CACHE: dict[str, str] = {}
 _LLAMA_HELP_LOCK = RLock()
 
@@ -85,52 +89,6 @@ def _friendly_llama_error(logs: str | None) -> str:
             "using the GPU."
         )
     return logs
-
-
-def _strip_thinking_tokens(text: str) -> str:
-    text = _THINK_BLOCK_RE.sub("", text)
-    text = _THINK_OPEN_RE.sub("", text)
-    return text.strip()
-
-
-class ThinkingTokenFilter:
-    """Streaming filter that suppresses <think>...</think> content."""
-
-    def __init__(self) -> None:
-        self._inside_think = False
-        self._buffer = ""
-
-    def feed(self, text: str) -> str:
-        self._buffer += text
-        output = ""
-
-        while True:
-            if self._inside_think:
-                end_idx = self._buffer.find("</think>")
-                if end_idx == -1:
-                    self._buffer = ""
-                    break
-                self._buffer = self._buffer[end_idx + len("</think>"):]
-                self._inside_think = False
-            else:
-                start_idx = self._buffer.find("<think>")
-                if start_idx == -1:
-                    if len(self._buffer) > 7:
-                        output += self._buffer[:-7]
-                        self._buffer = self._buffer[-7:]
-                    break
-                output += self._buffer[:start_idx]
-                self._buffer = self._buffer[start_idx + len("<think>"):]
-                self._inside_think = True
-
-        return output
-
-    def flush(self) -> str:
-        if self._inside_think:
-            return ""
-        remaining = self._buffer
-        self._buffer = ""
-        return remaining
 
 
 class RepeatedLineGuard:
@@ -337,6 +295,25 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
             if gguf_files:
                 return str(gguf_files[0])
     return None
+
+
+def _is_local_target(candidate: str | None) -> bool:
+    if not candidate:
+        return False
+    expanded = os.path.expanduser(candidate)
+    path = Path(expanded)
+    return (
+        path.exists()
+        or expanded.startswith(("/", "~/", "./", "../"))
+        or bool(re.match(r"^[A-Za-z]:[\\/]", expanded))
+    )
+
+
+def _gguf_startup_fallback_note(strategy_name: str) -> str:
+    return (
+        f"GGUF startup failed with {strategy_name} cache, so ChaosEngineAI retried "
+        f"with the standard f16 KV cache."
+    )
 
 
 _MLX_LM_SUPPORTED_CACHE: tuple[str | None, frozenset[str] | None] = (None, None)
@@ -633,6 +610,7 @@ class LoadedModelInfo:
     fitModelInMemory: bool
     contextTokens: int
     loadedAt: str
+    canonicalRepo: str | None = None
     path: str | None = None
     runtimeTarget: str | None = None
     runtimeNote: str | None = None
@@ -644,6 +622,7 @@ class LoadedModelInfo:
         return {
             "ref": self.ref,
             "name": self.name,
+            "canonicalRepo": self.canonicalRepo,
             "backend": self.backend,
             "source": self.source,
             "engine": self.engine,
@@ -674,6 +653,11 @@ class GenerationResult:
     responseSeconds: float
     runtimeNote: str | None = None
     dflashAcceptanceRate: float | None = None
+    cache_strategy: str | None = None
+    cache_bits: int | None = None
+    fp16_layers: int | None = None
+    speculative_decoding: bool | None = None
+    tree_budget: int | None = None
 
     def to_metrics(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -693,12 +677,20 @@ class GenerationResult:
 @dataclass
 class StreamChunk:
     text: str | None = None
+    reasoning: str | None = None
+    reasoning_done: bool = False
     finish_reason: str | None = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
     tok_s: float = 0.0
     runtime_note: str | None = None
+    dflash_acceptance_rate: float | None = None
+    cache_strategy: str | None = None
+    cache_bits: int | None = None
+    fp16_layers: int | None = None
+    speculative_decoding: bool | None = None
+    tree_budget: int | None = None
     done: bool = False
 
 
@@ -711,6 +703,7 @@ class BaseInferenceEngine:
         *,
         model_ref: str,
         model_name: str,
+        canonical_repo: str | None,
         source: str,
         backend: str,
         path: str | None,
@@ -722,9 +715,21 @@ class BaseInferenceEngine:
         fit_model_in_memory: bool,
         context_tokens: int,
         speculative_decoding: bool = False,
+        tree_budget: int = 0,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         raise NotImplementedError
+
+    def update_profile(
+        self,
+        *,
+        canonical_repo: str | None,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+    ) -> LoadedModelInfo:
+        raise RuntimeError(f"{self.engine_name} does not support in-place profile updates.")
 
     def unload_model(self) -> None:
         raise NotImplementedError
@@ -808,9 +813,10 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
         self.remote_model: str = ""
 
     def load_model(
-        self, *, model_ref, model_name, source, backend, path, runtime_target,
+        self, *, model_ref, model_name, canonical_repo, source, backend, path, runtime_target,
         cache_strategy, cache_bits, fp16_layers, fused_attention,
         fit_model_in_memory, context_tokens, speculative_decoding=False,
+        tree_budget=0,
         progress_callback=None,
     ) -> LoadedModelInfo:
         # The model_ref encodes the remote provider config: "remote:<base>|<key>|<model>"
@@ -831,6 +837,7 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
             name=model_name or self.remote_model,
+            canonicalRepo=canonical_repo,
             source=source,
             backend="remote",
             engine=self.engine_name,
@@ -1010,6 +1017,17 @@ class JsonRpcProcess:
         """Return True if the worker process is running."""
         return self.process is not None and self.process.poll() is None
 
+    @staticmethod
+    def _exit_detail(stderr: str, return_code: int | None) -> str:
+        if stderr:
+            return stderr
+        if return_code == -9:
+            return (
+                "worker was SIGKILLed by the OS. This usually means memory pressure "
+                "during MLX model load or startup."
+            )
+        return f"worker exited with code {return_code}"
+
     def request(self, payload: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
         return self.request_with_progress(payload, on_progress=None, timeout=timeout)
 
@@ -1050,7 +1068,7 @@ class JsonRpcProcess:
                             stderr = ""
                     return_code = self.process.poll() if self.process else None
                     self.close()
-                    detail = stderr or f"worker exited with code {return_code}"
+                    detail = self._exit_detail(stderr, return_code)
                     raise RuntimeError(f"MLX worker exited unexpectedly: {detail}")
 
                 try:
@@ -1104,7 +1122,7 @@ class JsonRpcProcess:
                         stderr = ""
                 return_code = self.process.poll() if self.process else None
                 self.close()
-                detail = stderr or f"worker exited with code {return_code}"
+                detail = self._exit_detail(stderr, return_code)
                 raise RuntimeError(f"MLX worker exited unexpectedly: {detail}")
 
             try:
@@ -1133,11 +1151,46 @@ class MLXWorkerEngine(BaseInferenceEngine):
         )
         self.loaded_model: LoadedModelInfo | None = None
 
+    def _base_runtime_note(self) -> str:
+        return (
+            f"Using {Path(self.capabilities.pythonExecutable).name} with MLX {self.capabilities.mlxVersion or 'unknown'} "
+            f"and mlx-lm {self.capabilities.mlxLmVersion or 'unknown'}."
+        )
+
+    def _compose_runtime_note(
+        self,
+        *,
+        worker_note: str | None,
+        dflash_target_ref: str | None,
+        requested_speculative: bool,
+        actual_speculative: bool,
+        actual_draft_model: str | None,
+        actual_tree_budget: int,
+    ) -> str:
+        runtime_note = self._base_runtime_note()
+        if worker_note:
+            runtime_note = f"{runtime_note} {worker_note}"
+        elif actual_speculative and actual_draft_model:
+            if actual_tree_budget > 0:
+                runtime_note = (
+                    f"{runtime_note} DDTree speculative decoding active "
+                    f"(budget={actual_tree_budget}, draft: {actual_draft_model})."
+                )
+            else:
+                runtime_note = f"{runtime_note} DFLASH speculative decoding active (draft: {actual_draft_model})."
+        elif requested_speculative:
+            resolved_ref = dflash_target_ref or (self.loaded_model.ref if self.loaded_model else None) or "unknown target"
+            runtime_note = (
+                f"{runtime_note} DFLASH unavailable for '{resolved_ref}': no compatible draft model is registered."
+            )
+        return runtime_note
+
     def load_model(
         self,
         *,
         model_ref: str,
         model_name: str,
+        canonical_repo: str | None,
         source: str,
         backend: str,
         path: str | None,
@@ -1157,11 +1210,16 @@ class MLXWorkerEngine(BaseInferenceEngine):
 
         # Resolve DFLASH draft model when speculative decoding is requested
         draft_model: str | None = None
+        dflash_target_ref = resolve_dflash_target_ref(
+            canonical_repo=canonical_repo,
+            path=path,
+            model_ref=model_ref,
+        )
         if speculative_decoding:
             try:
                 from dflash import get_draft_model, is_mlx_available
                 if is_mlx_available():
-                    draft_model = get_draft_model(model_ref)
+                    draft_model = get_draft_model(dflash_target_ref or model_ref)
             except ImportError:
                 pass
 
@@ -1182,16 +1240,27 @@ class MLXWorkerEngine(BaseInferenceEngine):
             on_progress=progress_callback,
             timeout=MLX_LOAD_TIMEOUT_SECONDS,
         )
-        runtime_note = (
-            f"Using {Path(self.capabilities.pythonExecutable).name} with MLX {self.capabilities.mlxVersion or 'unknown'} "
-            f"and mlx-lm {self.capabilities.mlxLmVersion or 'unknown'}."
+        actual_cache_strategy = str(result.get("cacheStrategy") or cache_strategy)
+        actual_cache_bits = int(result.get("cacheBits") if result.get("cacheBits") is not None else cache_bits)
+        actual_fp16_layers = int(result.get("fp16Layers") if result.get("fp16Layers") is not None else fp16_layers)
+        actual_fused_attention = bool(
+            result.get("fusedAttention") if result.get("fusedAttention") is not None else fused_attention
         )
-        if result.get("note"):
-            runtime_note = f"{runtime_note} {result['note']}"
-        if speculative_decoding and draft_model:
-            runtime_note += f" DFLASH speculative decoding active (draft: {draft_model})."
-        elif speculative_decoding and not draft_model:
-            runtime_note += " DFLASH speculative decoding requested but no compatible draft model found."
+        actual_speculative = bool(result.get("speculativeDecoding"))
+        actual_tree_budget = int(result.get("treeBudget") or 0)
+        actual_draft_model = (
+            str(result.get("dflashDraftModel"))
+            if result.get("dflashDraftModel")
+            else (draft_model if actual_speculative else None)
+        )
+        runtime_note = self._compose_runtime_note(
+            worker_note=str(result.get("note") or "").strip() or None,
+            dflash_target_ref=dflash_target_ref,
+            requested_speculative=speculative_decoding,
+            actual_speculative=actual_speculative,
+            actual_draft_model=actual_draft_model,
+            actual_tree_budget=actual_tree_budget,
+        )
 
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
@@ -1199,19 +1268,73 @@ class MLXWorkerEngine(BaseInferenceEngine):
             backend=backend,
             source=source,
             engine=self.engine_name,
-            cacheStrategy=cache_strategy,
-            cacheBits=cache_bits,
-            fp16Layers=fp16_layers,
-            fusedAttention=fused_attention,
+            cacheStrategy=actual_cache_strategy,
+            cacheBits=actual_cache_bits,
+            fp16Layers=actual_fp16_layers,
+            fusedAttention=actual_fused_attention,
             fitModelInMemory=fit_model_in_memory,
             contextTokens=context_tokens,
             loadedAt=_now_label(),
+            canonicalRepo=canonical_repo,
             path=path,
             runtimeTarget=target,
             runtimeNote=runtime_note,
-            speculativeDecoding=speculative_decoding and draft_model is not None,
-            dflashDraftModel=draft_model,
-            treeBudget=tree_budget if speculative_decoding and draft_model else 0,
+            speculativeDecoding=actual_speculative,
+            dflashDraftModel=actual_draft_model,
+            treeBudget=actual_tree_budget,
+        )
+        return self.loaded_model
+
+    def update_profile(
+        self,
+        *,
+        canonical_repo: str | None,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+    ) -> LoadedModelInfo:
+        if self.loaded_model is None:
+            raise RuntimeError("No MLX model is loaded.")
+        if not self.worker.is_alive():
+            self.loaded_model = None
+            raise RuntimeError(
+                "The MLX worker process exited and the model is no longer loaded. "
+                "Please reload the model from My Models."
+            )
+
+        result = self.worker.request_with_progress(
+            {
+                "op": "update_profile",
+                "cacheStrategy": cache_strategy,
+                "cacheBits": cache_bits,
+                "fp16Layers": fp16_layers,
+                "fusedAttention": fused_attention,
+            },
+            on_progress=None,
+            timeout=DEFAULT_MLX_TIMEOUT_SECONDS,
+        )
+
+        self.loaded_model.cacheStrategy = str(result.get("cacheStrategy") or cache_strategy)
+        self.loaded_model.cacheBits = int(result.get("cacheBits") if result.get("cacheBits") is not None else cache_bits)
+        self.loaded_model.fp16Layers = int(result.get("fp16Layers") if result.get("fp16Layers") is not None else fp16_layers)
+        self.loaded_model.fusedAttention = bool(
+            result.get("fusedAttention") if result.get("fusedAttention") is not None else fused_attention
+        )
+        if canonical_repo is not None:
+            self.loaded_model.canonicalRepo = canonical_repo
+        dflash_target_ref = resolve_dflash_target_ref(
+            canonical_repo=self.loaded_model.canonicalRepo,
+            path=self.loaded_model.path,
+            model_ref=self.loaded_model.ref,
+        )
+        self.loaded_model.runtimeNote = self._compose_runtime_note(
+            worker_note=str(result.get("note") or "").strip() or None,
+            dflash_target_ref=dflash_target_ref,
+            requested_speculative=self.loaded_model.speculativeDecoding,
+            actual_speculative=self.loaded_model.speculativeDecoding,
+            actual_draft_model=self.loaded_model.dflashDraftModel,
+            actual_tree_budget=self.loaded_model.treeBudget,
         )
         return self.loaded_model
 
@@ -1275,6 +1398,15 @@ class MLXWorkerEngine(BaseInferenceEngine):
             responseSeconds=round(float(result.get("responseSeconds") or elapsed), 2),
             runtimeNote=str(result.get("runtimeNote") or self.loaded_model.runtimeNote),
             dflashAcceptanceRate=result.get("dflashAcceptanceRate"),
+            cache_strategy=str(result.get("cacheStrategy")) if result.get("cacheStrategy") is not None else None,
+            cache_bits=int(result.get("cacheBits")) if result.get("cacheBits") is not None else None,
+            fp16_layers=int(result.get("fp16Layers")) if result.get("fp16Layers") is not None else None,
+            speculative_decoding=(
+                bool(result.get("speculativeDecoding"))
+                if result.get("speculativeDecoding") is not None
+                else None
+            ),
+            tree_budget=int(result.get("treeBudget")) if result.get("treeBudget") is not None else None,
         )
 
     def stream_generate(
@@ -1322,8 +1454,13 @@ class MLXWorkerEngine(BaseInferenceEngine):
         try:
             for response in request_iter:
                 chunk = response.get("chunk")
-                if chunk and chunk.get("text"):
-                    yield StreamChunk(text=chunk["text"])
+                if chunk:
+                    if chunk.get("reasoning"):
+                        yield StreamChunk(reasoning=chunk["reasoning"])
+                    if chunk.get("reasoningDone"):
+                        yield StreamChunk(reasoning_done=True)
+                    if chunk.get("text"):
+                        yield StreamChunk(text=chunk["text"])
                 if response.get("done"):
                     result = response.get("result") or {}
                     yield StreamChunk(
@@ -1334,6 +1471,16 @@ class MLXWorkerEngine(BaseInferenceEngine):
                         total_tokens=int(result.get("totalTokens") or 0),
                         tok_s=float(result.get("tokS") or 0.0),
                         runtime_note=str(result.get("runtimeNote") or self.loaded_model.runtimeNote),
+                        dflash_acceptance_rate=result.get("dflashAcceptanceRate"),
+                        cache_strategy=str(result.get("cacheStrategy")) if result.get("cacheStrategy") is not None else None,
+                        cache_bits=int(result.get("cacheBits")) if result.get("cacheBits") is not None else None,
+                        fp16_layers=int(result.get("fp16Layers")) if result.get("fp16Layers") is not None else None,
+                        speculative_decoding=(
+                            bool(result.get("speculativeDecoding"))
+                            if result.get("speculativeDecoding") is not None
+                            else None
+                        ),
+                        tree_budget=int(result.get("treeBudget")) if result.get("treeBudget") is not None else None,
                     )
         except RuntimeError as exc:
             if "No MLX model is loaded" in str(exc):
@@ -1533,6 +1680,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         *,
         model_ref: str,
         model_name: str,
+        canonical_repo: str | None,
         source: str,
         backend: str,
         path: str | None,
@@ -1544,12 +1692,13 @@ class LlamaCppEngine(BaseInferenceEngine):
         fit_model_in_memory: bool,
         context_tokens: int,
         speculative_decoding: bool = False,
+        tree_budget: int = 0,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         if not self.capabilities.ggufAvailable:
             raise RuntimeError("llama.cpp support is unavailable on this machine.")
 
-        if path or runtime_target:
+        if _is_local_target(path) or _is_local_target(runtime_target):
             resolved_preflight = _resolve_gguf_path(path, runtime_target)
             if resolved_preflight is None:
                 raise RuntimeError(
@@ -1562,6 +1711,8 @@ class LlamaCppEngine(BaseInferenceEngine):
         runtime_note = None
         actual_strategy = cache_strategy
         actual_fit = fit_model_in_memory
+        from compression import registry as _strategy_registry
+        failed_strategy_name: str | None = None
 
         # Try the requested strategy first, then fall back to native.
         attempts: list[tuple[str, bool, bool]] = [(cache_strategy, fit_model_in_memory, False)]
@@ -1570,6 +1721,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         last_error: str | None = None
 
         for strategy_id, fit_enabled, is_fallback in attempts:
+            strategy = _strategy_registry.get(strategy_id) or _strategy_registry.default()
             command, attempt_note = self._build_command(
                 path=path,
                 runtime_target=runtime_target,
@@ -1597,27 +1749,36 @@ class LlamaCppEngine(BaseInferenceEngine):
                 runtime_note = attempt_note
                 actual_strategy = strategy_id
                 actual_fit = fit_enabled
+                if is_fallback and failed_strategy_name is not None:
+                    runtime_note = _gguf_startup_fallback_note(failed_strategy_name)
                 break
             except RuntimeError as exc:
                 last_error = str(exc)
+                if not is_fallback:
+                    failed_strategy_name = strategy.name
                 self._cleanup_process()
         else:
             raise RuntimeError(last_error or "llama.cpp server failed to start.")
 
-        from compression import registry as _strategy_registry
         strat = _strategy_registry.get(actual_strategy) or _strategy_registry.default()
+        actual_cache_bits = cache_bits if actual_strategy != "native" else 0
+        actual_fp16_layers = fp16_layers if actual_strategy != "native" else 0
         if runtime_note is None:
-            runtime_note = f"GGUF generation is running through the local llama.cpp server with {strat.label(cache_bits, fp16_layers)} cache."
+            runtime_note = (
+                f"GGUF generation is running through the local llama.cpp server with "
+                f"{strat.label(actual_cache_bits, actual_fp16_layers)} cache."
+            )
 
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
             name=model_name,
+            canonicalRepo=canonical_repo,
             backend=backend,
             source=source,
             engine=self.engine_name,
             cacheStrategy=actual_strategy,
-            cacheBits=cache_bits,
-            fp16Layers=fp16_layers,
+            cacheBits=actual_cache_bits,
+            fp16Layers=actual_fp16_layers,
             fusedAttention=fused_attention,
             fitModelInMemory=actual_fit,
             contextTokens=context_tokens,
@@ -1786,14 +1947,17 @@ class LlamaCppEngine(BaseInferenceEngine):
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
                 if content:
-                    filtered = think_filter.feed(str(content))
-                    if not filtered:
-                        continue
-                    runaway_guard.feed(filtered)
-                    if first_token_time is None:
-                        first_token_time = time.perf_counter()
-                    completion_tokens += 1
-                    yield StreamChunk(text=filtered)
+                    split = think_filter.feed(str(content))
+                    if split.reasoning:
+                        yield StreamChunk(reasoning=split.reasoning)
+                    if split.reasoning_done:
+                        yield StreamChunk(reasoning_done=True)
+                    if split.text:
+                        runaway_guard.feed(split.text)
+                        if first_token_time is None:
+                            first_token_time = time.perf_counter()
+                        completion_tokens += 1
+                        yield StreamChunk(text=split.text)
                 fr = choice.get("finish_reason")
                 if fr:
                     finish_reason = fr
@@ -1802,11 +1966,15 @@ class LlamaCppEngine(BaseInferenceEngine):
                     prompt_tokens = int(usage.get("prompt_tokens") or 0)
                     completion_tokens = int(usage.get("completion_tokens") or completion_tokens)
             flushed = think_filter.flush()
-            if flushed:
-                runaway_guard.feed(flushed)
+            if flushed.reasoning:
+                yield StreamChunk(reasoning=flushed.reasoning)
+            if flushed.reasoning_done:
+                yield StreamChunk(reasoning_done=True)
+            if flushed.text:
+                runaway_guard.feed(flushed.text)
                 if first_token_time is None:
                     first_token_time = time.perf_counter()
-                yield StreamChunk(text=flushed)
+                yield StreamChunk(text=flushed.text)
             runaway_guard.flush()
         except RuntimeError as exc:
             runtime_note = _append_runtime_note(runtime_note, str(exc))
@@ -2154,6 +2322,7 @@ class RuntimeController:
         *,
         model_ref: str,
         model_name: str | None = None,
+        canonical_repo: str | None = None,
         source: str = "catalog",
         backend: str = "auto",
         path: str | None = None,
@@ -2215,6 +2384,8 @@ class RuntimeController:
             self._park_active_engine_or_unload(requested_identity=requested_identity)
             self.engine = cached_engine
             self.loaded_model = cached_info
+            if canonical_repo is not None:
+                self.loaded_model.canonicalRepo = canonical_repo
             self.runtime_note = cached_info.runtimeNote
             self.prune_stale_backend_children()
             return cached_info
@@ -2235,6 +2406,7 @@ class RuntimeController:
             loaded = self.engine.load_model(
                 model_ref=model_ref,
                 model_name=resolved_name,
+                canonical_repo=canonical_repo,
                 source=source,
                 backend=self.engine.engine_name,
                 path=path,
@@ -2261,6 +2433,33 @@ class RuntimeController:
         self.runtime_note = loaded.runtimeNote
         self._loading_progress = None
         self._loading_log_tail = []
+        self.prune_stale_backend_children()
+        return loaded
+
+    def update_profile(
+        self,
+        *,
+        canonical_repo: str | None = None,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+    ) -> LoadedModelInfo:
+        if self.loaded_model is None or self.engine is None:
+            raise RuntimeError("No model is loaded.")
+        if not isinstance(self.engine, MLXWorkerEngine):
+            raise RuntimeError("In-place profile updates are only supported by the MLX runtime.")
+
+        loaded = self.engine.update_profile(
+            canonical_repo=canonical_repo,
+            cache_strategy=cache_strategy,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fused_attention=fused_attention,
+        )
+        self.loaded_model = loaded
+        self.runtime_note = loaded.runtimeNote
+        self._purge_warm_entries_for_identity(self._model_identity_for_loaded(loaded))
         self.prune_stale_backend_children()
         return loaded
 

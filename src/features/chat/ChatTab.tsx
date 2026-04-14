@@ -4,9 +4,22 @@ import { Panel } from "../../components/Panel";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { ToolCallCard } from "../../components/ToolCallCard";
 import { CitationBadge } from "../../components/CitationBadge";
+import { ReasoningPanel } from "../../components/ReasoningPanel";
 import type { ChatSession, ChatThinkingMode, ModelLoadingState, LaunchPreferences, WarmModel } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import { number } from "../../utils";
+import {
+  requestedCacheLabel,
+  requestedSpeculativeMode,
+  resolvedCacheBits,
+  resolvedCacheLabel,
+  resolvedCacheStrategy,
+  resolvedDraftModel,
+  resolvedFp16Layers,
+  resolvedSpeculativeMode,
+  resolvedTreeBudget,
+  runtimeOutcomeWarning,
+} from "./runtimeDetails";
 
 export interface ChatTabProps {
   sortedChatSessions: ChatSession[];
@@ -40,6 +53,7 @@ export interface ChatTabProps {
   onLoadModel: (payload: {
     modelRef: string;
     modelName?: string;
+    canonicalRepo?: string | null;
     source?: string;
     backend?: string;
     path?: string;
@@ -221,6 +235,7 @@ export function ChatTab({
                   void onLoadModel({
                     modelRef: activeChat.modelRef,
                     modelName: activeChat.model,
+                    canonicalRepo: activeChat.canonicalRepo,
                     source: activeChat.modelSource ?? "library",
                     backend: activeChat.modelBackend ?? "auto",
                     path: activeChat.modelPath ?? undefined,
@@ -252,6 +267,7 @@ export function ChatTab({
                   void onLoadModel({
                     modelRef: activeChat.modelRef,
                     modelName: activeChat.model,
+                    canonicalRepo: activeChat.canonicalRepo,
                     source: activeChat.modelSource ?? "library",
                     backend: activeChat.modelBackend ?? "auto",
                     path: activeChat.modelPath ?? undefined,
@@ -334,6 +350,11 @@ export function ChatTab({
           {activeChat?.messages.length ? (
             activeChat.messages.map((message, index) => {
               const isStreamingMessage = chatBusySessionId === activeChat?.id && index === activeChat.messages.length - 1 && !message.metrics;
+              const messageSpeculativeMode = message.metrics ? resolvedSpeculativeMode(message.metrics) : null;
+              const messageDraftModel = message.metrics ? resolvedDraftModel(message.metrics) : null;
+              const messageRequestedCache = message.metrics ? requestedCacheLabel(message.metrics) : null;
+              const messageRequestedSpeculativeMode = message.metrics ? requestedSpeculativeMode(message.metrics) : null;
+              const messageRuntimeWarning = message.metrics ? runtimeOutcomeWarning(message.metrics) : null;
               return (
               <div className={`message-bubble ${message.role}`} key={`${message.role}-${index}`}>
                 <div className="message-header">
@@ -382,6 +403,12 @@ export function ChatTab({
                   ) : null}
                 </div>
                 {message.role === "assistant" ? (
+                  <ReasoningPanel
+                    text={message.reasoning}
+                    streaming={isStreamingMessage && message.reasoningDone !== true}
+                  />
+                ) : null}
+                {message.role === "assistant" ? (
                   <div className={`markdown-content${isStreamingMessage ? " streaming-cursor" : ""}`}>
                     <Markdown>{message.text || "\u200B"}</Markdown>
                   </div>
@@ -403,7 +430,11 @@ export function ChatTab({
                     <summary>
                       <span>Model details</span>
                       <small className="message-meta">
-                        {(message.metrics.model ?? activeChat.model) || "Unknown"} | {number(message.metrics.tokS)} tok/s{message.metrics.dflashAcceptanceRate != null ? ` | DFLASH ${number(message.metrics.dflashAcceptanceRate)} avg accepted` : ""} | {number(message.metrics.responseSeconds ?? 0)} s
+                        {(message.metrics.model ?? activeChat.model) || "Unknown"} | {number(message.metrics.tokS)} tok/s
+                        {message.metrics.dflashAcceptanceRate != null ? ` | DFLASH ${number(message.metrics.dflashAcceptanceRate)} avg accepted` : ""}
+                        {messageSpeculativeMode && messageSpeculativeMode !== "Off" ? ` | ${messageSpeculativeMode}` : ""}
+                        {messageRuntimeWarning ? ` | ${messageRuntimeWarning}` : ""}
+                        {" | "}{number(message.metrics.responseSeconds ?? 0)} s
                       </small>
                     </summary>
                     <div className="message-detail-grid">
@@ -417,21 +448,19 @@ export function ChatTab({
                       </div>
                       <div>
                         <span className="eyebrow">Cache</span>
-                        <p>{message.metrics.cacheLabel ?? activeChat.cacheLabel}</p>
+                        <p>{resolvedCacheLabel(message.metrics)}</p>
                       </div>
                       <div>
                         <span className="eyebrow">Strategy</span>
-                        <p>{message.metrics.cacheStrategy ?? activeChat.cacheStrategy ?? "native"}</p>
+                        <p>{resolvedCacheStrategy(message.metrics)}</p>
                       </div>
                       <div>
                         <span className="eyebrow">Cache bits</span>
-                        <p>{(message.metrics.cacheBits ?? activeChat.cacheBits) != null
-                          ? `${message.metrics.cacheBits ?? activeChat.cacheBits}-bit`
-                          : "f16"}</p>
+                        <p>{resolvedCacheBits(message.metrics)}</p>
                       </div>
                       <div>
                         <span className="eyebrow">FP16 layers</span>
-                        <p>{message.metrics.fp16Layers ?? activeChat.fp16Layers ?? 0}</p>
+                        <p>{resolvedFp16Layers(message.metrics)}</p>
                       </div>
                       <div>
                         <span className="eyebrow">Backend</span>
@@ -453,16 +482,42 @@ export function ChatTab({
                         <span className="eyebrow">Decode speed</span>
                         <p>{number(message.metrics.tokS)} tok/s</p>
                       </div>
+                      <div>
+                        <span className="eyebrow">DFlash / DDTree</span>
+                        <p>{messageSpeculativeMode}</p>
+                      </div>
+                      {messageRequestedCache && messageRequestedCache !== resolvedCacheLabel(message.metrics) ? (
+                        <div>
+                          <span className="eyebrow">Requested cache</span>
+                          <p>{messageRequestedCache}</p>
+                        </div>
+                      ) : null}
+                      {messageRequestedSpeculativeMode && messageRequestedSpeculativeMode !== "Off" ? (
+                        <div>
+                          <span className="eyebrow">Requested DFlash / DDTree</span>
+                          <p>{messageRequestedSpeculativeMode}</p>
+                        </div>
+                      ) : null}
+                      {messageRuntimeWarning ? (
+                        <div>
+                          <span className="eyebrow">Runtime status</span>
+                          <p>{messageRuntimeWarning}</p>
+                        </div>
+                      ) : null}
+                      <div>
+                        <span className="eyebrow">Tree budget</span>
+                        <p>{resolvedTreeBudget(message.metrics)}</p>
+                      </div>
                       {message.metrics.dflashAcceptanceRate != null ? (
                         <div>
                           <span className="eyebrow">DFLASH acceptance</span>
                           <p>{number(message.metrics.dflashAcceptanceRate)} avg tokens</p>
                         </div>
                       ) : null}
-                      {message.metrics.speculativeDecoding ? (
+                      {messageDraftModel ? (
                         <div>
-                          <span className="eyebrow">Speculative decoding</span>
-                          <p>{message.metrics.dflashDraftModel?.split("/").pop() ?? "enabled"}</p>
+                          <span className="eyebrow">Draft model</span>
+                          <p>{messageDraftModel}</p>
                         </div>
                       ) : null}
                     </div>
@@ -477,6 +532,7 @@ export function ChatTab({
                         void onLoadModel({
                           modelRef: ref,
                           modelName: message.metrics!.model ?? activeChat?.model,
+                          canonicalRepo: message.metrics!.canonicalRepo ?? activeChat?.canonicalRepo ?? null,
                           source: message.metrics!.modelSource ?? activeChat?.modelSource ?? "library",
                           backend: message.metrics!.backend ?? activeChat?.modelBackend ?? "auto",
                           path: message.metrics!.modelPath ?? activeChat?.modelPath ?? undefined,

@@ -1,8 +1,7 @@
 """Multi-model comparison endpoint.
 
-Sends the same prompt to two models simultaneously and returns
-interleaved SSE streams with model tags so the frontend can render
-a side-by-side comparison view.
+Sends the same prompt to two models sequentially and returns SSE events
+tagged by model so the frontend can render a side-by-side comparison view.
 """
 
 from __future__ import annotations
@@ -16,14 +15,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 
-class CompareRequest(BaseModel):
-    prompt: str = Field(min_length=1)
-    modelRefA: str = Field(min_length=1)
-    modelRefB: str = Field(min_length=1)
-    systemPrompt: str | None = None
+class CompareLaunchSettings(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     maxTokens: int = Field(default=2048, ge=1, le=32768)
-    # Launch settings (shared for both models)
     cacheStrategy: str = "native"
     cacheBits: int = Field(default=0, ge=0, le=8)
     fp16Layers: int = Field(default=0, ge=0, le=16)
@@ -31,6 +25,24 @@ class CompareRequest(BaseModel):
     fitModelInMemory: bool = True
     contextTokens: int = Field(default=8192, ge=256, le=2097152)
     speculativeDecoding: bool = False
+    treeBudget: int = Field(default=0, ge=0, le=64)
+
+
+class CompareModelRequest(BaseModel):
+    modelRef: str = Field(min_length=1)
+    modelName: str | None = None
+    canonicalRepo: str | None = None
+    source: str = "catalog"
+    backend: str = "auto"
+    path: str | None = None
+    launch: CompareLaunchSettings = Field(default_factory=CompareLaunchSettings)
+
+
+class CompareRequest(BaseModel):
+    prompt: str = Field(min_length=1)
+    modelA: CompareModelRequest
+    modelB: CompareModelRequest
+    systemPrompt: str | None = None
 
 
 router = APIRouter()
@@ -52,35 +64,61 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
     def _sse_event(data: dict[str, Any]) -> str:
         return f"data: {json.dumps(data)}\n\n"
 
-    def _load_model(model_tag: str, model_ref: str):
-        """Load a model with the shared launch settings from the compare request.
+    def _applied_runtime_payload() -> dict[str, Any]:
+        loaded = state.runtime.loaded_model
+        if loaded is None:
+            return {}
+        cache_label = state._cache_label(
+            cache_strategy=str(loaded.cacheStrategy),
+            bits=int(loaded.cacheBits),
+            fp16_layers=int(loaded.fp16Layers),
+        )
+        parts = [cache_label]
+        if loaded.contextTokens:
+            parts.append(
+                f"{round(loaded.contextTokens / 1024)}K ctx"
+                if loaded.contextTokens >= 1024
+                else f"{loaded.contextTokens} ctx"
+            )
+        if loaded.speculativeDecoding:
+            spec_label = f"DDTree {loaded.treeBudget}" if loaded.treeBudget > 0 else "DFlash"
+            if loaded.dflashDraftModel:
+                spec_label += f" ({loaded.dflashDraftModel.split('/')[-1]})"
+            parts.append(spec_label)
+        return {
+            "appliedSummary": " · ".join(parts),
+            "runtimeNote": loaded.runtimeNote,
+        }
 
-        The *model_ref* may be either a HuggingFace repo id **or** a local
-        file-system path (the compare UI sends ``item.path || item.name``).
-        """
+    def _load_model(model: CompareModelRequest):
+        """Load a model with its own launch settings from the compare request."""
         from backend_service.models import LoadModelRequest
-        from pathlib import Path
 
-        is_path = "/" in model_ref and Path(model_ref).exists()
+        launch = model.launch
         req = LoadModelRequest(
-            modelRef=model_ref,
-            path=model_ref if is_path else None,
-            backend="auto",
-            cacheStrategy=body.cacheStrategy,
-            cacheBits=body.cacheBits,
-            fp16Layers=body.fp16Layers,
-            fusedAttention=body.fusedAttention,
-            fitModelInMemory=body.fitModelInMemory,
-            contextTokens=body.contextTokens,
-            speculativeDecoding=body.speculativeDecoding,
+            modelRef=model.modelRef,
+            modelName=model.modelName,
+            canonicalRepo=model.canonicalRepo,
+            source=model.source,
+            path=model.path,
+            backend=model.backend,
+            cacheStrategy=launch.cacheStrategy,
+            cacheBits=launch.cacheBits,
+            fp16Layers=launch.fp16Layers,
+            fusedAttention=launch.fusedAttention,
+            fitModelInMemory=launch.fitModelInMemory,
+            contextTokens=launch.contextTokens,
+            speculativeDecoding=launch.speculativeDecoding,
+            treeBudget=launch.treeBudget,
         )
         state.load_model(req)
 
     def _sse_stream():
         # --- Model A ---
-        yield _sse_event({"model": "a", "loading": True, "message": "Loading model A..."})
+        yield _sse_event({"model": "a", "loading": True, "message": f"Loading {body.modelA.modelName or body.modelA.modelRef}..."})
         try:
-            _load_model("a", body.modelRefA)
+            _load_model(body.modelA)
+            yield _sse_event({"model": "a", "loaded": True, **_applied_runtime_payload()})
         except Exception as exc:
             yield _sse_event({"model": "a", "error": str(exc)})
             yield _sse_event({"allDone": True})
@@ -93,9 +131,13 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                 prompt=body.prompt,
                 history=[],
                 system_prompt=body.systemPrompt,
-                max_tokens=body.maxTokens,
-                temperature=body.temperature,
+                max_tokens=body.modelA.launch.maxTokens,
+                temperature=body.modelA.launch.temperature,
             ):
+                if chunk.reasoning:
+                    yield _sse_event({"model": "a", "reasoning": chunk.reasoning})
+                if chunk.reasoning_done:
+                    yield _sse_event({"model": "a", "reasoningDone": True})
                 if chunk.text:
                     full_text_a += chunk.text
                     yield _sse_event({"model": "a", "token": chunk.text})
@@ -107,9 +149,10 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
             yield _sse_event({"model": "a", "error": str(exc)})
 
         # --- Model B ---
-        yield _sse_event({"model": "b", "loading": True, "message": "Loading model B..."})
+        yield _sse_event({"model": "b", "loading": True, "message": f"Loading {body.modelB.modelName or body.modelB.modelRef}..."})
         try:
-            _load_model("b", body.modelRefB)
+            _load_model(body.modelB)
+            yield _sse_event({"model": "b", "loaded": True, **_applied_runtime_payload()})
         except Exception as exc:
             yield _sse_event({"model": "b", "error": str(exc)})
             yield _sse_event({"allDone": True})
@@ -122,9 +165,13 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                 prompt=body.prompt,
                 history=[],
                 system_prompt=body.systemPrompt,
-                max_tokens=body.maxTokens,
-                temperature=body.temperature,
+                max_tokens=body.modelB.launch.maxTokens,
+                temperature=body.modelB.launch.temperature,
             ):
+                if chunk.reasoning:
+                    yield _sse_event({"model": "b", "reasoning": chunk.reasoning})
+                if chunk.reasoning_done:
+                    yield _sse_event({"model": "b", "reasoningDone": True})
                 if chunk.text:
                     full_text_b += chunk.text
                     yield _sse_event({"model": "b", "token": chunk.text})

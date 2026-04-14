@@ -5,6 +5,8 @@ import {
   deleteSession,
   deleteSessionDocument,
   generateChatStream,
+  getTauriBackendInfo,
+  restartManagedBackend,
   uploadSessionDocument,
   updateSession,
 } from "../api";
@@ -18,6 +20,7 @@ import type {
   ChatSession,
   ChatThinkingMode,
   LaunchPreferences,
+  LoadModelActionResult,
   ModelVariant,
   TabId,
   WorkspaceData,
@@ -36,12 +39,13 @@ export function useChat(
   handleLoadModel: (payload: {
     modelRef: string;
     modelName?: string;
+    canonicalRepo?: string | null;
     source?: string;
     backend?: string;
     path?: string;
     nextTab?: TabId;
     busyLabel?: string;
-  }) => Promise<void>,
+  }) => Promise<LoadModelActionResult>,
   defaultChatVariant: ModelVariant | null,
   threadModelOptions: ChatModelOption[],
   launchCacheLabel: string,
@@ -94,6 +98,7 @@ export function useChat(
       return {
         modelRef: session.modelRef,
         modelName: session.model,
+        canonicalRepo: session.canonicalRepo ?? undefined,
         source: session.modelSource ?? "catalog",
         path: session.modelPath ?? undefined,
         backend: session.modelBackend ?? "auto",
@@ -103,6 +108,7 @@ export function useChat(
       return {
         modelRef: workspace.runtime.loadedModel.ref,
         modelName: workspace.runtime.loadedModel.name,
+        canonicalRepo: workspace.runtime.loadedModel.canonicalRepo ?? undefined,
         source: workspace.runtime.loadedModel.source,
         path: workspace.runtime.loadedModel.path ?? undefined,
         backend: workspace.runtime.loadedModel.backend,
@@ -112,6 +118,7 @@ export function useChat(
       return {
         modelRef: defaultChatVariant.id,
         modelName: defaultChatVariant.name,
+        canonicalRepo: defaultChatVariant.repo,
         source: "catalog",
         backend: defaultChatVariant.backend,
       };
@@ -138,6 +145,7 @@ export function useChat(
         title: patch.title,
         model: patch.model,
         modelRef: patch.modelRef,
+        canonicalRepo: patch.canonicalRepo,
         modelSource: patch.modelSource,
         modelPath: patch.modelPath,
         modelBackend: patch.modelBackend,
@@ -173,6 +181,7 @@ export function useChat(
         pinned: false,
         model: fallbackModel?.modelName ?? "Choose a model",
         modelRef: fallbackModel?.modelRef ?? null,
+        canonicalRepo: fallbackModel?.canonicalRepo ?? null,
         modelSource: fallbackModel?.source ?? "catalog",
         modelPath: fallbackModel?.path ?? null,
         modelBackend: fallbackModel?.backend ?? "auto",
@@ -203,6 +212,44 @@ export function useChat(
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Failed to create session.");
     }
+  }
+
+  async function ensureBackendAvailable(preferredChatId?: string): Promise<{
+    online: boolean;
+    startupError: string | null;
+  }> {
+    if (backendOnline) {
+      return { online: true, startupError: null };
+    }
+
+    let online = await checkBackend();
+    if (online) {
+      setBackendOnline(true);
+      return { online: true, startupError: null };
+    }
+
+    const runtimeInfo = await getTauriBackendInfo(true);
+    if (!runtimeInfo?.managedByTauri) {
+      return { online: false, startupError: runtimeInfo?.startupError ?? null };
+    }
+
+    const restartInfo = await restartManagedBackend();
+    const startupError = restartInfo?.startupError ?? runtimeInfo.startupError ?? null;
+    if (!restartInfo) {
+      return { online: false, startupError };
+    }
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      online = await checkBackend();
+      if (online) {
+        setBackendOnline(true);
+        await refreshWorkspace(preferredChatId);
+        return { online: true, startupError: null };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    return { online: false, startupError };
   }
 
   async function handleRenameActiveThread() {
@@ -253,6 +300,7 @@ export function useChat(
     await persistSessionChanges(activeChat.id, {
       model: nextOption.model,
       modelRef: nextOption.modelRef,
+      canonicalRepo: nextOption.canonicalRepo ?? null,
       modelSource: nextOption.source,
       modelPath: nextOption.path ?? null,
       modelBackend: nextOption.backend,
@@ -269,6 +317,7 @@ export function useChat(
     await handleLoadModel({
       modelRef: modelSelection.modelRef,
       modelName: modelSelection.modelName,
+      canonicalRepo: modelSelection.canonicalRepo,
       source: modelSelection.source,
       backend: modelSelection.backend,
       path: modelSelection.path,
@@ -365,34 +414,25 @@ export function useChat(
     const trimmed = (overrideText ?? draftMessage).trim();
     if (!trimmed) return;
 
-    setDraftMessage("");
-    if (activeChat) {
-      setWorkspace((current) => ({
-        ...current,
-        chatSessions: current.chatSessions.map((s) =>
-          s.id === activeChat.id
-            ? { ...s, messages: [...s.messages, { role: "user" as const, text: trimmed, metrics: null }], updatedAt: new Date().toLocaleString() }
-            : s,
-        ),
-      }));
-    }
-
     const sendingSessionId = activeChat?.id ?? null;
     setChatBusySessionId(sendingSessionId);
     setError(null);
 
     const threadModel = sessionModelPayload(activeChat);
 
-    const isOnline = backendOnline || await checkBackend();
-    if (isOnline && !backendOnline) setBackendOnline(true);
+    const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
 
     if (!isOnline) {
+      if (startupError) {
+        setError(`API service restart failed: ${startupError}`);
+      }
       const fallbackSession = activeChat ?? {
         id: `local-${Date.now()}`,
         title: titleFromPrompt(trimmed, workspace.chatSessions),
         updatedAt: new Date().toLocaleString(),
         model: threadModel?.modelName ?? "Choose a model",
         modelRef: threadModel?.modelRef ?? null,
+        canonicalRepo: threadModel?.canonicalRepo ?? null,
         modelSource: threadModel?.source ?? "catalog",
         modelPath: threadModel?.path ?? null,
         modelBackend: threadModel?.backend ?? "auto",
@@ -417,7 +457,9 @@ export function useChat(
           { role: "user", text: trimmed, metrics: null },
           {
             role: "assistant",
-            text: "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.",
+            text: startupError
+              ? `The desktop shell is offline, so this local fallback kept the chat moving. Restart the FastAPI sidecar to route prompts through the runtime endpoints. Startup error: ${startupError}`
+              : "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.",
             metrics: null,
           },
         ],
@@ -433,10 +475,11 @@ export function useChat(
       let sessionId = activeChat?.id;
       const loadedIdentifiers = [
         workspace.runtime.loadedModel?.ref,
+        workspace.runtime.loadedModel?.canonicalRepo,
         workspace.runtime.loadedModel?.runtimeTarget,
         workspace.runtime.loadedModel?.path,
       ].filter(Boolean);
-      const threadIdentifiers = [threadModel?.modelRef, threadModel?.path].filter(Boolean);
+      const threadIdentifiers = [threadModel?.modelRef, threadModel?.canonicalRepo, threadModel?.path].filter(Boolean);
       const threadModelAlreadyLoaded =
         threadIdentifiers.length > 0 &&
         threadIdentifiers.some((identifier) => loadedIdentifiers.includes(identifier));
@@ -448,21 +491,25 @@ export function useChat(
           !activeRuntimeProfileMatchesLaunchSettings);
 
       if (shouldLoadThreadModel && threadModel) {
-        await handleLoadModel({
+        const loadResult = await handleLoadModel({
           modelRef: threadModel.modelRef,
           modelName: threadModel.modelName,
+          canonicalRepo: threadModel.canonicalRepo,
           source: threadModel.source,
           backend: threadModel.backend,
           path: threadModel.path,
           busyLabel: needsProfileReload ? "Reloading model for updated launch settings..." : undefined,
         });
+        if (!loadResult.ok) return;
       } else if (!workspace.runtime.loadedModel && defaultChatVariant) {
-        await handleLoadModel({
+        const loadResult = await handleLoadModel({
           modelRef: defaultChatVariant.id,
           modelName: defaultChatVariant.name,
+          canonicalRepo: defaultChatVariant.repo,
           source: "catalog",
           backend: defaultChatVariant.backend,
         });
+        if (!loadResult.ok) return;
       }
       if (!sessionId) {
         const session = await createSession(activeChat?.title ?? "New chat");
@@ -471,16 +518,14 @@ export function useChat(
         sessionId = session.id;
       }
 
-      const imagesToSend = pendingImages.length > 0 ? [...pendingImages] : undefined;
-      setPendingImages([]);
-
       const streamPayload = {
         sessionId,
         title: threadTitleDraft.trim() || activeChat?.title,
         prompt: trimmed,
-        images: imagesToSend,
+        images: pendingImages.length > 0 ? [...pendingImages] : undefined,
         modelRef: threadModel?.modelRef,
         modelName: threadModel?.modelName,
+        canonicalRepo: threadModel?.canonicalRepo,
         source: threadModel?.source,
         path: threadModel?.path,
         backend: threadModel?.backend,
@@ -494,20 +539,33 @@ export function useChat(
         cacheStrategy: launchSettings.cacheStrategy,
         fitModelInMemory: launchSettings.fitModelInMemory,
         contextTokens: launchSettings.contextTokens,
+        speculativeDecoding: launchSettings.speculativeDecoding,
+        treeBudget: launchSettings.treeBudget,
         enableTools: enableTools || undefined,
       };
 
       const streamingChatId = sessionId ?? sendingSessionId;
       if (streamingChatId) {
+        const updatedAt = new Date().toLocaleString();
         setWorkspace((current) => ({
           ...current,
           chatSessions: current.chatSessions.map((s) =>
             s.id === streamingChatId
-              ? { ...s, messages: [...s.messages, { role: "assistant" as const, text: "", metrics: null }] }
+              ? {
+                  ...s,
+                  updatedAt,
+                  messages: [
+                    ...s.messages,
+                    { role: "user" as const, text: trimmed, metrics: null },
+                    { role: "assistant" as const, text: "", reasoning: "", reasoningDone: true, metrics: null },
+                  ],
+                }
               : s,
           ),
         }));
       }
+      setDraftMessage("");
+      setPendingImages([]);
 
       const streamAbort = new AbortController();
       streamAbortRef.current = streamAbort;
@@ -522,6 +580,42 @@ export function useChat(
                 const last = msgs[msgs.length - 1];
                 if (last?.role === "assistant") {
                   msgs[msgs.length - 1] = { ...last, text: last.text + token };
+                }
+                return { ...s, messages: msgs };
+              }),
+            }));
+          }
+        },
+        onReasoning: (reasoning) => {
+          if (streamingChatId) {
+            setWorkspace((current) => ({
+              ...current,
+              chatSessions: current.chatSessions.map((s) => {
+                if (s.id !== streamingChatId) return s;
+                const msgs = [...s.messages];
+                const last = msgs[msgs.length - 1];
+                if (last?.role === "assistant") {
+                  msgs[msgs.length - 1] = {
+                    ...last,
+                    reasoning: `${last.reasoning ?? ""}${reasoning}`,
+                    reasoningDone: false,
+                  };
+                }
+                return { ...s, messages: msgs };
+              }),
+            }));
+          }
+        },
+        onReasoningDone: () => {
+          if (streamingChatId) {
+            setWorkspace((current) => ({
+              ...current,
+              chatSessions: current.chatSessions.map((s) => {
+                if (s.id !== streamingChatId) return s;
+                const msgs = [...s.messages];
+                const last = msgs[msgs.length - 1];
+                if (last?.role === "assistant") {
+                  msgs[msgs.length - 1] = { ...last, reasoningDone: true };
                 }
                 return { ...s, messages: msgs };
               }),

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class LoadModelRequest(BaseModel):
     modelRef: str = Field(min_length=1)
     modelName: str | None = None
+    canonicalRepo: str | None = None
     source: str = "catalog"
     backend: str = "auto"
     path: str | None = None
@@ -51,6 +52,7 @@ class UpdateSessionRequest(BaseModel):
     title: str | None = None
     model: str | None = None
     modelRef: str | None = None
+    canonicalRepo: str | None = None
     modelSource: str | None = None
     modelPath: str | None = None
     modelBackend: str | None = None
@@ -75,6 +77,7 @@ class GenerateRequest(BaseModel):
     images: list[str] | None = None  # base64-encoded images
     modelRef: str | None = None
     modelName: str | None = None
+    canonicalRepo: str | None = None
     source: str = "catalog"
     path: str | None = None
     backend: str = "auto"

@@ -19,6 +19,7 @@ from backend_service.inference import (
     GenerationResult,
     LoadedModelInfo,
 )
+from backend_service.model_resolution import resolve_dflash_target_ref
 
 
 def _vllm_importable() -> bool:
@@ -57,6 +58,7 @@ class VLLMEngine(BaseInferenceEngine):
         *,
         model_ref: str,
         model_name: str,
+        canonical_repo: str | None,
         source: str,
         backend: str,
         path: str | None,
@@ -68,6 +70,7 @@ class VLLMEngine(BaseInferenceEngine):
         fit_model_in_memory: bool,
         context_tokens: int,
         speculative_decoding: bool = False,
+        tree_budget: int = 0,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         try:
@@ -82,14 +85,25 @@ class VLLMEngine(BaseInferenceEngine):
         from compression import registry
         strategy = registry.get(cache_strategy)
         runtime_note = None
+        actual_cache_strategy = cache_strategy
+        actual_cache_bits = cache_bits
+        actual_fp16_layers = fp16_layers
         if strategy and hasattr(strategy, "apply_vllm_patches"):
             try:
                 strategy.apply_vllm_patches()
                 runtime_note = f"Applied {strategy.name} vLLM patches."
             except (NotImplementedError, RuntimeError) as exc:
                 runtime_note = f"Cache strategy '{strategy.name}' patches failed: {exc}. Running without compression."
+                actual_cache_strategy = "native"
+                actual_cache_bits = 0
+                actual_fp16_layers = 0
 
         target = runtime_target or path or model_ref
+        dflash_target_ref = resolve_dflash_target_ref(
+            canonical_repo=canonical_repo,
+            path=path,
+            model_ref=model_ref,
+        )
 
         if progress_callback:
             progress_callback({"phase": "loading", "percent": 20.0, "message": f"Loading {target} via vLLM..."})
@@ -105,7 +119,9 @@ class VLLMEngine(BaseInferenceEngine):
             try:
                 from dflash import get_draft_model, is_vllm_available as dflash_vllm_ok
                 if dflash_vllm_ok():
-                    draft_model = get_draft_model(model_ref)
+                    draft_model = get_draft_model(
+                        dflash_target_ref or model_ref
+                    )
                     if draft_model:
                         llm_kwargs["speculative_config"] = {
                             "method": "dflash",
@@ -122,7 +138,10 @@ class VLLMEngine(BaseInferenceEngine):
         if speculative_decoding and draft_model:
             runtime_note += f" DFLASH speculative decoding active (draft: {draft_model})."
         elif speculative_decoding and not draft_model:
-            runtime_note += " DFLASH speculative decoding requested but no compatible draft model found."
+            runtime_note += (
+                f" DFLASH unavailable for '{dflash_target_ref or model_ref}': "
+                "no compatible draft model is registered."
+            )
 
         if progress_callback:
             progress_callback({"phase": "ready", "percent": 100.0, "message": "vLLM model ready."})
@@ -130,12 +149,13 @@ class VLLMEngine(BaseInferenceEngine):
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
             name=model_name,
+            canonicalRepo=canonical_repo,
             backend=backend,
             source=source,
             engine=self.engine_name,
-            cacheStrategy=cache_strategy,
-            cacheBits=cache_bits,
-            fp16Layers=fp16_layers,
+            cacheStrategy=actual_cache_strategy,
+            cacheBits=actual_cache_bits,
+            fp16Layers=actual_fp16_layers,
             fusedAttention=fused_attention,
             fitModelInMemory=fit_model_in_memory,
             contextTokens=context_tokens,
@@ -145,6 +165,7 @@ class VLLMEngine(BaseInferenceEngine):
             runtimeNote=runtime_note,
             speculativeDecoding=speculative_decoding and draft_model is not None,
             dflashDraftModel=draft_model,
+            treeBudget=0,
         )
         return self.loaded_model
 

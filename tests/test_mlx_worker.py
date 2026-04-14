@@ -4,7 +4,9 @@ from backend_service.mlx_worker import (
     RunawayGuard,
     ThinkingTokenFilter,
     TranscriptLoopFilter,
+    WorkerState,
     _build_prompt_text,
+    _should_retry_cache_failure,
     _strip_thinking_tokens,
     _trim_transcript_continuation,
 )
@@ -137,13 +139,45 @@ class RunawayGuardTests(unittest.TestCase):
                 guard.feed("31536000 seconds.\n")
 
 
+class CacheProfileTests(unittest.TestCase):
+    def test_native_profile_zeros_quantized_knobs(self):
+        worker = WorkerState()
+
+        note = worker._apply_cache_profile(
+            cache_strategy="native",
+            cache_bits=4,
+            fp16_layers=8,
+            fused_attention=False,
+        )
+
+        self.assertIsNone(note)
+        self.assertEqual(worker.cache_strategy, "native")
+        self.assertEqual(worker.cache_bits, 0)
+        self.assertEqual(worker.fp16_layers, 0)
+
+    def test_retryable_cache_failures_include_swapaxes_attribute_errors(self):
+        self.assertTrue(_should_retry_cache_failure(AttributeError("'tuple' object has no attribute 'swapaxes'")))
+        self.assertTrue(_should_retry_cache_failure(RuntimeError("[broadcast_shapes] Shapes (1,1,117,48) and (1,1,117,51) cannot be broadcast.")))
+        self.assertFalse(_should_retry_cache_failure(RuntimeError("Tokenizer chat template missing.")))
+
+
 class ThinkingTokenFilterTests(unittest.TestCase):
+    @staticmethod
+    def _collect(*parts):
+        text = "".join(part.text for part in parts)
+        reasoning = "".join(part.reasoning for part in parts)
+        reasoning_done = any(part.reasoning_done for part in parts)
+        return text, reasoning, reasoning_done
+
     def test_strips_xml_think_tags_streaming(self):
         f = ThinkingTokenFilter()
         out1 = f.feed("Hello <think>internal")
         out2 = f.feed(" reasoning</think> world")
         out3 = f.flush()
-        self.assertEqual(out1 + out2 + out3, "Hello  world")
+        text, reasoning, reasoning_done = self._collect(out1, out2, out3)
+        self.assertEqual(text, "Hello  world")
+        self.assertEqual(reasoning, "internal reasoning")
+        self.assertTrue(reasoning_done)
 
     def test_suppresses_raw_thinking_heading(self):
         f = ThinkingTokenFilter()
@@ -153,46 +187,113 @@ class ThinkingTokenFilterTests(unittest.TestCase):
         # Now feed actual content
         out4 = f.feed("Hello! I'm here to help.\n")
         out5 = f.flush()
-        combined = out1 + out2 + out3 + out4 + out5
-        self.assertNotIn("Thinking Process", combined)
-        self.assertNotIn("Analyze", combined)
-        self.assertIn("Hello", combined)
+        text, reasoning, reasoning_done = self._collect(out1, out2, out3, out4, out5)
+        self.assertNotIn("Thinking Process", text)
+        self.assertNotIn("Analyze", text)
+        self.assertIn("Thinking Process", reasoning)
+        self.assertIn("Analyze", reasoning)
+        self.assertIn("Hello", text)
+        self.assertTrue(reasoning_done)
 
     def test_passes_normal_text_through(self):
         f = ThinkingTokenFilter()
         out = f.feed("Hello! How can I help you today?")
-        out += f.flush()
-        self.assertIn("Hello", out)
+        flushed = f.flush()
+        text, reasoning, reasoning_done = self._collect(out, flushed)
+        self.assertIn("Hello", text)
+        self.assertEqual(reasoning, "")
+        self.assertFalse(reasoning_done)
 
     def test_suppresses_token_by_token_thinking_heading(self):
         """Simulate real streaming where tokens arrive character-by-character."""
         f = ThinkingTokenFilter()
         # Model outputs "Thinking Process:\n..." one token at a time
         raw = "Thinking Process:\nAnalyze the request\nWait, I should check\nHello! I'm here to help.\n"
-        combined = ""
+        parts = []
         for char in raw:
-            combined += f.feed(char)
-        combined += f.flush()
+            parts.append(f.feed(char))
+        parts.append(f.flush())
+        combined, reasoning, reasoning_done = self._collect(*parts)
         # Should suppress thinking and only show the actual answer
         self.assertNotIn("Thinking Process", combined)
         self.assertNotIn("Analyze", combined)
+        self.assertIn("Thinking Process", reasoning)
         self.assertIn("Hello", combined)
+        self.assertTrue(reasoning_done)
 
     def test_releases_normal_text_after_first_line(self):
         """Normal text should stream through after the first line proves safe."""
         f = ThinkingTokenFilter()
-        combined = ""
+        parts = []
         for char in "Hello! I'm here to help.\nHow can I assist?":
-            combined += f.feed(char)
-        combined += f.flush()
+            parts.append(f.feed(char))
+        parts.append(f.flush())
+        combined, reasoning, reasoning_done = self._collect(*parts)
         self.assertIn("Hello", combined)
         self.assertIn("assist", combined)
+        self.assertEqual(reasoning, "")
+        self.assertFalse(reasoning_done)
 
     def test_handles_unclosed_xml_think(self):
         f = ThinkingTokenFilter()
         out = f.feed("<think>reasoning that never closes")
-        out += f.flush()
-        self.assertEqual(out, "")
+        flushed = f.flush()
+        text, reasoning, reasoning_done = self._collect(out, flushed)
+        self.assertEqual(text, "")
+        self.assertEqual(reasoning, "reasoning that never closes")
+        self.assertTrue(reasoning_done)
+
+    def test_keeps_bullets_and_meta_sections_in_reasoning(self):
+        f = ThinkingTokenFilter()
+        parts = [
+            f.feed("Thinking Process:\n"),
+            f.feed("- Check constraints\n"),
+            f.feed("  - Verify cache mode\n"),
+            f.feed("Confidence Score: 0.78\n"),
+            f.feed("Hello! Final answer.\n"),
+            f.flush(),
+        ]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(text, "Hello! Final answer.\n")
+        self.assertIn("- Check constraints", reasoning)
+        self.assertIn("Confidence Score: 0.78", reasoning)
+        self.assertTrue(reasoning_done)
+
+    def test_flushes_reasoning_only_when_no_final_answer_arrives(self):
+        f = ThinkingTokenFilter()
+        parts = [
+            f.feed("Thinking Process:\n"),
+            f.feed("1. Check the requirements\n"),
+            f.feed("- Verify the constraint\n"),
+            f.feed("Mental Sandbox: compare two options"),
+            f.flush(),
+        ]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(text, "")
+        self.assertIn("1. Check the requirements", reasoning)
+        self.assertIn("Mental Sandbox", reasoning)
+        self.assertTrue(reasoning_done)
+
+    def test_keeps_draft_and_verification_sections_inside_reasoning(self):
+        f = ThinkingTokenFilter()
+        parts = [
+            f.feed("Thinking Process:\n"),
+            f.feed("An LLM works by predicting the next word in a sequence.\n"),
+            f.feed("4. Refining for Constraints: Ensure no internal reasoning tags.\n"),
+            f.feed("*Current Draft:*\n"),
+            f.feed("An LLM works by predicting the next word in a sequence.\n"),
+            f.feed("*Word Count:* 168 words.\n"),
+            f.feed("6. Final Verification:\n"),
+            f.feed("- Under 200 words? Yes.\n"),
+            f.flush(),
+        ]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(text, "")
+        self.assertIn("An LLM works by predicting the next word", reasoning)
+        self.assertIn("Current Draft", reasoning)
+        self.assertIn("Word Count", reasoning)
+        self.assertIn("Final Verification", reasoning)
+        self.assertTrue(reasoning_done)
 
 
 class StripThinkingTokensTests(unittest.TestCase):

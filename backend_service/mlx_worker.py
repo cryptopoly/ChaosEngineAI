@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import time
 import traceback
 from pathlib import Path
 from typing import Any
 
+from backend_service.reasoning_split import (
+    RAW_REASONING_HEADING_RE,
+    ThinkingTokenFilter,
+    ThinkingStreamResult,
+    strip_thinking_tokens as _strip_thinking_tokens,
+)
 
 _UNSUPPORTED_QUANT_ALGOS = {"NVFP4", "NVINT4"}
 
@@ -71,51 +78,8 @@ def _sanitize_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:
             sanitized.append({"role": role, "content": content})
     return sanitized
 
-
-import re
-
-_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
-_THINK_OPEN_RE = re.compile(r"<think>.*", re.DOTALL)
 _TRANSCRIPT_ROLE_LINE_RE = re.compile(r"^\s*(SYSTEM|USER|ASSISTANT):\s*(.*)$", re.IGNORECASE)
-# Headings that indicate a model is dumping its chain-of-thought without XML tags.
-_RAW_THINKING_HEADING_RE = re.compile(
-    r"^\s*(?:\d+\.\s+)?\*{0,2}"
-    r"(?:Thinking Process|Chain of Thought|Internal Reasoning|Scratchpad|Reasoning Steps|"
-    r"Analyze the Request|Evaluate Constraints|Determine the Output|Drafting the Response|"
-    r"Refining the Output|Final Check)"
-    r"\*{0,2}\s*:?\s*$",
-    re.IGNORECASE | re.MULTILINE,
-)
-
-
-def _strip_thinking_tokens(text: str) -> str:
-    """Remove <think>...</think> blocks and raw thinking dumps from model output.
-
-    Qwen3 and similar "thinking" models wrap chain-of-thought in
-    <think> tags.  Smaller models sometimes dump raw "Thinking Process:"
-    headings without tags.  Both forms are stripped.
-    """
-    # Strip complete <think>...</think> blocks
-    text = _THINK_BLOCK_RE.sub("", text)
-    # Strip a trailing unclosed <think> (model still thinking)
-    text = _THINK_OPEN_RE.sub("", text)
-    # Strip raw thinking headings (e.g. "Thinking Process:", "1. Analyze the Request:")
-    # If the text starts with a thinking heading, everything before the actual
-    # answer is likely chain-of-thought.  Find the last heading block and keep
-    # only what follows.
-    if _RAW_THINKING_HEADING_RE.search(text):
-        # Find the last thinking heading and take everything after it
-        lines = text.split("\n")
-        last_heading_idx = -1
-        for i, line in enumerate(lines):
-            if _RAW_THINKING_HEADING_RE.match(line):
-                last_heading_idx = i
-        if last_heading_idx >= 0:
-            # Take content after the last heading block, skipping blank lines
-            remaining = "\n".join(lines[last_heading_idx + 1:]).strip()
-            if remaining:
-                text = remaining
-    return text.strip()
+_RAW_THINKING_HEADING_RE = RAW_REASONING_HEADING_RE
 
 
 _REASONING_LINE_RE = re.compile(
@@ -213,128 +177,6 @@ class RunawayGuard:
             raise RuntimeError(
                 "Stopped runaway generation: model is stuck in a reasoning loop."
             )
-
-
-class ThinkingTokenFilter:
-    """Streaming filter that strips thinking content from model output.
-
-    Handles two patterns:
-    1. XML ``<think>...</think>`` blocks (Qwen3 etc.)
-    2. Raw "Thinking Process:" heading dumps (small models that ignore instructions)
-
-    At the start of generation, text is buffered until the first complete
-    line arrives so we can check if the model is dumping raw thinking.
-    """
-
-    _STARTUP_BUFFER_LIMIT = 500  # max chars to hold during startup probing
-
-    def __init__(self) -> None:
-        self._inside_xml_think = False
-        self._inside_raw_think = False
-        self._startup_done = False  # True once we've decided the first line(s) are safe
-        self._buffer = ""
-        self._total_fed = 0
-
-    def feed(self, text: str) -> str:
-        """Process a chunk of streamed text. Returns text to emit (may be empty)."""
-        self._buffer += text
-        self._total_fed += len(text)
-
-        output = ""
-        while True:
-            # --- Startup probe: hold text until first complete line ---
-            if not self._startup_done and not self._inside_xml_think:
-                # Check for <think> even during startup
-                think_idx = self._buffer.find("<think>")
-                if think_idx != -1:
-                    output += self._buffer[:think_idx]
-                    self._buffer = self._buffer[think_idx + len("<think>"):]
-                    self._inside_xml_think = True
-                    self._startup_done = True
-                    continue
-
-                # Wait for a complete line before deciding
-                if "\n" not in self._buffer:
-                    # Haven't got a full line yet — keep buffering
-                    if self._total_fed >= self._STARTUP_BUFFER_LIMIT:
-                        # Safety: don't buffer forever, release it
-                        self._startup_done = True
-                        continue
-                    break
-
-                # We have at least one complete line — check it
-                first_line, _ = self._buffer.split("\n", 1)
-                if _RAW_THINKING_HEADING_RE.match(first_line):
-                    # Model is dumping raw thinking — suppress everything
-                    self._inside_raw_think = True
-                    self._startup_done = True
-                    self._buffer = ""
-                    break
-                else:
-                    # First line looks normal — stop startup buffering
-                    self._startup_done = True
-                    continue  # fall through to normal processing
-
-            # --- Raw thinking suppression ---
-            if self._inside_raw_think:
-                # Look for a line that is NOT a reasoning/thinking line
-                while "\n" in self._buffer:
-                    line, rest = self._buffer.split("\n", 1)
-                    stripped = line.strip()
-                    # A "real answer" line: non-empty, not a heading, not reasoning
-                    if (
-                        stripped
-                        and not _RAW_THINKING_HEADING_RE.match(line)
-                        and not _REASONING_LINE_RE.match(stripped.lower())
-                        and not stripped.startswith(("*", "-", "#"))
-                        and len(stripped) > 5
-                    ):
-                        # Found actual content — exit raw-think mode
-                        self._inside_raw_think = False
-                        self._buffer = line + "\n" + rest
-                        break
-                    # Still reasoning — discard this line
-                    self._buffer = rest
-                if self._inside_raw_think:
-                    # No complete line with real content yet — keep buffering
-                    # (don't clear: partial next line may be accumulating)
-                    break
-                continue
-
-            # --- XML <think> suppression ---
-            if self._inside_xml_think:
-                end_idx = self._buffer.find("</think>")
-                if end_idx == -1:
-                    self._buffer = ""
-                    break
-                self._buffer = self._buffer[end_idx + len("</think>"):]
-                self._inside_xml_think = False
-                continue
-
-            # --- Normal mode ---
-            start_idx = self._buffer.find("<think>")
-            if start_idx != -1:
-                output += self._buffer[:start_idx]
-                self._buffer = self._buffer[start_idx + len("<think>"):]
-                self._inside_xml_think = True
-                continue
-
-            # No thinking pattern — emit buffered text
-            # Keep last 7 chars in case "<think>" is split across chunks
-            if len(self._buffer) > 7:
-                output += self._buffer[:-7]
-                self._buffer = self._buffer[-7:]
-            break
-
-        return output
-
-    def flush(self) -> str:
-        """Flush any remaining buffered text."""
-        if self._inside_xml_think or self._inside_raw_think:
-            return ""
-        remaining = self._buffer
-        self._buffer = ""
-        return remaining
 
 
 def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
@@ -456,6 +298,16 @@ def _fallback_chat_prompt(messages: list[dict[str, str]]) -> str:
 def _merge_runtime_notes(*notes: str | None) -> str | None:
     merged = " ".join(note.strip() for note in notes if note and note.strip())
     return merged or None
+
+
+def _should_retry_cache_failure(exc: BaseException) -> bool:
+    detail = str(exc).lower()
+    return (
+        "broadcast" in detail
+        or "shape" in detail
+        or "create_attention_mask" in detail
+        or "swapaxes" in detail
+    )
 
 
 def _build_prompt_text(
@@ -620,6 +472,8 @@ class WorkerState:
         op = request.get("op")
         if op == "load_model":
             return self.load_model(request)
+        if op == "update_profile":
+            return self.update_profile(request)
         if op == "unload_model":
             return self.unload_model()
         if op == "generate":
@@ -637,14 +491,17 @@ class WorkerState:
         from mlx_lm import load
 
         target = str(request["target"])
-        self.cache_strategy = str(request.get("cacheStrategy", "native"))
-        self.cache_bits = int(request.get("cacheBits", 0))
-        self.fp16_layers = int(request.get("fp16Layers", 0))
-        self.fused_attention = bool(request.get("fusedAttention", False))
+        requested_cache_strategy = str(request.get("cacheStrategy", "native"))
+        requested_cache_bits = int(request.get("cacheBits", 0))
+        requested_fp16_layers = int(request.get("fp16Layers", 0))
+        requested_fused_attention = bool(request.get("fusedAttention", False))
         self.context_tokens = int(request.get("contextTokens", 8192))
         self.speculative_decoding = bool(request.get("speculativeDecoding", False))
         dflash_draft_model = request.get("dflashDraftModel")
         self._dflash_generator = None
+        self._ddtree_draft = None
+        self._ddtree_target = None
+        self.tree_budget = 0
 
         emit_progress("resolving", 5.0, f"Resolving model target: {target}")
 
@@ -777,7 +634,7 @@ class WorkerState:
                     target_model=local_path,
                     draft_model=dflash_draft_model,
                 )
-                dflash_note = f"DFLASH active with draft {dflash_draft_model}."
+                dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
             except ImportError:
                 dflash_note = "dflash-mlx is not installed. Falling back to standard generation."
                 self.speculative_decoding = False
@@ -792,12 +649,19 @@ class WorkerState:
                     emit_progress("ddtree", 97.0, f"Loading DDTree draft bundle: {dflash_draft_model}")
                     self._ddtree_target, _ = load_target_bundle(local_path)
                     self._ddtree_draft, _ = load_draft_bundle(dflash_draft_model)
-                    dflash_note = f"DDTree active (budget={self.tree_budget}) with draft {dflash_draft_model}."
+                    dflash_note = f"DDTree speculative decoding active (budget={self.tree_budget}, draft: {dflash_draft_model})."
                 except Exception as exc:
                     dflash_note = f"DDTree init failed ({exc}). Using linear DFLASH."
                     self.tree_budget = 0
                     self._ddtree_draft = None
                     self._ddtree_target = None
+
+        profile_note = self._apply_cache_profile(
+            cache_strategy=requested_cache_strategy,
+            cache_bits=requested_cache_bits,
+            fp16_layers=requested_fp16_layers,
+            fused_attention=requested_fused_attention,
+        )
 
         return {
             "resolvedTarget": target,
@@ -807,14 +671,28 @@ class WorkerState:
                 "numAttentionHeads": (self.config or {}).get("num_attention_heads"),
                 "hiddenSize": (self.config or {}).get("hidden_size"),
             },
-            "note": dflash_note,
+            "cacheStrategy": self.cache_strategy,
+            "cacheBits": self.cache_bits,
+            "fp16Layers": self.fp16_layers,
+            "fusedAttention": self.fused_attention,
+            "speculativeDecoding": bool(self.speculative_decoding and self._dflash_generator is not None),
+            "dflashDraftModel": (
+                str(dflash_draft_model)
+                if self.speculative_decoding and self._dflash_generator is not None and dflash_draft_model
+                else None
+            ),
+            "treeBudget": self.tree_budget if self.speculative_decoding and self._dflash_generator is not None else 0,
+            "note": _merge_runtime_notes(profile_note, dflash_note),
         }
 
     def unload_model(self) -> dict[str, Any]:
         self.model = None
         self.tokenizer = None
         self._dflash_generator = None
+        self._ddtree_draft = None
+        self._ddtree_target = None
         self.speculative_decoding = False
+        self.tree_budget = 0
         self.config = None
         import gc
         gc.collect()
@@ -824,6 +702,77 @@ class WorkerState:
         except Exception:
             pass
         return {"unloaded": True}
+
+    def update_profile(self, request: dict[str, Any]) -> dict[str, Any]:
+        if self.model is None or self.tokenizer is None:
+            raise RuntimeError("No MLX model is loaded.")
+        note = self._apply_cache_profile(
+            cache_strategy=str(request.get("cacheStrategy", self.cache_strategy)),
+            cache_bits=int(request.get("cacheBits", self.cache_bits)),
+            fp16_layers=int(request.get("fp16Layers", self.fp16_layers)),
+            fused_attention=bool(request.get("fusedAttention", self.fused_attention)),
+        )
+        return {
+            "cacheStrategy": self.cache_strategy,
+            "cacheBits": self.cache_bits,
+            "fp16Layers": self.fp16_layers,
+            "fusedAttention": self.fused_attention,
+            "note": note,
+        }
+
+    def _apply_cache_profile(
+        self,
+        *,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+    ) -> str | None:
+        self.cache_strategy = cache_strategy
+        self.cache_bits = cache_bits
+        self.fp16_layers = fp16_layers
+        self.fused_attention = fused_attention
+
+        if self.cache_strategy == "native":
+            self.cache_bits = 0
+            self.fp16_layers = 0
+            return None
+
+        preview_cache, note = self._make_cache()
+        if preview_cache is not None:
+            preview_cache = None
+            import gc
+            gc.collect()
+
+        if note:
+            self.cache_strategy = "native"
+            self.cache_bits = 0
+            self.fp16_layers = 0
+
+        return note
+
+    def _runtime_fields(
+        self,
+        *,
+        prompt_cache: Any | None,
+        speculative_decoding: bool = False,
+        tree_budget: int = 0,
+    ) -> dict[str, Any]:
+        cache_strategy = self.cache_strategy
+        cache_bits = self.cache_bits
+        fp16_layers = self.fp16_layers
+        if prompt_cache is None or cache_strategy == "native":
+            cache_strategy = "native"
+            cache_bits = 0
+            fp16_layers = 0
+        actual_speculative = bool(speculative_decoding)
+        return {
+            "cacheStrategy": cache_strategy,
+            "cacheBits": int(cache_bits),
+            "fp16Layers": int(fp16_layers),
+            "speculativeDecoding": actual_speculative,
+            "treeBudget": int(tree_budget or 0) if actual_speculative else 0,
+        }
 
     def _make_cache(self) -> tuple[Any | None, str | None]:
         """Build the prompt cache for the active strategy. Returns (cache, note)."""
@@ -843,7 +792,7 @@ class WorkerState:
         except (ValueError, NotImplementedError) as exc:
             return None, (
                 f"Cache strategy '{strategy.name}' is unavailable for this MLX architecture, "
-                f"so generation fell back to the model's default cache. ({exc})"
+                f"so generation fell back to native f16 cache. ({exc})"
             )
 
     def _generate_dflash(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -894,6 +843,7 @@ class WorkerState:
             "peakMemoryGb": 0.0,
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
+            **self._runtime_fields(prompt_cache=None, speculative_decoding=True, tree_budget=0),
         }
 
     def _generate_ddtree(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -956,6 +906,11 @@ class WorkerState:
             "peakMemoryGb": 0.0,
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
+            **self._runtime_fields(
+                prompt_cache=None,
+                speculative_decoding=True,
+                tree_budget=result["tree_budget"],
+            ),
         }
 
     def generate(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -1002,6 +957,7 @@ class WorkerState:
         sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
+        runtime_fields = self._runtime_fields(prompt_cache=prompt_cache)
         transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
         runaway_guard = RunawayGuard()
@@ -1025,14 +981,10 @@ class WorkerState:
                         runaway_stopped = True
                         break
                 last_response = response
-        except (ValueError, RuntimeError, TypeError) as exc:
+        except (ValueError, RuntimeError, TypeError, AttributeError) as exc:
             _should_retry = (
                 prompt_cache is not None
-                and (
-                    "broadcast" in str(exc).lower()
-                    or "shape" in str(exc).lower()
-                    or "create_attention_mask" in str(exc)
-                )
+                and _should_retry_cache_failure(exc)
             )
             if _should_retry:
                 # Cache strategy produced incompatible shapes or mask errors.
@@ -1043,6 +995,9 @@ class WorkerState:
                         f"Cache strategy failed ({exc}). Fell back to native f16 cache.",
                     )
                 )
+                runtime_fields = self._runtime_fields(prompt_cache=None)
+                runaway_guard = RunawayGuard()
+                runaway_stopped = False
                 text_parts = []
                 last_response = None
                 for response in stream_generate(
@@ -1090,6 +1045,7 @@ class WorkerState:
             "promptTokS": round(float(last_response.prompt_tps), 1),
             "peakMemoryGb": round(float(last_response.peak_memory), 3),
             "runtimeNote": runtime_note,
+            **runtime_fields,
         }
 
 
@@ -1117,6 +1073,11 @@ class WorkerState:
                         "peakMemoryGb": result.get("peakMemoryGb", 0.0),
                         "runtimeNote": result.get("runtimeNote"),
                         "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
+                        "cacheStrategy": result.get("cacheStrategy"),
+                        "cacheBits": result.get("cacheBits"),
+                        "fp16Layers": result.get("fp16Layers"),
+                        "speculativeDecoding": result.get("speculativeDecoding"),
+                        "treeBudget": result.get("treeBudget"),
                     },
                 })
                 return
@@ -1141,6 +1102,7 @@ class WorkerState:
         sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
+        runtime_fields = self._runtime_fields(prompt_cache=prompt_cache)
         transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
         think_filter = ThinkingTokenFilter()
@@ -1168,31 +1130,37 @@ class WorkerState:
                         last_response = response
                         break
                     filtered = think_filter.feed(response.text)
-                    if filtered and transcript_filter is not None:
-                        filtered = transcript_filter.feed(filtered)
+                    if filtered.reasoning:
+                        _emit({"ok": True, "chunk": {"reasoning": filtered.reasoning}})
+                    if filtered.reasoning_done:
+                        _emit({"ok": True, "chunk": {"reasoningDone": True}})
+                    visible_text = filtered.text
+                    if visible_text and transcript_filter is not None:
+                        visible_text = transcript_filter.feed(visible_text)
                         if transcript_filter.stopped:
                             transcript_trimmed = True
-                    if filtered:
-                        _emit({"ok": True, "chunk": {"text": filtered}})
+                    if visible_text:
+                        _emit({"ok": True, "chunk": {"text": visible_text}})
                     if transcript_filter is not None and transcript_filter.stopped:
                         last_response = response
                         break
                 last_response = response
             # Flush any remaining buffered text
             flushed = think_filter.flush()
-            if flushed and transcript_filter is not None:
-                flushed = transcript_filter.feed(flushed) + transcript_filter.flush()
+            if flushed.reasoning:
+                _emit({"ok": True, "chunk": {"reasoning": flushed.reasoning}})
+            if flushed.reasoning_done:
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
+            visible_text = flushed.text
+            if visible_text and transcript_filter is not None:
+                visible_text = transcript_filter.feed(visible_text) + transcript_filter.flush()
                 transcript_trimmed = transcript_trimmed or transcript_filter.stopped
-            if flushed:
-                _emit({"ok": True, "chunk": {"text": flushed}})
-        except (ValueError, RuntimeError, TypeError) as exc:
+            if visible_text:
+                _emit({"ok": True, "chunk": {"text": visible_text}})
+        except (ValueError, RuntimeError, TypeError, AttributeError) as exc:
             _should_retry = (
                 prompt_cache is not None
-                and (
-                    "broadcast" in str(exc).lower()
-                    or "shape" in str(exc).lower()
-                    or "create_attention_mask" in str(exc)
-                )
+                and _should_retry_cache_failure(exc)
             )
             if _should_retry:
                 runtime_note = (
@@ -1201,6 +1169,7 @@ class WorkerState:
                         f"Cache strategy failed ({exc}). Fell back to native f16 cache.",
                     )
                 )
+                runtime_fields = self._runtime_fields(prompt_cache=None)
                 think_filter = ThinkingTokenFilter()
                 transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
                 transcript_trimmed = False
@@ -1223,22 +1192,32 @@ class WorkerState:
                             last_response = response
                             break
                         filtered = think_filter.feed(response.text)
-                        if filtered and transcript_filter is not None:
-                            filtered = transcript_filter.feed(filtered)
+                        if filtered.reasoning:
+                            _emit({"ok": True, "chunk": {"reasoning": filtered.reasoning}})
+                        if filtered.reasoning_done:
+                            _emit({"ok": True, "chunk": {"reasoningDone": True}})
+                        visible_text = filtered.text
+                        if visible_text and transcript_filter is not None:
+                            visible_text = transcript_filter.feed(visible_text)
                             if transcript_filter.stopped:
                                 transcript_trimmed = True
-                        if filtered:
-                            _emit({"ok": True, "chunk": {"text": filtered}})
+                        if visible_text:
+                            _emit({"ok": True, "chunk": {"text": visible_text}})
                         if transcript_filter is not None and transcript_filter.stopped:
                             last_response = response
                             break
                     last_response = response
                 flushed = think_filter.flush()
-                if flushed and transcript_filter is not None:
-                    flushed = transcript_filter.feed(flushed) + transcript_filter.flush()
+                if flushed.reasoning:
+                    _emit({"ok": True, "chunk": {"reasoning": flushed.reasoning}})
+                if flushed.reasoning_done:
+                    _emit({"ok": True, "chunk": {"reasoningDone": True}})
+                visible_text = flushed.text
+                if visible_text and transcript_filter is not None:
+                    visible_text = transcript_filter.feed(visible_text) + transcript_filter.flush()
                     transcript_trimmed = transcript_trimmed or transcript_filter.stopped
-                if flushed:
-                    _emit({"ok": True, "chunk": {"text": flushed}})
+                if visible_text:
+                    _emit({"ok": True, "chunk": {"text": visible_text}})
             else:
                 raise
 
@@ -1268,6 +1247,7 @@ class WorkerState:
                 "promptTokS": round(float(last_response.prompt_tps), 1),
                 "peakMemoryGb": round(float(last_response.peak_memory), 3),
                 "runtimeNote": runtime_note,
+                **runtime_fields,
             },
         })
 

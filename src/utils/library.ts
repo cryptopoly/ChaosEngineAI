@@ -31,6 +31,14 @@ export function libraryItemSourceKind(item: LibraryItem): string {
   return /\.(gguf|safetensors)$/i.test(item.path) ? "File" : "Directory";
 }
 
+export function inferHfRepoFromLocalPath(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const match = path.match(/models--([^/]+(?:--[^/]+)+)/);
+  if (!match) return null;
+  const repo = match[1].replace(/--/g, "/").replace(/^\/+|\/+$/g, "");
+  return repo || null;
+}
+
 export function libraryItemFormat(item: LibraryItem, matchedVariant?: ModelVariant | null): string {
   const explicit = (item.format ?? "").trim();
   if (explicit && explicit.toLowerCase() !== "hf cache" && explicit.toLowerCase() !== "unknown") {

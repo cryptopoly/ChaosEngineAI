@@ -2,14 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
-import type { ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
+import type { LogEntry, ModelLoadingState, OrphanedWorker, WarmModel } from "../../types";
 import type { SettingsDraft } from "../../types/chat";
-
-interface ServerLogEntry {
-  ts: string;
-  level: string;
-  message: string;
-}
 
 export interface ServerTabProps {
   serverStatus: "running" | "idle";
@@ -29,7 +23,7 @@ export interface ServerTabProps {
   activeConnections: number;
   engineLabel: string;
   settingsDraft: SettingsDraft;
-  serverLogEntries: ServerLogEntry[];
+  serverLogEntries: LogEntry[];
   showRemoteTest: boolean;
   testModelId: string | null;
   localHealthCurl: string;
@@ -334,19 +328,20 @@ export function ServerTab({
             </div>
 
             <div className="server-log-panel">
-              <span className="eyebrow">Server Log</span>
+              <span className="eyebrow">Dev Log</span>
               <div className="server-log-scroll" ref={serverLogRef} onScroll={handleServerLogScroll}>
                 {serverLogEntries.length > 0 ? (
                   serverLogEntries.map((entry, i) => (
-                    <div className="server-log-line" key={`${entry.ts}-${i}`}>
+                    <div className="server-log-line" key={`${entry.ts}-${entry.source}-${i}`}>
                       <small className="server-log-ts">{entry.ts}</small>
+                      <small className="mono-text muted-text">/{entry.source}</small>
                       <span className={`log-level ${entry.level}`}>{entry.level}</span>
                       <span>{entry.message}</span>
                     </div>
                   ))
                 ) : (
                   <div className="server-log-line">
-                    <span className="server-log-placeholder">Waiting for log events...</span>
+                    <span className="server-log-placeholder">No log lines yet.</span>
                   </div>
                 )}
               </div>

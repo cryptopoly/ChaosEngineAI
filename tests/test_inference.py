@@ -7,6 +7,8 @@ from backend_service.inference import (
     RepeatedLineGuard,
     RuntimeController,
     LoadedModelInfo,
+    _gguf_startup_fallback_note,
+    _is_local_target,
 )
 from backend_service.state import _compose_chat_system_prompt
 
@@ -83,18 +85,82 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertNotIn("--reasoning", command)
 
 
+class GgufTargetDetectionTests(unittest.TestCase):
+    def test_treats_huggingface_repo_id_as_non_local(self):
+        self.assertFalse(_is_local_target("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF"))
+
+    def test_treats_absolute_and_relative_paths_as_local_candidates(self):
+        self.assertTrue(_is_local_target("/tmp/model.gguf"))
+        self.assertTrue(_is_local_target("./models/model.gguf"))
+
+    def test_formats_startup_fallback_note_with_requested_strategy(self):
+        self.assertEqual(
+            _gguf_startup_fallback_note("RotorQuant"),
+            "GGUF startup failed with RotorQuant cache, so ChaosEngineAI retried with the standard f16 KV cache.",
+        )
+
+
+class LlamaCppFallbackMetadataTests(unittest.TestCase):
+    def _capabilities(self) -> BackendCapabilities:
+        return BackendCapabilities(
+            pythonExecutable="/usr/bin/python3",
+            mlxAvailable=False,
+            mlxLmAvailable=False,
+            mlxUsable=False,
+            ggufAvailable=True,
+            llamaServerPath="/usr/local/bin/llama-server",
+        )
+
+    def test_startup_fallback_records_native_actual_runtime(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        fake_process = mock.Mock()
+        fake_process.poll.return_value = None
+
+        with (
+            mock.patch.object(engine, "_build_command", side_effect=[(["llama-server"], None), (["llama-server"], None)]),
+            mock.patch.object(engine, "_wait_for_server", side_effect=[RuntimeError("unknown cache type"), None]),
+            mock.patch.object(engine, "_cleanup_process"),
+            mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
+        ):
+            loaded = engine.load_model(
+                model_ref="qwen",
+                model_name="Qwen",
+                canonical_repo=None,
+                source="library",
+                backend="llama.cpp",
+                path=None,
+                runtime_target="lmstudio-community/Qwen3.5-35B-A3B-GGUF",
+                cache_strategy="rotorquant",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+                fit_model_in_memory=True,
+                context_tokens=8192,
+            )
+
+        self.assertEqual(loaded.cacheStrategy, "native")
+        self.assertEqual(loaded.cacheBits, 0)
+        self.assertEqual(loaded.fp16Layers, 0)
+        self.assertEqual(
+            loaded.runtimeNote,
+            "GGUF startup failed with RotorQuant cache, so ChaosEngineAI retried with the standard f16 KV cache.",
+        )
+
+
 class ChatSystemPromptTests(unittest.TestCase):
     def test_chat_policy_is_prepended(self):
         prompt = _compose_chat_system_prompt("Answer in one sentence.", "off")
 
-        self.assertIn("Do not reveal hidden chain-of-thought", prompt)
+        self.assertIn("Give the final answer directly", prompt)
         self.assertIn("Thinking mode is OFF", prompt)
         self.assertTrue(prompt.endswith("Answer in one sentence."))
 
     def test_auto_mode_skips_explicit_thinking_off_policy(self):
         prompt = _compose_chat_system_prompt("Answer in one sentence.", "auto")
 
-        self.assertIn("Do not reveal hidden chain-of-thought", prompt)
+        self.assertIn("Give the final answer directly", prompt)
+        self.assertIn("Thinking mode is AUTO", prompt)
         self.assertNotIn("Thinking mode is OFF", prompt)
 
 

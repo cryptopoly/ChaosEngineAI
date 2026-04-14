@@ -62,6 +62,7 @@ class FakeRuntime:
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None
+        self.profile_updates: list[dict[str, object]] = []
         self._warm_pool = {}
         self.recent_orphaned_workers = []
         self.capabilities = SimpleNamespace(
@@ -113,6 +114,7 @@ class FakeRuntime:
         *,
         model_ref: str,
         model_name: str | None = None,
+        canonical_repo: str | None = None,
         source: str = "catalog",
         backend: str = "auto",
         path: str | None = None,
@@ -142,13 +144,44 @@ class FakeRuntime:
             fitModelInMemory=fit_model_in_memory,
             contextTokens=context_tokens,
             loadedAt="2026-04-13 00:00:00",
+            canonicalRepo=canonical_repo,
             path=path,
             runtimeTarget=runtime_target or path or model_ref,
             runtimeNote="Fake runtime",
+            speculativeDecoding=speculative_decoding,
+            treeBudget=tree_budget if speculative_decoding else 0,
         )
         self.loaded_model = loaded
         self.runtime_note = loaded.runtimeNote
         return loaded
+
+    def update_profile(
+        self,
+        *,
+        canonical_repo: str | None = None,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+    ) -> LoadedModelInfo:
+        if self.loaded_model is None:
+            raise RuntimeError("No model is loaded.")
+        self.profile_updates.append(
+            {
+                "canonical_repo": canonical_repo,
+                "cache_strategy": cache_strategy,
+                "cache_bits": cache_bits,
+                "fp16_layers": fp16_layers,
+                "fused_attention": fused_attention,
+            }
+        )
+        self.loaded_model.cacheStrategy = cache_strategy
+        self.loaded_model.cacheBits = cache_bits
+        self.loaded_model.fp16Layers = fp16_layers
+        self.loaded_model.fusedAttention = fused_attention
+        if canonical_repo is not None:
+            self.loaded_model.canonicalRepo = canonical_repo
+        return self.loaded_model
 
     def unload_model(self) -> None:
         self.loaded_model = None
@@ -563,6 +596,52 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 for message in log_messages
             )
         )
+
+    def test_mlx_cache_only_change_uses_profile_update_without_weight_reload(self):
+        state = self.client.app.state.chaosengine
+        state.runtime.engine = SimpleNamespace(engine_name="mlx", engine_label="MLX")
+        state.runtime.loaded_model = LoadedModelInfo(
+            ref="google/gemma-4-E4B-it",
+            name="Gemma 4 E4B Instruct",
+            backend="mlx",
+            source="catalog",
+            engine="mlx",
+            cacheStrategy="native",
+            cacheBits=0,
+            fp16Layers=0,
+            fusedAttention=False,
+            fitModelInMemory=True,
+            contextTokens=8192,
+            loadedAt="2026-04-13 00:00:00",
+            canonicalRepo="google/gemma-4-E4B-it",
+            runtimeTarget="google/gemma-4-E4B-it",
+            runtimeNote="Fake runtime",
+        )
+
+        with mock.patch.object(state.runtime, "load_model", wraps=state.runtime.load_model) as load_model_spy:
+            response = self.client.post(
+                "/api/models/load",
+                json={
+                    "modelRef": "google/gemma-4-E4B-it",
+                    "modelName": "Gemma 4 E4B Instruct",
+                    "canonicalRepo": "google/gemma-4-E4B-it",
+                    "source": "catalog",
+                    "backend": "mlx",
+                    "cacheStrategy": "rotorquant",
+                    "cacheBits": 4,
+                    "fp16Layers": 2,
+                    "fusedAttention": True,
+                    "contextTokens": 8192,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        load_model_spy.assert_not_called()
+        self.assertEqual(len(state.runtime.profile_updates), 1)
+        self.assertEqual(state.runtime.loaded_model.cacheStrategy, "rotorquant")
+        self.assertEqual(state.runtime.loaded_model.cacheBits, 4)
+        self.assertEqual(state.runtime.loaded_model.fp16Layers, 2)
+        self.assertTrue(state.runtime.loaded_model.fusedAttention)
 
     def test_snapshot_download_process_redirects_progress_output_to_log_file(self):
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:

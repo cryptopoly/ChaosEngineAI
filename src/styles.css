@@ -1391,6 +1391,54 @@ select.text-input {
   border-color: #314361;
 }
 
+.reasoning-panel {
+  margin: 0 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.reasoning-panel__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--muted-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reasoning-panel__chevron {
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--muted);
+  transform: rotate(0deg);
+  transition: transform 0.16s ease;
+}
+
+.reasoning-panel__chevron--open {
+  transform: rotate(90deg);
+}
+
+.reasoning-panel__body {
+  padding: 0 14px 14px 42px;
+}
+
+.reasoning-panel__content {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.reasoning-panel__content p,
+.reasoning-panel__content li,
+.reasoning-panel__content blockquote {
+  color: inherit;
+}
+
 .message-details {
   margin-top: 10px;
   border-top: 1px solid var(--border);

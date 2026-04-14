@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
+from compression import registry as cache_registry
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
 from backend_service.image_runtime import (
@@ -58,6 +59,7 @@ from backend_service.helpers.persistence import (
     _default_chat_variant,
     MAX_BENCHMARK_RUNS,
 )
+from backend_service.model_resolution import infer_hf_repo_from_local_path
 from backend_service.helpers.documents import (
     _sanitize_filename,
     _extract_text_from_file,
@@ -75,14 +77,17 @@ from backend_service.helpers.network import (
 )
 
 _CHAT_RESPONSE_POLICY = (
-    "Do not reveal hidden chain-of-thought, scratchpad notes, or internal reasoning. "
-    "Do not emit headings like 'Thinking Process'. Give the final answer directly, and if needed "
-    "provide only a brief public explanation."
+    "Give the final answer directly. Do not emit headings like 'Thinking Process' in the final answer."
 )
 
 _THINKING_OFF_POLICY = (
     "Thinking mode is OFF. Do not think out loud, do not emit planning text, and do not output "
     "reasoning tags such as <think>. Respond directly with the final answer."
+)
+
+_THINKING_AUTO_POLICY = (
+    "Thinking mode is AUTO. If deliberate reasoning is useful, keep it inside <think>...</think> "
+    "so the UI can show it separately, then provide the final answer outside those tags."
 )
 
 
@@ -97,6 +102,8 @@ def _compose_chat_system_prompt(system_prompt: str | None, thinking_mode: str | 
     parts = [_CHAT_RESPONSE_POLICY]
     if (thinking_mode or "off") == "off":
         parts.append(_THINKING_OFF_POLICY)
+    else:
+        parts.append(_THINKING_AUTO_POLICY)
     if system_prompt:
         parts.append(system_prompt)
     return "\n\n".join(part.strip() for part in parts if part and part.strip()).strip()
@@ -330,15 +337,17 @@ class ChaosEngineState:
         return "Native f16 cache"
 
     def _cache_label(self, *, cache_strategy: str, bits: int, fp16_layers: int) -> str:
-        _ = cache_strategy  # reserved for future strategy dispatch
+        strategy = cache_registry.get(cache_strategy)
+        if strategy is not None:
+            return strategy.label(bits, fp16_layers)
         return self._cache_strategy_label(bits, fp16_layers)
 
-    def _assistant_metrics_payload(self, result: Any) -> dict[str, Any]:
+    def _loaded_model_metrics_fields(self) -> dict[str, Any]:
         loaded = self.runtime.loaded_model
         return {
-            **result.to_metrics(),
             "model": loaded.name if loaded else None,
             "modelRef": loaded.ref if loaded else None,
+            "canonicalRepo": loaded.canonicalRepo if loaded else None,
             "backend": loaded.backend if loaded else None,
             "engineLabel": self.runtime.engine.engine_label,
             "cacheLabel": self._cache_label(
@@ -360,6 +369,93 @@ class ChaosEngineState:
             "generatedAt": self._time_label(),
         }
 
+    def _requested_runtime_metrics_fields(
+        self,
+        *,
+        cache_strategy: str,
+        cache_bits: int,
+        fp16_layers: int,
+        speculative_decoding: bool,
+        tree_budget: int,
+    ) -> dict[str, Any]:
+        return {
+            "requestedCacheLabel": self._cache_label(
+                cache_strategy=cache_strategy,
+                bits=cache_bits,
+                fp16_layers=fp16_layers,
+            ),
+            "requestedCacheStrategy": cache_strategy,
+            "requestedCacheBits": cache_bits,
+            "requestedFp16Layers": fp16_layers,
+            "requestedSpeculativeDecoding": speculative_decoding,
+            "requestedTreeBudget": tree_budget,
+        }
+
+    def _result_runtime_metrics_fields(self, result: Any | None) -> dict[str, Any]:
+        if result is None:
+            return {}
+        metrics: dict[str, Any] = {}
+        cache_strategy = getattr(result, "cache_strategy", None)
+        if cache_strategy is not None:
+            cache_bits = int(getattr(result, "cache_bits", 0) or 0)
+            fp16_layers = int(getattr(result, "fp16_layers", 0) or 0)
+            metrics.update({
+                "cacheLabel": self._cache_label(
+                    cache_strategy=str(cache_strategy),
+                    bits=cache_bits,
+                    fp16_layers=fp16_layers,
+                ),
+                "cacheStrategy": str(cache_strategy),
+                "cacheBits": cache_bits,
+                "fp16Layers": fp16_layers,
+            })
+        speculative_decoding = getattr(result, "speculative_decoding", None)
+        if speculative_decoding is not None:
+            metrics["speculativeDecoding"] = bool(speculative_decoding)
+            metrics["treeBudget"] = int(getattr(result, "tree_budget", 0) or 0)
+            if not speculative_decoding:
+                metrics["dflashDraftModel"] = None
+        return metrics
+
+    def _assistant_metrics_payload(
+        self,
+        result: Any,
+        *,
+        requested_runtime: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            **self._loaded_model_metrics_fields(),
+            **self._result_runtime_metrics_fields(result),
+            **result.to_metrics(),
+            **(requested_runtime or {}),
+        }
+
+    def _stream_assistant_metrics_payload(
+        self,
+        *,
+        final_chunk: Any,
+        tok_s: float,
+        response_seconds: float,
+        requested_runtime: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        metrics: dict[str, Any] = {
+            "finishReason": final_chunk.finish_reason if final_chunk else "stop",
+            "promptTokens": final_chunk.prompt_tokens if final_chunk else 0,
+            "completionTokens": final_chunk.completion_tokens if final_chunk else 0,
+            "totalTokens": (final_chunk.prompt_tokens + final_chunk.completion_tokens) if final_chunk else 0,
+            "tokS": tok_s,
+            "responseSeconds": response_seconds,
+            "runtimeNote": final_chunk.runtime_note if final_chunk else None,
+        }
+        if final_chunk and getattr(final_chunk, "dflash_acceptance_rate", None) is not None:
+            metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
+        return {
+            **self._loaded_model_metrics_fields(),
+            **self._result_runtime_metrics_fields(final_chunk),
+            **metrics,
+            **(requested_runtime or {}),
+        }
+
     def _should_reload_for_profile(
         self,
         *,
@@ -370,6 +466,8 @@ class ChaosEngineState:
         cache_strategy: str,
         fit_model_in_memory: bool,
         context_tokens: int,
+        speculative_decoding: bool,
+        tree_budget: int,
     ) -> bool:
         if model_ref and (
             self.runtime.loaded_model is None
@@ -388,26 +486,24 @@ class ChaosEngineState:
                 cache_strategy=cache_strategy,
                 fit_model_in_memory=fit_model_in_memory,
                 context_tokens=context_tokens,
+                speculative_decoding=speculative_decoding,
+                tree_budget=tree_budget,
             )
         )
 
-    def _runtime_profile_change_reasons(
+    def _cache_profile_change_reasons(
         self,
         *,
         cache_bits: int,
         fp16_layers: int,
         fused_attention: bool,
         cache_strategy: str,
-        fit_model_in_memory: bool,
-        context_tokens: int,
     ) -> list[str]:
         loaded_model = self.runtime.loaded_model
         if loaded_model is None:
             return []
 
         changes: list[str] = []
-        if loaded_model.contextTokens != context_tokens:
-            changes.append(f"context {loaded_model.contextTokens} -> {context_tokens}")
         if loaded_model.cacheStrategy != cache_strategy:
             changes.append(f"cache strategy {loaded_model.cacheStrategy} -> {cache_strategy}")
         if loaded_model.cacheBits != cache_bits:
@@ -418,10 +514,45 @@ class ChaosEngineState:
             changes.append(
                 f"fused attention {'on' if loaded_model.fusedAttention else 'off'} -> {'on' if fused_attention else 'off'}"
             )
+        return changes
+
+    def _runtime_profile_change_reasons(
+        self,
+        *,
+        cache_bits: int,
+        fp16_layers: int,
+        fused_attention: bool,
+        cache_strategy: str,
+        fit_model_in_memory: bool,
+        context_tokens: int,
+        speculative_decoding: bool,
+        tree_budget: int,
+    ) -> list[str]:
+        loaded_model = self.runtime.loaded_model
+        if loaded_model is None:
+            return []
+
+        changes: list[str] = []
+        if loaded_model.contextTokens != context_tokens:
+            changes.append(f"context {loaded_model.contextTokens} -> {context_tokens}")
+        changes.extend(
+            self._cache_profile_change_reasons(
+                cache_bits=cache_bits,
+                fp16_layers=fp16_layers,
+                fused_attention=fused_attention,
+                cache_strategy=cache_strategy,
+            )
+        )
         if loaded_model.fitModelInMemory != fit_model_in_memory:
             changes.append(
                 f"fit-in-memory {'on' if loaded_model.fitModelInMemory else 'off'} -> {'on' if fit_model_in_memory else 'off'}"
             )
+        if bool(loaded_model.speculativeDecoding) != speculative_decoding:
+            changes.append(
+                f"speculative decoding {'on' if loaded_model.speculativeDecoding else 'off'} -> {'on' if speculative_decoding else 'off'}"
+            )
+        if int(loaded_model.treeBudget or 0) != int(tree_budget):
+            changes.append(f"tree budget {loaded_model.treeBudget or 0} -> {tree_budget}")
         return changes
 
     def _append_benchmark_run(self, run: dict[str, Any]) -> None:
@@ -454,6 +585,27 @@ class ChaosEngineState:
             if model_ref and entry["name"] == model_ref:
                 return entry
         return None
+
+    def _resolve_canonical_repo(
+        self,
+        *,
+        model_ref: str | None,
+        path: str | None,
+        canonical_repo: str | None,
+    ) -> str | None:
+        from backend_service.app import _hf_repo_from_link
+
+        cleaned = str(canonical_repo or "").strip() or None
+        if cleaned is not None:
+            return cleaned
+        catalog_entry = self._find_catalog_entry(model_ref) if model_ref else None
+        if catalog_entry is not None:
+            return (
+                _hf_repo_from_link(catalog_entry.get("link"))
+                or str(catalog_entry.get("repo") or "").strip()
+                or None
+            )
+        return infer_hf_repo_from_local_path(path)
 
     def _resolve_model_target(
         self,
@@ -516,10 +668,15 @@ class ChaosEngineState:
             return {
                 "model": model_info.name,
                 "modelRef": model_info.ref,
+                "canonicalRepo": model_info.canonicalRepo,
                 "modelSource": model_info.source,
                 "modelPath": model_info.path,
                 "modelBackend": model_info.backend,
-                "cacheLabel": self._cache_strategy_label(model_info.cacheBits, model_info.fp16Layers),
+                "cacheLabel": self._cache_label(
+                    cache_strategy=str(model_info.cacheStrategy),
+                    bits=int(model_info.cacheBits),
+                    fp16_layers=int(model_info.fp16Layers),
+                ),
                 "cacheStrategy": model_info.cacheStrategy,
                 "cacheBits": model_info.cacheBits,
                 "fp16Layers": model_info.fp16Layers,
@@ -535,12 +692,14 @@ class ChaosEngineState:
         return {
             "model": default_variant["name"],
             "modelRef": default_variant["id"],
+            "canonicalRepo": str(default_variant.get("repo") or "").strip() or None,
             "modelSource": "catalog",
             "modelPath": None,
             "modelBackend": default_variant.get("backend", "auto"),
-            "cacheLabel": self._cache_strategy_label(
-                launch_preferences["cacheBits"],
-                launch_preferences["fp16Layers"],
+            "cacheLabel": self._cache_label(
+                cache_strategy=str(launch_preferences["cacheStrategy"]),
+                bits=int(launch_preferences["cacheBits"]),
+                fp16_layers=int(launch_preferences["fp16Layers"]),
             ),
             "cacheStrategy": launch_preferences["cacheStrategy"],
             "cacheBits": launch_preferences["cacheBits"],
@@ -656,6 +815,8 @@ class ChaosEngineState:
                 session["model"] = request.model
             if request.modelRef is not None:
                 session["modelRef"] = request.modelRef
+            if request.canonicalRepo is not None:
+                session["canonicalRepo"] = request.canonicalRepo
             if request.modelSource is not None:
                 session["modelSource"] = request.modelSource
             if request.modelPath is not None:
@@ -887,20 +1048,31 @@ class ChaosEngineState:
             )
 
         load_seconds = 0.0
+        effective_cache_strategy = "native" if request.speculativeDecoding else request.cacheStrategy
+        effective_cache_bits = 0 if request.speculativeDecoding else request.cacheBits
+        effective_fp16_layers = 0 if request.speculativeDecoding else request.fp16Layers
+
         if self._should_reload_for_profile(
             model_ref=effective_model_ref,
-            cache_bits=request.cacheBits,
-            fp16_layers=request.fp16Layers,
+            cache_bits=effective_cache_bits,
+            fp16_layers=effective_fp16_layers,
             fused_attention=request.fusedAttention,
-            cache_strategy=request.cacheStrategy,
+            cache_strategy=effective_cache_strategy,
             fit_model_in_memory=request.fitModelInMemory,
             context_tokens=request.contextTokens,
+            speculative_decoding=request.speculativeDecoding,
+            tree_budget=0,
         ):
             load_started = time.perf_counter()
             self.load_model(
                 LoadModelRequest(
                     modelRef=str(effective_model_ref),
                     modelName=model_name,
+                    canonicalRepo=self._resolve_canonical_repo(
+                        model_ref=str(effective_model_ref),
+                        path=effective_path,
+                        canonical_repo=None,
+                    ),
                     source=effective_source,
                     backend=effective_backend,
                     path=effective_path,
@@ -910,6 +1082,7 @@ class ChaosEngineState:
                     fusedAttention=request.fusedAttention,
                     fitModelInMemory=request.fitModelInMemory,
                     contextTokens=request.contextTokens,
+                    speculativeDecoding=request.speculativeDecoding,
                 )
             )
             load_seconds = round(time.perf_counter() - load_started, 2)
@@ -1051,6 +1224,11 @@ class ChaosEngineState:
         with self._lock:
             catalog_entry = self._find_catalog_entry(request.modelRef)
             library_entry = self._find_library_entry(request.path, request.modelRef)
+            effective_canonical_repo = self._resolve_canonical_repo(
+                model_ref=request.modelRef,
+                path=request.path,
+                canonical_repo=request.canonicalRepo,
+            )
             if library_entry is not None and library_entry.get("broken"):
                 reason = library_entry.get("brokenReason") or "incomplete or corrupt"
                 raise RuntimeError(
@@ -1082,28 +1260,70 @@ class ChaosEngineState:
                 backend=request.backend,
             )
             display_name = model_name or request.modelRef
+            speculative_decoding = bool(getattr(request, "speculativeDecoding", False))
+            tree_budget = int(getattr(request, "treeBudget", 0) or 0)
+
+            # When speculative decoding is active, force native cache strategy
+            # because DFLASH manages its own KV caches with rollback, which
+            # conflicts with compression strategies.
+            effective_cache_strategy = request.cacheStrategy
+            effective_cache_bits = request.cacheBits
+            effective_fp16_layers = request.fp16Layers
+            if speculative_decoding:
+                effective_cache_strategy = "native"
+                effective_cache_bits = 0
+                effective_fp16_layers = 0
+
             same_loaded_model = (
                 self.runtime.loaded_model is not None
-                and request.modelRef in {
-                    self.runtime.loaded_model.ref,
-                    self.runtime.loaded_model.runtimeTarget,
-                }
+                and (
+                    request.modelRef in {
+                        self.runtime.loaded_model.ref,
+                        self.runtime.loaded_model.runtimeTarget,
+                    }
+                    or (request.path is not None and request.path == self.runtime.loaded_model.path)
+                )
             )
-            profile_changes = (
-                self._runtime_profile_change_reasons(
-                    cache_bits=request.cacheBits,
-                    fp16_layers=request.fp16Layers,
+            cache_profile_changes = (
+                self._cache_profile_change_reasons(
+                    cache_bits=effective_cache_bits,
+                    fp16_layers=effective_fp16_layers,
                     fused_attention=request.fusedAttention,
-                    cache_strategy=request.cacheStrategy,
-                    fit_model_in_memory=request.fitModelInMemory,
-                    context_tokens=request.contextTokens,
+                    cache_strategy=effective_cache_strategy,
                 )
                 if same_loaded_model
                 else []
             )
+            profile_changes = (
+                self._runtime_profile_change_reasons(
+                    cache_bits=effective_cache_bits,
+                    fp16_layers=effective_fp16_layers,
+                    fused_attention=request.fusedAttention,
+                    cache_strategy=effective_cache_strategy,
+                    fit_model_in_memory=request.fitModelInMemory,
+                    context_tokens=request.contextTokens,
+                    speculative_decoding=speculative_decoding,
+                    tree_budget=tree_budget,
+                )
+                if same_loaded_model
+                else []
+            )
+            reload_required_changes = [change for change in profile_changes if change not in cache_profile_changes]
+            can_apply_profile_without_reload = bool(
+                same_loaded_model
+                and cache_profile_changes
+                and not reload_required_changes
+                and resolved_backend == "mlx"
+                and self.runtime.loaded_model is not None
+                and self.runtime.loaded_model.engine == "mlx"
+            )
+            if same_loaded_model and not profile_changes:
+                if effective_canonical_repo is not None and self.runtime.loaded_model is not None:
+                    self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
+                return self.runtime.status(active_requests=self.active_requests, requests_served=self.requests_served)
             self._loading_state = {
                 "modelName": display_name,
-                "stage": "loading",
+                "stage": "applying" if can_apply_profile_without_reload else "loading",
                 "startedAt": time.time(),
                 "progress": None,
                 "progressPercent": None,
@@ -1111,7 +1331,13 @@ class ChaosEngineState:
                 "progressMessage": None,
                 "recentLogLines": [],
             }
-            if profile_changes:
+            if can_apply_profile_without_reload:
+                self.add_log(
+                    "runtime",
+                    "info",
+                    f"Applying MLX runtime profile for {display_name} ({', '.join(cache_profile_changes)}).",
+                )
+            elif profile_changes:
                 self.add_log(
                     "runtime",
                     "info",
@@ -1142,37 +1368,34 @@ class ChaosEngineState:
             except Exception:
                 pass
 
-        # When speculative decoding is active, force native cache strategy
-        # because DFLASH manages its own KV caches with rollback, which
-        # conflicts with compression strategies.
-        effective_cache_strategy = request.cacheStrategy
-        effective_cache_bits = request.cacheBits
-        effective_fp16_layers = request.fp16Layers
-        speculative_decoding = getattr(request, "speculativeDecoding", False)
-        tree_budget = getattr(request, "treeBudget", 0) or 0
-        if speculative_decoding:
-            effective_cache_strategy = "native"
-            effective_cache_bits = 0
-            effective_fp16_layers = 0
-
         try:
-            loaded = self.runtime.load_model(
-                model_ref=request.modelRef,
-                model_name=model_name,
-                source=request.source,
-                backend=resolved_backend,
-                path=request.path,
-                runtime_target=runtime_target,
-                cache_strategy=effective_cache_strategy,
-                cache_bits=effective_cache_bits,
-                fp16_layers=effective_fp16_layers,
-                fused_attention=request.fusedAttention,
-                fit_model_in_memory=request.fitModelInMemory,
-                context_tokens=request.contextTokens,
-                speculative_decoding=speculative_decoding,
-                tree_budget=tree_budget,
-                progress_callback=_on_load_progress,
-            )
+            if can_apply_profile_without_reload:
+                loaded = self.runtime.update_profile(
+                    canonical_repo=effective_canonical_repo,
+                    cache_strategy=effective_cache_strategy,
+                    cache_bits=effective_cache_bits,
+                    fp16_layers=effective_fp16_layers,
+                    fused_attention=request.fusedAttention,
+                )
+            else:
+                loaded = self.runtime.load_model(
+                    model_ref=request.modelRef,
+                    model_name=model_name,
+                    canonical_repo=effective_canonical_repo,
+                    source=request.source,
+                    backend=resolved_backend,
+                    path=request.path,
+                    runtime_target=runtime_target,
+                    cache_strategy=effective_cache_strategy,
+                    cache_bits=effective_cache_bits,
+                    fp16_layers=effective_fp16_layers,
+                    fused_attention=request.fusedAttention,
+                    fit_model_in_memory=request.fitModelInMemory,
+                    context_tokens=request.contextTokens,
+                    speculative_decoding=speculative_decoding,
+                    tree_budget=tree_budget,
+                    progress_callback=_on_load_progress,
+                )
         except Exception:
             with self._lock:
                 self._loading_state = None
@@ -1180,7 +1403,11 @@ class ChaosEngineState:
 
         with self._lock:
             self._loading_state = None
-            loaded_cache_label = self._cache_strategy_label(loaded.cacheBits, loaded.fp16Layers)
+            loaded_cache_label = self._cache_label(
+                cache_strategy=str(loaded.cacheStrategy),
+                bits=int(loaded.cacheBits),
+                fp16_layers=int(loaded.fp16Layers),
+            )
             self.add_log("runtime", "info", f"Model loaded: {loaded.name} via {loaded.engine}.")
             self.add_activity("Model loaded", f"{loaded.name} / {loaded_cache_label}")
             return self.runtime.status(active_requests=self.active_requests, requests_served=self.requests_served)
@@ -1460,6 +1687,7 @@ class ChaosEngineState:
             launch_preferences = self._launch_preferences()
             effective_model_ref = request.modelRef or session.get("modelRef")
             effective_model_name = request.modelName or session.get("model")
+            effective_canonical_repo = request.canonicalRepo or session.get("canonicalRepo")
             effective_source = request.source or session.get("modelSource") or "catalog"
             effective_path = request.path if request.path is not None else session.get("modelPath")
             effective_backend = request.backend or session.get("modelBackend") or "auto"
@@ -1493,15 +1721,37 @@ class ChaosEngineState:
                 else session.get("contextTokens") if session.get("contextTokens") is not None
                 else launch_preferences["contextTokens"]
             )
+            desired_speculative_decoding = (
+                request.speculativeDecoding if request.speculativeDecoding is not None
+                else session.get("speculativeDecoding") if session.get("speculativeDecoding") is not None
+                else launch_preferences["speculativeDecoding"]
+            )
+            desired_tree_budget = (
+                request.treeBudget if request.treeBudget is not None
+                else session.get("treeBudget") if session.get("treeBudget") is not None
+                else launch_preferences["treeBudget"]
+            )
+            requested_runtime = self._requested_runtime_metrics_fields(
+                cache_strategy=str(desired_cache_strategy),
+                cache_bits=int(desired_cache_bits),
+                fp16_layers=int(desired_fp16_layers),
+                speculative_decoding=bool(desired_speculative_decoding),
+                tree_budget=int(desired_tree_budget),
+            )
+            effective_cache_strategy = "native" if desired_speculative_decoding else desired_cache_strategy
+            effective_cache_bits = 0 if desired_speculative_decoding else desired_cache_bits
+            effective_fp16_layers = 0 if desired_speculative_decoding else desired_fp16_layers
 
             should_reload_model = self._should_reload_for_profile(
                 model_ref=effective_model_ref,
-                cache_bits=desired_cache_bits,
-                fp16_layers=desired_fp16_layers,
+                cache_bits=effective_cache_bits,
+                fp16_layers=effective_fp16_layers,
                 fused_attention=desired_fused_attention,
-                cache_strategy=desired_cache_strategy,
+                cache_strategy=effective_cache_strategy,
                 fit_model_in_memory=desired_fit_model,
                 context_tokens=desired_context_tokens,
+                speculative_decoding=desired_speculative_decoding,
+                tree_budget=desired_tree_budget,
             )
 
             if effective_model_ref and should_reload_model:
@@ -1509,6 +1759,7 @@ class ChaosEngineState:
                     LoadModelRequest(
                         modelRef=effective_model_ref,
                         modelName=effective_model_name,
+                        canonicalRepo=effective_canonical_repo,
                         source=effective_source,
                         backend=effective_backend,
                         path=effective_path,
@@ -1518,24 +1769,31 @@ class ChaosEngineState:
                         fusedAttention=desired_fused_attention,
                         fitModelInMemory=desired_fit_model,
                         contextTokens=desired_context_tokens,
+                        speculativeDecoding=desired_speculative_decoding,
+                        treeBudget=desired_tree_budget,
                     )
                 )
 
             if self.runtime.loaded_model is None:
                 raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
 
+            if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
+                self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
+
             history = [{"role": message["role"], "text": message["text"]} for message in session["messages"]]
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
             session["model"] = self.runtime.loaded_model.name
             session["modelRef"] = self.runtime.loaded_model.ref
+            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
             session["modelSource"] = self.runtime.loaded_model.source
             session["modelPath"] = self.runtime.loaded_model.path
             session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
-            session["cacheLabel"] = self._cache_strategy_label(
-                self.runtime.loaded_model.cacheBits,
-                self.runtime.loaded_model.fp16Layers,
+            session["cacheLabel"] = self._cache_label(
+                cache_strategy=str(self.runtime.loaded_model.cacheStrategy),
+                bits=int(self.runtime.loaded_model.cacheBits),
+                fp16_layers=int(self.runtime.loaded_model.fp16Layers),
             )
             session["cacheStrategy"] = self.runtime.loaded_model.cacheStrategy
             session["cacheBits"] = self.runtime.loaded_model.cacheBits
@@ -1632,7 +1890,7 @@ class ChaosEngineState:
         with self._lock:
             self.active_requests = max(0, self.active_requests - 1)
             self.requests_served += 1
-            metrics = self._assistant_metrics_payload(result)
+            metrics = self._assistant_metrics_payload(result, requested_runtime=requested_runtime)
             if tool_call_payloads:
                 metrics["toolCalls"] = tool_call_payloads
             assistant_message: dict[str, Any] = {
@@ -1668,6 +1926,7 @@ class ChaosEngineState:
             launch_preferences = self._launch_preferences()
             effective_model_ref = request.modelRef or session.get("modelRef")
             effective_model_name = request.modelName or session.get("model")
+            effective_canonical_repo = request.canonicalRepo or session.get("canonicalRepo")
             effective_source = request.source or session.get("modelSource") or "catalog"
             effective_path = request.path if request.path is not None else session.get("modelPath")
             effective_backend = request.backend or session.get("modelBackend") or "auto"
@@ -1701,37 +1960,68 @@ class ChaosEngineState:
                 else session.get("contextTokens") if session.get("contextTokens") is not None
                 else launch_preferences["contextTokens"]
             )
+            desired_speculative_decoding = (
+                request.speculativeDecoding if request.speculativeDecoding is not None
+                else session.get("speculativeDecoding") if session.get("speculativeDecoding") is not None
+                else launch_preferences["speculativeDecoding"]
+            )
+            desired_tree_budget = (
+                request.treeBudget if request.treeBudget is not None
+                else session.get("treeBudget") if session.get("treeBudget") is not None
+                else launch_preferences["treeBudget"]
+            )
+            requested_runtime = self._requested_runtime_metrics_fields(
+                cache_strategy=str(desired_cache_strategy),
+                cache_bits=int(desired_cache_bits),
+                fp16_layers=int(desired_fp16_layers),
+                speculative_decoding=bool(desired_speculative_decoding),
+                tree_budget=int(desired_tree_budget),
+            )
+            effective_cache_strategy = "native" if desired_speculative_decoding else desired_cache_strategy
+            effective_cache_bits = 0 if desired_speculative_decoding else desired_cache_bits
+            effective_fp16_layers = 0 if desired_speculative_decoding else desired_fp16_layers
 
             should_reload = self._should_reload_for_profile(
-                model_ref=effective_model_ref, cache_bits=desired_cache_bits,
-                fp16_layers=desired_fp16_layers, fused_attention=desired_fused_attention,
-                cache_strategy=desired_cache_strategy, fit_model_in_memory=desired_fit_model,
+                model_ref=effective_model_ref, cache_bits=effective_cache_bits,
+                fp16_layers=effective_fp16_layers, fused_attention=desired_fused_attention,
+                cache_strategy=effective_cache_strategy, fit_model_in_memory=desired_fit_model,
                 context_tokens=desired_context_tokens,
+                speculative_decoding=desired_speculative_decoding,
+                tree_budget=desired_tree_budget,
             )
             if effective_model_ref and should_reload:
                 self.load_model(LoadModelRequest(
                     modelRef=effective_model_ref, modelName=effective_model_name,
+                    canonicalRepo=effective_canonical_repo,
                     source=effective_source, backend=effective_backend, path=effective_path,
                     cacheStrategy=desired_cache_strategy, cacheBits=desired_cache_bits,
                     fp16Layers=desired_fp16_layers,
                     fusedAttention=desired_fused_attention,
                     fitModelInMemory=desired_fit_model, contextTokens=desired_context_tokens,
+                    speculativeDecoding=desired_speculative_decoding,
+                    treeBudget=desired_tree_budget,
                 ))
 
             if self.runtime.loaded_model is None:
                 raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
+
+            if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
+                self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
 
             history = [{"role": m["role"], "text": m["text"]} for m in session["messages"]]
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
             session["model"] = self.runtime.loaded_model.name
             session["modelRef"] = self.runtime.loaded_model.ref
+            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
             session["modelSource"] = self.runtime.loaded_model.source
             session["modelPath"] = self.runtime.loaded_model.path
             session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
-            session["cacheLabel"] = self._cache_strategy_label(
-                self.runtime.loaded_model.cacheBits, self.runtime.loaded_model.fp16Layers,
+            session["cacheLabel"] = self._cache_label(
+                cache_strategy=str(self.runtime.loaded_model.cacheStrategy),
+                bits=int(self.runtime.loaded_model.cacheBits),
+                fp16_layers=int(self.runtime.loaded_model.fp16Layers),
             )
             session["cacheStrategy"] = self.runtime.loaded_model.cacheStrategy
             session["cacheBits"] = self.runtime.loaded_model.cacheBits
@@ -1771,6 +2061,7 @@ class ChaosEngineState:
 
         def _sse_stream():
             full_text = ""
+            full_reasoning = ""
             final_chunk = None
             agent_tool_calls: list[dict[str, Any]] = []
 
@@ -1804,6 +2095,11 @@ class ChaosEngineState:
                         max_tokens=request.maxTokens, temperature=request.temperature,
                         images=request.images,
                     ):
+                        if chunk.reasoning:
+                            full_reasoning += chunk.reasoning
+                            yield f"data: {json.dumps({'reasoning': chunk.reasoning})}\n\n"
+                        if chunk.reasoning_done:
+                            yield f"data: {json.dumps({'reasoningDone': True})}\n\n"
                         if chunk.text:
                             full_text += chunk.text
                             yield f"data: {json.dumps({'token': chunk.text})}\n\n"
@@ -1833,25 +2129,12 @@ class ChaosEngineState:
                 if (not tok_s or tok_s == 0) and completion_tokens > 0 and gen_elapsed > 0:
                     tok_s = round(completion_tokens / gen_elapsed, 1)
 
-                metrics: dict[str, Any] = {
-                    "finishReason": final_chunk.finish_reason if final_chunk else "stop",
-                    "promptTokens": prompt_tokens,
-                    "completionTokens": completion_tokens,
-                    "totalTokens": prompt_tokens + completion_tokens,
-                    "tokS": tok_s,
-                    "responseSeconds": gen_elapsed,
-                    "runtimeNote": final_chunk.runtime_note if final_chunk else None,
-                    "model": chaosengine.runtime.loaded_model.name if chaosengine.runtime.loaded_model else None,
-                    "modelRef": chaosengine.runtime.loaded_model.ref if chaosengine.runtime.loaded_model else None,
-                    "backend": chaosengine.runtime.loaded_model.backend if chaosengine.runtime.loaded_model else None,
-                    "engineLabel": chaosengine.runtime.engine.engine_label,
-                    "cacheLabel": chaosengine._cache_strategy_label(
-                        chaosengine.runtime.loaded_model.cacheBits,
-                        chaosengine.runtime.loaded_model.fp16Layers,
-                    ) if chaosengine.runtime.loaded_model else None,
-                    "contextTokens": chaosengine.runtime.loaded_model.contextTokens if chaosengine.runtime.loaded_model else None,
-                    "generatedAt": chaosengine._time_label(),
-                }
+                metrics = chaosengine._stream_assistant_metrics_payload(
+                    final_chunk=final_chunk,
+                    tok_s=tok_s,
+                    response_seconds=gen_elapsed,
+                    requested_runtime=requested_runtime,
+                )
                 if agent_tool_calls:
                     metrics["toolCalls"] = agent_tool_calls
 
@@ -1860,6 +2143,8 @@ class ChaosEngineState:
                     "text": full_text,
                     "metrics": metrics,
                 }
+                if full_reasoning:
+                    assistant_message["reasoning"] = full_reasoning
                 if agent_tool_calls:
                     assistant_message["toolCalls"] = agent_tool_calls
                 if stream_rag_citations:
@@ -2429,6 +2714,11 @@ class ChaosEngineState:
                     LoadModelRequest(
                         modelRef=request.model,
                         modelName=request.model,
+                        canonicalRepo=self._resolve_canonical_repo(
+                            model_ref=request.model,
+                            path=None,
+                            canonical_repo=None,
+                        ),
                         source="openai",
                         backend="auto",
                         cacheStrategy=launch_preferences["cacheStrategy"],

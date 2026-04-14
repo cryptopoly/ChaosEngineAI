@@ -284,6 +284,8 @@ export async function generateChat(payload: GeneratePayload): Promise<GenerateRe
 
 export interface StreamCallbacks {
   onToken: (token: string) => void;
+  onReasoning?: (reasoning: string) => void;
+  onReasoningDone?: () => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
 }
@@ -352,6 +354,12 @@ export async function generateChatStream(
           }
           if (event.token) {
             callbacks.onToken(event.token);
+          }
+          if (event.reasoning) {
+            callbacks.onReasoning?.(event.reasoning);
+          }
+          if (event.reasoningDone) {
+            callbacks.onReasoningDone?.();
           }
           if (event.done) {
             callbacks.onDone({

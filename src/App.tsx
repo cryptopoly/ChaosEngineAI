@@ -33,6 +33,7 @@ import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
 import type {
   ChatSession,
   LibraryItem,
+  LoadModelActionResult,
   ModelVariant,
   TabId,
 } from "./types";
@@ -52,6 +53,7 @@ import {
   libraryItemQuantization,
   libraryItemBackend,
   libraryItemSourceKind,
+  inferHfRepoFromLocalPath,
   downloadProgressLabel,
   syncRuntime,
   settingsDraftFromWorkspace,
@@ -69,7 +71,6 @@ import {
   useImageState,
   useBenchmarks,
   useSettings,
-  useServerLog,
 } from "./hooks";
 
 export default function App() {
@@ -234,6 +235,7 @@ export default function App() {
       group: "Catalog",
       model: variant.name,
       modelRef: variant.id,
+      canonicalRepo: variant.repo,
       source: "catalog",
       backend: variant.backend,
       paramsB: variant.paramsB,
@@ -255,6 +257,7 @@ export default function App() {
       group: "Local library",
       model: item.name,
       modelRef: item.name,
+      canonicalRepo: matched?.repo ?? inferHfRepoFromLocalPath(item.path),
       source: "library",
       path: item.path,
       backend: libraryItemBackend(item, matched),
@@ -284,6 +287,7 @@ export default function App() {
   async function handleLoadModel(payload: {
     modelRef: string;
     modelName?: string;
+    canonicalRepo?: string | null;
     source?: string;
     backend?: string;
     path?: string;
@@ -297,13 +301,14 @@ export default function App() {
     contextTokens?: number;
     speculativeDecoding?: boolean;
     treeBudget?: number;
-  }) {
+  }): Promise<LoadModelActionResult> {
     setError(null);
     setBusyAction(payload.busyLabel ?? "Loading model...");
     try {
       const loadPayload = {
         modelRef: payload.modelRef,
         modelName: payload.modelName,
+        canonicalRepo: payload.canonicalRepo ?? undefined,
         source: payload.source ?? "catalog",
         backend: payload.backend ?? "auto",
         path: payload.path,
@@ -319,10 +324,12 @@ export default function App() {
 
       let loadSucceeded = false;
       let loadErrorMessage: string | null = null;
+      let loadedRuntime: LoadModelActionResult["runtime"];
       try {
         const runtime = await loadModel(loadPayload);
         setWorkspace((current) => syncRuntime(current, runtime));
         loadSucceeded = true;
+        loadedRuntime = runtime;
       } catch (loadErr) {
         loadErrorMessage = loadErr instanceof Error ? loadErr.message : String(loadErr);
         // If the error is a definitive failure (server returned 500, backend
@@ -339,11 +346,15 @@ export default function App() {
                 setWorkspace(ws);
                 loadSucceeded = true;
                 loadErrorMessage = null;
+                loadedRuntime = ws.runtime;
                 break;
               }
               if (ws.server.loading) { setWorkspace(ws); continue; }
               break;
             } catch { /* backend unreachable */ }
+          }
+          if (loadSucceeded) {
+            // Let the shared success path below refresh the workspace and tab state.
           }
         }
       }
@@ -351,14 +362,17 @@ export default function App() {
       if (loadSucceeded) {
         await refreshWorkspace(chat.activeChatId || undefined);
         if (payload.nextTab) setActiveTab(payload.nextTab);
+        return { ok: true, runtime: loadedRuntime };
       } else {
         const detail = loadErrorMessage || "The model could not be loaded. Check the server logs for details.";
         setError(`Failed to load ${payload.modelName ?? payload.modelRef}: ${detail}`);
+        return { ok: false, error: detail };
       }
     } catch (actionError) {
       const detail = actionError instanceof Error ? actionError.message : "Unknown error";
       console.error("[handleLoadModel] Load failed for", payload.modelRef, "—", detail, actionError);
       setError(`Failed to load ${payload.modelName ?? payload.modelRef}: ${detail}`);
+      return { ok: false, error: detail };
     } finally {
       setBusyAction(null);
     }
@@ -422,9 +436,6 @@ export default function App() {
     selectedBenchmark, compareBenchmark,
   } = benchmarks;
 
-  // ── Server logs ────────────────────────────────────────────
-  const { serverLogEntries } = useServerLog(activeTab, backendOnline);
-
   // ── Remaining cross-domain state ───────────────────────────
   const [logQuery, setLogQuery] = useState("");
   const [showConversionPicker, setShowConversionPicker] = useState(false);
@@ -483,6 +494,7 @@ export default function App() {
     const haystack = `${entry.ts} ${entry.source} ${entry.level} ${entry.message}`.toLowerCase();
     return haystack.includes(logQuery.toLowerCase());
   });
+  const serverLogEntries = workspace.logs.slice(0, 120).reverse();
   const previewSavings = Math.max(0, preview.baselineCacheGb - preview.optimizedCacheGb);
   const conversionReady = Boolean(nativeBackends?.converterAvailable ?? workspace.system.mlxLmAvailable);
   const enabledDirectoryCount = (workspace.settings?.modelDirectories ?? []).filter((directory) => directory.enabled).length;
@@ -674,9 +686,11 @@ export default function App() {
   // ── Cross-domain handlers ──────────────────────────────────
 
   async function handleLoadLibraryItem(item: LibraryItem, nextTab: TabId) {
+    const canonicalRepo = inferHfRepoFromLocalPath(item.path);
     await handleLoadModel({
       modelRef: item.name,
       modelName: item.name,
+      canonicalRepo,
       source: "library",
       backend: libraryItemBackend(item),
       path: item.path,
@@ -710,6 +724,7 @@ export default function App() {
     await handleLoadModel({
       modelRef: selectedServerOption.modelRef,
       modelName: selectedServerOption.model,
+      canonicalRepo: selectedServerOption.canonicalRepo,
       source: selectedServerOption.source,
       backend: selectedServerOption.backend,
       path: selectedServerOption.path ?? undefined,
@@ -835,14 +850,29 @@ export default function App() {
   function loadPayloadFromVariant(variant: ModelVariant, nextTab?: TabId) {
     const localItem = findLibraryItemForVariant(workspace.library, variant);
     if (localItem) {
-      return { modelRef: localItem.name, modelName: localItem.name, source: "library", backend: libraryItemBackend(localItem), path: localItem.path, nextTab };
+      return {
+        modelRef: localItem.name,
+        modelName: localItem.name,
+        canonicalRepo: variant.repo,
+        source: "library",
+        backend: libraryItemBackend(localItem),
+        path: localItem.path,
+        nextTab,
+      };
     }
-    return { modelRef: variant.id, modelName: variant.name, source: "catalog", backend: variant.backend, nextTab };
+    return {
+      modelRef: variant.id,
+      modelName: variant.name,
+      canonicalRepo: variant.repo,
+      source: "catalog",
+      backend: variant.backend,
+      nextTab,
+    };
   }
 
   function threadPatchFromVariant(variant: ModelVariant): Pick<
     ChatSession,
-    "model" | "modelRef" | "modelSource" | "modelPath" | "modelBackend" | "cacheLabel" | "updatedAt"
+    "model" | "modelRef" | "canonicalRepo" | "modelSource" | "modelPath" | "modelBackend" | "cacheLabel" | "updatedAt"
     | "cacheStrategy" | "cacheBits" | "fp16Layers" | "fusedAttention" | "fitModelInMemory"
     | "contextTokens" | "speculativeDecoding" | "treeBudget"
   > {
@@ -850,6 +880,7 @@ export default function App() {
     return {
       model: localItem?.name ?? variant.name,
       modelRef: localItem?.name ?? variant.id,
+      canonicalRepo: variant.repo,
       modelSource: localItem ? "library" : "catalog",
       modelPath: localItem?.path ?? null,
       modelBackend: localItem ? libraryItemBackend(localItem, variant) : variant.backend,
@@ -925,16 +956,45 @@ export default function App() {
     if (action === "thread") {
       const variant = findVariantForReference(workspace.featuredModels, option.modelRef, option.model);
       if (variant) { await handleStartThreadWithVariant(variant); }
-      else { await handleLoadModel({ modelRef: option.modelRef, modelName: option.model, source: option.source, backend: option.backend, path: option.path ?? undefined }); }
+      else {
+        await handleLoadModel({
+          modelRef: option.modelRef,
+          modelName: option.model,
+          canonicalRepo: option.canonicalRepo,
+          source: option.source,
+          backend: option.backend,
+          path: option.path ?? undefined,
+        });
+      }
     } else if (action === "chat") {
       if (activeChat) {
         await persistSessionChanges(activeChat.id, {
-          model: option.model, modelRef: option.modelRef, modelSource: option.source, modelPath: option.path ?? null, modelBackend: option.backend, updatedAt: new Date().toLocaleString(),
+          model: option.model,
+          modelRef: option.modelRef,
+          canonicalRepo: option.canonicalRepo ?? null,
+          modelSource: option.source,
+          modelPath: option.path ?? null,
+          modelBackend: option.backend,
+          updatedAt: new Date().toLocaleString(),
         });
       }
-      await handleLoadModel({ modelRef: option.modelRef, modelName: option.model, source: option.source, backend: option.backend, path: option.path ?? undefined });
+      await handleLoadModel({
+        modelRef: option.modelRef,
+        modelName: option.model,
+        canonicalRepo: option.canonicalRepo,
+        source: option.source,
+        backend: option.backend,
+        path: option.path ?? undefined,
+      });
     } else if (action === "server") {
-      await handleLoadModel({ modelRef: option.modelRef, modelName: option.model, source: option.source, backend: option.backend, path: option.path ?? undefined });
+      await handleLoadModel({
+        modelRef: option.modelRef,
+        modelName: option.model,
+        canonicalRepo: option.canonicalRepo,
+        source: option.source,
+        backend: option.backend,
+        path: option.path ?? undefined,
+      });
     }
   }
 
@@ -1229,11 +1289,9 @@ export default function App() {
   } else if (activeTab === "chat") {
     content = compareMode ? (
       <CompareView
-        library={workspace.library}
+        modelOptions={libraryChatOptions}
         onBack={() => setCompareMode(false)}
         launchSettings={launchSettings}
-        onLaunchSettingChange={updateLaunchSetting}
-        preview={preview}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}

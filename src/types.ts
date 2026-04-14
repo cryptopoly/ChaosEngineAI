@@ -216,6 +216,8 @@ export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   images?: string[];
+  reasoning?: string;
+  reasoningDone?: boolean | null;
   metrics?: GenerationMetrics | null;
   toolCalls?: ToolCallInfo[];
   citations?: CitationInfo[];
@@ -238,6 +240,7 @@ export interface ChatSession {
   pinned?: boolean;
   model: string;
   modelRef?: string | null;
+  canonicalRepo?: string | null;
   modelSource?: string | null;
   modelPath?: string | null;
   modelBackend?: string | null;
@@ -295,6 +298,7 @@ export interface ServerStatus {
 export interface LoadedModel {
   ref: string;
   name: string;
+  canonicalRepo?: string | null;
   backend: string;
   source: string;
   engine: string;
@@ -335,6 +339,12 @@ export interface RuntimeStatus {
   nativeBackends?: NativeBackendStatus;
 }
 
+export interface LoadModelActionResult {
+  ok: boolean;
+  runtime?: RuntimeStatus;
+  error?: string;
+}
+
 export interface NativeBackendStatus {
   pythonExecutable: string;
   mlxAvailable: boolean;
@@ -360,6 +370,7 @@ export interface GenerationMetrics {
   dflashAcceptanceRate?: number | null;
   model?: string | null;
   modelRef?: string | null;
+  canonicalRepo?: string | null;
   backend?: string | null;
   engineLabel?: string | null;
   cacheLabel?: string | null;
@@ -368,6 +379,12 @@ export interface GenerationMetrics {
   fp16Layers?: number | null;
   fusedAttention?: boolean | null;
   fitModelInMemory?: boolean | null;
+  requestedCacheLabel?: string | null;
+  requestedCacheStrategy?: string | null;
+  requestedCacheBits?: number | null;
+  requestedFp16Layers?: number | null;
+  requestedSpeculativeDecoding?: boolean | null;
+  requestedTreeBudget?: number | null;
   speculativeDecoding?: boolean | null;
   dflashDraftModel?: string | null;
   treeBudget?: number | null;
@@ -470,6 +487,7 @@ export interface WorkspaceData {
 export interface LoadModelPayload {
   modelRef: string;
   modelName?: string;
+  canonicalRepo?: string;
   source?: string;
   backend?: string;
   path?: string;
@@ -492,6 +510,7 @@ export interface UpdateSessionPayload {
   title?: string;
   model?: string | null;
   modelRef?: string | null;
+  canonicalRepo?: string | null;
   modelSource?: string | null;
   modelPath?: string | null;
   modelBackend?: string | null;
@@ -516,6 +535,7 @@ export interface GeneratePayload {
   images?: string[];
   modelRef?: string;
   modelName?: string;
+  canonicalRepo?: string;
   source?: string;
   path?: string;
   backend?: string;

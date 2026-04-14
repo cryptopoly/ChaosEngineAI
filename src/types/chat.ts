@@ -7,6 +7,7 @@ export interface ChatModelOption {
   group: string;
   model: string;
   modelRef: string;
+  canonicalRepo?: string | null;
   source: string;
   path?: string | null;
   backend: string;

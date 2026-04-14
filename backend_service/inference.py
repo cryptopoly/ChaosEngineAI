@@ -255,18 +255,40 @@ def _resolve_mlx_python() -> str:
     return sys.executable
 
 
+# Common install locations for llama.cpp binaries that may not be in PATH
+# when launched from a GUI app (Tauri doesn't inherit the user's shell profile).
+_LLAMA_FALLBACK_DIRS = [
+    "/opt/homebrew/bin",         # macOS ARM Homebrew
+    "/usr/local/bin",            # macOS Intel Homebrew / manual
+    "/usr/bin",                  # system
+    str(Path.home() / ".local" / "bin"),  # pip --user installs
+]
+
+
+def _which_with_fallbacks(name: str) -> str | None:
+    """Like shutil.which but also checks common install directories."""
+    found = shutil.which(name)
+    if found:
+        return found
+    for d in _LLAMA_FALLBACK_DIRS:
+        candidate = os.path.join(d, name)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
 def _resolve_llama_server() -> str | None:
     override = os.getenv("CHAOSENGINE_LLAMA_SERVER")
     if override:
         return override
-    return shutil.which("llama-server")
+    return _which_with_fallbacks("llama-server")
 
 
 def _resolve_llama_cli() -> str | None:
     override = os.getenv("CHAOSENGINE_LLAMA_CLI")
     if override:
         return override
-    return shutil.which("llama-cli")
+    return _which_with_fallbacks("llama-cli")
 
 
 def _http_json(

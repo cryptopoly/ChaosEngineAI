@@ -114,6 +114,35 @@ interface RuntimeControlsProps {
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
   dflashInfo?: DFlashInfo;
+  /** Backend of the selected model (e.g. "mlx", "gguf", "vllm", "auto"). Used for compatibility validation. */
+  selectedBackend?: string | null;
+}
+
+// ----- Compatibility helpers -----
+
+/** Cache strategies that support each engine. Strategies not listed fall back to native silently. */
+const STRATEGY_ENGINE_SUPPORT: Record<string, string[]> = {
+  native: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
+  triattention: ["vllm"],
+  rotorquant: ["gguf", "llama.cpp", "vllm"],
+  turboquant: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
+  chaosengine: ["gguf", "llama.cpp", "vllm"],
+};
+
+function isStrategyCompatible(strategyId: string, backend: string | null | undefined): boolean {
+  if (!backend || backend === "auto") return true; // can't validate yet
+  const supported = STRATEGY_ENGINE_SUPPORT[strategyId];
+  if (!supported) return true; // unknown strategy, allow
+  return supported.some(b => backend.includes(b));
+}
+
+function strategyIncompatReason(strategyId: string, backend: string | null | undefined): string | null {
+  if (!backend || backend === "auto" || isStrategyCompatible(strategyId, backend)) return null;
+  const engineLabel = backend.includes("gguf") || backend.includes("llama") ? "llama.cpp" : backend;
+  if (strategyId === "triattention") return "TriAttention requires the vLLM backend (Linux + CUDA).";
+  if (strategyId === "rotorquant") return `RotorQuant requires llama.cpp or vLLM, not ${engineLabel}.`;
+  if (strategyId === "chaosengine") return `ChaosEngine requires llama.cpp or vLLM, not ${engineLabel}.`;
+  return `Not compatible with the ${engineLabel} backend.`;
 }
 
 export function RuntimeControls({
@@ -131,14 +160,21 @@ export function RuntimeControls({
   onInstallPackage,
   installingPackage,
   dflashInfo,
+  selectedBackend,
 }: RuntimeControlsProps) {
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
   const clampedContext = Math.max(contextMin, Math.min(settings.contextTokens, effectiveMaxContext));
   const contextStep = effectiveMaxContext >= 131072 ? 2048 : effectiveMaxContext >= 16384 ? 1024 : 256;
   const currentPreset = activePresetId(settings);
-  const dflashAvailable = dflashInfo?.available ?? false;
-  const specActive = settings.speculativeDecoding;
+  const isGgufBackend = selectedBackend ? (selectedBackend.includes("gguf") || selectedBackend.includes("llama")) : false;
+  const dflashAvailable = (dflashInfo?.available ?? false) && !isGgufBackend;
+  const dflashUnavailableReason = isGgufBackend
+    ? "DFlash is not supported with llama.cpp models. Use an MLX or vLLM model."
+    : !dflashInfo?.available
+      ? "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable."
+      : null;
+  const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
@@ -178,7 +214,7 @@ export function RuntimeControls({
   }
 
   function selectStrategy(strategy: CacheStrategyOption) {
-    if (!strategy.available) return;
+    if (!strategy.available || !isStrategyCompatible(strategy.id, selectedBackend)) return;
     onChange("cacheStrategy", strategy.id);
     if (strategy.defaultBits != null) {
       onChange("cacheBits", strategy.defaultBits);
@@ -207,10 +243,12 @@ export function RuntimeControls({
           const info = STRATEGY_INFO[strategy.id];
           const isSelected = specActive ? strategy.id === "native" : settings.cacheStrategy === strategy.id;
           const isExpanded = expandedInfo === strategy.id;
-          const isDisabled = !strategy.available || (specActive && strategy.id !== "native");
+          const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
+          const isIncompat = incompatReason != null;
+          const isDisabled = !strategy.available || (specActive && strategy.id !== "native") || isIncompat;
 
           return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`}>
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? undefined}>
               <div className="cache-strategy-card-header">
                 <button
                   type="button"
@@ -222,10 +260,10 @@ export function RuntimeControls({
                   <span className="cache-strategy-card-name">{strategy.name}</span>
                   <span
                     className={`cache-strategy-badge cache-strategy-badge--${
-                      strategy.available ? "ready" : strategy.availabilityTone ?? "install"
+                      isIncompat ? "warning" : strategy.available ? "ready" : strategy.availabilityTone ?? "install"
                     }`}
                   >
-                    {strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                    {isIncompat ? "N/A" : strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
                   </span>
                 </button>
                 {info ? (
@@ -361,10 +399,10 @@ export function RuntimeControls({
           <span>Fused attention</span>
         </label>
         <div className="check-row">
-          <label className="check-row" style={{ margin: 0 }}>
+          <label className="check-row" style={{ margin: 0 }} title={dflashUnavailableReason ?? "DFlash speculative decoding: 3-5x faster generation with zero quality loss."}>
             <input
               type="checkbox"
-              checked={settings.speculativeDecoding}
+              checked={settings.speculativeDecoding && dflashAvailable}
               disabled={!dflashAvailable}
               onChange={(event) => {
                 const enabled = event.target.checked;

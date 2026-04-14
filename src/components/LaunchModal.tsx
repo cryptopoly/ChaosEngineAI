@@ -143,6 +143,7 @@ export function LaunchModal({
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
               dflashInfo={dflashInfo}
+              selectedBackend={selectedOption?.backend}
               compact
             />
           </div>

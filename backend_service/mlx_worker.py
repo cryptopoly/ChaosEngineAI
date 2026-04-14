@@ -77,20 +77,106 @@ import re
 _THINK_BLOCK_RE = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 _THINK_OPEN_RE = re.compile(r"<think>.*", re.DOTALL)
 _TRANSCRIPT_ROLE_LINE_RE = re.compile(r"^\s*(SYSTEM|USER|ASSISTANT):\s*(.*)$", re.IGNORECASE)
+# Headings that indicate a model is dumping its chain-of-thought without XML tags.
+_RAW_THINKING_HEADING_RE = re.compile(
+    r"^\s*(?:\d+\.\s+)?\*{0,2}"
+    r"(?:Thinking Process|Chain of Thought|Internal Reasoning|Scratchpad|Reasoning Steps|"
+    r"Analyze the Request|Evaluate Constraints|Determine the Output|Drafting the Response|"
+    r"Refining the Output|Final Check)"
+    r"\*{0,2}\s*:?\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def _strip_thinking_tokens(text: str) -> str:
-    """Remove <think>...</think> blocks from model output.
+    """Remove <think>...</think> blocks and raw thinking dumps from model output.
 
     Qwen3 and similar "thinking" models wrap chain-of-thought in
-    <think> tags.  These are verbose internal reasoning that should
-    not be shown to the user.
+    <think> tags.  Smaller models sometimes dump raw "Thinking Process:"
+    headings without tags.  Both forms are stripped.
     """
     # Strip complete <think>...</think> blocks
     text = _THINK_BLOCK_RE.sub("", text)
     # Strip a trailing unclosed <think> (model still thinking)
     text = _THINK_OPEN_RE.sub("", text)
+    # Strip raw thinking headings (e.g. "Thinking Process:", "1. Analyze the Request:")
+    # If the text starts with a thinking heading, everything before the actual
+    # answer is likely chain-of-thought.  Find the last heading block and keep
+    # only what follows.
+    if _RAW_THINKING_HEADING_RE.search(text):
+        # Find the last thinking heading and take everything after it
+        lines = text.split("\n")
+        last_heading_idx = -1
+        for i, line in enumerate(lines):
+            if _RAW_THINKING_HEADING_RE.match(line):
+                last_heading_idx = i
+        if last_heading_idx >= 0:
+            # Take content after the last heading block, skipping blank lines
+            remaining = "\n".join(lines[last_heading_idx + 1:]).strip()
+            if remaining:
+                text = remaining
     return text.strip()
+
+
+class RunawayGuard:
+    """Detect and abort runaway generation loops in streamed output.
+
+    Catches two common failure modes:
+    1. Repeated identical lines (e.g. "Wait, I will write 'Qwen3.5'." x100)
+    2. Raw thinking-heading dumps (e.g. "Thinking Process:" at generation start)
+
+    Raises ``RuntimeError`` when a runaway is detected.
+    """
+
+    def __init__(self, *, min_line_length: int = 30, max_repeats: int = 4) -> None:
+        self._min_line_length = min_line_length
+        self._max_repeats = max_repeats
+        self._buffer = ""
+        self._last_line: str | None = None
+        self._repeat_count = 0
+        self._total_chars = 0
+        self._thinking_heading_seen = False
+
+    def feed(self, text: str) -> None:
+        """Feed a chunk of streamed text. Raises on detected runaway."""
+        self._total_chars += len(text)
+        self._buffer += text
+
+        # Check for raw thinking heading at the start of generation
+        if not self._thinking_heading_seen and self._total_chars < 200:
+            if _RAW_THINKING_HEADING_RE.search(self._buffer):
+                self._thinking_heading_seen = True
+
+        # Check for repeated lines
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            self._check_line(line)
+
+    def flush(self) -> None:
+        if self._buffer:
+            self._check_line(self._buffer)
+            self._buffer = ""
+
+    @property
+    def saw_thinking_heading(self) -> bool:
+        return self._thinking_heading_seen
+
+    def _check_line(self, line: str) -> None:
+        normalized = " ".join(line.strip().lower().split())
+        if len(normalized) < self._min_line_length:
+            # Don't reset on short lines — the loop might have short lines mixed in
+            return
+
+        if normalized == self._last_line:
+            self._repeat_count += 1
+        else:
+            self._last_line = normalized
+            self._repeat_count = 1
+
+        if self._repeat_count >= self._max_repeats:
+            raise RuntimeError(
+                "Stopped runaway generation: model is repeating itself."
+            )
 
 
 class ThinkingTokenFilter:
@@ -723,6 +809,8 @@ class WorkerState:
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
         transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
+        runaway_guard = RunawayGuard()
+        runaway_stopped = False
         try:
             text_parts: list[str] = []
             last_response = None
@@ -736,6 +824,11 @@ class WorkerState:
             ):
                 if response.text:
                     text_parts.append(response.text)
+                    try:
+                        runaway_guard.feed(response.text)
+                    except RuntimeError:
+                        runaway_stopped = True
+                        break
                 last_response = response
         except (ValueError, RuntimeError, TypeError) as exc:
             _should_retry = (
@@ -773,6 +866,12 @@ class WorkerState:
 
         if last_response is None:
             raise RuntimeError("MLX generation did not return a response.")
+
+        if runaway_stopped:
+            runtime_note = _merge_runtime_notes(
+                runtime_note,
+                "Stopped runaway generation: model was repeating itself.",
+            )
 
         raw_text = "".join(text_parts).strip()
         text = _strip_thinking_tokens(raw_text)
@@ -852,6 +951,8 @@ class WorkerState:
         think_filter = ThinkingTokenFilter()
         transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
         transcript_trimmed = False
+        runaway_guard = RunawayGuard()
+        runaway_stopped = False
 
         try:
             last_response = None
@@ -864,6 +965,13 @@ class WorkerState:
                 prompt_cache=prompt_cache,
             ):
                 if response.text:
+                    # Check for runaway loops before emitting
+                    try:
+                        runaway_guard.feed(response.text)
+                    except RuntimeError:
+                        runaway_stopped = True
+                        last_response = response
+                        break
                     filtered = think_filter.feed(response.text)
                     if filtered and transcript_filter is not None:
                         filtered = transcript_filter.feed(filtered)
@@ -901,6 +1009,8 @@ class WorkerState:
                 think_filter = ThinkingTokenFilter()
                 transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
                 transcript_trimmed = False
+                runaway_guard = RunawayGuard()
+                runaway_stopped = False
                 last_response = None
                 for response in mlx_stream_generate(
                     self.model,
@@ -911,6 +1021,12 @@ class WorkerState:
                     prompt_cache=None,
                 ):
                     if response.text:
+                        try:
+                            runaway_guard.feed(response.text)
+                        except RuntimeError:
+                            runaway_stopped = True
+                            last_response = response
+                            break
                         filtered = think_filter.feed(response.text)
                         if filtered and transcript_filter is not None:
                             filtered = transcript_filter.feed(filtered)
@@ -938,6 +1054,11 @@ class WorkerState:
             runtime_note = _merge_runtime_notes(
                 runtime_note,
                 "Suppressed a plain-chat transcript continuation to stop a runaway loop.",
+            )
+        if runaway_stopped:
+            runtime_note = _merge_runtime_notes(
+                runtime_note,
+                "Stopped runaway generation: model was repeating itself.",
             )
 
         _emit({

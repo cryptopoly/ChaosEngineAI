@@ -118,22 +118,41 @@ def _strip_thinking_tokens(text: str) -> str:
     return text.strip()
 
 
+_REASONING_LINE_RE = re.compile(
+    r"^\s*(?:"
+    r"wait,|okay[,.]|actually[,.]|let me|i (?:need to|should|will|must|can)"
+    r"|so (?:i |the )|hmm|looking|check(?:ing)?|(?:re)?evaluat"
+    r"|draft(?:ing)?|refin(?:ing|e)|final (?:check|answer|decision|polish)"
+    r")",
+    re.IGNORECASE,
+)
+
+
 class RunawayGuard:
     """Detect and abort runaway generation loops in streamed output.
 
-    Catches two common failure modes:
+    Catches three failure modes:
     1. Repeated identical lines (e.g. "Wait, I will write 'Qwen3.5'." x100)
-    2. Raw thinking-heading dumps (e.g. "Thinking Process:" at generation start)
+    2. Near-duplicate reasoning loops (lines starting with "Wait," / "Okay," etc.)
+    3. Raw thinking-heading dumps (e.g. "Thinking Process:" at generation start)
 
     Raises ``RuntimeError`` when a runaway is detected.
     """
 
-    def __init__(self, *, min_line_length: int = 30, max_repeats: int = 4) -> None:
+    def __init__(
+        self,
+        *,
+        min_line_length: int = 30,
+        max_repeats: int = 4,
+        max_reasoning_lines: int = 20,
+    ) -> None:
         self._min_line_length = min_line_length
         self._max_repeats = max_repeats
+        self._max_reasoning_lines = max_reasoning_lines
         self._buffer = ""
         self._last_line: str | None = None
         self._repeat_count = 0
+        self._reasoning_streak = 0
         self._total_chars = 0
         self._thinking_heading_seen = False
 
@@ -147,7 +166,7 @@ class RunawayGuard:
             if _RAW_THINKING_HEADING_RE.search(self._buffer):
                 self._thinking_heading_seen = True
 
-        # Check for repeated lines
+        # Check for repeated / reasoning lines
         while "\n" in self._buffer:
             line, self._buffer = self._buffer.split("\n", 1)
             self._check_line(line)
@@ -164,9 +183,12 @@ class RunawayGuard:
     def _check_line(self, line: str) -> None:
         normalized = " ".join(line.strip().lower().split())
         if len(normalized) < self._min_line_length:
-            # Don't reset on short lines — the loop might have short lines mixed in
+            # Short lines still decay the reasoning streak so alternating
+            # "Wait, ..." / "31536000 seconds." patterns get caught.
+            self._reasoning_streak = max(0, self._reasoning_streak - 1)
             return
 
+        # Exact-match repetition
         if normalized == self._last_line:
             self._repeat_count += 1
         else:
@@ -178,52 +200,137 @@ class RunawayGuard:
                 "Stopped runaway generation: model is repeating itself."
             )
 
+        # Near-duplicate reasoning loop detection
+        # Lines like "Wait, I should...", "Okay, I'll...", "Actually, looking..."
+        # Non-reasoning lines decay the streak by 1 instead of resetting,
+        # so alternating "Wait, ..." / "31536000 seconds." still trips the guard.
+        if _REASONING_LINE_RE.match(normalized):
+            self._reasoning_streak += 2
+        else:
+            self._reasoning_streak = max(0, self._reasoning_streak - 1)
+
+        if self._reasoning_streak >= self._max_reasoning_lines:
+            raise RuntimeError(
+                "Stopped runaway generation: model is stuck in a reasoning loop."
+            )
+
 
 class ThinkingTokenFilter:
-    """Streaming filter that buffers and strips <think>...</think> blocks.
+    """Streaming filter that strips thinking content from model output.
 
-    Yields only the non-thinking content. If the model enters an
-    unclosed <think> block, all tokens inside it are suppressed.
+    Handles two patterns:
+    1. XML ``<think>...</think>`` blocks (Qwen3 etc.)
+    2. Raw "Thinking Process:" heading dumps (small models that ignore instructions)
+
+    At the start of generation, text is buffered until the first complete
+    line arrives so we can check if the model is dumping raw thinking.
     """
 
+    _STARTUP_BUFFER_LIMIT = 500  # max chars to hold during startup probing
+
     def __init__(self) -> None:
-        self._inside_think = False
+        self._inside_xml_think = False
+        self._inside_raw_think = False
+        self._startup_done = False  # True once we've decided the first line(s) are safe
         self._buffer = ""
+        self._total_fed = 0
 
     def feed(self, text: str) -> str:
         """Process a chunk of streamed text. Returns text to emit (may be empty)."""
         self._buffer += text
+        self._total_fed += len(text)
 
         output = ""
         while True:
-            if self._inside_think:
-                end_idx = self._buffer.find("</think>")
-                if end_idx == -1:
-                    # Still inside <think> — suppress everything
+            # --- Startup probe: hold text until first complete line ---
+            if not self._startup_done and not self._inside_xml_think:
+                # Check for <think> even during startup
+                think_idx = self._buffer.find("<think>")
+                if think_idx != -1:
+                    output += self._buffer[:think_idx]
+                    self._buffer = self._buffer[think_idx + len("<think>"):]
+                    self._inside_xml_think = True
+                    self._startup_done = True
+                    continue
+
+                # Wait for a complete line before deciding
+                if "\n" not in self._buffer:
+                    # Haven't got a full line yet — keep buffering
+                    if self._total_fed >= self._STARTUP_BUFFER_LIMIT:
+                        # Safety: don't buffer forever, release it
+                        self._startup_done = True
+                        continue
+                    break
+
+                # We have at least one complete line — check it
+                first_line, _ = self._buffer.split("\n", 1)
+                if _RAW_THINKING_HEADING_RE.match(first_line):
+                    # Model is dumping raw thinking — suppress everything
+                    self._inside_raw_think = True
+                    self._startup_done = True
                     self._buffer = ""
                     break
-                # Found closing tag — skip everything up to and including it
-                self._buffer = self._buffer[end_idx + len("</think>"):]
-                self._inside_think = False
-            else:
-                start_idx = self._buffer.find("<think>")
-                if start_idx == -1:
-                    # No thinking tag — but keep last 7 chars buffered
-                    # in case "<think>" is split across chunks
-                    if len(self._buffer) > 7:
-                        output += self._buffer[:-7]
-                        self._buffer = self._buffer[-7:]
+                else:
+                    # First line looks normal — stop startup buffering
+                    self._startup_done = True
+                    continue  # fall through to normal processing
+
+            # --- Raw thinking suppression ---
+            if self._inside_raw_think:
+                # Look for a line that is NOT a reasoning/thinking line
+                while "\n" in self._buffer:
+                    line, rest = self._buffer.split("\n", 1)
+                    stripped = line.strip()
+                    # A "real answer" line: non-empty, not a heading, not reasoning
+                    if (
+                        stripped
+                        and not _RAW_THINKING_HEADING_RE.match(line)
+                        and not _REASONING_LINE_RE.match(stripped.lower())
+                        and not stripped.startswith(("*", "-", "#"))
+                        and len(stripped) > 5
+                    ):
+                        # Found actual content — exit raw-think mode
+                        self._inside_raw_think = False
+                        self._buffer = line + "\n" + rest
+                        break
+                    # Still reasoning — discard this line
+                    self._buffer = rest
+                if self._inside_raw_think:
+                    # No complete line with real content yet — keep buffering
+                    # (don't clear: partial next line may be accumulating)
                     break
-                # Emit everything before <think>
+                continue
+
+            # --- XML <think> suppression ---
+            if self._inside_xml_think:
+                end_idx = self._buffer.find("</think>")
+                if end_idx == -1:
+                    self._buffer = ""
+                    break
+                self._buffer = self._buffer[end_idx + len("</think>"):]
+                self._inside_xml_think = False
+                continue
+
+            # --- Normal mode ---
+            start_idx = self._buffer.find("<think>")
+            if start_idx != -1:
                 output += self._buffer[:start_idx]
                 self._buffer = self._buffer[start_idx + len("<think>"):]
-                self._inside_think = True
+                self._inside_xml_think = True
+                continue
+
+            # No thinking pattern — emit buffered text
+            # Keep last 7 chars in case "<think>" is split across chunks
+            if len(self._buffer) > 7:
+                output += self._buffer[:-7]
+                self._buffer = self._buffer[-7:]
+            break
 
         return output
 
     def flush(self) -> str:
         """Flush any remaining buffered text."""
-        if self._inside_think:
+        if self._inside_xml_think or self._inside_raw_think:
             return ""
         remaining = self._buffer
         self._buffer = ""

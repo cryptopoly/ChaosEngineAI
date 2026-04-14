@@ -1204,6 +1204,15 @@ export default function App() {
       <CompareView
         library={workspace.library}
         onBack={() => setCompareMode(false)}
+        launchSettings={launchSettings}
+        onLaunchSettingChange={updateLaunchSetting}
+        preview={preview}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
       />
     ) : (
       <ChatTab

@@ -69,7 +69,8 @@ export function useChat(
       loaded.fusedAttention === launchSettings.fusedAttention &&
       loaded.cacheStrategy === launchSettings.cacheStrategy &&
       loaded.fitModelInMemory === launchSettings.fitModelInMemory &&
-      loaded.contextTokens === launchSettings.contextTokens
+      loaded.contextTokens === launchSettings.contextTokens &&
+      (loaded.speculativeDecoding ?? false) === launchSettings.speculativeDecoding
     );
   })();
 

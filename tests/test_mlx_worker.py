@@ -2,6 +2,7 @@ import unittest
 
 from backend_service.mlx_worker import (
     RunawayGuard,
+    ThinkingTokenFilter,
     TranscriptLoopFilter,
     _build_prompt_text,
     _strip_thinking_tokens,
@@ -115,6 +116,83 @@ class RunawayGuardTests(unittest.TestCase):
         guard = RunawayGuard()
         guard.feed("Hello! I can help you with that.\n")
         self.assertFalse(guard.saw_thinking_heading)
+
+    def test_detects_reasoning_loop(self):
+        guard = RunawayGuard(max_reasoning_lines=10)
+        with self.assertRaises(RuntimeError) as ctx:
+            guard.feed("Wait, I should check the constraint again and verify.\n")
+            guard.feed("Okay, I will just say 'Hello! How can I help?'\n")
+            guard.feed("Actually, looking closer at the instruction again.\n")
+            guard.feed("Wait, I need to check if I should explain more.\n")
+            guard.feed("Let me re-read the constraint one more time now.\n")
+            guard.feed("Wait, I should check the constraint once more time.\n")
+        self.assertIn("reasoning loop", str(ctx.exception))
+
+    def test_detects_alternating_reasoning_with_calculations(self):
+        """Catches 'Wait, I need to confirm' / '31536000 seconds' loops."""
+        guard = RunawayGuard(max_reasoning_lines=20)
+        with self.assertRaises(RuntimeError):
+            for _ in range(25):
+                guard.feed("Wait, I need to confirm the calculation result.\n")
+                guard.feed("31536000 seconds.\n")
+
+
+class ThinkingTokenFilterTests(unittest.TestCase):
+    def test_strips_xml_think_tags_streaming(self):
+        f = ThinkingTokenFilter()
+        out1 = f.feed("Hello <think>internal")
+        out2 = f.feed(" reasoning</think> world")
+        out3 = f.flush()
+        self.assertEqual(out1 + out2 + out3, "Hello  world")
+
+    def test_suppresses_raw_thinking_heading(self):
+        f = ThinkingTokenFilter()
+        out1 = f.feed("Thinking Process:\n")
+        out2 = f.feed("1. Analyze the request\n")
+        out3 = f.feed("Wait, I should check constraints\n")
+        # Now feed actual content
+        out4 = f.feed("Hello! I'm here to help.\n")
+        out5 = f.flush()
+        combined = out1 + out2 + out3 + out4 + out5
+        self.assertNotIn("Thinking Process", combined)
+        self.assertNotIn("Analyze", combined)
+        self.assertIn("Hello", combined)
+
+    def test_passes_normal_text_through(self):
+        f = ThinkingTokenFilter()
+        out = f.feed("Hello! How can I help you today?")
+        out += f.flush()
+        self.assertIn("Hello", out)
+
+    def test_suppresses_token_by_token_thinking_heading(self):
+        """Simulate real streaming where tokens arrive character-by-character."""
+        f = ThinkingTokenFilter()
+        # Model outputs "Thinking Process:\n..." one token at a time
+        raw = "Thinking Process:\nAnalyze the request\nWait, I should check\nHello! I'm here to help.\n"
+        combined = ""
+        for char in raw:
+            combined += f.feed(char)
+        combined += f.flush()
+        # Should suppress thinking and only show the actual answer
+        self.assertNotIn("Thinking Process", combined)
+        self.assertNotIn("Analyze", combined)
+        self.assertIn("Hello", combined)
+
+    def test_releases_normal_text_after_first_line(self):
+        """Normal text should stream through after the first line proves safe."""
+        f = ThinkingTokenFilter()
+        combined = ""
+        for char in "Hello! I'm here to help.\nHow can I assist?":
+            combined += f.feed(char)
+        combined += f.flush()
+        self.assertIn("Hello", combined)
+        self.assertIn("assist", combined)
+
+    def test_handles_unclosed_xml_think(self):
+        f = ThinkingTokenFilter()
+        out = f.feed("<think>reasoning that never closes")
+        out += f.flush()
+        self.assertEqual(out, "")
 
 
 class StripThinkingTokensTests(unittest.TestCase):

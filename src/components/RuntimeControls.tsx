@@ -168,10 +168,12 @@ export function RuntimeControls({
   const contextStep = effectiveMaxContext >= 131072 ? 2048 : effectiveMaxContext >= 16384 ? 1024 : 256;
   const currentPreset = activePresetId(settings);
   const isGgufBackend = selectedBackend ? (selectedBackend.includes("gguf") || selectedBackend.includes("llama")) : false;
-  const dflashAvailable = (dflashInfo?.available ?? false) && !isGgufBackend;
-  const dflashUnavailableReason = isGgufBackend
+  const dflashInstalled = dflashInfo?.available ?? false;
+  const dflashCompatible = !isGgufBackend;
+  const dflashAvailable = dflashInstalled && dflashCompatible;
+  const dflashUnavailableReason = !dflashCompatible
     ? "DFlash is not supported with llama.cpp models. Use an MLX or vLLM model."
-    : !dflashInfo?.available
+    : !dflashInstalled
       ? "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable."
       : null;
   const specActive = settings.speculativeDecoding && dflashAvailable;
@@ -416,7 +418,7 @@ export function RuntimeControls({
             />
             <span>DFlash</span>
           </label>
-          {!dflashAvailable && onInstallPackage ? (
+          {!dflashInstalled && dflashCompatible && onInstallPackage ? (
             <button
               type="button"
               className="cache-strategy-install-btn"
@@ -425,6 +427,9 @@ export function RuntimeControls({
             >
               {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
             </button>
+          ) : null}
+          {!dflashCompatible ? (
+            <span className="cache-strategy-badge cache-strategy-badge--warning" style={{ marginLeft: 4, fontSize: "0.7em" }}>N/A</span>
           ) : null}
           <button
             type="button"

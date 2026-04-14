@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import time
-import threading
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -24,6 +23,14 @@ class CompareRequest(BaseModel):
     systemPrompt: str | None = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     maxTokens: int = Field(default=2048, ge=1, le=32768)
+    # Launch settings (shared for both models)
+    cacheStrategy: str = "native"
+    cacheBits: int = Field(default=0, ge=0, le=8)
+    fp16Layers: int = Field(default=0, ge=0, le=16)
+    fusedAttention: bool = False
+    fitModelInMemory: bool = True
+    contextTokens: int = Field(default=8192, ge=256, le=2097152)
+    speculativeDecoding: bool = False
 
 
 router = APIRouter()
@@ -42,52 +49,41 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
     """
     state = request.app.state.chaosengine
 
+    def _sse_event(data: dict[str, Any]) -> str:
+        return f"data: {json.dumps(data)}\n\n"
+
+    def _load_model(model_tag: str, model_ref: str):
+        """Load a model with the shared launch settings from the compare request.
+
+        The *model_ref* may be either a HuggingFace repo id **or** a local
+        file-system path (the compare UI sends ``item.path || item.name``).
+        """
+        from backend_service.models import LoadModelRequest
+        from pathlib import Path
+
+        is_path = "/" in model_ref and Path(model_ref).exists()
+        req = LoadModelRequest(
+            modelRef=model_ref,
+            path=model_ref if is_path else None,
+            backend="auto",
+            cacheStrategy=body.cacheStrategy,
+            cacheBits=body.cacheBits,
+            fp16Layers=body.fp16Layers,
+            fusedAttention=body.fusedAttention,
+            fitModelInMemory=body.fitModelInMemory,
+            contextTokens=body.contextTokens,
+            speculativeDecoding=body.speculativeDecoding,
+        )
+        state.load_model(req)
+
     def _sse_stream():
-        results: dict[str, dict[str, Any]] = {"a": {}, "b": {}}
-        errors: dict[str, str] = {}
-        done_events = threading.Event()
-        lock = threading.Lock()
-        finished_count = [0]
-
-        def _generate_for_model(model_tag: str, model_ref: str):
-            full_text = ""
-            try:
-                # Use the runtime's stream_generate
-                for chunk in state.runtime.stream_generate(
-                    prompt=body.prompt,
-                    history=[],
-                    system_prompt=body.systemPrompt,
-                    max_tokens=body.maxTokens,
-                    temperature=body.temperature,
-                ):
-                    if chunk.text:
-                        full_text += chunk.text
-                    if chunk.done:
-                        with lock:
-                            results[model_tag] = {
-                                "text": full_text,
-                                "tokS": chunk.tok_s or 0,
-                                "promptTokens": chunk.prompt_tokens or 0,
-                                "completionTokens": chunk.completion_tokens or 0,
-                            }
-            except Exception as exc:
-                with lock:
-                    errors[model_tag] = str(exc)
-                    results[model_tag] = {"text": full_text, "error": str(exc)}
-            finally:
-                with lock:
-                    finished_count[0] += 1
-                    if finished_count[0] >= 2:
-                        done_events.set()
-
-        # Load model A first, generate, then load model B
-        # (Sequential to avoid memory issues — warm pool handles caching)
+        # --- Model A ---
+        yield _sse_event({"model": "a", "loading": True, "message": "Loading model A..."})
         try:
-            # Generate with model A (use currently loaded or load it)
-            from backend_service.models import LoadModelRequest
-            state.load_model(LoadModelRequest(modelRef=body.modelRefA))
+            _load_model("a", body.modelRefA)
         except Exception as exc:
-            yield f"data: {json.dumps({'model': 'a', 'error': str(exc)})}\n\n"
+            yield _sse_event({"model": "a", "error": str(exc)})
+            yield _sse_event({"allDone": True})
             return
 
         full_text_a = ""
@@ -102,20 +98,21 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
             ):
                 if chunk.text:
                     full_text_a += chunk.text
-                    yield f"data: {json.dumps({'model': 'a', 'token': chunk.text})}\n\n"
+                    yield _sse_event({"model": "a", "token": chunk.text})
                 if chunk.done:
                     elapsed_a = round(time.perf_counter() - gen_start_a, 2)
                     tok_s = chunk.tok_s or (chunk.completion_tokens / max(elapsed_a, 0.01) if chunk.completion_tokens else 0)
-                    yield f"data: {json.dumps({'model': 'a', 'done': True, 'text': full_text_a, 'tokS': round(tok_s, 1), 'promptTokens': chunk.prompt_tokens or 0, 'completionTokens': chunk.completion_tokens or 0, 'responseSeconds': elapsed_a})}\n\n"
+                    yield _sse_event({"model": "a", "done": True, "text": full_text_a, "tokS": round(tok_s, 1), "promptTokens": chunk.prompt_tokens or 0, "completionTokens": chunk.completion_tokens or 0, "responseSeconds": elapsed_a})
         except Exception as exc:
-            yield f"data: {json.dumps({'model': 'a', 'error': str(exc)})}\n\n"
+            yield _sse_event({"model": "a", "error": str(exc)})
 
-        # Now load model B
+        # --- Model B ---
+        yield _sse_event({"model": "b", "loading": True, "message": "Loading model B..."})
         try:
-            state.load_model(LoadModelRequest(modelRef=body.modelRefB))
+            _load_model("b", body.modelRefB)
         except Exception as exc:
-            yield f"data: {json.dumps({'model': 'b', 'error': str(exc)})}\n\n"
-            yield f"data: {json.dumps({'allDone': True})}\n\n"
+            yield _sse_event({"model": "b", "error": str(exc)})
+            yield _sse_event({"allDone": True})
             return
 
         full_text_b = ""
@@ -130,15 +127,15 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
             ):
                 if chunk.text:
                     full_text_b += chunk.text
-                    yield f"data: {json.dumps({'model': 'b', 'token': chunk.text})}\n\n"
+                    yield _sse_event({"model": "b", "token": chunk.text})
                 if chunk.done:
                     elapsed_b = round(time.perf_counter() - gen_start_b, 2)
                     tok_s = chunk.tok_s or (chunk.completion_tokens / max(elapsed_b, 0.01) if chunk.completion_tokens else 0)
-                    yield f"data: {json.dumps({'model': 'b', 'done': True, 'text': full_text_b, 'tokS': round(tok_s, 1), 'promptTokens': chunk.prompt_tokens or 0, 'completionTokens': chunk.completion_tokens or 0, 'responseSeconds': elapsed_b})}\n\n"
+                    yield _sse_event({"model": "b", "done": True, "text": full_text_b, "tokS": round(tok_s, 1), "promptTokens": chunk.prompt_tokens or 0, "completionTokens": chunk.completion_tokens or 0, "responseSeconds": elapsed_b})
         except Exception as exc:
-            yield f"data: {json.dumps({'model': 'b', 'error': str(exc)})}\n\n"
+            yield _sse_event({"model": "b", "error": str(exc)})
 
-        yield f"data: {json.dumps({'allDone': True})}\n\n"
+        yield _sse_event({"allDone": True})
 
     return StreamingResponse(
         _sse_stream(),

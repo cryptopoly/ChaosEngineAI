@@ -169,7 +169,10 @@ def is_ddtree_available() -> bool:
     DDTree requires the same dflash_mlx runtime as linear DFlash, plus
     access to ``dflash_mlx.runtime`` primitives for tree verification.
     """
-    runtime_spec = importlib.util.find_spec("dflash_mlx.runtime")
+    try:
+        runtime_spec = importlib.util.find_spec("dflash_mlx.runtime")
+    except ModuleNotFoundError:
+        return False
     if runtime_spec is None:
         return False
     runtime_path = getattr(runtime_spec, "origin", None)

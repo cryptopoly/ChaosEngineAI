@@ -1852,8 +1852,13 @@ class LlamaCppEngine(BaseInferenceEngine):
         # particular model architecture.
         attempts: list[tuple[str, bool, bool]] = [(cache_strategy, fit_model_in_memory, False)]
         if cache_strategy not in ("native", "chaosengine"):
-            chaosengine_strat = _strategy_registry.get("chaosengine")
-            if chaosengine_strat and chaosengine_strat.is_available():
+            # Always include ChaosEngine as an intermediate fallback.  Its
+            # llama.cpp path only emits standard cache-type flags (q4_0 etc.)
+            # and runs on the standard binary — it does NOT require the
+            # chaos_engine Python package to be installed.  Gating on
+            # is_available() would skip this fallback on CI / dev machines
+            # that don't have the package, breaking the 3-level chain.
+            if _strategy_registry.get("chaosengine") is not None:
                 attempts.append(("chaosengine", False, True))
         if cache_strategy != "native":
             attempts.append(("native", False, True))

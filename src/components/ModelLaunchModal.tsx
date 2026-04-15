@@ -19,6 +19,7 @@ export interface ModelLaunchModalProps {
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
   dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
+  turboInstalled?: boolean;
   onSelectedKeyChange: (key: string) => void;
   onSearchChange: (value: string) => void;
   onSettingChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -42,6 +43,7 @@ export function ModelLaunchModal({
   availableCacheStrategies,
   dflashInfo,
   installingPackage,
+  turboInstalled,
   onSelectedKeyChange,
   onSearchChange,
   onSettingChange,
@@ -164,6 +166,7 @@ export function ModelLaunchModal({
               selectedModelRef={selectedOption?.modelRef}
               selectedCanonicalRepo={selectedOption?.canonicalRepo}
               selectedModelName={selectedOption?.model}
+              turboInstalled={turboInstalled}
               compact
             />
           </div>

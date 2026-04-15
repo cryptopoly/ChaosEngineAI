@@ -30,6 +30,7 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "Qwen/Qwen3-Coder-4B": "z-lab/Qwen3-Coder-4B-DFlash",
     "Qwen/Qwen3-Coder-8B": "z-lab/Qwen3-Coder-8B-DFlash",
     "Qwen/Qwen3-Coder-30B-A3B": "z-lab/Qwen3-Coder-30B-A3B-DFlash",
+    "Qwen/Qwen3-Coder-Next": "z-lab/Qwen3-Coder-Next-DFlash",
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": "z-lab/Qwen3.5-4B-DFlash",
     "Qwen/Qwen3.5-7B": "z-lab/Qwen3.5-7B-DFlash",
@@ -54,6 +55,7 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3-8B-bf16": "Qwen/Qwen3-8B",
     "mlx-community/Qwen3-8B-4bit": "Qwen/Qwen3-8B",
     "mlx-community/Qwen3-8B-8bit": "Qwen/Qwen3-8B",
+    "lmstudio-community/Qwen3-Coder-Next-MLX-4bit": "Qwen/Qwen3-Coder-Next",
     "mlx-community/Qwen3.5-4B-bf16": "Qwen/Qwen3.5-4B",
     "mlx-community/Qwen3.5-7B-bf16": "Qwen/Qwen3.5-7B",
     "mlx-community/Qwen3.5-14B-bf16": "Qwen/Qwen3.5-14B",

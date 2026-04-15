@@ -1529,6 +1529,7 @@ export default function App() {
         totalMemoryGb={workspace.system.totalMemoryGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
       />
@@ -1628,6 +1629,7 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}
         onLaunchSettingChange={updateLaunchSetting}

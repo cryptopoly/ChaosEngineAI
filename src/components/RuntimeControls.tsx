@@ -281,10 +281,12 @@ export function RuntimeControls({
           const isExpanded = expandedInfo === strategy.id;
           const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
           const isIncompat = incompatReason != null;
-          const isDisabled = !strategy.available || (specActive && strategy.id !== "native") || isIncompat;
+          const needsTurbo = strategy.requiredLlamaBinary === "turbo";
+          const turboMissing = needsTurbo && turboInstalled === false;
+          const isDisabled = !strategy.available || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
 
           return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? undefined}>
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
               <div className="cache-strategy-card-header">
                 <button
                   type="button"
@@ -296,10 +298,10 @@ export function RuntimeControls({
                   <span className="cache-strategy-card-name">{strategy.name}</span>
                   <span
                     className={`cache-strategy-badge cache-strategy-badge--${
-                      isIncompat ? "warning" : strategy.available ? "ready" : strategy.availabilityTone ?? "install"
+                      isIncompat ? "warning" : turboMissing ? "warning" : strategy.available ? "ready" : strategy.availabilityTone ?? "install"
                     }`}
                   >
-                    {isIncompat ? "N/A" : strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                    {isIncompat ? "N/A" : turboMissing ? "No turbo binary" : strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
                   </span>
                 </button>
                 {info ? (

@@ -48,6 +48,7 @@ interface CompareViewProps {
   totalMemoryGb: number;
   availableCacheStrategies?: SystemStats["availableCacheStrategies"];
   dflashInfo?: SystemStats["dflash"];
+  turboInstalled?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
 }
@@ -252,6 +253,7 @@ export function CompareView({
   totalMemoryGb,
   availableCacheStrategies,
   dflashInfo,
+  turboInstalled,
   onInstallPackage,
   installingPackage,
 }: CompareViewProps) {
@@ -700,6 +702,7 @@ export function CompareView({
         availableCacheStrategies={availableCacheStrategies}
         dflashInfo={dflashInfo}
         installingPackage={installingPackage ?? null}
+        turboInstalled={turboInstalled}
         onSelectedKeyChange={setPickerDraftKey}
         onSearchChange={setPickerSearch}
         onSettingChange={(key, value) => {

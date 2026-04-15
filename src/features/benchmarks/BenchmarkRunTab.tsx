@@ -18,6 +18,7 @@ export interface BenchmarkRunTabProps {
       availableMemoryGb: number;
       totalMemoryGb: number;
       availableCacheStrategies: SystemStats["availableCacheStrategies"];
+      llamaServerTurboPath?: string | null;
     };
   };
   benchmarkDraft: BenchmarkRunPayload;
@@ -218,6 +219,7 @@ export function BenchmarkRunTab({
               availableCacheStrategies={workspace.system.availableCacheStrategies}
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
+              turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
               showTemperature={false}
               showPreview={false}
             />

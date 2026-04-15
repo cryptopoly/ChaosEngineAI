@@ -19,6 +19,7 @@ export interface LaunchModalProps {
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
   dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
+  turboInstalled?: boolean;
   onPendingLaunchChange: (value: PendingLaunch | null | ((prev: PendingLaunch | null) => PendingLaunch | null)) => void;
   onLaunchModelSearchChange: (value: string) => void;
   onLaunchSettingChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -38,6 +39,7 @@ export function LaunchModal({
   availableCacheStrategies,
   dflashInfo,
   installingPackage,
+  turboInstalled,
   onPendingLaunchChange,
   onLaunchModelSearchChange,
   onLaunchSettingChange,
@@ -74,6 +76,7 @@ export function LaunchModal({
       availableCacheStrategies={availableCacheStrategies}
       dflashInfo={dflashInfo}
       installingPackage={installingPackage}
+      turboInstalled={turboInstalled}
       onSelectedKeyChange={setSelectedLaunchKey}
       onSearchChange={onLaunchModelSearchChange}
       onSettingChange={onLaunchSettingChange}

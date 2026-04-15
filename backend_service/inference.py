@@ -88,6 +88,22 @@ def _friendly_llama_error(logs: str | None) -> str:
             "quantisation, reduce the context window, or close other apps "
             "using the GPU."
         )
+    info_only_lines = [
+        line.strip()
+        for line in logs.splitlines()
+        if line.strip()
+    ]
+    if info_only_lines and all(
+        re.match(r"^load_backend: loaded .* backend", line, re.IGNORECASE)
+        or re.match(r"^ggml_metal_device_init: tensor api disabled .*", line, re.IGNORECASE)
+        or re.match(r"^ggml_metal_library_init: using embedded metal library$", line, re.IGNORECASE)
+        for line in info_only_lines
+    ):
+        return (
+            "llama.cpp exited during startup before reporting a specific error. "
+            "The visible ggml/Metal lines are informational startup messages, not the cause. "
+            "Retry with Native f16 or inspect the full server log for the real failure."
+        )
     return logs
 
 
@@ -168,6 +184,47 @@ def _llama_server_supports(binary_path: str | None, option: str) -> bool:
     return option.lower() in _llama_server_help_text(binary_path)
 
 
+# Baseline set assumed when help text cannot be parsed.
+_STANDARD_CACHE_TYPES = frozenset(
+    {"f32", "f16", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"}
+)
+
+_CACHE_TYPE_CACHE: dict[str, frozenset[str]] = {}
+
+
+def _llama_server_cache_types(binary_path: str | None) -> frozenset[str]:
+    """Extract supported ``--cache-type-k`` values from the binary's help text."""
+    if not binary_path:
+        return _STANDARD_CACHE_TYPES
+    cached = _CACHE_TYPE_CACHE.get(binary_path)
+    if cached is not None:
+        return cached
+
+    help_text = _llama_server_help_text(binary_path)
+    if not help_text:
+        _CACHE_TYPE_CACHE[binary_path] = _STANDARD_CACHE_TYPES
+        return _STANDARD_CACHE_TYPES
+
+    # The help text contains lines like:
+    #   allowed values: f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1,
+    #                   turbo2, turbo3, turbo4, planar3, iso3, planar4, iso4
+    # Values may wrap across multiple lines.  We capture everything up to
+    # the next ``(`` (which starts the default value parenthetical).
+    import re as _re
+    match = _re.search(
+        r"cache-type-k.*?allowed\s+values:\s*([a-z0-9_, \n\r\t]+)",
+        help_text,
+        _re.DOTALL,
+    )
+    if match:
+        raw = match.group(1).replace("\n", " ").replace("\r", " ")
+        types = frozenset(t.strip() for t in raw.split(",") if t.strip())
+    else:
+        types = _STANDARD_CACHE_TYPES
+    _CACHE_TYPE_CACHE[binary_path] = types
+    return types
+
+
 def _json_subprocess(
     command: list[str],
     *,
@@ -215,7 +272,10 @@ def _resolve_mlx_python() -> str:
 
 # Common install locations for llama.cpp binaries that may not be in PATH
 # when launched from a GUI app (Tauri doesn't inherit the user's shell profile).
+_CHAOSENGINE_BIN_DIR = str(Path.home() / ".chaosengine" / "bin")
+
 _LLAMA_FALLBACK_DIRS = [
+    _CHAOSENGINE_BIN_DIR,        # ChaosEngineAI-managed binaries
     "/opt/homebrew/bin",         # macOS ARM Homebrew
     "/usr/local/bin",            # macOS Intel Homebrew / manual
     "/usr/bin",                  # system
@@ -240,6 +300,18 @@ def _resolve_llama_server() -> str | None:
     if override:
         return override
     return _which_with_fallbacks("llama-server")
+
+
+def _resolve_llama_server_turbo() -> str | None:
+    """Resolve the TurboQuant fork of llama-server (``llama-server-turbo``).
+
+    This fork supports all standard cache types **plus** iso/planar/turbo
+    cache types required by RotorQuant and TurboQuant strategies.
+    """
+    override = os.getenv("CHAOSENGINE_LLAMA_SERVER_TURBO")
+    if override:
+        return override
+    return _which_with_fallbacks("llama-server-turbo")
 
 
 def _resolve_llama_cli() -> str | None:
@@ -517,6 +589,7 @@ class BackendCapabilities:
     ggufAvailable: bool = False
     llamaCliPath: str | None = None
     llamaServerPath: str | None = None
+    llamaServerTurboPath: str | None = None
     converterAvailable: bool = False
     vllmAvailable: bool = False
     vllmVersion: str | None = None
@@ -533,6 +606,7 @@ class BackendCapabilities:
             "ggufAvailable": self.ggufAvailable,
             "llamaCliPath": self.llamaCliPath,
             "llamaServerPath": self.llamaServerPath,
+            "llamaServerTurboPath": self.llamaServerTurboPath,
             "converterAvailable": self.converterAvailable,
             "vllmAvailable": self.vllmAvailable,
             "vllmVersion": self.vllmVersion,
@@ -546,6 +620,7 @@ _capability_lock = RLock()
 def _probe_native_backends() -> BackendCapabilities:
     python_executable = _resolve_mlx_python()
     llama_server_path = _resolve_llama_server()
+    llama_server_turbo_path = _resolve_llama_server_turbo()
     llama_cli_path = _resolve_llama_cli()
 
     code, payload, message = _json_subprocess(
@@ -573,9 +648,10 @@ def _probe_native_backends() -> BackendCapabilities:
         mlxVersion=payload.get("mlxVersion"),
         mlxLmVersion=payload.get("mlxLmVersion"),
         mlxMessage=probe_message,
-        ggufAvailable=bool(llama_server_path),
+        ggufAvailable=bool(llama_server_path) or bool(llama_server_turbo_path),
         llamaCliPath=llama_cli_path,
         llamaServerPath=llama_server_path,
+        llamaServerTurboPath=llama_server_turbo_path,
         converterAvailable=mlx_usable,
         vllmAvailable=_vllm_importable(),
         vllmVersion=_vllm_version(),
@@ -1587,6 +1663,26 @@ class LlamaCppEngine(BaseInferenceEngine):
             return None
         return int(self.process.pid)
 
+    def _select_llama_binary(self, strategy: Any) -> str:
+        """Pick the correct llama-server binary for *strategy*.
+
+        Routing rules:
+        1. If the strategy requires ``"turbo"`` and the turbo binary is
+           available, use it.
+        2. Otherwise fall back to the standard binary.
+        3. If neither binary is available, raise.
+        """
+        variant = strategy.required_llama_binary()
+        if variant == "turbo" and self.capabilities.llamaServerTurboPath:
+            return self.capabilities.llamaServerTurboPath
+        if self.capabilities.llamaServerPath:
+            return self.capabilities.llamaServerPath
+        # If only the turbo binary exists (no standard), it is a superset
+        # of standard and can serve all strategies.
+        if self.capabilities.llamaServerTurboPath:
+            return self.capabilities.llamaServerTurboPath
+        raise RuntimeError("llama-server was not found on this machine.")
+
     def _build_command(
         self,
         *,
@@ -1597,17 +1693,22 @@ class LlamaCppEngine(BaseInferenceEngine):
         context_tokens: int,
         fit_enabled: bool,
         is_fallback: bool,
-    ) -> tuple[list[str], str | None]:
-        if not self.capabilities.llamaServerPath:
-            raise RuntimeError("llama-server was not found on this machine.")
+    ) -> tuple[list[str], str | None, bool]:
+        """Build the llama-server command line.
 
+        Returns ``(command, runtime_note, fell_back_to_native)`` where
+        *fell_back_to_native* is ``True`` when pre-validation detected
+        unsupported cache types and silently switched to f16.
+        """
         from compression import registry as _strategy_registry
         strategy = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
 
+        binary = self._select_llama_binary(strategy)
         runtime_note = None
+        fell_back_to_native = False
         self.port = _find_open_port()
         command = [
-            self.capabilities.llamaServerPath,
+            binary,
             "--host",
             "127.0.0.1",
             "--port",
@@ -1618,9 +1719,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             str(max(256, context_tokens)),
             "--jinja",
         ]
-        if _llama_server_supports(self.capabilities.llamaServerPath, "--reasoning-format"):
+        if _llama_server_supports(binary, "--reasoning-format"):
             command.extend(["--reasoning-format", "deepseek"])
-        if _llama_server_supports(self.capabilities.llamaServerPath, "--reasoning"):
+        if _llama_server_supports(binary, "--reasoning"):
             command.extend(["--reasoning", "off"])
         if fit_enabled:
             command.extend(["--fit", "on"])
@@ -1639,6 +1740,32 @@ class LlamaCppEngine(BaseInferenceEngine):
                 f"GGUF startup failed with {strategy.name} cache, so ChaosEngineAI retried with the standard f16 KV cache."
             )
 
+        # Pre-validate cache types against the selected binary's
+        # supported set.  If unsupported, fall back to f16 immediately
+        # instead of waiting for a startup timeout.
+        if not is_fallback and runtime_note is None:
+            supported = _llama_server_cache_types(binary)
+            for i, flag in enumerate(cache_flags):
+                if flag.startswith("--cache-type-") and i + 1 < len(cache_flags):
+                    cache_type = cache_flags[i + 1]
+                    if cache_type not in supported:
+                        variant = strategy.required_llama_binary()
+                        if variant == "turbo" and not self.capabilities.llamaServerTurboPath:
+                            runtime_note = (
+                                f"{strategy.name} requires llama-server-turbo "
+                                f"(the TurboQuant fork) which is not installed. "
+                                f"Run scripts/build-llama-turbo.sh to install it. "
+                                f"Using native f16 cache instead."
+                            )
+                        else:
+                            runtime_note = (
+                                f"Cache type '{cache_type}' is not supported by "
+                                f"the installed llama-server; using f16 cache."
+                            )
+                        cache_flags = ["--cache-type-k", "f16", "--cache-type-v", "f16"]
+                        fell_back_to_native = True
+                        break
+
         command.extend(cache_flags)
 
         target = runtime_target or path
@@ -1652,7 +1779,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             raise RuntimeError("GGUF loading requires a local model path or a Hugging Face GGUF repository.")
 
-        return command, runtime_note
+        return command, runtime_note, fell_back_to_native
 
     def _wait_for_server(self) -> None:
         deadline = time.time() + DEFAULT_LLAMA_TIMEOUT_SECONDS
@@ -1714,15 +1841,23 @@ class LlamaCppEngine(BaseInferenceEngine):
         from compression import registry as _strategy_registry
         failed_strategy_name: str | None = None
 
-        # Try the requested strategy first, then fall back to native.
+        # Try the requested strategy first.  If it fails, try ChaosEngine
+        # (which uses standard cache types on the standard llama-server),
+        # then finally native f16.  This ensures the user gets the best
+        # available compression even when the turbo binary can't load a
+        # particular model architecture.
         attempts: list[tuple[str, bool, bool]] = [(cache_strategy, fit_model_in_memory, False)]
+        if cache_strategy not in ("native", "chaosengine"):
+            chaosengine_strat = _strategy_registry.get("chaosengine")
+            if chaosengine_strat and chaosengine_strat.is_available():
+                attempts.append(("chaosengine", False, True))
         if cache_strategy != "native":
             attempts.append(("native", False, True))
         last_error: str | None = None
 
         for strategy_id, fit_enabled, is_fallback in attempts:
             strategy = _strategy_registry.get(strategy_id) or _strategy_registry.default()
-            command, attempt_note = self._build_command(
+            command, attempt_note, prevalidation_fallback = self._build_command(
                 path=path,
                 runtime_target=runtime_target,
                 cache_strategy=strategy_id,
@@ -1747,10 +1882,18 @@ class LlamaCppEngine(BaseInferenceEngine):
             try:
                 self._wait_for_server()
                 runtime_note = attempt_note
-                actual_strategy = strategy_id
+                actual_strategy = "native" if prevalidation_fallback else strategy_id
                 actual_fit = fit_enabled
                 if is_fallback and failed_strategy_name is not None:
-                    runtime_note = _gguf_startup_fallback_note(failed_strategy_name)
+                    fallback_strat = _strategy_registry.get(strategy_id) or _strategy_registry.default()
+                    if strategy_id == "native":
+                        runtime_note = _gguf_startup_fallback_note(failed_strategy_name)
+                    else:
+                        runtime_note = (
+                            f"GGUF startup failed with {failed_strategy_name} cache "
+                            f"(the turbo binary may not support this model architecture). "
+                            f"Fell back to {fallback_strat.label(cache_bits, fp16_layers)} on the standard binary."
+                        )
                 break
             except RuntimeError as exc:
                 last_error = str(exc)
@@ -2226,6 +2369,12 @@ class RuntimeController:
         return True
 
     def refresh_capabilities(self, *, force: bool = False) -> BackendCapabilities:
+        if force:
+            # Clear cached help text and cache type sets so that newly
+            # installed or updated binaries are re-probed.
+            with _LLAMA_HELP_LOCK:
+                _LLAMA_HELP_CACHE.clear()
+            _CACHE_TYPE_CACHE.clear()
         self.capabilities = get_backend_capabilities(force=force)
         return self.capabilities
 

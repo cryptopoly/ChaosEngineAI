@@ -23,9 +23,9 @@ const STRATEGY_INFO: Record<string, { description: string; install: string; requ
   },
   rotorquant: {
     description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
-    install: "./.venv/bin/python3 -m pip install turboquant",
-    requires: "llama.cpp (RotorQuant fork) + CUDA/Metal GPU",
-    installHint: "Install into ChaosEngineAI's backend Python, then restart ChaosEngineAI.",
+    install: "./scripts/build-llama-turbo.sh && ./.venv/bin/python3 -m pip install turboquant",
+    requires: "llama-server-turbo (TurboQuant fork) + CUDA/Metal GPU",
+    installHint: "Run scripts/build-llama-turbo.sh to build the forked llama-server, then install the Python marker package and restart ChaosEngineAI.",
     autoInstallPackage: "turboquant",
   },
   triattention: {
@@ -36,10 +36,10 @@ const STRATEGY_INFO: Record<string, { description: string; install: string; requ
     autoInstallPackage: "triattention",
   },
   turboquant: {
-    description: "PolarQuant KV cache compression for MLX. Experimental: the current PyPI turboquant-mlx package does not expose the MLX adapter hooks ChaosEngineAI expects, so this option can remain disabled even after install.",
-    install: "./.venv/bin/python3 -m pip install turboquant-mlx",
-    requires: "Apple Silicon + MLX. Additional ChaosEngineAI adapter support is required in the current build.",
-    installHint: "Install into ChaosEngineAI's backend Python. In the current build, the PyPI package alone may still leave this option disabled after restart.",
+    description: "TurboQuant KV cache compression (~4.6x at 3-bit). On MLX, uses Hadamard rotation + Lloyd-Max codebooks. On GGUF, uses llama-server-turbo. Works with all model architectures.",
+    install: "./.venv/bin/python3 -m pip install turboquant-mlx-full && ./scripts/build-llama-turbo.sh",
+    requires: "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
+    installHint: "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI.",
     autoInstallPackage: "turboquant-mlx",
   },
   chaosengine: {
@@ -90,6 +90,7 @@ interface CacheStrategyOption {
   availabilityBadge?: string | null;
   availabilityTone?: string | null;
   availabilityReason?: string | null;
+  requiredLlamaBinary?: string | null;
 }
 
 interface DFlashInfo {
@@ -116,6 +117,10 @@ interface RuntimeControlsProps {
   dflashInfo?: DFlashInfo;
   /** Backend of the selected model (e.g. "mlx", "gguf", "vllm", "auto"). Used for compatibility validation. */
   selectedBackend?: string | null;
+  /** Whether llama-server-turbo is installed (for RotorQuant/TurboQuant GGUF support). */
+  turboInstalled?: boolean;
+  /** Whether an update is available for llama-server-turbo. */
+  turboUpdateAvailable?: boolean;
 }
 
 // ----- Compatibility helpers -----
@@ -161,6 +166,8 @@ export function RuntimeControls({
   installingPackage,
   dflashInfo,
   selectedBackend,
+  turboInstalled,
+  turboUpdateAvailable,
 }: RuntimeControlsProps) {
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
@@ -300,11 +307,25 @@ export function RuntimeControls({
                           disabled={installingPackage != null}
                           onClick={() => onInstallPackage(strategy.id)}
                         >
-                          {installingPackage === strategy.id ? "Installing..." : "Install now"}
+                          {installingPackage === strategy.id
+                            ? strategy.requiredLlamaBinary === "turbo" && !turboInstalled
+                              ? "Building llama-server-turbo..."
+                              : "Installing..."
+                            : "Install now"}
                         </button>
                       ) : (
                         <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
                       )}
+                      {strategy.available && strategy.requiredLlamaBinary === "turbo" && turboUpdateAvailable && onInstallPackage ? (
+                        <button
+                          type="button"
+                          className="cache-strategy-install-btn"
+                          disabled={installingPackage != null}
+                          onClick={() => onInstallPackage(strategy.id)}
+                        >
+                          {installingPackage === strategy.id ? "Updating..." : "Update available"}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

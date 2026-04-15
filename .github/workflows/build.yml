@@ -24,6 +24,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm ci
+      - run: npx tsc --noEmit
       - run: npm test
       - name: Python tests
         run: |

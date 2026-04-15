@@ -84,8 +84,8 @@ class TurboQuantStrategy(CacheStrategy):
         if self.is_available():
             return None
         return (
-            "The current PyPI turboquant-mlx package does not expose the MLX adapter hooks "
-            "ChaosEngineAI expects yet, so this option stays disabled in the current build."
+            "Install turboquant-mlx-full into ChaosEngineAI's backend runtime: "
+            "./.venv/bin/python3 -m pip install turboquant-mlx-full — then restart the app."
         )
 
     def supported_bit_range(self) -> tuple[int, int] | None:
@@ -96,6 +96,9 @@ class TurboQuantStrategy(CacheStrategy):
 
     def supports_fp16_layers(self) -> bool:
         return True
+
+    def required_llama_binary(self) -> str:
+        return "turbo"
 
     # ------------------------------------------------------------------
     # Engine integration

@@ -559,6 +559,19 @@ export async function installSystemPackage(packageName: string): Promise<Install
   return await postJson<InstallResult>("/api/setup/install-system-package", { package: packageName }, 660000);
 }
 
+export interface TurboUpdateInfo {
+  installed: boolean;
+  installedCommit: string | null;
+  remoteCommit: string | null;
+  updateAvailable: boolean;
+  branch: string | null;
+  buildDate: string | null;
+}
+
+export async function checkTurboUpdate(): Promise<TurboUpdateInfo> {
+  return await fetchJson<TurboUpdateInfo>("/api/setup/turbo-update-check", 20000);
+}
+
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {
   const result = await postJson<{ capabilities: Record<string, unknown> }>("/api/setup/refresh-capabilities");
   return result.capabilities;

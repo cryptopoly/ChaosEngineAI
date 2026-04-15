@@ -336,6 +336,9 @@ export function useSettings(
   }
 
   async function handleInstallPackage(strategyId: string) {
+    // Strategies that need the turbo binary (llama-server-turbo) for GGUF.
+    const needsTurboBinary = strategyId === "rotorquant" || strategyId === "turboquant";
+
     const pipPackageMap: Record<string, string> = {
       rotorquant: "turboquant",
       turboquant: "turboquant-mlx",
@@ -355,6 +358,19 @@ export function useSettings(
     setInstallingPackage(strategyId);
     setError(null);
     try {
+      // If this strategy needs llama-server-turbo and it's not installed,
+      // build it first (clones + compiles the TurboQuant fork).
+      if (needsTurboBinary) {
+        const turboInstalled = workspace?.system?.llamaServerTurboPath;
+        if (!turboInstalled) {
+          const turboResult = await installSystemPackage("llama-server-turbo");
+          if (!turboResult.ok) {
+            setError(`llama-server-turbo build failed: ${turboResult.output.slice(0, 300)}`);
+            return;
+          }
+        }
+      }
+
       const result = await installPipPackage(pipName);
       if (result.ok) {
         await refreshWorkspace(activeChatId || undefined);

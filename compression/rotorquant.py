@@ -69,6 +69,9 @@ class RotorQuantStrategy(CacheStrategy):
     def supports_fp16_layers(self) -> bool:
         return True
 
+    def required_llama_binary(self) -> str:
+        return "turbo"
+
     # ------------------------------------------------------------------
     # Engine integration
     # ------------------------------------------------------------------
@@ -82,21 +85,17 @@ class RotorQuantStrategy(CacheStrategy):
         )
 
     def llama_cpp_cache_flags(self, bits: int) -> list[str]:
-        """Return cache-type flags for the RotorQuant llama.cpp fork.
+        """Return cache-type flags for the TurboQuant llama.cpp fork.
 
-        The fork (github.com/johndpope/llama-cpp-turboquant, branch
-        ``planarquant-kv-cache``) supports ``iso3``, ``iso4``, ``planar3``,
-        ``planar4`` as cache-type values.
+        The fork (github.com/TheTom/llama-cpp-turboquant, branch
+        ``feature/turboquant-kv-cache``) supports ``turbo2``, ``turbo3``,
+        ``turbo4`` as cache-type values.
 
-        IsoQuant (4D rotation) is used by default for better quality.
+        RotorQuant maps to the same turbo cache types — both are
+        rotation-based KV cache quantization.
         """
-        clamped = max(3, min(4, bits))
-        return ["--cache-type-k", f"iso{clamped}", "--cache-type-v", f"iso{clamped}"]
-
-    def llama_cpp_cache_flags_planar(self, bits: int) -> list[str]:
-        """Alternative: use PlanarQuant (2D rotation, faster, slightly lower quality)."""
-        clamped = max(3, min(4, bits))
-        return ["--cache-type-k", f"planar{clamped}", "--cache-type-v", f"planar{clamped}"]
+        clamped = max(2, min(4, bits))
+        return ["--cache-type-k", f"turbo{clamped}", "--cache-type-v", f"turbo{clamped}"]
 
     def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers):
         kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens

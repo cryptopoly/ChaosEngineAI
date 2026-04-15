@@ -222,29 +222,8 @@ export function ChatTab({
             <button className="secondary-button" type="button" onClick={() => onOpenModelSelector("chat", activeThreadOptionKey)}>
               {activeChat?.model ?? "Select Model"}
             </button>
-            {activeChat?.modelRef === loadedModelRef && runtimeProfileReady ? (
+            {activeChat?.modelRef === loadedModelRef ? (
               <span className="badge success">Ready</span>
-            ) : activeChat?.modelRef === loadedModelRef ? (
-              <button
-                className="primary-button action-convert"
-                type="button"
-                disabled={busy}
-                title="Reload the active model with the current launch settings"
-                onClick={() => {
-                  if (!activeChat?.modelRef) return;
-                  void onLoadModel({
-                    modelRef: activeChat.modelRef,
-                    modelName: activeChat.model,
-                    canonicalRepo: activeChat.canonicalRepo,
-                    source: activeChat.modelSource ?? "library",
-                    backend: activeChat.modelBackend ?? "auto",
-                    path: activeChat.modelPath ?? undefined,
-                    busyLabel: "Reloading model for updated launch settings...",
-                  });
-                }}
-              >
-                {busy ? "Applying..." : "Apply settings"}
-              </button>
             ) : serverLoading ? (
               <div className="badge accent chat-loading-pill">
                 <span className="busy-dot" />
@@ -355,6 +334,10 @@ export function ChatTab({
               const messageRequestedCache = message.metrics ? requestedCacheLabel(message.metrics) : null;
               const messageRequestedSpeculativeMode = message.metrics ? requestedSpeculativeMode(message.metrics) : null;
               const messageRuntimeWarning = message.metrics ? runtimeOutcomeWarning(message.metrics) : null;
+              const actualFitInMemory = message.metrics?.fitModelInMemory;
+              const requestedFitInMemory = message.metrics?.requestedFitModelInMemory;
+              const fitInMemoryLabel = actualFitInMemory == null ? "Unknown" : actualFitInMemory ? "On" : "Off";
+              const requestedFitInMemoryLabel = requestedFitInMemory == null ? null : requestedFitInMemory ? "On" : "Off";
               return (
               <div className={`message-bubble ${message.role}`} key={`${message.role}-${index}`}>
                 <div className="message-header">
@@ -471,6 +454,10 @@ export function ChatTab({
                         <p>{message.metrics.contextTokens?.toLocaleString() ?? launchSettings.contextTokens.toLocaleString()}</p>
                       </div>
                       <div>
+                        <span className="eyebrow">Fit in memory</span>
+                        <p>{fitInMemoryLabel}</p>
+                      </div>
+                      <div>
                         <span className="eyebrow">Tokens</span>
                         <p>{message.metrics.totalTokens} total</p>
                       </div>
@@ -490,6 +477,12 @@ export function ChatTab({
                         <div>
                           <span className="eyebrow">Requested cache</span>
                           <p>{messageRequestedCache}</p>
+                        </div>
+                      ) : null}
+                      {requestedFitInMemoryLabel && requestedFitInMemory !== actualFitInMemory ? (
+                        <div>
+                          <span className="eyebrow">Requested fit</span>
+                          <p>{requestedFitInMemoryLabel}</p>
                         </div>
                       ) : null}
                       {messageRequestedSpeculativeMode && messageRequestedSpeculativeMode !== "Off" ? (

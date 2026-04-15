@@ -204,6 +204,7 @@ export default function App() {
     };
   });
   const filteredLibraryRows = libraryRows
+    .filter(({ item }) => item.modelType !== "image")
     .filter(({ item, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
       const haystack = `${item.name} ${item.path} ${displayFormat} ${displayQuantization ?? ""} ${displayBackend} ${sourceKind} ${item.directoryLabel ?? ""}`.toLowerCase();
       return haystack.includes(librarySearchInput.trim().toLowerCase());
@@ -246,7 +247,7 @@ export default function App() {
       maxContext: variant.maxContext ?? null,
     }));
 
-  const libraryChatOptions: ChatModelOption[] = workspace.library.map((item) => {
+  const libraryChatOptions: ChatModelOption[] = workspace.library.filter((item) => item.modelType !== "image").map((item) => {
     const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
     const displayFormat = libraryItemFormat(item, matched);
     const displayQuantization = libraryItemQuantization(item, matched);

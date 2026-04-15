@@ -120,14 +120,9 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     def test_rotorquant_llama_flags(self):
         rq = self.registry.get("rotorquant")
         flags = rq.llama_cpp_cache_flags(3)
-        self.assertEqual(flags, ["--cache-type-k", "iso3", "--cache-type-v", "iso3"])
+        self.assertEqual(flags, ["--cache-type-k", "turbo3", "--cache-type-v", "turbo3"])
         flags4 = rq.llama_cpp_cache_flags(4)
-        self.assertEqual(flags4, ["--cache-type-k", "iso4", "--cache-type-v", "iso4"])
-
-    def test_rotorquant_llama_flags_planar(self):
-        rq = self.registry.get("rotorquant")
-        flags = rq.llama_cpp_cache_flags_planar(3)
-        self.assertEqual(flags, ["--cache-type-k", "planar3", "--cache-type-v", "planar3"])
+        self.assertEqual(flags4, ["--cache-type-k", "turbo4", "--cache-type-v", "turbo4"])
 
     def test_rotorquant_mlx_raises_helpful_message(self):
         rq = self.registry.get("rotorquant")
@@ -150,12 +145,12 @@ class CacheStrategyRegistryTests(unittest.TestCase):
 
     def test_rotorquant_bits_clamped(self):
         rq = self.registry.get("rotorquant")
-        # Bits below 3 should clamp to 3
+        # Bits below 2 should clamp to 2
         flags = rq.llama_cpp_cache_flags(1)
-        self.assertEqual(flags, ["--cache-type-k", "iso3", "--cache-type-v", "iso3"])
+        self.assertEqual(flags, ["--cache-type-k", "turbo2", "--cache-type-v", "turbo2"])
         # Bits above 4 should clamp to 4
         flags = rq.llama_cpp_cache_flags(8)
-        self.assertEqual(flags, ["--cache-type-k", "iso4", "--cache-type-v", "iso4"])
+        self.assertEqual(flags, ["--cache-type-k", "turbo4", "--cache-type-v", "turbo4"])
 
     def test_rotorquant_is_available_with_current_turboquant_exports(self):
         rq = RotorQuantStrategy()
@@ -197,6 +192,78 @@ class CacheStrategyRegistryTests(unittest.TestCase):
             with self.assertRaises(NotImplementedError) as ctx:
                 tq.make_mlx_cache(32, 3, 4, False, None)
         self.assertIn("required MLX adapter hooks", str(ctx.exception))
+
+    # ------------------------------------------------------------------
+    # ChaosEngine — cache type validation
+    # ------------------------------------------------------------------
+
+    def test_chaosengine_cache_flags_use_standard_types(self):
+        """ChaosEngine must only emit cache types that standard llama-server
+        accepts: f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1."""
+        ce = self.registry.get("chaosengine")
+        valid_types = {"f32", "f16", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"}
+        for bits in (2, 3, 4, 5, 6, 8):
+            flags = ce.llama_cpp_cache_flags(bits)
+            for i, flag in enumerate(flags):
+                if flag.startswith("--cache-type-") and i + 1 < len(flags):
+                    cache_type = flags[i + 1]
+                    self.assertIn(
+                        cache_type, valid_types,
+                        f"ChaosEngine {bits}-bit emits '{cache_type}' which is not a valid standard llama-server cache type",
+                    )
+
+    def test_chaosengine_8bit_maps_to_q8_0(self):
+        ce = self.registry.get("chaosengine")
+        flags = ce.llama_cpp_cache_flags(8)
+        self.assertEqual(flags, ["--cache-type-k", "q8_0", "--cache-type-v", "q8_0"])
+
+    def test_chaosengine_4bit_maps_to_q4_0(self):
+        ce = self.registry.get("chaosengine")
+        flags = ce.llama_cpp_cache_flags(4)
+        self.assertEqual(flags, ["--cache-type-k", "q4_0", "--cache-type-v", "q4_0"])
+
+    # ------------------------------------------------------------------
+    # required_llama_binary() metadata
+    # ------------------------------------------------------------------
+
+    def test_native_requires_standard_binary(self):
+        native = self.registry.get("native")
+        self.assertEqual(native.required_llama_binary(), "standard")
+
+    def test_rotorquant_requires_turbo_binary(self):
+        rq = self.registry.get("rotorquant")
+        self.assertEqual(rq.required_llama_binary(), "turbo")
+
+    def test_turboquant_requires_turbo_binary(self):
+        tq = self.registry.get("turboquant")
+        self.assertEqual(tq.required_llama_binary(), "turbo")
+
+    def test_chaosengine_requires_standard_binary(self):
+        ce = self.registry.get("chaosengine")
+        self.assertEqual(ce.required_llama_binary(), "standard")
+
+    def test_available_json_includes_required_llama_binary(self):
+        available = self.registry.available()
+        for entry in available:
+            self.assertIn("requiredLlamaBinary", entry)
+            self.assertIn(entry["requiredLlamaBinary"], ("standard", "turbo"))
+
+    def test_broken_strategy_preserves_required_llama_binary(self):
+        """When a strategy import fails, the placeholder should preserve
+        the correct binary requirement from the spec."""
+        real_import_module = importlib.import_module
+
+        def fake_import(name, package=None):
+            if name == "compression.rotorquant":
+                raise RuntimeError("broken")
+            return real_import_module(name, package)
+
+        registry = CacheStrategyRegistry()
+        with patch("compression.importlib.import_module", side_effect=fake_import):
+            registry.discover()
+
+        rotor = registry.get("rotorquant")
+        self.assertEqual(rotor.required_llama_binary(), "turbo")
 
 
 if __name__ == "__main__":

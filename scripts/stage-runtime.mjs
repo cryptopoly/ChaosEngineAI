@@ -2,6 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnvFiles } from "./load-env.mjs";
@@ -83,6 +84,7 @@ function main() {
     libraryPathEntries: ["bin", "python/home/lib"],
     pathEntries: ["python/home/bin", "bin"],
     llamaServer: fs.existsSync(path.join(binDest, binaryName("llama-server"))) ? `bin/${binaryName("llama-server")}` : null,
+    llamaServerTurbo: fs.existsSync(path.join(binDest, binaryName("llama-server-turbo"))) ? `bin/${binaryName("llama-server-turbo")}` : null,
     llamaCli: fs.existsSync(path.join(binDest, binaryName("llama-cli"))) ? `bin/${binaryName("llama-cli")}` : null,
     pythonVersion: pythonInfo.versionTag,
     bundledCacheStrategies: chaosEngineBundle ? ["chaosengine"] : [],
@@ -303,6 +305,18 @@ function stageLlamaBinaries() {
     const destinationPath = path.join(binDest, entry);
     copyPath(sourcePath, destinationPath);
   }
+
+  // Also pick up llama-server-turbo from ~/.chaosengine/bin/ if it was
+  // not already included from the primary llama.cpp build directory.
+  const turboName = binaryName("llama-server-turbo");
+  if (!fs.existsSync(path.join(binDest, turboName))) {
+    const chaosEngineBinDir = path.join(os.homedir(), ".chaosengine", "bin");
+    const turboCandidatePath = path.join(chaosEngineBinDir, turboName);
+    if (fs.existsSync(turboCandidatePath)) {
+      copyPath(turboCandidatePath, path.join(binDest, turboName));
+    }
+  }
+
   return warnings;
 }
 

@@ -255,6 +255,24 @@ def _detect_model_quantization(path: Path, fmt: str, *, name_hint: str = "") -> 
     return _quantization_label_from_text(text_hint)
 
 
+_IMAGE_MODEL_KEYWORDS = (
+    "stable-diffusion", "sdxl", "flux.", "flux1", "flux-",
+    "dall-e", "imagen", "kandinsky", "wuerstchen",
+    "diffusion-pipe", "qwen-image", "qwen/qwen-image",
+)
+
+
+def _looks_like_image_model(path: Path, name: str) -> bool:
+    """Return True if this looks like a diffusion / image generation model."""
+    lower_name = name.lower()
+    if any(kw in lower_name for kw in _IMAGE_MODEL_KEYWORDS):
+        return True
+    # Diffusers models have model_index.json
+    if (path / "model_index.json").exists():
+        return True
+    return False
+
+
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     source_kind = "HF cache" if path.name.startswith("models--") else "Directory"
     name = path.name.replace("models--", "").replace("--", "/") if source_kind == "HF cache" else path.name
@@ -498,6 +516,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 broken, broken_reason = _detect_broken_library_item(child, file_format, source_kind)
                 quantization = _detect_model_quantization(child, file_format, name_hint=name)
                 backend = "llama.cpp" if file_format == "GGUF" else "mlx"
+                model_type = "image" if _looks_like_image_model(child, name) else "text"
                 items.append(
                     {
                         "name": name,
@@ -506,6 +525,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                         "sourceKind": source_kind,
                         "quantization": quantization,
                         "backend": backend,
+                        "modelType": model_type,
                         "sizeGb": _du_size_gb(child),
                         "lastModified": time.strftime("%Y-%m-%d %H:%M", time.localtime(child.stat().st_mtime)),
                         "actions": ["Run Chat", "Run Server", "Cache Preview", "Delete"],

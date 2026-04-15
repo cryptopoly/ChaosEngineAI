@@ -66,6 +66,7 @@ struct EmbeddedRuntimeManifest {
     library_path_entries: Vec<String>,
     path_entries: Vec<String>,
     llama_server: Option<String>,
+    llama_server_turbo: Option<String>,
     llama_cli: Option<String>,
 }
 
@@ -88,6 +89,7 @@ struct EmbeddedRuntime {
     library_path_entries: Vec<PathBuf>,
     path_entries: Vec<PathBuf>,
     llama_server: Option<PathBuf>,
+    llama_server_turbo: Option<PathBuf>,
     llama_cli: Option<PathBuf>,
 }
 
@@ -308,12 +310,18 @@ impl BackendManager {
                 if let Some(llama_server) = runtime.llama_server.as_ref() {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
                 }
+                if let Some(llama_server_turbo) = runtime.llama_server_turbo.as_ref() {
+                    command.env("CHAOSENGINE_LLAMA_SERVER_TURBO", llama_server_turbo.as_os_str());
+                }
                 if let Some(llama_cli) = runtime.llama_cli.as_ref() {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
                 }
             } else {
                 if let Some(llama_server) = resolve_llama_server(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
+                }
+                if let Some(llama_server_turbo) = resolve_llama_server_turbo(&workspace_root) {
+                    command.env("CHAOSENGINE_LLAMA_SERVER_TURBO", llama_server_turbo.as_os_str());
                 }
                 if let Some(llama_cli) = resolve_llama_cli(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
@@ -660,6 +668,10 @@ fn resolve_embedded_runtime(app: &AppHandle) -> Option<EmbeddedRuntime> {
             .llama_server
             .as_ref()
             .map(|entry| extracted_root.join(entry)),
+        llama_server_turbo: manifest
+            .llama_server_turbo
+            .as_ref()
+            .map(|entry| extracted_root.join(entry)),
         llama_cli: manifest.llama_cli.as_ref().map(|entry| extracted_root.join(entry)),
     };
 
@@ -795,6 +807,25 @@ fn resolve_llama_server(_workspace_root: &Path) -> Option<PathBuf> {
     }
 
     find_in_path(&["llama-server"])
+}
+
+fn resolve_llama_server_turbo(_workspace_root: &Path) -> Option<PathBuf> {
+    if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_SERVER_TURBO") {
+        if let Some(path) = resolve_candidate(value) {
+            return Some(path);
+        }
+    }
+
+    // Check ~/.chaosengine/bin/ first (ChaosEngineAI-managed installs),
+    // then fall back to PATH.
+    if let Ok(home) = env::var("HOME") {
+        let managed = PathBuf::from(home).join(".chaosengine").join("bin").join("llama-server-turbo");
+        if managed.exists() {
+            return Some(managed);
+        }
+    }
+
+    find_in_path(&["llama-server-turbo"])
 }
 
 fn resolve_llama_cli(_workspace_root: &Path) -> Option<PathBuf> {

@@ -375,6 +375,7 @@ class ChaosEngineState:
         cache_strategy: str,
         cache_bits: int,
         fp16_layers: int,
+        fit_model_in_memory: bool,
         speculative_decoding: bool,
         tree_budget: int,
     ) -> dict[str, Any]:
@@ -387,6 +388,7 @@ class ChaosEngineState:
             "requestedCacheStrategy": cache_strategy,
             "requestedCacheBits": cache_bits,
             "requestedFp16Layers": fp16_layers,
+            "requestedFitModelInMemory": fit_model_in_memory,
             "requestedSpeculativeDecoding": speculative_decoding,
             "requestedTreeBudget": tree_budget,
         }
@@ -1735,6 +1737,7 @@ class ChaosEngineState:
                 cache_strategy=str(desired_cache_strategy),
                 cache_bits=int(desired_cache_bits),
                 fp16_layers=int(desired_fp16_layers),
+                fit_model_in_memory=bool(desired_fit_model),
                 speculative_decoding=bool(desired_speculative_decoding),
                 tree_budget=int(desired_tree_budget),
             )
@@ -1974,6 +1977,7 @@ class ChaosEngineState:
                 cache_strategy=str(desired_cache_strategy),
                 cache_bits=int(desired_cache_bits),
                 fp16_layers=int(desired_fp16_layers),
+                fit_model_in_memory=bool(desired_fit_model),
                 speculative_decoding=bool(desired_speculative_decoding),
                 tree_budget=int(desired_tree_budget),
             )

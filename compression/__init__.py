@@ -95,6 +95,18 @@ class CacheStrategy(ABC):
         baseline = kv_elements * 2  # FP16 = 2 bytes
         return baseline, baseline
 
+    def required_llama_binary(self) -> str:
+        """Return which llama-server binary variant this strategy needs.
+
+        ``"standard"`` — upstream / Homebrew llama-server.
+        ``"turbo"``    — johndpope/llama-cpp-turboquant fork (supports
+                         iso/planar/turbo cache types in addition to all
+                         standard types).
+
+        The runtime uses this to pick the correct binary path.
+        """
+        return "standard"
+
     def apply_vllm_patches(self) -> None:
         """Hook for strategies that monkeypatch vLLM (e.g. TriAttention).
 
@@ -140,6 +152,7 @@ class CacheStrategyRegistry:
                 "availabilityBadge": s.availability_badge(),
                 "availabilityTone": s.availability_tone(),
                 "availabilityReason": s.availability_reason(),
+                "requiredLlamaBinary": s.required_llama_binary(),
             })
         return out
 
@@ -156,6 +169,7 @@ class CacheStrategyRegistry:
                 "bit_range": None,
                 "default_bits": None,
                 "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
             },
             {
                 "id": "rotorquant",
@@ -165,6 +179,7 @@ class CacheStrategyRegistry:
                 "bit_range": (3, 4),
                 "default_bits": 3,
                 "supports_fp16_layers": True,
+                "required_llama_binary": "turbo",
             },
             {
                 "id": "triattention",
@@ -174,6 +189,7 @@ class CacheStrategyRegistry:
                 "bit_range": (1, 4),
                 "default_bits": 3,
                 "supports_fp16_layers": True,
+                "required_llama_binary": "standard",
             },
             {
                 "id": "turboquant",
@@ -183,6 +199,7 @@ class CacheStrategyRegistry:
                 "bit_range": (1, 4),
                 "default_bits": 3,
                 "supports_fp16_layers": True,
+                "required_llama_binary": "turbo",
             },
             {
                 "id": "chaosengine",
@@ -192,6 +209,7 @@ class CacheStrategyRegistry:
                 "bit_range": (2, 8),
                 "default_bits": 4,
                 "supports_fp16_layers": True,
+                "required_llama_binary": "standard",
             },
         ]
 
@@ -209,6 +227,7 @@ class CacheStrategyRegistry:
                     bit_range=spec["bit_range"],
                     default_bits=spec["default_bits"],
                     supports_fp16_layers=bool(spec["supports_fp16_layers"]),
+                    required_llama_binary=str(spec.get("required_llama_binary", "standard")),
                     reason=(
                         f"{spec['name']} could not be loaded in this runtime. "
                         f"ChaosEngineAI kept the card visible so the UI does not silently collapse to Native f16 only. "
@@ -229,6 +248,7 @@ class _BrokenStrategy(CacheStrategy):
         default_bits: int | None,
         supports_fp16_layers: bool,
         reason: str,
+        required_llama_binary: str = "standard",
     ) -> None:
         self._strategy_id = strategy_id
         self._name = name
@@ -236,6 +256,7 @@ class _BrokenStrategy(CacheStrategy):
         self._default_bits = default_bits
         self._supports_fp16_layers = supports_fp16_layers
         self._reason = reason
+        self._required_llama_binary = required_llama_binary
 
     @property
     def strategy_id(self) -> str:
@@ -265,6 +286,9 @@ class _BrokenStrategy(CacheStrategy):
 
     def supports_fp16_layers(self) -> bool:
         return self._supports_fp16_layers
+
+    def required_llama_binary(self) -> str:
+        return self._required_llama_binary
 
 
 # Module-level singleton — import and use ``registry`` directly.

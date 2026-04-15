@@ -1425,6 +1425,17 @@ select.text-input {
   transform: rotate(90deg);
 }
 
+.reasoning-panel__preview {
+  margin-left: 8px;
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
 .reasoning-panel__body {
   padding: 0 14px 14px 42px;
 }
@@ -5529,4 +5540,16 @@ select.text-input {
 }
 .server-warning-callout p {
   margin: 0;
+}
+.callout-dismiss-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.callout-dismiss-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
 }

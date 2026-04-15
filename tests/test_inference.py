@@ -7,6 +7,7 @@ from backend_service.inference import (
     RepeatedLineGuard,
     RuntimeController,
     LoadedModelInfo,
+    _friendly_llama_error,
     _gguf_startup_fallback_note,
     _is_local_target,
 )
@@ -49,7 +50,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
             mock.patch("backend_service.inference._llama_server_supports", return_value=True),
         ):
-            command, _runtime_note = engine._build_command(
+            command, _runtime_note, _ = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -71,7 +72,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
         ):
-            command, _runtime_note = engine._build_command(
+            command, _runtime_note, _ = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -99,6 +100,19 @@ class GgufTargetDetectionTests(unittest.TestCase):
             "GGUF startup failed with RotorQuant cache, so ChaosEngineAI retried with the standard f16 KV cache.",
         )
 
+    def test_hides_info_only_metal_startup_lines(self):
+        logs = (
+            "load_backend: loaded BLAS backend from /opt/homebrew/Cellar/ggml/0.9.11/libexec/libggml-blas.so\n"
+            "ggml_metal_device_init: tensor API disabled for pre-M5 and pre-A19 devices\n"
+            "ggml_metal_library_init: using embedded metal library"
+        )
+        self.assertEqual(
+            _friendly_llama_error(logs),
+            "llama.cpp exited during startup before reporting a specific error. "
+            "The visible ggml/Metal lines are informational startup messages, not the cause. "
+            "Retry with Native f16 or inspect the full server log for the real failure.",
+        )
+
 
 class LlamaCppFallbackMetadataTests(unittest.TestCase):
     def _capabilities(self) -> BackendCapabilities:
@@ -111,15 +125,26 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
             llamaServerPath="/usr/local/bin/llama-server",
         )
 
-    def test_startup_fallback_records_native_actual_runtime(self):
+    def test_startup_fallback_tries_chaosengine_then_native(self):
+        """When the turbo binary fails, the fallback chain is:
+        rotorquant → chaosengine → native f16."""
         engine = LlamaCppEngine(self._capabilities())
 
         fake_process = mock.Mock()
         fake_process.poll.return_value = None
 
+        # 3 attempts: rotorquant (fail) → chaosengine (fail) → native (succeed)
         with (
-            mock.patch.object(engine, "_build_command", side_effect=[(["llama-server"], None), (["llama-server"], None)]),
-            mock.patch.object(engine, "_wait_for_server", side_effect=[RuntimeError("unknown cache type"), None]),
+            mock.patch.object(engine, "_build_command", side_effect=[
+                (["llama-server-turbo"], None, False),
+                (["llama-server"], None, False),
+                (["llama-server"], None, False),
+            ]),
+            mock.patch.object(engine, "_wait_for_server", side_effect=[
+                RuntimeError("unknown architecture"),
+                RuntimeError("cache type unsupported"),
+                None,
+            ]),
             mock.patch.object(engine, "_cleanup_process"),
             mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
         ):
@@ -142,10 +167,47 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
         self.assertEqual(loaded.cacheStrategy, "native")
         self.assertEqual(loaded.cacheBits, 0)
         self.assertEqual(loaded.fp16Layers, 0)
-        self.assertEqual(
-            loaded.runtimeNote,
-            "GGUF startup failed with RotorQuant cache, so ChaosEngineAI retried with the standard f16 KV cache.",
-        )
+        self.assertIn("RotorQuant", loaded.runtimeNote)
+
+    def test_startup_fallback_lands_on_chaosengine_when_it_works(self):
+        """When turbo binary fails but ChaosEngine succeeds, use ChaosEngine."""
+        engine = LlamaCppEngine(self._capabilities())
+
+        fake_process = mock.Mock()
+        fake_process.poll.return_value = None
+
+        # 2 attempts: rotorquant (fail) → chaosengine (succeed)
+        with (
+            mock.patch.object(engine, "_build_command", side_effect=[
+                (["llama-server-turbo"], None, False),
+                (["llama-server"], None, False),
+            ]),
+            mock.patch.object(engine, "_wait_for_server", side_effect=[
+                RuntimeError("unknown architecture"),
+                None,
+            ]),
+            mock.patch.object(engine, "_cleanup_process"),
+            mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
+        ):
+            loaded = engine.load_model(
+                model_ref="qwen",
+                model_name="Qwen",
+                canonical_repo=None,
+                source="library",
+                backend="llama.cpp",
+                path=None,
+                runtime_target="lmstudio-community/Qwen3.5-35B-A3B-GGUF",
+                cache_strategy="rotorquant",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+                fit_model_in_memory=True,
+                context_tokens=8192,
+            )
+
+        self.assertEqual(loaded.cacheStrategy, "chaosengine")
+        self.assertIn("RotorQuant", loaded.runtimeNote)
+        self.assertIn("turbo binary", loaded.runtimeNote)
 
 
 class ChatSystemPromptTests(unittest.TestCase):
@@ -334,6 +396,210 @@ class RuntimeControllerOrphanWorkerTests(unittest.TestCase):
         orphan.terminate.assert_called_once()
         self.assertEqual(status["recentOrphanedWorkers"][0]["pid"], 202)
         self.assertEqual(status["recentOrphanedWorkers"][0]["kind"], "mlx_worker")
+
+
+class TurboBinaryRoutingTests(unittest.TestCase):
+    """Tests for multi-binary (standard vs turbo) llama-server selection."""
+
+    def _capabilities(self, *, turbo_path: str | None = None) -> BackendCapabilities:
+        return BackendCapabilities(
+            pythonExecutable="/usr/bin/python3",
+            mlxAvailable=False,
+            mlxLmAvailable=False,
+            mlxUsable=False,
+            ggufAvailable=True,
+            llamaServerPath="/usr/local/bin/llama-server",
+            llamaServerTurboPath=turbo_path,
+        )
+
+    def test_native_strategy_uses_standard_binary(self):
+        engine = LlamaCppEngine(self._capabilities(turbo_path="/usr/local/bin/llama-server-turbo"))
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+        ):
+            command, _, _ = engine._build_command(
+                path="/tmp/model.gguf",
+                runtime_target=None,
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+            )
+        self.assertEqual(command[0], "/usr/local/bin/llama-server")
+
+    def test_rotorquant_uses_turbo_binary_when_available(self):
+        engine = LlamaCppEngine(self._capabilities(turbo_path="/usr/local/bin/llama-server-turbo"))
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "turbo2", "turbo3", "turbo4"})),
+        ):
+            command, _, _ = engine._build_command(
+                path="/tmp/model.gguf",
+                runtime_target=None,
+                cache_strategy="rotorquant",
+                cache_bits=3,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+            )
+        self.assertEqual(command[0], "/usr/local/bin/llama-server-turbo")
+        self.assertIn("turbo3", command)
+
+    def test_rotorquant_falls_back_to_f16_without_turbo_binary(self):
+        engine = LlamaCppEngine(self._capabilities(turbo_path=None))
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+        ):
+            command, runtime_note, _ = engine._build_command(
+                path="/tmp/model.gguf",
+                runtime_target=None,
+                cache_strategy="rotorquant",
+                cache_bits=3,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+            )
+        # Should fall back to standard binary with f16 cache
+        self.assertEqual(command[0], "/usr/local/bin/llama-server")
+        self.assertIn("f16", command)
+        self.assertNotIn("turbo3", command)
+        self.assertIn("llama-server-turbo", runtime_note)
+
+    def test_chaosengine_uses_standard_binary(self):
+        engine = LlamaCppEngine(self._capabilities(turbo_path="/usr/local/bin/llama-server-turbo"))
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0", "q5_0"})),
+        ):
+            command, _, _ = engine._build_command(
+                path="/tmp/model.gguf",
+                runtime_target=None,
+                cache_strategy="chaosengine",
+                cache_bits=4,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+            )
+        self.assertEqual(command[0], "/usr/local/bin/llama-server")
+        self.assertIn("q4_0", command)
+
+    def test_turbo_only_binary_serves_all_strategies(self):
+        """When only llama-server-turbo exists (no standard binary), it should
+        serve as the binary for all strategies since it's a superset."""
+        caps = BackendCapabilities(
+            pythonExecutable="/usr/bin/python3",
+            mlxAvailable=False,
+            mlxLmAvailable=False,
+            mlxUsable=False,
+            ggufAvailable=True,
+            llamaServerPath=None,
+            llamaServerTurboPath="/usr/local/bin/llama-server-turbo",
+        )
+        engine = LlamaCppEngine(caps)
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+        ):
+            command, _, _ = engine._build_command(
+                path="/tmp/model.gguf",
+                runtime_target=None,
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+            )
+        self.assertEqual(command[0], "/usr/local/bin/llama-server-turbo")
+
+
+class CacheTypeValidationTests(unittest.TestCase):
+    """Tests for pre-validation of cache types against binary capabilities."""
+
+    def test_llama_server_cache_types_parses_help_text(self):
+        from backend_service.inference import _llama_server_cache_types, _CACHE_TYPE_CACHE
+
+        help_text = (
+            "-ctk,  --cache-type-k type\n"
+            "                        allowed values: f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1\n"
+        )
+        _CACHE_TYPE_CACHE.pop("/test/binary", None)
+
+        with mock.patch("backend_service.inference._llama_server_help_text", return_value=help_text):
+            types = _llama_server_cache_types("/test/binary")
+
+        self.assertIn("q8_0", types)
+        self.assertIn("q4_0", types)
+        self.assertNotIn("iso3", types)
+        _CACHE_TYPE_CACHE.pop("/test/binary", None)
+
+    def test_cache_types_returns_standard_set_for_missing_binary(self):
+        from backend_service.inference import _llama_server_cache_types, _STANDARD_CACHE_TYPES
+
+        types = _llama_server_cache_types(None)
+        self.assertEqual(types, _STANDARD_CACHE_TYPES)
+
+    def test_cache_types_parses_turbo_help_text_multiline(self):
+        """The turbo binary wraps allowed values across multiple lines."""
+        from backend_service.inference import _llama_server_cache_types, _CACHE_TYPE_CACHE
+
+        # Realistic multi-line output from llama-server-turbo --help
+        turbo_help = (
+            "-ctk,  --cache-type-k type              kv cache data type for k\n"
+            "                                        allowed values: f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1,\n"
+            "                                        turbo2, turbo3, turbo4\n"
+            "                                        (default: f16)\n"
+        )
+        _CACHE_TYPE_CACHE.pop("/test/turbo", None)
+
+        with mock.patch("backend_service.inference._llama_server_help_text", return_value=turbo_help):
+            types = _llama_server_cache_types("/test/turbo")
+
+        self.assertIn("turbo3", types)
+        self.assertIn("turbo4", types)
+        self.assertIn("q8_0", types)  # still includes standard types
+        _CACHE_TYPE_CACHE.pop("/test/turbo", None)
+
+    def test_build_command_prevalidation_catches_unsupported_type(self):
+        """When cache type is unsupported by the binary, _build_command should
+        fall back to f16 and set an informative runtime note."""
+        caps = BackendCapabilities(
+            pythonExecutable="/usr/bin/python3",
+            mlxAvailable=False, mlxLmAvailable=False, mlxUsable=False,
+            ggufAvailable=True,
+            llamaServerPath="/usr/local/bin/llama-server",
+            llamaServerTurboPath=None,
+        )
+        engine = LlamaCppEngine(caps)
+
+        # Standard binary doesn't know about turbo3
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference._llama_server_cache_types",
+                       return_value=frozenset({"f16", "q8_0", "q4_0"})),
+        ):
+            command, note, _ = engine._build_command(
+                path="/tmp/model.gguf", runtime_target=None,
+                cache_strategy="rotorquant", cache_bits=3,
+                context_tokens=8192, fit_enabled=True, is_fallback=False,
+            )
+
+        self.assertIn("f16", command)
+        self.assertNotIn("turbo3", command)
+        self.assertIn("llama-server-turbo", note)
 
 
 if __name__ == "__main__":

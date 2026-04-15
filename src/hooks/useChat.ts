@@ -130,6 +130,74 @@ export function useChat(
     return { ...session, ...patch };
   }
 
+  function appendOptimisticTurn(sessionId: string, prompt: string) {
+    const updatedAt = new Date().toLocaleString();
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: current.chatSessions.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              updatedAt,
+              messages: [
+                ...session.messages,
+                { role: "user" as const, text: prompt, metrics: null },
+                { role: "assistant" as const, text: "", reasoning: "", reasoningDone: true, metrics: null },
+              ],
+            }
+          : session,
+      ),
+    }));
+  }
+
+  function replaceOptimisticAssistant(sessionId: string, prompt: string, text: string) {
+    const updatedAt = new Date().toLocaleString();
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: current.chatSessions.map((session) => {
+        if (session.id !== sessionId) return session;
+        const messages = [...session.messages];
+        const last = messages[messages.length - 1];
+        const previous = messages[messages.length - 2];
+        if (
+          last?.role === "assistant" &&
+          !last.text &&
+          !last.metrics &&
+          previous?.role === "user" &&
+          previous.text === prompt
+        ) {
+          messages[messages.length - 1] = { ...last, text };
+        } else {
+          messages.push({ role: "user", text: prompt, metrics: null });
+          messages.push({ role: "assistant", text, metrics: null });
+        }
+        return { ...session, updatedAt, messages };
+      }),
+    }));
+  }
+
+  function rollbackOptimisticTurn(sessionId: string, prompt: string) {
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: current.chatSessions.map((session) => {
+        if (session.id !== sessionId) return session;
+        const messages = [...session.messages];
+        const last = messages[messages.length - 1];
+        const previous = messages[messages.length - 2];
+        if (
+          last?.role === "assistant" &&
+          !last.text &&
+          !last.metrics &&
+          previous?.role === "user" &&
+          previous.text === prompt
+        ) {
+          return { ...session, messages: messages.slice(0, -2) };
+        }
+        return session;
+      }),
+    }));
+  }
+
   async function persistSessionChanges(sessionId: string, patch: Partial<ChatSession>) {
     setWorkspace((current) => ({
       ...current,
@@ -411,61 +479,103 @@ export function useChat(
   }
 
   async function sendMessage(overrideText?: string) {
-    const trimmed = (overrideText ?? draftMessage).trim();
+    const rawPrompt = overrideText ?? draftMessage;
+    const trimmed = rawPrompt.trim();
     if (!trimmed) return;
 
     const sendingSessionId = activeChat?.id ?? null;
+    const threadModel = sessionModelPayload(activeChat);
+    const pendingImagesSnapshot = pendingImages.length > 0 ? [...pendingImages] : [];
+    const loadedIdentifiers = [
+      workspace.runtime.loadedModel?.ref,
+      workspace.runtime.loadedModel?.canonicalRepo,
+      workspace.runtime.loadedModel?.runtimeTarget,
+      workspace.runtime.loadedModel?.path,
+    ].filter(Boolean);
+    const threadIdentifiers = [threadModel?.modelRef, threadModel?.canonicalRepo, threadModel?.path].filter(Boolean);
+    const threadModelAlreadyLoaded =
+      threadIdentifiers.length > 0 &&
+      threadIdentifiers.some((identifier) => loadedIdentifiers.includes(identifier));
+    const shouldLoadThreadModel =
+      threadModel &&
+      (!workspace.runtime.loadedModel ||
+        !threadModelAlreadyLoaded ||
+        !activeRuntimeProfileMatchesLaunchSettings);
+    const requiresPreload = shouldLoadThreadModel || (!workspace.runtime.loadedModel && Boolean(defaultChatVariant));
+    // Always show the user message immediately — even when a model
+    // preload is needed.  The assistant placeholder is added later
+    // when streaming actually begins.
+    const optimisticTurnAdded = Boolean(sendingSessionId);
+    let streamStarted = false;
+
+    const restoreComposer = () => {
+      if (overrideText == null) {
+        setDraftMessage(rawPrompt);
+      }
+      setPendingImages(pendingImagesSnapshot);
+    };
+
+    setDraftMessage("");
+    setPendingImages([]);
     setChatBusySessionId(sendingSessionId);
     setError(null);
 
-    const threadModel = sessionModelPayload(activeChat);
+    if (optimisticTurnAdded && sendingSessionId) {
+      appendOptimisticTurn(sendingSessionId, trimmed);
+    }
 
     const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
 
     if (!isOnline) {
+      const offlineMessage = startupError
+        ? `The desktop shell is offline, so this local fallback kept the chat moving. Restart the FastAPI sidecar to route prompts through the runtime endpoints. Startup error: ${startupError}`
+        : "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.";
       if (startupError) {
         setError(`API service restart failed: ${startupError}`);
       }
-      const fallbackSession = activeChat ?? {
-        id: `local-${Date.now()}`,
-        title: titleFromPrompt(trimmed, workspace.chatSessions),
-        updatedAt: new Date().toLocaleString(),
-        model: threadModel?.modelName ?? "Choose a model",
-        modelRef: threadModel?.modelRef ?? null,
-        canonicalRepo: threadModel?.canonicalRepo ?? null,
-        modelSource: threadModel?.source ?? "catalog",
-        modelPath: threadModel?.path ?? null,
-        modelBackend: threadModel?.backend ?? "auto",
-        thinkingMode: activeThinkingMode,
-        cacheLabel: launchCacheLabel,
-        cacheStrategy: launchSettings.cacheStrategy,
-        cacheBits: launchSettings.cacheBits,
-        fp16Layers: launchSettings.fp16Layers,
-        fusedAttention: launchSettings.fusedAttention,
-        fitModelInMemory: launchSettings.fitModelInMemory,
-        contextTokens: launchSettings.contextTokens,
-        speculativeDecoding: launchSettings.speculativeDecoding,
-        dflashDraftModel: null,
-        treeBudget: launchSettings.treeBudget,
-        messages: [],
-      };
-      const updatedSession: ChatSession = {
-        ...fallbackSession,
-        updatedAt: new Date().toLocaleString(),
-        messages: [
-          ...fallbackSession.messages,
-          { role: "user", text: trimmed, metrics: null },
-          {
-            role: "assistant",
-            text: startupError
-              ? `The desktop shell is offline, so this local fallback kept the chat moving. Restart the FastAPI sidecar to route prompts through the runtime endpoints. Startup error: ${startupError}`
-              : "The desktop shell is offline, so this local fallback kept the chat moving. Start the FastAPI sidecar to route prompts through the runtime endpoints.",
-            metrics: null,
-          },
-        ],
-      };
-      setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, updatedSession) }));
-      setActiveChatId(updatedSession.id);
+      if (optimisticTurnAdded && sendingSessionId) {
+        replaceOptimisticAssistant(sendingSessionId, trimmed, offlineMessage);
+        setActiveChatId(sendingSessionId);
+      } else {
+        const fallbackSession = activeChat ?? {
+          id: `local-${Date.now()}`,
+          title: titleFromPrompt(trimmed, workspace.chatSessions),
+          updatedAt: new Date().toLocaleString(),
+          model: threadModel?.modelName ?? "Choose a model",
+          modelRef: threadModel?.modelRef ?? null,
+          canonicalRepo: threadModel?.canonicalRepo ?? null,
+          modelSource: threadModel?.source ?? "catalog",
+          modelPath: threadModel?.path ?? null,
+          modelBackend: threadModel?.backend ?? "auto",
+          thinkingMode: activeThinkingMode,
+          cacheLabel: launchCacheLabel,
+          cacheStrategy: launchSettings.cacheStrategy,
+          cacheBits: launchSettings.cacheBits,
+          fp16Layers: launchSettings.fp16Layers,
+          fusedAttention: launchSettings.fusedAttention,
+          fitModelInMemory: launchSettings.fitModelInMemory,
+          contextTokens: launchSettings.contextTokens,
+          speculativeDecoding: launchSettings.speculativeDecoding,
+          dflashDraftModel: null,
+          treeBudget: launchSettings.treeBudget,
+          messages: [],
+        };
+        const updatedSession: ChatSession = {
+          ...fallbackSession,
+          updatedAt: new Date().toLocaleString(),
+          messages: [
+            ...fallbackSession.messages,
+            { role: "user", text: trimmed, metrics: null },
+            {
+              role: "assistant",
+              text: offlineMessage,
+              metrics: null,
+            },
+          ],
+        };
+        setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, updatedSession) }));
+        setActiveChatId(updatedSession.id);
+      }
       setDraftMessage("");
       setChatBusySessionId(null);
       return;
@@ -473,22 +583,7 @@ export function useChat(
 
     try {
       let sessionId = activeChat?.id;
-      const loadedIdentifiers = [
-        workspace.runtime.loadedModel?.ref,
-        workspace.runtime.loadedModel?.canonicalRepo,
-        workspace.runtime.loadedModel?.runtimeTarget,
-        workspace.runtime.loadedModel?.path,
-      ].filter(Boolean);
-      const threadIdentifiers = [threadModel?.modelRef, threadModel?.canonicalRepo, threadModel?.path].filter(Boolean);
-      const threadModelAlreadyLoaded =
-        threadIdentifiers.length > 0 &&
-        threadIdentifiers.some((identifier) => loadedIdentifiers.includes(identifier));
       const needsProfileReload = threadModelAlreadyLoaded && !activeRuntimeProfileMatchesLaunchSettings;
-      const shouldLoadThreadModel =
-        threadModel &&
-        (!workspace.runtime.loadedModel ||
-          !threadModelAlreadyLoaded ||
-          !activeRuntimeProfileMatchesLaunchSettings);
 
       if (shouldLoadThreadModel && threadModel) {
         const loadResult = await handleLoadModel({
@@ -500,7 +595,10 @@ export function useChat(
           path: threadModel.path,
           busyLabel: needsProfileReload ? "Reloading model for updated launch settings..." : undefined,
         });
-        if (!loadResult.ok) return;
+        if (!loadResult.ok) {
+          restoreComposer();
+          return;
+        }
       } else if (!workspace.runtime.loadedModel && defaultChatVariant) {
         const loadResult = await handleLoadModel({
           modelRef: defaultChatVariant.id,
@@ -509,20 +607,24 @@ export function useChat(
           source: "catalog",
           backend: defaultChatVariant.backend,
         });
-        if (!loadResult.ok) return;
+        if (!loadResult.ok) {
+          restoreComposer();
+          return;
+        }
       }
       if (!sessionId) {
         const session = await createSession(activeChat?.title ?? "New chat");
         setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, session) }));
         setActiveChatId(session.id);
         sessionId = session.id;
+        setChatBusySessionId(session.id);
       }
 
       const streamPayload = {
         sessionId,
         title: threadTitleDraft.trim() || activeChat?.title,
         prompt: trimmed,
-        images: pendingImages.length > 0 ? [...pendingImages] : undefined,
+        images: pendingImagesSnapshot.length > 0 ? pendingImagesSnapshot : undefined,
         modelRef: threadModel?.modelRef,
         modelName: threadModel?.modelName,
         canonicalRepo: threadModel?.canonicalRepo,
@@ -545,30 +647,13 @@ export function useChat(
       };
 
       const streamingChatId = sessionId ?? sendingSessionId;
-      if (streamingChatId) {
-        const updatedAt = new Date().toLocaleString();
-        setWorkspace((current) => ({
-          ...current,
-          chatSessions: current.chatSessions.map((s) =>
-            s.id === streamingChatId
-              ? {
-                  ...s,
-                  updatedAt,
-                  messages: [
-                    ...s.messages,
-                    { role: "user" as const, text: trimmed, metrics: null },
-                    { role: "assistant" as const, text: "", reasoning: "", reasoningDone: true, metrics: null },
-                  ],
-                }
-              : s,
-          ),
-        }));
+      if (streamingChatId && (!optimisticTurnAdded || streamingChatId !== sendingSessionId)) {
+        appendOptimisticTurn(streamingChatId, trimmed);
       }
-      setDraftMessage("");
-      setPendingImages([]);
 
       const streamAbort = new AbortController();
       streamAbortRef.current = streamAbort;
+      streamStarted = true;
       await generateChatStream(streamPayload, {
         onToken: (token) => {
           if (streamingChatId) {
@@ -649,13 +734,21 @@ export function useChat(
           }
         },
       }, streamAbort);
-      setDraftMessage("");
     } catch (actionError) {
       // Aborted by user — not a real error
       if (actionError instanceof DOMException && actionError.name === "AbortError") {
+        if (!streamStarted && sendingSessionId && optimisticTurnAdded) {
+          rollbackOptimisticTurn(sendingSessionId, trimmed);
+        }
         setChatBusySessionId(null);
         streamAbortRef.current = null;
         return;
+      }
+      if (!streamStarted) {
+        if (sendingSessionId && optimisticTurnAdded) {
+          rollbackOptimisticTurn(sendingSessionId, trimmed);
+        }
+        restoreComposer();
       }
       const detail = actionError instanceof Error ? actionError.message : "Unknown error";
       if (detail.includes("Load a model") || detail.includes("409")) {

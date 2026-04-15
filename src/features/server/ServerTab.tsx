@@ -89,6 +89,7 @@ export function ServerTab({
 }: ServerTabProps) {
   const serverLogRef = useRef<HTMLDivElement>(null);
   const [serverLogAtBottom, setServerLogAtBottom] = useState(true);
+  const [orphansDismissed, setOrphansDismissed] = useState(false);
 
   function handleServerLogScroll() {
     const el = serverLogRef.current;
@@ -175,9 +176,20 @@ export function ServerTab({
               </div>
             </div>
 
-            {recentOrphanedWorkers.length > 0 ? (
+            {recentOrphanedWorkers.length > 0 && !orphansDismissed ? (
               <div className="callout warning server-warning-callout">
-                <strong>Orphaned backend workers were cleaned up</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <strong>Orphaned backend workers were cleaned up</strong>
+                  <button
+                    type="button"
+                    className="callout-dismiss-btn"
+                    onClick={() => setOrphansDismissed(true)}
+                    title="Dismiss"
+                    aria-label="Dismiss orphan worker notification"
+                  >
+                    &times;
+                  </button>
+                </div>
                 <p>
                   ChaosEngineAI recently found and terminated {recentOrphanedWorkers.length} untracked worker
                   {recentOrphanedWorkers.length === 1 ? "" : "s"} left behind by an older load or crash.

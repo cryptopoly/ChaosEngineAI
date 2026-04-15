@@ -28,9 +28,11 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     # ----- Qwen3-Coder family -----
     "Qwen/Qwen3-Coder-4B": "z-lab/Qwen3-Coder-4B-DFlash",
     "Qwen/Qwen3-Coder-8B": "z-lab/Qwen3-Coder-8B-DFlash",
+    "Qwen/Qwen3-Coder-30B-A3B": "z-lab/Qwen3-Coder-30B-A3B-DFlash",
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": "z-lab/Qwen3.5-4B-DFlash",
     "Qwen/Qwen3.5-7B": "z-lab/Qwen3.5-7B-DFlash",
+    "Qwen/Qwen3.5-9B": "z-lab/Qwen3.5-9B-DFlash",
     "Qwen/Qwen3.5-14B": "z-lab/Qwen3.5-14B-DFlash",
     "Qwen/Qwen3.5-27B": "z-lab/Qwen3.5-27B-DFlash",
     "Qwen/Qwen3.5-35B-A3B": "z-lab/Qwen3.5-35B-A3B-DFlash",
@@ -64,7 +66,7 @@ _QUANT_SUFFIXES = re.compile(
 )
 
 # Community repo prefixes that should be stripped for fuzzy matching.
-_COMMUNITY_PREFIXES = ("mlx-community/", "TheBloke/", "bartowski/")
+_COMMUNITY_PREFIXES = ("mlx-community/", "lmstudio-community/", "TheBloke/", "bartowski/")
 
 
 def _normalize_ref(model_ref: str) -> str:

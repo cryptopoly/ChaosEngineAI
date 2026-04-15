@@ -33,7 +33,9 @@ export interface SystemStats {
     availabilityBadge?: string | null;
     availabilityTone?: string | null;
     availabilityReason?: string | null;
+    requiredLlamaBinary?: string | null;
   }>;
+  llamaServerTurboPath?: string | null;
   mlxAvailable: boolean;
   mlxLmAvailable: boolean;
   totalMemoryGb: number;
@@ -129,6 +131,7 @@ export interface LibraryItem {
   sourceKind?: string | null;
   quantization?: string | null;
   backend?: string | null;
+  modelType?: string | null;
   sizeGb: number;
   lastModified: string;
   actions: string[];
@@ -356,6 +359,7 @@ export interface NativeBackendStatus {
   ggufAvailable: boolean;
   llamaCliPath?: string | null;
   llamaServerPath?: string | null;
+  llamaServerTurboPath?: string | null;
   converterAvailable: boolean;
 }
 
@@ -383,6 +387,7 @@ export interface GenerationMetrics {
   requestedCacheStrategy?: string | null;
   requestedCacheBits?: number | null;
   requestedFp16Layers?: number | null;
+  requestedFitModelInMemory?: boolean | null;
   requestedSpeculativeDecoding?: boolean | null;
   requestedTreeBudget?: number | null;
   speculativeDecoding?: boolean | null;

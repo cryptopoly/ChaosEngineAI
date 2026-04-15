@@ -100,14 +100,14 @@ class ChaosEngineStrategy(CacheStrategy):
         Maps to q-type cache flags based on the configured bit width.
         """
         bit_map = {
-            2: "q2_k",
-            3: "q3_k",
-            4: "q4_k",
-            5: "q5_k",
-            6: "q6_k",
+            2: "q4_0",
+            3: "q4_0",
+            4: "q4_0",
+            5: "q5_0",
+            6: "q8_0",
             8: "q8_0",
         }
-        cache_type = bit_map.get(bits, f"q{max(2, min(8, bits))}_k")
+        cache_type = bit_map.get(bits, "q8_0")
         return ["--cache-type-k", cache_type, "--cache-type-v", cache_type]
 
     def estimate_cache_bytes(

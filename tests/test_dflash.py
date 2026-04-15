@@ -52,6 +52,28 @@ class DraftModelLookupTests(unittest.TestCase):
         result = get_draft_model("mlx-community/Qwen3.5-7B-bf16")
         self.assertEqual(result, "z-lab/Qwen3.5-7B-DFlash")
 
+    def test_lmstudio_community_prefix_fuzzy_match(self):
+        """lmstudio-community GGUF repos should match via prefix stripping."""
+        result = get_draft_model("lmstudio-community/Qwen3-8B-GGUF")
+        self.assertEqual(result, "z-lab/Qwen3-8B-DFlash-b16")
+
+    def test_lmstudio_community_qwen35_match(self):
+        result = get_draft_model("lmstudio-community/Qwen3.5-35B-A3B-GGUF")
+        self.assertEqual(result, "z-lab/Qwen3.5-35B-A3B-DFlash")
+
+    def test_thebloke_prefix_fuzzy_match(self):
+        result = get_draft_model("TheBloke/Qwen3-8B-GGUF")
+        self.assertEqual(result, "z-lab/Qwen3-8B-DFlash-b16")
+
+    def test_bartowski_prefix_fuzzy_match(self):
+        result = get_draft_model("bartowski/Qwen3-4B-GGUF")
+        self.assertEqual(result, "z-lab/Qwen3-4B-DFlash-b16")
+
+    def test_stacked_suffixes_stripped(self):
+        """Multiple quant suffixes like -GGUF-q4_k_m should all be stripped."""
+        result = get_draft_model("lmstudio-community/Qwen3-8B-GGUF")
+        self.assertEqual(result, "z-lab/Qwen3-8B-DFlash-b16")
+
     def test_unknown_model_returns_none(self):
         self.assertIsNone(get_draft_model("some-org/UnknownModel-7B"))
 

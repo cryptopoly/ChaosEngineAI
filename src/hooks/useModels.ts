@@ -44,8 +44,15 @@ export function useModels(
   const [discoverCapFilter, setDiscoverCapFilter] = useState<string | null>(null);
   const [discoverFormatFilter, setDiscoverFormatFilter] = useState<string | null>(null);
 
-  // Model search with debounce
+  // Model search — skip the API call for empty queries to avoid a
+  // slow HuggingFace Hub round-trip on every startup.  The catalog
+  // is fetched separately via /api/workspace.
   useEffect(() => {
+    if (!deferredSearch.trim()) {
+      setSearchResults([]);
+      setHubResults([]);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {

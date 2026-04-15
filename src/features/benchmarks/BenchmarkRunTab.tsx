@@ -1,14 +1,15 @@
+import { useState } from "react";
 import { Panel } from "../../components/Panel";
 import { PerformancePreview } from "../../components/PerformancePreview";
 import { LiveProgress, type LiveProgressPhase } from "../../components/LiveProgress";
 import { RuntimeControls } from "../../components/RuntimeControls";
+import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { StatCard } from "../../components/StatCard";
-import { ModelPicker } from "../../components/ModelPicker";
 import { BenchmarkGauge } from "../../components/BenchmarkGauge";
 import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import { BENCHMARK_PROMPTS } from "../../constants";
-import { number, sizeLabel, signedDelta, libraryItemBackend } from "../../utils";
+import { number, sizeLabel, signedDelta } from "../../utils";
 
 export interface BenchmarkRunTabProps {
   workspace: {
@@ -19,8 +20,10 @@ export interface BenchmarkRunTabProps {
       totalMemoryGb: number;
       availableCacheStrategies: SystemStats["availableCacheStrategies"];
       llamaServerTurboPath?: string | null;
+      dflash?: SystemStats["dflash"];
     };
   };
+  threadModelOptions: ChatModelOption[];
   benchmarkDraft: BenchmarkRunPayload;
   benchmarkOption: ChatModelOption | null;
   benchmarkPromptId: string;
@@ -47,6 +50,7 @@ export interface BenchmarkRunTabProps {
 
 export function BenchmarkRunTab({
   workspace,
+  threadModelOptions,
   benchmarkDraft,
   benchmarkOption,
   benchmarkPromptId,
@@ -70,6 +74,7 @@ export function BenchmarkRunTab({
   onActiveTabChange,
   onInstallPackage,
 }: BenchmarkRunTabProps) {
+  const [benchmarkPickerSearch, setBenchmarkPickerSearch] = useState("");
   const latestRun = workspace.benchmarks[0] ?? null;
   const fastestRun = [...workspace.benchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
   const selectedPrompt = BENCHMARK_PROMPTS.find((p) => p.id === benchmarkPromptId) ?? BENCHMARK_PROMPTS[0];
@@ -217,6 +222,11 @@ export function BenchmarkRunTab({
               availableMemoryGb={workspace.system.availableMemoryGb}
               totalMemoryGb={workspace.system.totalMemoryGb}
               availableCacheStrategies={workspace.system.availableCacheStrategies}
+              dflashInfo={workspace.system.dflash}
+              selectedBackend={benchmarkOption?.backend}
+              selectedModelRef={benchmarkOption?.modelRef}
+              selectedCanonicalRepo={benchmarkOption?.canonicalRepo}
+              selectedModelName={benchmarkOption?.model}
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
               turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
@@ -430,25 +440,61 @@ export function BenchmarkRunTab({
           </div>
         </div>
       ) : null}
-      <ModelPicker
+      <ModelLaunchModal
         open={showBenchmarkPicker}
         title="Select Benchmark Model"
-        library={workspace.library}
-        selectedPath={benchmarkDraft.path ?? null}
-        onSelect={(item, resolvedPath) => {
-          const libraryKey = `library:${item.path}`;
-          onBenchmarkModelKeyChange(libraryKey);
-          const backend = libraryItemBackend(item);
-          onBenchmarkDraftUpdate((current) => ({
-            ...current,
-            modelRef: item.name,
-            modelName: item.name,
-            source: "library",
-            backend,
-            path: resolvedPath ?? item.path,
-          }));
+        confirmLabel="Select"
+        selectedKey={benchmarkOption?.key ?? threadModelOptions[0]?.key ?? ""}
+        collapseOnOpen={Boolean(benchmarkOption?.key)}
+        search={benchmarkPickerSearch}
+        options={threadModelOptions}
+        settings={{
+          contextTokens: benchmarkDraft.contextTokens,
+          maxTokens: benchmarkDraft.maxTokens,
+          temperature: benchmarkDraft.temperature,
+          cacheBits: benchmarkDraft.cacheBits,
+          fp16Layers: benchmarkDraft.fp16Layers,
+          fusedAttention: benchmarkDraft.fusedAttention,
+          cacheStrategy: benchmarkDraft.cacheStrategy,
+          fitModelInMemory: benchmarkDraft.fitModelInMemory,
+          speculativeDecoding: benchmarkDraft.speculativeDecoding,
+          treeBudget: benchmarkDraft.treeBudget,
         }}
-        onClose={() => onShowBenchmarkPickerChange(false)}
+        preview={preview}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        installingPackage={installingPackage}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        onSelectedKeyChange={(key) => {
+          onBenchmarkModelKeyChange(key);
+        }}
+        onSearchChange={setBenchmarkPickerSearch}
+        onSettingChange={(key, value) => {
+          onBenchmarkDraftChange(key as keyof BenchmarkRunPayload, value as BenchmarkRunPayload[typeof key]);
+        }}
+        onConfirm={(selectedKey) => {
+          onBenchmarkModelKeyChange(selectedKey);
+          const option = threadModelOptions.find((o) => o.key === selectedKey);
+          if (option) {
+            onBenchmarkDraftUpdate((current) => ({
+              ...current,
+              modelRef: option.modelRef ?? option.model,
+              modelName: option.label,
+              source: option.source,
+              backend: option.backend,
+              path: option.path ?? undefined,
+            }));
+          }
+          setBenchmarkPickerSearch("");
+          onShowBenchmarkPickerChange(false);
+        }}
+        onClose={() => {
+          setBenchmarkPickerSearch("");
+          onShowBenchmarkPickerChange(false);
+        }}
+        onInstallPackage={(strategyId) => void onInstallPackage(strategyId)}
       />
     </div>
   );

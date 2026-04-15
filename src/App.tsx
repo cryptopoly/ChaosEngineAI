@@ -1449,8 +1449,11 @@ export default function App() {
             availableMemoryGb: workspace.system.availableMemoryGb,
             totalMemoryGb: workspace.system.totalMemoryGb,
             availableCacheStrategies: workspace.system.availableCacheStrategies,
+            llamaServerTurboPath: workspace.system.llamaServerTurboPath,
+            dflash: workspace.system.dflash,
           },
         }}
+        threadModelOptions={threadModelOptions}
         benchmarkDraft={benchmarkDraft}
         benchmarkOption={benchmarkOption}
         benchmarkPromptId={benchmarkPromptId}

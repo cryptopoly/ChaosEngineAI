@@ -262,6 +262,21 @@ _IMAGE_MODEL_KEYWORDS = (
 )
 
 
+_DRAFT_MODEL_KEYWORDS = (
+    "-dflash", "/dflash", "-draft", "-eagle",
+)
+
+
+def _looks_like_draft_model(name: str) -> bool:
+    """Return True if this looks like a speculative decoding draft model.
+
+    Draft models (DFlash, EAGLE, etc.) are companion checkpoints, not
+    standalone LLMs.  They should not appear in the model picker.
+    """
+    lower = name.lower()
+    return any(kw in lower for kw in _DRAFT_MODEL_KEYWORDS)
+
+
 def _looks_like_image_model(path: Path, name: str) -> bool:
     """Return True if this looks like a diffusion / image generation model."""
     lower_name = name.lower()
@@ -516,7 +531,12 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 broken, broken_reason = _detect_broken_library_item(child, file_format, source_kind)
                 quantization = _detect_model_quantization(child, file_format, name_hint=name)
                 backend = "llama.cpp" if file_format == "GGUF" else "mlx"
-                model_type = "image" if _looks_like_image_model(child, name) else "text"
+                if _looks_like_image_model(child, name):
+                    model_type = "image"
+                elif _looks_like_draft_model(name):
+                    model_type = "draft"
+                else:
+                    model_type = "text"
                 items.append(
                     {
                         "name": name,

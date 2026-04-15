@@ -189,6 +189,24 @@ def _get_disk_usage_for_models(settings: dict[str, Any]) -> dict[str, float] | N
         return None
 
 
+def _parse_top_mem_value(mem_str: str) -> float | None:
+    normalized = mem_str.strip().rstrip("+-")
+    if not normalized:
+        return None
+    try:
+        if normalized.endswith("T"):
+            return float(normalized[:-1]) * 1024
+        if normalized.endswith("G"):
+            return float(normalized[:-1])
+        if normalized.endswith("M"):
+            return float(normalized[:-1]) / 1024
+        if normalized.endswith("K"):
+            return float(normalized[:-1]) / (1024 * 1024)
+        return float(normalized) / (1024 ** 3)
+    except ValueError:
+        return None
+
+
 def _get_top_memory_map() -> dict[int, float]:
     """Use macOS `top` to get real memory (including GPU/compressed) per PID.
 
@@ -212,43 +230,127 @@ def _get_top_memory_map() -> dict[int, float]:
                 pid = int(parts[0])
             except ValueError:
                 continue
-            mem_str = parts[1].strip().rstrip("+-")
-            try:
-                if mem_str.endswith("G"):
-                    mem_map[pid] = float(mem_str[:-1])
-                elif mem_str.endswith("M"):
-                    mem_map[pid] = float(mem_str[:-1]) / 1024
-                elif mem_str.endswith("K"):
-                    mem_map[pid] = float(mem_str[:-1]) / (1024 * 1024)
-                else:
-                    mem_map[pid] = float(mem_str) / (1024 ** 3)
-            except ValueError:
+            parsed = _parse_top_mem_value(parts[1])
+            if parsed is None:
                 continue
+            mem_map[pid] = parsed
         return mem_map
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return {}
 
 
-def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
-    # Process-name keywords that indicate an LLM-related process.
-    # Intentionally excludes "chaosengine" and "python" -- they are too
-    # broad and match unrelated processes whose cmdline or cwd happens
-    # to contain the local project path.
-    name_keywords = ("mlx", "llama-server", "llama-cli", "ollama", "openclaw", "chaosengine")
-    # For python processes, only match real model workers / runtimes.
-    # The API sidecar itself is intentionally excluded so Dashboard does not
-    # fill up with idle backend processes that are not serving a model.
-    python_module_markers = ("backend_service.mlx_worker", "mlx_worker", "chaosengine", "llama")
-    own_markers = ("chaosengine", "backend_service.mlx_worker", "chaosengine-embedded")
-    # Only match LM Studio via the ACTUAL binary path -- otherwise any
-    # llama-server loading a model from /AI_Models/lmstudio-community/...
-    # gets mis-labelled as LM Studio because of the model path substring.
+def _get_top_memory_for_pid(pid: int) -> float | None:
+    """Query a single PID via macOS `top` for a more reliable live footprint."""
+    if platform.system() != "Darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["top", "-l", "1", "-stats", "pid,mem", "-pid", str(int(pid))],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError, ValueError):
+        return None
+    if result.returncode != 0:
+        return None
+    for line in result.stdout.strip().split("\n"):
+        line = line.strip()
+        if not line or not line[0].isdigit():
+            continue
+        parts = line.split(None, 1)
+        if len(parts) < 2:
+            continue
+        try:
+            current_pid = int(parts[0])
+        except ValueError:
+            continue
+        if current_pid != int(pid):
+            continue
+        return _parse_top_mem_value(parts[1])
+    return None
+
+
+def _describe_process(
+    pid: int,
+    *,
+    kind_hint: str | None = None,
+    owner_hint: str | None = None,
+    top_mem: dict[int, float] | None = None,
+) -> dict[str, Any] | None:
+    """Describe a single process for dashboard display.
+
+    ``kind_hint`` and ``owner_hint`` let callers surface runtime-managed workers
+    even when the generic LLM process scan missed them.
+    """
+    try:
+        process = psutil.Process(int(pid))
+        name = (process.name() or "").lower()
+        cmdline_parts = process.cmdline()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, OSError, ValueError):
+        return None
+
+    cmdline = " ".join(cmdline_parts).lower()
+    haystack = f"{name} {cmdline}"
+    binary_path = (cmdline_parts[0] if cmdline_parts else "").lower()
+
     lmstudio_binary_markers = (
         "/applications/lm studio.app/",
         "/.lmstudio/",
         "/lmstudio.app/contents/",
     )
-    ollama_markers = ("ollama",)
+    if any(marker in binary_path for marker in lmstudio_binary_markers):
+        owner = "LM Studio"
+    elif "ollama" in haystack:
+        owner = "Ollama"
+    elif any(marker in haystack for marker in ("chaosengine", "backend_service.mlx_worker", "chaosengine-embedded")):
+        owner = "ChaosEngineAI"
+    else:
+        owner = owner_hint or "System"
+
+    kind = "other"
+    if "mlx_worker" in cmdline or "backend_service.mlx_worker" in cmdline:
+        kind = "mlx_worker"
+    elif "llama-server" in name or "llama-server" in cmdline:
+        kind = "llama_server"
+    elif "backend_service.app" in cmdline:
+        kind = "backend"
+    elif kind_hint:
+        kind = kind_hint
+
+    try:
+        rss_gb = _bytes_to_gb(process.memory_info().rss)
+    except (psutil.Error, AttributeError, OSError):
+        rss_gb = 0.0
+    mem_map = top_mem if top_mem is not None else (_get_top_memory_map() if platform.system() == "Darwin" else {})
+    top_mem_gb = mem_map.get(int(pid))
+    if platform.system() == "Darwin" and (top_mem_gb is None or top_mem_gb <= 0):
+        top_mem_gb = _get_top_memory_for_pid(int(pid))
+    mem_gb = round(top_mem_gb if top_mem_gb is not None and top_mem_gb > 0 else rss_gb, 1)
+
+    try:
+        cpu_percent = round(float(process.cpu_percent() or 0.0), 1)
+    except (psutil.Error, OSError):
+        cpu_percent = 0.0
+
+    return {
+        "pid": int(pid),
+        "name": name or "process",
+        "owner": owner,
+        "memoryGb": mem_gb,
+        "cpuPercent": cpu_percent,
+        "kind": kind,
+    }
+
+
+def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
+    # Process-name keywords that indicate an LLM-related process.
+    # Intentionally excludes the desktop app name itself, which is too broad
+    # and can match the shell/UI process instead of the actual model worker.
+    name_keywords = ("mlx", "llama-server", "llama-cli", "ollama", "openclaw")
+    # Match real model workers by their command line too so bundled workers
+    # still show up even if their executable name is not literally "python".
+    cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli", "ollama", "openclaw")
     # Get real memory from top (includes GPU/Metal memory on macOS)
     top_mem = _get_top_memory_map() if platform.system() == "Darwin" else {}
 
@@ -263,51 +365,16 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
 
                 # Check if this is an LLM process by name
                 is_llm = any(keyword in name for keyword in name_keywords)
-                # For python processes, check if the module is LLM-related
-                if not is_llm and "python" in name:
-                    is_llm = any(m in cmdline for m in python_module_markers)
+                if not is_llm:
+                    is_llm = any(marker in cmdline for marker in cmdline_markers)
                 pid = process.info["pid"]
 
                 if not is_llm:
                     continue
 
-                # Determine owner. The LM Studio check ONLY looks at the
-                # binary path (cmdline[0]) -- matching a substring anywhere
-                # in the full cmdline mis-labels any llama-server loading a
-                # model from a directory like lmstudio-community/ .
-                binary_path = (cmdline_parts[0] if cmdline_parts else "").lower()
-                if any(m in binary_path for m in lmstudio_binary_markers):
-                    owner = "LM Studio"
-                elif any(m in haystack for m in ollama_markers):
-                    owner = "Ollama"
-                elif any(m in haystack for m in own_markers):
-                    owner = "ChaosEngineAI"
-                else:
-                    owner = "System"
-
-                # Use top's memory (includes GPU) if available, fall back to RSS
-                rss_gb = _bytes_to_gb(process.info["memory_info"].rss if process.info.get("memory_info") else 0)
-                mem_gb = round(top_mem.get(pid, rss_gb), 1)
-
-                # Detect process kind from cmdline for better model mapping
-                kind = "other"
-                if "mlx_worker" in cmdline:
-                    kind = "mlx_worker"
-                elif "llama-server" in name or "llama-server" in cmdline:
-                    kind = "llama_server"
-                elif "backend_service.app" in cmdline:
-                    kind = "backend"
-
-                matches.append(
-                    {
-                        "pid": pid,
-                        "name": name or "process",
-                        "owner": owner,
-                        "memoryGb": mem_gb,
-                        "cpuPercent": round(float(process.info.get("cpu_percent") or 0.0), 1),
-                        "kind": kind,
-                    }
-                )
+                described = _describe_process(pid, top_mem=top_mem)
+                if described is not None:
+                    matches.append(described)
             except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, OSError):
                 continue
     except (psutil.Error, PermissionError, OSError):

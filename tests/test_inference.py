@@ -206,8 +206,43 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
             )
 
         self.assertEqual(loaded.cacheStrategy, "chaosengine")
+        self.assertEqual(loaded.fp16Layers, 0)
         self.assertIn("RotorQuant", loaded.runtimeNote)
         self.assertIn("turbo binary", loaded.runtimeNote)
+
+    def test_successful_gguf_load_reports_fp16_layers_as_ignored(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        fake_process = mock.Mock()
+        fake_process.poll.return_value = None
+
+        with (
+            mock.patch.object(engine, "_build_command", return_value=(["llama-server-turbo"], None, False)),
+            mock.patch.object(engine, "_wait_for_server", return_value=None),
+            mock.patch.object(engine, "_cleanup_process"),
+            mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
+        ):
+            loaded = engine.load_model(
+                model_ref="qwen",
+                model_name="Qwen",
+                canonical_repo=None,
+                source="library",
+                backend="llama.cpp",
+                path=None,
+                runtime_target="lmstudio-community/Qwen3.5-35B-A3B-GGUF",
+                cache_strategy="rotorquant",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+                fit_model_in_memory=True,
+                context_tokens=8192,
+            )
+
+        self.assertEqual(loaded.cacheStrategy, "rotorquant")
+        self.assertEqual(loaded.cacheBits, 3)
+        self.assertEqual(loaded.fp16Layers, 0)
+        self.assertIn("Rotor 3-bit 0+0 cache", loaded.runtimeNote)
+        self.assertIn("ignores the FP16 layers setting", loaded.runtimeNote)
 
 
 class ChatSystemPromptTests(unittest.TestCase):
@@ -280,7 +315,14 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         with mock.patch("backend_service.inference.get_backend_capabilities", return_value=self._capabilities()):
             return RuntimeController()
 
-    def _load(self, controller: RuntimeController, model_ref: str, *, context_tokens: int) -> LoadedModelInfo:
+    def _load(
+        self,
+        controller: RuntimeController,
+        model_ref: str,
+        *,
+        context_tokens: int,
+        keep_warm_previous: bool = True,
+    ) -> LoadedModelInfo:
         return controller.load_model(
             model_ref=model_ref,
             model_name=model_ref,
@@ -294,6 +336,7 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
             fused_attention=False,
             fit_model_in_memory=True,
             context_tokens=context_tokens,
+            keep_warm_previous=keep_warm_previous,
         )
 
     def test_same_profile_reuses_warm_model(self):
@@ -356,6 +399,39 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         self._load(controller, "model-b", context_tokens=8192)
 
         self.assertLessEqual(len(controller._warm_pool), controller.MAX_WARM_MODELS)
+
+    def test_exclusive_load_unloads_previous_model_instead_of_parking_it(self):
+        controller = self._controller()
+        engine_a = DummyEngine("A")
+        engine_b = DummyEngine("B")
+        controller._select_engine = mock.Mock(side_effect=[engine_a, engine_b])
+
+        self._load(controller, "model-a", context_tokens=8192)
+        loaded = self._load(
+            controller,
+            "model-b",
+            context_tokens=8192,
+            keep_warm_previous=False,
+        )
+
+        self.assertIs(controller.engine, engine_b)
+        self.assertEqual(loaded.ref, "model-b")
+        self.assertEqual(engine_a.unload_calls, 1)
+        self.assertEqual(controller._warm_pool, {})
+
+    def test_clear_warm_pool_unloads_every_parked_engine(self):
+        controller = self._controller()
+        engine_a = DummyEngine("A")
+        engine_b = DummyEngine("B")
+        controller._select_engine = mock.Mock(side_effect=[engine_a, engine_b])
+
+        self._load(controller, "model-a", context_tokens=8192)
+        self._load(controller, "model-b", context_tokens=8192)
+        cleared = controller.clear_warm_pool()
+
+        self.assertEqual(cleared, 1)
+        self.assertEqual(engine_a.unload_calls, 1)
+        self.assertEqual(controller._warm_pool, {})
 
 
 class RuntimeControllerOrphanWorkerTests(unittest.TestCase):

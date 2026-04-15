@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
   downloadModel,
   cancelDownload,
@@ -24,12 +24,13 @@ import type {
 export function useModels(
   backendOnline: boolean,
   activeChatId: string,
+  curatedFamilies: ModelFamily[],
   setError: (msg: string | null) => void,
   refreshWorkspace: (preferredChatId?: string) => Promise<unknown>,
 ) {
   const [searchInput, setSearchInput] = useState("");
   const deferredSearch = useDeferredValue(searchInput);
-  const [searchResults, setSearchResults] = useState<ModelFamily[]>([]);
+  const [searchResults, setSearchResults] = useState<ModelFamily[]>(curatedFamilies);
   const [hubResults, setHubResults] = useState<HubModel[]>([]);
   const [expandedHubId, setExpandedHubId] = useState<string | null>(null);
   const [hubFileCache, setHubFileCache] = useState<Record<string, HubFileListResponse>>({});
@@ -44,12 +45,22 @@ export function useModels(
   const [discoverCapFilter, setDiscoverCapFilter] = useState<string | null>(null);
   const [discoverFormatFilter, setDiscoverFormatFilter] = useState<string | null>(null);
 
-  // Model search — skip the API call for empty queries to avoid a
-  // slow HuggingFace Hub round-trip on every startup.  The catalog
-  // is fetched separately via /api/workspace.
+  // Keep curated families in sync when workspace refreshes (without
+  // retriggering the search effect, which would cancel in-flight API calls).
+  const curatedRef = useRef(curatedFamilies);
+  curatedRef.current = curatedFamilies;
+
   useEffect(() => {
     if (!deferredSearch.trim()) {
-      setSearchResults([]);
+      setSearchResults(curatedRef.current);
+      setHubResults([]);
+    }
+  }, [curatedFamilies]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Search effect — only fires when the actual query changes.
+  useEffect(() => {
+    if (!deferredSearch.trim()) {
+      setSearchResults(curatedRef.current);
       setHubResults([]);
       return;
     }
@@ -63,8 +74,10 @@ export function useModels(
         }
       } catch (searchError) {
         if (!cancelled) {
+          // On search failure, keep showing curated families so the
+          // page isn't blank.  Only clear hub results.
+          setSearchResults(curatedRef.current);
           setHubResults([]);
-          setError(searchError instanceof Error ? searchError.message : "Could not search models.");
         }
       }
     })();

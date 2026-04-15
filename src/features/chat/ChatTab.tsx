@@ -269,7 +269,7 @@ export function ChatTab({
             <div className="thread-runtime-summary">
               <small>
                 {activeChat.cacheStrategy}
-                {activeChat.cacheBits != null && activeChat.cacheBits < 16
+                {activeChat.cacheBits != null && activeChat.cacheBits > 0
                   ? ` ${activeChat.cacheBits}-bit`
                   : " f16"}
                 {activeChat.contextTokens
@@ -278,7 +278,9 @@ export function ChatTab({
                 {activeChat.speculativeDecoding
                   ? activeChat.treeBudget ? ` \u00b7 DDTree(${activeChat.treeBudget})` : " \u00b7 DFlash"
                   : ""}
-                {activeChat.dflashDraftModel ? ` (${activeChat.dflashDraftModel.split("/").pop()})` : ""}
+                {activeChat.speculativeDecoding && activeChat.dflashDraftModel
+                  ? ` (${activeChat.dflashDraftModel.split("/").pop()})`
+                  : ""}
               </small>
             </div>
           ) : null}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+from pathlib import Path
 from typing import Any
 
 
@@ -106,6 +107,22 @@ def get_draft_model(target_ref: str) -> str | None:
                     return draft
             break
 
+    # 5. Substring: community finetunes often embed the base model name
+    #    (e.g. "MLX-Qwen3.5-9B-Claude-Opus-Distilled-8bit" contains "Qwen3.5-9B").
+    #    Try each draft model's base name as a case-insensitive substring.
+    ref_lower = _normalize_ref(target_ref).lower()
+    # Also strip the model name portion after a community prefix
+    for prefix in _COMMUNITY_PREFIXES:
+        if target_ref.lower().startswith(prefix):
+            ref_lower = _normalize_ref(target_ref[len(prefix):]).lower()
+            break
+
+    # Sort by longest key first so "Qwen3.5-35B-A3B" matches before "Qwen3.5-3"
+    for key, draft in sorted(DRAFT_MODEL_MAP.items(), key=lambda kv: -len(kv[0])):
+        key_model = (key.split("/", 1)[-1] if "/" in key else key).lower()
+        if key_model in ref_lower:
+            return draft
+
     return None
 
 
@@ -150,17 +167,22 @@ def is_ddtree_available() -> bool:
     DDTree requires the same dflash_mlx runtime as linear DFlash, plus
     access to ``dflash_mlx.runtime`` primitives for tree verification.
     """
-    if not is_mlx_available():
+    runtime_spec = importlib.util.find_spec("dflash_mlx.runtime")
+    if runtime_spec is None:
         return False
-    try:
-        from dflash_mlx.runtime import (
-            target_forward_with_hidden_states,
-            load_draft_bundle,
-            load_target_bundle,
-        )
+    runtime_path = getattr(runtime_spec, "origin", None)
+    if not runtime_path:
         return True
-    except (ImportError, AttributeError):
-        return False
+    try:
+        source = Path(runtime_path).read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return True
+    required_symbols = (
+        "target_forward_with_hidden_states",
+        "load_draft_bundle",
+        "load_target_bundle",
+    )
+    return all(symbol in source for symbol in required_symbols)
 
 
 def availability_info() -> dict[str, Any]:

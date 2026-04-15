@@ -5,7 +5,7 @@ import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
 import { emptyPreview } from "../../defaults";
-import type { LaunchPreferences, PreviewMetrics, SystemStats } from "../../types";
+import type { GenerationMetrics, LaunchPreferences, PreviewMetrics, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import {
   detectBitsPerWeight,
@@ -14,6 +14,12 @@ import {
   number,
   sizeLabel,
 } from "../../utils";
+import {
+  requestedSpeculativeMode,
+  resolvedDraftModel,
+  resolvedSpeculativeMode,
+  runtimeOutcomeWarning,
+} from "./runtimeDetails";
 
 type CompareTarget = "a" | "b";
 
@@ -30,6 +36,7 @@ interface CompareModelState {
   promptTokens: number;
   completionTokens: number;
   responseSeconds: number;
+  metrics: GenerationMetrics | null;
   error?: string;
 }
 
@@ -45,6 +52,21 @@ interface CompareViewProps {
   installingPackage?: string | null;
 }
 
+interface CompareStreamEvent extends Partial<GenerationMetrics> {
+  model?: CompareTarget;
+  loading?: boolean;
+  loaded?: boolean;
+  message?: string;
+  token?: string;
+  text?: string;
+  done?: boolean;
+  error?: string;
+  appliedSummary?: string;
+  allDone?: boolean;
+  reasoning?: string;
+  reasoningDone?: boolean;
+}
+
 const emptyModelState = (): CompareModelState => ({
   text: "",
   reasoning: "",
@@ -55,7 +77,70 @@ const emptyModelState = (): CompareModelState => ({
   promptTokens: 0,
   completionTokens: 0,
   responseSeconds: 0,
+  metrics: null,
 });
+
+const compareMetricKeys = [
+  "finishReason",
+  "promptTokens",
+  "completionTokens",
+  "totalTokens",
+  "tokS",
+  "responseSeconds",
+  "runtimeNote",
+  "dflashAcceptanceRate",
+  "modelRef",
+  "canonicalRepo",
+  "backend",
+  "engineLabel",
+  "cacheLabel",
+  "cacheStrategy",
+  "cacheBits",
+  "fp16Layers",
+  "fusedAttention",
+  "fitModelInMemory",
+  "requestedCacheLabel",
+  "requestedCacheStrategy",
+  "requestedCacheBits",
+  "requestedFp16Layers",
+  "requestedFitModelInMemory",
+  "requestedSpeculativeDecoding",
+  "requestedTreeBudget",
+  "speculativeDecoding",
+  "dflashDraftModel",
+  "treeBudget",
+  "modelSource",
+  "modelPath",
+  "contextTokens",
+  "generatedAt",
+] as const;
+
+function defaultCompareMetrics(): GenerationMetrics {
+  return {
+    finishReason: "stop",
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    tokS: 0,
+    runtimeNote: null,
+  };
+}
+
+function mergeCompareMetrics(
+  current: GenerationMetrics | null,
+  event: CompareStreamEvent,
+): GenerationMetrics | null {
+  let hasPatch = false;
+  const next: Record<string, unknown> = { ...(current ?? defaultCompareMetrics()) };
+
+  for (const key of compareMetricKeys) {
+    if (!(key in event)) continue;
+    hasPatch = true;
+    next[key] = event[key];
+  }
+
+  return hasPatch ? next as unknown as GenerationMetrics : current;
+}
 
 function cloneLaunchSettings(settings: LaunchPreferences): LaunchPreferences {
   return { ...settings };
@@ -183,6 +268,10 @@ export function CompareView({
   const [pickerDraftKey, setPickerDraftKey] = useState("");
   const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
   const abortRef = useRef<AbortController | null>(null);
+  const resultScrollRefA = useRef<HTMLDivElement | null>(null);
+  const resultScrollRefB = useRef<HTMLDivElement | null>(null);
+  const [resultAAtBottom, setResultAAtBottom] = useState(true);
+  const [resultBAtBottom, setResultBAtBottom] = useState(true);
 
   const textModelOptions = modelOptions.filter((option) => {
     const backend = (option.backend ?? "").toLowerCase();
@@ -204,10 +293,64 @@ export function CompareView({
   const pickerDraftPreview = useLaunchPreview(pickerDraftOption, pickerDraftSettings);
   const installPackage = onInstallPackage ?? (() => {});
 
+  function handleResultScroll(target: CompareTarget) {
+    const element = target === "a" ? resultScrollRefA.current : resultScrollRefB.current;
+    if (!element) return;
+    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+    if (target === "a") {
+      setResultAAtBottom(atBottom);
+      return;
+    }
+    setResultBAtBottom(atBottom);
+  }
+
+  function scrollResultToBottom(target: CompareTarget) {
+    const element = target === "a" ? resultScrollRefA.current : resultScrollRefB.current;
+    if (!element) return;
+    element.scrollTop = element.scrollHeight;
+    if (target === "a") {
+      setResultAAtBottom(true);
+      return;
+    }
+    setResultBAtBottom(true);
+  }
+
+  useEffect(() => {
+    if (!resultAAtBottom) return;
+    const handle = requestAnimationFrame(() => scrollResultToBottom("a"));
+    return () => cancelAnimationFrame(handle);
+  }, [
+    resultAAtBottom,
+    modelA.text.length,
+    modelA.reasoning.length,
+    modelA.loading,
+    modelA.done,
+    modelA.runtimeNote,
+    modelA.appliedSummary,
+    modelA.error,
+  ]);
+
+  useEffect(() => {
+    if (!resultBAtBottom) return;
+    const handle = requestAnimationFrame(() => scrollResultToBottom("b"));
+    return () => cancelAnimationFrame(handle);
+  }, [
+    resultBAtBottom,
+    modelB.text.length,
+    modelB.reasoning.length,
+    modelB.loading,
+    modelB.done,
+    modelB.runtimeNote,
+    modelB.appliedSummary,
+    modelB.error,
+  ]);
+
   async function handleCompare() {
     if (!prompt.trim() || !selectedA || !selectedB) return;
 
     setBusy(true);
+    setResultAAtBottom(true);
+    setResultBAtBottom(true);
     setModelA(emptyModelState());
     setModelB(emptyModelState());
 
@@ -251,7 +394,7 @@ export function CompareView({
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const event = JSON.parse(line.slice(6));
+            const event = JSON.parse(line.slice(6)) as CompareStreamEvent;
             if (event.model === "a") {
               if (event.reasoning) {
                 setModelA((prev) => ({
@@ -272,6 +415,7 @@ export function CompareView({
                   loading: false,
                   appliedSummary: event.appliedSummary ?? prev.appliedSummary,
                   runtimeNote: event.runtimeNote ?? prev.runtimeNote,
+                  metrics: mergeCompareMetrics(prev.metrics, event),
                 }));
               }
               if (event.token) {
@@ -289,6 +433,7 @@ export function CompareView({
                   responseSeconds: event.responseSeconds ?? 0,
                   appliedSummary: event.appliedSummary ?? prev.appliedSummary,
                   runtimeNote: event.runtimeNote ?? prev.runtimeNote,
+                  metrics: mergeCompareMetrics(prev.metrics, event),
                 }));
               }
               if (event.error) {
@@ -314,6 +459,7 @@ export function CompareView({
                   loading: false,
                   appliedSummary: event.appliedSummary ?? prev.appliedSummary,
                   runtimeNote: event.runtimeNote ?? prev.runtimeNote,
+                  metrics: mergeCompareMetrics(prev.metrics, event),
                 }));
               }
               if (event.token) {
@@ -331,6 +477,7 @@ export function CompareView({
                   responseSeconds: event.responseSeconds ?? 0,
                   appliedSummary: event.appliedSummary ?? prev.appliedSummary,
                   runtimeNote: event.runtimeNote ?? prev.runtimeNote,
+                  metrics: mergeCompareMetrics(prev.metrics, event),
                 }));
               }
               if (event.error) {
@@ -393,6 +540,96 @@ export function CompareView({
     );
   }
 
+  function renderResultPanel(
+    title: string,
+    option: ChatModelOption | null,
+    settings: LaunchPreferences,
+    modelState: CompareModelState,
+    target: CompareTarget,
+    atBottom: boolean,
+    waitingLabel: string,
+  ) {
+    const metrics = modelState.metrics;
+    const actualSpeculativeMode = metrics ? resolvedSpeculativeMode(metrics) : null;
+    const requestedSpecMode = metrics ? requestedSpeculativeMode(metrics) : null;
+    const draftModel = metrics ? resolvedDraftModel(metrics) : null;
+    const runtimeWarning = metrics ? runtimeOutcomeWarning(metrics) : null;
+    const speculativeActive = actualSpeculativeMode != null
+      && actualSpeculativeMode !== "Off"
+      && actualSpeculativeMode !== "Requested, no compatible draft";
+    const speculativeSummary = speculativeActive
+      ? [
+          `Speculative: ${actualSpeculativeMode}`,
+          draftModel ? `draft ${draftModel}` : null,
+          metrics?.dflashAcceptanceRate != null ? `${number(metrics.dflashAcceptanceRate)} avg accepted` : null,
+        ].filter(Boolean).join(" · ")
+      : requestedSpecMode && requestedSpecMode !== "Off" && runtimeWarning
+        ? `Speculative: ${requestedSpecMode}`
+        : null;
+    const showLatestButton = !atBottom && (
+      Boolean(modelState.text)
+      || Boolean(modelState.reasoning)
+      || modelState.loading
+      || modelState.done
+    );
+
+    return (
+      <Panel
+        title={title}
+        subtitle={
+          modelState.done
+            ? `${number(modelState.tokS)} tok/s | ${number(modelState.responseSeconds)}s`
+            : modelState.loading ? "Loading..." : modelState.text ? "Generating..." : ""
+        }
+        actions={showLatestButton ? (
+          <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(target)}>
+            Latest
+          </button>
+        ) : null}
+      >
+        <div
+          ref={target === "a" ? resultScrollRefA : resultScrollRefB}
+          onScroll={() => handleResultScroll(target)}
+          style={{ overflow: "auto", flex: 1, padding: 8 }}
+        >
+          {option ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{option.label} · {option.detail}</p> : null}
+          {option ? (
+            <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
+              {modelState.appliedSummary ?? summarizeLaunchSettings(settings)}
+            </p>
+          ) : null}
+          {runtimeWarning ? (
+            <p style={{ fontSize: 11, margin: "0 0 8px", color: "var(--warning, #e4be75)" }}>
+              {runtimeWarning}
+            </p>
+          ) : null}
+          {speculativeSummary ? (
+            <p className="muted-text" style={{ fontSize: 11, margin: "0 0 8px" }}>
+              {speculativeSummary}
+            </p>
+          ) : null}
+          {modelState.runtimeNote ? (
+            <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
+              {modelState.runtimeNote}
+            </p>
+          ) : null}
+          <ReasoningPanel text={modelState.reasoning} streaming={!modelState.reasoningDone} />
+          {modelState.error ? (
+            <p style={{ color: "#f87171" }}>{modelState.error}</p>
+          ) : modelState.text ? (
+            <div className="markdown-content">
+              <Markdown>{modelState.text}</Markdown>
+            </div>
+          ) : modelState.loading ? (
+            <p className="muted-text" style={{ fontSize: 13 }}>{modelState.loadingMessage ?? "Loading model..."}</p>
+          ) : busy ? (
+            <p className="muted-text" style={{ fontSize: 13 }}>{waitingLabel}</p>
+          ) : null}
+        </div>
+      </Panel>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 12, overflowY: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px" }}>
@@ -444,53 +681,8 @@ export function CompareView({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, flex: 1, overflow: "hidden" }}>
-        <Panel title="Model A" subtitle={modelA.done ? `${number(modelA.tokS)} tok/s | ${number(modelA.responseSeconds)}s` : modelA.loading ? "Loading..." : modelA.text ? "Generating..." : ""}>
-          <div style={{ overflow: "auto", flex: 1, padding: 8 }}>
-            {selectedA ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{selectedA.label} · {selectedA.detail}</p> : null}
-            {selectedA ? (
-              <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
-                {modelA.appliedSummary ?? summarizeLaunchSettings(settingsA)}
-              </p>
-            ) : null}
-            {modelA.runtimeNote ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>{modelA.runtimeNote}</p> : null}
-            <ReasoningPanel text={modelA.reasoning} streaming={!modelA.reasoningDone} />
-            {modelA.error ? (
-              <p style={{ color: "#f87171" }}>{modelA.error}</p>
-            ) : modelA.text ? (
-              <div className="markdown-content">
-                <Markdown>{modelA.text}</Markdown>
-              </div>
-            ) : modelA.loading ? (
-              <p className="muted-text" style={{ fontSize: 13 }}>{modelA.loadingMessage ?? "Loading model..."}</p>
-            ) : busy ? (
-              <p className="muted-text" style={{ fontSize: 13 }}>Waiting...</p>
-            ) : null}
-          </div>
-        </Panel>
-
-        <Panel title="Model B" subtitle={modelB.done ? `${number(modelB.tokS)} tok/s | ${number(modelB.responseSeconds)}s` : modelB.loading ? "Loading..." : modelB.text ? "Generating..." : ""}>
-          <div style={{ overflow: "auto", flex: 1, padding: 8 }}>
-            {selectedB ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{selectedB.label} · {selectedB.detail}</p> : null}
-            {selectedB ? (
-              <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
-                {modelB.appliedSummary ?? summarizeLaunchSettings(settingsB)}
-              </p>
-            ) : null}
-            {modelB.runtimeNote ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>{modelB.runtimeNote}</p> : null}
-            <ReasoningPanel text={modelB.reasoning} streaming={!modelB.reasoningDone} />
-            {modelB.error ? (
-              <p style={{ color: "#f87171" }}>{modelB.error}</p>
-            ) : modelB.text ? (
-              <div className="markdown-content">
-                <Markdown>{modelB.text}</Markdown>
-              </div>
-            ) : modelB.loading ? (
-              <p className="muted-text" style={{ fontSize: 13 }}>{modelB.loadingMessage ?? "Loading model..."}</p>
-            ) : busy ? (
-              <p className="muted-text" style={{ fontSize: 13 }}>Waiting for Model A to finish...</p>
-            ) : null}
-          </div>
-        </Panel>
+        {renderResultPanel("Model A", selectedA, settingsA, modelA, "a", resultAAtBottom, "Waiting...")}
+        {renderResultPanel("Model B", selectedB, settingsB, modelB, "b", resultBAtBottom, "Waiting for Model A to finish...")}
       </div>
 
       <ModelLaunchModal

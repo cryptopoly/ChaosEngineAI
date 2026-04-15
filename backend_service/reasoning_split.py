@@ -183,15 +183,27 @@ def strip_thinking_tokens(text: str) -> str:
 
 
 class ThinkingTokenFilter:
-    """Split streamed reasoning from final text for both XML and raw dumps."""
+    """Split streamed reasoning from final text for both XML and raw dumps.
 
-    def __init__(self) -> None:
+    Parameters
+    ----------
+    detect_raw_reasoning:
+        When ``True`` (default), headings like "Thinking Process:" and
+        bullet-style reasoning are split into the reasoning field even
+        without ``<think>`` XML tags.  Set to ``False`` when thinking
+        mode is "off" so that models which emit thinking-like content
+        as plain text still have their output shown to the user.
+        XML ``<think>`` tags are always processed regardless.
+    """
+
+    def __init__(self, *, detect_raw_reasoning: bool = True) -> None:
         self._inside_xml_think = False
         self._inside_raw_think = False
         self._startup_done = False
         self._buffer = ""
         self._pending_raw_final = ""
         self._total_fed = 0
+        self._detect_raw = detect_raw_reasoning
 
     def feed(self, text: str) -> ThinkingStreamResult:
         self._buffer += text
@@ -208,7 +220,7 @@ class ThinkingTokenFilter:
                     self._startup_done = True
                     continue
 
-                if "\n" in self._buffer:
+                if self._detect_raw and "\n" in self._buffer:
                     first_line = self._buffer.split("\n", 1)[0]
                     if _looks_like_raw_thinking_start(first_line):
                         self._inside_raw_think = True
@@ -217,7 +229,7 @@ class ThinkingTokenFilter:
                     self._startup_done = True
                     continue
 
-                if self._total_fed < _STARTUP_BUFFER_LIMIT and _looks_like_reasoning_start_prefix(self._buffer):
+                if self._detect_raw and self._total_fed < _STARTUP_BUFFER_LIMIT and _looks_like_reasoning_start_prefix(self._buffer):
                     break
                 self._startup_done = True
                 continue

@@ -16,6 +16,11 @@ import {
   titleFromPrompt,
   syncRuntime,
 } from "../utils";
+import {
+  loadedModelMatchesRuntimeProfile,
+  resolveChatRuntimeProfile,
+} from "../utils/chatRuntime";
+import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
 import type {
   ChatSession,
   ChatThinkingMode,
@@ -45,6 +50,14 @@ export function useChat(
     path?: string;
     nextTab?: TabId;
     busyLabel?: string;
+    cacheBits?: number;
+    fp16Layers?: number;
+    fusedAttention?: boolean;
+    cacheStrategy?: string;
+    fitModelInMemory?: boolean;
+    contextTokens?: number;
+    speculativeDecoding?: boolean;
+    treeBudget?: number;
   }) => Promise<LoadModelActionResult>,
   defaultChatVariant: ModelVariant | null,
   threadModelOptions: ChatModelOption[],
@@ -64,19 +77,9 @@ export function useChat(
   const sortedChatSessions = sortSessions(workspace.chatSessions);
   const activeChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? sortedChatSessions[0];
   const activeThinkingMode: ChatThinkingMode = activeChat?.thinkingMode === "auto" ? "auto" : "off";
+  const activeRuntimeProfile = resolveChatRuntimeProfile(activeChat, launchSettings);
   const activeRuntimeProfileMatchesLaunchSettings = (() => {
-    const loaded = workspace.runtime.loadedModel;
-    if (!loaded) return false;
-    return (
-      loaded.cacheBits === launchSettings.cacheBits &&
-      loaded.fp16Layers === launchSettings.fp16Layers &&
-      loaded.fusedAttention === launchSettings.fusedAttention &&
-      loaded.cacheStrategy === launchSettings.cacheStrategy &&
-      loaded.fitModelInMemory === launchSettings.fitModelInMemory &&
-      loaded.contextTokens === launchSettings.contextTokens &&
-      (loaded.speculativeDecoding ?? false) === launchSettings.speculativeDecoding &&
-      (loaded.treeBudget ?? 0) === launchSettings.treeBudget
-    );
+    return loadedModelMatchesRuntimeProfile(workspace.runtime.loadedModel, activeRuntimeProfile);
   })();
 
   // Chat session validity
@@ -365,6 +368,15 @@ export function useChat(
   async function handleSelectThreadModel(nextKey: string) {
     const nextOption = threadModelOptions.find((option) => option.key === nextKey);
     if (!activeChat || !nextOption) return;
+    const sanitizedSpeculative = sanitizeSpeculativeSelection({
+      dflashInfo: workspace.system.dflash,
+      selectedBackend: nextOption.backend,
+      modelRef: nextOption.modelRef,
+      canonicalRepo: nextOption.canonicalRepo ?? null,
+      modelName: nextOption.model,
+      speculativeDecoding: activeChat.speculativeDecoding ?? launchSettings.speculativeDecoding,
+      treeBudget: activeChat.treeBudget ?? launchSettings.treeBudget,
+    });
     await persistSessionChanges(activeChat.id, {
       model: nextOption.model,
       modelRef: nextOption.modelRef,
@@ -372,6 +384,9 @@ export function useChat(
       modelSource: nextOption.source,
       modelPath: nextOption.path ?? null,
       modelBackend: nextOption.backend,
+      speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
+      dflashDraftModel: null,
+      treeBudget: sanitizedSpeculative.treeBudget,
       updatedAt: new Date().toLocaleString(),
     });
   }
@@ -389,6 +404,14 @@ export function useChat(
       source: modelSelection.source,
       backend: modelSelection.backend,
       path: modelSelection.path,
+      cacheBits: activeRuntimeProfile.cacheBits,
+      fp16Layers: activeRuntimeProfile.fp16Layers,
+      fusedAttention: activeRuntimeProfile.fusedAttention,
+      cacheStrategy: activeRuntimeProfile.cacheStrategy,
+      fitModelInMemory: activeRuntimeProfile.fitModelInMemory,
+      contextTokens: activeRuntimeProfile.contextTokens,
+      speculativeDecoding: activeRuntimeProfile.speculativeDecoding,
+      treeBudget: activeRuntimeProfile.treeBudget,
       nextTab: "chat",
     });
   }
@@ -593,6 +616,14 @@ export function useChat(
           source: threadModel.source,
           backend: threadModel.backend,
           path: threadModel.path,
+          cacheBits: activeRuntimeProfile.cacheBits,
+          fp16Layers: activeRuntimeProfile.fp16Layers,
+          fusedAttention: activeRuntimeProfile.fusedAttention,
+          cacheStrategy: activeRuntimeProfile.cacheStrategy,
+          fitModelInMemory: activeRuntimeProfile.fitModelInMemory,
+          contextTokens: activeRuntimeProfile.contextTokens,
+          speculativeDecoding: activeRuntimeProfile.speculativeDecoding,
+          treeBudget: activeRuntimeProfile.treeBudget,
           busyLabel: needsProfileReload ? "Reloading model for updated launch settings..." : undefined,
         });
         if (!loadResult.ok) {
@@ -635,14 +666,14 @@ export function useChat(
         temperature: launchSettings.temperature,
         maxTokens: launchSettings.maxTokens,
         systemPrompt: systemPrompt || undefined,
-        cacheBits: launchSettings.cacheBits,
-        fp16Layers: launchSettings.fp16Layers,
-        fusedAttention: launchSettings.fusedAttention,
-        cacheStrategy: launchSettings.cacheStrategy,
-        fitModelInMemory: launchSettings.fitModelInMemory,
-        contextTokens: launchSettings.contextTokens,
-        speculativeDecoding: launchSettings.speculativeDecoding,
-        treeBudget: launchSettings.treeBudget,
+        cacheBits: activeRuntimeProfile.cacheBits,
+        fp16Layers: activeRuntimeProfile.fp16Layers,
+        fusedAttention: activeRuntimeProfile.fusedAttention,
+        cacheStrategy: activeRuntimeProfile.cacheStrategy,
+        fitModelInMemory: activeRuntimeProfile.fitModelInMemory,
+        contextTokens: activeRuntimeProfile.contextTokens,
+        speculativeDecoding: activeRuntimeProfile.speculativeDecoding,
+        treeBudget: activeRuntimeProfile.treeBudget,
         enableTools: enableTools || undefined,
       };
 

@@ -1,4 +1,6 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from backend_service.mlx_worker import (
     RunawayGuard,
@@ -159,6 +161,125 @@ class CacheProfileTests(unittest.TestCase):
         self.assertTrue(_should_retry_cache_failure(AttributeError("'tuple' object has no attribute 'swapaxes'")))
         self.assertTrue(_should_retry_cache_failure(RuntimeError("[broadcast_shapes] Shapes (1,1,117,48) and (1,1,117,51) cannot be broadcast.")))
         self.assertFalse(_should_retry_cache_failure(RuntimeError("Tokenizer chat template missing.")))
+
+
+class _FakeTokenizer:
+    eos_token_id = 99
+
+    def encode(self, text):
+        return [1, 2, 3]
+
+    def decode(self, tokens):
+        return "decoded output"
+
+
+class DFlashCompatibilityTests(unittest.TestCase):
+    def test_load_model_uses_dflash_runtime_bundle_api(self):
+        worker = WorkerState()
+        fake_model = SimpleNamespace(layers=[object(), object()])
+        fake_tokenizer = _FakeTokenizer()
+        fake_runtime = SimpleNamespace(
+            configure_full_attention_split=Mock(),
+            load_draft_bundle=Mock(return_value=("draft_bundle", {"config": True})),
+        )
+        fake_pkg = SimpleNamespace(runtime=fake_runtime)
+        fake_mlx_lm = SimpleNamespace(
+            load=lambda *args, **kwargs: (fake_model, fake_tokenizer, {"num_hidden_layers": 2, "num_attention_heads": 2, "hidden_size": 8}),
+        )
+
+        with patch.dict("sys.modules", {"mlx_lm": fake_mlx_lm, "dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}):
+            result = worker.load_model(
+                {
+                    "target": "/tmp/model",
+                    "speculativeDecoding": True,
+                    "dflashDraftModel": "z-lab/Qwen3.5-35B-A3B-DFlash",
+                    "treeBudget": 64,
+                }
+            )
+
+        self.assertTrue(result["speculativeDecoding"])
+        self.assertEqual(result["treeBudget"], 64)
+        self.assertEqual(result["dflashDraftModel"], "z-lab/Qwen3.5-35B-A3B-DFlash")
+        self.assertIs(worker._dflash_target, fake_model)
+        self.assertEqual(worker._dflash_generator, "draft_bundle")
+        self.assertIs(worker._ddtree_target, fake_model)
+        self.assertEqual(worker._ddtree_draft, "draft_bundle")
+        fake_runtime.configure_full_attention_split.assert_called_once_with(fake_model, enabled=True)
+        fake_runtime.load_draft_bundle.assert_called_once_with(
+            "z-lab/Qwen3.5-35B-A3B-DFlash",
+            lazy=True,
+        )
+
+    def test_generate_dflash_uses_runtime_summary_shape(self):
+        worker = WorkerState()
+        worker.model = "standard_target"
+        worker.tokenizer = _FakeTokenizer()
+        worker._dflash_target = "dflash_target"
+        worker._dflash_generator = "draft_bundle"
+
+        fake_runtime = SimpleNamespace(
+            generate_dflash_once=lambda **kwargs: {
+                "generated_token_ids": [10, 11, 12],
+                "generation_tokens": 3,
+                "prompt_token_count": 3,
+                "elapsed_us": 2_000_000,
+                "accepted_from_draft": 8,
+                "cycles_completed": 4,
+                "phase_timings_us": {"prefill": 500_000},
+                "peak_memory_gb": 12.34,
+            }
+        )
+        fake_pkg = SimpleNamespace(runtime=fake_runtime)
+
+        with patch.dict("sys.modules", {"dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}):
+            result = worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
+
+        self.assertEqual(result["text"], "decoded output")
+        self.assertEqual(result["promptTokens"], 3)
+        self.assertEqual(result["completionTokens"], 3)
+        self.assertEqual(result["totalTokens"], 6)
+        self.assertEqual(result["dflashAcceptanceRate"], 2.0)
+        self.assertGreater(result["tokS"], 0)
+        self.assertIn("DFLASH speculative decoding", result["runtimeNote"])
+
+    def test_stream_generate_notes_speculative_fallback_when_dflash_stream_path_fails(self):
+        worker = WorkerState()
+        worker.model = object()
+        worker.tokenizer = _WorkingTemplateTokenizer()
+        worker.speculative_decoding = True
+        worker._dflash_generator = object()
+
+        fake_response = SimpleNamespace(
+            text="fallback answer",
+            finish_reason="stop",
+            prompt_tokens=3,
+            generation_tokens=2,
+            generation_tps=11.0,
+            prompt_tps=0.0,
+            peak_memory=1.25,
+        )
+        fake_mlx_lm = SimpleNamespace(
+            stream_generate=lambda *args, **kwargs: [fake_response],
+        )
+        fake_sample_utils = SimpleNamespace(
+            make_sampler=lambda **kwargs: object(),
+        )
+        emitted: list[dict[str, object]] = []
+
+        with (
+            patch.object(worker, "_generate_dflash", side_effect=RuntimeError("draft verifier failed")),
+            patch("backend_service.mlx_worker._emit", side_effect=emitted.append),
+            patch.dict("sys.modules", {"mlx_lm": fake_mlx_lm, "mlx_lm.sample_utils": fake_sample_utils}),
+        ):
+            worker.stream_generate({"prompt": "hello", "maxTokens": 8})
+
+        done_payload = next(payload for payload in emitted if payload.get("done"))
+        result = done_payload["result"]
+        self.assertEqual(result["finishReason"], "stop")
+        self.assertEqual(result["speculativeDecoding"], False)
+        self.assertEqual(result["treeBudget"], 0)
+        self.assertIn("Speculative decoding stream path failed", result["runtimeNote"])
+        self.assertIn("Fell back to standard generation.", result["runtimeNote"])
 
 
 class ThinkingTokenFilterTests(unittest.TestCase):

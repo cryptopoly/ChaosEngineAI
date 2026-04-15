@@ -8,6 +8,16 @@ export function tokenSet(value: string): string[] {
     .filter((token) => token.length >= 3 && !["gguf", "mlx", "bf16", "fp8", "instruct", "community"].includes(token));
 }
 
+function paramScaleTokens(value: string): Set<string> {
+  const tokens = new Set<string>();
+  const pattern = /(^|[^a-z0-9])(\d+(?:\.\d+)?)b(?=$|[^a-z0-9])/gi;
+  for (const match of value.matchAll(pattern)) {
+    const token = match[2]?.toLowerCase();
+    if (token) tokens.add(`${token}b`);
+  }
+  return tokens;
+}
+
 export function normalizeQuantizationLabel(value: string | null | undefined): string {
   return (value ?? "").toLowerCase().replace(/[\s-]+/g, "");
 }
@@ -78,6 +88,13 @@ export function libraryVariantMatchScore(item: LibraryItem, variant: ModelVarian
     .filter(Boolean);
   if (compactCandidates.some((candidate) => haystack.includes(candidate))) {
     score += 40;
+  }
+
+  const itemScaleTokens = paramScaleTokens(haystack);
+  const variantScaleTokens = paramScaleTokens(`${variant.repo} ${variant.name}`);
+  if (itemScaleTokens.size > 0 && variantScaleTokens.size > 0) {
+    const sameScale = [...itemScaleTokens].some((token) => variantScaleTokens.has(token));
+    score += sameScale ? 18 : -24;
   }
 
   const hits = tokenSet(`${variant.repo} ${variant.name}`).filter((token) => haystack.includes(token));

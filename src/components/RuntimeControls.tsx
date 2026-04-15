@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LaunchPreferences, PreviewMetrics } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
+import {
+  isStrategyCompatible,
+  resolveDflashSupport,
+  strategyIncompatReason,
+} from "./runtimeSupport";
 
 const LAUNCH_PRESETS: Array<{
   id: string;
@@ -97,6 +102,7 @@ interface DFlashInfo {
   available: boolean;
   mlxAvailable: boolean;
   vllmAvailable: boolean;
+  ddtreeAvailable?: boolean;
   supportedModels: string[];
 }
 
@@ -117,37 +123,13 @@ interface RuntimeControlsProps {
   dflashInfo?: DFlashInfo;
   /** Backend of the selected model (e.g. "mlx", "gguf", "vllm", "auto"). Used for compatibility validation. */
   selectedBackend?: string | null;
+  selectedModelRef?: string | null;
+  selectedCanonicalRepo?: string | null;
+  selectedModelName?: string | null;
   /** Whether llama-server-turbo is installed (for RotorQuant/TurboQuant GGUF support). */
   turboInstalled?: boolean;
   /** Whether an update is available for llama-server-turbo. */
   turboUpdateAvailable?: boolean;
-}
-
-// ----- Compatibility helpers -----
-
-/** Cache strategies that support each engine. Strategies not listed fall back to native silently. */
-const STRATEGY_ENGINE_SUPPORT: Record<string, string[]> = {
-  native: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
-  triattention: ["vllm"],
-  rotorquant: ["gguf", "llama.cpp", "vllm"],
-  turboquant: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
-  chaosengine: ["gguf", "llama.cpp", "vllm"],
-};
-
-function isStrategyCompatible(strategyId: string, backend: string | null | undefined): boolean {
-  if (!backend || backend === "auto") return true; // can't validate yet
-  const supported = STRATEGY_ENGINE_SUPPORT[strategyId];
-  if (!supported) return true; // unknown strategy, allow
-  return supported.some(b => backend.includes(b));
-}
-
-function strategyIncompatReason(strategyId: string, backend: string | null | undefined): string | null {
-  if (!backend || backend === "auto" || isStrategyCompatible(strategyId, backend)) return null;
-  const engineLabel = backend.includes("gguf") || backend.includes("llama") ? "llama.cpp" : backend;
-  if (strategyId === "triattention") return "TriAttention requires the vLLM backend (Linux + CUDA).";
-  if (strategyId === "rotorquant") return `RotorQuant requires llama.cpp or vLLM, not ${engineLabel}.`;
-  if (strategyId === "chaosengine") return `ChaosEngine requires llama.cpp or vLLM, not ${engineLabel}.`;
-  return `Not compatible with the ${engineLabel} backend.`;
 }
 
 export function RuntimeControls({
@@ -166,6 +148,9 @@ export function RuntimeControls({
   installingPackage,
   dflashInfo,
   selectedBackend,
+  selectedModelRef,
+  selectedCanonicalRepo,
+  selectedModelName,
   turboInstalled,
   turboUpdateAvailable,
 }: RuntimeControlsProps) {
@@ -176,17 +161,57 @@ export function RuntimeControls({
   const currentPreset = activePresetId(settings);
   const isGgufBackend = selectedBackend ? (selectedBackend.includes("gguf") || selectedBackend.includes("llama")) : false;
   const dflashInstalled = dflashInfo?.available ?? false;
-  const dflashCompatible = !isGgufBackend;
-  const dflashAvailable = dflashInstalled && dflashCompatible;
-  const dflashUnavailableReason = !dflashCompatible
-    ? "DFlash is not supported with llama.cpp models. Use an MLX or vLLM model."
-    : !dflashInstalled
-      ? "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable."
-      : null;
+  const dflashSupport = resolveDflashSupport({
+    dflashInfo,
+    selectedBackend,
+    modelRef: selectedModelRef,
+    canonicalRepo: selectedCanonicalRepo,
+    modelName: selectedModelName,
+  });
+  const dflashAvailable = dflashSupport.enabled;
+  const dflashUnavailableReason = dflashSupport.reason;
+  const ddtreeAvailable = dflashSupport.ddtreeAvailable;
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
+  const hasSelectedStrategy = strategies.some((strategy) => strategy.id === settings.cacheStrategy);
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
+  const fp16LayersSupported = Boolean(selectedStrategy?.supportsFp16Layers) && !isGgufBackend;
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isGgufBackend && settings.fp16Layers !== 0) {
+      onChange("fp16Layers", 0);
+    }
+  }, [isGgufBackend, onChange, settings.fp16Layers]);
+
+  useEffect(() => {
+    if (settings.cacheStrategy === "native") return;
+    if (hasSelectedStrategy && selectedStrategy?.available && isStrategyCompatible(settings.cacheStrategy, selectedBackend)) return;
+    onChange("cacheStrategy", "native");
+    if (settings.cacheBits !== 0) onChange("cacheBits", 0);
+    if (settings.fp16Layers !== 0) onChange("fp16Layers", 0);
+  }, [
+    hasSelectedStrategy,
+    onChange,
+    selectedBackend,
+    selectedStrategy?.available,
+    settings.cacheBits,
+    settings.cacheStrategy,
+    settings.fp16Layers,
+  ]);
+
+  useEffect(() => {
+    if (!settings.speculativeDecoding) return;
+    if (!dflashAvailable) {
+      onChange("speculativeDecoding", false);
+    }
+  }, [dflashAvailable, onChange, settings.speculativeDecoding]);
+
+  useEffect(() => {
+    if (!ddtreeAvailable && (settings.treeBudget ?? 0) !== 0) {
+      onChange("treeBudget", 0);
+    }
+  }, [ddtreeAvailable, onChange, settings.treeBudget]);
 
   function applyPreset(presetId: string) {
     const preset = LAUNCH_PRESETS.find((p) => p.id === presetId);
@@ -207,7 +232,7 @@ export function RuntimeControls({
         presetId === "speed" ? midBits :
         minBits;
       onChange("cacheBits", bits);
-      if (selectedStrategy.supportsFp16Layers) {
+      if (selectedStrategy.supportsFp16Layers && !isGgufBackend) {
         const fp16 =
           presetId === "quality" ? 8 :
           presetId === "balanced" ? 6 :
@@ -218,6 +243,8 @@ export function RuntimeControls({
     } else {
       // Native strategy: no compression
       onChange("cacheBits", 0);
+    }
+    if (isGgufBackend || !selectedStrategy.supportsFp16Layers) {
       onChange("fp16Layers", 0);
     }
   }
@@ -230,7 +257,7 @@ export function RuntimeControls({
     } else {
       onChange("cacheBits", 0);
     }
-    if (strategy.supportsFp16Layers) {
+    if (strategy.supportsFp16Layers && !isGgufBackend) {
       if (settings.fp16Layers === 0) onChange("fp16Layers", 4);
     } else {
       onChange("fp16Layers", 0);
@@ -360,7 +387,7 @@ export function RuntimeControls({
             onChange={(v) => onChange("cacheBits", v)}
           />
         ) : null}
-        {selectedStrategy?.supportsFp16Layers ? (
+        {fp16LayersSupported ? (
           <SliderField
             label="FP16 layers"
             value={settings.fp16Layers}
@@ -439,7 +466,7 @@ export function RuntimeControls({
             />
             <span>DFlash</span>
           </label>
-          {!dflashInstalled && dflashCompatible && onInstallPackage ? (
+          {!dflashInstalled && !isGgufBackend && onInstallPackage ? (
             <button
               type="button"
               className="cache-strategy-install-btn"
@@ -449,7 +476,7 @@ export function RuntimeControls({
               {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
             </button>
           ) : null}
-          {!dflashCompatible ? (
+          {dflashUnavailableReason ? (
             <span className="cache-strategy-badge cache-strategy-badge--warning" style={{ marginLeft: 4, fontSize: "0.7em" }}>N/A</span>
           ) : null}
           <button
@@ -469,10 +496,18 @@ export function RuntimeControls({
               <span>Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.</span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Supported models:</span>
-              <span>Qwen3, Qwen3.5, Qwen3-Coder, LLaMA 3.1, gpt-oss families.</span>
+              <span className="cache-strategy-meta-label">Current model:</span>
+              <span>{dflashSupport.matchedModel ? `Supported via ${dflashSupport.matchedModel}` : dflashUnavailableReason ?? "Compatibility not resolved yet."}</span>
             </div>
-            {!dflashAvailable ? (
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">Registered targets:</span>
+              <span>{dflashInfo?.supportedModels?.length ?? 0} target models</span>
+            </div>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">DDTree:</span>
+              <span>{ddtreeAvailable ? "Available" : "Not available in the current dflash runtime."}</span>
+            </div>
+            {!dflashInstalled ? (
               <div className="cache-strategy-install">
                 <span className="cache-strategy-meta-label">Install:</span>
                 <code>./.venv/bin/python3 -m pip install dflash-mlx</code>
@@ -491,6 +526,7 @@ export function RuntimeControls({
               max={64}
               step={4}
               value={settings.treeBudget ?? 0}
+              disabled={!ddtreeAvailable}
               onChange={(event) => onChange("treeBudget", parseInt(event.target.value, 10))}
             />
             <span className="slider-value">{settings.treeBudget ?? 0}</span>

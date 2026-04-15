@@ -12,6 +12,7 @@ import {
   compareOptionalNumber,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
+import { candidateKeys } from "../../components/runtimeSupport";
 
 export interface LibraryRow {
   item: LibraryItem;
@@ -20,6 +21,13 @@ export interface LibraryRow {
   displayQuantization: string | null;
   displayBackend: string;
   sourceKind: string;
+}
+
+interface StrategyCompatInfo {
+  turboInstalled: boolean;
+  turboquantMlxAvailable: boolean;
+  chaosengineAvailable: boolean;
+  dflashSupportedModels: string[];
 }
 
 export interface MyModelsTabProps {
@@ -34,6 +42,7 @@ export interface MyModelsTabProps {
   onLibraryFormatFilterChange: (fmt: string | null) => void;
   libraryBackendFilter: string | null;
   onLibraryBackendFilterChange: (backend: string | null) => void;
+  strategyCompat?: StrategyCompatInfo;
   expandedLibraryPath: string | null;
   onExpandedLibraryPathChange: (path: string | null) => void;
   fileRevealLabel: string;
@@ -59,6 +68,7 @@ export function MyModelsTab({
   onLibraryFormatFilterChange,
   libraryBackendFilter,
   onLibraryBackendFilterChange,
+  strategyCompat,
   expandedLibraryPath,
   onExpandedLibraryPathChange,
   fileRevealLabel,
@@ -173,6 +183,45 @@ export function MyModelsTab({
     );
   }
 
+  const [strategyFilter, setStrategyFilter] = useState<string | null>(null);
+
+  // ── Strategy compatibility check ──
+  function modelSupportsStrategy(row: LibraryRow, strategy: string): boolean {
+    const backend = row.displayBackend.toLowerCase();
+    const isGGUF = backend.includes("llama") || row.displayFormat === "GGUF";
+    const isMLX = backend.includes("mlx") || row.displayFormat === "MLX";
+    const modelName = row.item.name;
+
+    switch (strategy) {
+      case "dflash": {
+        // DFlash requires MLX or vLLM — not available for GGUF/llama.cpp models
+        if (isGGUF) return false;
+        if (!strategyCompat?.dflashSupportedModels?.length) return false;
+        // Use the same candidateKeys matching as the model selection modal
+        const modelKeys = candidateKeys([modelName, row.matchedVariant?.repo]);
+        return strategyCompat.dflashSupportedModels.some((ref) => {
+          const refKeys = candidateKeys([ref]);
+          return refKeys.some((k) => modelKeys.includes(k));
+        });
+      }
+      case "turboquant":
+        return (isGGUF && !!strategyCompat?.turboInstalled) || (isMLX && !!strategyCompat?.turboquantMlxAvailable);
+      case "rotorquant":
+        return isGGUF && !!strategyCompat?.turboInstalled;
+      case "chaosengine":
+        return isGGUF && !!strategyCompat?.chaosengineAvailable;
+      default:
+        return true;
+    }
+  }
+
+  const STRATEGY_FILTERS = [
+    { id: "dflash", label: "DFlash", color: "#a78bfa" },
+    { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
+    { id: "rotorquant", label: "RotorQuant", color: "#34d399" },
+    { id: "chaosengine", label: "ChaosEngine", color: "#f59e0b" },
+  ];
+
   const allLibraryCaps = filteredLibraryRows.flatMap(({ matchedVariant }) => matchedVariant?.capabilities ?? []);
   let capFilteredLibrary = libraryCapFilter
     ? filteredLibraryRows.filter(({ matchedVariant }) => {
@@ -184,6 +233,9 @@ export function MyModelsTab({
   }
   if (libraryBackendFilter) {
     capFilteredLibrary = capFilteredLibrary.filter(({ displayBackend }) => displayBackend === libraryBackendFilter);
+  }
+  if (strategyFilter) {
+    capFilteredLibrary = capFilteredLibrary.filter((row) => modelSupportsStrategy(row, strategyFilter));
   }
   const allLibraryFormats = filteredLibraryRows.map(({ displayFormat }) => displayFormat);
   const allLibraryBackends = filteredLibraryRows.map(({ displayBackend }) => displayBackend);
@@ -207,6 +259,32 @@ export function MyModelsTab({
         {renderCapabilityFilterBar(libraryCapFilter, onLibraryCapFilterChange, allLibraryCaps)}
         {renderFormatFilterBar(libraryFormatFilter, onLibraryFormatFilterChange, allLibraryFormats)}
         {renderFormatFilterBar(libraryBackendFilter, onLibraryBackendFilterChange, allLibraryBackends, "All backends")}
+        {strategyCompat ? (
+          <div className="cap-filter-bar">
+            <button
+              className={`cap-filter-btn${strategyFilter === null ? " cap-filter-btn--active" : ""}`}
+              type="button"
+              onClick={() => setStrategyFilter(null)}
+            >
+              All strategies
+            </button>
+            {STRATEGY_FILTERS.map((sf) => {
+              const count = filteredLibraryRows.filter((row) => modelSupportsStrategy(row, sf.id)).length;
+              return (
+                <button
+                  key={sf.id}
+                  className={`cap-filter-btn${strategyFilter === sf.id ? " cap-filter-btn--active" : ""}`}
+                  type="button"
+                  onClick={() => setStrategyFilter(strategyFilter === sf.id ? null : sf.id)}
+                  title={`Show models compatible with ${sf.label} (${count})`}
+                  style={strategyFilter === sf.id ? { borderColor: sf.color, color: sf.color, background: `${sf.color}15` } : undefined}
+                >
+                  {sf.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {capFilteredLibrary.length ? (
           <div className="library-full-table">
             <div className="library-head">

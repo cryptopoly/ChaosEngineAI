@@ -10,7 +10,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import compute_cache_preview, create_app
-from backend_service.inference import GenerationResult, LoadedModelInfo
+from backend_service.inference import GenerationResult, LoadedModelInfo, StreamChunk
 from backend_service.state import ChaosEngineState, _spawn_snapshot_download
 from backend_service.helpers.discovery import _discover_local_models
 
@@ -62,8 +62,10 @@ class FakeRuntime:
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None
+        self.load_requests: list[dict[str, object]] = []
         self.profile_updates: list[dict[str, object]] = []
         self._warm_pool = {}
+        self.clear_warm_pool_calls = 0
         self.recent_orphaned_workers = []
         self.capabilities = SimpleNamespace(
             pythonExecutable="/tmp/python",
@@ -91,7 +93,10 @@ class FakeRuntime:
         )
 
     def warm_models(self) -> list[dict[str, object]]:
-        return []
+        return [
+            info.to_dict() if hasattr(info, "to_dict") else {}
+            for _, info in self._warm_pool.values()
+        ]
 
     def status(self, *, active_requests: int = 0, requests_served: int = 0) -> dict[str, object]:
         return {
@@ -127,10 +132,24 @@ class FakeRuntime:
         context_tokens: int = 8192,
         speculative_decoding: bool = False,
         tree_budget: int = 0,
+        keep_warm_previous: bool = True,
         progress_callback=None,
     ) -> LoadedModelInfo:
+        self.load_requests.append(
+            {
+                "model_ref": model_ref,
+                "runtime_target": runtime_target,
+                "keep_warm_previous": keep_warm_previous,
+            }
+        )
         if callable(progress_callback):
             progress_callback({"phase": "loading", "percent": 100, "message": "Fake runtime loaded"})
+        draft_model = "z-lab/Qwen3-4B-DFlash" if speculative_decoding else None
+        runtime_note = (
+            f"Fake runtime. DFLASH speculative decoding active (draft: {draft_model}, budget={tree_budget})."
+            if speculative_decoding
+            else "Fake runtime"
+        )
         loaded = LoadedModelInfo(
             ref=model_ref,
             name=model_name or model_ref,
@@ -147,8 +166,9 @@ class FakeRuntime:
             canonicalRepo=canonical_repo,
             path=path,
             runtimeTarget=runtime_target or path or model_ref,
-            runtimeNote="Fake runtime",
+            runtimeNote=runtime_note,
             speculativeDecoding=speculative_decoding,
+            dflashDraftModel=draft_model,
             treeBudget=tree_budget if speculative_decoding else 0,
         )
         self.loaded_model = loaded
@@ -190,6 +210,12 @@ class FakeRuntime:
     def unload_warm_model_by_ref(self, ref: str) -> bool:
         return False
 
+    def clear_warm_pool(self) -> int:
+        count = len(self._warm_pool)
+        self._warm_pool = {}
+        self.clear_warm_pool_calls += 1
+        return count
+
     def generate(
         self,
         *,
@@ -226,6 +252,47 @@ class FakeRuntime:
             tokS=42.0,
             responseSeconds=0.1,
             runtimeNote=self.runtime_note,
+        )
+
+    def stream_generate(
+        self,
+        *,
+        prompt: str,
+        history,
+        system_prompt,
+        max_tokens: int,
+        temperature: float,
+        images=None,
+        tools=None,
+        engine=None,
+    ):
+        self.last_generate_kwargs = {
+            "prompt": prompt,
+            "history": history,
+            "system_prompt": system_prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "images": images,
+            "tools": tools,
+        }
+        text = "Streaming compare output."
+        prompt_tokens = max(1, len(str(prompt).split()))
+        completion_tokens = max(1, len(text.split()))
+        yield StreamChunk(text=text)
+        yield StreamChunk(
+            done=True,
+            finish_reason="stop",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+            tok_s=42.0,
+            runtime_note=self.runtime_note,
+            dflash_acceptance_rate=4.5 if self.loaded_model and self.loaded_model.speculativeDecoding else None,
+            cache_strategy=self.loaded_model.cacheStrategy if self.loaded_model else "native",
+            cache_bits=self.loaded_model.cacheBits if self.loaded_model else 0,
+            fp16_layers=self.loaded_model.fp16Layers if self.loaded_model else 0,
+            speculative_decoding=self.loaded_model.speculativeDecoding if self.loaded_model else False,
+            tree_budget=self.loaded_model.treeBudget if self.loaded_model else 0,
         )
 
     def get_engine_for_request(self, model_ref: str | None):
@@ -413,6 +480,72 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+    def test_speculative_mlx_load_clears_warm_pool_and_does_not_keep_previous_model_warm(self):
+        state = self.client.app.state.chaosengine
+        state.runtime.engine = SimpleNamespace(engine_name="mlx", engine_label="MLX")
+        state.runtime.loaded_model = LoadedModelInfo(
+            ref="Qwen3-Coder-Next-MLX-4bit",
+            name="Qwen3-Coder-Next-MLX-4bit",
+            backend="mlx",
+            source="library",
+            engine="mlx",
+            cacheStrategy="native",
+            cacheBits=0,
+            fp16Layers=0,
+            fusedAttention=False,
+            fitModelInMemory=True,
+            contextTokens=32768,
+            loadedAt="2026-04-15 00:00:00",
+            path="/tmp/qwen3-coder-next-mlx-4bit",
+            runtimeTarget="/tmp/qwen3-coder-next-mlx-4bit",
+            runtimeNote="Fake runtime",
+            speculativeDecoding=False,
+            treeBudget=0,
+        )
+        state.runtime._warm_pool = {
+            "stale-warm-model": (
+                FakeWarmEngine(),
+                LoadedModelInfo(
+                    ref="warm/model",
+                    name="Warm model",
+                    backend="mlx",
+                    source="catalog",
+                    engine="mlx",
+                    cacheStrategy="native",
+                    cacheBits=0,
+                    fp16Layers=0,
+                    fusedAttention=False,
+                    fitModelInMemory=True,
+                    contextTokens=8192,
+                    loadedAt="2026-04-15 00:00:00",
+                    runtimeTarget="warm/model",
+                    runtimeNote="Fake runtime",
+                ),
+            )
+        }
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "Qwen3-Coder-Next-MLX-4bit",
+                "modelName": "Qwen3-Coder-Next-MLX-4bit",
+                "source": "library",
+                "backend": "mlx",
+                "path": "/tmp/qwen3-coder-next-mlx-4bit",
+                "cacheStrategy": "native",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+                "contextTokens": 32768,
+                "speculativeDecoding": True,
+                "treeBudget": 64,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(state.runtime.clear_warm_pool_calls, 1)
+        self.assertEqual(state.runtime._warm_pool, {})
+        self.assertFalse(state.runtime.load_requests[-1]["keep_warm_previous"])
+
     def test_repeated_auto_generated_session_titles_get_numbered(self):
         self.client.post(
             "/api/models/load",
@@ -559,10 +692,233 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(payload["choices"][0]["message"]["role"], "assistant")
         self.assertGreater(payload["usage"]["total_tokens"], 0)
 
+    def test_compare_stream_includes_requested_and_actual_runtime_metadata(self):
+        response = self.client.post(
+            "/api/chat/compare",
+            json={
+                "prompt": "Test compare",
+                "modelA": {
+                    "modelRef": "google/gemma-4-E4B-it",
+                    "modelName": "Gemma 4 E4B Instruct",
+                    "source": "catalog",
+                    "backend": "mock",
+                    "launch": {
+                        "temperature": 0.7,
+                        "maxTokens": 32,
+                        "cacheStrategy": "native",
+                        "cacheBits": 0,
+                        "fp16Layers": 0,
+                        "fusedAttention": False,
+                        "fitModelInMemory": True,
+                        "contextTokens": 8192,
+                        "speculativeDecoding": True,
+                        "treeBudget": 64,
+                    },
+                },
+                "modelB": {
+                    "modelRef": "google/gemma-4-E4B-it",
+                    "modelName": "Gemma 4 E4B Instruct",
+                    "source": "catalog",
+                    "backend": "mock",
+                    "launch": {
+                        "temperature": 0.7,
+                        "maxTokens": 32,
+                        "cacheStrategy": "native",
+                        "cacheBits": 0,
+                        "fp16Layers": 0,
+                        "fusedAttention": False,
+                        "fitModelInMemory": True,
+                        "contextTokens": 8192,
+                        "speculativeDecoding": False,
+                        "treeBudget": 0,
+                    },
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        events = [
+            json.loads(line[6:])
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+
+        loaded_a = next(event for event in events if event.get("model") == "a" and event.get("loaded"))
+        done_a = next(event for event in events if event.get("model") == "a" and event.get("done"))
+
+        self.assertTrue(loaded_a["requestedSpeculativeDecoding"])
+        self.assertEqual(loaded_a["requestedTreeBudget"], 64)
+        self.assertTrue(loaded_a["speculativeDecoding"])
+        self.assertEqual(loaded_a["dflashDraftModel"], "z-lab/Qwen3-4B-DFlash")
+        self.assertEqual(loaded_a["cacheLabel"], "Native f16")
+
+        self.assertTrue(done_a["speculativeDecoding"])
+        self.assertEqual(done_a["treeBudget"], 64)
+        self.assertEqual(done_a["dflashDraftModel"], "z-lab/Qwen3-4B-DFlash")
+        self.assertEqual(done_a["dflashAcceptanceRate"], 4.5)
+
         models_response = self.client.get("/v1/models")
         self.assertEqual(models_response.status_code, 200)
         models = models_response.json()["data"]
         self.assertEqual(models[0]["id"], "google/gemma-4-E4B-it")
+
+    def test_compare_stream_uses_exclusive_loading_and_clears_warm_pool(self):
+        state = self.client.app.state.chaosengine
+        state.runtime._warm_pool = {
+            "stale-warm-model": (
+                FakeWarmEngine(),
+                LoadedModelInfo(
+                    ref="warm/model",
+                    name="Warm model",
+                    backend="mlx",
+                    source="catalog",
+                    engine="mock",
+                    cacheStrategy="native",
+                    cacheBits=0,
+                    fp16Layers=0,
+                    fusedAttention=False,
+                    fitModelInMemory=True,
+                    contextTokens=8192,
+                    loadedAt="2026-04-15 00:00:00",
+                    runtimeTarget="warm/model",
+                    runtimeNote="Fake runtime",
+                ),
+            )
+        }
+
+        response = self.client.post(
+            "/api/chat/compare",
+            json={
+                "prompt": "Test compare exclusive loading",
+                "modelA": {
+                    "modelRef": "google/gemma-4-E4B-it",
+                    "modelName": "Gemma 4 E4B Instruct",
+                    "source": "catalog",
+                    "backend": "mock",
+                },
+                "modelB": {
+                    "modelRef": "meta-llama/Llama-3.2-3B-Instruct",
+                    "modelName": "Llama 3.2 3B Instruct",
+                    "source": "catalog",
+                    "backend": "mock",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(state.runtime.clear_warm_pool_calls, 1)
+        self.assertEqual(state.runtime._warm_pool, {})
+        self.assertEqual(len(state.runtime.load_requests), 2)
+        self.assertTrue(all(not req["keep_warm_previous"] for req in state.runtime.load_requests))
+
+    def test_workspace_surfaces_tracked_runtime_process_when_system_scan_misses_it(self):
+        state = self.client.app.state.chaosengine
+        state._system_snapshot_provider = lambda: {
+            **fake_system_snapshot(),
+            "runningLlmProcesses": [],
+        }
+        state.runtime.engine = SimpleNamespace(
+            engine_name="mlx",
+            engine_label="MLX",
+            process_pid=lambda: 4242,
+        )
+        state.runtime.loaded_model = LoadedModelInfo(
+            ref="google/gemma-4-E4B-it",
+            name="Gemma 4 E4B Instruct",
+            backend="mlx",
+            source="catalog",
+            engine="mlx",
+            cacheStrategy="native",
+            cacheBits=0,
+            fp16Layers=0,
+            fusedAttention=False,
+            fitModelInMemory=True,
+            contextTokens=8192,
+            loadedAt="2026-04-13 00:00:00",
+            canonicalRepo="google/gemma-4-E4B-it",
+            runtimeTarget="google/gemma-4-E4B-it",
+            runtimeNote="Fake runtime",
+        )
+
+        with mock.patch(
+            "backend_service.state._describe_process",
+            return_value={
+                "pid": 4242,
+                "name": "python",
+                "owner": "ChaosEngineAI",
+                "memoryGb": 14.9,
+                "cpuPercent": 0.0,
+                "kind": "mlx_worker",
+            },
+        ):
+            response = self.client.get("/api/workspace")
+
+        self.assertEqual(response.status_code, 200)
+        process = response.json()["system"]["runningLlmProcesses"][0]
+        self.assertEqual(process["pid"], 4242)
+        self.assertEqual(process["kind"], "mlx_worker")
+        self.assertEqual(process["modelName"], "Gemma 4 E4B Instruct")
+        self.assertEqual(process["modelStatus"], "active")
+
+    def test_workspace_refreshes_stale_tracked_runtime_process_details(self):
+        state = self.client.app.state.chaosengine
+        state._system_snapshot_provider = lambda: {
+            **fake_system_snapshot(),
+            "runningLlmProcesses": [
+                {
+                    "pid": 4242,
+                    "name": "chaosengineai",
+                    "owner": "ChaosEngineAI",
+                    "memoryGb": 0.0,
+                    "cpuPercent": 0.0,
+                    "kind": "other",
+                }
+            ],
+        }
+        state.runtime.engine = SimpleNamespace(
+            engine_name="mlx",
+            engine_label="MLX",
+            process_pid=lambda: 4242,
+        )
+        state.runtime.loaded_model = LoadedModelInfo(
+            ref="mlx-community/Qwen3-Coder-Next-MLX-4bit",
+            name="Qwen3-Coder-Next-MLX-4bit",
+            backend="mlx",
+            source="catalog",
+            engine="mlx",
+            cacheStrategy="native",
+            cacheBits=0,
+            fp16Layers=0,
+            fusedAttention=False,
+            fitModelInMemory=True,
+            contextTokens=32768,
+            loadedAt="2026-04-15 00:00:00",
+            canonicalRepo="Qwen/Qwen3-Coder-Next",
+            runtimeTarget="mlx-community/Qwen3-Coder-Next-MLX-4bit",
+            runtimeNote="Fake runtime",
+        )
+
+        with mock.patch(
+            "backend_service.state._describe_process",
+            return_value={
+                "pid": 4242,
+                "name": "python",
+                "owner": "ChaosEngineAI",
+                "memoryGb": 54.6,
+                "cpuPercent": 0.0,
+                "kind": "mlx_worker",
+            },
+        ):
+            response = self.client.get("/api/workspace")
+
+        self.assertEqual(response.status_code, 200)
+        process = response.json()["system"]["runningLlmProcesses"][0]
+        self.assertEqual(process["pid"], 4242)
+        self.assertEqual(process["name"], "python")
+        self.assertEqual(process["kind"], "mlx_worker")
+        self.assertEqual(process["memoryGb"], 54.6)
+        self.assertEqual(process["modelName"], "Qwen3-Coder-Next-MLX-4bit")
+        self.assertEqual(process["modelStatus"], "active")
 
     def test_reload_logs_launch_settings_reason(self):
         first = self.client.post(
@@ -739,6 +1095,49 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(updated["title"], "Gemma thread")
         self.assertEqual(updated["modelRef"], "google/gemma-4-E4B-it")
         self.assertEqual(updated["thinkingMode"], "auto")
+
+    def test_session_update_allows_explicit_null_to_clear_stale_model_metadata(self):
+        create_response = self.client.post("/api/chat/sessions", json={"title": "New chat"})
+        self.assertEqual(create_response.status_code, 200)
+        session = create_response.json()["session"]
+
+        seeded = self.client.patch(
+            f"/api/chat/sessions/{session['id']}",
+            json={
+                "model": "Qwen3.5-9B",
+                "modelRef": "mlx-community/Qwen3.5-9B-4bit",
+                "canonicalRepo": "Qwen/Qwen3.5-9B",
+                "modelSource": "library",
+                "modelPath": "/tmp/qwen3.5-9b",
+                "modelBackend": "mlx",
+                "speculativeDecoding": True,
+                "treeBudget": 64,
+                "dflashDraftModel": "z-lab/Qwen3.5-9B-DFlash",
+            },
+        )
+        self.assertEqual(seeded.status_code, 200)
+
+        cleared = self.client.patch(
+            f"/api/chat/sessions/{session['id']}",
+            json={
+                "model": "Qwen3-Coder-Next-MLX-4bit",
+                "modelRef": "Qwen3-Coder-Next-MLX-4bit",
+                "canonicalRepo": None,
+                "modelSource": "library",
+                "modelPath": None,
+                "modelBackend": "mlx",
+                "dflashDraftModel": None,
+            },
+        )
+        self.assertEqual(cleared.status_code, 200)
+        updated = cleared.json()["session"]
+        self.assertEqual(updated["model"], "Qwen3-Coder-Next-MLX-4bit")
+        self.assertEqual(updated["modelRef"], "Qwen3-Coder-Next-MLX-4bit")
+        self.assertIsNone(updated["canonicalRepo"])
+        self.assertIsNone(updated["modelPath"])
+        self.assertIsNone(updated["dflashDraftModel"])
+        self.assertTrue(updated["speculativeDecoding"])
+        self.assertEqual(updated["treeBudget"], 64)
 
     def test_settings_endpoint_updates_model_directories_and_launch_defaults(self):
         response = self.client.patch(

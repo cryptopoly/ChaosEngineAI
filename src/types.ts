@@ -49,6 +49,7 @@ export interface SystemStats {
     available: boolean;
     mlxAvailable: boolean;
     vllmAvailable: boolean;
+    ddtreeAvailable?: boolean;
     supportedModels: string[];
   };
   runningLlmProcesses: Array<{

@@ -34,6 +34,7 @@ from backend_service.models import (
 )
 from backend_service.helpers.system import (
     _best_fit_recommendation,
+    _describe_process,
     _get_disk_usage_for_models,
 )
 from backend_service.helpers.discovery import (
@@ -811,41 +812,42 @@ class ChaosEngineState:
     def update_session(self, session_id: str, request: UpdateSessionRequest) -> dict[str, Any]:
         with self._lock:
             session = self._ensure_session(session_id=session_id)
+            fields_set = getattr(request, "model_fields_set", set())
             if request.title is not None and request.title.strip():
                 session["title"] = request.title.strip()
             if request.model is not None:
                 session["model"] = request.model
-            if request.modelRef is not None:
+            if "modelRef" in fields_set:
                 session["modelRef"] = request.modelRef
-            if request.canonicalRepo is not None:
+            if "canonicalRepo" in fields_set:
                 session["canonicalRepo"] = request.canonicalRepo
-            if request.modelSource is not None:
+            if "modelSource" in fields_set:
                 session["modelSource"] = request.modelSource
-            if request.modelPath is not None:
+            if "modelPath" in fields_set:
                 session["modelPath"] = request.modelPath
-            if request.modelBackend is not None:
+            if "modelBackend" in fields_set:
                 session["modelBackend"] = request.modelBackend
-            if request.thinkingMode is not None:
+            if "thinkingMode" in fields_set:
                 session["thinkingMode"] = request.thinkingMode
-            if request.pinned is not None:
+            if "pinned" in fields_set:
                 session["pinned"] = request.pinned
-            if request.cacheStrategy is not None:
+            if "cacheStrategy" in fields_set:
                 session["cacheStrategy"] = request.cacheStrategy
-            if request.cacheBits is not None:
+            if "cacheBits" in fields_set:
                 session["cacheBits"] = request.cacheBits
-            if request.fp16Layers is not None:
+            if "fp16Layers" in fields_set:
                 session["fp16Layers"] = request.fp16Layers
-            if request.fusedAttention is not None:
+            if "fusedAttention" in fields_set:
                 session["fusedAttention"] = request.fusedAttention
-            if request.fitModelInMemory is not None:
+            if "fitModelInMemory" in fields_set:
                 session["fitModelInMemory"] = request.fitModelInMemory
-            if request.contextTokens is not None:
+            if "contextTokens" in fields_set:
                 session["contextTokens"] = request.contextTokens
-            if request.speculativeDecoding is not None:
+            if "speculativeDecoding" in fields_set:
                 session["speculativeDecoding"] = request.speculativeDecoding
-            if request.treeBudget is not None:
+            if "treeBudget" in fields_set:
                 session["treeBudget"] = request.treeBudget
-            if request.dflashDraftModel is not None:
+            if "dflashDraftModel" in fields_set:
                 session["dflashDraftModel"] = request.dflashDraftModel
             if request.messages is not None:
                 session["messages"] = request.messages
@@ -1222,7 +1224,12 @@ class ChaosEngineState:
                 "runtime": self.runtime.status(active_requests=self.active_requests, requests_served=self.requests_served),
             }
 
-    def load_model(self, request: LoadModelRequest) -> dict[str, Any]:
+    def load_model(
+        self,
+        request: LoadModelRequest,
+        *,
+        keep_warm_previous: bool = True,
+    ) -> dict[str, Any]:
         with self._lock:
             catalog_entry = self._find_catalog_entry(request.modelRef)
             library_entry = self._find_library_entry(request.path, request.modelRef)
@@ -1275,6 +1282,7 @@ class ChaosEngineState:
                 effective_cache_strategy = "native"
                 effective_cache_bits = 0
                 effective_fp16_layers = 0
+            exclusive_memory_load = bool(speculative_decoding and resolved_backend == "mlx")
 
             same_loaded_model = (
                 self.runtime.loaded_model is not None
@@ -1380,6 +1388,15 @@ class ChaosEngineState:
                     fused_attention=request.fusedAttention,
                 )
             else:
+                warm_model_count = len(self.runtime.warm_models())
+                if exclusive_memory_load and warm_model_count > 0:
+                    cleared = self.runtime.clear_warm_pool()
+                    if cleared > 0:
+                        self.add_log(
+                            "runtime",
+                            "info",
+                            f"Cleared {cleared} warm model{'s' if cleared != 1 else ''} before speculative MLX load.",
+                        )
                 loaded = self.runtime.load_model(
                     model_ref=request.modelRef,
                     model_name=model_name,
@@ -1396,6 +1413,7 @@ class ChaosEngineState:
                     context_tokens=request.contextTokens,
                     speculative_decoding=speculative_decoding,
                     tree_budget=tree_budget,
+                    keep_warm_previous=keep_warm_previous and not exclusive_memory_load,
                     progress_callback=_on_load_progress,
                 )
         except Exception:
@@ -2098,6 +2116,7 @@ class ChaosEngineState:
                         system_prompt=effective_system_prompt,
                         max_tokens=request.maxTokens, temperature=request.temperature,
                         images=request.images,
+                        thinking_mode=effective_thinking_mode,
                     ):
                         if chunk.reasoning:
                             full_reasoning += chunk.reasoning
@@ -2566,7 +2585,59 @@ class ChaosEngineState:
                 (engine.engine_name, info.name)
                 for engine, info in self.runtime._warm_pool.values()
             ]
-            procs = system_stats.get("runningLlmProcesses") or []
+            procs = list(system_stats.get("runningLlmProcesses") or [])
+            seen_pids = {
+                int(pid)
+                for pid in (proc.get("pid") for proc in procs)
+                if isinstance(pid, int)
+            }
+            proc_by_pid = {
+                int(proc["pid"]): proc
+                for proc in procs
+                if isinstance(proc.get("pid"), int)
+            }
+
+            tracked_runtime_processes: list[tuple[int, str]] = []
+            active_pid_getter = getattr(self.runtime.engine, "process_pid", None) if self.runtime.engine else None
+            active_pid = active_pid_getter() if callable(active_pid_getter) else None
+            if isinstance(active_pid, int):
+                active_kind = "other"
+                if loaded_engine == "mlx":
+                    active_kind = "mlx_worker"
+                elif loaded_engine == "llama.cpp":
+                    active_kind = "llama_server"
+                tracked_runtime_processes.append((active_pid, active_kind))
+
+            for engine, _info in self.runtime._warm_pool.values():
+                pid_getter = getattr(engine, "process_pid", None)
+                warm_pid = pid_getter() if callable(pid_getter) else None
+                if not isinstance(warm_pid, int) or warm_pid in seen_pids:
+                    continue
+                warm_kind = "other"
+                if engine.engine_name == "mlx":
+                    warm_kind = "mlx_worker"
+                elif engine.engine_name == "llama.cpp":
+                    warm_kind = "llama_server"
+                tracked_runtime_processes.append((warm_pid, warm_kind))
+
+            for pid, kind in tracked_runtime_processes:
+                described = _describe_process(pid, kind_hint=kind, owner_hint="ChaosEngineAI")
+                if described is None:
+                    continue
+                existing = proc_by_pid.get(pid)
+                if existing is not None:
+                    model_name = existing.get("modelName")
+                    model_status = existing.get("modelStatus")
+                    existing.clear()
+                    existing.update(described)
+                    if model_name:
+                        existing["modelName"] = model_name
+                    if model_status:
+                        existing["modelStatus"] = model_status
+                    continue
+                procs.append(described)
+                seen_pids.add(pid)
+                proc_by_pid[pid] = described
 
             mlx_workers = [p for p in procs if p.get("kind") == "mlx_worker"]
             llama_servers = [p for p in procs if p.get("kind") == "llama_server"]
@@ -2604,6 +2675,23 @@ class ChaosEngineState:
                 if warm_llama and not proc.get("modelName"):
                     proc["modelName"] = warm_llama.pop(0)
                     proc["modelStatus"] = "warm"
+
+            def _proc_rank(proc: dict[str, Any]) -> tuple[int, float, float]:
+                status = proc.get("modelStatus")
+                if status == "active":
+                    priority = 0
+                elif status == "warm":
+                    priority = 1
+                else:
+                    priority = 2
+                return (
+                    priority,
+                    -float(proc.get("memoryGb", 0.0)),
+                    -float(proc.get("cpuPercent", 0.0)),
+                )
+
+            procs.sort(key=_proc_rank)
+            system_stats["runningLlmProcesses"] = procs[:12]
         except Exception:
             pass
 

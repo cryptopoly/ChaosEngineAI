@@ -64,10 +64,25 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
     def _sse_event(data: dict[str, Any]) -> str:
         return f"data: {json.dumps(data)}\n\n"
 
-    def _applied_runtime_payload() -> dict[str, Any]:
+    def _requested_runtime_payload(launch: CompareLaunchSettings) -> dict[str, Any]:
+        return state._requested_runtime_metrics_fields(
+            cache_strategy=launch.cacheStrategy,
+            cache_bits=launch.cacheBits,
+            fp16_layers=launch.fp16Layers,
+            fit_model_in_memory=launch.fitModelInMemory,
+            speculative_decoding=launch.speculativeDecoding,
+            tree_budget=launch.treeBudget,
+        )
+
+    def _compare_loaded_model_metrics() -> dict[str, Any]:
+        metrics = state._loaded_model_metrics_fields().copy()
+        metrics.pop("model", None)
+        return metrics
+
+    def _applied_runtime_payload(requested_runtime: dict[str, Any]) -> dict[str, Any]:
         loaded = state.runtime.loaded_model
         if loaded is None:
-            return {}
+            return requested_runtime
         cache_label = state._cache_label(
             cache_strategy=str(loaded.cacheStrategy),
             bits=int(loaded.cacheBits),
@@ -86,9 +101,42 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                 spec_label += f" ({loaded.dflashDraftModel.split('/')[-1]})"
             parts.append(spec_label)
         return {
+            **_compare_loaded_model_metrics(),
+            **requested_runtime,
             "appliedSummary": " · ".join(parts),
             "runtimeNote": loaded.runtimeNote,
         }
+
+    def _done_runtime_payload(
+        *,
+        final_chunk: Any,
+        elapsed_seconds: float,
+        requested_runtime: dict[str, Any],
+    ) -> dict[str, Any]:
+        completion_tokens = final_chunk.completion_tokens if final_chunk else 0
+        prompt_tokens = final_chunk.prompt_tokens if final_chunk else 0
+        tok_s = final_chunk.tok_s or (
+            completion_tokens / max(elapsed_seconds, 0.01) if completion_tokens else 0
+        )
+        payload = {
+            **_compare_loaded_model_metrics(),
+            **state._result_runtime_metrics_fields(final_chunk),
+            **requested_runtime,
+            "finishReason": final_chunk.finish_reason if final_chunk else "stop",
+            "promptTokens": prompt_tokens,
+            "completionTokens": completion_tokens,
+            "totalTokens": prompt_tokens + completion_tokens,
+            "tokS": round(tok_s, 1),
+            "responseSeconds": elapsed_seconds,
+            "runtimeNote": (
+                final_chunk.runtime_note
+                if final_chunk and getattr(final_chunk, "runtime_note", None) is not None
+                else state.runtime.loaded_model.runtimeNote if state.runtime.loaded_model else None
+            ),
+        }
+        if final_chunk and getattr(final_chunk, "dflash_acceptance_rate", None) is not None:
+            payload["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
+        return payload
 
     def _load_model(model: CompareModelRequest):
         """Load a model with its own launch settings from the compare request."""
@@ -111,14 +159,23 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
             speculativeDecoding=launch.speculativeDecoding,
             treeBudget=launch.treeBudget,
         )
-        state.load_model(req)
+        state.load_model(req, keep_warm_previous=False)
 
     def _sse_stream():
+        cleared_warm_models = state.runtime.clear_warm_pool()
+        if cleared_warm_models:
+            state.add_log(
+                "runtime",
+                "info",
+                f"Compare cleared {cleared_warm_models} warm model(s) before exclusive loading.",
+            )
+
         # --- Model A ---
         yield _sse_event({"model": "a", "loading": True, "message": f"Loading {body.modelA.modelName or body.modelA.modelRef}..."})
         try:
             _load_model(body.modelA)
-            yield _sse_event({"model": "a", "loaded": True, **_applied_runtime_payload()})
+            requested_runtime_a = _requested_runtime_payload(body.modelA.launch)
+            yield _sse_event({"model": "a", "loaded": True, **_applied_runtime_payload(requested_runtime_a)})
         except Exception as exc:
             yield _sse_event({"model": "a", "error": str(exc)})
             yield _sse_event({"allDone": True})
@@ -143,8 +200,16 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                     yield _sse_event({"model": "a", "token": chunk.text})
                 if chunk.done:
                     elapsed_a = round(time.perf_counter() - gen_start_a, 2)
-                    tok_s = chunk.tok_s or (chunk.completion_tokens / max(elapsed_a, 0.01) if chunk.completion_tokens else 0)
-                    yield _sse_event({"model": "a", "done": True, "text": full_text_a, "tokS": round(tok_s, 1), "promptTokens": chunk.prompt_tokens or 0, "completionTokens": chunk.completion_tokens or 0, "responseSeconds": elapsed_a})
+                    yield _sse_event({
+                        "model": "a",
+                        "done": True,
+                        "text": full_text_a,
+                        **_done_runtime_payload(
+                            final_chunk=chunk,
+                            elapsed_seconds=elapsed_a,
+                            requested_runtime=requested_runtime_a,
+                        ),
+                    })
         except Exception as exc:
             yield _sse_event({"model": "a", "error": str(exc)})
 
@@ -152,7 +217,8 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
         yield _sse_event({"model": "b", "loading": True, "message": f"Loading {body.modelB.modelName or body.modelB.modelRef}..."})
         try:
             _load_model(body.modelB)
-            yield _sse_event({"model": "b", "loaded": True, **_applied_runtime_payload()})
+            requested_runtime_b = _requested_runtime_payload(body.modelB.launch)
+            yield _sse_event({"model": "b", "loaded": True, **_applied_runtime_payload(requested_runtime_b)})
         except Exception as exc:
             yield _sse_event({"model": "b", "error": str(exc)})
             yield _sse_event({"allDone": True})
@@ -177,8 +243,16 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                     yield _sse_event({"model": "b", "token": chunk.text})
                 if chunk.done:
                     elapsed_b = round(time.perf_counter() - gen_start_b, 2)
-                    tok_s = chunk.tok_s or (chunk.completion_tokens / max(elapsed_b, 0.01) if chunk.completion_tokens else 0)
-                    yield _sse_event({"model": "b", "done": True, "text": full_text_b, "tokS": round(tok_s, 1), "promptTokens": chunk.prompt_tokens or 0, "completionTokens": chunk.completion_tokens or 0, "responseSeconds": elapsed_b})
+                    yield _sse_event({
+                        "model": "b",
+                        "done": True,
+                        "text": full_text_b,
+                        **_done_runtime_payload(
+                            final_chunk=chunk,
+                            elapsed_seconds=elapsed_b,
+                            requested_runtime=requested_runtime_b,
+                        ),
+                    })
         except Exception as exc:
             yield _sse_event({"model": "b", "error": str(exc)})
 

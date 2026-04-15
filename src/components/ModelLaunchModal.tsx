@@ -161,6 +161,9 @@ export function ModelLaunchModal({
               installingPackage={installingPackage}
               dflashInfo={dflashInfo}
               selectedBackend={selectedOption?.backend}
+              selectedModelRef={selectedOption?.modelRef}
+              selectedCanonicalRepo={selectedOption?.canonicalRepo}
+              selectedModelName={selectedOption?.model}
               compact
             />
           </div>

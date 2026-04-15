@@ -11,6 +11,7 @@ import {
   updateSession,
 } from "./api";
 import { LaunchModal } from "./components/LaunchModal";
+import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
@@ -132,12 +133,13 @@ export default function App() {
   const models = useModels(
     backendOnline,
     "", // activeChatId placeholder — patched below
+    workspace.featuredModels,
     setError,
     async (preferredChatId?: string) => { await refreshWorkspace(preferredChatId); },
   );
   const {
     searchInput, setSearchInput,
-    searchResults, setSearchResults,
+    searchResults,
     hubResults,
     expandedHubId,
     hubFileCache,
@@ -204,7 +206,7 @@ export default function App() {
     };
   });
   const filteredLibraryRows = libraryRows
-    .filter(({ item }) => item.modelType !== "image")
+    .filter(({ item }) => item.modelType === "text" || (!item.modelType))
     .filter(({ item, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
       const haystack = `${item.name} ${item.path} ${displayFormat} ${displayQuantization ?? ""} ${displayBackend} ${sourceKind} ${item.directoryLabel ?? ""}`.toLowerCase();
       return haystack.includes(librarySearchInput.trim().toLowerCase());
@@ -247,7 +249,7 @@ export default function App() {
       maxContext: variant.maxContext ?? null,
     }));
 
-  const libraryChatOptions: ChatModelOption[] = workspace.library.filter((item) => item.modelType !== "image").map((item) => {
+  const libraryChatOptions: ChatModelOption[] = workspace.library.filter((item) => item.modelType === "text" || (!item.modelType)).map((item) => {
     const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
     const displayFormat = libraryItemFormat(item, matched);
     const displayQuantization = libraryItemQuantization(item, matched);
@@ -284,6 +286,25 @@ export default function App() {
       : `${workspace.runtime.loadedModel.cacheStrategy} ${workspace.runtime.loadedModel.cacheBits}-bit ${workspace.runtime.loadedModel.fp16Layers}+${workspace.runtime.loadedModel.fp16Layers}`
     : launchCacheLabel;
 
+  function sanitizeSpeculativeForModel(params: {
+    backend: string;
+    modelRef: string;
+    canonicalRepo?: string | null;
+    modelName: string;
+    speculativeDecoding: boolean;
+    treeBudget: number;
+  }) {
+    return sanitizeSpeculativeSelection({
+      dflashInfo: workspace.system.dflash,
+      selectedBackend: params.backend,
+      modelRef: params.modelRef,
+      canonicalRepo: params.canonicalRepo ?? null,
+      modelName: params.modelName,
+      speculativeDecoding: params.speculativeDecoding,
+      treeBudget: params.treeBudget,
+    });
+  }
+
   // ── Load model handler (stays in App — cross-domain) ───────
   async function handleLoadModel(payload: {
     modelRef: string;
@@ -306,6 +327,14 @@ export default function App() {
     setError(null);
     setBusyAction(payload.busyLabel ?? "Loading model...");
     try {
+      const sanitizedSpeculative = sanitizeSpeculativeForModel({
+        backend: payload.backend ?? "auto",
+        modelRef: payload.modelRef,
+        canonicalRepo: payload.canonicalRepo ?? undefined,
+        modelName: payload.modelName ?? payload.modelRef,
+        speculativeDecoding: payload.speculativeDecoding ?? launchSettings.speculativeDecoding,
+        treeBudget: payload.treeBudget ?? launchSettings.treeBudget,
+      });
       const loadPayload = {
         modelRef: payload.modelRef,
         modelName: payload.modelName,
@@ -319,8 +348,8 @@ export default function App() {
         cacheStrategy: payload.cacheStrategy ?? launchSettings.cacheStrategy,
         fitModelInMemory: payload.fitModelInMemory ?? launchSettings.fitModelInMemory,
         contextTokens: payload.contextTokens ?? launchSettings.contextTokens,
-        speculativeDecoding: payload.speculativeDecoding ?? launchSettings.speculativeDecoding,
-        treeBudget: payload.treeBudget ?? launchSettings.treeBudget,
+        speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
+        treeBudget: sanitizedSpeculative.treeBudget,
       };
 
       let loadSucceeded = false;
@@ -454,7 +483,6 @@ export default function App() {
   // Sync initial payload into all hooks on first successful load
   useEffect(() => {
     if (loading) return;
-    setSearchResults(workspace.featuredModels);
     setPreview(workspace.preview);
     setLaunchSettings(workspace.settings.launchPreferences);
     setSettingsDraft(settingsDraftFromWorkspace(workspace.settings));
@@ -633,7 +661,15 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "chat") return;
     const handle = requestAnimationFrame(() => {
-      if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      const el = chatScrollRef.current;
+      if (!el) return;
+      // Only auto-scroll if the user is already near the bottom.
+      // This lets users scroll up to read earlier content during streaming
+      // without being yanked back to the bottom on every token.
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (nearBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
     });
     return () => cancelAnimationFrame(handle);
   }, [activeTab, activeChat?.id, activeChat?.messages.length, lastMessageLength, chatScrollRef]);
@@ -875,16 +911,27 @@ export default function App() {
     ChatSession,
     "model" | "modelRef" | "canonicalRepo" | "modelSource" | "modelPath" | "modelBackend" | "cacheLabel" | "updatedAt"
     | "cacheStrategy" | "cacheBits" | "fp16Layers" | "fusedAttention" | "fitModelInMemory"
-    | "contextTokens" | "speculativeDecoding" | "treeBudget"
+    | "contextTokens" | "speculativeDecoding" | "dflashDraftModel" | "treeBudget"
   > {
     const localItem = findLibraryItemForVariant(workspace.library, variant);
+    const modelRef = localItem?.name ?? variant.id;
+    const modelName = localItem?.name ?? variant.name;
+    const modelBackend = localItem ? libraryItemBackend(localItem, variant) : variant.backend;
+    const sanitizedSpeculative = sanitizeSpeculativeForModel({
+      backend: modelBackend,
+      modelRef,
+      canonicalRepo: variant.repo,
+      modelName,
+      speculativeDecoding: launchSettings.speculativeDecoding,
+      treeBudget: launchSettings.treeBudget,
+    });
     return {
-      model: localItem?.name ?? variant.name,
-      modelRef: localItem?.name ?? variant.id,
+      model: modelName,
+      modelRef,
       canonicalRepo: variant.repo,
       modelSource: localItem ? "library" : "catalog",
       modelPath: localItem?.path ?? null,
-      modelBackend: localItem ? libraryItemBackend(localItem, variant) : variant.backend,
+      modelBackend,
       cacheLabel: launchCacheLabel,
       cacheStrategy: launchSettings.cacheStrategy,
       cacheBits: launchSettings.cacheBits,
@@ -892,8 +939,9 @@ export default function App() {
       fusedAttention: launchSettings.fusedAttention,
       fitModelInMemory: launchSettings.fitModelInMemory,
       contextTokens: launchSettings.contextTokens,
-      speculativeDecoding: launchSettings.speculativeDecoding,
-      treeBudget: launchSettings.treeBudget,
+      speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
+      dflashDraftModel: null,
+      treeBudget: sanitizedSpeculative.treeBudget,
       updatedAt: new Date().toLocaleString(),
     };
   }
@@ -969,6 +1017,14 @@ export default function App() {
       }
     } else if (action === "chat") {
       if (activeChat) {
+        const sanitizedSpeculative = sanitizeSpeculativeForModel({
+          backend: option.backend,
+          modelRef: option.modelRef,
+          canonicalRepo: option.canonicalRepo ?? null,
+          modelName: option.model,
+          speculativeDecoding: activeChat.speculativeDecoding ?? launchSettings.speculativeDecoding,
+          treeBudget: activeChat.treeBudget ?? launchSettings.treeBudget,
+        });
         await persistSessionChanges(activeChat.id, {
           model: option.model,
           modelRef: option.modelRef,
@@ -976,6 +1032,9 @@ export default function App() {
           modelSource: option.source,
           modelPath: option.path ?? null,
           modelBackend: option.backend,
+          speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
+          dflashDraftModel: null,
+          treeBudget: sanitizedSpeculative.treeBudget,
           updatedAt: new Date().toLocaleString(),
         });
       }
@@ -1104,6 +1163,12 @@ export default function App() {
         onLibraryFormatFilterChange={setLibraryFormatFilter}
         libraryBackendFilter={libraryBackendFilter}
         onLibraryBackendFilterChange={setLibraryBackendFilter}
+        strategyCompat={{
+          turboInstalled: !!workspace.system.llamaServerTurboPath,
+          turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
+          chaosengineAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "chaosengine" && s.available) ?? false,
+          dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
+        }}
         expandedLibraryPath={expandedLibraryPath}
         onExpandedLibraryPathChange={setExpandedLibraryPath}
         fileRevealLabel={fileRevealLabel}
@@ -1288,19 +1353,7 @@ export default function App() {
       />
     );
   } else if (activeTab === "chat") {
-    content = compareMode ? (
-      <CompareView
-        modelOptions={libraryChatOptions}
-        onBack={() => setCompareMode(false)}
-        launchSettings={launchSettings}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-      />
-    ) : (
+    content = (
       <ChatTab
         sortedChatSessions={sortedChatSessions}
         activeChat={activeChat}
@@ -1466,6 +1519,22 @@ export default function App() {
     />;
   }
 
+  const compareView = compareMode ? (
+    <div style={{ display: activeTab === "chat" ? "block" : "none", height: "100%" }}>
+      <CompareView
+        modelOptions={libraryChatOptions}
+        onBack={() => setCompareMode(false)}
+        launchSettings={launchSettings}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+      />
+    </div>
+  ) : null;
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -1537,7 +1606,14 @@ export default function App() {
         </div>
 
         <div className="workspace-content-frame">
-          {loading ? <div className="loading-state">Loading workspace state...</div> : content}
+          {loading ? (
+            <div className="loading-state">Loading workspace state...</div>
+          ) : (
+            <>
+              {compareView}
+              {(!compareMode || activeTab !== "chat") ? content : null}
+            </>
+          )}
         </div>
       </main>
       <LaunchModal

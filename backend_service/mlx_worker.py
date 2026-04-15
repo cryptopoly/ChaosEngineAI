@@ -463,7 +463,8 @@ class WorkerState:
         self.fused_attention = False
         self.context_tokens = 8192
         self.speculative_decoding = False
-        self._dflash_generator = None  # DFlashGenerator instance when active
+        self._dflash_generator = None  # Loaded DFlash draft model when active
+        self._dflash_target = None     # Target model prepared by dflash_mlx.runtime
         self.tree_budget = 0
         self._ddtree_draft = None     # DFlashDraftModel for DDTree
         self._ddtree_target = None    # target model loaded via dflash_mlx for DDTree
@@ -499,6 +500,7 @@ class WorkerState:
         self.speculative_decoding = bool(request.get("speculativeDecoding", False))
         dflash_draft_model = request.get("dflashDraftModel")
         self._dflash_generator = None
+        self._dflash_target = None
         self._ddtree_draft = None
         self._ddtree_target = None
         self.tree_budget = 0
@@ -628,15 +630,17 @@ class WorkerState:
         self.tree_budget = int(request.get("treeBudget") or 0)
         if self.speculative_decoding and dflash_draft_model:
             try:
-                from dflash_mlx import DFlashGenerator
+                from dflash_mlx.runtime import configure_full_attention_split, load_draft_bundle
                 emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
-                self._dflash_generator = DFlashGenerator(
-                    target_model=local_path,
-                    draft_model=dflash_draft_model,
-                )
+                # Reuse the already loaded MLX target model. Loading a second
+                # target bundle can duplicate the full model footprint and
+                # trigger SIGKILL on large models during DFLASH startup.
+                self._dflash_target = self.model
+                configure_full_attention_split(self._dflash_target, enabled=True)
+                self._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
                 dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
-            except ImportError:
-                dflash_note = "dflash-mlx is not installed. Falling back to standard generation."
+            except ImportError as exc:
+                dflash_note = f"dflash-mlx could not be imported ({exc}). Falling back to standard generation."
                 self.speculative_decoding = False
             except Exception as exc:
                 dflash_note = f"DFLASH initialisation failed: {exc}. Falling back to standard generation."
@@ -645,10 +649,9 @@ class WorkerState:
             # Load DDTree components when tree budget is set
             if self.speculative_decoding and self.tree_budget > 0:
                 try:
-                    from dflash_mlx.runtime import load_target_bundle, load_draft_bundle
-                    emit_progress("ddtree", 97.0, f"Loading DDTree draft bundle: {dflash_draft_model}")
-                    self._ddtree_target, _ = load_target_bundle(local_path)
-                    self._ddtree_draft, _ = load_draft_bundle(dflash_draft_model)
+                    emit_progress("ddtree", 97.0, "Preparing DDTree runtime")
+                    self._ddtree_target = self._dflash_target
+                    self._ddtree_draft = self._dflash_generator
                     dflash_note = f"DDTree speculative decoding active (budget={self.tree_budget}, draft: {dflash_draft_model})."
                 except Exception as exc:
                     dflash_note = f"DDTree init failed ({exc}). Using linear DFLASH."
@@ -689,6 +692,7 @@ class WorkerState:
         self.model = None
         self.tokenizer = None
         self._dflash_generator = None
+        self._dflash_target = None
         self._ddtree_draft = None
         self._ddtree_target = None
         self.speculative_decoding = False
@@ -797,6 +801,8 @@ class WorkerState:
 
     def _generate_dflash(self, request: dict[str, Any]) -> dict[str, Any]:
         """Generate using DFLASH speculative decoding."""
+        from dflash_mlx.runtime import generate_dflash_once
+
         # Build prompt text
         system_prompt = request.get("systemPrompt")
         tools_block = _format_tools_for_prompt(request.get("tools"))
@@ -810,39 +816,64 @@ class WorkerState:
             system_prompt=system_prompt,
         )
 
-        started = time.monotonic()
-        result = self._dflash_generator.generate(
-            prompt_text,
-            max_new_tokens=int(request.get("maxTokens") or 256),
-            temperature=float(request.get("temperature") or 0.0),
-        )
-        elapsed = time.monotonic() - started
+        prompt_tokens = self.tokenizer.encode(prompt_text)
+        eos_token_ids = list(getattr(self.tokenizer, "eos_token_ids", None) or [])
+        eos_token_id = getattr(self.tokenizer, "eos_token_id", None)
+        if eos_token_id is not None and int(eos_token_id) not in eos_token_ids:
+            eos_token_ids.append(int(eos_token_id))
 
-        text = _strip_thinking_tokens(result.text.strip()) if result.text else ""
+        summary = generate_dflash_once(
+            target_model=self._dflash_target or self.model,
+            tokenizer=self.tokenizer,
+            draft_model=self._dflash_generator,
+            prompt=prompt_text,
+            max_new_tokens=int(request.get("maxTokens") or 256),
+            use_chat_template=False,
+            stop_token_ids=eos_token_ids,
+            prompt_tokens_override=prompt_tokens,
+        )
+
+        gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
+        text = self.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
+        text = _strip_thinking_tokens(text) if text else ""
         if not text:
             text = "Generation completed without decoded text."
 
-        metrics = getattr(result, "metrics", None) or {}
-        acceptance_rate = metrics.get("avg_acceptance_length") or metrics.get("acceptance_rate")
-        output_tokens = getattr(result, "output_tokens", 0) or len(text.split())
-        tok_s = round(output_tokens / max(elapsed, 1e-6), 1)
+        output_tokens = int(summary.get("generation_tokens") or len(gen_tokens))
+        prompt_token_count = int(summary.get("prompt_token_count") or len(prompt_tokens))
+        elapsed = max(float(summary.get("elapsed_us") or 0.0) / 1e6, 1e-6)
+        phase_timings = dict(summary.get("phase_timings_us") or {})
+        prefill_elapsed = max(0.0, float(phase_timings.get("prefill") or 0.0) / 1e6)
+        generation_elapsed = max(elapsed - prefill_elapsed, 1e-6)
+        tok_s = round(output_tokens / generation_elapsed, 1) if output_tokens else 0.0
+        cycles_completed = int(summary.get("cycles_completed") or 0)
+        accepted_from_draft = int(summary.get("accepted_from_draft") or 0)
+        acceptance_rate = (
+            accepted_from_draft / cycles_completed
+            if cycles_completed > 0
+            else None
+        )
 
         runtime_note = _merge_runtime_notes(
             prompt_note,
-            f"DFLASH speculative decoding. Acceptance rate: {acceptance_rate:.1f} avg tokens." if acceptance_rate else "DFLASH speculative decoding.",
+            (
+                f"DFLASH speculative decoding. Acceptance rate: {acceptance_rate:.1f} avg tokens."
+                if acceptance_rate is not None
+                else "DFLASH speculative decoding."
+            ),
         )
 
         return {
             "text": text,
             "finishReason": "stop",
-            "promptTokens": 0,
+            "promptTokens": prompt_token_count,
             "completionTokens": output_tokens,
-            "totalTokens": output_tokens,
+            "totalTokens": prompt_token_count + output_tokens,
             "tokS": tok_s,
             "promptTokS": 0.0,
-            "peakMemoryGb": 0.0,
+            "peakMemoryGb": round(float(summary.get("peak_memory_gb") or 0.0), 3),
             "runtimeNote": runtime_note,
-            "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
+            "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate is not None else None,
             **self._runtime_fields(prompt_cache=None, speculative_decoding=True, tree_budget=0),
         }
 
@@ -1053,6 +1084,7 @@ class WorkerState:
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("No MLX model is loaded.")
 
+        speculative_stream_fallback_note = None
         # DFLASH doesn't support token-level streaming natively, so emit
         # the full result as a single chunk in the streaming protocol.
         if self.speculative_decoding and self._dflash_generator is not None:
@@ -1081,8 +1113,11 @@ class WorkerState:
                     },
                 })
                 return
-            except Exception:
-                pass  # Fall through to standard streaming
+            except Exception as exc:
+                speculative_stream_fallback_note = (
+                    f"Speculative decoding stream path failed ({exc}). "
+                    "Fell back to standard generation."
+                )
 
         from mlx_lm import stream_generate as mlx_stream_generate
         from mlx_lm.sample_utils import make_sampler
@@ -1102,10 +1137,12 @@ class WorkerState:
         sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
+        runtime_note = _merge_runtime_notes(runtime_note, speculative_stream_fallback_note)
         runtime_fields = self._runtime_fields(prompt_cache=prompt_cache)
         transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
-        think_filter = ThinkingTokenFilter()
+        thinking_mode = request.get("thinkingMode") or "off"
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
         transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
         transcript_trimmed = False
         runaway_guard = RunawayGuard()
@@ -1170,7 +1207,7 @@ class WorkerState:
                     )
                 )
                 runtime_fields = self._runtime_fields(prompt_cache=None)
-                think_filter = ThinkingTokenFilter()
+                think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
                 transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
                 transcript_trimmed = False
                 runaway_guard = RunawayGuard()

@@ -857,6 +857,7 @@ class BaseInferenceEngine:
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        thinking_mode: str | None = None,
     ) -> Iterator[StreamChunk]:
         result = self.generate(
             prompt=prompt,
@@ -1495,6 +1496,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        thinking_mode: str | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -1513,6 +1515,8 @@ class MLXWorkerEngine(BaseInferenceEngine):
             "maxTokens": max_tokens,
             "temperature": temperature,
         }
+        if thinking_mode:
+            payload["thinkingMode"] = thinking_mode
         if images:
             payload["images"] = images
         if tools:
@@ -1905,11 +1909,19 @@ class LlamaCppEngine(BaseInferenceEngine):
 
         strat = _strategy_registry.get(actual_strategy) or _strategy_registry.default()
         actual_cache_bits = cache_bits if actual_strategy != "native" else 0
-        actual_fp16_layers = fp16_layers if actual_strategy != "native" else 0
+        # The current llama.cpp / llama-server cache-type interface only exposes a
+        # uniform KV dtype per cache (for example ``turbo3`` or ``q4_0``).  It does
+        # not accept the mixed-precision ``fp16Layers`` split used by other backends.
+        actual_fp16_layers = 0
         if runtime_note is None:
             runtime_note = (
                 f"GGUF generation is running through the local llama.cpp server with "
                 f"{strat.label(actual_cache_bits, actual_fp16_layers)} cache."
+            )
+        if actual_strategy != "native" and fp16_layers > 0:
+            runtime_note = _append_runtime_note(
+                runtime_note,
+                "llama.cpp currently ignores the FP16 layers setting for compressed KV cache types.",
             )
 
         self.loaded_model = LoadedModelInfo(
@@ -2022,6 +2034,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        thinking_mode: str | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -2072,7 +2085,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         stream_start = time.perf_counter()
         first_token_time: float | None = None
         runtime_note = self.loaded_model.runtimeNote
-        think_filter = ThinkingTokenFilter()
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
         try:
             for raw_line in resp:
@@ -2238,7 +2251,12 @@ class RuntimeController:
             except Exception:
                 pass
 
-    def _park_active_engine_or_unload(self, *, requested_identity: str) -> None:
+    def _park_active_engine_or_unload(
+        self,
+        *,
+        requested_identity: str,
+        keep_warm_previous: bool = True,
+    ) -> None:
         if not self.loaded_model or not self.engine:
             return
         current_key = self._warm_pool_key_for_loaded(self.loaded_model)
@@ -2250,6 +2268,12 @@ class RuntimeController:
                 pass
             return
         self._purge_warm_entries_for_identity(current_identity, keep_key=current_key)
+        if not keep_warm_previous:
+            try:
+                self.engine.unload_model()
+            except Exception:
+                pass
+            return
         self._evict_warm_pool()
         self._warm_pool[current_key] = (self.engine, self.loaded_model)
 
@@ -2368,6 +2392,20 @@ class RuntimeController:
         self.prune_stale_backend_children()
         return True
 
+    def clear_warm_pool(self) -> int:
+        """Unload and forget every parked warm model."""
+        with self._pool_lock:
+            entries = list(self._warm_pool.values())
+            self._warm_pool.clear()
+        for engine, _info in entries:
+            try:
+                engine.unload_model()
+            except Exception:
+                pass
+        if entries:
+            self.prune_stale_backend_children()
+        return len(entries)
+
     def refresh_capabilities(self, *, force: bool = False) -> BackendCapabilities:
         if force:
             # Clear cached help text and cache type sets so that newly
@@ -2484,6 +2522,7 @@ class RuntimeController:
         context_tokens: int = 8192,
         speculative_decoding: bool = False,
         tree_budget: int = 0,
+        keep_warm_previous: bool = True,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
         self.refresh_capabilities()
@@ -2530,7 +2569,10 @@ class RuntimeController:
         if pool_key in self._warm_pool:
             cached_engine, cached_info = self._warm_pool.pop(pool_key)
             self._purge_warm_entries_for_identity(requested_identity)
-            self._park_active_engine_or_unload(requested_identity=requested_identity)
+            self._park_active_engine_or_unload(
+                requested_identity=requested_identity,
+                keep_warm_previous=keep_warm_previous,
+            )
             self.engine = cached_engine
             self.loaded_model = cached_info
             if canonical_repo is not None:
@@ -2548,7 +2590,10 @@ class RuntimeController:
         # Never keep multiple warm copies of the same logical model under
         # different runtime profiles; that just burns extra RAM.
         self._purge_warm_entries_for_identity(requested_identity)
-        self._park_active_engine_or_unload(requested_identity=requested_identity)
+        self._park_active_engine_or_unload(
+            requested_identity=requested_identity,
+            keep_warm_previous=keep_warm_previous,
+        )
 
         self.engine = selected_engine
         try:
@@ -2661,6 +2706,7 @@ class RuntimeController:
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         engine: BaseInferenceEngine | None = None,
+        thinking_mode: str | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("Load a model before sending prompts.")
@@ -2674,6 +2720,7 @@ class RuntimeController:
             temperature=temperature,
             images=images,
             tools=tools,
+            thinking_mode=thinking_mode,
         )
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:

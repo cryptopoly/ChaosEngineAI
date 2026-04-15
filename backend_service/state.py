@@ -77,21 +77,6 @@ from backend_service.helpers.network import (
     _local_ipv4_addresses,
 )
 
-_CHAT_RESPONSE_POLICY = (
-    "Give the final answer directly. Do not emit headings like 'Thinking Process' in the final answer."
-)
-
-_THINKING_OFF_POLICY = (
-    "Thinking mode is OFF. Do not think out loud, do not emit planning text, and do not output "
-    "reasoning tags such as <think>. Respond directly with the final answer."
-)
-
-_THINKING_AUTO_POLICY = (
-    "Thinking mode is AUTO. If deliberate reasoning is useful, keep it inside <think>...</think> "
-    "so the UI can show it separately, then provide the final answer outside those tags."
-)
-
-
 _CATALOG_REF_ALIASES = {
     # The non-it MLX Gemma variant lacks a chat template and is a poor default
     # for the chat picker. Resolve old saved refs to the instruct checkpoint.
@@ -100,14 +85,7 @@ _CATALOG_REF_ALIASES = {
 
 
 def _compose_chat_system_prompt(system_prompt: str | None, thinking_mode: str | None = None) -> str:
-    parts = [_CHAT_RESPONSE_POLICY]
-    if (thinking_mode or "off") == "off":
-        parts.append(_THINKING_OFF_POLICY)
-    else:
-        parts.append(_THINKING_AUTO_POLICY)
-    if system_prompt:
-        parts.append(system_prompt)
-    return "\n\n".join(part.strip() for part in parts if part and part.strip()).strip()
+    return (system_prompt or "").strip()
 
 
 def _title_from_prompt(prompt: str | None) -> str:

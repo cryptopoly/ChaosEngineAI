@@ -473,7 +473,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIn("cache", payload["assistant"]["text"].lower())
         self.assertGreater(payload["assistant"]["metrics"]["completionTokens"], 0)
         self.assertEqual(len(payload["session"]["messages"]), 2)
-        self.assertIn("Thinking mode is OFF", self.client.app.state.chaosengine.runtime.last_generate_kwargs["system_prompt"])
+        self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["system_prompt"], "")
 
         workspace = self.client.get("/api/workspace").json()
         self.assertEqual(workspace["runtime"]["state"], "loaded")

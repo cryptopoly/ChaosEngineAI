@@ -57,8 +57,8 @@ def _api(method: str, path: str, *, port: int, body: dict | None = None, timeout
         ) from exc
 
 
-def _stream_api(path: str, *, port: int, body: dict, timeout: float = 300) -> tuple[str, dict]:
-    """POST to an SSE endpoint. Returns (full_text, done_payload)."""
+def _stream_api(path: str, *, port: int, body: dict, timeout: float = 300) -> tuple[str, str, dict]:
+    """POST to an SSE endpoint. Returns (full_text, full_reasoning, done_payload)."""
     url = f"http://127.0.0.1:{port}{path}"
     data = json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, method="POST")
@@ -69,14 +69,16 @@ def _stream_api(path: str, *, port: int, body: dict, timeout: float = 300) -> tu
     full_reasoning = ""
     done_payload: dict = {}
     token_count = 0
+    reasoning_count = 0
 
     with urllib.request.urlopen(req, timeout=timeout) as resp:
+        # Read in chunks rather than byte-by-byte for reliability
         buffer = ""
         while True:
-            chunk = resp.read(1)
-            if not chunk:
+            raw = resp.read(4096)
+            if not raw:
                 break
-            buffer += chunk.decode("utf-8", errors="replace")
+            buffer += raw.decode("utf-8", errors="replace")
 
             while "\n\n" in buffer:
                 event_str, buffer = buffer.split("\n\n", 1)
@@ -87,20 +89,24 @@ def _stream_api(path: str, *, port: int, body: dict, timeout: float = 300) -> tu
                     if "token" in payload:
                         full_text += payload["token"]
                         token_count += 1
-                        # Live progress
                         if token_count % 10 == 0:
                             print(".", end="", flush=True)
                     if "reasoning" in payload:
                         full_reasoning += payload["reasoning"]
+                        reasoning_count += 1
+                        if reasoning_count % 20 == 0:
+                            print("t", end="", flush=True)
+                    if payload.get("reasoningDone"):
+                        print(" [thinking done] ", end="", flush=True)
                     if "error" in payload:
                         raise RuntimeError(f"Inference error: {payload['error']}")
                     if payload.get("done"):
                         done_payload = payload
 
-    if token_count >= 10:
-        print()  # Newline after progress dots
+    if token_count >= 10 or reasoning_count >= 20:
+        print()  # Newline after progress indicators
 
-    return full_text, done_payload
+    return full_text, full_reasoning, done_payload
 
 
 # ── Interactive menus ────────────────────────────────────────────────
@@ -301,6 +307,12 @@ def configure_runtime(
     # ── Fit model in memory ──
     fit_model_in_memory = _pick_bool("Fit model in memory", True)
 
+    # ── Thinking mode ──
+    thinking_mode = "off"
+    thinking_choice = _pick_one("Thinking mode", ["off — no reasoning tokens", "auto — model decides when to think"])
+    if thinking_choice == 1:
+        thinking_mode = "auto"
+
     # ── DFlash speculative decoding ──
     speculative_decoding = False
     tree_budget = 0
@@ -327,6 +339,7 @@ def configure_runtime(
         "fitModelInMemory": fit_model_in_memory,
         "speculativeDecoding": speculative_decoding,
         "treeBudget": tree_budget,
+        "thinkingMode": thinking_mode,
     }
 
 
@@ -445,9 +458,10 @@ def run_inference(
     print()
 
     session_id = f"test-{run_id}"
+    thinking_mode = config.get("thinkingMode", "off")
     gen_start = time.perf_counter()
     try:
-        full_text, done_payload = _stream_api(
+        full_text, full_reasoning, done_payload = _stream_api(
             "/api/chat/generate/stream",
             port=port,
             body={
@@ -459,6 +473,7 @@ def run_inference(
                 "source": model.get("sourceKind", "catalog"),
                 "path": model_path,
                 "backend": config["backend"],
+                "thinkingMode": thinking_mode,
                 "temperature": config["temperature"],
                 "maxTokens": config["maxTokens"],
                 "cacheStrategy": config["cacheStrategy"],
@@ -493,6 +508,9 @@ def run_inference(
     session = done_payload.get("session", {})
     runtime_status = done_payload.get("runtime", {})
 
+    # Use streamed reasoning if the done payload didn't include it
+    saved_reasoning = assistant.get("reasoning") or full_reasoning or None
+
     # Print summary
     tok_s = metrics.get("tokS", 0)
     prompt_tokens = metrics.get("promptTokens", 0)
@@ -507,13 +525,26 @@ def run_inference(
     print(f"  Gen time:   {gen_elapsed:.2f}s")
     print(f"  Load time:  {load_elapsed:.2f}s")
     if dflash_rate is not None:
-        print(f"  DFlash acceptance: {dflash_rate:.1%}")
+        # dflashAcceptanceRate is avg accepted tokens per step, not a 0-1 ratio
+        print(f"  DFlash:     {dflash_rate:.1f} avg accepted tokens/step")
+    if saved_reasoning:
+        print(f"  Reasoning:  {len(saved_reasoning)} chars")
     print(f"\n  Output preview:")
     preview = full_text[:500].strip()
-    for line in preview.splitlines():
-        print(f"    {line}")
-    if len(full_text) > 500:
-        print(f"    ... ({len(full_text)} chars total)")
+    if preview:
+        for line in preview.splitlines():
+            print(f"    {line}")
+        if len(full_text) > 500:
+            print(f"    ... ({len(full_text)} chars total)")
+    else:
+        print(f"    (no visible text — all output was reasoning/thinking)")
+        if saved_reasoning:
+            print(f"\n  Reasoning preview:")
+            r_preview = saved_reasoning[:500].strip()
+            for line in r_preview.splitlines():
+                print(f"    {line}")
+            if len(saved_reasoning) > 500:
+                print(f"    ... ({len(saved_reasoning)} chars total)")
 
     result = {
         "runId": run_id,
@@ -535,7 +566,7 @@ def run_inference(
         "generationTimeSeconds": round(gen_elapsed, 2),
         "output": {
             "text": full_text,
-            "reasoning": assistant.get("reasoning"),
+            "reasoning": saved_reasoning,
         },
         "metrics": metrics,
         "runtimeStatus": runtime_status,
@@ -618,6 +649,7 @@ def run_batch(port: int, batch_file: Path) -> None:
             "fitModelInMemory": test.get("fitModelInMemory", True),
             "speculativeDecoding": test.get("speculativeDecoding", False),
             "treeBudget": test.get("treeBudget", 0),
+            "thinkingMode": test.get("thinkingMode", "off"),
         }
         prompt = test.get("prompt", DEFAULT_PROMPT)
         result = run_inference(port, model, config, prompt, run_id)
@@ -713,6 +745,7 @@ def main() -> None:
         print(f" @ {config['cacheBits']} bit", end="")
     print()
     print(f"  Context:  {config['contextTokens']}")
+    print(f"  Thinking: {config.get('thinkingMode', 'off')}")
     print(f"  DFlash:   {'on' if config['speculativeDecoding'] else 'off'}")
     print(f"  Prompt:   {prompt[:60]}{'...' if len(prompt) > 60 else ''}")
     print()

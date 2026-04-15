@@ -69,6 +69,7 @@ function main() {
   }
 
   const chaosEngineBundle = stageVendoredChaosEngine(pythonInfo.executable);
+  const bundledOptionalPackages = stageOptionalRuntimePackages(pythonInfo.executable);
   validateBundledProjectImports(pythonInfo.executable);
   const llamaWarnings = stageLlamaBinaries();
   maybeSignEmbeddedRuntime();
@@ -88,6 +89,7 @@ function main() {
     llamaCli: fs.existsSync(path.join(binDest, binaryName("llama-cli"))) ? `bin/${binaryName("llama-cli")}` : null,
     pythonVersion: pythonInfo.versionTag,
     bundledCacheStrategies: chaosEngineBundle ? ["chaosengine"] : [],
+    bundledOptionalPackages: bundledOptionalPackages,
     warnings: llamaWarnings,
   };
 
@@ -169,6 +171,7 @@ function validateBundledPythonPackages(pythonBinary) {
     "requirements = {",
     "  'desktop': [('fastapi', 'fastapi'), ('huggingface_hub', 'huggingface_hub'), ('psutil', 'psutil'), ('uvicorn', 'uvicorn')],",
     "  'images': [('accelerate', 'accelerate'), ('diffusers', 'diffusers'), ('huggingface_hub', 'huggingface_hub'), ('PIL', 'pillow'), ('safetensors', 'safetensors'), ('torch', 'torch')],",
+    "  'inference': [('dflash_mlx', 'dflash-mlx'), ('turboquant', 'turboquant'), ('turboquant_mlx', 'turboquant-mlx-full')],",
     "}",
     "missing = {",
     "  group: [label for module, label in modules if importlib.util.find_spec(module) is None]",
@@ -182,14 +185,28 @@ function validateBundledPythonPackages(pythonBinary) {
     encoding: "utf8",
   }).trim();
   const missing = JSON.parse(payload);
-  const flatMissing = Object.entries(missing)
+
+  // Inference packages are optional — warn but never block the build.
+  const optionalGroups = new Set(["inference"]);
+  const requiredMissing = Object.entries(missing)
+    .filter(([group]) => !optionalGroups.has(group))
     .flatMap(([group, values]) => values.length ? values.map((value) => `${group}:${value}`) : []);
-  if (flatMissing.length === 0) {
+  const optionalMissing = Object.entries(missing)
+    .filter(([group]) => optionalGroups.has(group))
+    .flatMap(([group, values]) => values.length ? values.map((value) => `${group}:${value}`) : []);
+
+  if (optionalMissing.length) {
+    console.warn(
+      `[stage-runtime] info: optional inference packages not in build venv (${optionalMissing.join(", ")}). ` +
+      `DFlash/TurboQuant will require user install via the Setup page.`,
+    );
+  }
+  if (requiredMissing.length === 0) {
     return;
   }
 
   const message =
-    `Embedded Python is missing required runtime packages (${flatMissing.join(", ")}). ` +
+    `Embedded Python is missing required runtime packages (${requiredMissing.join(", ")}). ` +
     `Install them into the build venv with: ${pythonBinary} -m pip install -e ".[desktop,images]"`;
   if (strict) {
     throw new Error(message);
@@ -276,6 +293,82 @@ function resolveChaosEngineVendor() {
     path: fs.realpathSync(vendoredPath),
     source: "vendor/ChaosEngine",
   };
+}
+
+function stageOptionalRuntimePackages(pythonBinary) {
+  // Pre-install optional runtime packages into the staged site-packages
+  // so that DFlash, TurboQuant, and RotorQuant work out of the box for
+  // new users without requiring manual pip installs via the Setup page.
+  //
+  // Each entry: [pip package name, import name used for verification]
+  const optionalPackages = [
+    ["dflash-mlx", "dflash_mlx"],
+    ["turboquant", "turboquant"],
+    ["turboquant-mlx-full", "turboquant_mlx"],
+  ];
+
+  const installed = [];
+  const skipped = [];
+
+  for (const [pipName, importName] of optionalPackages) {
+    // Check if already available in the build venv
+    const checkScript = `import importlib.util; exit(0 if importlib.util.find_spec("${importName}") else 1)`;
+    let available = false;
+    try {
+      execFileSync(pythonBinary, ["-c", checkScript], {
+        cwd: workspaceRoot,
+        stdio: "ignore",
+      });
+      available = true;
+    } catch {
+      available = false;
+    }
+
+    if (!available) {
+      const message = `Optional package "${pipName}" not found in build venv — skipping bundle`;
+      if (strict) {
+        console.warn(`[stage-runtime] warning: ${message}. Install with: ${pythonBinary} -m pip install ${pipName}`);
+      }
+      skipped.push(pipName);
+      continue;
+    }
+
+    try {
+      console.log(`[stage-runtime] bundling optional package: ${pipName}`);
+      execFileSync(
+        pythonBinary,
+        [
+          "-m", "pip", "install",
+          "--disable-pip-version-check",
+          "--no-deps",
+          "--no-compile",
+          "--upgrade",
+          "--target", sitePackagesDest,
+          pipName,
+        ],
+        {
+          cwd: workspaceRoot,
+          stdio: "inherit",
+        },
+      );
+      installed.push(pipName);
+    } catch (err) {
+      const message = `Failed to bundle optional package "${pipName}": ${err.message}`;
+      if (strict) {
+        throw new Error(message);
+      }
+      console.warn(`[stage-runtime] warning: ${message}`);
+      skipped.push(pipName);
+    }
+  }
+
+  if (installed.length) {
+    console.log(`[stage-runtime] bundled optional packages: ${installed.join(", ")}`);
+  }
+  if (skipped.length) {
+    console.log(`[stage-runtime] skipped optional packages (not in build venv): ${skipped.join(", ")}`);
+  }
+  return installed;
 }
 
 function stageLlamaBinaries() {

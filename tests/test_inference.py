@@ -246,19 +246,18 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
 
 
 class ChatSystemPromptTests(unittest.TestCase):
-    def test_chat_policy_is_prepended(self):
+    def test_user_system_prompt_passed_through(self):
         prompt = _compose_chat_system_prompt("Answer in one sentence.", "off")
+        self.assertEqual(prompt, "Answer in one sentence.")
 
-        self.assertIn("Give the final answer directly", prompt)
-        self.assertIn("Thinking mode is OFF", prompt)
-        self.assertTrue(prompt.endswith("Answer in one sentence."))
-
-    def test_auto_mode_skips_explicit_thinking_off_policy(self):
+    def test_no_thinking_policy_injected(self):
         prompt = _compose_chat_system_prompt("Answer in one sentence.", "auto")
+        self.assertEqual(prompt, "Answer in one sentence.")
+        self.assertNotIn("Thinking mode", prompt)
 
-        self.assertIn("Give the final answer directly", prompt)
-        self.assertIn("Thinking mode is AUTO", prompt)
-        self.assertNotIn("Thinking mode is OFF", prompt)
+    def test_empty_system_prompt(self):
+        self.assertEqual(_compose_chat_system_prompt(None), "")
+        self.assertEqual(_compose_chat_system_prompt(""), "")
 
 
 class DummyEngine:

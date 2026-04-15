@@ -58,7 +58,11 @@ else
 fi
 
 # Platform-specific CMake flags
-CMAKE_FLAGS=(-DCMAKE_BUILD_TYPE=Release)
+# -DBUILD_SHARED_LIBS=OFF produces a self-contained static binary that
+# doesn't depend on .dylib/.so files at a build-time rpath. Without this
+# the installed binary crashes on dyld load because the shared libraries
+# are left behind in the build directory.
+CMAKE_FLAGS=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF)
 case "$(uname -s)" in
   Darwin)
     CMAKE_FLAGS+=(-DGGML_METAL=ON)

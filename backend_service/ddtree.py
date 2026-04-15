@@ -409,7 +409,12 @@ def generate_ddtree_mlx(
             cycles += 1
         else:
             # ── DDTree path ──────────────────────────────────
-            draft_logits_np = np.array(draft_logits[0].tolist(), dtype=np.float32)
+            # Evaluate and convert MLX tensor directly to NumPy via the
+            # buffer protocol — avoids the very slow .tolist() intermediate
+            # Python list, which is a major bottleneck for large vocabularies
+            # (150K+ tokens for Qwen models).
+            mx.eval(draft_logits)
+            draft_logits_np = np.array(draft_logits[0], dtype=np.float32)
 
             node_token_ids, node_depths, parents, child_maps, visibility = \
                 build_ddtree_tree(draft_logits_np, effective_budget)

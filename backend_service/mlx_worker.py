@@ -835,7 +835,14 @@ class WorkerState:
 
         gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
         text = self.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
-        text = _strip_thinking_tokens(text) if text else ""
+        # Respect thinkingMode: only strip raw reasoning patterns when thinking
+        # is enabled. XML <think> tags are always processed regardless.
+        thinking_mode = request.get("thinkingMode") or "off"
+        if text:
+            think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
+            result = think_filter.feed(text)
+            flushed = think_filter.flush()
+            text = f"{result.text}{flushed.text}".strip()
         if not text:
             text = "Generation completed without decoded text."
 
@@ -911,7 +918,14 @@ class WorkerState:
         # Decode output tokens
         gen_tokens = result["generated_tokens"]
         text = self.tokenizer.decode(gen_tokens).strip()
-        text = _strip_thinking_tokens(text) if text else ""
+        # Respect thinkingMode: only strip raw reasoning patterns when thinking
+        # is enabled. XML <think> tags are always processed regardless.
+        thinking_mode = request.get("thinkingMode") or "off"
+        if text:
+            think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
+            filter_result = think_filter.feed(text)
+            flushed = think_filter.flush()
+            text = f"{filter_result.text}{flushed.text}".strip()
         if not text:
             text = "Generation completed without decoded text."
 
@@ -1055,7 +1069,12 @@ class WorkerState:
             )
 
         raw_text = "".join(text_parts).strip()
-        text = _strip_thinking_tokens(raw_text)
+        # Respect thinkingMode: only strip raw reasoning when thinking is on.
+        thinking_mode = request.get("thinkingMode") or "off"
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
+        filter_result = think_filter.feed(raw_text)
+        flushed = think_filter.flush()
+        text = f"{filter_result.text}{flushed.text}".strip()
         if transcript_fallback:
             text, transcript_trimmed = _trim_transcript_continuation(text)
             if transcript_trimmed:
@@ -1085,8 +1104,42 @@ class WorkerState:
             raise RuntimeError("No MLX model is loaded.")
 
         speculative_stream_fallback_note = None
-        # DFLASH doesn't support token-level streaming natively, so emit
-        # the full result as a single chunk in the streaming protocol.
+        # DFLASH/DDTree don't support token-level streaming natively, so
+        # emit the full result as a single chunk in the streaming protocol.
+        # Prefer DDTree (tree-based) when tree_budget > 0, else linear DFlash.
+        if self.speculative_decoding and self.tree_budget > 0 and self._ddtree_draft is not None:
+            try:
+                result = self._generate_ddtree(request)
+                if result.get("text"):
+                    _emit({"ok": True, "chunk": {"text": result["text"]}})
+                _emit({
+                    "ok": True,
+                    "done": True,
+                    "result": {
+                        "finishReason": result.get("finishReason", "stop"),
+                        "promptTokens": result.get("promptTokens", 0),
+                        "completionTokens": result.get("completionTokens", 0),
+                        "totalTokens": result.get("totalTokens", 0),
+                        "tokS": result.get("tokS", 0.0),
+                        "promptTokS": result.get("promptTokS", 0.0),
+                        "peakMemoryGb": result.get("peakMemoryGb", 0.0),
+                        "runtimeNote": result.get("runtimeNote"),
+                        "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
+                        "cacheStrategy": result.get("cacheStrategy"),
+                        "cacheBits": result.get("cacheBits"),
+                        "fp16Layers": result.get("fp16Layers"),
+                        "speculativeDecoding": result.get("speculativeDecoding"),
+                        "treeBudget": result.get("treeBudget"),
+                    },
+                })
+                return
+            except Exception as exc:
+                speculative_stream_fallback_note = (
+                    f"DDTree stream path failed ({exc}). "
+                    "Falling back to linear DFLASH."
+                )
+                # Fall through to linear DFLASH below
+
         if self.speculative_decoding and self._dflash_generator is not None:
             try:
                 result = self._generate_dflash(request)

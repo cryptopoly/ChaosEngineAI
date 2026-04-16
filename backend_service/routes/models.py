@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -22,6 +23,59 @@ from backend_service.helpers.huggingface import (
 
 router = APIRouter()
 
+_DISCOVER_SEARCH_PUNCT_RE = re.compile(r"[^a-z0-9]+")
+_DISCOVER_SEARCH_ALPHA_NUM_RE = re.compile(r"([a-z])(\d)|(\d)([a-z])")
+
+
+def _normalize_discover_search_text(value: str) -> str:
+    lowered = str(value or "").strip().lower()
+    if not lowered:
+        return ""
+    normalized = _DISCOVER_SEARCH_ALPHA_NUM_RE.sub(
+        lambda match: f"{match.group(1) or match.group(3)} {match.group(2) or match.group(4)}",
+        lowered,
+    )
+    normalized = _DISCOVER_SEARCH_PUNCT_RE.sub(" ", normalized)
+    return " ".join(normalized.split())
+
+
+def _discover_search_tokens(query: str) -> list[str]:
+    normalized = _normalize_discover_search_text(query)
+    return normalized.split() if normalized else []
+
+
+def _family_discover_search_haystack(family: dict[str, Any]) -> str:
+    fragments: list[str] = [
+        str(family.get("name") or ""),
+        str(family.get("provider") or ""),
+        str(family.get("headline") or ""),
+        str(family.get("summary") or ""),
+        str(family.get("description") or ""),
+        *(str(capability or "") for capability in family.get("capabilities") or []),
+        *(str(line or "") for line in family.get("readme") or []),
+    ]
+    for variant in family.get("variants") or []:
+        fragments.extend(
+            [
+                str(variant.get("name") or ""),
+                str(variant.get("repo") or ""),
+                str(variant.get("format") or ""),
+                str(variant.get("quantization") or ""),
+                str(variant.get("note") or ""),
+                str(variant.get("contextWindow") or ""),
+                *(str(capability or "") for capability in variant.get("capabilities") or []),
+            ]
+        )
+    return _normalize_discover_search_text(" ".join(fragment for fragment in fragments if fragment))
+
+
+def _family_matches_discover_query(family: dict[str, Any], query: str) -> bool:
+    tokens = _discover_search_tokens(query)
+    if not tokens:
+        return True
+    haystack = _family_discover_search_haystack(family)
+    return all(token in haystack for token in tokens)
+
 
 @router.get("/api/models/search")
 def search_models(request: Request, query: str = Query("", alias="q", min_length=0, max_length=120)) -> dict[str, Any]:
@@ -31,29 +85,20 @@ def search_models(request: Request, query: str = Query("", alias="q", min_length
     system_stats = state._system_snapshot_provider()
     library = state._library()
     catalog = _model_family_payloads(system_stats, library)
-    haystack = query.strip().lower()
-    if not haystack:
+    search_query = query.strip()
+    if not search_query:
         results = catalog
     else:
         results = [
             family
             for family in catalog
-            if haystack in family["name"].lower()
-            or haystack in family["provider"].lower()
-            or any(haystack in capability for capability in family["capabilities"])
-            or any(
-                haystack in variant["name"].lower()
-                or haystack in variant["format"].lower()
-                or haystack in variant["quantization"].lower()
-                or haystack in variant["repo"].lower()
-                for variant in family["variants"]
-            )
+            if _family_matches_discover_query(family, search_query)
         ]
 
     # Also search HuggingFace Hub when there's a query
     hub_results: list[dict[str, Any]] = []
-    if haystack and len(haystack) >= 2:
-        hub_results = _search_huggingface_hub(haystack, library)
+    if search_query and len(search_query) >= 2:
+        hub_results = _search_huggingface_hub(search_query.lower(), library)
 
     return {"query": query, "results": results, "hubResults": hub_results}
 

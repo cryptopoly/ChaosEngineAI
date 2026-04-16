@@ -141,6 +141,7 @@ export default function App() {
     searchInput, setSearchInput,
     searchResults,
     hubResults,
+    searchError,
     expandedHubId,
     hubFileCache,
     hubFileLoading,
@@ -1123,6 +1124,7 @@ export default function App() {
         searchResults={searchResults}
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}
+        searchError={searchError}
         localVariantCount={localVariantCount}
         discoverCapFilter={discoverCapFilter}
         onDiscoverCapFilterChange={setDiscoverCapFilter}

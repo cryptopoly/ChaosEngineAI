@@ -191,6 +191,14 @@ export async function searchModels(query: string): Promise<SearchResults> {
   return { families: result.results, hubModels: result.hubResults ?? [] };
 }
 
+export async function searchHubModels(query: string): Promise<HubModel[]> {
+  const result = await fetchJson<{ results: HubModel[] }>(
+    `/api/models/hub-search?q=${encodeURIComponent(query)}`,
+    60000,
+  );
+  return result.results ?? [];
+}
+
 export async function getImageCatalog(): Promise<ImageCatalogResponse> {
   return await fetchJson<ImageCatalogResponse>("/api/images/catalog", 25000);
 }

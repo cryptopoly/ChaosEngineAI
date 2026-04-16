@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -17,6 +18,68 @@ from backend_service.helpers.discovery import _path_size_bytes
 
 _HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+/[a-zA-Z0-9_.\-]+$")
 _HUB_FILE_CACHE: dict[str, dict[str, Any]] = {}
+_DISCOVER_SEARCH_PUNCT_RE = re.compile(r"[^a-z0-9]+")
+_DISCOVER_SEARCH_ALPHA_NUM_RE = re.compile(r"([a-z])(\d)|(\d)([a-z])")
+_TEXT_DISCOVER_PIPELINES = {
+    "text-generation",
+    "image-text-to-text",
+    "text2text-generation",
+    "conversational",
+    "visual-question-answering",
+}
+
+
+def _model_is_text_discover_candidate(model: dict[str, Any]) -> bool:
+    pipeline_tag = str(model.get("pipeline_tag") or "").strip().lower()
+    tags = [str(tag).strip().lower() for tag in (model.get("tags") or []) if str(tag).strip()]
+    if pipeline_tag in _TEXT_DISCOVER_PIPELINES:
+        return True
+    if any(tag in _TEXT_DISCOVER_PIPELINES for tag in tags):
+        return True
+    capability_markers = {
+        "conversational",
+        "text-generation",
+        "image-text-to-text",
+        "tool-use",
+        "vision-language",
+        "vqa",
+        "gguf",
+        "mlx",
+    }
+    return any(tag in capability_markers for tag in tags)
+
+
+def _normalize_hub_search_text(value: str) -> str:
+    lowered = str(value or "").strip().lower()
+    if not lowered:
+        return ""
+    normalized = _DISCOVER_SEARCH_ALPHA_NUM_RE.sub(
+        lambda match: f"{match.group(1) or match.group(3)} {match.group(2) or match.group(4)}",
+        lowered,
+    )
+    normalized = _DISCOVER_SEARCH_PUNCT_RE.sub(" ", normalized)
+    return " ".join(normalized.split())
+
+
+def _hub_search_tokens(query: str) -> list[str]:
+    normalized = _normalize_hub_search_text(query)
+    return normalized.split() if normalized else []
+
+
+def _hub_model_matches_query(model: dict[str, Any], query: str) -> bool:
+    tokens = _hub_search_tokens(query)
+    if not tokens:
+        return True
+    model_id = str(model.get("id") or "")
+    provider = model_id.split("/", 1)[0] if "/" in model_id else model_id
+    fragments = [
+        model_id,
+        provider,
+        str(model.get("pipeline_tag") or ""),
+        *(str(tag or "") for tag in (model.get("tags") or [])),
+    ]
+    haystack = _normalize_hub_search_text(" ".join(fragment for fragment in fragments if fragment))
+    return all(token in haystack for token in tokens)
 
 
 def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: int = 20) -> list[dict[str, Any]]:
@@ -24,10 +87,10 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
     try:
         params = urllib.parse.urlencode({
             "search": query,
-            "limit": str(limit),
-            "sort": "downloads",
+            "limit": str(max(limit * 5, 60)),
+            "sort": "modified",
             "direction": "-1",
-            "filter": "text-generation",
+            "full": "true",
         })
         url = f"https://huggingface.co/api/models?{params}"
         req = urllib.request.Request(url, headers={"User-Agent": "ChaosEngineAI/0.2.0"})
@@ -38,6 +101,10 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
 
     results: list[dict[str, Any]] = []
     for model in data:
+        if not _model_is_text_discover_candidate(model):
+            continue
+        if not _hub_model_matches_query(model, query):
+            continue
         model_id = str(model.get("id") or "")
         if not model_id:
             continue
@@ -65,6 +132,7 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
 
         downloads = model.get("downloads") or 0
         likes = model.get("likes") or 0
+        last_modified = str(model.get("lastModified") or "").strip() or None
 
         results.append({
             "id": model_id,
@@ -78,12 +146,22 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
             "likes": likes,
             "downloadsLabel": f"{downloads:,} downloads",
             "likesLabel": f"{likes:,} likes",
+            "lastModified": last_modified,
+            "updatedLabel": _format_hf_updated_label(last_modified),
             "availableLocally": available_locally,
             "launchMode": launch_mode,
             "backend": backend,
         })
 
-    return results
+    results.sort(
+        key=lambda entry: (
+            _parse_iso_datetime(str(entry.get("lastModified") or "") or None) or datetime.min.replace(tzinfo=timezone.utc),
+            int(entry.get("downloads") or 0),
+            int(entry.get("likes") or 0),
+        ),
+        reverse=True,
+    )
+    return results[:limit]
 
 
 def _classify_hub_file(name: str) -> str:
@@ -221,6 +299,72 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
     return payload
 
 
+def _condense_hf_error(error: str) -> str:
+    lines = [line.strip() for line in str(error).splitlines() if line.strip()]
+    ignored_prefixes = (
+        "traceback",
+        "file ",
+        "raise ",
+        "for more information",
+        "for more details",
+    )
+    ignored_substrings = (
+        "userwarning",
+        "warnings.warn",
+        "httpstatuserror:",
+        "repositorynotfounderror:",
+    )
+    for line in reversed(lines):
+        lowered = line.lower()
+        if lowered.startswith(ignored_prefixes):
+            continue
+        if any(fragment in lowered for fragment in ignored_substrings):
+            continue
+        return line
+    return lines[-1] if lines else str(error).strip()
+
+
+def _friendly_hf_download_error(repo_id: str, error: str) -> str:
+    lowered = str(error).lower()
+    if (
+        "repository not found" in lowered
+        or "repo not found" in lowered
+        or "404 client error" in lowered
+    ):
+        return (
+            f"{repo_id} was not found on Hugging Face. "
+            "This repo may have moved or the catalog entry may be stale."
+        )
+    if (
+        "refused access" in lowered
+        or "http 401" in lowered
+        or "http 403" in lowered
+        or "invalid username or password" in lowered
+        or "authentication required" in lowered
+        or "cannot access gated repo" in lowered
+        or "gated repo" in lowered
+        or ("access to model" in lowered and "restricted" in lowered)
+    ):
+        return (
+            f"Hugging Face refused access to {repo_id}. "
+            "If the repo is gated or private, make sure your account has access "
+            "and add a read-enabled HF_TOKEN in Settings."
+        )
+    if (
+        "connecterror" in lowered
+        or "name or service not known" in lowered
+        or "nodename nor servname provided" in lowered
+        or "temporary failure in name resolution" in lowered
+        or "timed out" in lowered
+    ):
+        return (
+            f"ChaosEngineAI could not reach Hugging Face while checking {repo_id}. "
+            "Check the backend network connection and retry."
+        )
+    condensed = _condense_hf_error(error)
+    return condensed or f"Download failed for {repo_id}."
+
+
 def _parse_iso_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -336,4 +480,12 @@ def _known_repo_size_gb(repo_id: str) -> float | None:
             if size_gb > 0:
                 return size_gb
 
+    return None
+
+
+def _hf_repo_preflight_size_gb(repo_id: str) -> float | None:
+    payload = _hub_repo_files(repo_id)
+    total_gb = payload.get("totalSizeGb")
+    if isinstance(total_gb, (int, float)) and total_gb > 0:
+        return float(total_gb)
     return None

@@ -2177,7 +2177,11 @@ class ChaosEngineState:
         )
 
     def start_download(self, repo: str) -> dict[str, Any]:
-        from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes
+        from backend_service.helpers.huggingface import (
+            _friendly_hf_download_error,
+            _hf_repo_downloaded_bytes,
+            _hf_repo_preflight_size_gb,
+        )
 
         if not _HF_REPO_PATTERN.match(repo):
             raise HTTPException(status_code=400, detail="Invalid repo format. Expected 'owner/model-name'.")
@@ -2186,6 +2190,31 @@ class ChaosEngineState:
 
         total_gb = _known_repo_size_gb(repo)
         downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+        try:
+            preflight_total_gb = _hf_repo_preflight_size_gb(repo)
+        except Exception as exc:
+            friendly_error = _friendly_image_download_error(
+                repo,
+                _friendly_hf_download_error(repo, str(exc)),
+            )
+            failed_status = {
+                "repo": repo,
+                "state": "failed",
+                "progress": 0.0,
+                "downloadedGb": downloaded_gb,
+                "totalGb": total_gb,
+                "error": friendly_error,
+            }
+            with self._lock:
+                self._downloads[repo] = failed_status
+                self._download_cancel.pop(repo, None)
+                self._download_processes.pop(repo, None)
+                self._download_tokens.pop(repo, None)
+            self.add_log("library", "error", f"Download preflight failed for {repo}: {friendly_error}")
+            return failed_status
+        if isinstance(preflight_total_gb, (int, float)) and preflight_total_gb > 0:
+            total_gb = float(preflight_total_gb)
+
         initial_progress = 0.0
         if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
             initial_progress = min(0.99, downloaded_gb / float(total_gb))
@@ -2324,7 +2353,10 @@ class ChaosEngineState:
                     if self._download_tokens.get(repo) != download_token:
                         return
                     self._downloads[repo]["state"] = "failed"
-                    friendly_error = _friendly_image_download_error(repo, str(exc))
+                    friendly_error = _friendly_image_download_error(
+                        repo,
+                        _friendly_hf_download_error(repo, str(exc)),
+                    )
                     self._downloads[repo]["error"] = friendly_error
                     self.add_log("library", "error", f"Download failed for {repo}: {friendly_error}")
             finally:

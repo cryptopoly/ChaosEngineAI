@@ -782,6 +782,8 @@ export interface HubModel {
   likes: number;
   downloadsLabel: string;
   likesLabel: string;
+  lastModified?: string | null;
+  updatedLabel?: string | null;
   availableLocally: boolean;
   launchMode: string;
   backend: string;

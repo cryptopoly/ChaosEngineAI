@@ -10,6 +10,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import compute_cache_preview, create_app
+from backend_service.helpers.huggingface import _search_huggingface_hub
 from backend_service.inference import GenerationResult, LoadedModelInfo, StreamChunk
 from backend_service.state import ChaosEngineState, _spawn_snapshot_download
 from backend_service.helpers.discovery import _discover_local_models
@@ -54,6 +55,15 @@ def fake_library():
             "actions": ["Run Chat", "Run Server", "Cache Preview", "Delete"],
         }
     ]
+
+
+def fake_urlopen_json(payload):
+    response = mock.MagicMock()
+    response.read.return_value = json.dumps(payload).encode()
+    context_manager = mock.MagicMock()
+    context_manager.__enter__.return_value = response
+    context_manager.__exit__.return_value = False
+    return context_manager
 
 
 class FakeRuntime:
@@ -341,6 +351,157 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(workspace["chatSessions"], [])
         self.assertEqual(workspace["benchmarks"], [])
+
+    @mock.patch("backend_service.routes.models._search_huggingface_hub", return_value=[])
+    def test_model_search_matches_normalized_multi_token_queries(self, _hub_search):
+        for query in ("qwen coder", "coder qwen", "qwen 3 coder", "qwen next 32b"):
+            with self.subTest(query=query):
+                response = self.client.get("/api/models/search", params={"q": query})
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertIn("qwen3-coder", [family["id"] for family in payload["results"]])
+
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_hub_search_includes_glm_and_multimodal_gemma_matches(self, urlopen_mock):
+        payload = [
+            {
+                "id": "zai-org/glm-4.7-flash",
+                "pipeline_tag": "text-generation",
+                "tags": ["glm", "tool-use", "gguf"],
+                "downloads": 307123,
+                "likes": 94,
+            },
+            {
+                "id": "google/gemma-4-31b",
+                "pipeline_tag": "image-text-to-text",
+                "tags": ["gemma", "vision-language", "mlx"],
+                "downloads": 301147,
+                "likes": 98,
+            },
+            {
+                "id": "google/gemma-4-e4b-it",
+                "pipeline_tag": "image-text-to-text",
+                "tags": ["gemma", "vision-language", "mlx"],
+                "downloads": 400000,
+                "likes": 120,
+            },
+            {
+                "id": "runwayml/stable-diffusion-v1-5",
+                "pipeline_tag": "text-to-image",
+                "tags": ["diffusers"],
+                "downloads": 999999,
+                "likes": 1000,
+            },
+        ]
+        urlopen_mock.return_value = fake_urlopen_json(payload)
+
+        glm_results = _search_huggingface_hub("glm", fake_library(), limit=20)
+        gemma_results = _search_huggingface_hub("gemma-4-31B", fake_library(), limit=20)
+
+        self.assertIn("zai-org/glm-4.7-flash", [model["repo"] for model in glm_results])
+        self.assertIn("google/gemma-4-31b", [model["repo"] for model in gemma_results])
+        self.assertNotIn("google/gemma-4-e4b-it", [model["repo"] for model in gemma_results])
+        self.assertNotIn("runwayml/stable-diffusion-v1-5", [model["repo"] for model in glm_results])
+        self.assertNotIn("runwayml/stable-diffusion-v1-5", [model["repo"] for model in gemma_results])
+
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_hub_search_orders_results_by_most_recent_update_by_default(self, urlopen_mock):
+        payload = [
+            {
+                "id": "org/older-model-popular",
+                "pipeline_tag": "text-generation",
+                "tags": ["text-generation"],
+                "downloads": 999999,
+                "likes": 1000,
+                "lastModified": "2026-04-10T10:00:00Z",
+            },
+            {
+                "id": "org/newer-model",
+                "pipeline_tag": "text-generation",
+                "tags": ["text-generation"],
+                "downloads": 10,
+                "likes": 1,
+                "lastModified": "2026-04-16T10:00:00Z",
+            },
+            {
+                "id": "org/middle-model",
+                "pipeline_tag": "text-generation",
+                "tags": ["text-generation"],
+                "downloads": 100,
+                "likes": 5,
+                "lastModified": "2026-04-14T10:00:00Z",
+            },
+        ]
+        urlopen_mock.return_value = fake_urlopen_json(payload)
+
+        results = _search_huggingface_hub("model", fake_library(), limit=20)
+
+        self.assertEqual(
+            [model["repo"] for model in results],
+            ["org/newer-model", "org/middle-model", "org/older-model-popular"],
+        )
+
+    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=74.9)
+    def test_model_download_preflight_sets_live_size_before_starting(
+        self,
+        _preflight_size,
+        _downloaded_bytes,
+        thread_cls,
+    ):
+        fake_thread = mock.Mock()
+        thread_cls.return_value = fake_thread
+
+        response = self.client.post("/api/models/download", json={"repo": "Qwen/Qwen3-Coder-Next-FP8"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["download"]
+        self.assertEqual(payload["state"], "downloading")
+        self.assertEqual(payload["totalGb"], 74.9)
+        thread_cls.assert_called_once()
+        fake_thread.start.assert_called_once()
+
+    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
+    @mock.patch(
+        "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
+        side_effect=RuntimeError("Hugging Face repository not found: org/missing-model"),
+    )
+    def test_model_download_preflight_returns_failed_for_missing_repo(
+        self,
+        _preflight_size,
+        _downloaded_bytes,
+        thread_cls,
+    ):
+        response = self.client.post("/api/models/download", json={"repo": "org/missing-model"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["download"]
+        self.assertEqual(payload["state"], "failed")
+        self.assertIn("not found on Hugging Face", payload["error"])
+        thread_cls.assert_not_called()
+
+    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
+    @mock.patch(
+        "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
+        side_effect=RuntimeError("Hugging Face refused access to org/private-model (HTTP 401). Set HF_TOKEN in Settings."),
+    )
+    def test_model_download_preflight_returns_failed_for_auth_errors(
+        self,
+        _preflight_size,
+        _downloaded_bytes,
+        thread_cls,
+    ):
+        response = self.client.post("/api/models/download", json={"repo": "org/private-model"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["download"]
+        self.assertEqual(payload["state"], "failed")
+        self.assertIn("HF_TOKEN", payload["error"])
+        self.assertIn("refused access", payload["error"].lower())
+        thread_cls.assert_not_called()
 
     def test_legacy_seeded_workspace_data_is_filtered_from_saved_files(self):
         self.chat_sessions_path.write_text(

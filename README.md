@@ -34,7 +34,9 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation.
 - **Pluggable cache compression.** Native f16 cache out of the box, with five KV cache compression strategies — [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
 - **Speculative decoding.** DFlash and DDTree accelerate generation by 3-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates.
+- **Hybrid local + remote workflows.** Scan multiple local model directories, convert Hugging Face checkpoints to MLX, or point the app at remote OpenAI-compatible providers when you want a cloud fallback.
 - **Per-chat runtime profiles.** Each chat session remembers the exact model, cache strategy, quantization bits, context length, and speculative decoding settings used — switch between configurations without losing track.
+- **Prompting + evaluation.** Built-in prompt templates, side-by-side compare mode, and benchmark modes for throughput, perplexity, and task accuracy keep experimentation in one place.
 - **Agent tools.** Built-in web search, calculator, code executor, and file reader tools that models can call during conversations.
 - **Built for power users.** Live runtime telemetry, structured logs, side-by-side benchmark history with model filtering and red/green delta comparisons, and granular launch preferences.
 - **Polished, fast UI.** A focused dark workspace that gets out of the way and never blocks on the backend.
@@ -48,14 +50,18 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 💾 **My Models** library with format, size, context, and modified-date sorting
 - 🔁 **Conversion** pipeline that turns Hugging Face checkpoints into MLX (Apple Silicon)
 - 🚀 **Server** mode exposing an OpenAI-compatible REST API for your other tools
-- 💬 **Chat** with the loaded model, including document attachments for RAG and image inputs for vision-capable models
+- 💬 **Chat** with the loaded model, including document attachments with inline citations, image inputs for vision-capable models, tool calls, and collapsible reasoning traces
+- ⚖️ **Compare mode** to stream the same prompt through two models side-by-side with separate runtime settings and metrics
+- 🗂️ **Prompt Library** with built-in starter templates plus searchable tags, categories, CRUD, and one-click apply-to-chat
 - 🎨 **Image Discover** curated catalog of Stable Diffusion models with one-click download from Hugging Face
 - 🖼️ **Image Models** library showing installed image models ready for generation
 - 🖌️ **Image Studio** for prompt-based image generation with aspect ratio, quality presets, and negative prompts
 - 🏛️ **Image Gallery** to browse, filter, and reuse saved outputs — compare models and re-run with the same settings
-- 📊 **Benchmarks** with reproducible runs, live token/sec streaming, and a history view for A/B comparisons
+- 📊 **Benchmarks** with throughput, perplexity, and task-accuracy modes plus a history view for A/B comparisons
 - 📜 **Logs** streaming straight from the Python runtime
-- ⚙️ **Settings** for directories, default launch preferences, and runtime tuning
+- ⚙️ **Settings** for data directories, Hugging Face tokens, remote providers, integrations, default launch preferences, and runtime tuning
+- ☁️ **Remote providers** for OpenAI-compatible APIs, with keys stored locally and masked in the UI
+- 📁 **Model directories** for custom stores, Ollama, LM Studio, or shared model paths
 - 🧠 **Warm pool** keeps recently-used models hot so subsequent loads are instant
 - 🔄 **In-app updates** — signed, verified, cross-platform. Launch, prompt, relaunch.
 - 🍎 **Notarized macOS builds** with a fully embedded, hardened-runtime Python runtime
@@ -67,6 +73,53 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🔧 **Agent tools** — web search, calculator, code executor, and file reader for tool-augmented conversations
 - 🎓 **Fine-tuning** with LoRA adapter support for MLX models
 - 🧩 **Plugin system** with 5 extension types: cache strategies, inference engines, tools, model sources, and post-processors
+- 🔌 **Integrations** with copy-paste connection snippets for Continue.dev, Goose, Cursor, and Claude Code via the local API
+
+---
+
+## Complete Feature Map
+
+### Local runtimes & serving
+
+- `llama.cpp` GGUF, Apple MLX, optional vLLM, plus remote OpenAI-compatible providers as fallbacks
+- OpenAI-compatible local server with preferred port, optional LAN exposure, auto-start, live request counts, active connections, and copyable curl test commands
+- Warm-pool activation so recently used runtime profiles can be re-activated instantly
+- Signed in-app updates and bundled desktop runtimes for release builds
+
+### Chat, prompting & agent workflows
+
+- Multi-thread chat with pinned sessions, persistent history, inline thread renaming, and per-thread runtime memory
+- Document uploads with chunked retrieval, inline citations, and per-session document management
+- Image attachments for vision-capable models
+- Optional thinking mode with collapsible reasoning traces and cleanup of raw reasoning tokens
+- Tool-augmented conversations with `web_search`, `calculator`, `code_executor`, and `file_reader`
+- Side-by-side compare mode that streams the same prompt through two models with independent runtime settings and metrics
+- Prompt Library with five built-in starter templates, search, tagging, categories, CRUD, and one-click apply-to-chat
+
+### Models, discovery & media
+
+- Curated text and image catalogs with capability filters plus direct Hugging Face inspection
+- Multiple local model directories, including custom paths, Ollama, LM Studio, or shared model stores
+- Download management with progress, cancel/delete, and a metadata-rich local library
+- Apple Silicon conversion from Hugging Face or local checkpoints to MLX with live progress
+- Full local image workflow: Image Discover, Image Models, Image Studio, Image Gallery, preload/unload controls, seed reuse, and saved artifact metadata
+- Hugging Face token management for gated model access
+
+### Performance, evaluation & extensibility
+
+- DFlash and DDTree speculative decoding with auto-resolved draft models and graceful fallback
+- Five cache strategies: native f16, RotorQuant, TriAttention, TurboQuant, and ChaosEngine
+- Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
+- Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
+- LoRA adapter discovery plus fine-tuning hooks for local training workflows
+- Plugin system spanning cache strategies, inference engines, tools, model sources, and post-processors
+- Live logs, backend health, hardware telemetry, and orphaned-worker cleanup reporting
+
+### Settings & integrations
+
+- Data-directory relocation with migration/copy support
+- Remote-provider configs stored locally with masked keys and HTTPS validation
+- Integration snippets for Continue.dev, Goose, Cursor, and Claude Code through the local OpenAI-compatible API
 
 ---
 
@@ -123,17 +176,17 @@ All your generated images in one place. Search by prompt, model, or runtime; fil
 ### Chat — *Local AI chat*
 ![Chat](./Screenshots/12.%20Chat_v2.png)
 
-A focused chat surface with multi-thread sessions in the left rail, streaming responses, document and image attachments, and inline thread renaming. Threads persist across launches and are scoped to the model that produced them.
+A focused chat surface with multi-thread sessions in the left rail, pinned threads, document and image attachments, inline citations, tool-call cards, collapsible reasoning traces, and inline thread renaming. Threads persist across launches, remember the model/runtime profile that produced them, and can be reloaded directly from the thread toolbar.
 
 ### Server — *OpenAI-compatible local API*
 ![Server](./Screenshots/11.%20Server_v2.png)
 
-Start, stop, and inspect a local OpenAI-compatible HTTP server backed by the loaded model. Shows the bind address, current model, request count, and a remote-test panel for firing a sample completion against `/v1/chat/completions` without leaving the app.
+Start, stop, and inspect a local OpenAI-compatible HTTP server backed by the loaded model. Shows the bind address, warm-pool entries, request count, active connections, LAN exposure, preferred port, auto-start controls, and a remote-test panel with copyable curl commands for `/health`, `/models`, and `/chat/completions`.
 
 ### Benchmarks — *Run a new benchmark*
 ![Benchmarks](./Screenshots/13.%20Benchmarks_v2.png)
 
-Configure a benchmark run: choose a model, prompt set, token budget, and decoding parameters, then watch live progress as the runner streams tokens-per-second, time-to-first-token, and memory usage.
+Configure a benchmark run: choose a model, throughput prompt preset or eval dataset, token budget, and decoding parameters, then watch live progress as the runner streams tokens-per-second, time-to-first-token, memory usage, or eval metrics.
 
 ![Benchmark running](./Screenshots/14.%20Benchmark_Running_v2.png)
 
@@ -157,6 +210,14 @@ Apple Silicon only. Point at a Hugging Face checkpoint or local directory and co
 
 Layer-by-layer live progress while the conversion runs — bit budget per block, memory footprint, and a running log tail.
 
+### Prompt Library — *Reusable system prompts*
+
+Search, create, edit, tag, and delete reusable prompt templates, including five built-in starter personas. Any template can be applied to Chat with one click so you can switch between coding, summarization, translation, and other system-prompt presets without copy-paste.
+
+### Plugins — *Extensions and plugin system*
+
+Inspect built-in and external plugins across cache strategies, inference engines, tools, model sources, and post-processors. Plugins can be enabled or disabled from the UI, and external plugins are discovered from the app's plugin directory.
+
 ### Logs — *Runtime events*
 ![Logs](./Screenshots/19.%20Logs_v2.png)
 
@@ -165,7 +226,7 @@ A live tail of the backend log stream — load events, server requests, errors, 
 ### Settings — *Directories and defaults*
 ![Settings](./Screenshots/20.%20Settings_v2.png)
 
-Configure model and cache directories, default launch preferences (cache strategy, FP16 layers, fused attention, context tokens, fit-in-memory toggle), and advanced runtime knobs. Every default in this panel is reused as the starting state for the launch modal.
+Configure model and cache directories, remote-provider fallbacks, Hugging Face tokens for gated models, data-directory migration, integration snippets for external tools, default launch preferences (cache strategy, FP16 layers, fused attention, context tokens, fit-in-memory toggle), and advanced runtime knobs. Every default in this panel is reused as the starting state for the launch modal.
 
 ---
 
@@ -236,6 +297,7 @@ ChaosEngineAI is three cooperating layers:
 - **`src/`** — React 18 + TypeScript UI. Single-window workspace with a sidebar nav covering LLM and image generation screens.
 - **`src-tauri/`** — Tauri 2 Rust shell + bundled runtime.
 - **`backend_service/`** — Python service that owns model lifecycle, the warm pool, the OpenAI-compatible API, the benchmark runner, and speculative decoding (DFlash + DDTree).
+- **`backend_service/routes/`** — FastAPI routes for chat, prompts, compare mode, benchmarks, plugins, images, server controls, and settings.
 - **`compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine).
 - **`dflash/`** — DFlash speculative decoding integration: draft model registry, fuzzy matching for quantized variants, MLX and vLLM backend detection.
 

@@ -33,6 +33,9 @@ export function downloadProgressLabel(download?: DownloadStatus | null): string 
   if (!prefix) return "";
   const totalGb = typeof download.totalGb === "number" && download.totalGb > 0 ? download.totalGb : null;
   const downloadedGb = Math.max(0, download.downloadedGb ?? 0);
+  if (downloadedGb <= 0 && (download.progress ?? 0) <= 0) {
+    return download.state === "cancelled" ? "Paused" : "Preparing download...";
+  }
   if (totalGb !== null) {
     const pct = Math.max(downloadedGb > 0 ? 1 : 0, Math.round((download.progress ?? 0) * 100));
     return `${prefix} ${pct}%`;

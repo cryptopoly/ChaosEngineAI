@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { convertModel, generateChat, getWorkspace, loadModel } from "./api";
+import { convertModel, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
 import { mockWorkspace } from "./mockData";
 
 const stubSession = {
@@ -111,6 +111,42 @@ describe("desktop api helpers", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8876/api/models/convert",
       expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("fetches live hub results from the dedicated hub search endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
+          {
+            id: "zai-org/GLM-4.7-Flash",
+            repo: "zai-org/GLM-4.7-Flash",
+            name: "GLM-4.7-Flash",
+            provider: "zai-org",
+            link: "https://huggingface.co/zai-org/GLM-4.7-Flash",
+            format: "Transformers",
+            tags: ["text-generation"],
+            downloads: 1,
+            likes: 1,
+            downloadsLabel: "1 download",
+            likesLabel: "1 like",
+            availableLocally: false,
+            launchMode: "convert",
+            backend: "mlx",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await searchHubModels("glm");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.repo).toBe("zai-org/GLM-4.7-Flash");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8876/api/models/hub-search?q=glm",
+      expect.any(Object),
     );
   });
 });

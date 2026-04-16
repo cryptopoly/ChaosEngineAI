@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  discoverSearchTokens,
   capabilityMeta,
   defaultVariantForFamily,
   findVariantById,
   firstDirectVariant,
   flattenVariants,
+  modelFamilyMatchesDiscoverQuery,
+  normalizeDiscoverSearchText,
   normalizeCapability,
 } from "../models";
 import type { ModelFamily, ModelVariant } from "../../types";
@@ -44,6 +47,46 @@ describe("normalizeCapability()", () => {
 
   it("collapses multiple spaces", () => {
     expect(normalizeCapability("multi   lingual")).toBe("multi-lingual");
+  });
+});
+
+describe("Discover search helpers", () => {
+  it("normalizes punctuation and alpha-numeric joins", () => {
+    expect(normalizeDiscoverSearchText(" Qwen3-Coder.Next 32B ")).toBe("qwen 3 coder next 32 b");
+  });
+
+  it("splits normalized tokens for token-based matching", () => {
+    expect(discoverSearchTokens("qwen next 32b")).toEqual(["qwen", "next", "32", "b"]);
+  });
+
+  it("matches families across name, variant, and repo text", () => {
+    const family = makeFamily({
+      id: "qwen3-coder",
+      name: "Qwen3 Coder",
+      provider: "Qwen",
+      headline: "Code-specialised Qwen3 family",
+      summary: "Purpose-built coding model.",
+      description: "Strong for tool use.",
+      capabilities: ["coding", "tool-use"],
+      readme: ["Official Next repos replace older provisional 8B and 32B placeholders."],
+      variants: [
+        makeVariant({
+          id: "Qwen/Qwen3-Coder-Next-FP8",
+          name: "Qwen3 Coder Next FP8",
+          repo: "Qwen/Qwen3-Coder-Next-FP8",
+          format: "Transformers",
+          quantization: "FP8",
+          note: "Official FP8 repo.",
+          contextWindow: "256K",
+          capabilities: ["coding", "agents", "tool-use"],
+        }),
+      ],
+    });
+
+    expect(modelFamilyMatchesDiscoverQuery(family, "qwen coder")).toBe(true);
+    expect(modelFamilyMatchesDiscoverQuery(family, "coder qwen")).toBe(true);
+    expect(modelFamilyMatchesDiscoverQuery(family, "qwen next 32b")).toBe(true);
+    expect(modelFamilyMatchesDiscoverQuery(family, "qwen next fp8")).toBe(true);
   });
 });
 

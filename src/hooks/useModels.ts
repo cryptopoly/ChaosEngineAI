@@ -1,16 +1,17 @@
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   downloadModel,
   cancelDownload,
   deleteModelDownload,
   getDownloadStatus,
-  searchModels,
+  searchHubModels,
   listHubFiles,
 } from "../api";
 import type { DownloadStatus } from "../api";
 import {
   defaultVariantForFamily,
   buildDownloadStatusMap,
+  modelFamilyMatchesDiscoverQuery,
   pendingDownloadStatus,
   failedDownloadStatus,
 } from "../utils";
@@ -29,9 +30,9 @@ export function useModels(
   refreshWorkspace: (preferredChatId?: string) => Promise<unknown>,
 ) {
   const [searchInput, setSearchInput] = useState("");
-  const deferredSearch = useDeferredValue(searchInput);
   const [searchResults, setSearchResults] = useState<ModelFamily[]>(curatedFamilies);
   const [hubResults, setHubResults] = useState<HubModel[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [expandedHubId, setExpandedHubId] = useState<string | null>(null);
   const [hubFileCache, setHubFileCache] = useState<Record<string, HubFileListResponse>>({});
   const [hubFileLoading, setHubFileLoading] = useState<Record<string, boolean>>({});
@@ -51,40 +52,58 @@ export function useModels(
   curatedRef.current = curatedFamilies;
 
   useEffect(() => {
-    if (!deferredSearch.trim()) {
+    const localSearch = searchInput.trim();
+    if (!localSearch) {
       setSearchResults(curatedRef.current);
       setHubResults([]);
+      setSearchError(null);
+      return;
     }
-  }, [curatedFamilies]); // eslint-disable-line react-hooks/exhaustive-deps
+    setSearchResults(curatedRef.current.filter((family) => modelFamilyMatchesDiscoverQuery(family, localSearch)));
+  }, [curatedFamilies, searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Search effect — only fires when the actual query changes.
+  // Hub search effect — curated families are always filtered locally so the
+  // Discover list stays responsive even if the backend search path is stale.
   useEffect(() => {
-    if (!deferredSearch.trim()) {
-      setSearchResults(curatedRef.current);
+    const query = searchInput.trim();
+    if (!query) {
       setHubResults([]);
+      setSearchError(null);
       return;
     }
     let cancelled = false;
-    void (async () => {
-      try {
-        const { families, hubModels } = await searchModels(deferredSearch);
-        if (!cancelled) {
-          setSearchResults(families);
-          setHubResults(hubModels);
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        if (!backendOnline) {
+          if (!cancelled) {
+            setHubResults([]);
+            setSearchError("Backend search is offline. Showing local catalog matches only.");
+          }
+          return;
         }
-      } catch (searchError) {
-        if (!cancelled) {
-          // On search failure, keep showing curated families so the
-          // page isn't blank.  Only clear hub results.
-          setSearchResults(curatedRef.current);
-          setHubResults([]);
+        try {
+          const hubModels = await searchHubModels(query);
+          if (!cancelled) {
+            setHubResults(hubModels);
+            setSearchError(null);
+          }
+        } catch (searchError) {
+          if (!cancelled) {
+            setHubResults([]);
+            setSearchError(
+              searchError instanceof Error
+                ? `${searchError.message} Showing local catalog matches only.`
+                : "Could not search models right now. Showing local catalog matches only.",
+            );
+          }
         }
-      }
-    })();
+      })();
+    }, 120);
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
     };
-  }, [deferredSearch, setError]);
+  }, [backendOnline, searchInput]);
 
   // Search result selection sync
   useEffect(() => {
@@ -184,10 +203,10 @@ export function useModels(
   return {
     searchInput,
     setSearchInput,
-    deferredSearch,
     searchResults,
     setSearchResults,
     hubResults,
+    searchError,
     expandedHubId,
     hubFileCache,
     hubFileLoading,

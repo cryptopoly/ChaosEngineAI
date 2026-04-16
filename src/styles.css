@@ -336,11 +336,18 @@ strong {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .panel-actions .text-input {
   min-width: min(280px, 100%);
   width: min(320px, 100%);
+}
+
+.discover-panel .panel-actions {
+  flex: 1 1 640px;
 }
 
 .stat-grid {
@@ -2096,9 +2103,9 @@ select.text-input {
 }
 
 .discover-search {
-  flex: 1 1 360px;
-  min-width: min(280px, 100%) !important;
-  width: min(420px, 100%) !important;
+  flex: 1 1 640px;
+  min-width: min(360px, 100%) !important;
+  width: min(720px, 100%) !important;
   max-width: 100%;
 }
 
@@ -2252,6 +2259,25 @@ select.text-input {
 .hub-file-group .eyebrow {
   display: block;
   margin-bottom: 4px;
+}
+.hub-file-group--collapsible > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0 6px;
+}
+.hub-file-group--collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+.hub-file-group--collapsible > summary:hover .eyebrow,
+.hub-file-group--collapsible > summary:hover .muted-text {
+  color: var(--text);
+}
+.hub-file-group--collapsible > summary .eyebrow {
+  margin-bottom: 0;
 }
 .hub-file-list {
   list-style: none;

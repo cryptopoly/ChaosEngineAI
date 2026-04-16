@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   discoverSearchTokens,
+  extractHuggingFaceRepoIdFromQuery,
   capabilityMeta,
   defaultVariantForFamily,
   findVariantById,
@@ -59,6 +60,15 @@ describe("Discover search helpers", () => {
     expect(discoverSearchTokens("qwen next 32b")).toEqual(["qwen", "next", "32", "b"]);
   });
 
+  it("extracts repo ids from Hugging Face model URLs", () => {
+    expect(extractHuggingFaceRepoIdFromQuery("https://huggingface.co/Qwen/Qwen3.6-35B-A3B")).toBe("Qwen/Qwen3.6-35B-A3B");
+    expect(extractHuggingFaceRepoIdFromQuery("https://hf.co/Qwen/Qwen3.6-35B-A3B")).toBe("Qwen/Qwen3.6-35B-A3B");
+  });
+
+  it("normalizes Hugging Face URLs into search tokens", () => {
+    expect(discoverSearchTokens("https://huggingface.co/Qwen/Qwen3.6-35B-A3B")).toEqual(["qwen", "qwen", "3", "6", "35", "b", "a", "3b"]);
+  });
+
   it("matches families across name, variant, and repo text", () => {
     const family = makeFamily({
       id: "qwen3-coder",
@@ -87,6 +97,34 @@ describe("Discover search helpers", () => {
     expect(modelFamilyMatchesDiscoverQuery(family, "coder qwen")).toBe(true);
     expect(modelFamilyMatchesDiscoverQuery(family, "qwen next 32b")).toBe(true);
     expect(modelFamilyMatchesDiscoverQuery(family, "qwen next fp8")).toBe(true);
+  });
+
+  it("does not false-positive dotted version queries against nearby numeric families", () => {
+    const family = makeFamily({
+      id: "qwen3-5",
+      name: "Qwen 3.5",
+      provider: "Qwen",
+      headline: "Hybrid reasoning family",
+      summary: "Long context with strong agent support.",
+      description: "Includes 35B A3B and 262K context variants.",
+      capabilities: ["reasoning", "coding", "vision"],
+      readme: ["Useful when you want modern reasoning and coding performance."],
+      variants: [
+        makeVariant({
+          id: "Qwen/Qwen3.5-35B-A3B",
+          name: "Qwen3.5 35B A3B",
+          repo: "Qwen/Qwen3.5-35B-A3B",
+          format: "Transformers",
+          quantization: "FP8",
+          note: "262K context variant.",
+          contextWindow: "262K",
+          capabilities: ["reasoning", "coding", "vision", "agents"],
+        }),
+      ],
+    });
+
+    expect(modelFamilyMatchesDiscoverQuery(family, "Qwen3.6")).toBe(false);
+    expect(modelFamilyMatchesDiscoverQuery(family, "Qwen3.6-35B-A3B")).toBe(false);
   });
 });
 

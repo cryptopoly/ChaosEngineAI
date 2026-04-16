@@ -62,6 +62,30 @@ export function useModels(
     setSearchResults(curatedRef.current.filter((family) => modelFamilyMatchesDiscoverQuery(family, localSearch)));
   }, [curatedFamilies, searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Recover active downloads after navigation or app reload so every view can
+  // render the same in-flight state, not just the Discover tab that started it.
+  useEffect(() => {
+    if (!backendOnline) {
+      setActiveDownloads({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const statuses = await getDownloadStatus();
+        if (!cancelled) {
+          setActiveDownloads(buildDownloadStatusMap(statuses));
+        }
+      } catch {
+        // Keep whatever state we already have; the polling effect will retry
+        // once there is an active download or the user starts a new one.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [backendOnline]);
+
   // Hub search effect — curated families are always filtered locally so the
   // Discover list stays responsive even if the backend search path is stale.
   useEffect(() => {

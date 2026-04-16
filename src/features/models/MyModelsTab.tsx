@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { DownloadStatus } from "../../api";
 import { Panel } from "../../components/Panel";
 import type {
   LibraryItem,
@@ -10,6 +11,9 @@ import {
   capabilityMeta,
   parseContextK,
   compareOptionalNumber,
+  inferHfRepoFromLocalPath,
+  downloadProgressLabel,
+  downloadSizeTooltip,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { candidateKeys } from "../../components/runtimeSupport";
@@ -43,9 +47,13 @@ export interface MyModelsTabProps {
   libraryBackendFilter: string | null;
   onLibraryBackendFilterChange: (backend: string | null) => void;
   strategyCompat?: StrategyCompatInfo;
+  activeDownloads: Record<string, DownloadStatus>;
   expandedLibraryPath: string | null;
   onExpandedLibraryPathChange: (path: string | null) => void;
   fileRevealLabel: string;
+  onDownloadModel: (repo: string) => void;
+  onCancelModelDownload: (repo: string) => void;
+  onDeleteModelDownload: (repo: string) => void;
   onPrepareLibraryConversion: (item: LibraryItem) => void;
   onOpenModelSelector: (action: "chat" | "server" | "thread", preselectedKey?: string) => void;
   onRevealPath: (path: string) => void;
@@ -69,9 +77,13 @@ export function MyModelsTab({
   libraryBackendFilter,
   onLibraryBackendFilterChange,
   strategyCompat,
+  activeDownloads,
   expandedLibraryPath,
   onExpandedLibraryPathChange,
   fileRevealLabel,
+  onDownloadModel,
+  onCancelModelDownload,
+  onDeleteModelDownload,
   onPrepareLibraryConversion,
   onOpenModelSelector,
   onRevealPath,
@@ -93,6 +105,41 @@ export function MyModelsTab({
   function sortIndicator(key: string) {
     if (librarySortKey !== key) return "";
     return librarySortDir === "asc" ? " \u25B2" : " \u25BC";
+  }
+
+  function libraryDownloadDetail(download: DownloadStatus): string {
+    const sizeDetail = downloadSizeTooltip(download);
+    if (download.state === "failed") {
+      return download.error ?? "Download failed.";
+    }
+    if (download.state === "cancelled") {
+      return sizeDetail ? `${sizeDetail} downloaded.` : "Download paused.";
+    }
+    return sizeDetail ? `${sizeDetail} downloaded.` : "Download in progress.";
+  }
+
+  function inferredPartialDownload(row: LibraryRow, repo: string | null): DownloadStatus | null {
+    if (!repo || !row.item.broken) return null;
+    const reason = (row.item.brokenReason ?? "").toLowerCase();
+    const isPartialHfCache =
+      row.sourceKind.toLowerCase() === "hf cache"
+      && (reason.includes("partial blob") || reason.includes("incomplete"));
+    if (!isPartialHfCache) return null;
+
+    const downloadedGb = Math.max(0, row.item.sizeGb ?? 0);
+    const totalGb = row.matchedVariant?.sizeGb && row.matchedVariant.sizeGb > 0
+      ? row.matchedVariant.sizeGb
+      : null;
+    const progress = totalGb ? Math.max(0, Math.min(1, downloadedGb / totalGb)) : 0;
+
+    return {
+      repo,
+      state: "cancelled",
+      progress,
+      downloadedGb,
+      totalGb,
+      error: null,
+    };
   }
 
   function renderCapabilityIcons(capabilities: string[], max = 5) {
@@ -301,8 +348,33 @@ export function MyModelsTab({
             <div className="library-rows">
               {capFilteredLibrary.map(({ item, matchedVariant, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
                 const isExpanded = expandedLibraryPath === item.path;
+                const repo = inferHfRepoFromLocalPath(item.path) ?? matchedVariant?.repo ?? (item.name.includes("/") ? item.name : null);
+                const row: LibraryRow = {
+                  item,
+                  matchedVariant,
+                  displayFormat,
+                  displayQuantization,
+                  displayBackend,
+                  sourceKind,
+                };
+                const downloadState = repo
+                  ? activeDownloads[repo] ?? inferredPartialDownload(row, repo)
+                  : null;
+                const isDownloading = downloadState?.state === "downloading";
+                const isPaused = downloadState?.state === "cancelled";
+                const isDownloadFailed = downloadState?.state === "failed";
+                const hasDownloadOverlay = Boolean(isDownloading || isPaused || isDownloadFailed);
+                const showBroken = Boolean(item.broken && !hasDownloadOverlay);
+                const canRetryBrokenRepo = Boolean(showBroken && repo);
+                const downloadActionLabel = isDownloadFailed ? "RETRY" : "RESUME";
+                const wrapperClassName = [
+                  "library-item-wrap",
+                  isExpanded ? "expanded" : "",
+                  isDownloading ? "download-active" : "",
+                  isPaused || isDownloadFailed ? "download-warning" : "",
+                ].filter(Boolean).join(" ");
                 return (
-                  <div key={item.path} className={`library-item-wrap${isExpanded ? " expanded" : ""}`}>
+                  <div key={item.path} className={wrapperClassName}>
                     <div
                       className="library-item-row"
                       role="button"
@@ -313,9 +385,24 @@ export function MyModelsTab({
                         <strong>{item.name}</strong>
                         <div className="library-item-meta-row">
                           <span className="badge muted">{sourceKind}</span>
+                          {hasDownloadOverlay && downloadState ? (
+                            <span
+                              className={`badge ${isDownloading ? "accent" : "warning"}`}
+                              title={downloadSizeTooltip(downloadState)}
+                            >
+                              {isDownloadFailed ? "DOWNLOAD FAILED" : downloadProgressLabel(downloadState)}
+                            </span>
+                          ) : null}
                         </div>
                         {matchedVariant ? renderCapabilityIcons(matchedVariant.capabilities, 5) : null}
-                        {item.broken ? (
+                        {hasDownloadOverlay && downloadState ? (
+                          <span className="library-download-tag">
+                            <small className={`library-download-reason${isDownloadFailed ? " error" : ""}`}>
+                              {libraryDownloadDetail(downloadState)}
+                            </small>
+                          </span>
+                        ) : null}
+                        {showBroken ? (
                           <span className="broken-tag">
                             <span className="badge warning">BROKEN</span>
                             <small className="broken-reason">{item.brokenReason ?? "Incomplete or broken"}</small>
@@ -330,11 +417,39 @@ export function MyModelsTab({
                       <span>{matchedVariant?.estimatedCompressedMemoryGb ? `~${number(matchedVariant.estimatedCompressedMemoryGb)}GB` : "?"}</span>
                       <span>{matchedVariant?.contextWindow ?? ""}</span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
-                        {displayFormat !== "MLX" ? (
-                          <button className="primary-button action-convert" type="button" onClick={() => onPrepareLibraryConversion(item)}>CONVERT</button>
-                        ) : null}
-                        <button className="primary-button action-chat" type="button" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)}>CHAT</button>
-                        <button className="primary-button action-server" type="button" onClick={() => onOpenModelSelector("server", `library:${item.path}`)}>SERVER</button>
+                        {hasDownloadOverlay && repo ? (
+                          <>
+                            {isDownloading ? (
+                              <button className="secondary-button" type="button" onClick={() => onCancelModelDownload(repo)}>PAUSE</button>
+                            ) : (
+                              <button className="primary-button" type="button" onClick={() => onDownloadModel(repo)}>{downloadActionLabel}</button>
+                            )}
+                            <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(repo)}>
+                              {isDownloading ? "CANCEL" : "DELETE"}
+                            </button>
+                          </>
+                        ) : canRetryBrokenRepo ? (
+                          <>
+                            <button className="primary-button" type="button" onClick={() => onDownloadModel(repo!)}>
+                              RETRY
+                            </button>
+                            <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(repo!)}>
+                              DELETE
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {!item.broken && displayFormat !== "MLX" ? (
+                              <button className="primary-button action-convert" type="button" onClick={() => onPrepareLibraryConversion(item)}>CONVERT</button>
+                            ) : null}
+                            {!item.broken ? (
+                              <>
+                                <button className="primary-button action-chat" type="button" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)}>CHAT</button>
+                                <button className="primary-button action-server" type="button" onClick={() => onOpenModelSelector("server", `library:${item.path}`)}>SERVER</button>
+                              </>
+                            ) : null}
+                          </>
+                        )}
                         <button className="secondary-button icon-button" type="button" title={fileRevealLabel} onClick={() => onRevealPath(item.path)}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -342,15 +457,17 @@ export function MyModelsTab({
                             <line x1="10" y1="14" x2="21" y2="3" />
                           </svg>
                         </button>
-                        <button className="secondary-button icon-button danger-button" type="button" title="Delete model" onClick={() => onDeleteModel(item)}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
+                        {!hasDownloadOverlay ? (
+                          <button className="secondary-button icon-button danger-button" type="button" title="Delete model" onClick={() => onDeleteModel(item)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                     {isExpanded ? (

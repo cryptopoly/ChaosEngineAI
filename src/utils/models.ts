@@ -3,13 +3,31 @@ import { CAPABILITY_META } from "../constants/capabilities";
 
 const DISCOVER_SEARCH_PUNCT_RE = /[^a-z0-9]+/g;
 const DISCOVER_SEARCH_ALPHA_NUM_RE = /([a-z])(\d)|(\d)([a-z])/g;
+const HF_QUERY_URL_HOSTS = new Set(["huggingface.co", "www.huggingface.co", "hf.co", "www.hf.co"]);
 
 export function flattenVariants(families: ModelFamily[]): ModelVariant[] {
   return families.flatMap((family) => family.variants);
 }
 
+export function extractHuggingFaceRepoIdFromQuery(value: string): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  try {
+    const parsed = new URL(text);
+    if (!HF_QUERY_URL_HOSTS.has(parsed.hostname.toLowerCase())) return null;
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+    if (["models", "spaces", "datasets"].includes(segments[0]!.toLowerCase()) && segments.length >= 3) {
+      return `${segments[1]}/${segments[2]}`;
+    }
+    return `${segments[0]}/${segments[1]}`;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeDiscoverSearchText(value: string): string {
-  const lowered = String(value ?? "").trim().toLowerCase();
+  const lowered = (extractHuggingFaceRepoIdFromQuery(value) ?? String(value ?? "").trim()).toLowerCase();
   if (!lowered) return "";
   const normalized = lowered.replace(
     DISCOVER_SEARCH_ALPHA_NUM_RE,
@@ -51,8 +69,8 @@ export function modelFamilyDiscoverHaystack(family: ModelFamily): string {
 export function modelFamilyMatchesDiscoverQuery(family: ModelFamily, query: string): boolean {
   const tokens = discoverSearchTokens(query);
   if (!tokens.length) return true;
-  const haystack = modelFamilyDiscoverHaystack(family);
-  return tokens.every((token) => haystack.includes(token));
+  const haystackTokens = new Set(discoverSearchTokens(modelFamilyDiscoverHaystack(family)));
+  return tokens.every((token) => haystackTokens.has(token));
 }
 
 export function normalizeCapability(capability: string): string {

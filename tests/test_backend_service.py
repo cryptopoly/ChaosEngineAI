@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from backend_service.app import compute_cache_preview, create_app
 from backend_service.helpers.huggingface import _search_huggingface_hub
-from backend_service.inference import GenerationResult, LoadedModelInfo, StreamChunk
+from backend_service.inference import GenerationResult, LoadedModelInfo, StreamChunk, _resolve_gguf_path
 from backend_service.state import ChaosEngineState, _spawn_snapshot_download
 from backend_service.helpers.discovery import _discover_local_models
 
@@ -361,6 +361,14 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 payload = response.json()
                 self.assertIn("qwen3-coder", [family["id"] for family in payload["results"]])
 
+    @mock.patch("backend_service.routes.models._search_huggingface_hub", return_value=[])
+    def test_model_search_does_not_false_positive_qwen36_against_qwen35_catalog(self, _hub_search):
+        response = self.client.get("/api/models/search", params={"q": "Qwen3.6-35B-A3B"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["results"], [])
+
     @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
     def test_hub_search_includes_glm_and_multimodal_gemma_matches(self, urlopen_mock):
         payload = [
@@ -441,6 +449,52 @@ class ChaosEngineBackendTests(unittest.TestCase):
             ["org/newer-model", "org/middle-model", "org/older-model-popular"],
         )
 
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_hub_search_matches_exact_qwen36_repo_name(self, urlopen_mock):
+        payload = [
+            {
+                "id": "Qwen/Qwen3.6-35B-A3B",
+                "pipeline_tag": "image-text-to-text",
+                "tags": ["transformers", "safetensors", "qwen3_5_moe", "conversational"],
+                "downloads": 0,
+                "likes": 201,
+                "lastModified": "2026-04-15T05:59:19Z",
+            },
+            {
+                "id": "Qwen/Qwen3.5-35B-A3B",
+                "pipeline_tag": "image-text-to-text",
+                "tags": ["transformers", "safetensors", "qwen3_5_moe", "conversational"],
+                "downloads": 1000,
+                "likes": 1000,
+                "lastModified": "2026-04-01T05:59:19Z",
+            },
+        ]
+        urlopen_mock.return_value = fake_urlopen_json(payload)
+
+        results = _search_huggingface_hub("Qwen3.6-35B-A3B", fake_library(), limit=20)
+
+        self.assertEqual([model["repo"] for model in results], ["Qwen/Qwen3.6-35B-A3B"])
+
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_hub_search_accepts_huggingface_model_urls(self, urlopen_mock):
+        payload = [
+            {
+                "id": "Qwen/Qwen3.6-35B-A3B",
+                "pipeline_tag": "image-text-to-text",
+                "tags": ["transformers", "safetensors", "qwen3_5_moe", "conversational"],
+                "downloads": 0,
+                "likes": 201,
+                "lastModified": "2026-04-15T05:59:19Z",
+            },
+        ]
+        urlopen_mock.return_value = fake_urlopen_json(payload)
+
+        direct_results = _search_huggingface_hub("https://huggingface.co/Qwen/Qwen3.6-35B-A3B", fake_library(), limit=20)
+        short_results = _search_huggingface_hub("https://hf.co/Qwen/Qwen3.6-35B-A3B", fake_library(), limit=20)
+
+        self.assertEqual([model["repo"] for model in direct_results], ["Qwen/Qwen3.6-35B-A3B"])
+        self.assertEqual([model["repo"] for model in short_results], ["Qwen/Qwen3.6-35B-A3B"])
+
     @mock.patch("backend_service.state.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=74.9)
@@ -461,6 +515,49 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(payload["totalGb"], 74.9)
         thread_cls.assert_called_once()
         fake_thread.start.assert_called_once()
+
+    @mock.patch("backend_service.state._spawn_snapshot_download")
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
+    @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=66.99)
+    def test_model_download_disables_hf_xet_for_snapshot_download(
+        self,
+        _preflight_size,
+        _downloaded_bytes,
+        spawn_download,
+    ):
+        state = self.client.app.state.chaosengine
+
+        process = mock.Mock()
+        process.poll.return_value = 0
+        process.returncode = 0
+        process.wait.return_value = 0
+        spawn_download.return_value = process
+
+        created_threads = []
+
+        class ImmediateThread:
+            def __init__(self, *, target=None, daemon=None):
+                self.target = target
+                self.daemon = daemon
+                self.run_target = not created_threads
+                created_threads.append(self)
+
+            def start(self):
+                if self.run_target and self.target is not None:
+                    self.target()
+
+            def join(self, timeout=None):
+                return None
+
+        with mock.patch("backend_service.state.threading.Thread", side_effect=ImmediateThread):
+            payload = state.start_download("Qwen/Qwen3.6-35B-A3B")
+
+        self.assertEqual(payload["state"], "completed")
+        spawn_download.assert_called_once()
+        env = spawn_download.call_args.args[1]
+        self.assertEqual(env["HF_HUB_DISABLE_XET"], "1")
+        self.assertEqual(env["HF_HUB_DISABLE_PROGRESS_BARS"], "1")
+        self.assertEqual(env["PYTHONUNBUFFERED"], "1")
 
     @mock.patch("backend_service.state.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
@@ -1479,6 +1576,71 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertTrue(library[0]["broken"])
         self.assertIn("NVFP4", library[0]["brokenReason"])
         self.assertIn("not supported by the MLX runtime", library[0]["brokenReason"])
+
+    def test_discovery_marks_partial_hf_sharded_snapshot_as_broken(self):
+        models_root = Path(self.tempdir.name) / "HF"
+        hf_repo = models_root / "models--Qwen--Qwen3.6-35B-A3B"
+        snapshot = hf_repo / "snapshots" / "1234"
+        blobs = hf_repo / "blobs"
+        snapshot.mkdir(parents=True)
+        blobs.mkdir(parents=True)
+        (snapshot / "config.json").write_text("{}", encoding="utf-8")
+        (snapshot / "tokenizer.json").write_text("{}", encoding="utf-8")
+        for index in range(1, 8):
+            (snapshot / f"model-{index:05d}-of-00026.safetensors").write_bytes(b"x" * 4096)
+        (blobs / "partial-shard.incomplete").write_bytes(b"x" * 1024)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "HF",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "Qwen/Qwen3.6-35B-A3B")
+        self.assertEqual(library[0]["format"], "Transformers")
+        self.assertEqual(library[0]["sourceKind"], "HF cache")
+        self.assertTrue(library[0]["broken"])
+        self.assertIn("incomplete", library[0]["brokenReason"].lower())
+
+    def test_discovery_marks_partial_local_gguf_directory_as_broken(self):
+        models_root = Path(self.tempdir.name) / "AI_Models"
+        gguf_dir = models_root / "unsloth" / "Qwen3.6-35B-A3B-GGUF"
+        gguf_dir.mkdir(parents=True)
+        (gguf_dir / "mmproj-F32.gguf").write_bytes(b"x" * 4096)
+        (gguf_dir / "downloading_Qwen3.6-35B-A3B-UD-Q4_K_S.gguf.part").write_bytes(b"y" * 4096)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "AI Models",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "Qwen3.6-35B-A3B-GGUF")
+        self.assertEqual(library[0]["format"], "GGUF")
+        self.assertEqual(library[0]["sourceKind"], "Directory")
+        self.assertTrue(library[0]["broken"])
+        self.assertIn("still downloading", library[0]["brokenReason"])
+
+    def test_resolve_gguf_path_ignores_mmproj_only_directory(self):
+        gguf_dir = Path(self.tempdir.name) / "Qwen3.6-35B-A3B-GGUF"
+        gguf_dir.mkdir(parents=True)
+        (gguf_dir / "mmproj-F32.gguf").write_bytes(b"x" * 4096)
+        (gguf_dir / "downloading_Qwen3.6-35B-A3B-UD-Q4_K_S.gguf.part").write_bytes(b"y" * 4096)
+
+        self.assertIsNone(_resolve_gguf_path(str(gguf_dir), None))
+        self.assertIsNone(_resolve_gguf_path(str(gguf_dir / "mmproj-F32.gguf"), None))
 
     def test_discovery_prefers_gguf_for_config_plus_gguf_directory(self):
         models_root = Path(self.tempdir.name) / "AI_Models"

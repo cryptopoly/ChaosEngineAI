@@ -2266,6 +2266,11 @@ class ChaosEngineState:
                 env = os.environ.copy()
                 env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
                 env.setdefault("PYTHONUNBUFFERED", "1")
+                # Force the standard Hub download path for app-managed downloads.
+                # Xet-backed transfers can keep most activity outside the per-repo
+                # cache tree we use for progress tracking, which makes large repos
+                # look permanently stuck at 0-1% in the UI.
+                env["HF_HUB_DISABLE_XET"] = "1"
                 temp_log = tempfile.NamedTemporaryFile(
                     prefix="chaosengine-download-",
                     suffix=".log",

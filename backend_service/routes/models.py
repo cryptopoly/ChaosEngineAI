@@ -73,8 +73,8 @@ def _family_matches_discover_query(family: dict[str, Any], query: str) -> bool:
     tokens = _discover_search_tokens(query)
     if not tokens:
         return True
-    haystack = _family_discover_search_haystack(family)
-    return all(token in haystack for token in tokens)
+    haystack_tokens = set(_discover_search_tokens(_family_discover_search_haystack(family)))
+    return all(token in haystack_tokens for token in tokens)
 
 
 @router.get("/api/models/search")

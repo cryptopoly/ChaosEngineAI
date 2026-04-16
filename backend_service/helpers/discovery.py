@@ -122,6 +122,68 @@ def _model_has_files(path: Path, pattern: str) -> bool:
         return False
 
 
+_SHARDED_WEIGHT_RE = re.compile(
+    r"(?P<prefix>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.(?P<suffix>safetensors|bin)$",
+    re.IGNORECASE,
+)
+
+
+def _incomplete_sharded_weight_reason(path: Path) -> str | None:
+    try:
+        files = [entry.name for entry in path.iterdir() if entry.is_file()]
+    except OSError:
+        return None
+
+    shard_groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for filename in files:
+        match = _SHARDED_WEIGHT_RE.match(filename)
+        if not match:
+            continue
+        key = (match.group("prefix"), match.group("suffix").lower())
+        expected_total = int(match.group("total"))
+        shard_index = int(match.group("index"))
+        group = shard_groups.setdefault(key, {"expected_total": expected_total, "present": set()})
+        group["expected_total"] = max(int(group["expected_total"]), expected_total)
+        group["present"].add(shard_index)
+
+    for (_prefix, suffix), group in shard_groups.items():
+        expected_total = int(group["expected_total"])
+        present = set(group["present"])
+        if expected_total <= 1:
+            continue
+        missing = [index for index in range(1, expected_total + 1) if index not in present]
+        if missing:
+            sample = ", ".join(f"{index:05d}" for index in missing[:3])
+            more = f" (+{len(missing) - 3} more)" if len(missing) > 3 else ""
+            return (
+                f"Incomplete sharded {suffix} checkpoint: found {len(present)} of {expected_total} shard files. "
+                f"Missing shards include {sample}{more}."
+            )
+    return None
+
+
+def _incomplete_gguf_directory_reason(path: Path) -> str | None:
+    try:
+        gguf_files = [entry for entry in path.rglob("*.gguf") if entry.is_file()]
+        part_files = [entry for entry in path.rglob("*.gguf.part") if entry.is_file()]
+    except OSError:
+        return None
+
+    main_files = [entry for entry in gguf_files if "mmproj" not in entry.name.lower()]
+    if main_files:
+        return None
+    if part_files:
+        sample = ", ".join(entry.name for entry in part_files[:2])
+        more = f" (+{len(part_files) - 2} more)" if len(part_files) > 2 else ""
+        return (
+            f"GGUF download is incomplete: main model weights are still downloading "
+            f"({sample}{more})."
+        )
+    if gguf_files:
+        return "GGUF directory only contains a vision projector (mmproj) and no main model weights."
+    return None
+
+
 def _quantization_label_from_text(text: str) -> str | None:
     lowered = text.lower()
     match = re.search(r"\b(q\d(?:_[a-z0-9]+)*)\b", lowered)
@@ -294,7 +356,7 @@ def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     if source_kind == "HF cache":
         detected_format = _detect_storage_format(path, name_hint=name)
         return (name, detected_format, source_kind) if detected_format != "unknown" else (name, "Transformers", source_kind)
-    if any(path.glob("*.gguf")):
+    if any(path.glob("*.gguf")) or any(path.glob("*.gguf.part")):
         return (name, "GGUF", source_kind)
     if (path / "config.json").exists() or (path / "tokenizer.json").exists():
         return (name, _detect_storage_format(path, name_hint=name), source_kind)
@@ -350,7 +412,9 @@ def _list_weight_files(raw_path: str) -> dict[str, Any]:
 
     # Directory
     ggufs = sorted(target.rglob("*.gguf"), key=lambda f: f.stat().st_size, reverse=True)
-    if ggufs:
+    gguf_partials = sorted(target.rglob("*.gguf.part"))
+    if ggufs or gguf_partials:
+        broken_reason = _incomplete_gguf_directory_reason(target)
         files = []
         for f in ggufs:
             is_mmproj = "mmproj" in f.name.lower()
@@ -362,16 +426,26 @@ def _list_weight_files(raw_path: str) -> dict[str, Any]:
                     "role": "mmproj" if is_mmproj else "main",
                 }
             )
+        for f in gguf_partials:
+            files.append(
+                {
+                    "name": f.name,
+                    "path": str(f),
+                    "sizeGb": _gb(f),
+                    "role": "partial",
+                }
+            )
         return {
             "path": str(target),
             "format": "GGUF",
             "files": files,
-            "broken": False,
-            "brokenReason": None,
+            "broken": broken_reason is not None,
+            "brokenReason": broken_reason,
         }
 
     safetensors = sorted(target.glob("*.safetensors"))
     if safetensors:
+        shard_reason = _incomplete_sharded_weight_reason(target)
         files = [
             {
                 "name": f.name,
@@ -387,8 +461,8 @@ def _list_weight_files(raw_path: str) -> dict[str, Any]:
             "path": str(target),
             "format": fmt,
             "files": files,
-            "broken": False,
-            "brokenReason": None,
+            "broken": shard_reason is not None,
+            "brokenReason": shard_reason,
         }
 
     # No weights found
@@ -429,6 +503,15 @@ def _detect_broken_library_item(child: Path, file_format: str, source_kind: str 
         # Transformers repo gets mislabelled as "GGUF broken" just
         # because the format slot says "HF cache".
         if source == "hf cache":
+            try:
+                if any((child / "blobs").glob("*.incomplete")):
+                    return (True, "Hugging Face download is incomplete: partial blob files are still present.")
+            except OSError:
+                pass
+            for candidate in _candidate_model_dirs(child):
+                shard_reason = _incomplete_sharded_weight_reason(candidate)
+                if shard_reason:
+                    return (True, shard_reason)
             has_gguf = any(child.rglob("*.gguf"))
             has_safetensors = any(child.rglob("*.safetensors"))
             has_pytorch_bin = any(child.rglob("pytorch_model*.bin"))
@@ -436,14 +519,23 @@ def _detect_broken_library_item(child: Path, file_format: str, source_kind: str 
                 return (True, "No .gguf, .safetensors, or pytorch weights found in HF cache entry")
             return (False, None)
         if fmt == "gguf" or "gguf" in fmt:
+            gguf_reason = _incomplete_gguf_directory_reason(child)
+            if gguf_reason:
+                return (True, gguf_reason)
             if not any(child.rglob("*.gguf")):
                 return (True, "No .gguf weights present")
             return (False, None)
         if fmt == "mlx":
+            shard_reason = _incomplete_sharded_weight_reason(child)
+            if shard_reason:
+                return (True, shard_reason)
             if not any(child.glob("*.safetensors")) and not (child / "model.safetensors").exists():
                 return (True, "MLX directory missing model.safetensors")
             return (False, None)
         if fmt == "transformers":
+            shard_reason = _incomplete_sharded_weight_reason(child)
+            if shard_reason:
+                return (True, shard_reason)
             has_safetensors = any(child.glob("*.safetensors"))
             has_pytorch_bin = any(child.glob("pytorch_model*.bin"))
             if not has_safetensors and not has_pytorch_bin:

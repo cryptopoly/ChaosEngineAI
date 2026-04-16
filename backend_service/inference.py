@@ -357,6 +357,8 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
             continue
         p = Path(candidate)
         if p.is_file() and p.suffix.lower() == ".gguf":
+            if "mmproj" in p.name.lower():
+                continue
             return str(p)
         if p.is_dir():
             gguf_files = sorted(p.rglob("*.gguf"), key=lambda f: f.stat().st_size, reverse=True)
@@ -364,8 +366,6 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
             model_files = [f for f in gguf_files if "mmproj" not in f.name.lower()]
             if model_files:
                 return str(model_files[0])
-            if gguf_files:
-                return str(gguf_files[0])
     return None
 
 

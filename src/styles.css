@@ -2233,10 +2233,25 @@ select.text-input {
   gap: 6px;
   flex-wrap: wrap;
 }
+.library-download-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .broken-reason {
   color: #e4be75;
   font-size: 0.72rem;
   font-style: italic;
+}
+.library-download-reason {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: italic;
+}
+.library-download-reason.error {
+  color: var(--error, #e26d6d);
+  font-style: normal;
 }
 
 .hub-detail-meta,
@@ -2637,6 +2652,12 @@ select.text-input {
 
 .library-item-wrap.expanded {
   background: var(--panel-alt);
+}
+.library-item-wrap.download-active {
+  border-left: 2px solid rgba(122, 162, 255, 0.65);
+}
+.library-item-wrap.download-warning {
+  border-left: 2px solid rgba(228, 190, 117, 0.65);
 }
 
 .library-item-row {

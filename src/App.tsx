@@ -250,29 +250,31 @@ export default function App() {
       maxContext: variant.maxContext ?? null,
     }));
 
-  const libraryChatOptions: ChatModelOption[] = workspace.library.filter((item) => item.modelType === "text" || (!item.modelType)).map((item) => {
-    const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
-    const displayFormat = libraryItemFormat(item, matched);
-    const displayQuantization = libraryItemQuantization(item, matched);
-    return {
-      key: `library:${item.path}`,
-      label: item.name,
-      detail: `${displayFormat} / ${number(item.sizeGb)} GB`,
-      group: "Local library",
-      model: item.name,
-      modelRef: item.name,
-      canonicalRepo: matched?.repo ?? inferHfRepoFromLocalPath(item.path),
-      source: "library",
-      path: item.path,
-      backend: libraryItemBackend(item, matched),
-      paramsB: matched?.paramsB,
-      sizeGb: item.sizeGb,
-      contextWindow: matched?.contextWindow,
-      format: displayFormat,
-      quantization: displayQuantization ?? undefined,
-      maxContext: item.maxContext ?? matched?.maxContext ?? null,
-    };
-  });
+  const libraryChatOptions: ChatModelOption[] = workspace.library
+    .filter((item) => (item.modelType === "text" || (!item.modelType)) && !item.broken)
+    .map((item) => {
+      const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
+      const displayFormat = libraryItemFormat(item, matched);
+      const displayQuantization = libraryItemQuantization(item, matched);
+      return {
+        key: `library:${item.path}`,
+        label: item.name,
+        detail: `${displayFormat} / ${number(item.sizeGb)} GB`,
+        group: "Local library",
+        model: item.name,
+        modelRef: item.name,
+        canonicalRepo: matched?.repo ?? inferHfRepoFromLocalPath(item.path),
+        source: "library",
+        path: item.path,
+        backend: libraryItemBackend(item, matched),
+        paramsB: matched?.paramsB,
+        sizeGb: item.sizeGb,
+        contextWindow: matched?.contextWindow,
+        format: displayFormat,
+        quantization: displayQuantization ?? undefined,
+        maxContext: item.maxContext ?? matched?.maxContext ?? null,
+      };
+    });
 
   const threadModelOptions = [...catalogChatOptions, ...libraryChatOptions];
 
@@ -1171,9 +1173,13 @@ export default function App() {
           chaosengineAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "chaosengine" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
         }}
+        activeDownloads={activeDownloads}
         expandedLibraryPath={expandedLibraryPath}
         onExpandedLibraryPathChange={setExpandedLibraryPath}
         fileRevealLabel={fileRevealLabel}
+        onDownloadModel={(repo) => void handleDownloadModel(repo)}
+        onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
+        onDeleteModelDownload={(repo) => void handleDeleteModelDownload(repo)}
         onPrepareLibraryConversion={prepareLibraryConversion}
         onOpenModelSelector={openModelSelector}
         onRevealPath={(path) => void handleRevealPath(path)}

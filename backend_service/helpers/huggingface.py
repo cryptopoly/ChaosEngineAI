@@ -27,6 +27,33 @@ _TEXT_DISCOVER_PIPELINES = {
     "conversational",
     "visual-question-answering",
 }
+_HF_QUERY_URL_HOSTS = {"huggingface.co", "www.huggingface.co", "hf.co", "www.hf.co"}
+
+
+def _extract_hf_repo_id_from_query(value: str) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = urllib.parse.urlparse(text)
+    except Exception:
+        return None
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    host = (parsed.netloc or "").strip().lower()
+    if host not in _HF_QUERY_URL_HOSTS:
+        return None
+    segments = [segment for segment in parsed.path.split("/") if segment]
+    if len(segments) < 2:
+        return None
+    if segments[0].lower() in {"models", "spaces", "datasets"} and len(segments) >= 3:
+        return f"{segments[1]}/{segments[2]}"
+    return f"{segments[0]}/{segments[1]}"
+
+
+def _canonical_hub_search_query(value: str) -> str:
+    extracted = _extract_hf_repo_id_from_query(value)
+    return extracted or str(value or "").strip()
 
 
 def _model_is_text_discover_candidate(model: dict[str, Any]) -> bool:
@@ -50,7 +77,7 @@ def _model_is_text_discover_candidate(model: dict[str, Any]) -> bool:
 
 
 def _normalize_hub_search_text(value: str) -> str:
-    lowered = str(value or "").strip().lower()
+    lowered = _canonical_hub_search_query(value).lower()
     if not lowered:
         return ""
     normalized = _DISCOVER_SEARCH_ALPHA_NUM_RE.sub(
@@ -78,18 +105,19 @@ def _hub_model_matches_query(model: dict[str, Any], query: str) -> bool:
         str(model.get("pipeline_tag") or ""),
         *(str(tag or "") for tag in (model.get("tags") or [])),
     ]
-    haystack = _normalize_hub_search_text(" ".join(fragment for fragment in fragments if fragment))
-    return all(token in haystack for token in tokens)
+    haystack_tokens = set(_hub_search_tokens(" ".join(fragment for fragment in fragments if fragment)))
+    return all(token in haystack_tokens for token in tokens)
 
 
 def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: int = 20) -> list[dict[str, Any]]:
     """Search HuggingFace Hub for models matching the query."""
+    effective_query = _canonical_hub_search_query(query)
+    if not effective_query:
+        return []
     try:
         params = urllib.parse.urlencode({
-            "search": query,
+            "search": effective_query,
             "limit": str(max(limit * 5, 60)),
-            "sort": "modified",
-            "direction": "-1",
             "full": "true",
         })
         url = f"https://huggingface.co/api/models?{params}"
@@ -103,7 +131,7 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
     for model in data:
         if not _model_is_text_discover_candidate(model):
             continue
-        if not _hub_model_matches_query(model, query):
+        if not _hub_model_matches_query(model, effective_query):
             continue
         model_id = str(model.get("id") or "")
         if not model_id:

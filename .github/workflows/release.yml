@@ -60,6 +60,19 @@ jobs:
               if (e.status !== 404) throw e;
             }
 
+            // Draft releases can be awkward to resolve by tag through the REST
+            // tag lookup, so fall back to scanning releases for the matching tag.
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const existingDraft = releases.find((release) => release.tag_name === tag);
+            if (existingDraft) {
+              core.notice(`Found existing release ${existingDraft.id} for tag ${tag} via release list`);
+              return existingDraft.id;
+            }
+
             // No existing release — create a draft
             const releasePayload = {
               owner: context.repo.owner,
@@ -86,15 +99,15 @@ jobs:
           - os: macos-latest
             platform: darwin
             arch: aarch64
-            bundle_targets: app,dmg,updater
+            bundle_targets: app,dmg
           - os: ubuntu-22.04
             platform: linux
             arch: x86_64
-            bundle_targets: appimage,deb,updater
+            bundle_targets: appimage,deb
           - os: windows-latest
             platform: windows
             arch: x86_64
-            bundle_targets: nsis,updater
+            bundle_targets: nsis
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.os }})
@@ -230,14 +243,27 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
+          tagName: ${{ inputs.release_tag || github.ref_name }}
           tauriScript: npx tauri
           args: --bundles ${{ matrix.bundle_targets }} --ci
+          uploadUpdaterJson: false
           updaterJsonPreferNsis: false
 
   publish-manifest:
     needs: [create-release, build]
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Generate combined updater manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node ./scripts/generate-updater-manifest.mjs
       - name: Mark release ready for review
         uses: actions/github-script@v8
         with:

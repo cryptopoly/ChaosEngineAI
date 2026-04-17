@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   PYTHON_VERSION: "3.12"
   RUST_TOOLCHAIN: "stable"
 
@@ -16,11 +16,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
-      - uses: actions/setup-python@v5
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: npm ci
@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -75,7 +75,7 @@ jobs:
 
       # ── Node.js ────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -89,7 +89,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -100,7 +100,7 @@ jobs:
 
       # ── Python + venv ──────────────────────────────────────────
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -152,21 +152,21 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       # ── Configure runtime staging ──────────────────────────────
       - name: Set Python embed path (Unix)
@@ -210,7 +210,7 @@ jobs:
       # ── Upload artifacts ───────────────────────────────────────
       - name: Upload macOS artifacts
         if: matrix.platform == 'darwin'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ChaosEngineAI-macos
           path: |
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ChaosEngineAI-linux
           path: |
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ChaosEngineAI-windows
           path: |

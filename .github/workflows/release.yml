@@ -1,6 +1,6 @@
 name: Release
 
-# Tag-driven release: pushing `v0.5.0` (etc.) builds signed bundles for
+# Tag-driven release: pushing `v0.5.1` (etc.) builds signed bundles for
 # every supported target, generates `latest.json` (the Tauri updater
 # manifest), and publishes everything to a GitHub Release. If a release
 # already exists for the tag (e.g. created manually via the UI) it reuses
@@ -10,12 +10,17 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish when triggering manually (for example: v0.5.1)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   PYTHON_VERSION: "3.12"
 
 jobs:
@@ -24,13 +29,23 @@ jobs:
     outputs:
       release_id: ${{ steps.find-or-create.outputs.result }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Find or create release
         id: find-or-create
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
-            const tag = context.ref.replace('refs/tags/', '');
+            // Tag pushes already provide refs/tags/vX.Y.Z. Manual dispatches do not,
+            // so require an explicit tag input instead of guessing from the branch ref.
+            const dispatchTag = `${{ inputs.release_tag || '' }}`.trim();
+            const tag = context.eventName === 'workflow_dispatch'
+              ? dispatchTag
+              : context.ref.replace('refs/tags/', '');
+
+            if (!tag) {
+              core.setFailed('Missing release tag. Provide workflow_dispatch input release_tag or push a vX.Y.Z tag.');
+              return;
+            }
 
             // Check if a release already exists for this tag
             try {
@@ -46,7 +61,7 @@ jobs:
             }
 
             // No existing release — create a draft
-            const { data } = await github.rest.repos.createRelease({
+            const releasePayload = {
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tag,
@@ -54,7 +69,11 @@ jobs:
               body: 'See CHANGELOG / commits for details.',
               draft: true,
               prerelease: false,
-            });
+            };
+            if (context.eventName === 'workflow_dispatch') {
+              releasePayload.target_commitish = context.sha;
+            }
+            const { data } = await github.rest.repos.createRelease(releasePayload);
             core.notice(`Created draft release ${data.id} for tag ${tag}`);
             return data.id;
 
@@ -81,7 +100,7 @@ jobs:
     name: Build (${{ matrix.os }})
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -96,7 +115,7 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -108,7 +127,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -117,7 +136,7 @@ jobs:
           key: cargo-release-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: cargo-release-${{ matrix.os }}-
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -166,21 +185,21 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub
+          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 
       - name: Set Python embed path (Unix)
         if: matrix.platform != 'windows'
@@ -201,7 +220,7 @@ jobs:
           "
 
       - name: Build & upload (tauri-action)
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.6.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -220,7 +239,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Mark release ready for review
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const id = '${{ needs.create-release.outputs.release_id }}';

@@ -24,7 +24,7 @@ def fake_system_snapshot():
         "arch": "arm64",
         "hardwareSummary": "Apple Silicon / 48 GB unified memory",
         "backendLabel": "Python sidecar",
-        "appVersion": "0.5.0",
+        "appVersion": "0.5.1",
         "mlxAvailable": False,
         "mlxLmAvailable": False,
         "mlxUsable": False,

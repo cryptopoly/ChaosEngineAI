@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
 interface PluginInfo {
@@ -38,8 +39,7 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetch("/api/plugins")
-      .then((r) => r.json())
+    fetchJson<{ plugins?: Record<string, PluginInfo[]> }>("/api/plugins")
       .then((data) => {
         setPlugins(data.plugins ?? {});
         setLoading(false);
@@ -50,7 +50,10 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
   async function togglePlugin(pluginId: string, currentlyEnabled: boolean) {
     const action = currentlyEnabled ? "disable" : "enable";
     try {
-      await fetch(`/api/plugins/${encodeURIComponent(pluginId)}/${action}`, { method: "POST" });
+      const response = await apiFetch(`/api/plugins/${encodeURIComponent(pluginId)}/${action}`, { method: "POST" });
+      if (!response.ok) {
+        return;
+      }
       setPlugins((prev) => {
         const next = { ...prev };
         for (const [type, list] of Object.entries(next)) {

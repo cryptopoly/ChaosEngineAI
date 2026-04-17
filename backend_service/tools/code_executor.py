@@ -9,6 +9,7 @@ Runs user-provided Python code in an isolated subprocess with:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -20,14 +21,18 @@ from backend_service.tools import BaseTool
 _MAX_TIMEOUT_SECONDS = 30
 _MAX_OUTPUT_CHARS = 8000
 _MAX_CODE_LENGTH = 10000
+_ENABLE_ENV = "CHAOSENGINE_ENABLE_UNSAFE_CODE_EXECUTOR"
+
+
+def code_executor_enabled() -> bool:
+    return os.getenv(_ENABLE_ENV, "").strip() == "1"
 
 
 class CodeExecutorTool(BaseTool):
     name = "code_executor"
     description = (
-        "Execute Python code in a sandboxed subprocess and return the output. "
-        "Use this for calculations, data processing, string manipulation, or any task "
-        "that benefits from running actual code. The code runs with a 30-second timeout."
+        "Execute Python code in a subprocess and return the output. "
+        "This tool is disabled by default because it is not a hardened sandbox."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -48,6 +53,12 @@ class CodeExecutorTool(BaseTool):
         }
 
     def execute(self, **kwargs: Any) -> str:
+        if not code_executor_enabled():
+            return (
+                "Error: code_executor is disabled. "
+                f"Set {_ENABLE_ENV}=1 only for trusted local debugging sessions."
+            )
+
         code = str(kwargs.get("code", "")).strip()
         if not code:
             return "Error: no code provided."

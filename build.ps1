@@ -11,7 +11,7 @@ if (-not (Test-Path .venv)) {
 
 Write-Host "==> Installing Python dependencies..."
 .\.venv\Scripts\pip install --upgrade pip -q
-.\.venv\Scripts\pip install fastapi psutil uvicorn pypdf python-multipart huggingface_hub -q
+.\.venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
 
 $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 

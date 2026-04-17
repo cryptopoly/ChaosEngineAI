@@ -656,6 +656,7 @@ export interface BenchmarkRunResponse {
 
 export interface TauriBackendInfo {
   apiBase: string;
+  apiToken?: string | null;
   port: number;
   managedByTauri: boolean;
   processRunning?: boolean;

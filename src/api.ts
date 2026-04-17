@@ -29,11 +29,14 @@ import type {
 } from "./types";
 
 const DEFAULT_API_BASE = (import.meta.env.VITE_CHAOSENGINE_API_BASE as string | undefined) ?? "http://127.0.0.1:8876";
+const CONFIGURED_API_TOKEN = ((import.meta.env.VITE_CHAOSENGINE_API_TOKEN as string | undefined) ?? "").trim() || null;
 let apiBasePromise: Promise<string> | null = null;
+let apiTokenPromise: Promise<string | null> | null = null;
 let tauriBackendInfoPromise: Promise<TauriBackendInfo | null> | null = null;
 
 function resetBackendRuntimeCache() {
   apiBasePromise = null;
+  apiTokenPromise = null;
   tauriBackendInfoPromise = null;
 }
 
@@ -60,22 +63,111 @@ export async function resolveApiBase(): Promise<string> {
   return apiBasePromise;
 }
 
-async function fetchJson<T>(path: string, timeoutMs = 15000): Promise<T> {
+export async function resolveApiToken(force = false): Promise<string | null> {
+  if (CONFIGURED_API_TOKEN) {
+    return CONFIGURED_API_TOKEN;
+  }
+  if (force) {
+    apiTokenPromise = null;
+    if (isTauri()) {
+      tauriBackendInfoPromise = null;
+    }
+  }
+  if (!apiTokenPromise) {
+    apiTokenPromise = (async () => {
+      const info = await getTauriBackendInfo(force);
+      if (info?.apiToken) {
+        return info.apiToken;
+      }
+      const apiBase = await resolveApiBase();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch(`${apiBase}/api/auth/session`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          return null;
+        }
+        const payload = (await response.json()) as { apiToken?: unknown };
+        return typeof payload.apiToken === "string" ? payload.apiToken : null;
+      } catch {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
+  }
+  return apiTokenPromise;
+}
+
+function withAuthHeaders(headers: HeadersInit | undefined, apiToken: string | null): Headers {
+  const merged = new Headers(headers ?? {});
+  if (apiToken) {
+    merged.set("Authorization", `Bearer ${apiToken}`);
+  }
+  return merged;
+}
+
+async function readErrorDetail(response: Response, fallback: string): Promise<string> {
+  let detail = fallback;
+  try {
+    const errorBody = await response.json();
+    if (errorBody?.detail) {
+      detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
+    } else if (errorBody?.error) {
+      detail = typeof errorBody.error === "string" ? errorBody.error : JSON.stringify(errorBody.error);
+    } else if (errorBody?.message) {
+      detail = typeof errorBody.message === "string" ? errorBody.message : JSON.stringify(errorBody.message);
+    }
+  } catch {
+    try {
+      const text = await response.text();
+      if (text) {
+        detail = text.slice(0, 500);
+      }
+    } catch {
+      // ignore non-JSON/non-text error responses
+    }
+  }
+  return detail;
+}
+
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {},
+  options: { includeAuth?: boolean; retryUnauthorized?: boolean } = {},
+): Promise<Response> {
+  const { includeAuth = true, retryUnauthorized = true } = options;
   const apiBase = await resolveApiBase();
+  const apiToken = includeAuth ? await resolveApiToken() : null;
+  const response = await fetch(`${apiBase}${path}`, {
+    ...init,
+    headers: withAuthHeaders(init.headers, apiToken),
+  });
+  if (includeAuth && retryUnauthorized && response.status === 401) {
+    resetBackendRuntimeCache();
+    const retryBase = await resolveApiBase();
+    const retryToken = await resolveApiToken();
+    return await fetch(`${retryBase}${path}`, {
+      ...init,
+      headers: withAuthHeaders(init.headers, retryToken),
+    });
+  }
+  return response;
+}
+
+export async function fetchJson<T>(
+  path: string,
+  timeoutMs = 15000,
+  options: { includeAuth?: boolean } = {},
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(`${apiBase}${path}`, { signal: controller.signal });
+    const response = await apiFetch(path, { signal: controller.signal }, options);
     if (!response.ok) {
-      let detail = `Request failed with status ${response.status}`;
-      try {
-        const errorBody = await response.json();
-        if (errorBody?.detail) {
-          detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
-        }
-      } catch {
-        // ignore non-JSON error responses
-      }
+      const detail = await readErrorDetail(response, `Request failed with status ${response.status}`);
       throw new Error(detail);
     }
     return (await response.json()) as T;
@@ -102,7 +194,6 @@ async function deleteJson<T>(path: string, body?: object, timeoutMs: number | nu
 }
 
 async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
-  const apiBase = await resolveApiBase();
   const controller = new AbortController();
   // `timeoutMs: null` (or 0) means no client-side timeout — used for
   // model loads where the backend drives its own long ceiling and we
@@ -113,7 +204,7 @@ async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, bo
       : null;
   let response: Response;
   try {
-    response = await fetch(`${apiBase}${path}`, {
+    response = await apiFetch(path, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -129,27 +220,7 @@ async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, bo
     throw err;
   }
   if (!response.ok) {
-    let detail = `Request failed with status ${response.status}`;
-    try {
-      const errorBody = await response.json();
-      if (errorBody?.detail) {
-        detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
-      } else if (errorBody?.error) {
-        detail = typeof errorBody.error === "string" ? errorBody.error : JSON.stringify(errorBody.error);
-      } else if (errorBody?.message) {
-        detail = typeof errorBody.message === "string" ? errorBody.message : JSON.stringify(errorBody.message);
-      }
-    } catch {
-      // response body was not JSON; try plain text
-      try {
-        const text = await response.text();
-        if (text) {
-          detail = text.slice(0, 500);
-        }
-      } catch {
-        // ignore – keep the status-only message
-      }
-    }
+    const detail = await readErrorDetail(response, `Request failed with status ${response.status}`);
     throw new Error(detail);
   }
   if (timer) clearTimeout(timer);
@@ -162,7 +233,7 @@ export async function getWorkspace(): Promise<WorkspaceData> {
 
 export async function checkBackend(): Promise<boolean> {
   try {
-    await fetchJson("/api/health");
+    await fetchJson("/api/health", 15000, { includeAuth: false });
     return true;
   } catch {
     return false;
@@ -303,12 +374,11 @@ export async function generateChatStream(
   callbacks: StreamCallbacks,
   abortSignal?: AbortController,
 ): Promise<void> {
-  const apiBase = await resolveApiBase();
   const controller = abortSignal ?? new AbortController();
   const timer = setTimeout(() => controller.abort(), 300000);
 
   try {
-    const response = await fetch(`${apiBase}/api/chat/generate/stream`, {
+    const response = await apiFetch("/api/chat/generate/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -402,20 +472,14 @@ export interface SessionDocument {
 }
 
 export async function uploadSessionDocument(sessionId: string, file: File): Promise<SessionDocument> {
-  const apiBase = await resolveApiBase();
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch(`${apiBase}/api/chat/sessions/${encodeURIComponent(sessionId)}/documents`, {
+  const response = await apiFetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}/documents`, {
     method: "POST",
     body: formData,
   });
   if (!response.ok) {
-    let detail = `Upload failed with status ${response.status}`;
-    try {
-      const err = await response.json();
-      if (err?.detail) detail = String(err.detail);
-    } catch { /* ignore */ }
-    throw new Error(detail);
+    throw new Error(await readErrorDetail(response, `Upload failed with status ${response.status}`));
   }
   const result = await response.json();
   return result.document;
@@ -427,17 +491,21 @@ export async function listSessionDocuments(sessionId: string): Promise<SessionDo
 }
 
 export async function deleteSessionDocument(sessionId: string, docId: string): Promise<void> {
-  const apiBase = await resolveApiBase();
-  await fetch(`${apiBase}/api/chat/sessions/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(docId)}`, {
+  const response = await apiFetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}/documents/${encodeURIComponent(docId)}`, {
     method: "DELETE",
   });
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `Delete failed with status ${response.status}`));
+  }
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const apiBase = await resolveApiBase();
-  await fetch(`${apiBase}/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
+  const response = await apiFetch(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
   });
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `Delete failed with status ${response.status}`));
+  }
 }
 
 export interface DownloadStatus {
@@ -593,6 +661,7 @@ export async function stopManagedBackend(): Promise<TauriBackendInfo | null> {
   const info = await invoke<TauriBackendInfo>("stop_backend_sidecar").catch(() => null);
   tauriBackendInfoPromise = Promise.resolve(info);
   apiBasePromise = Promise.resolve(info?.apiBase ?? DEFAULT_API_BASE);
+  apiTokenPromise = Promise.resolve(info?.apiToken ?? null);
   return info;
 }
 
@@ -604,5 +673,6 @@ export async function restartManagedBackend(): Promise<TauriBackendInfo | null> 
   const info = await invoke<TauriBackendInfo>("restart_backend_sidecar").catch(() => null);
   tauriBackendInfoPromise = Promise.resolve(info);
   apiBasePromise = Promise.resolve(info?.apiBase ?? DEFAULT_API_BASE);
+  apiTokenPromise = Promise.resolve(info?.apiToken ?? null);
   return info;
 }

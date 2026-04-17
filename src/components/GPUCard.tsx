@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchJson } from "../api";
 import { number } from "../utils";
 
 interface GPUMetrics {
@@ -22,8 +23,7 @@ export function GPUCard({ backendOnline, visible }: GPUCardProps) {
     if (!backendOnline || !visible) return;
 
     function poll() {
-      fetch("/api/metrics/gpu")
-        .then((r) => r.json())
+      fetchJson<{ gpu: GPUMetrics | null }>("/api/metrics/gpu")
         .then((data) => setMetrics(data.gpu ?? null))
         .catch(() => {});
     }

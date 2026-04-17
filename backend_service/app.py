@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import ipaddress
+import secrets
 import signal
 import time
 import uuid
@@ -8,8 +10,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 
 from backend_service.image_runtime import (
     ImageGenerationConfig,
@@ -76,6 +79,21 @@ DOC_ALLOWED_EXTENSIONS = {
     ".py", ".js", ".ts", ".tsx", ".jsx", ".rs", ".go", ".java", ".c", ".cpp",
     ".h", ".hpp", ".rb", ".php", ".swift", ".kt", ".html", ".css", ".sh",
 }
+DEFAULT_ALLOWED_ORIGINS = (
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:5174",
+    "http://localhost:5174",
+    "http://127.0.0.1:1420",
+    "http://localhost:1420",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "tauri://localhost",
+)
+EXEMPT_AUTH_PATHS = frozenset({
+    "/api/health",
+    "/api/auth/session",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +175,46 @@ def compute_cache_preview(
     )
 
 
+def _allowed_cors_origins() -> list[str]:
+    configured = [
+        item.strip()
+        for item in os.getenv("CHAOSENGINE_ALLOWED_ORIGINS", "").split(",")
+        if item.strip()
+    ]
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for origin in (*DEFAULT_ALLOWED_ORIGINS, *configured):
+        if origin in seen:
+            continue
+        seen.add(origin)
+        ordered.append(origin)
+    return ordered
+
+
+def _resolve_api_token(explicit_token: str | None = None) -> str:
+    token = (explicit_token or os.getenv("CHAOSENGINE_API_TOKEN") or "").strip()
+    return token or secrets.token_urlsafe(32)
+
+
+def _is_loopback_host(host: str | None) -> bool:
+    if not host:
+        return False
+    normalized = host.strip().lower()
+    if normalized in {"localhost", "testclient"}:
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _extract_auth_token(request: Request) -> str:
+    authorization = request.headers.get("authorization", "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return request.headers.get("x-chaosengine-token", "").strip()
+
+
 # Functions that remain in app.py because they couple tightly to module-level
 # state or route-handler logic.
 
@@ -226,16 +284,22 @@ def _generate_image_artifacts(
     return artifacts, runtime_status
 
 
-def create_app(state: ChaosEngineState | None = None) -> FastAPI:
+def create_app(
+    state: ChaosEngineState | None = None,
+    api_token: str | None = None,
+) -> FastAPI:
     app = FastAPI(title="ChaosEngineAI Sidecar", version="0.2.0")
+    allowed_origins = _allowed_cors_origins()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Accept", "Authorization", "Content-Type", "X-ChaosEngine-Token"],
     )
     app.state.chaosengine = state or ChaosEngineState(server_port=DEFAULT_PORT)
+    app.state.chaosengine_api_token = _resolve_api_token(api_token)
+    app.state.chaosengine_allowed_origins = frozenset(allowed_origins)
 
     # Shutdown hook: kill any running llama-server / MLX worker children
     # on backend exit. Runs on clean shutdown (uvicorn SIGTERM), Ctrl-C,
@@ -288,6 +352,27 @@ def create_app(state: ChaosEngineState | None = None) -> FastAPI:
         _signal.signal(_signal.SIGTERM, lambda *a: _shutdown_children())
     except (ValueError, OSError):
         pass  # not in main thread or signal not available
+
+    @app.middleware("http")
+    async def require_api_auth(request: Request, call_next):
+        path = request.url.path
+        if (
+            request.method == "OPTIONS"
+            or path in EXEMPT_AUTH_PATHS
+            or not (path.startswith("/api/") or path.startswith("/v1/"))
+        ):
+            return await call_next(request)
+
+        provided_token = _extract_auth_token(request)
+        expected_token = str(app.state.chaosengine_api_token)
+        if not provided_token or not secrets.compare_digest(provided_token, expected_token):
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "detail": "Unauthorized. Supply the ChaosEngineAI API token as a Bearer token.",
+                },
+            )
+        return await call_next(request)
 
     @app.middleware("http")
     async def log_requests(request, call_next):

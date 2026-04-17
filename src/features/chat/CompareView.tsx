@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
-import { getCachePreview, resolveApiBase } from "../../api";
+import { apiFetch, getCachePreview } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
@@ -360,8 +360,7 @@ export function CompareView({
     abortRef.current = controller;
 
     try {
-      const apiBase = await resolveApiBase();
-      const response = await fetch(`${apiBase}/api/chat/compare`, {
+      const response = await apiFetch("/api/chat/compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 
 def register_routes(app: FastAPI) -> None:
+    from .auth import router as auth_router
     from .health import router as health_router
     from .models import router as models_router
     from .chat import router as chat_router
@@ -22,6 +23,7 @@ def register_routes(app: FastAPI) -> None:
     from .finetuning import router as finetuning_router
     from .prompts import router as prompts_router
 
+    app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(models_router)
     app.include_router(chat_router)

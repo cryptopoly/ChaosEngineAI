@@ -20,6 +20,7 @@ export interface SettingsTabProps {
   serverLocalhostUrl: string | undefined;
   serverPort: number;
   loadedModelName: string | undefined;
+  apiToken: string | null;
 }
 
 export function SettingsTab({
@@ -40,7 +41,9 @@ export function SettingsTab({
   serverLocalhostUrl,
   serverPort,
   loadedModelName,
+  apiToken,
 }: SettingsTabProps) {
+  const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
   return (
     <div className="content-grid">
       <Panel
@@ -287,10 +290,10 @@ export function SettingsTab({
             <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
           </p>
           {[
-            { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "not-needed"\n  }]\n}` },
-            { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: not-needed` },
-            { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: not-needed\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
-            { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=not-needed` },
+            { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
+            { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
+            { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: ${integrationApiToken}\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
+            { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=${integrationApiToken}` },
           ].map((item) => (
             <div key={item.name} className="integration-card">
               <div className="integration-card-header">

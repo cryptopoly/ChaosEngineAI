@@ -32,6 +32,7 @@ dflash = ["dflash>=0.1.0"]
 desktop = [
     "fastapi>=0.115.0",
     "huggingface-hub>=0.26.0",
+    "pypdf>=6.10.2",
     "psutil>=5.9.0",
     "python-multipart>=0.0.9",
     "uvicorn>=0.30.0",

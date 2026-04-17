@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 from backend_service.app import create_app
 from backend_service.state import ChaosEngineState
 
+TEST_API_TOKEN = "test-api-token"
+
 
 def _fake_system_snapshot():
     return {
@@ -75,7 +77,8 @@ class SetupRouteTests(unittest.TestCase):
             chat_sessions_path=Path(self.tempdir.name) / "chats.json",
         )
         state.runtime = FakeRuntime()
-        self.client = TestClient(create_app(state=state))
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
 
     def tearDown(self):
         self.tempdir.cleanup()

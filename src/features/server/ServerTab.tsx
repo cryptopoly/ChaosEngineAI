@@ -26,6 +26,7 @@ export interface ServerTabProps {
   serverLogEntries: LogEntry[];
   showRemoteTest: boolean;
   testModelId: string | null;
+  apiToken: string | null;
   localHealthCurl: string;
   localModelsCurl: string;
   remoteHealthCurl: string | null;
@@ -71,6 +72,7 @@ export function ServerTab({
   serverLogEntries,
   showRemoteTest,
   testModelId,
+  apiToken,
   localHealthCurl,
   localModelsCurl,
   remoteHealthCurl,
@@ -395,7 +397,10 @@ export function ServerTab({
                   <p className="mono-text">{localModelsCurl}</p>
                 </div>
                 {testModelId ? (() => {
-                  const cmd = `curl -sS ${localServerUrl}/chat/completions -H 'Content-Type: application/json' -d '{"model":"${testModelId}","messages":[{"role":"user","content":"Hello"}]}'`;
+                  const authFlag = apiToken
+                    ? ` -H 'Authorization: Bearer ${apiToken}'`
+                    : " -H 'Authorization: Bearer <chaosengine-api-token>'";
+                  const cmd = `curl -sS ${localServerUrl}/chat/completions -H 'Content-Type: application/json'${authFlag} -d '{"model":"${testModelId}","messages":[{"role":"user","content":"Hello"}]}'`;
                   return (
                     <div className="server-command">
                       <div className="server-command-header">

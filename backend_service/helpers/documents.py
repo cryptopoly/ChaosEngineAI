@@ -11,6 +11,7 @@ Provides a ``DocumentIndex`` class that supports:
 
 from __future__ import annotations
 
+from importlib import metadata
 import json
 import math
 import os
@@ -23,6 +24,7 @@ from typing import Any
 
 CHUNK_SIZE_CHARS = 1600  # ~400 tokens
 CHUNK_OVERLAP_CHARS = 200  # ~50 tokens overlap
+_MIN_SAFE_PYPDF_VERSION = (6, 10, 2)
 
 
 # =========================================================================
@@ -36,11 +38,33 @@ def _sanitize_filename(name: str) -> str:
     return name[:200] or "file"
 
 
+def _parse_version_tuple(raw_version: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for token in raw_version.split("."):
+        digits = "".join(ch for ch in token if ch.isdigit())
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def _require_safe_pypdf() -> None:
+    try:
+        installed = metadata.version("pypdf")
+    except metadata.PackageNotFoundError as exc:
+        raise RuntimeError("PDF support requires pypdf>=6.10.2 to be installed.") from exc
+    if _parse_version_tuple(installed) < _MIN_SAFE_PYPDF_VERSION:
+        raise RuntimeError(
+            "PDF support is disabled until pypdf>=6.10.2 is installed to address known parser DoS issues."
+        )
+
+
 def _extract_text_from_file(path: Path) -> str:
     """Extract plain text from a supported document file."""
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         try:
+            _require_safe_pypdf()
             from pypdf import PdfReader
             reader = PdfReader(str(path))
             parts: list[str] = []

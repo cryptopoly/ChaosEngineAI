@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LibraryItem } from "../types";
-import { resolveApiBase } from "../api";
+import { fetchJson } from "../api";
 
 export interface WeightFile {
   name: string;
@@ -28,13 +28,9 @@ interface ModelPickerProps {
 }
 
 export async function fetchWeightList(path: string): Promise<ListWeightsResponse> {
-  const apiBase = await resolveApiBase();
-  const url = `${apiBase}/api/models/list-weights?path=${encodeURIComponent(path)}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`list-weights failed: HTTP ${response.status}`);
-  }
-  return (await response.json()) as ListWeightsResponse;
+  return await fetchJson<ListWeightsResponse>(
+    `/api/models/list-weights?path=${encodeURIComponent(path)}`,
+  );
 }
 
 function formatSize(gb: number): string {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { resolveApiBase } from "../api";
+import { apiFetch } from "../api";
 import type { TabId } from "../types";
 
 export function useServerLog(
@@ -12,42 +12,77 @@ export function useServerLog(
   useEffect(() => {
     if (activeTab !== "server" || !backendOnline) return;
 
-    let eventSource: EventSource | null = null;
     let cancelled = false;
+    let currentAbort: AbortController | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    function connect(base: string) {
+    async function connect() {
       if (cancelled) return;
-      eventSource = new EventSource(`${base}/api/server/logs/stream`);
-      eventSource.onmessage = (event) => {
-        try {
-          const entry = JSON.parse(event.data);
-          if (entry.level === "debug") return;
-          setServerLogEntries((prev) => {
-            const next = [...prev, entry];
-            return next.length > 100 ? next.slice(-100) : next;
-          });
-        } catch {
-          // ignore malformed data
+      reconnectTimer = null;
+      const controller = new AbortController();
+      currentAbort = controller;
+      try {
+        const response = await apiFetch("/api/server/logs/stream", {
+          signal: controller.signal,
+        });
+        if (!response.ok || !response.body) {
+          throw new Error(`Server log stream failed: HTTP ${response.status}`);
         }
-      };
-      eventSource.onerror = () => {
-        eventSource?.close();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!cancelled) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const event of events) {
+            const dataLine = event
+              .split("\n")
+              .find((line) => line.startsWith("data: "));
+            if (!dataLine) {
+              continue;
+            }
+            const payload = dataLine.slice(6);
+            try {
+              const entry = JSON.parse(payload);
+              if (entry.level === "debug") continue;
+              setServerLogEntries((prev) => {
+                const next = [...prev, entry];
+                return next.length > 100 ? next.slice(-100) : next;
+              });
+            } catch {
+              // ignore malformed data
+            }
+          }
+        }
+      } catch {
         if (!cancelled) {
-          reconnectTimer = setTimeout(() => connect(base), 3000);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            void connect();
+          }, 3000);
         }
-      };
+      } finally {
+        if (!cancelled && !reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            void connect();
+          }, 3000);
+        }
+        currentAbort = null;
+      }
     }
 
-    void (async () => {
-      const base = await resolveApiBase();
-      connect(base);
-    })();
+    void connect();
 
     return () => {
       cancelled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      eventSource?.close();
+      currentAbort?.abort();
     };
   }, [activeTab, backendOnline]);
 

@@ -27,6 +27,7 @@ const BACKEND_POLL_INTERVAL: Duration = Duration::from_millis(200);
 #[serde(rename_all = "camelCase")]
 struct BackendRuntimeInfo {
     api_base: String,
+    api_token: Option<String>,
     port: u16,
     managed_by_tauri: bool,
     process_running: bool,
@@ -42,6 +43,7 @@ impl Default for BackendRuntimeInfo {
     fn default() -> Self {
         Self {
             api_base: format!("http://127.0.0.1:{DEFAULT_BACKEND_PORT}"),
+            api_token: None,
             port: DEFAULT_BACKEND_PORT,
             managed_by_tauri: false,
             process_running: false,
@@ -237,6 +239,7 @@ impl BackendManager {
             if let Some(existing) = probe_chaosengine_backend(preferred_port) {
                 inner.info.port = preferred_port;
                 inner.info.api_base = format!("http://127.0.0.1:{}", inner.info.port);
+                inner.info.api_token = fetch_backend_api_token(preferred_port);
                 inner.info.process_running = true;
                 inner.info.started = true;
                 inner.info.startup_error = None;
@@ -382,6 +385,7 @@ impl BackendManager {
         let mut inner = self.inner.lock().expect("backend lock poisoned");
         inner.info.started = started;
         if started {
+            inner.info.api_token = fetch_backend_api_token(port);
             return;
         }
 
@@ -417,6 +421,9 @@ impl BackendManager {
                 Ok(None) => {
                     inner.info.process_running = true;
                     inner.info.started = port_responding(inner.info.port);
+                    if inner.info.started && inner.info.api_token.is_none() {
+                        inner.info.api_token = fetch_backend_api_token(inner.info.port);
+                    }
                 }
                 Err(error) => {
                     inner.info.process_running = false;
@@ -430,6 +437,9 @@ impl BackendManager {
                 let responding = port_responding(inner.info.port);
                 inner.info.process_running = responding;
                 inner.info.started = responding;
+                if responding && inner.info.api_token.is_none() {
+                    inner.info.api_token = fetch_backend_api_token(inner.info.port);
+                }
                 if !responding {
                     inner.info.startup_error = Some("The attached backend is no longer reachable.".to_string());
                 }
@@ -443,8 +453,8 @@ impl BackendManager {
 
     fn shutdown(&self) {
         let mut inner = self.inner.lock().expect("backend lock poisoned");
-        let attached_port = if inner.child.is_none() && inner.info.managed_by_tauri && inner.info.started {
-            Some(inner.info.port)
+        let attached_backend = if inner.child.is_none() && inner.info.managed_by_tauri && inner.info.started {
+            Some((inner.info.port, inner.info.api_token.clone()))
         } else {
             None
         };
@@ -481,8 +491,9 @@ impl BackendManager {
                 let _ = child.kill();
             }
             let _ = child.wait();
-        } else if let Some(port) = attached_port {
-            let _ = request_backend_shutdown(port);
+        } else if let Some((port, api_token)) = attached_backend {
+            let effective_token = api_token.or_else(|| fetch_backend_api_token(port));
+            let _ = request_backend_shutdown(port, effective_token.as_deref());
         }
     }
 }
@@ -968,12 +979,21 @@ fn wait_for_port(port: u16, timeout: Duration) -> bool {
     false
 }
 
-fn backend_http_json(method: &str, port: u16, path: &str) -> Option<serde_json::Value> {
+fn backend_http_json(
+    method: &str,
+    port: u16,
+    path: &str,
+    api_token: Option<&str>,
+) -> Option<serde_json::Value> {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
     let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
     let _ = stream.set_write_timeout(Some(Duration::from_millis(1200)));
+    let auth_header = api_token
+        .filter(|token| !token.is_empty())
+        .map(|token| format!("Authorization: Bearer {token}\r\n"))
+        .unwrap_or_default();
     let request = format!(
-        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\nAccept: application/json\r\nContent-Length: 0\r\n\r\n"
+        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\nAccept: application/json\r\n{auth_header}Content-Length: 0\r\n\r\n"
     );
     stream.write_all(request.as_bytes()).ok()?;
     let mut response = String::new();
@@ -983,7 +1003,7 @@ fn backend_http_json(method: &str, port: u16, path: &str) -> Option<serde_json::
 }
 
 fn probe_chaosengine_backend(port: u16) -> Option<ExistingBackendProbe> {
-    let payload = backend_http_json("GET", port, "/api/health")?;
+    let payload = backend_http_json("GET", port, "/api/health", None)?;
     if payload.get("status").and_then(|value| value.as_str()) != Some("ok") {
         return None;
     }
@@ -1000,8 +1020,15 @@ fn probe_chaosengine_backend(port: u16) -> Option<ExistingBackendProbe> {
     })
 }
 
-fn request_backend_shutdown(port: u16) -> bool {
-    let _ = backend_http_json("POST", port, "/api/server/shutdown");
+fn fetch_backend_api_token(port: u16) -> Option<String> {
+    backend_http_json("GET", port, "/api/auth/session", None)?
+        .get("apiToken")
+        .and_then(|value| value.as_str())
+        .map(|value| value.to_string())
+}
+
+fn request_backend_shutdown(port: u16, api_token: Option<&str>) -> bool {
+    let _ = backend_http_json("POST", port, "/api/server/shutdown", api_token);
     let deadline = Instant::now() + Duration::from_secs(3);
     while Instant::now() < deadline {
         if !port_responding(port) {
@@ -1061,7 +1088,8 @@ fn cleanup_stale_managed_backend(app: &AppHandle) {
                 .and_then(|dir| dir.parent().map(|p| p.to_path_buf()))
                 .is_none();
         if dominated {
-            let _ = request_backend_shutdown(lease.port);
+            let api_token = fetch_backend_api_token(lease.port);
+            let _ = request_backend_shutdown(lease.port, api_token.as_deref());
         }
     }
 

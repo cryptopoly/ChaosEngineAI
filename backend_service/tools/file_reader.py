@@ -22,6 +22,38 @@ _ALLOWED_EXTENSIONS = {
 }
 
 
+def _configured_allowed_roots() -> tuple[Path, ...]:
+    from backend_service.app import DATA_LOCATION, _load_settings
+
+    roots: list[Path] = [DATA_LOCATION.data_dir.resolve()]
+    settings = _load_settings()
+    for entry in settings.get("modelDirectories") or []:
+        if not bool(entry.get("enabled", True)):
+            continue
+        raw_path = str(entry.get("path") or "").strip()
+        if not raw_path:
+            continue
+        try:
+            roots.append(Path(os.path.expanduser(raw_path)).resolve())
+        except (OSError, RuntimeError):
+            continue
+
+    unique: dict[str, Path] = {}
+    for root in roots:
+        unique.setdefault(str(root), root)
+    return tuple(unique.values())
+
+
+def _path_is_allowed(path: Path, roots: tuple[Path, ...]) -> bool:
+    for root in roots:
+        try:
+            path.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
 class FileReaderTool(BaseTool):
     name = "file_reader"
     description = (
@@ -57,6 +89,11 @@ class FileReaderTool(BaseTool):
             file_path = Path(os.path.expanduser(raw_path)).resolve()
         except (OSError, RuntimeError) as exc:
             return f"Error resolving path: {exc}"
+
+        allowed_roots = _configured_allowed_roots()
+        if not _path_is_allowed(file_path, allowed_roots):
+            allowed_labels = ", ".join(str(root) for root in allowed_roots)
+            return f"Error: access is restricted to configured model directories and app data under: {allowed_labels}"
 
         if not file_path.exists():
             return f"Error: file not found: {file_path}"

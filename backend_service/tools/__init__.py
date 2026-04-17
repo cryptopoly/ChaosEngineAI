@@ -70,10 +70,14 @@ class ToolRegistry:
         """Import and register all built-in tools."""
         from backend_service.tools.web_search import WebSearchTool
         from backend_service.tools.calculator import CalculatorTool
-        from backend_service.tools.code_executor import CodeExecutorTool
+        from backend_service.tools.code_executor import CodeExecutorTool, code_executor_enabled
         from backend_service.tools.file_reader import FileReaderTool
 
-        for cls in (WebSearchTool, CalculatorTool, CodeExecutorTool, FileReaderTool):
+        tool_classes = [WebSearchTool, CalculatorTool, FileReaderTool]
+        if code_executor_enabled():
+            tool_classes.append(CodeExecutorTool)
+
+        for cls in tool_classes:
             instance = cls()
             self.register(instance)
 

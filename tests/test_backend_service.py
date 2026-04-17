@@ -15,6 +15,8 @@ from backend_service.inference import GenerationResult, LoadedModelInfo, StreamC
 from backend_service.state import ChaosEngineState, _spawn_snapshot_download
 from backend_service.helpers.discovery import _discover_local_models
 
+TEST_API_TOKEN = "test-api-token"
+
 
 def fake_system_snapshot():
     return {
@@ -64,6 +66,12 @@ def fake_urlopen_json(payload):
     context_manager.__enter__.return_value = response
     context_manager.__exit__.return_value = False
     return context_manager
+
+
+def make_test_client(state: ChaosEngineState) -> TestClient:
+    client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+    client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+    return client
 
 
 class FakeRuntime:
@@ -333,7 +341,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             chat_sessions_path=self.chat_sessions_path,
         )
         state.runtime = FakeRuntime()
-        self.client = TestClient(create_app(state=state))
+        self.client = make_test_client(state)
 
     def tearDown(self):
         self.tempdir.cleanup()
@@ -345,6 +353,28 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertIn("appVersion", payload)
         self.assertEqual(payload["engine"], "mock")
+
+    def test_auth_session_bootstrap_returns_local_token(self):
+        response = self.client.get(
+            "/api/auth/session",
+            headers={"Origin": "http://127.0.0.1:5174"},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["apiToken"], TEST_API_TOKEN)
+
+    def test_protected_route_rejects_missing_auth(self):
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+        state.runtime = FakeRuntime()
+        client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        response = client.post("/api/chat/sessions", json={"title": "Blocked"})
+        self.assertEqual(response.status_code, 401)
 
     def test_fresh_state_starts_without_seeded_workspace_data(self):
         workspace = self.client.get("/api/workspace").json()
@@ -1312,7 +1342,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             "ggufMetadata": None,
             "log": "[INFO] Quantized model with 4.5 bits per weight.",
         }
-        client = TestClient(create_app(state=state))
+        client = make_test_client(state)
 
         response = client.post(
             "/api/models/convert",
@@ -1430,6 +1460,40 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(settings["launchPreferences"]["contextTokens"], 16384)
         self.assertEqual(settings["launchPreferences"]["cacheStrategy"], "native")
         self.assertEqual(settings["modelDirectories"][0]["label"], "AI Models")
+
+    def test_settings_change_of_remote_provider_base_requires_new_key(self):
+        seeded = self.client.patch(
+            "/api/settings",
+            json={
+                "remoteProviders": [
+                    {
+                        "id": "remote-1",
+                        "label": "Primary",
+                        "apiBase": "https://api.openai.com/v1",
+                        "apiKey": "sk-test-secret",
+                        "model": "gpt-4o-mini",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(seeded.status_code, 200)
+
+        changed = self.client.patch(
+            "/api/settings",
+            json={
+                "remoteProviders": [
+                    {
+                        "id": "remote-1",
+                        "label": "Primary",
+                        "apiBase": "https://attacker.example/v1",
+                        "apiKey": "",
+                        "model": "gpt-4o-mini",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(changed.status_code, 400)
+        self.assertIn("Re-enter the API key", changed.json()["detail"])
 
     def test_explicit_gguf_path_wins_over_hf_cache_library_entry(self):
         state = ChaosEngineState(

@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import uuid
+from urllib.parse import urlparse
 from collections import deque
 from pathlib import Path
 from threading import RLock
@@ -118,6 +119,22 @@ def _spawn_snapshot_download(repo: str, env: dict[str, str], log_handle: Any) ->
         stderr=subprocess.STDOUT,
         text=True,
         env=env,
+    )
+
+
+def _normalize_remote_provider_api_base(raw_api_base: str) -> str:
+    api_base = raw_api_base.strip().rstrip("/")
+    parsed = urlparse(api_base)
+    hostname = (parsed.hostname or "").lower()
+    if not parsed.scheme or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Remote provider API base must be a valid absolute URL.")
+    if parsed.scheme == "https":
+        return api_base
+    if parsed.scheme == "http" and hostname in {"127.0.0.1", "localhost"}:
+        return api_base
+    raise HTTPException(
+        status_code=400,
+        detail="Remote providers must use HTTPS unless they point to localhost.",
     )
 
 
@@ -869,12 +886,24 @@ class ChaosEngineState:
                 existing_by_id = {p.get("id"): p for p in (self.settings.get("remoteProviders") or [])}
                 normalized = []
                 for provider in request.remoteProviders:
-                    api_base = provider.apiBase.strip()
-                    if not (api_base.startswith("https://") or api_base.startswith("http://127.0.0.1") or api_base.startswith("http://localhost")):
-                        raise HTTPException(status_code=400, detail=f"Provider {provider.id} must use HTTPS (or localhost).")
-                    api_key = provider.apiKey
+                    api_base = _normalize_remote_provider_api_base(provider.apiBase)
+                    api_key = provider.apiKey.strip()
+                    existing_provider = existing_by_id.get(provider.id) or {}
+                    existing_api_base = str(existing_provider.get("apiBase") or "").strip().rstrip("/")
+                    existing_api_key = str(existing_provider.get("apiKey") or "")
                     if not api_key and provider.id in existing_by_id:
-                        api_key = existing_by_id[provider.id].get("apiKey", "")
+                        if not existing_api_key:
+                            api_key = ""
+                        elif existing_api_base == api_base:
+                            api_key = existing_api_key
+                        else:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=(
+                                    f"Provider {provider.id} changed its API base. "
+                                    "Re-enter the API key before saving this change."
+                                ),
+                            )
                     normalized.append({
                         "id": provider.id,
                         "label": provider.label,

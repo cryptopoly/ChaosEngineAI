@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
 interface PromptTemplate {
@@ -31,8 +32,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetch("/api/prompts")
-      .then((r) => r.json())
+    fetchJson<{ templates?: PromptTemplate[] }>("/api/prompts")
       .then((data) => setTemplates(data.templates ?? []))
       .catch(() => {});
   }, [backendOnline]);
@@ -65,11 +65,14 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
     if (selectedId) body.id = selectedId;
 
     try {
-      const resp = await fetch("/api/prompts", {
+      const resp = await apiFetch("/api/prompts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!resp.ok) {
+        return;
+      }
       const data = await resp.json();
       if (data.template) {
         setTemplates((prev) => {
@@ -85,7 +88,10 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
 
   async function handleDelete(id: string) {
     try {
-      await fetch(`/api/prompts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const response = await apiFetch(`/api/prompts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) {
+        return;
+      }
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       if (selectedId === id) setSelectedId(null);
     } catch { /* ignore */ }

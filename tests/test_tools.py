@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,7 +68,12 @@ class CalculatorToolTests(unittest.TestCase):
 
 class CodeExecutorToolTests(unittest.TestCase):
     def setUp(self):
+        self.env_patcher = patch.dict(os.environ, {"CHAOSENGINE_ENABLE_UNSAFE_CODE_EXECUTOR": "1"}, clear=False)
+        self.env_patcher.start()
         self.executor = CodeExecutorTool()
+
+    def tearDown(self):
+        self.env_patcher.stop()
 
     def test_simple_code(self):
         result = self.executor.execute(code="print('hello world')")
@@ -106,13 +112,25 @@ class CodeExecutorToolTests(unittest.TestCase):
         self.assertEqual(schema["type"], "object")
         self.assertIn("code", schema["properties"])
 
+    def test_disabled_by_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            disabled_executor = CodeExecutorTool()
+            result = disabled_executor.execute(code="print('hello world')")
+        self.assertIn("disabled", result)
+
 
 class FileReaderToolTests(unittest.TestCase):
     def setUp(self):
         self.reader = FileReaderTool()
         self.tmpdir = tempfile.TemporaryDirectory()
+        self.allowed_roots_patcher = patch(
+            "backend_service.tools.file_reader._configured_allowed_roots",
+            return_value=(Path(self.tmpdir.name).resolve(), Path("/tmp").resolve()),
+        )
+        self.allowed_roots_patcher.start()
 
     def tearDown(self):
+        self.allowed_roots_patcher.stop()
         self.tmpdir.cleanup()
 
     def test_read_valid_txt_file(self):
@@ -156,6 +174,11 @@ class FileReaderToolTests(unittest.TestCase):
 
     def test_name(self):
         self.assertEqual(self.reader.name, "file_reader")
+
+    def test_rejects_path_outside_allowed_roots(self):
+        outside_path = Path("/Users") / "blocked.txt"
+        result = self.reader.execute(path=str(outside_path))
+        self.assertIn("restricted", result)
 
 
 class WebSearchToolTests(unittest.TestCase):
@@ -250,14 +273,20 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertIn("calculator", names)
         self.assertIn("web_search", names)
 
-    def test_discover_registers_all_builtins(self):
+    def test_discover_registers_safe_builtins_by_default(self):
         reg = ToolRegistry()
         reg.discover()
         names = reg.available_names()
         self.assertIn("calculator", names)
-        self.assertIn("code_executor", names)
         self.assertIn("file_reader", names)
         self.assertIn("web_search", names)
+        self.assertNotIn("code_executor", names)
+
+    def test_discover_registers_code_executor_when_enabled(self):
+        with patch.dict(os.environ, {"CHAOSENGINE_ENABLE_UNSAFE_CODE_EXECUTOR": "1"}, clear=False):
+            reg = ToolRegistry()
+            reg.discover()
+        self.assertIn("code_executor", reg.available_names())
 
 
 if __name__ == "__main__":

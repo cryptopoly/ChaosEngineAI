@@ -7,6 +7,7 @@ import {
   getWorkspace,
   deleteModelPath,
   revealModelPath,
+  resolveApiToken,
   unloadModel,
   updateSession,
 } from "./api";
@@ -90,6 +91,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [compareMode, setCompareMode] = useState(false);
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
@@ -594,12 +596,37 @@ export default function App() {
     settingsDraft.preferredServerPort !== (workspace.settings?.preferredServerPort ?? 8876) ||
     settingsDraft.allowRemoteConnections !== (workspace.settings?.allowRemoteConnections ?? false);
   const preferredPortUnavailable = workspace.server.port !== (workspace.settings?.preferredServerPort ?? 8876);
+  const authHeaderFlag = apiToken
+    ? ` -H 'Authorization: Bearer ${apiToken}'`
+    : " -H 'Authorization: Bearer <chaosengine-api-token>'";
   const localHealthCurl = `curl -sS ${localServerOrigin}/api/health`;
-  const localModelsCurl = `curl -sS ${localServerUrl}/models`;
+  const localModelsCurl = `curl -sS ${localServerUrl}/models${authHeaderFlag}`;
   const remoteHealthCurl = primaryLanOrigin ? `curl -sS ${primaryLanOrigin}/api/health` : null;
-  const remoteModelsCurl = primaryLanUrl ? `curl -sS ${primaryLanUrl}/models` : null;
+  const remoteModelsCurl = primaryLanUrl ? `curl -sS ${primaryLanUrl}/models${authHeaderFlag}` : null;
 
   // ── Cross-domain effects ───────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!backendOnline) {
+      setApiToken(null);
+      return;
+    }
+    void resolveApiToken()
+      .then((token) => {
+        if (!cancelled) {
+          setApiToken(token);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setApiToken(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [backendOnline, tauriBackend?.apiBase, tauriBackend?.apiToken, workspace.server.port]);
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -1430,6 +1457,7 @@ export default function App() {
         serverLogEntries={serverLogEntries}
         showRemoteTest={showRemoteTest}
         testModelId={testModelId}
+        apiToken={apiToken}
         localHealthCurl={localHealthCurl}
         localModelsCurl={localModelsCurl}
         remoteHealthCurl={remoteHealthCurl}
@@ -1527,6 +1555,7 @@ export default function App() {
       serverLocalhostUrl={workspace.server.localhostUrl}
       serverPort={workspace.server.port}
       loadedModelName={workspace.runtime.loadedModel?.name}
+      apiToken={apiToken}
     />;
   }
 

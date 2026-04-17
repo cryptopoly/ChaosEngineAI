@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
 interface Adapter {
@@ -21,8 +22,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetch("/api/adapters")
-      .then((r) => r.json())
+    fetchJson<{ adapters?: Adapter[] }>("/api/adapters")
       .then((data) => {
         setAdapters(data.adapters ?? []);
         setLoading(false);
@@ -32,8 +32,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
 
   useEffect(() => {
     if (!backendOnline) return;
-    fetch("/api/finetuning/status")
-      .then((r) => r.json())
+    fetchJson<{ status?: string | null }>("/api/finetuning/status")
       .then((data) => setTrainingStatus(data.status ?? null))
       .catch(() => {});
   }, [backendOnline]);

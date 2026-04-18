@@ -63,10 +63,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers WanPipeline",
                 "styleTags": ["general", "fast", "small"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 2.5,
+                # ~16GB on disk — 1.3B is just the transformer. The repo also
+                # ships a UMT5-XXL text encoder (~11GB) and VAE/CLIP weights.
+                "sizeGb": 16.4,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 4.0,
-                "note": "~2.5GB, runs on modest hardware. Best first target for trying local video end-to-end.",
+                "note": "1.3B transformer + UMT5 text encoder. ~16GB on disk. Best starter pick for trying local video end-to-end on modest hardware.",
                 "estimatedGenerationSeconds": 60.0,
                 "availableLocally": False,
             },
@@ -80,10 +82,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers WanPipeline",
                 "styleTags": ["general", "quality", "motion"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 14.0,
+                # 14B transformer in bf16 (~28GB) + UMT5-XXL text encoder (~11GB)
+                # + VAE/CLIP weights.
+                "sizeGb": 45.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
-                "note": "Wan 2.1 quality tier. 14GB, same WanPipeline as the 1.3B and 2.2 variants.",
+                "note": "Wan 2.1 quality tier. ~45GB. Same WanPipeline class as the 1.3B and Wan 2.2.",
                 "estimatedGenerationSeconds": 180.0,
                 "availableLocally": False,
             },

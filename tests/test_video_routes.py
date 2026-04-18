@@ -1,18 +1,25 @@
 """Contract tests for the video generation API.
 
 Routes covered:
-- GET  /api/video/catalog      -> always lists the curated engines
-- GET  /api/video/runtime      -> delegates to VideoRuntimeManager.capabilities
-- GET  /api/video/library      -> filters catalog by local snapshot readiness
-- GET  /api/video/outputs      -> empty until generation lands
-- POST /api/video/preload      -> 404 unknown, 409 not-installed, 200 happy
-- POST /api/video/unload       -> 404 unknown, 200 default
-- POST /api/video/generate     -> 501 until generation lands
-- POST /api/video/download     -> 501 until downloads land
+- GET  /api/video/catalog           -> always lists the curated engines
+- GET  /api/video/runtime           -> delegates to VideoRuntimeManager.capabilities
+- GET  /api/video/library           -> filters catalog by local snapshot readiness
+- GET  /api/video/outputs           -> empty until generation lands
+- POST /api/video/preload           -> 404 unknown, 409 not-installed, 200 happy
+- POST /api/video/unload            -> 404 unknown, 200 default
+- POST /api/video/generate          -> 501 until generation lands
+- POST /api/video/download          -> 404 unknown, 200 starts HF snapshot download
+- GET  /api/video/download/status   -> filters download list to video repos
+- POST /api/video/download/cancel   -> 404 unknown, 200 pauses
+- POST /api/video/download/delete   -> 404 unknown, 200 wipes cache + evicts runtime
+
+All tests redirect HF_HUB_CACHE into a per-test tempdir so no test can ever
+observe or wipe the user's real downloaded model snapshots.
 """
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,11 +40,30 @@ from tests.test_backend_service import (
 )
 
 
-def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory]:
+# Environment variables we redirect into the per-test tempdir so the test
+# process never observes or touches the user's real Hugging Face cache.
+# Critical: without this, a ``delete_download`` test against a valid video
+# repo would physically wipe the user's in-progress snapshot on disk.
+_HF_CACHE_ENV_VARS: tuple[str, ...] = (
+    "HF_HUB_CACHE",
+    "HUGGINGFACE_HUB_CACHE",
+    "HF_HOME",
+)
+
+
+def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory, dict[str, str | None]]:
     tempdir = tempfile.TemporaryDirectory()
     settings_path = Path(tempdir.name) / "settings.json"
     benchmarks_path = Path(tempdir.name) / "benchmark-history.json"
     chat_sessions_path = Path(tempdir.name) / "chat-sessions.json"
+    hf_cache = Path(tempdir.name) / "hf-cache"
+    hf_cache.mkdir(parents=True, exist_ok=True)
+
+    env_snapshot: dict[str, str | None] = {key: os.environ.get(key) for key in _HF_CACHE_ENV_VARS}
+    os.environ["HF_HUB_CACHE"] = str(hf_cache)
+    os.environ["HUGGINGFACE_HUB_CACHE"] = str(hf_cache)
+    os.environ["HF_HOME"] = str(tempdir.name)
+
     state = ChaosEngineState(
         system_snapshot_provider=fake_system_snapshot,
         library_provider=fake_library,
@@ -48,14 +74,23 @@ def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory]:
     state.runtime = FakeRuntime()
     client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
     client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
-    return client, tempdir
+    return client, tempdir, env_snapshot
+
+
+def restore_env(env_snapshot: dict[str, str | None]) -> None:
+    for key, value in env_snapshot.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 class VideoCatalogRouteTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_catalog_returns_families_and_latest_shape(self):
@@ -104,9 +139,10 @@ class VideoCatalogRouteTests(unittest.TestCase):
 
 class VideoRuntimeRouteTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_runtime_delegates_to_video_runtime_manager(self):
@@ -141,9 +177,10 @@ class VideoRuntimeRouteTests(unittest.TestCase):
 
 class VideoPreloadRouteTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_preload_returns_404_for_unknown_model(self):
@@ -187,9 +224,10 @@ class VideoPreloadRouteTests(unittest.TestCase):
 
 class VideoUnloadRouteTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_unload_no_body_returns_runtime_status(self):
@@ -206,9 +244,10 @@ class VideoNotImplementedRouteTests(unittest.TestCase):
     """Generate still surfaces 501 until the generation loop lands."""
 
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_generate_returns_501(self):
@@ -227,9 +266,10 @@ class VideoDownloadRouteTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.client, self.tempdir = make_client()
+        self.client, self.tempdir, self.env_snapshot = make_client()
 
     def tearDown(self) -> None:
+        restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
     def test_download_rejects_unknown_repo(self):

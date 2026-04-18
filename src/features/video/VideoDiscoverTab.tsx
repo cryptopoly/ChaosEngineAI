@@ -28,6 +28,7 @@ export interface VideoDiscoverTabProps {
   busyAction: string | null;
   activeVideoDownloads: Record<string, DownloadStatus>;
   selectedVideoVariant: VideoModelVariant | null;
+  fileRevealLabel: string;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string) => void;
@@ -35,6 +36,7 @@ export interface VideoDiscoverTabProps {
   onDeleteVideoDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
+  onRevealPath: (path: string) => void;
 }
 
 export function VideoDiscoverTab({
@@ -51,6 +53,7 @@ export function VideoDiscoverTab({
   busyAction,
   activeVideoDownloads,
   selectedVideoVariant,
+  fileRevealLabel,
   onActiveTabChange,
   onOpenVideoStudio,
   onVideoDownload,
@@ -58,6 +61,7 @@ export function VideoDiscoverTab({
   onDeleteVideoDownload,
   onOpenExternalUrl,
   onRestartServer,
+  onRevealPath,
 }: VideoDiscoverTabProps) {
   return (
     <div className="image-discover-stack">
@@ -239,6 +243,20 @@ export function VideoDiscoverTab({
                   {isDownloading || canDeleteLocalData ? (
                     <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(variant.repo)}>
                       {isDownloading ? "Cancel" : "Delete"}
+                    </button>
+                  ) : null}
+                  {variant.localPath ? (
+                    <button
+                      className="secondary-button icon-button"
+                      type="button"
+                      title={fileRevealLabel}
+                      onClick={() => onRevealPath(variant.localPath as string)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
                     </button>
                   ) : null}
                   <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>

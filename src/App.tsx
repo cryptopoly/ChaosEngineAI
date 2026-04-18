@@ -1246,6 +1246,7 @@ export default function App() {
         busyAction={busyAction}
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1253,6 +1254,7 @@ export default function App() {
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "image-models") {
@@ -1261,12 +1263,14 @@ export default function App() {
         installedImageVariants={imgState.installedImageVariants}
         imageCatalog={imgState.imageCatalog}
         activeImageDownloads={imgState.activeImageDownloads}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "image-studio") {
@@ -1379,6 +1383,7 @@ export default function App() {
         busyAction={busyAction}
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
@@ -1386,6 +1391,7 @@ export default function App() {
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "video-models") {
@@ -1398,6 +1404,7 @@ export default function App() {
         videoBusy={videoState.videoBusy}
         videoBusyLabel={videoState.videoBusyLabel}
         loadedVideoVariant={videoState.loadedVideoVariant}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
@@ -1406,6 +1413,7 @@ export default function App() {
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "video-studio") {

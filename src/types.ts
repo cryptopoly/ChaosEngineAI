@@ -716,6 +716,8 @@ export interface ImageModelVariant {
   metadataWarning?: string | null;
   source?: "curated" | "latest" | "experimental";
   familyName?: string | null;
+  /** Absolute path to the local HF snapshot, when something is on disk. */
+  localPath?: string | null;
 }
 
 export interface ImageModelFamily {
@@ -755,6 +757,8 @@ export interface VideoModelVariant {
   hasLocalData?: boolean;
   estimatedGenerationSeconds: number | null;
   familyName?: string | null;
+  /** Absolute path to the local HF snapshot, when something is on disk. */
+  localPath?: string | null;
 }
 
 export interface VideoModelFamily {

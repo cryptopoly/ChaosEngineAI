@@ -35,6 +35,14 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             enriched["availableLocally"] = _video_repo_runtime_ready(repo) if repo else False
             enriched["hasLocalData"] = enriched["availableLocally"] or _video_repo_has_any_local_data(repo)
             enriched["familyName"] = family["name"]
+            # Absolute path to the HF snapshot, used by the Reveal File button.
+            # Only populated when there is actually something on disk so the
+            # UI can reliably hide the button otherwise.
+            if enriched["hasLocalData"] and repo:
+                snapshot_dir = _hf_repo_snapshot_dir(repo)
+                enriched["localPath"] = str(snapshot_dir) if snapshot_dir else None
+            else:
+                enriched["localPath"] = None
             variants.append(enriched)
         payload = dict(family)
         payload["variants"] = variants

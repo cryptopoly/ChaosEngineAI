@@ -94,17 +94,21 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
 
     families: list[dict[str, Any]] = []
     for family in IMAGE_MODEL_FAMILIES:
-        variants = [
-            {
-                **variant,
-                **repo_metadata.get(str(variant.get("repo") or ""), {}),
-                "source": "curated",
-                "familyName": family.get("name"),
-                "availableLocally": _image_variant_available_locally(variant, library),
-                "hasLocalData": _hf_repo_snapshot_dir(str(variant.get("repo") or "")) is not None,
-            }
-            for variant in family["variants"]
-        ]
+        variants = []
+        for variant in family["variants"]:
+            repo_id = str(variant.get("repo") or "")
+            snapshot_dir = _hf_repo_snapshot_dir(repo_id) if repo_id else None
+            variants.append(
+                {
+                    **variant,
+                    **repo_metadata.get(repo_id, {}),
+                    "source": "curated",
+                    "familyName": family.get("name"),
+                    "availableLocally": _image_variant_available_locally(variant, library),
+                    "hasLocalData": snapshot_dir is not None,
+                    "localPath": str(snapshot_dir) if snapshot_dir else None,
+                }
+            )
         families.append(
             {
                 **family,
@@ -338,6 +342,11 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 ),
                 "availableLocally": _image_repo_runtime_ready(repo_id),
                 "hasLocalData": _hf_repo_snapshot_dir(repo_id) is not None,
+                "localPath": (
+                    str(_hf_repo_snapshot_dir(repo_id))
+                    if _hf_repo_snapshot_dir(repo_id) is not None
+                    else None
+                ),
                 "estimatedGenerationSeconds": None,
                 "downloads": None,
                 "likes": None,
@@ -477,6 +486,11 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             ),
             "availableLocally": _image_repo_runtime_ready(model_id),
             "hasLocalData": _hf_repo_snapshot_dir(model_id) is not None,
+            "localPath": (
+                str(_hf_repo_snapshot_dir(model_id))
+                if _hf_repo_snapshot_dir(model_id) is not None
+                else None
+            ),
             "estimatedGenerationSeconds": None,
             "downloads": metadata.get("downloads"),
             "likes": metadata.get("likes"),

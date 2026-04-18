@@ -28,6 +28,7 @@ export interface ImageDiscoverTabProps {
   busyAction: string | null;
   activeImageDownloads: Record<string, DownloadStatus>;
   selectedImageVariant: ImageModelVariant | null;
+  fileRevealLabel: string;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -35,6 +36,7 @@ export interface ImageDiscoverTabProps {
   onDeleteImageDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
+  onRevealPath: (path: string) => void;
 }
 
 export function ImageDiscoverTab({
@@ -53,6 +55,7 @@ export function ImageDiscoverTab({
   busyAction,
   activeImageDownloads,
   selectedImageVariant,
+  fileRevealLabel,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -60,6 +63,7 @@ export function ImageDiscoverTab({
   onDeleteImageDownload,
   onOpenExternalUrl,
   onRestartServer,
+  onRevealPath,
 }: ImageDiscoverTabProps) {
   return (
     <div className="image-discover-stack">
@@ -198,11 +202,13 @@ export function ImageDiscoverTab({
               key={variant.id}
               variant={variant}
               downloadState={activeImageDownloads[variant.repo]}
+              fileRevealLabel={fileRevealLabel}
               onDownload={(repo) => onImageDownload(repo)}
               onCancelDownload={(repo) => onCancelImageDownload(repo)}
               onDeleteDownload={(repo) => onDeleteImageDownload(repo)}
               onOpenExternalUrl={(url) => onOpenExternalUrl(url)}
               onNavigateSettings={() => onActiveTabChange("settings")}
+              onRevealPath={(path) => onRevealPath(path)}
             />
           ))}
         </div>

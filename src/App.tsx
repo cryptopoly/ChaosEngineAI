@@ -15,6 +15,7 @@ import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
 import { Sidebar } from "./components/Sidebar";
+import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { DashboardTab } from "./features/dashboard/DashboardTab";
@@ -74,6 +75,7 @@ import {
   useImageState,
   useBenchmarks,
   useSettings,
+  useSidebarPrefs,
 } from "./hooks";
 
 export default function App() {
@@ -93,6 +95,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [compareMode, setCompareMode] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const sidebarPrefs = useSidebarPrefs();
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
@@ -1557,6 +1560,8 @@ export default function App() {
       serverPort={workspace.server.port}
       loadedModelName={workspace.runtime.loadedModel?.name}
       apiToken={apiToken}
+      sidebarMode={sidebarPrefs.mode}
+      onSidebarModeChange={sidebarPrefs.setMode}
     />;
   }
 
@@ -1587,6 +1592,11 @@ export default function App() {
         backendOnline={backendOnline}
         engineLabel={workspace.runtime.engineLabel}
         loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+        mode={sidebarPrefs.mode}
+        collapsedGroups={sidebarPrefs.collapsedGroups}
+        onToggleGroupCollapsed={sidebarPrefs.toggleGroupCollapsed}
+        lastChildByGroup={sidebarPrefs.lastChildByGroup}
+        onRememberLastChild={sidebarPrefs.rememberLastChild}
       />
 
 
@@ -1622,6 +1632,15 @@ export default function App() {
             </div>
           ) : null}
         </div>
+
+        {sidebarPrefs.mode === "tabs" ? (
+          <SubtabBar
+            activeTab={activeTab}
+            onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
+            platform={workspace.system.platform}
+            onRememberLastChild={sidebarPrefs.rememberLastChild}
+          />
+        ) : null}
 
         <div className="workspace-content-frame">
           {loading ? (

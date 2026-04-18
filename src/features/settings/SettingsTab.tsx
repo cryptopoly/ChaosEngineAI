@@ -1,6 +1,7 @@
 import type { SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
 import type { SettingsDraft } from "../../types/chat";
+import type { SidebarMode } from "../../types";
 
 export interface SettingsTabProps {
   settingsDraft: SettingsDraft;
@@ -21,6 +22,8 @@ export interface SettingsTabProps {
   serverPort: number;
   loadedModelName: string | undefined;
   apiToken: string | null;
+  sidebarMode: SidebarMode;
+  onSidebarModeChange: (mode: SidebarMode) => void;
 }
 
 export function SettingsTab({
@@ -42,10 +45,44 @@ export function SettingsTab({
   serverPort,
   loadedModelName,
   apiToken,
+  sidebarMode,
+  onSidebarModeChange,
 }: SettingsTabProps) {
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
   return (
     <div className="content-grid">
+      <Panel
+        title="Appearance"
+        subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
+      >
+        <div className="control-stack">
+          <div className="segmented" role="radiogroup" aria-label="Sidebar style">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarMode === "collapsible"}
+              className={sidebarMode === "collapsible" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("collapsible")}
+            >
+              Collapsible
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarMode === "tabs"}
+              className={sidebarMode === "tabs" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("tabs")}
+            >
+              Tabs
+            </button>
+          </div>
+          <p className="help-text">
+            <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
+            destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
+            to their last-used tab, with a sub-tab bar above the content.
+          </p>
+        </div>
+      </Panel>
       <Panel
         title="Data Directory"
         subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."

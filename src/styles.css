@@ -291,6 +291,40 @@ strong {
   opacity: 1;
 }
 
+.subtab-bar {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.subtab {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.subtab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.subtab.active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
 .sidebar-footer {
   margin-top: auto;
   display: flex;

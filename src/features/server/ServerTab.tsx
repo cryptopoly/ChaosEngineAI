@@ -93,6 +93,18 @@ export function ServerTab({
   const [serverLogAtBottom, setServerLogAtBottom] = useState(true);
   const [orphansDismissed, setOrphansDismissed] = useState(false);
 
+  // Reset the local dismissal whenever a fresh batch of orphans arrives
+  // (first PID in the list changes = new event), and auto-hide the banner
+  // 12s after the latest batch so it behaves like a notification instead
+  // of persistent state.
+  const latestOrphanPid = recentOrphanedWorkers[0]?.pid;
+  useEffect(() => {
+    if (latestOrphanPid == null) return;
+    setOrphansDismissed(false);
+    const timer = window.setTimeout(() => setOrphansDismissed(true), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [latestOrphanPid]);
+
   function handleServerLogScroll() {
     const el = serverLogRef.current;
     if (!el) return;

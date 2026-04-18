@@ -2293,6 +2293,17 @@ class RuntimeController:
                 tracked.add(int(pid))
         return tracked
 
+    # How long an orphan record stays visible in status() before being
+    # dropped. The UI already auto-dismisses sooner; this keeps the backend
+    # from hoarding records across an entire session.
+    ORPHAN_RECORD_TTL_SECONDS = 45.0
+    # Ignore children younger than this — they are almost always in a
+    # spawn-in-progress race or a terminate-in-progress race where psutil
+    # can see the PID but our engine hasn't finished registering/releasing
+    # it. Killing them a second time and reporting them as "orphans" is
+    # pure noise.
+    ORPHAN_DETECTION_GRACE_SECONDS = 3.0
+
     def prune_stale_backend_children(self) -> None:
         tracked = self._tracked_process_pids()
         try:
@@ -2301,13 +2312,17 @@ class RuntimeController:
             parent = psutil.Process(os.getpid())
             children = parent.children(recursive=False)
         except Exception:
+            self._expire_orphan_records()
             return
 
+        now_mono = time.monotonic()
+        now_wall = time.time()
         pruned: list[dict[str, Any]] = []
         for child in children:
             try:
                 cmdline = " ".join(child.cmdline()).lower()
                 name = (child.name() or "").lower()
+                create_time = child.create_time()
             except Exception:
                 continue
 
@@ -2317,6 +2332,13 @@ class RuntimeController:
                 continue
             if child.pid in tracked:
                 continue
+            # Grace window: skip transient mid-spawn / mid-terminate
+            # children. The previous behaviour counted these as orphans
+            # every time an engine was swapped in or out, so a normal
+            # model-change session produced 5-10 "orphans" purely from
+            # timing races.
+            if now_wall - create_time < self.ORPHAN_DETECTION_GRACE_SECONDS:
+                continue
 
             record = {
                 "pid": int(child.pid),
@@ -2324,6 +2346,8 @@ class RuntimeController:
                 "label": "MLX worker" if is_mlx_worker else "llama-server",
                 "action": "terminated",
                 "detectedAt": _now_label(),
+                # Internal monotonic stamp used for TTL; not serialized.
+                "_detectedAtMono": now_mono,
             }
             try:
                 child.terminate()
@@ -2338,6 +2362,18 @@ class RuntimeController:
 
         if pruned:
             self._recent_orphaned_workers = (pruned + self._recent_orphaned_workers)[:8]
+
+        self._expire_orphan_records()
+
+    def _expire_orphan_records(self) -> None:
+        if not self._recent_orphaned_workers:
+            return
+        cutoff = time.monotonic() - self.ORPHAN_RECORD_TTL_SECONDS
+        self._recent_orphaned_workers = [
+            record
+            for record in self._recent_orphaned_workers
+            if float(record.get("_detectedAtMono", 0.0)) >= cutoff
+        ]
 
     def _matches_active(self, model_ref: str) -> bool:
         if self.loaded_model is None:
@@ -2986,6 +3022,12 @@ class RuntimeController:
 
     def status(self, *, active_requests: int = 0, requests_served: int = 0) -> dict[str, Any]:
         self.prune_stale_backend_children()
+        self._expire_orphan_records()
+        # Strip the internal monotonic timestamp before sending to the UI.
+        public_orphans = [
+            {key: value for key, value in record.items() if not key.startswith("_")}
+            for record in self._recent_orphaned_workers
+        ]
         return {
             "state": "loaded" if self.loaded_model is not None else "idle",
             "engine": self.engine.engine_name,
@@ -2998,5 +3040,5 @@ class RuntimeController:
             "requestsServed": requests_served,
             "runtimeNote": self.runtime_note,
             "nativeBackends": self.capabilities.to_dict(),
-            "recentOrphanedWorkers": list(self._recent_orphaned_workers),
+            "recentOrphanedWorkers": public_orphans,
         }

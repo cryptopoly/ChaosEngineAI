@@ -451,15 +451,20 @@ class RuntimeControllerOrphanWorkerTests(unittest.TestCase):
         controller = self._controller()
         controller._tracked_process_pids = mock.Mock(return_value={101})
 
+        # `create_time` needs to be older than the detection grace window,
+        # otherwise orphans are deliberately skipped. Use an epoch value so
+        # now - create_time is huge and positive.
         tracked = mock.Mock()
         tracked.pid = 101
         tracked.cmdline.return_value = ["python", "-m", "backend_service.mlx_worker", "serve"]
         tracked.name.return_value = "python"
+        tracked.create_time.return_value = 0.0
 
         orphan = mock.Mock()
         orphan.pid = 202
         orphan.cmdline.return_value = ["python", "-m", "backend_service.mlx_worker", "serve"]
         orphan.name.return_value = "python"
+        orphan.create_time.return_value = 0.0
 
         parent = mock.Mock()
         parent.children.return_value = [tracked, orphan]

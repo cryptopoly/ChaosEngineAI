@@ -1,6 +1,7 @@
 export * from "./format";
 export * from "./models";
 export * from "./images";
+export * from "./videos";
 export * from "./library";
 export * from "./downloads";
 export * from "./chat";

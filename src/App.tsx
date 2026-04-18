@@ -34,7 +34,10 @@ import { ImageDiscoverTab } from "./features/images/ImageDiscoverTab";
 import { ImageModelsTab } from "./features/images/ImageModelsTab";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
-import { VideoPlaceholderTab } from "./features/video/VideoPlaceholderTab";
+import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
+import { VideoModelsTab } from "./features/video/VideoModelsTab";
+import { VideoStudioTab } from "./features/video/VideoStudioTab";
+import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import type {
   ChatSession,
   LibraryItem,
@@ -74,6 +77,7 @@ import {
   useModels,
   useChat,
   useImageState,
+  useVideoState,
   useBenchmarks,
   useSettings,
   useSidebarPrefs,
@@ -100,6 +104,7 @@ export default function App() {
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
+  const videoState = useVideoState(backendOnline, setError, setActiveTab);
   const settings = useSettings(
     workspace, setWorkspace,
     backendOnline, setBackendOnline,
@@ -509,6 +514,7 @@ export default function App() {
     setActiveChatId(workspace.chatSessions[0]?.id ?? "");
     setThreadTitleDraft(workspace.chatSessions[0]?.title ?? "");
     void imgState.refreshImageData();
+    void videoState.refreshVideoData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
@@ -1357,14 +1363,89 @@ export default function App() {
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
       />
     );
-  } else if (activeTab === "video-models") {
-    content = <VideoPlaceholderTab variant="models" />;
   } else if (activeTab === "video-discover") {
-    content = <VideoPlaceholderTab variant="discover" />;
+    content = (
+      <VideoDiscoverTab
+        combinedVideoDiscoverResults={videoState.combinedVideoDiscoverResults}
+        videoDiscoverSearchInput={videoState.videoDiscoverSearchInput}
+        onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
+        videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
+        onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
+        videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        tauriBackend={tauriBackend}
+        busy={busy}
+        busyAction={busyAction}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={videoState.openVideoStudio}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
+        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRestartServer={() => void handleRestartServer()}
+      />
+    );
+  } else if (activeTab === "video-models") {
+    content = (
+      <VideoModelsTab
+        installedVideoVariants={videoState.installedVideoVariants}
+        videoCatalog={videoState.videoCatalog}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        videoBusy={videoState.videoBusy}
+        videoBusyLabel={videoState.videoBusyLabel}
+        loadedVideoVariant={videoState.loadedVideoVariant}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={videoState.openVideoStudio}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
+        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
+        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
+        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+      />
+    );
   } else if (activeTab === "video-studio") {
-    content = <VideoPlaceholderTab variant="studio" />;
+    content = (
+      <VideoStudioTab
+        videoCatalog={videoState.videoCatalogWithLatest}
+        selectedVideoModelId={videoState.selectedVideoModelId}
+        onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        selectedVideoFamily={videoState.selectedVideoFamily}
+        selectedVideoLoaded={videoState.selectedVideoLoaded}
+        selectedVideoWillLoadOnGenerate={videoState.selectedVideoWillLoadOnGenerate}
+        videoRuntimeLoadedDifferentModel={videoState.videoRuntimeLoadedDifferentModel}
+        loadedVideoVariant={videoState.loadedVideoVariant}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        tauriBackend={tauriBackend}
+        busy={busy}
+        busyAction={busyAction}
+        videoBusy={videoState.videoBusy}
+        videoBusyLabel={videoState.videoBusyLabel}
+        backendOnline={backendOnline}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        videoPrompt={videoState.videoPrompt}
+        onVideoPromptChange={videoState.setVideoPrompt}
+        videoNegativePrompt={videoState.videoNegativePrompt}
+        onVideoNegativePromptChange={videoState.setVideoNegativePrompt}
+        videoUseRandomSeed={videoState.videoUseRandomSeed}
+        onVideoUseRandomSeedChange={videoState.setVideoUseRandomSeed}
+        videoSeedInput={videoState.videoSeedInput}
+        onVideoSeedInputChange={videoState.setVideoSeedInput}
+        onActiveTabChange={setActiveTab}
+        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
+        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRestartServer={() => void handleRestartServer()}
+      />
+    );
   } else if (activeTab === "video-gallery") {
-    content = <VideoPlaceholderTab variant="gallery" />;
+    content = <VideoGalleryTab onActiveTabChange={setActiveTab} />;
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab

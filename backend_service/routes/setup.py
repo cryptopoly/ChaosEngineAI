@@ -17,7 +17,10 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
-    "dflash-mlx": "dflash-mlx",
+    # dflash-mlx ships only as a git tag (PyPI build is stale at 0.1.0 while
+    # v0.1.4 on GitHub renamed the main entrypoint and removed the baseline
+    # fallback). Install directly from the tagged commit.
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@v0.1.4",
     "dflash": "dflash",
 }
 

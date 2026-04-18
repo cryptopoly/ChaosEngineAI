@@ -313,9 +313,14 @@ function stageOptionalRuntimePackages(pythonBinary) {
   // so that DFlash, TurboQuant, and RotorQuant work out of the box for
   // new users without requiring manual pip installs via the Setup page.
   //
-  // Each entry: [pip package name, import name used for verification]
+  // Each entry: [pip install target, import name used for verification]
+  // The first element is passed verbatim to ``pip install`` so it may be a
+  // PyPI name or a PEP 508 URL (e.g. ``pkg @ git+https://…@tag``).
   const optionalPackages = [
-    ["dflash-mlx", "dflash_mlx"],
+    [
+      "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@v0.1.4",
+      "dflash_mlx",
+    ],
     ["turboquant", "turboquant"],
     ["turboquant-mlx-full", "turboquant_mlx"],
   ];

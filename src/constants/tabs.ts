@@ -11,10 +11,10 @@ export interface TabConfig {
 export const tabs: TabConfig[] = [
   { id: "dashboard", label: "Dashboard", caption: "System overview" },
   { id: "chat", label: "Chat", caption: "Local AI chat" },
-  { id: "online-models", label: "Discover", caption: "Browse and download AI models", group: "models", shortLabel: "Discover" },
   { id: "my-models", label: "My Models", caption: "Models on this machine", group: "models", shortLabel: "My Models" },
-  { id: "image-discover", label: "Image Discover", caption: "Browse image models", group: "images", shortLabel: "Discover" },
+  { id: "online-models", label: "Discover", caption: "Browse and download AI models", group: "models", shortLabel: "Discover" },
   { id: "image-models", label: "Image Models", caption: "Installed image generators", group: "images", shortLabel: "My Models" },
+  { id: "image-discover", label: "Image Discover", caption: "Browse image models", group: "images", shortLabel: "Discover" },
   { id: "image-studio", label: "Image Studio", caption: "Prompt, generate, and iterate", group: "images", shortLabel: "Studio" },
   { id: "image-gallery", label: "Image Gallery", caption: "Saved outputs and filters", group: "images", shortLabel: "Gallery" },
   { id: "server", label: "Server", caption: "OpenAI-compatible local API" },

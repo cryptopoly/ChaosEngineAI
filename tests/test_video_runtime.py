@@ -14,6 +14,7 @@ from unittest import mock
 from backend_service import video_runtime
 from backend_service.video_runtime import (
     DiffusersVideoEngine,
+    GeneratedVideo,
     PIPELINE_REGISTRY,
     VideoGenerationConfig,
     VideoRuntimeManager,
@@ -197,23 +198,201 @@ class GenerationConfigTests(unittest.TestCase):
         with self.assertRaises(Exception):
             cfg.seed = 7  # type: ignore[misc]
 
-    def test_engine_generate_raises_not_implemented(self):
-        engine = DiffusersVideoEngine()
-        cfg = VideoGenerationConfig(
+
+class GenerateTests(unittest.TestCase):
+    """Exercise ``DiffusersVideoEngine.generate()`` without loading real weights.
+
+    We stub the three heavy seams: ``_ensure_pipeline`` (weight loading),
+    ``_invoke_pipeline`` (the actual diffusion pass), and ``_encode_frames_to_mp4``
+    (ffmpeg muxing). The engine's own orchestration logic — seed resolution,
+    generator construction, kwarg building, timing, frame-count validation —
+    is what we actually want to test here.
+    """
+
+    FAKE_BYTES = b"\x00\x00\x00\x20ftypmp42" + b"\x00" * 48
+
+    def _config(self, seed: int | None = 42) -> VideoGenerationConfig:
+        return VideoGenerationConfig(
             modelId="Lightricks/LTX-Video",
             modelName="LTX-Video",
             repo="Lightricks/LTX-Video",
-            prompt="test",
-            negativePrompt="",
+            prompt="a cinematic shot of a misty forest",
+            negativePrompt="blurry, low quality",
             width=768,
             height=512,
-            numFrames=97,
+            numFrames=24,
             fps=24,
+            steps=20,
             guidance=3.0,
-            seed=None,
+            seed=seed,
         )
-        with self.assertRaises(NotImplementedError):
-            engine.generate(cfg)
+
+    def _install_torch_shim(self, engine: DiffusersVideoEngine) -> mock.MagicMock:
+        """Install a minimal torch shim on the engine so generate() can build a Generator."""
+        generator_instance = mock.MagicMock(name="torch_generator")
+        generator_instance.manual_seed.return_value = generator_instance
+        generator_cls = mock.MagicMock(return_value=generator_instance)
+        torch_shim = SimpleNamespace(
+            Generator=generator_cls,
+            cuda=SimpleNamespace(is_available=lambda: False, empty_cache=lambda: None),
+        )
+        engine._torch = torch_shim  # type: ignore[assignment]
+        engine._device = "cpu"
+        return generator_cls
+
+    def test_generate_happy_path_returns_generated_video_with_real_metadata(self):
+        engine = DiffusersVideoEngine()
+        generator_cls = self._install_torch_shim(engine)
+
+        fake_pipeline = mock.MagicMock(name="pipeline")
+        fake_frames = [mock.MagicMock(name=f"frame_{idx}") for idx in range(24)]
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]), \
+                mock.patch.object(engine, "_ensure_pipeline", return_value=fake_pipeline), \
+                mock.patch.object(engine, "_invoke_pipeline", return_value=fake_frames) as invoke, \
+                mock.patch.object(
+                    engine,
+                    "_encode_frames_to_mp4",
+                    return_value=self.FAKE_BYTES,
+                ) as encode:
+            result = engine.generate(self._config(seed=42))
+
+        self.assertIsInstance(result, GeneratedVideo)
+        self.assertEqual(result.seed, 42)
+        self.assertEqual(result.bytes, self.FAKE_BYTES)
+        self.assertEqual(result.frameCount, 24)
+        self.assertEqual(result.fps, 24)
+        self.assertEqual(result.width, 768)
+        self.assertEqual(result.height, 512)
+        self.assertEqual(result.mimeType, "video/mp4")
+        self.assertEqual(result.extension, "mp4")
+        self.assertIn("cpu", result.runtimeLabel)
+        self.assertGreater(result.durationSeconds, 0.0)
+
+        # Confirm the generator was constructed on CPU (MPS fallback) and seeded
+        # with the provided value so callers can actually reproduce a run.
+        generator_cls.assert_called_once()
+        invoke.assert_called_once()
+        encode.assert_called_once()
+
+    def test_generate_resolves_random_seed_when_none_provided(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]), \
+                mock.patch.object(engine, "_ensure_pipeline", return_value=mock.MagicMock()), \
+                mock.patch.object(
+                    engine,
+                    "_invoke_pipeline",
+                    return_value=[mock.MagicMock() for _ in range(24)],
+                ), \
+                mock.patch.object(
+                    engine,
+                    "_encode_frames_to_mp4",
+                    return_value=self.FAKE_BYTES,
+                ):
+            result = engine.generate(self._config(seed=None))
+
+        # No seed in the config -> engine must pick a deterministic integer so
+        # the user can see it in the UI and reproduce the render.
+        self.assertIsInstance(result.seed, int)
+        self.assertGreaterEqual(result.seed, 0)
+        self.assertLess(result.seed, 2**31)
+
+    def test_generate_rejects_empty_frame_output(self):
+        engine = DiffusersVideoEngine()
+        self._install_torch_shim(engine)
+
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]), \
+                mock.patch.object(engine, "_ensure_pipeline", return_value=mock.MagicMock()), \
+                mock.patch.object(engine, "_invoke_pipeline", return_value=[]):
+            with self.assertRaises(RuntimeError) as ctx:
+                engine.generate(self._config())
+        self.assertIn("zero frames", str(ctx.exception).lower())
+
+    def test_generate_raises_when_output_deps_missing(self):
+        engine = DiffusersVideoEngine()
+
+        # First _find_missing call (in preload path during _ensure_pipeline) we bypass by
+        # mocking _ensure_pipeline itself. The call we care about is the output-deps
+        # check at the top of generate(): imageio / imageio-ffmpeg missing.
+        with mock.patch.object(
+            video_runtime,
+            "_find_missing",
+            return_value=["imageio", "imageio-ffmpeg"],
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                engine.generate(self._config())
+        self.assertIn("imageio", str(ctx.exception).lower())
+
+
+class VideoRuntimeManagerGenerateTests(unittest.TestCase):
+    """Exercise the ``VideoRuntimeManager.generate`` facade without any pipeline."""
+
+    def test_generate_raises_when_runtime_unavailable(self):
+        manager = VideoRuntimeManager()
+        # Core deps missing -> probe() reports not ready -> facade must refuse.
+        with mock.patch.object(
+            video_runtime,
+            "_find_missing",
+            side_effect=[["diffusers", "torch"], ["imageio"]],
+        ):
+            with self.assertRaises(RuntimeError):
+                manager.generate(
+                    VideoGenerationConfig(
+                        modelId="Lightricks/LTX-Video",
+                        modelName="LTX-Video",
+                        repo="Lightricks/LTX-Video",
+                        prompt="test",
+                        negativePrompt="",
+                        width=768,
+                        height=512,
+                        numFrames=24,
+                        fps=24,
+                        guidance=3.0,
+                        seed=1,
+                    )
+                )
+
+    def test_generate_returns_video_and_runtime_dict(self):
+        manager = VideoRuntimeManager()
+        fake_video = GeneratedVideo(
+            seed=123,
+            bytes=b"fake-mp4",
+            extension="mp4",
+            mimeType="video/mp4",
+            durationSeconds=2.5,
+            frameCount=24,
+            fps=24,
+            width=768,
+            height=512,
+            runtimeLabel="test",
+            runtimeNote=None,
+        )
+        with mock.patch.object(video_runtime, "_find_missing", return_value=[]), \
+                mock.patch.object(
+                    manager._engine,
+                    "generate",
+                    return_value=fake_video,
+                ):
+            video, runtime = manager.generate(
+                VideoGenerationConfig(
+                    modelId="Lightricks/LTX-Video",
+                    modelName="LTX-Video",
+                    repo="Lightricks/LTX-Video",
+                    prompt="test",
+                    negativePrompt="",
+                    width=768,
+                    height=512,
+                    numFrames=24,
+                    fps=24,
+                    guidance=3.0,
+                    seed=123,
+                )
+            )
+        self.assertIs(video, fake_video)
+        self.assertIn("realGenerationAvailable", runtime)
+        self.assertTrue(runtime["realGenerationAvailable"])
 
 
 if __name__ == "__main__":

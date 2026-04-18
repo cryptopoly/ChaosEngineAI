@@ -18,7 +18,11 @@ from backend_service.image_runtime import (
     ImageGenerationConfig,
     ImageRuntimeManager,
 )
-from backend_service.models import ImageGenerationRequest
+from backend_service.video_runtime import (
+    VideoGenerationConfig,
+    VideoRuntimeManager,
+)
+from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
 from backend_service.state import ChaosEngineState
 
@@ -34,6 +38,12 @@ from backend_service.helpers.images import (
     _save_image_artifact as _save_image_artifact_impl,
     _find_image_output as _find_image_output_impl,
     _delete_image_output as _delete_image_output_impl,
+)
+from backend_service.helpers.video import (
+    _load_video_outputs as _load_video_outputs_impl,
+    _save_video_artifact as _save_video_artifact_impl,
+    _find_video_output as _find_video_output_impl,
+    _delete_video_output as _delete_video_output_impl,
 )
 from backend_service.helpers.settings import (
     DataLocation,
@@ -72,6 +82,7 @@ BENCHMARKS_PATH = DATA_LOCATION.benchmarks_path
 CHAT_SESSIONS_PATH = DATA_LOCATION.chat_sessions_path
 DOCUMENTS_DIR = DATA_LOCATION.documents_dir
 IMAGE_OUTPUTS_DIR = DATA_LOCATION.image_outputs_dir
+VIDEO_OUTPUTS_DIR = DATA_LOCATION.video_outputs_dir
 MAX_DOC_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB per file
 MAX_SESSION_DOCS_BYTES = 200 * 1024 * 1024  # 200 MB per session
 DOC_ALLOWED_EXTENSIONS = {
@@ -147,6 +158,22 @@ def _find_image_output(artifact_id: str) -> dict[str, Any] | None:
 
 def _delete_image_output(artifact_id: str) -> bool:
     return _delete_image_output_impl(artifact_id, IMAGE_OUTPUTS_DIR)
+
+
+def _load_video_outputs() -> list[dict[str, Any]]:
+    return _load_video_outputs_impl(VIDEO_OUTPUTS_DIR)
+
+
+def _save_video_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
+    return _save_video_artifact_impl(artifact, VIDEO_OUTPUTS_DIR)
+
+
+def _find_video_output(artifact_id: str) -> dict[str, Any] | None:
+    return _find_video_output_impl(artifact_id, VIDEO_OUTPUTS_DIR)
+
+
+def _delete_video_output(artifact_id: str) -> bool:
+    return _delete_video_output_impl(artifact_id, VIDEO_OUTPUTS_DIR)
 
 
 def compute_cache_preview(
@@ -282,6 +309,74 @@ def _generate_image_artifacts(
         }
         artifacts.append(_save_image_artifact(artifact))
     return artifacts, runtime_status
+
+
+def _generate_video_artifact(
+    request: VideoGenerationRequest,
+    variant: dict[str, Any],
+    runtime_manager: VideoRuntimeManager,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run a single video generation and persist it to the outputs dir.
+
+    Returns ``(artifact_dict, runtime_status_dict)``. Unlike the image path,
+    there is no placeholder fallback — if the runtime isn't ready or the
+    generation fails, the caller sees the exception and surfaces a proper
+    HTTP error rather than a fake clip.
+    """
+    import logging
+    logger = logging.getLogger("chaosengine.video")
+    logger.info(
+        "Generating video: model=%s repo=%s size=%dx%d frames=%d steps=%d",
+        variant.get("name"),
+        variant.get("repo"),
+        request.width,
+        request.height,
+        request.numFrames,
+        request.steps,
+    )
+
+    video, runtime_status = runtime_manager.generate(
+        VideoGenerationConfig(
+            modelId=request.modelId,
+            modelName=str(variant["name"]),
+            repo=str(variant["repo"]),
+            prompt=request.prompt,
+            negativePrompt=request.negativePrompt or "",
+            width=request.width,
+            height=request.height,
+            numFrames=request.numFrames,
+            fps=request.fps,
+            steps=request.steps,
+            guidance=request.guidance,
+            seed=request.seed,
+        )
+    )
+
+    created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    clip_duration = round(video.frameCount / max(1, video.fps), 3)
+    artifact = {
+        "artifactId": f"vid-{uuid.uuid4().hex[:12]}",
+        "modelId": request.modelId,
+        "modelName": variant["name"],
+        "prompt": request.prompt,
+        "negativePrompt": request.negativePrompt or "",
+        "width": video.width,
+        "height": video.height,
+        "numFrames": video.frameCount,
+        "fps": video.fps,
+        "steps": request.steps,
+        "guidance": request.guidance,
+        "seed": video.seed,
+        "createdAt": created_at,
+        "durationSeconds": video.durationSeconds,
+        "clipDurationSeconds": clip_duration,
+        "videoBytes": video.bytes,
+        "videoMimeType": video.mimeType,
+        "videoExtension": video.extension,
+        "runtimeLabel": video.runtimeLabel,
+        "runtimeNote": video.runtimeNote,
+    }
+    return _save_video_artifact(artifact), runtime_status
 
 
 def create_app(

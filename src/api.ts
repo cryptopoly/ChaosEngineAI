@@ -26,6 +26,9 @@ import type {
   UpdateSettingsPayload,
   UpdateSessionPayload,
   VideoCatalogResponse,
+  VideoGenerationPayload,
+  VideoGenerationResponse,
+  VideoOutputArtifact,
   VideoRuntimeStatus,
   WorkspaceData,
 } from "./types";
@@ -638,6 +641,46 @@ export async function unloadVideoModel(modelId?: string): Promise<VideoRuntimeSt
     modelId ? { modelId } : undefined,
   );
   return result.runtime;
+}
+
+export async function generateVideo(payload: VideoGenerationPayload): Promise<VideoGenerationResponse> {
+  // No client timeout — video generation legitimately takes minutes on consumer hardware.
+  return await postJson<VideoGenerationResponse>("/api/video/generate", payload, null);
+}
+
+export async function getVideoOutputs(): Promise<VideoOutputArtifact[]> {
+  const result = await fetchJson<{ outputs: VideoOutputArtifact[] }>("/api/video/outputs");
+  return result.outputs;
+}
+
+export async function deleteVideoOutput(
+  artifactId: string,
+): Promise<{ deleted: string; outputs: VideoOutputArtifact[] }> {
+  return await deleteJson<{ deleted: string; outputs: VideoOutputArtifact[] }>(
+    `/api/video/outputs/${encodeURIComponent(artifactId)}`,
+  );
+}
+
+/**
+ * Fetch a saved mp4 as a blob URL that an HTML5 <video> element can play.
+ *
+ * The backend auth middleware only reads the token from the ``Authorization``
+ * or ``x-chaosengine-token`` headers, so we can't just point a <video src> at
+ * the file endpoint directly. Fetching the bytes ourselves and handing back
+ * an object URL keeps auth clean and works even for clips > 25MB. Callers
+ * are responsible for calling ``URL.revokeObjectURL`` when the component
+ * unmounts.
+ */
+export async function fetchVideoOutputBlobUrl(artifactId: string): Promise<string> {
+  const response = await apiFetch(
+    `/api/video/outputs/${encodeURIComponent(artifactId)}/file`,
+    { method: "GET" },
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load video (${response.status} ${response.statusText})`);
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
 
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {

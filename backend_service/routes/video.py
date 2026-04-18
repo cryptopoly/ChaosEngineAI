@@ -1,15 +1,16 @@
 """Video generation API routes.
 
-Backed by ``backend_service.video_runtime.VideoRuntimeManager``. The runtime
-supports probe / preload / unload / download today — generation still returns
-501 and lands in the next phase.
+Backed by ``backend_service.video_runtime.VideoRuntimeManager``. This module
+exposes the full preload / unload / download / generate / outputs lifecycle.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse
 
 from backend_service.helpers.video import (
     _find_video_variant,
@@ -22,6 +23,7 @@ from backend_service.helpers.video import (
 )
 from backend_service.models import (
     DownloadModelRequest,
+    VideoGenerationRequest,
     VideoRuntimePreloadRequest,
     VideoRuntimeUnloadRequest,
 )
@@ -129,16 +131,109 @@ def video_library(request: Request) -> dict[str, Any]:
 
 @router.get("/api/video/outputs")
 def video_outputs() -> dict[str, Any]:
-    """Return saved video outputs. Empty until generation is implemented."""
-    return {"outputs": []}
+    """Return saved video outputs, newest first."""
+    from backend_service.app import _load_video_outputs
+    return {"outputs": _load_video_outputs()}
+
+
+@router.get("/api/video/outputs/{artifact_id}")
+def video_output_detail(artifact_id: str) -> dict[str, Any]:
+    from backend_service.app import _find_video_output
+    output = _find_video_output(artifact_id)
+    if output is None:
+        raise HTTPException(status_code=404, detail=f"Video output '{artifact_id}' not found.")
+    return {"artifact": output}
+
+
+@router.get("/api/video/outputs/{artifact_id}/file")
+def video_output_file(artifact_id: str) -> FileResponse:
+    """Stream the mp4 for a saved video output.
+
+    The frontend wires this up as the ``src`` of an HTML5 <video> element —
+    base64-encoding a video clip in the JSON payload is wasteful, especially
+    as clips easily exceed 10MB.
+    """
+    from backend_service.app import _find_video_output
+    output = _find_video_output(artifact_id)
+    if output is None:
+        raise HTTPException(status_code=404, detail=f"Video output '{artifact_id}' not found.")
+    video_path = str(output.get("videoPath") or "")
+    if not video_path or not Path(video_path).exists():
+        raise HTTPException(
+            status_code=410,
+            detail=f"Video file for '{artifact_id}' is missing from disk.",
+        )
+    return FileResponse(
+        path=video_path,
+        media_type=str(output.get("videoMimeType") or "video/mp4"),
+        filename=f"{artifact_id}.{output.get('videoExtension') or 'mp4'}",
+    )
+
+
+@router.delete("/api/video/outputs/{artifact_id}")
+def delete_video_output_endpoint(request: Request, artifact_id: str) -> dict[str, Any]:
+    from backend_service.app import _delete_video_output, _load_video_outputs
+    state = request.app.state.chaosengine
+    deleted = _delete_video_output(artifact_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Video output '{artifact_id}' not found.")
+    state.add_log("video", "info", f"Deleted video output {artifact_id}.")
+    return {"deleted": artifact_id, "outputs": _load_video_outputs()}
 
 
 @router.post("/api/video/generate")
-def generate_video(request: Request) -> dict[str, Any]:
-    raise HTTPException(
-        status_code=501,
-        detail="Video generation is not implemented yet. The runtime is on the roadmap.",
+def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, Any]:
+    import traceback as _tb
+    from backend_service.app import _generate_video_artifact, _load_video_outputs
+
+    state = request.app.state.chaosengine
+    state.add_log(
+        "video",
+        "info",
+        f"Video generation requested: modelId='{body.modelId}', {body.width}x{body.height}, "
+        f"{body.numFrames} frames @ {body.fps}fps, {body.steps} steps",
     )
+    variant = _find_video_variant(body.modelId)
+    if variant is None:
+        state.add_log("video", "error", f"Video model not found: '{body.modelId}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
+        )
+
+    if not _video_variant_available_locally(variant):
+        validation_error = _video_download_validation_error(variant["repo"])
+        detail = validation_error or f"{variant['name']} is not installed locally yet."
+        raise HTTPException(status_code=409, detail=detail)
+
+    try:
+        artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
+    except RuntimeError as exc:
+        state.add_log("video", "error", f"Video generation failed for {variant['name']}: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Video generation failed for {variant['name']}: {exc}",
+        ) from exc
+    except Exception as exc:
+        tb_str = _tb.format_exc()
+        state.add_log("video", "error", f"Video generation FAILED: {type(exc).__name__}: {exc}")
+        state.add_log("video", "error", f"Traceback:\n{tb_str[-500:]}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Video generation failed for {variant['name']}: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    state.add_log(
+        "video",
+        "info",
+        f"Generated video with {variant['name']} via {runtime.get('activeEngine', 'unknown')} "
+        f"in {artifact.get('durationSeconds')}s.",
+    )
+    state.add_activity(
+        "Video generated",
+        f"{variant['name']} \u00b7 {body.width}x{body.height} \u00b7 {body.numFrames}f",
+    )
+    return {"artifact": artifact, "outputs": _load_video_outputs(), "runtime": runtime}
 
 
 @router.post("/api/video/download")

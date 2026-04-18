@@ -2,9 +2,12 @@ import { useDeferredValue, useEffect, useState } from "react";
 import {
   cancelVideoDownload,
   deleteVideoDownload,
+  deleteVideoOutput,
   downloadVideoModel,
+  generateVideo,
   getVideoCatalog,
   getVideoDownloadStatus,
+  getVideoOutputs,
   getVideoRuntime,
   preloadVideoModel,
   unloadVideoModel,
@@ -25,11 +28,33 @@ import {
 } from "../utils";
 import type {
   TabId,
+  VideoGenerationPayload,
   VideoModelFamily,
   VideoModelVariant,
+  VideoOutputArtifact,
   VideoRuntimeStatus,
 } from "../types";
 import type { VideoDiscoverTaskFilter } from "../types/video";
+
+const MAX_VIDEO_SEED = 2147483647;
+
+/** Parse "832x480" (or similar) into [width, height], falling back to defaults. */
+function parseRecommendedResolution(
+  value: string | null | undefined,
+  defaultWidth: number,
+  defaultHeight: number,
+): [number, number] {
+  if (!value) return [defaultWidth, defaultHeight];
+  const match = String(value).trim().match(/^(\d+)\s*[xX\u00d7]\s*(\d+)/);
+  if (!match) return [defaultWidth, defaultHeight];
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return [defaultWidth, defaultHeight];
+  if (width < 256 || width > 2048 || height < 256 || height > 2048) {
+    return [defaultWidth, defaultHeight];
+  }
+  return [width, height];
+}
 
 export function useVideoState(
   backendOnline: boolean,
@@ -55,6 +80,7 @@ export function useVideoState(
   const [videoBusyLabel, setVideoBusyLabel] = useState<string | null>(null);
   const videoBusy = videoBusyLabel !== null;
   const [activeVideoDownloads, setActiveVideoDownloads] = useState<Record<string, DownloadStatus>>({});
+  const [videoOutputs, setVideoOutputs] = useState<VideoOutputArtifact[]>([]);
 
   // ── Computed values ─────────────────────────────────────────
   const videoVariants = flattenVideoVariants(videoCatalog);
@@ -192,12 +218,13 @@ export function useVideoState(
 
   // ── Data fetching ───────────────────────────────────────────
   async function refreshVideoData() {
-    const [catalog, statuses, runtime] = await Promise.allSettled([
+    const [catalog, statuses, runtime, outputs] = await Promise.allSettled([
       getVideoCatalog(),
       getVideoDownloadStatus(),
       getVideoRuntime(),
+      getVideoOutputs(),
     ]);
-    const failures = [catalog, statuses, runtime].filter(
+    const failures = [catalog, statuses, runtime, outputs].filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
     );
 
@@ -212,6 +239,9 @@ export function useVideoState(
       setVideoRuntimeStatus(runtime.value);
     } else if (failures.length > 0) {
       setVideoRuntimeStatus(videoRuntimeErrorStatus(failures[0].reason));
+    }
+    if (outputs.status === "fulfilled") {
+      setVideoOutputs(outputs.value);
     }
 
     if (failures.length > 0) {
@@ -286,6 +316,83 @@ export function useVideoState(
     }
   }
 
+  // ── Generation handlers ─────────────────────────────────────
+  async function handleVideoGenerate() {
+    if (!selectedVideoVariant) {
+      setError("Pick a video model before generating.");
+      return;
+    }
+    if (!selectedVideoVariant.availableLocally) {
+      setError(`${selectedVideoVariant.name} is not installed locally yet. Download it first.`);
+      return;
+    }
+    if (!videoRuntimeStatus.realGenerationAvailable) {
+      setError(videoRuntimeStatus.message || "Video runtime is not ready.");
+      return;
+    }
+    const trimmedPrompt = videoPrompt.trim();
+    if (!trimmedPrompt) {
+      setError("Write a prompt before generating.");
+      return;
+    }
+    const parsedSeed = videoUseRandomSeed ? null : Number(videoSeedInput);
+    if (
+      parsedSeed !== null
+      && (!Number.isFinite(parsedSeed) || parsedSeed < 0 || parsedSeed > MAX_VIDEO_SEED)
+    ) {
+      setError("Seed must be a non-negative integer.");
+      return;
+    }
+
+    // Pull defaults from the variant so the frontend doesn't need to know the
+    // per-model resolution knobs yet — Phase 11 can expose them as controls.
+    const [recommendedWidth, recommendedHeight] = parseRecommendedResolution(
+      selectedVideoVariant.recommendedResolution,
+      768,
+      512,
+    );
+    const estimatedFps = 24;
+    const estimatedFrames = Math.max(
+      8,
+      Math.round((selectedVideoVariant.defaultDurationSeconds || 4) * estimatedFps),
+    );
+
+    const payload: VideoGenerationPayload = {
+      modelId: selectedVideoVariant.id,
+      prompt: trimmedPrompt,
+      negativePrompt: videoNegativePrompt.trim() || undefined,
+      width: recommendedWidth,
+      height: recommendedHeight,
+      numFrames: estimatedFrames,
+      fps: estimatedFps,
+      steps: 50,
+      guidance: 3.0,
+      seed: parsedSeed,
+    };
+
+    setVideoBusyLabel(`Generating ${estimatedFrames}-frame clip with ${selectedVideoVariant.name}...`);
+    setError(null);
+    try {
+      const response = await generateVideo(payload);
+      setVideoOutputs(response.outputs);
+      if (response.runtime) setVideoRuntimeStatus(response.runtime);
+      setActiveTab("video-gallery");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Video generation failed.");
+    } finally {
+      setVideoBusyLabel(null);
+    }
+  }
+
+  async function handleDeleteVideoOutput(artifactId: string) {
+    try {
+      const { outputs } = await deleteVideoOutput(artifactId);
+      setVideoOutputs(outputs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete video output.");
+    }
+  }
+
   // ── Navigation helpers ──────────────────────────────────────
   function openVideoStudio(modelId?: string) {
     if (modelId) setSelectedVideoModelId(modelId);
@@ -319,6 +426,8 @@ export function useVideoState(
     videoBusy,
     activeVideoDownloads,
     setActiveVideoDownloads,
+    videoOutputs,
+    setVideoOutputs,
     // Computed
     videoVariants,
     selectedVideoVariant,
@@ -340,6 +449,8 @@ export function useVideoState(
     handleDeleteVideoDownload,
     handlePreloadVideoModel,
     handleUnloadVideoModel,
+    handleVideoGenerate,
+    handleDeleteVideoOutput,
     openVideoStudio,
   };
 }

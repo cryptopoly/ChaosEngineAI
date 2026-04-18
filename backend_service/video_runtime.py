@@ -21,12 +21,23 @@ import gc
 import importlib
 import importlib.util
 import os
+import secrets
 import threading
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from backend_service.image_runtime import validate_local_diffusers_snapshot
+
+
+MAX_VIDEO_SEED = 2147483647
+
+
+def _resolve_video_seed(seed: int | None) -> int:
+    if seed is not None:
+        return seed
+    return secrets.randbelow(MAX_VIDEO_SEED + 1)
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
@@ -58,9 +69,7 @@ class VideoRuntimeStatus:
 
 @dataclass(frozen=True)
 class VideoGenerationConfig:
-    """Shape for a future generate() call. Not wired yet — kept here so the
-    routes can validate requests against the same structure once generation
-    lands."""
+    """Shape consumed by ``DiffusersVideoEngine.generate``."""
     modelId: str
     modelName: str
     repo: str
@@ -71,7 +80,24 @@ class VideoGenerationConfig:
     numFrames: int
     fps: int
     guidance: float
+    steps: int = 50
     seed: int | None = None
+
+
+@dataclass(frozen=True)
+class GeneratedVideo:
+    """A single rendered mp4. Mirrors ``GeneratedImage`` from image_runtime."""
+    seed: int
+    bytes: bytes
+    extension: str
+    mimeType: str
+    durationSeconds: float
+    frameCount: int
+    fps: int
+    width: int
+    height: int
+    runtimeLabel: str
+    runtimeNote: str | None = None
 
 
 # Maps a Hugging Face repo id to the diffusers pipeline class that loads it.
@@ -203,13 +229,177 @@ class DiffusersVideoEngine:
             self._release_pipeline()
             return self.probe()
 
-    def generate(self, config: VideoGenerationConfig) -> Any:
-        raise NotImplementedError(
-            "Video generation is not implemented yet. Preload works, but generation "
-            "lands in a later phase (frame decoding + mp4 encoding + save pipeline)."
+    def generate(self, config: VideoGenerationConfig) -> GeneratedVideo:
+        """Run a single text-to-video generation and return the encoded mp4.
+
+        The hot path:
+            1. Ensure the right pipeline is loaded.
+            2. Build per-model kwargs.
+            3. Run the pipeline with a seeded generator.
+            4. Encode frames to mp4 via imageio-ffmpeg.
+            5. Return bytes + metadata.
+
+        We split the diffusers invocation and mp4 encoding into narrow seams
+        (``_invoke_pipeline``, ``_encode_frames_to_mp4``) so tests can stub
+        them without needing real 10+GB video weights on disk.
+        """
+        # mp4 encoding needs imageio-ffmpeg. Check before we spend 60+ seconds
+        # doing a full generation we then can't save anywhere.
+        missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
+        if missing_output:
+            raise RuntimeError(
+                "Video generation requires the mp4 encoding packages: "
+                f"missing {', '.join(missing_output)}. "
+                "Run `pip install imageio imageio-ffmpeg` and retry."
+            )
+
+        pipeline = self._ensure_pipeline(config.repo)
+        torch = self._torch
+        if torch is None:
+            raise RuntimeError("PyTorch was not initialised for the video runtime.")
+
+        base_seed = _resolve_video_seed(config.seed)
+        # MPS generators don't seed the same way as CUDA/CPU — follow the
+        # diffusers docs and always build the generator on CPU for MPS.
+        generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
+        generator = torch.Generator(device=generator_device).manual_seed(base_seed)
+
+        kwargs = self._build_pipeline_kwargs(config, generator)
+
+        started = time.perf_counter()
+        frames = self._invoke_pipeline(pipeline, kwargs)
+        elapsed = max(0.1, time.perf_counter() - started)
+
+        if not frames:
+            raise RuntimeError(
+                f"The video pipeline returned zero frames for {config.repo}. "
+                "Try a smaller resolution or a different model."
+            )
+
+        mp4_bytes = self._encode_frames_to_mp4(frames, config.fps)
+        if not mp4_bytes:
+            raise RuntimeError(
+                "mp4 encoding produced an empty buffer. Check that imageio-ffmpeg is "
+                "installed and healthy — run `python -m imageio_ffmpeg` to verify."
+            )
+
+        return GeneratedVideo(
+            seed=base_seed,
+            bytes=mp4_bytes,
+            extension="mp4",
+            mimeType="video/mp4",
+            durationSeconds=round(elapsed, 2),
+            frameCount=len(frames),
+            fps=config.fps,
+            width=config.width,
+            height=config.height,
+            runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
         )
 
     # ---------- internals ----------
+
+    def _build_pipeline_kwargs(
+        self,
+        config: VideoGenerationConfig,
+        generator: Any,
+    ) -> dict[str, Any]:
+        """Per-model kwarg shaping.
+
+        Most diffusers video pipelines accept the same shape, but there are
+        small variations — e.g. HunyuanVideoPipeline does not accept a
+        ``negative_prompt`` argument in its canonical signature.
+        """
+        kwargs: dict[str, Any] = {
+            "prompt": config.prompt,
+            "width": config.width,
+            "height": config.height,
+            "num_frames": config.numFrames,
+            "num_inference_steps": config.steps,
+            "guidance_scale": config.guidance,
+            "generator": generator,
+        }
+        lowered_repo = config.repo.lower()
+        if "hunyuanvideo" not in lowered_repo and config.negativePrompt.strip():
+            kwargs["negative_prompt"] = config.negativePrompt
+        return kwargs
+
+    def _invoke_pipeline(self, pipeline: Any, kwargs: dict[str, Any]) -> list[Any]:
+        """Run the diffusers pipeline and return the first batch's frames.
+
+        Carved out as a seam so tests can stub it without loading real
+        weights. Diffusers video pipelines return an output with a
+        ``.frames`` attribute shaped like ``list[list[PIL.Image]]`` — one
+        inner list per batch item. We only ever render batchSize=1, so
+        we return ``result.frames[0]``.
+        """
+        try:
+            result = pipeline(**kwargs)
+        except TypeError as exc:
+            # Some pipelines reject ``negative_prompt`` even when given a
+            # non-empty value. Fall back once without it rather than crashing
+            # the whole generation.
+            if "negative_prompt" in str(exc) and "negative_prompt" in kwargs:
+                kwargs = {key: value for key, value in kwargs.items() if key != "negative_prompt"}
+                result = pipeline(**kwargs)
+            else:
+                raise
+
+        frames = getattr(result, "frames", None)
+        if frames is None:
+            raise RuntimeError(
+                "Video pipeline result is missing a `.frames` attribute. "
+                "This usually means the installed diffusers version returns a "
+                "different output shape. Upgrade diffusers: pip install -U diffusers"
+            )
+        if isinstance(frames, (list, tuple)) and frames and isinstance(frames[0], (list, tuple)):
+            return list(frames[0])
+        return list(frames)
+
+    def _encode_frames_to_mp4(self, frames: list[Any], fps: int) -> bytes:
+        """Encode a list of PIL.Image frames to an mp4 byte buffer.
+
+        Carved out as a seam so tests can stub it. We use ``imageio`` +
+        ``imageio-ffmpeg`` via the ``diffusers.utils.export_to_video`` helper
+        when available (it handles the numpy conversion), and fall back to a
+        direct ``imageio`` writer if diffusers hasn't exposed the helper on
+        the installed version.
+        """
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:
+            tmp_path = handle.name
+        try:
+            export_to_video = None
+            try:
+                from diffusers.utils import export_to_video as _export  # type: ignore
+                export_to_video = _export
+            except Exception:
+                export_to_video = None
+
+            if export_to_video is not None:
+                export_to_video(frames, tmp_path, fps=fps)
+            else:
+                # Minimal fallback — avoids tying us to diffusers' helper
+                # layout. Uses the same pyav backend imageio-ffmpeg ships.
+                import numpy as np  # type: ignore
+                import imageio  # type: ignore
+
+                writer = imageio.get_writer(tmp_path, fps=fps, codec="libx264", quality=8)
+                try:
+                    for frame in frames:
+                        array = np.asarray(frame)
+                        if array.ndim == 2:
+                            array = np.stack([array] * 3, axis=-1)
+                        writer.append_data(array.astype("uint8"))
+                finally:
+                    writer.close()
+
+            return Path(tmp_path).read_bytes()
+        finally:
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def _pipeline_class(self, repo: str) -> Any:
         entry = PIPELINE_REGISTRY.get(repo)
@@ -352,3 +542,19 @@ class VideoRuntimeManager:
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
             return self._engine.unload(repo).to_dict()
+
+    def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
+        """Run a single video generation, returning (video, runtime_status).
+
+        Unlike the image manager, there is no placeholder fallback — video is
+        heavy enough that a silent fake clip would waste the user's time. If
+        the runtime isn't ready, raise a clear error so the route can return
+        a proper 4xx.
+        """
+        status = self._engine.probe()
+        if not status.realGenerationAvailable:
+            raise RuntimeError(status.message)
+        with self._lock:
+            video = self._engine.generate(config)
+            runtime = self._engine.probe().to_dict()
+        return video, runtime

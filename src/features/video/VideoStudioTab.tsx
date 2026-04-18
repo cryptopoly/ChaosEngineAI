@@ -45,6 +45,7 @@ export interface VideoStudioTabProps {
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
   onVideoDownload: (repo: string) => void;
+  onGenerateVideo: () => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
 }
@@ -79,6 +80,7 @@ export function VideoStudioTab({
   onPreloadVideoModel,
   onUnloadVideoModel,
   onVideoDownload,
+  onGenerateVideo,
   onOpenExternalUrl,
   onRestartServer,
 }: VideoStudioTabProps) {
@@ -96,7 +98,31 @@ export function VideoStudioTab({
   const isDownloading = downloadState?.state === "downloading";
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
-  const generationDisabled = true; // Phase 10 lights this up.
+  const hasPrompt = videoPrompt.trim().length > 0;
+  const generationDisabled =
+    !selectedVideoVariant
+    || !isDownloaded
+    || !videoRuntimeStatus.realGenerationAvailable
+    || !hasPrompt
+    || videoBusy
+    || !backendOnline;
+  const generateButtonLabel =
+    videoBusy && videoBusyLabel?.startsWith("Generating")
+      ? videoBusyLabel
+      : "Generate video";
+  const generateTitle = !selectedVideoVariant
+    ? "Choose a video model first."
+    : !isDownloaded
+      ? `${selectedVideoVariant.name} is not installed locally yet.`
+      : !videoRuntimeStatus.realGenerationAvailable
+        ? (videoRuntimeStatus.message || "Video runtime is not ready.")
+        : !hasPrompt
+          ? "Write a prompt before generating."
+          : !backendOnline
+            ? "Backend is offline."
+            : videoBusy
+              ? (videoBusyLabel ?? "Busy…")
+              : "Start generating this clip.";
 
   return (
     <div className="content-grid image-page-grid">
@@ -137,14 +163,6 @@ export function VideoStudioTab({
               </button>
             </div>
           ) : null}
-        </div>
-
-        <div className="callout image-callout">
-          <p>
-            <span className="badge warning" style={{ marginRight: 8 }}>Coming soon</span>
-            Generation is not yet wired up — the prompt UI below is live so you can load a model into memory
-            and confirm the runtime is ready. mp4 rendering lands in the next phase.
-          </p>
         </div>
 
         <div className="image-studio-grid" style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr" }}>
@@ -264,9 +282,10 @@ export function VideoStudioTab({
               className="primary-button"
               type="button"
               disabled={generationDisabled}
-              title="Video generation lands in the next phase."
+              title={generateTitle}
+              onClick={() => onGenerateVideo()}
             >
-              Generate video
+              {generateButtonLabel}
             </button>
             {selectedVideoVariant ? (
               <button

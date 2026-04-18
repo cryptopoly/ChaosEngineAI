@@ -1440,12 +1440,22 @@ export default function App() {
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onGenerateVideo={() => void videoState.handleVideoGenerate()}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
       />
     );
   } else if (activeTab === "video-gallery") {
-    content = <VideoGalleryTab onActiveTabChange={setActiveTab} />;
+    content = (
+      <VideoGalleryTab
+        videoOutputs={videoState.videoOutputs}
+        videoBusy={videoState.videoBusy}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={(modelId) => videoState.openVideoStudio(modelId)}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
+      />
+    );
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab

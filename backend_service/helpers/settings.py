@@ -181,6 +181,14 @@ class DataLocation:
     def image_outputs_dir(self) -> Path:
         return self.images_dir / "outputs"
 
+    @property
+    def videos_dir(self) -> Path:
+        return self.data_dir / "videos"
+
+    @property
+    def video_outputs_dir(self) -> Path:
+        return self.videos_dir / "outputs"
+
 
 def _normalize_slug(value: str, fallback: str) -> str:
     cleaned = "".join(character.lower() if character.isalnum() else "-" for character in value.strip())

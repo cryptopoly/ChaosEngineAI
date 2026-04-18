@@ -23,14 +23,17 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 from fastapi.testclient import TestClient
 
+from backend_service import app as app_module
 from backend_service.app import create_app
 from backend_service.state import ChaosEngineState
 from backend_service import video_runtime as video_runtime_mod
 from backend_service.routes import video as video_routes
+from backend_service.video_runtime import GeneratedVideo
 
 from tests.test_backend_service import (
     TEST_API_TOKEN,
@@ -243,19 +246,256 @@ class VideoUnloadRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class VideoNotImplementedRouteTests(unittest.TestCase):
-    """Generate still surfaces 501 until the generation loop lands."""
+class VideoGenerateRouteTests(unittest.TestCase):
+    """End-to-end contract tests for POST /api/video/generate.
+
+    We cannot run a real diffusion pass inside a unit test — the weights are
+    10+ GB and the pipeline needs a GPU. Instead we stub ``VideoRuntimeManager.generate``
+    to return a synthetic ``GeneratedVideo`` with a tiny fake mp4 payload, then
+    walk the full pipeline: persistence -> /outputs listing -> /outputs/{id}/file
+    streaming -> /outputs/{id} delete. That lets us verify the route wiring,
+    the filesystem layout, and the FileResponse headers without touching a GPU.
+    """
+
+    # A minimal 'mp4-looking' payload. We don't require it to be a valid video
+    # — only that bytes round-trip through disk unchanged.
+    FAKE_MP4_BYTES = b"\x00\x00\x00\x20ftypmp42" + b"\x00" * 64
 
     def setUp(self) -> None:
         self.client, self.tempdir, self.env_snapshot = make_client()
+        # Redirect the global VIDEO_OUTPUTS_DIR into our tempdir so tests never
+        # touch the real ~/Library/Application Support location.
+        self.outputs_dir = Path(self.tempdir.name) / "video-outputs"
+        self.outputs_dir.mkdir(parents=True, exist_ok=True)
+        self._original_outputs_dir = app_module.VIDEO_OUTPUTS_DIR
+        app_module.VIDEO_OUTPUTS_DIR = self.outputs_dir
 
     def tearDown(self) -> None:
+        app_module.VIDEO_OUTPUTS_DIR = self._original_outputs_dir
         restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 
-    def test_generate_returns_501(self):
+    def _fake_generated_video(self, seed: int = 42) -> GeneratedVideo:
+        return GeneratedVideo(
+            seed=seed,
+            bytes=self.FAKE_MP4_BYTES,
+            extension="mp4",
+            mimeType="video/mp4",
+            durationSeconds=3.5,
+            frameCount=24,
+            fps=24,
+            width=768,
+            height=512,
+            runtimeLabel="diffusers-test-stub",
+            runtimeNote=None,
+        )
+
+    def _payload(self, **overrides: Any) -> dict[str, Any]:
+        body = {
+            "modelId": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            "prompt": "A cinematic shot of a misty pine forest at dawn.",
+            "width": 768,
+            "height": 512,
+            "numFrames": 24,
+            "fps": 24,
+            "steps": 20,
+            "guidance": 3.0,
+            "seed": 42,
+        }
+        body.update(overrides)
+        return body
+
+    def test_generate_rejects_unknown_model_with_404(self):
+        response = self.client.post(
+            "/api/video/generate",
+            json=self._payload(modelId="ghost/nope"),
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_generate_rejects_not_installed_model_with_409(self):
+        response = self.client.post("/api/video/generate", json=self._payload())
+        # No snapshot on disk in this test env -> expect 409 Conflict.
+        self.assertEqual(response.status_code, 409)
+
+    def test_generate_requires_fields(self):
         response = self.client.post("/api/video/generate", json={})
-        self.assertEqual(response.status_code, 501)
+        # Pydantic validation rejects the missing required fields.
+        self.assertEqual(response.status_code, 422)
+
+    def test_generate_happy_path_persists_artifact_and_returns_outputs(self):
+        state = self.client.app.state.chaosengine
+        runtime_capabilities = {
+            "activeEngine": "diffusers",
+            "realGenerationAvailable": True,
+            "message": "Ready",
+            "missingDependencies": [],
+            "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        }
+        generate_mock = mock.MagicMock(
+            return_value=(self._fake_generated_video(), runtime_capabilities)
+        )
+        state.video_runtime.generate = generate_mock  # type: ignore[method-assign]
+
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            response = self.client.post("/api/video/generate", json=self._payload())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertIn("artifact", payload)
+        self.assertIn("outputs", payload)
+        self.assertIn("runtime", payload)
+
+        artifact = payload["artifact"]
+        self.assertTrue(artifact["artifactId"].startswith("vid-"))
+        self.assertEqual(artifact["modelId"], "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
+        self.assertEqual(artifact["prompt"], self._payload()["prompt"])
+        self.assertEqual(artifact["fps"], 24)
+        self.assertEqual(artifact["numFrames"], 24)
+        self.assertEqual(artifact["steps"], 20)
+        self.assertEqual(artifact["seed"], 42)
+        self.assertEqual(artifact["videoMimeType"], "video/mp4")
+        self.assertEqual(artifact["videoExtension"], "mp4")
+        self.assertTrue(artifact["videoPath"], "videoPath should be set after save")
+        self.assertTrue(artifact["metadataPath"], "metadataPath should be set after save")
+
+        # Bytes actually landed on disk in the day-bucketed directory.
+        video_path = Path(artifact["videoPath"])
+        self.assertTrue(video_path.exists(), f"video not written to {video_path}")
+        self.assertEqual(video_path.read_bytes(), self.FAKE_MP4_BYTES)
+
+        # The outputs list in the response mirrors the newly saved artifact.
+        self.assertEqual(len(payload["outputs"]), 1)
+        self.assertEqual(payload["outputs"][0]["artifactId"], artifact["artifactId"])
+
+        # And a fresh GET /outputs finds it too — proving metadata persisted.
+        listing = self.client.get("/api/video/outputs").json()["outputs"]
+        self.assertEqual(len(listing), 1)
+        self.assertEqual(listing[0]["artifactId"], artifact["artifactId"])
+
+    def test_generate_then_stream_file_then_delete_round_trip(self):
+        state = self.client.app.state.chaosengine
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            return_value=(
+                self._fake_generated_video(),
+                {
+                    "activeEngine": "diffusers",
+                    "realGenerationAvailable": True,
+                    "message": "Ready",
+                    "missingDependencies": [],
+                },
+            )
+        )
+
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            generate_resp = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(generate_resp.status_code, 200, generate_resp.text)
+        artifact_id = generate_resp.json()["artifact"]["artifactId"]
+
+        # Detail endpoint returns the freshly saved artifact.
+        detail_resp = self.client.get(f"/api/video/outputs/{artifact_id}")
+        self.assertEqual(detail_resp.status_code, 200)
+        self.assertEqual(detail_resp.json()["artifact"]["artifactId"], artifact_id)
+
+        # File endpoint streams the mp4 bytes through with the right headers.
+        file_resp = self.client.get(f"/api/video/outputs/{artifact_id}/file")
+        self.assertEqual(file_resp.status_code, 200)
+        self.assertEqual(file_resp.headers["content-type"], "video/mp4")
+        self.assertEqual(file_resp.content, self.FAKE_MP4_BYTES)
+
+        # Delete clears it and the listing goes empty again.
+        delete_resp = self.client.delete(f"/api/video/outputs/{artifact_id}")
+        self.assertEqual(delete_resp.status_code, 200)
+        self.assertEqual(delete_resp.json()["deleted"], artifact_id)
+        self.assertEqual(delete_resp.json()["outputs"], [])
+
+        # After delete, follow-up GETs surface 404 for detail and file.
+        self.assertEqual(
+            self.client.get(f"/api/video/outputs/{artifact_id}").status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.get(f"/api/video/outputs/{artifact_id}/file").status_code,
+            404,
+        )
+
+    def test_generate_surfaces_runtime_error_as_400(self):
+        state = self.client.app.state.chaosengine
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            side_effect=RuntimeError("Pipeline did not return any frames."),
+        )
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Pipeline did not return any frames", response.json()["detail"])
+
+    def test_delete_nonexistent_output_returns_404(self):
+        response = self.client.delete("/api/video/outputs/vid-doesnotexist")
+        self.assertEqual(response.status_code, 404)
+
+
+class VideoOutputFileMissingTests(unittest.TestCase):
+    """Cover the 410 Gone path when metadata exists but the mp4 is gone."""
+
+    def setUp(self) -> None:
+        self.client, self.tempdir, self.env_snapshot = make_client()
+        self.outputs_dir = Path(self.tempdir.name) / "video-outputs"
+        self.outputs_dir.mkdir(parents=True, exist_ok=True)
+        self._original_outputs_dir = app_module.VIDEO_OUTPUTS_DIR
+        app_module.VIDEO_OUTPUTS_DIR = self.outputs_dir
+
+    def tearDown(self) -> None:
+        app_module.VIDEO_OUTPUTS_DIR = self._original_outputs_dir
+        restore_env(self.env_snapshot)
+        self.tempdir.cleanup()
+
+    def test_file_endpoint_returns_410_when_mp4_missing_on_disk(self):
+        # Seed metadata that points at a non-existent file.
+        day = self.outputs_dir / "2026-04-18"
+        day.mkdir(parents=True, exist_ok=True)
+        stub_id = "vid-ghost123abc"
+        metadata_path = day / f"{stub_id}.json"
+        fake_video_path = day / f"{stub_id}.mp4"
+        import json
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "artifactId": stub_id,
+                    "modelId": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                    "modelName": "Wan 2.1 T2V 1.3B",
+                    "prompt": "orphaned metadata",
+                    "width": 768,
+                    "height": 512,
+                    "numFrames": 24,
+                    "fps": 24,
+                    "steps": 20,
+                    "guidance": 3.0,
+                    "seed": 7,
+                    "createdAt": "2026-04-18T00:00:00Z",
+                    "durationSeconds": 3.5,
+                    "clipDurationSeconds": 1.0,
+                    "videoPath": str(fake_video_path),
+                    "videoMimeType": "video/mp4",
+                    "videoExtension": "mp4",
+                    "runtimeLabel": "test",
+                }
+            )
+        )
+        # NOTE: we deliberately do NOT create fake_video_path.
+
+        resp = self.client.get(f"/api/video/outputs/{stub_id}/file")
+        self.assertEqual(resp.status_code, 410)
 
 
 class VideoDownloadRouteTests(unittest.TestCase):

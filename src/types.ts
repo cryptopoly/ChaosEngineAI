@@ -784,6 +784,49 @@ export interface VideoRuntimeStatus {
   loadedModelRepo?: string | null;
 }
 
+export interface VideoOutputArtifact {
+  artifactId: string;
+  modelId: string;
+  modelName: string;
+  prompt: string;
+  negativePrompt?: string | null;
+  width: number;
+  height: number;
+  numFrames: number;
+  fps: number;
+  steps: number;
+  guidance: number;
+  seed: number;
+  createdAt: string;
+  durationSeconds: number;
+  clipDurationSeconds: number;
+  videoPath?: string | null;
+  metadataPath?: string | null;
+  videoMimeType?: string | null;
+  videoExtension?: string | null;
+  runtimeLabel?: string | null;
+  runtimeNote?: string | null;
+}
+
+export interface VideoGenerationPayload {
+  modelId: string;
+  prompt: string;
+  negativePrompt?: string;
+  width: number;
+  height: number;
+  numFrames: number;
+  fps: number;
+  steps: number;
+  guidance: number;
+  seed?: number | null;
+}
+
+export interface VideoGenerationResponse {
+  artifact: VideoOutputArtifact;
+  outputs: VideoOutputArtifact[];
+  runtime?: VideoRuntimeStatus;
+}
+
 export interface ImageOutputArtifact {
   artifactId: string;
   modelId: string;

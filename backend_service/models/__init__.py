@@ -218,10 +218,11 @@ class VideoRuntimeUnloadRequest(BaseModel):
 
 
 class VideoGenerationRequest(BaseModel):
-    """Shape for a future generate() endpoint.
+    """Shape accepted by POST /api/video/generate.
 
-    Included now so the frontend can type against it when the endpoint lights
-    up — the current POST /api/video/generate route still returns 501.
+    Defaults are intentionally conservative — num_frames and steps in particular
+    dominate generation time on consumer hardware, so we err on the side of a
+    short, fast clip and let the user dial up quality from the Studio UI.
     """
     modelId: str = Field(min_length=1, max_length=256)
     prompt: str = Field(min_length=1, max_length=4000)
@@ -230,5 +231,6 @@ class VideoGenerationRequest(BaseModel):
     height: int = Field(default=512, ge=256, le=2048)
     numFrames: int = Field(default=97, ge=8, le=257)
     fps: int = Field(default=24, ge=1, le=60)
+    steps: int = Field(default=50, ge=1, le=100)
     guidance: float = Field(default=3.0, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)

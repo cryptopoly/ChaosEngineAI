@@ -63,6 +63,25 @@ export async function resolveApiBase(): Promise<string> {
   return apiBasePromise;
 }
 
+async function fetchSessionToken(apiBase: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`${apiBase}/api/auth/session`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = (await response.json()) as { apiToken?: unknown };
+    return typeof payload.apiToken === "string" ? payload.apiToken : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function resolveApiToken(force = false): Promise<string | null> {
   if (CONFIGURED_API_TOKEN) {
     return CONFIGURED_API_TOKEN;
@@ -74,29 +93,29 @@ export async function resolveApiToken(force = false): Promise<string | null> {
     }
   }
   if (!apiTokenPromise) {
-    apiTokenPromise = (async () => {
+    const attempt: { self: Promise<string | null> | null } = { self: null };
+    attempt.self = (async () => {
+      const apiBase = await resolveApiBase();
+      if (force) {
+        const fresh = await fetchSessionToken(apiBase);
+        if (fresh) return fresh;
+      }
+
       const info = await getTauriBackendInfo(force);
       if (info?.apiToken) {
         return info.apiToken;
       }
-      const apiBase = await resolveApiBase();
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      try {
-        const response = await fetch(`${apiBase}/api/auth/session`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          return null;
-        }
-        const payload = (await response.json()) as { apiToken?: unknown };
-        return typeof payload.apiToken === "string" ? payload.apiToken : null;
-      } catch {
-        return null;
-      } finally {
-        clearTimeout(timer);
+      const token = await fetchSessionToken(apiBase);
+      // Don't cache a negative result. If the token fetch failed (backend
+      // still starting, transient network error), leave the cache empty
+      // so the next caller can try again. Caching null here poisons every
+      // subsequent request until the user quits the app.
+      if (token === null && apiTokenPromise === attempt.self) {
+        apiTokenPromise = null;
       }
+      return token;
     })();
+    apiTokenPromise = attempt.self;
   }
   return apiTokenPromise;
 }
@@ -148,7 +167,9 @@ export async function apiFetch(
   if (includeAuth && retryUnauthorized && response.status === 401) {
     resetBackendRuntimeCache();
     const retryBase = await resolveApiBase();
-    const retryToken = await resolveApiToken();
+    // force=true makes resolveApiToken bypass Rust's potentially stale
+    // cache and re-read from /api/auth/session directly.
+    const retryToken = await resolveApiToken(true);
     return await fetch(`${retryBase}${path}`, {
       ...init,
       headers: withAuthHeaders(init.headers, retryToken),

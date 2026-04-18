@@ -1645,6 +1645,43 @@ select.text-input {
   background: var(--surface);
 }
 
+.server-api-token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.server-api-token-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.server-api-token-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.server-api-token-value > .mono-text {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .server-status-copy {
   display: flex;
   flex-direction: column;

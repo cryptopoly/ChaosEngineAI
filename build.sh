@@ -43,7 +43,12 @@ echo "==> Installing npm dependencies..."
 npm ci --silent
 
 # ── Patch tauri.conf.json for local builds ───────────────
+# Save the fields we're about to change so we can surgically restore them
+# at the end without clobbering other pending edits (like a version bump).
 echo "==> Patching tauri.conf.json for local build..."
+ORIGINAL_BEFORE_BUNDLE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).build.beforeBundleCommand || '')")
+ORIGINAL_CREATE_UPDATER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).bundle?.createUpdaterArtifacts ?? true)")
+export ORIGINAL_BEFORE_BUNDLE ORIGINAL_CREATE_UPDATER
 node -e "
   const fs = require('fs');
   const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
@@ -65,8 +70,21 @@ esac
 echo "==> Building Tauri app (bundles: $BUNDLES)..."
 npx tauri build --bundles "$BUNDLES"
 
-# Restore tauri.conf.json
-git checkout src-tauri/tauri.conf.json 2>/dev/null || true
+# Restore only the two fields we patched — don't blow away other pending
+# edits such as version bumps or plugin config changes the developer made
+# between the start of this build and now.
+node -e "
+  const fs = require('fs');
+  const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+  const origBefore = process.env.ORIGINAL_BEFORE_BUNDLE;
+  if (origBefore) conf.build.beforeBundleCommand = origBefore;
+  const origCreate = process.env.ORIGINAL_CREATE_UPDATER;
+  if (origCreate !== undefined && origCreate !== '') {
+    conf.bundle = conf.bundle || {};
+    conf.bundle.createUpdaterArtifacts = origCreate === 'true';
+  }
+  fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+" 2>/dev/null || true
 
 echo ""
 echo "==> Build complete!"

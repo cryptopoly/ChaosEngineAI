@@ -97,15 +97,27 @@ export function useWorkspace() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Initial workspace load with retry
+  // Initial workspace load — retry until the backend is ready.
+  //
+  // The Tauri sidecar now bootstraps on a background thread so the window
+  // paints instantly, which means the backend may not be ready for anywhere
+  // from ~2s (warm start) to ~30s (cold first launch: extract embedded
+  // runtime, start Python, import FastAPI/MLX). A fixed retry budget gave
+  // up before cold starts finished and left the workspace stuck empty with
+  // nothing to retrigger the load. Instead, back off exponentially (capped
+  // at 10s) and keep going until we succeed or the component unmounts.
   useEffect(() => {
     let cancelled = false;
 
     async function loadInitial(): Promise<void> {
-      const delays = [0, 400, 800, 1500, 2500, 4000, 6000];
-      for (const delay of delays) {
+      let attempt = 0;
+      while (!cancelled) {
+        if (attempt > 0) {
+          const delay = Math.min(10_000, 400 * Math.pow(1.6, attempt - 1));
+          await new Promise((r) => setTimeout(r, delay));
+        }
+        attempt++;
         if (cancelled) return;
-        if (delay) await new Promise((r) => setTimeout(r, delay));
         try {
           const [online, payload, runtimeInfo] = await Promise.all([
             checkBackend(),
@@ -122,7 +134,6 @@ export function useWorkspace() {
           if (!cancelled) setBackendOnline(false);
         }
       }
-      if (!cancelled) setLoading(false);
     }
 
     void loadInitial();

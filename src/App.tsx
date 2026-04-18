@@ -1584,7 +1584,10 @@ export default function App() {
             <img src="/logo.svg" alt="ChaosEngineAI" className="brand-logo" />
             <h1>ChaosEngineAI</h1>
           </div>
-          <span className="brand-kicker">Local AI model runner</span>
+          <span className="brand-kicker">
+            Local AI model runner
+            {workspace.system.appVersion ? ` · v${workspace.system.appVersion}` : ""}
+          </span>
         </div>
 
         <nav className="nav-list" aria-label="Primary">

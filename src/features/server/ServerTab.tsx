@@ -117,6 +117,9 @@ export function ServerTab({
     void navigator.clipboard.writeText(text);
   }
 
+  const [showApiToken, setShowApiToken] = useState(false);
+  const maskedToken = apiToken ? `${apiToken.slice(0, 4)}${"•".repeat(Math.max(apiToken.length - 8, 4))}${apiToken.slice(-4)}` : null;
+
   const loadingRef = serverLoading?.modelRef ?? null;
 
   return (
@@ -175,6 +178,36 @@ export function ServerTab({
                 >
                   Test
                 </button>
+              </div>
+            </div>
+
+            <div className="server-api-token-row">
+              <div className="server-api-token-label">
+                <strong>API key</strong>
+                <small className="muted-text">Required as <span className="mono-text">Authorization: Bearer …</span> on every /v1 and /api call.</small>
+              </div>
+              <div className="server-api-token-value">
+                <span className="mono-text">
+                  {apiToken ? (showApiToken ? apiToken : maskedToken) : "(waiting for backend…)"}
+                </span>
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={!apiToken}
+                    onClick={() => setShowApiToken((v) => !v)}
+                  >
+                    {showApiToken ? "Hide" : "Reveal"}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={!apiToken}
+                    onClick={() => apiToken && copyText(apiToken)}
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -72,6 +72,7 @@ function main() {
   const bundledOptionalPackages = stageOptionalRuntimePackages(pythonInfo.executable);
   validateBundledProjectImports(pythonInfo.executable);
   const llamaWarnings = stageLlamaBinaries();
+  relocateDarwinPythonReferences(stageRoot);
   maybeSignEmbeddedRuntime();
   const pythonBinaryRelative = resolveEmbeddedPythonBinary(pythonInfo.versionTag);
   const embeddedRuntime = {
@@ -254,26 +255,38 @@ function stageVendoredChaosEngine(pythonBinary) {
   }
 
   console.log(`[stage-runtime] bundling ChaosEngine (${vendor.source})`);
-  execFileSync(
-    pythonBinary,
-    [
-      "-m",
-      "pip",
-      "install",
-      "--disable-pip-version-check",
-      "--no-deps",
-      "--no-compile",
-      "--upgrade",
-      "--target",
-      sitePackagesDest,
-      vendor.path,
-    ],
-    {
-      cwd: workspaceRoot,
-      stdio: "inherit",
-    },
-  );
-  return vendor;
+  try {
+    execFileSync(
+      pythonBinary,
+      [
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--no-deps",
+        "--no-compile",
+        "--no-build-isolation",
+        "--upgrade",
+        "--target",
+        sitePackagesDest,
+        vendor.path,
+      ],
+      {
+        cwd: workspaceRoot,
+        stdio: "inherit",
+      },
+    );
+    return vendor;
+  } catch (err) {
+    if (strict) {
+      throw err;
+    }
+    console.warn(
+      `[stage-runtime] warning: could not bundle ChaosEngine vendor package (${err.message.split("\n")[0]}). ` +
+      `The ChaosEngine cache strategy will fall back to the system-installed package if available.`,
+    );
+    return null;
+  }
 }
 
 function resolveChaosEngineVendor() {
@@ -591,6 +604,159 @@ function isRuntimeBinary(targetPath, stat) {
   return path.basename(targetPath) === "Python";
 }
 
+// The python.org framework's main dylib ships with an absolute install_name
+// (`/Library/Frameworks/Python.framework/Versions/X.Y/Python`) baked into
+// every linked Mach-O. End-user machines don't have that framework at that
+// path, so dyld fails to launch the bundled python3 binary. Rewrite every
+// reference to use @loader_path so the runtime is relocatable after tar
+// extraction, then re-point the dylib's own id for completeness.
+function relocateDarwinPythonReferences(rootPath) {
+  if (process.platform !== "darwin") return;
+
+  const pythonDylibPath = path.join(pythonHomeDest, "Python");
+  if (!fs.existsSync(pythonDylibPath)) {
+    console.warn(
+      `[stage-runtime] warning: expected Python dylib at ${pythonDylibPath} — framework may be packaged differently; skipping relocation`,
+    );
+    return;
+  }
+
+  // Clear any inherited signature so install_name_tool edits don't trip
+  // over existing code signatures (maybeSignEmbeddedRuntime re-signs after).
+  try {
+    execFileSync("codesign", ["--remove-signature", pythonDylibPath], { stdio: "ignore" });
+  } catch {
+    // Not signed yet — fine.
+  }
+
+  try {
+    execFileSync("install_name_tool", ["-id", "@rpath/Python", pythonDylibPath], { stdio: "ignore" });
+  } catch (err) {
+    console.warn(`[stage-runtime] warning: could not set install id on ${pythonDylibPath}: ${err.message}`);
+  }
+
+  // Match any absolute reference into the python.org framework. The
+  // suffix after Versions/X.Y/ maps 1:1 into our staged python/home/ tree.
+  const frameworkRefPattern = /\/Library\/Frameworks\/Python\.framework\/Versions\/[\d.]+\/([^\s()]*)/g;
+  const machoTargets = [];
+  walk(rootPath, (entryPath, stat) => {
+    if (stat.isSymbolicLink()) return false;
+    if (stat.isDirectory()) return true;
+    if (isMachOFile(entryPath)) machoTargets.push(entryPath);
+    return false;
+  });
+
+  let rewrites = 0;
+  let touchedFiles = 0;
+  for (const target of machoTargets) {
+    let deps;
+    try {
+      deps = execFileSync("otool", ["-L", target], { encoding: "utf8" });
+    } catch {
+      continue;
+    }
+    const matches = Array.from(deps.matchAll(frameworkRefPattern));
+    if (matches.length === 0) continue;
+
+    // Dedupe on the full reference so we only run install_name_tool once
+    // per unique path per Mach-O.
+    const uniqueRefs = new Map();
+    for (const match of matches) {
+      const fullRef = match[0];
+      const suffix = match[1] || "";
+      if (!uniqueRefs.has(fullRef)) {
+        uniqueRefs.set(fullRef, suffix);
+      }
+    }
+
+    // install_name_tool refuses to modify signed binaries. Drop the
+    // signature first; we re-sign ad-hoc below and maybeSignEmbeddedRuntime
+    // re-signs with the release identity if configured.
+    try {
+      execFileSync("codesign", ["--remove-signature", target], { stdio: "ignore" });
+    } catch {
+      // Unsigned — fine.
+    }
+
+    let touchedThis = false;
+    for (const [fullRef, suffix] of uniqueRefs) {
+      const stagedPath = path.join(pythonHomeDest, suffix);
+      const newRef = loaderPathReference(target, stagedPath);
+      try {
+        execFileSync("install_name_tool", ["-change", fullRef, newRef, target], { stdio: "ignore" });
+        rewrites++;
+        touchedThis = true;
+      } catch (err) {
+        console.warn(
+          `[stage-runtime] warning: install_name_tool -change failed on ${target} for ${fullRef}: ${err.message}`,
+        );
+      }
+    }
+    if (touchedThis) {
+      touchedFiles++;
+      // arm64 binaries must be signed (even ad-hoc) to execute. If a
+      // release signing identity is configured, maybeSignEmbeddedRuntime
+      // will re-sign with it afterwards.
+      try {
+        execFileSync("codesign", ["--force", "--sign", "-", target], { stdio: "ignore" });
+      } catch (err) {
+        console.warn(`[stage-runtime] warning: ad-hoc re-sign failed on ${target}: ${err.message}`);
+      }
+    }
+  }
+
+  // Also ad-hoc re-sign the dylib itself since we edited its id.
+  try {
+    execFileSync("codesign", ["--force", "--sign", "-", pythonDylibPath], { stdio: "ignore" });
+  } catch (err) {
+    console.warn(`[stage-runtime] warning: ad-hoc re-sign failed on ${pythonDylibPath}: ${err.message}`);
+  }
+
+  console.log(
+    `[stage-runtime] relocated Python framework references (${rewrites} rewrites across ${touchedFiles}/${machoTargets.length} Mach-O files)`,
+  );
+}
+
+function loaderPathReference(consumer, target) {
+  const relative = path.relative(path.dirname(consumer), target);
+  // `path.relative` can produce "" when consumer and target share the same
+  // directory — @loader_path/Python is the right reference in that case.
+  if (!relative || relative === ".") {
+    return "@loader_path/Python";
+  }
+  return `@loader_path/${relative}`.split(path.sep).join("/");
+}
+
+function isMachOFile(targetPath) {
+  let fd;
+  try {
+    fd = fs.openSync(targetPath, "r");
+  } catch {
+    return false;
+  }
+  try {
+    const buf = Buffer.alloc(4);
+    const read = fs.readSync(fd, buf, 0, 4, 0);
+    if (read < 4) return false;
+    const magic = buf.readUInt32BE(0);
+    // Mach-O (thin + fat) magic numbers, either byte order.
+    return (
+      magic === 0xfeedface || // MH_MAGIC
+      magic === 0xfeedfacf || // MH_MAGIC_64
+      magic === 0xcefaedfe || // MH_CIGAM
+      magic === 0xcffaedfe || // MH_CIGAM_64
+      magic === 0xcafebabe || // FAT_MAGIC
+      magic === 0xbebafeca || // FAT_CIGAM
+      magic === 0xcafebabf || // FAT_MAGIC_64
+      magic === 0xbfbafeca    // FAT_CIGAM_64
+    );
+  } catch {
+    return false;
+  } finally {
+    try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
+}
+
 function pathDepth(targetPath) {
   return targetPath.split(path.sep).length;
 }
@@ -650,7 +816,6 @@ function shouldIgnorePath(currentPath) {
     base === "Headers" ||
     base === "share" ||
     base === "pkgconfig" ||
-    base === "Python.app" ||
     base === "Documentation" ||
     base.endsWith(".pyc") ||
     base.endsWith(".o") ||

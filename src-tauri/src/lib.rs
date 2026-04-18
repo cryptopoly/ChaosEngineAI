@@ -461,6 +461,11 @@ impl BackendManager {
         inner.info.process_running = false;
         inner.info.started = false;
         inner.info.startup_error = None;
+        // The Python sidecar generates a fresh API token on each startup.
+        // Wipe our cached copy now so the next runtime_info call re-fetches
+        // instead of handing the frontend a token that no longer unlocks
+        // the new backend.
+        inner.info.api_token = None;
         if let Some(mut child) = inner.child.take() {
             #[cfg(unix)]
             {
@@ -1214,14 +1219,28 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            let manager = BackendManager::default();
-            // The Python sidecar serves /api/* — without it the desktop app
-            // is dead. Always bootstrap on launch, regardless of the
-            // `autoStartServer` setting (which controls whether the OpenAI
-            // inference server *inside* the backend auto-starts, not whether
-            // the backend process itself runs).
-            manager.bootstrap(app.handle());
-            app.manage(manager);
+            // Register the manager in its default (not-yet-started) state
+            // immediately so the frontend can query runtime_info without
+            // racing the bootstrap. The frontend already renders a
+            // "Connecting..." state when started=false.
+            app.manage(BackendManager::default());
+
+            // The Python sidecar serves /api/* — without it the desktop
+            // app is dead. Always bootstrap on launch, regardless of the
+            // `autoStartServer` setting (which controls whether the
+            // OpenAI inference server *inside* the backend auto-starts,
+            // not whether the backend process itself runs).
+            //
+            // Bootstrap runs on a background thread so the Tauri event
+            // loop stays responsive — otherwise the window paints but
+            // can't service events for up to ~15s (runtime extraction +
+            // Python startup + port-wait), which macOS surfaces as the
+            // spinning beachball and looks like a crash.
+            let bootstrap_handle = app.handle().clone();
+            thread::spawn(move || {
+                let state = bootstrap_handle.state::<BackendManager>();
+                state.bootstrap(&bootstrap_handle);
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

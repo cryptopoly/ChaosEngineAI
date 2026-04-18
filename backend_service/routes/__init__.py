@@ -11,6 +11,7 @@ def register_routes(app: FastAPI) -> None:
     from .models import router as models_router
     from .chat import router as chat_router
     from .images import router as images_router
+    from .video import router as video_router
     from .benchmarks import router as benchmarks_router
     from .cache import router as cache_router
     from .server import router as server_router
@@ -29,6 +30,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(chat_router)
     app.include_router(compare_router)
     app.include_router(images_router)
+    app.include_router(video_router)
     app.include_router(benchmarks_router)
     app.include_router(cache_router)
     app.include_router(server_router)

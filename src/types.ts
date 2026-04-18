@@ -735,6 +735,55 @@ export interface ImageCatalogResponse {
   latest: ImageModelVariant[];
 }
 
+export type VideoModelTask = "txt2video" | "img2video" | "video2video";
+
+export interface VideoModelVariant {
+  id: string;
+  familyId: string;
+  name: string;
+  provider: string;
+  repo: string;
+  link: string;
+  runtime: string;
+  styleTags: string[];
+  taskSupport: VideoModelTask[];
+  sizeGb: number;
+  recommendedResolution: string;
+  defaultDurationSeconds: number;
+  note: string;
+  availableLocally: boolean;
+  hasLocalData?: boolean;
+  estimatedGenerationSeconds: number | null;
+  familyName?: string | null;
+}
+
+export interface VideoModelFamily {
+  id: string;
+  name: string;
+  provider: string;
+  headline: string;
+  summary: string;
+  updatedLabel: string;
+  badges: string[];
+  defaultVariantId: string;
+  variants: VideoModelVariant[];
+}
+
+export interface VideoCatalogResponse {
+  families: VideoModelFamily[];
+  latest: VideoModelVariant[];
+}
+
+export interface VideoRuntimeStatus {
+  activeEngine: string;
+  realGenerationAvailable: boolean;
+  message: string;
+  device?: string | null;
+  pythonExecutable?: string | null;
+  missingDependencies?: string[];
+  loadedModelRepo?: string | null;
+}
+
 export interface ImageOutputArtifact {
   artifactId: string;
   modelId: string;

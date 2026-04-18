@@ -25,6 +25,8 @@ import type {
   TauriBackendInfo,
   UpdateSettingsPayload,
   UpdateSessionPayload,
+  VideoCatalogResponse,
+  VideoRuntimeStatus,
   WorkspaceData,
 } from "./types";
 
@@ -302,6 +304,15 @@ export async function getImageOutputs(): Promise<ImageOutputArtifact[]> {
 
 export async function getImageRuntime(): Promise<ImageRuntimeStatus> {
   const result = await fetchJson<{ runtime: ImageRuntimeStatus }>("/api/images/runtime");
+  return result.runtime;
+}
+
+export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
+  return await fetchJson<VideoCatalogResponse>("/api/video/catalog", 25000);
+}
+
+export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/runtime");
   return result.runtime;
 }
 

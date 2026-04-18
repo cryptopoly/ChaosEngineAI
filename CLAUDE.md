@@ -59,7 +59,7 @@ Check for updates to external repos we build from or depend on:
 | ChaosEngine | `cryptopoly/ChaosEngine` | `main` | `git -C vendor/ChaosEngine fetch && git -C vendor/ChaosEngine log HEAD..origin/main --oneline` |
 | dflash-mlx | `bstnxbt/dflash-mlx` | `v0.1.4` (git tag) | `git ls-remote --tags https://github.com/bstnxbt/dflash-mlx.git 'v*'` |
 | turboquant | `back2matching/turboquant` | — | `.venv/bin/pip index versions turboquant 2>/dev/null` |
-| turboquant-mlx | `sharpner/turboquant-mlx` | — | `.venv/bin/pip index versions turboquant-mlx 2>/dev/null` |
+| turboquant-mlx | `arozanov/turboquant-mlx` | — | `.venv/bin/pip index versions turboquant-mlx 2>/dev/null` |
 | turboquant-mlx-full | `helgklaizar/turboquant_mlx` | — | `.venv/bin/pip index versions turboquant-mlx-full 2>/dev/null` |
 
 ### 4. Cache Strategy Health

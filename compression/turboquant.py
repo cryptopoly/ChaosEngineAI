@@ -3,7 +3,10 @@
 TurboQuant provides PolarQuant KV cache compression with fused Metal
 kernels for MLX on Apple Silicon, and cache-type flags for llama.cpp.
 
-Install: ``./.venv/bin/python3 -m pip install turboquant-mlx``
+Install: ``./.venv/bin/python3 -m pip install turboquant-mlx-full``
+(the package ships on PyPI as ``turboquant-mlx-full`` but imports as
+``turboquant_mlx``; upstream development tracks
+``arozanov/turboquant-mlx`` since the sharpner fork went dormant).
 """
 
 from __future__ import annotations
@@ -84,8 +87,10 @@ class TurboQuantStrategy(CacheStrategy):
         if self.is_available():
             return None
         return (
-            "Install turboquant-mlx-full into ChaosEngineAI's backend runtime: "
-            "./.venv/bin/python3 -m pip install turboquant-mlx-full — then restart the app."
+            "Install turboquant-mlx (arozanov fork; PyPI name "
+            "``turboquant-mlx-full``) into ChaosEngineAI's backend runtime: "
+            "./.venv/bin/python3 -m pip install turboquant-mlx-full — then "
+            "restart the app."
         )
 
     def supported_bit_range(self) -> tuple[int, int] | None:

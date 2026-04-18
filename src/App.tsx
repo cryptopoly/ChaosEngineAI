@@ -34,6 +34,7 @@ import { ImageDiscoverTab } from "./features/images/ImageDiscoverTab";
 import { ImageModelsTab } from "./features/images/ImageModelsTab";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
+import { VideoPlaceholderTab } from "./features/video/VideoPlaceholderTab";
 import type {
   ChatSession,
   LibraryItem,
@@ -1356,6 +1357,14 @@ export default function App() {
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
       />
     );
+  } else if (activeTab === "video-models") {
+    content = <VideoPlaceholderTab variant="models" />;
+  } else if (activeTab === "video-discover") {
+    content = <VideoPlaceholderTab variant="discover" />;
+  } else if (activeTab === "video-studio") {
+    content = <VideoPlaceholderTab variant="studio" />;
+  } else if (activeTab === "video-gallery") {
+    content = <VideoPlaceholderTab variant="gallery" />;
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab

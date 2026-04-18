@@ -19,9 +19,8 @@ describe("sidebarGroups", () => {
     }
   });
 
-  it("every non-standalone group has at least one tab", () => {
+  it("every group has at least one tab", () => {
     for (const group of sidebarGroups) {
-      if (group.id === "video") continue;
       const children = tabs.filter((t) => t.group === group.id);
       expect(children.length, `group "${group.id}" has no tabs`).toBeGreaterThan(0);
     }

@@ -5,3 +5,4 @@ export { useImageState } from "./useImageState";
 export { useBenchmarks } from "./useBenchmarks";
 export { useSettings } from "./useSettings";
 export { useServerLog } from "./useServerLog";
+export { useSidebarPrefs } from "./useSidebarPrefs";

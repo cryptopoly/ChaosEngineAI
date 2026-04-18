@@ -17,6 +17,15 @@ export type TabId =
   | "logs"
   | "settings";
 
+export type SidebarGroupId =
+  | "models"
+  | "images"
+  | "video"
+  | "benchmarks"
+  | "tools";
+
+export type SidebarMode = "collapsible" | "tabs";
+
 export interface SystemStats {
   platform: string;
   arch: string;

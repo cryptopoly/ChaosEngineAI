@@ -24,6 +24,9 @@ from backend_service.inference import RuntimeController
 from backend_service.image_runtime import (
     ImageRuntimeManager,
 )
+from backend_service.video_runtime import (
+    VideoRuntimeManager,
+)
 from backend_service.models import (
     LoadModelRequest,
     ConvertModelRequest,
@@ -171,6 +174,7 @@ class ChaosEngineState:
         self._library_cache: tuple[float, list[dict[str, Any]]] | None = None
         self.runtime = RuntimeController()
         self.image_runtime = ImageRuntimeManager()
+        self.video_runtime = VideoRuntimeManager()
         self._chat_sessions_path = chat_sessions_path if chat_sessions_path is not None else CHAT_SESSIONS_PATH
         loaded_sessions = _load_chat_sessions(self._chat_sessions_path)
         self.chat_sessions = loaded_sessions

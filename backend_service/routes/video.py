@@ -1,9 +1,8 @@
 """Video generation API routes.
 
-The runtime is not wired yet — these endpoints expose the curated catalog and
-a stub runtime status so the frontend can light up Discover/My Models cleanly
-ahead of the engine landing. Generation, preload, and download routes return
-501 until the video runtime ships.
+Backed by ``backend_service.video_runtime.VideoRuntimeManager``. The runtime
+supports probe / preload / unload today — generation and downloads still
+return 501 and land in the next phase.
 """
 
 from __future__ import annotations
@@ -12,68 +11,117 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from backend_service.catalog import VIDEO_MODEL_FAMILIES
+from backend_service.helpers.video import (
+    _find_video_variant,
+    _find_video_variant_by_repo,
+    _video_download_validation_error,
+    _video_model_payloads,
+    _video_variant_available_locally,
+)
+from backend_service.models import (
+    VideoRuntimePreloadRequest,
+    VideoRuntimeUnloadRequest,
+)
 
 
 router = APIRouter()
 
 
-def _variant_payload(variant: dict[str, Any], family_name: str) -> dict[str, Any]:
-    """Return a variant dict with frontend-friendly fields populated."""
-    payload = dict(variant)
-    payload.setdefault("availableLocally", False)
-    payload.setdefault("hasLocalData", False)
-    payload["familyName"] = family_name
-    return payload
-
-
-def _video_model_payloads() -> list[dict[str, Any]]:
-    families: list[dict[str, Any]] = []
-    for family in VIDEO_MODEL_FAMILIES:
-        variants = [_variant_payload(v, family["name"]) for v in family["variants"]]
-        payload = dict(family)
-        payload["variants"] = variants
-        families.append(payload)
-    return families
-
-
 @router.get("/api/video/catalog")
 def video_catalog(request: Request) -> dict[str, Any]:
-    """Return the curated catalog of planned video generation models."""
+    """Return the curated catalog of video generation models."""
+    library = request.app.state.chaosengine._library()
     return {
-        "families": _video_model_payloads(),
+        "families": _video_model_payloads(library),
         "latest": [],
     }
 
 
 @router.get("/api/video/runtime")
 def video_runtime_status(request: Request) -> dict[str, Any]:
-    """Report the video runtime status.
+    """Report the live video runtime capability from diffusers + torch."""
+    state = request.app.state.chaosengine
+    return {"runtime": state.video_runtime.capabilities()}
 
-    Today this is always "not available" — the runtime hasn't shipped yet.
-    The shape mirrors ``ImageRuntimeStatus`` so the frontend can reuse
-    the same rendering logic.
-    """
-    return {
-        "runtime": {
-            "activeEngine": "placeholder",
-            "realGenerationAvailable": False,
-            "message": "Video runtime not yet available. Tab is scaffolded — engine work is on the roadmap.",
-            "device": None,
-            "pythonExecutable": None,
-            "missingDependencies": ["diffusers", "torch"],
-            "loadedModelRepo": None,
-        }
-    }
+
+@router.post("/api/video/preload")
+def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> dict[str, Any]:
+    state = request.app.state.chaosengine
+    state.add_log("video", "info", f"Preload requested: modelId='{body.modelId}'")
+    variant = _find_video_variant(body.modelId)
+    if variant is None:
+        state.add_log("video", "error", f"Preload failed: model '{body.modelId}' not found")
+        raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+
+    if not _video_variant_available_locally(variant):
+        validation_error = _video_download_validation_error(variant["repo"])
+        detail = validation_error or f"{variant['name']} is not installed locally yet."
+        raise HTTPException(status_code=409, detail=detail)
+
+    try:
+        runtime = state.video_runtime.preload(variant["repo"])
+    except RuntimeError as exc:
+        state.add_log("video", "error", f"Failed to preload {variant['name']}: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to load {variant['name']}: {exc}") from exc
+    except Exception as exc:
+        state.add_log(
+            "video",
+            "error",
+            f"Unexpected error preloading {variant['name']}: {type(exc).__name__}: {exc}",
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}",
+        ) from exc
+
+    state.add_log("video", "info", f"Preloaded video model {variant['name']}.")
+    state.add_activity("Video model loaded", variant["name"])
+    return {"runtime": runtime}
+
+
+@router.post("/api/video/unload")
+def unload_video_model(request: Request, body: VideoRuntimeUnloadRequest | None = None) -> dict[str, Any]:
+    state = request.app.state.chaosengine
+    requested_repo: str | None = None
+    requested_name: str | None = None
+    if body and body.modelId:
+        variant = _find_video_variant(body.modelId)
+        if variant is None:
+            raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+        requested_repo = variant["repo"]
+        requested_name = variant["name"]
+
+    current_runtime = state.video_runtime.capabilities()
+    current_repo = str(current_runtime.get("loadedModelRepo") or "") or None
+    try:
+        runtime = state.video_runtime.unload(requested_repo)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    unloaded_repo = requested_repo or current_repo
+    if unloaded_repo and (requested_repo is None or requested_repo == current_repo):
+        unloaded_variant = _find_video_variant_by_repo(unloaded_repo)
+        unloaded_name = (
+            unloaded_variant["name"]
+            if unloaded_variant
+            else requested_name or unloaded_repo
+        )
+        state.add_log("video", "info", f"Unloaded video model {unloaded_name}.")
+        state.add_activity("Video model unloaded", unloaded_name)
+    return {"runtime": runtime}
 
 
 @router.get("/api/video/library")
 def video_library(request: Request) -> dict[str, Any]:
-    """Return the list of locally-installed video models.
-
-    Empty until the video runtime ships and users can download weights.
-    """
-    return {"models": []}
+    """Return the list of locally-installed video models."""
+    state = request.app.state.chaosengine
+    library = state._library()
+    installed_models: list[dict[str, Any]] = []
+    for family in _video_model_payloads(library):
+        for variant in family["variants"]:
+            if variant.get("availableLocally"):
+                installed_models.append(variant)
+    return {"models": installed_models}
 
 
 @router.get("/api/video/outputs")
@@ -87,14 +135,6 @@ def generate_video(request: Request) -> dict[str, Any]:
     raise HTTPException(
         status_code=501,
         detail="Video generation is not implemented yet. The runtime is on the roadmap.",
-    )
-
-
-@router.post("/api/video/preload")
-def preload_video_model(request: Request) -> dict[str, Any]:
-    raise HTTPException(
-        status_code=501,
-        detail="Video model preload is not implemented yet.",
     )
 
 

@@ -113,6 +113,42 @@ class SetupRouteTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertIn("No matching distribution", body["output"])
 
+    def test_install_pip_accepts_imageio(self):
+        """Video Studio installs this directly when the mp4 encoder is missing."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="Successfully installed imageio", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "imageio"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        # Confirm we actually invoked pip install with the right distribution name.
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("imageio", cmd)
+
+    def test_install_pip_accepts_imageio_ffmpeg(self):
+        """The ffmpeg plugin is the other half of mp4 export — must also be whitelisted."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="Successfully installed imageio-ffmpeg", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "imageio-ffmpeg"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("imageio-ffmpeg", cmd)
+
+    def test_video_output_deps_are_whitelisted(self):
+        """Regression guard — the Video Studio install button targets these exact keys.
+
+        If someone renames or removes them we want the test suite to scream before
+        the UI starts handing users a 400 on ``/api/setup/install-package``.
+        """
+        from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+
+        self.assertIn("imageio", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("imageio-ffmpeg", _INSTALLABLE_PIP_PACKAGES)
+        # Distribution names should match the short keys so the UI doesn't need
+        # its own translation table.
+        self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio"], "imageio")
+        self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio-ffmpeg"], "imageio-ffmpeg")
+
     # ------------------------------------------------------------------
     # System package install
     # ------------------------------------------------------------------

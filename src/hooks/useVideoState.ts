@@ -9,10 +9,11 @@ import {
   getVideoDownloadStatus,
   getVideoOutputs,
   getVideoRuntime,
+  installPipPackage,
   preloadVideoModel,
   unloadVideoModel,
 } from "../api";
-import type { DownloadStatus } from "../api";
+import type { DownloadStatus, InstallResult } from "../api";
 import {
   buildDownloadStatusMap,
   defaultVideoVariantForFamily,
@@ -384,6 +385,47 @@ export function useVideoState(
     }
   }
 
+  // ── Dependency install ──────────────────────────────────────
+  //
+  // Diffusers can render frames without imageio, but exporting them as an mp4
+  // needs both the `imageio` Python package and its `imageio-ffmpeg` plugin.
+  // The Video Studio calls this when it detects either is missing so the user
+  // can unstick things without dropping to a terminal.
+  async function handleInstallVideoOutputDeps(): Promise<InstallResult> {
+    setVideoBusyLabel("Installing mp4 encoder (imageio + imageio-ffmpeg)...");
+    const failures: string[] = [];
+    let lastOutput = "";
+    try {
+      for (const pkg of ["imageio", "imageio-ffmpeg"] as const) {
+        try {
+          const result = await installPipPackage(pkg);
+          lastOutput = result.output;
+          if (!result.ok) {
+            failures.push(`${pkg}: ${result.output.slice(0, 200)}`);
+          }
+        } catch (err) {
+          failures.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      // Re-probe regardless — even a partial install can flip one flag.
+      try {
+        const runtime = await getVideoRuntime();
+        setVideoRuntimeStatus(runtime);
+      } catch {
+        // keep the pre-install status if the probe itself fails
+      }
+      if (failures.length > 0) {
+        const message = `mp4 encoder install failed:\n${failures.join("\n")}`;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+      setError(null);
+      return { ok: true, output: lastOutput, capabilities: {} };
+    } finally {
+      setVideoBusyLabel(null);
+    }
+  }
+
   async function handleDeleteVideoOutput(artifactId: string) {
     try {
       const { outputs } = await deleteVideoOutput(artifactId);
@@ -451,6 +493,7 @@ export function useVideoState(
     handleUnloadVideoModel,
     handleVideoGenerate,
     handleDeleteVideoOutput,
+    handleInstallVideoOutputDeps,
     openVideoStudio,
   };
 }

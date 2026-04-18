@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
-import type { DownloadStatus } from "../../api";
+import type { DownloadStatus, InstallResult } from "../../api";
 import type {
   TabId,
   TauriBackendInfo,
@@ -48,6 +48,7 @@ export interface VideoStudioTabProps {
   onGenerateVideo: () => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
+  onInstallVideoOutputDeps: () => Promise<InstallResult>;
 }
 
 export function VideoStudioTab({
@@ -83,7 +84,30 @@ export function VideoStudioTab({
   onGenerateVideo,
   onOpenExternalUrl,
   onRestartServer,
+  onInstallVideoOutputDeps,
 }: VideoStudioTabProps) {
+  const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
+  const missingDependencies = videoRuntimeStatus.missingDependencies ?? [];
+  // imageio + imageio-ffmpeg are the two pip packages diffusers video
+  // pipelines need to export mp4s. Everything else we surface as a badge;
+  // these two get a one-click install button instead because they're the
+  // thing that actually blocks "Generate video" from producing an output.
+  const mp4EncoderMissing = missingDependencies.some(
+    (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
+  );
+  const otherMissingDependencies = missingDependencies.filter(
+    (dep) => dep !== "imageio" && dep !== "imageio-ffmpeg",
+  );
+
+  async function handleInstallOutputDeps() {
+    if (installingOutputDeps) return;
+    setInstallingOutputDeps(true);
+    try {
+      await onInstallVideoOutputDeps();
+    } finally {
+      setInstallingOutputDeps(false);
+    }
+  }
   // Only offer variants the user can actually generate with. We include
   // models that are currently downloading because the user will want to keep
   // them selected while the download finishes. Everything else lives in
@@ -185,10 +209,29 @@ export function VideoStudioTab({
             {loadedVideoVariant ? (
               <span className="badge accent">Loaded: {loadedVideoVariant.name}</span>
             ) : null}
-            {(videoRuntimeStatus.missingDependencies ?? []).slice(0, 4).map((dependency) => (
+            {mp4EncoderMissing ? (
+              <span className="badge warning">mp4 encoder missing</span>
+            ) : null}
+            {otherMissingDependencies.slice(0, 4).map((dependency) => (
               <span key={dependency} className="badge subtle">{dependency}</span>
             ))}
           </div>
+          {mp4EncoderMissing ? (
+            <div className="image-runtime-actions">
+              <p className="muted-text">
+                Video generation needs imageio + imageio-ffmpeg to write mp4 files. Install them
+                into the backend environment now?
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void handleInstallOutputDeps()}
+                disabled={installingOutputDeps || !backendOnline}
+              >
+                {installingOutputDeps ? "Installing..." : "Install mp4 encoder"}
+              </button>
+            </div>
+          ) : null}
           {!videoRuntimeStatus.realGenerationAvailable && tauriBackend?.managedByTauri ? (
             <div className="image-runtime-actions">
               <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>

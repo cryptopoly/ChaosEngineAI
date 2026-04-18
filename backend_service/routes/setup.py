@@ -22,6 +22,11 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # fallback). Install directly from the tagged commit.
     "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@v0.1.4",
     "dflash": "dflash",
+    # Video output encoding — diffusers can produce frames without these,
+    # but exporting mp4/gif requires imageio + the ffmpeg plugin. The Video
+    # Studio surfaces a one-click installer when they're missing.
+    "imageio": "imageio",
+    "imageio-ffmpeg": "imageio-ffmpeg",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {

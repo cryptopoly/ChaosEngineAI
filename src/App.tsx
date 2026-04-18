@@ -1451,6 +1451,7 @@ export default function App() {
         onGenerateVideo={() => void videoState.handleVideoGenerate()}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
+        onInstallVideoOutputDeps={() => videoState.handleInstallVideoOutputDeps()}
       />
     );
   } else if (activeTab === "video-gallery") {

@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import type { DownloadStatus } from "../../api";
@@ -135,6 +136,39 @@ export function ImageStudioTab({
   onRevealPath,
   onDeleteImageArtifact,
 }: ImageStudioTabProps) {
+  // Only offer models that are actually downloaded in the picker. The
+  // Image Studio is the "generate right now" surface — a user selecting an
+  // unavailable model here would hit a download-required callout and be
+  // bounced to Discover anyway. Families that end up with zero installed
+  // variants disappear entirely.
+  const installedCatalog = useMemo(() => {
+    return imageCatalog
+      .map((family) => ({
+        ...family,
+        variants: family.variants.filter((variant) => variant.availableLocally),
+      }))
+      .filter((family) => family.variants.length > 0);
+  }, [imageCatalog]);
+
+  const hasInstalledImageModels = installedCatalog.length > 0;
+
+  // If the currently-selected model is no longer in the installed list
+  // (e.g. the user just deleted it, or the default picked an uninstalled
+  // variant), fall back to the first installed one so the dropdown stays
+  // in sync with what's on disk.
+  useEffect(() => {
+    if (!hasInstalledImageModels) return;
+    const stillInstalled = installedCatalog.some((family) =>
+      family.variants.some((variant) => variant.id === selectedImageModelId),
+    );
+    if (!stillInstalled) {
+      const firstInstalled = installedCatalog[0].variants[0];
+      if (firstInstalled) {
+        onSelectedImageModelIdChange(firstInstalled.id);
+      }
+    }
+  }, [installedCatalog, hasInstalledImageModels, selectedImageModelId, onSelectedImageModelIdChange]);
+
   const selectedRatioPreset =
     IMAGE_RATIO_PRESETS.find((preset) => preset.width === imageWidth && preset.height === imageHeight) ??
     IMAGE_RATIO_PRESETS.find((preset) => preset.id === imageRatioId) ??
@@ -291,20 +325,39 @@ export function ImageStudioTab({
             Model
             <select
               className="text-input"
-              value={selectedImageModelId}
+              value={hasInstalledImageModels ? selectedImageModelId : ""}
               onChange={(event) => onSelectedImageModelIdChange(event.target.value)}
+              disabled={!hasInstalledImageModels}
             >
-              {imageCatalog.map((family) => (
-                <optgroup key={family.id} label={family.name}>
-                  {family.variants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}{variant.availableLocally ? " - installed" : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {hasInstalledImageModels ? (
+                installedCatalog.map((family) => (
+                  <optgroup key={family.id} label={family.name}>
+                    {family.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              ) : (
+                <option value="">No models installed — download one from Discover</option>
+              )}
             </select>
           </label>
+
+          {!hasInstalledImageModels ? (
+            <div className="callout image-callout">
+              <p>
+                You don't have any image models downloaded yet. Head to Image Discover to
+                browse and install one, then come back here to generate.
+              </p>
+              <div className="button-row">
+                <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
+                  Open Image Discover
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {!selectedImageVariant?.availableLocally && selectedImageVariant ? (
             <div className="callout image-callout">

@@ -120,6 +120,49 @@ def _video_download_repo_ids() -> set[str]:
     }
 
 
+# Diffusers pipelines only need the standard per-component folders
+# (scheduler/, text_encoder/, tokenizer/, transformer/ or unet/, vae/)
+# plus ``model_index.json`` at the root. Video repos frequently ship
+# historical checkpoints (``ltx-video-0.9.safetensors`` and friends) as
+# siblings — without an allowlist ``snapshot_download`` pulls every one
+# of them, which can inflate a 2 GB diffusers pipeline into a 200 GB
+# download. Keep this list conservative so future component folders still
+# come through, but block the legacy standalone safetensors.
+_VIDEO_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
+    "model_index.json",
+    "scheduler/**",
+    "text_encoder/**",
+    "text_encoder_2/**",
+    "text_encoder_3/**",
+    "tokenizer/**",
+    "tokenizer_2/**",
+    "tokenizer_3/**",
+    "transformer/**",
+    "transformer_2/**",
+    "unet/**",
+    "vae/**",
+    "feature_extractor/**",
+    "image_encoder/**",
+    "safety_checker/**",
+    "*.md",
+    "LICENSE*",
+]
+
+
+def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
+    """Patterns to pass to ``snapshot_download`` for a video repo.
+
+    Returns ``None`` for non-video repos so the caller can pass the value
+    through unconditionally without special-casing. For video repos the
+    allowlist keeps the download scoped to the diffusers pipeline layout
+    — see the comment on ``_VIDEO_DIFFUSERS_ALLOW_PATTERNS`` for why this
+    matters.
+    """
+    if not _is_video_repo(repo_id):
+        return None
+    return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
+
+
 def _video_download_validation_error(repo_id: str) -> str | None:
     if not _is_video_repo(repo_id):
         return None

@@ -65,9 +65,15 @@ from backend_service.helpers.persistence import (
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 APP_STARTED_AT = time.time()
 HF_SNAPSHOT_DOWNLOAD_HELPER = (
-    "import sys\n"
+    "import json, sys\n"
     "from huggingface_hub import snapshot_download\n"
-    "snapshot_download(repo_id=sys.argv[1], resume_download=True)\n"
+    "repo_id = sys.argv[1]\n"
+    "raw_allow = sys.argv[2] if len(sys.argv) > 2 else ''\n"
+    "allow_patterns = json.loads(raw_allow) if raw_allow else None\n"
+    "kwargs = {'repo_id': repo_id, 'resume_download': True}\n"
+    "if allow_patterns:\n"
+    "    kwargs['allow_patterns'] = allow_patterns\n"
+    "snapshot_download(**kwargs)\n"
 )
 DEFAULT_PORT = int(os.getenv("CHAOSENGINE_PORT", "8876"))
 DEFAULT_HOST = os.getenv("CHAOSENGINE_HOST", "127.0.0.1")

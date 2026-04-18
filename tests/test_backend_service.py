@@ -1297,6 +1297,31 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(kwargs["stderr"], subprocess.STDOUT)
         self.assertEqual(kwargs["text"], True)
 
+    def test_snapshot_download_passes_empty_allowlist_for_standard_repos(self):
+        """Non-video repos should not receive an allowlist arg (empty string)."""
+        with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
+            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+                _spawn_snapshot_download("org/model", {}, handle)
+
+        args = popen.call_args.args[0]
+        # args are [python, "-c", helper, repo, allow_patterns_json]. The
+        # final slot is the empty string when no allowlist is set.
+        self.assertEqual(args[3], "org/model")
+        self.assertEqual(args[4], "")
+
+    def test_snapshot_download_passes_allowlist_when_supplied(self):
+        """A supplied allowlist arrives at the subprocess as JSON."""
+        patterns = ["model_index.json", "transformer/**"]
+        with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
+            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+                _spawn_snapshot_download(
+                    "org/video-model", {}, handle, allow_patterns=patterns,
+                )
+
+        args = popen.call_args.args[0]
+        self.assertEqual(args[3], "org/video-model")
+        self.assertEqual(json.loads(args[4]), patterns)
+
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(
             bits=3,
@@ -1781,6 +1806,51 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["revealed"], str(target.resolve()))
         popen.assert_called()
+
+
+class VideoRepoAllowPatternsTests(unittest.TestCase):
+    """``_video_repo_allow_patterns`` scopes video downloads to the diffusers
+    layout. Without this guard ``snapshot_download`` pulls every historical
+    checkpoint sibling in repos like Lightricks/LTX-Video — turning a 2 GB
+    pipeline into a 200+ GB download.
+    """
+
+    def test_returns_none_for_non_video_repos(self):
+        from backend_service.helpers.video import _video_repo_allow_patterns
+
+        self.assertIsNone(_video_repo_allow_patterns("meta-llama/Llama-2-7b-hf"))
+        self.assertIsNone(_video_repo_allow_patterns("stabilityai/stable-diffusion-xl-base-1.0"))
+        self.assertIsNone(_video_repo_allow_patterns(""))
+
+    def test_returns_diffusers_layout_for_known_video_repo(self):
+        from backend_service.helpers.video import _video_repo_allow_patterns
+
+        patterns = _video_repo_allow_patterns("Lightricks/LTX-Video")
+        self.assertIsNotNone(patterns)
+        assert patterns is not None  # for the type-checker
+        # These folders are the core of every diffusers video pipeline we
+        # ship. If any of them disappears the download will start and then
+        # fail to load — so they're worth asserting on explicitly.
+        self.assertIn("model_index.json", patterns)
+        self.assertIn("transformer/**", patterns)
+        self.assertIn("vae/**", patterns)
+        self.assertIn("text_encoder/**", patterns)
+        self.assertIn("scheduler/**", patterns)
+        self.assertIn("tokenizer/**", patterns)
+
+    def test_returns_fresh_list_each_call(self):
+        """Callers get their own copy so mutating the list doesn't leak
+        back into the module-level constant."""
+        from backend_service.helpers.video import _video_repo_allow_patterns
+
+        first = _video_repo_allow_patterns("Lightricks/LTX-Video")
+        second = _video_repo_allow_patterns("Lightricks/LTX-Video")
+        self.assertEqual(first, second)
+        assert first is not None  # for the type-checker
+        first.append("leak-check")
+        again = _video_repo_allow_patterns("Lightricks/LTX-Video")
+        assert again is not None
+        self.assertNotIn("leak-check", again)
 
 
 if __name__ == "__main__":

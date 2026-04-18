@@ -56,6 +56,7 @@ from backend_service.helpers.images import (
 )
 from backend_service.helpers.video import (
     _video_download_validation_error,
+    _video_repo_allow_patterns,
 )
 from backend_service.helpers.settings import (
     _save_data_location,
@@ -116,11 +117,23 @@ def _read_text_tail(path: str | None, *, limit: int = 4096) -> str:
     return content[-limit:]
 
 
-def _spawn_snapshot_download(repo: str, env: dict[str, str], log_handle: Any) -> subprocess.Popen[str]:
+def _spawn_snapshot_download(
+    repo: str,
+    env: dict[str, str],
+    log_handle: Any,
+    allow_patterns: list[str] | None = None,
+) -> subprocess.Popen[str]:
     from backend_service.app import HF_SNAPSHOT_DOWNLOAD_HELPER
 
+    args = [sys.executable, "-c", HF_SNAPSHOT_DOWNLOAD_HELPER, repo]
+    # The helper treats an empty string as "no allowlist"; a JSON-encoded
+    # list restricts the download to matching files. This is how we keep
+    # diffusers video repos from ballooning to hundreds of GB when the
+    # repo ships legacy standalone checkpoints alongside the pipeline
+    # layout.
+    args.append(json.dumps(allow_patterns) if allow_patterns else "")
     return subprocess.Popen(
-        [sys.executable, "-c", HF_SNAPSHOT_DOWNLOAD_HELPER, repo],
+        args,
         stdout=log_handle,
         stderr=subprocess.STDOUT,
         text=True,
@@ -2315,7 +2328,16 @@ class ChaosEngineState:
                 process_log_path = temp_log.name
                 temp_log.close()
                 with open(process_log_path, "w", encoding="utf-8", errors="replace") as process_log:
-                    process = _spawn_snapshot_download(repo, env, process_log)
+                    # Video repos get a diffusers-layout allowlist so we
+                    # don't pull legacy standalone safetensors checkpoints
+                    # that the pipeline doesn't use.
+                    video_allow_patterns = _video_repo_allow_patterns(repo)
+                    process = _spawn_snapshot_download(
+                        repo,
+                        env,
+                        process_log,
+                        allow_patterns=video_allow_patterns,
+                    )
                     with self._lock:
                         if self._download_tokens.get(repo) == download_token:
                             self._download_processes[repo] = process

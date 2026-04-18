@@ -84,12 +84,45 @@ export function VideoStudioTab({
   onOpenExternalUrl,
   onRestartServer,
 }: VideoStudioTabProps) {
-  // Ensure a valid model is selected once the catalog loads
+  // Only offer variants the user can actually generate with. We include
+  // models that are currently downloading because the user will want to keep
+  // them selected while the download finishes. Everything else lives in
+  // Discover / My Models.
+  const studioFamilies = useMemo(
+    () =>
+      videoCatalog
+        .map((family) => ({
+          ...family,
+          variants: family.variants.filter((variant) => {
+            if (variant.availableLocally) return true;
+            if (variant.hasLocalData) return true;
+            const downloadState = activeVideoDownloads[variant.repo];
+            return downloadState?.state === "downloading" || downloadState?.state === "completed";
+          }),
+        }))
+        .filter((family) => family.variants.length > 0),
+    [videoCatalog, activeVideoDownloads],
+  );
+  const hasAnyInstalled = studioFamilies.length > 0;
+
+  // Ensure a valid model is selected once the catalog loads. Prefer an
+  // installed model; fall back to the first catalog entry so the studio
+  // still renders a stub when nothing is downloaded yet.
   useEffect(() => {
-    if (selectedVideoModelId) return;
+    if (selectedVideoModelId) {
+      const stillValid = videoCatalog.some((family) =>
+        family.variants.some((variant) => variant.id === selectedVideoModelId),
+      );
+      if (stillValid) return;
+    }
+    const installed = studioFamilies[0]?.variants[0];
+    if (installed?.id) {
+      onSelectedVideoModelIdChange(installed.id);
+      return;
+    }
     const fallback = defaultVideoVariantForFamily(videoCatalog[0]);
     if (fallback?.id) onSelectedVideoModelIdChange(fallback.id);
-  }, [selectedVideoModelId, videoCatalog, onSelectedVideoModelIdChange]);
+  }, [selectedVideoModelId, videoCatalog, studioFamilies, onSelectedVideoModelIdChange]);
 
   const downloadState = useMemo(
     () => (selectedVideoVariant ? activeVideoDownloads[selectedVideoVariant.repo] : undefined),
@@ -168,20 +201,44 @@ export function VideoStudioTab({
         <div className="image-studio-grid" style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr" }}>
           <label>
             Video Model
-            <select
-              className="text-input"
-              value={selectedVideoModelId}
-              onChange={(event) => onSelectedVideoModelIdChange(event.target.value)}
-            >
-              {videoCatalog.flatMap((family) =>
-                family.variants.map((variant) => (
-                  <option key={variant.id} value={variant.id}>
-                    {variant.name} — {family.name}
-                    {variant.availableLocally ? " (installed)" : ""}
-                  </option>
-                )),
-              )}
-            </select>
+            {hasAnyInstalled ? (
+              <select
+                className="text-input"
+                value={selectedVideoModelId}
+                onChange={(event) => onSelectedVideoModelIdChange(event.target.value)}
+              >
+                {studioFamilies.flatMap((family) =>
+                  family.variants.map((variant) => {
+                    const downloadState = activeVideoDownloads[variant.repo];
+                    const isDownloadingVariant = downloadState?.state === "downloading";
+                    const suffix = variant.availableLocally
+                      ? " (installed)"
+                      : isDownloadingVariant
+                        ? ` (${downloadProgressLabel(downloadState)})`
+                        : " (incomplete)";
+                    return (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name} — {family.name}
+                        {suffix}
+                      </option>
+                    );
+                  }),
+                )}
+              </select>
+            ) : (
+              <div className="callout image-callout">
+                <p>No video models installed yet. Browse the catalog to download one.</p>
+                <div className="button-row">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onActiveTabChange("video-discover")}
+                  >
+                    Open Video Discover
+                  </button>
+                </div>
+              </div>
+            )}
           </label>
 
           {selectedVideoVariant ? (

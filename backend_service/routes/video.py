@@ -1,8 +1,8 @@
 """Video generation API routes.
 
 Backed by ``backend_service.video_runtime.VideoRuntimeManager``. The runtime
-supports probe / preload / unload today — generation and downloads still
-return 501 and land in the next phase.
+supports probe / preload / unload / download today — generation still returns
+501 and lands in the next phase.
 """
 
 from __future__ import annotations
@@ -14,11 +14,14 @@ from fastapi import APIRouter, HTTPException, Request
 from backend_service.helpers.video import (
     _find_video_variant,
     _find_video_variant_by_repo,
+    _is_video_repo,
+    _video_download_repo_ids,
     _video_download_validation_error,
     _video_model_payloads,
     _video_variant_available_locally,
 )
 from backend_service.models import (
+    DownloadModelRequest,
     VideoRuntimePreloadRequest,
     VideoRuntimeUnloadRequest,
 )
@@ -139,8 +142,55 @@ def generate_video(request: Request) -> dict[str, Any]:
 
 
 @router.post("/api/video/download")
-def download_video_model(request: Request) -> dict[str, Any]:
-    raise HTTPException(
-        status_code=501,
-        detail="Video model downloads are not implemented yet.",
-    )
+def download_video_model(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
+    """Start a Hugging Face snapshot download for a curated video model.
+
+    Only repos that appear in ``VIDEO_MODEL_FAMILIES`` are accepted — the
+    endpoint is intentionally locked down so the Video tab can't be pointed
+    at an arbitrary model via the API.
+    """
+    state = request.app.state.chaosengine
+    if not _is_video_repo(body.repo):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
+        )
+    variant = _find_video_variant_by_repo(body.repo)
+    label = variant["name"] if variant else body.repo
+    state.add_log("video", "info", f"Video download requested: {label} ({body.repo})")
+    return {"download": state.start_download(body.repo)}
+
+
+@router.get("/api/video/download/status")
+def video_download_status(request: Request) -> dict[str, Any]:
+    """Return the live download status for every curated video repo only."""
+    state = request.app.state.chaosengine
+    video_repos = _video_download_repo_ids()
+    downloads = [
+        item
+        for item in state.download_status()
+        if str(item.get("repo") or "") in video_repos
+    ]
+    return {"downloads": downloads}
+
+
+@router.post("/api/video/download/cancel")
+def cancel_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
+    state = request.app.state.chaosengine
+    if not _is_video_repo(body.repo):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
+        )
+    return {"download": state.cancel_download(body.repo)}
+
+
+@router.post("/api/video/download/delete")
+def delete_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
+    state = request.app.state.chaosengine
+    if not _is_video_repo(body.repo):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
+        )
+    return {"result": state.delete_download(body.repo)}

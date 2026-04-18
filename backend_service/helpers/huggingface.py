@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES
+from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.discovery import _path_size_bytes
 
@@ -498,6 +498,17 @@ def _known_repo_size_gb(repo_id: str) -> float | None:
                 return size_gb
 
     for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") != repo_id:
+                continue
+            try:
+                size_gb = float(variant.get("sizeGb") or 0)
+            except (TypeError, ValueError):
+                size_gb = 0.0
+            if size_gb > 0:
+                return size_gb
+
+    for family in VIDEO_MODEL_FAMILIES:
         for variant in family["variants"]:
             if str(variant.get("repo") or "") != repo_id:
                 continue

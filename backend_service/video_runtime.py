@@ -81,6 +81,10 @@ class VideoGenerationConfig:
 PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "Lightricks/LTX-Video": {"class_name": "LTXPipeline", "task": "txt2video"},
     "genmo/mochi-1-preview": {"class_name": "MochiPipeline", "task": "txt2video"},
+    # Wan 2.1 and 2.2 share the same pipeline class — the version difference
+    # lives in the weights, not the pipeline code.
+    "Wan-AI/Wan2.1-T2V-1.3B": {"class_name": "WanPipeline", "task": "txt2video"},
+    "Wan-AI/Wan2.1-T2V-14B": {"class_name": "WanPipeline", "task": "txt2video"},
     "Wan-AI/Wan2.2-T2V-A14B": {"class_name": "WanPipeline", "task": "txt2video"},
     "tencent/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
 }

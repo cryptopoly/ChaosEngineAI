@@ -54,6 +54,9 @@ from backend_service.helpers.images import (
     _image_download_validation_error,
     _friendly_image_download_error,
 )
+from backend_service.helpers.video import (
+    _video_download_validation_error,
+)
 from backend_service.helpers.settings import (
     _save_data_location,
     _migrate_data_directory,
@@ -2362,7 +2365,14 @@ class ChaosEngineState:
                 if returncode != 0:
                     raise RuntimeError(stderr_output or f"snapshot_download exited with status {returncode}")
 
-                validation_error = _image_download_validation_error(repo)
+                # Image catalog validation first; fall through to video so
+                # a successful video download isn't flagged for missing image
+                # shape. Each validator returns None for repos outside its
+                # catalog.
+                validation_error = (
+                    _image_download_validation_error(repo)
+                    or _video_download_validation_error(repo)
+                )
                 if validation_error:
                     with self._lock:
                         if self._download_tokens.get(repo) != download_token:
@@ -2452,6 +2462,11 @@ class ChaosEngineState:
 
         try:
             self.image_runtime.unload(repo)
+        except Exception:
+            pass
+
+        try:
+            self.video_runtime.unload(repo)
         except Exception:
             pass
 

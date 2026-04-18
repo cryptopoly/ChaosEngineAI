@@ -75,6 +75,8 @@ class PipelineRegistryTests(unittest.TestCase):
         expected = {
             "Lightricks/LTX-Video",
             "genmo/mochi-1-preview",
+            "Wan-AI/Wan2.1-T2V-1.3B",
+            "Wan-AI/Wan2.1-T2V-14B",
             "Wan-AI/Wan2.2-T2V-A14B",
             "tencent/HunyuanVideo",
         }
@@ -82,6 +84,13 @@ class PipelineRegistryTests(unittest.TestCase):
         for entry in PIPELINE_REGISTRY.values():
             self.assertIn("class_name", entry)
             self.assertEqual(entry["task"], "txt2video")
+
+    def test_wan_variants_all_route_to_wanpipeline(self):
+        """Wan 2.1 and 2.2 use the same pipeline class — version difference is in the weights."""
+        wan_repos = [repo for repo in PIPELINE_REGISTRY if repo.startswith("Wan-AI/")]
+        self.assertGreaterEqual(len(wan_repos), 3, "expected 1.3B, 14B, and A14B Wan entries")
+        for repo in wan_repos:
+            self.assertEqual(PIPELINE_REGISTRY[repo]["class_name"], "WanPipeline")
 
     def test_pipeline_class_raises_for_unknown_repo(self):
         engine = DiffusersVideoEngine()

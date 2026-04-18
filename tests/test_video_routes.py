@@ -70,8 +70,22 @@ class VideoCatalogRouteTests(unittest.TestCase):
     def test_catalog_surfaces_all_first_wave_engines(self):
         payload = self.client.get("/api/video/catalog").json()
         family_ids = {family["id"] for family in payload["families"]}
-        for expected in ("ltx-video", "wan-2-2", "hunyuan-video", "mochi-1"):
+        for expected in ("ltx-video", "wan-2-1", "wan-2-2", "hunyuan-video", "mochi-1"):
             self.assertIn(expected, family_ids, f"expected {expected} in video catalog")
+
+    def test_catalog_includes_wan_2_1_small_starter_variant(self):
+        """The 1.3B variant is our recommended first-download target — make sure it's visible."""
+        payload = self.client.get("/api/video/catalog").json()
+        variant_ids = {
+            variant["id"]
+            for family in payload["families"]
+            for variant in family["variants"]
+        }
+        self.assertIn("Wan-AI/Wan2.1-T2V-1.3B", variant_ids)
+        # Sanity-check: the 1.3B is materially smaller than the 14B / A14B options.
+        wan_21_family = next(family for family in payload["families"] if family["id"] == "wan-2-1")
+        sizes = {variant["id"]: variant["sizeGb"] for variant in wan_21_family["variants"]}
+        self.assertLess(sizes["Wan-AI/Wan2.1-T2V-1.3B"], sizes["Wan-AI/Wan2.1-T2V-14B"])
 
     def test_catalog_variants_have_frontend_ready_fields(self):
         payload = self.client.get("/api/video/catalog").json()
@@ -189,7 +203,7 @@ class VideoUnloadRouteTests(unittest.TestCase):
 
 
 class VideoNotImplementedRouteTests(unittest.TestCase):
-    """Generate + download must still surface 501 in this phase."""
+    """Generate still surfaces 501 until the generation loop lands."""
 
     def setUp(self) -> None:
         self.client, self.tempdir = make_client()
@@ -201,9 +215,103 @@ class VideoNotImplementedRouteTests(unittest.TestCase):
         response = self.client.post("/api/video/generate", json={})
         self.assertEqual(response.status_code, 501)
 
-    def test_download_returns_501(self):
+
+class VideoDownloadRouteTests(unittest.TestCase):
+    """Contract tests for /api/video/download* endpoints.
+
+    We deliberately do not exercise a real HF snapshot_download from a unit
+    test — that's an integration test path, taken by pulling ``Wan-AI/Wan2.1-T2V-1.3B``
+    via the real endpoint. These tests assert the validation surface and the
+    shape of the ``not_found`` / ``deleted`` paths which can be exercised
+    without any network or subprocess activity.
+    """
+
+    def setUp(self) -> None:
+        self.client, self.tempdir = make_client()
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+
+    def test_download_rejects_unknown_repo(self):
+        response = self.client.post("/api/video/download", json={"repo": "ghost/nope"})
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("video model catalog", response.json()["detail"])
+
+    def test_download_requires_repo_field(self):
         response = self.client.post("/api/video/download", json={})
-        self.assertEqual(response.status_code, 501)
+        # Pydantic validation rejects the missing repo field before the route runs.
+        self.assertEqual(response.status_code, 422)
+
+    def test_download_status_is_empty_when_nothing_is_downloading(self):
+        response = self.client.get("/api/video/download/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"downloads": []})
+
+    def test_download_status_filters_out_non_video_repos(self):
+        # Seed an unrelated repo directly in state — /api/video/download/status
+        # should ignore it so the Video UI never sees image/text download rows.
+        state = self.client.app.state.chaosengine
+        state._downloads["fake/other-repo"] = {
+            "repo": "fake/other-repo",
+            "state": "downloading",
+            "progress": 0.5,
+            "downloadedGb": 1.0,
+            "totalGb": 2.0,
+            "error": None,
+        }
+        response = self.client.get("/api/video/download/status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"downloads": []})
+
+    def test_download_status_surfaces_video_repos(self):
+        # Seed a valid video repo directly so we don't need to call the real
+        # start_download (which would hit Hugging Face). The filter must keep it.
+        state = self.client.app.state.chaosengine
+        state._downloads["Wan-AI/Wan2.1-T2V-1.3B"] = {
+            "repo": "Wan-AI/Wan2.1-T2V-1.3B",
+            "state": "downloading",
+            "progress": 0.25,
+            "downloadedGb": 0.6,
+            "totalGb": 2.5,
+            "error": None,
+        }
+        response = self.client.get("/api/video/download/status")
+        self.assertEqual(response.status_code, 200)
+        downloads = response.json()["downloads"]
+        self.assertEqual(len(downloads), 1)
+        self.assertEqual(downloads[0]["repo"], "Wan-AI/Wan2.1-T2V-1.3B")
+
+    def test_cancel_rejects_repo_outside_video_catalog(self):
+        response = self.client.post(
+            "/api/video/download/cancel",
+            json={"repo": "ghost/nope"},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_cancel_known_but_not_downloading_returns_not_found_state(self):
+        response = self.client.post(
+            "/api/video/download/cancel",
+            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B"},
+        )
+        self.assertEqual(response.status_code, 200)
+        download = response.json()["download"]
+        self.assertEqual(download["state"], "not_found")
+
+    def test_delete_rejects_repo_outside_video_catalog(self):
+        response = self.client.post(
+            "/api/video/download/delete",
+            json={"repo": "ghost/nope"},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_known_but_not_downloaded_is_noop(self):
+        response = self.client.post(
+            "/api/video/download/delete",
+            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B"},
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()["result"]
+        self.assertEqual(result["state"], "not_found")
 
 
 if __name__ == "__main__":

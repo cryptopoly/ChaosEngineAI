@@ -607,6 +607,39 @@ export async function unloadImageModel(modelId?: string): Promise<ImageRuntimeSt
   return result.runtime;
 }
 
+export async function downloadVideoModel(repo: string): Promise<DownloadStatus> {
+  const result = await postJson<{ download: DownloadStatus }>("/api/video/download", { repo });
+  return result.download;
+}
+
+export async function getVideoDownloadStatus(): Promise<DownloadStatus[]> {
+  const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/video/download/status");
+  return result.downloads;
+}
+
+export async function cancelVideoDownload(repo: string): Promise<DownloadStatus> {
+  const result = await postJson<{ download: DownloadStatus }>("/api/video/download/cancel", { repo });
+  return result.download;
+}
+
+export async function deleteVideoDownload(repo: string): Promise<DeleteDownloadResult> {
+  const result = await postJson<{ result: DeleteDownloadResult }>("/api/video/download/delete", { repo });
+  return result.result;
+}
+
+export async function preloadVideoModel(modelId: string): Promise<VideoRuntimeStatus> {
+  const result = await postJson<{ runtime: VideoRuntimeStatus }>("/api/video/preload", { modelId }, null);
+  return result.runtime;
+}
+
+export async function unloadVideoModel(modelId?: string): Promise<VideoRuntimeStatus> {
+  const result = await postJson<{ runtime: VideoRuntimeStatus }>(
+    "/api/video/unload",
+    modelId ? { modelId } : undefined,
+  );
+  return result.runtime;
+}
+
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
   return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
 }

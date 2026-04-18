@@ -14,6 +14,7 @@ import {
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
+import { Sidebar } from "./components/Sidebar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { DashboardTab } from "./features/dashboard/DashboardTab";
@@ -1578,43 +1579,16 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <div className="brand-title-row">
-            <img src="/logo.svg" alt="ChaosEngineAI" className="brand-logo" />
-            <h1>ChaosEngineAI</h1>
-          </div>
-          <span className="brand-kicker">
-            Local AI model runner
-            {workspace.system.appVersion ? ` · v${workspace.system.appVersion}` : ""}
-          </span>
-        </div>
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
+        platform={workspace.system.platform}
+        appVersion={workspace.system.appVersion}
+        backendOnline={backendOnline}
+        engineLabel={workspace.runtime.engineLabel}
+        loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+      />
 
-        <nav className="nav-list" aria-label="Primary">
-          {tabs.filter((tab) => {
-            if (tab.id === "conversion" && workspace.system.platform && workspace.system.platform !== "Darwin") return false;
-            return true;
-          }).map((tab) => (
-            <button
-              key={tab.id}
-              className={activeTab === tab.id ? "nav-button active" : "nav-button"}
-              type="button"
-              onClick={() => { setActiveTab(tab.id); setError(null); }}
-            >
-              <strong>{tab.label}</strong>
-              <span>{tab.caption}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <span className={`badge ${backendOnline ? "success" : "warning"}`}>
-            {backendOnline ? "Backend online" : "Offline"}
-          </span>
-          <p>{workspace.runtime.engineLabel}</p>
-          <small>{workspace.runtime.loadedModel?.name ?? "No model loaded"}</small>
-        </div>
-      </aside>
 
       <main className="workspace">
         <header className="workspace-header">

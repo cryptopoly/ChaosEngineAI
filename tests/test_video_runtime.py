@@ -75,10 +75,10 @@ class PipelineRegistryTests(unittest.TestCase):
         expected = {
             "Lightricks/LTX-Video",
             "genmo/mochi-1-preview",
-            "Wan-AI/Wan2.1-T2V-1.3B",
-            "Wan-AI/Wan2.1-T2V-14B",
-            "Wan-AI/Wan2.2-T2V-A14B",
-            "tencent/HunyuanVideo",
+            "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+            "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+            "hunyuanvideo-community/HunyuanVideo",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():

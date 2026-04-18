@@ -51,15 +51,19 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "summary": "Wan 2.1 ships in a 1.3B size that fits on modest hardware and a 14B size for higher quality. Both use the same WanPipeline in diffusers.",
         "updatedLabel": "Planned — first wave",
         "badges": ["Small", "Fast", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.1-T2V-1.3B",
+        "defaultVariantId": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
         "variants": [
             {
-                "id": "Wan-AI/Wan2.1-T2V-1.3B",
+                "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B",
                 "provider": "Alibaba",
-                "repo": "Wan-AI/Wan2.1-T2V-1.3B",
-                "link": "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B",
+                # The -Diffusers mirror ships the standard diffusers layout
+                # (model_index.json, scheduler/, text_encoder/, transformer/,
+                # vae/, tokenizer/) — the base Wan-AI repo uses a native Wan
+                # format that WanPipeline.from_pretrained can't load.
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
                 "runtime": "diffusers WanPipeline",
                 "styleTags": ["general", "fast", "small"],
                 "taskSupport": ["txt2video"],
@@ -73,12 +77,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
             },
             {
-                "id": "Wan-AI/Wan2.1-T2V-14B",
+                "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B",
                 "provider": "Alibaba",
-                "repo": "Wan-AI/Wan2.1-T2V-14B",
-                "link": "https://huggingface.co/Wan-AI/Wan2.1-T2V-14B",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "runtime": "diffusers WanPipeline",
                 "styleTags": ["general", "quality", "motion"],
                 "taskSupport": ["txt2video"],
@@ -101,16 +105,18 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "summary": "Mid-sized Wan model that runs on 24GB+ VRAM or Apple Silicon with unified memory.",
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-T2V-A14B",
+        "defaultVariantId": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
         "variants": [
             {
-                "id": "Wan-AI/Wan2.2-T2V-A14B",
+                "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "familyId": "wan-2-2",
                 "name": "Wan 2.2 T2V A14B",
                 "provider": "Alibaba",
-                "repo": "Wan-AI/Wan2.2-T2V-A14B",
-                "link": "https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B",
-                "runtime": "diffusers WanPipeline (planned)",
+                # -Diffusers mirror ships the standard diffusers layout; the
+                # base Wan-AI/Wan2.2-T2V-A14B repo uses the native Wan format.
+                "repo": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+                "runtime": "diffusers WanPipeline",
                 "styleTags": ["general", "quality", "motion"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 14.0,
@@ -130,16 +136,19 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "summary": "Heavy-duty model that needs 40GB+ class hardware. Ships longer clips and nicer compositions.",
         "updatedLabel": "Planned — stretch target",
         "badges": ["Quality", "Heavy", "Apache 2.0"],
-        "defaultVariantId": "tencent/HunyuanVideo",
+        "defaultVariantId": "hunyuanvideo-community/HunyuanVideo",
         "variants": [
             {
-                "id": "tencent/HunyuanVideo",
+                "id": "hunyuanvideo-community/HunyuanVideo",
                 "familyId": "hunyuan-video",
                 "name": "HunyuanVideo",
                 "provider": "Tencent",
-                "repo": "tencent/HunyuanVideo",
-                "link": "https://huggingface.co/tencent/HunyuanVideo",
-                "runtime": "diffusers HunyuanVideoPipeline (planned)",
+                # Community-maintained diffusers port of tencent/HunyuanVideo.
+                # The base tencent repo doesn't ship model_index.json — the
+                # -community mirror is the one HunyuanVideoPipeline loads.
+                "repo": "hunyuanvideo-community/HunyuanVideo",
+                "link": "https://huggingface.co/hunyuanvideo-community/HunyuanVideo",
+                "runtime": "diffusers HunyuanVideoPipeline",
                 "styleTags": ["general", "quality", "cinematic"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 25.0,

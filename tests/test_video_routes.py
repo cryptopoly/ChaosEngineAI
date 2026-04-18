@@ -116,11 +116,14 @@ class VideoCatalogRouteTests(unittest.TestCase):
             for family in payload["families"]
             for variant in family["variants"]
         }
-        self.assertIn("Wan-AI/Wan2.1-T2V-1.3B", variant_ids)
+        self.assertIn("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", variant_ids)
         # Sanity-check: the 1.3B is materially smaller than the 14B / A14B options.
         wan_21_family = next(family for family in payload["families"] if family["id"] == "wan-2-1")
         sizes = {variant["id"]: variant["sizeGb"] for variant in wan_21_family["variants"]}
-        self.assertLess(sizes["Wan-AI/Wan2.1-T2V-1.3B"], sizes["Wan-AI/Wan2.1-T2V-14B"])
+        self.assertLess(
+            sizes["Wan-AI/Wan2.1-T2V-1.3B-Diffusers"],
+            sizes["Wan-AI/Wan2.1-T2V-14B-Diffusers"],
+        )
 
     def test_catalog_variants_have_frontend_ready_fields(self):
         payload = self.client.get("/api/video/catalog").json()
@@ -307,8 +310,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
         # Seed a valid video repo directly so we don't need to call the real
         # start_download (which would hit Hugging Face). The filter must keep it.
         state = self.client.app.state.chaosengine
-        state._downloads["Wan-AI/Wan2.1-T2V-1.3B"] = {
-            "repo": "Wan-AI/Wan2.1-T2V-1.3B",
+        state._downloads["Wan-AI/Wan2.1-T2V-1.3B-Diffusers"] = {
+            "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
             "state": "downloading",
             "progress": 0.25,
             "downloadedGb": 0.6,
@@ -319,7 +322,7 @@ class VideoDownloadRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         downloads = response.json()["downloads"]
         self.assertEqual(len(downloads), 1)
-        self.assertEqual(downloads[0]["repo"], "Wan-AI/Wan2.1-T2V-1.3B")
+        self.assertEqual(downloads[0]["repo"], "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
 
     def test_cancel_rejects_repo_outside_video_catalog(self):
         response = self.client.post(
@@ -331,7 +334,7 @@ class VideoDownloadRouteTests(unittest.TestCase):
     def test_cancel_known_but_not_downloading_returns_not_found_state(self):
         response = self.client.post(
             "/api/video/download/cancel",
-            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B"},
+            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
         )
         self.assertEqual(response.status_code, 200)
         download = response.json()["download"]
@@ -347,7 +350,7 @@ class VideoDownloadRouteTests(unittest.TestCase):
     def test_delete_known_but_not_downloaded_is_noop(self):
         response = self.client.post(
             "/api/video/download/delete",
-            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B"},
+            json={"repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
         )
         self.assertEqual(response.status_code, 200)
         result = response.json()["result"]

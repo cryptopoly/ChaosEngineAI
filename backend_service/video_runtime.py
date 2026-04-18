@@ -82,11 +82,14 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "Lightricks/LTX-Video": {"class_name": "LTXPipeline", "task": "txt2video"},
     "genmo/mochi-1-preview": {"class_name": "MochiPipeline", "task": "txt2video"},
     # Wan 2.1 and 2.2 share the same pipeline class — the version difference
-    # lives in the weights, not the pipeline code.
-    "Wan-AI/Wan2.1-T2V-1.3B": {"class_name": "WanPipeline", "task": "txt2video"},
-    "Wan-AI/Wan2.1-T2V-14B": {"class_name": "WanPipeline", "task": "txt2video"},
-    "Wan-AI/Wan2.2-T2V-A14B": {"class_name": "WanPipeline", "task": "txt2video"},
-    "tencent/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
+    # lives in the weights, not the pipeline code. We route to the `-Diffusers`
+    # mirrors because the base Wan-AI repos ship in the native Wan format
+    # (no `model_index.json`) which WanPipeline.from_pretrained can't load.
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    # Community-maintained diffusers port of tencent/HunyuanVideo.
+    "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
 }
 
 

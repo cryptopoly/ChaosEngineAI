@@ -53,19 +53,59 @@ _HF_CACHE_ENV_VARS: tuple[str, ...] = (
     "HF_HOME",
 )
 
+# Sentinel keys used in the snapshot dict to carry original module-level
+# attributes that we patch in ``make_client``. Prefixed with ``__`` so the
+# env-var restore loop skips them (env vars can't begin with that in POSIX).
+_MODULE_ATTR_KEYS: tuple[str, ...] = (
+    "__video_outputs_dir__",
+    "__image_outputs_dir__",
+    "__settings_path__",
+)
 
-def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory, dict[str, str | None]]:
+
+def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory, dict[str, Any]]:
+    """Spin up an isolated FastAPI test client.
+
+    Beyond the obvious tempdir for settings/benchmarks/chat-sessions and the
+    HF cache env vars, we also redirect the module-level output-dir and
+    settings-path constants in ``backend_service.app``. Those get captured
+    at import time from the user's real ``~/.chaosengine/`` dir and are not
+    affected by the test's ``settings_path`` argument — so without patching
+    them, the ``GET /api/video/outputs`` route reads the user's real saved
+    clips, and any settings-driven output override would leak in too.
+
+    The returned snapshot carries both the env-var originals and the
+    module-attribute originals. ``restore_env`` uses both halves on teardown.
+    """
     tempdir = tempfile.TemporaryDirectory()
     settings_path = Path(tempdir.name) / "settings.json"
     benchmarks_path = Path(tempdir.name) / "benchmark-history.json"
     chat_sessions_path = Path(tempdir.name) / "chat-sessions.json"
     hf_cache = Path(tempdir.name) / "hf-cache"
     hf_cache.mkdir(parents=True, exist_ok=True)
+    # Pre-create the output dirs so the /outputs listing helpers can ``rglob``
+    # them without tripping a missing-dir path.
+    video_outputs_dir = Path(tempdir.name) / "video-outputs"
+    image_outputs_dir = Path(tempdir.name) / "image-outputs"
+    video_outputs_dir.mkdir(parents=True, exist_ok=True)
+    image_outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    env_snapshot: dict[str, str | None] = {key: os.environ.get(key) for key in _HF_CACHE_ENV_VARS}
+    snapshot: dict[str, Any] = {key: os.environ.get(key) for key in _HF_CACHE_ENV_VARS}
+    snapshot["__video_outputs_dir__"] = app_module.VIDEO_OUTPUTS_DIR
+    snapshot["__image_outputs_dir__"] = app_module.IMAGE_OUTPUTS_DIR
+    snapshot["__settings_path__"] = app_module.SETTINGS_PATH
+
     os.environ["HF_HUB_CACHE"] = str(hf_cache)
     os.environ["HUGGINGFACE_HUB_CACHE"] = str(hf_cache)
     os.environ["HF_HOME"] = str(tempdir.name)
+    app_module.VIDEO_OUTPUTS_DIR = video_outputs_dir
+    app_module.IMAGE_OUTPUTS_DIR = image_outputs_dir
+    # Point the module-level settings path at the tempdir so the no-arg
+    # ``_load_settings()`` calls inside ``_current_video_outputs_dir`` read
+    # defaults instead of the user's real settings file (which may contain a
+    # ``videoOutputsDirectory`` override that would bypass our patched
+    # VIDEO_OUTPUTS_DIR and point back at a real location).
+    app_module.SETTINGS_PATH = settings_path
 
     state = ChaosEngineState(
         system_snapshot_provider=fake_system_snapshot,
@@ -77,11 +117,22 @@ def make_client() -> tuple[TestClient, tempfile.TemporaryDirectory, dict[str, st
     state.runtime = FakeRuntime()
     client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
     client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
-    return client, tempdir, env_snapshot
+    return client, tempdir, snapshot
 
 
-def restore_env(env_snapshot: dict[str, str | None]) -> None:
+def restore_env(env_snapshot: dict[str, Any]) -> None:
+    """Reverse the env-var and module-attr patching done by ``make_client``."""
+    # Module attrs first, so any env-var-triggered import-time re-resolution
+    # (none today, but future-proofing) sees the final state.
+    if "__video_outputs_dir__" in env_snapshot:
+        app_module.VIDEO_OUTPUTS_DIR = env_snapshot["__video_outputs_dir__"]
+    if "__image_outputs_dir__" in env_snapshot:
+        app_module.IMAGE_OUTPUTS_DIR = env_snapshot["__image_outputs_dir__"]
+    if "__settings_path__" in env_snapshot:
+        app_module.SETTINGS_PATH = env_snapshot["__settings_path__"]
     for key, value in env_snapshot.items():
+        if key in _MODULE_ATTR_KEYS:
+            continue
         if value is None:
             os.environ.pop(key, None)
         else:

@@ -3248,6 +3248,112 @@ select.text-input {
   padding-right: 4px;
 }
 
+/* Settings page split into sections. Two layouts selected by ``sidebarMode``
+   so the in-page navigation mirrors the user's app-wide nav preference:
+   ``tabs`` gets a horizontal pill bar above the panels (consistent with
+   the top-level sub-tabs); ``collapsible`` gets a vertical menu on the
+   left (macOS Settings idiom). */
+.settings-layout {
+  display: grid;
+  gap: var(--app-gap);
+  min-height: 0;
+}
+
+.settings-layout[data-mode="collapsible"] {
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+}
+
+.settings-layout[data-mode="tabs"] {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.settings-layout .settings-section-grid {
+  min-height: 0;
+}
+
+/* When only one section panel is showing (e.g. General = Appearance only)
+   let it consume the full width rather than leaving the 2-col grid's
+   second column empty. content-grid's 2-col default is still right for
+   sections with multiple panels (Storage, Providers). */
+.settings-layout[data-mode="collapsible"] .settings-section-grid:has(> .panel:only-child),
+.settings-layout[data-mode="tabs"] .settings-section-grid:has(> .panel:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-subtab-bar {
+  align-self: start;
+}
+
+.settings-side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.settings-side-nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 12px;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.settings-side-nav-button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-side-nav-button.active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.settings-side-nav-label {
+  font-weight: 500;
+}
+
+.settings-side-nav-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.settings-side-nav-button.active .settings-side-nav-hint {
+  opacity: 1;
+}
+
+/* Drop the side-menu column on narrow widths — the vertical menu eats
+   too much horizontal space when the workspace is already being squeezed,
+   so we stack it above the content instead. The 900px breakpoint matches
+   the one used elsewhere for content-grid to collapse to one column. */
+@media (max-width: 900px) {
+  .settings-layout[data-mode="collapsible"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-side-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    position: static;
+  }
+}
+
 .integration-card {
   border: 1px solid var(--border);
   border-radius: 12px;

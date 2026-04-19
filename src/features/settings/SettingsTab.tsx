@@ -1,4 +1,4 @@
-import type { SetStateAction } from "react";
+import { useState, type SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
@@ -28,6 +28,43 @@ export interface SettingsTabProps {
   onSidebarModeChange: (mode: SidebarMode) => void;
 }
 
+// The Settings page used to be one long stack of seven panels — Appearance,
+// Data Directory, Delivery Folders, Model Directories, Remote Providers,
+// Hugging Face, and Integrations — which felt squished on the 2-column grid
+// and forced users to scroll past unrelated controls to reach the one they
+// wanted. We now group those panels into four logical sections and let the
+// user navigate between them. The navigation style mirrors the user's
+// existing ``sidebarMode`` preference: tabs mode → horizontal pill bar
+// across the top (matches the rest of the app's tab UX); collapsible mode
+// → vertical menu down the left (the macOS / iOS Settings idiom). Either
+// way, only one section's panels render at a time.
+type SettingsSectionId = "general" | "storage" | "providers" | "integrations";
+
+interface SettingsSectionDef {
+  id: SettingsSectionId;
+  label: string;
+  hint: string;
+}
+
+const SETTINGS_SECTIONS: SettingsSectionDef[] = [
+  { id: "general", label: "General", hint: "Appearance" },
+  {
+    id: "storage",
+    label: "Storage",
+    hint: "Data, delivery folders, model directories",
+  },
+  {
+    id: "providers",
+    label: "Providers",
+    hint: "Remote providers and Hugging Face token",
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    hint: "Connect external tools",
+  },
+];
+
 export function SettingsTab({
   settingsDraft,
   onSettingsDraftChange,
@@ -53,40 +90,49 @@ export function SettingsTab({
   onSidebarModeChange,
 }: SettingsTabProps) {
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
-  return (
-    <div className="content-grid">
-      <Panel
-        title="Appearance"
-        subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
-      >
-        <div className="control-stack">
-          <div className="segmented" role="radiogroup" aria-label="Sidebar style">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={sidebarMode === "collapsible"}
-              className={sidebarMode === "collapsible" ? "segment active" : "segment"}
-              onClick={() => onSidebarModeChange("collapsible")}
-            >
-              Collapsible
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={sidebarMode === "tabs"}
-              className={sidebarMode === "tabs" ? "segment active" : "segment"}
-              onClick={() => onSidebarModeChange("tabs")}
-            >
-              Tabs
-            </button>
-          </div>
-          <p className="help-text">
-            <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
-            destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
-            to their last-used tab, with a sub-tab bar above the content.
-          </p>
+  // Section selection lives in component state because it's purely a UI
+  // concern — there's no need to thread it through the App-level workspace
+  // or persist it across reloads (the user lands on "General" each time,
+  // which matches the macOS Settings idiom of opening to the first pane).
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
+
+  const generalPanels = (
+    <Panel
+      title="Appearance"
+      subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
+    >
+      <div className="control-stack">
+        <div className="segmented" role="radiogroup" aria-label="Sidebar style">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={sidebarMode === "collapsible"}
+            className={sidebarMode === "collapsible" ? "segment active" : "segment"}
+            onClick={() => onSidebarModeChange("collapsible")}
+          >
+            Collapsible
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={sidebarMode === "tabs"}
+            className={sidebarMode === "tabs" ? "segment active" : "segment"}
+            onClick={() => onSidebarModeChange("tabs")}
+          >
+            Tabs
+          </button>
         </div>
-      </Panel>
+        <p className="help-text">
+          <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
+          destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
+          to their last-used tab, with a sub-tab bar above the content.
+        </p>
+      </div>
+    </Panel>
+  );
+
+  const storagePanels = (
+    <>
       <Panel
         title="Data Directory"
         subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
@@ -248,7 +294,11 @@ export function SettingsTab({
           </div>
         </div>
       </Panel>
+    </>
+  );
 
+  const providerPanels = (
+    <>
       <Panel
         title="Remote Providers"
         subtitle="Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions."
@@ -370,35 +420,101 @@ export function SettingsTab({
           </p>
         </div>
       </Panel>
+    </>
+  );
 
-      <Panel
-        title="Integrations"
-        subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
-        className="settings-integrations-panel"
-      >
-        <div className="control-stack">
-          <p className="muted-text">
-            Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on{" "}
-            <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
-          </p>
-          {[
-            { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
-            { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
-            { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: ${integrationApiToken}\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
-            { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=${integrationApiToken}` },
-          ].map((item) => (
-            <div key={item.name} className="integration-card">
-              <div className="integration-card-header">
-                <strong>{item.name}</strong>
-                <button className="secondary-button" type="button" onClick={() => onCopyText(item.config)}>
-                  Copy
-                </button>
-              </div>
-              <pre className="integration-snippet">{item.config}</pre>
+  const integrationPanels = (
+    <Panel
+      title="Integrations"
+      subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
+      className="settings-integrations-panel"
+    >
+      <div className="control-stack">
+        <p className="muted-text">
+          Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on{" "}
+          <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
+        </p>
+        {[
+          { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
+          { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
+          { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: ${integrationApiToken}\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
+          { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=${integrationApiToken}` },
+        ].map((item) => (
+          <div key={item.name} className="integration-card">
+            <div className="integration-card-header">
+              <strong>{item.name}</strong>
+              <button className="secondary-button" type="button" onClick={() => onCopyText(item.config)}>
+                Copy
+              </button>
             </div>
-          ))}
+            <pre className="integration-snippet">{item.config}</pre>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+
+  // Keep this dispatch exhaustive — TypeScript's ``SettingsSectionId``
+  // discriminant makes it a compile error to forget a branch when we add a
+  // new section.
+  const sectionContent =
+    activeSection === "general"
+      ? generalPanels
+      : activeSection === "storage"
+        ? storagePanels
+        : activeSection === "providers"
+          ? providerPanels
+          : integrationPanels;
+
+  // The two layouts share the same list-of-buttons logic but pick different
+  // shell elements / class names so they slot into the rest of the app's
+  // styling. Tabs mode reuses ``.subtab-bar`` (same look as the top-level
+  // sub-tabs) so a user who flipped to tabs gets a consistent UX top to
+  // bottom. Collapsible mode uses a vertical aside so the right column has
+  // room for content-grid's two-column panel layout.
+  const navButtons = SETTINGS_SECTIONS.map((section) => {
+    const isActive = section.id === activeSection;
+    if (sidebarMode === "tabs") {
+      return (
+        <button
+          key={section.id}
+          type="button"
+          role="tab"
+          aria-selected={isActive}
+          className={isActive ? "subtab active" : "subtab"}
+          onClick={() => setActiveSection(section.id)}
+        >
+          {section.label}
+        </button>
+      );
+    }
+    return (
+      <button
+        key={section.id}
+        type="button"
+        role="tab"
+        aria-selected={isActive}
+        className={isActive ? "settings-side-nav-button active" : "settings-side-nav-button"}
+        onClick={() => setActiveSection(section.id)}
+      >
+        <span className="settings-side-nav-label">{section.label}</span>
+        <span className="settings-side-nav-hint">{section.hint}</span>
+      </button>
+    );
+  });
+
+  return (
+    <div className="settings-layout" data-mode={sidebarMode}>
+      {sidebarMode === "tabs" ? (
+        <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
+          {navButtons}
         </div>
-      </Panel>
+      ) : (
+        <aside className="settings-side-nav" role="tablist" aria-label="Settings sections">
+          {navButtons}
+        </aside>
+      )}
+      <div className="content-grid settings-section-grid">{sectionContent}</div>
     </div>
   );
 }

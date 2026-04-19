@@ -82,123 +82,155 @@ export function SettingsTab({
   // which matches the macOS Settings idiom of opening to the first pane).
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
 
+  // Resolve the effective paths for the delivery folders so we can show the
+  // real value in each input rather than a placeholder-flavoured hint. The
+  // frontend doesn't expand ``~`` — we leave that for the backend — so the
+  // user sees the same shape the backend prints in logs. When the user
+  // hasn't set an override we mark the row with a small "default" tag so
+  // it's unambiguous whether the path is inherited or explicit.
+  const effectiveDataDirectory = settingsDraft.dataDirectory || "~/.chaosengine";
+  const imagesOutputsOverride = (settingsDraft.imageOutputsDirectory ?? "").trim();
+  const videosOutputsOverride = (settingsDraft.videoOutputsDirectory ?? "").trim();
+  const effectiveImagesOutputs = imagesOutputsOverride || `${effectiveDataDirectory}/images/outputs`;
+  const effectiveVideosOutputs = videosOutputsOverride || `${effectiveDataDirectory}/videos/outputs`;
+
   const generalPanels = (
-    <Panel
-      title="Appearance"
-      subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
-    >
-      <div className="control-stack">
-        <div className="segmented" role="radiogroup" aria-label="Sidebar style">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={sidebarMode === "collapsible"}
-            className={sidebarMode === "collapsible" ? "segment active" : "segment"}
-            onClick={() => onSidebarModeChange("collapsible")}
-          >
-            Collapsible
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={sidebarMode === "tabs"}
-            className={sidebarMode === "tabs" ? "segment active" : "segment"}
-            onClick={() => onSidebarModeChange("tabs")}
-          >
-            Tabs
-          </button>
+    <div className="content-grid settings-section-grid">
+      <Panel
+        title="Appearance"
+        subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
+      >
+        <div className="control-stack">
+          <div className="segmented" role="radiogroup" aria-label="Sidebar style">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarMode === "collapsible"}
+              className={sidebarMode === "collapsible" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("collapsible")}
+            >
+              Collapsible
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarMode === "tabs"}
+              className={sidebarMode === "tabs" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("tabs")}
+            >
+              Tabs
+            </button>
+          </div>
+          <p className="help-text">
+            <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
+            destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
+            to their last-used tab, with a sub-tab bar above the content.
+          </p>
         </div>
-        <p className="help-text">
-          <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
-          destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
-          to their last-used tab, with a sub-tab bar above the content.
-        </p>
-      </div>
-    </Panel>
+      </Panel>
+    </div>
   );
 
+  // Show a "default" badge beside the path when the user hasn't set an
+  // override so it's unambiguous whether the row is inherited from the data
+  // directory or explicit. The data directory itself also gets a default
+  // marker when it's empty (the fallback path is shown in the input).
+  const dataDirectoryIsDefault = !settingsDraft.dataDirectory?.trim();
+  const imagesOutputsIsDefault = !imagesOutputsOverride;
+  const videosOutputsIsDefault = !videosOutputsOverride;
+
   const storagePanels = (
-    <>
-      <Panel
-        title="Data Directory"
-        subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
-      >
-        <div className="control-stack">
-          <div className="directory-add-row">
-            <input
-              className="text-input directory-add-path mono-text"
-              type="text"
-              readOnly
-              value={settingsDraft.dataDirectory || "~/.chaosengine"}
-            />
-            <button className="secondary-button" type="button" onClick={() => void onPickDataDirectory()}>
-              Browse...
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => onSettingsDraftChange((current) => ({ ...current, dataDirectory: "" }))}
-            >
-              Reset to default
-            </button>
+    <div className="settings-storage-grid">
+      <div className="settings-storage-col">
+        <Panel
+          title="Data Directory"
+          subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
+        >
+          <div className="control-stack">
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveDataDirectory}
+              />
+              {dataDirectoryIsDefault ? <span className="badge muted">default</span> : null}
+              <button className="secondary-button" type="button" onClick={() => void onPickDataDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={dataDirectoryIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, dataDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <p className="help-text">
+              Changes take effect after the backend restarts. Existing data will be copied to the new location; the
+              old files are left in place.
+            </p>
           </div>
-          <p className="help-text">
-            Changes take effect after the backend restarts. Existing data will be copied to the new location; the
-            old files are left in place.
-          </p>
-        </div>
-      </Panel>
-      <Panel
-        title="Delivery Folders"
-        subtitle="Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD."
-      >
-        <div className="control-stack">
-          <label className="field-label">Images</label>
-          <div className="directory-add-row">
-            <input
-              className="text-input directory-add-path mono-text"
-              type="text"
-              readOnly
-              placeholder="Default: {data directory}/images/outputs"
-              value={settingsDraft.imageOutputsDirectory || ""}
-            />
-            <button className="secondary-button" type="button" onClick={() => void onPickImageOutputsDirectory()}>
-              Browse...
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => onSettingsDraftChange((current) => ({ ...current, imageOutputsDirectory: "" }))}
-            >
-              Reset to default
-            </button>
+        </Panel>
+        <Panel
+          title="Delivery Folders"
+          subtitle="Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD."
+        >
+          <div className="control-stack">
+            <div className="field-label-row">
+              <label className="field-label">Images</label>
+              {imagesOutputsIsDefault ? <span className="badge muted">default</span> : null}
+            </div>
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveImagesOutputs}
+              />
+              <button className="secondary-button" type="button" onClick={() => void onPickImageOutputsDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={imagesOutputsIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, imageOutputsDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <div className="field-label-row">
+              <label className="field-label">Videos</label>
+              {videosOutputsIsDefault ? <span className="badge muted">default</span> : null}
+            </div>
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveVideosOutputs}
+              />
+              <button className="secondary-button" type="button" onClick={() => void onPickVideoOutputsDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={videosOutputsIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, videoOutputsDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <p className="help-text">
+              New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where
+              they were written. Reset returns the row to the default under the Data Directory.
+            </p>
           </div>
-          <label className="field-label">Videos</label>
-          <div className="directory-add-row">
-            <input
-              className="text-input directory-add-path mono-text"
-              type="text"
-              readOnly
-              placeholder="Default: {data directory}/videos/outputs"
-              value={settingsDraft.videoOutputsDirectory || ""}
-            />
-            <button className="secondary-button" type="button" onClick={() => void onPickVideoOutputsDirectory()}>
-              Browse...
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => onSettingsDraftChange((current) => ({ ...current, videoOutputsDirectory: "" }))}
-            >
-              Reset to default
-            </button>
-          </div>
-          <p className="help-text">
-            New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where
-            they were written. Leave blank to use the default under the Data Directory.
-          </p>
-        </div>
-      </Panel>
+        </Panel>
+      </div>
       <Panel
         title="Model Directories"
         subtitle="Add the folders ChaosEngineAI should scan for local models, including custom, Ollama, LM Studio, or shared model paths."
@@ -280,11 +312,11 @@ export function SettingsTab({
           </div>
         </div>
       </Panel>
-    </>
+    </div>
   );
 
   const providerPanels = (
-    <>
+    <div className="content-grid settings-section-grid">
       <Panel
         title="Remote Providers"
         subtitle="Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions."
@@ -406,38 +438,40 @@ export function SettingsTab({
           </p>
         </div>
       </Panel>
-    </>
+    </div>
   );
 
   const integrationPanels = (
-    <Panel
-      title="Integrations"
-      subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
-      className="settings-integrations-panel"
-    >
-      <div className="control-stack">
-        <p className="muted-text">
-          Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on{" "}
-          <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
-        </p>
-        {[
-          { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
-          { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
-          { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: ${integrationApiToken}\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
-          { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=${integrationApiToken}` },
-        ].map((item) => (
-          <div key={item.name} className="integration-card">
-            <div className="integration-card-header">
-              <strong>{item.name}</strong>
-              <button className="secondary-button" type="button" onClick={() => onCopyText(item.config)}>
-                Copy
-              </button>
+    <div className="content-grid settings-section-grid">
+      <Panel
+        title="Integrations"
+        subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
+        className="settings-integrations-panel"
+      >
+        <div className="control-stack">
+          <p className="muted-text">
+            Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on{" "}
+            <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
+          </p>
+          {[
+            { name: "Continue.dev (VS Code)", config: `{\n  "models": [{\n    "title": "ChaosEngineAI",\n    "provider": "openai",\n    "model": "${loadedModelName ?? "current-model"}",\n    "apiBase": "${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}",\n    "apiKey": "${integrationApiToken}"\n  }]\n}` },
+            { name: "Goose", config: `# In ~/.config/goose/config.yaml\nGOOSE_PROVIDER: openai\nGOOSE_MODEL: ${loadedModelName ?? "current-model"}\nOPENAI_BASE_URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nOPENAI_API_KEY: ${integrationApiToken}` },
+            { name: "Cursor", config: `1. Settings → Models → Add Model\n2. OpenAI API Key: ${integrationApiToken}\n3. Override OpenAI Base URL: ${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\n4. Add custom model: ${loadedModelName ?? "current-model"}` },
+            { name: "Claude Code (via OpenAI proxy)", config: `# Set environment variables before running claude\nexport ANTHROPIC_BASE_URL=${serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}\nexport ANTHROPIC_AUTH_TOKEN=${integrationApiToken}` },
+          ].map((item) => (
+            <div key={item.name} className="integration-card">
+              <div className="integration-card-header">
+                <strong>{item.name}</strong>
+                <button className="secondary-button" type="button" onClick={() => onCopyText(item.config)}>
+                  Copy
+                </button>
+              </div>
+              <pre className="integration-snippet">{item.config}</pre>
             </div>
-            <pre className="integration-snippet">{item.config}</pre>
-          </div>
-        ))}
-      </div>
-    </Panel>
+          ))}
+        </div>
+      </Panel>
+    </div>
   );
 
   // Keep this dispatch exhaustive — TypeScript's ``SettingsSectionId``
@@ -458,6 +492,12 @@ export function SettingsTab({
   // app-wide ``sidebarMode`` preference still controls the top-level
   // sidebar, but Settings always uses tabs regardless; the hint line on
   // each section lives in the panel subtitles instead.
+  //
+  // The inner body is a bare ``settings-content`` frame — each section
+  // brings its own grid wrapper. That lets Storage use a 2-column layout
+  // that stacks Data + Delivery on the left and gives Model Directories
+  // the full right column to breathe, while Providers and Integrations
+  // keep the standard 2-col ``content-grid``.
   return (
     <div className="settings-layout">
       <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
@@ -477,7 +517,7 @@ export function SettingsTab({
           );
         })}
       </div>
-      <div className="content-grid settings-section-grid">{sectionContent}</div>
+      <div className="settings-content">{sectionContent}</div>
     </div>
   );
 }

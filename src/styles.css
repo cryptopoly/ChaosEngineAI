@@ -3250,12 +3250,27 @@ select.text-input {
 
 /* Settings page split into sections, navigated via the same horizontal
    ``.subtab-bar`` that the top-level tabs mode uses, so the look is
-   consistent. Only one section's panels render at a time; the panels
-   themselves stay on the existing ``.content-grid`` 2-col layout. */
+   consistent. Only one section's panels render at a time; each section
+   brings its own grid wrapper inside ``.settings-content`` so that
+   Storage can use a custom 2-col shape while Providers, Integrations,
+   and General stay on the default ``.content-grid``. */
 .settings-layout {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--app-gap);
+  min-height: 0;
+}
+
+.settings-content {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content > * {
+  flex: 1;
   min-height: 0;
 }
 
@@ -3266,13 +3281,46 @@ select.text-input {
 /* When only one section panel is showing (e.g. General = Appearance only)
    let it consume the full width rather than leaving the 2-col grid's
    second column empty. content-grid's 2-col default is still right for
-   sections with multiple panels (Storage, Providers). */
+   sections with multiple panels (Providers). */
 .settings-layout .settings-section-grid:has(> .panel:only-child) {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .settings-subtab-bar {
   align-self: start;
+}
+
+/* Storage section gets a bespoke 2-col layout: the left column stacks
+   the two small panels (Data Directory, Delivery Folders) so their
+   related "where files live" controls read as a group, and the right
+   column hands the full height to Model Directories so its scrollable
+   list has room to breathe. At narrow widths the grid falls back to a
+   single column (handled by the viewport breakpoint lower down). */
+.settings-layout .settings-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-gap);
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.settings-storage-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Pair a field label with an inline status badge (e.g. "default") on the
+   same baseline. The badge stays optional — when absent the label
+   renders on its own, unchanged. */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .integration-card {
@@ -4297,6 +4345,7 @@ select.text-input {
   .server-stat-grid,
   .compact-field-grid,
   .message-detail-grid,
+  .settings-storage-grid,
   .field-grid {
     grid-template-columns: 1fr;
   }

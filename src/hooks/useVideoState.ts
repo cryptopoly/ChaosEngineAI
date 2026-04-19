@@ -553,14 +553,32 @@ export function useVideoState(
   //
   // Diffusers can render frames without imageio, but exporting them as an mp4
   // needs both the `imageio` Python package and its `imageio-ffmpeg` plugin.
-  // The Video Studio calls this when it detects either is missing so the user
+  // Individual video pipelines also need pipeline-specific tokenizer packages
+  // (tiktoken for LTX-Video, sentencepiece for Wan/HunyuanVideo/CogVideoX).
+  // The Video Studio calls this when it detects any are missing so the user
   // can unstick things without dropping to a terminal.
-  async function handleInstallVideoOutputDeps(): Promise<InstallResult> {
-    setVideoBusyLabel("Installing mp4 encoder (imageio + imageio-ffmpeg)...");
+  //
+  // ``packages`` defaults to the mp4 pair for backwards compatibility with
+  // the original "Install mp4 encoder" button; the Studio passes an explicit
+  // list (sourced from the runtime's missingDependencies) for the generic
+  // "Install missing video dependencies" path.
+  async function handleInstallVideoOutputDeps(
+    packages?: readonly string[],
+  ): Promise<InstallResult> {
+    const targetPackages =
+      packages && packages.length > 0 ? Array.from(packages) : ["imageio", "imageio-ffmpeg"];
+    const isMp4Only =
+      targetPackages.length === 2
+      && targetPackages.includes("imageio")
+      && targetPackages.includes("imageio-ffmpeg");
+    const friendlyLabel = isMp4Only
+      ? "Installing mp4 encoder (imageio + imageio-ffmpeg)..."
+      : `Installing video runtime packages (${targetPackages.join(", ")})...`;
+    setVideoBusyLabel(friendlyLabel);
     const failures: string[] = [];
     let lastOutput = "";
     try {
-      for (const pkg of ["imageio", "imageio-ffmpeg"] as const) {
+      for (const pkg of targetPackages) {
         try {
           const result = await installPipPackage(pkg);
           lastOutput = result.output;
@@ -579,7 +597,10 @@ export function useVideoState(
         // keep the pre-install status if the probe itself fails
       }
       if (failures.length > 0) {
-        const message = `mp4 encoder install failed:\n${failures.join("\n")}`;
+        const failureSummary = isMp4Only
+          ? "mp4 encoder install failed"
+          : "Video runtime package install failed";
+        const message = `${failureSummary}:\n${failures.join("\n")}`;
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }

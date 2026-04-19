@@ -184,6 +184,26 @@ _VIDEO_OUTPUT_DEPS: tuple[tuple[str, str], ...] = (
 )
 
 
+# Packages individual video pipelines pull in lazily — only at preload or
+# generate time, depending on the tokenizer / text encoder. Diffusers itself
+# imports cleanly without them, so they don't block the runtime, but a user
+# who picks LTX-Video without ``tiktoken`` installed sees a runtime error
+# mid-generate. Surfacing them in the probe lets the Studio offer a one-
+# click install before the user wastes a slow preload.
+#
+# Coverage at the time of writing:
+# - tiktoken: LTX-Video's T5 tokenizer ships in tiktoken format.
+# - sentencepiece: Wan (UMT5-XXL), HunyuanVideo, CogVideoX, Mochi (T5).
+# - protobuf: required by the SentencePiece-based tokenizers HF loads.
+# - ftfy: text-prep utility some pipelines use during prompt encoding.
+_VIDEO_MODEL_DEPS: tuple[tuple[str, str], ...] = (
+    ("tiktoken", "tiktoken"),
+    ("sentencepiece", "sentencepiece"),
+    ("protobuf", "google.protobuf"),
+    ("ftfy", "ftfy"),
+)
+
+
 def _find_missing(deps: tuple[tuple[str, str], ...]) -> list[str]:
     return [package for package, module_name in deps if importlib.util.find_spec(module_name) is None]
 
@@ -211,10 +231,15 @@ class DiffusersVideoEngine:
     def probe(self) -> VideoRuntimeStatus:
         missing_core = _find_missing(_CORE_DEPS)
         missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
+        missing_model = _find_missing(_VIDEO_MODEL_DEPS)
 
         # All missing deps are reported so the UI can surface a clear install
         # hint, but only ``_CORE_DEPS`` block ``realGenerationAvailable``.
-        missing_all = missing_core + missing_output
+        # ``_VIDEO_MODEL_DEPS`` are pipeline-specific (tiktoken for LTX,
+        # sentencepiece for Wan/T5 etc.) — not all of them are needed for
+        # every model, but listing them lets the Studio install proactively.
+        missing_optional = missing_output + missing_model
+        missing_all = missing_core + missing_optional
 
         if missing_core:
             return VideoRuntimeStatus(
@@ -235,7 +260,7 @@ class DiffusersVideoEngine:
             return VideoRuntimeStatus(
                 activeEngine="placeholder",
                 realGenerationAvailable=False,
-                missingDependencies=["torch"] + missing_output,
+                missingDependencies=["torch"] + missing_optional,
                 pythonExecutable=_resolve_video_python(),
                 message=f"PyTorch could not be imported cleanly: {exc}",
                 loadedModelRepo=self._loaded_repo,
@@ -244,10 +269,21 @@ class DiffusersVideoEngine:
         device = self._detect_device(torch)
         device_memory_gb = _detect_device_memory_gb(device)
 
-        if missing_output:
+        if missing_output and missing_model:
+            message = (
+                "Video runtime is ready to load models, but mp4 encoding and tokenizer packages "
+                f"are missing — run `pip install {' '.join(missing_optional)}` before generating videos."
+            )
+        elif missing_output:
             message = (
                 "Video runtime is ready to load models, but mp4 encoding packages are missing — "
                 "run `pip install imageio imageio-ffmpeg` before generating videos."
+            )
+        elif missing_model:
+            message = (
+                "Video runtime is ready, but some models need tokenizer packages that are not "
+                f"installed: {', '.join(missing_model)}. Install them now and the affected "
+                "models will load on next preload."
             )
         else:
             message = (
@@ -260,7 +296,7 @@ class DiffusersVideoEngine:
             realGenerationAvailable=True,
             device=device,
             pythonExecutable=_resolve_video_python(),
-            missingDependencies=missing_output,
+            missingDependencies=missing_optional,
             message=message,
             loadedModelRepo=self._loaded_repo,
             deviceMemoryGb=device_memory_gb,

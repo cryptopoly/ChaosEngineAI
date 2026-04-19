@@ -27,6 +27,17 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # Studio surfaces a one-click installer when they're missing.
     "imageio": "imageio",
     "imageio-ffmpeg": "imageio-ffmpeg",
+    # Pipeline-specific tokenizer / text-encoder packages. Diffusers itself
+    # imports without them, but individual video pipelines need one or more
+    # at preload / generate time:
+    #   - tiktoken: LTX-Video's T5 tokenizer ships in tiktoken format.
+    #   - sentencepiece: Wan (UMT5-XXL), HunyuanVideo, CogVideoX, Mochi (T5).
+    #   - protobuf: SentencePiece tokenizers HF loads.
+    #   - ftfy: prompt-text preprocessing several pipelines use.
+    "tiktoken": "tiktoken",
+    "sentencepiece": "sentencepiece",
+    "protobuf": "protobuf",
+    "ftfy": "ftfy",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {

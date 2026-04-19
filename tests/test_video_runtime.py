@@ -25,26 +25,32 @@ from backend_service.video_runtime import (
 class ProbeTests(unittest.TestCase):
     def test_probe_flags_missing_core_deps_as_unavailable(self):
         engine = DiffusersVideoEngine()
-        # Simulate a machine with no diffusers/torch installed.
+        # Simulate a machine with no diffusers/torch installed. Three calls
+        # to ``_find_missing`` now: core, output, model-specific (tiktoken etc.).
         with mock.patch.object(
             video_runtime,
             "_find_missing",
-            side_effect=[["diffusers", "torch"], ["imageio", "imageio-ffmpeg"]],
+            side_effect=[
+                ["diffusers", "torch"],
+                ["imageio", "imageio-ffmpeg"],
+                ["tiktoken", "sentencepiece"],
+            ],
         ):
             status = engine.probe()
         self.assertIsInstance(status, VideoRuntimeStatus)
         self.assertFalse(status.realGenerationAvailable)
         self.assertEqual(status.activeEngine, "placeholder")
-        # All missing deps (core + output) surface in the list for a single
-        # clear install hint.
+        # All missing deps (core + output + model) surface in the list for a
+        # single clear install hint.
         self.assertIn("diffusers", status.missingDependencies)
         self.assertIn("torch", status.missingDependencies)
         self.assertIn("imageio", status.missingDependencies)
+        self.assertIn("tiktoken", status.missingDependencies)
 
     def test_probe_reports_ready_when_all_deps_and_torch_import_cleanly(self):
         engine = DiffusersVideoEngine()
 
-        # Core deps present, output deps present.
+        # Core deps present, output deps present, model deps present.
         with mock.patch.object(video_runtime, "_find_missing", return_value=[]):
             status = engine.probe()
 
@@ -61,7 +67,8 @@ class ProbeTests(unittest.TestCase):
             "_find_missing",
             # First call: core deps — all present.
             # Second call: output deps — imageio missing.
-            side_effect=[[], ["imageio", "imageio-ffmpeg"]],
+            # Third call: model deps — all present.
+            side_effect=[[], ["imageio", "imageio-ffmpeg"], []],
         ):
             status = engine.probe()
 
@@ -69,6 +76,44 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(status.activeEngine, "diffusers")
         self.assertIn("imageio", status.missingDependencies)
         self.assertIn("mp4", status.message.lower())
+
+    def test_probe_reports_ready_but_warns_when_only_model_deps_missing(self):
+        """LTX-Video and friends need tiktoken / sentencepiece — surface them."""
+        engine = DiffusersVideoEngine()
+
+        with mock.patch.object(
+            video_runtime,
+            "_find_missing",
+            # Core present, output present, only model deps missing.
+            side_effect=[[], [], ["tiktoken"]],
+        ):
+            status = engine.probe()
+
+        self.assertTrue(status.realGenerationAvailable)
+        self.assertIn("tiktoken", status.missingDependencies)
+        # Message should mention tokenizer packages so the user knows why
+        # it's flagged even though the engine is "ready".
+        self.assertIn("tokenizer", status.message.lower())
+
+    def test_probe_lists_both_output_and_model_deps_when_both_missing(self):
+        """A fresh install often misses both buckets — surface them together."""
+        engine = DiffusersVideoEngine()
+
+        with mock.patch.object(
+            video_runtime,
+            "_find_missing",
+            side_effect=[
+                [],
+                ["imageio-ffmpeg"],
+                ["tiktoken", "sentencepiece"],
+            ],
+        ):
+            status = engine.probe()
+
+        self.assertTrue(status.realGenerationAvailable)
+        self.assertIn("imageio-ffmpeg", status.missingDependencies)
+        self.assertIn("tiktoken", status.missingDependencies)
+        self.assertIn("sentencepiece", status.missingDependencies)
 
 
 class PipelineRegistryTests(unittest.TestCase):
@@ -179,7 +224,7 @@ class VideoRuntimeManagerTests(unittest.TestCase):
         with mock.patch.object(
             video_runtime,
             "_find_missing",
-            side_effect=[["diffusers"], []],
+            side_effect=[["diffusers"], [], []],
         ):
             with self.assertRaises(RuntimeError) as ctx:
                 manager.preload("Lightricks/LTX-Video")
@@ -344,7 +389,7 @@ class VideoRuntimeManagerGenerateTests(unittest.TestCase):
         with mock.patch.object(
             video_runtime,
             "_find_missing",
-            side_effect=[["diffusers", "torch"], ["imageio"]],
+            side_effect=[["diffusers", "torch"], ["imageio"], []],
         ):
             with self.assertRaises(RuntimeError):
                 manager.generate(

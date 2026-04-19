@@ -61,8 +61,21 @@ export interface VideoStudioTabProps {
   onGenerateVideo: () => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
-  onInstallVideoOutputDeps: () => Promise<InstallResult>;
+  onInstallVideoOutputDeps: (packages?: readonly string[]) => Promise<InstallResult>;
 }
+
+// Pipeline-specific tokenizer / text-encoder packages that diffusers loads
+// lazily — surfaced by the runtime probe via missingDependencies. Mirrors
+// _VIDEO_MODEL_DEPS in backend_service/video_runtime.py so the Studio knows
+// which "missing dep" chips it can offer a one-click install for.
+const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
+  "imageio",
+  "imageio-ffmpeg",
+  "tiktoken",
+  "sentencepiece",
+  "protobuf",
+  "ftfy",
+]);
 
 // Numeric input handling that tolerates transient empty states during editing.
 // The naive pattern ``onChange={e => setValue(Number(e.target.value) || fallback)}``
@@ -149,13 +162,22 @@ export function VideoStudioTab({
   const missingDependencies = videoRuntimeStatus.missingDependencies ?? [];
   // imageio + imageio-ffmpeg are the two pip packages diffusers video
   // pipelines need to export mp4s. Everything else we surface as a badge;
-  // these two get a one-click install button instead because they're the
-  // thing that actually blocks "Generate video" from producing an output.
+  // these two get a dedicated install button because they're the thing that
+  // actually blocks "Generate video" from producing an output for ANY model.
   const mp4EncoderMissing = missingDependencies.some(
     (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
   );
+  // Tokenizer / text-encoder packages individual pipelines need lazily —
+  // tiktoken for LTX-Video, sentencepiece for Wan / HunyuanVideo / CogVideoX
+  // / Mochi, plus the protobuf + ftfy support libs. We list them out as a
+  // single "Install missing video dependencies" button so the user doesn't
+  // get a "tiktoken is required" mid-generate error after waiting on a long
+  // model preload.
+  const missingTokenizerDeps = missingDependencies.filter(
+    (dep) => KNOWN_INSTALLABLE_VIDEO_DEPS.has(dep) && dep !== "imageio" && dep !== "imageio-ffmpeg",
+  );
   const otherMissingDependencies = missingDependencies.filter(
-    (dep) => dep !== "imageio" && dep !== "imageio-ffmpeg",
+    (dep) => !KNOWN_INSTALLABLE_VIDEO_DEPS.has(dep),
   );
 
   async function handleInstallOutputDeps() {
@@ -163,6 +185,17 @@ export function VideoStudioTab({
     setInstallingOutputDeps(true);
     try {
       await onInstallVideoOutputDeps();
+    } finally {
+      setInstallingOutputDeps(false);
+    }
+  }
+
+  async function handleInstallTokenizerDeps() {
+    if (installingOutputDeps) return;
+    if (missingTokenizerDeps.length === 0) return;
+    setInstallingOutputDeps(true);
+    try {
+      await onInstallVideoOutputDeps(missingTokenizerDeps);
     } finally {
       setInstallingOutputDeps(false);
     }
@@ -360,6 +393,9 @@ export function VideoStudioTab({
             {mp4EncoderMissing ? (
               <span className="badge warning">mp4 encoder missing</span>
             ) : null}
+            {missingTokenizerDeps.map((dependency) => (
+              <span key={dependency} className="badge warning">{dependency} missing</span>
+            ))}
             {otherMissingDependencies.slice(0, 4).map((dependency) => (
               <span key={dependency} className="badge subtle">{dependency}</span>
             ))}
@@ -377,6 +413,25 @@ export function VideoStudioTab({
                 disabled={installingOutputDeps || !backendOnline}
               >
                 {installingOutputDeps ? "Installing..." : "Install mp4 encoder"}
+              </button>
+            </div>
+          ) : null}
+          {missingTokenizerDeps.length > 0 ? (
+            <div className="image-runtime-actions">
+              <p className="muted-text">
+                Some video models load tokenizer / text-encoder packages on demand. The
+                following are missing and would block generation: <strong>{missingTokenizerDeps.join(", ")}</strong>.
+                Install them now to avoid a mid-generate error.
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void handleInstallTokenizerDeps()}
+                disabled={installingOutputDeps || !backendOnline}
+              >
+                {installingOutputDeps
+                  ? "Installing..."
+                  : `Install ${missingTokenizerDeps.join(" + ")}`}
               </button>
             </div>
           ) : null}

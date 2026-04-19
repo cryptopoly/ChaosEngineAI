@@ -149,6 +149,35 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio"], "imageio")
         self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio-ffmpeg"], "imageio-ffmpeg")
 
+    def test_video_model_tokenizer_deps_are_whitelisted(self):
+        """LTX-Video / Wan / Hunyuan / CogVideoX need these tokenizer packages.
+
+        The Studio's "Install missing video dependencies" button targets these
+        exact keys; if the install allow-list drops them, the user gets a 400
+        and the button looks broken instead of unblocking generation.
+        """
+        from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+
+        for pkg in ("tiktoken", "sentencepiece", "protobuf", "ftfy"):
+            self.assertIn(
+                pkg,
+                _INSTALLABLE_PIP_PACKAGES,
+                f"{pkg} must be whitelisted so the Studio install button works",
+            )
+            self.assertEqual(_INSTALLABLE_PIP_PACKAGES[pkg], pkg)
+
+    def test_install_pip_accepts_tiktoken(self):
+        """LTX-Video's exact missing-dep error — the user-reported case."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(
+                returncode=0, stdout="Successfully installed tiktoken", stderr=""
+            )
+            resp = self.client.post("/api/setup/install-package", json={"package": "tiktoken"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("tiktoken", cmd)
+
     # ------------------------------------------------------------------
     # System package install
     # ------------------------------------------------------------------

@@ -214,7 +214,10 @@ class VideoRuntimeRouteTests(unittest.TestCase):
         with mock.patch.object(
             video_runtime_mod,
             "_find_missing",
-            side_effect=[["diffusers", "torch"], []],
+            # Three calls now: core, output, model-specific deps. The probe
+            # short-circuits on missing core deps but still asks the other
+            # two so they're surfaced in the install hint.
+            side_effect=[["diffusers", "torch"], [], []],
         ):
             runtime = self.client.get("/api/video/runtime").json()["runtime"]
         self.assertFalse(runtime["realGenerationAvailable"])

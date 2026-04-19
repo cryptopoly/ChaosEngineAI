@@ -39,8 +39,19 @@ node -e "const fs = require('fs'); const conf = JSON.parse(fs.readFileSync('src-
 Write-Host "==> Building Tauri app (NSIS installer)..."
 npx tauri build --bundles nsis
 
-# Restore tauri.conf.json
-git checkout src-tauri/tauri.conf.json 2>&1 | Out-Null
+# ── Restore tauri.conf.json ──────────────────────────────
+# ``git checkout`` writes "Updated 1 path from the index" to stderr even on
+# success. With $ErrorActionPreference = "Stop" set at the top of this
+# script, the ``2>&1 | Out-Null`` pattern wraps that stderr text as a
+# terminating NativeCommandError — crashing the build *after* the installer
+# is already produced. ``--quiet`` silences the success message and
+# ``2>$null`` discards anything else by file redirect (which bypasses
+# PowerShell's stream-wrapping logic). We still gate on $LASTEXITCODE so a
+# real git failure (working tree dirty etc.) surfaces as a build error.
+git checkout --quiet src-tauri/tauri.conf.json 2>$null
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to restore src-tauri/tauri.conf.json (git exit $LASTEXITCODE)"
+}
 
 Write-Host ""
 Write-Host "==> Build complete!"

@@ -29,6 +29,14 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.image_runtime import validate_local_diffusers_snapshot
+from backend_service.progress import (
+    PHASE_DECODING,
+    PHASE_DIFFUSING,
+    PHASE_ENCODING,
+    PHASE_LOADING,
+    PHASE_SAVING,
+    VIDEO_PROGRESS,
+)
 
 
 MAX_VIDEO_SEED = 2147483647
@@ -243,58 +251,80 @@ class DiffusersVideoEngine:
         (``_invoke_pipeline``, ``_encode_frames_to_mp4``) so tests can stub
         them without needing real 10+GB video weights on disk.
         """
-        # mp4 encoding needs imageio-ffmpeg. Check before we spend 60+ seconds
-        # doing a full generation we then can't save anywhere.
-        missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
-        if missing_output:
-            raise RuntimeError(
-                "Video generation requires the mp4 encoding packages: "
-                f"missing {', '.join(missing_output)}. "
-                "Run `pip install imageio imageio-ffmpeg` and retry."
-            )
-
-        pipeline = self._ensure_pipeline(config.repo)
-        torch = self._torch
-        if torch is None:
-            raise RuntimeError("PyTorch was not initialised for the video runtime.")
-
-        base_seed = _resolve_video_seed(config.seed)
-        # MPS generators don't seed the same way as CUDA/CPU — follow the
-        # diffusers docs and always build the generator on CPU for MPS.
-        generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
-        generator = torch.Generator(device=generator_device).manual_seed(base_seed)
-
-        kwargs = self._build_pipeline_kwargs(config, generator)
-
-        started = time.perf_counter()
-        frames = self._invoke_pipeline(pipeline, kwargs)
-        elapsed = max(0.1, time.perf_counter() - started)
-
-        if not frames:
-            raise RuntimeError(
-                f"The video pipeline returned zero frames for {config.repo}. "
-                "Try a smaller resolution or a different model."
-            )
-
-        mp4_bytes = self._encode_frames_to_mp4(frames, config.fps)
-        if not mp4_bytes:
-            raise RuntimeError(
-                "mp4 encoding produced an empty buffer. Check that imageio-ffmpeg is "
-                "installed and healthy — run `python -m imageio_ffmpeg` to verify."
-            )
-
-        return GeneratedVideo(
-            seed=base_seed,
-            bytes=mp4_bytes,
-            extension="mp4",
-            mimeType="video/mp4",
-            durationSeconds=round(elapsed, 2),
-            frameCount=len(frames),
-            fps=config.fps,
-            width=config.width,
-            height=config.height,
-            runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+        VIDEO_PROGRESS.begin(
+            run_label=self._format_run_label(config),
+            total_steps=max(1, int(config.steps)),
+            phase=PHASE_LOADING,
+            message=f"Preparing {config.modelName}",
         )
+        try:
+            # mp4 encoding needs imageio-ffmpeg. Check before we spend 60+ seconds
+            # doing a full generation we then can't save anywhere.
+            missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
+            if missing_output:
+                raise RuntimeError(
+                    "Video generation requires the mp4 encoding packages: "
+                    f"missing {', '.join(missing_output)}. "
+                    "Run `pip install imageio imageio-ffmpeg` and retry."
+                )
+
+            pipeline = self._ensure_pipeline(config.repo)
+            torch = self._torch
+            if torch is None:
+                raise RuntimeError("PyTorch was not initialised for the video runtime.")
+
+            VIDEO_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
+
+            base_seed = _resolve_video_seed(config.seed)
+            # MPS generators don't seed the same way as CUDA/CPU — follow the
+            # diffusers docs and always build the generator on CPU for MPS.
+            generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
+            generator = torch.Generator(device=generator_device).manual_seed(base_seed)
+
+            kwargs = self._build_pipeline_kwargs(config, generator)
+
+            VIDEO_PROGRESS.set_phase(
+                PHASE_DIFFUSING,
+                message=f"Diffusing {config.numFrames} frames",
+            )
+            VIDEO_PROGRESS.set_step(0, total=max(1, int(config.steps)))
+
+            started = time.perf_counter()
+            frames = self._invoke_pipeline(pipeline, kwargs)
+            elapsed = max(0.1, time.perf_counter() - started)
+
+            if not frames:
+                raise RuntimeError(
+                    f"The video pipeline returned zero frames for {config.repo}. "
+                    "Try a smaller resolution or a different model."
+                )
+
+            VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Encoding mp4")
+            mp4_bytes = self._encode_frames_to_mp4(frames, config.fps)
+            if not mp4_bytes:
+                raise RuntimeError(
+                    "mp4 encoding produced an empty buffer. Check that imageio-ffmpeg is "
+                    "installed and healthy — run `python -m imageio_ffmpeg` to verify."
+                )
+
+            VIDEO_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+            return GeneratedVideo(
+                seed=base_seed,
+                bytes=mp4_bytes,
+                extension="mp4",
+                mimeType="video/mp4",
+                durationSeconds=round(elapsed, 2),
+                frameCount=len(frames),
+                fps=config.fps,
+                width=config.width,
+                height=config.height,
+                runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+            )
+        finally:
+            VIDEO_PROGRESS.finish()
+
+    def _format_run_label(self, config: VideoGenerationConfig) -> str:
+        return f"{config.modelName} · {config.numFrames}f @ {config.width}x{config.height}"
 
     # ---------- internals ----------
 
@@ -331,14 +361,38 @@ class DiffusersVideoEngine:
         ``.frames`` attribute shaped like ``list[list[PIL.Image]]`` — one
         inner list per batch item. We only ever render batchSize=1, so
         we return ``result.frames[0]``.
+
+        Wires the diffusers per-step callback into ``VIDEO_PROGRESS`` so the
+        UI bar tracks denoising in real time. Falls back to a callback-free
+        invocation on older diffusers versions that don't expose the kwarg.
         """
+        total_steps = int(kwargs.get("num_inference_steps") or 0)
+
+        def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
+            VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+            return callback_kwargs
+
+        kwargs.setdefault("callback_on_step_end", _on_step_end)
+
         try:
             result = pipeline(**kwargs)
         except TypeError as exc:
-            # Some pipelines reject ``negative_prompt`` even when given a
-            # non-empty value. Fall back once without it rather than crashing
-            # the whole generation.
-            if "negative_prompt" in str(exc) and "negative_prompt" in kwargs:
+            message = str(exc)
+            # Older diffusers / pipelines that don't accept ``callback_on_step_end``.
+            if "callback_on_step_end" in message:
+                kwargs = {k: v for k, v in kwargs.items() if k != "callback_on_step_end"}
+                try:
+                    result = pipeline(**kwargs)
+                except TypeError as inner:
+                    if "negative_prompt" in str(inner) and "negative_prompt" in kwargs:
+                        kwargs = {k: v for k, v in kwargs.items() if k != "negative_prompt"}
+                        result = pipeline(**kwargs)
+                    else:
+                        raise
+            elif "negative_prompt" in message and "negative_prompt" in kwargs:
+                # Some pipelines reject ``negative_prompt`` even when given a
+                # non-empty value. Fall back once without it rather than crashing
+                # the whole generation.
                 kwargs = {key: value for key, value in kwargs.items() if key != "negative_prompt"}
                 result = pipeline(**kwargs)
             else:
@@ -422,6 +476,11 @@ class DiffusersVideoEngine:
         with self._lock:
             if self._pipeline is not None and self._loaded_repo == repo:
                 return self._pipeline
+
+            # Loading a video pipeline can read 10+ GB from disk on cold cache.
+            # Publish the phase so the UI explicitly says "Loading model" while
+            # snapshot_download + from_pretrained run.
+            VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=f"Loading {repo}")
 
             if self._pipeline is not None and self._loaded_repo != repo:
                 self._release_pipeline()

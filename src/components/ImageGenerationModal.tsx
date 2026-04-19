@@ -1,5 +1,6 @@
 import { LiveProgress, type LiveProgressPhase } from "./LiveProgress";
 import { number, findImageVariantById, formatImageTimestamp, formatImageAccessError, isGatedImageAccessError } from "../utils";
+import { useGenerationProgress } from "../hooks/useGenerationProgress";
 import type { ImageModelFamily, ImageModelVariant, ImageOutputArtifact, TabId } from "../types";
 
 export interface ImageGenerationRunInfo {
@@ -51,6 +52,11 @@ export function ImageGenerationModal({
   onRevealPath,
   onDeleteArtifact,
 }: ImageGenerationModalProps) {
+  // Hook ordering rule: react requires hooks to run in the same order on every
+  // render, so we always invoke ``useGenerationProgress`` even when the modal
+  // is hidden. The hook itself short-circuits when ``active`` is false.
+  const realProgress = useGenerationProgress("image", imageBusy && Boolean(imageGenerationStartedAt));
+
   if (!showImageGenerationModal) {
     return null;
   }
@@ -62,21 +68,26 @@ export function ImageGenerationModal({
   const activeArtifactNeedsGatedAccess = isGatedImageAccessError(activeArtifact?.runtimeNote);
   const steps = runInfo?.steps ?? imageSteps;
   const batch = runInfo?.batchSize ?? 1;
-  // Generous time estimates so the progress bar doesn't outrun the actual generation.
-  // Diffusion is the bottleneck: ~2-6s per step depending on model size and hardware.
+  // Estimates are now a *fallback* — when the backend tracker is publishing
+  // step counts, LiveProgress drives the bar from the real step / total. The
+  // estimates still anchor the per-phase widths for the proportional fill so
+  // diffusion doesn't visually consume the whole bar in one go.
   const diffuseEstimate = Math.max(30, Math.round(steps * 3 * batch));
+  // Phase IDs are the same strings the backend ProgressTracker publishes
+  // (loading / encoding / diffusing / decoding / saving) so LiveProgress can
+  // match them up with the real-time signal. Keep the labels human-friendly.
   const imagePhases: LiveProgressPhase[] = [
     ...(runInfo?.needsPipelineLoad
-      ? [{ id: "load", label: "Loading model into memory", estimatedSeconds: 30 }]
+      ? [{ id: "loading", label: "Loading model into memory", estimatedSeconds: 30 }]
       : []),
-    { id: "prompt", label: "Encoding prompt", estimatedSeconds: 5 },
+    { id: "encoding", label: "Encoding prompt", estimatedSeconds: 5 },
     {
-      id: "diffuse",
+      id: "diffusing",
       label: `Diffusing ${batch} image${batch > 1 ? "s" : ""}`,
       estimatedSeconds: diffuseEstimate,
     },
-    { id: "decode", label: "Decoding pixels", estimatedSeconds: 8 },
-    { id: "save", label: "Saving to output gallery", estimatedSeconds: 3 },
+    { id: "decoding", label: "Decoding pixels", estimatedSeconds: 8 },
+    { id: "saving", label: "Saving to output gallery", estimatedSeconds: 3 },
   ];
 
   return (
@@ -106,6 +117,7 @@ export function ImageGenerationModal({
               startedAt={imageGenerationStartedAt}
               accent="image"
               phases={imagePhases}
+              realProgress={realProgress}
             />
           ) : imageGenerationError ? (
             <div className="callout error">

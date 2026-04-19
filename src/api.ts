@@ -7,6 +7,7 @@ import type {
   ConvertModelPayload,
   ConvertModelResponse,
   CreateSessionResponse,
+  GenerationProgressSnapshot,
   GeneratePayload,
   GenerateResponse,
   HubFileListResponse,
@@ -310,6 +311,20 @@ export async function getImageRuntime(): Promise<ImageRuntimeStatus> {
   return result.runtime;
 }
 
+/**
+ * Polled by ImageGenerationModal while the bar is visible to override the
+ * client-side phase estimates with the runtime's actual phase / step count.
+ * Short timeout — if the backend is busy with the generation it can still
+ * answer this lightweight read in well under a second.
+ */
+export async function getImageGenerationProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
+    "/api/images/progress",
+    5000,
+  );
+  return result.progress;
+}
+
 export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
   return await fetchJson<VideoCatalogResponse>("/api/video/catalog", 25000);
 }
@@ -317,6 +332,15 @@ export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
 export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
   const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/runtime");
   return result.runtime;
+}
+
+/** Mirror of ``getImageGenerationProgress`` for the video runtime. */
+export async function getVideoGenerationProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
+    "/api/video/progress",
+    5000,
+  );
+  return result.progress;
 }
 
 export async function getCachePreview(options: {

@@ -27,6 +27,7 @@ from backend_service.models import (
     VideoRuntimePreloadRequest,
     VideoRuntimeUnloadRequest,
 )
+from backend_service.progress import VIDEO_PROGRESS
 
 
 router = APIRouter()
@@ -47,6 +48,17 @@ def video_runtime_status(request: Request) -> dict[str, Any]:
     """Report the live video runtime capability from diffusers + torch."""
     state = request.app.state.chaosengine
     return {"runtime": state.video_runtime.capabilities()}
+
+
+@router.get("/api/video/progress")
+def video_generation_progress() -> dict[str, Any]:
+    """Live progress snapshot for the in-flight video generation.
+
+    Same shape as ``/api/images/progress`` so the frontend can reuse the same
+    client code. Returns ``active=false`` when nothing is running so the UI
+    falls back to its estimate-driven view.
+    """
+    return {"progress": VIDEO_PROGRESS.snapshot()}
 
 
 @router.post("/api/video/preload")

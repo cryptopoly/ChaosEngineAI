@@ -14,6 +14,15 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from backend_service.progress import (
+    IMAGE_PROGRESS,
+    PHASE_DECODING,
+    PHASE_DIFFUSING,
+    PHASE_ENCODING,
+    PHASE_LOADING,
+    PHASE_SAVING,
+)
+
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 MAX_IMAGE_SEED = 2147483647
@@ -404,60 +413,118 @@ class DiffusersTextToImageEngine:
         )
 
     def generate(self, config: ImageGenerationConfig) -> list[GeneratedImage]:
-        pipeline = self._ensure_pipeline(config.repo)
-        torch = self._torch
-        if torch is None:
-            raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
-        generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
-        base_seed = _resolve_base_seed(config.seed)
-        generators = [
-            torch.Generator(device=generator_device).manual_seed(base_seed + index)
-            for index in range(config.batchSize)
-        ]
-
-        kwargs = self._build_pipeline_kwargs(config, generators if len(generators) > 1 else generators[0])
-        lowered_repo = config.repo.lower()
-        if "flux" in lowered_repo:
-            kwargs.pop("negative_prompt", None)
-            kwargs["num_inference_steps"] = min(config.steps, 8)
-        if "turbo" in lowered_repo:
-            kwargs["num_inference_steps"] = min(config.steps, 8)
-            kwargs["guidance_scale"] = min(config.guidance, 2.5)
-
-        started = time.perf_counter()
+        # Begin reporting progress before we touch the pipeline. ``_ensure_pipeline``
+        # publishes its own ``loading`` phase if it actually has to materialise
+        # the pipeline, but we still want a tracker entry from the moment the
+        # request lands so the UI's first poll has something to render.
+        IMAGE_PROGRESS.begin(
+            run_label=self._format_run_label(config),
+            total_steps=max(1, int(config.steps)),
+            phase=PHASE_LOADING,
+            message=f"Preparing {config.modelName}",
+        )
         try:
-            result = pipeline(**kwargs)
-        except TypeError:
-            kwargs.pop("negative_prompt", None)
-            result = pipeline(**kwargs)
-        elapsed = max(0.1, time.perf_counter() - started)
+            pipeline = self._ensure_pipeline(config.repo)
+            torch = self._torch
+            if torch is None:
+                raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
+            IMAGE_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
+            generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
+            base_seed = _resolve_base_seed(config.seed)
+            generators = [
+                torch.Generator(device=generator_device).manual_seed(base_seed + index)
+                for index in range(config.batchSize)
+            ]
 
-        artifacts: list[GeneratedImage] = []
-        for index, image in enumerate(getattr(result, "images", []) or []):
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-            if image.getbbox() is None:
-                raise RuntimeError(
-                    "The image runtime returned an all-black frame instead of a real image. "
-                    f"Model: {config.repo}. Device: {self._device or 'cpu'}. "
-                    "Try restarting the backend and generating again. If this keeps happening on Apple Silicon, "
-                    "the model likely needs a safer precision path."
-                )
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG", optimize=True)
-            artifacts.append(
-                GeneratedImage(
-                    seed=base_seed + index,
-                    bytes=buffer.getvalue(),
-                    extension="png",
-                    mimeType="image/png",
-                    durationSeconds=round(elapsed / max(1, config.batchSize), 1),
-                    runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
-                )
+            kwargs = self._build_pipeline_kwargs(config, generators if len(generators) > 1 else generators[0])
+            lowered_repo = config.repo.lower()
+            if "flux" in lowered_repo:
+                kwargs.pop("negative_prompt", None)
+                kwargs["num_inference_steps"] = min(config.steps, 8)
+            if "turbo" in lowered_repo:
+                kwargs["num_inference_steps"] = min(config.steps, 8)
+                kwargs["guidance_scale"] = min(config.guidance, 2.5)
+
+            # Wire the diffusers per-step callback so the UI sees the bar move
+            # in lockstep with denoising, which is the bulk of the wall time on
+            # most models. ``callback_on_step_end`` is the non-deprecated name
+            # in modern diffusers (>=0.27); some pipelines also accept the
+            # legacy ``callback`` arg, but we prefer the new one.
+            total_steps = int(kwargs.get("num_inference_steps", config.steps) or config.steps)
+            IMAGE_PROGRESS.set_phase(
+                PHASE_DIFFUSING,
+                message=self._diffuse_message(config),
             )
-        if not artifacts:
-            raise RuntimeError("Diffusers returned no images.")
-        return artifacts
+            # Re-publish the totalSteps in case ``num_inference_steps`` was
+            # clamped above (Flux/Turbo cap at 8).
+            IMAGE_PROGRESS.set_step(0, total=max(1, total_steps))
+
+            def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
+                # Diffusers calls this *after* step ``step`` finishes, so step
+                # 0 means "one step done". Convert to the 1-indexed value the
+                # UI wants to display.
+                IMAGE_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+                return callback_kwargs
+
+            kwargs.setdefault("callback_on_step_end", _on_step_end)
+
+            started = time.perf_counter()
+            try:
+                result = pipeline(**kwargs)
+            except TypeError as exc:
+                # Older diffusers versions don't accept ``callback_on_step_end``
+                # — drop it and retry once before bubbling the original error.
+                if "callback_on_step_end" in str(exc):
+                    kwargs.pop("callback_on_step_end", None)
+                    try:
+                        result = pipeline(**kwargs)
+                    except TypeError:
+                        kwargs.pop("negative_prompt", None)
+                        result = pipeline(**kwargs)
+                else:
+                    kwargs.pop("negative_prompt", None)
+                    result = pipeline(**kwargs)
+            elapsed = max(0.1, time.perf_counter() - started)
+
+            IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")
+
+            artifacts: list[GeneratedImage] = []
+            for index, image in enumerate(getattr(result, "images", []) or []):
+                if image.mode != "RGB":
+                    image = image.convert("RGB")
+                if image.getbbox() is None:
+                    raise RuntimeError(
+                        "The image runtime returned an all-black frame instead of a real image. "
+                        f"Model: {config.repo}. Device: {self._device or 'cpu'}. "
+                        "Try restarting the backend and generating again. If this keeps happening on Apple Silicon, "
+                        "the model likely needs a safer precision path."
+                    )
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG", optimize=True)
+                artifacts.append(
+                    GeneratedImage(
+                        seed=base_seed + index,
+                        bytes=buffer.getvalue(),
+                        extension="png",
+                        mimeType="image/png",
+                        durationSeconds=round(elapsed / max(1, config.batchSize), 1),
+                        runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                    )
+                )
+            if not artifacts:
+                raise RuntimeError("Diffusers returned no images.")
+            IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+            return artifacts
+        finally:
+            IMAGE_PROGRESS.finish()
+
+    def _diffuse_message(self, config: ImageGenerationConfig) -> str:
+        if config.batchSize > 1:
+            return f"Diffusing {config.batchSize} images"
+        return "Diffusing image"
+
+    def _format_run_label(self, config: ImageGenerationConfig) -> str:
+        return f"{config.modelName} · {config.width}x{config.height}"
 
     def preload(self, repo: str) -> ImageRuntimeStatus:
         self._ensure_pipeline(repo)
@@ -474,6 +541,11 @@ class DiffusersTextToImageEngine:
         with self._lock:
             if self._pipeline is not None and self._loaded_repo == repo:
                 return self._pipeline
+
+            # Loading a pipeline can take 10-60s on cold disk. Surface that
+            # explicitly to the UI so the progress bar stops sitting at 0%
+            # while we read 5GB of weights from the SSD.
+            IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=f"Loading {repo}")
 
             if self._pipeline is not None and self._loaded_repo != repo:
                 self._release_pipeline()

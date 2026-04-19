@@ -25,6 +25,7 @@ from backend_service.app import (
     _find_image_output,
     _delete_image_output,
 )
+from backend_service.progress import IMAGE_PROGRESS
 
 router = APIRouter()
 
@@ -43,6 +44,17 @@ def image_catalog(request: Request) -> dict[str, Any]:
 def image_runtime_status(request: Request) -> dict[str, Any]:
     state = request.app.state.chaosengine
     return {"runtime": state.image_runtime.capabilities()}
+
+
+@router.get("/api/images/progress")
+def image_generation_progress() -> dict[str, Any]:
+    """Live progress snapshot for the in-flight image generation.
+
+    Polled by the generation modal every ~500ms while the bar is visible.
+    When ``active`` is false the UI falls back to its own client-side
+    estimates rather than freezing the bar at 0%.
+    """
+    return {"progress": IMAGE_PROGRESS.snapshot()}
 
 
 @router.post("/api/images/preload")

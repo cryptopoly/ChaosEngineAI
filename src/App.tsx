@@ -14,6 +14,7 @@ import {
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
+import { VideoGenerationModal } from "./components/VideoGenerationModal";
 import { Sidebar } from "./components/Sidebar";
 import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
@@ -1804,6 +1805,19 @@ export default function App() {
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
+      />
+      <VideoGenerationModal
+        showVideoGenerationModal={videoState.showVideoGenerationModal}
+        videoBusy={videoState.videoBusy}
+        videoGenerationStartedAt={videoState.videoGenerationStartedAt}
+        videoGenerationError={videoState.videoGenerationError}
+        videoGenerationArtifact={videoState.videoGenerationArtifact}
+        videoGenerationRunInfo={videoState.videoGenerationRunInfo}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        onShowVideoGenerationModalChange={videoState.setShowVideoGenerationModal}
+        onActiveTabChange={setActiveTab}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onDeleteArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
       />
       {(() => {
         if (!detailFamilyId) return null;

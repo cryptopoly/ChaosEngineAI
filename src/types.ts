@@ -885,6 +885,25 @@ export interface ImageGenerationResponse {
   runtime?: ImageRuntimeStatus;
 }
 
+/**
+ * Live snapshot of the in-flight image / video generation as published by the
+ * backend ProgressTracker. ``active=false`` means nothing is running (or the
+ * runtime hasn't published a phase yet) and the UI should fall back to its
+ * client-side estimates.
+ */
+export interface GenerationProgressSnapshot {
+  kind: "image" | "video";
+  active: boolean;
+  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving";
+  message: string;
+  step: number;
+  totalSteps: number;
+  startedAt: number;
+  updatedAt: number;
+  elapsedSeconds: number;
+  runLabel: string | null;
+}
+
 export interface HubModel {
   id: string;
   repo: string;

@@ -82,6 +82,22 @@ export function useVideoState(
   const videoBusy = videoBusyLabel !== null;
   const [activeVideoDownloads, setActiveVideoDownloads] = useState<Record<string, DownloadStatus>>({});
   const [videoOutputs, setVideoOutputs] = useState<VideoOutputArtifact[]>([]);
+  // Modal state — mirrors useImageState's image-generation modal lifecycle.
+  // Opening the modal as soon as ``handleVideoGenerate`` runs lets the user
+  // watch the real-time progress bar instead of staring at the studio form
+  // wondering whether anything is happening for 60-300s.
+  const [showVideoGenerationModal, setShowVideoGenerationModal] = useState(false);
+  const [videoGenerationStartedAt, setVideoGenerationStartedAt] = useState<number | null>(null);
+  const [videoGenerationError, setVideoGenerationError] = useState<string | null>(null);
+  const [videoGenerationArtifact, setVideoGenerationArtifact] = useState<VideoOutputArtifact | null>(null);
+  const [videoGenerationRunInfo, setVideoGenerationRunInfo] = useState<{
+    modelName: string;
+    prompt: string;
+    numFrames: number;
+    fps: number;
+    steps: number;
+    needsPipelineLoad: boolean;
+  } | null>(null);
 
   // ── Computed values ─────────────────────────────────────────
   const videoVariants = flattenVideoVariants(videoCatalog);
@@ -357,6 +373,7 @@ export function useVideoState(
       8,
       Math.round((selectedVideoVariant.defaultDurationSeconds || 4) * estimatedFps),
     );
+    const requestedSteps = 50;
 
     const payload: VideoGenerationPayload = {
       modelId: selectedVideoVariant.id,
@@ -366,22 +383,49 @@ export function useVideoState(
       height: recommendedHeight,
       numFrames: estimatedFrames,
       fps: estimatedFps,
-      steps: 50,
+      steps: requestedSteps,
       guidance: 3.0,
       seed: parsedSeed,
     };
 
-    setVideoBusyLabel(`Generating ${estimatedFrames}-frame clip with ${selectedVideoVariant.name}...`);
+    // The pipeline is "loaded" when the runtime reports the same repo as
+    // currently selected. Anything else means we're paying the load cost on
+    // this generation, which the modal needs to know to show the right phases.
+    const willLoadPipeline =
+      videoRuntimeStatus.realGenerationAvailable
+      && videoRuntimeStatus.loadedModelRepo !== selectedVideoVariant.repo;
+
+    setShowVideoGenerationModal(true);
+    setVideoGenerationStartedAt(Date.now());
+    setVideoGenerationError(null);
+    setVideoGenerationArtifact(null);
+    setVideoGenerationRunInfo({
+      modelName: selectedVideoVariant.name,
+      prompt: trimmedPrompt,
+      numFrames: estimatedFrames,
+      fps: estimatedFps,
+      steps: requestedSteps,
+      needsPipelineLoad: willLoadPipeline,
+    });
+    setVideoBusyLabel(
+      willLoadPipeline
+        ? `Loading ${selectedVideoVariant.name} into memory...`
+        : `Generating ${estimatedFrames}-frame clip with ${selectedVideoVariant.name}...`,
+    );
     setError(null);
     try {
       const response = await generateVideo(payload);
       setVideoOutputs(response.outputs);
       if (response.runtime) setVideoRuntimeStatus(response.runtime);
-      setActiveTab("video-gallery");
+      setVideoGenerationArtifact(response.artifact);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Video generation failed.");
+      const message = err instanceof Error ? err.message : "Video generation failed.";
+      const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
+      setError(detail);
+      setVideoGenerationError(detail);
     } finally {
       setVideoBusyLabel(null);
+      setVideoGenerationStartedAt(null);
     }
   }
 
@@ -430,6 +474,15 @@ export function useVideoState(
     try {
       const { outputs } = await deleteVideoOutput(artifactId);
       setVideoOutputs(outputs);
+      // If the user just deleted the clip currently rendered in the modal,
+      // clear it. If the modal has nothing left to show and isn't busy,
+      // close it so we don't leave an empty shell on screen.
+      if (videoGenerationArtifact?.artifactId === artifactId) {
+        setVideoGenerationArtifact(null);
+        if (showVideoGenerationModal && !videoBusy) {
+          setShowVideoGenerationModal(false);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete video output.");
     }
@@ -466,6 +519,12 @@ export function useVideoState(
     setVideoRuntimeStatus,
     videoBusyLabel,
     videoBusy,
+    showVideoGenerationModal,
+    setShowVideoGenerationModal,
+    videoGenerationStartedAt,
+    videoGenerationError,
+    videoGenerationArtifact,
+    videoGenerationRunInfo,
     activeVideoDownloads,
     setActiveVideoDownloads,
     videoOutputs,

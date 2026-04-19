@@ -16,7 +16,7 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-from compression import CacheStrategy
+from cache_compression import CacheStrategy
 
 
 _REQUIRED_HOOKS = ("make_adaptive_cache", "apply_patch")

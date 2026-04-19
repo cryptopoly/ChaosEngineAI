@@ -61,7 +61,7 @@ function main() {
   pruneBundledProjectArtifacts();
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service", "compression"]) {
+  for (const relativePath of ["backend_service", "cache_compression"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
@@ -234,7 +234,7 @@ function validateBundledPythonPackages(pythonBinary) {
 function validateBundledProjectImports(pythonBinary) {
   const script = [
     "import json",
-    "from compression import registry",
+    "from cache_compression import registry",
     "print(json.dumps([entry['id'] for entry in registry.available()]))",
   ].join("\n");
 

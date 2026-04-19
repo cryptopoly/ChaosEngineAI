@@ -301,7 +301,7 @@ def _hf_repo_from_link(link: str | None) -> str | None:
 
 
 def _get_cache_strategies() -> list[dict[str, Any]]:
-    from compression import registry
+    from cache_compression import registry
     return registry.available()
 
 

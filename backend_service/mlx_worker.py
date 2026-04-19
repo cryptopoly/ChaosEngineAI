@@ -780,7 +780,7 @@ class WorkerState:
 
     def _make_cache(self) -> tuple[Any | None, str | None]:
         """Build the prompt cache for the active strategy. Returns (cache, note)."""
-        from compression import registry
+        from cache_compression import registry
         strategy = registry.get(self.cache_strategy)
         if strategy is None or self.cache_strategy == "native":
             return None, None

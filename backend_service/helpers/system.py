@@ -413,7 +413,7 @@ def _build_system_snapshot(app_version: str, app_started_at: float) -> dict[str,
     )
 
     def _get_cache_strategies():
-        from compression import registry
+        from cache_compression import registry
         return registry.available()
 
     def _get_dflash_info():

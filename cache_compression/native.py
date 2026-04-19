@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from compression import CacheStrategy
+from cache_compression import CacheStrategy
 
 
 class NativeStrategy(CacheStrategy):

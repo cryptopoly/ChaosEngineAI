@@ -1704,7 +1704,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         *fell_back_to_native* is ``True`` when pre-validation detected
         unsupported cache types and silently switched to f16.
         """
-        from compression import registry as _strategy_registry
+        from cache_compression import registry as _strategy_registry
         strategy = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
 
         binary = self._select_llama_binary(strategy)
@@ -1842,7 +1842,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         runtime_note = None
         actual_strategy = cache_strategy
         actual_fit = fit_model_in_memory
-        from compression import registry as _strategy_registry
+        from cache_compression import registry as _strategy_registry
         failed_strategy_name: str | None = None
 
         # Try the requested strategy first.  If it fails, try ChaosEngine

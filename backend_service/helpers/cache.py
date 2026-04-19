@@ -47,7 +47,7 @@ def compute_cache_preview(
     strategy: str = "native",
     build_system_snapshot=None,
 ) -> dict[str, Any]:
-    from compression import registry as _cache_registry
+    from cache_compression import registry as _cache_registry
 
     num_layers = max(1, num_layers)
     num_heads = max(1, num_heads)

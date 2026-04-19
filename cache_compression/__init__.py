@@ -164,7 +164,7 @@ class CacheStrategyRegistry:
             {
                 "id": "native",
                 "name": "Native f16",
-                "module": "compression.native",
+                "module": "cache_compression.native",
                 "class_name": "NativeStrategy",
                 "bit_range": None,
                 "default_bits": None,
@@ -174,7 +174,7 @@ class CacheStrategyRegistry:
             {
                 "id": "rotorquant",
                 "name": "RotorQuant",
-                "module": "compression.rotorquant",
+                "module": "cache_compression.rotorquant",
                 "class_name": "RotorQuantStrategy",
                 "bit_range": (3, 4),
                 "default_bits": 3,
@@ -184,7 +184,7 @@ class CacheStrategyRegistry:
             {
                 "id": "triattention",
                 "name": "TriAttention",
-                "module": "compression.triattention",
+                "module": "cache_compression.triattention",
                 "class_name": "TriAttentionStrategy",
                 "bit_range": (1, 4),
                 "default_bits": 3,
@@ -194,7 +194,7 @@ class CacheStrategyRegistry:
             {
                 "id": "turboquant",
                 "name": "TurboQuant",
-                "module": "compression.turboquant",
+                "module": "cache_compression.turboquant",
                 "class_name": "TurboQuantStrategy",
                 "bit_range": (1, 4),
                 "default_bits": 3,
@@ -204,7 +204,7 @@ class CacheStrategyRegistry:
             {
                 "id": "chaosengine",
                 "name": "ChaosEngine",
-                "module": "compression.chaosengine",
+                "module": "cache_compression.chaosengine",
                 "class_name": "ChaosEngineStrategy",
                 "bit_range": (2, 8),
                 "default_bits": 4,

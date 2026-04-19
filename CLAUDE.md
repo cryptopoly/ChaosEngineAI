@@ -7,7 +7,7 @@ ChaosEngineAI is a desktop AI inference app built with:
 - **Desktop shell**: Tauri (Rust) — `src-tauri/`
 - **Backend**: Python FastAPI sidecar — `backend_service/`
 - **Inference engines**: MLX (Apple Silicon), llama.cpp (GGUF), vLLM (CUDA)
-- **Cache strategies**: Pluggable compression via `compression/` registry
+- **Cache strategies**: Pluggable compression via `cache_compression/` registry
 
 ### Key Directories
 
@@ -19,7 +19,7 @@ ChaosEngineAI is a desktop AI inference app built with:
 | `backend_service/inference.py` | Core inference engine — model loading, binary routing, generation |
 | `backend_service/routes/` | API endpoints (14 route modules) |
 | `backend_service/helpers/` | System stats, settings, persistence, cache estimation |
-| `compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention) |
+| `cache_compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention). Renamed from `compression/` so it doesn't shadow Python 3.14's stdlib `compression` namespace package. |
 | `dflash/` | DFlash speculative decoding — draft model registry + availability detection |
 | `scripts/` | Build, install, and update scripts |
 | `tests/` | Python tests (pytest) |
@@ -82,7 +82,7 @@ Check for updates to external repos we build from or depend on:
 
 | Area | Test File(s) | Command |
 |------|-------------|---------|
-| Cache strategies (`compression/`) | `test_cache_strategies.py` | `pytest tests/test_cache_strategies.py -v` |
+| Cache strategies (`cache_compression/`) | `test_cache_strategies.py` | `pytest tests/test_cache_strategies.py -v` |
 | DFlash / speculative decoding | `test_dflash.py` | `pytest tests/test_dflash.py -v` |
 | Inference / llama.cpp / binary routing | `test_inference.py` | `pytest tests/test_inference.py -v` |
 | Setup routes / install endpoints | `test_setup_routes.py` | `pytest tests/test_setup_routes.py -v` |

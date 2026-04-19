@@ -51,7 +51,7 @@ def _parse_context_label(label: str | None) -> int | None:
 
 
 def _benchmark_label(model_name: str, *, cache_strategy: str, bits: int, fp16_layers: int, context_tokens: int) -> str:
-    from compression import registry as _strategy_registry
+    from cache_compression import registry as _strategy_registry
     strat = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
     cache_label = strat.label(bits, fp16_layers)
     return f"{model_name} / {cache_label} / {_context_label(context_tokens)} ctx"

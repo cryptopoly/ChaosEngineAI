@@ -51,4 +51,4 @@ testpaths = ["tests"]
 addopts = "--tb=short -q"
 
 [tool.setuptools.packages.find]
-include = ["backend_service*", "compression*", "dflash*"]
+include = ["backend_service*", "cache_compression*", "dflash*"]

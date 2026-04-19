@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from compression import registry as cache_registry
+from cache_compression import registry as cache_registry
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
 from backend_service.image_runtime import (

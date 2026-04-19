@@ -15,7 +15,7 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-from compression import CacheStrategy
+from cache_compression import CacheStrategy
 
 
 def _load_turboquant_module() -> Any | None:

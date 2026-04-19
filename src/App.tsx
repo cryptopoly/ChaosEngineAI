@@ -58,6 +58,8 @@ import {
   findVariantForReference,
   findLibraryItemForVariant,
   findCatalogVariantForLibraryItem,
+  estimateLibraryItemResidentGb,
+  estimateLibraryItemCompressedGb,
   libraryItemFormat,
   libraryItemQuantization,
   libraryItemBackend,
@@ -219,6 +221,8 @@ export default function App() {
       displayQuantization: libraryItemQuantization(item, matchedVariant),
       displayBackend: libraryItemBackend(item, matchedVariant),
       sourceKind: libraryItemSourceKind(item),
+      estimatedRamGb: estimateLibraryItemResidentGb(item, matchedVariant),
+      estimatedCompressedGb: estimateLibraryItemCompressedGb(item, matchedVariant),
     };
   });
   const filteredLibraryRows = libraryRows
@@ -234,8 +238,8 @@ export default function App() {
         case "format": return dir * left.displayFormat.localeCompare(right.displayFormat);
         case "backend": return dir * left.displayBackend.localeCompare(right.displayBackend);
         case "size": return dir * (left.item.sizeGb - right.item.sizeGb);
-        case "ram": return compareOptionalNumber(left.matchedVariant?.estimatedMemoryGb, right.matchedVariant?.estimatedMemoryGb, dir);
-        case "compressed": return compareOptionalNumber(left.matchedVariant?.estimatedCompressedMemoryGb, right.matchedVariant?.estimatedCompressedMemoryGb, dir);
+        case "ram": return compareOptionalNumber(left.estimatedRamGb, right.estimatedRamGb, dir);
+        case "compressed": return compareOptionalNumber(left.estimatedCompressedGb, right.estimatedCompressedGb, dir);
         case "context": { const lc = parseContextK(left.matchedVariant?.contextWindow); const rc = parseContextK(right.matchedVariant?.contextWindow); return dir * (lc - rc); }
         case "modified": default: return dir * left.item.lastModified.localeCompare(right.item.lastModified);
       }

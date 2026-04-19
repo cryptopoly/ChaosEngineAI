@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { findCatalogVariantForLibraryItem } from "../library";
+import {
+  estimateLibraryItemCompressedGb,
+  estimateLibraryItemResidentGb,
+  findCatalogVariantForLibraryItem,
+} from "../library";
 import type { LibraryItem, ModelFamily, ModelVariant } from "../../types";
 
 function makeVariant(overrides: Partial<ModelVariant> & { id: string; name: string; repo: string }): ModelVariant {
@@ -124,5 +128,89 @@ describe("findCatalogVariantForLibraryItem()", () => {
 
     const matched = findCatalogVariantForLibraryItem([makeFamily([qwen9, qwen35])], item);
     expect(matched?.id).toBe(qwen9.id);
+  });
+});
+
+describe("estimateLibraryItemResidentGb()", () => {
+  it("scales with actual on-disk size, not a stale catalog guess", () => {
+    const tiny = estimateLibraryItemResidentGb(makeItem({ name: "a", path: "/a", sizeGb: 0.9 }));
+    const small = estimateLibraryItemResidentGb(makeItem({ name: "b", path: "/b", sizeGb: 1.4 }));
+    const medium = estimateLibraryItemResidentGb(makeItem({ name: "c", path: "/c", sizeGb: 15.3 }));
+    const big = estimateLibraryItemResidentGb(makeItem({ name: "d", path: "/d", sizeGb: 67 }));
+
+    expect(tiny).not.toBeNull();
+    expect(small).not.toBeNull();
+    expect(medium).not.toBeNull();
+    expect(big).not.toBeNull();
+
+    // The broken behaviour before this fix: three differently-sized Qwen models
+    // all rendered as ~76.6 GB because they fell back to the catalog flagship.
+    // Now every size maps to a distinct estimate that tracks the disk footprint.
+    expect(tiny! < small!).toBe(true);
+    expect(small! < medium!).toBe(true);
+    expect(medium! < big!).toBe(true);
+  });
+
+  it("gives a sane ballpark for a typical 8B BF16 model", () => {
+    // 15.3 GB weights on disk. Resident with small KV + framework overhead
+    // should land in the mid-teens, not in the 70s.
+    const ram = estimateLibraryItemResidentGb(makeItem({
+      name: "Qwen3-8B",
+      path: "/hf/models--Qwen--Qwen3-8B",
+      sizeGb: 15.3,
+    }));
+    expect(ram).not.toBeNull();
+    expect(ram!).toBeGreaterThan(15);
+    expect(ram!).toBeLessThan(18);
+  });
+
+  it("gives a sane ballpark for a tiny 0.5B model", () => {
+    // 0.9 GB on disk should produce a sub-2 GB estimate, never the old 76.6 GB.
+    const ram = estimateLibraryItemResidentGb(makeItem({
+      name: "Qwen2.5-0.5B-Instruct",
+      path: "/hf/models--Qwen--Qwen2.5-0.5B-Instruct",
+      sizeGb: 0.9,
+    }));
+    expect(ram).not.toBeNull();
+    expect(ram!).toBeLessThan(2);
+  });
+
+  it("ignores non-positive or non-finite sizeGb and falls back to the catalog estimate", () => {
+    const matched = makeVariant({
+      id: "Qwen/Qwen3-8B",
+      name: "Qwen3 8B",
+      repo: "Qwen/Qwen3-8B",
+      paramsB: 8,
+      estimatedMemoryGb: 16,
+    });
+
+    expect(estimateLibraryItemResidentGb(makeItem({ name: "x", path: "/x", sizeGb: 0 }), matched)).toBe(16);
+    expect(estimateLibraryItemResidentGb(makeItem({ name: "x", path: "/x", sizeGb: -5 }), matched)).toBe(16);
+    expect(estimateLibraryItemResidentGb(makeItem({ name: "x", path: "/x", sizeGb: Number.NaN }), matched)).toBe(16);
+  });
+
+  it("returns null when both on-disk size and catalog fallback are missing", () => {
+    const ram = estimateLibraryItemResidentGb(makeItem({ name: "x", path: "/x", sizeGb: 0 }));
+    expect(ram).toBeNull();
+  });
+});
+
+describe("estimateLibraryItemCompressedGb()", () => {
+  it("is slightly below the uncompressed estimate at short contexts", () => {
+    const item = makeItem({ name: "Qwen3-8B", path: "/hf/qwen3-8b", sizeGb: 15.3 });
+    const uncompressed = estimateLibraryItemResidentGb(item)!;
+    const compressed = estimateLibraryItemCompressedGb(item)!;
+    expect(compressed).toBeLessThan(uncompressed);
+    // At 8K context the KV term is small; the delta should be small too — that's
+    // the honest signal that compression shows its value at long contexts.
+    expect(uncompressed - compressed).toBeLessThan(1);
+  });
+
+  it("scales with the on-disk size, same as uncompressed", () => {
+    const small = estimateLibraryItemCompressedGb(makeItem({ name: "a", path: "/a", sizeGb: 0.9 }));
+    const big = estimateLibraryItemCompressedGb(makeItem({ name: "b", path: "/b", sizeGb: 67 }));
+    expect(small).not.toBeNull();
+    expect(big).not.toBeNull();
+    expect(big! > small!).toBe(true);
   });
 });

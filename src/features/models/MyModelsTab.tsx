@@ -25,6 +25,8 @@ export interface LibraryRow {
   displayQuantization: string | null;
   displayBackend: string;
   sourceKind: string;
+  estimatedRamGb: number | null;
+  estimatedCompressedGb: number | null;
 }
 
 interface StrategyCompatInfo {
@@ -346,7 +348,7 @@ export function MyModelsTab({
               <span className="sort-header"></span>
             </div>
             <div className="library-rows">
-              {capFilteredLibrary.map(({ item, matchedVariant, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
+              {capFilteredLibrary.map(({ item, matchedVariant, displayFormat, displayQuantization, displayBackend, sourceKind, estimatedRamGb, estimatedCompressedGb }) => {
                 const isExpanded = expandedLibraryPath === item.path;
                 const repo = inferHfRepoFromLocalPath(item.path) ?? matchedVariant?.repo ?? (item.name.includes("/") ? item.name : null);
                 const row: LibraryRow = {
@@ -356,6 +358,8 @@ export function MyModelsTab({
                   displayQuantization,
                   displayBackend,
                   sourceKind,
+                  estimatedRamGb,
+                  estimatedCompressedGb,
                 };
                 const downloadState = repo
                   ? activeDownloads[repo] ?? inferredPartialDownload(row, repo)
@@ -413,8 +417,12 @@ export function MyModelsTab({
                       <span>{displayQuantization ?? "-"}</span>
                       <span>{displayBackend}</span>
                       <span>{sizeLabel(item.sizeGb)}</span>
-                      <span>{matchedVariant?.estimatedMemoryGb ? `~${number(matchedVariant.estimatedMemoryGb)}GB` : "?"}</span>
-                      <span>{matchedVariant?.estimatedCompressedMemoryGb ? `~${number(matchedVariant.estimatedCompressedMemoryGb)}GB` : "?"}</span>
+                      <span title="Rough resident memory at 8K context (weights + KV + framework)">
+                        {estimatedRamGb != null ? `~${number(estimatedRamGb)} GB` : "?"}
+                      </span>
+                      <span title="Rough resident memory with a compressed KV cache strategy">
+                        {estimatedCompressedGb != null ? `~${number(estimatedCompressedGb)} GB` : "?"}
+                      </span>
                       <span>{matchedVariant?.contextWindow ?? ""}</span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
                         {hasDownloadOverlay && repo ? (

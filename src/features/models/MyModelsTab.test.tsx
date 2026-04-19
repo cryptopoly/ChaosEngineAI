@@ -110,6 +110,8 @@ describe("MyModelsTab", () => {
       displayQuantization: "BF16",
       displayBackend: "mlx",
       sourceKind: "HF cache",
+      estimatedRamGb: null,
+      estimatedCompressedGb: null,
     };
 
     const markup = renderTab(row, {});
@@ -129,6 +131,8 @@ describe("MyModelsTab", () => {
       displayQuantization: "BF16",
       displayBackend: "mlx",
       sourceKind: "HF cache",
+      estimatedRamGb: null,
+      estimatedCompressedGb: null,
     };
 
     const markup = renderTab(row, {
@@ -158,6 +162,8 @@ describe("MyModelsTab", () => {
       displayQuantization: "BF16",
       displayBackend: "mlx",
       sourceKind: "HF cache",
+      estimatedRamGb: null,
+      estimatedCompressedGb: null,
     };
 
     const markup = renderTab(row, {});
@@ -185,6 +191,8 @@ describe("MyModelsTab", () => {
       displayQuantization: "Q4_K_S",
       displayBackend: "llama.cpp",
       sourceKind: "Directory",
+      estimatedRamGb: null,
+      estimatedCompressedGb: null,
     };
 
     const markup = renderTab(row, {

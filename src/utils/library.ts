@@ -147,3 +147,59 @@ export function findCatalogVariantForLibraryItem(families: ModelFamily[], item: 
   }
   return best && best.score >= 12 ? best.variant : null;
 }
+
+function roundGb(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * Estimate peak resident memory when this library item is loaded for inference.
+ *
+ * Prefers the on-disk size (ground truth — MLX, GGUF, and safetensors formats
+ * all store weights at their runtime precision) plus modest KV-cache and
+ * framework overheads sized for typical single-user desktop usage.
+ *
+ * Assumptions (deliberately rough — the Studio and Launch panels model
+ * specific workloads more precisely):
+ *  - Weights sit in memory at their stored precision. Size on disk ≈ resident weights.
+ *  - KV cache ≈ 4% of weights at an 8K context for a modern GQA model. Scale
+ *    linearly with chosen context length elsewhere.
+ *  - Framework overhead is small and largely size-invariant (~0.6 GB).
+ *
+ * Falls back to the matched catalog variant's estimate only when the on-disk
+ * size is unknown or zero.
+ */
+export function estimateLibraryItemResidentGb(
+  item: LibraryItem,
+  matchedVariant?: ModelVariant | null,
+): number | null {
+  const sizeGb = Number.isFinite(item.sizeGb) && item.sizeGb > 0 ? item.sizeGb : null;
+  if (sizeGb == null) {
+    const fallback = matchedVariant?.estimatedMemoryGb;
+    return fallback != null && Number.isFinite(fallback) ? fallback : null;
+  }
+  const kvCacheGb = sizeGb * 0.04;
+  const frameworkOverheadGb = 0.6;
+  return roundGb(sizeGb + kvCacheGb + frameworkOverheadGb);
+}
+
+/**
+ * Same baseline as estimateLibraryItemResidentGb but assumes a compressed KV
+ * cache strategy (ChaosEngine / TurboQuant / RotorQuant), which roughly halves
+ * the KV term. Weights and framework overhead are unchanged. At short contexts
+ * the delta against the uncompressed estimate is small by design — compression
+ * pays off at long contexts, which this column foreshadows.
+ */
+export function estimateLibraryItemCompressedGb(
+  item: LibraryItem,
+  matchedVariant?: ModelVariant | null,
+): number | null {
+  const sizeGb = Number.isFinite(item.sizeGb) && item.sizeGb > 0 ? item.sizeGb : null;
+  if (sizeGb == null) {
+    const fallback = matchedVariant?.estimatedCompressedMemoryGb;
+    return fallback != null && Number.isFinite(fallback) ? fallback : null;
+  }
+  const kvCacheGb = sizeGb * 0.04 * 0.5;
+  const frameworkOverheadGb = 0.6;
+  return roundGb(sizeGb + kvCacheGb + frameworkOverheadGb);
+}

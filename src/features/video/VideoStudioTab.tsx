@@ -63,6 +63,40 @@ export interface VideoStudioTabProps {
   onInstallVideoOutputDeps: () => Promise<InstallResult>;
 }
 
+// Numeric input handling that tolerates transient empty states during editing.
+// The naive pattern ``onChange={e => setValue(Number(e.target.value) || fallback)}``
+// treats an empty string as ``0`` and snaps back to the fallback — which means
+// the user can never delete the last digit of a value (they see the default
+// reappear). Instead we carry ``NaN`` as "user is mid-edit / field is empty",
+// render it as "" in the input, and on blur snap to the fallback if still
+// invalid. ``handleVideoGenerate`` + ``clampNumFrames`` defend against any
+// ``NaN`` that slips through to the payload.
+function onNumericChange(
+  event: React.ChangeEvent<HTMLInputElement>,
+  setter: (value: number) => void,
+): void {
+  const raw = event.target.value;
+  if (raw === "") {
+    setter(Number.NaN);
+    return;
+  }
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed)) setter(parsed);
+}
+
+function onNumericBlur(
+  current: number,
+  setter: (value: number) => void,
+  fallback: number,
+  minimum: number = 1,
+): void {
+  if (!Number.isFinite(current) || current < minimum) setter(fallback);
+}
+
+function displayNumber(value: number): number | string {
+  return Number.isFinite(value) ? value : "";
+}
+
 export function VideoStudioTab({
   videoCatalog,
   selectedVideoModelId,
@@ -180,18 +214,15 @@ export function VideoStudioTab({
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
   const hasPrompt = videoPrompt.trim().length > 0;
-  const generationDisabled =
-    !selectedVideoVariant
-    || !isDownloaded
-    || !videoRuntimeStatus.realGenerationAvailable
-    || !hasPrompt
-    || videoBusy
-    || !backendOnline;
   const generateButtonLabel =
     videoBusy && videoBusyLabel?.startsWith("Generating")
       ? videoBusyLabel
       : "Generate video";
-  const generateTitle = !selectedVideoVariant
+  // We compute the disable *reason* (not just the boolean) so the user can see
+  // inline why a previous failure might have left the button in a stuck state —
+  // the hover-only tooltip wasn't enough ("generate stays disabled after a Wan
+  // crash" bug report, April 2026). ``null`` means enabled.
+  const generateDisabledReason: string | null = !selectedVideoVariant
     ? "Choose a video model first."
     : !isDownloaded
       ? `${selectedVideoVariant.name} is not installed locally yet.`
@@ -203,7 +234,9 @@ export function VideoStudioTab({
             ? "Backend is offline."
             : videoBusy
               ? (videoBusyLabel ?? "Busy…")
-              : "Start generating this clip.";
+              : null;
+  const generateTitle = generateDisabledReason ?? "Start generating this clip.";
+  const generationDisabled = generateDisabledReason !== null;
 
   return (
     <div className="content-grid image-page-grid">
@@ -372,8 +405,9 @@ export function VideoStudioTab({
                 min={256}
                 max={2048}
                 step={64}
-                value={videoWidth}
-                onChange={(event) => onVideoWidthChange(Number(event.target.value) || 832)}
+                value={displayNumber(videoWidth)}
+                onChange={(event) => onNumericChange(event, onVideoWidthChange)}
+                onBlur={() => onNumericBlur(videoWidth, onVideoWidthChange, 832, 256)}
               />
             </label>
             <label>
@@ -384,8 +418,9 @@ export function VideoStudioTab({
                 min={256}
                 max={2048}
                 step={64}
-                value={videoHeight}
-                onChange={(event) => onVideoHeightChange(Number(event.target.value) || 480)}
+                value={displayNumber(videoHeight)}
+                onChange={(event) => onNumericChange(event, onVideoHeightChange)}
+                onBlur={() => onNumericBlur(videoHeight, onVideoHeightChange, 480, 256)}
               />
             </label>
             <label>
@@ -396,8 +431,9 @@ export function VideoStudioTab({
                 min={1}
                 max={257}
                 step={4}
-                value={videoNumFrames}
-                onChange={(event) => onVideoNumFramesChange(Number(event.target.value) || 33)}
+                value={displayNumber(videoNumFrames)}
+                onChange={(event) => onNumericChange(event, onVideoNumFramesChange)}
+                onBlur={() => onNumericBlur(videoNumFrames, onVideoNumFramesChange, 33)}
               />
             </label>
             <label>
@@ -407,8 +443,9 @@ export function VideoStudioTab({
                 type="number"
                 min={1}
                 max={60}
-                value={videoFps}
-                onChange={(event) => onVideoFpsChange(Number(event.target.value) || 24)}
+                value={displayNumber(videoFps)}
+                onChange={(event) => onNumericChange(event, onVideoFpsChange)}
+                onBlur={() => onNumericBlur(videoFps, onVideoFpsChange, 24)}
               />
             </label>
             <label>
@@ -418,8 +455,9 @@ export function VideoStudioTab({
                 type="number"
                 min={1}
                 max={100}
-                value={videoSteps}
-                onChange={(event) => onVideoStepsChange(Number(event.target.value) || 30)}
+                value={displayNumber(videoSteps)}
+                onChange={(event) => onNumericChange(event, onVideoStepsChange)}
+                onBlur={() => onNumericBlur(videoSteps, onVideoStepsChange, 30)}
               />
             </label>
             <label>
@@ -430,8 +468,9 @@ export function VideoStudioTab({
                 min={1}
                 max={20}
                 step={0.5}
-                value={videoGuidance}
-                onChange={(event) => onVideoGuidanceChange(Number(event.target.value) || 5)}
+                value={displayNumber(videoGuidance)}
+                onChange={(event) => onNumericChange(event, onVideoGuidanceChange)}
+                onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
               />
             </label>
           </div>
@@ -507,6 +546,17 @@ export function VideoStudioTab({
               </button>
             ) : null}
           </div>
+
+          {/*
+            Make the disable reason visible even when the user isn't hovering
+            the button. A failure-recovery flow that left the button stuck
+            (real bug, April 2026) was only diagnosable via the tooltip, which
+            is easy to miss — this turns the same string into an always-on
+            callout so the root cause is obvious at a glance.
+          */}
+          {generateDisabledReason && !videoBusy ? (
+            <p className="muted-text">Generate disabled: {generateDisabledReason}</p>
+          ) : null}
 
           {selectedVideoWillLoadOnGenerate ? (
             <p className="muted-text">

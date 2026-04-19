@@ -422,18 +422,33 @@ export function useVideoState(
     // a Wan-compatible value here as a defensive measure — the input field
     // already does this on change but a stale value (e.g. 50 from before the
     // snap landed) would otherwise reach the backend and trip its rounding
-    // warning.
+    // warning. We also guard against ``NaN`` on every numeric field because
+    // the Studio inputs now use ``NaN`` to represent "user is mid-edit / field
+    // is empty" — any NaN that reaches here must be replaced with a default
+    // so the backend doesn't see ``null`` in the JSON payload.
     const safeNumFrames = clampNumFrames(videoNumFrames);
-    const safeSteps = Math.max(1, Math.min(100, Math.round(videoSteps)));
-    const safeFps = Math.max(1, Math.min(60, Math.round(videoFps)));
-    const safeGuidance = Math.max(1, Math.min(20, videoGuidance));
+    const safeSteps = Number.isFinite(videoSteps)
+      ? Math.max(1, Math.min(100, Math.round(videoSteps)))
+      : DEFAULT_VIDEO_STEPS;
+    const safeFps = Number.isFinite(videoFps)
+      ? Math.max(1, Math.min(60, Math.round(videoFps)))
+      : DEFAULT_VIDEO_FPS;
+    const safeGuidance = Number.isFinite(videoGuidance)
+      ? Math.max(1, Math.min(20, videoGuidance))
+      : DEFAULT_VIDEO_GUIDANCE;
+    const safeWidth = Number.isFinite(videoWidth)
+      ? Math.max(256, Math.min(2048, Math.round(videoWidth)))
+      : 832;
+    const safeHeight = Number.isFinite(videoHeight)
+      ? Math.max(256, Math.min(2048, Math.round(videoHeight)))
+      : 480;
 
     const payload: VideoGenerationPayload = {
       modelId: selectedVideoVariant.id,
       prompt: trimmedPrompt,
       negativePrompt: videoNegativePrompt.trim() || undefined,
-      width: videoWidth,
-      height: videoHeight,
+      width: safeWidth,
+      height: safeHeight,
       numFrames: safeNumFrames,
       fps: safeFps,
       steps: safeSteps,
@@ -476,6 +491,12 @@ export function useVideoState(
       const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
       setError(detail);
       setVideoGenerationError(detail);
+      // Resync catalog + runtime in the background. A sidecar crash (e.g. the
+      // Wan 2.1 MPS assertion) can leave ``videoRuntimeStatus`` stale, which
+      // has been observed to leave the Studio's Generate button in a mystery
+      // disabled state after the user dismisses the failure modal. Refreshing
+      // restores a known-good view of what the backend actually reports now.
+      void refreshVideoData();
     } finally {
       setVideoBusyLabel(null);
       setVideoGenerationStartedAt(null);

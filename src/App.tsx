@@ -1447,6 +1447,18 @@ export default function App() {
         onVideoUseRandomSeedChange={videoState.setVideoUseRandomSeed}
         videoSeedInput={videoState.videoSeedInput}
         onVideoSeedInputChange={videoState.setVideoSeedInput}
+        videoWidth={videoState.videoWidth}
+        onVideoWidthChange={videoState.setVideoWidth}
+        videoHeight={videoState.videoHeight}
+        onVideoHeightChange={videoState.setVideoHeight}
+        videoNumFrames={videoState.videoNumFrames}
+        onVideoNumFramesChange={videoState.setVideoNumFrames}
+        videoFps={videoState.videoFps}
+        onVideoFpsChange={videoState.setVideoFps}
+        videoSteps={videoState.videoSteps}
+        onVideoStepsChange={videoState.setVideoSteps}
+        videoGuidance={videoState.videoGuidance}
+        onVideoGuidanceChange={videoState.setVideoGuidance}
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}

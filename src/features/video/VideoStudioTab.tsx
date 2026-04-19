@@ -41,6 +41,18 @@ export interface VideoStudioTabProps {
   onVideoUseRandomSeedChange: (value: boolean) => void;
   videoSeedInput: string;
   onVideoSeedInputChange: (value: string) => void;
+  videoWidth: number;
+  onVideoWidthChange: (value: number) => void;
+  videoHeight: number;
+  onVideoHeightChange: (value: number) => void;
+  videoNumFrames: number;
+  onVideoNumFramesChange: (value: number) => void;
+  videoFps: number;
+  onVideoFpsChange: (value: number) => void;
+  videoSteps: number;
+  onVideoStepsChange: (value: number) => void;
+  videoGuidance: number;
+  onVideoGuidanceChange: (value: number) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -77,6 +89,18 @@ export function VideoStudioTab({
   onVideoUseRandomSeedChange,
   videoSeedInput,
   onVideoSeedInputChange,
+  videoWidth,
+  onVideoWidthChange,
+  videoHeight,
+  onVideoHeightChange,
+  videoNumFrames,
+  onVideoNumFramesChange,
+  videoFps,
+  onVideoFpsChange,
+  videoSteps,
+  onVideoStepsChange,
+  videoGuidance,
+  onVideoGuidanceChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -325,6 +349,92 @@ export function VideoStudioTab({
               placeholder="Optional: things to avoid (low quality, watermark, etc.)"
             />
           </label>
+
+          {/*
+            Per-run knobs. We expose these because Wan 2.1 / LTX defaults at
+            full resolution + step count can detonate Apple Silicon's MPS
+            backend (the attention QK^T matrix scales with width × height ×
+            num_frames squared — a 73 GB allocation killed the sidecar at
+            832x480 × 96 frames × 50 steps during testing). Letting the user
+            dial down resolution / frames / steps is the only way to keep
+            consumer hardware in the safe envelope.
+
+            ``numFrames`` step is 4 because Wan-family pipelines require
+            ``(num_frames - 1) % 4 == 0``; the parent hook re-snaps on
+            generate as a defensive backstop.
+          */}
+          <div className="field-grid image-field-grid">
+            <label>
+              Width
+              <input
+                className="text-input"
+                type="number"
+                min={256}
+                max={2048}
+                step={64}
+                value={videoWidth}
+                onChange={(event) => onVideoWidthChange(Number(event.target.value) || 832)}
+              />
+            </label>
+            <label>
+              Height
+              <input
+                className="text-input"
+                type="number"
+                min={256}
+                max={2048}
+                step={64}
+                value={videoHeight}
+                onChange={(event) => onVideoHeightChange(Number(event.target.value) || 480)}
+              />
+            </label>
+            <label>
+              Frames
+              <input
+                className="text-input"
+                type="number"
+                min={1}
+                max={257}
+                step={4}
+                value={videoNumFrames}
+                onChange={(event) => onVideoNumFramesChange(Number(event.target.value) || 33)}
+              />
+            </label>
+            <label>
+              FPS
+              <input
+                className="text-input"
+                type="number"
+                min={1}
+                max={60}
+                value={videoFps}
+                onChange={(event) => onVideoFpsChange(Number(event.target.value) || 24)}
+              />
+            </label>
+            <label>
+              Steps
+              <input
+                className="text-input"
+                type="number"
+                min={1}
+                max={100}
+                value={videoSteps}
+                onChange={(event) => onVideoStepsChange(Number(event.target.value) || 30)}
+              />
+            </label>
+            <label>
+              Guidance
+              <input
+                className="text-input"
+                type="number"
+                min={1}
+                max={20}
+                step={0.5}
+                value={videoGuidance}
+                onChange={(event) => onVideoGuidanceChange(Number(event.target.value) || 5)}
+              />
+            </label>
+          </div>
 
           <div className="button-row">
             <label className="inline-label" style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>

@@ -39,6 +39,31 @@ import type { VideoDiscoverTaskFilter } from "../types/video";
 
 const MAX_VIDEO_SEED = 2147483647;
 
+// Default starting point for the Studio sliders. We deliberately choose a
+// short clip (~1.4s @ 24fps) and a moderate step count so the *first* generate
+// out of the box completes on Apple Silicon unified memory rather than
+// detonating Metal with a 70+ GB attention tensor (issue: Wan 2.1 1.3B at
+// 832x480 × 96 frames × 50 steps blew up MPS during initial testing).
+// Users can dial up via the Studio controls once they know their hardware.
+const DEFAULT_VIDEO_NUM_FRAMES = 33;
+const DEFAULT_VIDEO_FPS = 24;
+const DEFAULT_VIDEO_STEPS = 30;
+const DEFAULT_VIDEO_GUIDANCE = 5.0;
+
+// Wan-family pipelines require ``(num_frames - 1) % 4 == 0``. We round to
+// the nearest valid value so the user can type any frame count and we still
+// hand the backend something it can run.
+function clampNumFrames(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_VIDEO_NUM_FRAMES;
+  const clamped = Math.max(1, Math.min(257, Math.round(value)));
+  // Snap to the nearest n where (n - 1) % 4 == 0 (i.e. 1, 5, 9, 13, ...)
+  const remainder = (clamped - 1) % 4;
+  if (remainder === 0) return clamped;
+  const down = clamped - remainder;
+  const up = down + 4;
+  return up - clamped < clamped - down ? up : down;
+}
+
 /** Parse "832x480" (or similar) into [width, height], falling back to defaults. */
 function parseRecommendedResolution(
   value: string | null | undefined,
@@ -72,6 +97,15 @@ export function useVideoState(
   const [videoNegativePrompt, setVideoNegativePrompt] = useState("");
   const [videoSeedInput, setVideoSeedInput] = useState("");
   const [videoUseRandomSeed, setVideoUseRandomSeed] = useState(true);
+  // Generation knobs the user can tweak in Studio. Defaults are populated
+  // from the selected variant's catalog hint when the model changes (see
+  // the reset effect below) but stay user-editable thereafter.
+  const [videoWidth, setVideoWidth] = useState<number>(832);
+  const [videoHeight, setVideoHeight] = useState<number>(480);
+  const [videoNumFrames, setVideoNumFrames] = useState<number>(DEFAULT_VIDEO_NUM_FRAMES);
+  const [videoFps, setVideoFps] = useState<number>(DEFAULT_VIDEO_FPS);
+  const [videoSteps, setVideoSteps] = useState<number>(DEFAULT_VIDEO_STEPS);
+  const [videoGuidance, setVideoGuidance] = useState<number>(DEFAULT_VIDEO_GUIDANCE);
   const [videoRuntimeStatus, setVideoRuntimeStatus] = useState<VideoRuntimeStatus>({
     activeEngine: "placeholder",
     realGenerationAvailable: false,
@@ -210,6 +244,29 @@ export function useVideoState(
       ?? defaultVideoVariantForFamily(videoCatalog[0]);
     setSelectedVideoModelId(preferred?.id ?? "");
   }, [videoCatalog, selectedVideoModelId, latestVideoDiscoverResults]);
+
+  // ── Reset generation knobs when the model changes ───────────
+  // We pull the *resolution* hint from the variant catalog (e.g. "832x480")
+  // but keep frames / steps at our short, MPS-safe defaults so the first
+  // generate succeeds on consumer hardware. The user can dial up via the
+  // Studio controls.
+  useEffect(() => {
+    if (!selectedVideoVariant) return;
+    const [w, h] = parseRecommendedResolution(
+      selectedVideoVariant.recommendedResolution,
+      832,
+      480,
+    );
+    setVideoWidth(w);
+    setVideoHeight(h);
+    setVideoNumFrames(DEFAULT_VIDEO_NUM_FRAMES);
+    setVideoFps(DEFAULT_VIDEO_FPS);
+    setVideoSteps(DEFAULT_VIDEO_STEPS);
+    setVideoGuidance(DEFAULT_VIDEO_GUIDANCE);
+    // Intentionally only depend on the variant ID so we don't clobber the
+    // user's edits when unrelated catalog fields refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVideoVariant?.id]);
 
   // ── Download polling ────────────────────────────────────────
   const hasActiveVideoDownloads = Object.values(activeVideoDownloads).some(
@@ -361,30 +418,26 @@ export function useVideoState(
       return;
     }
 
-    // Pull defaults from the variant so the frontend doesn't need to know the
-    // per-model resolution knobs yet — Phase 11 can expose them as controls.
-    const [recommendedWidth, recommendedHeight] = parseRecommendedResolution(
-      selectedVideoVariant.recommendedResolution,
-      768,
-      512,
-    );
-    const estimatedFps = 24;
-    const estimatedFrames = Math.max(
-      8,
-      Math.round((selectedVideoVariant.defaultDurationSeconds || 4) * estimatedFps),
-    );
-    const requestedSteps = 50;
+    // The Studio controls drive every per-run knob. We snap ``numFrames`` to
+    // a Wan-compatible value here as a defensive measure — the input field
+    // already does this on change but a stale value (e.g. 50 from before the
+    // snap landed) would otherwise reach the backend and trip its rounding
+    // warning.
+    const safeNumFrames = clampNumFrames(videoNumFrames);
+    const safeSteps = Math.max(1, Math.min(100, Math.round(videoSteps)));
+    const safeFps = Math.max(1, Math.min(60, Math.round(videoFps)));
+    const safeGuidance = Math.max(1, Math.min(20, videoGuidance));
 
     const payload: VideoGenerationPayload = {
       modelId: selectedVideoVariant.id,
       prompt: trimmedPrompt,
       negativePrompt: videoNegativePrompt.trim() || undefined,
-      width: recommendedWidth,
-      height: recommendedHeight,
-      numFrames: estimatedFrames,
-      fps: estimatedFps,
-      steps: requestedSteps,
-      guidance: 3.0,
+      width: videoWidth,
+      height: videoHeight,
+      numFrames: safeNumFrames,
+      fps: safeFps,
+      steps: safeSteps,
+      guidance: safeGuidance,
       seed: parsedSeed,
     };
 
@@ -402,15 +455,15 @@ export function useVideoState(
     setVideoGenerationRunInfo({
       modelName: selectedVideoVariant.name,
       prompt: trimmedPrompt,
-      numFrames: estimatedFrames,
-      fps: estimatedFps,
-      steps: requestedSteps,
+      numFrames: safeNumFrames,
+      fps: safeFps,
+      steps: safeSteps,
       needsPipelineLoad: willLoadPipeline,
     });
     setVideoBusyLabel(
       willLoadPipeline
         ? `Loading ${selectedVideoVariant.name} into memory...`
-        : `Generating ${estimatedFrames}-frame clip with ${selectedVideoVariant.name}...`,
+        : `Generating ${safeNumFrames}-frame clip with ${selectedVideoVariant.name}...`,
     );
     setError(null);
     try {
@@ -515,6 +568,18 @@ export function useVideoState(
     setVideoSeedInput,
     videoUseRandomSeed,
     setVideoUseRandomSeed,
+    videoWidth,
+    setVideoWidth,
+    videoHeight,
+    setVideoHeight,
+    videoNumFrames,
+    setVideoNumFrames,
+    videoFps,
+    setVideoFps,
+    videoSteps,
+    setVideoSteps,
+    videoGuidance,
+    setVideoGuidance,
     videoRuntimeStatus,
     setVideoRuntimeStatus,
     videoBusyLabel,

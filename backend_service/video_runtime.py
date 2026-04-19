@@ -61,6 +61,31 @@ def _resolve_video_python() -> str:
     return os.getenv("PYTHON", "python3")
 
 
+def _detect_device_memory_gb(device: str | None) -> float | None:
+    """Best-effort read of how much memory the inference device has access to.
+
+    - ``cuda``: dedicated VRAM from ``nvidia-smi`` (via ``get_gpu_metrics``).
+    - ``mps`` / ``cpu`` on macOS: unified memory from ``sysctl hw.memsize``.
+    - ``cpu`` on Linux/Windows: system RAM via psutil.
+
+    Returns ``None`` when detection fails — the frontend safety heuristic
+    treats ``None`` as "stay conservative" and falls back to its 16 GB-safe
+    thresholds rather than risk over-scaling on an unknown device.
+    """
+    try:
+        from backend_service.helpers.gpu import get_gpu_metrics
+    except Exception:
+        return None
+    try:
+        snapshot = get_gpu_metrics()
+    except Exception:
+        return None
+    total = snapshot.get("vram_total_gb")
+    if isinstance(total, (int, float)) and total > 0:
+        return float(total)
+    return None
+
+
 @dataclass(frozen=True)
 class VideoRuntimeStatus:
     activeEngine: str
@@ -70,6 +95,15 @@ class VideoRuntimeStatus:
     pythonExecutable: str | None = None
     missingDependencies: list[str] = field(default_factory=list)
     loadedModelRepo: str | None = None
+    # Total memory available to the inference device, in GB. Used by the
+    # frontend safety heuristic (``assessVideoGenerationSafety``) to scale its
+    # attention-budget thresholds — a 64 GB M4 Max should tolerate far more
+    # frames than a 16 GB base M2, and a 24 GB RTX 4090 differs again. We
+    # source this from ``backend_service.helpers.gpu.get_gpu_metrics`` which
+    # already reads Apple Silicon unified memory via sysctl and NVIDIA VRAM
+    # via nvidia-smi. ``None`` means we couldn't detect it — the frontend
+    # falls back to its MPS-strict defaults in that case.
+    deviceMemoryGb: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -204,6 +238,7 @@ class DiffusersVideoEngine:
             )
 
         device = self._detect_device(torch)
+        device_memory_gb = _detect_device_memory_gb(device)
 
         if missing_output:
             message = (
@@ -224,6 +259,7 @@ class DiffusersVideoEngine:
             missingDependencies=missing_output,
             message=message,
             loadedModelRepo=self._loaded_repo,
+            deviceMemoryGb=device_memory_gb,
         )
 
     def preload(self, repo: str) -> VideoRuntimeStatus:

@@ -9,6 +9,7 @@ import type {
   VideoRuntimeStatus,
 } from "../../types";
 import {
+  assessVideoGenerationSafety,
   defaultVideoVariantForFamily,
   downloadProgressLabel,
   number,
@@ -237,6 +238,56 @@ export function VideoStudioTab({
               : null;
   const generateTitle = generateDisabledReason ?? "Start generating this clip.";
   const generationDisabled = generateDisabledReason !== null;
+
+  // Safety estimate for the chosen width × height × frames against the active
+  // device. We surface this *before* the user hits Generate because on Apple
+  // Silicon the failure mode is a hard sidecar crash (MPS assertion → Tauri
+  // restart loop), not a graceful error — by the time the user sees "Load
+  // failed" in the runtime status, the process has already died. See
+  // ``assessVideoGenerationSafety`` for the heuristic and the bug it traces.
+  const generationSafety = useMemo(
+    () =>
+      assessVideoGenerationSafety({
+        width: videoWidth,
+        height: videoHeight,
+        numFrames: videoNumFrames,
+        device: videoRuntimeStatus.device,
+        deviceMemoryGb: videoRuntimeStatus.deviceMemoryGb,
+      }),
+    [
+      videoWidth,
+      videoHeight,
+      videoNumFrames,
+      videoRuntimeStatus.device,
+      videoRuntimeStatus.deviceMemoryGb,
+    ],
+  );
+
+  // Format GB with one decimal for small numbers so 2.3 GB / 7.5 GB read
+  // clearly, but drop the decimal once we're at 10+ (no user needs "14.0 GB").
+  const formatGb = (gb: number): string => (gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`);
+
+  // A concise always-visible capacity label next to the generation knobs so
+  // the user can see at a glance how close to their limit they are. We
+  // surface it even when ``riskLevel === "safe"`` so it serves as
+  // reassurance ("this run wants 3 GB on 32 GB available") rather than only
+  // appearing when something is already wrong.
+  const deviceLabel = videoRuntimeStatus.device
+    ? videoRuntimeStatus.device.toUpperCase().startsWith("CUDA")
+      ? "GPU"
+      : videoRuntimeStatus.device.toUpperCase() === "MPS"
+        ? "Apple Silicon"
+        : videoRuntimeStatus.device.toUpperCase()
+    : "Device";
+  const capacityLine = `${deviceLabel} · ${formatGb(generationSafety.deviceMemoryGb)} total · this run ≈ ${formatGb(generationSafety.estimatedPeakGb)} of attention memory`;
+
+  function handleApplySafeSettings(): void {
+    const suggestion = generationSafety.suggestion;
+    if (!suggestion) return;
+    onVideoWidthChange(suggestion.width);
+    onVideoHeightChange(suggestion.height);
+    onVideoNumFramesChange(suggestion.numFrames);
+  }
 
   return (
     <div className="content-grid image-page-grid">
@@ -474,6 +525,55 @@ export function VideoStudioTab({
               />
             </label>
           </div>
+
+          {/*
+            Always-on "device capacity" line so the user sees their envelope
+            alongside the controls, not only when something's already gone
+            wrong. Pairs with the safety callout below when risk rises.
+          */}
+          <p className="muted-text" aria-live="polite">
+            {capacityLine}
+          </p>
+
+          {/*
+            Pre-flight safety callout. Surfaces the attention-budget heuristic
+            before the user hits Generate so they can recover by clicking
+            "Use safer settings" rather than triggering a sidecar crash +
+            restart loop. Scaled by ``deviceMemoryGb`` so a 64 GB Mac doesn't
+            see the same warnings as a 16 GB one. See
+            ``assessVideoGenerationSafety`` in ``src/utils/videos.ts`` for
+            the heuristic and the bug it traces ("Wan 2.1 T2V 1.3B at 832×480
+            × 96 frames" detonation, Apr 2026).
+          */}
+          {generationSafety.riskLevel !== "safe" && generationSafety.suggestion ? (
+            <div
+              className={`callout image-callout ${
+                generationSafety.riskLevel === "danger" ? "error" : "warning"
+              }`}
+              role="alert"
+            >
+              <p>
+                <strong>
+                  {generationSafety.riskLevel === "danger"
+                    ? "Likely to crash the backend"
+                    : "Heads up — may struggle on this device"}
+                  :
+                </strong>{" "}
+                {generationSafety.reason}
+              </p>
+              <div className="button-row">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleApplySafeSettings}
+                  disabled={videoBusy}
+                  title={`Apply ${generationSafety.suggestion.label}`}
+                >
+                  Use safer settings ({generationSafety.suggestion.label})
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="button-row">
             <label className="inline-label" style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>

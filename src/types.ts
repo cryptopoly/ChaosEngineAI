@@ -791,6 +791,11 @@ export interface VideoRuntimeStatus {
   pythonExecutable?: string | null;
   missingDependencies?: string[];
   loadedModelRepo?: string | null;
+  /** Total device memory in GB — used by the video-gen safety heuristic to
+   * scale attention-budget thresholds per hardware capability. Nullable
+   * because detection can fail (unsupported platform, nvidia-smi absent on a
+   * non-CUDA Linux box, etc.); consumers treat null as "stay conservative". */
+  deviceMemoryGb?: number | null;
 }
 
 export interface VideoOutputArtifact {

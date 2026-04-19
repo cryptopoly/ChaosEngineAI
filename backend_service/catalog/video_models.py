@@ -189,4 +189,61 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             }
         ],
     },
+    {
+        "id": "cogvideox",
+        "name": "CogVideoX",
+        "provider": "THUDM",
+        "headline": "Tsinghua's open-weight video model — 2B fits 8 GB VRAM, 5B is the quality tier.",
+        "summary": (
+            "CogVideoX ships in a 2B size that runs on 8 GB consumer GPUs and a 5B size that "
+            "delivers higher fidelity on 24 GB+ cards or unified-memory Macs. Both use the same "
+            "CogVideoXPipeline in diffusers."
+        ),
+        "updatedLabel": "Planned — first wave",
+        "badges": ["Small", "Open", "Apache 2.0"],
+        "defaultVariantId": "THUDM/CogVideoX-2b",
+        "variants": [
+            {
+                "id": "THUDM/CogVideoX-2b",
+                "familyId": "cogvideox",
+                "name": "CogVideoX 2B",
+                "provider": "THUDM",
+                "repo": "THUDM/CogVideoX-2b",
+                "link": "https://huggingface.co/THUDM/CogVideoX-2b",
+                "runtime": "diffusers CogVideoXPipeline",
+                "styleTags": ["general", "fast", "small"],
+                "taskSupport": ["txt2video"],
+                # 2B transformer in fp16 (~4 GB) + T5 text encoder (~5 GB) +
+                # VAE. Fits comfortably on a 12 GB card; 8 GB works with
+                # CPU-offload tricks. Smaller than Wan 2.1 1.3B because there's
+                # no UMT5-XXL — just the standard T5.
+                "sizeGb": 9.0,
+                "recommendedResolution": "720x480",
+                "defaultDurationSeconds": 6.0,
+                "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk, runs on consumer GPUs.",
+                "estimatedGenerationSeconds": 90.0,
+                "availableLocally": False,
+            },
+            {
+                "id": "THUDM/CogVideoX-5b",
+                "familyId": "cogvideox",
+                "name": "CogVideoX 5B",
+                "provider": "THUDM",
+                "repo": "THUDM/CogVideoX-5b",
+                "link": "https://huggingface.co/THUDM/CogVideoX-5b",
+                "runtime": "diffusers CogVideoXPipeline",
+                "styleTags": ["general", "quality", "balanced"],
+                "taskSupport": ["txt2video"],
+                # 5B transformer (~10 GB) + T5 (~5 GB) + VAE. Lands in the
+                # same envelope as Wan 2.2 — needs 24 GB VRAM or 32 GB+
+                # unified memory.
+                "sizeGb": 18.0,
+                "recommendedResolution": "720x480",
+                "defaultDurationSeconds": 6.0,
+                "note": "Quality tier. ~18 GB on disk. Same CogVideoXPipeline class as the 2B.",
+                "estimatedGenerationSeconds": 200.0,
+                "availableLocally": False,
+            },
+        ],
+    },
 ]

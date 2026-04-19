@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { assessVideoGenerationSafety, videoRuntimeErrorStatus } from "../videos";
+import {
+  assessVideoGenerationSafety,
+  inferDeviceFromHostPlatform,
+  videoRuntimeErrorStatus,
+} from "../videos";
 
 // The safety heuristic now scales with device memory rather than a flat
 // token threshold — a 64 GB M4 Max should tolerate far more frames than a
@@ -439,6 +443,34 @@ describe("assessVideoGenerationSafety()", () => {
       expect(mps.modelFootprintGb).toBeGreaterThan(cuda.modelFootprintGb);
     });
 
+    it("surfaces effectiveDevice and effectiveDeviceWasInferred for explicit MPS", () => {
+      // When the backend told us the device, the safety result should echo
+      // it back unchanged — and tag it as not inferred. The Studio uses
+      // these two fields together to decide whether to mark the device
+      // label as a guess in the always-on capacity line.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 16,
+      });
+      expect(result.effectiveDevice).toBe("mps");
+      expect(result.effectiveDeviceWasInferred).toBe(false);
+    });
+
+    it("surfaces effectiveDevice for explicit CUDA", () => {
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+      });
+      expect(result.effectiveDevice).toBe("cuda");
+      expect(result.effectiveDeviceWasInferred).toBe(false);
+    });
+
     it("ignores non-positive or non-finite baseModelFootprintGb values", () => {
       // Guard: the caller should be able to pass through whatever the
       // catalog hands them (which occasionally ships a 0 sizeGb for
@@ -472,6 +504,147 @@ describe("assessVideoGenerationSafety()", () => {
       expect(negative.modelFootprintGb).toBe(0);
       expect(nan.modelFootprintGb).toBe(0);
     });
+  });
+});
+
+describe("host-platform device inference (Windows/Linux fallback)", () => {
+  // When the backend probe hasn't come back (sidecar dead, Failed to fetch,
+  // first-launch race), ``device`` is null. Before this behaviour landed we
+  // defaulted to "mps" unconditionally — meaning a Windows RTX 4090 user saw
+  // "close to the safe limit on Apple Silicon" even though there is no
+  // Apple Silicon on their machine. These tests pin the new fallback: we
+  // infer from the host OS and the label now matches the machine.
+
+  const originalNavigator = globalThis.navigator;
+
+  afterEach(() => {
+    // Restore whatever Vitest's happy-dom handed us so we don't poison other tests.
+    Object.defineProperty(globalThis, "navigator", {
+      value: originalNavigator,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  function stubNavigator(stub: Partial<Navigator> & { userAgentData?: { platform?: string } }): void {
+    Object.defineProperty(globalThis, "navigator", {
+      value: stub,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  it("infers MPS on macOS via userAgentData", () => {
+    stubNavigator({ userAgentData: { platform: "macOS" } });
+    expect(inferDeviceFromHostPlatform()).toBe("mps");
+  });
+
+  it("infers CUDA on Windows via userAgentData", () => {
+    stubNavigator({ userAgentData: { platform: "Windows" } });
+    expect(inferDeviceFromHostPlatform()).toBe("cuda");
+  });
+
+  it("infers CUDA on Linux via userAgentData", () => {
+    stubNavigator({ userAgentData: { platform: "Linux" } });
+    expect(inferDeviceFromHostPlatform()).toBe("cuda");
+  });
+
+  it("falls back to legacy navigator.platform when userAgentData is missing (WKWebView)", () => {
+    // macOS Tauri ships a WKWebView that doesn't expose the modern UA-CH API.
+    // The legacy ``platform`` string is still "MacIntel" there — locking this
+    // in means a user whose backend probe times out on first launch doesn't
+    // see a Windows label on their M4 Mac.
+    stubNavigator({ platform: "MacIntel", userAgent: "Mozilla/5.0 (Macintosh)" });
+    expect(inferDeviceFromHostPlatform()).toBe("mps");
+  });
+
+  it("falls back to user agent substring for macOS when platform is generic", () => {
+    // Some embedded WebViews report "" for platform but keep "Mac OS" in the UA.
+    stubNavigator({ platform: "", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" });
+    expect(inferDeviceFromHostPlatform()).toBe("mps");
+  });
+
+  it("defaults to CUDA for an unknown non-macOS platform", () => {
+    // Windows 10 with legacy fields only — the exact shape WebView2 has
+    // shipped historically.
+    stubNavigator({ platform: "Win32", userAgent: "Mozilla/5.0 (Windows NT 10.0)" });
+    expect(inferDeviceFromHostPlatform()).toBe("cuda");
+  });
+
+  it("uses the inferred bucket in assessVideoGenerationSafety when device is null", () => {
+    // The core of the Windows RTX 4090 bug: when the backend probe never
+    // arrives, ``device`` is null. On Windows the safety helper must now
+    // bucket into CUDA so the memory warning quotes "this GPU" instead of
+    // "Apple Silicon (MPS)".
+    stubNavigator({ userAgentData: { platform: "Windows" } });
+    const result = assessVideoGenerationSafety({
+      width: 832,
+      height: 480,
+      numFrames: 33,
+      device: null,
+      deviceMemoryGb: null,
+    });
+    expect(result.effectiveDevice).toBe("cuda");
+    expect(result.effectiveDeviceWasInferred).toBe(true);
+    // With the CUDA fallback we also use the CUDA default memory (12 GB) —
+    // not the MPS default (16 GB). Locks the two paths together.
+    expect(result.deviceMemoryGb).toBe(12);
+  });
+
+  it("still uses MPS fallback on macOS when device is null", () => {
+    // The complementary case: the original behaviour was correct for
+    // macOS and shouldn't regress. A macOS user with a dead probe still
+    // sees MPS-strict defaults.
+    stubNavigator({ userAgentData: { platform: "macOS" } });
+    const result = assessVideoGenerationSafety({
+      width: 832,
+      height: 480,
+      numFrames: 33,
+      device: null,
+      deviceMemoryGb: null,
+    });
+    expect(result.effectiveDevice).toBe("mps");
+    expect(result.effectiveDeviceWasInferred).toBe(true);
+    expect(result.deviceMemoryGb).toBe(16);
+  });
+
+  it("does not flag danger on a Windows RTX 4090 for Studio defaults with no backend probe", () => {
+    // Regression guard for the exact user-reported symptom: Windows machine
+    // with a 24 GB RTX 4090 seeing an Apple Silicon memory warning. With the
+    // inferred CUDA bucket + caller-supplied 24 GB memory (which the Studio
+    // passes when the backend has at least reported it once before going
+    // stale), the Studio defaults stay comfortably safe.
+    stubNavigator({ userAgentData: { platform: "Windows" } });
+    const result = assessVideoGenerationSafety({
+      width: 832,
+      height: 480,
+      numFrames: 33,
+      device: null,
+      deviceMemoryGb: 24,
+    });
+    expect(result.riskLevel).toBe("safe");
+    expect(result.effectiveDevice).toBe("cuda");
+    // The reason string shouldn't mention Apple Silicon when we're on a
+    // Windows host — that was the cryptic bit that confused the user.
+    expect(result.reason).toBeNull();
+  });
+
+  it("quotes 'this GPU' rather than 'Apple Silicon' in the warning on inferred-CUDA hosts", () => {
+    // When the inferred path does fire a warning (e.g. too many frames),
+    // the copy has to match the inferred bucket — otherwise we've only
+    // half-fixed the bug.
+    stubNavigator({ userAgentData: { platform: "Windows" } });
+    const result = assessVideoGenerationSafety({
+      width: 1920,
+      height: 1080,
+      numFrames: 97,
+      device: null,
+      deviceMemoryGb: 8, // deliberately tight so the warning fires
+    });
+    expect(result.riskLevel).not.toBe("safe");
+    expect(result.reason).not.toBeNull();
+    expect(result.reason).not.toMatch(/Apple Silicon/i);
+    expect(result.reason).toMatch(/this GPU/i);
   });
 });
 

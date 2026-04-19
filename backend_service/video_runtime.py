@@ -158,6 +158,10 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
+    # CogVideoX 2B and 5B share the same diffusers pipeline class — the
+    # transformer scales but the loader is the same.
+    "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
 
 

@@ -284,13 +284,24 @@ export function VideoStudioTab({
   // term is known (``modelFootprintGb > 0``), we show a breakdown so the
   // user sees that "the model itself is eating 23 GB" rather than
   // attributing the whole peak to their chosen frame count.
+  // Prefer the device the backend reported. When it's missing (probe never
+  // came back, "Failed to fetch" sticking) we fall through to the device
+  // bucket the safety helper inferred from the host OS — so a Windows
+  // RTX 4090 user doesn't see "Apple Silicon" while the backend is
+  // unreachable. We tag the inferred case so the user knows it's a guess.
+  const inferredDeviceLabel =
+    generationSafety.effectiveDevice === "cuda"
+      ? "GPU (detected)"
+      : generationSafety.effectiveDevice === "cpu"
+        ? "CPU (detected)"
+        : "Apple Silicon (detected)";
   const deviceLabel = videoRuntimeStatus.device
     ? videoRuntimeStatus.device.toUpperCase().startsWith("CUDA")
       ? "GPU"
       : videoRuntimeStatus.device.toUpperCase() === "MPS"
         ? "Apple Silicon"
         : videoRuntimeStatus.device.toUpperCase()
-    : "Device";
+    : inferredDeviceLabel;
   // Mark the memory figure as a fallback when the backend didn't actually
   // report it — e.g. a stale sidecar that pre-dates the deviceMemoryGb
   // field (we shipped it mid-release cycle) or a platform where detection

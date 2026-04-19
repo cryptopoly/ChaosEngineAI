@@ -80,6 +80,8 @@ class PipelineRegistryTests(unittest.TestCase):
             "Wan-AI/Wan2.1-T2V-14B-Diffusers",
             "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
             "hunyuanvideo-community/HunyuanVideo",
+            "THUDM/CogVideoX-2b",
+            "THUDM/CogVideoX-5b",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():
@@ -92,6 +94,13 @@ class PipelineRegistryTests(unittest.TestCase):
         self.assertGreaterEqual(len(wan_repos), 3, "expected 1.3B, 14B, and A14B Wan entries")
         for repo in wan_repos:
             self.assertEqual(PIPELINE_REGISTRY[repo]["class_name"], "WanPipeline")
+
+    def test_cogvideox_variants_all_route_to_cogvideoxpipeline(self):
+        """CogVideoX 2B and 5B share the same diffusers pipeline class."""
+        cog_repos = [repo for repo in PIPELINE_REGISTRY if repo.startswith("THUDM/CogVideoX")]
+        self.assertGreaterEqual(len(cog_repos), 2, "expected 2B and 5B CogVideoX entries")
+        for repo in cog_repos:
+            self.assertEqual(PIPELINE_REGISTRY[repo]["class_name"], "CogVideoXPipeline")
 
     def test_pipeline_class_raises_for_unknown_repo(self):
         engine = DiffusersVideoEngine()

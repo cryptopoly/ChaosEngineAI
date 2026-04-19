@@ -115,6 +115,8 @@ export function videoRuntimeErrorStatus(error: unknown): VideoRuntimeStatus {
 
 export type VideoGenerationRiskLevel = "safe" | "caution" | "danger";
 
+export type VideoEffectiveDevice = "mps" | "cuda" | "cpu";
+
 export interface VideoGenerationSafety {
   riskLevel: VideoGenerationRiskLevel;
   /** Estimated latent token count (rough — used in the message and for the threshold). */
@@ -132,6 +134,18 @@ export interface VideoGenerationSafety {
   deviceMemoryGb: number;
   /** True if the peak estimate exceeds the device's effective budget. */
   exceedsDevice: boolean;
+  /** The device bucket actually used for the calculation. When the caller
+   * passes ``"mps"``/``"cuda"``/``"cpu"`` we echo it back; when the caller
+   * passes null/empty (backend probe failed, sidecar dead) we infer from
+   * the host OS — Windows/Linux fall through to "cuda", everything else
+   * to "mps". The Studio reads this so the always-visible capacity line
+   * doesn't say "Apple Silicon" on a Windows RTX 4090 just because the
+   * backend probe never came back. */
+  effectiveDevice: VideoEffectiveDevice;
+  /** True when ``effectiveDevice`` was inferred from the host OS rather
+   * than supplied by the backend. Lets the Studio mark the device label
+   * as a guess (consistent with how it tags the memory fallback). */
+  effectiveDeviceWasInferred: boolean;
   /** Plain-English reason — null only when riskLevel is "safe". */
   reason: string | null;
   /** Concrete fallback to drop the user back into the safe envelope. Null
@@ -144,6 +158,36 @@ export interface VideoGenerationSafety {
     numFrames: number;
     label: string;
   } | null;
+}
+
+/** Best-effort host-platform detection for the case where the backend probe
+ * never came back (sidecar crashed, "Failed to fetch", first-launch race).
+ * We use ``navigator.userAgentData.platform`` when available (modern
+ * Chromium) and fall back to ``navigator.platform`` / ``navigator.userAgent``
+ * — the WKWebView shipped inside macOS Tauri only exposes the legacy
+ * fields, but they're reliable for the macOS-vs-not split.
+ *
+ * The bucket is intentionally coarse: we only need to decide "should the
+ * memory warning say Apple Silicon or this GPU?" so anything that isn't
+ * obviously macOS is treated as a CUDA host. Linux without an NVIDIA card
+ * still ends up in the CUDA bucket — over-stating the headroom there is
+ * less harmful than the inverse (telling a Windows RTX 4090 user that
+ * their 24 GB card is "close to the safe limit on Apple Silicon"). */
+export function inferDeviceFromHostPlatform(): "mps" | "cuda" {
+  if (typeof navigator === "undefined") return "mps";
+  // ``userAgentData`` is the modern UA-CH API; it's narrower and more
+  // reliable than the deprecated ``platform`` string but isn't supported
+  // by Safari / WKWebView yet — hence the layered fallback below.
+  const uaData = (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData;
+  const uaDataPlatform = (uaData?.platform ?? "").toLowerCase();
+  if (uaDataPlatform) {
+    if (uaDataPlatform.includes("mac")) return "mps";
+    return "cuda";
+  }
+  const legacyPlatform = (navigator.platform ?? "").toLowerCase();
+  const ua = (navigator.userAgent ?? "").toLowerCase();
+  if (legacyPlatform.includes("mac") || ua.includes("mac os")) return "mps";
+  return "cuda";
 }
 
 /** Default memory baselines when the backend can't tell us. We assume 16 GB
@@ -281,16 +325,28 @@ export function assessVideoGenerationSafety(opts: {
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
   const isCpu = normalisedDevice === "cpu";
-  // unknown / empty falls through to MPS-strict because this app primarily
-  // ships on Apple Silicon — over-warning a CUDA user is strictly better
-  // than silently crashing an MPS one.
-  const effectiveDevice: "mps" | "cuda" | "cpu" = isCuda ? "cuda" : isCpu ? "cpu" : "mps";
-
-  const fallbackMemory = isCuda
-    ? DEFAULT_CUDA_MEMORY_GB
+  const isMps = normalisedDevice === "mps";
+  // When the backend hasn't told us (probe failed, sidecar dead, "Failed to
+  // fetch"), we used to default to "mps" unconditionally. That was wrong on
+  // Windows / Linux — a user on an RTX 4090 saw their 24 GB card warned
+  // about as if it were "Apple Silicon (MPS) (~8 GB safe)". Now we infer
+  // from the host OS so the fallback bucket matches the machine the user is
+  // actually on. The macOS branch keeps its old behaviour (MPS-strict).
+  const effectiveDevice: VideoEffectiveDevice = isCuda
+    ? "cuda"
     : isCpu
-      ? DEFAULT_CPU_MEMORY_GB
-      : DEFAULT_MPS_MEMORY_GB;
+      ? "cpu"
+      : isMps
+        ? "mps"
+        : inferDeviceFromHostPlatform();
+  const effectiveDeviceWasInferred = !isCuda && !isCpu && !isMps;
+
+  const fallbackMemory =
+    effectiveDevice === "cuda"
+      ? DEFAULT_CUDA_MEMORY_GB
+      : effectiveDevice === "cpu"
+        ? DEFAULT_CPU_MEMORY_GB
+        : DEFAULT_MPS_MEMORY_GB;
   const totalMemoryGb =
     deviceMemoryGb != null && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
       ? deviceMemoryGb
@@ -320,6 +376,8 @@ export function assessVideoGenerationSafety(opts: {
       modelFootprintGb: 0,
       deviceMemoryGb: totalMemoryGb,
       exceedsDevice: false,
+      effectiveDevice,
+      effectiveDeviceWasInferred,
       reason: null,
       suggestion: null,
     };
@@ -350,13 +408,20 @@ export function assessVideoGenerationSafety(opts: {
       modelFootprintGb,
       deviceMemoryGb: totalMemoryGb,
       exceedsDevice,
+      effectiveDevice,
+      effectiveDeviceWasInferred,
       reason: null,
       suggestion: null,
     };
   }
 
   const fmt = (g: number) => (g >= 10 ? g.toFixed(0) : g.toFixed(1));
-  const platform = isCuda ? "this GPU" : isCpu ? "CPU generation" : "Apple Silicon (MPS)";
+  const platform =
+    effectiveDevice === "cuda"
+      ? "this GPU"
+      : effectiveDevice === "cpu"
+        ? "CPU generation"
+        : "Apple Silicon (MPS)";
 
   // Short-circuit the suggestion loop when the model's resident footprint
   // alone is too big for this device. No matter how small the request,
@@ -383,6 +448,8 @@ export function assessVideoGenerationSafety(opts: {
       modelFootprintGb,
       deviceMemoryGb: totalMemoryGb,
       exceedsDevice,
+      effectiveDevice,
+      effectiveDeviceWasInferred,
       reason,
       suggestion: null,
     };
@@ -435,6 +502,8 @@ export function assessVideoGenerationSafety(opts: {
     modelFootprintGb,
     deviceMemoryGb: totalMemoryGb,
     exceedsDevice,
+    effectiveDevice,
+    effectiveDeviceWasInferred,
     reason,
     suggestion: {
       width: suggestedWidth,

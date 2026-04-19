@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
   cancelVideoDownload,
   deleteVideoDownload,
@@ -268,6 +268,25 @@ export function useVideoState(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVideoVariant?.id]);
 
+  // ── Retry on model change when the runtime is stuck ─────────
+  // If the runtime status is ``unavailable`` (usually because a previous
+  // fetch rejected with a transport error after a sidecar crash) and the
+  // user switches to a different model, re-probe the backend. This gives
+  // the user a natural way to say "try again with a smaller model" — they
+  // pick LTX in the dropdown and we immediately refetch the runtime state
+  // so the Generate button wakes up if the backend is actually fine now.
+  // Guarded on ``backendOnline`` so we don't retry while the sidecar is
+  // still down (the recovery effect above handles that case).
+  useEffect(() => {
+    if (!selectedVideoVariant) return;
+    if (!backendOnline) return;
+    if (videoRuntimeStatus.activeEngine !== "unavailable") return;
+    void refreshVideoData();
+    // Key on the variant id so we only fire when the user actually changes
+    // selection, not on every re-render while the runtime is still unavailable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVideoVariant?.id]);
+
   // ── Download polling ────────────────────────────────────────
   const hasActiveVideoDownloads = Object.values(activeVideoDownloads).some(
     (download) => download.state === "downloading",
@@ -289,6 +308,33 @@ export function useVideoState(
     }, 2000);
     return () => window.clearInterval(interval);
   }, [hasActiveVideoDownloads, backendOnline]);
+
+  // ── Backend recovery ────────────────────────────────────────
+  // When the Python sidecar dies (e.g. Wan 2.1 OOMs MPS on a 64 GB Mac →
+  // Metal asserts → sidecar process is killed), every in-flight fetch
+  // rejects with WebKit's ``TypeError: Load failed`` and the runtime status
+  // ends up frozen as ``activeEngine: "unavailable"``. Tauri's managed
+  // sidecar restarts shortly after, which flips ``backendOnline`` back to
+  // true — but we never re-probe the video runtime, so the Studio stays
+  // stuck with "ENGINE: UNAVAILABLE" / "Fallback active" badges and the
+  // Generate button disabled even after the user picks a smaller model
+  // (e.g. LTX-Video) that would have run fine.
+  //
+  // Fix: whenever ``backendOnline`` transitions from false to true, fire
+  // a one-shot ``refreshVideoData()`` so the runtime status reflects the
+  // fresh sidecar's actual capabilities. Using a ref to track the previous
+  // value avoids a refresh on first mount (where ``backendOnline`` starts
+  // at whatever the backend poll reports — already handled by the initial
+  // data-load effect in ``App.tsx``).
+  const previousBackendOnlineRef = useRef(backendOnline);
+  useEffect(() => {
+    const wasOffline = !previousBackendOnlineRef.current;
+    previousBackendOnlineRef.current = backendOnline;
+    if (backendOnline && wasOffline) {
+      void refreshVideoData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendOnline]);
 
   // ── Data fetching ───────────────────────────────────────────
   async function refreshVideoData() {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assessVideoGenerationSafety } from "../videos";
+import { assessVideoGenerationSafety, videoRuntimeErrorStatus } from "../videos";
 
 // The safety heuristic now scales with device memory rather than a flat
 // token threshold — a 64 GB M4 Max should tolerate far more frames than a
@@ -472,5 +472,66 @@ describe("assessVideoGenerationSafety()", () => {
       expect(negative.modelFootprintGb).toBe(0);
       expect(nan.modelFootprintGb).toBe(0);
     });
+  });
+});
+
+describe("videoRuntimeErrorStatus()", () => {
+  // The runtime status that Studio shows ("ENGINE: UNAVAILABLE / Fallback
+  // active") is driven straight from this function when a runtime probe
+  // fails. The important bit is the ``message`` we pass through — when the
+  // Python sidecar dies (e.g. Wan 2.1 OOMs MPS), every fetch rejects with a
+  // WebKit-specific string that reads to users as a Diffusers problem
+  // rather than a backend transport problem. These tests lock the
+  // translation in so the Studio surfaces actionable copy.
+
+  it("translates WebKit's \"Load failed\" into an actionable message", () => {
+    // The sidecar-crash bug report: after Wan 2.1 detonated the MPS
+    // allocator, the runtime status showed the literal words "Load failed"
+    // — WebKit's cryptic signal for "couldn't reach the server at all".
+    // Users read that as a video-runtime problem rather than a transport
+    // problem and didn't know to click Restart Backend.
+    const status = videoRuntimeErrorStatus(new TypeError("Load failed"));
+    expect(status.activeEngine).toBe("unavailable");
+    expect(status.realGenerationAvailable).toBe(false);
+    expect(status.message).toMatch(/Restart Backend/i);
+    expect(status.message).not.toMatch(/^load failed$/i);
+  });
+
+  it("translates Chromium's \"Failed to fetch\" the same way", () => {
+    // Chromium-based runtimes (Linux Tauri via WebKitGTK, desktop Chrome
+    // during dev, Windows WebView2) use a different canonical string for
+    // the same condition. Both should route through the same translation.
+    const status = videoRuntimeErrorStatus(new TypeError("Failed to fetch"));
+    expect(status.message).toMatch(/Restart Backend/i);
+  });
+
+  it("is case-insensitive about the transport-error match", () => {
+    // Defensive: different runtime versions sometimes capitalise
+    // differently. We don't want a future Safari update that returns
+    // "load failed" (lowercase) to slip through and resurface the cryptic
+    // copy in the Studio.
+    const status = videoRuntimeErrorStatus(new TypeError("LOAD FAILED"));
+    expect(status.message).toMatch(/Restart Backend/i);
+  });
+
+  it("preserves real backend error messages unchanged", () => {
+    // When the sidecar is alive and rejecting with a real message (e.g.
+    // "Diffusers is not installed"), we want that to surface to the user
+    // as-is — it's already actionable. The translation should ONLY catch
+    // the opaque transport strings.
+    const status = videoRuntimeErrorStatus(
+      new Error("Diffusers is not installed — run pip install diffusers."),
+    );
+    expect(status.message).toMatch(/Diffusers is not installed/);
+    expect(status.message).not.toMatch(/Restart Backend/i);
+  });
+
+  it("falls back to a generic message for unknown error shapes", () => {
+    // Anything that isn't an Error instance (e.g. a rejected Promise with
+    // a string, an object thrown by mistake) should still produce a
+    // readable message rather than leaking "[object Object]" or "".
+    const status = videoRuntimeErrorStatus("something weird");
+    expect(status.message).toMatch(/unavailable/i);
+    expect(status.activeEngine).toBe("unavailable");
   });
 });

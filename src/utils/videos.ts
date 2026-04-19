@@ -82,11 +82,33 @@ export function videoDiscoverFamilyMatchesQuery(family: VideoModelFamily, query:
   return videoDiscoverFamilyHaystack(family).includes(query);
 }
 
+/** WebKit's ``fetch()`` (Safari + macOS Tauri's WKWebView) produces the
+ * literal string ``"Load failed"`` when it can't reach the server — for
+ * example after the Python sidecar dies from an MPS OOM. Chromium produces
+ * ``"Failed to fetch"``. Both bubble up unchanged through ``fetchJson`` and
+ * land in the runtime status message verbatim, where they read to the user
+ * as a Diffusers / video runtime problem rather than a backend transport
+ * problem. We translate them here so the Studio shows actionable copy
+ * (mentioning Restart Backend) instead of two cryptic words. */
+function isFetchTransportError(message: string): boolean {
+  const trimmed = message.trim().toLowerCase();
+  return (
+    trimmed === "load failed"
+    || trimmed === "failed to fetch"
+    || trimmed === "networkerror when attempting to fetch resource."
+    || trimmed.startsWith("networkerror")
+  );
+}
+
 export function videoRuntimeErrorStatus(error: unknown): VideoRuntimeStatus {
+  const rawMessage = error instanceof Error ? error.message : "";
+  const message = isFetchTransportError(rawMessage)
+    ? "Backend is not responding — try Restart Backend."
+    : rawMessage || "Video runtime unavailable.";
   return {
     activeEngine: "unavailable",
     realGenerationAvailable: false,
-    message: error instanceof Error ? error.message : "Video runtime unavailable.",
+    message,
     missingDependencies: [],
   };
 }

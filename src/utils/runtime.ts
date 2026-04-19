@@ -69,5 +69,7 @@ export function settingsDraftFromWorkspace(settings: AppSettings): SettingsDraft
     hasHuggingFaceToken: settings?.hasHuggingFaceToken ?? false,
     huggingFaceTokenMasked: settings?.huggingFaceToken ?? "",
     dataDirectory: settings?.dataDirectory ?? "",
+    imageOutputsDirectory: settings?.imageOutputsDirectory ?? "",
+    videoOutputsDirectory: settings?.videoOutputsDirectory ?? "",
   };
 }

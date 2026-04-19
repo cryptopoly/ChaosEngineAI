@@ -150,36 +150,76 @@ def _save_chat_sessions(sessions: list[dict[str, Any]], path: Path = CHAT_SESSIO
     return _save_chat_sessions_impl(sessions, path)
 
 
+def _resolve_output_dir_override(raw: str, default: Path) -> Path:
+    """Return the user-chosen output directory, or the default.
+
+    Empty / whitespace-only strings restore the default. A non-empty value is
+    expanded (``~`` → home), resolved to an absolute path, and the directory is
+    created if missing. If creation fails (path is unwritable, on a missing
+    volume, etc.) we transparently fall back to ``default`` so generation never
+    crashes just because the user pointed at a stale Dropbox folder.
+    """
+    value = (raw or "").strip()
+    if not value:
+        return default
+    try:
+        candidate = Path(os.path.expanduser(value)).resolve()
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+    except OSError:
+        return default
+
+
+def _current_image_outputs_dir() -> Path:
+    # The module-level ``IMAGE_OUTPUTS_DIR`` is the install-time default and
+    # the override target tests use to redirect output into a tempdir. Anything
+    # the user typed in Settings takes precedence — but only when actually set,
+    # so test patches still win when no setting is configured.
+    settings = _load_settings()
+    return _resolve_output_dir_override(
+        str(settings.get("imageOutputsDirectory") or ""),
+        IMAGE_OUTPUTS_DIR,
+    )
+
+
+def _current_video_outputs_dir() -> Path:
+    settings = _load_settings()
+    return _resolve_output_dir_override(
+        str(settings.get("videoOutputsDirectory") or ""),
+        VIDEO_OUTPUTS_DIR,
+    )
+
+
 def _load_image_outputs() -> list[dict[str, Any]]:
-    return _load_image_outputs_impl(IMAGE_OUTPUTS_DIR)
+    return _load_image_outputs_impl(_current_image_outputs_dir())
 
 
 def _save_image_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
-    return _save_image_artifact_impl(artifact, IMAGE_OUTPUTS_DIR)
+    return _save_image_artifact_impl(artifact, _current_image_outputs_dir())
 
 
 def _find_image_output(artifact_id: str) -> dict[str, Any] | None:
-    return _find_image_output_impl(artifact_id, IMAGE_OUTPUTS_DIR)
+    return _find_image_output_impl(artifact_id, _current_image_outputs_dir())
 
 
 def _delete_image_output(artifact_id: str) -> bool:
-    return _delete_image_output_impl(artifact_id, IMAGE_OUTPUTS_DIR)
+    return _delete_image_output_impl(artifact_id, _current_image_outputs_dir())
 
 
 def _load_video_outputs() -> list[dict[str, Any]]:
-    return _load_video_outputs_impl(VIDEO_OUTPUTS_DIR)
+    return _load_video_outputs_impl(_current_video_outputs_dir())
 
 
 def _save_video_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
-    return _save_video_artifact_impl(artifact, VIDEO_OUTPUTS_DIR)
+    return _save_video_artifact_impl(artifact, _current_video_outputs_dir())
 
 
 def _find_video_output(artifact_id: str) -> dict[str, Any] | None:
-    return _find_video_output_impl(artifact_id, VIDEO_OUTPUTS_DIR)
+    return _find_video_output_impl(artifact_id, _current_video_outputs_dir())
 
 
 def _delete_video_output(artifact_id: str) -> bool:
-    return _delete_video_output_impl(artifact_id, VIDEO_OUTPUTS_DIR)
+    return _delete_video_output_impl(artifact_id, _current_video_outputs_dir())
 
 
 def compute_cache_preview(

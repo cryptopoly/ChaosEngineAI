@@ -38,4 +38,6 @@ export type SettingsDraft = {
   hasHuggingFaceToken: boolean;
   huggingFaceTokenMasked: string;
   dataDirectory: string;
+  imageOutputsDirectory: string;
+  videoOutputsDirectory: string;
 };

@@ -1,10 +1,33 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from backend_service.image_runtime import (
     DiffusersTextToImageEngine,
     ImageGenerationConfig,
     PlaceholderImageEngine,
+    validate_local_diffusers_snapshot,
 )
+
+
+def _ltx_model_index() -> dict:
+    """The LTX-Video pipeline contract — five required components."""
+    return {
+        "_class_name": "LTXPipeline",
+        "_diffusers_version": "0.32.0.dev0",
+        "scheduler": ["diffusers", "FlowMatchEulerDiscreteScheduler"],
+        "text_encoder": ["transformers", "T5EncoderModel"],
+        "tokenizer": ["transformers", "T5Tokenizer"],
+        "transformer": ["diffusers", "LTXVideoTransformer3DModel"],
+        "vae": ["diffusers", "AutoencoderKLLTXVideo"],
+    }
+
+
+def _seed_component(root: Path, name: str, config_filename: str = "config.json") -> None:
+    component_dir = root / name
+    component_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / config_filename).write_text("{}", encoding="utf-8")
 
 
 class PlaceholderImageEngineTests(unittest.TestCase):
@@ -81,6 +104,113 @@ class DiffusersTextToImageEngineTests(unittest.TestCase):
 
         self.assertEqual(kwargs["guidance_scale"], 6.5)
         self.assertEqual(kwargs["negative_prompt"], "blurry")
+
+
+class ValidateLocalDiffusersSnapshotTests(unittest.TestCase):
+    """Regression coverage for the LTX-Video corruption case.
+
+    Real bug: a user pulled LTX-Video before the allow_patterns scoping landed,
+    HF queued the legacy root-level safetensors first, and the snapshot ended
+    up with model_index.json + scheduler/ + text_encoder/ but no transformer/
+    or vae/. Diffusers then raised a generic "no file named config.json" error
+    pointing at the snapshot root, which is unhelpful. The validator should
+    catch this BEFORE we hand the directory to ``from_pretrained``.
+    """
+
+    def test_returns_none_when_all_components_present(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "model_index.json").write_text(
+                json.dumps(_ltx_model_index()), encoding="utf-8",
+            )
+            _seed_component(root, "scheduler", "scheduler_config.json")
+            _seed_component(root, "text_encoder")
+            _seed_component(root, "tokenizer", "tokenizer_config.json")
+            _seed_component(root, "transformer")
+            _seed_component(root, "vae")
+
+            self.assertIsNone(validate_local_diffusers_snapshot(root, "Lightricks/LTX-Video"))
+
+    def test_flags_missing_component_subfolders(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "model_index.json").write_text(
+                json.dumps(_ltx_model_index()), encoding="utf-8",
+            )
+            _seed_component(root, "scheduler", "scheduler_config.json")
+            _seed_component(root, "text_encoder")
+            # transformer/, tokenizer/, vae/ deliberately missing — exactly the
+            # corrupt-LTX shape we hit in the wild.
+
+            error = validate_local_diffusers_snapshot(root, "Lightricks/LTX-Video")
+
+            self.assertIsNotNone(error)
+            self.assertIn("missing components", error)
+            self.assertIn("transformer", error)
+            self.assertIn("tokenizer", error)
+            self.assertIn("vae", error)
+            self.assertNotIn("scheduler", error)
+            self.assertNotIn("text_encoder", error)
+
+    def test_flags_component_folder_present_but_empty(self):
+        """An empty subfolder is the same failure mode as a missing one."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "model_index.json").write_text(
+                json.dumps(_ltx_model_index()), encoding="utf-8",
+            )
+            _seed_component(root, "scheduler", "scheduler_config.json")
+            _seed_component(root, "text_encoder")
+            _seed_component(root, "tokenizer", "tokenizer_config.json")
+            _seed_component(root, "vae")
+            (root / "transformer").mkdir()  # exists but no config.json
+
+            error = validate_local_diffusers_snapshot(root, "Lightricks/LTX-Video")
+
+            self.assertIsNotNone(error)
+            self.assertIn("transformer", error)
+
+    def test_skips_optional_null_components(self):
+        """Pipelines list ``[null, null]`` for opted-out components.
+
+        The validator must not flag them — they're deliberately absent on
+        community checkpoints (e.g. SDXL without safety_checker).
+        """
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            index = {
+                "_class_name": "StableDiffusionPipeline",
+                "scheduler": ["diffusers", "DDIMScheduler"],
+                "text_encoder": ["transformers", "CLIPTextModel"],
+                "tokenizer": ["transformers", "CLIPTokenizer"],
+                "unet": ["diffusers", "UNet2DConditionModel"],
+                "vae": ["diffusers", "AutoencoderKL"],
+                "safety_checker": [None, None],
+                "feature_extractor": [None, None],
+            }
+            (root / "model_index.json").write_text(json.dumps(index), encoding="utf-8")
+            _seed_component(root, "scheduler", "scheduler_config.json")
+            _seed_component(root, "text_encoder")
+            _seed_component(root, "tokenizer", "tokenizer_config.json")
+            _seed_component(root, "unet")
+            _seed_component(root, "vae")
+
+            self.assertIsNone(validate_local_diffusers_snapshot(root, "runwayml/stable-diffusion-v1-5"))
+
+    def test_still_flags_missing_model_index(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            error = validate_local_diffusers_snapshot(root, "Lightricks/LTX-Video")
+            self.assertIsNotNone(error)
+            self.assertIn("model_index.json", error)
+
+    def test_handles_malformed_model_index(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "model_index.json").write_text("{not valid json", encoding="utf-8")
+            error = validate_local_diffusers_snapshot(root, "Lightricks/LTX-Video")
+            self.assertIsNotNone(error)
+            self.assertIn("model_index.json", error)
 
 
 if __name__ == "__main__":

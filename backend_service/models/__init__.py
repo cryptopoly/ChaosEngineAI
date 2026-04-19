@@ -116,6 +116,10 @@ class UpdateSettingsRequest(BaseModel):
     remoteProviders: list[RemoteProviderRequest] | None = None
     huggingFaceToken: str | None = Field(default=None, max_length=512)
     dataDirectory: str | None = Field(default=None, max_length=4096)
+    # Per-modality output overrides. Empty string clears the override and
+    # restores the default (data-dir/images/outputs or data-dir/videos/outputs).
+    imageOutputsDirectory: str | None = Field(default=None, max_length=4096)
+    videoOutputsDirectory: str | None = Field(default=None, max_length=4096)
 
 
 class OpenAIMessage(BaseModel):

@@ -50,6 +50,59 @@ def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None)
             f"(missing model_index.json; found {visible_label}). {_snapshot_retry_guidance(repo)}"
         )
 
+    # Verify each component listed in model_index.json actually has its folder
+    # on disk with a recognisable config file. Diffusers will otherwise raise a
+    # cryptic "no file named config.json found in directory <snapshot_root>"
+    # error from inside ``from_pretrained`` that points at the snapshot root,
+    # which is hard to action without knowing which subfolder is missing.
+    # This typically happens when a download started before allow_patterns was
+    # applied — HF queues the legacy root-level safetensors first and the user
+    # tries to load before the per-component folders finish landing.
+    try:
+        pipeline_index = json.loads(model_index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            "The local snapshot's model_index.json could not be read "
+            f"({exc}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    missing_components: list[str] = []
+    if isinstance(pipeline_index, dict):
+        # Any of these names being present in a subfolder is enough to call it
+        # a real component directory — diffusers picks the right one based on
+        # the class type at load time.
+        component_config_names = (
+            "config.json",
+            "scheduler_config.json",
+            "tokenizer_config.json",
+            "preprocessor_config.json",
+        )
+        for component_name, descriptor in pipeline_index.items():
+            if component_name.startswith("_"):
+                continue  # ``_class_name`` / ``_diffusers_version`` metadata
+            if not isinstance(descriptor, (list, tuple)) or len(descriptor) < 2:
+                continue
+            # Pipelines list ``[null, null]`` for optional components that the
+            # checkpoint deliberately omits (e.g. safety_checker on community
+            # models). Skip those — they aren't expected on disk.
+            if descriptor[0] is None or descriptor[1] is None:
+                continue
+            component_dir = local_root / component_name
+            if not component_dir.is_dir():
+                missing_components.append(component_name)
+                continue
+            if not any((component_dir / name).exists() for name in component_config_names):
+                missing_components.append(component_name)
+
+    if missing_components:
+        label = ", ".join(missing_components[:4])
+        if len(missing_components) > 4:
+            label += f" (+{len(missing_components) - 4} more)"
+        return (
+            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+            f"(missing components: {label}). {_snapshot_retry_guidance(repo)}"
+        )
+
     broken_links: list[str] = []
     weight_index_paths: list[Path] = []
     try:

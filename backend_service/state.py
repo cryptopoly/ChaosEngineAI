@@ -274,6 +274,11 @@ class ChaosEngineState:
             "huggingFaceToken": hf_token_masked,
             "hasHuggingFaceToken": bool(hf_token_value),
             "dataDirectory": str(DATA_LOCATION.data_dir),
+            # Per-modality output overrides (empty == use default under
+            # dataDirectory). The frontend uses these to render the picker
+            # value and the resolved path used for new artifacts.
+            "imageOutputsDirectory": str(self.settings.get("imageOutputsDirectory") or ""),
+            "videoOutputsDirectory": str(self.settings.get("videoOutputsDirectory") or ""),
         }
 
     def _bootstrap(self) -> None:
@@ -889,6 +894,8 @@ class ChaosEngineState:
             next_settings["launchPreferences"] = self._launch_preferences()
             next_settings["remoteProviders"] = list(self.settings.get("remoteProviders") or [])
             next_settings["huggingFaceToken"] = str(self.settings.get("huggingFaceToken") or "")
+            next_settings["imageOutputsDirectory"] = str(self.settings.get("imageOutputsDirectory") or "")
+            next_settings["videoOutputsDirectory"] = str(self.settings.get("videoOutputsDirectory") or "")
 
             if request.modelDirectories is not None:
                 next_settings["modelDirectories"] = _normalize_model_directories(
@@ -942,6 +949,25 @@ class ChaosEngineState:
                 else:
                     os.environ.pop("HF_TOKEN", None)
                     os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
+
+            # Output directory overrides. Empty string clears the override.
+            # Anything non-empty must be absolute or ~-relative — same rule as
+            # dataDirectory — so we don't silently end up writing artifacts to
+            # the working directory of whoever launched the backend.
+            for field_name, label in (
+                ("imageOutputsDirectory", "imageOutputsDirectory"),
+                ("videoOutputsDirectory", "videoOutputsDirectory"),
+            ):
+                raw_value = getattr(request, field_name, None)
+                if raw_value is None:
+                    continue
+                cleaned = raw_value.strip()
+                if cleaned and not (cleaned.startswith("/") or cleaned.startswith("~")):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{label} must be an absolute path or start with ~.",
+                    )
+                next_settings[field_name] = cleaned
 
             data_migration: dict[str, Any] | None = None
             restart_required_for_data_dir = False

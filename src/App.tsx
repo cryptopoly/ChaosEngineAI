@@ -135,6 +135,8 @@ export default function App() {
     handleUpdateDirectoryPath,
     pickDirectory,
     handlePickDataDirectory,
+    handlePickImageOutputsDirectory,
+    handlePickVideoOutputsDirectory,
     handleSaveSettings,
     handleStopServer,
     handleRestartServer,
@@ -1658,6 +1660,8 @@ export default function App() {
       newDirectoryPath={newDirectoryPath}
       onNewDirectoryPathChange={setNewDirectoryPath}
       onPickDataDirectory={handlePickDataDirectory}
+      onPickImageOutputsDirectory={handlePickImageOutputsDirectory}
+      onPickVideoOutputsDirectory={handlePickVideoOutputsDirectory}
       onSaveSettings={handleSaveSettings}
       onPickDirectory={pickDirectory}
       onAddDirectory={handleAddDirectory}

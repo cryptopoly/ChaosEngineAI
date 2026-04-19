@@ -206,6 +206,10 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         "remoteProviders": [],
         "huggingFaceToken": "",
         "dataDirectory": str(data_dir),
+        # Empty string means "use the default under dataDirectory". Anything
+        # else is treated as an absolute (or ~-relative) override path.
+        "imageOutputsDirectory": "",
+        "videoOutputsDirectory": "",
     }
 
 
@@ -319,6 +323,12 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
         if hf_token:
             os.environ["HF_TOKEN"] = hf_token
             os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
+
+    for key in ("imageOutputsDirectory", "videoOutputsDirectory"):
+        raw = payload.get(key)
+        if isinstance(raw, str):
+            settings[key] = raw.strip()
+
     return settings
 
 

@@ -200,6 +200,11 @@ export interface AppSettings {
   huggingFaceToken?: string | null;
   hasHuggingFaceToken?: boolean;
   dataDirectory?: string;
+  // Empty string means "use the default under dataDirectory". A non-empty
+  // value redirects new image / video artifacts to a custom folder (e.g. an
+  // external SSD or a cloud-synced delivery folder).
+  imageOutputsDirectory?: string;
+  videoOutputsDirectory?: string;
 }
 
 export interface SettingsUpdateResponse {
@@ -927,4 +932,6 @@ export interface UpdateSettingsPayload {
   remoteProviders?: Array<{ id: string; label: string; apiBase: string; apiKey: string; model: string }>;
   huggingFaceToken?: string | null;
   dataDirectory?: string | null;
+  imageOutputsDirectory?: string | null;
+  videoOutputsDirectory?: string | null;
 }

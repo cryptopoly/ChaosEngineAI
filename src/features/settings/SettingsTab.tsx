@@ -11,6 +11,8 @@ export interface SettingsTabProps {
   newDirectoryPath: string;
   onNewDirectoryPathChange: (path: string) => void;
   onPickDataDirectory: () => void;
+  onPickImageOutputsDirectory: () => void;
+  onPickVideoOutputsDirectory: () => void;
   onSaveSettings: () => void;
   onPickDirectory: (currentPath?: string) => Promise<string | null>;
   onAddDirectory: () => void;
@@ -34,6 +36,8 @@ export function SettingsTab({
   newDirectoryPath,
   onNewDirectoryPathChange,
   onPickDataDirectory,
+  onPickImageOutputsDirectory,
+  onPickVideoOutputsDirectory,
   onSaveSettings,
   onPickDirectory,
   onAddDirectory,
@@ -109,6 +113,57 @@ export function SettingsTab({
           <p className="help-text">
             Changes take effect after the backend restarts. Existing data will be copied to the new location; the
             old files are left in place.
+          </p>
+        </div>
+      </Panel>
+      <Panel
+        title="Delivery Folders"
+        subtitle="Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD."
+      >
+        <div className="control-stack">
+          <label className="field-label">Images</label>
+          <div className="directory-add-row">
+            <input
+              className="text-input directory-add-path mono-text"
+              type="text"
+              readOnly
+              placeholder="Default: {data directory}/images/outputs"
+              value={settingsDraft.imageOutputsDirectory || ""}
+            />
+            <button className="secondary-button" type="button" onClick={() => void onPickImageOutputsDirectory()}>
+              Browse...
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => onSettingsDraftChange((current) => ({ ...current, imageOutputsDirectory: "" }))}
+            >
+              Reset to default
+            </button>
+          </div>
+          <label className="field-label">Videos</label>
+          <div className="directory-add-row">
+            <input
+              className="text-input directory-add-path mono-text"
+              type="text"
+              readOnly
+              placeholder="Default: {data directory}/videos/outputs"
+              value={settingsDraft.videoOutputsDirectory || ""}
+            />
+            <button className="secondary-button" type="button" onClick={() => void onPickVideoOutputsDirectory()}>
+              Browse...
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => onSettingsDraftChange((current) => ({ ...current, videoOutputsDirectory: "" }))}
+            >
+              Reset to default
+            </button>
+          </div>
+          <p className="help-text">
+            New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where
+            they were written. Leave blank to use the default under the Data Directory.
           </p>
         </div>
       </Panel>

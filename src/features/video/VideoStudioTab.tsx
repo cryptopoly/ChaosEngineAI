@@ -245,6 +245,13 @@ export function VideoStudioTab({
   // restart loop), not a graceful error — by the time the user sees "Load
   // failed" in the runtime status, the process has already died. See
   // ``assessVideoGenerationSafety`` for the heuristic and the bug it traces.
+  //
+  // We pass the selected variant's ``sizeGb`` through as ``baseModelFootprintGb``
+  // so the estimate accounts for the dominant cost on MPS — weights + text
+  // encoder + VAE sitting in unified memory — rather than estimating only
+  // the attention kernel peak. Wan 2.1 T2V 1.3B is the key case: its 16 GB
+  // on-disk footprint inflates to ~23 GB resident, which is the actual
+  // reason it detonates 64 GB Macs at modest frame counts.
   const generationSafety = useMemo(
     () =>
       assessVideoGenerationSafety({
@@ -253,6 +260,7 @@ export function VideoStudioTab({
         numFrames: videoNumFrames,
         device: videoRuntimeStatus.device,
         deviceMemoryGb: videoRuntimeStatus.deviceMemoryGb,
+        baseModelFootprintGb: selectedVideoVariant?.sizeGb,
       }),
     [
       videoWidth,
@@ -260,6 +268,7 @@ export function VideoStudioTab({
       videoNumFrames,
       videoRuntimeStatus.device,
       videoRuntimeStatus.deviceMemoryGb,
+      selectedVideoVariant?.sizeGb,
     ],
   );
 
@@ -271,7 +280,10 @@ export function VideoStudioTab({
   // the user can see at a glance how close to their limit they are. We
   // surface it even when ``riskLevel === "safe"`` so it serves as
   // reassurance ("this run wants 3 GB on 32 GB available") rather than only
-  // appearing when something is already wrong.
+  // appearing when something is already wrong. When the model-footprint
+  // term is known (``modelFootprintGb > 0``), we show a breakdown so the
+  // user sees that "the model itself is eating 23 GB" rather than
+  // attributing the whole peak to their chosen frame count.
   const deviceLabel = videoRuntimeStatus.device
     ? videoRuntimeStatus.device.toUpperCase().startsWith("CUDA")
       ? "GPU"
@@ -279,7 +291,24 @@ export function VideoStudioTab({
         ? "Apple Silicon"
         : videoRuntimeStatus.device.toUpperCase()
     : "Device";
-  const capacityLine = `${deviceLabel} · ${formatGb(generationSafety.deviceMemoryGb)} total · this run ≈ ${formatGb(generationSafety.estimatedPeakGb)} of attention memory`;
+  // Mark the memory figure as a fallback when the backend didn't actually
+  // report it — e.g. a stale sidecar that pre-dates the deviceMemoryGb
+  // field (we shipped it mid-release cycle) or a platform where detection
+  // failed. Without this tag a user on a 64 GB M4 Max sees "16 GB total"
+  // and has no way to know the number is inferred, not measured. The "~"
+  // prefix + "(default)" suffix reads as "we're guessing" without scaring
+  // the user about a real hardware issue.
+  const backendReportedMemory =
+    videoRuntimeStatus.deviceMemoryGb != null
+    && Number.isFinite(videoRuntimeStatus.deviceMemoryGb)
+    && videoRuntimeStatus.deviceMemoryGb > 0;
+  const memoryLabel = backendReportedMemory
+    ? formatGb(generationSafety.deviceMemoryGb)
+    : `~${formatGb(generationSafety.deviceMemoryGb)} (default — restart backend for real detection)`;
+  const capacityLine =
+    generationSafety.modelFootprintGb > 0
+      ? `${deviceLabel} · ${memoryLabel} total · model ≈ ${formatGb(generationSafety.modelFootprintGb)}, this run peak ≈ ${formatGb(generationSafety.estimatedPeakGb)}`
+      : `${deviceLabel} · ${memoryLabel} total · this run peak ≈ ${formatGb(generationSafety.estimatedPeakGb)}`;
 
   function handleApplySafeSettings(): void {
     const suggestion = generationSafety.suggestion;
@@ -536,16 +565,25 @@ export function VideoStudioTab({
           </p>
 
           {/*
-            Pre-flight safety callout. Surfaces the attention-budget heuristic
+            Pre-flight safety callout. Surfaces the memory-budget heuristic
             before the user hits Generate so they can recover by clicking
             "Use safer settings" rather than triggering a sidecar crash +
             restart loop. Scaled by ``deviceMemoryGb`` so a 64 GB Mac doesn't
-            see the same warnings as a 16 GB one. See
-            ``assessVideoGenerationSafety`` in ``src/utils/videos.ts`` for
-            the heuristic and the bug it traces ("Wan 2.1 T2V 1.3B at 832×480
-            × 96 frames" detonation, Apr 2026).
+            see the same warnings as a 16 GB one, and scaled by the
+            selected model's ``sizeGb`` so the estimate reflects the real
+            memory pressure (weights + text encoder, not just attention).
+            See ``assessVideoGenerationSafety`` in ``src/utils/videos.ts``
+            for the heuristic and the bug it traces ("Wan 2.1 T2V 1.3B at
+            832×480 × 40 frames" detonation on 64 GB M4 Max, Apr 2026).
+
+            The "Use safer settings" button only shows when a per-request
+            tweak can actually recover. When the model itself is too big
+            for the device, the heuristic returns ``suggestion: null`` and
+            the callout explains that a smaller model is required —
+            clicking through to "480×320 × 17 frames" would just produce a
+            second crash, which is strictly worse than no button.
           */}
-          {generationSafety.riskLevel !== "safe" && generationSafety.suggestion ? (
+          {generationSafety.riskLevel !== "safe" ? (
             <div
               className={`callout image-callout ${
                 generationSafety.riskLevel === "danger" ? "error" : "warning"
@@ -561,17 +599,30 @@ export function VideoStudioTab({
                 </strong>{" "}
                 {generationSafety.reason}
               </p>
-              <div className="button-row">
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={handleApplySafeSettings}
-                  disabled={videoBusy}
-                  title={`Apply ${generationSafety.suggestion.label}`}
-                >
-                  Use safer settings ({generationSafety.suggestion.label})
-                </button>
-              </div>
+              {generationSafety.suggestion ? (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={handleApplySafeSettings}
+                    disabled={videoBusy}
+                    title={`Apply ${generationSafety.suggestion.label}`}
+                  >
+                    Use safer settings ({generationSafety.suggestion.label})
+                  </button>
+                </div>
+              ) : (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => onActiveTabChange("video-discover")}
+                    disabled={videoBusy}
+                  >
+                    Browse smaller models
+                  </button>
+                </div>
+              )}
             </div>
           ) : null}
 

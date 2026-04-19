@@ -100,7 +100,13 @@ describe("assessVideoGenerationSafety()", () => {
         deviceMemoryGb: 16,
       });
       expect(result.riskLevel).toBe("caution");
-      expect(result.reason).toMatch(/attention memory/);
+      // The message now says "peak memory" rather than "attention memory"
+      // because the estimate can also include the model's resident footprint
+      // when the caller passes ``baseModelFootprintGb``. Without it (this
+      // case), the peak is just the attention term, but the wording is
+      // consistent across both paths so the Studio UI doesn't need to
+      // branch its copy.
+      expect(result.reason).toMatch(/peak memory/);
     });
 
     it("a 128 GB M3 Ultra handles the observed-crash config safely", () => {
@@ -259,9 +265,9 @@ describe("assessVideoGenerationSafety()", () => {
   describe("consumer-facing fields", () => {
     it("returns a positive estimatedPeakGb for every valid request", () => {
       // The Studio uses this number in the always-on capacity line
-      // ("this run ≈ 2.9 GB of attention memory"). It must always be
-      // positive when inputs are valid — a zero here would read as "this
-      // run wants 0 GB", which is nonsense UX.
+      // ("this run ≈ 2.9 GB of peak memory"). It must always be positive
+      // when inputs are valid — a zero here would read as "this run wants
+      // 0 GB", which is nonsense UX.
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -284,6 +290,187 @@ describe("assessVideoGenerationSafety()", () => {
         deviceMemoryGb: 96.5,
       });
       expect(result.deviceMemoryGb).toBe(96.5);
+    });
+
+    it("reports modelFootprintGb as 0 when no baseModelFootprintGb is passed", () => {
+      // The Studio capacity line only shows a "model ≈ X GB" breakdown
+      // when this is non-zero. The tests / attention-only path must leave
+      // it at 0 so the UI falls back to the simple peak-memory framing.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+      });
+      expect(result.modelFootprintGb).toBe(0);
+    });
+  });
+
+  describe("model-footprint-aware estimate (the real Wan 2.1 crash case)", () => {
+    // This block calibrates against the actual bug report: Wan 2.1 T2V
+    // 1.3B (catalog sizeGb = 16.4) at 832×480 × 40 frames detonated MPS on
+    // a 64 GB M4 Max because the model weights + UMT5-XXL text encoder
+    // dominate memory — not the attention kernel. The Studio passes
+    // ``selectedVariant.sizeGb`` as ``baseModelFootprintGb`` so the
+    // warning reflects that reality.
+
+    it("flags danger for Wan 2.1 1.3B at 40 frames on a 64 GB M4 Max", () => {
+      // The exact config that crashed the user's backend. With the
+      // resident-model term included (16.4 GB disk × 1.4 MPS fragmentation
+      // ≈ 23 GB) the estimate now realistically lands in "danger".
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 40,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 16.4,
+      });
+      expect(result.riskLevel).toBe("danger");
+      // The resident term is the majority of the peak — the user needs to
+      // see that it's the model itself, not just the attention kernel.
+      expect(result.modelFootprintGb).toBeGreaterThan(result.estimatedPeakGb / 2);
+      expect(result.reason).not.toBeNull();
+    });
+
+    it("hands back a null suggestion when the model alone doesn't fit", () => {
+      // On a 64 GB M4 Max, Wan 2.1 1.3B's 23 GB resident footprint fills
+      // most of the 32 GB MPS budget all by itself — no per-request tweak
+      // (smaller resolution, fewer frames) can recover. The right answer
+      // is "try a smaller model", which we signal by a null suggestion.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 40,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 16.4,
+      });
+      expect(result.suggestion).toBeNull();
+      expect(result.reason).toMatch(/model weights|text encoder/i);
+    });
+
+    it("flags danger for Wan 2.1 1.3B on a 16 GB M2 regardless of frame count", () => {
+      // The model's resident footprint (~23 GB on MPS) is already three
+      // times the 8 GB MPS budget — even a 9-frame 480×320 request is
+      // doomed. Confirms the short-circuit triggers for small machines.
+      const result = assessVideoGenerationSafety({
+        width: 480,
+        height: 320,
+        numFrames: 9,
+        device: "mps",
+        deviceMemoryGb: 16,
+        baseModelFootprintGb: 16.4,
+      });
+      expect(result.riskLevel).toBe("danger");
+      expect(result.suggestion).toBeNull();
+    });
+
+    it("stays safe for Wan 2.1 1.3B on a 128 GB M3 Ultra", () => {
+      // 64 GB MPS budget easily swallows 23 GB resident + ~3 GB attention.
+      // The calibration target: a big machine actually gets to generate.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 128,
+        baseModelFootprintGb: 16.4,
+      });
+      expect(result.riskLevel).toBe("safe");
+      expect(result.modelFootprintGb).toBeGreaterThan(0);
+    });
+
+    it("stays safe for LTX-Video (small model) on a 32 GB Mac", () => {
+      // LTX ships at ~2 GB on disk so residency is ~2.8 GB on MPS — fits
+      // with lots of headroom even on a 32 GB machine. Proves the
+      // heuristic doesn't over-warn small models.
+      const result = assessVideoGenerationSafety({
+        width: 768,
+        height: 512,
+        numFrames: 41,
+        device: "mps",
+        deviceMemoryGb: 32,
+        baseModelFootprintGb: 2.0,
+      });
+      expect(result.riskLevel).toBe("safe");
+    });
+
+    it("flags danger for Wan 2.1 14B on a 24 GB RTX 4090", () => {
+      // 45 GB catalog size × 1.05 CUDA factor ≈ 47 GB resident. A 4090's
+      // 16.8 GB effective VRAM can't hold the weights at all without
+      // aggressive offload, so the heuristic correctly short-circuits
+      // regardless of resolution / frames.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 45,
+      });
+      expect(result.riskLevel).toBe("danger");
+      expect(result.suggestion).toBeNull();
+    });
+
+    it("MPS fragmentation factor is larger than CUDA's (same model, same memory)", () => {
+      // Apples-to-apples: 10 GB model on the same 32 GB total, MPS vs
+      // CUDA. MPS should report a higher resident estimate because
+      // unified-memory allocator fragmentation inflates the real footprint
+      // more than CUDA's dedicated pool does. Locks that asymmetry so
+      // future tweaks don't accidentally flip it.
+      const mps = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 32,
+        baseModelFootprintGb: 10,
+      });
+      const cuda = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 32,
+        baseModelFootprintGb: 10,
+      });
+      expect(mps.modelFootprintGb).toBeGreaterThan(cuda.modelFootprintGb);
+    });
+
+    it("ignores non-positive or non-finite baseModelFootprintGb values", () => {
+      // Guard: the caller should be able to pass through whatever the
+      // catalog hands them (which occasionally ships a 0 sizeGb for
+      // placeholder entries) without the heuristic blowing up or
+      // silently applying a nonsense offset.
+      const zero = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 0,
+      });
+      const negative = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: -5,
+      });
+      const nan = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: Number.NaN,
+      });
+      expect(zero.modelFootprintGb).toBe(0);
+      expect(negative.modelFootprintGb).toBe(0);
+      expect(nan.modelFootprintGb).toBe(0);
     });
   });
 });

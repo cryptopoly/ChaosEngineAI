@@ -97,15 +97,25 @@ export interface VideoGenerationSafety {
   riskLevel: VideoGenerationRiskLevel;
   /** Estimated latent token count (rough — used in the message and for the threshold). */
   latentTokens: number;
-  /** Rough upper-bound estimate of peak attention memory, in GB. Consumer-facing. */
+  /** Rough upper-bound estimate of peak memory for this request, in GB. The
+   * sum of the resident model footprint (weights + text encoder + VAE) and
+   * the attention-matrix peak. Consumer-facing. */
   estimatedPeakGb: number;
+  /** Resident memory estimate for the model itself (weights + text encoder +
+   * VAE, adjusted for device-specific allocator overhead). Zero when the
+   * caller didn't pass ``baseModelFootprintGb`` — used to show a breakdown
+   * in the Studio capacity line. */
+  modelFootprintGb: number;
   /** Device memory we compared against when computing the risk level, in GB. */
   deviceMemoryGb: number;
   /** True if the peak estimate exceeds the device's effective budget. */
   exceedsDevice: boolean;
   /** Plain-English reason — null only when riskLevel is "safe". */
   reason: string | null;
-  /** Concrete fallback to drop the user back into the safe envelope. */
+  /** Concrete fallback to drop the user back into the safe envelope. Null
+   * when the model's resident footprint alone exceeds the safe envelope —
+   * in that case, no per-request tweak can recover and the user needs a
+   * smaller model or a bigger machine. */
   suggestion: {
     width: number;
     height: number;
@@ -128,15 +138,15 @@ const DEFAULT_CPU_MEMORY_GB = 8;
  * Diffusers video pipelines cluster around 12–32 attention heads per block,
  * but only a handful are live concurrently under MPS / flash-attn tiling,
  * and ``softmax(QK^T)·V`` adds one more slab of similar shape. This single
- * constant bakes both factors into one ballpark that the Studio UI shows
- * the user.
+ * constant bakes both factors into one ballpark — the attention term in
+ * the overall peak estimate.
  *
- * Calibrated from the concrete bug report: Wan 2.1 T2V 1.3B at 832×480 × 96
- * frames (~37k latent tokens × 2 bytes fp16 ≈ 2.8 GB per slab) crashed a
- * 64 GB M4 Max. The constant below was picked so that configuration
- * correctly lands in "danger" at 16 GB and "caution" at 64 GB, while the
- * Studio defaults (832×480 × 33 frames, ~14k tokens) stay "safe" even on
- * base-model 16 GB Macs. */
+ * In practice the Wan-family OOMs on MPS are dominated by the resident
+ * model footprint (transformer + UMT5-XXL text encoder + VAE) rather than
+ * this attention slab, so the crash-case calibration lives in
+ * ``estimateResidentModelGb``. This constant is left modest so the
+ * attention-only path (when no model footprint is known) is still
+ * reasonable for the Studio defaults on 16 GB base Macs. */
 const EFFECTIVE_HEAD_SLAB_MULTIPLIER = 8;
 
 /** Bytes per element for the attention compute path. MPS/CUDA run fp16/bf16,
@@ -173,33 +183,64 @@ function estimatePeakAttentionBytes(
   return latentTokens * latentTokens * bytesPerElement * EFFECTIVE_HEAD_SLAB_MULTIPLIER;
 }
 
+/** Translate a model's on-disk size into an approximate resident-memory
+ * estimate during generation.
+ *
+ * The on-disk size (from the catalog ``sizeGb``) packs the transformer
+ * weights, text encoder (often the dominant term — UMT5-XXL is ~11 GB for
+ * Wan 2.1), VAE, and CLIP in fp16. Once the pipeline is live, PyTorch's
+ * allocator holds slightly more than that because of intermediate buffers
+ * it doesn't aggressively free between denoising steps. On MPS the factor
+ * runs ~1.4× in practice (calibrated against the Wan 2.1 1.3B crash on a
+ * 64 GB M4 Max: disk = 16.4 GB → resident ≈ 23 GB → peak with attention ≈
+ * 27 GB → observed 88 GB under PyTorch's 1.4× watermark). CUDA is tighter
+ * because dedicated VRAM + better allocator reuse; CPU sits in between. */
+function estimateResidentModelGb(
+  baseFootprintGb: number,
+  device: "mps" | "cuda" | "cpu",
+): number {
+  if (!(baseFootprintGb > 0) || !Number.isFinite(baseFootprintGb)) return 0;
+  const factor = device === "mps" ? 1.4 : device === "cpu" ? 1.3 : 1.05;
+  return baseFootprintGb * factor;
+}
+
 /**
  * Estimate whether a video generation request is in danger of detonating
- * the inference device with a giant attention tensor.
+ * the inference device. The estimate combines two memory terms:
  *
- * Diffusers / Wan 2.1 attention scales with the latent token count, roughly
- * ``(W/16) × (H/16) × (F/4)`` for the typical 16× spatial / 4× temporal
- * downsample. The QK^T peak then scales as ``tokens² × heads × dtype``,
- * which is what we compare against the device's effective memory budget.
+ *   1. **Resident model footprint** — weights + text encoder + VAE sitting
+ *      in memory the whole time. For Wan 2.1 / HunyuanVideo this is the
+ *      dominant cost on MPS, where the UMT5-XXL text encoder alone is ~11
+ *      GB. Opt-in via ``baseModelFootprintGb``; the Studio passes
+ *      ``selectedVariant.sizeGb`` so the warning actually reflects the
+ *      real memory pressure the user is about to create.
  *
- * Because thresholds are computed from ``estimatedPeakGb / budgetGb`` rather
- * than a fixed token count, the heuristic scales cleanly from an 8 GB base
- * M1 to a 128 GB M3 Ultra to a 24 GB RTX 4090 — one formula, no per-
- * platform tables to maintain. When ``deviceMemoryGb`` is null (detection
- * failed), we fall back to conservative defaults; over-warning a beefy
- * machine is strictly better than silently crashing a small one.
+ *   2. **Attention peak** — scales with ``tokens² × heads × dtype`` where
+ *      ``tokens = (W/16) × (H/16) × (F/4)`` for the typical 16× spatial /
+ *      4× temporal downsample. Purely request-driven.
  *
- * The returned shape carries both the risk level and the raw ``estimatedPeakGb``
- * / ``deviceMemoryGb`` pair, so the Studio UI can show "this run wants ~X GB
- * on Y GB available" even when risk is still "safe" — users asked for that
- * framing; "37k latent tokens" is not a number anyone thinks in.
+ * Thresholds are computed from ``estimatedPeakGb / budgetGb`` so one
+ * formula scales cleanly from an 8 GB base M1 to a 128 GB M3 Ultra to a 24
+ * GB RTX 4090 — no per-platform tables. When ``deviceMemoryGb`` is null
+ * (detection failed), we fall back to conservative defaults; over-warning
+ * a beefy machine is strictly better than silently crashing a small one.
+ *
+ * The returned shape carries the risk level plus the raw numbers so the
+ * Studio UI can show "model ≈ 23 GB, this run peak ≈ 27 GB on 32 GB
+ * available" even when risk is "safe" — users asked for that framing
+ * ("37k latent tokens" is not a number anyone thinks in).
  *
  * Calibration points:
- * - Studio defaults 832×480 × 33 frames: stays "safe" on 16 GB+.
- * - Observed-crash 832×480 × 96 frames on 64 GB M4 Max: now correctly comes
- *   back as "caution" (the machine can actually handle it with headroom)
- *   instead of the previous "danger" false positive.
- * - Same config on 16 GB M2: stays "danger" — the machine really would crash.
+ * - Studio defaults 832×480 × 33 frames (no baseFootprint): stays "safe"
+ *   on 16 GB+ — preserves the attention-only heuristic when the caller
+ *   doesn't know which model is loaded.
+ * - Wan 2.1 T2V 1.3B (baseFootprint 16.4 GB) at 832×480 × 40 frames on a
+ *   64 GB M4 Max: lands on "danger" — matches the observed-crash bug
+ *   report where actual MPS use hit 88 GB under PyTorch's 1.4× watermark.
+ * - Same Wan config on 128 GB M3 Ultra: stays "safe" — the machine has
+ *   real headroom for the 23 GB resident footprint + attention peak.
+ * - LTX-Video (baseFootprint 2 GB) at 768×512 × 41 frames on 32 GB:
+ *   stays "safe" — small model, proven to run on consumer Macs.
  */
 export function assessVideoGenerationSafety(opts: {
   width: number;
@@ -207,8 +248,13 @@ export function assessVideoGenerationSafety(opts: {
   numFrames: number;
   device: string | null | undefined;
   deviceMemoryGb?: number | null;
+  /** On-disk / fp16 size of the selected model (catalog ``sizeGb``). When
+   * provided, the estimate includes the resident model footprint — crucial
+   * on MPS where the text encoder + weights are the dominant cost. Leave
+   * unset for the narrow "attention-only" question. */
+  baseModelFootprintGb?: number | null;
 }): VideoGenerationSafety {
-  const { width, height, numFrames, device, deviceMemoryGb } = opts;
+  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
@@ -229,6 +275,14 @@ export function assessVideoGenerationSafety(opts: {
       : fallbackMemory;
   const budgetGb = effectiveMemoryBudgetGb(totalMemoryGb, effectiveDevice);
 
+  const baseFootprint =
+    baseModelFootprintGb != null
+    && Number.isFinite(baseModelFootprintGb)
+    && baseModelFootprintGb > 0
+      ? baseModelFootprintGb
+      : 0;
+  const modelFootprintGb = estimateResidentModelGb(baseFootprint, effectiveDevice);
+
   if (
     !Number.isFinite(width)
     || !Number.isFinite(height)
@@ -241,6 +295,7 @@ export function assessVideoGenerationSafety(opts: {
       riskLevel: "safe",
       latentTokens: 0,
       estimatedPeakGb: 0,
+      modelFootprintGb: 0,
       deviceMemoryGb: totalMemoryGb,
       exceedsDevice: false,
       reason: null,
@@ -250,8 +305,9 @@ export function assessVideoGenerationSafety(opts: {
 
   const latentTokens =
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
-  const estimatedPeakGb =
+  const attentionPeakGb =
     estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
+  const estimatedPeakGb = modelFootprintGb + attentionPeakGb;
 
   // MPS has a lower danger ratio (0.8 vs CUDA 1.0) because Apple's Metal
   // backend has historically been less tolerant of approaching the ceiling
@@ -269,6 +325,7 @@ export function assessVideoGenerationSafety(opts: {
       riskLevel,
       latentTokens,
       estimatedPeakGb,
+      modelFootprintGb,
       deviceMemoryGb: totalMemoryGb,
       exceedsDevice,
       reason: null,
@@ -276,9 +333,42 @@ export function assessVideoGenerationSafety(opts: {
     };
   }
 
-  // Build a concrete suggestion. Halve the frame count first (biggest
-  // single lever because the latent seq length is linear in frames but the
-  // QK^T cost is quadratic in sequence length); if still over budget, nudge
+  const fmt = (g: number) => (g >= 10 ? g.toFixed(0) : g.toFixed(1));
+  const platform = isCuda ? "this GPU" : isCpu ? "CPU generation" : "Apple Silicon (MPS)";
+
+  // Short-circuit the suggestion loop when the model's resident footprint
+  // alone is too big for this device. No matter how small the request,
+  // the weights + text encoder still have to live in memory — the right
+  // answer is "pick a smaller model or run on a bigger machine", not
+  // "try 480×320 × 17 frames" (which would also crash). We threshold at
+  // the caution ratio rather than danger so we don't hand back bogus
+  // suggestions in the caution band either.
+  const safeRatioTarget = cautionRatio * 0.7; // leave a real margin after apply
+  if (modelFootprintGb > cautionRatio * budgetGb) {
+    // Phrase the comparison against the caution threshold (the point where
+    // we start warning), not the total budget — it's the number the user
+    // actually needs to stay under. Avoids the "23 GB is bigger than
+    // 32 GB??" head-scratch.
+    const cautionBudgetGb = cautionRatio * budgetGb;
+    const reason =
+      riskLevel === "danger"
+        ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, safe usage tops out around ${fmt(cautionBudgetGb)} GB — the model alone is already over that. Even the smallest clip would be likely to crash the backend. Try a smaller model (LTX-Video is ~2 GB) or a machine with more memory.`
+        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, safe usage tops out around ${fmt(cautionBudgetGb)} GB — you're right on the edge. Generation may run slowly or fail; consider a smaller model.`;
+    return {
+      riskLevel,
+      latentTokens,
+      estimatedPeakGb,
+      modelFootprintGb,
+      deviceMemoryGb: totalMemoryGb,
+      exceedsDevice,
+      reason,
+      suggestion: null,
+    };
+  }
+
+  // Normal suggestion loop. Halve the frame count first (biggest single
+  // lever because latent seq length is linear in frames but the QK^T cost
+  // is quadratic in sequence length); if still over budget, nudge
   // resolution down in 64-px steps. Snap frames to ``(n - 1) % 4 == 0``
   // (Wan / LTX requirement) so the suggestion we hand back is directly
   // applicable — duplicated from useVideoState's ``clampNumFrames`` rather
@@ -286,13 +376,14 @@ export function assessVideoGenerationSafety(opts: {
   let suggestedFrames = numFrames;
   let suggestedWidth = width;
   let suggestedHeight = height;
-  const safeRatioTarget = cautionRatio * 0.7; // leave a real margin after apply
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const tokens =
       Math.ceil(suggestedWidth / 16)
       * Math.ceil(suggestedHeight / 16)
       * Math.ceil(suggestedFrames / 4);
-    const peakGb = estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3;
+    const peakGb =
+      modelFootprintGb
+      + estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3;
     if (peakGb / budgetGb < safeRatioTarget) break;
     if (suggestedFrames > 17) {
       suggestedFrames = Math.max(17, Math.floor(suggestedFrames * 0.6));
@@ -306,17 +397,20 @@ export function assessVideoGenerationSafety(opts: {
     }
   }
 
-  const platform = isCuda ? "this GPU" : isCpu ? "CPU generation" : "Apple Silicon (MPS)";
-  const fmt = (g: number) => (g >= 10 ? g.toFixed(0) : g.toFixed(1));
+  const breakdown =
+    modelFootprintGb > 0
+      ? ` (model ≈ ${fmt(modelFootprintGb)} GB + attention ≈ ${fmt(attentionPeakGb)} GB)`
+      : "";
   const reason =
     riskLevel === "danger"
-      ? `These settings would need around ${fmt(estimatedPeakGb)} GB of attention memory — above what ${platform} can safely allocate (~${fmt(budgetGb)} GB of ${fmt(totalMemoryGb)} GB total). Generation is likely to crash the backend.`
-      : `These settings need around ${fmt(estimatedPeakGb)} GB of attention memory — close to the safe limit on ${platform} (~${fmt(budgetGb)} GB of ${fmt(totalMemoryGb)} GB total). Generation may run slowly or fail.`;
+      ? `These settings would need around ${fmt(estimatedPeakGb)} GB of peak memory${breakdown} — above what ${platform} can safely allocate (~${fmt(budgetGb)} GB of ${fmt(totalMemoryGb)} GB total). Generation is likely to crash the backend.`
+      : `These settings need around ${fmt(estimatedPeakGb)} GB of peak memory${breakdown} — close to the safe limit on ${platform} (~${fmt(budgetGb)} GB of ${fmt(totalMemoryGb)} GB total). Generation may run slowly or fail.`;
 
   return {
     riskLevel,
     latentTokens,
     estimatedPeakGb,
+    modelFootprintGb,
     deviceMemoryGb: totalMemoryGb,
     exceedsDevice,
     reason,

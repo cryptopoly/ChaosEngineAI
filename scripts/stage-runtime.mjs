@@ -40,8 +40,8 @@ main();
 function main() {
   ensureDir(embeddedResourcesRoot);
   cleanupStaleTauriResources();
-  fs.rmSync(path.join(resourcesRoot, "runtime"), { recursive: true, force: true });
-  fs.rmSync(stageRoot, { recursive: true, force: true });
+  safeRmSync(path.join(resourcesRoot, "runtime"));
+  safeRmSync(stageRoot);
   cleanupStagedRuntimeArtifacts();
   ensureDir(stageRoot);
 
@@ -96,16 +96,32 @@ function main() {
 
   fs.writeFileSync(path.join(stageRoot, "manifest.json"), JSON.stringify(embeddedRuntime, null, 2));
   fs.copyFileSync(path.join(stageRoot, "manifest.json"), manifestDest);
-  execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
-    cwd: workspaceRoot,
-    env: { ...process.env, COPYFILE_DISABLE: "1" },
-    stdio: "inherit",
-  });
-  fs.rmSync(stageRoot, { recursive: true, force: true });
+
+  // In development mode the Tauri shell prefers the live source workspace
+  // (see src-tauri/src/lib.rs::resolve_embedded_runtime → "development embedded
+  // runtime detected; preferring source workspace"). Archiving the staging
+  // tree would add several minutes per dev iteration on Windows for output
+  // that is immediately discarded. Release builds still need the archive.
+  if (strict) {
+    console.log(`[stage-runtime] archiving runtime — this can take a few minutes on Windows...`);
+    execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
+      cwd: workspaceRoot,
+      env: { ...process.env, COPYFILE_DISABLE: "1" },
+      stdio: "inherit",
+    });
+    console.log(`[stage-runtime] archive -> ${archiveDest}`);
+  } else {
+    // Clear any stale archive so the Rust shell doesn't surface an old one.
+    if (fs.existsSync(archiveDest)) {
+      safeRmSync(archiveDest);
+    }
+    console.log(`[stage-runtime] dev mode: skipping tar.gz archive (live workspace is used instead)`);
+  }
+
+  safeRmSync(stageRoot);
 
   console.log(`[stage-runtime] mode=${mode}`);
   console.log(`[stage-runtime] platform=${platformTag}`);
-  console.log(`[stage-runtime] archive -> ${archiveDest}`);
   console.log(`[stage-runtime] manifest -> ${manifestDest}`);
   if (llamaWarnings.length) {
     for (const warning of llamaWarnings) {
@@ -485,6 +501,65 @@ function assertPathExists(targetPath, label) {
   }
 }
 
+/**
+ * Windows-robust replacement for fs.rmSync(..., { recursive: true, force: true }).
+ *
+ * On Windows, `force: true` doesn't actually chmod read-only files writable, and
+ * files touched by antivirus, Explorer thumbnails, or recent pip installs often
+ * return EPERM for a few hundred milliseconds after they become idle. Instead of
+ * failing the whole staging run on transient locks we:
+ *  - clear the read-only bit on every entry before unlinking (covers pip-installed
+ *    package metadata which ships with read-only attrs on some registries)
+ *  - retry with exponential backoff on EPERM / EBUSY / ENOTEMPTY
+ *
+ * Non-Windows platforms use the fast path unchanged.
+ */
+function safeRmSync(targetPath) {
+  if (!fs.existsSync(targetPath)) return;
+
+  if (process.platform !== "win32") {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+    return;
+  }
+
+  const clearReadOnlyRecursive = (entry) => {
+    try {
+      const stat = fs.lstatSync(entry);
+      // Clear read-only bit (0o200 = owner-write).
+      try { fs.chmodSync(entry, stat.mode | 0o200); } catch { /* ignore */ }
+      if (stat.isDirectory()) {
+        for (const child of fs.readdirSync(entry)) {
+          clearReadOnlyRecursive(path.join(entry, child));
+        }
+      }
+    } catch { /* ignore — rm will surface the real error below */ }
+  };
+
+  const attempts = [0, 100, 300, 800, 2000];
+  let lastError = null;
+  for (const delay of attempts) {
+    if (delay > 0) {
+      const deadline = Date.now() + delay;
+      while (Date.now() < deadline) { /* spin — avoids async refactor */ }
+    }
+    try {
+      clearReadOnlyRecursive(targetPath);
+      fs.rmSync(targetPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"].includes(error.code)) {
+        throw error;
+      }
+    }
+  }
+  throw new Error(
+    `Could not remove ${targetPath} after ${attempts.length} attempts — last error: ${lastError?.code ?? lastError?.message}. ` +
+    `On Windows this is usually caused by Windows Defender or another process holding a file handle. ` +
+    `Try closing ChaosEngineAI.exe, add the repo to Defender exclusions, then retry.`,
+  );
+}
+
 function cleanupStaleTauriResources() {
   const targetRoot = path.join(tauriRoot, "target");
   const staleRoots = [
@@ -495,7 +570,7 @@ function cleanupStaleTauriResources() {
   ];
 
   for (const staleRoot of staleRoots) {
-    fs.rmSync(staleRoot, { recursive: true, force: true });
+    safeRmSync(staleRoot);
   }
 }
 
@@ -508,7 +583,7 @@ function cleanupStagedRuntimeArtifacts() {
     if (!entry.startsWith("runtime-")) {
       continue;
     }
-    fs.rmSync(path.join(embeddedResourcesRoot, entry), { recursive: true, force: true });
+    safeRmSync(path.join(embeddedResourcesRoot, entry));
   }
 }
 
@@ -841,7 +916,7 @@ function pruneBundledProjectArtifacts() {
       entry.endsWith(".egg-link") ||
       /^chaosengine_ai-.*\.(dist-info|egg-info)$/.test(entry)
     ) {
-      fs.rmSync(fullPath, { recursive: true, force: true });
+      safeRmSync(fullPath);
       continue;
     }
 
@@ -865,7 +940,7 @@ function pruneBundledProjectArtifacts() {
     if (filtered.trim()) {
       fs.writeFileSync(fullPath, `${filtered}\n`);
     } else {
-      fs.rmSync(fullPath, { force: true });
+      safeRmSync(fullPath);
     }
   }
 }

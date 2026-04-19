@@ -32,37 +32,23 @@ export interface SettingsTabProps {
 // Data Directory, Delivery Folders, Model Directories, Remote Providers,
 // Hugging Face, and Integrations — which felt squished on the 2-column grid
 // and forced users to scroll past unrelated controls to reach the one they
-// wanted. We now group those panels into four logical sections and let the
-// user navigate between them. The navigation style mirrors the user's
-// existing ``sidebarMode`` preference: tabs mode → horizontal pill bar
-// across the top (matches the rest of the app's tab UX); collapsible mode
-// → vertical menu down the left (the macOS / iOS Settings idiom). Either
-// way, only one section's panels render at a time.
+// wanted. We now group those panels into four logical sections and navigate
+// between them with a horizontal sub-tab bar. (We tried matching the user's
+// ``sidebarMode`` preference with a side-menu variant for collapsible users
+// but it felt clunky at the viewport widths this app runs at — tabs always,
+// for Settings only.)
 type SettingsSectionId = "general" | "storage" | "providers" | "integrations";
 
 interface SettingsSectionDef {
   id: SettingsSectionId;
   label: string;
-  hint: string;
 }
 
 const SETTINGS_SECTIONS: SettingsSectionDef[] = [
-  { id: "general", label: "General", hint: "Appearance" },
-  {
-    id: "storage",
-    label: "Storage",
-    hint: "Data, delivery folders, model directories",
-  },
-  {
-    id: "providers",
-    label: "Providers",
-    hint: "Remote providers and Hugging Face token",
-  },
-  {
-    id: "integrations",
-    label: "Integrations",
-    hint: "Connect external tools",
-  },
+  { id: "general", label: "General" },
+  { id: "storage", label: "Storage" },
+  { id: "providers", label: "Providers" },
+  { id: "integrations", label: "Integrations" },
 ];
 
 export function SettingsTab({
@@ -466,54 +452,31 @@ export function SettingsTab({
           ? providerPanels
           : integrationPanels;
 
-  // The two layouts share the same list-of-buttons logic but pick different
-  // shell elements / class names so they slot into the rest of the app's
-  // styling. Tabs mode reuses ``.subtab-bar`` (same look as the top-level
-  // sub-tabs) so a user who flipped to tabs gets a consistent UX top to
-  // bottom. Collapsible mode uses a vertical aside so the right column has
-  // room for content-grid's two-column panel layout.
-  const navButtons = SETTINGS_SECTIONS.map((section) => {
-    const isActive = section.id === activeSection;
-    if (sidebarMode === "tabs") {
-      return (
-        <button
-          key={section.id}
-          type="button"
-          role="tab"
-          aria-selected={isActive}
-          className={isActive ? "subtab active" : "subtab"}
-          onClick={() => setActiveSection(section.id)}
-        >
-          {section.label}
-        </button>
-      );
-    }
-    return (
-      <button
-        key={section.id}
-        type="button"
-        role="tab"
-        aria-selected={isActive}
-        className={isActive ? "settings-side-nav-button active" : "settings-side-nav-button"}
-        onClick={() => setActiveSection(section.id)}
-      >
-        <span className="settings-side-nav-label">{section.label}</span>
-        <span className="settings-side-nav-hint">{section.hint}</span>
-      </button>
-    );
-  });
-
+  // Horizontal sub-tab bar, always — the vertical side-menu variant we
+  // tried originally felt clunky at the viewport widths this app runs at
+  // (too much wasted horizontal space for four shortish labels). The
+  // app-wide ``sidebarMode`` preference still controls the top-level
+  // sidebar, but Settings always uses tabs regardless; the hint line on
+  // each section lives in the panel subtitles instead.
   return (
-    <div className="settings-layout" data-mode={sidebarMode}>
-      {sidebarMode === "tabs" ? (
-        <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
-          {navButtons}
-        </div>
-      ) : (
-        <aside className="settings-side-nav" role="tablist" aria-label="Settings sections">
-          {navButtons}
-        </aside>
-      )}
+    <div className="settings-layout">
+      <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
+        {SETTINGS_SECTIONS.map((section) => {
+          const isActive = section.id === activeSection;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={isActive ? "subtab active" : "subtab"}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+            </button>
+          );
+        })}
+      </div>
       <div className="content-grid settings-section-grid">{sectionContent}</div>
     </div>
   );

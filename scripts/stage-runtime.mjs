@@ -315,6 +315,10 @@ function stageVendoredChaosEngine(pythonBinary) {
 }
 
 function ensureSetuptoolsForPep639(pythonBinary) {
+  // Bound: >=77 for PEP 639 license strings, <82 because modern torch
+  // wheels declare ``setuptools<82`` and pip's resolver surfaces a loud
+  // "requires setuptools<82" warning on every subsequent invocation once
+  // 82.x is installed.
   const checkScript = [
     "import sys",
     "try:",
@@ -323,7 +327,10 @@ function ensureSetuptoolsForPep639(pythonBinary) {
     "except Exception:",
     "    sys.exit(2)",
     "parts = [int(p) for p in v.split('.')[:2] if p.isdigit()]",
-    "sys.exit(0 if parts and parts[0] >= 77 else 1)",
+    "if not parts:",
+    "    sys.exit(1)",
+    "major = parts[0]",
+    "sys.exit(0 if 77 <= major < 82 else 1)",
   ].join("\n");
 
   let ok = false;
@@ -335,17 +342,17 @@ function ensureSetuptoolsForPep639(pythonBinary) {
   }
   if (ok) return;
 
-  console.log(`[stage-runtime] upgrading setuptools (>=77) for PEP 639 license strings`);
+  console.log(`[stage-runtime] pinning setuptools to >=77,<82 for PEP 639 licenses + torch compatibility`);
   try {
     execFileSync(
       pythonBinary,
-      ["-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "setuptools>=77", "wheel"],
+      ["-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "setuptools>=77,<82", "wheel"],
       { cwd: workspaceRoot, stdio: "inherit" },
     );
   } catch (err) {
     console.warn(
-      `[stage-runtime] warning: could not upgrade setuptools (${err.message.split("\n")[0]}). ` +
-      `Vendor install may fail if the venv's setuptools < 77.`,
+      `[stage-runtime] warning: could not pin setuptools (${err.message.split("\n")[0]}). ` +
+      `Vendor install may fail and pip may warn about torch incompatibility.`,
     );
   }
 }
@@ -452,16 +459,39 @@ function stageOptionalRuntimePackages(pythonBinary) {
 
 function stageLlamaBinaries() {
   const warnings = [];
-  const sourceDir = process.env.CHAOSENGINE_LLAMA_BIN_DIR || defaultLlamaBinDir();
+  const userSuppliedBinDir = process.env.CHAOSENGINE_LLAMA_BIN_DIR;
+  const sourceDir = userSuppliedBinDir || defaultLlamaBinDir();
   // Allow a release build to ship without llama.cpp when the operator has
   // explicitly opted in (e.g. building a Windows installer for diffusers-only
   // testing on a machine that hasn't compiled llama.cpp from source). The
   // installer still bundles the Python runtime and frontend; users can
-  // install llama-server via the Setup page at runtime. Without this escape
-  // hatch the only release path is "build llama.cpp first", which forces
-  // CMake + Visual Studio onto every release machine.
+  // install llama-server via the Setup page at runtime.
   const allowMissingLlama = process.env.CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA === "1";
-  if (!fs.existsSync(sourceDir)) {
+  // Opt out of network download (air-gapped builds, CI without internet).
+  const disableAutoDownload = process.env.CHAOSENGINE_LLAMA_NO_AUTO_DOWNLOAD === "1";
+
+  let effectiveSourceDir = sourceDir;
+  if (!fs.existsSync(effectiveSourceDir)) {
+    // Auto-download a pre-built release from ggml-org/llama.cpp. This is
+    // how we keep "works out of the box" true: the user doesn't need to
+    // clone + cmake + VS Build Tools before running build.ps1. A
+    // user-supplied CHAOSENGINE_LLAMA_BIN_DIR takes precedence — we only
+    // auto-download when no local build exists AND no override is set.
+    if (!userSuppliedBinDir && !disableAutoDownload) {
+      const download = attemptPrebuiltLlamaDownload();
+      if (download.ok) {
+        console.log(`[stage-runtime] using prebuilt llama.cpp (${download.source})`);
+        effectiveSourceDir = download.binDir;
+      } else {
+        warnings.push(
+          `Could not auto-download llama.cpp prebuilt binaries (${download.reason}). ` +
+          `Falling back to the build-without-inference path.`,
+        );
+      }
+    }
+  }
+
+  if (!fs.existsSync(effectiveSourceDir)) {
     const message = `llama.cpp binary directory not found at ${sourceDir}.`;
     if (strict && !allowMissingLlama) {
       throw new Error(
@@ -476,7 +506,7 @@ function stageLlamaBinaries() {
   }
 
   ensureDir(binDest);
-  const entries = fs.readdirSync(sourceDir);
+  const entries = fs.readdirSync(effectiveSourceDir);
   const selected = entries.filter((entry) => shouldCopyLlamaEntry(entry));
 
   if (!selected.includes(binaryName("llama-server"))) {
@@ -488,7 +518,7 @@ function stageLlamaBinaries() {
   }
 
   for (const entry of selected) {
-    const sourcePath = path.join(sourceDir, entry);
+    const sourcePath = path.join(effectiveSourceDir, entry);
     const destinationPath = path.join(binDest, entry);
     copyPath(sourcePath, destinationPath);
   }
@@ -505,6 +535,224 @@ function stageLlamaBinaries() {
   }
 
   return warnings;
+}
+
+// Download pre-built llama.cpp binaries from ggml-org/llama.cpp GitHub
+// releases when the caller has no local build. Cached under
+// ~/.chaosengine/prebuilt-llama/<platform>/<release-tag>/bin so repeated
+// builds don't re-download.
+//
+// Preference order is Vulkan > CPU/AVX2 rather than CUDA/cuBLAS because:
+//  1. Vulkan works on every modern GPU (NVIDIA, AMD, Intel) without a
+//     bundled cuDNN runtime, so ChaosEngineAI doesn't have to ship
+//     cudart DLLs it can't legally redistribute.
+//  2. On an RTX 4090 the Vulkan backend is within ~10% of cuBLAS for
+//     llama.cpp token-gen workloads — good enough that "works out of the
+//     box" beats "fastest possible after a manual driver install".
+function attemptPrebuiltLlamaDownload() {
+  const platformKey = llamaPlatformKey();
+  if (!platformKey) {
+    return { ok: false, reason: `no prebuilt wheel pattern defined for ${process.platform}/${process.arch}` };
+  }
+  if (!commandAvailable("curl")) {
+    return { ok: false, reason: "curl not available on PATH — install curl or build llama.cpp from source" };
+  }
+
+  let release;
+  try {
+    release = fetchLatestLlamaRelease();
+  } catch (err) {
+    return { ok: false, reason: `github api fetch failed: ${shortError(err)}` };
+  }
+
+  const tag = release?.tag_name;
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  if (!tag || assets.length === 0) {
+    return { ok: false, reason: "release payload missing tag or assets" };
+  }
+
+  const cacheRoot = path.join(os.homedir(), ".chaosengine", "prebuilt-llama", platformKey, tag);
+  const cacheBinDir = path.join(cacheRoot, "bin");
+  const serverName = binaryName("llama-server");
+  if (fs.existsSync(path.join(cacheBinDir, serverName))) {
+    return { ok: true, binDir: cacheBinDir, source: `cached ${tag}` };
+  }
+
+  const asset = pickLlamaAsset(assets, platformKey);
+  if (!asset) {
+    const names = assets.map((a) => a.name).slice(0, 8).join(", ");
+    return { ok: false, reason: `no asset matched platform=${platformKey} in ${tag}. first assets: ${names}` };
+  }
+
+  const tmpZip = path.join(os.tmpdir(), `llama-${tag}-${platformKey}.zip`);
+  const tmpExtract = path.join(os.tmpdir(), `llama-${tag}-${platformKey}-extract`);
+  safeRmSync(tmpZip);
+  safeRmSync(tmpExtract);
+
+  console.log(`[stage-runtime] downloading prebuilt llama.cpp ${tag} (${asset.name})...`);
+  try {
+    execFileSync(
+      "curl",
+      ["-fsSL", "-o", tmpZip, "-H", "User-Agent: ChaosEngineAI-build", asset.browser_download_url],
+      { stdio: "inherit" },
+    );
+  } catch (err) {
+    safeRmSync(tmpZip);
+    return { ok: false, reason: `download failed: ${shortError(err)}` };
+  }
+
+  ensureDir(tmpExtract);
+  try {
+    extractZip(tmpZip, tmpExtract);
+  } catch (err) {
+    safeRmSync(tmpZip);
+    safeRmSync(tmpExtract);
+    return { ok: false, reason: `extract failed: ${shortError(err)}` };
+  }
+
+  const sourceBin = findLlamaBinWithin(tmpExtract);
+  if (!sourceBin) {
+    safeRmSync(tmpZip);
+    safeRmSync(tmpExtract);
+    return { ok: false, reason: `no ${serverName} inside ${asset.name}` };
+  }
+
+  ensureDir(cacheBinDir);
+  for (const entry of fs.readdirSync(sourceBin)) {
+    copyPath(path.join(sourceBin, entry), path.join(cacheBinDir, entry));
+  }
+
+  safeRmSync(tmpZip);
+  safeRmSync(tmpExtract);
+
+  if (!fs.existsSync(path.join(cacheBinDir, serverName))) {
+    return { ok: false, reason: `copy completed but ${serverName} not present in cache` };
+  }
+  return { ok: true, binDir: cacheBinDir, source: `downloaded ${tag}` };
+}
+
+function fetchLatestLlamaRelease() {
+  const payload = execFileSync(
+    "curl",
+    [
+      "-fsSL",
+      "-H",
+      "User-Agent: ChaosEngineAI-build",
+      "-H",
+      "Accept: application/vnd.github+json",
+      "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest",
+    ],
+    { encoding: "utf8" },
+  );
+  return JSON.parse(payload);
+}
+
+function llamaPlatformKey() {
+  const plat = process.platform;
+  const arch = process.arch;
+  if (plat === "win32" && arch === "x64") return "win-x64";
+  if (plat === "darwin" && arch === "arm64") return "macos-arm64";
+  if (plat === "darwin" && arch === "x64") return "macos-x64";
+  if (plat === "linux" && arch === "x64") return "linux-x64";
+  return null;
+}
+
+// Asset-name regex patterns in preference order. llama.cpp release naming
+// is of the form ``llama-b<build>-bin-<os>-<backend>-<arch>.zip`` with the
+// backend segment optional on macOS. We prefer Vulkan for portability; see
+// the comment on ``attemptPrebuiltLlamaDownload``.
+function pickLlamaAsset(assets, platformKey) {
+  const preferencePatterns = {
+    "win-x64": [
+      /^llama-.*-bin-win-vulkan-x64\.zip$/i,
+      /^llama-.*-bin-win-avx2-x64\.zip$/i,
+      /^llama-.*-bin-win-cpu-x64\.zip$/i,
+      /^llama-.*-bin-win-noavx-x64\.zip$/i,
+    ],
+    "macos-arm64": [/^llama-.*-bin-macos-arm64\.zip$/i],
+    "macos-x64": [/^llama-.*-bin-macos-x64\.zip$/i],
+    "linux-x64": [
+      /^llama-.*-bin-ubuntu-vulkan-x64\.zip$/i,
+      /^llama-.*-bin-ubuntu-x64\.zip$/i,
+      /^llama-.*-bin-linux-x64\.zip$/i,
+    ],
+  };
+  for (const pattern of preferencePatterns[platformKey] || []) {
+    const match = assets.find((asset) => pattern.test(asset.name || ""));
+    if (match) return match;
+  }
+  return null;
+}
+
+function extractZip(zipPath, destDir) {
+  if (process.platform === "win32") {
+    // PowerShell ships with Windows 10+; -NoProfile avoids slow profile
+    // loading that otherwise adds 1-2s per invocation.
+    execFileSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`,
+      ],
+      { stdio: "inherit" },
+    );
+    return;
+  }
+  if (commandAvailable("unzip")) {
+    execFileSync("unzip", ["-q", "-o", zipPath, "-d", destDir], { stdio: "inherit" });
+    return;
+  }
+  throw new Error("no extractor available — install 'unzip' (apt/brew) or use a different prebuilt source");
+}
+
+function findLlamaBinWithin(rootDir) {
+  const serverName = binaryName("llama-server");
+  // GitHub release zips sometimes extract flat into the dest dir, sometimes
+  // as a single top-level folder (e.g. ``build/bin/``), and occasionally
+  // nest a ``bin/`` under a platform-tagged directory. Probe each layer.
+  const candidates = [rootDir];
+  const stack = [rootDir];
+  const maxDepth = 4;
+  let depth = 0;
+  while (stack.length && depth < maxDepth) {
+    const next = stack.shift();
+    let entries;
+    try {
+      entries = fs.readdirSync(next, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const subdir = path.join(next, entry.name);
+      candidates.push(subdir);
+      stack.push(subdir);
+    }
+    depth++;
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, serverName))) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function commandAvailable(name) {
+  const probe = process.platform === "win32" ? "where" : "which";
+  try {
+    execFileSync(probe, [name], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function shortError(err) {
+  const raw = typeof err === "string" ? err : err?.message || String(err);
+  return raw.split("\n")[0].slice(0, 200);
 }
 
 function defaultLlamaBinDir() {

@@ -39,7 +39,13 @@ Assert-LastExit "pip install --upgrade pip"
 # definition"), and fresh venvs on Windows sometimes resolve an older
 # setuptools than the one bundled with CPython. Force an upgrade here so
 # stage-runtime.mjs can install the vendor package via `pip install --target`.
-.\.venv\Scripts\pip install --upgrade "setuptools>=77" wheel -q
+#
+# Upper bound of <82 is load-bearing: recent torch wheels (e.g. 2.11.x)
+# declare ``setuptools<82`` as a runtime metadata constraint, and pip's
+# dependency-warning heuristic surfaces that as a loud yellow warning on
+# every invocation after setuptools 82 is installed. 77..81 covers PEP 639
+# while staying inside torch's supported range.
+.\.venv\Scripts\pip install --upgrade "setuptools>=77,<82" wheel -q
 Assert-LastExit "pip install --upgrade setuptools wheel"
 
 # On Windows, pip install torch from PyPI delivers the CPU-only wheel,
@@ -94,19 +100,60 @@ Assert-LastExit "pip install -e .[desktop,images]"
 
 $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 
+# -- Verify CUDA torch actually installed -----------------
+# If nvidia-smi is on PATH, the build machine has an NVIDIA GPU — the
+# bundled torch MUST have CUDA support or the installer ships with a
+# silent CPU-only runtime. Catching this at build time beats users
+# opening the app and seeing "Running on CPU" on an RTX 4090.
+$nvidiaPresent = $null -ne (Get-Command nvidia-smi -ErrorAction SilentlyContinue)
+if ($nvidiaPresent) {
+    Write-Host "==> Verifying bundled torch has CUDA support..."
+    $cudaCheck = & .\.venv\Scripts\python.exe -c @"
+import sys
+try:
+    import torch
+except Exception as exc:
+    print(f'torch-import-error:{exc}')
+    sys.exit(2)
+has_cuda = bool(getattr(torch.cuda, 'is_available', lambda: False)())
+build = getattr(torch.version, 'cuda', None)
+print(f'torch={torch.__version__} cuda_available={has_cuda} cuda_build={build}')
+sys.exit(0 if has_cuda else 1)
+"@ 2>&1
+    $cudaExitCode = $LASTEXITCODE
+    Write-Host "    $cudaCheck"
+    if ($cudaExitCode -ne 0) {
+        Write-Warning ""
+        Write-Warning "==> CUDA torch NOT detected on a machine with nvidia-smi!"
+        Write-Warning "    The bundled installer will run on CPU, which on an RTX 4090 means"
+        Write-Warning "    ~8 minutes per diffusion step instead of ~1 second."
+        Write-Warning ""
+        Write-Warning "    The pip install from download.pytorch.org probably fell back to the"
+        Write-Warning "    CPU wheel because your Python version doesn't have a matching CUDA"
+        Write-Warning "    wheel in the default cu124 index. Try another CUDA index:"
+        Write-Warning "      `$env:CHAOSENGINE_TORCH_INDEX_URL='https://download.pytorch.org/whl/cu126'"
+        Write-Warning "    or downgrade to Python 3.13 (cu124 doesn't publish 3.14 wheels yet)."
+        Write-Warning ""
+        Write-Warning "    Continuing the build. Set CHAOSENGINE_REQUIRE_CUDA_TORCH=1 to fail"
+        Write-Warning "    instead of shipping CPU-only torch."
+        if ($env:CHAOSENGINE_REQUIRE_CUDA_TORCH -eq "1") {
+            throw "CUDA torch required but not detected -- see warning above."
+        }
+    }
+}
+
 # -- npm dependencies -------------------------------------
 Write-Host "==> Installing npm dependencies..."
 npm ci --silent
 Assert-LastExit "npm ci"
 
 # -- llama.cpp pre-flight ---------------------------------
-# If llama.cpp is not built locally the installer ships without native
-# inference; users can install llama-server via the Setup page at runtime.
-# Previously this was a hard error unless CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1
-# was set. That blocked every release on a fresh Windows box and required
-# an environment variable dance. The escape hatch is now the default: we
-# warn loudly but keep going, and stage-runtime.mjs sees the flag and
-# produces a valid installer without the binary.
+# If llama.cpp isn't built locally, stage-runtime.mjs auto-downloads a
+# prebuilt release from ggml-org/llama.cpp (Vulkan wheel — works on every
+# GPU without bundling cuDNN). That makes the installer truly "works out
+# of the box" on a fresh Windows box with no cmake / VS Build Tools setup.
+# The ALLOW_NO_LLAMA flag still kicks in if the network is unreachable,
+# so CI and air-gapped builds don't break.
 $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
     $env:CHAOSENGINE_LLAMA_BIN_DIR
 } else {
@@ -114,26 +161,28 @@ $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
 }
 $llamaServerExe = Join-Path $llamaBinDir "llama-server.exe"
 if (-not (Test-Path $llamaServerExe)) {
-    # Opt OUT with CHAOSENGINE_REQUIRE_LLAMA=1 to restore the old strict
-    # behaviour (CI release pipelines that must ship inference).
+    # Opt OUT of the auto-download fallback with CHAOSENGINE_REQUIRE_LLAMA=1.
     if ($env:CHAOSENGINE_REQUIRE_LLAMA -eq "1") {
         Write-Host ""
         Write-Host "==> ERROR: llama-server.exe not found at $llamaServerExe" -ForegroundColor Red
         Write-Host ""
         Write-Host "    CHAOSENGINE_REQUIRE_LLAMA=1 is set, so the build must ship with"
-        Write-Host "    native inference. Pick one:"
+        Write-Host "    a locally-compiled llama.cpp. Pick one:"
         Write-Host ""
         Write-Host "    1. Build llama.cpp: clone to ..\llama.cpp then run"
         Write-Host "       cmake -B build; cmake --build build --config Release"
         Write-Host "    2. Set CHAOSENGINE_LLAMA_BIN_DIR to your llama.cpp build directory"
-        Write-Host "    3. Unset CHAOSENGINE_REQUIRE_LLAMA to ship without llama.cpp"
+        Write-Host "    3. Unset CHAOSENGINE_REQUIRE_LLAMA and let stage-runtime"
+        Write-Host "       auto-download a prebuilt release from ggml-org/llama.cpp"
         Write-Host ""
         throw "llama-server.exe missing -- see message above."
     }
 
-    Write-Warning "llama-server.exe not found at $llamaServerExe -- continuing without it."
-    Write-Warning "The installer will ship without llama.cpp; users can install it via the Setup page."
-    Write-Warning "To require llama.cpp in the installer, set CHAOSENGINE_REQUIRE_LLAMA=1."
+    Write-Host "==> llama-server.exe not found locally at $llamaServerExe"
+    Write-Host "    stage-runtime.mjs will attempt to auto-download a prebuilt release"
+    Write-Host "    from ggml-org/llama.cpp (Vulkan wheel). If download fails, the"
+    Write-Host "    installer ships without inference and users install it later."
+    # Allow graceful skip if the auto-download also fails (offline builds).
     $env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA = "1"
 }
 

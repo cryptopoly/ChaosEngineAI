@@ -485,17 +485,48 @@ impl BackendManager {
                 // On Windows, child.kill() only kills the parent Python
                 // process, not its children (MLX worker, etc.).  Use
                 // `taskkill /T` to terminate the entire process tree.
+                //
+                // Previously this ignored taskkill's exit code, which made
+                // the "Restart Backend" button hang on machines where
+                // taskkill returned non-zero (race with process exit, UAC
+                // elevation mismatch, etc.) — child.wait() below would
+                // then block forever holding the BackendManager mutex, and
+                // subsequent runtime_info() calls deadlocked the UI.
                 let pid = child.id();
-                let _ = std::process::Command::new("taskkill")
+                let taskkill_ok = match std::process::Command::new("taskkill")
                     .args(["/F", "/T", "/PID", &pid.to_string()])
                     .creation_flags(0x08000000) // CREATE_NO_WINDOW
-                    .output();
+                    .output()
+                {
+                    Ok(out) => out.status.success(),
+                    Err(_) => false,
+                };
+                if !taskkill_ok {
+                    // Fall back to TerminateProcess on the parent. Any
+                    // grandchildren may leak, but the port-release poll in
+                    // restart_backend_sidecar covers the subsequent respawn.
+                    let _ = child.kill();
+                }
             }
             #[cfg(not(any(unix, windows)))]
             {
                 let _ = child.kill();
             }
-            let _ = child.wait();
+            // Bounded wait: try_wait in a loop so a hung child can't deadlock
+            // the shutdown path. std::process::Child::wait has no timeout.
+            let wait_deadline = Instant::now() + Duration::from_secs(3);
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => break,
+                    Ok(None) => {
+                        if Instant::now() >= wait_deadline {
+                            break;
+                        }
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                    Err(_) => break,
+                }
+            }
         } else if let Some((port, api_token)) = attached_backend {
             let effective_token = api_token.or_else(|| fetch_backend_api_token(port));
             let _ = request_backend_shutdown(port, effective_token.as_deref());

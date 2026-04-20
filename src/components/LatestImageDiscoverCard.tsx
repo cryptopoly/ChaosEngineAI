@@ -5,6 +5,7 @@ import {
   imageSecondarySizeLabel,
   formatImageLicenseLabel,
   formatImageAccessError,
+  formatReleaseLabel,
   isGatedImageAccessError,
 } from "../utils/format";
 import { downloadProgressLabel, downloadSizeTooltip } from "../utils/downloads";
@@ -12,21 +13,25 @@ import { downloadProgressLabel, downloadSizeTooltip } from "../utils/downloads";
 export interface LatestImageDiscoverCardProps {
   variant: ImageModelVariant;
   downloadState?: DownloadStatus;
+  fileRevealLabel?: string;
   onDownload: (repo: string) => void;
   onCancelDownload: (repo: string) => void;
   onDeleteDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
   onNavigateSettings: () => void;
+  onRevealPath?: (path: string) => void;
 }
 
 export function LatestImageDiscoverCard({
   variant,
   downloadState,
+  fileRevealLabel,
   onDownload,
   onCancelDownload,
   onDeleteDownload,
   onOpenExternalUrl,
   onNavigateSettings,
+  onRevealPath,
 }: LatestImageDiscoverCardProps) {
   const isDownloadPaused = downloadState?.state === "cancelled";
   const isDownloadComplete = downloadState?.state === "completed";
@@ -59,6 +64,9 @@ export function LatestImageDiscoverCard({
       </div>
 
       <div className="image-family-meta">
+        {formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt) ? (
+          <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)}</span>
+        ) : null}
         {variant.downloadsLabel ? <span>{variant.downloadsLabel}</span> : null}
         {variant.likesLabel ? <span>{variant.likesLabel}</span> : null}
         {variant.license ? <span>{formatImageLicenseLabel(variant.license)}</span> : null}
@@ -142,6 +150,20 @@ export function LatestImageDiscoverCard({
             ) : null}
           </>
         )}
+        {variant.localPath && onRevealPath ? (
+          <button
+            className="secondary-button icon-button"
+            type="button"
+            title={fileRevealLabel ?? "Show in folder"}
+            onClick={() => onRevealPath(variant.localPath as string)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+        ) : null}
         <button className="secondary-button icon-link-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>
           Hugging Face <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </button>

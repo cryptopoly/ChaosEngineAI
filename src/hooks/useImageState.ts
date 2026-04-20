@@ -9,10 +9,11 @@ import {
   getImageDownloadStatus,
   getImageOutputs,
   getImageRuntime,
+  installPipPackage,
   preloadImageModel,
   unloadImageModel,
 } from "../api";
-import type { DownloadStatus } from "../api";
+import type { DownloadStatus, InstallResult } from "../api";
 
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
@@ -30,6 +31,7 @@ import {
   buildDownloadStatusMap,
   pendingDownloadStatus,
   failedDownloadStatus,
+  isTransientNetworkError,
 } from "../utils";
 import type {
   ImageModelFamily,
@@ -302,7 +304,15 @@ export function useImageState(
 
     if (failures.length > 0) {
       const firstError = failures[0].reason;
-      setError(firstError instanceof Error ? firstError.message : "Could not load image runtime data.");
+      // Swallow transient network errors from background refreshes. These
+      // fire on startup before the backend has bound its port, and on
+      // Windows the race window is several seconds — long enough that the
+      // user sees a sticky "Failed to fetch" banner even though the app
+      // is working. Real backend errors (HTTP 4xx/5xx with detail) still
+      // surface as usual.
+      if (!isTransientNetworkError(firstError)) {
+        setError(firstError instanceof Error ? firstError.message : "Could not load image runtime data.");
+      }
     }
   }
 
@@ -493,6 +503,51 @@ export function useImageState(
     }
   }
 
+  // One-click install for the diffusers image runtime. The probe reports
+  // exactly which core packages are missing in ``missingDependencies``; if
+  // that list is empty (e.g. a re-probe hasn't landed yet), fall back to the
+  // full set so the button still does the right thing. Each package is
+  // installed in its own call so a partial failure (e.g. a broken torch
+  // wheel on this platform) doesn't block the rest.
+  async function handleInstallImageRuntime(): Promise<InstallResult> {
+    const fallbackPackages = ["diffusers", "torch", "accelerate", "huggingface_hub", "pillow"];
+    const targets =
+      imageRuntimeStatus.missingDependencies && imageRuntimeStatus.missingDependencies.length > 0
+        ? imageRuntimeStatus.missingDependencies.slice()
+        : fallbackPackages;
+    setImageBusyLabel(`Installing image runtime (${targets.join(", ")})...`);
+    const failures: string[] = [];
+    let lastOutput = "";
+    try {
+      for (const pkg of targets) {
+        try {
+          const result = await installPipPackage(pkg);
+          lastOutput = result.output;
+          if (!result.ok) {
+            failures.push(`${pkg}: ${result.output.slice(0, 200)}`);
+          }
+        } catch (err) {
+          failures.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      try {
+        const runtime = await getImageRuntime();
+        setImageRuntimeStatus(runtime);
+      } catch {
+        // keep the pre-install status if the probe itself fails
+      }
+      if (failures.length > 0) {
+        const message = `Image runtime install failed:\n${failures.join("\n")}`;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+      setError(null);
+      return { ok: true, output: lastOutput, capabilities: {} };
+    } finally {
+      setImageBusyLabel(null);
+    }
+  }
+
   async function handleUnloadImageModel(variant?: ImageModelVariant | null) {
     setImageBusyLabel(`Unloading ${(variant?.name ?? loadedImageVariant?.name ?? "image model")} from memory...`);
     try {
@@ -646,6 +701,7 @@ export function useImageState(
     submitImageGeneration,
     handlePreloadImageModel,
     handleUnloadImageModel,
+    handleInstallImageRuntime,
     handleDeleteImageArtifact,
     handleVaryImageSeed,
     handleUseSameImageSettings,

@@ -6,6 +6,10 @@ export type TabId =
   | "image-models"
   | "image-studio"
   | "image-gallery"
+  | "video-models"
+  | "video-discover"
+  | "video-studio"
+  | "video-gallery"
   | "conversion"
   | "chat"
   | "server"
@@ -16,6 +20,15 @@ export type TabId =
   | "plugins"
   | "logs"
   | "settings";
+
+export type SidebarGroupId =
+  | "models"
+  | "images"
+  | "video"
+  | "benchmarks"
+  | "tools";
+
+export type SidebarMode = "collapsible" | "tabs";
 
 export interface SystemStats {
   platform: string;
@@ -106,6 +119,8 @@ export interface ModelVariant {
   launchMode: ModelLaunchMode;
   backend: "mlx" | "llama.cpp" | "auto";
   maxContext?: number | null;
+  releaseDate?: string | null;
+  releaseLabel?: string | null;
 }
 
 export interface ModelFamily {
@@ -181,12 +196,21 @@ export interface AppSettings {
   modelDirectories: ModelDirectorySetting[];
   preferredServerPort: number;
   allowRemoteConnections: boolean;
+  // When false, the backend disables bearer-token enforcement so external
+  // clients (OpenWebUI, curl, another desktop app) can hit /api and /v1
+  // endpoints without a token. Default true.
+  requireApiAuth: boolean;
   autoStartServer: boolean;
   launchPreferences: LaunchPreferences;
   remoteProviders?: RemoteProvider[];
   huggingFaceToken?: string | null;
   hasHuggingFaceToken?: boolean;
   dataDirectory?: string;
+  // Empty string means "use the default under dataDirectory". A non-empty
+  // value redirects new image / video artifacts to a custom folder (e.g. an
+  // external SSD or a cloud-synced delivery folder).
+  imageOutputsDirectory?: string;
+  videoOutputsDirectory?: string;
 }
 
 export interface SettingsUpdateResponse {
@@ -700,9 +724,16 @@ export interface ImageModelVariant {
   repoSizeGb?: number | null;
   coreWeightsBytes?: number | null;
   coreWeightsGb?: number | null;
+  onDiskBytes?: number | null;
+  onDiskGb?: number | null;
   metadataWarning?: string | null;
   source?: "curated" | "latest" | "experimental";
   familyName?: string | null;
+  /** Absolute path to the local HF snapshot, when something is on disk. */
+  localPath?: string | null;
+  releaseDate?: string | null;
+  createdAt?: string | null;
+  releaseLabel?: string | null;
 }
 
 export interface ImageModelFamily {
@@ -720,6 +751,109 @@ export interface ImageModelFamily {
 export interface ImageCatalogResponse {
   families: ImageModelFamily[];
   latest: ImageModelVariant[];
+}
+
+export type VideoModelTask = "txt2video" | "img2video" | "video2video";
+
+export interface VideoModelVariant {
+  id: string;
+  familyId: string;
+  name: string;
+  provider: string;
+  repo: string;
+  link: string;
+  runtime: string;
+  styleTags: string[];
+  taskSupport: VideoModelTask[];
+  sizeGb: number;
+  recommendedResolution: string;
+  defaultDurationSeconds: number;
+  note: string;
+  availableLocally: boolean;
+  hasLocalData?: boolean;
+  estimatedGenerationSeconds: number | null;
+  onDiskBytes?: number | null;
+  onDiskGb?: number | null;
+  familyName?: string | null;
+  /** Absolute path to the local HF snapshot, when something is on disk. */
+  localPath?: string | null;
+  releaseDate?: string | null;
+  releaseLabel?: string | null;
+}
+
+export interface VideoModelFamily {
+  id: string;
+  name: string;
+  provider: string;
+  headline: string;
+  summary: string;
+  updatedLabel: string;
+  badges: string[];
+  defaultVariantId: string;
+  variants: VideoModelVariant[];
+}
+
+export interface VideoCatalogResponse {
+  families: VideoModelFamily[];
+  latest: VideoModelVariant[];
+}
+
+export interface VideoRuntimeStatus {
+  activeEngine: string;
+  realGenerationAvailable: boolean;
+  message: string;
+  device?: string | null;
+  pythonExecutable?: string | null;
+  missingDependencies?: string[];
+  loadedModelRepo?: string | null;
+  /** Total device memory in GB — used by the video-gen safety heuristic to
+   * scale attention-budget thresholds per hardware capability. Nullable
+   * because detection can fail (unsupported platform, nvidia-smi absent on a
+   * non-CUDA Linux box, etc.); consumers treat null as "stay conservative". */
+  deviceMemoryGb?: number | null;
+}
+
+export interface VideoOutputArtifact {
+  artifactId: string;
+  modelId: string;
+  modelName: string;
+  prompt: string;
+  negativePrompt?: string | null;
+  width: number;
+  height: number;
+  numFrames: number;
+  fps: number;
+  steps: number;
+  guidance: number;
+  seed: number;
+  createdAt: string;
+  durationSeconds: number;
+  clipDurationSeconds: number;
+  videoPath?: string | null;
+  metadataPath?: string | null;
+  videoMimeType?: string | null;
+  videoExtension?: string | null;
+  runtimeLabel?: string | null;
+  runtimeNote?: string | null;
+}
+
+export interface VideoGenerationPayload {
+  modelId: string;
+  prompt: string;
+  negativePrompt?: string;
+  width: number;
+  height: number;
+  numFrames: number;
+  fps: number;
+  steps: number;
+  guidance: number;
+  seed?: number | null;
+}
+
+export interface VideoGenerationResponse {
+  artifact: VideoOutputArtifact;
+  outputs: VideoOutputArtifact[];
+  runtime?: VideoRuntimeStatus;
 }
 
 export interface ImageOutputArtifact {
@@ -771,6 +905,25 @@ export interface ImageGenerationResponse {
   runtime?: ImageRuntimeStatus;
 }
 
+/**
+ * Live snapshot of the in-flight image / video generation as published by the
+ * backend ProgressTracker. ``active=false`` means nothing is running (or the
+ * runtime hasn't published a phase yet) and the UI should fall back to its
+ * client-side estimates.
+ */
+export interface GenerationProgressSnapshot {
+  kind: "image" | "video";
+  active: boolean;
+  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving";
+  message: string;
+  step: number;
+  totalSteps: number;
+  startedAt: number;
+  updatedAt: number;
+  elapsedSeconds: number;
+  runLabel: string | null;
+}
+
 export interface HubModel {
   id: string;
   repo: string;
@@ -785,6 +938,8 @@ export interface HubModel {
   likesLabel: string;
   lastModified?: string | null;
   updatedLabel?: string | null;
+  createdAt?: string | null;
+  releaseLabel?: string | null;
   availableLocally: boolean;
   launchMode: string;
   backend: string;
@@ -813,9 +968,12 @@ export interface UpdateSettingsPayload {
   modelDirectories?: ModelDirectorySetting[];
   preferredServerPort?: number;
   allowRemoteConnections?: boolean;
+  requireApiAuth?: boolean;
   autoStartServer?: boolean;
   launchPreferences?: LaunchPreferences;
   remoteProviders?: Array<{ id: string; label: string; apiBase: string; apiKey: string; model: string }>;
   huggingFaceToken?: string | null;
   dataDirectory?: string | null;
+  imageOutputsDirectory?: string | null;
+  videoOutputsDirectory?: string | null;
 }

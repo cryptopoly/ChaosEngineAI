@@ -40,8 +40,8 @@ main();
 function main() {
   ensureDir(embeddedResourcesRoot);
   cleanupStaleTauriResources();
-  fs.rmSync(path.join(resourcesRoot, "runtime"), { recursive: true, force: true });
-  fs.rmSync(stageRoot, { recursive: true, force: true });
+  safeRmSync(path.join(resourcesRoot, "runtime"));
+  safeRmSync(stageRoot);
   cleanupStagedRuntimeArtifacts();
   ensureDir(stageRoot);
 
@@ -61,7 +61,7 @@ function main() {
   pruneBundledProjectArtifacts();
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service", "compression"]) {
+  for (const relativePath of ["backend_service", "cache_compression"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
@@ -96,16 +96,32 @@ function main() {
 
   fs.writeFileSync(path.join(stageRoot, "manifest.json"), JSON.stringify(embeddedRuntime, null, 2));
   fs.copyFileSync(path.join(stageRoot, "manifest.json"), manifestDest);
-  execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
-    cwd: workspaceRoot,
-    env: { ...process.env, COPYFILE_DISABLE: "1" },
-    stdio: "inherit",
-  });
-  fs.rmSync(stageRoot, { recursive: true, force: true });
+
+  // In development mode the Tauri shell prefers the live source workspace
+  // (see src-tauri/src/lib.rs::resolve_embedded_runtime → "development embedded
+  // runtime detected; preferring source workspace"). Archiving the staging
+  // tree would add several minutes per dev iteration on Windows for output
+  // that is immediately discarded. Release builds still need the archive.
+  if (strict) {
+    console.log(`[stage-runtime] archiving runtime — this can take a few minutes on Windows...`);
+    execFileSync("tar", ["-czf", archiveDest, "-C", stageRoot, "."], {
+      cwd: workspaceRoot,
+      env: { ...process.env, COPYFILE_DISABLE: "1" },
+      stdio: "inherit",
+    });
+    console.log(`[stage-runtime] archive -> ${archiveDest}`);
+  } else {
+    // Clear any stale archive so the Rust shell doesn't surface an old one.
+    if (fs.existsSync(archiveDest)) {
+      safeRmSync(archiveDest);
+    }
+    console.log(`[stage-runtime] dev mode: skipping tar.gz archive (live workspace is used instead)`);
+  }
+
+  safeRmSync(stageRoot);
 
   console.log(`[stage-runtime] mode=${mode}`);
   console.log(`[stage-runtime] platform=${platformTag}`);
-  console.log(`[stage-runtime] archive -> ${archiveDest}`);
   console.log(`[stage-runtime] manifest -> ${manifestDest}`);
   if (llamaWarnings.length) {
     for (const warning of llamaWarnings) {
@@ -218,7 +234,7 @@ function validateBundledPythonPackages(pythonBinary) {
 function validateBundledProjectImports(pythonBinary) {
   const script = [
     "import json",
-    "from compression import registry",
+    "from cache_compression import registry",
     "print(json.dumps([entry['id'] for entry in registry.available()]))",
   ].join("\n");
 
@@ -253,6 +269,15 @@ function stageVendoredChaosEngine(pythonBinary) {
   if (!vendor) {
     return null;
   }
+
+  // vendor/ChaosEngine/pyproject.toml declares `license = "Apache-2.0"` per
+  // PEP 639. Setuptools < 77 rejects the string form with:
+  //   "project.license must be valid exactly by one definition (2 matches found)"
+  // Since we pass --no-build-isolation, pip uses whatever setuptools the build
+  // venv has — and fresh Windows venvs sometimes ship 65.x. Upgrade in place
+  // before the vendor install so the build works without requiring the user
+  // to run build.ps1 first (e.g. `npm run tauri:dev`).
+  ensureSetuptoolsForPep639(pythonBinary);
 
   console.log(`[stage-runtime] bundling ChaosEngine (${vendor.source})`);
   try {
@@ -289,6 +314,49 @@ function stageVendoredChaosEngine(pythonBinary) {
   }
 }
 
+function ensureSetuptoolsForPep639(pythonBinary) {
+  // Bound: >=77 for PEP 639 license strings, <82 because modern torch
+  // wheels declare ``setuptools<82`` and pip's resolver surfaces a loud
+  // "requires setuptools<82" warning on every subsequent invocation once
+  // 82.x is installed.
+  const checkScript = [
+    "import sys",
+    "try:",
+    "    from importlib.metadata import version",
+    "    v = version('setuptools')",
+    "except Exception:",
+    "    sys.exit(2)",
+    "parts = [int(p) for p in v.split('.')[:2] if p.isdigit()]",
+    "if not parts:",
+    "    sys.exit(1)",
+    "major = parts[0]",
+    "sys.exit(0 if 77 <= major < 82 else 1)",
+  ].join("\n");
+
+  let ok = false;
+  try {
+    execFileSync(pythonBinary, ["-c", checkScript], { stdio: "ignore" });
+    ok = true;
+  } catch {
+    ok = false;
+  }
+  if (ok) return;
+
+  console.log(`[stage-runtime] pinning setuptools to >=77,<82 for PEP 639 licenses + torch compatibility`);
+  try {
+    execFileSync(
+      pythonBinary,
+      ["-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "setuptools>=77,<82", "wheel"],
+      { cwd: workspaceRoot, stdio: "inherit" },
+    );
+  } catch (err) {
+    console.warn(
+      `[stage-runtime] warning: could not pin setuptools (${err.message.split("\n")[0]}). ` +
+      `Vendor install may fail and pip may warn about torch incompatibility.`,
+    );
+  }
+}
+
 function resolveChaosEngineVendor() {
   const override = process.env.CHAOSENGINE_VENDOR_PATH;
   if (override) {
@@ -313,9 +381,14 @@ function stageOptionalRuntimePackages(pythonBinary) {
   // so that DFlash, TurboQuant, and RotorQuant work out of the box for
   // new users without requiring manual pip installs via the Setup page.
   //
-  // Each entry: [pip package name, import name used for verification]
+  // Each entry: [pip install target, import name used for verification]
+  // The first element is passed verbatim to ``pip install`` so it may be a
+  // PyPI name or a PEP 508 URL (e.g. ``pkg @ git+https://…@tag``).
   const optionalPackages = [
-    ["dflash-mlx", "dflash_mlx"],
+    [
+      "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
+      "dflash_mlx",
+    ],
     ["turboquant", "turboquant"],
     ["turboquant-mlx-full", "turboquant_mlx"],
   ];
@@ -386,28 +459,66 @@ function stageOptionalRuntimePackages(pythonBinary) {
 
 function stageLlamaBinaries() {
   const warnings = [];
-  const sourceDir = process.env.CHAOSENGINE_LLAMA_BIN_DIR || defaultLlamaBinDir();
-  if (!fs.existsSync(sourceDir)) {
-    if (strict) {
-      throw new Error("llama.cpp binary directory not found.");
+  const userSuppliedBinDir = process.env.CHAOSENGINE_LLAMA_BIN_DIR;
+  const sourceDir = userSuppliedBinDir || defaultLlamaBinDir();
+  // Allow a release build to ship without llama.cpp when the operator has
+  // explicitly opted in (e.g. building a Windows installer for diffusers-only
+  // testing on a machine that hasn't compiled llama.cpp from source). The
+  // installer still bundles the Python runtime and frontend; users can
+  // install llama-server via the Setup page at runtime.
+  const allowMissingLlama = process.env.CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA === "1";
+  // Opt out of network download (air-gapped builds, CI without internet).
+  const disableAutoDownload = process.env.CHAOSENGINE_LLAMA_NO_AUTO_DOWNLOAD === "1";
+
+  let effectiveSourceDir = sourceDir;
+  if (!fs.existsSync(effectiveSourceDir)) {
+    // Auto-download a pre-built release from ggml-org/llama.cpp. This is
+    // how we keep "works out of the box" true: the user doesn't need to
+    // clone + cmake + VS Build Tools before running build.ps1. A
+    // user-supplied CHAOSENGINE_LLAMA_BIN_DIR takes precedence — we only
+    // auto-download when no local build exists AND no override is set.
+    if (!userSuppliedBinDir && !disableAutoDownload) {
+      const download = attemptPrebuiltLlamaDownload();
+      if (download.ok) {
+        console.log(`[stage-runtime] using prebuilt llama.cpp (${download.source})`);
+        effectiveSourceDir = download.binDir;
+      } else {
+        warnings.push(
+          `Could not auto-download llama.cpp prebuilt binaries (${download.reason}). ` +
+          `Falling back to the build-without-inference path.`,
+        );
+      }
     }
-    return ["llama.cpp binary directory not found."];
+  }
+
+  if (!fs.existsSync(effectiveSourceDir)) {
+    const message = `llama.cpp binary directory not found at ${sourceDir}.`;
+    if (strict && !allowMissingLlama) {
+      throw new Error(
+        `${message} Build llama.cpp at ../llama.cpp/build/bin/, set CHAOSENGINE_LLAMA_BIN_DIR ` +
+        `to your build directory, or set CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1 to ship without it.`,
+      );
+    }
+    warnings.push(
+      `${message} Installer will ship without llama-server; users can install it via the Setup page.`,
+    );
+    return warnings;
   }
 
   ensureDir(binDest);
-  const entries = fs.readdirSync(sourceDir);
+  const entries = fs.readdirSync(effectiveSourceDir);
   const selected = entries.filter((entry) => shouldCopyLlamaEntry(entry));
 
   if (!selected.includes(binaryName("llama-server"))) {
     const message = `Missing ${binaryName("llama-server")} in the configured llama.cpp binary directory`;
-    if (strict) {
+    if (strict && !allowMissingLlama) {
       throw new Error(message);
     }
     warnings.push(message);
   }
 
   for (const entry of selected) {
-    const sourcePath = path.join(sourceDir, entry);
+    const sourcePath = path.join(effectiveSourceDir, entry);
     const destinationPath = path.join(binDest, entry);
     copyPath(sourcePath, destinationPath);
   }
@@ -424,6 +535,224 @@ function stageLlamaBinaries() {
   }
 
   return warnings;
+}
+
+// Download pre-built llama.cpp binaries from ggml-org/llama.cpp GitHub
+// releases when the caller has no local build. Cached under
+// ~/.chaosengine/prebuilt-llama/<platform>/<release-tag>/bin so repeated
+// builds don't re-download.
+//
+// Preference order is Vulkan > CPU/AVX2 rather than CUDA/cuBLAS because:
+//  1. Vulkan works on every modern GPU (NVIDIA, AMD, Intel) without a
+//     bundled cuDNN runtime, so ChaosEngineAI doesn't have to ship
+//     cudart DLLs it can't legally redistribute.
+//  2. On an RTX 4090 the Vulkan backend is within ~10% of cuBLAS for
+//     llama.cpp token-gen workloads — good enough that "works out of the
+//     box" beats "fastest possible after a manual driver install".
+function attemptPrebuiltLlamaDownload() {
+  const platformKey = llamaPlatformKey();
+  if (!platformKey) {
+    return { ok: false, reason: `no prebuilt wheel pattern defined for ${process.platform}/${process.arch}` };
+  }
+  if (!commandAvailable("curl")) {
+    return { ok: false, reason: "curl not available on PATH — install curl or build llama.cpp from source" };
+  }
+
+  let release;
+  try {
+    release = fetchLatestLlamaRelease();
+  } catch (err) {
+    return { ok: false, reason: `github api fetch failed: ${shortError(err)}` };
+  }
+
+  const tag = release?.tag_name;
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  if (!tag || assets.length === 0) {
+    return { ok: false, reason: "release payload missing tag or assets" };
+  }
+
+  const cacheRoot = path.join(os.homedir(), ".chaosengine", "prebuilt-llama", platformKey, tag);
+  const cacheBinDir = path.join(cacheRoot, "bin");
+  const serverName = binaryName("llama-server");
+  if (fs.existsSync(path.join(cacheBinDir, serverName))) {
+    return { ok: true, binDir: cacheBinDir, source: `cached ${tag}` };
+  }
+
+  const asset = pickLlamaAsset(assets, platformKey);
+  if (!asset) {
+    const names = assets.map((a) => a.name).slice(0, 8).join(", ");
+    return { ok: false, reason: `no asset matched platform=${platformKey} in ${tag}. first assets: ${names}` };
+  }
+
+  const tmpZip = path.join(os.tmpdir(), `llama-${tag}-${platformKey}.zip`);
+  const tmpExtract = path.join(os.tmpdir(), `llama-${tag}-${platformKey}-extract`);
+  safeRmSync(tmpZip);
+  safeRmSync(tmpExtract);
+
+  console.log(`[stage-runtime] downloading prebuilt llama.cpp ${tag} (${asset.name})...`);
+  try {
+    execFileSync(
+      "curl",
+      ["-fsSL", "-o", tmpZip, "-H", "User-Agent: ChaosEngineAI-build", asset.browser_download_url],
+      { stdio: "inherit" },
+    );
+  } catch (err) {
+    safeRmSync(tmpZip);
+    return { ok: false, reason: `download failed: ${shortError(err)}` };
+  }
+
+  ensureDir(tmpExtract);
+  try {
+    extractZip(tmpZip, tmpExtract);
+  } catch (err) {
+    safeRmSync(tmpZip);
+    safeRmSync(tmpExtract);
+    return { ok: false, reason: `extract failed: ${shortError(err)}` };
+  }
+
+  const sourceBin = findLlamaBinWithin(tmpExtract);
+  if (!sourceBin) {
+    safeRmSync(tmpZip);
+    safeRmSync(tmpExtract);
+    return { ok: false, reason: `no ${serverName} inside ${asset.name}` };
+  }
+
+  ensureDir(cacheBinDir);
+  for (const entry of fs.readdirSync(sourceBin)) {
+    copyPath(path.join(sourceBin, entry), path.join(cacheBinDir, entry));
+  }
+
+  safeRmSync(tmpZip);
+  safeRmSync(tmpExtract);
+
+  if (!fs.existsSync(path.join(cacheBinDir, serverName))) {
+    return { ok: false, reason: `copy completed but ${serverName} not present in cache` };
+  }
+  return { ok: true, binDir: cacheBinDir, source: `downloaded ${tag}` };
+}
+
+function fetchLatestLlamaRelease() {
+  const payload = execFileSync(
+    "curl",
+    [
+      "-fsSL",
+      "-H",
+      "User-Agent: ChaosEngineAI-build",
+      "-H",
+      "Accept: application/vnd.github+json",
+      "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest",
+    ],
+    { encoding: "utf8" },
+  );
+  return JSON.parse(payload);
+}
+
+function llamaPlatformKey() {
+  const plat = process.platform;
+  const arch = process.arch;
+  if (plat === "win32" && arch === "x64") return "win-x64";
+  if (plat === "darwin" && arch === "arm64") return "macos-arm64";
+  if (plat === "darwin" && arch === "x64") return "macos-x64";
+  if (plat === "linux" && arch === "x64") return "linux-x64";
+  return null;
+}
+
+// Asset-name regex patterns in preference order. llama.cpp release naming
+// is of the form ``llama-b<build>-bin-<os>-<backend>-<arch>.zip`` with the
+// backend segment optional on macOS. We prefer Vulkan for portability; see
+// the comment on ``attemptPrebuiltLlamaDownload``.
+function pickLlamaAsset(assets, platformKey) {
+  const preferencePatterns = {
+    "win-x64": [
+      /^llama-.*-bin-win-vulkan-x64\.zip$/i,
+      /^llama-.*-bin-win-avx2-x64\.zip$/i,
+      /^llama-.*-bin-win-cpu-x64\.zip$/i,
+      /^llama-.*-bin-win-noavx-x64\.zip$/i,
+    ],
+    "macos-arm64": [/^llama-.*-bin-macos-arm64\.zip$/i],
+    "macos-x64": [/^llama-.*-bin-macos-x64\.zip$/i],
+    "linux-x64": [
+      /^llama-.*-bin-ubuntu-vulkan-x64\.zip$/i,
+      /^llama-.*-bin-ubuntu-x64\.zip$/i,
+      /^llama-.*-bin-linux-x64\.zip$/i,
+    ],
+  };
+  for (const pattern of preferencePatterns[platformKey] || []) {
+    const match = assets.find((asset) => pattern.test(asset.name || ""));
+    if (match) return match;
+  }
+  return null;
+}
+
+function extractZip(zipPath, destDir) {
+  if (process.platform === "win32") {
+    // PowerShell ships with Windows 10+; -NoProfile avoids slow profile
+    // loading that otherwise adds 1-2s per invocation.
+    execFileSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`,
+      ],
+      { stdio: "inherit" },
+    );
+    return;
+  }
+  if (commandAvailable("unzip")) {
+    execFileSync("unzip", ["-q", "-o", zipPath, "-d", destDir], { stdio: "inherit" });
+    return;
+  }
+  throw new Error("no extractor available — install 'unzip' (apt/brew) or use a different prebuilt source");
+}
+
+function findLlamaBinWithin(rootDir) {
+  const serverName = binaryName("llama-server");
+  // GitHub release zips sometimes extract flat into the dest dir, sometimes
+  // as a single top-level folder (e.g. ``build/bin/``), and occasionally
+  // nest a ``bin/`` under a platform-tagged directory. Probe each layer.
+  const candidates = [rootDir];
+  const stack = [rootDir];
+  const maxDepth = 4;
+  let depth = 0;
+  while (stack.length && depth < maxDepth) {
+    const next = stack.shift();
+    let entries;
+    try {
+      entries = fs.readdirSync(next, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const subdir = path.join(next, entry.name);
+      candidates.push(subdir);
+      stack.push(subdir);
+    }
+    depth++;
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, serverName))) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function commandAvailable(name) {
+  const probe = process.platform === "win32" ? "where" : "which";
+  try {
+    execFileSync(probe, [name], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function shortError(err) {
+  const raw = typeof err === "string" ? err : err?.message || String(err);
+  return raw.split("\n")[0].slice(0, 200);
 }
 
 function defaultLlamaBinDir() {
@@ -480,6 +809,65 @@ function assertPathExists(targetPath, label) {
   }
 }
 
+/**
+ * Windows-robust replacement for fs.rmSync(..., { recursive: true, force: true }).
+ *
+ * On Windows, `force: true` doesn't actually chmod read-only files writable, and
+ * files touched by antivirus, Explorer thumbnails, or recent pip installs often
+ * return EPERM for a few hundred milliseconds after they become idle. Instead of
+ * failing the whole staging run on transient locks we:
+ *  - clear the read-only bit on every entry before unlinking (covers pip-installed
+ *    package metadata which ships with read-only attrs on some registries)
+ *  - retry with exponential backoff on EPERM / EBUSY / ENOTEMPTY
+ *
+ * Non-Windows platforms use the fast path unchanged.
+ */
+function safeRmSync(targetPath) {
+  if (!fs.existsSync(targetPath)) return;
+
+  if (process.platform !== "win32") {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+    return;
+  }
+
+  const clearReadOnlyRecursive = (entry) => {
+    try {
+      const stat = fs.lstatSync(entry);
+      // Clear read-only bit (0o200 = owner-write).
+      try { fs.chmodSync(entry, stat.mode | 0o200); } catch { /* ignore */ }
+      if (stat.isDirectory()) {
+        for (const child of fs.readdirSync(entry)) {
+          clearReadOnlyRecursive(path.join(entry, child));
+        }
+      }
+    } catch { /* ignore — rm will surface the real error below */ }
+  };
+
+  const attempts = [0, 100, 300, 800, 2000];
+  let lastError = null;
+  for (const delay of attempts) {
+    if (delay > 0) {
+      const deadline = Date.now() + delay;
+      while (Date.now() < deadline) { /* spin — avoids async refactor */ }
+    }
+    try {
+      clearReadOnlyRecursive(targetPath);
+      fs.rmSync(targetPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"].includes(error.code)) {
+        throw error;
+      }
+    }
+  }
+  throw new Error(
+    `Could not remove ${targetPath} after ${attempts.length} attempts — last error: ${lastError?.code ?? lastError?.message}. ` +
+    `On Windows this is usually caused by Windows Defender or another process holding a file handle. ` +
+    `Try closing ChaosEngineAI.exe, add the repo to Defender exclusions, then retry.`,
+  );
+}
+
 function cleanupStaleTauriResources() {
   const targetRoot = path.join(tauriRoot, "target");
   const staleRoots = [
@@ -490,7 +878,7 @@ function cleanupStaleTauriResources() {
   ];
 
   for (const staleRoot of staleRoots) {
-    fs.rmSync(staleRoot, { recursive: true, force: true });
+    safeRmSync(staleRoot);
   }
 }
 
@@ -503,7 +891,7 @@ function cleanupStagedRuntimeArtifacts() {
     if (!entry.startsWith("runtime-")) {
       continue;
     }
-    fs.rmSync(path.join(embeddedResourcesRoot, entry), { recursive: true, force: true });
+    safeRmSync(path.join(embeddedResourcesRoot, entry));
   }
 }
 
@@ -836,7 +1224,7 @@ function pruneBundledProjectArtifacts() {
       entry.endsWith(".egg-link") ||
       /^chaosengine_ai-.*\.(dist-info|egg-info)$/.test(entry)
     ) {
-      fs.rmSync(fullPath, { recursive: true, force: true });
+      safeRmSync(fullPath);
       continue;
     }
 
@@ -860,7 +1248,7 @@ function pruneBundledProjectArtifacts() {
     if (filtered.trim()) {
       fs.writeFileSync(fullPath, `${filtered}\n`);
     } else {
-      fs.rmSync(fullPath, { force: true });
+      safeRmSync(fullPath);
     }
   }
 }

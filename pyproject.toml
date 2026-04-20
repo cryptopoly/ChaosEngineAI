@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "chaosengine-ai"
-version = "0.5.3"
+version = "0.6.0"
 description = "Local AI model runner with pluggable cache/compression strategies"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -27,7 +27,7 @@ triattention = ["triattention>=0.1.0", "vllm>=0.8.0"]
 rotorquant = ["turboquant>=0.2.0"]
 turboquant = ["turboquant-mlx-full>=0.1.0"]
 vllm = ["vllm>=0.8.0"]
-dflash-mlx = ["dflash-mlx>=0.1.0"]
+dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"]
 dflash = ["dflash>=0.1.0"]
 desktop = [
     "fastapi>=0.115.0",
@@ -51,4 +51,4 @@ testpaths = ["tests"]
 addopts = "--tb=short -q"
 
 [tool.setuptools.packages.find]
-include = ["backend_service*", "compression*", "dflash*"]
+include = ["backend_service*", "cache_compression*", "dflash*"]

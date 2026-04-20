@@ -82,8 +82,31 @@ function main() {
     console.warn("[release-macos] Notarization skipped because no Apple notary credentials were configured.");
   }
 
+  publishToAssets(releaseAppPath, releaseDmgPath);
+
   console.log(`[release-macos] app -> ${releaseAppPath}`);
   console.log(`[release-macos] dmg -> ${releaseDmgPath}`);
+}
+
+function publishToAssets(appPath, dmgPath) {
+  // Mirror the signed app + dmg into the shared ``assets/`` folder at the
+  // repo root so macOS, Windows, and Linux builds all deposit installers
+  // in one predictable location. We copy rather than move so the existing
+  // releases/macos/ layout stays intact for scripts that still reference it.
+  const assetsRoot = path.join(projectRoot, "assets");
+  fs.mkdirSync(assetsRoot, { recursive: true });
+
+  if (fs.existsSync(appPath)) {
+    const destApp = path.join(assetsRoot, path.basename(appPath));
+    fs.rmSync(destApp, { recursive: true, force: true });
+    fs.cpSync(appPath, destApp, { recursive: true, force: true, verbatimSymlinks: true });
+  }
+  if (fs.existsSync(dmgPath)) {
+    const destDmg = path.join(assetsRoot, path.basename(dmgPath));
+    fs.rmSync(destDmg, { force: true });
+    fs.copyFileSync(dmgPath, destDmg);
+  }
+  console.log(`[release-macos] published artifacts -> ${assetsRoot}`);
 }
 
 function prepareTauriBuildArgs() {

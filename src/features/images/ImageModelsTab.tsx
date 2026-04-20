@@ -6,32 +6,37 @@ import type {
   TabId,
 } from "../../types";
 import {
-  sizeLabel,
   downloadProgressLabel,
+  formatReleaseLabel,
+  imagePrimarySizeLabel,
 } from "../../utils";
 
 export interface ImageModelsTabProps {
   installedImageVariants: ImageModelVariant[];
   imageCatalog: ImageModelFamily[];
   activeImageDownloads: Record<string, DownloadStatus>;
+  fileRevealLabel: string;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
   onCancelImageDownload: (repo: string) => void;
   onDeleteImageDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
+  onRevealPath: (path: string) => void;
 }
 
 export function ImageModelsTab({
   installedImageVariants,
   imageCatalog,
   activeImageDownloads,
+  fileRevealLabel,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
   onCancelImageDownload,
   onDeleteImageDownload,
   onOpenExternalUrl,
+  onRevealPath,
 }: ImageModelsTabProps) {
   return (
     <div className="content-grid image-page-grid">
@@ -83,8 +88,11 @@ export function ImageModelsTab({
                     ) : null}
                   </div>
                   <div className="image-library-stats">
-                    <span>{sizeLabel(variant.sizeGb)}</span>
+                    <span>{imagePrimarySizeLabel(variant)}</span>
                     <span>{variant.recommendedResolution}</span>
+                    {formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt) ? (
+                      <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)}</span>
+                    ) : null}
                     {variant.styleTags.slice(0, 3).map((tag) => (
                       <span key={tag} className="badge subtle">{tag}</span>
                     ))}
@@ -113,6 +121,20 @@ export function ImageModelsTab({
                     {isDownloading || canDeleteLocalData ? (
                       <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(variant.repo)}>
                         {isDownloading ? "Cancel" : "Delete"}
+                      </button>
+                    ) : null}
+                    {variant.localPath ? (
+                      <button
+                        className="secondary-button icon-button"
+                        type="button"
+                        title={fileRevealLabel}
+                        onClick={() => onRevealPath(variant.localPath as string)}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
                       </button>
                     ) : null}
                     <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>

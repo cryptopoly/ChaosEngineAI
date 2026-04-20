@@ -298,7 +298,7 @@ ChaosEngineAI is three cooperating layers:
 - **`src-tauri/`** — Tauri 2 Rust shell + bundled runtime.
 - **`backend_service/`** — Python service that owns model lifecycle, the warm pool, the OpenAI-compatible API, the benchmark runner, and speculative decoding (DFlash + DDTree).
 - **`backend_service/routes/`** — FastAPI routes for chat, prompts, compare mode, benchmarks, plugins, images, server controls, and settings.
-- **`compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine).
+- **`cache_compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine).
 - **`dflash/`** — DFlash speculative decoding integration: draft model registry, fuzzy matching for quantized variants, MLX and vLLM backend detection.
 
 ---
@@ -317,7 +317,7 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 
 Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only, the current PyPI `turboquant-mlx` package may still leave TurboQuant disabled in the current build, and ChaosEngine can now be bundled directly into desktop builds by checking out `vendor/ChaosEngine` (or setting `CHAOSENGINE_VENDOR_PATH`) before `npm run stage:runtime`. Source/dev installs can still use the local editable install from GitHub.
 
-The system is designed so new compression methods can be added as single-file adapters in `compression/` without touching any other code.
+The system is designed so new compression methods can be added as single-file adapters in `cache_compression/` without touching any other code.
 
 ---
 
@@ -390,7 +390,7 @@ ChaosEngineAI/
 ├── src-tauri/            Tauri Rust shell + bundled runtime
 ├── scripts/              Build, release + runtime staging scripts
 ├── backend_service/      Python backend (engine adapters + HTTP server)
-├── compression/          Pluggable cache/compression strategy adapters
+├── cache_compression/    Pluggable cache/compression strategy adapters
 ├── dflash/               DFlash/DDTree speculative decoding integration
 ├── vendor/ChaosEngine/   ChaosEngine compression (git submodule)
 ├── tests/                Backend integration tests

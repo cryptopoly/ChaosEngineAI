@@ -329,6 +329,27 @@ _DRAFT_MODEL_KEYWORDS = (
 )
 
 
+# Video diffusion pipelines. Keep keywords specific enough that they don't
+# collide with chat LLMs or image diffusion checkpoints — e.g. "hunyuanvideo"
+# not "hunyuan" (which would catch the Hunyuan image model), "wan2" not "wan"
+# (too generic), "mochi-1" not "mochi". New video families added to
+# ``backend_service/catalog/video_models.py`` should also get a keyword here.
+_VIDEO_MODEL_KEYWORDS = (
+    "hunyuanvideo",
+    "wan-ai/",
+    "wan2.",
+    "wan2-",
+    "-t2v-",
+    "-i2v-",
+    "-v2v-",
+    "mochi-1",
+    "cogvideo",
+    "ltx-video",
+    "zeroscope",
+    "animatediff",
+)
+
+
 def _looks_like_draft_model(name: str) -> bool:
     """Return True if this looks like a speculative decoding draft model.
 
@@ -337,6 +358,24 @@ def _looks_like_draft_model(name: str) -> bool:
     """
     lower = name.lower()
     return any(kw in lower for kw in _DRAFT_MODEL_KEYWORDS)
+
+
+def _looks_like_video_model(name: str) -> bool:
+    """Return True if this looks like a video diffusion pipeline.
+
+    Video models (LTX-Video, Wan, HunyuanVideo, Mochi, CogVideo, …) are
+    Diffusers pipelines with much larger VRAM footprints than LLMs and
+    their own dedicated Studio/Discover UI under the Video section. They
+    should be excluded from the chat-oriented My Models list.
+
+    Detection is keyword-only here because video Diffusers pipelines share
+    the ``model_index.json`` marker with image pipelines — we can't use that
+    to discriminate. When a partial HF cache download hasn't yet produced
+    ``model_index.json``, the name-based match is what keeps them out of
+    the LLM list.
+    """
+    lower = name.lower()
+    return any(kw in lower for kw in _VIDEO_MODEL_KEYWORDS)
 
 
 def _looks_like_image_model(path: Path, name: str) -> bool:
@@ -623,7 +662,9 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 broken, broken_reason = _detect_broken_library_item(child, file_format, source_kind)
                 quantization = _detect_model_quantization(child, file_format, name_hint=name)
                 backend = "llama.cpp" if file_format == "GGUF" else "mlx"
-                if _looks_like_image_model(child, name):
+                if _looks_like_video_model(name):
+                    model_type = "video"
+                elif _looks_like_image_model(child, name):
                     model_type = "image"
                 elif _looks_like_draft_model(name):
                     model_type = "draft"

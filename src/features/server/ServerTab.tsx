@@ -366,6 +366,18 @@ export function ServerTab({
                   />
                   LAN access
                 </label>
+                <label
+                  className="check-row"
+                  title="Disable to let external clients (OpenWebUI, curl, other apps) hit /api and /v1 without a bearer token. Leave on for local-only use."
+                >
+                  <input
+                    type="checkbox"
+                    checked={settingsDraft.requireApiAuth}
+                    disabled={busy}
+                    onChange={(event) => onSettingsDraftChange((c) => ({ ...c, requireApiAuth: event.target.checked }))}
+                  />
+                  Require API token
+                </label>
                 <label className="check-row">
                   <input
                     type="checkbox"

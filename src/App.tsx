@@ -3,6 +3,7 @@ import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
+  installCudaTorch,
   loadModel,
   getWorkspace,
   deleteModelPath,
@@ -14,6 +15,9 @@ import {
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
+import { VideoGenerationModal } from "./components/VideoGenerationModal";
+import { Sidebar } from "./components/Sidebar";
+import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { DashboardTab } from "./features/dashboard/DashboardTab";
@@ -32,6 +36,10 @@ import { ImageDiscoverTab } from "./features/images/ImageDiscoverTab";
 import { ImageModelsTab } from "./features/images/ImageModelsTab";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
+import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
+import { VideoModelsTab } from "./features/video/VideoModelsTab";
+import { VideoStudioTab } from "./features/video/VideoStudioTab";
+import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import type {
   ChatSession,
   LibraryItem,
@@ -51,6 +59,8 @@ import {
   findVariantForReference,
   findLibraryItemForVariant,
   findCatalogVariantForLibraryItem,
+  estimateLibraryItemResidentGb,
+  estimateLibraryItemCompressedGb,
   libraryItemFormat,
   libraryItemQuantization,
   libraryItemBackend,
@@ -71,8 +81,11 @@ import {
   useModels,
   useChat,
   useImageState,
+  useVideoState,
   useBenchmarks,
   useSettings,
+  useSidebarPrefs,
+  useGpuStatus,
 } from "./hooks";
 
 export default function App() {
@@ -92,9 +105,52 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [compareMode, setCompareMode] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const sidebarPrefs = useSidebarPrefs();
+  const gpuStatus = useGpuStatus(backendOnline);
+  const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
+  const [cudaTorchResult, setCudaTorchResult] = useState<
+    | { ok: true; indexUrl: string | null; pythonVersion: string | null }
+    | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
+    | null
+  >(null);
+
+  const handleInstallCudaTorch = async () => {
+    if (installingCudaTorch) return;
+    setInstallingCudaTorch(true);
+    setCudaTorchResult(null);
+    try {
+      const result = await installCudaTorch();
+      if (result.ok) {
+        setCudaTorchResult({
+          ok: true,
+          indexUrl: result.indexUrl,
+          pythonVersion: result.pythonVersion,
+        });
+      } else {
+        const last = result.attempts[result.attempts.length - 1];
+        const tail = (last?.output ?? result.output ?? "").split("\n").slice(-3).join("\n");
+        setCudaTorchResult({
+          ok: false,
+          message: tail || "pip install failed — see backend logs for details.",
+          pythonVersion: result.pythonVersion,
+          noWheelForPython: result.noWheelForPython,
+        });
+      }
+    } catch (err) {
+      setCudaTorchResult({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+        pythonVersion: null,
+        noWheelForPython: false,
+      });
+    } finally {
+      setInstallingCudaTorch(false);
+    }
+  };
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
+  const videoState = useVideoState(backendOnline, setError, setActiveTab);
   const settings = useSettings(
     workspace, setWorkspace,
     backendOnline, setBackendOnline,
@@ -125,6 +181,8 @@ export default function App() {
     handleUpdateDirectoryPath,
     pickDirectory,
     handlePickDataDirectory,
+    handlePickImageOutputsDirectory,
+    handlePickVideoOutputsDirectory,
     handleSaveSettings,
     handleStopServer,
     handleRestartServer,
@@ -206,6 +264,8 @@ export default function App() {
       displayQuantization: libraryItemQuantization(item, matchedVariant),
       displayBackend: libraryItemBackend(item, matchedVariant),
       sourceKind: libraryItemSourceKind(item),
+      estimatedRamGb: estimateLibraryItemResidentGb(item, matchedVariant),
+      estimatedCompressedGb: estimateLibraryItemCompressedGb(item, matchedVariant),
     };
   });
   const filteredLibraryRows = libraryRows
@@ -221,8 +281,8 @@ export default function App() {
         case "format": return dir * left.displayFormat.localeCompare(right.displayFormat);
         case "backend": return dir * left.displayBackend.localeCompare(right.displayBackend);
         case "size": return dir * (left.item.sizeGb - right.item.sizeGb);
-        case "ram": return compareOptionalNumber(left.matchedVariant?.estimatedMemoryGb, right.matchedVariant?.estimatedMemoryGb, dir);
-        case "compressed": return compareOptionalNumber(left.matchedVariant?.estimatedCompressedMemoryGb, right.matchedVariant?.estimatedCompressedMemoryGb, dir);
+        case "ram": return compareOptionalNumber(left.estimatedRamGb, right.estimatedRamGb, dir);
+        case "compressed": return compareOptionalNumber(left.estimatedCompressedGb, right.estimatedCompressedGb, dir);
         case "context": { const lc = parseContextK(left.matchedVariant?.contextWindow); const rc = parseContextK(right.matchedVariant?.contextWindow); return dir * (lc - rc); }
         case "modified": default: return dir * left.item.lastModified.localeCompare(right.item.lastModified);
       }
@@ -504,6 +564,7 @@ export default function App() {
     setActiveChatId(workspace.chatSessions[0]?.id ?? "");
     setThreadTitleDraft(workspace.chatSessions[0]?.title ?? "");
     void imgState.refreshImageData();
+    void videoState.refreshVideoData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
@@ -1235,6 +1296,7 @@ export default function App() {
         busyAction={busyAction}
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1242,6 +1304,7 @@ export default function App() {
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "image-models") {
@@ -1250,12 +1313,14 @@ export default function App() {
         installedImageVariants={imgState.installedImageVariants}
         imageCatalog={imgState.imageCatalog}
         activeImageDownloads={imgState.activeImageDownloads}
+        fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
   } else if (activeTab === "image-studio") {
@@ -1308,6 +1373,7 @@ export default function App() {
         onApplyImageQuality={imgState.applyImageQuality}
         onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
         onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
+        onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
@@ -1350,6 +1416,116 @@ export default function App() {
         onVaryImageSeed={(a) => void imgState.handleVaryImageSeed(a)}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
+      />
+    );
+  } else if (activeTab === "video-discover") {
+    content = (
+      <VideoDiscoverTab
+        combinedVideoDiscoverResults={videoState.combinedVideoDiscoverResults}
+        videoDiscoverSearchInput={videoState.videoDiscoverSearchInput}
+        onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
+        videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
+        onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
+        videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        tauriBackend={tauriBackend}
+        busy={busy}
+        busyAction={busyAction}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        fileRevealLabel={fileRevealLabel}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={videoState.openVideoStudio}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
+        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRestartServer={() => void handleRestartServer()}
+        onRevealPath={(path) => void handleRevealPath(path)}
+      />
+    );
+  } else if (activeTab === "video-models") {
+    content = (
+      <VideoModelsTab
+        installedVideoVariants={videoState.installedVideoVariants}
+        videoCatalog={videoState.videoCatalog}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        videoBusy={videoState.videoBusy}
+        videoBusyLabel={videoState.videoBusyLabel}
+        loadedVideoVariant={videoState.loadedVideoVariant}
+        fileRevealLabel={fileRevealLabel}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={videoState.openVideoStudio}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
+        onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
+        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
+        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRevealPath={(path) => void handleRevealPath(path)}
+      />
+    );
+  } else if (activeTab === "video-studio") {
+    content = (
+      <VideoStudioTab
+        videoCatalog={videoState.videoCatalogWithLatest}
+        selectedVideoModelId={videoState.selectedVideoModelId}
+        onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        selectedVideoFamily={videoState.selectedVideoFamily}
+        selectedVideoLoaded={videoState.selectedVideoLoaded}
+        selectedVideoWillLoadOnGenerate={videoState.selectedVideoWillLoadOnGenerate}
+        videoRuntimeLoadedDifferentModel={videoState.videoRuntimeLoadedDifferentModel}
+        loadedVideoVariant={videoState.loadedVideoVariant}
+        videoRuntimeStatus={videoState.videoRuntimeStatus}
+        tauriBackend={tauriBackend}
+        busy={busy}
+        busyAction={busyAction}
+        videoBusy={videoState.videoBusy}
+        videoBusyLabel={videoState.videoBusyLabel}
+        backendOnline={backendOnline}
+        activeVideoDownloads={videoState.activeVideoDownloads}
+        videoPrompt={videoState.videoPrompt}
+        onVideoPromptChange={videoState.setVideoPrompt}
+        videoNegativePrompt={videoState.videoNegativePrompt}
+        onVideoNegativePromptChange={videoState.setVideoNegativePrompt}
+        videoUseRandomSeed={videoState.videoUseRandomSeed}
+        onVideoUseRandomSeedChange={videoState.setVideoUseRandomSeed}
+        videoSeedInput={videoState.videoSeedInput}
+        onVideoSeedInputChange={videoState.setVideoSeedInput}
+        videoWidth={videoState.videoWidth}
+        onVideoWidthChange={videoState.setVideoWidth}
+        videoHeight={videoState.videoHeight}
+        onVideoHeightChange={videoState.setVideoHeight}
+        videoNumFrames={videoState.videoNumFrames}
+        onVideoNumFramesChange={videoState.setVideoNumFrames}
+        videoFps={videoState.videoFps}
+        onVideoFpsChange={videoState.setVideoFps}
+        videoSteps={videoState.videoSteps}
+        onVideoStepsChange={videoState.setVideoSteps}
+        videoGuidance={videoState.videoGuidance}
+        onVideoGuidanceChange={videoState.setVideoGuidance}
+        onActiveTabChange={setActiveTab}
+        onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
+        onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
+        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onGenerateVideo={() => void videoState.handleVideoGenerate()}
+        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
+        onRestartServer={() => void handleRestartServer()}
+        onInstallVideoOutputDeps={() => videoState.handleInstallVideoOutputDeps()}
+      />
+    );
+  } else if (activeTab === "video-gallery") {
+    content = (
+      <VideoGalleryTab
+        videoOutputs={videoState.videoOutputs}
+        videoBusy={videoState.videoBusy}
+        onActiveTabChange={setActiveTab}
+        onOpenVideoStudio={(modelId) => videoState.openVideoStudio(modelId)}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
       />
     );
   } else if (activeTab === "conversion") {
@@ -1545,6 +1721,8 @@ export default function App() {
       newDirectoryPath={newDirectoryPath}
       onNewDirectoryPathChange={setNewDirectoryPath}
       onPickDataDirectory={handlePickDataDirectory}
+      onPickImageOutputsDirectory={handlePickImageOutputsDirectory}
+      onPickVideoOutputsDirectory={handlePickVideoOutputsDirectory}
       onSaveSettings={handleSaveSettings}
       onPickDirectory={pickDirectory}
       onAddDirectory={handleAddDirectory}
@@ -1556,6 +1734,8 @@ export default function App() {
       serverPort={workspace.server.port}
       loadedModelName={workspace.runtime.loadedModel?.name}
       apiToken={apiToken}
+      sidebarMode={sidebarPrefs.mode}
+      onSidebarModeChange={sidebarPrefs.setMode}
     />;
   }
 
@@ -1578,43 +1758,21 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <div className="brand-title-row">
-            <img src="/logo.svg" alt="ChaosEngineAI" className="brand-logo" />
-            <h1>ChaosEngineAI</h1>
-          </div>
-          <span className="brand-kicker">
-            Local AI model runner
-            {workspace.system.appVersion ? ` · v${workspace.system.appVersion}` : ""}
-          </span>
-        </div>
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
+        platform={workspace.system.platform}
+        appVersion={workspace.system.appVersion}
+        backendOnline={backendOnline}
+        engineLabel={workspace.runtime.engineLabel}
+        loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+        mode={sidebarPrefs.mode}
+        collapsedGroups={sidebarPrefs.collapsedGroups}
+        onToggleGroupCollapsed={sidebarPrefs.toggleGroupCollapsed}
+        lastChildByGroup={sidebarPrefs.lastChildByGroup}
+        onRememberLastChild={sidebarPrefs.rememberLastChild}
+      />
 
-        <nav className="nav-list" aria-label="Primary">
-          {tabs.filter((tab) => {
-            if (tab.id === "conversion" && workspace.system.platform && workspace.system.platform !== "Darwin") return false;
-            return true;
-          }).map((tab) => (
-            <button
-              key={tab.id}
-              className={activeTab === tab.id ? "nav-button active" : "nav-button"}
-              type="button"
-              onClick={() => { setActiveTab(tab.id); setError(null); }}
-            >
-              <strong>{tab.label}</strong>
-              <span>{tab.caption}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <span className={`badge ${backendOnline ? "success" : "warning"}`}>
-            {backendOnline ? "Backend online" : "Offline"}
-          </span>
-          <p>{workspace.runtime.engineLabel}</p>
-          <small>{workspace.runtime.loadedModel?.name ?? "No model loaded"}</small>
-        </div>
-      </aside>
 
       <main className="workspace">
         <header className="workspace-header">
@@ -1631,6 +1789,68 @@ export default function App() {
         </header>
 
         <div className="workspace-status-stack">
+          {gpuStatus.showBanner && gpuStatus.status ? (
+            <div className="notice-banner warn-banner">
+              <span>
+                <strong>Running on CPU.</strong>{" "}
+                {gpuStatus.status.recommendation ??
+                  "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow."}
+                {cudaTorchResult?.ok ? (
+                  <>
+                    {" "}
+                    <strong>
+                      CUDA torch installed{cudaTorchResult.indexUrl
+                        ? ` from ${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")}`
+                        : ""}
+                      {cudaTorchResult.pythonVersion ? ` into bundled Python ${cudaTorchResult.pythonVersion}` : ""}
+                      . Restart the app to use the GPU.
+                    </strong>
+                  </>
+                ) : cudaTorchResult && !cudaTorchResult.ok ? (
+                  <>
+                    {" "}
+                    {cudaTorchResult.noWheelForPython ? (
+                      <>
+                        <strong>
+                          No CUDA torch wheel for Python{cudaTorchResult.pythonVersion
+                            ? ` ${cudaTorchResult.pythonVersion}`
+                            : " (bundled venv)"}
+                          .
+                        </strong>{" "}
+                        PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the
+                        app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Install failed:</strong>{" "}
+                        <span className="mono-text">{cudaTorchResult.message}</span>
+                      </>
+                    )}
+                  </>
+                ) : installingCudaTorch ? (
+                  <>
+                    {" "}
+                    <em>Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.</em>
+                  </>
+                ) : null}
+              </span>
+              <button
+                className="primary-button"
+                type="button"
+                disabled={installingCudaTorch || cudaTorchResult?.ok === true}
+                onClick={() => void handleInstallCudaTorch()}
+              >
+                {installingCudaTorch
+                  ? "Installing CUDA torch..."
+                  : cudaTorchResult?.ok
+                    ? "Installed"
+                    : "Install CUDA torch"}
+              </button>
+              <button className="secondary-button" type="button" onClick={gpuStatus.dismiss}>
+                Dismiss
+              </button>
+            </div>
+          ) : null}
           {error ? (
             <div className="notice-banner error-banner">
               <span>{error}</span>
@@ -1648,6 +1868,15 @@ export default function App() {
             </div>
           ) : null}
         </div>
+
+        {sidebarPrefs.mode === "tabs" ? (
+          <SubtabBar
+            activeTab={activeTab}
+            onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
+            platform={workspace.system.platform}
+            onRememberLastChild={sidebarPrefs.rememberLastChild}
+          />
+        ) : null}
 
         <div className="workspace-content-frame">
           {loading ? (
@@ -1698,6 +1927,19 @@ export default function App() {
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
+      />
+      <VideoGenerationModal
+        showVideoGenerationModal={videoState.showVideoGenerationModal}
+        videoBusy={videoState.videoBusy}
+        videoGenerationStartedAt={videoState.videoGenerationStartedAt}
+        videoGenerationError={videoState.videoGenerationError}
+        videoGenerationArtifact={videoState.videoGenerationArtifact}
+        videoGenerationRunInfo={videoState.videoGenerationRunInfo}
+        selectedVideoVariant={videoState.selectedVideoVariant}
+        onShowVideoGenerationModalChange={videoState.setShowVideoGenerationModal}
+        onActiveTabChange={setActiveTab}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onDeleteArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
       />
       {(() => {
         if (!detailFamilyId) return null;

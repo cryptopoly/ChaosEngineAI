@@ -1,6 +1,7 @@
-import type { SetStateAction } from "react";
+import { useState, type SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
 import type { SettingsDraft } from "../../types/chat";
+import type { SidebarMode } from "../../types";
 
 export interface SettingsTabProps {
   settingsDraft: SettingsDraft;
@@ -10,6 +11,8 @@ export interface SettingsTabProps {
   newDirectoryPath: string;
   onNewDirectoryPathChange: (path: string) => void;
   onPickDataDirectory: () => void;
+  onPickImageOutputsDirectory: () => void;
+  onPickVideoOutputsDirectory: () => void;
   onSaveSettings: () => void;
   onPickDirectory: (currentPath?: string) => Promise<string | null>;
   onAddDirectory: () => void;
@@ -21,7 +24,32 @@ export interface SettingsTabProps {
   serverPort: number;
   loadedModelName: string | undefined;
   apiToken: string | null;
+  sidebarMode: SidebarMode;
+  onSidebarModeChange: (mode: SidebarMode) => void;
 }
+
+// The Settings page used to be one long stack of seven panels — Appearance,
+// Data Directory, Delivery Folders, Model Directories, Remote Providers,
+// Hugging Face, and Integrations — which felt squished on the 2-column grid
+// and forced users to scroll past unrelated controls to reach the one they
+// wanted. We now group those panels into four logical sections and navigate
+// between them with a horizontal sub-tab bar. (We tried matching the user's
+// ``sidebarMode`` preference with a side-menu variant for collapsible users
+// but it felt clunky at the viewport widths this app runs at — tabs always,
+// for Settings only.)
+type SettingsSectionId = "general" | "storage" | "providers" | "integrations";
+
+interface SettingsSectionDef {
+  id: SettingsSectionId;
+  label: string;
+}
+
+const SETTINGS_SECTIONS: SettingsSectionDef[] = [
+  { id: "general", label: "General" },
+  { id: "storage", label: "Storage" },
+  { id: "providers", label: "Providers" },
+  { id: "integrations", label: "Integrations" },
+];
 
 export function SettingsTab({
   settingsDraft,
@@ -31,6 +59,8 @@ export function SettingsTab({
   newDirectoryPath,
   onNewDirectoryPathChange,
   onPickDataDirectory,
+  onPickImageOutputsDirectory,
+  onPickVideoOutputsDirectory,
   onSaveSettings,
   onPickDirectory,
   onAddDirectory,
@@ -42,39 +72,165 @@ export function SettingsTab({
   serverPort,
   loadedModelName,
   apiToken,
+  sidebarMode,
+  onSidebarModeChange,
 }: SettingsTabProps) {
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
-  return (
-    <div className="content-grid">
+  // Section selection lives in component state because it's purely a UI
+  // concern — there's no need to thread it through the App-level workspace
+  // or persist it across reloads (the user lands on "General" each time,
+  // which matches the macOS Settings idiom of opening to the first pane).
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
+
+  // Resolve the effective paths for the delivery folders so we can show the
+  // real value in each input rather than a placeholder-flavoured hint. The
+  // frontend doesn't expand ``~`` — we leave that for the backend — so the
+  // user sees the same shape the backend prints in logs. When the user
+  // hasn't set an override we mark the row with a small "default" tag so
+  // it's unambiguous whether the path is inherited or explicit.
+  const effectiveDataDirectory = settingsDraft.dataDirectory || "~/.chaosengine";
+  const imagesOutputsOverride = (settingsDraft.imageOutputsDirectory ?? "").trim();
+  const videosOutputsOverride = (settingsDraft.videoOutputsDirectory ?? "").trim();
+  const effectiveImagesOutputs = imagesOutputsOverride || `${effectiveDataDirectory}/images/outputs`;
+  const effectiveVideosOutputs = videosOutputsOverride || `${effectiveDataDirectory}/videos/outputs`;
+
+  const generalPanels = (
+    <div className="content-grid settings-section-grid">
       <Panel
-        title="Data Directory"
-        subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
+        title="Appearance"
+        subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
       >
         <div className="control-stack">
-          <div className="directory-add-row">
-            <input
-              className="text-input directory-add-path mono-text"
-              type="text"
-              readOnly
-              value={settingsDraft.dataDirectory || "~/.chaosengine"}
-            />
-            <button className="secondary-button" type="button" onClick={() => void onPickDataDirectory()}>
-              Browse...
+          <div className="segmented" role="radiogroup" aria-label="Sidebar style">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarMode === "collapsible"}
+              className={sidebarMode === "collapsible" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("collapsible")}
+            >
+              Collapsible
             </button>
             <button
-              className="secondary-button"
               type="button"
-              onClick={() => onSettingsDraftChange((current) => ({ ...current, dataDirectory: "" }))}
+              role="radio"
+              aria-checked={sidebarMode === "tabs"}
+              className={sidebarMode === "tabs" ? "segment active" : "segment"}
+              onClick={() => onSidebarModeChange("tabs")}
             >
-              Reset to default
+              Tabs
             </button>
           </div>
           <p className="help-text">
-            Changes take effect after the backend restarts. Existing data will be copied to the new location; the
-            old files are left in place.
+            <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
+            destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
+            to their last-used tab, with a sub-tab bar above the content.
           </p>
         </div>
       </Panel>
+    </div>
+  );
+
+  // Show a "default" badge beside the path when the user hasn't set an
+  // override so it's unambiguous whether the row is inherited from the data
+  // directory or explicit. The data directory itself also gets a default
+  // marker when it's empty (the fallback path is shown in the input).
+  const dataDirectoryIsDefault = !settingsDraft.dataDirectory?.trim();
+  const imagesOutputsIsDefault = !imagesOutputsOverride;
+  const videosOutputsIsDefault = !videosOutputsOverride;
+
+  const storagePanels = (
+    <div className="settings-storage-grid">
+      <div className="settings-storage-col">
+        <Panel
+          title="Data Directory"
+          subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
+        >
+          <div className="control-stack">
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveDataDirectory}
+              />
+              {dataDirectoryIsDefault ? <span className="badge muted">default</span> : null}
+              <button className="secondary-button" type="button" onClick={() => void onPickDataDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={dataDirectoryIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, dataDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <p className="help-text">
+              Changes take effect after the backend restarts. Existing data will be copied to the new location; the
+              old files are left in place.
+            </p>
+          </div>
+        </Panel>
+        <Panel
+          title="Delivery Folders"
+          subtitle="Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD."
+        >
+          <div className="control-stack">
+            <div className="field-label-row">
+              <label className="field-label">Images</label>
+              {imagesOutputsIsDefault ? <span className="badge muted">default</span> : null}
+            </div>
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveImagesOutputs}
+              />
+              <button className="secondary-button" type="button" onClick={() => void onPickImageOutputsDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={imagesOutputsIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, imageOutputsDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <div className="field-label-row">
+              <label className="field-label">Videos</label>
+              {videosOutputsIsDefault ? <span className="badge muted">default</span> : null}
+            </div>
+            <div className="directory-add-row">
+              <input
+                className="text-input directory-add-path mono-text"
+                type="text"
+                readOnly
+                value={effectiveVideosOutputs}
+              />
+              <button className="secondary-button" type="button" onClick={() => void onPickVideoOutputsDirectory()}>
+                Browse...
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={videosOutputsIsDefault}
+                onClick={() => onSettingsDraftChange((current) => ({ ...current, videoOutputsDirectory: "" }))}
+              >
+                Reset to default
+              </button>
+            </div>
+            <p className="help-text">
+              New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where
+              they were written. Reset returns the row to the default under the Data Directory.
+            </p>
+          </div>
+        </Panel>
+      </div>
       <Panel
         title="Model Directories"
         subtitle="Add the folders ChaosEngineAI should scan for local models, including custom, Ollama, LM Studio, or shared model paths."
@@ -156,7 +312,11 @@ export function SettingsTab({
           </div>
         </div>
       </Panel>
+    </div>
+  );
 
+  const providerPanels = (
+    <div className="content-grid settings-section-grid">
       <Panel
         title="Remote Providers"
         subtitle="Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions."
@@ -278,7 +438,11 @@ export function SettingsTab({
           </p>
         </div>
       </Panel>
+    </div>
+  );
 
+  const integrationPanels = (
+    <div className="content-grid settings-section-grid">
       <Panel
         title="Integrations"
         subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
@@ -307,6 +471,53 @@ export function SettingsTab({
           ))}
         </div>
       </Panel>
+    </div>
+  );
+
+  // Keep this dispatch exhaustive — TypeScript's ``SettingsSectionId``
+  // discriminant makes it a compile error to forget a branch when we add a
+  // new section.
+  const sectionContent =
+    activeSection === "general"
+      ? generalPanels
+      : activeSection === "storage"
+        ? storagePanels
+        : activeSection === "providers"
+          ? providerPanels
+          : integrationPanels;
+
+  // Horizontal sub-tab bar, always — the vertical side-menu variant we
+  // tried originally felt clunky at the viewport widths this app runs at
+  // (too much wasted horizontal space for four shortish labels). The
+  // app-wide ``sidebarMode`` preference still controls the top-level
+  // sidebar, but Settings always uses tabs regardless; the hint line on
+  // each section lives in the panel subtitles instead.
+  //
+  // The inner body is a bare ``settings-content`` frame — each section
+  // brings its own grid wrapper. That lets Storage use a 2-column layout
+  // that stacks Data + Delivery on the left and gives Model Directories
+  // the full right column to breathe, while Providers and Integrations
+  // keep the standard 2-col ``content-grid``.
+  return (
+    <div className="settings-layout">
+      <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
+        {SETTINGS_SECTIONS.map((section) => {
+          const isActive = section.id === activeSection;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={isActive ? "subtab active" : "subtab"}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="settings-content">{sectionContent}</div>
     </div>
   );
 }

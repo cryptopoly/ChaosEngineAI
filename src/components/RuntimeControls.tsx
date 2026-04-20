@@ -512,7 +512,7 @@ export function RuntimeControls({
             {!dflashInstalled ? (
               <div className="cache-strategy-install">
                 <span className="cache-strategy-meta-label">Install:</span>
-                <code>./.venv/bin/python3 -m pip install dflash-mlx</code>
+                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"</code>
               </div>
             ) : null}
           </div>

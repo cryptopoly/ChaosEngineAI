@@ -111,11 +111,16 @@ class UpdateSettingsRequest(BaseModel):
     modelDirectories: list[ModelDirectoryRequest] | None = None
     preferredServerPort: int | None = Field(default=None, ge=1024, le=65535)
     allowRemoteConnections: bool | None = None
+    requireApiAuth: bool | None = None
     autoStartServer: bool | None = None
     launchPreferences: LaunchPreferencesRequest | None = None
     remoteProviders: list[RemoteProviderRequest] | None = None
     huggingFaceToken: str | None = Field(default=None, max_length=512)
     dataDirectory: str | None = Field(default=None, max_length=4096)
+    # Per-modality output overrides. Empty string clears the override and
+    # restores the default (data-dir/images/outputs or data-dir/videos/outputs).
+    imageOutputsDirectory: str | None = Field(default=None, max_length=4096)
+    videoOutputsDirectory: str | None = Field(default=None, max_length=4096)
 
 
 class OpenAIMessage(BaseModel):
@@ -207,3 +212,30 @@ class ImageRuntimePreloadRequest(BaseModel):
 
 class ImageRuntimeUnloadRequest(BaseModel):
     modelId: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class VideoRuntimePreloadRequest(BaseModel):
+    modelId: str = Field(min_length=1, max_length=256)
+
+
+class VideoRuntimeUnloadRequest(BaseModel):
+    modelId: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class VideoGenerationRequest(BaseModel):
+    """Shape accepted by POST /api/video/generate.
+
+    Defaults are intentionally conservative — num_frames and steps in particular
+    dominate generation time on consumer hardware, so we err on the side of a
+    short, fast clip and let the user dial up quality from the Studio UI.
+    """
+    modelId: str = Field(min_length=1, max_length=256)
+    prompt: str = Field(min_length=1, max_length=4000)
+    negativePrompt: str | None = Field(default=None, max_length=4000)
+    width: int = Field(default=768, ge=256, le=2048)
+    height: int = Field(default=512, ge=256, le=2048)
+    numFrames: int = Field(default=97, ge=8, le=257)
+    fps: int = Field(default=24, ge=1, le=60)
+    steps: int = Field(default=50, ge=1, le=100)
+    guidance: float = Field(default=3.0, ge=1.0, le=20.0)
+    seed: int | None = Field(default=None, ge=0, le=2147483647)

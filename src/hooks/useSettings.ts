@@ -206,6 +206,29 @@ export function useSettings(
     }
   }
 
+  async function handlePickOutputDirectory(field: "imageOutputsDirectory" | "videoOutputsDirectory") {
+    // Same Tauri command the data-directory picker uses — gives us a native
+    // folder dialog that returns an absolute path. Falls back gracefully if
+    // the user cancels (`null`) or the dialog raises (no Tauri runtime).
+    try {
+      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+      const picked = await tauriInvoke<string | null>("pick_directory");
+      if (picked) {
+        setSettingsDraft((current) => ({ ...current, [field]: picked }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open the directory picker.");
+    }
+  }
+
+  async function handlePickImageOutputsDirectory() {
+    await handlePickOutputDirectory("imageOutputsDirectory");
+  }
+
+  async function handlePickVideoOutputsDirectory() {
+    await handlePickOutputDirectory("videoOutputsDirectory");
+  }
+
   async function handleSaveSettings() {
     setBusyAction("Saving settings...");
     try {
@@ -214,6 +237,7 @@ export function useSettings(
         modelDirectories: settingsDraft.modelDirectories,
         preferredServerPort: settingsDraft.preferredServerPort,
         allowRemoteConnections: settingsDraft.allowRemoteConnections,
+        requireApiAuth: settingsDraft.requireApiAuth,
         autoStartServer: settingsDraft.autoStartServer,
         launchPreferences: launchSettings,
         remoteProviders: (settingsDraft.remoteProviders ?? []).map((p) => ({
@@ -228,6 +252,14 @@ export function useSettings(
           : {}),
         ...(settingsDraft.dataDirectory !== (workspace.settings?.dataDirectory ?? "")
           ? { dataDirectory: settingsDraft.dataDirectory }
+          : {}),
+        // Always send the per-modality overrides — empty string is a valid
+        // "use the default" signal that the backend persists explicitly.
+        ...(settingsDraft.imageOutputsDirectory !== (workspace.settings?.imageOutputsDirectory ?? "")
+          ? { imageOutputsDirectory: settingsDraft.imageOutputsDirectory }
+          : {}),
+        ...(settingsDraft.videoOutputsDirectory !== (workspace.settings?.videoOutputsDirectory ?? "")
+          ? { videoOutputsDirectory: settingsDraft.videoOutputsDirectory }
           : {}),
       });
       const settings = response.settings;
@@ -433,6 +465,8 @@ export function useSettings(
     handleUpdateDirectoryPath,
     pickDirectory,
     handlePickDataDirectory,
+    handlePickImageOutputsDirectory,
+    handlePickVideoOutputsDirectory,
     handleSaveSettings,
     handleStopServer,
     handleRestartServer,

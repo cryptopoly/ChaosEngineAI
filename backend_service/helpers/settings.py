@@ -181,6 +181,14 @@ class DataLocation:
     def image_outputs_dir(self) -> Path:
         return self.images_dir / "outputs"
 
+    @property
+    def videos_dir(self) -> Path:
+        return self.data_dir / "videos"
+
+    @property
+    def video_outputs_dir(self) -> Path:
+        return self.videos_dir / "outputs"
+
 
 def _normalize_slug(value: str, fallback: str) -> str:
     cleaned = "".join(character.lower() if character.isalnum() else "-" for character in value.strip())
@@ -193,11 +201,20 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         "modelDirectories": [dict(entry) for entry in DEFAULT_MODEL_DIRECTORIES],
         "preferredServerPort": default_port,
         "allowRemoteConnections": False,
+        # Default on — the API token is auto-generated and passed to the
+        # frontend via /api/auth/session, so the built-in UI works out of
+        # the box. Users who connect external clients (OpenWebUI, scripts,
+        # another desktop app) can flip this off from the Server tab.
+        "requireApiAuth": True,
         "autoStartServer": False,
         "launchPreferences": dict(DEFAULT_LAUNCH_PREFERENCES),
         "remoteProviders": [],
         "huggingFaceToken": "",
         "dataDirectory": str(data_dir),
+        # Empty string means "use the default under dataDirectory". Anything
+        # else is treated as an absolute (or ~-relative) override path.
+        "imageOutputsDirectory": "",
+        "videoOutputsDirectory": "",
     }
 
 
@@ -301,6 +318,9 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
         settings["preferredServerPort"] = default_port
 
     settings["allowRemoteConnections"] = bool(payload.get("allowRemoteConnections", False))
+    # Default True: if the key is missing from an older settings.json we
+    # preserve the secure default rather than silently opening the API.
+    settings["requireApiAuth"] = bool(payload.get("requireApiAuth", True))
     settings["autoStartServer"] = bool(payload.get("autoStartServer", False))
 
     settings["launchPreferences"] = _normalize_launch_preferences(payload.get("launchPreferences"))
@@ -311,6 +331,12 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
         if hf_token:
             os.environ["HF_TOKEN"] = hf_token
             os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
+
+    for key in ("imageOutputsDirectory", "videoOutputsDirectory"):
+        raw = payload.get(key)
+        if isinstance(raw, str):
+            settings[key] = raw.strip()
+
     return settings
 
 

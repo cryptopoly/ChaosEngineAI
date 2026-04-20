@@ -4,15 +4,27 @@ import json
 import importlib.util
 import io
 import os
+import platform
 import textwrap
 import time
 import gc
 import secrets
+
+from backend_service.helpers.gpu import nvidia_gpu_present as _nvidia_gpu_present
 from colorsys import hsv_to_rgb
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from threading import RLock
 from typing import Any
+
+from backend_service.progress import (
+    IMAGE_PROGRESS,
+    PHASE_DECODING,
+    PHASE_DIFFUSING,
+    PHASE_ENCODING,
+    PHASE_LOADING,
+    PHASE_SAVING,
+)
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +60,59 @@ def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None)
         return (
             "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
             f"(missing model_index.json; found {visible_label}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    # Verify each component listed in model_index.json actually has its folder
+    # on disk with a recognisable config file. Diffusers will otherwise raise a
+    # cryptic "no file named config.json found in directory <snapshot_root>"
+    # error from inside ``from_pretrained`` that points at the snapshot root,
+    # which is hard to action without knowing which subfolder is missing.
+    # This typically happens when a download started before allow_patterns was
+    # applied — HF queues the legacy root-level safetensors first and the user
+    # tries to load before the per-component folders finish landing.
+    try:
+        pipeline_index = json.loads(model_index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            "The local snapshot's model_index.json could not be read "
+            f"({exc}). {_snapshot_retry_guidance(repo)}"
+        )
+
+    missing_components: list[str] = []
+    if isinstance(pipeline_index, dict):
+        # Any of these names being present in a subfolder is enough to call it
+        # a real component directory — diffusers picks the right one based on
+        # the class type at load time.
+        component_config_names = (
+            "config.json",
+            "scheduler_config.json",
+            "tokenizer_config.json",
+            "preprocessor_config.json",
+        )
+        for component_name, descriptor in pipeline_index.items():
+            if component_name.startswith("_"):
+                continue  # ``_class_name`` / ``_diffusers_version`` metadata
+            if not isinstance(descriptor, (list, tuple)) or len(descriptor) < 2:
+                continue
+            # Pipelines list ``[null, null]`` for optional components that the
+            # checkpoint deliberately omits (e.g. safety_checker on community
+            # models). Skip those — they aren't expected on disk.
+            if descriptor[0] is None or descriptor[1] is None:
+                continue
+            component_dir = local_root / component_name
+            if not component_dir.is_dir():
+                missing_components.append(component_name)
+                continue
+            if not any((component_dir / name).exists() for name in component_config_names):
+                missing_components.append(component_name)
+
+    if missing_components:
+        label = ", ".join(missing_components[:4])
+        if len(missing_components) > 4:
+            label += f" (+{len(missing_components) - 4} more)"
+        return (
+            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
+            f"(missing components: {label}). {_snapshot_retry_guidance(repo)}"
         )
 
     broken_links: list[str] = []
@@ -338,73 +403,144 @@ class DiffusersTextToImageEngine:
             )
 
         device = self._detect_device(torch)
+        message = (
+            "Real local generation is available. Download an image model locally, then Image Studio "
+            "will use the diffusers runtime instead of the placeholder engine."
+        )
+        # A CPU-only torch on a machine with an NVIDIA GPU is the single
+        # most common "image gen takes 10 minutes per step" misconfiguration
+        # on Windows and Linux. Detect the NVIDIA driver via nvidia-smi and,
+        # if torch didn't pick up CUDA, surface an actionable hint instead
+        # of letting users watch the progress bar crawl.
+        if device == "cpu" and platform.system() in ("Windows", "Linux") and _nvidia_gpu_present():
+            message = (
+                "torch was imported but CUDA is unavailable — diffusion will run on CPU "
+                "(expect minutes per step). Reinstall with the CUDA wheel: "
+                "pip install --upgrade --force-reinstall torch "
+                "--index-url https://download.pytorch.org/whl/cu121"
+            )
         return ImageRuntimeStatus(
             activeEngine="diffusers",
             realGenerationAvailable=True,
             device=device,
             pythonExecutable=_resolve_image_python(),
-            message=(
-                "Real local generation is available. Download an image model locally, then Image Studio "
-                "will use the diffusers runtime instead of the placeholder engine."
-            ),
+            message=message,
             loadedModelRepo=self._loaded_repo,
         )
 
     def generate(self, config: ImageGenerationConfig) -> list[GeneratedImage]:
-        pipeline = self._ensure_pipeline(config.repo)
-        torch = self._torch
-        if torch is None:
-            raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
-        generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
-        base_seed = _resolve_base_seed(config.seed)
-        generators = [
-            torch.Generator(device=generator_device).manual_seed(base_seed + index)
-            for index in range(config.batchSize)
-        ]
-
-        kwargs = self._build_pipeline_kwargs(config, generators if len(generators) > 1 else generators[0])
-        lowered_repo = config.repo.lower()
-        if "flux" in lowered_repo:
-            kwargs.pop("negative_prompt", None)
-            kwargs["num_inference_steps"] = min(config.steps, 8)
-        if "turbo" in lowered_repo:
-            kwargs["num_inference_steps"] = min(config.steps, 8)
-            kwargs["guidance_scale"] = min(config.guidance, 2.5)
-
-        started = time.perf_counter()
+        # Begin reporting progress before we touch the pipeline. ``_ensure_pipeline``
+        # publishes its own ``loading`` phase if it actually has to materialise
+        # the pipeline, but we still want a tracker entry from the moment the
+        # request lands so the UI's first poll has something to render.
+        IMAGE_PROGRESS.begin(
+            run_label=self._format_run_label(config),
+            total_steps=max(1, int(config.steps)),
+            phase=PHASE_LOADING,
+            message=f"Preparing {config.modelName}",
+        )
         try:
-            result = pipeline(**kwargs)
-        except TypeError:
-            kwargs.pop("negative_prompt", None)
-            result = pipeline(**kwargs)
-        elapsed = max(0.1, time.perf_counter() - started)
+            pipeline = self._ensure_pipeline(config.repo)
+            torch = self._torch
+            if torch is None:
+                raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
+            IMAGE_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
+            generator_device = "cpu" if self._device == "mps" else (self._device or "cpu")
+            base_seed = _resolve_base_seed(config.seed)
+            generators = [
+                torch.Generator(device=generator_device).manual_seed(base_seed + index)
+                for index in range(config.batchSize)
+            ]
 
-        artifacts: list[GeneratedImage] = []
-        for index, image in enumerate(getattr(result, "images", []) or []):
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-            if image.getbbox() is None:
-                raise RuntimeError(
-                    "The image runtime returned an all-black frame instead of a real image. "
-                    f"Model: {config.repo}. Device: {self._device or 'cpu'}. "
-                    "Try restarting the backend and generating again. If this keeps happening on Apple Silicon, "
-                    "the model likely needs a safer precision path."
-                )
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG", optimize=True)
-            artifacts.append(
-                GeneratedImage(
-                    seed=base_seed + index,
-                    bytes=buffer.getvalue(),
-                    extension="png",
-                    mimeType="image/png",
-                    durationSeconds=round(elapsed / max(1, config.batchSize), 1),
-                    runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
-                )
+            kwargs = self._build_pipeline_kwargs(config, generators if len(generators) > 1 else generators[0])
+            lowered_repo = config.repo.lower()
+            if "flux" in lowered_repo:
+                kwargs.pop("negative_prompt", None)
+                kwargs["num_inference_steps"] = min(config.steps, 8)
+            if "turbo" in lowered_repo:
+                kwargs["num_inference_steps"] = min(config.steps, 8)
+                kwargs["guidance_scale"] = min(config.guidance, 2.5)
+
+            # Wire the diffusers per-step callback so the UI sees the bar move
+            # in lockstep with denoising, which is the bulk of the wall time on
+            # most models. ``callback_on_step_end`` is the non-deprecated name
+            # in modern diffusers (>=0.27); some pipelines also accept the
+            # legacy ``callback`` arg, but we prefer the new one.
+            total_steps = int(kwargs.get("num_inference_steps", config.steps) or config.steps)
+            IMAGE_PROGRESS.set_phase(
+                PHASE_DIFFUSING,
+                message=self._diffuse_message(config),
             )
-        if not artifacts:
-            raise RuntimeError("Diffusers returned no images.")
-        return artifacts
+            # Re-publish the totalSteps in case ``num_inference_steps`` was
+            # clamped above (Flux/Turbo cap at 8).
+            IMAGE_PROGRESS.set_step(0, total=max(1, total_steps))
+
+            def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
+                # Diffusers calls this *after* step ``step`` finishes, so step
+                # 0 means "one step done". Convert to the 1-indexed value the
+                # UI wants to display.
+                IMAGE_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+                return callback_kwargs
+
+            kwargs.setdefault("callback_on_step_end", _on_step_end)
+
+            started = time.perf_counter()
+            try:
+                result = pipeline(**kwargs)
+            except TypeError as exc:
+                # Older diffusers versions don't accept ``callback_on_step_end``
+                # — drop it and retry once before bubbling the original error.
+                if "callback_on_step_end" in str(exc):
+                    kwargs.pop("callback_on_step_end", None)
+                    try:
+                        result = pipeline(**kwargs)
+                    except TypeError:
+                        kwargs.pop("negative_prompt", None)
+                        result = pipeline(**kwargs)
+                else:
+                    kwargs.pop("negative_prompt", None)
+                    result = pipeline(**kwargs)
+            elapsed = max(0.1, time.perf_counter() - started)
+
+            IMAGE_PROGRESS.set_phase(PHASE_DECODING, message="Decoding pixels")
+
+            artifacts: list[GeneratedImage] = []
+            for index, image in enumerate(getattr(result, "images", []) or []):
+                if image.mode != "RGB":
+                    image = image.convert("RGB")
+                if image.getbbox() is None:
+                    raise RuntimeError(
+                        "The image runtime returned an all-black frame instead of a real image. "
+                        f"Model: {config.repo}. Device: {self._device or 'cpu'}. "
+                        "Try restarting the backend and generating again. If this keeps happening on Apple Silicon, "
+                        "the model likely needs a safer precision path."
+                    )
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG", optimize=True)
+                artifacts.append(
+                    GeneratedImage(
+                        seed=base_seed + index,
+                        bytes=buffer.getvalue(),
+                        extension="png",
+                        mimeType="image/png",
+                        durationSeconds=round(elapsed / max(1, config.batchSize), 1),
+                        runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                    )
+                )
+            if not artifacts:
+                raise RuntimeError("Diffusers returned no images.")
+            IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+            return artifacts
+        finally:
+            IMAGE_PROGRESS.finish()
+
+    def _diffuse_message(self, config: ImageGenerationConfig) -> str:
+        if config.batchSize > 1:
+            return f"Diffusing {config.batchSize} images"
+        return "Diffusing image"
+
+    def _format_run_label(self, config: ImageGenerationConfig) -> str:
+        return f"{config.modelName} · {config.width}x{config.height}"
 
     def preload(self, repo: str) -> ImageRuntimeStatus:
         self._ensure_pipeline(repo)
@@ -421,6 +557,11 @@ class DiffusersTextToImageEngine:
         with self._lock:
             if self._pipeline is not None and self._loaded_repo == repo:
                 return self._pipeline
+
+            # Loading a pipeline can take 10-60s on cold disk. Surface that
+            # explicitly to the UI so the progress bar stops sitting at 0%
+            # while we read 5GB of weights from the SSD.
+            IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=f"Loading {repo}")
 
             if self._pipeline is not None and self._loaded_repo != repo:
                 self._release_pipeline()

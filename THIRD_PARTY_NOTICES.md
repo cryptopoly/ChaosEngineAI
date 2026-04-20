@@ -78,3 +78,17 @@ If installed by the user, each is subject to its own licence:
 
 These libraries are **not bundled** with ChaosEngineAI. They are
 optional pip dependencies that the user may install independently.
+
+---
+
+## Ported Algorithms
+
+### DDTree (Diffusion Draft Tree)
+
+- **Upstream:** <https://github.com/liranringel/ddtree>
+- **Licence:** MIT
+- **Port location:** `backend_service/ddtree.py`
+- **Usage:** The tree-building and tree-mask compilation logic is ported
+  to ChaosEngineAI's MLX runtime. The draft model bundle is reused from
+  DFlash. No upstream code is bundled verbatim; this is a re-implementation
+  of the published algorithm.

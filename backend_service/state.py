@@ -18,11 +18,14 @@ from typing import Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from compression import registry as cache_registry
+from cache_compression import registry as cache_registry
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
 from backend_service.image_runtime import (
     ImageRuntimeManager,
+)
+from backend_service.video_runtime import (
+    VideoRuntimeManager,
 )
 from backend_service.models import (
     LoadModelRequest,
@@ -50,6 +53,11 @@ from backend_service.helpers.huggingface import (
 from backend_service.helpers.images import (
     _image_download_validation_error,
     _friendly_image_download_error,
+    _image_repo_allow_patterns,
+)
+from backend_service.helpers.video import (
+    _video_download_validation_error,
+    _video_repo_allow_patterns,
 )
 from backend_service.helpers.settings import (
     _save_data_location,
@@ -110,11 +118,23 @@ def _read_text_tail(path: str | None, *, limit: int = 4096) -> str:
     return content[-limit:]
 
 
-def _spawn_snapshot_download(repo: str, env: dict[str, str], log_handle: Any) -> subprocess.Popen[str]:
+def _spawn_snapshot_download(
+    repo: str,
+    env: dict[str, str],
+    log_handle: Any,
+    allow_patterns: list[str] | None = None,
+) -> subprocess.Popen[str]:
     from backend_service.app import HF_SNAPSHOT_DOWNLOAD_HELPER
 
+    args = [sys.executable, "-c", HF_SNAPSHOT_DOWNLOAD_HELPER, repo]
+    # The helper treats an empty string as "no allowlist"; a JSON-encoded
+    # list restricts the download to matching files. This is how we keep
+    # diffusers video repos from ballooning to hundreds of GB when the
+    # repo ships legacy standalone checkpoints alongside the pipeline
+    # layout.
+    args.append(json.dumps(allow_patterns) if allow_patterns else "")
     return subprocess.Popen(
-        [sys.executable, "-c", HF_SNAPSHOT_DOWNLOAD_HELPER, repo],
+        args,
         stdout=log_handle,
         stderr=subprocess.STDOUT,
         text=True,
@@ -171,6 +191,7 @@ class ChaosEngineState:
         self._library_cache: tuple[float, list[dict[str, Any]]] | None = None
         self.runtime = RuntimeController()
         self.image_runtime = ImageRuntimeManager()
+        self.video_runtime = VideoRuntimeManager()
         self._chat_sessions_path = chat_sessions_path if chat_sessions_path is not None else CHAT_SESSIONS_PATH
         loaded_sessions = _load_chat_sessions(self._chat_sessions_path)
         self.chat_sessions = loaded_sessions
@@ -248,12 +269,18 @@ class ChaosEngineState:
             "modelDirectories": directories,
             "preferredServerPort": self.settings["preferredServerPort"],
             "allowRemoteConnections": bool(self.settings.get("allowRemoteConnections", False)),
+            "requireApiAuth": bool(self.settings.get("requireApiAuth", True)),
             "autoStartServer": bool(self.settings.get("autoStartServer", False)),
             "launchPreferences": self._launch_preferences(),
             "remoteProviders": masked_providers,
             "huggingFaceToken": hf_token_masked,
             "hasHuggingFaceToken": bool(hf_token_value),
             "dataDirectory": str(DATA_LOCATION.data_dir),
+            # Per-modality output overrides (empty == use default under
+            # dataDirectory). The frontend uses these to render the picker
+            # value and the resolved path used for new artifacts.
+            "imageOutputsDirectory": str(self.settings.get("imageOutputsDirectory") or ""),
+            "videoOutputsDirectory": str(self.settings.get("videoOutputsDirectory") or ""),
         }
 
     def _bootstrap(self) -> None:
@@ -866,9 +893,12 @@ class ChaosEngineState:
             next_settings["modelDirectories"] = [dict(entry) for entry in self.settings["modelDirectories"]]
             next_settings["preferredServerPort"] = self.settings["preferredServerPort"]
             next_settings["allowRemoteConnections"] = bool(self.settings.get("allowRemoteConnections", False))
+            next_settings["requireApiAuth"] = bool(self.settings.get("requireApiAuth", True))
             next_settings["launchPreferences"] = self._launch_preferences()
             next_settings["remoteProviders"] = list(self.settings.get("remoteProviders") or [])
             next_settings["huggingFaceToken"] = str(self.settings.get("huggingFaceToken") or "")
+            next_settings["imageOutputsDirectory"] = str(self.settings.get("imageOutputsDirectory") or "")
+            next_settings["videoOutputsDirectory"] = str(self.settings.get("videoOutputsDirectory") or "")
 
             if request.modelDirectories is not None:
                 next_settings["modelDirectories"] = _normalize_model_directories(
@@ -878,6 +908,8 @@ class ChaosEngineState:
                 next_settings["preferredServerPort"] = request.preferredServerPort
             if request.allowRemoteConnections is not None:
                 next_settings["allowRemoteConnections"] = request.allowRemoteConnections
+            if request.requireApiAuth is not None:
+                next_settings["requireApiAuth"] = request.requireApiAuth
             if request.autoStartServer is not None:
                 next_settings["autoStartServer"] = request.autoStartServer
             if request.launchPreferences is not None:
@@ -922,6 +954,25 @@ class ChaosEngineState:
                 else:
                     os.environ.pop("HF_TOKEN", None)
                     os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
+
+            # Output directory overrides. Empty string clears the override.
+            # Anything non-empty must be absolute or ~-relative — same rule as
+            # dataDirectory — so we don't silently end up writing artifacts to
+            # the working directory of whoever launched the backend.
+            for field_name, label in (
+                ("imageOutputsDirectory", "imageOutputsDirectory"),
+                ("videoOutputsDirectory", "videoOutputsDirectory"),
+            ):
+                raw_value = getattr(request, field_name, None)
+                if raw_value is None:
+                    continue
+                cleaned = raw_value.strip()
+                if cleaned and not (cleaned.startswith("/") or cleaned.startswith("~")):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{label} must be an absolute path or start with ~.",
+                    )
+                next_settings[field_name] = cleaned
 
             data_migration: dict[str, Any] | None = None
             restart_required_for_data_dir = False
@@ -2308,7 +2359,20 @@ class ChaosEngineState:
                 process_log_path = temp_log.name
                 temp_log.close()
                 with open(process_log_path, "w", encoding="utf-8", errors="replace") as process_log:
-                    process = _spawn_snapshot_download(repo, env, process_log)
+                    # Diffusers repos (image + video) get a component-folder
+                    # allowlist so we skip legacy single-file checkpoints the
+                    # pipelines never load. Both helpers return None for repos
+                    # outside their catalog, so only one ever applies.
+                    allow_patterns = (
+                        _video_repo_allow_patterns(repo)
+                        or _image_repo_allow_patterns(repo)
+                    )
+                    process = _spawn_snapshot_download(
+                        repo,
+                        env,
+                        process_log,
+                        allow_patterns=allow_patterns,
+                    )
                     with self._lock:
                         if self._download_tokens.get(repo) == download_token:
                             self._download_processes[repo] = process
@@ -2358,7 +2422,14 @@ class ChaosEngineState:
                 if returncode != 0:
                     raise RuntimeError(stderr_output or f"snapshot_download exited with status {returncode}")
 
-                validation_error = _image_download_validation_error(repo)
+                # Image catalog validation first; fall through to video so
+                # a successful video download isn't flagged for missing image
+                # shape. Each validator returns None for repos outside its
+                # catalog.
+                validation_error = (
+                    _image_download_validation_error(repo)
+                    or _video_download_validation_error(repo)
+                )
                 if validation_error:
                     with self._lock:
                         if self._download_tokens.get(repo) != download_token:
@@ -2448,6 +2519,11 @@ class ChaosEngineState:
 
         try:
             self.image_runtime.unload(repo)
+        except Exception:
+            pass
+
+        try:
+            self.video_runtime.unload(repo)
         except Exception:
             pass
 

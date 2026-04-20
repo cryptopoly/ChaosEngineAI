@@ -88,7 +88,7 @@ class PluginRegistry:
     def register_builtins(self):
         """Register all built-in components as plugins."""
         # Cache strategies
-        from compression import registry as cache_registry
+        from cache_compression import registry as cache_registry
         for strategy in cache_registry._strategies.values():
             manifest = PluginManifest(
                 id=f"cache.{strategy.strategy_id}",

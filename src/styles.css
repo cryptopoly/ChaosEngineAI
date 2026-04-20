@@ -167,26 +167,162 @@ strong {
 .nav-button {
   background: transparent;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 10px 12px;
   text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
-.nav-button strong {
+.nav-button .nav-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-button .nav-label strong {
   font-size: 0.95rem;
 }
 
-.nav-button span {
+.nav-button .nav-label > span {
   display: none;
 }
 
 .nav-button.active {
   background: var(--panel);
-  border-color: var(--accent);
+}
+
+.nav-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.nav-button.active .nav-icon,
+.nav-group-header[aria-expanded="true"] .nav-icon {
+  color: var(--accent);
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-group-header {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.nav-group-header:hover {
+  color: var(--text);
+}
+
+.nav-group-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-group-chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.nav-group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 12px;
+  padding-left: 12px;
+}
+
+.nav-child-button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 10px;
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.nav-child-button:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+.nav-child-button.active {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.nav-child-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.nav-child-button.active .nav-child-dot {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.subtab-bar {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.subtab {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.subtab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.subtab.active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
 }
 
 .sidebar-footer {
@@ -568,9 +704,12 @@ strong {
 }
 
 .secondary-button:hover,
-.segment:hover,
-.nav-button:hover {
+.segment:hover {
   border-color: var(--accent);
+}
+
+.nav-button:not(.active):hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .badge {
@@ -2005,6 +2144,19 @@ select.text-input {
   flex: 1;
   min-width: 0;
 }
+.warn-banner {
+  background: rgba(230, 184, 110, 0.08);
+  border-color: rgba(230, 184, 110, 0.45);
+  color: #c99236;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.warn-banner > span {
+  flex: 1;
+  min-width: 0;
+}
 .rebuild-output {
   max-height: 240px;
   overflow: auto;
@@ -3109,6 +3261,81 @@ select.text-input {
   padding-right: 4px;
 }
 
+/* Settings page split into sections, navigated via the same horizontal
+   ``.subtab-bar`` that the top-level tabs mode uses, so the look is
+   consistent. Only one section's panels render at a time; each section
+   brings its own grid wrapper inside ``.settings-content`` so that
+   Storage can use a custom 2-col shape while Providers, Integrations,
+   and General stay on the default ``.content-grid``. */
+.settings-layout {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--app-gap);
+  min-height: 0;
+}
+
+.settings-content {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-layout .settings-section-grid {
+  min-height: 0;
+}
+
+/* When only one section panel is showing (e.g. General = Appearance only)
+   let it consume the full width rather than leaving the 2-col grid's
+   second column empty. content-grid's 2-col default is still right for
+   sections with multiple panels (Providers). */
+.settings-layout .settings-section-grid:has(> .panel:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-subtab-bar {
+  align-self: start;
+}
+
+/* Storage section gets a bespoke 2-col layout: the left column stacks
+   the two small panels (Data Directory, Delivery Folders) so their
+   related "where files live" controls read as a group, and the right
+   column hands the full height to Model Directories so its scrollable
+   list has room to breathe. At narrow widths the grid falls back to a
+   single column (handled by the viewport breakpoint lower down). */
+.settings-layout .settings-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-gap);
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.settings-storage-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-gap);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Pair a field label with an inline status badge (e.g. "default") on the
+   same baseline. The badge stays optional — when absent the label
+   renders on its own, unchanged. */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .integration-card {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -4131,6 +4358,7 @@ select.text-input {
   .server-stat-grid,
   .compact-field-grid,
   .message-detail-grid,
+  .settings-storage-grid,
   .field-grid {
     grid-template-columns: 1fr;
   }

@@ -7,6 +7,7 @@ import type {
   ConvertModelPayload,
   ConvertModelResponse,
   CreateSessionResponse,
+  GenerationProgressSnapshot,
   GeneratePayload,
   GenerateResponse,
   HubFileListResponse,
@@ -25,6 +26,11 @@ import type {
   TauriBackendInfo,
   UpdateSettingsPayload,
   UpdateSessionPayload,
+  VideoCatalogResponse,
+  VideoGenerationPayload,
+  VideoGenerationResponse,
+  VideoOutputArtifact,
+  VideoRuntimeStatus,
   WorkspaceData,
 } from "./types";
 
@@ -261,6 +267,20 @@ export async function checkBackend(): Promise<boolean> {
   }
 }
 
+export interface GpuStatus {
+  platform: string;
+  nvidiaGpuDetected: boolean;
+  torchImported: boolean;
+  torchCudaAvailable: boolean;
+  torchMpsAvailable: boolean;
+  cpuFallbackWarning: boolean;
+  recommendation: string | null;
+}
+
+export async function getGpuStatus(): Promise<GpuStatus> {
+  return await fetchJson<GpuStatus>("/api/system/gpu-status", 15000, { includeAuth: false });
+}
+
 export async function getSettings(): Promise<AppSettings> {
   const result = await fetchJson<{ settings: AppSettings }>("/api/settings");
   return result.settings;
@@ -303,6 +323,43 @@ export async function getImageOutputs(): Promise<ImageOutputArtifact[]> {
 export async function getImageRuntime(): Promise<ImageRuntimeStatus> {
   const result = await fetchJson<{ runtime: ImageRuntimeStatus }>("/api/images/runtime");
   return result.runtime;
+}
+
+/**
+ * Polled by ImageGenerationModal while the bar is visible to override the
+ * client-side phase estimates with the runtime's actual phase / step count.
+ * Short timeout — if the backend is busy with the generation it can still
+ * answer this lightweight read in well under a second.
+ */
+export async function getImageGenerationProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
+    "/api/images/progress",
+    5000,
+  );
+  return result.progress;
+}
+
+export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
+  return await fetchJson<VideoCatalogResponse>("/api/video/catalog", 25000);
+}
+
+export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
+  // 30s rather than the 15s default — the first call of a sidecar's life
+  // imports torch and (on Windows/Linux) shells out to nvidia-smi, both of
+  // which can take several seconds on cold disks. Backend caches the VRAM
+  // total after the first probe so subsequent calls are fast, but the
+  // initial one needs the headroom.
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/runtime", 30000);
+  return result.runtime;
+}
+
+/** Mirror of ``getImageGenerationProgress`` for the video runtime. */
+export async function getVideoGenerationProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
+    "/api/video/progress",
+    5000,
+  );
+  return result.progress;
 }
 
 export async function getCachePreview(options: {
@@ -596,6 +653,79 @@ export async function unloadImageModel(modelId?: string): Promise<ImageRuntimeSt
   return result.runtime;
 }
 
+export async function downloadVideoModel(repo: string): Promise<DownloadStatus> {
+  const result = await postJson<{ download: DownloadStatus }>("/api/video/download", { repo });
+  return result.download;
+}
+
+export async function getVideoDownloadStatus(): Promise<DownloadStatus[]> {
+  const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/video/download/status");
+  return result.downloads;
+}
+
+export async function cancelVideoDownload(repo: string): Promise<DownloadStatus> {
+  const result = await postJson<{ download: DownloadStatus }>("/api/video/download/cancel", { repo });
+  return result.download;
+}
+
+export async function deleteVideoDownload(repo: string): Promise<DeleteDownloadResult> {
+  const result = await postJson<{ result: DeleteDownloadResult }>("/api/video/download/delete", { repo });
+  return result.result;
+}
+
+export async function preloadVideoModel(modelId: string): Promise<VideoRuntimeStatus> {
+  const result = await postJson<{ runtime: VideoRuntimeStatus }>("/api/video/preload", { modelId }, null);
+  return result.runtime;
+}
+
+export async function unloadVideoModel(modelId?: string): Promise<VideoRuntimeStatus> {
+  const result = await postJson<{ runtime: VideoRuntimeStatus }>(
+    "/api/video/unload",
+    modelId ? { modelId } : undefined,
+  );
+  return result.runtime;
+}
+
+export async function generateVideo(payload: VideoGenerationPayload): Promise<VideoGenerationResponse> {
+  // No client timeout — video generation legitimately takes minutes on consumer hardware.
+  return await postJson<VideoGenerationResponse>("/api/video/generate", payload, null);
+}
+
+export async function getVideoOutputs(): Promise<VideoOutputArtifact[]> {
+  const result = await fetchJson<{ outputs: VideoOutputArtifact[] }>("/api/video/outputs");
+  return result.outputs;
+}
+
+export async function deleteVideoOutput(
+  artifactId: string,
+): Promise<{ deleted: string; outputs: VideoOutputArtifact[] }> {
+  return await deleteJson<{ deleted: string; outputs: VideoOutputArtifact[] }>(
+    `/api/video/outputs/${encodeURIComponent(artifactId)}`,
+  );
+}
+
+/**
+ * Fetch a saved mp4 as a blob URL that an HTML5 <video> element can play.
+ *
+ * The backend auth middleware only reads the token from the ``Authorization``
+ * or ``x-chaosengine-token`` headers, so we can't just point a <video src> at
+ * the file endpoint directly. Fetching the bytes ourselves and handing back
+ * an object URL keeps auth clean and works even for clips > 25MB. Callers
+ * are responsible for calling ``URL.revokeObjectURL`` when the component
+ * unmounts.
+ */
+export async function fetchVideoOutputBlobUrl(artifactId: string): Promise<string> {
+  const response = await apiFetch(
+    `/api/video/outputs/${encodeURIComponent(artifactId)}/file`,
+    { method: "GET" },
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load video (${response.status} ${response.statusText})`);
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
   return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
 }
@@ -654,6 +784,30 @@ export async function installPipPackage(packageName: string): Promise<InstallRes
 
 export async function installSystemPackage(packageName: string): Promise<InstallResult> {
   return await postJson<InstallResult>("/api/setup/install-system-package", { package: packageName }, 660000);
+}
+
+export interface CudaTorchInstallAttempt {
+  indexUrl: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface CudaTorchInstallResult {
+  ok: boolean;
+  output: string;
+  indexUrl: string | null;
+  attempts: CudaTorchInstallAttempt[];
+  requiresRestart: boolean;
+  pythonExecutable: string;
+  pythonVersion: string | null;
+  noWheelForPython: boolean;
+  capabilities: Record<string, unknown>;
+}
+
+export async function installCudaTorch(): Promise<CudaTorchInstallResult> {
+  // 15 minute timeout — torch CUDA wheels are ~2.5 GB, and the endpoint
+  // walks up to four CUDA indexes before giving up.
+  return await postJson<CudaTorchInstallResult>("/api/setup/install-cuda-torch", {}, 900000);
 }
 
 export interface TurboUpdateInfo {

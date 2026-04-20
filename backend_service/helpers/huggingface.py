@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES
+from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.discovery import _path_size_bytes
 
@@ -161,6 +161,7 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
         downloads = model.get("downloads") or 0
         likes = model.get("likes") or 0
         last_modified = str(model.get("lastModified") or "").strip() or None
+        created_at = str(model.get("createdAt") or "").strip() or None
 
         results.append({
             "id": model_id,
@@ -176,6 +177,8 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
             "likesLabel": f"{likes:,} likes",
             "lastModified": last_modified,
             "updatedLabel": _format_hf_updated_label(last_modified),
+            "createdAt": created_at,
+            "releaseLabel": _format_release_label(created_at),
             "availableLocally": available_locally,
             "launchMode": launch_mode,
             "backend": backend,
@@ -416,6 +419,32 @@ def _format_hf_updated_label(value: str | None) -> str | None:
     return f"Updated {month_label} {parsed.day}, {parsed.year}"
 
 
+def _format_release_label(value: str | None) -> str | None:
+    """Format a release date / HF ``createdAt`` into a short human label.
+
+    Accepts either a full ISO datetime (``2024-08-01T12:34:56Z`` — HF API)
+    or a year-month shorthand (``2024-08`` — curated catalog entries) and
+    returns ``"Released Aug 2024"``. Falls back to None when the input
+    can't be parsed.
+    """
+    if not value:
+        return None
+    parsed = _parse_iso_datetime(value)
+    if parsed is None:
+        # Try ``YYYY-MM`` or ``YYYY-MM-DD`` shorthand used in curated catalog
+        # entries — ``_parse_iso_datetime`` only handles the full datetime form.
+        text = str(value).strip()
+        for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
+            try:
+                parsed = datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            return None
+    return f"Released {parsed.strftime('%b')} {parsed.year}"
+
+
 def _hf_number_label(value: int, noun: str) -> str:
     return f"{value:,} {noun}"
 
@@ -498,6 +527,17 @@ def _known_repo_size_gb(repo_id: str) -> float | None:
                 return size_gb
 
     for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") != repo_id:
+                continue
+            try:
+                size_gb = float(variant.get("sizeGb") or 0)
+            except (TypeError, ValueError):
+                size_gb = 0.0
+            if size_gb > 0:
+                return size_gb
+
+    for family in VIDEO_MODEL_FAMILIES:
         for variant in family["variants"]:
             if str(variant.get("repo") or "") != repo_id:
                 continue

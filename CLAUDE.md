@@ -7,7 +7,7 @@ ChaosEngineAI is a desktop AI inference app built with:
 - **Desktop shell**: Tauri (Rust) — `src-tauri/`
 - **Backend**: Python FastAPI sidecar — `backend_service/`
 - **Inference engines**: MLX (Apple Silicon), llama.cpp (GGUF), vLLM (CUDA)
-- **Cache strategies**: Pluggable compression via `compression/` registry
+- **Cache strategies**: Pluggable compression via `cache_compression/` registry
 
 ### Key Directories
 
@@ -19,7 +19,7 @@ ChaosEngineAI is a desktop AI inference app built with:
 | `backend_service/inference.py` | Core inference engine — model loading, binary routing, generation |
 | `backend_service/routes/` | API endpoints (14 route modules) |
 | `backend_service/helpers/` | System stats, settings, persistence, cache estimation |
-| `compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention) |
+| `cache_compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention). Renamed from `compression/` so it doesn't shadow Python 3.14's stdlib `compression` namespace package. |
 | `dflash/` | DFlash speculative decoding — draft model registry + availability detection |
 | `scripts/` | Build, install, and update scripts |
 | `tests/` | Python tests (pytest) |
@@ -57,10 +57,11 @@ Check for updates to external repos we build from or depend on:
 | llama.cpp (standard) | `ggml-org/llama.cpp` | `master` | `git -C ../llama.cpp fetch && git -C ../llama.cpp log HEAD..origin/master --oneline` |
 | llama-server-turbo | `TheTom/llama-cpp-turboquant` | `feature/turboquant-kv-cache` | `git ls-remote https://github.com/TheTom/llama-cpp-turboquant.git refs/heads/feature/turboquant-kv-cache` |
 | ChaosEngine | `cryptopoly/ChaosEngine` | `main` | `git -C vendor/ChaosEngine fetch && git -C vendor/ChaosEngine log HEAD..origin/main --oneline` |
-| dflash-mlx | `bstnxbt/dflash-mlx` | — | `.venv/bin/pip index versions dflash-mlx 2>/dev/null` |
+| dflash-mlx | `bstnxbt/dflash-mlx` | `main` pinned to commit `f825ffb2` (upstream deleted all tags April 2026) | `git ls-remote https://github.com/bstnxbt/dflash-mlx.git refs/heads/main` |
 | turboquant | `back2matching/turboquant` | — | `.venv/bin/pip index versions turboquant 2>/dev/null` |
-| turboquant-mlx | `sharpner/turboquant-mlx` | — | `.venv/bin/pip index versions turboquant-mlx 2>/dev/null` |
+| turboquant-mlx | `arozanov/turboquant-mlx` | — | `.venv/bin/pip index versions turboquant-mlx 2>/dev/null` |
 | turboquant-mlx-full | `helgklaizar/turboquant_mlx` | — | `.venv/bin/pip index versions turboquant-mlx-full 2>/dev/null` |
+| DDTree (ported algorithm) | `liranringel/ddtree` | `main` | `git ls-remote https://github.com/liranringel/ddtree.git HEAD` |
 
 ### 4. Cache Strategy Health
 - [ ] ChaosEngine `llama_cpp_cache_flags()` only emits standard types: `f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1`
@@ -81,7 +82,7 @@ Check for updates to external repos we build from or depend on:
 
 | Area | Test File(s) | Command |
 |------|-------------|---------|
-| Cache strategies (`compression/`) | `test_cache_strategies.py` | `pytest tests/test_cache_strategies.py -v` |
+| Cache strategies (`cache_compression/`) | `test_cache_strategies.py` | `pytest tests/test_cache_strategies.py -v` |
 | DFlash / speculative decoding | `test_dflash.py` | `pytest tests/test_dflash.py -v` |
 | Inference / llama.cpp / binary routing | `test_inference.py` | `pytest tests/test_inference.py -v` |
 | Setup routes / install endpoints | `test_setup_routes.py` | `pytest tests/test_setup_routes.py -v` |

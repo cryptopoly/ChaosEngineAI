@@ -1,21 +1,33 @@
-import type { TabId } from "../types";
+import type { SidebarGroupId, TabId } from "../types";
 
-export const tabs: Array<{ id: TabId; label: string; caption: string }> = [
+export interface TabConfig {
+  id: TabId;
+  label: string;
+  caption: string;
+  group?: SidebarGroupId;
+  shortLabel?: string;
+}
+
+export const tabs: TabConfig[] = [
   { id: "dashboard", label: "Dashboard", caption: "System overview" },
   { id: "chat", label: "Chat", caption: "Local AI chat" },
-  { id: "online-models", label: "Discover", caption: "Browse and download AI models" },
-  { id: "my-models", label: "My Models", caption: "Models on this machine" },
-  { id: "image-discover", label: "Image Discover", caption: "Browse image models" },
-  { id: "image-models", label: "Image Models", caption: "Installed image generators" },
-  { id: "image-studio", label: "Image Studio", caption: "Prompt, generate, and iterate" },
-  { id: "image-gallery", label: "Image Gallery", caption: "Saved outputs and filters" },
+  { id: "my-models", label: "My Models", caption: "Models on this machine", group: "models", shortLabel: "My Models" },
+  { id: "online-models", label: "Discover", caption: "Browse and download AI models", group: "models", shortLabel: "Discover" },
+  { id: "image-models", label: "Image Models", caption: "Installed image generators", group: "images", shortLabel: "My Models" },
+  { id: "image-discover", label: "Image Discover", caption: "Browse image models", group: "images", shortLabel: "Discover" },
+  { id: "image-studio", label: "Image Studio", caption: "Prompt, generate, and iterate", group: "images", shortLabel: "Studio" },
+  { id: "image-gallery", label: "Image Gallery", caption: "Saved outputs and filters", group: "images", shortLabel: "Gallery" },
+  { id: "video-models", label: "Video Models", caption: "Installed video generators", group: "video", shortLabel: "My Models" },
+  { id: "video-discover", label: "Video Discover", caption: "Browse video models", group: "video", shortLabel: "Discover" },
+  { id: "video-studio", label: "Video Studio", caption: "Prompt, generate, and iterate", group: "video", shortLabel: "Studio" },
+  { id: "video-gallery", label: "Video Gallery", caption: "Saved outputs and filters", group: "video", shortLabel: "Gallery" },
   { id: "server", label: "Server", caption: "OpenAI-compatible local API" },
-  { id: "benchmarks", label: "Benchmarks", caption: "Run a new benchmark" },
-  { id: "benchmark-history", label: "History", caption: "Compare saved runs" },
-  { id: "conversion", label: "Conversion", caption: "Convert models to MLX format" },
-  { id: "finetuning", label: "Fine-Tuning", caption: "LoRA adapters and training" },
-  { id: "prompt-library", label: "Prompts", caption: "Reusable prompt templates" },
-  { id: "plugins", label: "Plugins", caption: "Extensions and plugin system" },
+  { id: "benchmarks", label: "Benchmarks", caption: "Run a new benchmark", group: "benchmarks", shortLabel: "Run" },
+  { id: "benchmark-history", label: "History", caption: "Compare saved runs", group: "benchmarks", shortLabel: "History" },
+  { id: "conversion", label: "Conversion", caption: "Convert models to MLX format", group: "tools", shortLabel: "Conversion" },
+  { id: "finetuning", label: "Fine-Tuning", caption: "LoRA adapters and training", group: "tools", shortLabel: "Fine-Tuning" },
+  { id: "prompt-library", label: "Prompts", caption: "Reusable prompt templates", group: "tools", shortLabel: "Prompts" },
+  { id: "plugins", label: "Plugins", caption: "Extensions and plugin system", group: "tools", shortLabel: "Plugins" },
   { id: "logs", label: "Logs", caption: "Runtime events" },
   { id: "settings", label: "Settings", caption: "Directories and defaults" },
 ];

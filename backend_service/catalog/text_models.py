@@ -302,6 +302,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",
+                "releaseDate": "2025-07",
             },
             {
                 "id": "mistralai/Devstral-Small-2507",
@@ -317,6 +318,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2025-07",
             },
         ],
         "readme": [
@@ -410,6 +412,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-09",
             },
             {
                 "id": "Qwen/Qwen2.5-7B-Instruct",
@@ -425,6 +428,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-09",
             },
             {
                 "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
@@ -440,6 +444,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-11",
             },
             {
                 "id": "Qwen/Qwen2.5-32B-Instruct",
@@ -455,6 +460,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-09",
             },
         ],
         "readme": [
@@ -493,6 +499,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-12",
             },
             {
                 "id": "mlx-community/Llama-3.3-70B-Instruct-4bit",
@@ -508,6 +515,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "direct",
                 "backend": "mlx",
+                "releaseDate": "2024-12",
             },
         ],
         "readme": [
@@ -546,6 +554,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "16K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-12",
             },
             {
                 "id": "mlx-community/phi-4-4bit",
@@ -561,6 +570,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "16K",
                 "launchMode": "direct",
                 "backend": "mlx",
+                "releaseDate": "2025-01",
             },
         ],
         "readme": [
@@ -599,6 +609,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "128K",
                 "launchMode": "convert",
                 "backend": "mlx",
+                "releaseDate": "2024-07",
             },
         ],
         "readme": [

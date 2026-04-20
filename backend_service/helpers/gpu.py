@@ -8,9 +8,21 @@ Provides a unified interface for querying GPU metrics across platforms:
 from __future__ import annotations
 
 import platform
+import shutil
 import subprocess
 import json
+import threading
 from typing import Any
+
+
+# Windows: prevent every nvidia-smi / sysctl invocation from flashing a
+# console window. Without this, FastAPI worker threads on Windows pop a
+# brief cmd.exe window per probe — and on slower disks the spawn alone
+# can add 1-2s of latency to ``/api/video/runtime``, blowing past the
+# frontend's 15s fetch timeout and surfacing as "Failed to fetch".
+_SUBPROCESS_KWARGS: dict[str, Any] = {}
+if hasattr(subprocess, "CREATE_NO_WINDOW"):
+    _SUBPROCESS_KWARGS["creationflags"] = subprocess.CREATE_NO_WINDOW
 
 
 class GPUMonitor:
@@ -41,6 +53,7 @@ class GPUMonitor:
             chip = subprocess.check_output(
                 ["sysctl", "-n", "machdep.cpu.brand_string"],
                 text=True, timeout=5,
+                **_SUBPROCESS_KWARGS,
             ).strip()
             if chip:
                 gpu_name = chip
@@ -53,6 +66,7 @@ class GPUMonitor:
             total_bytes = int(subprocess.check_output(
                 ["sysctl", "-n", "hw.memsize"],
                 text=True, timeout=5,
+                **_SUBPROCESS_KWARGS,
             ).strip())
             vram_total_gb = round(total_bytes / (1024 ** 3), 2)
         except Exception:
@@ -72,6 +86,7 @@ class GPUMonitor:
             out = subprocess.check_output(
                 ["ioreg", "-r", "-d", "1", "-c", "AppleARMIODevice"],
                 text=True, timeout=5,
+                **_SUBPROCESS_KWARGS,
             )
             # Best-effort — ioreg doesn't reliably expose GPU util on all chips
         except Exception:
@@ -100,6 +115,7 @@ class GPUMonitor:
                 ],
                 text=True,
                 timeout=10,
+                **_SUBPROCESS_KWARGS,
             )
             parts = [p.strip() for p in out.strip().split(",")]
             if len(parts) >= 6:
@@ -151,3 +167,119 @@ _monitor = GPUMonitor()
 def get_gpu_metrics() -> dict[str, Any]:
     """Return a snapshot of current GPU / accelerator metrics."""
     return _monitor.snapshot()
+
+
+# VRAM total never changes for the life of a process — caching it lets the
+# video runtime probe stay snappy even when nvidia-smi takes a second or two
+# to spawn on Windows. Cleared by ``reset_vram_total_cache()`` for tests.
+_VRAM_TOTAL_LOCK = threading.Lock()
+_VRAM_TOTAL_CACHE: dict[str, float | None] = {}
+
+
+def get_device_vram_total_gb() -> float | None:
+    """Return total device memory in GB, cached for the process lifetime.
+
+    Hot path for ``backend_service.video_runtime._detect_device_memory_gb``.
+    The full ``snapshot()`` call shells out to ``nvidia-smi``/``sysctl`` every
+    time, which is fine for the metrics endpoint (live readings) but wasteful
+    for the video runtime probe (which only needs total VRAM, and a value
+    that is fixed per machine). On Windows the subprocess startup cost was
+    blowing past the frontend's 15s fetch timeout under load.
+    """
+    with _VRAM_TOTAL_LOCK:
+        if "value" in _VRAM_TOTAL_CACHE:
+            return _VRAM_TOTAL_CACHE["value"]
+
+    try:
+        snapshot = _monitor.snapshot()
+    except Exception:
+        snapshot = {}
+
+    total = snapshot.get("vram_total_gb")
+    value: float | None = float(total) if isinstance(total, (int, float)) and total > 0 else None
+
+    with _VRAM_TOTAL_LOCK:
+        _VRAM_TOTAL_CACHE["value"] = value
+    return value
+
+
+def reset_vram_total_cache() -> None:
+    """Clear the cached VRAM total. Used by tests."""
+    with _VRAM_TOTAL_LOCK:
+        _VRAM_TOTAL_CACHE.clear()
+
+
+def nvidia_gpu_present() -> bool:
+    """Cheap, side-effect-free check for an NVIDIA GPU on Linux/Windows.
+
+    We only look for ``nvidia-smi`` on ``PATH`` — invoking it is deliberately
+    avoided because some locked-down laptops and WSL installs without the
+    driver shim hang on the first call. Presence on ``PATH`` is a
+    reliable-enough signal for the "you probably wanted CUDA" diagnostic the
+    image/video runtimes surface when torch falls back to CPU.
+    """
+    return shutil.which("nvidia-smi") is not None
+
+
+_CUDA_WHEEL_HINT = (
+    "Click \"Install CUDA torch\" in this banner, or run: "
+    "pip install --upgrade --force-reinstall torch "
+    "--index-url https://download.pytorch.org/whl/cu124"
+)
+
+
+def gpu_status_snapshot() -> dict[str, Any]:
+    """Unified GPU status for the frontend warning banner.
+
+    Returns a dict with the host platform, whether an NVIDIA driver is
+    visible, whether torch can reach CUDA / MPS, and a recommendation string
+    when torch falls back to CPU on a machine with an NVIDIA GPU. All fields
+    are optional so this can be called before torch has been imported without
+    failing.
+    """
+    system = platform.system()
+    nvidia_present = nvidia_gpu_present()
+
+    torch_imported = False
+    cuda_available = False
+    mps_available = False
+    try:
+        import torch  # type: ignore
+    except Exception:
+        torch_module = None
+    else:
+        torch_module = torch
+        torch_imported = True
+
+    if torch_module is not None:
+        try:
+            cuda_available = bool(getattr(torch_module.cuda, "is_available", lambda: False)())
+        except Exception:
+            cuda_available = False
+        try:
+            mps_module = getattr(torch_module.backends, "mps", None)
+            if mps_module is not None:
+                mps_available = bool(getattr(mps_module, "is_available", lambda: False)())
+        except Exception:
+            mps_available = False
+
+    if system in ("Windows", "Linux") and nvidia_present and torch_imported and not cuda_available:
+        recommendation = (
+            "torch was imported but CUDA is unavailable — generation will run on CPU "
+            "(expect minutes per step). Reinstall the CUDA wheel: "
+            + _CUDA_WHEEL_HINT
+        )
+        warn = True
+    else:
+        recommendation = None
+        warn = False
+
+    return {
+        "platform": system,
+        "nvidiaGpuDetected": nvidia_present,
+        "torchImported": torch_imported,
+        "torchCudaAvailable": cuda_available,
+        "torchMpsAvailable": mps_available,
+        "cpuFallbackWarning": warn,
+        "recommendation": recommendation,
+    }

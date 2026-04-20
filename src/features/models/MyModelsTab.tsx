@@ -14,6 +14,7 @@ import {
   inferHfRepoFromLocalPath,
   downloadProgressLabel,
   downloadSizeTooltip,
+  formatReleaseLabel,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { candidateKeys } from "../../components/runtimeSupport";
@@ -25,6 +26,8 @@ export interface LibraryRow {
   displayQuantization: string | null;
   displayBackend: string;
   sourceKind: string;
+  estimatedRamGb: number | null;
+  estimatedCompressedGb: number | null;
 }
 
 interface StrategyCompatInfo {
@@ -346,7 +349,7 @@ export function MyModelsTab({
               <span className="sort-header"></span>
             </div>
             <div className="library-rows">
-              {capFilteredLibrary.map(({ item, matchedVariant, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
+              {capFilteredLibrary.map(({ item, matchedVariant, displayFormat, displayQuantization, displayBackend, sourceKind, estimatedRamGb, estimatedCompressedGb }) => {
                 const isExpanded = expandedLibraryPath === item.path;
                 const repo = inferHfRepoFromLocalPath(item.path) ?? matchedVariant?.repo ?? (item.name.includes("/") ? item.name : null);
                 const row: LibraryRow = {
@@ -356,6 +359,8 @@ export function MyModelsTab({
                   displayQuantization,
                   displayBackend,
                   sourceKind,
+                  estimatedRamGb,
+                  estimatedCompressedGb,
                 };
                 const downloadState = repo
                   ? activeDownloads[repo] ?? inferredPartialDownload(row, repo)
@@ -413,8 +418,12 @@ export function MyModelsTab({
                       <span>{displayQuantization ?? "-"}</span>
                       <span>{displayBackend}</span>
                       <span>{sizeLabel(item.sizeGb)}</span>
-                      <span>{matchedVariant?.estimatedMemoryGb ? `~${number(matchedVariant.estimatedMemoryGb)}GB` : "?"}</span>
-                      <span>{matchedVariant?.estimatedCompressedMemoryGb ? `~${number(matchedVariant.estimatedCompressedMemoryGb)}GB` : "?"}</span>
+                      <span title="Rough resident memory at 8K context (weights + KV + framework)">
+                        {estimatedRamGb != null ? `~${number(estimatedRamGb)} GB` : "?"}
+                      </span>
+                      <span title="Rough resident memory with a compressed KV cache strategy">
+                        {estimatedCompressedGb != null ? `~${number(estimatedCompressedGb)} GB` : "?"}
+                      </span>
                       <span>{matchedVariant?.contextWindow ?? ""}</span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
                         {hasDownloadOverlay && repo ? (
@@ -475,6 +484,11 @@ export function MyModelsTab({
                         <div className="library-detail-left">
                           <p className="mono-text library-path">{item.path}</p>
                           {matchedVariant?.note ? <p className="variant-note">{matchedVariant.note}</p> : null}
+                          {formatReleaseLabel(matchedVariant?.releaseLabel, matchedVariant?.releaseDate) ? (
+                            <p className="muted-text variant-release-label">
+                              {formatReleaseLabel(matchedVariant?.releaseLabel, matchedVariant?.releaseDate)}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     ) : null}

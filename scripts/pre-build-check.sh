@@ -86,7 +86,7 @@ echo
 # ------------------------------------------------------------------
 echo "[5/7] Cache strategy validation..."
 CACHE_CHECK=$(.venv/bin/python -c "
-from compression import registry
+from cache_compression import registry
 registry.discover()
 valid = {'f32','f16','bf16','q8_0','q4_0','q4_1','iq4_nl','q5_0','q5_1'}
 ce = registry.get('chaosengine')

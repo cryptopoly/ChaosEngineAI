@@ -28,6 +28,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Fastest concepting option in the curated image catalog.",
                 "estimatedGenerationSeconds": 4.2,
+                "releaseDate": "2024-08",
             }
         ],
     },
@@ -55,6 +56,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Quality-oriented generalist for the curated image lineup.",
                 "estimatedGenerationSeconds": 7.4,
+                "releaseDate": "2024-08",
             }
         ],
     },
@@ -82,6 +84,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Latest Stability offering targeting a good quality-to-resource balance.",
                 "estimatedGenerationSeconds": 5.8,
+                "releaseDate": "2024-10",
             }
         ],
     },
@@ -109,6 +112,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Fastest high-fidelity model in the curated set.",
                 "estimatedGenerationSeconds": 3.1,
+                "releaseDate": "2024-10",
             }
         ],
     },
@@ -136,6 +140,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Widely adopted SDXL baseline with strong community and LoRA ecosystem.",
                 "estimatedGenerationSeconds": 7.4,
+                "releaseDate": "2023-07",
             }
         ],
     },
@@ -154,6 +159,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "gated": False,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-08",
     },
     {
         "repo": "Qwen/Qwen-Image-Edit",
@@ -167,6 +173,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "gated": False,
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-08",
     },
     {
         "repo": "HiDream-ai/HiDream-I1-Full",
@@ -180,6 +187,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "gated": False,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-04",
     },
     {
         "repo": "zai-org/GLM-Image",
@@ -206,6 +214,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "gated": False,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-03",
     },
     {
         "repo": "Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers",
@@ -219,5 +228,6 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "gated": False,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-03",
     },
 ]

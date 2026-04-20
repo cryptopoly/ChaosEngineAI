@@ -780,7 +780,7 @@ class WorkerState:
 
     def _make_cache(self) -> tuple[Any | None, str | None]:
         """Build the prompt cache for the active strategy. Returns (cache, note)."""
-        from compression import registry
+        from cache_compression import registry
         strategy = registry.get(self.cache_strategy)
         if strategy is None or self.cache_strategy == "native":
             return None, None
@@ -801,7 +801,7 @@ class WorkerState:
 
     def _generate_dflash(self, request: dict[str, Any]) -> dict[str, Any]:
         """Generate using DFLASH speculative decoding."""
-        from dflash_mlx.runtime import generate_dflash_once
+        from dflash_mlx.runtime import stream_dflash_generate
 
         # Build prompt text
         system_prompt = request.get("systemPrompt")
@@ -822,7 +822,11 @@ class WorkerState:
         if eos_token_id is not None and int(eos_token_id) not in eos_token_ids:
             eos_token_ids.append(int(eos_token_id))
 
-        summary = generate_dflash_once(
+        # ``stream_dflash_generate`` (upstream v0.1.4) yields per-token events
+        # followed by a final ``{"event": "summary", ...}`` payload whose shape
+        # matches what the old ``generate_dflash_once`` helper returned.
+        summary: dict[str, Any] = {}
+        for event in stream_dflash_generate(
             target_model=self._dflash_target or self.model,
             tokenizer=self.tokenizer,
             draft_model=self._dflash_generator,
@@ -831,7 +835,9 @@ class WorkerState:
             use_chat_template=False,
             stop_token_ids=eos_token_ids,
             prompt_tokens_override=prompt_tokens,
-        )
+        ):
+            if event.get("event") == "summary":
+                summary = dict(event)
 
         gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
         text = self.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""

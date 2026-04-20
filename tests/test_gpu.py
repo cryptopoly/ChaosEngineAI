@@ -1,7 +1,16 @@
+import subprocess
 import unittest
 from unittest.mock import patch, MagicMock
 
-from backend_service.helpers.gpu import GPUMonitor, get_gpu_metrics
+from backend_service.helpers import gpu as gpu_module
+from backend_service.helpers.gpu import (
+    GPUMonitor,
+    get_device_vram_total_gb,
+    get_gpu_metrics,
+    gpu_status_snapshot,
+    nvidia_gpu_present,
+    reset_vram_total_cache,
+)
 
 
 _EXPECTED_KEYS = {"gpu_name", "vram_total_gb", "vram_used_gb", "utilization_pct", "temperature_c", "power_w"}
@@ -110,6 +119,129 @@ class GetGPUMetricsTests(unittest.TestCase):
         self.assertIsInstance(metrics, dict)
         for key in _EXPECTED_KEYS:
             self.assertIn(key, metrics)
+
+
+class CachedVramTotalTests(unittest.TestCase):
+    """The cache is what keeps the video runtime probe under 15s on Windows."""
+
+    def setUp(self):
+        reset_vram_total_cache()
+
+    def tearDown(self):
+        reset_vram_total_cache()
+
+    def test_caches_value_after_first_call(self):
+        with patch.object(gpu_module._monitor, "snapshot") as mock_snapshot:
+            mock_snapshot.return_value = {"vram_total_gb": 24.0}
+            first = get_device_vram_total_gb()
+            second = get_device_vram_total_gb()
+            third = get_device_vram_total_gb()
+        self.assertEqual(first, 24.0)
+        self.assertEqual(second, 24.0)
+        self.assertEqual(third, 24.0)
+        # Snapshot must only be called ONCE — that's the whole point of the
+        # cache. If this fails the Windows probe regression is back.
+        mock_snapshot.assert_called_once()
+
+    def test_caches_none_when_detection_fails(self):
+        with patch.object(gpu_module._monitor, "snapshot") as mock_snapshot:
+            mock_snapshot.side_effect = RuntimeError("boom")
+            first = get_device_vram_total_gb()
+            second = get_device_vram_total_gb()
+        self.assertIsNone(first)
+        self.assertIsNone(second)
+        mock_snapshot.assert_called_once()
+
+    def test_caches_none_for_zero_or_missing_value(self):
+        with patch.object(gpu_module._monitor, "snapshot") as mock_snapshot:
+            mock_snapshot.return_value = {"vram_total_gb": 0}
+            self.assertIsNone(get_device_vram_total_gb())
+        with patch.object(gpu_module._monitor, "snapshot") as mock_snapshot:
+            # Already cached as None — the second snapshot should never be called.
+            mock_snapshot.return_value = {"vram_total_gb": 12.0}
+            self.assertIsNone(get_device_vram_total_gb())
+            mock_snapshot.assert_not_called()
+
+
+class GpuStatusSnapshotTests(unittest.TestCase):
+    """The /api/system/gpu-status endpoint feeds the frontend CPU-fallback banner."""
+
+    def test_snapshot_has_expected_shape(self):
+        snapshot = gpu_status_snapshot()
+        for key in (
+            "platform",
+            "nvidiaGpuDetected",
+            "torchImported",
+            "torchCudaAvailable",
+            "torchMpsAvailable",
+            "cpuFallbackWarning",
+            "recommendation",
+        ):
+            self.assertIn(key, snapshot)
+        self.assertIsInstance(snapshot["platform"], str)
+        self.assertIsInstance(snapshot["nvidiaGpuDetected"], bool)
+        self.assertIsInstance(snapshot["cpuFallbackWarning"], bool)
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
+    def test_recommendation_when_nvidia_present_but_cuda_unavailable(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = False
+        fake_torch.backends.mps.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertTrue(snapshot["torchImported"])
+        self.assertFalse(snapshot["torchCudaAvailable"])
+        self.assertTrue(snapshot["cpuFallbackWarning"])
+        self.assertIsNotNone(snapshot["recommendation"])
+        # We recommend cu124 now (cu121 has no Python 3.13 wheels and broke
+        # fresh Windows installs). Accept either the PyTorch index URL or
+        # the in-app button copy.
+        self.assertTrue(
+            "cu124" in snapshot["recommendation"]
+            or "Install CUDA torch" in snapshot["recommendation"]
+        )
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
+    def test_no_warning_when_cuda_available(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.backends.mps.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertTrue(snapshot["torchCudaAvailable"])
+        self.assertFalse(snapshot["cpuFallbackWarning"])
+        self.assertIsNone(snapshot["recommendation"])
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Darwin")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=False)
+    def test_no_warning_on_macos_even_with_cpu_torch(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = False
+        fake_torch.backends.mps.is_available.return_value = True
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertFalse(snapshot["cpuFallbackWarning"])
+        self.assertIsNone(snapshot["recommendation"])
+
+    def test_nvidia_gpu_present_respects_path(self):
+        with patch("backend_service.helpers.gpu.shutil.which", return_value="/usr/bin/nvidia-smi"):
+            self.assertTrue(nvidia_gpu_present())
+        with patch("backend_service.helpers.gpu.shutil.which", return_value=None):
+            self.assertFalse(nvidia_gpu_present())
+
+
+@unittest.skipUnless(hasattr(subprocess, "CREATE_NO_WINDOW"), "Windows-only flag")
+class WindowsConsoleSuppressionTests(unittest.TestCase):
+    """nvidia-smi must not pop a console window on Windows."""
+
+    def test_subprocess_kwargs_includes_create_no_window(self):
+        self.assertIn("creationflags", gpu_module._SUBPROCESS_KWARGS)
+        self.assertEqual(
+            gpu_module._SUBPROCESS_KWARGS["creationflags"],
+            subprocess.CREATE_NO_WINDOW,
+        )
 
 
 if __name__ == "__main__":

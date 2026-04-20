@@ -18,7 +18,12 @@ from backend_service.image_runtime import (
     ImageGenerationConfig,
     ImageRuntimeManager,
 )
-from backend_service.models import ImageGenerationRequest
+from backend_service.video_runtime import (
+    VideoGenerationConfig,
+    VideoRuntimeManager,
+    start_torch_warmup,
+)
+from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
 from backend_service.state import ChaosEngineState
 
@@ -34,6 +39,12 @@ from backend_service.helpers.images import (
     _save_image_artifact as _save_image_artifact_impl,
     _find_image_output as _find_image_output_impl,
     _delete_image_output as _delete_image_output_impl,
+)
+from backend_service.helpers.video import (
+    _load_video_outputs as _load_video_outputs_impl,
+    _save_video_artifact as _save_video_artifact_impl,
+    _find_video_output as _find_video_output_impl,
+    _delete_video_output as _delete_video_output_impl,
 )
 from backend_service.helpers.settings import (
     DataLocation,
@@ -55,9 +66,15 @@ from backend_service.helpers.persistence import (
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 APP_STARTED_AT = time.time()
 HF_SNAPSHOT_DOWNLOAD_HELPER = (
-    "import sys\n"
+    "import json, sys\n"
     "from huggingface_hub import snapshot_download\n"
-    "snapshot_download(repo_id=sys.argv[1], resume_download=True)\n"
+    "repo_id = sys.argv[1]\n"
+    "raw_allow = sys.argv[2] if len(sys.argv) > 2 else ''\n"
+    "allow_patterns = json.loads(raw_allow) if raw_allow else None\n"
+    "kwargs = {'repo_id': repo_id, 'resume_download': True}\n"
+    "if allow_patterns:\n"
+    "    kwargs['allow_patterns'] = allow_patterns\n"
+    "snapshot_download(**kwargs)\n"
 )
 DEFAULT_PORT = int(os.getenv("CHAOSENGINE_PORT", "8876"))
 DEFAULT_HOST = os.getenv("CHAOSENGINE_HOST", "127.0.0.1")
@@ -72,6 +89,7 @@ BENCHMARKS_PATH = DATA_LOCATION.benchmarks_path
 CHAT_SESSIONS_PATH = DATA_LOCATION.chat_sessions_path
 DOCUMENTS_DIR = DATA_LOCATION.documents_dir
 IMAGE_OUTPUTS_DIR = DATA_LOCATION.image_outputs_dir
+VIDEO_OUTPUTS_DIR = DATA_LOCATION.video_outputs_dir
 MAX_DOC_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB per file
 MAX_SESSION_DOCS_BYTES = 200 * 1024 * 1024  # 200 MB per session
 DOC_ALLOWED_EXTENSIONS = {
@@ -93,6 +111,7 @@ DEFAULT_ALLOWED_ORIGINS = (
 EXEMPT_AUTH_PATHS = frozenset({
     "/api/health",
     "/api/auth/session",
+    "/api/system/gpu-status",
 })
 
 
@@ -133,20 +152,76 @@ def _save_chat_sessions(sessions: list[dict[str, Any]], path: Path = CHAT_SESSIO
     return _save_chat_sessions_impl(sessions, path)
 
 
+def _resolve_output_dir_override(raw: str, default: Path) -> Path:
+    """Return the user-chosen output directory, or the default.
+
+    Empty / whitespace-only strings restore the default. A non-empty value is
+    expanded (``~`` → home), resolved to an absolute path, and the directory is
+    created if missing. If creation fails (path is unwritable, on a missing
+    volume, etc.) we transparently fall back to ``default`` so generation never
+    crashes just because the user pointed at a stale Dropbox folder.
+    """
+    value = (raw or "").strip()
+    if not value:
+        return default
+    try:
+        candidate = Path(os.path.expanduser(value)).resolve()
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+    except OSError:
+        return default
+
+
+def _current_image_outputs_dir() -> Path:
+    # The module-level ``IMAGE_OUTPUTS_DIR`` is the install-time default and
+    # the override target tests use to redirect output into a tempdir. Anything
+    # the user typed in Settings takes precedence — but only when actually set,
+    # so test patches still win when no setting is configured.
+    settings = _load_settings()
+    return _resolve_output_dir_override(
+        str(settings.get("imageOutputsDirectory") or ""),
+        IMAGE_OUTPUTS_DIR,
+    )
+
+
+def _current_video_outputs_dir() -> Path:
+    settings = _load_settings()
+    return _resolve_output_dir_override(
+        str(settings.get("videoOutputsDirectory") or ""),
+        VIDEO_OUTPUTS_DIR,
+    )
+
+
 def _load_image_outputs() -> list[dict[str, Any]]:
-    return _load_image_outputs_impl(IMAGE_OUTPUTS_DIR)
+    return _load_image_outputs_impl(_current_image_outputs_dir())
 
 
 def _save_image_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
-    return _save_image_artifact_impl(artifact, IMAGE_OUTPUTS_DIR)
+    return _save_image_artifact_impl(artifact, _current_image_outputs_dir())
 
 
 def _find_image_output(artifact_id: str) -> dict[str, Any] | None:
-    return _find_image_output_impl(artifact_id, IMAGE_OUTPUTS_DIR)
+    return _find_image_output_impl(artifact_id, _current_image_outputs_dir())
 
 
 def _delete_image_output(artifact_id: str) -> bool:
-    return _delete_image_output_impl(artifact_id, IMAGE_OUTPUTS_DIR)
+    return _delete_image_output_impl(artifact_id, _current_image_outputs_dir())
+
+
+def _load_video_outputs() -> list[dict[str, Any]]:
+    return _load_video_outputs_impl(_current_video_outputs_dir())
+
+
+def _save_video_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
+    return _save_video_artifact_impl(artifact, _current_video_outputs_dir())
+
+
+def _find_video_output(artifact_id: str) -> dict[str, Any] | None:
+    return _find_video_output_impl(artifact_id, _current_video_outputs_dir())
+
+
+def _delete_video_output(artifact_id: str) -> bool:
+    return _delete_video_output_impl(artifact_id, _current_video_outputs_dir())
 
 
 def compute_cache_preview(
@@ -196,6 +271,16 @@ def _resolve_api_token(explicit_token: str | None = None) -> str:
     return token or secrets.token_urlsafe(32)
 
 
+def _resolve_require_api_auth(settings: dict[str, Any]) -> bool:
+    # Env var wins — useful for CI / headless scripts that need to drop
+    # the bearer requirement without touching settings.json. Accepts any
+    # of "0", "false", "no", "off" (case-insensitive) to disable.
+    env_override = os.getenv("CHAOSENGINE_REQUIRE_AUTH")
+    if env_override is not None:
+        return env_override.strip().lower() not in {"0", "false", "no", "off", ""}
+    return bool(settings.get("requireApiAuth", True))
+
+
 def _is_loopback_host(host: str | None) -> bool:
     if not host:
         return False
@@ -228,7 +313,7 @@ def _hf_repo_from_link(link: str | None) -> str | None:
 
 
 def _get_cache_strategies() -> list[dict[str, Any]]:
-    from compression import registry
+    from cache_compression import registry
     return registry.available()
 
 
@@ -284,6 +369,74 @@ def _generate_image_artifacts(
     return artifacts, runtime_status
 
 
+def _generate_video_artifact(
+    request: VideoGenerationRequest,
+    variant: dict[str, Any],
+    runtime_manager: VideoRuntimeManager,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run a single video generation and persist it to the outputs dir.
+
+    Returns ``(artifact_dict, runtime_status_dict)``. Unlike the image path,
+    there is no placeholder fallback — if the runtime isn't ready or the
+    generation fails, the caller sees the exception and surfaces a proper
+    HTTP error rather than a fake clip.
+    """
+    import logging
+    logger = logging.getLogger("chaosengine.video")
+    logger.info(
+        "Generating video: model=%s repo=%s size=%dx%d frames=%d steps=%d",
+        variant.get("name"),
+        variant.get("repo"),
+        request.width,
+        request.height,
+        request.numFrames,
+        request.steps,
+    )
+
+    video, runtime_status = runtime_manager.generate(
+        VideoGenerationConfig(
+            modelId=request.modelId,
+            modelName=str(variant["name"]),
+            repo=str(variant["repo"]),
+            prompt=request.prompt,
+            negativePrompt=request.negativePrompt or "",
+            width=request.width,
+            height=request.height,
+            numFrames=request.numFrames,
+            fps=request.fps,
+            steps=request.steps,
+            guidance=request.guidance,
+            seed=request.seed,
+        )
+    )
+
+    created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    clip_duration = round(video.frameCount / max(1, video.fps), 3)
+    artifact = {
+        "artifactId": f"vid-{uuid.uuid4().hex[:12]}",
+        "modelId": request.modelId,
+        "modelName": variant["name"],
+        "prompt": request.prompt,
+        "negativePrompt": request.negativePrompt or "",
+        "width": video.width,
+        "height": video.height,
+        "numFrames": video.frameCount,
+        "fps": video.fps,
+        "steps": request.steps,
+        "guidance": request.guidance,
+        "seed": video.seed,
+        "createdAt": created_at,
+        "durationSeconds": video.durationSeconds,
+        "clipDurationSeconds": clip_duration,
+        "videoBytes": video.bytes,
+        "videoMimeType": video.mimeType,
+        "videoExtension": video.extension,
+        "runtimeLabel": video.runtimeLabel,
+        "runtimeNote": video.runtimeNote,
+    }
+    return _save_video_artifact(artifact), runtime_status
+
+
 def create_app(
     state: ChaosEngineState | None = None,
     api_token: str | None = None,
@@ -300,6 +453,13 @@ def create_app(
     app.state.chaosengine = state or ChaosEngineState(server_port=DEFAULT_PORT)
     app.state.chaosengine_api_token = _resolve_api_token(api_token)
     app.state.chaosengine_allowed_origins = frozenset(allowed_origins)
+    # Bearer-token enforcement toggle. Reads from (in order) env override,
+    # then saved settings, defaulting to True (keep the existing secure
+    # default). Mutated live by state.update_settings so the user doesn't
+    # need to restart the server to toggle it.
+    app.state.chaosengine_require_api_auth = _resolve_require_api_auth(
+        app.state.chaosengine.settings,
+    )
 
     # Shutdown hook: kill any running llama-server / MLX worker children
     # on backend exit. Runs on clean shutdown (uvicorn SIGTERM), Ctrl-C,
@@ -360,6 +520,7 @@ def create_app(
             request.method == "OPTIONS"
             or path in EXEMPT_AUTH_PATHS
             or not (path.startswith("/api/") or path.startswith("/v1/"))
+            or not getattr(app.state, "chaosengine_require_api_auth", True)
         ):
             return await call_next(request)
 
@@ -399,6 +560,12 @@ def create_app(
         return response
 
     register_routes(app)
+
+    # Kick off a background torch import so the first Video Studio probe
+    # doesn't pay the 30-60s cold-disk cost on Windows. Failures are captured
+    # and surfaced by probe() itself.
+    start_torch_warmup()
+
     return app
 
 

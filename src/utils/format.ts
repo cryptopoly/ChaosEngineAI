@@ -1,4 +1,4 @@
-import type { ImageModelVariant, ImageRuntimeStatus } from "../types";
+import type { ImageModelVariant, ImageRuntimeStatus, VideoModelVariant } from "../types";
 
 export function number(value: number, digits = 1) {
   return value.toFixed(digits);
@@ -24,6 +24,37 @@ export function formatImageTimestamp(value: string) {
   });
 }
 
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Return a short "Released MMM YYYY" label from a curated ``YYYY-MM`` /
+ * ``YYYY-MM-DD`` release date *or* a Hugging Face ISO ``createdAt`` value.
+ *
+ * Prefers an already-computed label from the backend (``releaseLabel``) so the
+ * Python ``_format_release_label`` helper stays the source of truth. Falls
+ * back to parsing the raw date in the browser when the backend label is
+ * missing, which keeps older cached responses working.
+ */
+export function formatReleaseLabel(
+  primary?: string | null,
+  secondary?: string | null,
+): string | null {
+  if (primary && primary.trim().length > 0) return primary;
+  const raw = (secondary ?? "").trim();
+  if (!raw) return null;
+  const shortMatch = /^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/.exec(raw);
+  if (shortMatch) {
+    const year = Number(shortMatch[1]);
+    const monthIndex = shortMatch[2] ? Number(shortMatch[2]) - 1 : 0;
+    if (Number.isFinite(year) && monthIndex >= 0 && monthIndex <= 11) {
+      return `Released ${MONTH_SHORT[monthIndex]} ${year}`;
+    }
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return `Released ${MONTH_SHORT[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
+}
+
 export function formatImageLicenseLabel(value?: string | null) {
   if (!value) return null;
   return value
@@ -32,6 +63,9 @@ export function formatImageLicenseLabel(value?: string | null) {
 }
 
 export function imagePrimarySizeLabel(variant: ImageModelVariant) {
+  if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
+    return `${sizeLabel(variant.onDiskGb)} on disk`;
+  }
   if (typeof variant.coreWeightsGb === "number" && variant.coreWeightsGb > 0) {
     return `${sizeLabel(variant.coreWeightsGb)} weights`;
   }
@@ -52,6 +86,13 @@ export function imageSecondarySizeLabel(variant: ImageModelVariant) {
     return `${sizeLabel(variant.repoSizeGb)} full repo`;
   }
   return null;
+}
+
+export function videoPrimarySizeLabel(variant: VideoModelVariant) {
+  if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
+    return `${sizeLabel(variant.onDiskGb)} on disk`;
+  }
+  return sizeLabel(variant.sizeGb);
 }
 
 export function imageRuntimeErrorStatus(error: unknown): ImageRuntimeStatus {

@@ -113,6 +113,71 @@ class SetupRouteTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertIn("No matching distribution", body["output"])
 
+    def test_install_pip_accepts_imageio(self):
+        """Video Studio installs this directly when the mp4 encoder is missing."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="Successfully installed imageio", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "imageio"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        # Confirm we actually invoked pip install with the right distribution name.
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("imageio", cmd)
+
+    def test_install_pip_accepts_imageio_ffmpeg(self):
+        """The ffmpeg plugin is the other half of mp4 export — must also be whitelisted."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="Successfully installed imageio-ffmpeg", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "imageio-ffmpeg"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("imageio-ffmpeg", cmd)
+
+    def test_video_output_deps_are_whitelisted(self):
+        """Regression guard — the Video Studio install button targets these exact keys.
+
+        If someone renames or removes them we want the test suite to scream before
+        the UI starts handing users a 400 on ``/api/setup/install-package``.
+        """
+        from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+
+        self.assertIn("imageio", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("imageio-ffmpeg", _INSTALLABLE_PIP_PACKAGES)
+        # Distribution names should match the short keys so the UI doesn't need
+        # its own translation table.
+        self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio"], "imageio")
+        self.assertEqual(_INSTALLABLE_PIP_PACKAGES["imageio-ffmpeg"], "imageio-ffmpeg")
+
+    def test_video_model_tokenizer_deps_are_whitelisted(self):
+        """LTX-Video / Wan / Hunyuan / CogVideoX need these tokenizer packages.
+
+        The Studio's "Install missing video dependencies" button targets these
+        exact keys; if the install allow-list drops them, the user gets a 400
+        and the button looks broken instead of unblocking generation.
+        """
+        from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+
+        for pkg in ("tiktoken", "sentencepiece", "protobuf", "ftfy"):
+            self.assertIn(
+                pkg,
+                _INSTALLABLE_PIP_PACKAGES,
+                f"{pkg} must be whitelisted so the Studio install button works",
+            )
+            self.assertEqual(_INSTALLABLE_PIP_PACKAGES[pkg], pkg)
+
+    def test_install_pip_accepts_tiktoken(self):
+        """LTX-Video's exact missing-dep error — the user-reported case."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(
+                returncode=0, stdout="Successfully installed tiktoken", stderr=""
+            )
+            resp = self.client.post("/api/setup/install-package", json={"package": "tiktoken"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("tiktoken", cmd)
+
     # ------------------------------------------------------------------
     # System package install
     # ------------------------------------------------------------------
@@ -146,6 +211,156 @@ class SetupRouteTests(unittest.TestCase):
         resp = self.client.post("/api/setup/refresh-capabilities")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("capabilities", resp.json())
+
+    # ------------------------------------------------------------------
+    # CUDA torch install (Windows/Linux NVIDIA fallback)
+    # ------------------------------------------------------------------
+
+    def _patch_cuda_helpers(self):
+        """Neutralise the pre-install helpers so tests focus on the pip loop.
+
+        ``_site_packages_for`` and ``_purge_broken_distributions`` add
+        their own subprocess and filesystem side effects that would
+        confuse the subprocess.run mock below; patching them to no-op
+        keeps each test asserting exactly the behaviour it names.
+        """
+        return (
+            mock.patch("backend_service.routes.setup._site_packages_for", return_value=None),
+            mock.patch("backend_service.routes.setup._purge_broken_distributions", return_value=[]),
+        )
+
+    def test_install_cuda_torch_stops_at_first_success(self):
+        """First working index wins — we must not keep trying after success."""
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                mock_run.return_value = mock.Mock(
+                    returncode=0, stdout="Successfully installed torch-2.5.0+cu124", stderr=""
+                )
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["requiresRestart"])
+        self.assertIsNotNone(body["indexUrl"])
+        self.assertIn("cu124", body["indexUrl"])
+        self.assertEqual(body["pythonVersion"], "3.12.5")
+        self.assertFalse(body["noWheelForPython"])
+        # Only one index should have been attempted — cu124 succeeded so
+        # cu126 / cu128 / cu121 / nightly must not be tried. Each successful
+        # attempt issues two pip calls: pass 1 swaps torch (--no-deps),
+        # pass 2 fills in any missing transitive deps.
+        self.assertEqual(len(body["attempts"]), 1)
+        self.assertEqual(mock_run.call_count, 2)
+
+    def test_install_cuda_torch_falls_through_to_later_indexes(self):
+        """If cu124 has no wheel for the user's Python, move on to cu126."""
+        call_results = [
+            # cu124 swap fails → deps pass skipped
+            mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution found for torch"),
+            # cu126 swap succeeds → deps pass runs
+            mock.Mock(returncode=0, stdout="Successfully installed torch-2.6.0+cu126", stderr=""),
+            mock.Mock(returncode=0, stdout="Requirement already satisfied: sympy", stderr=""),
+        ]
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.13.1"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        body = resp.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(len(body["attempts"]), 2)
+        self.assertFalse(body["attempts"][0]["ok"])
+        self.assertTrue(body["attempts"][1]["ok"])
+        self.assertIn("cu126", body["indexUrl"])
+        self.assertFalse(body["noWheelForPython"])
+
+    def test_install_cuda_torch_reports_failure_after_all_attempts(self):
+        """All indexes fail — surface the last error to the UI."""
+        fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: Install failed, disk full")
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        body = resp.json()
+        self.assertFalse(body["ok"])
+        self.assertFalse(body["requiresRestart"])
+        self.assertIsNone(body["indexUrl"])
+        from backend_service.routes.setup import _CUDA_TORCH_INDEXES
+        self.assertEqual(len(body["attempts"]), len(_CUDA_TORCH_INDEXES))
+        # Generic failure (not a wheel mismatch) must NOT be flagged as
+        # noWheelForPython — the user can usefully retry.
+        self.assertFalse(body["noWheelForPython"])
+
+    def test_install_cuda_torch_flags_no_wheel_when_every_attempt_misses(self):
+        """Python 3.14 case — every index returns "No matching distribution".
+
+        The UI uses noWheelForPython to tell the user their Python version
+        is the problem, not the CUDA index, so they stop retrying.
+        """
+        no_wheel = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="ERROR: Could not find a version that satisfies the requirement torch "
+                   "(from versions: none)\nERROR: No matching distribution found for torch",
+        )
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.14.0"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=no_wheel):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        body = resp.json()
+        self.assertFalse(body["ok"])
+        self.assertTrue(body["noWheelForPython"])
+        self.assertEqual(body["pythonVersion"], "3.14.0")
+
+    def test_install_cuda_torch_sweeps_broken_stub_dists(self):
+        """Broken ``~<pkg>`` dirs are removed before pip runs.
+
+        Real-world trigger: a prior interrupted pip install leaves
+        ``~arkupsafe/`` in site-packages. Without cleanup, subsequent
+        installs print a "Ignoring invalid distribution" warning and
+        sometimes fail mid-install trying to heal the stub.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            broken = tmp_path / "~arkupsafe"
+            broken.mkdir()
+            (broken / "stub.txt").write_text("leftover")
+
+            sp_patch = mock.patch(
+                "backend_service.routes.setup._site_packages_for", return_value=tmp_path,
+            )
+            with sp_patch, mock.patch(
+                "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+            ):
+                with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                    mock_run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
+                    resp = self.client.post("/api/setup/install-cuda-torch", json={})
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertFalse(broken.exists(), "broken ~arkupsafe stub should be removed")
+
+    def test_install_cuda_torch_default_list_starts_with_cu124(self):
+        """cu124 is the broadest 3.9-3.13 match; cu121 must not be first anymore."""
+        from backend_service.routes.setup import _CUDA_TORCH_INDEXES
+        self.assertTrue(_CUDA_TORCH_INDEXES[0].endswith("cu124"))
+        self.assertIn("https://download.pytorch.org/whl/cu126", _CUDA_TORCH_INDEXES)
+        self.assertIn("https://download.pytorch.org/whl/cu128", _CUDA_TORCH_INDEXES)
+        # cu121 is still in the list for old Python + old driver combos,
+        # just no longer leading.
+        self.assertIn("https://download.pytorch.org/whl/cu121", _CUDA_TORCH_INDEXES)
+        # The nightly index is our last-resort for bleeding-edge Python
+        # (e.g. 3.14) — PyTorch sometimes ships nightly wheels before the
+        # stable index catches up.
+        self.assertIn("https://download.pytorch.org/whl/nightly/cu128", _CUDA_TORCH_INDEXES)
+        self.assertEqual(_CUDA_TORCH_INDEXES[-1], "https://download.pytorch.org/whl/nightly/cu128")
 
     # ------------------------------------------------------------------
     # Turbo update check

@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
-import type { DownloadStatus } from "../../api";
+import type { DownloadStatus, InstallResult } from "../../api";
 import type {
   ImageModelFamily,
   ImageModelVariant,
@@ -67,6 +67,7 @@ export interface ImageStudioTabProps {
   onApplyImageQuality: (presetId: ImageQualityPreset) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
+  onInstallImageRuntime: () => Promise<InstallResult>;
   onImageDownload: (repo: string) => void;
   onCancelImageDownload: (repo: string) => void;
   onDeleteImageDownload: (repo: string) => void;
@@ -126,6 +127,7 @@ export function ImageStudioTab({
   onApplyImageQuality,
   onPreloadImageModel,
   onUnloadImageModel,
+  onInstallImageRuntime,
   onImageDownload,
   onCancelImageDownload,
   onDeleteImageDownload,
@@ -136,6 +138,18 @@ export function ImageStudioTab({
   onRevealPath,
   onDeleteImageArtifact,
 }: ImageStudioTabProps) {
+  const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
+
+  async function handleInstallImageRuntime() {
+    if (installingImageRuntime) return;
+    setInstallingImageRuntime(true);
+    try {
+      await onInstallImageRuntime();
+    } finally {
+      setInstallingImageRuntime(false);
+    }
+  }
+
   // Only offer models that are actually downloaded in the picker. The
   // Image Studio is the "generate right now" surface — a user selecting an
   // unavailable model here would hit a download-required callout and be
@@ -290,15 +304,23 @@ export function ImageStudioTab({
             <div className="image-runtime-actions">
               <p className="muted-text">
                 {imageRuntimeStatus.activeEngine === "unavailable"
-                  ? "Install the diffusers runtime to enable local image generation."
+                  ? "Install the optional image runtime packages (diffusers, torch, accelerate, huggingface_hub, pillow) to enable real local generation."
                   : "Restart the backend if you recently installed image packages."}
               </p>
               <div className="button-row">
-                {tauriBackend?.managedByTauri ? (
-                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                {imageRuntimeStatus.activeEngine === "unavailable" ? (
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => void handleInstallImageRuntime()}
+                    disabled={installingImageRuntime || !backendOnline}
+                  >
+                    {installingImageRuntime ? "Installing..." : "Install image runtime"}
                   </button>
                 ) : null}
+                <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
               </div>
             </div>
           ) : null}

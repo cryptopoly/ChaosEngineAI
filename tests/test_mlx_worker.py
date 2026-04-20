@@ -217,8 +217,14 @@ class DFlashCompatibilityTests(unittest.TestCase):
         worker._dflash_target = "dflash_target"
         worker._dflash_generator = "draft_bundle"
 
-        fake_runtime = SimpleNamespace(
-            generate_dflash_once=lambda **kwargs: {
+        def _fake_stream(**_kwargs):
+            # Emit a couple of per-token events followed by the summary event,
+            # matching the v0.1.4 ``stream_dflash_generate`` protocol.
+            yield {"event": "token", "token_id": 10, "generated_tokens": 1}
+            yield {"event": "token", "token_id": 11, "generated_tokens": 2}
+            yield {"event": "token", "token_id": 12, "generated_tokens": 3}
+            yield {
+                "event": "summary",
                 "generated_token_ids": [10, 11, 12],
                 "generation_tokens": 3,
                 "prompt_token_count": 3,
@@ -228,7 +234,8 @@ class DFlashCompatibilityTests(unittest.TestCase):
                 "phase_timings_us": {"prefill": 500_000},
                 "peak_memory_gb": 12.34,
             }
-        )
+
+        fake_runtime = SimpleNamespace(stream_dflash_generate=_fake_stream)
         fake_pkg = SimpleNamespace(runtime=fake_runtime)
 
         with patch.dict("sys.modules", {"dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}):

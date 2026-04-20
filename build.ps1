@@ -53,7 +53,11 @@ if (-not (Test-Path $llamaServerExe)) {
         Write-Host "    A release build needs llama.cpp compiled locally so the bundled"
         Write-Host "    installer ships with native inference support. Pick one:"
         Write-Host ""
-        Write-Host "    1. Build llama.cpp at ..\llama.cpp\ (cmake -B build && cmake --build build)"
+        # Use '; ' instead of ' && ' — Windows PowerShell 5.1's parser
+        # chokes on '&&' as an invalid statement separator even when it
+        # appears inside a double-quoted string literal. '; ' is portable
+        # shell syntax that works everywhere we care about.
+        Write-Host "    1. Build llama.cpp at ..\llama.cpp\ (cmake -B build; cmake --build build)"
         Write-Host "    2. Set `$env:CHAOSENGINE_LLAMA_BIN_DIR to your llama.cpp build directory"
         Write-Host "    3. Ship without it: `$env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA = `"1`""
         Write-Host ""

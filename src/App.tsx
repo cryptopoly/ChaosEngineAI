@@ -1374,6 +1374,7 @@ export default function App() {
         onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
         onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
         onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
+        gpuBundleJob={imgState.gpuBundleJob}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
@@ -1516,6 +1517,7 @@ export default function App() {
         onRestartServer={() => void handleRestartServer()}
         onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
+        gpuBundleJob={videoState.gpuBundleJob}
       />
     );
   } else if (activeTab === "video-gallery") {

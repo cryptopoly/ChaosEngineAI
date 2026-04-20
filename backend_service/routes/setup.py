@@ -645,8 +645,17 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
     Updates ``_GPU_BUNDLE_JOB`` as it progresses; the status endpoint reads
     that struct without locking (a stale read is fine — the field updates
     are each atomic assignments and the UI just polls again).
+
+    Failure handling:
+      - Fatal: the worker raises, ``except`` block sets ``phase=error`` +
+        ``error`` + ``message`` from the exception text.
+      - Non-fatal (post-torch package install fails): the loop appends a
+        FAIL attempt with full output and keeps going. At the end we sum
+        non-fatal failures into a final message so the UI doesn't show
+        ``done`` with a green tick when half the bundle didn't land.
     """
     state = _GPU_BUNDLE_JOB
+    non_fatal_failures: list[str] = []
     try:
         state.phase = "preflight"
         state.message = "Checking disk space"
@@ -683,9 +692,14 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
                     "Rebuild ChaosEngineAI against Python 3.13 (most-widely-supported), "
                     "or set CHAOSENGINE_TORCH_INDEX_URL to a newer index before launching."
                 )
+            # Pull the most recent failure tail so the error message
+            # itself is actionable (no blank "All indexes failed" toast).
+            last_attempt = state.attempts[-1] if state.attempts else {}
+            tail = (last_attempt.get("output") or "").splitlines()[-3:]
+            tail_blob = " | ".join(line.strip() for line in tail if line.strip())[:300]
             raise RuntimeError(
                 "All CUDA index candidates failed. Check your internet connection, "
-                "firewall, or see the attempts list for details."
+                f"firewall, or proxy settings. Last pip output: {tail_blob or '(empty)'}"
             )
         state.index_url_used = index_url
 
@@ -700,12 +714,13 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             state.attempts.append({"package": label, "ok": ok, "output": output[-2000:]})
             if not ok:
                 # Individual package failure is non-fatal — torch + diffusers
-                # are the must-haves and are earlier in the list. Surface
-                # the warning but keep going so users aren't blocked on
-                # e.g. a transient PyPI timeout for ftfy.
+                # are the must-haves and torch is earlier in the list. Track
+                # the failure for the final summary so the UI doesn't show
+                # a clean "done" when ftfy/sentencepiece/etc. didn't land.
+                non_fatal_failures.append(label)
                 state.message = (
-                    f"{label} install failed (non-fatal — GPU generation will still work "
-                    f"but some pipelines may need this package later)"
+                    f"{label} install failed (non-fatal — see install log; you can "
+                    f"retry it individually after the bundle finishes)"
                 )
 
         state.phase = "verifying"
@@ -721,18 +736,36 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         state.done = True
         state.requires_restart = True
         state.finished_at = time.time()
-        if cuda_ok:
+        if cuda_ok and not non_fatal_failures:
             state.message = "GPU support installed. Restart the backend to activate."
-        else:
+        elif cuda_ok and non_fatal_failures:
+            # Surface the partial failure so users know to retry the
+            # individual missing pieces (mp4 encoder, tokenizers) rather
+            # than re-running the whole 2 GB torch install.
             state.message = (
-                "Install completed but CUDA isn't available — torch may have landed "
-                "as the CPU wheel, or your NVIDIA driver doesn't match. See attempts "
-                "for details."
+                "GPU support installed and CUDA verified, but "
+                f"{len(non_fatal_failures)} optional package(s) failed: "
+                f"{', '.join(non_fatal_failures)}. Restart the backend to activate "
+                "torch + diffusers; the failed packages can be retried individually."
+            )
+        else:
+            verify_tail = (detail or "").splitlines()[-2:]
+            verify_blob = " | ".join(line.strip() for line in verify_tail if line.strip())[:300]
+            state.message = (
+                "Install completed but CUDA isn't available. torch may have landed "
+                "as the CPU wheel, or your NVIDIA driver doesn't match. "
+                f"Verify subprocess said: {verify_blob or '(no output)'}. "
+                "See the install log for the full attempts list."
             )
     except Exception as exc:  # noqa: BLE001 — surface ANY failure via status
-        state.error = str(exc)
+        # Always set a non-empty message: ``str(exc)`` can be empty for
+        # bare-Exception cases and that's exactly when the UI ends up
+        # showing "failed without reason". Fall back to the exception
+        # type name so users see SOMETHING actionable.
+        message = str(exc) or f"{type(exc).__name__} (no message attached)"
+        state.error = message
         state.phase = "error"
-        state.message = str(exc)
+        state.message = message
         state.done = True
         state.finished_at = time.time()
 

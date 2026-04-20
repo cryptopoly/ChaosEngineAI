@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
-import type { DownloadStatus, InstallResult } from "../../api";
+import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
   ImageModelFamily,
   ImageModelVariant,
@@ -68,6 +69,11 @@ export interface ImageStudioTabProps {
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
+  // Live state of the GPU bundle install job — drives the InstallLogPanel
+  // under the install button so users see per-step pip output instead of a
+  // generic "failed" toast. Null when no install has been kicked off yet
+  // in this session.
+  gpuBundleJob: GpuBundleJobState | null;
   onImageDownload: (repo: string) => void;
   onCancelImageDownload: (repo: string) => void;
   onDeleteImageDownload: (repo: string) => void;
@@ -128,6 +134,7 @@ export function ImageStudioTab({
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
+  gpuBundleJob,
   onImageDownload,
   onCancelImageDownload,
   onDeleteImageDownload,
@@ -301,28 +308,31 @@ export function ImageStudioTab({
             </div>
           ) : null}
           {!imageRuntimeStatus.realGenerationAvailable ? (
-            <div className="image-runtime-actions">
-              <p className="muted-text">
-                {imageRuntimeStatus.activeEngine === "unavailable"
-                  ? "Install the optional image runtime packages (diffusers, torch, accelerate, huggingface_hub, pillow) to enable real local generation."
-                  : "Restart the backend if you recently installed image packages."}
-              </p>
-              <div className="button-row">
-                {imageRuntimeStatus.activeEngine === "unavailable" ? (
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => void handleInstallImageRuntime()}
-                    disabled={installingImageRuntime || !backendOnline}
-                  >
-                    {installingImageRuntime ? "Installing..." : "Install image runtime"}
+            <>
+              <div className="image-runtime-actions">
+                <p className="muted-text">
+                  {imageRuntimeStatus.activeEngine === "unavailable"
+                    ? "Install the GPU image runtime (torch + diffusers + accelerate + transformers, ~2.5 GB) to enable real local generation. Writes to a persistent user-local folder so app updates don't wipe it."
+                    : "Restart the backend if you recently installed image packages."}
+                </p>
+                <div className="button-row">
+                  {imageRuntimeStatus.activeEngine === "unavailable" ? (
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => void handleInstallImageRuntime()}
+                      disabled={installingImageRuntime || !backendOnline}
+                    >
+                      {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
+                    </button>
+                  ) : null}
+                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
+                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
                   </button>
-                ) : null}
-                <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                </button>
+                </div>
               </div>
-            </div>
+              <InstallLogPanel job={gpuBundleJob} />
+            </>
           ) : null}
         </div>
       </Panel>

@@ -108,6 +108,12 @@ export function useImageState(
   });
   const [imageBusyLabel, setImageBusyLabel] = useState<string | null>(null);
   const imageBusy = imageBusyLabel !== null;
+  // Live state from the GPU bundle install job — exposed so ImageStudioTab
+  // can render an InstallLogPanel under the install button with per-step
+  // pip output. Null until the user clicks Install GPU Runtime; retained
+  // (not nulled) after completion so users can still expand the log
+  // post-restart to confirm which CUDA index won.
+  const [gpuBundleJob, setGpuBundleJob] = useState<GpuBundleJobState | null>(null);
   const [showImageGenerationModal, setShowImageGenerationModal] = useState(false);
   const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<number | null>(null);
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
@@ -542,6 +548,7 @@ export function useImageState(
       let job: GpuBundleJobState;
       try {
         job = await startGpuBundleInstall();
+        setGpuBundleJob(job);
       } catch (err) {
         const message = `Failed to start GPU bundle install: ${err instanceof Error ? err.message : String(err)}`;
         setError(message);
@@ -552,18 +559,15 @@ export function useImageState(
       // is a compromise: slow enough to not hammer the backend, fast enough
       // that the UI feels live when torch finishes an index attempt.
       const POLL_MS = 1500;
-      const MAX_WAIT_MS = 30 * 60_000;  // 30 min hard cap — a 2 GB wheel
-                                        // shouldn't take longer even on
-                                        // slow broadband.
+      const MAX_WAIT_MS = 30 * 60_000;
       const deadline = Date.now() + MAX_WAIT_MS;
       while (!job.done && Date.now() < deadline) {
         setImageBusyLabel(formatGpuBundleLabel(job));
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
         try {
           job = await getGpuBundleStatus();
+          setGpuBundleJob(job);  // UI log panel re-renders with latest attempts
         } catch (err) {
-          // Transient fetch failure — keep polling. If the backend is truly
-          // gone, checkBackend elsewhere will flag it and the loop exits.
           setImageBusyLabel(
             `Install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
           );
@@ -579,21 +583,25 @@ export function useImageState(
       }
 
       if (job.phase === "error" || job.error) {
-        const message = job.error || job.message || "GPU bundle install failed.";
+        const rawMessage = job.error || job.message || "GPU bundle install failed.";
+        // Append a hint pointing at the log panel so the toast isn't the
+        // only thing the user sees — the real detail is in the expanded
+        // attempts list. Also include the target dir so they know where
+        // pip was writing (or failing to write) to.
+        const hint = job.targetDir
+          ? ` See the install log below for per-step pip output. Target: ${job.targetDir}`
+          : " See the install log below for per-step pip output.";
+        const message = rawMessage + hint;
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }
       if (!job.done) {
-        const message = "GPU bundle install did not finish within 30 minutes.";
+        const message = "GPU bundle install did not finish within 30 minutes. See the install log below.";
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }
 
       setError(null);
-      // Surface the "restart required" note so the caller UI can prompt.
-      // diffusers / torch won't be loadable by the RUNNING backend until
-      // it restarts — the sys.modules cache from process start survives
-      // any PYTHONPATH change.
       const output = job.requiresRestart
         ? `${job.message}\n\nRestart the backend to activate GPU acceleration.`
         : job.message;
@@ -760,5 +768,6 @@ export function useImageState(
     handleDeleteImageArtifact,
     handleVaryImageSeed,
     handleUseSameImageSettings,
+    gpuBundleJob,
   };
 }

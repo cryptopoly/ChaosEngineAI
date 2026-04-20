@@ -136,6 +136,13 @@ export function useVideoState(
   });
   const [videoBusyLabel, setVideoBusyLabel] = useState<string | null>(null);
   const videoBusy = videoBusyLabel !== null;
+  // Live GPU bundle install job state — mirrors useImageState. Exposed so
+  // VideoStudioTab can render an InstallLogPanel under the install button.
+  // Either Studio clicking Install GPU Runtime updates the SAME backend
+  // job; the other tab's hook doesn't auto-pick-up without its own poll,
+  // which is acceptable — installs are infrequent and the side that
+  // didn't start it can just reopen the Studio to see the updated state.
+  const [gpuBundleJob, setGpuBundleJob] = useState<GpuBundleJobState | null>(null);
   const [activeVideoDownloads, setActiveVideoDownloads] = useState<Record<string, DownloadStatus>>({});
   const [videoOutputs, setVideoOutputs] = useState<VideoOutputArtifact[]>([]);
   // Modal state — mirrors useImageState's image-generation modal lifecycle.
@@ -619,6 +626,7 @@ export function useVideoState(
       let job: GpuBundleJobState;
       try {
         job = await startGpuBundleInstall();
+        setGpuBundleJob(job);
       } catch (err) {
         const message = `Failed to start GPU bundle install: ${err instanceof Error ? err.message : String(err)}`;
         setError(message);
@@ -633,6 +641,7 @@ export function useVideoState(
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
         try {
           job = await getGpuBundleStatus();
+          setGpuBundleJob(job);
         } catch (err) {
           setVideoBusyLabel(
             `Install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
@@ -648,12 +657,16 @@ export function useVideoState(
       }
 
       if (job.phase === "error" || job.error) {
-        const message = job.error || job.message || "GPU bundle install failed.";
+        const rawMessage = job.error || job.message || "GPU bundle install failed.";
+        const hint = job.targetDir
+          ? ` See the install log below for per-step pip output. Target: ${job.targetDir}`
+          : " See the install log below for per-step pip output.";
+        const message = rawMessage + hint;
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }
       if (!job.done) {
-        const message = "GPU bundle install did not finish within 30 minutes.";
+        const message = "GPU bundle install did not finish within 30 minutes. See the install log below.";
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }
@@ -814,5 +827,6 @@ export function useVideoState(
     handleInstallVideoOutputDeps,
     handleInstallVideoGpuRuntime,
     openVideoStudio,
+    gpuBundleJob,
   };
 }

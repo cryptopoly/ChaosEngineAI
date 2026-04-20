@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -214,6 +215,52 @@ def _read_python_version(python: str) -> str | None:
     return result.stdout.strip() or None
 
 
+def _site_packages_for(python_executable: str) -> Path | None:
+    """Return the site-packages directory for the given interpreter, or None."""
+    try:
+        result = subprocess.run(
+            [
+                python_executable, "-c",
+                "import sysconfig; print(sysconfig.get_paths().get('purelib') or sysconfig.get_paths().get('platlib') or '')",
+            ],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    path = (result.stdout or "").strip()
+    return Path(path) if path else None
+
+
+def _purge_broken_distributions(site_packages: Path) -> list[str]:
+    """Delete ``~*`` stub directories pip leaves behind after an interrupted install.
+
+    On Windows, pip atomically renames the old version of a package to ``~<name>``
+    before unpacking the new one. If the process is killed mid-install (antivirus,
+    a file lock, Ctrl-C) the stub is left behind. Subsequent ``pip install`` runs
+    then print ``WARNING: Ignoring invalid distribution ~arkupsafe`` forever and
+    sometimes refuse to heal the tree. Removing these stubs is cheap and safe —
+    they contain no authoritative data.
+    """
+    if not site_packages.is_dir():
+        return []
+    removed: list[str] = []
+    for entry in site_packages.iterdir():
+        if not entry.name.startswith("~"):
+            continue
+        try:
+            if entry.is_dir():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                entry.unlink(missing_ok=True)
+            if not entry.exists():
+                removed.append(entry.name)
+        except OSError:
+            continue
+    return removed
+
+
 def _all_attempts_lack_wheel(attempts: list[dict[str, Any]]) -> bool:
     """True when pip reported 'No matching distribution' for every attempt.
 
@@ -260,21 +307,49 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     python = state.runtime.capabilities.pythonExecutable
     python_version = _read_python_version(python)
 
+    # Sweep pip's "~<pkg>" stub directories before attempting the install.
+    # These are left behind by a prior interrupted install (common on Windows
+    # where Defender briefly locks .pyd files), and they cause two problems:
+    #   1. Noisy "WARNING: Ignoring invalid distribution ~arkupsafe" spam that
+    #      confuses users reading install output.
+    #   2. pip sometimes tries to repair them and fails with an "Access denied"
+    #      write to a .pyd that the running backend process has loaded (e.g.
+    #      markupsafe/_speedups.cp314-win_amd64.pyd via FastAPI -> Jinja2).
+    # Removing the stubs is always safe — they hold no authoritative data.
+    site_packages = _site_packages_for(python)
+    purged: list[str] = []
+    if site_packages is not None:
+        purged = _purge_broken_distributions(site_packages)
+        if purged:
+            state.add_log(
+                "server", "info",
+                f"Removed {len(purged)} broken pip stub(s) from {site_packages}: {', '.join(purged)}",
+            )
+
     attempts: list[dict[str, Any]] = []
     ok = False
     winning_output = ""
     winning_index: str | None = None
 
     for index_url in _CUDA_TORCH_INDEXES:
-        cmd = [
+        # Two-pass install:
+        #   Pass 1: --force-reinstall --no-deps swaps the torch wheel (CPU -> CUDA)
+        #           without overwriting transitive deps like markupsafe. Those
+        #           extensions are loaded into this Python process via FastAPI
+        #           -> Jinja2; overwriting their .pyd / .so at runtime raises
+        #           WinError 5 "Access is denied" and aborts the install.
+        #   Pass 2: plain install (no --force) fills in any genuinely missing
+        #           deps (e.g. nvidia-cublas-cu12 on Linux when swapping from
+        #           CPU torch) without touching files that are already satisfied.
+        cmd_swap = [
             python, "-m", "pip", "install",
-            "--upgrade", "--force-reinstall",
+            "--upgrade", "--force-reinstall", "--no-deps",
             "--index-url", index_url,
             "torch>=2.4.0",
         ]
         state.add_log("server", "info", f"Installing CUDA torch from {index_url}")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+            result = subprocess.run(cmd_swap, capture_output=True, text=True, timeout=900)
             output = (result.stdout + "\n" + result.stderr).strip()
             attempt_ok = result.returncode == 0
         except subprocess.TimeoutExpired:
@@ -283,6 +358,23 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
         except OSError as exc:
             output = f"{index_url}: {exc}"
             attempt_ok = False
+
+        if attempt_ok:
+            cmd_deps = [
+                python, "-m", "pip", "install",
+                "--index-url", index_url,
+                "torch>=2.4.0",
+            ]
+            try:
+                dep_result = subprocess.run(cmd_deps, capture_output=True, text=True, timeout=900)
+                dep_output = (dep_result.stdout + "\n" + dep_result.stderr).strip()
+                output = f"{output}\n\n--- deps pass ---\n{dep_output}" if dep_output else output
+            except (subprocess.TimeoutExpired, OSError):
+                # Best-effort: torch itself swapped successfully, a missing
+                # transitive dep will surface at runtime via an ImportError
+                # the user can resolve from the Setup page.
+                pass
+
         attempts.append({"indexUrl": index_url, "ok": attempt_ok, "output": output})
         if attempt_ok:
             ok = True

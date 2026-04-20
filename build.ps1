@@ -34,6 +34,14 @@ Write-Host "==> Installing Python dependencies..."
 .\.venv\Scripts\pip install --upgrade pip -q
 Assert-LastExit "pip install --upgrade pip"
 
+# vendor/ChaosEngine declares `license = "Apache-2.0"` per PEP 639. Setuptools
+# < 77 rejects the string form ("project.license must be valid exactly by one
+# definition"), and fresh venvs on Windows sometimes resolve an older
+# setuptools than the one bundled with CPython. Force an upgrade here so
+# stage-runtime.mjs can install the vendor package via `pip install --target`.
+.\.venv\Scripts\pip install --upgrade "setuptools>=77" wheel -q
+Assert-LastExit "pip install --upgrade setuptools wheel"
+
 # On Windows, pip install torch from PyPI delivers the CPU-only wheel,
 # which leaves an RTX 4090 idle and makes FLUX.1 Dev spend ~8+ minutes on
 # a single step. Install the CUDA wheel first; the subsequent
@@ -92,10 +100,13 @@ npm ci --silent
 Assert-LastExit "npm ci"
 
 # -- llama.cpp pre-flight ---------------------------------
-# Release-mode staging is strict: if llama.cpp is not built locally the
-# install will refuse to ship without inference. Detect upfront so the user
-# gets a clear message before npm/cargo spend 20 minutes building, and let
-# them opt into shipping a diffusers-only installer with one env var.
+# If llama.cpp is not built locally the installer ships without native
+# inference; users can install llama-server via the Setup page at runtime.
+# Previously this was a hard error unless CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1
+# was set. That blocked every release on a fresh Windows box and required
+# an environment variable dance. The escape hatch is now the default: we
+# warn loudly but keep going, and stage-runtime.mjs sees the flag and
+# produces a valid installer without the binary.
 $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
     $env:CHAOSENGINE_LLAMA_BIN_DIR
 } else {
@@ -103,27 +114,27 @@ $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
 }
 $llamaServerExe = Join-Path $llamaBinDir "llama-server.exe"
 if (-not (Test-Path $llamaServerExe)) {
-    if ($env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA -eq "1") {
-        Write-Warning "llama-server.exe not found at $llamaServerExe -- proceeding because CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1."
-        Write-Warning "The installer will ship without llama.cpp; users can install it via the Setup page."
-    } else {
+    # Opt OUT with CHAOSENGINE_REQUIRE_LLAMA=1 to restore the old strict
+    # behaviour (CI release pipelines that must ship inference).
+    if ($env:CHAOSENGINE_REQUIRE_LLAMA -eq "1") {
         Write-Host ""
         Write-Host "==> ERROR: llama-server.exe not found at $llamaServerExe" -ForegroundColor Red
         Write-Host ""
-        Write-Host "    A release build needs llama.cpp compiled locally so the bundled"
-        Write-Host "    installer ships with native inference support. Pick one:"
+        Write-Host "    CHAOSENGINE_REQUIRE_LLAMA=1 is set, so the build must ship with"
+        Write-Host "    native inference. Pick one:"
         Write-Host ""
-        # No parens in these strings. PS 5.1 mis-tokenizes a backslash
-        # immediately before a parenthesis as a subexpression start, and
-        # unbalanced parens across split strings have tripped the parser
-        # in other places. Plain prose is safest.
         Write-Host "    1. Build llama.cpp: clone to ..\llama.cpp then run"
         Write-Host "       cmake -B build; cmake --build build --config Release"
         Write-Host "    2. Set CHAOSENGINE_LLAMA_BIN_DIR to your llama.cpp build directory"
-        Write-Host "    3. Ship without it: set CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1"
+        Write-Host "    3. Unset CHAOSENGINE_REQUIRE_LLAMA to ship without llama.cpp"
         Write-Host ""
         throw "llama-server.exe missing -- see message above."
     }
+
+    Write-Warning "llama-server.exe not found at $llamaServerExe -- continuing without it."
+    Write-Warning "The installer will ship without llama.cpp; users can install it via the Setup page."
+    Write-Warning "To require llama.cpp in the installer, set CHAOSENGINE_REQUIRE_LLAMA=1."
+    $env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA = "1"
 }
 
 # -- Patch tauri.conf.json for local builds ---------------
@@ -166,6 +177,14 @@ if ($buildFailed) {
     throw $buildError
 }
 
+# -- Publish installers to /assets ------------------------
+# The Tauri bundle tree is three directories deep and differs per target,
+# which makes "where is my installer" a recurring question. Copy the
+# shippable artifacts into a flat ``assets/`` folder at the repo root.
+Write-Host "==> Publishing artifacts to assets/..."
+node scripts/publish-artifacts.mjs --bundles=nsis
+Assert-LastExit "publish-artifacts"
+
 Write-Host ""
 Write-Host "==> Build complete!"
 # Single-quoted literal so the parser never has to interpret the
@@ -173,4 +192,4 @@ Write-Host "==> Build complete!"
 # reads BOM-less scripts as Windows-1252, so any em-dash / box-drawing
 # char elsewhere in the file corrupts tokenization and surfaces here
 # as a spurious "string missing terminator" error.
-Write-Host '    Artifacts in src-tauri\target\release\bundle\nsis'
+Write-Host '    Artifacts in assets\ (also in src-tauri\target\release\bundle\nsis)'

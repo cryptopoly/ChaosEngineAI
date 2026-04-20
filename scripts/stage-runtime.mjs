@@ -270,6 +270,15 @@ function stageVendoredChaosEngine(pythonBinary) {
     return null;
   }
 
+  // vendor/ChaosEngine/pyproject.toml declares `license = "Apache-2.0"` per
+  // PEP 639. Setuptools < 77 rejects the string form with:
+  //   "project.license must be valid exactly by one definition (2 matches found)"
+  // Since we pass --no-build-isolation, pip uses whatever setuptools the build
+  // venv has — and fresh Windows venvs sometimes ship 65.x. Upgrade in place
+  // before the vendor install so the build works without requiring the user
+  // to run build.ps1 first (e.g. `npm run tauri:dev`).
+  ensureSetuptoolsForPep639(pythonBinary);
+
   console.log(`[stage-runtime] bundling ChaosEngine (${vendor.source})`);
   try {
     execFileSync(
@@ -302,6 +311,42 @@ function stageVendoredChaosEngine(pythonBinary) {
       `The ChaosEngine cache strategy will fall back to the system-installed package if available.`,
     );
     return null;
+  }
+}
+
+function ensureSetuptoolsForPep639(pythonBinary) {
+  const checkScript = [
+    "import sys",
+    "try:",
+    "    from importlib.metadata import version",
+    "    v = version('setuptools')",
+    "except Exception:",
+    "    sys.exit(2)",
+    "parts = [int(p) for p in v.split('.')[:2] if p.isdigit()]",
+    "sys.exit(0 if parts and parts[0] >= 77 else 1)",
+  ].join("\n");
+
+  let ok = false;
+  try {
+    execFileSync(pythonBinary, ["-c", checkScript], { stdio: "ignore" });
+    ok = true;
+  } catch {
+    ok = false;
+  }
+  if (ok) return;
+
+  console.log(`[stage-runtime] upgrading setuptools (>=77) for PEP 639 license strings`);
+  try {
+    execFileSync(
+      pythonBinary,
+      ["-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "setuptools>=77", "wheel"],
+      { cwd: workspaceRoot, stdio: "inherit" },
+    );
+  } catch (err) {
+    console.warn(
+      `[stage-runtime] warning: could not upgrade setuptools (${err.message.split("\n")[0]}). ` +
+      `Vendor install may fail if the venv's setuptools < 77.`,
+    );
   }
 }
 

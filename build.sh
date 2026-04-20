@@ -20,19 +20,25 @@ if [ ! -d .venv ]; then
 fi
 
 echo "==> Installing Python dependencies..."
+# vendor/ChaosEngine declares `license = "Apache-2.0"` per PEP 639. Setuptools
+# < 77 rejects the string form, so bump it across every platform before the
+# vendor install in stage-runtime.mjs runs.
 case "$PLATFORM" in
   darwin)
     .venv/bin/pip install --upgrade pip -q
+    .venv/bin/pip install --upgrade "setuptools>=77" wheel -q
     .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
     ;;
   linux)
     .venv/bin/pip install --upgrade pip -q
+    .venv/bin/pip install --upgrade "setuptools>=77" wheel -q
     .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
     ;;
   windows)
     .venv/Scripts/pip install --upgrade pip -q
+    .venv/Scripts/pip install --upgrade "setuptools>=77" wheel -q
     .venv/Scripts/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub -q
     export CHAOSENGINE_EMBED_PYTHON_BIN="$SCRIPT_DIR/.venv/Scripts/python.exe"
     ;;
@@ -86,6 +92,13 @@ node -e "
   fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
 " 2>/dev/null || true
 
+# ── Publish installers to /assets ────────────────────────
+# The Tauri bundle tree is three directories deep and differs per target.
+# Copy the shippable artifacts into a flat assets/ folder at the repo root
+# so every build lands in the same place regardless of platform.
+echo "==> Publishing artifacts to assets/..."
+node scripts/publish-artifacts.mjs --bundles="$BUNDLES"
+
 echo ""
 echo "==> Build complete!"
-echo "    Artifacts: src-tauri/target/release/bundle/"
+echo "    Artifacts: assets/ (also in src-tauri/target/release/bundle/)"

@@ -216,9 +216,23 @@ class SetupRouteTests(unittest.TestCase):
     # CUDA torch install (Windows/Linux NVIDIA fallback)
     # ------------------------------------------------------------------
 
+    def _patch_cuda_helpers(self):
+        """Neutralise the pre-install helpers so tests focus on the pip loop.
+
+        ``_site_packages_for`` and ``_purge_broken_distributions`` add
+        their own subprocess and filesystem side effects that would
+        confuse the subprocess.run mock below; patching them to no-op
+        keeps each test asserting exactly the behaviour it names.
+        """
+        return (
+            mock.patch("backend_service.routes.setup._site_packages_for", return_value=None),
+            mock.patch("backend_service.routes.setup._purge_broken_distributions", return_value=[]),
+        )
+
     def test_install_cuda_torch_stops_at_first_success(self):
         """First working index wins — we must not keep trying after success."""
-        with mock.patch(
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.12.5"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
@@ -234,18 +248,24 @@ class SetupRouteTests(unittest.TestCase):
         self.assertIn("cu124", body["indexUrl"])
         self.assertEqual(body["pythonVersion"], "3.12.5")
         self.assertFalse(body["noWheelForPython"])
-        # Only one attempt should have been made — cu124 succeeded so cu126
-        # / cu128 / cu121 / nightly must not be tried.
+        # Only one index should have been attempted — cu124 succeeded so
+        # cu126 / cu128 / cu121 / nightly must not be tried. Each successful
+        # attempt issues two pip calls: pass 1 swaps torch (--no-deps),
+        # pass 2 fills in any missing transitive deps.
         self.assertEqual(len(body["attempts"]), 1)
-        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(mock_run.call_count, 2)
 
     def test_install_cuda_torch_falls_through_to_later_indexes(self):
         """If cu124 has no wheel for the user's Python, move on to cu126."""
         call_results = [
+            # cu124 swap fails → deps pass skipped
             mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution found for torch"),
+            # cu126 swap succeeds → deps pass runs
             mock.Mock(returncode=0, stdout="Successfully installed torch-2.6.0+cu126", stderr=""),
+            mock.Mock(returncode=0, stdout="Requirement already satisfied: sympy", stderr=""),
         ]
-        with mock.patch(
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.13.1"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
@@ -261,7 +281,8 @@ class SetupRouteTests(unittest.TestCase):
     def test_install_cuda_torch_reports_failure_after_all_attempts(self):
         """All indexes fail — surface the last error to the UI."""
         fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: Install failed, disk full")
-        with mock.patch(
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.12.5"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
@@ -288,7 +309,8 @@ class SetupRouteTests(unittest.TestCase):
             stderr="ERROR: Could not find a version that satisfies the requirement torch "
                    "(from versions: none)\nERROR: No matching distribution found for torch",
         )
-        with mock.patch(
+        sp_patch, purge_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.14.0"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", return_value=no_wheel):
@@ -297,6 +319,33 @@ class SetupRouteTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertTrue(body["noWheelForPython"])
         self.assertEqual(body["pythonVersion"], "3.14.0")
+
+    def test_install_cuda_torch_sweeps_broken_stub_dists(self):
+        """Broken ``~<pkg>`` dirs are removed before pip runs.
+
+        Real-world trigger: a prior interrupted pip install leaves
+        ``~arkupsafe/`` in site-packages. Without cleanup, subsequent
+        installs print a "Ignoring invalid distribution" warning and
+        sometimes fail mid-install trying to heal the stub.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            broken = tmp_path / "~arkupsafe"
+            broken.mkdir()
+            (broken / "stub.txt").write_text("leftover")
+
+            sp_patch = mock.patch(
+                "backend_service.routes.setup._site_packages_for", return_value=tmp_path,
+            )
+            with sp_patch, mock.patch(
+                "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+            ):
+                with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                    mock_run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
+                    resp = self.client.post("/api/setup/install-cuda-torch", json={})
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertFalse(broken.exists(), "broken ~arkupsafe stub should be removed")
 
     def test_install_cuda_torch_default_list_starts_with_cu124(self):
         """cu124 is the broadest 3.9-3.13 match; cu121 must not be first anymore."""

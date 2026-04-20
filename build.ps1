@@ -1,5 +1,16 @@
 $ErrorActionPreference = "Stop"
 
+# PowerShell's $ErrorActionPreference = "Stop" only halts on cmdlet errors —
+# native command failures (pip, npm, node, npx, git) are silently ignored
+# unless we check $LASTEXITCODE ourselves. Without this helper, the previous
+# build printed "Build complete!" even when `tauri build` had failed.
+function Assert-LastExit {
+    param([string]$Step)
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Step failed (exit $LASTEXITCODE)"
+    }
+}
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
@@ -16,20 +27,43 @@ if (Test-Path .runtime-stage) {
 if (-not (Test-Path .venv)) {
     Write-Host "==> Creating Python venv..."
     python -m venv .venv
+    Assert-LastExit "python -m venv"
 }
 
 Write-Host "==> Installing Python dependencies..."
 .\.venv\Scripts\pip install --upgrade pip -q
+Assert-LastExit "pip install --upgrade pip"
+
+# On Windows, `pip install torch` from PyPI delivers the CPU-only wheel —
+# which leaves an RTX 4090 idle and makes FLUX.1 Dev spend ~8+ minutes on
+# a single step. Install the CUDA 12.1 wheel first (cu121 is the broadest
+# match for driver 525+ and works on 12.x toolchains); the subsequent
+# `.[desktop,images]` install sees torch already satisfies `>=2.4.0` and
+# leaves it alone. Override with CHAOSENGINE_TORCH_INDEX_URL if needed
+# (e.g. set to "" to opt out, or point at cu124 for newer systems).
+$torchIndex = if ($null -ne $env:CHAOSENGINE_TORCH_INDEX_URL) {
+    $env:CHAOSENGINE_TORCH_INDEX_URL
+} else {
+    "https://download.pytorch.org/whl/cu121"
+}
+if ($torchIndex -ne "") {
+    Write-Host "==> Installing CUDA-enabled torch from $torchIndex..."
+    .\.venv\Scripts\pip install -q --index-url $torchIndex "torch>=2.4.0"
+    Assert-LastExit "pip install torch (CUDA)"
+}
+
 # Install the same extras that stage-runtime.mjs::validateBundledPythonPackages
 # checks for (desktop + images). Without `images` a release build fails strict
 # validation; in dev mode it merely warns.
 .\.venv\Scripts\pip install -q -e ".[desktop,images]"
+Assert-LastExit "pip install -e .[desktop,images]"
 
 $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 
 # ── npm dependencies ─────────────────────────────────────
 Write-Host "==> Installing npm dependencies..."
 npm ci --silent
+Assert-LastExit "npm ci"
 
 # ── llama.cpp pre-flight ─────────────────────────────────
 # Release-mode staging is strict: if llama.cpp is not built locally the
@@ -67,34 +101,43 @@ if (-not (Test-Path $llamaServerExe)) {
 }
 
 # ── Patch tauri.conf.json for local builds ───────────────
-# IMPORTANT: use stage:runtime:release (not stage:runtime). The dev variant
-# writes mode=development into the manifest AND skips building the tar.gz
-# runtime archive - both of which break the shipped installer:
-#   - Tauri (lib.rs::resolve_embedded_runtime) sees mode=development and
-#     looks for a live source workspace at the target install path, which
-#     does not exist. Result: the backend never boots.
-#   - Without the tar.gz, the Python runtime and backend code are simply
-#     not in the installer. The result is a tiny (~3 MB) installer that
-#     cannot actually run anything.
+# Delegated to a dedicated .mjs (see scripts/patch-tauri-conf.mjs). The
+# previous inline `node -e "..."` was fragile under PowerShell quoting —
+# a silent misparse left the JSON empty and tauri build failed with a
+# misleading EOF error.
 Write-Host "==> Patching tauri.conf.json for local build..."
-node -e "const fs = require('fs'); const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); conf.build.beforeBundleCommand = 'npm run stage:runtime:release'; conf.bundle = conf.bundle || {}; conf.bundle.createUpdaterArtifacts = false; fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');"
+node scripts/patch-tauri-conf.mjs patch
+Assert-LastExit "patch tauri.conf.json"
 
 # ── Build ────────────────────────────────────────────────
 Write-Host "==> Building Tauri app (NSIS installer)..."
-npx tauri build --bundles nsis
+$buildFailed = $false
+try {
+    npx tauri build --bundles nsis
+    Assert-LastExit "tauri build"
+} catch {
+    $buildFailed = $true
+    $buildError = $_
+}
 
 # ── Restore tauri.conf.json ──────────────────────────────
-# ``git checkout`` writes "Updated 1 path from the index" to stderr even on
-# success. With $ErrorActionPreference = "Stop" set at the top of this
-# script, the ``2>&1 | Out-Null`` pattern wraps that stderr text as a
-# terminating NativeCommandError — crashing the build *after* the installer
-# is already produced. ``--quiet`` silences the success message and
-# ``2>$null`` discards anything else by file redirect (which bypasses
-# PowerShell's stream-wrapping logic). We still gate on $LASTEXITCODE so a
-# real git failure (working tree dirty etc.) surfaces as a build error.
-git checkout --quiet src-tauri/tauri.conf.json 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw "Failed to restore src-tauri/tauri.conf.json (git exit $LASTEXITCODE)"
+# Always run the restore, even if the build failed, so the working tree
+# is left clean for the next attempt. If the build succeeded and git
+# complains, surface it; if the build already failed, restore is
+# best-effort and the build error takes precedence.
+Write-Host "==> Restoring tauri.conf.json..."
+try {
+    node scripts/patch-tauri-conf.mjs restore
+    if (-not $buildFailed) {
+        Assert-LastExit "restore tauri.conf.json"
+    }
+} catch {
+    if (-not $buildFailed) { throw }
+    Write-Warning "Restore failed: $_ — continuing to report original build error."
+}
+
+if ($buildFailed) {
+    throw $buildError
 }
 
 Write-Host ""

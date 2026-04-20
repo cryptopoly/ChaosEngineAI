@@ -31,6 +31,7 @@ import {
   buildDownloadStatusMap,
   pendingDownloadStatus,
   failedDownloadStatus,
+  isTransientNetworkError,
 } from "../utils";
 import type {
   ImageModelFamily,
@@ -303,7 +304,15 @@ export function useImageState(
 
     if (failures.length > 0) {
       const firstError = failures[0].reason;
-      setError(firstError instanceof Error ? firstError.message : "Could not load image runtime data.");
+      // Swallow transient network errors from background refreshes. These
+      // fire on startup before the backend has bound its port, and on
+      // Windows the race window is several seconds — long enough that the
+      // user sees a sticky "Failed to fetch" banner even though the app
+      // is working. Real backend errors (HTTP 4xx/5xx with detail) still
+      // surface as usual.
+      if (!isTransientNetworkError(firstError)) {
+        setError(firstError instanceof Error ? firstError.message : "Could not load image runtime data.");
+      }
     }
   }
 

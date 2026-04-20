@@ -4,6 +4,8 @@ import json
 import importlib.util
 import io
 import os
+import platform
+import shutil
 import textwrap
 import time
 import gc
@@ -177,6 +179,15 @@ def _resolve_image_python() -> str:
     if candidate.exists():
         return str(candidate)
     return os.getenv("PYTHON", "python3")
+
+
+def _nvidia_gpu_present() -> bool:
+    # Cheap, side-effect-free probe: just check if nvidia-smi is on PATH.
+    # We deliberately avoid invoking it — some systems (locked-down laptops,
+    # WSL without the NVIDIA driver shim) have the binary but it hangs on
+    # first call. Presence on PATH is a reliable-enough signal for the
+    # diagnostic message we want to surface.
+    return shutil.which("nvidia-smi") is not None
 
 
 def _stable_hash(value: str) -> int:
@@ -400,15 +411,28 @@ class DiffusersTextToImageEngine:
             )
 
         device = self._detect_device(torch)
+        message = (
+            "Real local generation is available. Download an image model locally, then Image Studio "
+            "will use the diffusers runtime instead of the placeholder engine."
+        )
+        # A CPU-only torch on a machine with an NVIDIA GPU is the single
+        # most common "image gen takes 10 minutes per step" misconfiguration
+        # on Windows and Linux. Detect the NVIDIA driver via nvidia-smi and,
+        # if torch didn't pick up CUDA, surface an actionable hint instead
+        # of letting users watch the progress bar crawl.
+        if device == "cpu" and platform.system() in ("Windows", "Linux") and _nvidia_gpu_present():
+            message = (
+                "torch was imported but CUDA is unavailable — diffusion will run on CPU "
+                "(expect minutes per step). Reinstall with the CUDA wheel: "
+                "pip install --upgrade --force-reinstall torch "
+                "--index-url https://download.pytorch.org/whl/cu121"
+            )
         return ImageRuntimeStatus(
             activeEngine="diffusers",
             realGenerationAvailable=True,
             device=device,
             pythonExecutable=_resolve_image_python(),
-            message=(
-                "Real local generation is available. Download an image model locally, then Image Studio "
-                "will use the diffusers runtime instead of the placeholder engine."
-            ),
+            message=message,
             loadedModelRepo=self._loaded_repo,
         )
 

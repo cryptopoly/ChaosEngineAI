@@ -21,6 +21,7 @@ import {
   findVideoVariantById,
   findVideoVariantByRepo,
   flattenVideoVariants,
+  isTransientNetworkError,
   pendingDownloadStatus,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
@@ -385,7 +386,12 @@ export function useVideoState(
 
     if (failures.length > 0) {
       const firstError = failures[0].reason;
-      setError(firstError instanceof Error ? firstError.message : "Could not load video runtime data.");
+      // See useImageState.refreshImageData — swallow transient network
+      // errors from background refreshes so a cold-start race doesn't
+      // leave a sticky "Failed to fetch" banner on the Chat tab.
+      if (!isTransientNetworkError(firstError)) {
+        setError(firstError instanceof Error ? firstError.message : "Could not load video runtime data.");
+      }
     }
   }
 

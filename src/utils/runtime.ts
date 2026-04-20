@@ -5,6 +5,28 @@ export function serverOriginFromBase(baseUrl: string) {
   return baseUrl.replace(/\/v1\/?$/, "");
 }
 
+// Background refreshes can fire before the Tauri sidecar has bound its
+// port (cold start on Windows is especially slow: extract embedded
+// runtime, spawn Python, import FastAPI + torch). A transient fetch
+// failure in that window is not a user-facing error — callers should
+// swallow it and rely on the next poll/interaction to recover.
+export function isTransientNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError) {
+    // Browser-level fetch failures ("Failed to fetch", "Network request
+    // failed", "NetworkError when attempting to fetch resource", etc.)
+    // all surface as TypeError.
+    return true;
+  }
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes("failed to fetch")) return true;
+    if (msg.includes("timed out after")) return true;
+    if (msg.includes("networkerror")) return true;
+    if (msg.includes("load failed")) return true; // Safari
+  }
+  return false;
+}
+
 export function serverBaseFromOrigin(origin: string) {
   return `${origin.replace(/\/$/, "")}/v1`;
 }

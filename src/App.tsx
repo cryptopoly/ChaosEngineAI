@@ -3,6 +3,7 @@ import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
+  installCudaTorch,
   loadModel,
   getWorkspace,
   deleteModelPath,
@@ -106,6 +107,38 @@ export default function App() {
   const [apiToken, setApiToken] = useState<string | null>(null);
   const sidebarPrefs = useSidebarPrefs();
   const gpuStatus = useGpuStatus(backendOnline);
+  const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
+  const [cudaTorchResult, setCudaTorchResult] = useState<
+    | { ok: true; indexUrl: string | null }
+    | { ok: false; message: string }
+    | null
+  >(null);
+
+  const handleInstallCudaTorch = async () => {
+    if (installingCudaTorch) return;
+    setInstallingCudaTorch(true);
+    setCudaTorchResult(null);
+    try {
+      const result = await installCudaTorch();
+      if (result.ok) {
+        setCudaTorchResult({ ok: true, indexUrl: result.indexUrl });
+      } else {
+        const last = result.attempts[result.attempts.length - 1];
+        const tail = (last?.output ?? result.output ?? "").split("\n").slice(-3).join("\n");
+        setCudaTorchResult({
+          ok: false,
+          message: tail || "pip install failed — see backend logs for details.",
+        });
+      }
+    } catch (err) {
+      setCudaTorchResult({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setInstallingCudaTorch(false);
+    }
+  };
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
@@ -1754,7 +1787,36 @@ export default function App() {
                 <strong>Running on CPU.</strong>{" "}
                 {gpuStatus.status.recommendation ??
                   "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow."}
+                {cudaTorchResult?.ok ? (
+                  <>
+                    {" "}
+                    <strong>
+                      CUDA torch installed{cudaTorchResult.indexUrl
+                        ? ` from ${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")}`
+                        : ""}
+                      . Restart the app to use the GPU.
+                    </strong>
+                  </>
+                ) : cudaTorchResult && !cudaTorchResult.ok ? (
+                  <>
+                    {" "}
+                    <strong>Install failed:</strong>{" "}
+                    <span className="mono-text">{cudaTorchResult.message}</span>
+                  </>
+                ) : null}
               </span>
+              <button
+                className="primary-button"
+                type="button"
+                disabled={installingCudaTorch || cudaTorchResult?.ok === true}
+                onClick={() => void handleInstallCudaTorch()}
+              >
+                {installingCudaTorch
+                  ? "Installing CUDA torch..."
+                  : cudaTorchResult?.ok
+                    ? "Installed"
+                    : "Install CUDA torch"}
+              </button>
               <button className="secondary-button" type="button" onClick={gpuStatus.dismiss}>
                 Dismiss
               </button>

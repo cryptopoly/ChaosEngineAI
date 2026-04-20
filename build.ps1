@@ -34,22 +34,48 @@ Write-Host "==> Installing Python dependencies..."
 .\.venv\Scripts\pip install --upgrade pip -q
 Assert-LastExit "pip install --upgrade pip"
 
-# On Windows, `pip install torch` from PyPI delivers the CPU-only wheel —
+# On Windows, pip install torch from PyPI delivers the CPU-only wheel,
 # which leaves an RTX 4090 idle and makes FLUX.1 Dev spend ~8+ minutes on
-# a single step. Install the CUDA 12.1 wheel first (cu121 is the broadest
-# match for driver 525+ and works on 12.x toolchains); the subsequent
-# `.[desktop,images]` install sees torch already satisfies `>=2.4.0` and
-# leaves it alone. Override with CHAOSENGINE_TORCH_INDEX_URL if needed
-# (e.g. set to "" to opt out, or point at cu124 for newer systems).
-$torchIndex = if ($null -ne $env:CHAOSENGINE_TORCH_INDEX_URL) {
-    $env:CHAOSENGINE_TORCH_INDEX_URL
+# a single step. Install the CUDA wheel first; the subsequent
+# .[desktop,images] install sees torch already satisfies >=2.4.0 and
+# leaves it alone.
+#
+# cu124 is the broadest match in 2026: it covers Python 3.9-3.13 and
+# works with driver 525+. cu121 only ships wheels for Python 3.8-3.12
+# so fresh Windows installs (which default to 3.13) fail outright with
+# "Could not find a version that satisfies the requirement torch". We
+# walk the list from newest-broad to oldest-broad and stop on the first
+# success. If CHAOSENGINE_TORCH_INDEX_URL is set it overrides everything
+# (set to "" to opt out entirely).
+$torchIndexCandidates = if ($null -ne $env:CHAOSENGINE_TORCH_INDEX_URL) {
+    if ($env:CHAOSENGINE_TORCH_INDEX_URL -eq "") {
+        @()
+    } else {
+        @($env:CHAOSENGINE_TORCH_INDEX_URL)
+    }
 } else {
-    "https://download.pytorch.org/whl/cu121"
+    @(
+        "https://download.pytorch.org/whl/cu124",
+        "https://download.pytorch.org/whl/cu126",
+        "https://download.pytorch.org/whl/cu128",
+        "https://download.pytorch.org/whl/cu121"
+    )
 }
-if ($torchIndex -ne "") {
-    Write-Host "==> Installing CUDA-enabled torch from $torchIndex..."
-    .\.venv\Scripts\pip install -q --index-url $torchIndex "torch>=2.4.0"
-    Assert-LastExit "pip install torch (CUDA)"
+
+$torchInstalled = $false
+foreach ($idx in $torchIndexCandidates) {
+    Write-Host "==> Installing CUDA-enabled torch from $idx..."
+    .\.venv\Scripts\pip install -q --index-url $idx "torch>=2.4.0"
+    if ($LASTEXITCODE -eq 0) {
+        $torchInstalled = $true
+        break
+    }
+    Write-Warning "torch install from $idx failed (exit $LASTEXITCODE) -- trying next CUDA index."
+}
+
+if (-not $torchInstalled -and $torchIndexCandidates.Count -gt 0) {
+    Write-Warning "CUDA torch wheels unavailable from all candidates -- continuing with CPU torch."
+    Write-Warning "You can install CUDA torch later from the Running on CPU banner inside the app."
 }
 
 # Install the same extras that stage-runtime.mjs::validateBundledPythonPackages

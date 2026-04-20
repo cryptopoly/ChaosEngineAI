@@ -194,7 +194,13 @@ class GpuStatusSnapshotTests(unittest.TestCase):
         self.assertFalse(snapshot["torchCudaAvailable"])
         self.assertTrue(snapshot["cpuFallbackWarning"])
         self.assertIsNotNone(snapshot["recommendation"])
-        self.assertIn("cu121", snapshot["recommendation"])
+        # We recommend cu124 now (cu121 has no Python 3.13 wheels and broke
+        # fresh Windows installs). Accept either the PyTorch index URL or
+        # the in-app button copy.
+        self.assertTrue(
+            "cu124" in snapshot["recommendation"]
+            or "Install CUDA torch" in snapshot["recommendation"]
+        )
 
     @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)

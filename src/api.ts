@@ -786,6 +786,27 @@ export async function installSystemPackage(packageName: string): Promise<Install
   return await postJson<InstallResult>("/api/setup/install-system-package", { package: packageName }, 660000);
 }
 
+export interface CudaTorchInstallAttempt {
+  indexUrl: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface CudaTorchInstallResult {
+  ok: boolean;
+  output: string;
+  indexUrl: string | null;
+  attempts: CudaTorchInstallAttempt[];
+  requiresRestart: boolean;
+  capabilities: Record<string, unknown>;
+}
+
+export async function installCudaTorch(): Promise<CudaTorchInstallResult> {
+  // 15 minute timeout — torch CUDA wheels are ~2.5 GB, and the endpoint
+  // walks up to four CUDA indexes before giving up.
+  return await postJson<CudaTorchInstallResult>("/api/setup/install-cuda-torch", {}, 900000);
+}
+
 export interface TurboUpdateInfo {
   installed: boolean;
   installedCommit: string | null;

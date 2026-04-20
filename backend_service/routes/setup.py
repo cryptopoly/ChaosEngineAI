@@ -180,6 +180,88 @@ def refresh_capabilities_endpoint(request: Request) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------
+# CUDA torch install (Windows/Linux NVIDIA fallback recovery)
+# ------------------------------------------------------------------
+
+# cu124 covers Python 3.9-3.13 and driver 525+. cu121 only ships wheels
+# for Python up to 3.12, so fresh Windows installs (3.13) fail on it.
+# The endpoint walks these in order and stops at the first success.
+_CUDA_TORCH_INDEXES: list[str] = [
+    "https://download.pytorch.org/whl/cu124",
+    "https://download.pytorch.org/whl/cu126",
+    "https://download.pytorch.org/whl/cu128",
+    "https://download.pytorch.org/whl/cu121",
+]
+
+
+@router.post("/api/setup/install-cuda-torch")
+def install_cuda_torch(request: Request) -> dict[str, Any]:
+    """Install a CUDA-enabled torch wheel into the backend runtime.
+
+    The fresh-Windows-install case is Python 3.13 + system pip, which has
+    no cu121 wheel at all — the install fails with "Could not find a
+    version that satisfies the requirement torch". We try cu124 first
+    (broadest Python 3.9-3.13 coverage), then cu126 / cu128 / cu121 in
+    case the user's driver doesn't match the newest. Returns the output
+    of the winning attempt so the UI can surface failures usefully.
+
+    Torch already imported in this process stays CPU until the user
+    restarts the backend — we flag ``requiresRestart`` in the response
+    so the frontend can prompt appropriately.
+    """
+    state = request.app.state.chaosengine
+    python = state.runtime.capabilities.pythonExecutable
+
+    attempts: list[dict[str, Any]] = []
+    ok = False
+    winning_output = ""
+    winning_index: str | None = None
+
+    for index_url in _CUDA_TORCH_INDEXES:
+        cmd = [
+            python, "-m", "pip", "install",
+            "--upgrade", "--force-reinstall",
+            "--index-url", index_url,
+            "torch>=2.4.0",
+        ]
+        state.add_log("server", "info", f"Installing CUDA torch from {index_url}")
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+            output = (result.stdout + "\n" + result.stderr).strip()
+            attempt_ok = result.returncode == 0
+        except subprocess.TimeoutExpired:
+            output = f"Install from {index_url} timed out after 15 minutes."
+            attempt_ok = False
+        except OSError as exc:
+            output = f"{index_url}: {exc}"
+            attempt_ok = False
+        attempts.append({"indexUrl": index_url, "ok": attempt_ok, "output": output})
+        if attempt_ok:
+            ok = True
+            winning_output = output
+            winning_index = index_url
+            break
+
+    # Re-probe so the UI can refresh its capabilities view. Note: torch
+    # already imported in this process is still the old module — the
+    # live cuda check won't flip to True without a restart.
+    state.runtime.refresh_capabilities(force=True)
+    caps = state.runtime.capabilities.to_dict()
+    state.add_log(
+        "server", "info" if ok else "error",
+        f"CUDA torch install: {'succeeded via ' + winning_index if ok else 'failed after all candidates'}",
+    )
+    return {
+        "ok": ok,
+        "output": winning_output or (attempts[-1]["output"] if attempts else ""),
+        "indexUrl": winning_index,
+        "attempts": attempts,
+        "requiresRestart": ok,
+        "capabilities": caps,
+    }
+
+
+# ------------------------------------------------------------------
 # llama-server-turbo update check
 # ------------------------------------------------------------------
 

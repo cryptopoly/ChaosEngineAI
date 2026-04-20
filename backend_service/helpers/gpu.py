@@ -222,8 +222,9 @@ def nvidia_gpu_present() -> bool:
 
 
 _CUDA_WHEEL_HINT = (
+    "Click \"Install CUDA torch\" in this banner, or run: "
     "pip install --upgrade --force-reinstall torch "
-    "--index-url https://download.pytorch.org/whl/cu121"
+    "--index-url https://download.pytorch.org/whl/cu124"
 )
 
 

@@ -45,25 +45,47 @@ case "$PLATFORM" in
 esac
 
 # ── CUDA torch verification (Linux only) ─────────────────
-# If nvidia-smi is on PATH, the build machine has an NVIDIA GPU — the
-# bundled torch MUST have CUDA support or the installer ships with a
-# silent CPU-only runtime. Catching this at build time beats users
-# opening the app and seeing "Running on CPU" on a CUDA-capable GPU.
+# If nvidia-smi is on PATH the build machine has an NVIDIA GPU. Abort by
+# default when the bundled torch isn't CUDA-enabled — a silent CPU-only
+# build on an RTX host means ~minutes per diffusion step instead of
+# ~seconds and is never what the operator intended. Set
+# CHAOSENGINE_ALLOW_CPU_TORCH=1 to override (rare, e.g. headless CUDA-less
+# CI runners that happen to have nvidia-smi installed for monitoring).
 if [ "$PLATFORM" = "linux" ] && command -v nvidia-smi >/dev/null 2>&1; then
   echo "==> Verifying bundled torch has CUDA support..."
-  if ! .venv/bin/python -c "import sys; import torch; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
+  CUDA_DIAGNOSTIC=$(.venv/bin/python - <<'PY' 2>&1
+import sys
+info = {"python": f"{sys.version_info.major}.{sys.version_info.minor}"}
+try:
+    import torch
+    info["torch"] = torch.__version__
+    info["cuda_build"] = str(getattr(torch.version, "cuda", None))
+    info["cuda_available"] = str(bool(getattr(torch.cuda, "is_available", lambda: False)()))
+except Exception as exc:
+    info["import_error"] = str(exc).splitlines()[0][:120]
+print(" ".join(f"{k}={v}" for k, v in info.items()))
+sys.exit(0 if info.get("cuda_available") == "True" else 1)
+PY
+  )
+  CUDA_STATUS=$?
+  echo "    $CUDA_DIAGNOSTIC"
+  if [ "$CUDA_STATUS" -ne 0 ]; then
     echo ""
     echo "!! CUDA torch NOT detected on a machine with nvidia-smi."
-    echo "   The installer will run on CPU. Reinstall CUDA torch with e.g."
-    echo "     .venv/bin/pip install --index-url https://download.pytorch.org/whl/cu124 --force-reinstall 'torch>=2.4.0'"
-    echo "   Continuing. Set CHAOSENGINE_REQUIRE_CUDA_TORCH=1 to fail instead."
     echo ""
-    if [ "${CHAOSENGINE_REQUIRE_CUDA_TORCH:-}" = "1" ]; then
-      echo "CUDA torch required but not detected -- aborting."
+    echo "   FIX OPTIONS:"
+    echo "   1. Point at a different CUDA index that publishes wheels for your Python:"
+    echo "        export CHAOSENGINE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128"
+    echo "   2. Use Python 3.13 (has the broadest CUDA wheel coverage):"
+    echo "        rm -rf .venv; python3.13 -m venv .venv; ./build.sh"
+    echo "   3. Ship CPU-only torch deliberately:"
+    echo "        export CHAOSENGINE_ALLOW_CPU_TORCH=1"
+    echo ""
+    if [ "${CHAOSENGINE_ALLOW_CPU_TORCH:-}" != "1" ]; then
+      echo "Refusing to bundle CPU-only torch on an NVIDIA host. Set CHAOSENGINE_ALLOW_CPU_TORCH=1 to bypass."
       exit 1
     fi
-  else
-    echo "    torch.cuda.is_available() == True"
+    echo "!! CHAOSENGINE_ALLOW_CPU_TORCH=1 -- continuing with CPU torch."
   fi
 fi
 

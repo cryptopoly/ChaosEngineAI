@@ -34,7 +34,13 @@ jobs:
         run: |
           python -m venv .venv
           source .venv/bin/activate
-          pip install -e ".[desktop,dev]"
+          # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
+          # tests/test_video_runtime.py needs because probe() does a real
+          # ``import torch`` after the mocked _find_missing returns. Without
+          # torch installed, probe bails out with "PyTorch could not be
+          # imported cleanly" and every ``realGenerationAvailable == True``
+          # assertion fails.
+          pip install -e ".[desktop,dev,images]"
           python -m pytest tests/ -v --tb=short
 
   build:

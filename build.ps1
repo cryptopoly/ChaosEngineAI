@@ -68,10 +68,16 @@ $torchIndexCandidates = if ($null -ne $env:CHAOSENGINE_TORCH_INDEX_URL) {
         @($env:CHAOSENGINE_TORCH_INDEX_URL)
     }
 } else {
+    # Walk newest-first — if the newest driver is available we prefer the
+    # matching CUDA version to avoid the PyTorch JIT reconfiguring kernels
+    # at startup. cu130/cu129 cover the newest Ada/Hopper drivers (RTX 50xx
+    # + updated RTX 40xx firmware); cu121 is the oldest we still accept.
     @(
-        "https://download.pytorch.org/whl/cu124",
-        "https://download.pytorch.org/whl/cu126",
+        "https://download.pytorch.org/whl/cu130",
+        "https://download.pytorch.org/whl/cu129",
         "https://download.pytorch.org/whl/cu128",
+        "https://download.pytorch.org/whl/cu126",
+        "https://download.pytorch.org/whl/cu124",
         "https://download.pytorch.org/whl/cu121"
     )
 }
@@ -101,44 +107,64 @@ Assert-LastExit "pip install -e .[desktop,images]"
 $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 
 # -- Verify CUDA torch actually installed -----------------
-# If nvidia-smi is on PATH, the build machine has an NVIDIA GPU — the
-# bundled torch MUST have CUDA support or the installer ships with a
-# silent CPU-only runtime. Catching this at build time beats users
-# opening the app and seeing "Running on CPU" on an RTX 4090.
+# If nvidia-smi is on PATH, the build machine has an NVIDIA GPU. A silent
+# CPU-only torch is the single most common "my RTX 4090 is running at CPU
+# speed" failure, so we ABORT by default rather than ship a pointless
+# installer. Set CHAOSENGINE_ALLOW_CPU_TORCH=1 to build anyway (e.g. if
+# you genuinely want to ship a CPU-only build on an NVIDIA host for
+# testing, or if you've bolted on a non-CUDA GPU backend).
 $nvidiaPresent = $null -ne (Get-Command nvidia-smi -ErrorAction SilentlyContinue)
 if ($nvidiaPresent) {
     Write-Host "==> Verifying bundled torch has CUDA support..."
     $cudaCheck = & .\.venv\Scripts\python.exe -c @"
 import sys
+info = {'python': f'{sys.version_info.major}.{sys.version_info.minor}'}
 try:
     import torch
+    info['torch'] = torch.__version__
+    info['cuda_build'] = str(getattr(torch.version, 'cuda', None))
+    info['cuda_available'] = str(bool(getattr(torch.cuda, 'is_available', lambda: False)()))
 except Exception as exc:
-    print(f'torch-import-error:{exc}')
-    sys.exit(2)
-has_cuda = bool(getattr(torch.cuda, 'is_available', lambda: False)())
-build = getattr(torch.version, 'cuda', None)
-print(f'torch={torch.__version__} cuda_available={has_cuda} cuda_build={build}')
+    info['import_error'] = str(exc).splitlines()[0][:120]
+print(' '.join(f'{k}={v}' for k, v in info.items()))
+has_cuda = info.get('cuda_available') == 'True'
 sys.exit(0 if has_cuda else 1)
 "@ 2>&1
     $cudaExitCode = $LASTEXITCODE
     Write-Host "    $cudaCheck"
     if ($cudaExitCode -ne 0) {
-        Write-Warning ""
-        Write-Warning "==> CUDA torch NOT detected on a machine with nvidia-smi!"
-        Write-Warning "    The bundled installer will run on CPU, which on an RTX 4090 means"
-        Write-Warning "    ~8 minutes per diffusion step instead of ~1 second."
-        Write-Warning ""
-        Write-Warning "    The pip install from download.pytorch.org probably fell back to the"
-        Write-Warning "    CPU wheel because your Python version doesn't have a matching CUDA"
-        Write-Warning "    wheel in the default cu124 index. Try another CUDA index:"
-        Write-Warning "      `$env:CHAOSENGINE_TORCH_INDEX_URL='https://download.pytorch.org/whl/cu126'"
-        Write-Warning "    or downgrade to Python 3.13 (cu124 doesn't publish 3.14 wheels yet)."
-        Write-Warning ""
-        Write-Warning "    Continuing the build. Set CHAOSENGINE_REQUIRE_CUDA_TORCH=1 to fail"
-        Write-Warning "    instead of shipping CPU-only torch."
-        if ($env:CHAOSENGINE_REQUIRE_CUDA_TORCH -eq "1") {
-            throw "CUDA torch required but not detected -- see warning above."
+        # Extract the Python version from the diagnostic output so the
+        # actionable hint points at the specific version mismatch.
+        $pyVer = if ($cudaCheck -match "python=(\d+\.\d+)") { $Matches[1] } else { "unknown" }
+
+        Write-Host ""
+        Write-Host "==> CUDA torch NOT detected on a machine with nvidia-smi." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "    Build machine: Python $pyVer + NVIDIA GPU (nvidia-smi present)"
+        Write-Host "    Bundled torch: $cudaCheck"
+        Write-Host ""
+        Write-Host "    The pip install from download.pytorch.org fell back to the CPU wheel"
+        Write-Host "    because no CUDA index publishes wheels for Python $pyVer yet."
+        Write-Host ""
+        Write-Host "    FIX OPTIONS, in order of preference:"
+        Write-Host ""
+        Write-Host "    1. Use Python 3.13 for the build (CUDA wheels exist for 3.9-3.13):"
+        Write-Host "         Remove-Item -Recurse -Force .venv"
+        Write-Host "         py -3.13 -m venv .venv"
+        Write-Host "         .\build.ps1"
+        Write-Host ""
+        Write-Host "    2. Point at a newer CUDA index that does publish $pyVer wheels:"
+        Write-Host "         `$env:CHAOSENGINE_TORCH_INDEX_URL = 'https://download.pytorch.org/whl/cu130'"
+        Write-Host "         .\build.ps1"
+        Write-Host ""
+        Write-Host "    3. Ship CPU-only torch deliberately (not recommended on RTX GPUs):"
+        Write-Host "         `$env:CHAOSENGINE_ALLOW_CPU_TORCH = '1'"
+        Write-Host "         .\build.ps1"
+        Write-Host ""
+        if ($env:CHAOSENGINE_ALLOW_CPU_TORCH -ne "1") {
+            throw "Refusing to bundle CPU-only torch on an NVIDIA host -- see options above. Set CHAOSENGINE_ALLOW_CPU_TORCH=1 to bypass."
         }
+        Write-Warning "CHAOSENGINE_ALLOW_CPU_TORCH=1 is set -- continuing with CPU torch."
     }
 }
 

@@ -164,6 +164,55 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("PyTorch is still loading", status.message)
 
 
+class FindMissingTests(unittest.TestCase):
+    """Regression: _find_missing used to crash with ``ModuleNotFoundError:
+    No module named 'google'`` when asked about ``google.protobuf`` on a
+    machine with neither google-anything nor protobuf installed. The crash
+    propagated up through ``capabilities()`` and made ``/api/video/runtime``
+    return a 500, which surfaced in the UI as the "runtime did not respond"
+    fallback that never clears. ``importlib.util.find_spec`` is documented
+    to return ``None`` for missing submodules, but it raises when the
+    *parent* of a dotted name isn't importable — the classic Python 3
+    namespace-package edge case.
+    """
+
+    def test_find_missing_handles_missing_parent_namespace(self):
+        # Simulate the exact scenario from the user-reported crash: ask for
+        # ``google.protobuf`` on a Python that has no ``google`` package at
+        # all. We can't guarantee ``google`` is absent in every test env, so
+        # mock find_spec to raise what the real implementation would.
+        def fake_find_spec(name):
+            if name == "google.protobuf":
+                raise ModuleNotFoundError("No module named 'google'")
+            return None  # treat everything else as missing too
+
+        with mock.patch.object(
+            video_runtime.importlib.util, "find_spec", side_effect=fake_find_spec
+        ):
+            missing = video_runtime._find_missing(
+                (
+                    ("tiktoken", "tiktoken"),
+                    ("protobuf", "google.protobuf"),
+                )
+            )
+        self.assertIn("protobuf", missing)
+        self.assertIn("tiktoken", missing)
+
+    def test_find_missing_returns_empty_when_all_present(self):
+        # Sanity: when find_spec returns a spec object (non-None), the
+        # package is considered present and not listed as missing.
+        def fake_find_spec(name):
+            return SimpleNamespace(name=name)  # any non-None value works
+
+        with mock.patch.object(
+            video_runtime.importlib.util, "find_spec", side_effect=fake_find_spec
+        ):
+            missing = video_runtime._find_missing(
+                (("tiktoken", "tiktoken"), ("protobuf", "google.protobuf"))
+            )
+        self.assertEqual(missing, [])
+
+
 class PipelineRegistryTests(unittest.TestCase):
     def test_registry_covers_all_first_wave_engines(self):
         expected = {

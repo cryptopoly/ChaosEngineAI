@@ -290,7 +290,21 @@ _VIDEO_MODEL_DEPS: tuple[tuple[str, str], ...] = (
 
 
 def _find_missing(deps: tuple[tuple[str, str], ...]) -> list[str]:
-    return [package for package, module_name in deps if importlib.util.find_spec(module_name) is None]
+    # ``importlib.util.find_spec`` raises ``ModuleNotFoundError`` (not returns
+    # ``None``) when the parent of a dotted name is not importable. Concretely:
+    # ``find_spec("google.protobuf")`` blows up with "No module named 'google'"
+    # on a machine that never installed protobuf, instead of just reporting
+    # that protobuf is missing. Without this guard the probe crashes with a
+    # 500 and the Video Studio shows "runtime did not respond" forever.
+    missing: list[str] = []
+    for package, module_name in deps:
+        try:
+            spec = importlib.util.find_spec(module_name)
+        except (ModuleNotFoundError, ValueError, ImportError):
+            spec = None
+        if spec is None:
+            missing.append(package)
+    return missing
 
 
 class DiffusersVideoEngine:

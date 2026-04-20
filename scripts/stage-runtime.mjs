@@ -334,7 +334,7 @@ function stageOptionalRuntimePackages(pythonBinary) {
   // PyPI name or a PEP 508 URL (e.g. ``pkg @ git+https://…@tag``).
   const optionalPackages = [
     [
-      "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@v0.1.4",
+      "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
       "dflash_mlx",
     ],
     ["turboquant", "turboquant"],

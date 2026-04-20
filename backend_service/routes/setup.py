@@ -17,10 +17,12 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
-    # dflash-mlx ships only as a git tag (PyPI build is stale at 0.1.0 while
-    # v0.1.4 on GitHub renamed the main entrypoint and removed the baseline
-    # fallback). Install directly from the tagged commit.
-    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@v0.1.4",
+    # PyPI build is stale at 0.1.0; the up-to-date code lives on GitHub.
+    # The upstream removed all tags in April 2026, so we pin to a specific
+    # commit on main instead — v0.1.4 no longer resolves and fresh clones
+    # failed with "pathspec 'v0.1.4' did not match any file(s) known to
+    # git". Bump the pin when we validate a newer main SHA.
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
     "dflash": "dflash",
     # Video output encoding — diffusers can produce frames without these,
     # but exporting mp4/gif requires imageio + the ffmpeg plugin. The Video

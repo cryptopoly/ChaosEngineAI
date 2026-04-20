@@ -168,4 +168,8 @@ if ($buildFailed) {
 
 Write-Host ""
 Write-Host "==> Build complete!"
-Write-Host "    Artifacts in src-tauri\target\release\bundle\nsis"
+# Single quotes = pure literal string in PS: no interpolation, no escape
+# processing. Double quotes here caused PS 5.1 to report "string missing
+# terminator" on the \nsis sequence even with no trailing backslash -
+# exact cause unclear, but single quotes sidestep the parser entirely.
+Write-Host '    Artifacts in src-tauri\target\release\bundle\nsis'

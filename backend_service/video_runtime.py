@@ -71,19 +71,21 @@ def _detect_device_memory_gb(device: str | None) -> float | None:
     Returns ``None`` when detection fails — the frontend safety heuristic
     treats ``None`` as "stay conservative" and falls back to its 16 GB-safe
     thresholds rather than risk over-scaling on an unknown device.
+
+    Uses the cached fast path in ``helpers.gpu`` because total VRAM never
+    changes for the life of a process. The first call shells out to
+    ``nvidia-smi``/``sysctl``; every subsequent call is a dict lookup, which
+    keeps the ``/api/video/runtime`` probe well inside the frontend's
+    15s fetch budget on Windows.
     """
     try:
-        from backend_service.helpers.gpu import get_gpu_metrics
+        from backend_service.helpers.gpu import get_device_vram_total_gb
     except Exception:
         return None
     try:
-        snapshot = get_gpu_metrics()
+        return get_device_vram_total_gb()
     except Exception:
         return None
-    total = snapshot.get("vram_total_gb")
-    if isinstance(total, (int, float)) and total > 0:
-        return float(total)
-    return None
 
 
 @dataclass(frozen=True)

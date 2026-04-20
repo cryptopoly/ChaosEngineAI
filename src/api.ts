@@ -330,7 +330,12 @@ export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
 }
 
 export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
-  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/runtime");
+  // 30s rather than the 15s default — the first call of a sidecar's life
+  // imports torch and (on Windows/Linux) shells out to nvidia-smi, both of
+  // which can take several seconds on cold disks. Backend caches the VRAM
+  // total after the first probe so subsequent calls are fast, but the
+  // initial one needs the headroom.
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/runtime", 30000);
   return result.runtime;
 }
 

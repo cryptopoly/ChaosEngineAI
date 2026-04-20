@@ -48,6 +48,68 @@ def _resolve_video_seed(seed: int | None) -> int:
     return secrets.randbelow(MAX_VIDEO_SEED + 1)
 
 
+# ---------------------------------------------------------------------------
+# Torch warmup
+# ---------------------------------------------------------------------------
+# Importing torch for the first time is expensive (30-60s on a cold Windows
+# SSD). Because probe() is a sync FastAPI route that calls ``import torch``,
+# the first probe blew past the frontend's 30s fetch timeout and surfaced as
+# "Video runtime did not respond" with every downstream endpoint cascading to
+# "Failed to fetch". We warm torch on a background thread at sidecar startup
+# so probe() can return a fast "initializing" status while the import is in
+# flight, and an accurate status the moment it completes. The import lock
+# means any in-flight probe still ends up serialized behind the warmup
+# anyway — the fast-path here is purely to keep the probe route itself from
+# blocking so the rest of the video API stays responsive.
+
+_torch_warmup_lock = threading.Lock()
+_torch_warmup_state: dict[str, Any] = {
+    "status": "not_started",  # "not_started" | "in_progress" | "ready" | "failed"
+    "error": None,  # exception message when status == "failed"
+    "started_at": None,
+}
+
+
+def _torch_warmup_worker() -> None:
+    try:
+        import torch  # type: ignore  # noqa: F401
+    except Exception as exc:  # pragma: no cover - import failure path
+        with _torch_warmup_lock:
+            _torch_warmup_state["status"] = "failed"
+            _torch_warmup_state["error"] = f"{type(exc).__name__}: {exc}"
+        return
+    with _torch_warmup_lock:
+        _torch_warmup_state["status"] = "ready"
+        _torch_warmup_state["error"] = None
+
+
+def start_torch_warmup() -> None:
+    """Kick off a one-shot background import of torch.
+
+    Called from ``create_app()`` at sidecar startup. Safe to call repeatedly —
+    only the first call spawns a thread. If torch is already importable
+    cheaply (e.g. the interpreter has seen it before in this process), the
+    worker finishes almost immediately.
+    """
+    with _torch_warmup_lock:
+        if _torch_warmup_state["status"] != "not_started":
+            return
+        _torch_warmup_state["status"] = "in_progress"
+        _torch_warmup_state["started_at"] = time.monotonic()
+    thread = threading.Thread(
+        target=_torch_warmup_worker,
+        name="chaosengine-torch-warmup",
+        daemon=True,
+    )
+    thread.start()
+
+
+def torch_warmup_status() -> dict[str, Any]:
+    """Snapshot of the warmup state. Used by ``probe()`` to avoid blocking."""
+    with _torch_warmup_lock:
+        return dict(_torch_warmup_state)
+
+
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -253,6 +315,39 @@ class DiffusersVideoEngine:
                     "Install the optional video runtime packages to enable local generation: "
                     "pip install 'diffusers[torch]' accelerate imageio imageio-ffmpeg"
                 ),
+                loadedModelRepo=self._loaded_repo,
+            )
+
+        # Fast path: if the startup torch warmup is still running, return an
+        # "initializing" status immediately instead of blocking on the import
+        # lock. The UI polls this endpoint and will pick up the real status
+        # as soon as the warmup finishes (usually 20-60s on first boot).
+        warmup = torch_warmup_status()
+        if warmup["status"] == "in_progress":
+            elapsed = (
+                time.monotonic() - warmup["started_at"]
+                if warmup["started_at"] is not None
+                else 0.0
+            )
+            return VideoRuntimeStatus(
+                activeEngine="initializing",
+                realGenerationAvailable=False,
+                missingDependencies=missing_optional,
+                pythonExecutable=_resolve_video_python(),
+                message=(
+                    "Video runtime is starting — PyTorch is still loading "
+                    f"({elapsed:.0f}s elapsed). First boot can take up to 60s on "
+                    "Windows/Linux. This page will refresh automatically when it's ready."
+                ),
+                loadedModelRepo=self._loaded_repo,
+            )
+        if warmup["status"] == "failed":
+            return VideoRuntimeStatus(
+                activeEngine="placeholder",
+                realGenerationAvailable=False,
+                missingDependencies=["torch"] + missing_optional,
+                pythonExecutable=_resolve_video_python(),
+                message=f"PyTorch could not be imported cleanly: {warmup['error']}",
                 loadedModelRepo=self._loaded_repo,
             )
 

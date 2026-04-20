@@ -287,6 +287,25 @@ export function useVideoState(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVideoVariant?.id]);
 
+  // ── Poll while the runtime is warming up ────────────────────
+  // When the sidecar is still importing PyTorch the probe returns either
+  // ``activeEngine: "initializing"`` (fast-path from the background warmup
+  // worker) or ``"unavailable"`` (when the 30s fetchJson cap fired before
+  // warmup finished). In both cases the correct UX is "retry every few
+  // seconds and flip to Ready when torch lands in the module cache" — the
+  // timeout message promises exactly that, so we need to actually do it.
+  // Stops as soon as the engine reports any other state.
+  useEffect(() => {
+    if (!backendOnline) return;
+    const engine = videoRuntimeStatus.activeEngine;
+    if (engine !== "initializing" && engine !== "unavailable") return;
+    const interval = window.setInterval(() => {
+      void refreshVideoData();
+    }, 5000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendOnline, videoRuntimeStatus.activeEngine]);
+
   // ── Download polling ────────────────────────────────────────
   const hasActiveVideoDownloads = Object.values(activeVideoDownloads).some(
     (download) => download.state === "downloading",

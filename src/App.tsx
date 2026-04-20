@@ -1330,6 +1330,7 @@ export default function App() {
         onApplyImageQuality={imgState.applyImageQuality}
         onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
         onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
+        onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}

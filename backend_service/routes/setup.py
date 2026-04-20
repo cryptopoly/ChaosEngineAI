@@ -38,6 +38,23 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "sentencepiece": "sentencepiece",
     "protobuf": "protobuf",
     "ftfy": "ftfy",
+    # Core image / video runtime packages. Installed together via the
+    # one-click button in Image Studio / Video Studio when the probe
+    # reports the real engine as unavailable. Each is also individually
+    # installable so we can retry a single failed package without redoing
+    # the whole set.
+    #
+    # We deliberately do not pin versions here — the backend ships with
+    # ``pyproject.toml`` extras that constrain them, and a bare ``pip
+    # install diffusers`` resolves compatibly with whatever torch the user
+    # already has. For a coordinated install of all of these, the Studio
+    # calls this endpoint once per package in order so a single failure
+    # doesn't abort the whole sequence.
+    "diffusers": "diffusers",
+    "torch": "torch",
+    "accelerate": "accelerate",
+    "huggingface_hub": "huggingface_hub",
+    "pillow": "pillow",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {

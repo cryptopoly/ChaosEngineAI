@@ -435,7 +435,7 @@ export function VideoStudioTab({
               </button>
             </div>
           ) : null}
-          {!videoRuntimeStatus.realGenerationAvailable && tauriBackend?.managedByTauri ? (
+          {!videoRuntimeStatus.realGenerationAvailable ? (
             <div className="image-runtime-actions">
               <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
                 {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}

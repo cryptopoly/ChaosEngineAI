@@ -118,10 +118,13 @@ export function videoRuntimeErrorStatus(error: unknown): VideoRuntimeStatus {
     // restart, or the first probe of a sidecar's life when torch is
     // importing). Name the specific subsystem so the UI isn't internally
     // contradictory.
-    message = "Video runtime did not respond — wait a moment, or try Restart Backend if this persists.";
+    message = "Video runtime did not respond — the backend is likely still loading PyTorch. "
+      + "First boot can take 30–60 seconds on Windows or Linux. This page will retry automatically; "
+      + "use Restart Backend if it persists for more than a minute.";
   } else if (isFetchTimeoutError(rawMessage)) {
-    message = "Video runtime probe timed out — the backend is likely still loading torch. "
-      + "Wait a few seconds and it will retry, or try Restart Backend if this persists.";
+    message = "Video runtime probe timed out after 30 seconds — PyTorch is still importing in the backend. "
+      + "On Windows/Linux with a cold disk this can take up to ~60 seconds on first boot. "
+      + "This page will retry automatically; use Restart Backend if it persists for more than a minute.";
   } else {
     message = rawMessage || "Video runtime unavailable.";
   }

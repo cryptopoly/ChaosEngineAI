@@ -21,6 +21,7 @@ from backend_service.image_runtime import (
 from backend_service.video_runtime import (
     VideoGenerationConfig,
     VideoRuntimeManager,
+    start_torch_warmup,
 )
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
@@ -540,6 +541,12 @@ def create_app(
         return response
 
     register_routes(app)
+
+    # Kick off a background torch import so the first Video Studio probe
+    # doesn't pay the 30-60s cold-disk cost on Windows. Failures are captured
+    # and surfaced by probe() itself.
+    start_torch_warmup()
+
     return app
 
 

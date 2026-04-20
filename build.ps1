@@ -32,10 +32,10 @@ Write-Host "==> Installing npm dependencies..."
 npm ci --silent
 
 # ── llama.cpp pre-flight ─────────────────────────────────
-# Release-mode staging is strict: if llama.cpp isn't built locally the install
-# will refuse to ship without inference. Detect upfront so the user gets a
-# clear message before npm/cargo spend 20 minutes building, and let them opt
-# into shipping a diffusers-only installer with one env var.
+# Release-mode staging is strict: if llama.cpp is not built locally the
+# install will refuse to ship without inference. Detect upfront so the user
+# gets a clear message before npm/cargo spend 20 minutes building, and let
+# them opt into shipping a diffusers-only installer with one env var.
 $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
     $env:CHAOSENGINE_LLAMA_BIN_DIR
 } else {
@@ -53,10 +53,9 @@ if (-not (Test-Path $llamaServerExe)) {
         Write-Host "    A release build needs llama.cpp compiled locally so the bundled"
         Write-Host "    installer ships with native inference support. Pick one:"
         Write-Host ""
-        # Use '; ' instead of ' && ' — Windows PowerShell 5.1's parser
-        # chokes on '&&' as an invalid statement separator even when it
-        # appears inside a double-quoted string literal. '; ' is portable
-        # shell syntax that works everywhere we care about.
+        # Note: semicolon (not double-ampersand) because PowerShell 5.1
+        # tokenizes double-ampersand as an invalid statement separator
+        # even inside comments when parse recovery cascades.
         Write-Host "    1. Build llama.cpp at ..\llama.cpp\ (cmake -B build; cmake --build build)"
         Write-Host "    2. Set `$env:CHAOSENGINE_LLAMA_BIN_DIR to your llama.cpp build directory"
         Write-Host "    3. Ship without it: `$env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA = `"1`""
@@ -67,14 +66,14 @@ if (-not (Test-Path $llamaServerExe)) {
 
 # ── Patch tauri.conf.json for local builds ───────────────
 # IMPORTANT: use stage:runtime:release (not stage:runtime). The dev variant
-# writes ``mode=development`` into the manifest AND skips building the
-# tar.gz runtime archive — both of which break the shipped installer:
+# writes mode=development into the manifest AND skips building the tar.gz
+# runtime archive - both of which break the shipped installer:
 #   - Tauri (lib.rs::resolve_embedded_runtime) sees mode=development and
-#     looks for a live source workspace at the customer's install path,
-#     which doesn't exist. Result: the backend never boots.
-#   - Without the tar.gz, the Python runtime + backend code are simply
+#     looks for a live source workspace at the target install path, which
+#     does not exist. Result: the backend never boots.
+#   - Without the tar.gz, the Python runtime and backend code are simply
 #     not in the installer. The result is a tiny (~3 MB) installer that
-#     can't actually run anything.
+#     cannot actually run anything.
 Write-Host "==> Patching tauri.conf.json for local build..."
 node -e "const fs = require('fs'); const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')); conf.build.beforeBundleCommand = 'npm run stage:runtime:release'; conf.bundle = conf.bundle || {}; conf.bundle.createUpdaterArtifacts = false; fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');"
 

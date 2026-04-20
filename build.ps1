@@ -142,4 +142,4 @@ if ($buildFailed) {
 
 Write-Host ""
 Write-Host "==> Build complete!"
-Write-Host "    Artifacts: src-tauri\target\release\bundle\nsis\"
+Write-Host "    Artifacts in src-tauri\target\release\bundle\nsis"

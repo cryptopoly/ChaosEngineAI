@@ -100,11 +100,31 @@ function isFetchTransportError(message: string): boolean {
   );
 }
 
+/** Timeout strings from ``fetchJson`` — the video runtime probe has a 30s
+ * cap and will re-throw as ``"Request to /api/video/runtime timed out
+ * after 30s"`` when the backend is too slow to answer (e.g. first-boot
+ * torch import on Windows with a cold disk). */
+function isFetchTimeoutError(message: string): boolean {
+  return /\btimed out after\b/i.test(message);
+}
+
 export function videoRuntimeErrorStatus(error: unknown): VideoRuntimeStatus {
   const rawMessage = error instanceof Error ? error.message : "";
-  const message = isFetchTransportError(rawMessage)
-    ? "Backend is not responding — try Restart Backend."
-    : rawMessage || "Video runtime unavailable.";
+  let message: string;
+  if (isFetchTransportError(rawMessage)) {
+    // Don't say "Backend is not responding" — the global BACKEND ONLINE
+    // pill is driven from the ``/api/health`` probe and may well still be
+    // green while the video runtime probe fails (common during a backend
+    // restart, or the first probe of a sidecar's life when torch is
+    // importing). Name the specific subsystem so the UI isn't internally
+    // contradictory.
+    message = "Video runtime did not respond — wait a moment, or try Restart Backend if this persists.";
+  } else if (isFetchTimeoutError(rawMessage)) {
+    message = "Video runtime probe timed out — the backend is likely still loading torch. "
+      + "Wait a few seconds and it will retry, or try Restart Backend if this persists.";
+  } else {
+    message = rawMessage || "Video runtime unavailable.";
+  }
   return {
     activeEngine: "unavailable",
     realGenerationAvailable: false,

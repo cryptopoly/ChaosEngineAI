@@ -670,6 +670,17 @@ describe("videoRuntimeErrorStatus()", () => {
     expect(status.message).not.toMatch(/^load failed$/i);
   });
 
+  it("names the video runtime specifically, not the backend", () => {
+    // The global BACKEND ONLINE pill is driven from the health probe and
+    // can stay green while the video runtime probe fails (during restart,
+    // or on the first boot-time probe while torch is importing). Saying
+    // "Backend is not responding" in that state contradicts the pill and
+    // confuses users. The message must name the video runtime instead.
+    const status = videoRuntimeErrorStatus(new TypeError("Failed to fetch"));
+    expect(status.message).toMatch(/video runtime/i);
+    expect(status.message).not.toMatch(/^Backend is not responding/i);
+  });
+
   it("translates Chromium's \"Failed to fetch\" the same way", () => {
     // Chromium-based runtimes (Linux Tauri via WebKitGTK, desktop Chrome
     // during dev, Windows WebView2) use a different canonical string for
@@ -684,6 +695,22 @@ describe("videoRuntimeErrorStatus()", () => {
     // "load failed" (lowercase) to slip through and resurface the cryptic
     // copy in the Studio.
     const status = videoRuntimeErrorStatus(new TypeError("LOAD FAILED"));
+    expect(status.message).toMatch(/Restart Backend/i);
+  });
+
+  it("surfaces a dedicated message when the runtime probe times out", () => {
+    // fetchJson re-throws AbortController-driven timeouts as "Request to
+    // <path> timed out after Xs". That's different from Failed-to-fetch
+    // (fetch rejected outright) — it means the backend accepted the
+    // connection but didn't respond in time, which typically happens
+    // during the first probe while torch is importing on Windows. We
+    // translate both distinctly so users know whether to wait or to
+    // Restart Backend.
+    const status = videoRuntimeErrorStatus(
+      new Error("Request to /api/video/runtime timed out after 30s"),
+    );
+    expect(status.message).toMatch(/video runtime/i);
+    expect(status.message).toMatch(/timed out/i);
     expect(status.message).toMatch(/Restart Backend/i);
   });
 

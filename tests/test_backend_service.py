@@ -376,6 +376,61 @@ class ChaosEngineBackendTests(unittest.TestCase):
         response = client.post("/api/chat/sessions", json={"title": "Blocked"})
         self.assertEqual(response.status_code, 401)
 
+    def test_protected_route_allows_missing_auth_when_require_api_auth_disabled(self):
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+        state.runtime = FakeRuntime()
+        state.settings["requireApiAuth"] = False
+        app = create_app(state=state, api_token=TEST_API_TOKEN)
+        client = TestClient(app)
+        # With the toggle off, a tokenless call from an external client
+        # should succeed instead of returning 401.
+        response = client.post("/api/chat/sessions", json={"title": "Allowed"})
+        self.assertIn(response.status_code, (200, 201))
+
+    def test_require_api_auth_hot_applies_after_settings_update(self):
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+        state.runtime = FakeRuntime()
+        app = create_app(state=state, api_token=TEST_API_TOKEN)
+        client = TestClient(app)
+        # Rejected while auth is required.
+        self.assertEqual(client.get("/api/workspace").status_code, 401)
+        # Toggle off via the PATCH endpoint (with the token, since auth is
+        # still on at this point).
+        patch_response = client.patch(
+            "/api/settings",
+            json={"requireApiAuth": False},
+            headers={"Authorization": f"Bearer {TEST_API_TOKEN}"},
+        )
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertIs(patch_response.json()["settings"]["requireApiAuth"], False)
+        # Without restarting the server, anonymous requests now succeed.
+        self.assertEqual(client.get("/api/workspace").status_code, 200)
+
+    def test_require_api_auth_env_override_disables_auth(self):
+        with mock.patch.dict(os.environ, {"CHAOSENGINE_REQUIRE_AUTH": "0"}):
+            state = ChaosEngineState(
+                system_snapshot_provider=fake_system_snapshot,
+                library_provider=fake_library,
+                settings_path=self.settings_path,
+                benchmarks_path=self.benchmarks_path,
+                chat_sessions_path=self.chat_sessions_path,
+            )
+            state.runtime = FakeRuntime()
+            client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.assertEqual(client.get("/api/workspace").status_code, 200)
+
     def test_fresh_state_starts_without_seeded_workspace_data(self):
         workspace = self.client.get("/api/workspace").json()
 

@@ -30,6 +30,7 @@ export const emptySettings: AppSettings = {
   modelDirectories: [],
   preferredServerPort: 8876,
   allowRemoteConnections: false,
+  requireApiAuth: true,
   autoStartServer: false,
   launchPreferences: emptyLaunchPreferences,
   remoteProviders: [],

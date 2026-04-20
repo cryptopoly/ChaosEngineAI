@@ -269,6 +269,7 @@ class ChaosEngineState:
             "modelDirectories": directories,
             "preferredServerPort": self.settings["preferredServerPort"],
             "allowRemoteConnections": bool(self.settings.get("allowRemoteConnections", False)),
+            "requireApiAuth": bool(self.settings.get("requireApiAuth", True)),
             "autoStartServer": bool(self.settings.get("autoStartServer", False)),
             "launchPreferences": self._launch_preferences(),
             "remoteProviders": masked_providers,
@@ -892,6 +893,7 @@ class ChaosEngineState:
             next_settings["modelDirectories"] = [dict(entry) for entry in self.settings["modelDirectories"]]
             next_settings["preferredServerPort"] = self.settings["preferredServerPort"]
             next_settings["allowRemoteConnections"] = bool(self.settings.get("allowRemoteConnections", False))
+            next_settings["requireApiAuth"] = bool(self.settings.get("requireApiAuth", True))
             next_settings["launchPreferences"] = self._launch_preferences()
             next_settings["remoteProviders"] = list(self.settings.get("remoteProviders") or [])
             next_settings["huggingFaceToken"] = str(self.settings.get("huggingFaceToken") or "")
@@ -906,6 +908,8 @@ class ChaosEngineState:
                 next_settings["preferredServerPort"] = request.preferredServerPort
             if request.allowRemoteConnections is not None:
                 next_settings["allowRemoteConnections"] = request.allowRemoteConnections
+            if request.requireApiAuth is not None:
+                next_settings["requireApiAuth"] = request.requireApiAuth
             if request.autoStartServer is not None:
                 next_settings["autoStartServer"] = request.autoStartServer
             if request.launchPreferences is not None:

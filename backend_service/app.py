@@ -270,6 +270,16 @@ def _resolve_api_token(explicit_token: str | None = None) -> str:
     return token or secrets.token_urlsafe(32)
 
 
+def _resolve_require_api_auth(settings: dict[str, Any]) -> bool:
+    # Env var wins — useful for CI / headless scripts that need to drop
+    # the bearer requirement without touching settings.json. Accepts any
+    # of "0", "false", "no", "off" (case-insensitive) to disable.
+    env_override = os.getenv("CHAOSENGINE_REQUIRE_AUTH")
+    if env_override is not None:
+        return env_override.strip().lower() not in {"0", "false", "no", "off", ""}
+    return bool(settings.get("requireApiAuth", True))
+
+
 def _is_loopback_host(host: str | None) -> bool:
     if not host:
         return False
@@ -442,6 +452,13 @@ def create_app(
     app.state.chaosengine = state or ChaosEngineState(server_port=DEFAULT_PORT)
     app.state.chaosengine_api_token = _resolve_api_token(api_token)
     app.state.chaosengine_allowed_origins = frozenset(allowed_origins)
+    # Bearer-token enforcement toggle. Reads from (in order) env override,
+    # then saved settings, defaulting to True (keep the existing secure
+    # default). Mutated live by state.update_settings so the user doesn't
+    # need to restart the server to toggle it.
+    app.state.chaosengine_require_api_auth = _resolve_require_api_auth(
+        app.state.chaosengine.settings,
+    )
 
     # Shutdown hook: kill any running llama-server / MLX worker children
     # on backend exit. Runs on clean shutdown (uvicorn SIGTERM), Ctrl-C,
@@ -502,6 +519,7 @@ def create_app(
             request.method == "OPTIONS"
             or path in EXEMPT_AUTH_PATHS
             or not (path.startswith("/api/") or path.startswith("/v1/"))
+            or not getattr(app.state, "chaosengine_require_api_auth", True)
         ):
             return await call_next(request)
 

@@ -32,6 +32,7 @@ export type SettingsDraft = {
   modelDirectories: AppSettings["modelDirectories"];
   preferredServerPort: number;
   allowRemoteConnections: boolean;
+  requireApiAuth: boolean;
   autoStartServer: boolean;
   remoteProviders: AppSettings["remoteProviders"];
   huggingFaceToken: string;

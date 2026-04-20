@@ -666,6 +666,7 @@ export const mockWorkspace: WorkspaceData = {
     ],
     preferredServerPort: 8876,
     allowRemoteConnections: false,
+    requireApiAuth: true,
     autoStartServer: false,
     launchPreferences: {
       contextTokens: 8192,

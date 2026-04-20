@@ -85,6 +85,7 @@ export function settingsDraftFromWorkspace(settings: AppSettings): SettingsDraft
     modelDirectories: settings?.modelDirectories ?? [],
     preferredServerPort: settings?.preferredServerPort ?? 8876,
     allowRemoteConnections: settings?.allowRemoteConnections ?? false,
+    requireApiAuth: settings?.requireApiAuth ?? true,
     autoStartServer: settings?.autoStartServer ?? false,
     remoteProviders: settings?.remoteProviders ?? [],
     huggingFaceToken: "",

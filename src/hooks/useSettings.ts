@@ -237,6 +237,7 @@ export function useSettings(
         modelDirectories: settingsDraft.modelDirectories,
         preferredServerPort: settingsDraft.preferredServerPort,
         allowRemoteConnections: settingsDraft.allowRemoteConnections,
+        requireApiAuth: settingsDraft.requireApiAuth,
         autoStartServer: settingsDraft.autoStartServer,
         launchPreferences: launchSettings,
         remoteProviders: (settingsDraft.remoteProviders ?? []).map((p) => ({

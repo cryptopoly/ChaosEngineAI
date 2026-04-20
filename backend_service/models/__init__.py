@@ -111,6 +111,7 @@ class UpdateSettingsRequest(BaseModel):
     modelDirectories: list[ModelDirectoryRequest] | None = None
     preferredServerPort: int | None = Field(default=None, ge=1024, le=65535)
     allowRemoteConnections: bool | None = None
+    requireApiAuth: bool | None = None
     autoStartServer: bool | None = None
     launchPreferences: LaunchPreferencesRequest | None = None
     remoteProviders: list[RemoteProviderRequest] | None = None

@@ -196,6 +196,10 @@ export interface AppSettings {
   modelDirectories: ModelDirectorySetting[];
   preferredServerPort: number;
   allowRemoteConnections: boolean;
+  // When false, the backend disables bearer-token enforcement so external
+  // clients (OpenWebUI, curl, another desktop app) can hit /api and /v1
+  // endpoints without a token. Default true.
+  requireApiAuth: boolean;
   autoStartServer: boolean;
   launchPreferences: LaunchPreferences;
   remoteProviders?: RemoteProvider[];
@@ -964,6 +968,7 @@ export interface UpdateSettingsPayload {
   modelDirectories?: ModelDirectorySetting[];
   preferredServerPort?: number;
   allowRemoteConnections?: boolean;
+  requireApiAuth?: boolean;
   autoStartServer?: boolean;
   launchPreferences?: LaunchPreferences;
   remoteProviders?: Array<{ id: string; label: string; apiBase: string; apiKey: string; model: string }>;

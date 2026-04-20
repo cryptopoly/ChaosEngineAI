@@ -408,11 +408,26 @@ function stageOptionalRuntimePackages(pythonBinary) {
 function stageLlamaBinaries() {
   const warnings = [];
   const sourceDir = process.env.CHAOSENGINE_LLAMA_BIN_DIR || defaultLlamaBinDir();
+  // Allow a release build to ship without llama.cpp when the operator has
+  // explicitly opted in (e.g. building a Windows installer for diffusers-only
+  // testing on a machine that hasn't compiled llama.cpp from source). The
+  // installer still bundles the Python runtime and frontend; users can
+  // install llama-server via the Setup page at runtime. Without this escape
+  // hatch the only release path is "build llama.cpp first", which forces
+  // CMake + Visual Studio onto every release machine.
+  const allowMissingLlama = process.env.CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA === "1";
   if (!fs.existsSync(sourceDir)) {
-    if (strict) {
-      throw new Error("llama.cpp binary directory not found.");
+    const message = `llama.cpp binary directory not found at ${sourceDir}.`;
+    if (strict && !allowMissingLlama) {
+      throw new Error(
+        `${message} Build llama.cpp at ../llama.cpp/build/bin/, set CHAOSENGINE_LLAMA_BIN_DIR ` +
+        `to your build directory, or set CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1 to ship without it.`,
+      );
     }
-    return ["llama.cpp binary directory not found."];
+    warnings.push(
+      `${message} Installer will ship without llama-server; users can install it via the Setup page.`,
+    );
+    return warnings;
   }
 
   ensureDir(binDest);
@@ -421,7 +436,7 @@ function stageLlamaBinaries() {
 
   if (!selected.includes(binaryName("llama-server"))) {
     const message = `Missing ${binaryName("llama-server")} in the configured llama.cpp binary directory`;
-    if (strict) {
+    if (strict && !allowMissingLlama) {
       throw new Error(message);
     }
     warnings.push(message);

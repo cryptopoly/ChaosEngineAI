@@ -354,6 +354,39 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIn("appVersion", payload)
         self.assertEqual(payload["engine"], "mock")
 
+    def test_system_gpu_status_reports_expected_keys(self):
+        response = self.client.get("/api/system/gpu-status")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        for key in (
+            "platform",
+            "nvidiaGpuDetected",
+            "torchImported",
+            "torchCudaAvailable",
+            "torchMpsAvailable",
+            "cpuFallbackWarning",
+            "recommendation",
+        ):
+            self.assertIn(key, payload)
+        self.assertIsInstance(payload["platform"], str)
+        self.assertIsInstance(payload["nvidiaGpuDetected"], bool)
+        self.assertIsInstance(payload["cpuFallbackWarning"], bool)
+
+    def test_system_gpu_status_exempt_from_auth(self):
+        # The banner polls this endpoint before the token is wired up, so it
+        # must stay reachable even when require_api_auth is enforced.
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+        state.runtime = FakeRuntime()
+        client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        response = client.get("/api/system/gpu-status")
+        self.assertEqual(response.status_code, 200)
+
     def test_auth_session_bootstrap_returns_local_token(self):
         response = self.client.get(
             "/api/auth/session",

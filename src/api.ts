@@ -267,6 +267,20 @@ export async function checkBackend(): Promise<boolean> {
   }
 }
 
+export interface GpuStatus {
+  platform: string;
+  nvidiaGpuDetected: boolean;
+  torchImported: boolean;
+  torchCudaAvailable: boolean;
+  torchMpsAvailable: boolean;
+  cpuFallbackWarning: boolean;
+  recommendation: string | null;
+}
+
+export async function getGpuStatus(): Promise<GpuStatus> {
+  return await fetchJson<GpuStatus>("/api/system/gpu-status", 15000, { includeAuth: false });
+}
+
 export async function getSettings(): Promise<AppSettings> {
   const result = await fetchJson<{ settings: AppSettings }>("/api/settings");
   return result.settings;

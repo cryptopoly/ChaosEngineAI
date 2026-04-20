@@ -5,11 +5,12 @@ import importlib.util
 import io
 import os
 import platform
-import shutil
 import textwrap
 import time
 import gc
 import secrets
+
+from backend_service.helpers.gpu import nvidia_gpu_present as _nvidia_gpu_present
 from colorsys import hsv_to_rgb
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -179,15 +180,6 @@ def _resolve_image_python() -> str:
     if candidate.exists():
         return str(candidate)
     return os.getenv("PYTHON", "python3")
-
-
-def _nvidia_gpu_present() -> bool:
-    # Cheap, side-effect-free probe: just check if nvidia-smi is on PATH.
-    # We deliberately avoid invoking it — some systems (locked-down laptops,
-    # WSL without the NVIDIA driver shim) have the binary but it hangs on
-    # first call. Presence on PATH is a reliable-enough signal for the
-    # diagnostic message we want to surface.
-    return shutil.which("nvidia-smi") is not None
 
 
 def _stable_hash(value: str) -> int:

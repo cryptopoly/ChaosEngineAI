@@ -8,6 +8,7 @@ Provides a unified interface for querying GPU metrics across platforms:
 from __future__ import annotations
 
 import platform
+import shutil
 import subprocess
 import json
 import threading
@@ -206,3 +207,78 @@ def reset_vram_total_cache() -> None:
     """Clear the cached VRAM total. Used by tests."""
     with _VRAM_TOTAL_LOCK:
         _VRAM_TOTAL_CACHE.clear()
+
+
+def nvidia_gpu_present() -> bool:
+    """Cheap, side-effect-free check for an NVIDIA GPU on Linux/Windows.
+
+    We only look for ``nvidia-smi`` on ``PATH`` — invoking it is deliberately
+    avoided because some locked-down laptops and WSL installs without the
+    driver shim hang on the first call. Presence on ``PATH`` is a
+    reliable-enough signal for the "you probably wanted CUDA" diagnostic the
+    image/video runtimes surface when torch falls back to CPU.
+    """
+    return shutil.which("nvidia-smi") is not None
+
+
+_CUDA_WHEEL_HINT = (
+    "pip install --upgrade --force-reinstall torch "
+    "--index-url https://download.pytorch.org/whl/cu121"
+)
+
+
+def gpu_status_snapshot() -> dict[str, Any]:
+    """Unified GPU status for the frontend warning banner.
+
+    Returns a dict with the host platform, whether an NVIDIA driver is
+    visible, whether torch can reach CUDA / MPS, and a recommendation string
+    when torch falls back to CPU on a machine with an NVIDIA GPU. All fields
+    are optional so this can be called before torch has been imported without
+    failing.
+    """
+    system = platform.system()
+    nvidia_present = nvidia_gpu_present()
+
+    torch_imported = False
+    cuda_available = False
+    mps_available = False
+    try:
+        import torch  # type: ignore
+    except Exception:
+        torch_module = None
+    else:
+        torch_module = torch
+        torch_imported = True
+
+    if torch_module is not None:
+        try:
+            cuda_available = bool(getattr(torch_module.cuda, "is_available", lambda: False)())
+        except Exception:
+            cuda_available = False
+        try:
+            mps_module = getattr(torch_module.backends, "mps", None)
+            if mps_module is not None:
+                mps_available = bool(getattr(mps_module, "is_available", lambda: False)())
+        except Exception:
+            mps_available = False
+
+    if system in ("Windows", "Linux") and nvidia_present and torch_imported and not cuda_available:
+        recommendation = (
+            "torch was imported but CUDA is unavailable — generation will run on CPU "
+            "(expect minutes per step). Reinstall the CUDA wheel: "
+            + _CUDA_WHEEL_HINT
+        )
+        warn = True
+    else:
+        recommendation = None
+        warn = False
+
+    return {
+        "platform": system,
+        "nvidiaGpuDetected": nvidia_present,
+        "torchImported": torch_imported,
+        "torchCudaAvailable": cuda_available,
+        "torchMpsAvailable": mps_available,
+        "cpuFallbackWarning": warn,
+        "recommendation": recommendation,
+    }

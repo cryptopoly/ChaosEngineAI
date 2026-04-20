@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
+from backend_service.helpers.gpu import gpu_status_snapshot
 from backend_service.helpers.system import _runtime_label
 
 router = APIRouter()
@@ -42,3 +43,15 @@ def runtime_status(request: Request) -> dict[str, Any]:
         active_requests=state.active_requests,
         requests_served=state.requests_served,
     )
+
+
+@router.get("/api/system/gpu-status")
+def system_gpu_status() -> dict[str, Any]:
+    """Unified GPU availability summary for the frontend warning banner.
+
+    Returns whether torch sees CUDA / MPS on the current host, whether an
+    NVIDIA driver is visible on ``PATH``, and a human-readable recommendation
+    string when torch fell back to CPU on a box that clearly has an NVIDIA
+    GPU. Safe to call before any model is loaded.
+    """
+    return gpu_status_snapshot()

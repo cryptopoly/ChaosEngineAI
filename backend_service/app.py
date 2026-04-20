@@ -111,6 +111,7 @@ DEFAULT_ALLOWED_ORIGINS = (
 EXEMPT_AUTH_PATHS = frozenset({
     "/api/health",
     "/api/auth/session",
+    "/api/system/gpu-status",
 })
 
 

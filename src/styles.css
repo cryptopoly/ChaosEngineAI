@@ -2144,6 +2144,19 @@ select.text-input {
   flex: 1;
   min-width: 0;
 }
+.warn-banner {
+  background: rgba(230, 184, 110, 0.08);
+  border-color: rgba(230, 184, 110, 0.45);
+  color: #c99236;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.warn-banner > span {
+  flex: 1;
+  min-width: 0;
+}
 .rebuild-output {
   max-height: 240px;
   overflow: auto;

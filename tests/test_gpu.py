@@ -7,6 +7,8 @@ from backend_service.helpers.gpu import (
     GPUMonitor,
     get_device_vram_total_gb,
     get_gpu_metrics,
+    gpu_status_snapshot,
+    nvidia_gpu_present,
     reset_vram_total_cache,
 )
 
@@ -159,6 +161,69 @@ class CachedVramTotalTests(unittest.TestCase):
             mock_snapshot.return_value = {"vram_total_gb": 12.0}
             self.assertIsNone(get_device_vram_total_gb())
             mock_snapshot.assert_not_called()
+
+
+class GpuStatusSnapshotTests(unittest.TestCase):
+    """The /api/system/gpu-status endpoint feeds the frontend CPU-fallback banner."""
+
+    def test_snapshot_has_expected_shape(self):
+        snapshot = gpu_status_snapshot()
+        for key in (
+            "platform",
+            "nvidiaGpuDetected",
+            "torchImported",
+            "torchCudaAvailable",
+            "torchMpsAvailable",
+            "cpuFallbackWarning",
+            "recommendation",
+        ):
+            self.assertIn(key, snapshot)
+        self.assertIsInstance(snapshot["platform"], str)
+        self.assertIsInstance(snapshot["nvidiaGpuDetected"], bool)
+        self.assertIsInstance(snapshot["cpuFallbackWarning"], bool)
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
+    def test_recommendation_when_nvidia_present_but_cuda_unavailable(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = False
+        fake_torch.backends.mps.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertTrue(snapshot["torchImported"])
+        self.assertFalse(snapshot["torchCudaAvailable"])
+        self.assertTrue(snapshot["cpuFallbackWarning"])
+        self.assertIsNotNone(snapshot["recommendation"])
+        self.assertIn("cu121", snapshot["recommendation"])
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
+    def test_no_warning_when_cuda_available(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.backends.mps.is_available.return_value = False
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertTrue(snapshot["torchCudaAvailable"])
+        self.assertFalse(snapshot["cpuFallbackWarning"])
+        self.assertIsNone(snapshot["recommendation"])
+
+    @patch("backend_service.helpers.gpu.platform.system", return_value="Darwin")
+    @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=False)
+    def test_no_warning_on_macos_even_with_cpu_torch(self, _nv, _plat):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available.return_value = False
+        fake_torch.backends.mps.is_available.return_value = True
+        with patch.dict("sys.modules", {"torch": fake_torch}):
+            snapshot = gpu_status_snapshot()
+        self.assertFalse(snapshot["cpuFallbackWarning"])
+        self.assertIsNone(snapshot["recommendation"])
+
+    def test_nvidia_gpu_present_respects_path(self):
+        with patch("backend_service.helpers.gpu.shutil.which", return_value="/usr/bin/nvidia-smi"):
+            self.assertTrue(nvidia_gpu_present())
+        with patch("backend_service.helpers.gpu.shutil.which", return_value=None):
+            self.assertFalse(nvidia_gpu_present())
 
 
 @unittest.skipUnless(hasattr(subprocess, "CREATE_NO_WINDOW"), "Windows-only flag")

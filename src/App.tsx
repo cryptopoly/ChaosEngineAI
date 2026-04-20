@@ -84,6 +84,7 @@ import {
   useBenchmarks,
   useSettings,
   useSidebarPrefs,
+  useGpuStatus,
 } from "./hooks";
 
 export default function App() {
@@ -104,6 +105,7 @@ export default function App() {
   const [compareMode, setCompareMode] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const sidebarPrefs = useSidebarPrefs();
+  const gpuStatus = useGpuStatus(backendOnline);
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
@@ -1746,6 +1748,18 @@ export default function App() {
         </header>
 
         <div className="workspace-status-stack">
+          {gpuStatus.showBanner && gpuStatus.status ? (
+            <div className="notice-banner warn-banner">
+              <span>
+                <strong>Running on CPU.</strong>{" "}
+                {gpuStatus.status.recommendation ??
+                  "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow."}
+              </span>
+              <button className="secondary-button" type="button" onClick={gpuStatus.dismiss}>
+                Dismiss
+              </button>
+            </div>
+          ) : null}
           {error ? (
             <div className="notice-banner error-banner">
               <span>{error}</span>

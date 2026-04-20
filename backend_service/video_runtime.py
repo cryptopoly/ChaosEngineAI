@@ -21,6 +21,7 @@ import gc
 import importlib
 import importlib.util
 import os
+import platform
 import secrets
 import threading
 import time
@@ -28,6 +29,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.gpu import nvidia_gpu_present
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
     PHASE_DECODING,
@@ -78,6 +80,25 @@ def _torch_warmup_worker() -> None:
             _torch_warmup_state["status"] = "failed"
             _torch_warmup_state["error"] = f"{type(exc).__name__}: {exc}"
         return
+    # Pre-warm anything else the first probe() call would otherwise pay for
+    # inline. On Windows the nvidia-smi shell-out adds 1-2s per probe when
+    # uncached, and importlib.util.find_spec on a cold NTFS volume with
+    # antivirus scanning can be slow enough to push a probe past the
+    # frontend's fetch timeout. Doing both here keeps probe() a hashmap
+    # lookup in the common case.
+    try:
+        from backend_service.helpers.gpu import get_device_vram_total_gb
+        get_device_vram_total_gb()
+    except Exception:
+        pass
+    try:
+        for _pkg, module_name in _CORE_DEPS + _VIDEO_OUTPUT_DEPS + _VIDEO_MODEL_DEPS:
+            try:
+                importlib.util.find_spec(module_name)
+            except Exception:
+                pass
+    except Exception:
+        pass
     with _torch_warmup_lock:
         _torch_warmup_state["status"] = "ready"
         _torch_warmup_state["error"] = None
@@ -293,6 +314,50 @@ class DiffusersVideoEngine:
     # ---------- public API ----------
 
     def probe(self) -> VideoRuntimeStatus:
+        # Check warmup status BEFORE any find_spec / subprocess work. On
+        # Windows a cold NTFS volume under antivirus can make both slow
+        # enough to push the probe past the frontend's 30s fetch budget —
+        # the fetch then aborts with TypeError "Failed to fetch" and the
+        # Studio freezes on "ENGINE: UNAVAILABLE" even though the backend
+        # itself is healthy. Returning "initializing" here is cheap and the
+        # frontend polls until the real status is ready.
+        #
+        # If torch is already in ``sys.modules`` (tests, or any process that
+        # imported it earlier), skip this gate entirely — the warmup thread
+        # exists purely to avoid the cold-import cost, and if we've already
+        # paid it there's nothing to wait for.
+        import sys
+        torch_already_imported = "torch" in sys.modules
+        if not torch_already_imported:
+            warmup = torch_warmup_status()
+            if warmup["status"] in ("in_progress", "not_started"):
+                # ``not_started`` means create_app() didn't run (rare:
+                # alternate launcher, tests that import probe directly).
+                # Kick off warmup now so the next poll has a chance to
+                # transition to "ready".
+                if warmup["status"] == "not_started":
+                    start_torch_warmup()
+                    warmup = torch_warmup_status()
+                elapsed = (
+                    time.monotonic() - warmup["started_at"]
+                    if warmup["started_at"] is not None
+                    else 0.0
+                )
+                return VideoRuntimeStatus(
+                    activeEngine="initializing",
+                    realGenerationAvailable=False,
+                    missingDependencies=[],
+                    pythonExecutable=_resolve_video_python(),
+                    message=(
+                        "Video runtime is starting — PyTorch is still loading "
+                        f"({elapsed:.0f}s elapsed). First boot can take up to 60s on "
+                        "Windows/Linux. This page will refresh automatically when it's ready."
+                    ),
+                    loadedModelRepo=self._loaded_repo,
+                )
+        else:
+            warmup = torch_warmup_status()
+
         missing_core = _find_missing(_CORE_DEPS)
         missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
         missing_model = _find_missing(_VIDEO_MODEL_DEPS)
@@ -318,29 +383,6 @@ class DiffusersVideoEngine:
                 loadedModelRepo=self._loaded_repo,
             )
 
-        # Fast path: if the startup torch warmup is still running, return an
-        # "initializing" status immediately instead of blocking on the import
-        # lock. The UI polls this endpoint and will pick up the real status
-        # as soon as the warmup finishes (usually 20-60s on first boot).
-        warmup = torch_warmup_status()
-        if warmup["status"] == "in_progress":
-            elapsed = (
-                time.monotonic() - warmup["started_at"]
-                if warmup["started_at"] is not None
-                else 0.0
-            )
-            return VideoRuntimeStatus(
-                activeEngine="initializing",
-                realGenerationAvailable=False,
-                missingDependencies=missing_optional,
-                pythonExecutable=_resolve_video_python(),
-                message=(
-                    "Video runtime is starting — PyTorch is still loading "
-                    f"({elapsed:.0f}s elapsed). First boot can take up to 60s on "
-                    "Windows/Linux. This page will refresh automatically when it's ready."
-                ),
-                loadedModelRepo=self._loaded_repo,
-            )
         if warmup["status"] == "failed":
             return VideoRuntimeStatus(
                 activeEngine="placeholder",
@@ -386,6 +428,17 @@ class DiffusersVideoEngine:
             message = (
                 "Real local video generation is available. Download a video model, then Video Studio "
                 "will use the diffusers runtime."
+            )
+
+        # Same CPU-fallback hint the image runtime surfaces: a CPU-only torch
+        # on a box with an NVIDIA GPU is the top "video generation takes
+        # forever" misconfiguration on Windows and Linux.
+        if device == "cpu" and platform.system() in ("Windows", "Linux") and nvidia_gpu_present():
+            message = (
+                "torch was imported but CUDA is unavailable — video generation will run on CPU "
+                "(expect minutes per step). Reinstall with the CUDA wheel: "
+                "pip install --upgrade --force-reinstall torch "
+                "--index-url https://download.pytorch.org/whl/cu121"
             )
 
         return VideoRuntimeStatus(

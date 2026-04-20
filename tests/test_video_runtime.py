@@ -23,6 +23,22 @@ from backend_service.video_runtime import (
 
 
 class ProbeTests(unittest.TestCase):
+    def setUp(self):
+        # Bypass the Windows cold-start warmup gate in probe(). The gate
+        # returns "initializing" early when torch hasn't been imported yet
+        # so the HTTP request stays under the frontend's 30s fetch budget —
+        # but in tests we want to exercise the ``_find_missing`` branch
+        # directly, so we pretend torch is ready.
+        self._warmup_patch = mock.patch.object(
+            video_runtime,
+            "torch_warmup_status",
+            return_value={"status": "ready", "error": None, "started_at": 0.0},
+        )
+        self._warmup_patch.start()
+
+    def tearDown(self):
+        self._warmup_patch.stop()
+
     def test_probe_flags_missing_core_deps_as_unavailable(self):
         engine = DiffusersVideoEngine()
         # Simulate a machine with no diffusers/torch installed. Three calls
@@ -114,6 +130,38 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("imageio-ffmpeg", status.missingDependencies)
         self.assertIn("tiktoken", status.missingDependencies)
         self.assertIn("sentencepiece", status.missingDependencies)
+
+    def test_probe_returns_initializing_fast_path_when_warmup_in_progress(self):
+        """Windows cold-disk fix: probe must return BEFORE find_spec runs when
+        the warmup worker is still loading torch, so the fetch stays under
+        the frontend's 30s timeout even on slow disks."""
+        import sys as _sys
+        engine = DiffusersVideoEngine()
+        saved_torch = _sys.modules.pop("torch", None)
+        # Override the setUp "ready" stub for this test so we exercise the
+        # in-progress branch.
+        self._warmup_patch.stop()
+        try:
+            with mock.patch.object(
+                video_runtime,
+                "torch_warmup_status",
+                return_value={"status": "in_progress", "error": None, "started_at": 0.0},
+            ):
+                # _find_missing must NOT be called — that's the whole point.
+                with mock.patch.object(
+                    video_runtime,
+                    "_find_missing",
+                    side_effect=AssertionError("_find_missing ran before warmup fast-path"),
+                ):
+                    status = engine.probe()
+        finally:
+            if saved_torch is not None:
+                _sys.modules["torch"] = saved_torch
+            self._warmup_patch.start()
+
+        self.assertEqual(status.activeEngine, "initializing")
+        self.assertFalse(status.realGenerationAvailable)
+        self.assertIn("PyTorch is still loading", status.message)
 
 
 class PipelineRegistryTests(unittest.TestCase):

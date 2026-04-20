@@ -119,6 +119,8 @@ export interface ModelVariant {
   launchMode: ModelLaunchMode;
   backend: "mlx" | "llama.cpp" | "auto";
   maxContext?: number | null;
+  releaseDate?: string | null;
+  releaseLabel?: string | null;
 }
 
 export interface ModelFamily {
@@ -718,11 +720,16 @@ export interface ImageModelVariant {
   repoSizeGb?: number | null;
   coreWeightsBytes?: number | null;
   coreWeightsGb?: number | null;
+  onDiskBytes?: number | null;
+  onDiskGb?: number | null;
   metadataWarning?: string | null;
   source?: "curated" | "latest" | "experimental";
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;
+  releaseDate?: string | null;
+  createdAt?: string | null;
+  releaseLabel?: string | null;
 }
 
 export interface ImageModelFamily {
@@ -761,9 +768,13 @@ export interface VideoModelVariant {
   availableLocally: boolean;
   hasLocalData?: boolean;
   estimatedGenerationSeconds: number | null;
+  onDiskBytes?: number | null;
+  onDiskGb?: number | null;
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;
+  releaseDate?: string | null;
+  releaseLabel?: string | null;
 }
 
 export interface VideoModelFamily {
@@ -923,6 +934,8 @@ export interface HubModel {
   likesLabel: string;
   lastModified?: string | null;
   updatedLabel?: string | null;
+  createdAt?: string | null;
+  releaseLabel?: string | null;
   availableLocally: boolean;
   launchMode: string;
   backend: string;

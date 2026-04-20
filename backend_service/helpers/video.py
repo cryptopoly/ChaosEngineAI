@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.catalog import VIDEO_MODEL_FAMILIES
-from backend_service.helpers.huggingface import _hf_repo_snapshot_dir
+from backend_service.helpers.formatting import _bytes_to_gb
+from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
+from backend_service.helpers.images import _snapshot_on_disk_bytes
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
@@ -35,14 +37,17 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             enriched["availableLocally"] = _video_repo_runtime_ready(repo) if repo else False
             enriched["hasLocalData"] = enriched["availableLocally"] or _video_repo_has_any_local_data(repo)
             enriched["familyName"] = family["name"]
+            release_date = str(enriched.get("releaseDate") or "").strip() or None
+            enriched["releaseDate"] = release_date
+            enriched["releaseLabel"] = _format_release_label(release_date)
             # Absolute path to the HF snapshot, used by the Reveal File button.
             # Only populated when there is actually something on disk so the
             # UI can reliably hide the button otherwise.
-            if enriched["hasLocalData"] and repo:
-                snapshot_dir = _hf_repo_snapshot_dir(repo)
-                enriched["localPath"] = str(snapshot_dir) if snapshot_dir else None
-            else:
-                enriched["localPath"] = None
+            snapshot_dir = _hf_repo_snapshot_dir(repo) if (enriched["hasLocalData"] and repo) else None
+            enriched["localPath"] = str(snapshot_dir) if snapshot_dir else None
+            on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
+            enriched["onDiskBytes"] = on_disk_bytes
+            enriched["onDiskGb"] = _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None
             variants.append(enriched)
         payload = dict(family)
         payload["variants"] = variants

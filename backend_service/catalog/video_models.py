@@ -40,6 +40,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Small, fast, Apache 2.0 — best starter pick for a local video runtime.",
                 "estimatedGenerationSeconds": 45.0,
                 "availableLocally": False,
+                "releaseDate": "2024-11",
             }
         ],
     },
@@ -75,6 +76,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "1.3B transformer + UMT5 text encoder. ~16GB on disk. Best starter pick for trying local video end-to-end on modest hardware.",
                 "estimatedGenerationSeconds": 60.0,
                 "availableLocally": False,
+                "releaseDate": "2025-02",
             },
             {
                 "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
@@ -94,6 +96,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Wan 2.1 quality tier. ~45GB. Same WanPipeline class as the 1.3B and Wan 2.2.",
                 "estimatedGenerationSeconds": 180.0,
                 "availableLocally": False,
+                "releaseDate": "2025-02",
             },
         ],
     },
@@ -125,6 +128,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Balanced quality vs size. Works on 24GB VRAM or 64GB unified memory.",
                 "estimatedGenerationSeconds": 180.0,
                 "availableLocally": False,
+                "releaseDate": "2025-07",
             }
         ],
     },
@@ -157,6 +161,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "High quality. Needs 40GB+ VRAM or Apple Silicon Max/Ultra class memory.",
                 "estimatedGenerationSeconds": 420.0,
                 "availableLocally": False,
+                "releaseDate": "2024-12",
             }
         ],
     },
@@ -186,6 +191,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Apache 2.0, balanced footprint, strong motion quality.",
                 "estimatedGenerationSeconds": 150.0,
                 "availableLocally": False,
+                "releaseDate": "2024-10",
             }
         ],
     },
@@ -223,6 +229,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk, runs on consumer GPUs.",
                 "estimatedGenerationSeconds": 90.0,
                 "availableLocally": False,
+                "releaseDate": "2024-08",
             },
             {
                 "id": "THUDM/CogVideoX-5b",
@@ -243,6 +250,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Quality tier. ~18 GB on disk. Same CogVideoXPipeline class as the 2B.",
                 "estimatedGenerationSeconds": 200.0,
                 "availableLocally": False,
+                "releaseDate": "2024-08",
             },
         ],
     },

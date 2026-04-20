@@ -6,8 +6,9 @@ import type {
   TabId,
 } from "../../types";
 import {
-  sizeLabel,
   downloadProgressLabel,
+  formatReleaseLabel,
+  imagePrimarySizeLabel,
 } from "../../utils";
 
 export interface ImageModelsTabProps {
@@ -87,8 +88,11 @@ export function ImageModelsTab({
                     ) : null}
                   </div>
                   <div className="image-library-stats">
-                    <span>{sizeLabel(variant.sizeGb)}</span>
+                    <span>{imagePrimarySizeLabel(variant)}</span>
                     <span>{variant.recommendedResolution}</span>
+                    {formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt) ? (
+                      <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)}</span>
+                    ) : null}
                     {variant.styleTags.slice(0, 3).map((tag) => (
                       <span key={tag} className="badge subtle">{tag}</span>
                     ))}

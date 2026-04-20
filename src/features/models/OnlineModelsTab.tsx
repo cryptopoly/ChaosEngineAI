@@ -13,6 +13,7 @@ import {
   capabilityMeta,
   findLibraryItemForVariant,
   downloadProgressLabel,
+  formatReleaseLabel,
   handleActionKeyDown,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
@@ -329,6 +330,11 @@ export function OnlineModelsTab({
                               <div className="variant-detail-expand">
                                 <div className="variant-detail-left">
                                   <p>{variant.note}</p>
+                                  {formatReleaseLabel(variant.releaseLabel, variant.releaseDate) ? (
+                                    <p className="muted-text variant-release-label">
+                                      {formatReleaseLabel(variant.releaseLabel, variant.releaseDate)}
+                                    </p>
+                                  ) : null}
                                   {matchedLocal ? <p className="mono-text variant-local-path">{matchedLocal.path}</p> : null}
                                   <a
                                     className="text-link"
@@ -405,6 +411,9 @@ export function OnlineModelsTab({
                       {!model.availableLocally && isDownloadComplete ? <span className="badge success">Download complete</span> : null}
                     </div>
                     <div className="discover-card-meta">
+                      {formatReleaseLabel(model.releaseLabel, model.createdAt) ? (
+                        <small>{formatReleaseLabel(model.releaseLabel, model.createdAt)}</small>
+                      ) : null}
                       {model.updatedLabel ? <small>{model.updatedLabel}</small> : null}
                       <small>{model.downloadsLabel}</small>
                       <small>{model.likesLabel}</small>

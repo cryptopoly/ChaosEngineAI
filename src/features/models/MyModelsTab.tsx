@@ -14,6 +14,7 @@ import {
   inferHfRepoFromLocalPath,
   downloadProgressLabel,
   downloadSizeTooltip,
+  formatReleaseLabel,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { candidateKeys } from "../../components/runtimeSupport";
@@ -483,6 +484,11 @@ export function MyModelsTab({
                         <div className="library-detail-left">
                           <p className="mono-text library-path">{item.path}</p>
                           {matchedVariant?.note ? <p className="variant-note">{matchedVariant.note}</p> : null}
+                          {formatReleaseLabel(matchedVariant?.releaseLabel, matchedVariant?.releaseDate) ? (
+                            <p className="muted-text variant-release-label">
+                              {formatReleaseLabel(matchedVariant?.releaseLabel, matchedVariant?.releaseDate)}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     ) : null}

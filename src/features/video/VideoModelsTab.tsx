@@ -6,7 +6,7 @@ import type {
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
-import { downloadProgressLabel, number, sizeLabel } from "../../utils";
+import { downloadProgressLabel, formatReleaseLabel, number, videoPrimarySizeLabel } from "../../utils";
 
 export interface VideoModelsTabProps {
   installedVideoVariants: VideoModelVariant[];
@@ -105,9 +105,12 @@ export function VideoModelsTab({
                     ) : null}
                   </div>
                   <div className="image-library-stats">
-                    <span>{sizeLabel(variant.sizeGb)}</span>
+                    <span>{videoPrimarySizeLabel(variant)}</span>
                     <span>{variant.recommendedResolution}</span>
                     <span>{number(variant.defaultDurationSeconds)}s clip</span>
+                    {formatReleaseLabel(variant.releaseLabel, variant.releaseDate) ? (
+                      <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate)}</span>
+                    ) : null}
                     {variant.styleTags.slice(0, 3).map((tag) => (
                       <span key={tag} className="badge subtle">{tag}</span>
                     ))}

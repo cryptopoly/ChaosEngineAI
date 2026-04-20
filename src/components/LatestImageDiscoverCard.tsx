@@ -5,6 +5,7 @@ import {
   imageSecondarySizeLabel,
   formatImageLicenseLabel,
   formatImageAccessError,
+  formatReleaseLabel,
   isGatedImageAccessError,
 } from "../utils/format";
 import { downloadProgressLabel, downloadSizeTooltip } from "../utils/downloads";
@@ -63,6 +64,9 @@ export function LatestImageDiscoverCard({
       </div>
 
       <div className="image-family-meta">
+        {formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt) ? (
+          <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)}</span>
+        ) : null}
         {variant.downloadsLabel ? <span>{variant.downloadsLabel}</span> : null}
         {variant.likesLabel ? <span>{variant.likesLabel}</span> : null}
         {variant.license ? <span>{formatImageLicenseLabel(variant.license)}</span> : null}

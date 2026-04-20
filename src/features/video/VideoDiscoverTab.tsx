@@ -10,6 +10,7 @@ import type { VideoDiscoverTaskFilter } from "../../types/video";
 import {
   downloadProgressLabel,
   downloadSizeTooltip,
+  formatReleaseLabel,
   number,
   sizeLabel,
 } from "../../utils";
@@ -214,6 +215,9 @@ export function VideoDiscoverTab({
                   <span>{sizeLabel(variant.sizeGb)}</span>
                   <span>{variant.recommendedResolution}</span>
                   <span>{number(variant.defaultDurationSeconds)}s clip</span>
+                  {formatReleaseLabel(variant.releaseLabel, variant.releaseDate) ? (
+                    <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate)}</span>
+                  ) : null}
                   {variant.styleTags.slice(0, 3).map((tag) => (
                     <span key={tag} className="badge subtle">{tag}</span>
                   ))}

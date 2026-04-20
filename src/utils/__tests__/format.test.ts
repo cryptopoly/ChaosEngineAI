@@ -4,6 +4,7 @@ import {
   formatImageAccessError,
   formatImageLicenseLabel,
   formatImageTimestamp,
+  formatReleaseLabel,
   imageRuntimeErrorStatus,
   isGatedImageAccessError,
   number,
@@ -140,5 +141,29 @@ describe("imageRuntimeErrorStatus()", () => {
   it("uses a fallback message for non-Error values", () => {
     const status = imageRuntimeErrorStatus("string error");
     expect(status.message).toBe("Image runtime unavailable.");
+  });
+});
+
+describe("formatReleaseLabel()", () => {
+  it("prefers an already-formatted backend label", () => {
+    expect(formatReleaseLabel("Released Aug 2024", "2024-08-01")).toBe("Released Aug 2024");
+  });
+
+  it("parses a YYYY-MM curated shorthand", () => {
+    expect(formatReleaseLabel(null, "2024-08")).toBe("Released Aug 2024");
+  });
+
+  it("parses a YYYY-MM-DD curated shorthand", () => {
+    expect(formatReleaseLabel(null, "2025-02-15")).toBe("Released Feb 2025");
+  });
+
+  it("parses a full ISO datetime from the Hugging Face API", () => {
+    expect(formatReleaseLabel(null, "2024-11-12T09:30:00.000Z")).toBe("Released Nov 2024");
+  });
+
+  it("returns null when both inputs are empty or invalid", () => {
+    expect(formatReleaseLabel(null, null)).toBeNull();
+    expect(formatReleaseLabel(null, "not-a-date")).toBeNull();
+    expect(formatReleaseLabel("", "")).toBeNull();
   });
 });

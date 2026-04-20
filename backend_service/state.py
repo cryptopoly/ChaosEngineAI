@@ -53,6 +53,7 @@ from backend_service.helpers.huggingface import (
 from backend_service.helpers.images import (
     _image_download_validation_error,
     _friendly_image_download_error,
+    _image_repo_allow_patterns,
 )
 from backend_service.helpers.video import (
     _video_download_validation_error,
@@ -2354,15 +2355,19 @@ class ChaosEngineState:
                 process_log_path = temp_log.name
                 temp_log.close()
                 with open(process_log_path, "w", encoding="utf-8", errors="replace") as process_log:
-                    # Video repos get a diffusers-layout allowlist so we
-                    # don't pull legacy standalone safetensors checkpoints
-                    # that the pipeline doesn't use.
-                    video_allow_patterns = _video_repo_allow_patterns(repo)
+                    # Diffusers repos (image + video) get a component-folder
+                    # allowlist so we skip legacy single-file checkpoints the
+                    # pipelines never load. Both helpers return None for repos
+                    # outside their catalog, so only one ever applies.
+                    allow_patterns = (
+                        _video_repo_allow_patterns(repo)
+                        or _image_repo_allow_patterns(repo)
+                    )
                     process = _spawn_snapshot_download(
                         repo,
                         env,
                         process_log,
-                        allow_patterns=video_allow_patterns,
+                        allow_patterns=allow_patterns,
                     )
                     with self._lock:
                         if self._download_tokens.get(repo) == download_token:

@@ -18,11 +18,12 @@ from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.huggingface import (
     _classify_hub_file,
     _format_hf_updated_label,
+    _format_release_label,
     _hf_number_label,
     _hf_repo_snapshot_dir,
     _parse_iso_datetime,
 )
-from backend_service.helpers.discovery import _candidate_model_dirs
+from backend_service.helpers.discovery import _candidate_model_dirs, _path_size_bytes
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
@@ -30,6 +31,33 @@ _IMAGE_DISCOVER_METADATA_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 _IMAGE_DISCOVER_METADATA_TTL_SECONDS = 6 * 60 * 60
 _LATEST_IMAGE_MODELS_CACHE: tuple[float, list[dict[str, Any]]] | None = None
 _LATEST_IMAGE_MODELS_TTL_SECONDS = 3 * 60 * 60
+
+# Cache keyed by (path, mtime_ns) — we recompute only when the snapshot dir
+# actually changes. A fresh os.stat() is cheap enough to do per payload call.
+_SNAPSHOT_SIZE_CACHE: dict[tuple[str, int], int] = {}
+
+
+def _snapshot_on_disk_bytes(snapshot_dir: Path | None) -> int | None:
+    """Walk the HF snapshot dir and return its true on-disk byte size.
+
+    Delegates to ``_path_size_bytes`` which dedupes by inode, so HF's
+    ``snapshots/<commit>/ -> blobs/<hash>`` symlink farm counts each blob
+    exactly once. Returns ``None`` when the path is missing or empty so
+    callers can distinguish "not on disk" from "zero bytes".
+    """
+    if snapshot_dir is None:
+        return None
+    try:
+        stat_result = snapshot_dir.stat()
+    except OSError:
+        return None
+    cache_key = (str(snapshot_dir), stat_result.st_mtime_ns)
+    cached = _SNAPSHOT_SIZE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached or None
+    total = _path_size_bytes(snapshot_dir)
+    _SNAPSHOT_SIZE_CACHE[cache_key] = total
+    return total or None
 
 
 def _stable_image_hash(value: str) -> int:
@@ -98,15 +126,24 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
         for variant in family["variants"]:
             repo_id = str(variant.get("repo") or "")
             snapshot_dir = _hf_repo_snapshot_dir(repo_id) if repo_id else None
+            live_metadata = repo_metadata.get(repo_id, {})
+            curated_release_date = str(variant.get("releaseDate") or "").strip() or None
+            curated_release_label = _format_release_label(curated_release_date)
+            release_label = curated_release_label or live_metadata.get("releaseLabel")
+            on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
             variants.append(
                 {
                     **variant,
-                    **repo_metadata.get(repo_id, {}),
+                    **live_metadata,
                     "source": "curated",
                     "familyName": family.get("name"),
                     "availableLocally": _image_variant_available_locally(variant, library),
                     "hasLocalData": snapshot_dir is not None,
                     "localPath": str(snapshot_dir) if snapshot_dir else None,
+                    "releaseDate": curated_release_date,
+                    "releaseLabel": release_label,
+                    "onDiskBytes": on_disk_bytes,
+                    "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
                 }
             )
         families.append(
@@ -206,6 +243,7 @@ def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
         downloads = int(data.get("downloads") or 0)
         likes = int(data.get("likes") or 0)
         last_modified = str(data.get("lastModified") or "").strip() or None
+        created_at = str(data.get("createdAt") or "").strip() or None
         payload = {
             "downloads": downloads,
             "likes": likes,
@@ -213,6 +251,8 @@ def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
             "likesLabel": _hf_number_label(likes, "likes") if likes > 0 else None,
             "lastModified": last_modified,
             "updatedLabel": _format_hf_updated_label(last_modified),
+            "createdAt": created_at,
+            "releaseLabel": _format_release_label(created_at),
             "license": license_value,
             "gated": bool(data.get("gated")),
             "pipelineTag": str(data.get("pipeline_tag") or "").strip() or None,
@@ -322,6 +362,9 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
         repo_id = str(seed.get("repo") or "")
         if not repo_id:
             continue
+        release_date = str(seed.get("releaseDate") or "").strip() or None
+        snapshot_dir = _hf_repo_snapshot_dir(repo_id)
+        on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
         payloads.append(
             {
                 "id": repo_id,
@@ -341,12 +384,10 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                     or "Tracked latest image repo surfaced by ChaosEngineAI when the live latest lane is sparse."
                 ),
                 "availableLocally": _image_repo_runtime_ready(repo_id),
-                "hasLocalData": _hf_repo_snapshot_dir(repo_id) is not None,
-                "localPath": (
-                    str(_hf_repo_snapshot_dir(repo_id))
-                    if _hf_repo_snapshot_dir(repo_id) is not None
-                    else None
-                ),
+                "hasLocalData": snapshot_dir is not None,
+                "localPath": str(snapshot_dir) if snapshot_dir else None,
+                "onDiskBytes": on_disk_bytes,
+                "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
                 "estimatedGenerationSeconds": None,
                 "downloads": None,
                 "likes": None,
@@ -354,6 +395,9 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "likesLabel": None,
                 "lastModified": None,
                 "updatedLabel": str(seed.get("updatedLabel") or "Tracked latest"),
+                "createdAt": None,
+                "releaseDate": release_date,
+                "releaseLabel": _format_release_label(release_date),
                 "license": seed.get("license"),
                 "gated": seed.get("gated"),
                 "pipelineTag": seed.get("pipelineTag"),
@@ -467,6 +511,8 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
         tags = [str(tag) for tag in (model.get("tags") or [])]
         pipeline_tag = str(model.get("pipeline_tag") or "").strip() or None
         metadata = _image_repo_live_metadata(model_id)
+        snapshot_dir = _hf_repo_snapshot_dir(model_id)
+        on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
         candidates.append({
             "id": model_id,
             "familyId": "latest",
@@ -485,12 +531,10 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
                 "Review details on Hugging Face before treating it as a fully curated Studio default."
             ),
             "availableLocally": _image_repo_runtime_ready(model_id),
-            "hasLocalData": _hf_repo_snapshot_dir(model_id) is not None,
-            "localPath": (
-                str(_hf_repo_snapshot_dir(model_id))
-                if _hf_repo_snapshot_dir(model_id) is not None
-                else None
-            ),
+            "hasLocalData": snapshot_dir is not None,
+            "localPath": str(snapshot_dir) if snapshot_dir else None,
+            "onDiskBytes": on_disk_bytes,
+            "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
             "estimatedGenerationSeconds": None,
             "downloads": metadata.get("downloads"),
             "likes": metadata.get("likes"),
@@ -498,6 +542,8 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "likesLabel": metadata.get("likesLabel"),
             "lastModified": metadata.get("lastModified"),
             "updatedLabel": metadata.get("updatedLabel"),
+            "createdAt": metadata.get("createdAt"),
+            "releaseLabel": metadata.get("releaseLabel"),
             "license": metadata.get("license"),
             "gated": bool(metadata.get("gated")) if metadata.get("gated") is not None else None,
             "pipelineTag": metadata.get("pipelineTag") or pipeline_tag,
@@ -620,6 +666,50 @@ def _image_download_repo_ids() -> set[str]:
             if str(entry.get("repo") or "")
         )
     return repos
+
+
+# Diffusers image pipelines (FLUX, SD3.5, SDXL, Sana, HiDream, Qwen-Image, ...)
+# always load from the per-component folder layout at the snapshot root. Many
+# repos also ship a legacy single-file checkpoint (e.g. ``flux1-schnell.safetensors``
+# in ``black-forest-labs/FLUX.1-schnell``) for ComfyUI/kijai users — ~24 GB of
+# duplicate weights the diffusers pipeline never touches. Without an allowlist
+# ``snapshot_download`` pulls both copies, so a 23 GB model lands on disk as
+# 57+ GB. Mirrors ``_VIDEO_DIFFUSERS_ALLOW_PATTERNS`` in ``helpers/video.py``.
+_IMAGE_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
+    "model_index.json",
+    "scheduler/**",
+    "text_encoder/**",
+    "text_encoder_2/**",
+    "text_encoder_3/**",
+    "tokenizer/**",
+    "tokenizer_2/**",
+    "tokenizer_3/**",
+    "transformer/**",
+    "transformer_2/**",
+    "unet/**",
+    "vae/**",
+    "feature_extractor/**",
+    "image_encoder/**",
+    "safety_checker/**",
+    "*.md",
+    "LICENSE*",
+]
+
+
+def _image_repo_allow_patterns(repo_id: str) -> list[str] | None:
+    """Patterns to pass to ``snapshot_download`` for an image repo.
+
+    Returns ``None`` for repos that aren't known curated or tracked image
+    models so arbitrary Discover hub results still download in full. Returning
+    ``None`` (not an empty list) signals the caller to omit ``allow_patterns``
+    entirely — an empty list would match nothing and download zero files.
+    """
+    if not repo_id:
+        return None
+    known = _image_download_repo_ids()
+    if repo_id not in known:
+        return None
+    return list(_IMAGE_DIFFUSERS_ALLOW_PATTERNS)
 
 
 # ---- Image output CRUD ----

@@ -5,15 +5,36 @@ import {
   deleteVideoOutput,
   downloadVideoModel,
   generateVideo,
+  getGpuBundleStatus,
   getVideoCatalog,
   getVideoDownloadStatus,
   getVideoOutputs,
   getVideoRuntime,
   installPipPackage,
   preloadVideoModel,
+  startGpuBundleInstall,
   unloadVideoModel,
 } from "../api";
-import type { DownloadStatus, InstallResult } from "../api";
+import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../api";
+
+// Duplicate of the same helper in useImageState — both Studio tabs surface
+// the same bundle-install progress string through their own busy labels.
+// Kept inline here (instead of in ../utils) because the hook files import
+// the same api types and the helper is ~20 LOC.
+function formatGpuBundleLabel(job: GpuBundleJobState): string {
+  const phase = job.phase;
+  if (phase === "preflight") return job.message || "Preparing GPU bundle install...";
+  if (phase === "downloading") {
+    const total = job.packageTotal || 1;
+    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
+    const current = job.packageCurrent || job.message || "package";
+    return `Installing GPU bundle: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
+  }
+  if (phase === "verifying") return "Verifying CUDA availability...";
+  if (phase === "done") return job.message || "GPU bundle installed.";
+  if (phase === "error") return job.error || job.message || "GPU bundle install failed.";
+  return job.message || "Working...";
+}
 import {
   buildDownloadStatusMap,
   defaultVideoVariantForFamily,
@@ -587,6 +608,66 @@ export function useVideoState(
   // the original "Install mp4 encoder" button; the Studio passes an explicit
   // list (sourced from the runtime's missingDependencies) for the generic
   // "Install missing video dependencies" path.
+  // Full GPU bundle install (torch + diffusers + video deps in one shot).
+  // Called from VideoStudioTab's primary "Install GPU support" banner when
+  // the probe reports the runtime engine as unavailable (i.e. torch or
+  // diffusers missing). Uses the same async backend job as the Image
+  // Studio's install — installing once covers both tabs.
+  async function handleInstallVideoGpuRuntime(): Promise<InstallResult> {
+    setVideoBusyLabel("Starting GPU bundle install...");
+    try {
+      let job: GpuBundleJobState;
+      try {
+        job = await startGpuBundleInstall();
+      } catch (err) {
+        const message = `Failed to start GPU bundle install: ${err instanceof Error ? err.message : String(err)}`;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+
+      const POLL_MS = 1500;
+      const MAX_WAIT_MS = 30 * 60_000;
+      const deadline = Date.now() + MAX_WAIT_MS;
+      while (!job.done && Date.now() < deadline) {
+        setVideoBusyLabel(formatGpuBundleLabel(job));
+        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+        try {
+          job = await getGpuBundleStatus();
+        } catch (err) {
+          setVideoBusyLabel(
+            `Install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
+          );
+        }
+      }
+
+      try {
+        const runtime = await getVideoRuntime();
+        setVideoRuntimeStatus(runtime);
+      } catch {
+        // Stale status is fine — restart will refresh.
+      }
+
+      if (job.phase === "error" || job.error) {
+        const message = job.error || job.message || "GPU bundle install failed.";
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+      if (!job.done) {
+        const message = "GPU bundle install did not finish within 30 minutes.";
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+
+      setError(null);
+      const output = job.requiresRestart
+        ? `${job.message}\n\nRestart the backend to activate GPU acceleration.`
+        : job.message;
+      return { ok: true, output, capabilities: {} };
+    } finally {
+      setVideoBusyLabel(null);
+    }
+  }
+
   async function handleInstallVideoOutputDeps(
     packages?: readonly string[],
   ): Promise<InstallResult> {
@@ -731,6 +812,7 @@ export function useVideoState(
     handleVideoGenerate,
     handleDeleteVideoOutput,
     handleInstallVideoOutputDeps,
+    handleInstallVideoGpuRuntime,
     openVideoStudio,
   };
 }

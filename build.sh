@@ -44,49 +44,19 @@ case "$PLATFORM" in
     ;;
 esac
 
-# ── CUDA torch verification (Linux only) ─────────────────
-# If nvidia-smi is on PATH the build machine has an NVIDIA GPU. Abort by
-# default when the bundled torch isn't CUDA-enabled — a silent CPU-only
-# build on an RTX host means ~minutes per diffusion step instead of
-# ~seconds and is never what the operator intended. Set
-# CHAOSENGINE_ALLOW_CPU_TORCH=1 to override (rare, e.g. headless CUDA-less
-# CI runners that happen to have nvidia-smi installed for monitoring).
-if [ "$PLATFORM" = "linux" ] && command -v nvidia-smi >/dev/null 2>&1; then
-  echo "==> Verifying bundled torch has CUDA support..."
-  CUDA_DIAGNOSTIC=$(.venv/bin/python - <<'PY' 2>&1
-import sys
-info = {"python": f"{sys.version_info.major}.{sys.version_info.minor}"}
-try:
-    import torch
-    info["torch"] = torch.__version__
-    info["cuda_build"] = str(getattr(torch.version, "cuda", None))
-    info["cuda_available"] = str(bool(getattr(torch.cuda, "is_available", lambda: False)()))
-except Exception as exc:
-    info["import_error"] = str(exc).splitlines()[0][:120]
-print(" ".join(f"{k}={v}" for k, v in info.items()))
-sys.exit(0 if info.get("cuda_available") == "True" else 1)
-PY
-  )
-  CUDA_STATUS=$?
-  echo "    $CUDA_DIAGNOSTIC"
-  if [ "$CUDA_STATUS" -ne 0 ]; then
-    echo ""
-    echo "!! CUDA torch NOT detected on a machine with nvidia-smi."
-    echo ""
-    echo "   FIX OPTIONS:"
-    echo "   1. Point at a different CUDA index that publishes wheels for your Python:"
-    echo "        export CHAOSENGINE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128"
-    echo "   2. Use Python 3.13 (has the broadest CUDA wheel coverage):"
-    echo "        rm -rf .venv; python3.13 -m venv .venv; ./build.sh"
-    echo "   3. Ship CPU-only torch deliberately:"
-    echo "        export CHAOSENGINE_ALLOW_CPU_TORCH=1"
-    echo ""
-    if [ "${CHAOSENGINE_ALLOW_CPU_TORCH:-}" != "1" ]; then
-      echo "Refusing to bundle CPU-only torch on an NVIDIA host. Set CHAOSENGINE_ALLOW_CPU_TORCH=1 to bypass."
-      exit 1
-    fi
-    echo "!! CHAOSENGINE_ALLOW_CPU_TORCH=1 -- continuing with CPU torch."
-  fi
+# ── Optional GPU bundle ──────────────────────────────────
+# By default the installer ships CHAT-ONLY (no torch, no diffusers). Users
+# click "Install GPU support" inside the app, which installs CUDA torch +
+# diffusers into ~/.chaosengine/extras/ at runtime. Set
+# CHAOSENGINE_BUNDLE_GPU=1 to include the GPU stack in the installer
+# itself (adds ~1.3 GB, only useful for air-gapped deployments).
+if [ "${CHAOSENGINE_BUNDLE_GPU:-}" = "1" ]; then
+  echo "==> CHAOSENGINE_BUNDLE_GPU=1 -- bundling [images] extras"
+  case "$PLATFORM" in
+    darwin)  .venv/bin/pip install -q -e ".[desktop,images]" ;;
+    linux)   .venv/bin/pip install -q -e ".[desktop,images]" ;;
+    windows) .venv/Scripts/pip install -q -e ".[desktop,images]" ;;
+  esac
 fi
 
 # ── npm dependencies ─────────────────────────────────────

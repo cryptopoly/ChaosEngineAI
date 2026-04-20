@@ -308,6 +308,15 @@ impl BackendManager {
                 .env("CHAOSENGINE_PORT", inner.info.port.to_string())
                 .env("CHAOSENGINE_MLX_PYTHON", python_executable.as_os_str());
 
+            // Make the persistent extras site-packages path visible to the
+            // backend whether we're in embedded-runtime or dev-source mode.
+            // The install-gpu-bundle endpoint always writes to this path so
+            // users can switch between dev builds / packaged builds without
+            // redownloading 2 GB of CUDA torch every time.
+            if let Some(extras) = ensure_extras_site_packages() {
+                command.env("CHAOSENGINE_EXTRAS_SITE_PACKAGES", extras.as_os_str());
+            }
+
             if let Some(runtime) = embedded_runtime.as_ref() {
                 apply_embedded_runtime_env(&mut command, runtime);
                 if let Some(llama_server) = runtime.llama_server.as_ref() {
@@ -540,7 +549,22 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
         .env("PYTHONNOUSERSITE", "1")
         .env("CHAOSENGINE_EMBEDDED_RUNTIME", "1");
 
-    if let Some(python_path) = join_paths(&runtime.python_path) {
+    // Prepend the user-local extras dir to PYTHONPATH so packages installed
+    // at runtime (CUDA torch, diffusers, etc. via /api/setup/install-gpu-bundle)
+    // shadow anything in the bundled site-packages. The extras dir lives
+    // outside the ephemeral %TEMP% runtime extraction so it survives app
+    // updates — the installer re-extracts the bundled runtime from scratch
+    // on each launch, but never touches the extras tree.
+    // (CHAOSENGINE_EXTRAS_SITE_PACKAGES is already set by the caller so
+    // the backend can target it for pip --target installs.)
+    let extras_dir = chaosengine_extras_site_packages()
+        .filter(|path| path.is_dir());
+    let mut python_path_entries: Vec<PathBuf> = Vec::with_capacity(runtime.python_path.len() + 1);
+    if let Some(extras) = extras_dir.as_ref() {
+        python_path_entries.push(extras.clone());
+    }
+    python_path_entries.extend(runtime.python_path.iter().cloned());
+    if let Some(python_path) = join_paths(&python_path_entries) {
         command.env("PYTHONPATH", python_path);
     }
     if let Some(path_value) = prepend_env_paths("PATH", &runtime.path_entries) {
@@ -557,6 +581,47 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
 
     if let Some(cert_bundle) = resolve_cert_bundle(runtime) {
         command.env("SSL_CERT_FILE", cert_bundle.as_os_str());
+    }
+}
+
+/// Persistent user-local site-packages directory. Survives app updates,
+/// so CUDA torch / diffusers installed once stays installed forever.
+///
+/// - Windows: ``%LOCALAPPDATA%\ChaosEngineAI\extras\site-packages``
+/// - macOS:   ``~/Library/Application Support/ChaosEngineAI/extras/site-packages``
+/// - Linux:   ``$XDG_DATA_HOME/ChaosEngineAI/extras/site-packages`` (falls
+///            back to ``~/.local/share/ChaosEngineAI/extras/site-packages``)
+///
+/// Returns ``None`` if we can't resolve a home directory at all (headless
+/// environments). Callers treat that as "no extras available" and proceed
+/// with whatever's bundled.
+fn chaosengine_extras_site_packages() -> Option<PathBuf> {
+    let base = if cfg!(windows) {
+        env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .or_else(|| env::var_os("APPDATA").map(PathBuf::from))
+    } else if cfg!(target_os = "macos") {
+        env::var_os("HOME")
+            .map(|home| PathBuf::from(home).join("Library").join("Application Support"))
+    } else {
+        env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share")))
+    }?;
+    Some(base.join("ChaosEngineAI").join("extras").join("site-packages"))
+}
+
+fn ensure_extras_site_packages() -> Option<PathBuf> {
+    let path = chaosengine_extras_site_packages()?;
+    match fs::create_dir_all(&path) {
+        Ok(_) => Some(path),
+        Err(error) => {
+            debug_embedded(format!(
+                "failed to create extras dir {}: {error}",
+                path.display(),
+            ));
+            None
+        }
     }
 }
 

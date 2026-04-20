@@ -5,15 +5,16 @@ import {
   deleteImageOutput,
   downloadImageModel,
   generateImage,
+  getGpuBundleStatus,
   getImageCatalog,
   getImageDownloadStatus,
   getImageOutputs,
   getImageRuntime,
-  installPipPackage,
   preloadImageModel,
+  startGpuBundleInstall,
   unloadImageModel,
 } from "../api";
-import type { DownloadStatus, InstallResult } from "../api";
+import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../api";
 
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
@@ -48,6 +49,26 @@ import type {
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../types/image";
+
+// Human-friendly label for the GPU bundle install progress. Picks the most
+// actionable sentence from the job state so the "Installing..." text in
+// ImageStudioTab / VideoStudioTab shows what's actually happening right now
+// (downloading torch vs. resolving deps vs. verifying CUDA), not a generic
+// spinner with no context.
+function formatGpuBundleLabel(job: GpuBundleJobState): string {
+  const phase = job.phase;
+  if (phase === "preflight") return job.message || "Preparing GPU bundle install...";
+  if (phase === "downloading") {
+    const total = job.packageTotal || 1;
+    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
+    const current = job.packageCurrent || job.message || "package";
+    return `Installing GPU bundle: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
+  }
+  if (phase === "verifying") return "Verifying CUDA availability...";
+  if (phase === "done") return job.message || "GPU bundle installed.";
+  if (phase === "error") return job.error || job.message || "GPU bundle install failed.";
+  return job.message || "Working...";
+}
 
 export function useImageState(
   backendOnline: boolean,
@@ -503,46 +524,80 @@ export function useImageState(
     }
   }
 
-  // One-click install for the diffusers image runtime. The probe reports
-  // exactly which core packages are missing in ``missingDependencies``; if
-  // that list is empty (e.g. a re-probe hasn't landed yet), fall back to the
-  // full set so the button still does the right thing. Each package is
-  // installed in its own call so a partial failure (e.g. a broken torch
-  // wheel on this platform) doesn't block the rest.
+  // One-click install for the diffusers image runtime. Kicks off an
+  // async ``/api/setup/install-gpu-bundle`` job on the backend (runs in a
+  // background thread so the HTTP call returns fast) and then polls the
+  // status endpoint at ~1 Hz to surface progress. Writes to a persistent
+  // ``~/.chaosengine/extras/site-packages`` tree outside the ephemeral
+  // bundled runtime, so updates to ChaosEngineAI itself don't wipe the
+  // ~2 GB of CUDA torch that the user just downloaded.
+  //
+  // Returns an ``InstallResult`` shaped like the old installPipPackage
+  // response so the caller UI layer doesn't need to change. The live
+  // progress flows through ``imageBusyLabel`` and is picked up by the
+  // existing "Installing..." text in ImageStudioTab.
   async function handleInstallImageRuntime(): Promise<InstallResult> {
-    const fallbackPackages = ["diffusers", "torch", "accelerate", "huggingface_hub", "pillow"];
-    const targets =
-      imageRuntimeStatus.missingDependencies && imageRuntimeStatus.missingDependencies.length > 0
-        ? imageRuntimeStatus.missingDependencies.slice()
-        : fallbackPackages;
-    setImageBusyLabel(`Installing image runtime (${targets.join(", ")})...`);
-    const failures: string[] = [];
-    let lastOutput = "";
+    setImageBusyLabel("Starting GPU bundle install...");
     try {
-      for (const pkg of targets) {
+      let job: GpuBundleJobState;
+      try {
+        job = await startGpuBundleInstall();
+      } catch (err) {
+        const message = `Failed to start GPU bundle install: ${err instanceof Error ? err.message : String(err)}`;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+
+      // Poll until the background job reports done / error. 1.5 s cadence
+      // is a compromise: slow enough to not hammer the backend, fast enough
+      // that the UI feels live when torch finishes an index attempt.
+      const POLL_MS = 1500;
+      const MAX_WAIT_MS = 30 * 60_000;  // 30 min hard cap — a 2 GB wheel
+                                        // shouldn't take longer even on
+                                        // slow broadband.
+      const deadline = Date.now() + MAX_WAIT_MS;
+      while (!job.done && Date.now() < deadline) {
+        setImageBusyLabel(formatGpuBundleLabel(job));
+        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
         try {
-          const result = await installPipPackage(pkg);
-          lastOutput = result.output;
-          if (!result.ok) {
-            failures.push(`${pkg}: ${result.output.slice(0, 200)}`);
-          }
+          job = await getGpuBundleStatus();
         } catch (err) {
-          failures.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
+          // Transient fetch failure — keep polling. If the backend is truly
+          // gone, checkBackend elsewhere will flag it and the loop exits.
+          setImageBusyLabel(
+            `Install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
+          );
         }
       }
+
+      // Re-probe the image runtime so the badge flips from placeholder -> diffusers.
       try {
         const runtime = await getImageRuntime();
         setImageRuntimeStatus(runtime);
       } catch {
-        // keep the pre-install status if the probe itself fails
+        // Keep the pre-install status; user will see the stale badge until restart.
       }
-      if (failures.length > 0) {
-        const message = `Image runtime install failed:\n${failures.join("\n")}`;
+
+      if (job.phase === "error" || job.error) {
+        const message = job.error || job.message || "GPU bundle install failed.";
         setError(message);
         return { ok: false, output: message, capabilities: {} };
       }
+      if (!job.done) {
+        const message = "GPU bundle install did not finish within 30 minutes.";
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+
       setError(null);
-      return { ok: true, output: lastOutput, capabilities: {} };
+      // Surface the "restart required" note so the caller UI can prompt.
+      // diffusers / torch won't be loadable by the RUNNING backend until
+      // it restarts — the sys.modules cache from process start survives
+      // any PYTHONPATH change.
+      const output = job.requiresRestart
+        ? `${job.message}\n\nRestart the backend to activate GPU acceleration.`
+        : job.message;
+      return { ok: true, output, capabilities: {} };
     } finally {
       setImageBusyLabel(null);
     }

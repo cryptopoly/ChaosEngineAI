@@ -424,5 +424,157 @@ class SetupRouteTests(unittest.TestCase):
             turbo_bin.unlink(missing_ok=True)
 
 
+class InstallGpuBundleTests(unittest.TestCase):
+    """Tests for the async ``/api/setup/install-gpu-bundle`` endpoint.
+
+    The endpoint kicks off a background thread and returns immediately;
+    tests use a ``threading.Event`` to drive the worker to each state
+    synchronously (no real polling / sleep), then assert the status
+    endpoint reports what the UI needs to drive its progress bar.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        state = ChaosEngineState(
+            system_snapshot_provider=_fake_system_snapshot,
+            settings_path=Path(self.tempdir.name) / "settings.json",
+            benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
+            chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+        )
+        state.runtime = FakeRuntime()
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+
+        # Target the bundle install at a throwaway temp dir so the test
+        # doesn't scribble in a real user profile — the endpoint honours
+        # CHAOSENGINE_EXTRAS_SITE_PACKAGES when set.
+        self.extras_dir = Path(self.tempdir.name) / "extras" / "site-packages"
+        self._env_patch = mock.patch.dict(
+            "os.environ",
+            {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": str(self.extras_dir)},
+        )
+        self._env_patch.start()
+
+        # Reset the module-global job state so tests don't see leftover
+        # state from a previous case.
+        import backend_service.routes.setup as setup_module
+        self._setup_module = setup_module
+        setup_module._GPU_BUNDLE_JOB = setup_module._GpuBundleJobState()
+
+    def tearDown(self):
+        self._env_patch.stop()
+        self.tempdir.cleanup()
+
+    def test_status_before_any_install_reports_idle(self):
+        resp = self.client.get("/api/setup/install-gpu-bundle/status")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["phase"], "idle")
+        self.assertFalse(body["done"])
+        self.assertEqual(body["packageIndex"], 0)
+
+    def test_bundle_info_exposes_target_and_packages(self):
+        resp = self.client.get("/api/setup/gpu-bundle-info")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["targetDir"], str(self.extras_dir))
+        self.assertGreaterEqual(len(body["packages"]), 5)
+        # torch must come first so the walking CUDA-index logic runs before
+        # other packages attempt to resolve against a missing torch.
+        self.assertEqual(body["packages"][0]["label"], "torch")
+
+    def test_start_install_happy_path_reaches_done(self):
+        """End-to-end: start, let the worker run to completion, assert done."""
+        # Mock the underlying pip install to always succeed.
+        def fake_run(*args, **kwargs):
+            return mock.Mock(returncode=0, stdout="Successfully installed", stderr="")
+
+        # Mock _verify_cuda so we don't try to actually spawn a subprocess
+        # that imports torch.
+        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=fake_run), \
+             mock.patch("backend_service.routes.setup._verify_cuda", return_value=(True, "cuda_available=true")), \
+             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+            start_resp = self.client.post("/api/setup/install-gpu-bundle", json={})
+            self.assertEqual(start_resp.status_code, 200)
+            # Wait for the background thread to finish. The worker is daemon=True
+            # and the test env has no real network / disk — it exits in milliseconds.
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "done")
+        self.assertTrue(status["requiresRestart"])
+        self.assertTrue(status["cudaVerified"])
+        self.assertEqual(status["pythonVersion"], "3.13.1")
+        self.assertIsNotNone(status["indexUrlUsed"])
+
+    def test_start_install_fails_when_disk_space_low(self):
+        """A preflight check stops the install before any pip calls."""
+        with mock.patch("backend_service.routes.setup._free_bytes", return_value=1_000_000), \
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 3.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "error")
+        self.assertIn("GB free", status["error"])
+
+    def test_start_install_flags_no_wheel_for_python(self):
+        """When every CUDA index returns 'no matching distribution', surface it."""
+        def no_wheel_run(*args, **kwargs):
+            return mock.Mock(
+                returncode=1,
+                stdout="",
+                stderr="ERROR: Could not find a version that satisfies the requirement torch\n"
+                       "ERROR: No matching distribution found for torch",
+            )
+
+        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=no_wheel_run), \
+             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.14.0"):
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "error")
+        self.assertTrue(status["noWheelForPython"])
+        self.assertIn("3.14.0", status["error"])
+
+    def test_second_start_while_running_returns_existing_job(self):
+        """Don't spawn two installers in parallel — UI gets whichever started first."""
+        # Prime the job state as if an install is already running.
+        import backend_service.routes.setup as setup_module
+        setup_module._GPU_BUNDLE_JOB.phase = "downloading"
+        setup_module._GPU_BUNDLE_JOB.id = "existing-job-id"
+        setup_module._GPU_BUNDLE_JOB.done = False
+        setup_module._GPU_BUNDLE_JOB.package_current = "torch"
+
+        with mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+            resp = self.client.post("/api/setup/install-gpu-bundle", json={})
+        body = resp.json()
+        self.assertEqual(body["id"], "existing-job-id")
+        self.assertEqual(body["phase"], "downloading")
+        self.assertEqual(body["packageCurrent"], "torch")
+
+
 if __name__ == "__main__":
     unittest.main()

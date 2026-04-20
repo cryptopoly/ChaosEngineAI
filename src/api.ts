@@ -810,6 +810,63 @@ export async function installCudaTorch(): Promise<CudaTorchInstallResult> {
   return await postJson<CudaTorchInstallResult>("/api/setup/install-cuda-torch", {}, 900000);
 }
 
+export interface GpuBundlePackage {
+  label: string;
+  spec: string;
+}
+
+export interface GpuBundleInfo {
+  targetDir: string | null;
+  approxDownloadBytes: number;
+  requiredFreeBytes: number;
+  freeBytes: number | null;
+  packages: GpuBundlePackage[];
+}
+
+export interface GpuBundleAttempt {
+  indexUrl?: string;
+  package?: string;
+  phase?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface GpuBundleJobState {
+  id: string;
+  // Lifecycle: idle (no run yet) -> preflight -> downloading -> verifying -> done | error
+  phase: "idle" | "preflight" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  indexUrlUsed: string | null;
+  pythonVersion: string | null;
+  noWheelForPython: boolean;
+  cudaVerified: boolean | null;
+  requiresRestart: boolean;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: GpuBundleAttempt[];
+  done: boolean;
+}
+
+export async function fetchGpuBundleInfo(): Promise<GpuBundleInfo> {
+  return await fetchJson<GpuBundleInfo>("/api/setup/gpu-bundle-info", 15000);
+}
+
+export async function startGpuBundleInstall(): Promise<GpuBundleJobState> {
+  // Returns quickly — the install runs in a backend background thread.
+  // Poll ``getGpuBundleStatus`` to follow progress.
+  return await postJson<GpuBundleJobState>("/api/setup/install-gpu-bundle", {}, 15000);
+}
+
+export async function getGpuBundleStatus(): Promise<GpuBundleJobState> {
+  return await fetchJson<GpuBundleJobState>("/api/setup/install-gpu-bundle/status", 10000);
+}
+
 export interface TurboUpdateInfo {
   installed: boolean;
   installedCommit: string | null;

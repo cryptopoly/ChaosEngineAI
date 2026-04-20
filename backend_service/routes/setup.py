@@ -187,13 +187,50 @@ def refresh_capabilities_endpoint(request: Request) -> dict[str, Any]:
 
 # cu124 covers Python 3.9-3.13 and driver 525+. cu121 only ships wheels
 # for Python up to 3.12, so fresh Windows installs (3.13) fail on it.
-# The endpoint walks these in order and stops at the first success.
+# The nightly index sometimes has wheels for very new Python (e.g. 3.14)
+# before they land in stable — we try it last so users on bleeding-edge
+# Python aren't stuck. The endpoint walks this list in order and stops
+# at the first success.
 _CUDA_TORCH_INDEXES: list[str] = [
     "https://download.pytorch.org/whl/cu124",
     "https://download.pytorch.org/whl/cu126",
     "https://download.pytorch.org/whl/cu128",
     "https://download.pytorch.org/whl/cu121",
+    "https://download.pytorch.org/whl/nightly/cu128",
 ]
+
+
+def _read_python_version(python: str) -> str | None:
+    """Return e.g. ``3.13.2`` for the given Python interpreter, or ``None``."""
+    try:
+        result = subprocess.run(
+            [python, "-c", "import sys; print('%d.%d.%d' % sys.version_info[:3])"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _all_attempts_lack_wheel(attempts: list[dict[str, Any]]) -> bool:
+    """True when pip reported 'No matching distribution' for every attempt.
+
+    This is the signature of a Python version PyTorch doesn't ship wheels
+    for (either too old or too new) — the fix is a different Python, not
+    a different CUDA index. We surface that specifically to the UI so
+    the user doesn't keep retrying.
+    """
+    if not attempts:
+        return False
+    for attempt in attempts:
+        if attempt.get("ok"):
+            return False
+        text = (attempt.get("output") or "").lower()
+        if "no matching distribution" not in text and "from versions: none" not in text:
+            return False
+    return True
 
 
 @router.post("/api/setup/install-cuda-torch")
@@ -204,8 +241,16 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     no cu121 wheel at all — the install fails with "Could not find a
     version that satisfies the requirement torch". We try cu124 first
     (broadest Python 3.9-3.13 coverage), then cu126 / cu128 / cu121 in
-    case the user's driver doesn't match the newest. Returns the output
-    of the winning attempt so the UI can surface failures usefully.
+    case the user's driver doesn't match the newest, and finally the
+    nightly cu128 index for very-new Python (e.g. 3.14).
+
+    If every attempt fails with "No matching distribution", we set
+    ``noWheelForPython`` in the response — that means the user's Python
+    version is the problem, not the CUDA index, so the UI can tell them
+    to switch Python rather than keep retrying. The response always
+    includes ``pythonVersion`` so the UI can show which interpreter this
+    is targeting (important: it's the app's bundled venv, not the system
+    pip the user might reach from a shell).
 
     Torch already imported in this process stays CPU until the user
     restarts the backend — we flag ``requiresRestart`` in the response
@@ -213,6 +258,7 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     """
     state = request.app.state.chaosengine
     python = state.runtime.capabilities.pythonExecutable
+    python_version = _read_python_version(python)
 
     attempts: list[dict[str, Any]] = []
     ok = False
@@ -249,9 +295,11 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     # live cuda check won't flip to True without a restart.
     state.runtime.refresh_capabilities(force=True)
     caps = state.runtime.capabilities.to_dict()
+    no_wheel_for_python = (not ok) and _all_attempts_lack_wheel(attempts)
     state.add_log(
         "server", "info" if ok else "error",
-        f"CUDA torch install: {'succeeded via ' + winning_index if ok else 'failed after all candidates'}",
+        f"CUDA torch install: {'succeeded via ' + winning_index if ok else 'failed after all candidates'}"
+        + (f" (no wheel for Python {python_version})" if no_wheel_for_python and python_version else ""),
     )
     return {
         "ok": ok,
@@ -259,6 +307,9 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
         "indexUrl": winning_index,
         "attempts": attempts,
         "requiresRestart": ok,
+        "pythonExecutable": python,
+        "pythonVersion": python_version,
+        "noWheelForPython": no_wheel_for_python,
         "capabilities": caps,
     }
 

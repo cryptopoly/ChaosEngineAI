@@ -798,6 +798,9 @@ export interface CudaTorchInstallResult {
   indexUrl: string | null;
   attempts: CudaTorchInstallAttempt[];
   requiresRestart: boolean;
+  pythonExecutable: string;
+  pythonVersion: string | null;
+  noWheelForPython: boolean;
   capabilities: Record<string, unknown>;
 }
 

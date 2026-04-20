@@ -218,19 +218,24 @@ class SetupRouteTests(unittest.TestCase):
 
     def test_install_cuda_torch_stops_at_first_success(self):
         """First working index wins — we must not keep trying after success."""
-        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
-            mock_run.return_value = mock.Mock(
-                returncode=0, stdout="Successfully installed torch-2.5.0+cu124", stderr=""
-            )
-            resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        with mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                mock_run.return_value = mock.Mock(
+                    returncode=0, stdout="Successfully installed torch-2.5.0+cu124", stderr=""
+                )
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertTrue(body["ok"])
         self.assertTrue(body["requiresRestart"])
         self.assertIsNotNone(body["indexUrl"])
         self.assertIn("cu124", body["indexUrl"])
+        self.assertEqual(body["pythonVersion"], "3.12.5")
+        self.assertFalse(body["noWheelForPython"])
         # Only one attempt should have been made — cu124 succeeded so cu126
-        # / cu128 / cu121 must not be tried.
+        # / cu128 / cu121 / nightly must not be tried.
         self.assertEqual(len(body["attempts"]), 1)
         self.assertEqual(mock_run.call_count, 1)
 
@@ -240,27 +245,58 @@ class SetupRouteTests(unittest.TestCase):
             mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution found for torch"),
             mock.Mock(returncode=0, stdout="Successfully installed torch-2.6.0+cu126", stderr=""),
         ]
-        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
-            resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        with mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.13.1"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
         self.assertTrue(body["ok"])
         self.assertEqual(len(body["attempts"]), 2)
         self.assertFalse(body["attempts"][0]["ok"])
         self.assertTrue(body["attempts"][1]["ok"])
         self.assertIn("cu126", body["indexUrl"])
+        self.assertFalse(body["noWheelForPython"])
 
     def test_install_cuda_torch_reports_failure_after_all_attempts(self):
-        """All four indexes fail — surface the last error to the UI."""
-        fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution")
-        with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
-            resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        """All indexes fail — surface the last error to the UI."""
+        fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: Install failed, disk full")
+        with mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
         self.assertFalse(body["ok"])
         self.assertFalse(body["requiresRestart"])
         self.assertIsNone(body["indexUrl"])
         from backend_service.routes.setup import _CUDA_TORCH_INDEXES
         self.assertEqual(len(body["attempts"]), len(_CUDA_TORCH_INDEXES))
-        self.assertIn("No matching distribution", body["output"])
+        # Generic failure (not a wheel mismatch) must NOT be flagged as
+        # noWheelForPython — the user can usefully retry.
+        self.assertFalse(body["noWheelForPython"])
+
+    def test_install_cuda_torch_flags_no_wheel_when_every_attempt_misses(self):
+        """Python 3.14 case — every index returns "No matching distribution".
+
+        The UI uses noWheelForPython to tell the user their Python version
+        is the problem, not the CUDA index, so they stop retrying.
+        """
+        no_wheel = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="ERROR: Could not find a version that satisfies the requirement torch "
+                   "(from versions: none)\nERROR: No matching distribution found for torch",
+        )
+        with mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.14.0"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=no_wheel):
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        body = resp.json()
+        self.assertFalse(body["ok"])
+        self.assertTrue(body["noWheelForPython"])
+        self.assertEqual(body["pythonVersion"], "3.14.0")
 
     def test_install_cuda_torch_default_list_starts_with_cu124(self):
         """cu124 is the broadest 3.9-3.13 match; cu121 must not be first anymore."""
@@ -271,6 +307,11 @@ class SetupRouteTests(unittest.TestCase):
         # cu121 is still in the list for old Python + old driver combos,
         # just no longer leading.
         self.assertIn("https://download.pytorch.org/whl/cu121", _CUDA_TORCH_INDEXES)
+        # The nightly index is our last-resort for bleeding-edge Python
+        # (e.g. 3.14) — PyTorch sometimes ships nightly wheels before the
+        # stable index catches up.
+        self.assertIn("https://download.pytorch.org/whl/nightly/cu128", _CUDA_TORCH_INDEXES)
+        self.assertEqual(_CUDA_TORCH_INDEXES[-1], "https://download.pytorch.org/whl/nightly/cu128")
 
     # ------------------------------------------------------------------
     # Turbo update check

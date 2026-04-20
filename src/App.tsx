@@ -109,8 +109,8 @@ export default function App() {
   const gpuStatus = useGpuStatus(backendOnline);
   const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
   const [cudaTorchResult, setCudaTorchResult] = useState<
-    | { ok: true; indexUrl: string | null }
-    | { ok: false; message: string }
+    | { ok: true; indexUrl: string | null; pythonVersion: string | null }
+    | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
     | null
   >(null);
 
@@ -121,19 +121,27 @@ export default function App() {
     try {
       const result = await installCudaTorch();
       if (result.ok) {
-        setCudaTorchResult({ ok: true, indexUrl: result.indexUrl });
+        setCudaTorchResult({
+          ok: true,
+          indexUrl: result.indexUrl,
+          pythonVersion: result.pythonVersion,
+        });
       } else {
         const last = result.attempts[result.attempts.length - 1];
         const tail = (last?.output ?? result.output ?? "").split("\n").slice(-3).join("\n");
         setCudaTorchResult({
           ok: false,
           message: tail || "pip install failed — see backend logs for details.",
+          pythonVersion: result.pythonVersion,
+          noWheelForPython: result.noWheelForPython,
         });
       }
     } catch (err) {
       setCudaTorchResult({
         ok: false,
         message: err instanceof Error ? err.message : String(err),
+        pythonVersion: null,
+        noWheelForPython: false,
       });
     } finally {
       setInstallingCudaTorch(false);
@@ -1794,14 +1802,35 @@ export default function App() {
                       CUDA torch installed{cudaTorchResult.indexUrl
                         ? ` from ${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")}`
                         : ""}
+                      {cudaTorchResult.pythonVersion ? ` into bundled Python ${cudaTorchResult.pythonVersion}` : ""}
                       . Restart the app to use the GPU.
                     </strong>
                   </>
                 ) : cudaTorchResult && !cudaTorchResult.ok ? (
                   <>
                     {" "}
-                    <strong>Install failed:</strong>{" "}
-                    <span className="mono-text">{cudaTorchResult.message}</span>
+                    {cudaTorchResult.noWheelForPython ? (
+                      <>
+                        <strong>
+                          No CUDA torch wheel for Python{cudaTorchResult.pythonVersion
+                            ? ` ${cudaTorchResult.pythonVersion}`
+                            : " (bundled venv)"}
+                          .
+                        </strong>{" "}
+                        PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the
+                        app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Install failed:</strong>{" "}
+                        <span className="mono-text">{cudaTorchResult.message}</span>
+                      </>
+                    )}
+                  </>
+                ) : installingCudaTorch ? (
+                  <>
+                    {" "}
+                    <em>Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.</em>
                   </>
                 ) : null}
               </span>

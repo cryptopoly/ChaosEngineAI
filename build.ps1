@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-# PowerShell's $ErrorActionPreference = "Stop" only halts on cmdlet errors —
+# PowerShell's $ErrorActionPreference = "Stop" only halts on cmdlet errors --
 # native command failures (pip, npm, node, npx, git) are silently ignored
 # unless we check $LASTEXITCODE ourselves. Without this helper, the previous
 # build printed "Build complete!" even when `tauri build` had failed.
@@ -14,7 +14,7 @@ function Assert-LastExit {
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
-# ── Pre-flight cleanup ───────────────────────────────────
+# -- Pre-flight cleanup -----------------------------------
 # Windows Defender / Explorer / pip occasionally hold file handles on the
 # staging tree. Clear it up front so the Node rmSync in stage-runtime.mjs
 # never has to fight with locked artefacts from a prior failed run.
@@ -23,7 +23,7 @@ if (Test-Path .runtime-stage) {
     Remove-Item -Recurse -Force .runtime-stage -ErrorAction SilentlyContinue
 }
 
-# ── Python venv ──────────────────────────────────────────
+# -- Python venv ------------------------------------------
 if (-not (Test-Path .venv)) {
     Write-Host "==> Creating Python venv..."
     python -m venv .venv
@@ -86,12 +86,12 @@ Assert-LastExit "pip install -e .[desktop,images]"
 
 $env:CHAOSENGINE_EMBED_PYTHON_BIN = "$ScriptDir\.venv\Scripts\python.exe"
 
-# ── npm dependencies ─────────────────────────────────────
+# -- npm dependencies -------------------------------------
 Write-Host "==> Installing npm dependencies..."
 npm ci --silent
 Assert-LastExit "npm ci"
 
-# ── llama.cpp pre-flight ─────────────────────────────────
+# -- llama.cpp pre-flight ---------------------------------
 # Release-mode staging is strict: if llama.cpp is not built locally the
 # install will refuse to ship without inference. Detect upfront so the user
 # gets a clear message before npm/cargo spend 20 minutes building, and let
@@ -104,7 +104,7 @@ $llamaBinDir = if ($env:CHAOSENGINE_LLAMA_BIN_DIR) {
 $llamaServerExe = Join-Path $llamaBinDir "llama-server.exe"
 if (-not (Test-Path $llamaServerExe)) {
     if ($env:CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA -eq "1") {
-        Write-Warning "llama-server.exe not found at $llamaServerExe — proceeding because CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1."
+        Write-Warning "llama-server.exe not found at $llamaServerExe -- proceeding because CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1."
         Write-Warning "The installer will ship without llama.cpp; users can install it via the Setup page."
     } else {
         Write-Host ""
@@ -122,20 +122,20 @@ if (-not (Test-Path $llamaServerExe)) {
         Write-Host "    2. Set CHAOSENGINE_LLAMA_BIN_DIR to your llama.cpp build directory"
         Write-Host "    3. Ship without it: set CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1"
         Write-Host ""
-        throw "llama-server.exe missing — see message above."
+        throw "llama-server.exe missing -- see message above."
     }
 }
 
-# ── Patch tauri.conf.json for local builds ───────────────
+# -- Patch tauri.conf.json for local builds ---------------
 # Delegated to a dedicated .mjs (see scripts/patch-tauri-conf.mjs). The
-# previous inline `node -e "..."` was fragile under PowerShell quoting —
+# previous inline `node -e "..."` was fragile under PowerShell quoting --
 # a silent misparse left the JSON empty and tauri build failed with a
 # misleading EOF error.
 Write-Host "==> Patching tauri.conf.json for local build..."
 node scripts/patch-tauri-conf.mjs patch
 Assert-LastExit "patch tauri.conf.json"
 
-# ── Build ────────────────────────────────────────────────
+# -- Build ------------------------------------------------
 Write-Host "==> Building Tauri app (NSIS installer)..."
 $buildFailed = $false
 try {
@@ -146,7 +146,7 @@ try {
     $buildError = $_
 }
 
-# ── Restore tauri.conf.json ──────────────────────────────
+# -- Restore tauri.conf.json ------------------------------
 # Always run the restore, even if the build failed, so the working tree
 # is left clean for the next attempt. If the build succeeded and git
 # complains, surface it; if the build already failed, restore is
@@ -159,7 +159,7 @@ try {
     }
 } catch {
     if (-not $buildFailed) { throw }
-    Write-Warning "Restore failed: $_ — continuing to report original build error."
+    Write-Warning "Restore failed: $_ -- continuing to report original build error."
 }
 
 if ($buildFailed) {
@@ -168,8 +168,9 @@ if ($buildFailed) {
 
 Write-Host ""
 Write-Host "==> Build complete!"
-# Single quotes = pure literal string in PS: no interpolation, no escape
-# processing. Double quotes here caused PS 5.1 to report "string missing
-# terminator" on the \nsis sequence even with no trailing backslash -
-# exact cause unclear, but single quotes sidestep the parser entirely.
+# Single-quoted literal so the parser never has to interpret the
+# backslash sequences. Keep this file pure ASCII - PS 5.1 on Windows
+# reads BOM-less scripts as Windows-1252, so any em-dash / box-drawing
+# char elsewhere in the file corrupts tokenization and surfaces here
+# as a spurious "string missing terminator" error.
 Write-Host '    Artifacts in src-tauri\target\release\bundle\nsis'

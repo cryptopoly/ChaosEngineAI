@@ -1296,6 +1296,27 @@ class ChaosEngineState:
                 path=request.path,
                 canonical_repo=request.canonicalRepo,
             )
+            # Reject load requests for models we can't locate. Without this,
+            # llama-server's built-in HuggingFace fallback kicks in and tries to
+            # fetch the weights at load time, which on Windows fails with an
+            # opaque SSL error (the bundled llama-server.exe ships without a
+            # CA bundle) and in any case isn't a UX we want to encourage — a
+            # pull-through download hides from the Library scan, bypasses the
+            # download-progress UI, and surprises users with invisible disk use.
+            #
+            # Allowed shapes:
+            #   - library_entry set → scanner found the model in the library
+            #   - request.path is provided → operator pointed us at a custom
+            #     location. We trust the caller and let llama.cpp / MLX fail
+            #     fast with a clear "path not found" error if it's wrong,
+            #     rather than second-guessing non-existent mount points here.
+            model_ref_str = (request.modelRef or "").strip()
+            has_path = bool((request.path or "").strip())
+            if model_ref_str and library_entry is None and not has_path:
+                raise RuntimeError(
+                    f"Model '{model_ref_str}' isn't downloaded on this machine. "
+                    "Open the Discover tab and download it first, then try loading again."
+                )
             if library_entry is not None and library_entry.get("broken"):
                 reason = library_entry.get("brokenReason") or "incomplete or corrupt"
                 raise RuntimeError(

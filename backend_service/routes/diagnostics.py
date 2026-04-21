@@ -86,20 +86,42 @@ def diagnostics_snapshot(request: Request) -> dict[str, Any]:
 
     Structured so each section can be collapsed in the UI and copied
     verbatim into a support message. No side effects.
+
+    Defensive contract: every section builder is wrapped so a single
+    section's failure can't blow up the whole endpoint. If a builder
+    raises, we fall back to ``{"error": "<type>: <msg>"}`` for that
+    section and move on. The Diagnostics panel exists specifically to
+    diagnose broken installs — it would be deeply ironic (and was, per
+    user report) for the panel to fetch-fail when something's off.
     """
     state = request.app.state.chaosengine
     return {
         "generatedAt": time.time(),
-        "app": _app_info(state),
-        "os": _os_info(),
-        "hardware": _hardware_info(),
-        "python": _python_info(),
-        "runtime": _runtime_info(state),
-        "gpu": _gpu_info(),
-        "extras": _extras_info(),
-        "environment": _env_vars(),
-        "logs": _log_info(),
+        "app": _guarded("app", lambda: _app_info(state)),
+        "os": _guarded("os", _os_info),
+        "hardware": _guarded("hardware", _hardware_info),
+        "python": _guarded("python", _python_info),
+        "runtime": _guarded("runtime", lambda: _runtime_info(state)),
+        "gpu": _guarded("gpu", _gpu_info),
+        "extras": _guarded("extras", _extras_info),
+        "environment": _guarded("environment", _env_vars),
+        "logs": _guarded("logs", _log_info),
     }
+
+
+def _guarded(section: str, fn):
+    """Run ``fn()``; on exception return an error sentinel instead of
+    propagating. Keeps the snapshot endpoint shipping a response even
+    when a single section fails (psutil on a weird Windows mountpoint,
+    subprocess hang on a stuck nvidia-smi, etc.).
+    """
+    try:
+        return fn()
+    except Exception as exc:  # noqa: BLE001 — this IS the error-barrier
+        return {
+            "error": f"{type(exc).__name__}: {str(exc)[:400]}",
+            "section": section,
+        }
 
 
 @router.get("/api/diagnostics/log-tail")

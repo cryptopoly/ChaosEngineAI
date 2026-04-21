@@ -1004,7 +1004,12 @@ class MockInferenceEngine(BaseInferenceEngine):
     """
 
     engine_name = "mock"
-    engine_label = "No backend"
+    # Displayed in the Dashboard "Runtime engine" stat. Used to read "No
+    # backend", which collided with the footer's "BACKEND ONLINE" badge —
+    # two different meanings of "backend" (inference engine vs API sidecar)
+    # sitting on the same screen. "Idle" matches the ``RuntimeStatus.state``
+    # enum already used elsewhere and doesn't claim the sidecar is down.
+    engine_label = "Idle"
 
     def __init__(self, capabilities: BackendCapabilities) -> None:
         self.capabilities = capabilities

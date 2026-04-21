@@ -76,7 +76,7 @@ def make_test_client(state: ChaosEngineState) -> TestClient:
 
 class FakeRuntime:
     def __init__(self) -> None:
-        self.engine = SimpleNamespace(engine_name="mock", engine_label="No backend")
+        self.engine = SimpleNamespace(engine_name="mock", engine_label="Idle")
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None

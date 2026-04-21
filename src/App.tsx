@@ -1783,6 +1783,9 @@ export default function App() {
       apiToken={apiToken}
       sidebarMode={sidebarPrefs.mode}
       onSidebarModeChange={sidebarPrefs.setMode}
+      backendOnline={backendOnline}
+      onRestartServer={() => void handleRestartServer()}
+      busyAction={busyAction}
     />;
   }
 

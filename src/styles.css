@@ -5991,3 +5991,68 @@ select.text-input {
   color: var(--text);
   margin-right: 4px;
 }
+
+/* -- Diagnostics panel --------------------------------------------- */
+.diagnostics-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.diagnostics-header {
+  font-size: 0.85rem;
+  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.diagnostics-section {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0;
+  overflow: hidden;
+}
+.diagnostics-section-title {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  list-style: none;
+  user-select: none;
+}
+.diagnostics-section-title::-webkit-details-marker {
+  display: none;
+}
+.diagnostics-section-title::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 120ms;
+  color: var(--muted);
+}
+.diagnostics-section[open] > .diagnostics-section-title::before {
+  transform: rotate(90deg);
+}
+.diagnostics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.diagnostics-table td {
+  padding: 4px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: top;
+}
+.diagnostics-key {
+  width: 40%;
+  color: var(--muted);
+  word-break: break-word;
+}
+.diagnostics-value {
+  color: var(--text);
+  word-break: break-all;
+}
+.diagnostics-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}

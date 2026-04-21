@@ -867,6 +867,109 @@ export async function getGpuBundleStatus(): Promise<GpuBundleJobState> {
   return await fetchJson<GpuBundleJobState>("/api/setup/install-gpu-bundle/status", 10000);
 }
 
+// --- Diagnostics ---------------------------------------------------
+//
+// Surfaced in Settings → Diagnostics. The snapshot is a structured dump
+// of everything we'd otherwise ask users to gather by PowerShell: OS,
+// hardware, runtime paths, GPU state, env vars, log tail. The frontend
+// pretty-prints it as Markdown for one-click clipboard sharing.
+
+export interface DiagnosticsSnapshot {
+  generatedAt: number;
+  app: {
+    appVersion: string;
+    workspaceRoot: string;
+    logCount: number;
+    activeRequests: number;
+    requestsServed: number;
+  };
+  os: Record<string, unknown>;
+  hardware: {
+    cpu: Record<string, unknown>;
+    memory: Record<string, number | null | undefined>;
+    swap: Record<string, number | null | undefined>;
+    disks: Array<Record<string, unknown>>;
+    gpu: Record<string, unknown>;
+    error?: string;
+  };
+  python: {
+    executable: string;
+    version: string | null;
+    versionTuple: number[];
+    implementation: string;
+    prefix: string;
+    basePrefix: string;
+    platform: string;
+    sysPath: string[];
+    cwd: string | null;
+  };
+  runtime: {
+    engineName: string | null;
+    engineLabel: string | null;
+    loadedModel: Record<string, unknown> | null;
+    warmPoolCount: number | null;
+    llamaServerPath: string | null;
+    llamaServerTurboPath: string | null;
+    llamaCliPath: string | null;
+  };
+  gpu: {
+    torchFindSpec: boolean;
+    diffusersFindSpec: boolean;
+    accelerateFindSpec: boolean;
+    transformersFindSpec: boolean;
+    imageioFindSpec: boolean;
+    ffmpegFindSpec: boolean;
+    sentencepieceFindSpec: boolean;
+    tiktokenFindSpec: boolean;
+    protobufFindSpec: boolean;
+    ftfyFindSpec: boolean;
+    torchSubprocess: Record<string, unknown> | null;
+  };
+  extras: {
+    path: string;
+    exists: boolean;
+    freeBytes: number | null;
+    sizeBytes: number | null;
+    topLevelEntries: string[];
+    error?: string;
+  };
+  environment: Record<string, string | null>;
+  logs: {
+    path: string | null;
+    tailLines: string[];
+  };
+}
+
+export interface DiagnosticsLogTail {
+  path: string | null;
+  lines: string[];
+  lineCount: number;
+}
+
+export interface ReextractRuntimeResult {
+  path: string | null;
+  deleted: boolean;
+  error: string | null;
+}
+
+export async function fetchDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
+  // 60s timeout — the snapshot fires a torch-probe subprocess and disk
+  // scans, which on a slow NTFS volume can add a few seconds. Plenty of
+  // headroom beyond the typical ~500ms.
+  return await fetchJson<DiagnosticsSnapshot>("/api/diagnostics/snapshot", 60000);
+}
+
+export async function fetchDiagnosticsLogTail(lines = 200): Promise<DiagnosticsLogTail> {
+  return await fetchJson<DiagnosticsLogTail>(
+    `/api/diagnostics/log-tail?lines=${encodeURIComponent(lines)}`,
+    15000,
+  );
+}
+
+export async function reextractRuntime(): Promise<ReextractRuntimeResult> {
+  return await postJson<ReextractRuntimeResult>("/api/diagnostics/reextract-runtime", {}, 30000);
+}
+
 export interface TurboUpdateInfo {
   installed: boolean;
   installedCommit: string | null;

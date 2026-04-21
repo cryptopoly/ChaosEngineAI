@@ -311,21 +311,26 @@ export function ImageStudioTab({
             <>
               <div className="image-runtime-actions">
                 <p className="muted-text">
-                  {imageRuntimeStatus.activeEngine === "unavailable"
-                    ? "Install the GPU image runtime (torch + diffusers + accelerate + transformers, ~2.5 GB) to enable real local generation. Writes to a persistent user-local folder so app updates don't wipe it."
-                    : "Restart the backend if you recently installed image packages."}
+                  Install the GPU image runtime (torch + diffusers + accelerate + transformers,
+                  ~2.5 GB) to enable real local generation. Writes to a persistent user-local
+                  folder so app updates don't wipe it.
                 </p>
                 <div className="button-row">
-                  {imageRuntimeStatus.activeEngine === "unavailable" ? (
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={() => void handleInstallImageRuntime()}
-                      disabled={installingImageRuntime || !backendOnline}
-                    >
-                      {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
-                    </button>
-                  ) : null}
+                  {/* Always show the install button when the runtime isn't available.
+                    * Previously this was gated on activeEngine === "unavailable" but the
+                    * backend never returns that literal — it returns "placeholder" both
+                    * when packages are missing AND when they're installed-but-broken
+                    * (e.g. torch ImportError for 'autocast'). Both cases need the
+                    * install button, so the gate was hiding it in the exact states
+                    * where it's most useful. */}
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => void handleInstallImageRuntime()}
+                    disabled={installingImageRuntime || !backendOnline}
+                  >
+                    {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
+                  </button>
                   <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
                     {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
                   </button>

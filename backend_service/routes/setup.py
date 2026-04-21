@@ -612,6 +612,31 @@ def _verify_cuda(python: str, extras_dir: Path) -> tuple[bool, str]:
     return ok, detail
 
 
+_DLL_LOCK_PATTERNS = (
+    # Windows pip rmtree failure signatures when a torch DLL is held open by
+    # another process (typically the ChaosEngineAI backend that eagerly
+    # imported torch before the install started).
+    "winerror 5",
+    "permissionerror",
+    "access is denied",
+)
+
+
+def _looks_like_dll_lock(output: str) -> bool:
+    """Heuristic: does pip's stderr look like a locked-DLL rmtree failure?
+
+    The backend eagerly imported torch at startup for warmup speed, and
+    once torch/lib/*.dll is in the process handle table pip can't remove
+    those files even with --force-reinstall --target. Detecting this
+    specifically lets us surface a clear "restart backend, then retry"
+    message instead of burying the root cause under a wall of pip trace.
+    """
+    lowered = output.lower()
+    if "torch" not in lowered or ".dll" not in lowered:
+        return False
+    return any(marker in lowered for marker in _DLL_LOCK_PATTERNS)
+
+
 def _install_torch_walking_indexes(
     python: str, extras_dir: Path, state: _GpuBundleJobState
 ) -> tuple[bool, str | None]:
@@ -622,6 +647,18 @@ def _install_torch_walking_indexes(
             python, "torch>=2.4.0", extras_dir, index_url, ["--no-deps"],
         )
         state.attempts.append({"indexUrl": index_url, "ok": ok, "output": output[-2000:]})
+        if not ok and _looks_like_dll_lock(output):
+            # Stop walking indexes — no index will succeed until the DLLs
+            # are released. Raise so the worker captures a clean error
+            # with an actionable message instead of four duplicate
+            # "WinError 5" attempt rows.
+            raise RuntimeError(
+                "Cannot overwrite existing torch files because they're locked by the running "
+                "backend (likely a previous partial install). Click Restart Backend, wait for "
+                "it to come back online, then click Install GPU runtime again. If the problem "
+                "persists, quit ChaosEngineAI fully, delete "
+                f"{extras_dir / 'torch'}, and reopen."
+            )
         if ok:
             # Second pass: install torch again with deps (no --no-deps) so
             # transitive nvidia-cublas / jinja2 / etc. land in the extras

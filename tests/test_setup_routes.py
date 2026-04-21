@@ -576,5 +576,42 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertEqual(body["packageCurrent"], "torch")
 
 
+class DllLockDetectionTests(unittest.TestCase):
+    """``_looks_like_dll_lock`` is a Windows-specific heuristic that swaps a
+    generic pip rmtree failure for an actionable 'restart backend, retry
+    install' message. Pure-function unit tests because this path is hard
+    to exercise end-to-end on a Linux CI runner.
+    """
+
+    def test_matches_winerror_5_on_torch_dll(self):
+        from backend_service.routes.setup import _looks_like_dll_lock
+        output = (
+            "ERROR: Exception:\n"
+            "shutil.rmtree(target_item_dir)\n"
+            "PermissionError: [WinError 5] Access is denied: "
+            "'C:\\\\Users\\\\Dan\\\\AppData\\\\Local\\\\ChaosEngineAI\\\\extras\\\\site-packages\\\\torch\\\\lib\\\\asmjit.dll'"
+        )
+        self.assertTrue(_looks_like_dll_lock(output))
+
+    def test_does_not_match_unrelated_pip_failure(self):
+        from backend_service.routes.setup import _looks_like_dll_lock
+        # A generic "no matching distribution" failure (the Python 3.14
+        # wheel-missing case) must NOT be misclassified as a DLL lock —
+        # otherwise users on unsupported Python get the wrong advice.
+        output = (
+            "ERROR: Could not find a version that satisfies the requirement torch>=2.4.0\n"
+            "ERROR: No matching distribution found for torch>=2.4.0"
+        )
+        self.assertFalse(_looks_like_dll_lock(output))
+
+    def test_does_not_match_locked_non_torch_file(self):
+        from backend_service.routes.setup import _looks_like_dll_lock
+        # WinError 5 on a non-torch file (e.g. some editor-locked script)
+        # shouldn't point users at the "restart backend" remedy, because
+        # restarting the backend won't release unrelated file handles.
+        output = "PermissionError: [WinError 5] Access is denied: 'C:\\\\something-else\\\\config.json'"
+        self.assertFalse(_looks_like_dll_lock(output))
+
+
 if __name__ == "__main__":
     unittest.main()

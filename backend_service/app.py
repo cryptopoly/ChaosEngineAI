@@ -561,11 +561,13 @@ def create_app(
 
     register_routes(app)
 
-    # Kick off a background torch import so the first Video Studio probe
-    # doesn't pay the 30-60s cold-disk cost on Windows. Failures are captured
-    # and surfaced by probe() itself.
-    start_torch_warmup()
-
+    # Deliberately DO NOT call start_torch_warmup() here. Warmup eagerly
+    # imports torch into the backend process, which on Windows pins every
+    # torch/lib/*.dll into the process handle table. That blocks
+    # /api/setup/install-gpu-bundle from pip-installing a new torch (pip's
+    # --upgrade --target rmtree can't remove DLLs held by another process).
+    # Warmup still exists for callers that want pre-priming (preload() in
+    # the video/image runtimes triggers it) — it just isn't automatic.
     return app
 
 

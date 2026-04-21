@@ -333,6 +333,25 @@ impl BackendManager {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
                 }
             } else {
+                // Source-workspace mode: the backend runs against the
+                // developer's .venv so Python auto-loads .venv/site-packages
+                // at startup. We still want extras (the persistent
+                // ``~/.chaosengine/extras/site-packages`` dir populated by
+                // /api/setup/install-gpu-bundle) to WIN over anything in
+                // .venv — otherwise a stale CPU torch hanging around in
+                // the dev venv would shadow the freshly-installed CUDA
+                // torch in extras, which is exactly the failure the user
+                // hit on Windows (video gen silently ran on CPU despite
+                // a successful CUDA install).
+                //
+                // apply_embedded_runtime_env already does this for the
+                // embedded path; this is the matching source-workspace
+                // branch. No-op if extras doesn't exist yet.
+                if let Some(extras) = chaosengine_extras_site_packages().filter(|p| p.is_dir()) {
+                    if let Some(python_path) = join_paths(&[extras]) {
+                        command.env("PYTHONPATH", python_path);
+                    }
+                }
                 if let Some(llama_server) = resolve_llama_server(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
                 }

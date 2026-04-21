@@ -1,50 +1,51 @@
+import { useEffect, useRef } from "react";
 import type { GpuBundleJobState } from "../api";
 
 interface InstallLogPanelProps {
   job: GpuBundleJobState | null;
 }
 
-// Terminal-like expandable panel that renders the per-step output of the
-// GPU bundle install. Sits under the "Install GPU runtime" button in both
-// Image Studio and Video Studio so a failed install surfaces the real pip
-// output (which CUDA index was tried, which package crashed, which
-// ``No matching distribution`` line blew things up) instead of collapsing
-// into a single useless toast.
+// Single scrollable terminal rendering the GPU bundle install progress.
+// Previously this was a stack of per-step <details> cards; they were
+// OK on small installs but on the full 13-package bundle the whole
+// panel ran off the bottom of the Studio and users lost their place
+// when pip output streamed in mid-scroll. The user asked for a
+// "fixed-width terminal with a step counter" — this is that.
 //
-// Auto-expands on error so the user doesn't have to click to see what
-// went wrong. On success it stays collapsed so the UI doesn't get noisy.
+// Auto-scrolls to the bottom whenever new attempts land, so you can
+// leave it visible and watch the install tail like a ``tail -f``.
+
 export function InstallLogPanel({ job }: InstallLogPanelProps) {
+  const scrollRef = useRef<HTMLPreElement | null>(null);
+
+  // Auto-scroll to the newest output whenever attempts grow. We don't
+  // scroll on final-message updates (phase transitions) because those
+  // can fire while the user is scrolled up reading earlier output;
+  // yanking them back is disrespectful of their attention.
+  const attemptCount = job?.attempts.length ?? 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [attemptCount]);
+
   if (!job || job.phase === "idle") return null;
-  const hasOutput = job.attempts.length > 0 || Boolean(job.message) || Boolean(job.error);
+  const hasOutput = attemptCount > 0 || Boolean(job.message) || Boolean(job.error);
   if (!hasOutput) return null;
 
   const openByDefault = job.phase === "error" || Boolean(job.error);
-  const attemptCount = job.attempts.length;
-  const summaryLabel = (() => {
-    if (job.phase === "error" || job.error) return "Install failed — see log";
-    if (job.phase === "done") return `Install log (${attemptCount} step${attemptCount === 1 ? "" : "s"})`;
-    if (job.phase === "downloading" || job.phase === "preflight") return `Install in progress (${attemptCount} step${attemptCount === 1 ? "" : "s"} so far)`;
-    if (job.phase === "verifying") return "Verifying — install log";
-    return `Install log (${attemptCount} step${attemptCount === 1 ? "" : "s"})`;
-  })();
+  const stepLabel = formatStepCounter(job);
+  const statusLabel = formatStatusLabel(job);
 
   return (
     <details className="install-log-panel" open={openByDefault}>
-      <summary className="install-log-summary">{summaryLabel}</summary>
+      <summary className="install-log-summary">{statusLabel}</summary>
       <div className="install-log-body">
         <InstallLogMeta job={job} />
-        {job.attempts.length === 0 ? (
-          <div className="install-log-empty">No steps recorded yet — worker is still setting up.</div>
-        ) : (
-          <ol className="install-log-attempts">
-            {job.attempts.map((attempt, index) => (
-              <InstallLogAttempt
-                key={`${attempt.package ?? attempt.indexUrl ?? attempt.phase ?? "step"}-${index}`}
-                attempt={attempt}
-              />
-            ))}
-          </ol>
-        )}
+        <div className="install-log-step-line">{stepLabel}</div>
+        <pre ref={scrollRef} className="install-log-terminal">
+          {renderTerminal(job)}
+        </pre>
         {job.message && (job.phase === "done" || job.phase === "error") ? (
           <div className="install-log-final">
             <strong>Final status:</strong> {job.message}
@@ -56,11 +57,10 @@ export function InstallLogPanel({ job }: InstallLogPanelProps) {
 }
 
 function InstallLogMeta({ job }: { job: GpuBundleJobState }) {
-  // Line of context shown above the per-step log — everything the user
-  // might want to paste into a support thread. The target dir in
-  // particular is load-bearing: if the install appears to "succeed" but
-  // the app still shows CPU, it's almost always because they restarted
-  // without closing, which skips the PYTHONPATH reload.
+  // Line of context shown above the terminal. The target dir is
+  // load-bearing: if the install appears to "succeed" but the app
+  // still shows CPU, it's almost always because the backend wasn't
+  // restarted (PYTHONPATH on the running process is fixed at spawn).
   const fragments: string[] = [];
   if (job.targetDir) fragments.push(`Target: ${job.targetDir}`);
   if (job.pythonVersion) fragments.push(`Python ${job.pythonVersion}`);
@@ -72,25 +72,60 @@ function InstallLogMeta({ job }: { job: GpuBundleJobState }) {
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function InstallLogAttempt({ attempt }: { attempt: GpuBundleJobState["attempts"][number] }) {
-  const label = attemptLabel(attempt);
-  const status = attempt.ok ? "ok" : "fail";
-  const statusText = attempt.ok ? "OK" : "FAIL";
-  return (
-    <li className={`install-log-attempt install-log-attempt--${status}`}>
-      <div className="install-log-attempt-header">
-        <span className={`install-log-status install-log-status--${status}`}>{statusText}</span>
-        <span className="install-log-attempt-label">{label}</span>
-      </div>
-      {attempt.output ? (
-        <pre className="install-log-output">{trimOutput(attempt.output)}</pre>
-      ) : null}
-    </li>
-  );
+function formatStatusLabel(job: GpuBundleJobState): string {
+  if (job.phase === "error" || job.error) return "Install failed — see log";
+  if (job.phase === "done") return "Install complete — see log";
+  if (job.phase === "preflight") return "Install starting…";
+  if (job.phase === "verifying") return "Verifying CUDA…";
+  return "Install in progress";
+}
+
+function formatStepCounter(job: GpuBundleJobState): string {
+  // Packages-complete counter. The backend tracks packages via
+  // packageIndex / packageTotal; torch also has a two-pass install
+  // (CUDA-index walk for the wheel + dep-pass for transitive deps)
+  // that fires in the same packageIndex=1 slot. We count finished
+  // packages as attempts whose ok=true AND whose shape is a unique
+  // package row (not the deps sub-pass or the cuda verify step).
+  const done = job.attempts.filter(
+    (a) => a.ok && a.phase !== "deps" && a.phase !== "verify",
+  ).length;
+  const total = job.packageTotal || Math.max(done, 1);
+  const current = job.packageCurrent ?? "(waiting)";
+  const percent = Math.max(0, Math.min(100, Math.round(job.percent)));
+  if (job.phase === "error" || job.phase === "done") {
+    return `Final: ${done}/${total} packages · ${percent}%`;
+  }
+  return `Step ${done}/${total}: ${current} · ${percent}%`;
+}
+
+function renderTerminal(job: GpuBundleJobState): string {
+  // One big string of per-attempt sections, each prefixed with a
+  // status marker so you can scan down the left edge for failures.
+  // pip's own output is indented two spaces — keeps our marker visible.
+  const lines: string[] = [];
+  for (const attempt of job.attempts) {
+    const marker = attempt.ok ? "[ OK ]" : "[FAIL]";
+    lines.push(`${marker} ${attemptLabel(attempt)}`);
+    if (attempt.output) {
+      const body = filterPipNoise(attempt.output);
+      if (body) {
+        for (const bodyLine of body.split(/\r?\n/)) {
+          lines.push(`       ${bodyLine}`);
+        }
+      }
+    }
+    lines.push(""); // blank line between attempts for legibility
+  }
+  if (job.phase !== "done" && job.phase !== "error") {
+    const spinner = job.message || "working…";
+    lines.push(`[....] ${spinner}`);
+  }
+  return lines.join("\n");
 }
 
 function attemptLabel(attempt: GpuBundleJobState["attempts"][number]): string {
-  // Attempts from the worker come in three shapes:
+  // Attempts from the worker come in four shapes:
   //   - torch CUDA swap: { indexUrl, ok, output }
   //   - torch deps pass: { indexUrl, phase: "deps", ok, output }
   //   - per-package pip: { package, ok, output }
@@ -103,12 +138,45 @@ function attemptLabel(attempt: GpuBundleJobState["attempts"][number]): string {
   return "step";
 }
 
-function trimOutput(output: string): string {
-  // Pip outputs can be thousands of lines — the backend already truncates
-  // to the last 2000 chars but that still can render as a wall of text.
-  // Keep the last ~60 lines which is plenty to see the actual error.
+// Regexes that identify pip's dep-resolver warnings. These fire when
+// something in the ambient env declares a dep that isn't satisfied —
+// cosmetic for our case (user's .venv had turboquant-mlx-full from
+// earlier testing, which declares an mlx>= constraint that will never
+// be met on Windows). Surfacing them confused the user because they
+// look like errors. We drop them from the DISPLAYED log but leave them
+// intact in job.attempts[].output for support / backend debugging.
+const PIP_NOISE_PATTERNS = [
+  /^ERROR: pip's dependency resolver does not currently take into account/i,
+  /^\w[\w-]+\s+[\d.]+\s+requires\s+[\w-]+(?:[<>=!~].+)?, which is not installed\.$/i,
+];
+
+function filterPipNoise(output: string): string {
   const lines = output.split(/\r?\n/);
-  if (lines.length <= 60) return output;
-  const kept = lines.slice(-60);
-  return `... (${lines.length - 60} earlier lines omitted)\n${kept.join("\n")}`;
+  const filtered: string[] = [];
+  let inNoiseBlock = false;
+  for (const line of lines) {
+    const isNoiseHeader = PIP_NOISE_PATTERNS[0].test(line);
+    const isNoiseDetail = PIP_NOISE_PATTERNS[1].test(line.trim());
+    if (isNoiseHeader) {
+      inNoiseBlock = true;
+      continue;
+    }
+    if (inNoiseBlock && (isNoiseDetail || line.trim() === "")) {
+      // stay in the block through the detail lines
+      if (isNoiseDetail) continue;
+      // empty line after the block — end of it
+      inNoiseBlock = false;
+      continue;
+    }
+    inNoiseBlock = false;
+    filtered.push(line);
+  }
+  // Keep only the tail — pip's download output can be thousands of
+  // lines for torch. 80 lines is plenty to see the critical parts
+  // (version resolved, Successfully installed …, any error stack).
+  if (filtered.length > 80) {
+    const kept = filtered.slice(-80);
+    return `... (${filtered.length - 80} earlier lines omitted)\n${kept.join("\n")}`;
+  }
+  return filtered.join("\n");
 }

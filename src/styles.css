@@ -5918,65 +5918,41 @@ select.text-input {
   color: var(--muted);
   font-style: italic;
 }
-.install-log-attempts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* One scrolling terminal region replacing the per-step cards we had
+ * before. Fixed max-height so the install log never pushes the rest
+ * of the Studio off-screen; auto-scrolls to the bottom on new output
+ * so the user doesn't have to chase streaming pip lines. */
+.install-log-step-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.install-log-attempt {
+.install-log-terminal {
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 6px;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.25);
-}
-.install-log-attempt--fail {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(127, 29, 29, 0.16);
-}
-.install-log-attempt--ok {
-  border-color: rgba(34, 197, 94, 0.18);
-}
-.install-log-attempt-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--text);
-  word-break: break-all;
-}
-.install-log-status {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-}
-.install-log-status--ok {
-  background: rgba(34, 197, 94, 0.22);
-  color: rgb(134, 239, 172);
-}
-.install-log-status--fail {
-  background: rgba(239, 68, 68, 0.28);
-  color: rgb(252, 165, 165);
-}
-.install-log-output {
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem;
-  line-height: 1.4;
+  line-height: 1.45;
   color: rgba(226, 232, 240, 0.92);
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 280px;
+  /* white-space: pre so spacing + indentation is preserved verbatim
+   * (this is what makes the [ OK ] / [FAIL] markers line up on the
+   * left edge so you can scan for failures). word-wrap keeps
+   * pathological long lines from breaking layout. */
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  max-height: 380px;
   overflow: auto;
 }
 .install-log-final {

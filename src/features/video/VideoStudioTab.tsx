@@ -459,6 +459,33 @@ export function VideoStudioTab({
           {!videoRuntimeStatus.realGenerationAvailable ? (
             <>
               <div className="image-runtime-actions">
+                {/* Same post-install-awaiting-restart branch Image Studio
+                  * uses. After a successful GPU bundle install, the
+                  * running backend still can't see the new torch in
+                  * extras (PYTHONPATH is snapshotted at spawn). Nudge
+                  * the user toward Restart Backend instead of asking
+                  * them to install again. */}
+                {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
+                  <>
+                    <p className="muted-text">
+                      GPU runtime installed to{" "}
+                      <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
+                      still has its old import cache — click Restart Backend to activate the
+                      new runtime, then video generation will use your GPU.
+                    </p>
+                    <div className="button-row">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => onRestartServer()}
+                        disabled={busy}
+                      >
+                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
                 <p className="muted-text">
                   Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers,
                   ~2.5 GB). Install it once — it writes to a persistent user-local directory so
@@ -477,6 +504,8 @@ export function VideoStudioTab({
                     {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
                   </button>
                 </div>
+                  </>
+                )}
               </div>
               <InstallLogPanel job={gpuBundleJob} />
             </>

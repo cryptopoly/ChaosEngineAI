@@ -893,7 +893,13 @@ export interface ImageRuntimeStatus {
   activeEngine: string;
   realGenerationAvailable: boolean;
   message: string;
+  // Actual device bound to the currently-loaded model (null when nothing
+  // is loaded). Populated by ``_detect_device`` after torch import.
   device?: string | null;
+  // Best-effort prediction of what the device will be on the next
+  // Generate click, computed without importing torch. Useful for
+  // surfacing "will use CUDA" BEFORE the user clicks generate.
+  expectedDevice?: string | null;
   pythonExecutable?: string | null;
   missingDependencies?: string[];
   loadedModelRepo?: string | null;

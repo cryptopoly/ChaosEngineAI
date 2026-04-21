@@ -253,7 +253,20 @@ export function ImageStudioTab({
                   : "Using placeholder outputs"}
             </span>
             <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
-            {imageRuntimeStatus.device ? <span className="badge muted">Device: {imageRuntimeStatus.device}</span> : null}
+            {/* Prefer the actual-loaded device; fall back to the
+              * predicted expectedDevice computed cheaply via
+              * nvidia-smi + find_spec (no torch import). When
+              * nothing is loaded yet the badge reads 'Device: cuda
+              * (expected)' which tells the user what will happen on
+              * first Generate instead of leaving them to guess. */}
+            {(() => {
+              const resolved =
+                imageRuntimeStatus.device
+                ?? (imageRuntimeStatus.expectedDevice
+                  ? `${imageRuntimeStatus.expectedDevice} (expected)`
+                  : null);
+              return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
+            })()}
           </div>
           {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
             <div className="image-runtime-summary">
@@ -310,31 +323,56 @@ export function ImageStudioTab({
           {!imageRuntimeStatus.realGenerationAvailable ? (
             <>
               <div className="image-runtime-actions">
-                <p className="muted-text">
-                  Install the GPU image runtime (torch + diffusers + accelerate + transformers,
-                  ~2.5 GB) to enable real local generation. Writes to a persistent user-local
-                  folder so app updates don't wipe it.
-                </p>
-                <div className="button-row">
-                  {/* Always show the install button when the runtime isn't available.
-                    * Previously this was gated on activeEngine === "unavailable" but the
-                    * backend never returns that literal — it returns "placeholder" both
-                    * when packages are missing AND when they're installed-but-broken
-                    * (e.g. torch ImportError for 'autocast'). Both cases need the
-                    * install button, so the gate was hiding it in the exact states
-                    * where it's most useful. */}
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => void handleInstallImageRuntime()}
-                    disabled={installingImageRuntime || !backendOnline}
-                  >
-                    {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                  </button>
-                </div>
+                {/* Two display modes for the same not-available state:
+                  * (a) Fresh / broken install → offer Install GPU runtime.
+                  * (b) Install just completed this session but backend
+                  *     hasn't been restarted yet → PYTHONPATH in the
+                  *     running backend is frozen from spawn time, so
+                  *     find_spec still can't see the freshly-installed
+                  *     torch. The user doesn't need to install again,
+                  *     they need to restart. Keep the restart button
+                  *     prominent and explain why. */}
+                {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
+                  <>
+                    <p className="muted-text">
+                      GPU runtime installed to{" "}
+                      <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
+                      still has its old import cache — click Restart Backend to activate the
+                      new runtime, then image generation will use your GPU.
+                    </p>
+                    <div className="button-row">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => onRestartServer()}
+                        disabled={busy}
+                      >
+                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="muted-text">
+                      Install the GPU image runtime (torch + diffusers + accelerate + transformers,
+                      ~2.5 GB) to enable real local generation. Writes to a persistent user-local
+                      folder so app updates don't wipe it.
+                    </p>
+                    <div className="button-row">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => void handleInstallImageRuntime()}
+                        disabled={installingImageRuntime || !backendOnline}
+                      >
+                        {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
+                      </button>
+                      <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
+                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
               <InstallLogPanel job={gpuBundleJob} />
             </>

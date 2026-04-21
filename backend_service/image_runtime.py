@@ -182,6 +182,30 @@ def _resolve_image_python() -> str:
     return os.getenv("PYTHON", "python3")
 
 
+def _guess_expected_device() -> str | None:
+    """Best-effort prediction of what device diffusers will bind to on
+    the next Generate click, computed WITHOUT importing torch.
+
+    Importing torch here would lock torch/lib/*.dll in the backend
+    process and block /api/setup/install-gpu-bundle on Windows (same
+    trap we hit before). find_spec + nvidia_gpu_present are free.
+    Returns ``None`` when torch isn't installed — caller surfaces
+    the probe's ``missingDependencies`` list instead.
+
+    Predicted device is provisional; the actual device used at
+    generate time is what ``_detect_device`` decides once torch is
+    imported. Mismatch is rare (driver missing, torch was CPU-only)
+    and gets corrected in ``device`` once a model is loaded.
+    """
+    if importlib.util.find_spec("torch") is None:
+        return None
+    if _nvidia_gpu_present():
+        return "cuda"
+    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+        return "mps"
+    return "cpu"
+
+
 def _stable_hash(value: str) -> int:
     acc = 0
     for index, char in enumerate(value):
@@ -210,6 +234,13 @@ class ImageRuntimeStatus:
     realGenerationAvailable: bool
     message: str
     device: str | None = None
+    # ``expectedDevice`` is the device we'll ask torch to use on the
+    # next Generate click, computed from nvidia-smi + find_spec without
+    # importing torch. Lets the UI show "will use cuda" before any
+    # model has actually been loaded. Kept separate from ``device`` so
+    # consumers can distinguish "expected at load time" from "actually
+    # bound right now".
+    expectedDevice: str | None = None
     pythonExecutable: str | None = None
     missingDependencies: list[str] = field(default_factory=list)
     loadedModelRepo: str | None = None
@@ -409,6 +440,7 @@ class DiffusersTextToImageEngine:
             # torch just to report cuda/mps/cpu availability in the empty
             # case — users find out on first Generate which is cheap.
             device=self._device,
+            expectedDevice=_guess_expected_device(),
             pythonExecutable=_resolve_image_python(),
             message=message,
             loadedModelRepo=self._loaded_repo,

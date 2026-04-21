@@ -575,10 +575,32 @@ app = create_app()
 
 
 def _watch_parent_and_exit():
-    """Exit if our parent process dies (e.g. Tauri shell killed via Ctrl+C).
+    """Kill ourselves and every child when the Tauri parent dies.
 
-    This prevents orphaned backend + MLX worker processes from holding
-    GPU memory after the desktop app shuts down.
+    Fires when the desktop shell crashes, gets force-closed from Task
+    Manager / Activity Monitor, or is killed via Ctrl+C in dev. Without
+    this, subprocess children we spawned (llama-server, llama-server-turbo,
+    MLX worker) get re-parented to init/launchd and become multi-GB
+    memory ghosts — the exact pattern the user reported where two
+    llama-server.exe processes survived at 28 GB each.
+
+    Platform semantics:
+      - Unix (macOS / Linux): the backend was started inside its own
+        session via setsid() in Tauri's pre_exec hook, so all our
+        descendants share our process group. killpg signals the whole
+        tree atomically. We send SIGTERM then SIGKILL 300ms later as a
+        belt-and-braces — SIGTERM gives llama-server a chance to flush
+        caches / release GPU handles cleanly, SIGKILL catches anything
+        that was ignoring SIGTERM.
+      - Windows: no killpg equivalent. os.kill(self, SIGTERM) just
+        kills Python — the llama-server grandchildren still leak.
+        The real fix on Windows is a Job Object created by the Tauri
+        shell with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (implemented in
+        src-tauri/src/lib.rs). When the Tauri process exits, Windows
+        kernel kills the whole job. This watchdog runs first as a
+        fast-path termination trigger; the Job Object is the safety
+        net for the case where Python itself crashed before the
+        watchdog fires.
     """
     import threading
     initial_ppid = os.getppid()
@@ -590,13 +612,25 @@ def _watch_parent_and_exit():
             time.sleep(0.5)
             current_ppid = os.getppid()
             if current_ppid != initial_ppid or current_ppid == 1:
-                # Parent died — kill ourselves and any subprocess children
                 try:
                     if hasattr(os, "killpg"):
-                        # Unix: kill our entire process group (includes MLX worker children)
+                        # Unix: SIGTERM the whole process group, give
+                        # llama-server a moment to release GPU VRAM,
+                        # then SIGKILL as backup. killpg(pgrp, SIGKILL)
+                        # kills us too since we're in the group, so the
+                        # os._exit below is only reached if SIGKILL was
+                        # somehow ignored (e.g. PID 1 protections).
                         os.killpg(os.getpgrp(), signal.SIGTERM)
+                        time.sleep(0.3)
+                        try:
+                            os.killpg(os.getpgrp(), signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass  # group gone already, fine
                     else:
-                        # Windows: terminate our own process
+                        # Windows fallback. The Job Object in the Tauri
+                        # shell is the real mechanism for Windows orphan
+                        # prevention; this just makes sure Python itself
+                        # exits fast so the Job handle closes promptly.
                         os.kill(os.getpid(), signal.SIGTERM)
                 except Exception:
                     pass

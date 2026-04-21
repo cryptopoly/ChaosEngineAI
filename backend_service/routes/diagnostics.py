@@ -338,21 +338,36 @@ def _gpu_info() -> dict[str, Any]:
     install flow).
     """
     return {
-        "torchFindSpec": importlib.util.find_spec("torch") is not None,
-        "diffusersFindSpec": importlib.util.find_spec("diffusers") is not None,
-        "accelerateFindSpec": importlib.util.find_spec("accelerate") is not None,
-        "transformersFindSpec": importlib.util.find_spec("transformers") is not None,
-        "imageioFindSpec": importlib.util.find_spec("imageio") is not None,
-        "ffmpegFindSpec": importlib.util.find_spec("imageio_ffmpeg") is not None,
-        "sentencepieceFindSpec": importlib.util.find_spec("sentencepiece") is not None,
-        "tiktokenFindSpec": importlib.util.find_spec("tiktoken") is not None,
-        "protobufFindSpec": importlib.util.find_spec("google.protobuf") is not None,
-        "ftfyFindSpec": importlib.util.find_spec("ftfy") is not None,
+        "torchFindSpec": _has_module("torch"),
+        "diffusersFindSpec": _has_module("diffusers"),
+        "accelerateFindSpec": _has_module("accelerate"),
+        "transformersFindSpec": _has_module("transformers"),
+        "imageioFindSpec": _has_module("imageio"),
+        "ffmpegFindSpec": _has_module("imageio_ffmpeg"),
+        "sentencepieceFindSpec": _has_module("sentencepiece"),
+        "tiktokenFindSpec": _has_module("tiktoken"),
+        "protobufFindSpec": _has_module("google.protobuf"),
+        "ftfyFindSpec": _has_module("ftfy"),
         # Actual torch + CUDA status requires a real import, which we do
         # in a subprocess so DLL state in the backend process is
         # untouched. Null when torch isn't installed or the probe fails.
         "torchSubprocess": _probe_torch_subprocess(),
     }
+
+
+def _has_module(name: str) -> bool:
+    """``importlib.util.find_spec`` on a dotted name raises
+    ``ModuleNotFoundError`` when the parent namespace is missing
+    (``google.protobuf`` on a machine without any ``google`` packages
+    being the classic offender). That crashed the whole _gpu_info
+    section on the user's Windows VM and broke the Diagnostics panel.
+    Catching the raise treats "parent missing" as "child missing",
+    which is the semantic the caller wants.
+    """
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ModuleNotFoundError, ValueError, ImportError):
+        return False
 
 
 def _extras_info() -> dict[str, Any]:

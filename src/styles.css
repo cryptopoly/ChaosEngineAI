@@ -5997,6 +5997,16 @@ select.text-input {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* The snapshot has ~9 sections plus a 200-line log tail; without a
+   * bounded max-height the page grows taller than the viewport and the
+   * browser doesn't scroll inside the Panel body (the outer tab
+   * container doesn't scroll either for Settings). Cap height to 75vh
+   * with internal overflow so users can actually reach the log tail
+   * and the Re-extract button at the bottom. The small right-pad
+   * prevents the scrollbar from overlapping the value cells. */
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 .diagnostics-header {
   font-size: 0.85rem;

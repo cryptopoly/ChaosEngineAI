@@ -63,7 +63,7 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("imageio", status.missingDependencies)
         self.assertIn("tiktoken", status.missingDependencies)
 
-    def test_probe_reports_ready_when_all_deps_and_torch_import_cleanly(self):
+    def test_probe_reports_ready_when_all_deps_findable(self):
         engine = DiffusersVideoEngine()
 
         # Core deps present, output deps present, model deps present.
@@ -72,7 +72,13 @@ class ProbeTests(unittest.TestCase):
 
         self.assertTrue(status.realGenerationAvailable)
         self.assertEqual(status.activeEngine, "diffusers")
-        self.assertIn(status.device, {"cuda", "mps", "cpu"})
+        # ``device`` is now None until a model is actually preloaded —
+        # probe() no longer imports torch just to report device info,
+        # because the implicit torch import was pinning DLLs in the
+        # backend process and breaking /api/setup/install-gpu-bundle
+        # on Windows. Device is populated by preload() once a model
+        # is loaded.
+        self.assertIsNone(status.device)
         self.assertEqual(status.missingDependencies, [])
 
     def test_probe_reports_ready_but_warns_when_only_output_deps_missing(self):
@@ -131,37 +137,77 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("tiktoken", status.missingDependencies)
         self.assertIn("sentencepiece", status.missingDependencies)
 
-    def test_probe_returns_initializing_fast_path_when_warmup_in_progress(self):
-        """Windows cold-disk fix: probe must return BEFORE find_spec runs when
-        the warmup worker is still loading torch, so the fetch stays under
-        the frontend's 30s timeout even on slow disks."""
+    def test_probe_does_not_import_torch(self):
+        """Regression: probe() used to `import torch` which pinned
+        torch/lib/*.dll into the backend process handle table. On Windows
+        that broke /api/setup/install-gpu-bundle — pip's rmtree couldn't
+        overwrite the locked DLLs. Probe now uses find_spec only.
+        """
         import sys as _sys
-        engine = DiffusersVideoEngine()
+        # Remove any pre-existing torch module from previous tests so we
+        # can confirm probe() doesn't put it back.
         saved_torch = _sys.modules.pop("torch", None)
-        # Override the setUp "ready" stub for this test so we exercise the
-        # in-progress branch.
-        self._warmup_patch.stop()
+        engine = DiffusersVideoEngine()
         try:
-            with mock.patch.object(
-                video_runtime,
-                "torch_warmup_status",
-                return_value={"status": "in_progress", "error": None, "started_at": 0.0},
-            ):
-                # _find_missing must NOT be called — that's the whole point.
-                with mock.patch.object(
-                    video_runtime,
-                    "_find_missing",
-                    side_effect=AssertionError("_find_missing ran before warmup fast-path"),
-                ):
-                    status = engine.probe()
+            with mock.patch.object(video_runtime, "_find_missing", return_value=[]):
+                engine.probe()
+            self.assertNotIn(
+                "torch",
+                _sys.modules,
+                "probe() must not import torch — it pins DLLs that block the GPU bundle install",
+            )
         finally:
             if saved_torch is not None:
                 _sys.modules["torch"] = saved_torch
-            self._warmup_patch.start()
 
-        self.assertEqual(status.activeEngine, "initializing")
-        self.assertFalse(status.realGenerationAvailable)
-        self.assertIn("PyTorch is still loading", status.message)
+
+class FindMissingTests(unittest.TestCase):
+    """Regression: _find_missing used to crash with ``ModuleNotFoundError:
+    No module named 'google'`` when asked about ``google.protobuf`` on a
+    machine with neither google-anything nor protobuf installed. The crash
+    propagated up through ``capabilities()`` and made ``/api/video/runtime``
+    return a 500, which surfaced in the UI as the "runtime did not respond"
+    fallback that never clears. ``importlib.util.find_spec`` is documented
+    to return ``None`` for missing submodules, but it raises when the
+    *parent* of a dotted name isn't importable — the classic Python 3
+    namespace-package edge case.
+    """
+
+    def test_find_missing_handles_missing_parent_namespace(self):
+        # Simulate the exact scenario from the user-reported crash: ask for
+        # ``google.protobuf`` on a Python that has no ``google`` package at
+        # all. We can't guarantee ``google`` is absent in every test env, so
+        # mock find_spec to raise what the real implementation would.
+        def fake_find_spec(name):
+            if name == "google.protobuf":
+                raise ModuleNotFoundError("No module named 'google'")
+            return None  # treat everything else as missing too
+
+        with mock.patch.object(
+            video_runtime.importlib.util, "find_spec", side_effect=fake_find_spec
+        ):
+            missing = video_runtime._find_missing(
+                (
+                    ("tiktoken", "tiktoken"),
+                    ("protobuf", "google.protobuf"),
+                )
+            )
+        self.assertIn("protobuf", missing)
+        self.assertIn("tiktoken", missing)
+
+    def test_find_missing_returns_empty_when_all_present(self):
+        # Sanity: when find_spec returns a spec object (non-None), the
+        # package is considered present and not listed as missing.
+        def fake_find_spec(name):
+            return SimpleNamespace(name=name)  # any non-None value works
+
+        with mock.patch.object(
+            video_runtime.importlib.util, "find_spec", side_effect=fake_find_spec
+        ):
+            missing = video_runtime._find_missing(
+                (("tiktoken", "tiktoken"), ("protobuf", "google.protobuf"))
+            )
+        self.assertEqual(missing, [])
 
 
 class PipelineRegistryTests(unittest.TestCase):

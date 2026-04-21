@@ -225,6 +225,10 @@ impl BackendManager {
         let embedded_runtime = resolve_embedded_runtime(app);
         cleanup_orphaned_backends();
         cleanup_stale_managed_backend(app);
+        // Remove the pre-0.6.2 unsuffixed extraction dir if it's still
+        // on disk from a previous install. Idempotent — once it's
+        // gone this is a no-op forever after.
+        cleanup_legacy_extraction_root();
 
         {
             let mut inner = self.inner.lock().expect("backend lock poisoned");
@@ -308,6 +312,15 @@ impl BackendManager {
                 .env("CHAOSENGINE_PORT", inner.info.port.to_string())
                 .env("CHAOSENGINE_MLX_PYTHON", python_executable.as_os_str());
 
+            // Make the persistent extras site-packages path visible to the
+            // backend whether we're in embedded-runtime or dev-source mode.
+            // The install-gpu-bundle endpoint always writes to this path so
+            // users can switch between dev builds / packaged builds without
+            // redownloading 2 GB of CUDA torch every time.
+            if let Some(extras) = ensure_extras_site_packages() {
+                command.env("CHAOSENGINE_EXTRAS_SITE_PACKAGES", extras.as_os_str());
+            }
+
             if let Some(runtime) = embedded_runtime.as_ref() {
                 apply_embedded_runtime_env(&mut command, runtime);
                 if let Some(llama_server) = runtime.llama_server.as_ref() {
@@ -344,10 +357,24 @@ impl BackendManager {
 
             // Put the backend in its own process group on Unix so we can
             // kill the whole tree (Python + MLX worker subprocess) on shutdown.
+            //
+            // On Linux we ALSO set PR_SET_PDEATHSIG so the kernel delivers
+            // SIGKILL to the backend if the Tauri parent dies for any
+            // reason — including SIGKILL from the OOM killer, a crash, or
+            // a force-close from a system activity monitor — before the
+            // in-Python watchdog even runs. This closes the race where
+            // the parent dies between the watchdog's 500ms polls.
+            //
+            // macOS has no PR_SET_PDEATHSIG equivalent, so it relies on
+            // the Python watchdog (backend_service.app::_watch_parent_and_exit)
+            // which detects parent death via getppid() polling and
+            // killpg's the whole session. Gap is ~500ms worst case.
             #[cfg(unix)]
             unsafe {
                 command.pre_exec(|| {
                     libc::setsid();
+                    #[cfg(target_os = "linux")]
+                    libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
                     Ok(())
                 });
             }
@@ -361,6 +388,21 @@ impl BackendManager {
 
             match command.spawn() {
                 Ok(child) => {
+                    // Windows: assign the spawned Python to our
+                    // kill-on-close Job Object so its entire subprocess
+                    // tree (llama-server, llama-server-turbo, any future
+                    // native children) dies automatically when Tauri
+                    // exits — even on a hard kill where our graceful
+                    // shutdown code never runs. See
+                    // windows_job::assign_to_kill_on_close_job for the
+                    // mechanism. The call is best-effort: if Job Object
+                    // creation fails we still have the reactive
+                    // cleanup_orphaned_backends sweep on next launch.
+                    #[cfg(windows)]
+                    {
+                        let _ = windows_job::assign_to_kill_on_close_job(&child);
+                    }
+
                     let lease = ManagedBackendLease {
                         pid: child.id(),
                         port: inner.info.port,
@@ -540,7 +582,22 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
         .env("PYTHONNOUSERSITE", "1")
         .env("CHAOSENGINE_EMBEDDED_RUNTIME", "1");
 
-    if let Some(python_path) = join_paths(&runtime.python_path) {
+    // Prepend the user-local extras dir to PYTHONPATH so packages installed
+    // at runtime (CUDA torch, diffusers, etc. via /api/setup/install-gpu-bundle)
+    // shadow anything in the bundled site-packages. The extras dir lives
+    // outside the ephemeral %TEMP% runtime extraction so it survives app
+    // updates — the installer re-extracts the bundled runtime from scratch
+    // on each launch, but never touches the extras tree.
+    // (CHAOSENGINE_EXTRAS_SITE_PACKAGES is already set by the caller so
+    // the backend can target it for pip --target installs.)
+    let extras_dir = chaosengine_extras_site_packages()
+        .filter(|path| path.is_dir());
+    let mut python_path_entries: Vec<PathBuf> = Vec::with_capacity(runtime.python_path.len() + 1);
+    if let Some(extras) = extras_dir.as_ref() {
+        python_path_entries.push(extras.clone());
+    }
+    python_path_entries.extend(runtime.python_path.iter().cloned());
+    if let Some(python_path) = join_paths(&python_path_entries) {
         command.env("PYTHONPATH", python_path);
     }
     if let Some(path_value) = prepend_env_paths("PATH", &runtime.path_entries) {
@@ -557,6 +614,47 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
 
     if let Some(cert_bundle) = resolve_cert_bundle(runtime) {
         command.env("SSL_CERT_FILE", cert_bundle.as_os_str());
+    }
+}
+
+/// Persistent user-local site-packages directory. Survives app updates,
+/// so CUDA torch / diffusers installed once stays installed forever.
+///
+/// - Windows: ``%LOCALAPPDATA%\ChaosEngineAI\extras\site-packages``
+/// - macOS:   ``~/Library/Application Support/ChaosEngineAI/extras/site-packages``
+/// - Linux:   ``$XDG_DATA_HOME/ChaosEngineAI/extras/site-packages`` (falls
+///            back to ``~/.local/share/ChaosEngineAI/extras/site-packages``)
+///
+/// Returns ``None`` if we can't resolve a home directory at all (headless
+/// environments). Callers treat that as "no extras available" and proceed
+/// with whatever's bundled.
+fn chaosengine_extras_site_packages() -> Option<PathBuf> {
+    let base = if cfg!(windows) {
+        env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .or_else(|| env::var_os("APPDATA").map(PathBuf::from))
+    } else if cfg!(target_os = "macos") {
+        env::var_os("HOME")
+            .map(|home| PathBuf::from(home).join("Library").join("Application Support"))
+    } else {
+        env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share")))
+    }?;
+    Some(base.join("ChaosEngineAI").join("extras").join("site-packages"))
+}
+
+fn ensure_extras_site_packages() -> Option<PathBuf> {
+    let path = chaosengine_extras_site_packages()?;
+    match fs::create_dir_all(&path) {
+        Ok(_) => Some(path),
+        Err(error) => {
+            debug_embedded(format!(
+                "failed to create extras dir {}: {error}",
+                path.display(),
+            ));
+            None
+        }
     }
 }
 
@@ -603,6 +701,36 @@ fn current_platform_tag() -> String {
         other => other,
     };
     format!("{platform}-{}", env::consts::ARCH)
+}
+
+/// Short fingerprint of the manifest content used as an extraction-dir
+/// suffix. DefaultHasher is not cryptographic and not stable across Rust
+/// versions, but we only need within-process stability: same input →
+/// same dir name for this running binary.
+fn manifest_fingerprint(manifest_payload: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    manifest_payload.hash(&mut hasher);
+    // 8 hex chars is ~4B values — plenty for the handful of manifest
+    // revisions a single install ever sees, and short enough to keep
+    // MAX_PATH headroom on Windows for deep torch/lib paths.
+    format!("{:08x}", hasher.finish() as u32)
+}
+
+/// Best-effort cleanup of the pre-0.6.2 unsuffixed extraction path
+/// (``chaosengine-embedded-runtime/<platform>/``). The new layout uses a
+/// manifest-hash suffix, so the old path is unambiguously stale after
+/// a 0.6.2+ install. Ignoring rmtree failures is fine — TEMP gets
+/// cleaned by the OS periodically, and leaving a dead directory in
+/// place doesn't affect correctness.
+fn cleanup_legacy_extraction_root() {
+    let legacy = env::temp_dir()
+        .join("chaosengine-embedded-runtime")
+        .join(current_platform_tag());
+    if legacy.exists() {
+        let _ = fs::remove_dir_all(&legacy);
+    }
 }
 
 fn embedded_debug_enabled() -> bool {
@@ -738,9 +866,31 @@ fn ensure_embedded_runtime_extracted(
 ) -> Result<PathBuf, String> {
     let manifest_payload = fs::read_to_string(manifest_path)
         .map_err(|error| format!("failed to read manifest {}: {error}", manifest_path.display()))?;
+
+    // Key the extraction directory by a hash of the manifest content.
+    // Why: the old code used a fixed path per platform and rmtree'd it
+    // on manifest change, which was silently failing on Windows when
+    // torch/lib/*.dll or llama-server.exe was still held open by a
+    // prior session (or Windows Defender's lingering scan lock). The
+    // rmtree swallowed the error, unpack then wrote into a dirty dir,
+    // and users ended up with an empty backend/ + a fresh manifest.json
+    // claiming the extraction was current. Observed on the user's box:
+    // backend/ directory present but empty, backend_service missing.
+    //
+    // By hashing the manifest, each unique build lands in its own
+    // directory. No path is ever overwritten — fresh extraction is
+    // always to a fresh dir. Old directories become orphans in %TEMP%
+    // but Windows / macOS clean TEMP periodically, and the legacy
+    // cleanup below handles the unsuffixed dir from earlier versions.
+    //
+    // Hash is u64 via DefaultHasher, first 8 hex chars. That's 4B
+    // possible values — collision chance for the handful of manifest
+    // versions a user accumulates is negligible. Short keeps Windows
+    // MAX_PATH headroom for deep ``site-packages`` paths.
+    let fingerprint = manifest_fingerprint(&manifest_payload);
     let extraction_root = env::temp_dir()
         .join("chaosengine-embedded-runtime")
-        .join(current_platform_tag());
+        .join(format!("{}-{}", current_platform_tag(), fingerprint));
     let extracted_manifest = extraction_root.join("manifest.json");
 
     if extracted_manifest.exists()
@@ -752,8 +902,19 @@ fn ensure_embedded_runtime_extracted(
         return Ok(extraction_root);
     }
 
+    // Defence in depth: if this specific fingerprint dir somehow exists
+    // in a partial state (e.g. prior unpack failed), nuke it. With
+    // manifest-hash keying this should only happen when we crashed
+    // mid-unpack, which is far rarer than the old rmtree-race case.
     if extraction_root.exists() {
-        let _ = fs::remove_dir_all(&extraction_root);
+        fs::remove_dir_all(&extraction_root).map_err(|error| {
+            format!(
+                "failed to clear partial extraction {}: {error}. \
+                 Close ChaosEngineAI fully and try again, or delete \
+                 the directory manually.",
+                extraction_root.display(),
+            )
+        })?;
     }
     fs::create_dir_all(&extraction_root).map_err(|error| {
         format!(
@@ -1132,8 +1293,27 @@ fn cleanup_stale_managed_backend(app: &AppHandle) {
     clear_managed_backend_lease(app);
 }
 
+// Substrings / image names that identify a process as a ChaosEngineAI
+// subprocess. Ordered turbo-first because substring matching on Unix
+// uses ``.contains()`` — if ``llama-server`` matched first, it would
+// swallow ``llama-server-turbo`` which has different kill semantics
+// down the road (e.g. we might want to preserve turbo logs).
+#[cfg(unix)]
+const ORPHAN_COMMAND_MARKERS: &[&str] = &[
+    "backend_service.app",
+    "llama-server-turbo",
+    "llama-server",
+    "llama-cli",
+];
+
 #[cfg(unix)]
 fn cleanup_orphaned_backends() {
+    // Sweep processes re-parented to init (ppid==1) whose command line
+    // matches a ChaosEngineAI marker. Covers both the Python sidecar
+    // AND its llama.cpp children — when the sidecar crashes before
+    // tearing down its subprocess tree, the llama-server processes
+    // (which can be 3-30 GB each for large models) otherwise stay
+    // wedged until the user manually task-kills them.
     let output = match Command::new("ps")
         .args(["-axo", "pid=,ppid=,command="])
         .output()
@@ -1162,7 +1342,10 @@ fn cleanup_orphaned_backends() {
         let Ok(ppid) = ppid_raw.parse::<i32>() else {
             continue;
         };
-        if ppid != 1 || !command.contains("backend_service.app") {
+        if ppid != 1 {
+            continue;
+        }
+        if !ORPHAN_COMMAND_MARKERS.iter().any(|marker| command.contains(marker)) {
             continue;
         }
         terminate_process_group(pid);
@@ -1171,12 +1354,41 @@ fn cleanup_orphaned_backends() {
 
 #[cfg(windows)]
 fn cleanup_orphaned_backends() {
-    // Use WMIC to find orphaned backend_service.app processes whose parent
-    // no longer exists.  On Windows, unlike Unix, orphaned children keep
-    // their original PPID — so we check whether the parent PID is still
-    // alive via tasklist.
+    // Sweep orphaned ChaosEngineAI subprocesses whose parent is gone.
+    // Unlike Unix, Windows keeps the orphan's original PPID around, so
+    // we check parent liveness via tasklist rather than relying on a
+    // re-parent-to-init signal.
+    //
+    // Two separate WMIC queries because the filters don't compose
+    // cleanly in a single ``where`` clause (commandline LIKE and name=
+    // each pull different WMI fields) and the cost of two invocations
+    // on startup is tolerable.
+    //
+    // 1. Python sidecar orphans — matched by commandline containing
+    //    ``backend_service.app``.
+    sweep_orphans_by_wmic_filter("commandline like '%backend_service.app%'");
+    // 2. llama.cpp binary orphans — matched by image name. Covers both
+    //    the standard ``llama-server.exe`` and the TurboQuant fork at
+    //    ``llama-server-turbo.exe``, plus ``llama-cli.exe`` in case a
+    //    future feature uses it. These are the big memory hogs when
+    //    they leak (the user reported two 28 GB processes surviving
+    //    app close).
+    sweep_orphans_by_wmic_filter(
+        "name='llama-server.exe' or name='llama-server-turbo.exe' or name='llama-cli.exe'",
+    );
+}
+
+#[cfg(windows)]
+fn sweep_orphans_by_wmic_filter(filter: &str) {
     let output = match Command::new("wmic")
-        .args(["process", "where", "commandline like '%backend_service.app%'", "get", "processid,parentprocessid", "/format:csv"])
+        .args([
+            "process",
+            "where",
+            filter,
+            "get",
+            "processid,parentprocessid",
+            "/format:csv",
+        ])
         .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .output()
     {
@@ -1196,7 +1408,10 @@ fn cleanup_orphaned_backends() {
         let Ok(pid) = parts[2].trim().parse::<u32>() else {
             continue;
         };
-        // Check if parent is still running
+        // Check if parent is still running. If tasklist itself fails
+        // (Windows Defender hook, permissions, etc.) we conservatively
+        // assume the parent IS alive so we don't kill a legitimate
+        // child of a running backend.
         let parent_alive = Command::new("tasklist")
             .args(["/FI", &format!("PID eq {ppid}"), "/NH"])
             .creation_flags(0x08000000)
@@ -1214,6 +1429,99 @@ fn cleanup_orphaned_backends() {
 
 #[cfg(not(any(unix, windows)))]
 fn cleanup_orphaned_backends() {}
+
+// Windows-only: Job Object management for orphan prevention. A Job
+// Object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE is a kernel-level
+// mechanism that guarantees every process in the job dies when the
+// job handle closes. We create one job at first spawn, hold the
+// handle for the entire Tauri process lifetime (so it closes only
+// when Tauri exits), and assign every spawned backend child to it.
+// Child processes inherit job membership automatically on Windows 8+,
+// so llama-server grandchildren land in the same job without us
+// tracking them individually.
+//
+// Why this matters: our graceful shutdown taskkill can be skipped if
+// Tauri itself is SIGKILL'd (Task Manager's End Task, OOM killer,
+// power event, Rust panic before state.shutdown fires). Job Objects
+// protect against every one of those paths — the kernel itself does
+// the kill, not user-mode code.
+#[cfg(windows)]
+mod windows_job {
+    use std::mem;
+    use std::os::windows::io::AsRawHandle;
+    use std::ptr;
+    use std::sync::OnceLock;
+
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
+        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    // HANDLE is a raw pointer so not naturally Send/Sync. We store it as
+    // usize — the kernel object it references is global to the process,
+    // so concurrent access from multiple threads is safe (the Windows API
+    // is thread-safe for these calls). OnceLock gives us lazy init with
+    // a single atomic store.
+    static JOB_HANDLE: OnceLock<usize> = OnceLock::new();
+
+    /// Create (or reuse) the singleton kill-on-close Job Object and
+    /// return its handle. Returns None only if Job Object creation
+    /// itself fails, which effectively never happens on modern Windows
+    /// outside of heavily locked-down environments (e.g. Windows
+    /// Sandbox with Jobs disabled).
+    fn ensure_job() -> Option<HANDLE> {
+        let handle = JOB_HANDLE.get_or_init(|| unsafe {
+            let job = CreateJobObjectW(ptr::null(), ptr::null());
+            if job.is_null() {
+                return 0;
+            }
+
+            // Flip the KILL_ON_JOB_CLOSE bit. Everything else in the
+            // limit block stays zeroed so we don't impose memory / CPU
+            // caps on the backend (it manages its own resource use).
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = mem::zeroed();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+            let ok = SetInformationJobObject(
+                job,
+                JobObjectExtendedLimitInformation,
+                &info as *const _ as *const _,
+                mem::size_of_val(&info) as u32,
+            );
+            if ok == 0 {
+                let _ = CloseHandle(job);
+                return 0;
+            }
+            job as usize
+        });
+        if *handle == 0 {
+            None
+        } else {
+            Some(*handle as HANDLE)
+        }
+    }
+
+    /// Assign a spawned child process to our kill-on-close Job. Returns
+    /// true on success. Non-fatal on failure — the reactive
+    /// cleanup_orphaned_backends sweep still catches anything that
+    /// leaks through.
+    ///
+    /// Timing note: Rust's `Command::spawn()` creates the process
+    /// running (no CREATE_SUSPENDED). There's a theoretical race where
+    /// the child could spawn its own children before we assign it.
+    /// In practice this is safe because the child is a Python
+    /// interpreter that takes ~100ms+ to finish importing the FastAPI
+    /// stack before it even calls subprocess.Popen for llama-server.
+    pub fn assign_to_kill_on_close_job(child: &std::process::Child) -> bool {
+        let Some(job) = ensure_job() else {
+            return false;
+        };
+        let process_handle = child.as_raw_handle() as HANDLE;
+        unsafe { AssignProcessToJobObject(job, process_handle) != 0 }
+    }
+}
 
 #[cfg(unix)]
 fn terminate_process_group(pid: i32) {

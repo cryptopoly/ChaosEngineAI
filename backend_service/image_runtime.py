@@ -365,6 +365,13 @@ class DiffusersTextToImageEngine:
         self._device: str | None = None
 
     def probe(self) -> ImageRuntimeStatus:
+        # Deliberately does NOT ``import torch`` — that would load
+        # torch/lib/*.dll into the backend process handle table, and on
+        # Windows those locked DLLs break /api/setup/install-gpu-bundle
+        # (pip's rmtree can't remove files another process has open).
+        # find_spec answers "is it installable?" without triggering the
+        # import side effects. Device detection (cuda vs cpu) is deferred
+        # to preload/generate where we're about to import torch anyway.
         missing = [
             package
             for package, module_name in (
@@ -378,8 +385,8 @@ class DiffusersTextToImageEngine:
         ]
         if missing:
             message = (
-                "Install the optional image runtime packages to enable real local generation: "
-                "pip install -e '.[desktop,images]'"
+                "Install the GPU image runtime packages to enable real local generation. "
+                "Click the 'Install GPU runtime' button above."
             )
             return ImageRuntimeStatus(
                 activeEngine="placeholder",
@@ -390,39 +397,18 @@ class DiffusersTextToImageEngine:
                 loadedModelRepo=self._loaded_repo,
             )
 
-        try:
-            import torch  # type: ignore
-        except Exception as exc:
-            return ImageRuntimeStatus(
-                activeEngine="placeholder",
-                realGenerationAvailable=False,
-                missingDependencies=["torch"],
-                pythonExecutable=_resolve_image_python(),
-                message=f"PyTorch could not be imported cleanly: {exc}",
-                loadedModelRepo=self._loaded_repo,
-            )
-
-        device = self._detect_device(torch)
         message = (
             "Real local generation is available. Download an image model locally, then Image Studio "
             "will use the diffusers runtime instead of the placeholder engine."
         )
-        # A CPU-only torch on a machine with an NVIDIA GPU is the single
-        # most common "image gen takes 10 minutes per step" misconfiguration
-        # on Windows and Linux. Detect the NVIDIA driver via nvidia-smi and,
-        # if torch didn't pick up CUDA, surface an actionable hint instead
-        # of letting users watch the progress bar crawl.
-        if device == "cpu" and platform.system() in ("Windows", "Linux") and _nvidia_gpu_present():
-            message = (
-                "torch was imported but CUDA is unavailable — diffusion will run on CPU "
-                "(expect minutes per step). Reinstall with the CUDA wheel: "
-                "pip install --upgrade --force-reinstall torch "
-                "--index-url https://download.pytorch.org/whl/cu121"
-            )
         return ImageRuntimeStatus(
             activeEngine="diffusers",
             realGenerationAvailable=True,
-            device=device,
+            # ``device`` is the *currently-loaded* model's device, or None
+            # if no model is loaded. We no longer speculatively import
+            # torch just to report cuda/mps/cpu availability in the empty
+            # case — users find out on first Generate which is cheap.
+            device=self._device,
             pythonExecutable=_resolve_image_python(),
             message=message,
             loadedModelRepo=self._loaded_repo,

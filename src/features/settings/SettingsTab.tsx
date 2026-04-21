@@ -1,5 +1,6 @@
 import { useState, type SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
+import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
 
@@ -26,6 +27,12 @@ export interface SettingsTabProps {
   apiToken: string | null;
   sidebarMode: SidebarMode;
   onSidebarModeChange: (mode: SidebarMode) => void;
+  // Diagnostics subtab needs the same online/restart wiring the rest of
+  // the app uses — backendOnline gates the Refresh button, onRestartServer
+  // triggers the Tauri restart command after a Re-extract runtime action.
+  backendOnline: boolean;
+  onRestartServer: () => void;
+  busyAction: string | null;
 }
 
 // The Settings page used to be one long stack of seven panels — Appearance,
@@ -37,7 +44,7 @@ export interface SettingsTabProps {
 // ``sidebarMode`` preference with a side-menu variant for collapsible users
 // but it felt clunky at the viewport widths this app runs at — tabs always,
 // for Settings only.)
-type SettingsSectionId = "general" | "storage" | "providers" | "integrations";
+type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | "diagnostics";
 
 interface SettingsSectionDef {
   id: SettingsSectionId;
@@ -49,6 +56,7 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   { id: "storage", label: "Storage" },
   { id: "providers", label: "Providers" },
   { id: "integrations", label: "Integrations" },
+  { id: "diagnostics", label: "Diagnostics" },
 ];
 
 export function SettingsTab({
@@ -74,6 +82,9 @@ export function SettingsTab({
   apiToken,
   sidebarMode,
   onSidebarModeChange,
+  backendOnline,
+  onRestartServer,
+  busyAction,
 }: SettingsTabProps) {
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
   // Section selection lives in component state because it's purely a UI
@@ -477,6 +488,14 @@ export function SettingsTab({
   // Keep this dispatch exhaustive — TypeScript's ``SettingsSectionId``
   // discriminant makes it a compile error to forget a branch when we add a
   // new section.
+  const diagnosticsPanels = (
+    <DiagnosticsPanel
+      backendOnline={backendOnline}
+      onRestartServer={onRestartServer}
+      busyAction={busyAction}
+    />
+  );
+
   const sectionContent =
     activeSection === "general"
       ? generalPanels
@@ -484,7 +503,9 @@ export function SettingsTab({
         ? storagePanels
         : activeSection === "providers"
           ? providerPanels
-          : integrationPanels;
+          : activeSection === "integrations"
+            ? integrationPanels
+            : diagnosticsPanels;
 
   // Horizontal sub-tab bar, always — the vertical side-menu variant we
   // tried originally felt clunky at the viewport widths this app runs at

@@ -5865,3 +5865,204 @@ select.text-input {
 .callout-dismiss-btn:hover {
   color: rgba(255, 255, 255, 0.85);
 }
+
+/* -- GPU bundle install log ---------------------------------------- */
+/* Terminal-style expandable panel rendered under the "Install GPU
+ * runtime" button in Image Studio and Video Studio. Auto-expands on
+ * error so users see the raw pip output without clicking. */
+.install-log-panel {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.install-log-summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  user-select: none;
+  list-style: none;
+}
+.install-log-summary::-webkit-details-marker {
+  display: none;
+}
+.install-log-summary::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 120ms;
+  color: var(--muted);
+}
+.install-log-panel[open] > .install-log-summary::before {
+  transform: rotate(90deg);
+}
+.install-log-body {
+  padding: 0 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.install-log-meta {
+  padding: 10px 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+.install-log-empty {
+  padding: 12px 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.install-log-attempts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.install-log-attempt {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.install-log-attempt--fail {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(127, 29, 29, 0.16);
+}
+.install-log-attempt--ok {
+  border-color: rgba(34, 197, 94, 0.18);
+}
+.install-log-attempt-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text);
+  word-break: break-all;
+}
+.install-log-status {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.install-log-status--ok {
+  background: rgba(34, 197, 94, 0.22);
+  color: rgb(134, 239, 172);
+}
+.install-log-status--fail {
+  background: rgba(239, 68, 68, 0.28);
+  color: rgb(252, 165, 165);
+}
+.install-log-output {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(226, 232, 240, 0.92);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow: auto;
+}
+.install-log-final {
+  margin-top: 12px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  color: var(--text);
+}
+.install-log-final strong {
+  color: var(--text);
+  margin-right: 4px;
+}
+
+/* -- Diagnostics panel --------------------------------------------- */
+.diagnostics-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* The snapshot has ~9 sections plus a 200-line log tail; without a
+   * bounded max-height the page grows taller than the viewport and the
+   * browser doesn't scroll inside the Panel body (the outer tab
+   * container doesn't scroll either for Settings). Cap height to 75vh
+   * with internal overflow so users can actually reach the log tail
+   * and the Re-extract button at the bottom. The small right-pad
+   * prevents the scrollbar from overlapping the value cells. */
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.diagnostics-header {
+  font-size: 0.85rem;
+  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.diagnostics-section {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0;
+  overflow: hidden;
+}
+.diagnostics-section-title {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  list-style: none;
+  user-select: none;
+}
+.diagnostics-section-title::-webkit-details-marker {
+  display: none;
+}
+.diagnostics-section-title::before {
+  content: "▸ ";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 120ms;
+  color: var(--muted);
+}
+.diagnostics-section[open] > .diagnostics-section-title::before {
+  transform: rotate(90deg);
+}
+.diagnostics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.diagnostics-table td {
+  padding: 4px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: top;
+}
+.diagnostics-key {
+  width: 40%;
+  color: var(--muted);
+  word-break: break-word;
+}
+.diagnostics-value {
+  color: var(--text);
+  word-break: break-all;
+}
+.diagnostics-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}

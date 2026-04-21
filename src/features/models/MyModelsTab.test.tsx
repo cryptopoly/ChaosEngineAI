@@ -176,6 +176,51 @@ describe("MyModelsTab", () => {
     expect(markup).not.toContain("SERVER");
   });
 
+  it("renders synthetic download-only rows without a reveal button or library path", () => {
+    const row: LibraryRow = {
+      item: {
+        name: "Qwen/Qwen3.6-35B-A3B",
+        path: "download://Qwen/Qwen3.6-35B-A3B",
+        format: "Downloading",
+        sourceKind: "HF cache",
+        quantization: null,
+        backend: null,
+        modelType: "text",
+        sizeGb: 0,
+        lastModified: "2026-04-20 11:00",
+        actions: [],
+        broken: false,
+        brokenReason: null,
+      },
+      matchedVariant: makeVariant(),
+      displayFormat: "Transformers",
+      displayQuantization: null,
+      displayBackend: "mlx",
+      sourceKind: "Download",
+      estimatedRamGb: null,
+      estimatedCompressedGb: null,
+    };
+
+    const markup = renderTab(row, {
+      "Qwen/Qwen3.6-35B-A3B": {
+        repo: "Qwen/Qwen3.6-35B-A3B",
+        state: "downloading",
+        progress: 0.03,
+        downloadedGb: 2.0,
+        totalGb: 67,
+        error: null,
+      },
+    });
+
+    expect(markup).toContain("Downloading 3%");
+    expect(markup).toContain("PAUSE");
+    expect(markup).toContain("CANCEL");
+    // Sentinel path should not leak into the reveal button or expanded detail.
+    expect(markup).not.toContain("download://Qwen/Qwen3.6-35B-A3B");
+    // Reveal button should be hidden for rows with no real file on disk.
+    expect(markup).not.toContain("Reveal");
+  });
+
   it("maps local GGUF directories to matched download repos for retry state", () => {
     const row: LibraryRow = {
       item: makeLocalGgufItem(),

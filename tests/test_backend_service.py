@@ -76,7 +76,7 @@ def make_test_client(state: ChaosEngineState) -> TestClient:
 
 class FakeRuntime:
     def __init__(self) -> None:
-        self.engine = SimpleNamespace(engine_name="mock", engine_label="No backend")
+        self.engine = SimpleNamespace(engine_name="mock", engine_label="Idle")
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None
@@ -856,6 +856,34 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+    def test_model_load_rejects_models_not_on_disk(self):
+        """Regression: previously a load request for a model not in the library
+        would fall through to llama-server's HuggingFace auto-fetch, which on
+        Windows blew up with an opaque SSL error (no CA bundle in the bundled
+        llama-server.exe). The guard now raises a clear error before we ever
+        get there, so users see 'download it first' instead of 'HTTPLIB failed:
+        SSL server verification failed'.
+        """
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                # Deliberately a repo that isn't in fake_library() and has no
+                # path — same shape as the phantom Nemotron load that caused
+                # the user's SSL failure.
+                "modelRef": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+                "modelName": "Nemotron 3 Nano 4B GGUF",
+                "source": "catalog",
+                "backend": "mock",
+            },
+        )
+        self.assertEqual(response.status_code, 500)
+        detail = response.json()["detail"]
+        # Error text must mention the model and point at the fix.
+        self.assertIn("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF", detail)
+        self.assertIn("Discover", detail)
+        # Crucially: llama-server / the runtime should NEVER be invoked.
+        self.assertEqual(self.client.app.state.chaosengine.runtime.load_requests, [])
+
     def test_speculative_mlx_load_clears_warm_pool_and_does_not_keep_previous_model_warm(self):
         state = self.client.app.state.chaosengine
         state.runtime.engine = SimpleNamespace(engine_name="mlx", engine_label="MLX")
@@ -1177,6 +1205,10 @@ class ChaosEngineBackendTests(unittest.TestCase):
                     "modelName": "Llama 3.2 3B Instruct",
                     "source": "catalog",
                     "backend": "mock",
+                    # Path provided so the on-disk guard in ``state.load_model``
+                    # lets the load through — this test isn't exercising the
+                    # guard itself, just verifying warm-pool eviction behaviour.
+                    "path": "/tmp/llama-3.2-3b-instruct",
                 },
             },
         )

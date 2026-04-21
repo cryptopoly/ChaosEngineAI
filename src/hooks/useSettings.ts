@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import {
   getCachePreview,
@@ -296,7 +297,17 @@ export function useSettings(
   async function handleStopServer() {
     setBusyAction("Stopping server...");
     try {
-      if (tauriBackend?.managedByTauri) {
+      // Prefer the Tauri command path whenever we're in the desktop shell,
+      // NOT just when ``tauriBackend.managedByTauri`` is true. That flag is
+      // ``false`` by default (in ``BackendRuntimeInfo::default()``) and only
+      // flips to ``true`` after the Rust ``bootstrap()`` thread finishes.
+      // If the user clicks Stop/Restart before the initial runtime_info
+      // fetch returns with the updated state (or hits the backend during a
+      // probe crash that blanks the cached state), the old logic fell into
+      // the "web fallback" branch which just POSTs /api/server/shutdown and
+      // then polls for a respawn that never happens. Using ``isTauri()``
+      // lets Rust handle both managed and attached cases correctly.
+      if (isTauri()) {
         const runtimeInfo = await stopManagedBackend();
         if (!runtimeInfo) throw new Error("The desktop sidecar could not be stopped.");
         setTauriBackend(runtimeInfo);
@@ -317,7 +328,10 @@ export function useSettings(
   async function handleRestartServer() {
     setBusyAction("Restarting server...");
     try {
-      if (tauriBackend?.managedByTauri) {
+      // See handleStopServer: use isTauri() so a stale or not-yet-populated
+      // managedByTauri flag doesn't trap us in the web-fallback path where
+      // nothing re-spawns the Python sidecar.
+      if (isTauri()) {
         const runtimeInfo = await restartManagedBackend();
         if (!runtimeInfo) throw new Error("The desktop sidecar could not be restarted.");
         setTauriBackend(runtimeInfo);

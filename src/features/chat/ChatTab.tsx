@@ -582,13 +582,21 @@ export function ChatTab({
           ) : null}
           <textarea
             className="text-area"
-            placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+            placeholder={
+              loadedModelRef
+                ? "Type a message... (Enter to send, Shift+Enter for new line)"
+                : "Load a model first — pick one from My Models or Discover, then hit CHAT."
+            }
             rows={3}
             value={draftMessage}
             onChange={(event) => onDraftMessageChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
+                // Mirror the Send button's disabled state — if no model is
+                // loaded, Enter is a no-op so users don't hit a confusing
+                // backend 500 / "no model loaded" error mid-draft.
+                if (!loadedModelRef) return;
                 void onSendMessage();
               }
             }}
@@ -674,7 +682,13 @@ export function ChatTab({
                   Stop
                 </button>
               ) : (
-                <button className="primary-button" type="button" onClick={() => void onSendMessage()}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => void onSendMessage()}
+                  disabled={!loadedModelRef}
+                  title={!loadedModelRef ? "Load a model first to send messages" : undefined}
+                >
                   Send
                 </button>
               )}

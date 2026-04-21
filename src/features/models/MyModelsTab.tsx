@@ -372,6 +372,10 @@ export function MyModelsTab({
                 const showBroken = Boolean(item.broken && !hasDownloadOverlay);
                 const canRetryBrokenRepo = Boolean(showBroken && repo);
                 const downloadActionLabel = isDownloadFailed ? "RETRY" : "RESUME";
+                // Rows synthesised from an in-flight download use a
+                // ``download://<repo>`` sentinel path — they have no real
+                // file on disk yet, so hide path-only actions.
+                const isSyntheticDownloadRow = item.path.startsWith("download://");
                 const wrapperClassName = [
                   "library-item-wrap",
                   isExpanded ? "expanded" : "",
@@ -459,13 +463,15 @@ export function MyModelsTab({
                             ) : null}
                           </>
                         )}
-                        <button className="secondary-button icon-button" type="button" title={fileRevealLabel} onClick={() => onRevealPath(item.path)}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                            <polyline points="15 3 21 3 21 9" />
-                            <line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
-                        </button>
+                        {!isSyntheticDownloadRow ? (
+                          <button className="secondary-button icon-button" type="button" title={fileRevealLabel} onClick={() => onRevealPath(item.path)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                              <polyline points="15 3 21 3 21 9" />
+                              <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                          </button>
+                        ) : null}
                         {!hasDownloadOverlay ? (
                           <button className="secondary-button icon-button danger-button" type="button" title="Delete model" onClick={() => onDeleteModel(item)}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -482,7 +488,9 @@ export function MyModelsTab({
                     {isExpanded ? (
                       <div className="library-item-detail">
                         <div className="library-detail-left">
-                          <p className="mono-text library-path">{item.path}</p>
+                          {!isSyntheticDownloadRow ? (
+                            <p className="mono-text library-path">{item.path}</p>
+                          ) : null}
                           {matchedVariant?.note ? <p className="variant-note">{matchedVariant.note}</p> : null}
                           {formatReleaseLabel(matchedVariant?.releaseLabel, matchedVariant?.releaseDate) ? (
                             <p className="muted-text variant-release-label">

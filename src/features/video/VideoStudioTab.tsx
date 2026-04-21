@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
-import type { DownloadStatus, InstallResult } from "../../api";
+import { InstallLogPanel } from "../../components/InstallLogPanel";
+import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
   TabId,
   TauriBackendInfo,
@@ -62,6 +63,10 @@ export interface VideoStudioTabProps {
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
   onInstallVideoOutputDeps: (packages?: readonly string[]) => Promise<InstallResult>;
+  onInstallVideoGpuRuntime: () => Promise<InstallResult>;
+  // Live state of the GPU bundle install job — drives the InstallLogPanel
+  // under the install button so users see per-step pip output.
+  gpuBundleJob: GpuBundleJobState | null;
 }
 
 // Pipeline-specific tokenizer / text-encoder packages that diffusers loads
@@ -157,8 +162,11 @@ export function VideoStudioTab({
   onOpenExternalUrl,
   onRestartServer,
   onInstallVideoOutputDeps,
+  onInstallVideoGpuRuntime,
+  gpuBundleJob,
 }: VideoStudioTabProps) {
   const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
+  const [installingGpuRuntime, setInstallingGpuRuntime] = useState(false);
   const missingDependencies = videoRuntimeStatus.missingDependencies ?? [];
   // imageio + imageio-ffmpeg are the two pip packages diffusers video
   // pipelines need to export mp4s. Everything else we surface as a badge;
@@ -198,6 +206,19 @@ export function VideoStudioTab({
       await onInstallVideoOutputDeps(missingTokenizerDeps);
     } finally {
       setInstallingOutputDeps(false);
+    }
+  }
+
+  // One-click install for the full GPU runtime (torch + diffusers + video
+  // deps). Triggered when the probe reports the engine as unavailable —
+  // i.e. torch or diffusers is missing from the persistent extras dir.
+  async function handleInstallGpuRuntime() {
+    if (installingGpuRuntime) return;
+    setInstallingGpuRuntime(true);
+    try {
+      await onInstallVideoGpuRuntime();
+    } finally {
+      setInstallingGpuRuntime(false);
     }
   }
   // Only offer variants the user can actually generate with. We include
@@ -436,11 +457,29 @@ export function VideoStudioTab({
             </div>
           ) : null}
           {!videoRuntimeStatus.realGenerationAvailable ? (
-            <div className="image-runtime-actions">
-              <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-              </button>
-            </div>
+            <>
+              <div className="image-runtime-actions">
+                <p className="muted-text">
+                  Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers,
+                  ~2.5 GB). Install it once — it writes to a persistent user-local directory so
+                  subsequent app updates don't re-download it.
+                </p>
+                <div className="button-row">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => void handleInstallGpuRuntime()}
+                    disabled={installingGpuRuntime || !backendOnline}
+                  >
+                    {installingGpuRuntime ? "Installing GPU runtime..." : "Install GPU runtime"}
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
+                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                  </button>
+                </div>
+              </div>
+              <InstallLogPanel job={gpuBundleJob} />
+            </>
           ) : null}
         </div>
 

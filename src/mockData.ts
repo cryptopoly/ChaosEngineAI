@@ -685,7 +685,7 @@ export const mockWorkspace: WorkspaceData = {
   runtime: {
     state: "idle",
     engine: "preview",
-    engineLabel: "No backend",
+    engineLabel: "Idle",
     loadedModel: null,
     supportsGeneration: false,
     serverReady: false,

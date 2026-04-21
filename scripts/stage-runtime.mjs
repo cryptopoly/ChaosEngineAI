@@ -203,8 +203,14 @@ function validateBundledPythonPackages(pythonBinary) {
   }).trim();
   const missing = JSON.parse(payload);
 
-  // Inference packages are optional — warn but never block the build.
-  const optionalGroups = new Set(["inference"]);
+  // ``images`` is now optional at build time — users install CUDA torch +
+  // diffusers on first Image/Video Studio visit via /api/setup/install-gpu-bundle,
+  // which writes to a persistent ~/.chaosengine/extras/ dir outside the
+  // ephemeral embedded runtime. Keeping [images] here would re-bloat the
+  // installer by ~1.3 GB (CUDA DLLs). ``inference`` (dflash, turboquant)
+  // stays optional for the same reason. Only ``desktop`` (chat + core
+  // API deps) is strictly required.
+  const optionalGroups = new Set(["inference", "images"]);
   const requiredMissing = Object.entries(missing)
     .filter(([group]) => !optionalGroups.has(group))
     .flatMap(([group, values]) => values.length ? values.map((value) => `${group}:${value}`) : []);
@@ -213,9 +219,9 @@ function validateBundledPythonPackages(pythonBinary) {
     .flatMap(([group, values]) => values.length ? values.map((value) => `${group}:${value}`) : []);
 
   if (optionalMissing.length) {
-    console.warn(
-      `[stage-runtime] info: optional inference packages not in build venv (${optionalMissing.join(", ")}). ` +
-      `DFlash/TurboQuant will require user install via the Setup page.`,
+    console.log(
+      `[stage-runtime] info: optional packages not bundled (${optionalMissing.join(", ")}). ` +
+      `These install on demand via the Setup page / Image Studio / Video Studio.`,
     );
   }
   if (requiredMissing.length === 0) {
@@ -224,7 +230,7 @@ function validateBundledPythonPackages(pythonBinary) {
 
   const message =
     `Embedded Python is missing required runtime packages (${requiredMissing.join(", ")}). ` +
-    `Install them into the build venv with: ${pythonBinary} -m pip install -e ".[desktop,images]"`;
+    `Install them into the build venv with: ${pythonBinary} -m pip install -e ".[desktop]"`;
   if (strict) {
     throw new Error(message);
   }

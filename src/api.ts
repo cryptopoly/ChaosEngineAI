@@ -810,6 +810,166 @@ export async function installCudaTorch(): Promise<CudaTorchInstallResult> {
   return await postJson<CudaTorchInstallResult>("/api/setup/install-cuda-torch", {}, 900000);
 }
 
+export interface GpuBundlePackage {
+  label: string;
+  spec: string;
+}
+
+export interface GpuBundleInfo {
+  targetDir: string | null;
+  approxDownloadBytes: number;
+  requiredFreeBytes: number;
+  freeBytes: number | null;
+  packages: GpuBundlePackage[];
+}
+
+export interface GpuBundleAttempt {
+  indexUrl?: string;
+  package?: string;
+  phase?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface GpuBundleJobState {
+  id: string;
+  // Lifecycle: idle (no run yet) -> preflight -> downloading -> verifying -> done | error
+  phase: "idle" | "preflight" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  indexUrlUsed: string | null;
+  pythonVersion: string | null;
+  noWheelForPython: boolean;
+  cudaVerified: boolean | null;
+  requiresRestart: boolean;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: GpuBundleAttempt[];
+  done: boolean;
+}
+
+export async function fetchGpuBundleInfo(): Promise<GpuBundleInfo> {
+  return await fetchJson<GpuBundleInfo>("/api/setup/gpu-bundle-info", 15000);
+}
+
+export async function startGpuBundleInstall(): Promise<GpuBundleJobState> {
+  // Returns quickly — the install runs in a backend background thread.
+  // Poll ``getGpuBundleStatus`` to follow progress.
+  return await postJson<GpuBundleJobState>("/api/setup/install-gpu-bundle", {}, 15000);
+}
+
+export async function getGpuBundleStatus(): Promise<GpuBundleJobState> {
+  return await fetchJson<GpuBundleJobState>("/api/setup/install-gpu-bundle/status", 10000);
+}
+
+// --- Diagnostics ---------------------------------------------------
+//
+// Surfaced in Settings → Diagnostics. The snapshot is a structured dump
+// of everything we'd otherwise ask users to gather by PowerShell: OS,
+// hardware, runtime paths, GPU state, env vars, log tail. The frontend
+// pretty-prints it as Markdown for one-click clipboard sharing.
+
+export interface DiagnosticsSnapshot {
+  generatedAt: number;
+  app: {
+    appVersion: string;
+    workspaceRoot: string;
+    logCount: number;
+    activeRequests: number;
+    requestsServed: number;
+  };
+  os: Record<string, unknown>;
+  hardware: {
+    cpu: Record<string, unknown>;
+    memory: Record<string, number | null | undefined>;
+    swap: Record<string, number | null | undefined>;
+    disks: Array<Record<string, unknown>>;
+    gpu: Record<string, unknown>;
+    error?: string;
+  };
+  python: {
+    executable: string;
+    version: string | null;
+    versionTuple: number[];
+    implementation: string;
+    prefix: string;
+    basePrefix: string;
+    platform: string;
+    sysPath: string[];
+    cwd: string | null;
+  };
+  runtime: {
+    engineName: string | null;
+    engineLabel: string | null;
+    loadedModel: Record<string, unknown> | null;
+    warmPoolCount: number | null;
+    llamaServerPath: string | null;
+    llamaServerTurboPath: string | null;
+    llamaCliPath: string | null;
+  };
+  gpu: {
+    torchFindSpec: boolean;
+    diffusersFindSpec: boolean;
+    accelerateFindSpec: boolean;
+    transformersFindSpec: boolean;
+    imageioFindSpec: boolean;
+    ffmpegFindSpec: boolean;
+    sentencepieceFindSpec: boolean;
+    tiktokenFindSpec: boolean;
+    protobufFindSpec: boolean;
+    ftfyFindSpec: boolean;
+    torchSubprocess: Record<string, unknown> | null;
+  };
+  extras: {
+    path: string;
+    exists: boolean;
+    freeBytes: number | null;
+    sizeBytes: number | null;
+    topLevelEntries: string[];
+    error?: string;
+  };
+  environment: Record<string, string | null>;
+  logs: {
+    path: string | null;
+    tailLines: string[];
+  };
+}
+
+export interface DiagnosticsLogTail {
+  path: string | null;
+  lines: string[];
+  lineCount: number;
+}
+
+export interface ReextractRuntimeResult {
+  path: string | null;
+  deleted: boolean;
+  error: string | null;
+}
+
+export async function fetchDiagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
+  // 60s timeout — the snapshot fires a torch-probe subprocess and disk
+  // scans, which on a slow NTFS volume can add a few seconds. Plenty of
+  // headroom beyond the typical ~500ms.
+  return await fetchJson<DiagnosticsSnapshot>("/api/diagnostics/snapshot", 60000);
+}
+
+export async function fetchDiagnosticsLogTail(lines = 200): Promise<DiagnosticsLogTail> {
+  return await fetchJson<DiagnosticsLogTail>(
+    `/api/diagnostics/log-tail?lines=${encodeURIComponent(lines)}`,
+    15000,
+  );
+}
+
+export async function reextractRuntime(): Promise<ReextractRuntimeResult> {
+  return await postJson<ReextractRuntimeResult>("/api/diagnostics/reextract-runtime", {}, 30000);
+}
+
 export interface TurboUpdateInfo {
   installed: boolean;
   installedCommit: string | null;

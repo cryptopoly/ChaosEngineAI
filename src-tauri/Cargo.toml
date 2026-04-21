@@ -1,6 +1,6 @@
 [package]
 name = "chaosengineai"
-version = "0.6.0"
+version = "0.6.2"
 description = "ChaosEngineAI desktop shell for local AI model inference"
 authors = ["OpenAI Codex"]
 edition = "2021"
@@ -29,3 +29,16 @@ tauri-plugin-process = "2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+# Windows: we need the Job Objects API + Threading handles to assign
+# spawned child processes to a kill-on-close job. That's the only way
+# to guarantee llama-server grandchildren die when Tauri does, even
+# on hard kills (Task Manager's End Task, OOM killer, process crash).
+# windows-sys 0.61 is already in the tree transitively via Tauri; we
+# add an explicit dep so we can name the features we need.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",       # HANDLE, CloseHandle
+    "Win32_System_JobObjects", # CreateJobObjectW, SetInformationJobObject,
+                                # AssignProcessToJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+] }

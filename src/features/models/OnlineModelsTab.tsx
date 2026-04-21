@@ -202,6 +202,16 @@ export function OnlineModelsTab({
               ? `${number(Math.min(...family.variants.map((v) => v.paramsB)))}B - ${number(Math.max(...family.variants.map((v) => v.paramsB)))}B`
               : `${number(family.variants[0]?.paramsB ?? 0)}B`;
             const formats = [...new Set(family.variants.map((v) => v.format))];
+            // Pick the first variant with an active download to surface in
+            // the collapsed header — most families download one variant at
+            // a time, so a single badge captures the in-flight state without
+            // cluttering the header or forcing the user to expand the card.
+            const headerDownload = family.variants
+              .map((v) => activeDownloads[v.repo])
+              .find((state) => state?.state === "downloading" || state?.state === "cancelled" || state?.state === "failed") ?? null;
+            const headerIsDownloading = headerDownload?.state === "downloading";
+            const headerIsPaused = headerDownload?.state === "cancelled";
+            const headerIsFailed = headerDownload?.state === "failed";
             return (
               <div key={family.id} className={`discover-card${isExpanded ? " expanded" : ""}`}>
                 <div
@@ -221,6 +231,13 @@ export function OnlineModelsTab({
                       <span className="badge muted">{paramRange}</span>
                       {formats.map((f) => <span key={f} className="badge muted">{f}</span>)}
                       {localCount > 0 ? <span className="badge success">{localCount} downloaded</span> : null}
+                      {headerIsDownloading ? (
+                        <span className="badge accent">{downloadProgressLabel(headerDownload)}</span>
+                      ) : headerIsPaused ? (
+                        <span className="badge warning">{downloadProgressLabel(headerDownload)}</span>
+                      ) : headerIsFailed ? (
+                        <span className="badge warning">DOWNLOAD FAILED</span>
+                      ) : null}
                     </div>
                     <p>{family.headline}</p>
                     <div className="discover-card-meta">
@@ -409,6 +426,15 @@ export function OnlineModelsTab({
                       <span className={`badge ${model.format === "GGUF" ? "accent" : "muted"}`}>{model.format}</span>
                       {model.availableLocally ? <span className="badge success">Downloaded</span> : null}
                       {!model.availableLocally && isDownloadComplete ? <span className="badge success">Download complete</span> : null}
+                      {!model.availableLocally && isDownloading ? (
+                        <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
+                      ) : null}
+                      {!model.availableLocally && isDownloadPaused ? (
+                        <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
+                      ) : null}
+                      {!model.availableLocally && isDownloadFailed ? (
+                        <span className="badge warning">Download failed</span>
+                      ) : null}
                     </div>
                     <div className="discover-card-meta">
                       {formatReleaseLabel(model.releaseLabel, model.createdAt) ? (

@@ -290,7 +290,21 @@ _VIDEO_MODEL_DEPS: tuple[tuple[str, str], ...] = (
 
 
 def _find_missing(deps: tuple[tuple[str, str], ...]) -> list[str]:
-    return [package for package, module_name in deps if importlib.util.find_spec(module_name) is None]
+    # ``importlib.util.find_spec`` raises ``ModuleNotFoundError`` (not returns
+    # ``None``) when the parent of a dotted name is not importable. Concretely:
+    # ``find_spec("google.protobuf")`` blows up with "No module named 'google'"
+    # on a machine that never installed protobuf, instead of just reporting
+    # that protobuf is missing. Without this guard the probe crashes with a
+    # 500 and the Video Studio shows "runtime did not respond" forever.
+    missing: list[str] = []
+    for package, module_name in deps:
+        try:
+            spec = importlib.util.find_spec(module_name)
+        except (ModuleNotFoundError, ValueError, ImportError):
+            spec = None
+        if spec is None:
+            missing.append(package)
+    return missing
 
 
 class DiffusersVideoEngine:
@@ -314,50 +328,14 @@ class DiffusersVideoEngine:
     # ---------- public API ----------
 
     def probe(self) -> VideoRuntimeStatus:
-        # Check warmup status BEFORE any find_spec / subprocess work. On
-        # Windows a cold NTFS volume under antivirus can make both slow
-        # enough to push the probe past the frontend's 30s fetch budget —
-        # the fetch then aborts with TypeError "Failed to fetch" and the
-        # Studio freezes on "ENGINE: UNAVAILABLE" even though the backend
-        # itself is healthy. Returning "initializing" here is cheap and the
-        # frontend polls until the real status is ready.
-        #
-        # If torch is already in ``sys.modules`` (tests, or any process that
-        # imported it earlier), skip this gate entirely — the warmup thread
-        # exists purely to avoid the cold-import cost, and if we've already
-        # paid it there's nothing to wait for.
-        import sys
-        torch_already_imported = "torch" in sys.modules
-        if not torch_already_imported:
-            warmup = torch_warmup_status()
-            if warmup["status"] in ("in_progress", "not_started"):
-                # ``not_started`` means create_app() didn't run (rare:
-                # alternate launcher, tests that import probe directly).
-                # Kick off warmup now so the next poll has a chance to
-                # transition to "ready".
-                if warmup["status"] == "not_started":
-                    start_torch_warmup()
-                    warmup = torch_warmup_status()
-                elapsed = (
-                    time.monotonic() - warmup["started_at"]
-                    if warmup["started_at"] is not None
-                    else 0.0
-                )
-                return VideoRuntimeStatus(
-                    activeEngine="initializing",
-                    realGenerationAvailable=False,
-                    missingDependencies=[],
-                    pythonExecutable=_resolve_video_python(),
-                    message=(
-                        "Video runtime is starting — PyTorch is still loading "
-                        f"({elapsed:.0f}s elapsed). First boot can take up to 60s on "
-                        "Windows/Linux. This page will refresh automatically when it's ready."
-                    ),
-                    loadedModelRepo=self._loaded_repo,
-                )
-        else:
-            warmup = torch_warmup_status()
-
+        # Deliberately does NOT ``import torch`` or trigger the warmup
+        # thread. Importing torch loads torch/lib/*.dll into the backend
+        # process handle table, and on Windows those locked DLLs block
+        # /api/setup/install-gpu-bundle from overwriting them (pip rmtree
+        # fails with WinError 5). find_spec answers "is it installable?"
+        # without the side effects. Device detection + broken-import
+        # checks are deferred to preload/generate where we're about to
+        # actually use torch.
         missing_core = _find_missing(_CORE_DEPS)
         missing_output = _find_missing(_VIDEO_OUTPUT_DEPS)
         missing_model = _find_missing(_VIDEO_MODEL_DEPS)
@@ -371,42 +349,21 @@ class DiffusersVideoEngine:
         missing_all = missing_core + missing_optional
 
         if missing_core:
+            # Include the missing package names in the message so consumers
+            # that only see the RuntimeError string (e.g. preload()'s 500
+            # response) still know WHAT to install — missingDependencies is
+            # on the structured status but isn't plumbed through every path.
             return VideoRuntimeStatus(
                 activeEngine="placeholder",
                 realGenerationAvailable=False,
                 missingDependencies=missing_all,
                 pythonExecutable=_resolve_video_python(),
                 message=(
-                    "Install the optional video runtime packages to enable local generation: "
-                    "pip install 'diffusers[torch]' accelerate imageio imageio-ffmpeg"
+                    f"Video runtime needs these packages: {', '.join(missing_core)}. "
+                    "Click the 'Install GPU runtime' button above to install the full bundle."
                 ),
                 loadedModelRepo=self._loaded_repo,
             )
-
-        if warmup["status"] == "failed":
-            return VideoRuntimeStatus(
-                activeEngine="placeholder",
-                realGenerationAvailable=False,
-                missingDependencies=["torch"] + missing_optional,
-                pythonExecutable=_resolve_video_python(),
-                message=f"PyTorch could not be imported cleanly: {warmup['error']}",
-                loadedModelRepo=self._loaded_repo,
-            )
-
-        try:
-            import torch  # type: ignore
-        except Exception as exc:  # pragma: no cover - torch import side effects
-            return VideoRuntimeStatus(
-                activeEngine="placeholder",
-                realGenerationAvailable=False,
-                missingDependencies=["torch"] + missing_optional,
-                pythonExecutable=_resolve_video_python(),
-                message=f"PyTorch could not be imported cleanly: {exc}",
-                loadedModelRepo=self._loaded_repo,
-            )
-
-        device = self._detect_device(torch)
-        device_memory_gb = _detect_device_memory_gb(device)
 
         if missing_output and missing_model:
             message = (
@@ -430,16 +387,12 @@ class DiffusersVideoEngine:
                 "will use the diffusers runtime."
             )
 
-        # Same CPU-fallback hint the image runtime surfaces: a CPU-only torch
-        # on a box with an NVIDIA GPU is the top "video generation takes
-        # forever" misconfiguration on Windows and Linux.
-        if device == "cpu" and platform.system() in ("Windows", "Linux") and nvidia_gpu_present():
-            message = (
-                "torch was imported but CUDA is unavailable — video generation will run on CPU "
-                "(expect minutes per step). Reinstall with the CUDA wheel: "
-                "pip install --upgrade --force-reinstall torch "
-                "--index-url https://download.pytorch.org/whl/cu121"
-            )
+        # ``device`` / ``deviceMemoryGb`` mirror the currently-loaded model's
+        # runtime context. Before anything is preloaded both are None — we
+        # no longer speculatively import torch just to report cuda vs cpu in
+        # the empty case, because doing so locked DLLs and broke installs.
+        device = self._device
+        device_memory_gb = _detect_device_memory_gb(device) if device is not None else None
 
         return VideoRuntimeStatus(
             activeEngine="diffusers",

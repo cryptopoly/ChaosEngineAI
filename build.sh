@@ -44,27 +44,19 @@ case "$PLATFORM" in
     ;;
 esac
 
-# ── CUDA torch verification (Linux only) ─────────────────
-# If nvidia-smi is on PATH, the build machine has an NVIDIA GPU — the
-# bundled torch MUST have CUDA support or the installer ships with a
-# silent CPU-only runtime. Catching this at build time beats users
-# opening the app and seeing "Running on CPU" on a CUDA-capable GPU.
-if [ "$PLATFORM" = "linux" ] && command -v nvidia-smi >/dev/null 2>&1; then
-  echo "==> Verifying bundled torch has CUDA support..."
-  if ! .venv/bin/python -c "import sys; import torch; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
-    echo ""
-    echo "!! CUDA torch NOT detected on a machine with nvidia-smi."
-    echo "   The installer will run on CPU. Reinstall CUDA torch with e.g."
-    echo "     .venv/bin/pip install --index-url https://download.pytorch.org/whl/cu124 --force-reinstall 'torch>=2.4.0'"
-    echo "   Continuing. Set CHAOSENGINE_REQUIRE_CUDA_TORCH=1 to fail instead."
-    echo ""
-    if [ "${CHAOSENGINE_REQUIRE_CUDA_TORCH:-}" = "1" ]; then
-      echo "CUDA torch required but not detected -- aborting."
-      exit 1
-    fi
-  else
-    echo "    torch.cuda.is_available() == True"
-  fi
+# ── Optional GPU bundle ──────────────────────────────────
+# By default the installer ships CHAT-ONLY (no torch, no diffusers). Users
+# click "Install GPU support" inside the app, which installs CUDA torch +
+# diffusers into ~/.chaosengine/extras/ at runtime. Set
+# CHAOSENGINE_BUNDLE_GPU=1 to include the GPU stack in the installer
+# itself (adds ~1.3 GB, only useful for air-gapped deployments).
+if [ "${CHAOSENGINE_BUNDLE_GPU:-}" = "1" ]; then
+  echo "==> CHAOSENGINE_BUNDLE_GPU=1 -- bundling [images] extras"
+  case "$PLATFORM" in
+    darwin)  .venv/bin/pip install -q -e ".[desktop,images]" ;;
+    linux)   .venv/bin/pip install -q -e ".[desktop,images]" ;;
+    windows) .venv/Scripts/pip install -q -e ".[desktop,images]" ;;
+  esac
 fi
 
 # ── npm dependencies ─────────────────────────────────────

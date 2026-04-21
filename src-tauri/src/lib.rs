@@ -225,6 +225,10 @@ impl BackendManager {
         let embedded_runtime = resolve_embedded_runtime(app);
         cleanup_orphaned_backends();
         cleanup_stale_managed_backend(app);
+        // Remove the pre-0.6.2 unsuffixed extraction dir if it's still
+        // on disk from a previous install. Idempotent — once it's
+        // gone this is a no-op forever after.
+        cleanup_legacy_extraction_root();
 
         {
             let mut inner = self.inner.lock().expect("backend lock poisoned");
@@ -699,6 +703,36 @@ fn current_platform_tag() -> String {
     format!("{platform}-{}", env::consts::ARCH)
 }
 
+/// Short fingerprint of the manifest content used as an extraction-dir
+/// suffix. DefaultHasher is not cryptographic and not stable across Rust
+/// versions, but we only need within-process stability: same input →
+/// same dir name for this running binary.
+fn manifest_fingerprint(manifest_payload: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    manifest_payload.hash(&mut hasher);
+    // 8 hex chars is ~4B values — plenty for the handful of manifest
+    // revisions a single install ever sees, and short enough to keep
+    // MAX_PATH headroom on Windows for deep torch/lib paths.
+    format!("{:08x}", hasher.finish() as u32)
+}
+
+/// Best-effort cleanup of the pre-0.6.2 unsuffixed extraction path
+/// (``chaosengine-embedded-runtime/<platform>/``). The new layout uses a
+/// manifest-hash suffix, so the old path is unambiguously stale after
+/// a 0.6.2+ install. Ignoring rmtree failures is fine — TEMP gets
+/// cleaned by the OS periodically, and leaving a dead directory in
+/// place doesn't affect correctness.
+fn cleanup_legacy_extraction_root() {
+    let legacy = env::temp_dir()
+        .join("chaosengine-embedded-runtime")
+        .join(current_platform_tag());
+    if legacy.exists() {
+        let _ = fs::remove_dir_all(&legacy);
+    }
+}
+
 fn embedded_debug_enabled() -> bool {
     env::var_os("CHAOSENGINE_DEBUG_EMBEDDED").is_some()
 }
@@ -832,9 +866,31 @@ fn ensure_embedded_runtime_extracted(
 ) -> Result<PathBuf, String> {
     let manifest_payload = fs::read_to_string(manifest_path)
         .map_err(|error| format!("failed to read manifest {}: {error}", manifest_path.display()))?;
+
+    // Key the extraction directory by a hash of the manifest content.
+    // Why: the old code used a fixed path per platform and rmtree'd it
+    // on manifest change, which was silently failing on Windows when
+    // torch/lib/*.dll or llama-server.exe was still held open by a
+    // prior session (or Windows Defender's lingering scan lock). The
+    // rmtree swallowed the error, unpack then wrote into a dirty dir,
+    // and users ended up with an empty backend/ + a fresh manifest.json
+    // claiming the extraction was current. Observed on the user's box:
+    // backend/ directory present but empty, backend_service missing.
+    //
+    // By hashing the manifest, each unique build lands in its own
+    // directory. No path is ever overwritten — fresh extraction is
+    // always to a fresh dir. Old directories become orphans in %TEMP%
+    // but Windows / macOS clean TEMP periodically, and the legacy
+    // cleanup below handles the unsuffixed dir from earlier versions.
+    //
+    // Hash is u64 via DefaultHasher, first 8 hex chars. That's 4B
+    // possible values — collision chance for the handful of manifest
+    // versions a user accumulates is negligible. Short keeps Windows
+    // MAX_PATH headroom for deep ``site-packages`` paths.
+    let fingerprint = manifest_fingerprint(&manifest_payload);
     let extraction_root = env::temp_dir()
         .join("chaosengine-embedded-runtime")
-        .join(current_platform_tag());
+        .join(format!("{}-{}", current_platform_tag(), fingerprint));
     let extracted_manifest = extraction_root.join("manifest.json");
 
     if extracted_manifest.exists()
@@ -846,8 +902,19 @@ fn ensure_embedded_runtime_extracted(
         return Ok(extraction_root);
     }
 
+    // Defence in depth: if this specific fingerprint dir somehow exists
+    // in a partial state (e.g. prior unpack failed), nuke it. With
+    // manifest-hash keying this should only happen when we crashed
+    // mid-unpack, which is far rarer than the old rmtree-race case.
     if extraction_root.exists() {
-        let _ = fs::remove_dir_all(&extraction_root);
+        fs::remove_dir_all(&extraction_root).map_err(|error| {
+            format!(
+                "failed to clear partial extraction {}: {error}. \
+                 Close ChaosEngineAI fully and try again, or delete \
+                 the directory manually.",
+                extraction_root.display(),
+            )
+        })?;
     }
     fs::create_dir_all(&extraction_root).map_err(|error| {
         format!(

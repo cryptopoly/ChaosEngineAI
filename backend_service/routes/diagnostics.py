@@ -648,30 +648,23 @@ def _read_log_tail(path: Path | None, max_lines: int) -> list[str]:
 
 
 def _runtime_extraction_root() -> Path | None:
-    """Same path as ``ensure_embedded_runtime_extracted`` in lib.rs.
+    """Parent directory that holds every Tauri runtime extraction.
 
-    Duplicated here because Python doesn't have a way to call into the
-    Rust shell to ask. Kept in sync by convention — if the Rust side
-    ever changes the path, update this too.
+    Kept as the PARENT (``chaosengine-embedded-runtime/``) rather than a
+    specific platform-tag subdir because after lib.rs switched to
+    manifest-hash-suffixed subdirs (``chaosengine-embedded-runtime/
+    windows-x86_64-<hash>/``), Python doesn't have access to the
+    manifest at runtime and can't compute the hash itself. The
+    Diagnostics 're-extract' button nukes the whole parent, which is
+    the right UX anyway — 'clear everything and re-extract on next
+    launch' matches the button's label.
     """
     try:
         import tempfile
         base = Path(tempfile.gettempdir())
     except Exception:
         return None
-    arch = platform.machine().lower()
-    system = sys.platform
-    if arch in ("amd64", "x86_64"):
-        arch = "x86_64"
-    elif arch in ("arm64", "aarch64"):
-        arch = "aarch64"
-    plat = (
-        "windows" if system == "win32"
-        else "darwin" if system == "darwin"
-        else "linux"
-    )
-    tag = f"{plat}-{arch}"
-    return base / "chaosengine-embedded-runtime" / tag
+    return base / "chaosengine-embedded-runtime"
 
 
 def _subprocess_kwargs() -> dict[str, Any]:

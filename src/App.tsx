@@ -268,7 +268,51 @@ export default function App() {
       estimatedCompressedGb: estimateLibraryItemCompressedGb(item, matchedVariant),
     };
   });
-  const filteredLibraryRows = libraryRows
+  // Synthetic rows for active downloads that have not yet landed in
+  // ``workspace.library`` (e.g. the backend hasn't rescanned, or the partial
+  // file isn't on disk yet). Without this a user clicking Download sees no
+  // feedback in My Models until the backend refresh happens. We match by
+  // any ``repo`` we can already attribute to a library row — via matched
+  // catalog variant or an inferred HF cache path — so we don't duplicate
+  // rows once the download hits disk.
+  const knownDownloadRepos = new Set<string>();
+  for (const row of libraryRows) {
+    const repo = inferHfRepoFromLocalPath(row.item.path) ?? row.matchedVariant?.repo ?? (row.item.name.includes("/") ? row.item.name : null);
+    if (repo) knownDownloadRepos.add(repo);
+  }
+  const syntheticDownloadRows = Object.values(activeDownloads)
+    .filter((download) => download.state === "downloading" || download.state === "cancelled" || download.state === "failed")
+    .filter((download) => !knownDownloadRepos.has(download.repo))
+    .map((download) => {
+      const variant = allFeaturedVariants.find((candidate) => candidate.repo === download.repo) ?? null;
+      const now = new Date().toISOString().replace("T", " ").slice(0, 16);
+      const downloadedGb = Math.max(0, download.downloadedGb ?? 0);
+      const item: LibraryItem = {
+        name: variant?.name ?? download.repo,
+        path: `download://${download.repo}`,
+        format: variant?.format ?? "Downloading",
+        sourceKind: "HF cache",
+        quantization: variant?.quantization ?? null,
+        backend: variant?.backend ?? null,
+        modelType: "text",
+        sizeGb: downloadedGb,
+        lastModified: now,
+        actions: [],
+        broken: false,
+        brokenReason: null,
+      };
+      return {
+        item,
+        matchedVariant: variant,
+        displayFormat: variant?.format ?? "Downloading",
+        displayQuantization: variant?.quantization ?? null,
+        displayBackend: variant?.backend ?? "",
+        sourceKind: "Download",
+        estimatedRamGb: variant?.estimatedMemoryGb ?? null,
+        estimatedCompressedGb: variant?.estimatedCompressedMemoryGb ?? null,
+      };
+    });
+  const filteredLibraryRows = [...libraryRows, ...syntheticDownloadRows]
     .filter(({ item }) => item.modelType === "text" || (!item.modelType))
     .filter(({ item, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
       const haystack = `${item.name} ${item.path} ${displayFormat} ${displayQuantization ?? ""} ${displayBackend} ${sourceKind} ${item.directoryLabel ?? ""}`.toLowerCase();

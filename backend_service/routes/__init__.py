@@ -24,6 +24,7 @@ def register_routes(app: FastAPI) -> None:
     from .finetuning import router as finetuning_router
     from .prompts import router as prompts_router
     from .diagnostics import router as diagnostics_router
+    from .storage import router as storage_router
 
     app.include_router(auth_router)
     app.include_router(health_router)
@@ -43,3 +44,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(finetuning_router)
     app.include_router(prompts_router)
     app.include_router(diagnostics_router)
+    app.include_router(storage_router)

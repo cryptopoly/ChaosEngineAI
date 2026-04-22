@@ -177,6 +177,13 @@ class VideoRuntimeStatus:
     realGenerationAvailable: bool
     message: str
     device: str | None = None
+    # ``expectedDevice`` is the device we'll ask torch to use on the
+    # next Generate click, predicted from nvidia-smi + platform checks
+    # WITHOUT importing torch. Lets the Studio show "Device: cuda
+    # (expected)" before anything has loaded, so users can confirm GPU
+    # will be used before sinking 2+ GB of model download into it.
+    # Mirrors ``ImageRuntimeStatus.expectedDevice``.
+    expectedDevice: str | None = None
     pythonExecutable: str | None = None
     missingDependencies: list[str] = field(default_factory=list)
     loadedModelRepo: str | None = None
@@ -192,6 +199,23 @@ class VideoRuntimeStatus:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _guess_video_expected_device() -> str | None:
+    """Predict the device torch will bind to without importing torch.
+
+    Importing torch in probe() would lock torch/lib/*.dll and block the
+    GPU-bundle installer on Windows (same trap the image runtime hit).
+    ``find_spec`` + ``nvidia_gpu_present`` are free of that side effect
+    and accurate enough for the UI badge.
+    """
+    if importlib.util.find_spec("torch") is None:
+        return None
+    if nvidia_gpu_present():
+        return "cuda"
+    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+        return "mps"
+    return "cpu"
 
 
 @dataclass(frozen=True)
@@ -358,6 +382,7 @@ class DiffusersVideoEngine:
                 realGenerationAvailable=False,
                 missingDependencies=missing_all,
                 pythonExecutable=_resolve_video_python(),
+                expectedDevice=_guess_video_expected_device(),
                 message=(
                     f"Video runtime needs these packages: {', '.join(missing_core)}. "
                     "Click the 'Install GPU runtime' button above to install the full bundle."
@@ -398,6 +423,7 @@ class DiffusersVideoEngine:
             activeEngine="diffusers",
             realGenerationAvailable=True,
             device=device,
+            expectedDevice=_guess_video_expected_device(),
             pythonExecutable=_resolve_video_python(),
             missingDependencies=missing_optional,
             message=message,

@@ -6042,3 +6042,165 @@ select.text-input {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 12px;
 }
+
+/* ---------------------------------------------------------------- *
+ * InfoTooltip — ℹ︎ icon + hover/focus bubble. Used next to form    *
+ * field labels to explain settings without inflating the label.    *
+ * ---------------------------------------------------------------- */
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  cursor: help;
+  outline: none;
+}
+.info-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: rgba(203, 213, 225, 0.9);
+  background: rgba(148, 163, 184, 0.08);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.info-tooltip:hover .info-tooltip-icon,
+.info-tooltip:focus-visible .info-tooltip-icon {
+  border-color: rgba(96, 165, 250, 0.8);
+  color: rgb(191, 219, 254);
+}
+.info-tooltip-body {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(15, 23, 42);
+  color: rgb(226, 232, 240);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  width: max-content;
+  max-width: 280px;
+  white-space: normal;
+  text-align: left;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 10;
+  transition: visibility 0.1s linear 0s, opacity 0.12s ease-out;
+}
+.info-tooltip:hover .info-tooltip-body,
+.info-tooltip:focus-visible .info-tooltip-body,
+.info-tooltip:focus-within .info-tooltip-body {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* Label text wrapper so the ℹ︎ tooltip sits beside the label without
+ * breaking the flexbox that surrounds it. Falls back to inheriting
+ * all label styling — it's only here to group the text + icon. */
+.inline-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ---------------------------------------------------------------- *
+ * Preset pill rows — quality + aspect ratio quick-select buttons.  *
+ * ---------------------------------------------------------------- */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.preset-row-label {
+  flex-basis: 100%;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+.preset-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.preset-pill:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+.preset-pill.active {
+  border-color: rgba(96, 165, 250, 0.75);
+  background: rgba(59, 130, 246, 0.18);
+  color: rgb(219, 234, 254);
+}
+.preset-pill-label {
+  font-weight: 600;
+}
+.preset-pill-sub {
+  font-size: 10px;
+  color: var(--muted);
+}
+.preset-pill.active .preset-pill-sub {
+  color: rgba(191, 219, 254, 0.75);
+}
+
+/* ---------------------------------------------------------------- *
+ * Slider + number input pair. Used for Steps and Guidance where    *
+ * the number gives exact precision but the slider makes the min/   *
+ * max range visible at a glance.                                   *
+ * ---------------------------------------------------------------- */
+.slider-number-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-number-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: rgb(96, 165, 250);
+}
+.slider-number-row input[type="number"] {
+  width: 64px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- *
+ * Progress bar — reused by the model-move job panel. Kept generic  *
+ * so future long-running progress UIs can drop it in too.          *
+ * ---------------------------------------------------------------- */
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgb(59, 130, 246), rgb(96, 165, 250));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}

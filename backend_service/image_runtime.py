@@ -206,6 +206,21 @@ def _guess_expected_device() -> str | None:
     return "cpu"
 
 
+def _is_flux_repo(repo: str) -> bool:
+    """Does this HF repo look like a FLUX.1 family model?
+
+    FLUX family checkpoints are published under the
+    ``black-forest-labs/FLUX.1-*`` namespace (Dev, Schnell, Kontext, etc.)
+    plus a long tail of community fine-tunes that keep "flux" in their
+    repo name. We match loosely by lowercased substring — the
+    consequence of a false positive (using bf16 + cpu-offload on a non-
+    FLUX model) is "slower than optimal on this machine", not incorrect
+    output, so erring wide is fine.
+    """
+    lowered = repo.lower()
+    return "flux" in lowered
+
+
 def _stable_hash(value: str) -> int:
     acc = 0
     for index, char in enumerate(value):
@@ -600,10 +615,31 @@ class DiffusersTextToImageEngine:
             detected_device = self._detect_device(torch)
             device = self._preferred_execution_device(repo, detected_device)
             dtype = self._preferred_torch_dtype(torch, repo, device)
+            use_cpu_offload = self._should_use_model_cpu_offload(repo, device)
+
+            # For FLUX on CUDA, try to load a 4-bit (NF4) quantized
+            # transformer so the 12B model fits in ~7 GB instead of
+            # ~24 GB. Falls back silently to the full bf16 transformer
+            # if bitsandbytes isn't installed or the diffusers version
+            # is too old to support quantization_config.
+            pipeline_kwargs: dict[str, Any] = {}
+            if use_cpu_offload:
+                IMAGE_PROGRESS.set_phase(
+                    PHASE_LOADING, message=f"Quantizing {repo} transformer to NF4",
+                )
+                quantized_transformer, note = self._try_load_nf4_flux_transformer(
+                    local_path, torch,
+                )
+                if quantized_transformer is not None:
+                    pipeline_kwargs["transformer"] = quantized_transformer
+                if note:
+                    IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=note)
+
             pipeline = AutoPipelineForText2Image.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_kwargs,
             )
             # The safety checker adds extra vision-model dependencies and can
             # fail on tiny or oddly shaped test pipelines. For the local app
@@ -616,13 +652,26 @@ class DiffusersTextToImageEngine:
                 pipeline.requires_safety_checker = False
             if hasattr(pipeline, "set_progress_bar_config"):
                 pipeline.set_progress_bar_config(disable=True)
-            if hasattr(pipeline, "enable_attention_slicing"):
-                pipeline.enable_attention_slicing()
-            vae = getattr(pipeline, "vae", None)
-            if vae is not None and hasattr(vae, "enable_slicing"):
-                vae.enable_slicing()
-            if device != "cpu":
-                pipeline = pipeline.to(device)
+            if use_cpu_offload:
+                # Diffusers' stock recipe for FLUX on <32 GB VRAM: keep only
+                # the active component (T5, then transformer, then VAE) on
+                # GPU, transferring at component boundaries. Do NOT combine
+                # with attention/VAE slicing or .to(device) — slicing issues
+                # many tiny kernel launches that saturate PCIe when the
+                # active weights are already being DMA'd in, and .to(device)
+                # would pin all 33 GB of FLUX weights in VRAM at once
+                # (exceeds even a 4090) causing fallback-to-pagefile thrash.
+                # Real-world signature of doing it wrong: GPU at 97% util
+                # but step 0/8 never completing.
+                pipeline.enable_model_cpu_offload()
+            else:
+                if hasattr(pipeline, "enable_attention_slicing"):
+                    pipeline.enable_attention_slicing()
+                vae = getattr(pipeline, "vae", None)
+                if vae is not None and hasattr(vae, "enable_slicing"):
+                    vae.enable_slicing()
+                if device != "cpu":
+                    pipeline = pipeline.to(device)
 
             self._pipeline = pipeline
             self._torch = torch
@@ -658,6 +707,13 @@ class DiffusersTextToImageEngine:
 
     def _preferred_torch_dtype(self, torch: Any, repo: str, device: str) -> Any:
         if device == "cuda":
+            # FLUX was trained and validated in bfloat16. Loading it as
+            # float16 produces slightly off saturations and occasional
+            # NaN-propagation on long prompts — not catastrophic, but the
+            # official Black Forest recipe is bfloat16 and we should match
+            # it so output quality is on-spec.
+            if _is_flux_repo(repo):
+                return torch.bfloat16
             return torch.float16
         if device == "mps":
             lowered_repo = repo.lower()
@@ -676,6 +732,79 @@ class DiffusersTextToImageEngine:
         if detected_device == "mps" and "qwen-image" in lowered_repo:
             return "cpu"
         return detected_device
+
+    def _try_load_nf4_flux_transformer(
+        self, local_path: str, torch: Any,
+    ) -> tuple[Any, str | None]:
+        """Load FLUX's transformer quantized to NF4 via bitsandbytes.
+
+        NF4 (4-bit NormalFloat) drops the 12B FLUX transformer from ~24 GB
+        (bf16) to ~7 GB with negligible visual quality loss — the exact
+        pattern the FLUX community runs on 24 GB consumer GPUs. T5-XXL and
+        the VAE are NOT quantized (they're small enough, and quantizing
+        text encoders hurts prompt adherence more than it saves memory).
+
+        Returns ``(transformer, note)``. A ``None`` transformer means the
+        caller should fall back to the unquantized pipeline — typically
+        because bitsandbytes isn't installed yet or the diffusers version
+        predates the ``quantization_config`` plumbing. The note is a user-
+        visible progress message explaining which path was taken.
+        """
+        if importlib.util.find_spec("bitsandbytes") is None:
+            return None, (
+                "bitsandbytes missing — FLUX will load in bf16. "
+                "Install it from the Setup page to enable NF4 quantization "
+                "(turns 8 min/step into ~10 s/step on a 24 GB GPU)."
+            )
+        try:
+            from diffusers import BitsAndBytesConfig, FluxTransformer2DModel  # type: ignore
+        except ImportError:
+            return None, (
+                "Installed diffusers doesn't expose BitsAndBytesConfig. "
+                "Upgrade via the Setup page to use NF4 FLUX."
+            )
+
+        try:
+            nf4_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+            transformer = FluxTransformer2DModel.from_pretrained(
+                local_path,
+                subfolder="transformer",
+                quantization_config=nf4_config,
+                torch_dtype=torch.bfloat16,
+                local_files_only=True,
+            )
+            return transformer, "FLUX transformer loaded in NF4 (~7 GB VRAM)"
+        except Exception as exc:  # noqa: BLE001 — any failure → fall back to bf16
+            # Any error here (missing subfolder, CUDA kernel mismatch,
+            # bitsandbytes CPU-only wheel) falls back to the unquantized
+            # path rather than breaking image generation entirely.
+            return None, (
+                f"NF4 quantization failed ({type(exc).__name__}: {exc}) — "
+                "falling back to bf16 transformer (slower on <32 GB GPUs)."
+            )
+
+    def _should_use_model_cpu_offload(self, repo: str, device: str) -> bool:
+        """True when the pipeline should load via enable_model_cpu_offload().
+
+        Currently limited to FLUX on CUDA. FLUX.1-Dev is ~24 GB transformer
+        plus ~9 GB T5-XXL text encoder in bf16; on any single consumer GPU
+        (≤32 GB VRAM) a plain ``pipeline.to("cuda")`` either OOMs or, worse
+        on Windows, silently falls back to pinned host memory + pagefile
+        and runs at PCIe speeds — which is what "GPU at 97% but step 0/8
+        never completes" looks like. enable_model_cpu_offload swaps whole
+        components (not layers) at module boundaries, which is the
+        diffusers-recommended pattern for FLUX on consumer hardware.
+
+        Other pipelines (SD 1.5 / SDXL / Qwen-Image) fit comfortably and
+        stay on the legacy .to(device) path for best throughput.
+        """
+        if device != "cuda":
+            return False
+        return _is_flux_repo(repo)
 
     def _build_pipeline_kwargs(self, config: ImageGenerationConfig, generator: Any) -> dict[str, Any]:
         kwargs: dict[str, Any] = {

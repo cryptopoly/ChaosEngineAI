@@ -43,12 +43,14 @@ import type {
   TabId,
 } from "../types";
 import type {
+  DiscoverSort,
   ImageGalleryRuntimeFilter,
   ImageGalleryOrientationFilter,
   ImageGallerySort,
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../types/image";
+import { compareDiscoverVariants } from "../utils";
 
 // Human-friendly label for the GPU bundle install progress. Picks the most
 // actionable sentence from the job state so the "Installing..." text in
@@ -79,6 +81,10 @@ export function useImageState(
   const [latestImageDiscoverResults, setLatestImageDiscoverResults] = useState<ImageModelVariant[]>([]);
   const [imageDiscoverTaskFilter, setImageDiscoverTaskFilter] = useState<ImageDiscoverTaskFilter>("all");
   const [imageDiscoverAccessFilter, setImageDiscoverAccessFilter] = useState<ImageDiscoverAccessFilter>("all");
+  // Default to "release" (most recently released first) so the newest
+  // drops surface at the top of the Discover grid. Users can swap to
+  // likes / downloads via the sort dropdown.
+  const [imageDiscoverSort, setImageDiscoverSort] = useState<DiscoverSort>("release");
   const [imageDiscoverSearchInput, setImageDiscoverSearchInput] = useState("");
   const deferredImageDiscoverSearch = useDeferredValue(imageDiscoverSearchInput);
   const [selectedImageModelId, setSelectedImageModelId] = useState("");
@@ -213,14 +219,7 @@ export function useImageState(
       return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
     }),
     ...filteredLatestImageDiscoverResults,
-  ].sort((a, b) => {
-    const dateA = a.lastModified ?? "";
-    const dateB = b.lastModified ?? "";
-    if (dateB && dateA) return dateB.localeCompare(dateA);
-    if (dateB) return 1;
-    if (dateA) return -1;
-    return 0;
-  });
+  ].sort((a, b) => compareDiscoverVariants(imageDiscoverSort, a, b));
 
   const imageDiscoverHasActiveFilters =
     imageDiscoverTaskFilter !== "all" ||
@@ -677,6 +676,8 @@ export function useImageState(
     setImageDiscoverTaskFilter,
     imageDiscoverAccessFilter,
     setImageDiscoverAccessFilter,
+    imageDiscoverSort,
+    setImageDiscoverSort,
     imageDiscoverSearchInput,
     setImageDiscoverSearchInput,
     selectedImageModelId,

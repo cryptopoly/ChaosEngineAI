@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
@@ -14,7 +15,8 @@ import {
   defaultVideoVariantForFamily,
   downloadProgressLabel,
   number,
-  sizeLabel,
+  videoPrimarySizeLabel,
+  videoSecondarySizeLabel,
 } from "../../utils";
 
 export interface VideoStudioTabProps {
@@ -81,6 +83,38 @@ const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
   "protobuf",
   "ftfy",
 ]);
+
+// Quality presets: common starting points users can jump to without
+// knowing what each knob does. Guidance is deliberately omitted — the
+// parent hook sets it per-model (LTX wants 3, Hunyuan wants 6, others
+// 5) and the preset shouldn't overwrite that model-awareness.
+type VideoQualityPreset = "draft" | "standard" | "high" | "max";
+const QUALITY_PRESETS: Record<
+  VideoQualityPreset,
+  { label: string; sub: string; frames: number; steps: number }
+> = {
+  draft: { label: "Draft", sub: "25f · 20 steps", frames: 25, steps: 20 },
+  standard: { label: "Standard", sub: "49f · 30 steps", frames: 49, steps: 30 },
+  high: { label: "High", sub: "97f · 40 steps", frames: 97, steps: 40 },
+  max: { label: "Max", sub: "161f · 50 steps", frames: 161, steps: 50 },
+};
+
+// Aspect-ratio presets. Concrete resolutions rather than "apply ratio to
+// current base" so clicking a pill has zero surprises. Values chosen to
+// be safe across LTX / Wan / HunyuanVideo — they're all divisible by 8
+// (diffusers requirement) and under the largest-tested resolutions the
+// families ship with.
+type VideoAspectRatio = "1:1" | "4:3" | "16:9" | "9:16" | "21:9";
+const ASPECT_RATIOS: Record<
+  VideoAspectRatio,
+  { width: number; height: number }
+> = {
+  "1:1": { width: 512, height: 512 },
+  "4:3": { width: 640, height: 480 },
+  "16:9": { width: 768, height: 432 },
+  "9:16": { width: 432, height: 768 },
+  "21:9": { width: 1024, height: 440 },
+};
 
 // Numeric input handling that tolerates transient empty states during editing.
 // The naive pattern ``onChange={e => setValue(Number(e.target.value) || fallback)}``
@@ -242,15 +276,20 @@ export function VideoStudioTab({
   );
   const hasAnyInstalled = studioFamilies.length > 0;
 
-  // Ensure a valid model is selected once the catalog loads. Prefer an
-  // installed model; fall back to the first catalog entry so the studio
-  // still renders a stub when nothing is downloaded yet.
+  // Ensure a valid model is selected once the catalog loads. "Valid" means
+  // the model is present in ``studioFamilies`` — the installed / in-flight
+  // subset the dropdown actually renders options for. Merely being in the
+  // full ``videoCatalog`` isn't enough: a ``<select>`` whose ``value``
+  // doesn't match any ``<option>`` silently shows the first option
+  // visually while React state stays stale, which produces the classic
+  // "dropdown says Wan 2.2 but every derived field still says LTX"
+  // inconsistency after the previously-selected model is deleted.
   useEffect(() => {
     if (selectedVideoModelId) {
-      const stillValid = videoCatalog.some((family) =>
+      const reachableFromDropdown = studioFamilies.some((family) =>
         family.variants.some((variant) => variant.id === selectedVideoModelId),
       );
-      if (stillValid) return;
+      if (reachableFromDropdown) return;
     }
     const installed = studioFamilies[0]?.variants[0];
     if (installed?.id) {
@@ -407,7 +446,19 @@ export function VideoStudioTab({
               {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
             </span>
             <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
-            {videoRuntimeStatus.device ? <span className="badge muted">Device: {videoRuntimeStatus.device}</span> : null}
+            {/* Prefer the actual-loaded device; fall back to the predicted
+              * expectedDevice computed via nvidia-smi + find_spec (no torch
+              * import). With nothing loaded yet, this reads "Device: cuda
+              * (expected)" so users can confirm GPU will be used before
+              * generate. Mirrors the image studio chip. */}
+            {(() => {
+              const resolved =
+                videoRuntimeStatus.device
+                ?? (videoRuntimeStatus.expectedDevice
+                  ? `${videoRuntimeStatus.expectedDevice} (expected)`
+                  : null);
+              return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
+            })()}
             {loadedVideoVariant ? (
               <span className="badge accent">Loaded: {loadedVideoVariant.name}</span>
             ) : null}
@@ -557,7 +608,10 @@ export function VideoStudioTab({
 
           {selectedVideoVariant ? (
             <div className="image-library-stats">
-              <span>{sizeLabel(selectedVideoVariant.sizeGb)}</span>
+              <span>{videoPrimarySizeLabel(selectedVideoVariant)}</span>
+              {videoSecondarySizeLabel(selectedVideoVariant) ? (
+                <span>{videoSecondarySizeLabel(selectedVideoVariant)}</span>
+              ) : null}
               <span>{selectedVideoVariant.recommendedResolution}</span>
               <span>{number(selectedVideoVariant.defaultDurationSeconds)}s clip</span>
               <span className="badge subtle">{selectedVideoFamily?.name ?? selectedVideoVariant.provider}</span>
@@ -587,7 +641,10 @@ export function VideoStudioTab({
           </label>
 
           <label>
-            Negative prompt
+            <span className="inline-label-text">
+              Negative prompt
+              <InfoTooltip text="Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts." />
+            </span>
             <input
               className="text-input"
               type="text"
@@ -596,6 +653,73 @@ export function VideoStudioTab({
               placeholder="Optional: things to avoid (low quality, watermark, etc.)"
             />
           </label>
+
+          {/*
+            Quality preset pills. Jump straight to Draft/Standard/High/Max
+            rather than making users learn what frames/steps mean for each
+            model. Guidance stays model-aware (set in the hook) — presets
+            intentionally don't overwrite it so LTX-at-3 / Hunyuan-at-6
+            survive a preset click. Pill shows "active" when current state
+            matches the preset exactly (so a user who tweaks a slider sees
+            the active ring drop, confirming they're off-preset).
+          */}
+          <div className="preset-row">
+            <span className="preset-row-label">
+              Quality preset
+              <InfoTooltip text="Jumps frames + steps to a common starting point. Higher presets produce sharper, longer clips but take proportionally longer. The model's recommended guidance is kept — presets don't override it." />
+            </span>
+            {(Object.keys(QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => {
+              const preset = QUALITY_PRESETS[key];
+              const active =
+                videoNumFrames === preset.frames && videoSteps === preset.steps;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`preset-pill ${active ? "active" : ""}`.trim()}
+                  onClick={() => {
+                    onVideoNumFramesChange(preset.frames);
+                    onVideoStepsChange(preset.steps);
+                  }}
+                >
+                  <span className="preset-pill-label">{preset.label}</span>
+                  <span className="preset-pill-sub">{preset.sub}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/*
+            Aspect-ratio preset pills. Fixed resolutions (not "apply ratio
+            to current base") so one click is fully deterministic. Values
+            are all divisible by 8 and sit inside every supported model's
+            tested envelope — safer than letting users pick arbitrary W×H.
+          */}
+          <div className="preset-row">
+            <span className="preset-row-label">
+              Aspect ratio
+              <InfoTooltip text="Sets Width and Height to a common video shape. All presets are safe on every supported model (≤1024 on the long edge, divisible by 8). Edit Width/Height below for finer control." />
+            </span>
+            {(Object.keys(ASPECT_RATIOS) as VideoAspectRatio[]).map((key) => {
+              const ratio = ASPECT_RATIOS[key];
+              const active =
+                videoWidth === ratio.width && videoHeight === ratio.height;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`preset-pill ${active ? "active" : ""}`.trim()}
+                  onClick={() => {
+                    onVideoWidthChange(ratio.width);
+                    onVideoHeightChange(ratio.height);
+                  }}
+                >
+                  <span className="preset-pill-label">{key}</span>
+                  <span className="preset-pill-sub">{ratio.width}×{ratio.height}</span>
+                </button>
+              );
+            })}
+          </div>
 
           {/*
             Per-run knobs. We expose these because Wan 2.1 / LTX defaults at
@@ -612,7 +736,10 @@ export function VideoStudioTab({
           */}
           <div className="field-grid image-field-grid">
             <label>
-              Width
+              <span className="inline-label-text">
+                Width
+                <InfoTooltip text="Horizontal resolution in pixels. Must be divisible by 8. Higher = sharper + slower + more VRAM. Try an Aspect ratio preset above for safe values." />
+              </span>
               <input
                 className="text-input"
                 type="number"
@@ -625,7 +752,10 @@ export function VideoStudioTab({
               />
             </label>
             <label>
-              Height
+              <span className="inline-label-text">
+                Height
+                <InfoTooltip text="Vertical resolution in pixels. Must be divisible by 8. Higher = sharper + slower + more VRAM. Try an Aspect ratio preset above for safe values." />
+              </span>
               <input
                 className="text-input"
                 type="number"
@@ -638,7 +768,10 @@ export function VideoStudioTab({
               />
             </label>
             <label>
-              Frames
+              <span className="inline-label-text">
+                Frames
+                <InfoTooltip text="How many frames to render. Wan / LTX require (frames-1) to be divisible by 4 — valid values are 1, 5, 9, 13, …, 161. Clip length in seconds = Frames ÷ FPS." />
+              </span>
               <input
                 className="text-input"
                 type="number"
@@ -651,7 +784,10 @@ export function VideoStudioTab({
               />
             </label>
             <label>
-              FPS
+              <span className="inline-label-text">
+                FPS
+                <InfoTooltip text="Frames per second for playback. 24 is cinematic, 30 is smoother. Doesn't affect generation cost — only how fast the clip plays back." />
+              </span>
               <input
                 className="text-input"
                 type="number"
@@ -663,29 +799,55 @@ export function VideoStudioTab({
               />
             </label>
             <label>
-              Steps
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={100}
-                value={displayNumber(videoSteps)}
-                onChange={(event) => onNumericChange(event, onVideoStepsChange)}
-                onBlur={() => onNumericBlur(videoSteps, onVideoStepsChange, 30)}
-              />
+              <span className="inline-label-text">
+                Steps
+                <InfoTooltip text="Denoising steps — how many passes the model makes to clean up noise into an image. More = sharper and more coherent, but linearly slower. 20 is draft quality, 30 is standard, 50+ is high quality with diminishing returns." />
+              </span>
+              <div className="slider-number-row">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={Number.isFinite(videoSteps) ? videoSteps : 30}
+                  onChange={(event) => onVideoStepsChange(Number(event.target.value))}
+                />
+                <input
+                  className="text-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={displayNumber(videoSteps)}
+                  onChange={(event) => onNumericChange(event, onVideoStepsChange)}
+                  onBlur={() => onNumericBlur(videoSteps, onVideoStepsChange, 30)}
+                />
+              </div>
             </label>
             <label>
-              Guidance
-              <input
-                className="text-input"
-                type="number"
-                min={1}
-                max={20}
-                step={0.5}
-                value={displayNumber(videoGuidance)}
-                onChange={(event) => onNumericChange(event, onVideoGuidanceChange)}
-                onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
-              />
+              <span className="inline-label-text">
+                Guidance
+                <InfoTooltip text="How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above." />
+              </span>
+              <div className="slider-number-row">
+                <input
+                  type="range"
+                  min={1}
+                  max={15}
+                  step={0.5}
+                  value={Number.isFinite(videoGuidance) ? videoGuidance : 5}
+                  onChange={(event) => onVideoGuidanceChange(Number(event.target.value))}
+                />
+                <input
+                  className="text-input"
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={0.5}
+                  value={displayNumber(videoGuidance)}
+                  onChange={(event) => onNumericChange(event, onVideoGuidanceChange)}
+                  onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
+                />
+              </div>
             </label>
           </div>
 

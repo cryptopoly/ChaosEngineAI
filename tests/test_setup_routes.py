@@ -223,16 +223,23 @@ class SetupRouteTests(unittest.TestCase):
         their own subprocess and filesystem side effects that would
         confuse the subprocess.run mock below; patching them to no-op
         keeps each test asserting exactly the behaviour it names.
+
+        ``_extras_site_packages`` is redirected to a per-test temp dir so
+        the real user-persistent extras tree (which may contain torch
+        installs the user cares about) is never touched during tests.
         """
+        extras_dir = Path(self.tempdir.name) / "extras"
+        extras_dir.mkdir(parents=True, exist_ok=True)
         return (
             mock.patch("backend_service.routes.setup._site_packages_for", return_value=None),
             mock.patch("backend_service.routes.setup._purge_broken_distributions", return_value=[]),
+            mock.patch("backend_service.routes.setup._extras_site_packages", return_value=extras_dir),
         )
 
     def test_install_cuda_torch_stops_at_first_success(self):
         """First working index wins — we must not keep trying after success."""
-        sp_patch, purge_patch = self._patch_cuda_helpers()
-        with sp_patch, purge_patch, mock.patch(
+        sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, extras_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.12.5"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
@@ -255,6 +262,74 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(len(body["attempts"]), 1)
         self.assertEqual(mock_run.call_count, 2)
 
+    def test_install_cuda_torch_targets_extras_directory(self):
+        """Install must land in the extras site-packages dir, not the venv.
+
+        Regression guard for the Windows video-on-CPU bug: the endpoint
+        used to call pip without ``--target`` so torch landed in the
+        read-only bundled venv and was ignored at import time in favour
+        of a stale CPU wheel already on PYTHONPATH. Fix: install to
+        extras so PYTHONPATH prepends it ahead of the bundled venv.
+        """
+        sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, extras_patch, mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                mock_run.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+        body = resp.json()
+        self.assertTrue(body["ok"])
+        self.assertIn("targetDir", body)
+        self.assertTrue(body["targetDir"].endswith("extras"))
+        # Every pip invocation must carry --target <extras> so pip writes
+        # there instead of the venv's site-packages.
+        for call_args in mock_run.call_args_list:
+            cmd = call_args[0][0]
+            self.assertIn("--target", cmd)
+            target_idx = cmd.index("--target")
+            self.assertEqual(cmd[target_idx + 1], body["targetDir"])
+
+    def test_install_cuda_torch_purges_stale_torch_from_extras(self):
+        """Stale torch + nvidia-* dirs are wiped before the reinstall.
+
+        The user's field report: extras had both ``torch-2.6.0+cu124.dist-info``
+        and a ``torch-2.11.0+cpu`` package folder from a prior clobber. Python
+        couldn't resolve either cleanly. The endpoint now purges the family
+        before reinstalling so the fresh install starts clean.
+        """
+        extras_dir = Path(self.tempdir.name) / "extras_with_stale"
+        extras_dir.mkdir(parents=True, exist_ok=True)
+        # Simulate the broken state from the user's real extras dir.
+        (extras_dir / "torch-2.6.0+cu124.dist-info").mkdir()
+        (extras_dir / "torch-2.6.0+cu124.dist-info" / "METADATA").write_text("Version: 2.6.0+cu124")
+        (extras_dir / "torch").mkdir()
+        (extras_dir / "torch" / "__init__.py").write_text("# stale")
+        (extras_dir / "nvidia_cublas_cu12").mkdir()
+        (extras_dir / "torchvision").mkdir()  # SIBLING — must survive the purge
+        (extras_dir / "torchvision" / "__init__.py").write_text("# keep me")
+
+        with mock.patch(
+            "backend_service.routes.setup._site_packages_for", return_value=None,
+        ), mock.patch(
+            "backend_service.routes.setup._purge_broken_distributions", return_value=[],
+        ), mock.patch(
+            "backend_service.routes.setup._extras_site_packages", return_value=extras_dir,
+        ), mock.patch(
+            "backend_service.routes.setup._read_python_version", return_value="3.12.5",
+        ):
+            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                mock_run.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
+                resp = self.client.post("/api/setup/install-cuda-torch", json={})
+
+        self.assertEqual(resp.status_code, 200)
+        # Stale torch + its nvidia runtime dep must be gone.
+        self.assertFalse((extras_dir / "torch").exists())
+        self.assertFalse((extras_dir / "torch-2.6.0+cu124.dist-info").exists())
+        self.assertFalse((extras_dir / "nvidia_cublas_cu12").exists())
+        # But torchvision is a separate package — must not be touched.
+        self.assertTrue((extras_dir / "torchvision").exists())
+
     def test_install_cuda_torch_falls_through_to_later_indexes(self):
         """If cu124 has no wheel for the user's Python, move on to cu126."""
         call_results = [
@@ -264,8 +339,8 @@ class SetupRouteTests(unittest.TestCase):
             mock.Mock(returncode=0, stdout="Successfully installed torch-2.6.0+cu126", stderr=""),
             mock.Mock(returncode=0, stdout="Requirement already satisfied: sympy", stderr=""),
         ]
-        sp_patch, purge_patch = self._patch_cuda_helpers()
-        with sp_patch, purge_patch, mock.patch(
+        sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, extras_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.13.1"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
@@ -281,8 +356,8 @@ class SetupRouteTests(unittest.TestCase):
     def test_install_cuda_torch_reports_failure_after_all_attempts(self):
         """All indexes fail — surface the last error to the UI."""
         fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: Install failed, disk full")
-        sp_patch, purge_patch = self._patch_cuda_helpers()
-        with sp_patch, purge_patch, mock.patch(
+        sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, extras_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.12.5"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
@@ -309,8 +384,8 @@ class SetupRouteTests(unittest.TestCase):
             stderr="ERROR: Could not find a version that satisfies the requirement torch "
                    "(from versions: none)\nERROR: No matching distribution found for torch",
         )
-        sp_patch, purge_patch = self._patch_cuda_helpers()
-        with sp_patch, purge_patch, mock.patch(
+        sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
+        with sp_patch, purge_patch, extras_patch, mock.patch(
             "backend_service.routes.setup._read_python_version", return_value="3.14.0"
         ):
             with mock.patch("backend_service.routes.setup.subprocess.run", return_value=no_wheel):
@@ -334,10 +409,14 @@ class SetupRouteTests(unittest.TestCase):
             broken.mkdir()
             (broken / "stub.txt").write_text("leftover")
 
-            sp_patch = mock.patch(
+            extras_dir = Path(self.tempdir.name) / "extras_for_stub_test"
+            extras_dir.mkdir(parents=True, exist_ok=True)
+
+            with mock.patch(
                 "backend_service.routes.setup._site_packages_for", return_value=tmp_path,
-            )
-            with sp_patch, mock.patch(
+            ), mock.patch(
+                "backend_service.routes.setup._extras_site_packages", return_value=extras_dir,
+            ), mock.patch(
                 "backend_service.routes.setup._read_python_version", return_value="3.12.5"
             ):
                 with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
@@ -346,6 +425,66 @@ class SetupRouteTests(unittest.TestCase):
 
             self.assertEqual(resp.status_code, 200)
             self.assertFalse(broken.exists(), "broken ~arkupsafe stub should be removed")
+
+    # ------------------------------------------------------------------
+    # Helpers — torch purge + constraint pin
+    # ------------------------------------------------------------------
+
+    def test_purge_stale_torch_removes_torch_family_only(self):
+        """Purge removes torch + nvidia-* but leaves torchvision / other packages alone."""
+        from backend_service.routes.setup import _purge_stale_torch_from_extras
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Targets — must be removed.
+            (root / "torch").mkdir()
+            (root / "torch-2.5.0+cu124.dist-info").mkdir()
+            (root / "nvidia_cublas_cu12").mkdir()
+            (root / "nvidia-cudnn-cu12").mkdir()
+            # Bystanders — must survive.
+            (root / "torchvision").mkdir()
+            (root / "torchaudio").mkdir()
+            (root / "diffusers").mkdir()
+
+            removed = _purge_stale_torch_from_extras(root)
+
+            self.assertIn("torch", removed)
+            self.assertIn("torch-2.5.0+cu124.dist-info", removed)
+            self.assertIn("nvidia_cublas_cu12", removed)
+            self.assertIn("nvidia-cudnn-cu12", removed)
+            self.assertFalse((root / "torch").exists())
+            self.assertTrue((root / "torchvision").exists())
+            self.assertTrue((root / "torchaudio").exists())
+            self.assertTrue((root / "diffusers").exists())
+
+    def test_find_installed_torch_version_parses_metadata(self):
+        """Version is read from the dist-info's METADATA file."""
+        from backend_service.routes.setup import _find_installed_torch_version
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dist = root / "torch-2.6.0+cu124.dist-info"
+            dist.mkdir()
+            (dist / "METADATA").write_text(
+                "Metadata-Version: 2.1\nName: torch\nVersion: 2.6.0+cu124\nSummary: Tensors...\n"
+            )
+            self.assertEqual(_find_installed_torch_version(root), "2.6.0+cu124")
+
+    def test_find_installed_torch_version_returns_none_when_missing(self):
+        from backend_service.routes.setup import _find_installed_torch_version
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(_find_installed_torch_version(Path(tmp)))
+
+    def test_write_torch_constraint_produces_pip_parseable_pin(self):
+        """Constraint file must be a valid pip constraints.txt format."""
+        from backend_service.routes.setup import _write_torch_constraint
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_torch_constraint(Path(tmp), "2.6.0+cu124")
+            self.assertTrue(path.exists())
+            content = path.read_text()
+            self.assertEqual(content.strip(), "torch==2.6.0+cu124")
 
     def test_install_cuda_torch_default_list_starts_with_cu124(self):
         """cu124 is the broadest 3.9-3.13 match; cu121 must not be first anymore."""

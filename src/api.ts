@@ -801,6 +801,7 @@ export interface CudaTorchInstallResult {
   pythonExecutable: string;
   pythonVersion: string | null;
   noWheelForPython: boolean;
+  targetDir?: string;
   capabilities: Record<string, unknown>;
 }
 
@@ -981,6 +982,70 @@ export interface TurboUpdateInfo {
 
 export async function checkTurboUpdate(): Promise<TurboUpdateInfo> {
   return await fetchJson<TurboUpdateInfo>("/api/setup/turbo-update-check", 20000);
+}
+
+export interface ModelMoveJobState {
+  id: string;
+  phase: "idle" | "preflight" | "copying" | "cleanup" | "done" | "error";
+  message: string;
+  sourcePath: string | null;
+  destinationPath: string | null;
+  bytesTotal: number;
+  bytesCopied: number;
+  percent: number;
+  filesTotal: number;
+  filesCopied: number;
+  currentEntry: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  done: boolean;
+}
+
+export interface StorageSettingsSnapshot {
+  configuredPath: string;
+  effectivePath: string;
+  effectiveHubPath: string;
+  defaultPath: string;
+  currentHubSizeBytes: number;
+  currentFreeBytes: number | null;
+  moveJob: ModelMoveJobState;
+}
+
+export interface UpdateStoragePathResult {
+  configuredPath: string;
+  effectivePath: string;
+  restartRequired: boolean;
+}
+
+export async function getStorageSettings(): Promise<StorageSettingsSnapshot> {
+  return await fetchJson<StorageSettingsSnapshot>("/api/settings/storage", 15000);
+}
+
+export async function updateHfCachePath(path: string): Promise<UpdateStoragePathResult> {
+  return await postJson<UpdateStoragePathResult>(
+    "/api/settings/storage",
+    { hfCachePath: path },
+    20000,
+  );
+}
+
+export async function startModelMove(
+  destinationPath: string,
+  deleteSourceAfter = true,
+): Promise<ModelMoveJobState> {
+  // No client-side timeout — the move worker runs in a background thread,
+  // the POST itself returns immediately with the initial state. Status is
+  // polled via getModelMoveStatus. 30s is plenty for the spawn handshake.
+  return await postJson<ModelMoveJobState>(
+    "/api/settings/storage/move",
+    { destinationPath, deleteSourceAfter },
+    30000,
+  );
+}
+
+export async function getModelMoveStatus(): Promise<ModelMoveJobState> {
+  return await fetchJson<ModelMoveJobState>("/api/settings/storage/move/status", 10000);
 }
 
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {

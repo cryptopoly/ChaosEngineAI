@@ -3,11 +3,10 @@ import { LatestImageDiscoverCard } from "../../components/LatestImageDiscoverCar
 import type { DownloadStatus } from "../../api";
 import type {
   ImageModelVariant,
-  ImageRuntimeStatus,
   TabId,
-  TauriBackendInfo,
 } from "../../types";
 import type {
+  DiscoverSort,
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../../types/image";
@@ -20,12 +19,10 @@ export interface ImageDiscoverTabProps {
   onImageDiscoverTaskFilterChange: (value: ImageDiscoverTaskFilter) => void;
   imageDiscoverAccessFilter: ImageDiscoverAccessFilter;
   onImageDiscoverAccessFilterChange: (value: ImageDiscoverAccessFilter) => void;
+  imageDiscoverSort: DiscoverSort;
+  onImageDiscoverSortChange: (value: DiscoverSort) => void;
   imageDiscoverHasActiveFilters: boolean;
   imageDiscoverSearchQuery: string;
-  imageRuntimeStatus: ImageRuntimeStatus;
-  tauriBackend: TauriBackendInfo | null;
-  busy: boolean;
-  busyAction: string | null;
   activeImageDownloads: Record<string, DownloadStatus>;
   selectedImageVariant: ImageModelVariant | null;
   fileRevealLabel: string;
@@ -35,7 +32,6 @@ export interface ImageDiscoverTabProps {
   onCancelImageDownload: (repo: string) => void;
   onDeleteImageDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
-  onRestartServer: () => void;
   onRevealPath: (path: string) => void;
 }
 
@@ -47,12 +43,10 @@ export function ImageDiscoverTab({
   onImageDiscoverTaskFilterChange,
   imageDiscoverAccessFilter,
   onImageDiscoverAccessFilterChange,
+  imageDiscoverSort,
+  onImageDiscoverSortChange,
   imageDiscoverHasActiveFilters,
   imageDiscoverSearchQuery,
-  imageRuntimeStatus,
-  tauriBackend,
-  busy,
-  busyAction,
   activeImageDownloads,
   selectedImageVariant,
   fileRevealLabel,
@@ -62,7 +56,6 @@ export function ImageDiscoverTab({
   onCancelImageDownload,
   onDeleteImageDownload,
   onOpenExternalUrl,
-  onRestartServer,
   onRevealPath,
 }: ImageDiscoverTabProps) {
   return (
@@ -75,7 +68,7 @@ export function ImageDiscoverTab({
           <div>
             <h3>Browse and download image models for local generation.</h3>
             <p className="muted-text">
-              Models are sorted by most recently updated. Download any model to use it in Image Studio.
+              Download any model to use it in Image Studio. Runtime status lives in the Studio tab.
             </p>
           </div>
           <div className="image-hero-actions">
@@ -86,37 +79,6 @@ export function ImageDiscoverTab({
               Open Studio
             </button>
           </div>
-        </div>
-        <div className="callout image-callout image-runtime-callout">
-          <p>{imageRuntimeStatus.message}</p>
-          <div className="chip-row">
-            <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
-              {imageRuntimeStatus.realGenerationAvailable
-                ? "Real engine ready"
-                : imageRuntimeStatus.activeEngine === "unavailable"
-                  ? "Runtime unavailable"
-                  : "Fallback active"}
-            </span>
-            <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
-            {imageRuntimeStatus.device ? <span className="badge muted">Device: {imageRuntimeStatus.device}</span> : null}
-            {(imageRuntimeStatus.missingDependencies ?? []).slice(0, 4).map((dependency) => (
-              <span key={dependency} className="badge subtle">{dependency}</span>
-            ))}
-          </div>
-          {!imageRuntimeStatus.realGenerationAvailable ? (
-            <div className="image-runtime-actions">
-              {imageRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable ? (
-                <span className="mono-text muted-text">
-                  Backend Python: {imageRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable}
-                </span>
-              ) : null}
-              {tauriBackend?.managedByTauri ? (
-                <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
         <div className="image-discover-filter-row">
@@ -155,6 +117,18 @@ export function ImageDiscoverTab({
               <option value="gated">Gated only</option>
             </select>
           </label>
+          <label>
+            Sort by
+            <select
+              className="text-input"
+              value={imageDiscoverSort}
+              onChange={(event) => onImageDiscoverSortChange(event.target.value as DiscoverSort)}
+            >
+              <option value="release">Newest released</option>
+              <option value="likes">Most likes</option>
+              <option value="downloads">Most downloads</option>
+            </select>
+          </label>
           <div className="image-discover-filter-actions">
             <button
               className="secondary-button"
@@ -173,7 +147,12 @@ export function ImageDiscoverTab({
 
         <div className="image-discover-results-summary">
           <span>
-            {combinedImageDiscoverResults.length} model{combinedImageDiscoverResults.length !== 1 ? "s" : ""} sorted by most recent
+            {combinedImageDiscoverResults.length} model{combinedImageDiscoverResults.length !== 1 ? "s" : ""} ·{" "}
+            {imageDiscoverSort === "likes"
+              ? "most liked first"
+              : imageDiscoverSort === "downloads"
+                ? "most downloads first"
+                : "newest released first"}
           </span>
           {imageDiscoverSearchQuery ? (
             <span className="badge subtle">Search: {imageDiscoverSearchInput.trim()}</span>

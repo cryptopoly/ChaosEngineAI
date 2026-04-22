@@ -121,6 +121,10 @@ class UpdateSettingsRequest(BaseModel):
     # restores the default (data-dir/images/outputs or data-dir/videos/outputs).
     imageOutputsDirectory: str | None = Field(default=None, max_length=4096)
     videoOutputsDirectory: str | None = Field(default=None, max_length=4096)
+    # HF_HOME override — redirects every snapshot_download to a different
+    # drive. Applied by the Tauri shell at backend spawn; requires restart
+    # to take effect. Empty string clears the override.
+    hfCachePath: str | None = Field(default=None, max_length=4096)
 
 
 class OpenAIMessage(BaseModel):

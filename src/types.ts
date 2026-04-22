@@ -779,6 +779,28 @@ export interface VideoModelVariant {
   localPath?: string | null;
   releaseDate?: string | null;
   releaseLabel?: string | null;
+  /** Live Hugging Face metadata fetched by the backend in parallel when the
+   * catalog loads. All optional — repos whose fetch times out at probe time
+   * render without these fields rather than blocking the page. */
+  downloads?: number | null;
+  likes?: number | null;
+  downloadsLabel?: string | null;
+  likesLabel?: string | null;
+  lastModified?: string | null;
+  updatedLabel?: string | null;
+  createdAt?: string | null;
+  pipelineTag?: string | null;
+  license?: string | null;
+  /** Total HF repo size summed from all siblings — the worst-case download
+   * if allow_patterns doesn't filter out auxiliary checkpoints. Bigger than
+   * ``coreWeightsBytes`` when the repo ships legacy / non-diffusers blobs
+   * alongside the diffusers tree. */
+  repoSizeBytes?: number | null;
+  repoSizeGb?: number | null;
+  /** Size of just the model weight files (safetensors / bin / gguf).
+   * Closer to what the diffusers allow-pattern download actually pulls. */
+  coreWeightsBytes?: number | null;
+  coreWeightsGb?: number | null;
 }
 
 export interface VideoModelFamily {
@@ -803,6 +825,10 @@ export interface VideoRuntimeStatus {
   realGenerationAvailable: boolean;
   message: string;
   device?: string | null;
+  /** Predicted device for the next Generate click, computed without
+   * importing torch. Lets the UI show "Device: cuda (expected)" before
+   * any model has been loaded. Mirrors ImageRuntimeStatus.expectedDevice. */
+  expectedDevice?: string | null;
   pythonExecutable?: string | null;
   missingDependencies?: string[];
   loadedModelRepo?: string | null;

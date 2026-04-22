@@ -89,10 +89,41 @@ export function imageSecondarySizeLabel(variant: ImageModelVariant) {
 }
 
 export function videoPrimarySizeLabel(variant: VideoModelVariant) {
+  // Preference order (best to worst):
+  //   1. onDiskGb — actual bytes on disk once downloaded. Ground truth.
+  //   2. coreWeightsGb — sum of weight-file siblings from HF. Matches what
+  //      the diffusers allow-pattern download actually pulls.
+  //   3. repoSizeGb — total repo size. Overestimates on video repos with
+  //      legacy non-diffusers checkpoints (Wan 2.2 ships ~109 GB but the
+  //      diffusers subtree is ~14 GB).
+  //   4. curated sizeGb — hardcoded catalog guess, often stale.
   if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
     return `${sizeLabel(variant.onDiskGb)} on disk`;
   }
+  if (typeof variant.coreWeightsGb === "number" && variant.coreWeightsGb > 0) {
+    return `${sizeLabel(variant.coreWeightsGb)} weights`;
+  }
+  if (typeof variant.repoSizeGb === "number" && variant.repoSizeGb > 0) {
+    return `${sizeLabel(variant.repoSizeGb)} download`;
+  }
   return sizeLabel(variant.sizeGb);
+}
+
+export function videoSecondarySizeLabel(variant: VideoModelVariant) {
+  // When the full repo is meaningfully larger than just the weight files —
+  // which is the case for Wan 2.2 (109 GB repo vs ~14 GB weights) — show
+  // the full-repo figure so users aren't surprised by a 5-10× disk balloon
+  // when HF pulls the entire tree.
+  if (
+    typeof variant.repoSizeGb === "number" &&
+    variant.repoSizeGb > 0 &&
+    typeof variant.coreWeightsGb === "number" &&
+    variant.coreWeightsGb > 0 &&
+    Math.abs(variant.repoSizeGb - variant.coreWeightsGb) > 0.5
+  ) {
+    return `${sizeLabel(variant.repoSizeGb)} full repo`;
+  }
+  return null;
 }
 
 export function imageRuntimeErrorStatus(error: unknown): ImageRuntimeStatus {

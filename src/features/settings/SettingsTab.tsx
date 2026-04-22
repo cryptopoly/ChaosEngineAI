@@ -1,6 +1,7 @@
 import { useState, type SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
+import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
 
@@ -241,6 +242,12 @@ export function SettingsTab({
             </p>
           </div>
         </Panel>
+        <ModelStoragePanel
+          backendOnline={backendOnline}
+          onRestartServer={onRestartServer}
+          busyAction={busyAction}
+          onPickDirectory={onPickDirectory}
+        />
       </div>
       <Panel
         title="Model Directories"

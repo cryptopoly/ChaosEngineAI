@@ -1332,12 +1332,10 @@ export default function App() {
         onImageDiscoverTaskFilterChange={imgState.setImageDiscoverTaskFilter}
         imageDiscoverAccessFilter={imgState.imageDiscoverAccessFilter}
         onImageDiscoverAccessFilterChange={imgState.setImageDiscoverAccessFilter}
+        imageDiscoverSort={imgState.imageDiscoverSort}
+        onImageDiscoverSortChange={imgState.setImageDiscoverSort}
         imageDiscoverHasActiveFilters={imgState.imageDiscoverHasActiveFilters}
         imageDiscoverSearchQuery={imgState.imageDiscoverSearchQuery}
-        imageRuntimeStatus={imgState.imageRuntimeStatus}
-        tauriBackend={tauriBackend}
-        busy={busy}
-        busyAction={busyAction}
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
         fileRevealLabel={fileRevealLabel}
@@ -1347,7 +1345,6 @@ export default function App() {
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
         onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
@@ -1471,12 +1468,10 @@ export default function App() {
         onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
         videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
         onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        videoDiscoverSort={videoState.videoDiscoverSort}
+        onVideoDiscoverSortChange={videoState.setVideoDiscoverSort}
         videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
         videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
-        videoRuntimeStatus={videoState.videoRuntimeStatus}
-        tauriBackend={tauriBackend}
-        busy={busy}
-        busyAction={busyAction}
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
         fileRevealLabel={fileRevealLabel}
@@ -1486,7 +1481,6 @@ export default function App() {
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
         onRevealPath={(path) => void handleRevealPath(path)}
       />
     );

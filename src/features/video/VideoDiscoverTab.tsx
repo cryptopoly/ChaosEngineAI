@@ -2,17 +2,17 @@ import { Panel } from "../../components/Panel";
 import type { DownloadStatus } from "../../api";
 import type {
   TabId,
-  TauriBackendInfo,
   VideoModelVariant,
-  VideoRuntimeStatus,
 } from "../../types";
+import type { DiscoverSort } from "../../types/image";
 import type { VideoDiscoverTaskFilter } from "../../types/video";
 import {
   downloadProgressLabel,
   downloadSizeTooltip,
   formatReleaseLabel,
   number,
-  sizeLabel,
+  videoPrimarySizeLabel,
+  videoSecondarySizeLabel,
 } from "../../utils";
 
 export interface VideoDiscoverTabProps {
@@ -21,12 +21,10 @@ export interface VideoDiscoverTabProps {
   onVideoDiscoverSearchInputChange: (value: string) => void;
   videoDiscoverTaskFilter: VideoDiscoverTaskFilter;
   onVideoDiscoverTaskFilterChange: (value: VideoDiscoverTaskFilter) => void;
+  videoDiscoverSort: DiscoverSort;
+  onVideoDiscoverSortChange: (value: DiscoverSort) => void;
   videoDiscoverHasActiveFilters: boolean;
   videoDiscoverSearchQuery: string;
-  videoRuntimeStatus: VideoRuntimeStatus;
-  tauriBackend: TauriBackendInfo | null;
-  busy: boolean;
-  busyAction: string | null;
   activeVideoDownloads: Record<string, DownloadStatus>;
   selectedVideoVariant: VideoModelVariant | null;
   fileRevealLabel: string;
@@ -36,7 +34,6 @@ export interface VideoDiscoverTabProps {
   onCancelVideoDownload: (repo: string) => void;
   onDeleteVideoDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
-  onRestartServer: () => void;
   onRevealPath: (path: string) => void;
 }
 
@@ -46,12 +43,10 @@ export function VideoDiscoverTab({
   onVideoDiscoverSearchInputChange,
   videoDiscoverTaskFilter,
   onVideoDiscoverTaskFilterChange,
+  videoDiscoverSort,
+  onVideoDiscoverSortChange,
   videoDiscoverHasActiveFilters,
   videoDiscoverSearchQuery,
-  videoRuntimeStatus,
-  tauriBackend,
-  busy,
-  busyAction,
   activeVideoDownloads,
   selectedVideoVariant,
   fileRevealLabel,
@@ -61,20 +56,19 @@ export function VideoDiscoverTab({
   onCancelVideoDownload,
   onDeleteVideoDownload,
   onOpenExternalUrl,
-  onRestartServer,
   onRevealPath,
 }: VideoDiscoverTabProps) {
   return (
     <div className="image-discover-stack">
       <Panel
         title="Video Discover"
-        subtitle={`${combinedVideoDiscoverResults.length} curated video models`}
+        subtitle={`${combinedVideoDiscoverResults.length} video models / live Hugging Face metadata`}
       >
         <div className="image-hero">
           <div>
             <h3>Browse and download video models for local generation.</h3>
             <p className="muted-text">
-              First-wave engines only. Download any model to use it in Video Studio.
+              Download any model to use it in Video Studio. Runtime status lives in the Studio tab.
             </p>
           </div>
           <div className="image-hero-actions">
@@ -85,38 +79,6 @@ export function VideoDiscoverTab({
               Open Studio
             </button>
           </div>
-        </div>
-
-        <div className="callout image-callout image-runtime-callout">
-          <p>{videoRuntimeStatus.message}</p>
-          <div className="chip-row">
-            <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
-              {videoRuntimeStatus.realGenerationAvailable
-                ? "Real engine ready"
-                : videoRuntimeStatus.activeEngine === "unavailable"
-                  ? "Runtime unavailable"
-                  : "Fallback active"}
-            </span>
-            <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
-            {videoRuntimeStatus.device ? <span className="badge muted">Device: {videoRuntimeStatus.device}</span> : null}
-            {(videoRuntimeStatus.missingDependencies ?? []).slice(0, 4).map((dependency) => (
-              <span key={dependency} className="badge subtle">{dependency}</span>
-            ))}
-          </div>
-          {!videoRuntimeStatus.realGenerationAvailable ? (
-            <div className="image-runtime-actions">
-              {videoRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable ? (
-                <span className="mono-text muted-text">
-                  Backend Python: {videoRuntimeStatus.pythonExecutable ?? tauriBackend?.pythonExecutable}
-                </span>
-              ) : null}
-              {tauriBackend?.managedByTauri ? (
-                <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
         <div className="image-discover-filter-row">
@@ -143,6 +105,18 @@ export function VideoDiscoverTab({
               <option value="video2video">Video to video</option>
             </select>
           </label>
+          <label>
+            Sort by
+            <select
+              className="text-input"
+              value={videoDiscoverSort}
+              onChange={(event) => onVideoDiscoverSortChange(event.target.value as DiscoverSort)}
+            >
+              <option value="release">Newest released</option>
+              <option value="likes">Most likes</option>
+              <option value="downloads">Most downloads</option>
+            </select>
+          </label>
           <div className="image-discover-filter-actions">
             <button
               className="secondary-button"
@@ -160,7 +134,12 @@ export function VideoDiscoverTab({
 
         <div className="image-discover-results-summary">
           <span>
-            {combinedVideoDiscoverResults.length} model{combinedVideoDiscoverResults.length !== 1 ? "s" : ""}
+            {combinedVideoDiscoverResults.length} model{combinedVideoDiscoverResults.length !== 1 ? "s" : ""} ·{" "}
+            {videoDiscoverSort === "likes"
+              ? "most liked first"
+              : videoDiscoverSort === "downloads"
+                ? "most downloads first"
+                : "newest released first"}
           </span>
           {videoDiscoverSearchQuery ? (
             <span className="badge subtle">Search: {videoDiscoverSearchInput.trim()}</span>
@@ -212,12 +191,15 @@ export function VideoDiscoverTab({
                   ) : null}
                 </div>
                 <div className="image-library-stats">
-                  <span>{sizeLabel(variant.sizeGb)}</span>
+                  <span>{videoPrimarySizeLabel(variant)}</span>
+                  {videoSecondarySizeLabel(variant) ? <span>{videoSecondarySizeLabel(variant)}</span> : null}
                   <span>{variant.recommendedResolution}</span>
                   <span>{number(variant.defaultDurationSeconds)}s clip</span>
                   {formatReleaseLabel(variant.releaseLabel, variant.releaseDate) ? (
                     <span>{formatReleaseLabel(variant.releaseLabel, variant.releaseDate)}</span>
                   ) : null}
+                  {variant.downloadsLabel ? <span>{variant.downloadsLabel}</span> : null}
+                  {variant.likesLabel ? <span>{variant.likesLabel}</span> : null}
                   {variant.styleTags.slice(0, 3).map((tag) => (
                     <span key={tag} className="badge subtle">{tag}</span>
                   ))}

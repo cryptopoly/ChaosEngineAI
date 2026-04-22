@@ -215,6 +215,14 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # else is treated as an absolute (or ~-relative) override path.
         "imageOutputsDirectory": "",
         "videoOutputsDirectory": "",
+        # Override for the Hugging Face cache root (HF_HOME). Empty = use
+        # the platform default (``~/.cache/huggingface`` on Linux/Mac,
+        # ``%USERPROFILE%\.cache\huggingface`` on Windows). When set, the
+        # Tauri shell injects this as HF_HOME before spawning the backend
+        # so every downstream ``snapshot_download`` lands on the chosen
+        # drive. Moving existing models between locations is handled by
+        # the ``/api/settings/storage/move`` endpoint.
+        "hfCachePath": "",
     }
 
 
@@ -332,7 +340,7 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
             os.environ["HF_TOKEN"] = hf_token
             os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
 
-    for key in ("imageOutputsDirectory", "videoOutputsDirectory"):
+    for key in ("imageOutputsDirectory", "videoOutputsDirectory", "hfCachePath"):
         raw = payload.get(key)
         if isinstance(raw, str):
             settings[key] = raw.strip()

@@ -58,6 +58,8 @@ import type {
   VideoRuntimeStatus,
 } from "../types";
 import type { VideoDiscoverTaskFilter } from "../types/video";
+import type { DiscoverSort } from "../types/image";
+import { compareDiscoverVariants } from "../utils";
 
 const MAX_VIDEO_SEED = 2147483647;
 
@@ -71,6 +73,29 @@ const DEFAULT_VIDEO_NUM_FRAMES = 33;
 const DEFAULT_VIDEO_FPS = 24;
 const DEFAULT_VIDEO_STEPS = 30;
 const DEFAULT_VIDEO_GUIDANCE = 5.0;
+
+// Baseline negative prompt that's generic enough to apply across every
+// open-source video model we ship (LTX, Wan, HunyuanVideo, Mochi). With
+// the field blank the models render without any corrective signal and
+// produce noticeably worse geometry/anatomy — especially on LTX, which
+// has the weakest priors. Users can edit or clear this if they have a
+// model-specific preference.
+const DEFAULT_VIDEO_NEGATIVE_PROMPT =
+  "worst quality, low quality, blurry, distorted, deformed, bad anatomy, "
+  + "watermark, text, logo, static, frozen frame, jittery, flickering";
+
+// Per-family recommended CFG. LTX-Video ships with a 3.0 guidance default
+// in its reference pipeline — running it at 5.0 (the ChaosEngineAI
+// generic default) over-guides it and produces the abstract / "random
+// shapes" output users report. HunyuanVideo benefits from stronger
+// guidance. Everything else stays on the generic default.
+function recommendedGuidanceForRepo(repo: string | null | undefined): number {
+  if (!repo) return DEFAULT_VIDEO_GUIDANCE;
+  const lowered = repo.toLowerCase();
+  if (lowered.includes("ltx")) return 3.0;
+  if (lowered.includes("hunyuan")) return 6.0;
+  return DEFAULT_VIDEO_GUIDANCE;
+}
 
 // Wan-family pipelines require ``(num_frames - 1) % 4 == 0``. We round to
 // the nearest valid value so the user can type any frame count and we still
@@ -112,11 +137,13 @@ export function useVideoState(
   const [videoCatalog, setVideoCatalog] = useState<VideoModelFamily[]>([]);
   const [latestVideoDiscoverResults, setLatestVideoDiscoverResults] = useState<VideoModelVariant[]>([]);
   const [videoDiscoverTaskFilter, setVideoDiscoverTaskFilter] = useState<VideoDiscoverTaskFilter>("all");
+  // Default: most recently released first. Same contract as image.
+  const [videoDiscoverSort, setVideoDiscoverSort] = useState<DiscoverSort>("release");
   const [videoDiscoverSearchInput, setVideoDiscoverSearchInput] = useState("");
   const deferredVideoDiscoverSearch = useDeferredValue(videoDiscoverSearchInput);
   const [selectedVideoModelId, setSelectedVideoModelId] = useState("");
   const [videoPrompt, setVideoPrompt] = useState("");
-  const [videoNegativePrompt, setVideoNegativePrompt] = useState("");
+  const [videoNegativePrompt, setVideoNegativePrompt] = useState(DEFAULT_VIDEO_NEGATIVE_PROMPT);
   const [videoSeedInput, setVideoSeedInput] = useState("");
   const [videoUseRandomSeed, setVideoUseRandomSeed] = useState(true);
   // Generation knobs the user can tweak in Studio. Defaults are populated
@@ -254,7 +281,7 @@ export function useVideoState(
       return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
     }),
     ...filteredLatestVideoDiscoverResults,
-  ];
+  ].sort((a, b) => compareDiscoverVariants(videoDiscoverSort, a, b));
 
   const videoDiscoverHasActiveFilters =
     videoDiscoverTaskFilter !== "all" || videoDiscoverSearchQuery.length > 0;
@@ -291,7 +318,8 @@ export function useVideoState(
     setVideoNumFrames(DEFAULT_VIDEO_NUM_FRAMES);
     setVideoFps(DEFAULT_VIDEO_FPS);
     setVideoSteps(DEFAULT_VIDEO_STEPS);
-    setVideoGuidance(DEFAULT_VIDEO_GUIDANCE);
+    setVideoGuidance(recommendedGuidanceForRepo(selectedVideoVariant.repo));
+    setVideoNegativePrompt(DEFAULT_VIDEO_NEGATIVE_PROMPT);
     // Intentionally only depend on the variant ID so we don't clobber the
     // user's edits when unrelated catalog fields refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -763,6 +791,8 @@ export function useVideoState(
     setLatestVideoDiscoverResults,
     videoDiscoverTaskFilter,
     setVideoDiscoverTaskFilter,
+    videoDiscoverSort,
+    setVideoDiscoverSort,
     videoDiscoverSearchInput,
     setVideoDiscoverSearchInput,
     selectedVideoModelId,

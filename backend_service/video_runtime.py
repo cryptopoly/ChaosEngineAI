@@ -234,6 +234,19 @@ class VideoGenerationConfig:
     guidance: float
     steps: int = 50
     seed: int | None = None
+    # GGUF quantization for video DiT transformers. When set, the
+    # transformer is loaded from a single .gguf file while the VAE /
+    # text encoders still come from the base ``repo`` snapshot. The
+    # pipeline cache keys on (repo, ggufFile) so multiple quant levels
+    # can coexist without evicting each other.
+    ggufRepo: str | None = None
+    ggufFile: str | None = None
+    # Post-processing frame interpolation. Factor of 1 means disabled;
+    # 2 or 4 insert interpolated frames between each generated frame
+    # and bump the reported fps by the same factor, producing smoother
+    # motion at higher frame rates without generating more DiT frames
+    # (which is 10-50x more expensive than interpolation).
+    interpolationFactor: int = 1
 
 
 @dataclass(frozen=True)
@@ -266,6 +279,9 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    # Wan 2.2 TI2V-5B is a dense text+image-to-video model — uses the
+    # standard WanPipeline loader (no dual-expert routing like A14B).
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
     # CogVideoX 2B and 5B share the same diffusers pipeline class — the
@@ -273,6 +289,73 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
+
+
+# Maps a base repo to the diffusers transformer class used when loading
+# GGUF-quantized DiT weights via ``from_single_file``. city96 currently
+# ships LTX-Video, Wan, and HunyuanVideo GGUFs; CogVideoX uses a
+# different loader we don't support here. Returning None leaves the
+# pipeline on the standard fp16 / bf16 transformer path.
+_GGUF_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
+    "Lightricks/LTX-Video": "LTXVideoTransformer3DModel",
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
+    "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
+}
+
+
+def _gguf_video_transformer_class_for_repo(repo: str) -> str | None:
+    return _GGUF_VIDEO_TRANSFORMER_CLASSES.get(repo)
+
+
+def _interpolate_frames(frames: list[Any], factor: int) -> list[Any]:
+    """Insert ``factor - 1`` blended frames between each source pair.
+
+    This is a linear-blend (numpy-weighted average) frame interpolator —
+    simpler and faster than RIFE but gives visibly smoother motion at
+    2x/4x. Swap this for a RIFE model call when the weights ship — the
+    pipeline shape (``list[np.ndarray]`` in RGB uint8) stays the same.
+
+    A factor of 1 is a no-op. Factors above 1 produce
+    ``(len - 1) * factor + 1`` frames so the endpoint timings align
+    with the original clip.
+    """
+    if factor <= 1 or len(frames) < 2:
+        return list(frames)
+    try:
+        import numpy as np  # type: ignore
+    except Exception:
+        return list(frames)
+
+    def _to_array(frame: Any):
+        if hasattr(frame, "shape"):
+            return np.asarray(frame)
+        return np.asarray(frame, dtype=np.uint8)
+
+    interpolated: list[Any] = []
+    total = len(frames)
+    for index in range(total - 1):
+        current = _to_array(frames[index])
+        nxt = _to_array(frames[index + 1])
+        if current.shape != nxt.shape:
+            # Different shape → skip blending, just duplicate. Robust
+            # against frames of mixed dtypes (list of PIL Images).
+            interpolated.append(frames[index])
+            for _ in range(factor - 1):
+                interpolated.append(frames[index])
+            continue
+        interpolated.append(frames[index])
+        for sub_index in range(1, factor):
+            alpha = sub_index / factor
+            blended = (current.astype(np.float32) * (1.0 - alpha)
+                       + nxt.astype(np.float32) * alpha)
+            interpolated.append(
+                np.clip(blended, 0, 255).astype(current.dtype)
+            )
+    interpolated.append(frames[-1])
+    return interpolated
 
 
 # Core packages that gate ``realGenerationAvailable``. Without these, the
@@ -348,6 +431,7 @@ class DiffusersVideoEngine:
         self._torch: Any | None = None
         self._loaded_repo: str | None = None
         self._loaded_path: str | None = None
+        self._loaded_variant_key: str | None = None
         self._device: str | None = None
 
     # ---------- public API ----------
@@ -474,7 +558,11 @@ class DiffusersVideoEngine:
                     "Run `pip install imageio imageio-ffmpeg` and retry."
                 )
 
-            pipeline = self._ensure_pipeline(config.repo)
+            pipeline = self._ensure_pipeline(
+                config.repo,
+                gguf_repo=config.ggufRepo,
+                gguf_file=config.ggufFile,
+            )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
             # Cancel during load we catch up here and bail before we sink
@@ -511,8 +599,16 @@ class DiffusersVideoEngine:
                     "Try a smaller resolution or a different model."
                 )
 
+            interpolation_factor = max(1, int(config.interpolationFactor or 1))
+            if interpolation_factor > 1:
+                VIDEO_PROGRESS.set_phase(
+                    PHASE_DECODING,
+                    message=f"Interpolating {interpolation_factor}x frames",
+                )
+                frames = _interpolate_frames(frames, interpolation_factor)
+            effective_fps = config.fps * interpolation_factor
             VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Encoding mp4")
-            mp4_bytes = self._encode_frames_to_mp4(frames, config.fps)
+            mp4_bytes = self._encode_frames_to_mp4(frames, effective_fps)
             if not mp4_bytes:
                 raise RuntimeError(
                     "mp4 encoding produced an empty buffer. Check that imageio-ffmpeg is "
@@ -527,7 +623,7 @@ class DiffusersVideoEngine:
                 mimeType="video/mp4",
                 durationSeconds=round(elapsed, 2),
                 frameCount=len(frames),
-                fps=config.fps,
+                fps=effective_fps,
                 width=config.width,
                 height=config.height,
                 runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
@@ -693,9 +789,15 @@ class DiffusersVideoEngine:
             )
         return pipeline_cls
 
-    def _ensure_pipeline(self, repo: str) -> Any:
+    def _ensure_pipeline(
+        self,
+        repo: str,
+        gguf_repo: str | None = None,
+        gguf_file: str | None = None,
+    ) -> Any:
         with self._lock:
-            if self._pipeline is not None and self._loaded_repo == repo:
+            variant_key = f"{repo}::{gguf_file}" if gguf_file else repo
+            if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
             # Loading a video pipeline can read 10+ GB from disk on cold cache.
@@ -703,7 +805,7 @@ class DiffusersVideoEngine:
             # snapshot_download + from_pretrained run.
             VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=f"Loading {repo}")
 
-            if self._pipeline is not None and self._loaded_repo != repo:
+            if self._pipeline is not None and self._loaded_variant_key != variant_key:
                 self._release_pipeline()
 
             import torch  # type: ignore
@@ -724,10 +826,28 @@ class DiffusersVideoEngine:
             device = self._detect_device(torch)
             dtype = self._preferred_torch_dtype(torch, device)
 
+            pipeline_kwargs: dict[str, Any] = {}
+            if gguf_file:
+                VIDEO_PROGRESS.set_phase(
+                    PHASE_LOADING,
+                    message=f"Loading GGUF transformer {gguf_file}",
+                )
+                quantized_transformer, gguf_note = self._try_load_gguf_transformer(
+                    repo=repo,
+                    gguf_repo=gguf_repo or repo,
+                    gguf_file=gguf_file,
+                    torch=torch,
+                )
+                if quantized_transformer is not None:
+                    pipeline_kwargs["transformer"] = quantized_transformer
+                if gguf_note:
+                    VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=gguf_note)
+
             pipeline = pipeline_cls.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_kwargs,
             )
 
             # Memory-saving knobs. Video pipelines are hungry on unified-memory
@@ -758,8 +878,74 @@ class DiffusersVideoEngine:
             self._torch = torch
             self._loaded_repo = repo
             self._loaded_path = local_path
+            self._loaded_variant_key = variant_key
             self._device = device
             return pipeline
+
+    def _try_load_gguf_transformer(
+        self,
+        repo: str,
+        gguf_repo: str,
+        gguf_file: str,
+        torch: Any,
+    ) -> tuple[Any, str | None]:
+        """Load a video DiT from a single ``.gguf`` file via diffusers.
+
+        Mirrors the image-side loader: GGUF weights cover the DiT only;
+        VAE and text encoders are loaded from the base ``repo`` snapshot.
+        All failure modes are non-fatal — a missing ``gguf`` package, an
+        old diffusers without ``GGUFQuantizationConfig``, or an HF cache
+        miss falls back to the standard fp16 / bf16 transformer path.
+        """
+        if importlib.util.find_spec("gguf") is None:
+            return None, (
+                "gguf package missing — install it from the Setup page to "
+                f"load {gguf_file}. Falling back to the standard transformer."
+            )
+        try:
+            from diffusers import GGUFQuantizationConfig  # type: ignore
+        except ImportError:
+            return None, (
+                "Installed diffusers doesn't expose GGUFQuantizationConfig. "
+                "Upgrade diffusers via the Setup page to use GGUF variants."
+            )
+        transformer_cls_name = _gguf_video_transformer_class_for_repo(repo)
+        if transformer_cls_name is None:
+            return None, (
+                f"No GGUF transformer class registered for {repo}. "
+                "Add it to _GGUF_VIDEO_TRANSFORMER_CLASSES."
+            )
+        try:
+            import diffusers  # type: ignore
+        except Exception:
+            return None, "diffusers import failed — cannot load GGUF transformer."
+        transformer_cls = getattr(diffusers, transformer_cls_name, None)
+        if transformer_cls is None:
+            return None, (
+                f"{transformer_cls_name} not in installed diffusers — "
+                "upgrade to use this GGUF variant."
+            )
+
+        try:
+            from huggingface_hub import hf_hub_download  # type: ignore
+            gguf_local_path = hf_hub_download(
+                repo_id=gguf_repo,
+                filename=gguf_file,
+                local_files_only=True,
+            )
+            transformer = transformer_cls.from_single_file(
+                gguf_local_path,
+                quantization_config=GGUFQuantizationConfig(
+                    compute_dtype=torch.bfloat16,
+                ),
+                torch_dtype=torch.bfloat16,
+            )
+            return transformer, f"Transformer loaded from GGUF ({gguf_file})"
+        except Exception as exc:  # noqa: BLE001 — any failure → fall back
+            return None, (
+                f"GGUF load failed ({type(exc).__name__}: {exc}) — "
+                "falling back to the standard transformer."
+            )
 
     def _release_pipeline(self) -> None:
         pipeline = self._pipeline
@@ -769,6 +955,7 @@ class DiffusersVideoEngine:
         self._torch = None
         self._loaded_repo = None
         self._loaded_path = None
+        self._loaded_variant_key = None
         self._device = None
         if pipeline is not None:
             del pipeline

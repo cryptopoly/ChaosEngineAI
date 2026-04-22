@@ -2119,6 +2119,60 @@ select.text-input {
   height: 100%;
 }
 
+.loading-state-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.loading-state-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 48px 24px;
+  border-color: rgba(224, 154, 154, 0.45);
+  color: var(--danger);
+}
+
+.loading-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.loading-state-detail {
+  max-width: 520px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.loading-state-elapsed {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.loading-state-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--text);
+  animation: loading-state-spin 0.9s linear infinite;
+}
+
+@keyframes loading-state-spin {
+  to { transform: rotate(360deg); }
+}
+
 .notice-banner {
   border-radius: 12px;
   padding: 10px 12px;

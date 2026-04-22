@@ -67,6 +67,23 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # NF4 it drops to ~7 GB and runs comfortably on 4090-class hardware.
     # Windows wheels have shipped cleanly since 0.43.
     "bitsandbytes": "bitsandbytes",
+    # GGUF transformer loading for FLUX, SD3, LTX-Video, HunyuanVideo, Wan.
+    # Unlike bitsandbytes, gguf is pure-python + CPU-side — it works on
+    # Apple Silicon and Windows without CUDA, so we ship it as the
+    # cross-platform quantization option for image and video DiTs.
+    "gguf": "gguf",
+    # TorchAO int8 weight-only quantization. Works on CUDA and MPS — the
+    # Apple Silicon FLUX path has no bitsandbytes (CUDA-only) equivalent,
+    # so int8wo is how we drop the 12B transformer from ~24 GB bf16 to
+    # ~12 GB on M-series Macs. Roughly half the memory saving of NF4
+    # but twice the platform reach.
+    "torchao": "torchao",
+    # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
+    # of diffusers+MPS, which is noticeably faster and doesn't hit the
+    # MPS fp16-black-image edge cases. Apple Silicon only — installer
+    # should hide this package on other platforms (handled upstream in
+    # the capability check).
+    "mflux": "mflux",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {
@@ -534,6 +551,14 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     # bf16 + cpu_offload alone, a 4090 is right at the edge of VRAM and
     # pays a heavy pagefile-thrash cost per step.
     ("bitsandbytes", "bitsandbytes>=0.43.0"),
+    # GGUF loader for image/video DiT transformers. Cross-platform
+    # quantization (works on CUDA, MPS, CPU) complementing the
+    # CUDA-only bitsandbytes NF4 path.
+    ("gguf", "gguf>=0.10.0"),
+    # TorchAO int8wo — Apple Silicon's answer to NF4 for FLUX. Drops
+    # the 12B transformer from ~24 GB to ~12 GB on MPS so FLUX fits in
+    # 32 GB unified memory without pagefile thrash.
+    ("torchao", "torchao>=0.6.0"),
 ]
 
 # Rough total download size (torch CUDA dominates at ~2 GB; others sum to

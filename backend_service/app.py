@@ -317,6 +317,25 @@ def _get_cache_strategies() -> list[dict[str, Any]]:
     return registry.available()
 
 
+def _apply_draft_resolution(width: int, height: int) -> tuple[int, int]:
+    """Scale w/h so the long edge is 512px, preserving aspect, div-by-8.
+
+    Draft mode is a speed toggle: users iterate prompts at 512px where the
+    transformer attention is ~3-4x faster (attention scales quadratically
+    with spatial tokens), then switch off Preview for the full-res final
+    render. We snap to multiples of 8 because the VAE's 8x downsampling
+    factor requires it — non-divisible dims produce padding artifacts at
+    the right/bottom edges on every supported pipeline.
+    """
+    longest = max(width, height)
+    if longest <= 512:
+        return width, height
+    scale = 512 / longest
+    scaled_w = max(256, (int(round(width * scale)) // 8) * 8)
+    scaled_h = max(256, (int(round(height * scale)) // 8) * 8)
+    return scaled_w, scaled_h
+
+
 def _generate_image_artifacts(
     request: ImageGenerationRequest,
     variant: dict[str, Any],
@@ -324,8 +343,13 @@ def _generate_image_artifacts(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     import logging
     logger = logging.getLogger("chaosengine.images")
-    logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d",
-                variant.get("name"), variant.get("repo"), request.width, request.height, request.steps)
+    effective_width, effective_height = (
+        _apply_draft_resolution(request.width, request.height)
+        if request.draftMode
+        else (request.width, request.height)
+    )
+    logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d draft=%s",
+                variant.get("name"), variant.get("repo"), effective_width, effective_height, request.steps, request.draftMode)
     runtime_manager = runtime_manager or ImageRuntimeManager()
     rendered_images, runtime_status = runtime_manager.generate(
         ImageGenerationConfig(
@@ -334,13 +358,17 @@ def _generate_image_artifacts(
             repo=str(variant["repo"]),
             prompt=request.prompt,
             negativePrompt=request.negativePrompt or "",
-            width=request.width,
-            height=request.height,
+            width=effective_width,
+            height=effective_height,
             steps=request.steps,
             guidance=request.guidance,
             batchSize=request.batchSize,
             seed=request.seed,
             qualityPreset=request.qualityPreset,
+            sampler=request.sampler,
+            ggufRepo=(variant.get("ggufRepo") or None),
+            ggufFile=(variant.get("ggufFile") or None),
+            runtime=(variant.get("engine") or None),
         )
     )
     created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -352,8 +380,8 @@ def _generate_image_artifacts(
             "modelName": variant["name"],
             "prompt": request.prompt,
             "negativePrompt": request.negativePrompt or "",
-            "width": request.width,
-            "height": request.height,
+            "width": effective_width,
+            "height": effective_height,
             "steps": request.steps,
             "guidance": request.guidance,
             "seed": rendered.seed,
@@ -364,6 +392,8 @@ def _generate_image_artifacts(
             "imageExtension": rendered.extension,
             "runtimeLabel": rendered.runtimeLabel,
             "runtimeNote": rendered.runtimeNote,
+            "qualityPreset": request.qualityPreset,
+            "draftMode": request.draftMode,
         }
         artifacts.append(_save_image_artifact(artifact))
     return artifacts, runtime_status
@@ -407,6 +437,9 @@ def _generate_video_artifact(
             steps=request.steps,
             guidance=request.guidance,
             seed=request.seed,
+            ggufRepo=(variant.get("ggufRepo") or None),
+            ggufFile=(variant.get("ggufFile") or None),
+            interpolationFactor=request.interpolationFactor,
         )
     )
 

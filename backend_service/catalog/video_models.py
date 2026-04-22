@@ -41,7 +41,67 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 45.0,
                 "availableLocally": False,
                 "releaseDate": "2024-11",
-            }
+            },
+            {
+                "id": "Lightricks/LTX-Video-gguf-q4km",
+                "familyId": "ltx-video",
+                "name": "LTX-Video · GGUF Q4_K_M",
+                "provider": "Lightricks · city96",
+                "repo": "Lightricks/LTX-Video",
+                "ggufRepo": "city96/LTX-Video-gguf",
+                "ggufFile": "ltx-video-2b-v0.9-Q4_K_M.gguf",
+                "link": "https://huggingface.co/city96/LTX-Video-gguf",
+                "runtime": "diffusers LTXPipeline + GGUF transformer",
+                "styleTags": ["general", "fast", "motion", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 1.4,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "GGUF Q4_K_M — runs on 6-8 GB VRAM / Apple Silicon at near-native quality.",
+                "estimatedGenerationSeconds": 50.0,
+                "availableLocally": False,
+                "releaseDate": "2024-12",
+            },
+            {
+                "id": "Lightricks/LTX-Video-gguf-q6k",
+                "familyId": "ltx-video",
+                "name": "LTX-Video · GGUF Q6_K",
+                "provider": "Lightricks · city96",
+                "repo": "Lightricks/LTX-Video",
+                "ggufRepo": "city96/LTX-Video-gguf",
+                "ggufFile": "ltx-video-2b-v0.9-Q6_K.gguf",
+                "link": "https://huggingface.co/city96/LTX-Video-gguf",
+                "runtime": "diffusers LTXPipeline + GGUF transformer",
+                "styleTags": ["general", "motion", "quality", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 1.7,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "GGUF Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
+                "estimatedGenerationSeconds": 48.0,
+                "availableLocally": False,
+                "releaseDate": "2024-12",
+            },
+            {
+                "id": "Lightricks/LTX-Video-gguf-q8",
+                "familyId": "ltx-video",
+                "name": "LTX-Video · GGUF Q8_0",
+                "provider": "Lightricks · city96",
+                "repo": "Lightricks/LTX-Video",
+                "ggufRepo": "city96/LTX-Video-gguf",
+                "ggufFile": "ltx-video-2b-v0.9-Q8_0.gguf",
+                "link": "https://huggingface.co/city96/LTX-Video-gguf",
+                "runtime": "diffusers LTXPipeline + GGUF transformer",
+                "styleTags": ["general", "motion", "quality", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 2.2,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "GGUF Q8_0 — near-bf16 quality at roughly half the memory.",
+                "estimatedGenerationSeconds": 46.0,
+                "availableLocally": False,
+                "releaseDate": "2024-12",
+            },
         ],
     },
     {
@@ -104,12 +164,104 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "id": "wan-2-2",
         "name": "Wan 2.2",
         "provider": "Alibaba",
-        "headline": "Strong text-to-video quality with competitive motion consistency.",
-        "summary": "Mid-sized Wan model that runs on 24GB+ VRAM or Apple Silicon with unified memory.",
+        "headline": "Wan 2.2 ships a dense 5B that fits consumer GPUs and an MoE A14B quality tier.",
+        "summary": (
+            "Two very different models under one family name. The TI2V-5B is a dense 5B dual-"
+            "task model (text-to-video + image-to-video) that runs on a 24 GB GPU or a 32 GB+ "
+            "Mac. The T2V-A14B is a mixture-of-experts model with separate high-noise and low-"
+            "noise transformers — roughly 27B total weights on disk and only viable on data-"
+            "center-class hardware."
+        ),
         "updatedLabel": "Planned — first wave",
         "badges": ["Balanced", "Quality", "Apache 2.0"],
-        "defaultVariantId": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+        "defaultVariantId": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
         "variants": [
+            {
+                "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B",
+                "provider": "Alibaba",
+                # Dense 5B text+image-to-video model. Unlike A14B there's no
+                # expert split — standard WanPipeline loads it directly.
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "link": "https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "runtime": "diffusers WanPipeline",
+                "styleTags": ["general", "balanced", "small"],
+                "taskSupport": ["txt2video"],
+                # 5B transformer bf16 (~10 GB) + UMT5-XXL text encoder (~11 GB)
+                # + VAE. Sits right around 24 GB on disk which is a similar
+                # footprint to Wan 2.1 1.3B but with a much larger transformer.
+                "sizeGb": 24.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Best Wan 2.2 pick for consumer hardware. 24 GB on disk, runs on a 24 GB GPU or a 32 GB+ Mac.",
+                "estimatedGenerationSeconds": 150.0,
+                "availableLocally": False,
+                "releaseDate": "2025-07",
+            },
+            {
+                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q4km",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B · GGUF Q4_K_M",
+                "provider": "Alibaba · QuantStack",
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "ggufFile": "Wan2.2-TI2V-5B-Q4_K_M.gguf",
+                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "balanced", "small", "gguf"],
+                "taskSupport": ["txt2video"],
+                # ~3.5 GB quantized transformer + shared UMT5-XXL / VAE from
+                # the base repo. Users installing this variant still pay the
+                # ~14 GB text-encoder+VAE download once.
+                "sizeGb": 17.5,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q4_K_M — smallest Wan 2.2 that still generates usable quality. Best fit for 16 GB unified memory.",
+                "estimatedGenerationSeconds": 160.0,
+                "availableLocally": False,
+                "releaseDate": "2025-08",
+            },
+            {
+                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q6k",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B · GGUF Q6_K",
+                "provider": "Alibaba · QuantStack",
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "ggufFile": "Wan2.2-TI2V-5B-Q6_K.gguf",
+                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "balanced", "quality", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 18.2,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
+                "estimatedGenerationSeconds": 155.0,
+                "availableLocally": False,
+                "releaseDate": "2025-08",
+            },
+            {
+                "id": "QuantStack/Wan2.2-TI2V-5B-GGUF-q8",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 TI2V 5B · GGUF Q8_0",
+                "provider": "Alibaba · QuantStack",
+                "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
+                "link": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "quality", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 19.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
+                "estimatedGenerationSeconds": 150.0,
+                "availableLocally": False,
+                "releaseDate": "2025-08",
+            },
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "familyId": "wan-2-2",
@@ -117,19 +269,29 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba",
                 # -Diffusers mirror ships the standard diffusers layout; the
                 # base Wan-AI/Wan2.2-T2V-A14B repo uses the native Wan format.
+                # This is an MoE model with two transformer folders
+                # (``transformer/`` + ``transformer_2/``, high-noise and
+                # low-noise experts), so the on-disk footprint is roughly
+                # double what a dense 14B would be — ~126 GB total including
+                # the UMT5-XXL text encoder and VAE. Active params per step
+                # are ~14B; total params are ~27B.
                 "repo": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "link": "https://huggingface.co/Wan-AI/Wan2.2-T2V-A14B-Diffusers",
                 "runtime": "diffusers WanPipeline",
-                "styleTags": ["general", "quality", "motion"],
+                "styleTags": ["general", "quality", "motion", "heavy"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 14.0,
+                "sizeGb": 126.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
-                "note": "Balanced quality vs size. Works on 24GB VRAM or 64GB unified memory.",
-                "estimatedGenerationSeconds": 180.0,
+                "note": (
+                    "MoE architecture with dual high-/low-noise experts — ~126 GB on disk. "
+                    "Needs a data-center GPU (80 GB+) or 192 GB+ unified memory. "
+                    "Consumer hardware should use TI2V-5B above."
+                ),
+                "estimatedGenerationSeconds": 300.0,
                 "availableLocally": False,
                 "releaseDate": "2025-07",
-            }
+            },
         ],
     },
     {

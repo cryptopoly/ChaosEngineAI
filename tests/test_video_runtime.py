@@ -218,6 +218,7 @@ class PipelineRegistryTests(unittest.TestCase):
             "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
             "Wan-AI/Wan2.1-T2V-14B-Diffusers",
             "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+            "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
             "hunyuanvideo-community/HunyuanVideo",
             "THUDM/CogVideoX-2b",
             "THUDM/CogVideoX-5b",
@@ -541,6 +542,52 @@ class VideoRuntimeManagerGenerateTests(unittest.TestCase):
         self.assertIs(video, fake_video)
         self.assertIn("realGenerationAvailable", runtime)
         self.assertTrue(runtime["realGenerationAvailable"])
+
+
+class InterpolateFramesTests(unittest.TestCase):
+    """``_interpolate_frames`` inserts blended intermediates so the
+    encoder sees ``(len-1) * factor + 1`` frames. Factor 1 must be a
+    true no-op to keep existing generation paths byte-identical."""
+
+    def _solid_frames(self, n: int, size: int = 4):
+        import numpy as np
+        return [
+            np.full((size, size, 3), index * 64, dtype=np.uint8)
+            for index in range(n)
+        ]
+
+    def test_factor_1_is_noop(self):
+        from backend_service.video_runtime import _interpolate_frames
+        frames = self._solid_frames(3)
+        out = _interpolate_frames(frames, 1)
+        self.assertEqual(len(out), 3)
+
+    def test_factor_2_doubles_the_stride(self):
+        from backend_service.video_runtime import _interpolate_frames
+        frames = self._solid_frames(3)
+        out = _interpolate_frames(frames, 2)
+        self.assertEqual(len(out), 5)
+
+    def test_factor_4_quadruples_the_stride(self):
+        from backend_service.video_runtime import _interpolate_frames
+        frames = self._solid_frames(3)
+        out = _interpolate_frames(frames, 4)
+        self.assertEqual(len(out), 9)
+
+    def test_blend_is_linear_midpoint(self):
+        from backend_service.video_runtime import _interpolate_frames
+        import numpy as np
+        a = np.full((2, 2, 3), 0, dtype=np.uint8)
+        b = np.full((2, 2, 3), 100, dtype=np.uint8)
+        out = _interpolate_frames([a, b], 2)
+        self.assertEqual(int(out[1][0, 0, 0]), 50)
+
+    def test_empty_or_single_frame_returns_unchanged(self):
+        from backend_service.video_runtime import _interpolate_frames
+        self.assertEqual(_interpolate_frames([], 2), [])
+        frames = self._solid_frames(1)
+        out = _interpolate_frames(frames, 4)
+        self.assertEqual(len(out), 1)
 
 
 if __name__ == "__main__":

@@ -694,6 +694,15 @@ export interface TauriBackendInfo {
 
 export type ImageModelTask = "txt2img" | "img2img" | "inpaint";
 export type ImageQualityPreset = "fast" | "balanced" | "quality";
+export type ImageSamplerId =
+  | "default"
+  | "dpmpp_2m"
+  | "dpmpp_2m_karras"
+  | "dpmpp_sde"
+  | "euler"
+  | "euler_a"
+  | "ddim"
+  | "unipc";
 
 export interface ImageModelVariant {
   id: string;
@@ -900,6 +909,8 @@ export interface ImageOutputArtifact {
   metadataPath?: string | null;
   runtimeLabel?: string | null;
   runtimeNote?: string | null;
+  qualityPreset?: ImageQualityPreset | null;
+  draftMode?: boolean | null;
 }
 
 export interface ImageGenerationPayload {
@@ -913,6 +924,8 @@ export interface ImageGenerationPayload {
   seed?: number | null;
   batchSize?: number;
   qualityPreset?: ImageQualityPreset;
+  draftMode?: boolean;
+  sampler?: ImageSamplerId | null;
 }
 
 export interface ImageRuntimeStatus {
@@ -929,6 +942,11 @@ export interface ImageRuntimeStatus {
   pythonExecutable?: string | null;
   missingDependencies?: string[];
   loadedModelRepo?: string | null;
+  /** Total memory available to the inference device, in GB. Feeds the
+   * image-safety heuristic (``assessImageGenerationSafety``) so large
+   * models are flagged before a user clicks Generate on a tight machine.
+   * Parallel to ``VideoRuntimeStatus.deviceMemoryGb`` — same semantics. */
+  deviceMemoryGb?: number | null;
 }
 
 export interface ImageGenerationResponse {

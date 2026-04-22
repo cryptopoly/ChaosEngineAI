@@ -38,6 +38,8 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "Qwen/Qwen3.5-14B": "z-lab/Qwen3.5-14B-DFlash",
     "Qwen/Qwen3.5-27B": "z-lab/Qwen3.5-27B-DFlash",
     "Qwen/Qwen3.5-35B-A3B": "z-lab/Qwen3.5-35B-A3B-DFlash",
+    # ----- Qwen3.6 family -----
+    "Qwen/Qwen3.6-35B-A3B": "z-lab/Qwen3.6-35B-A3B-DFlash",
     # ----- LLaMA family -----
     "meta-llama/Llama-3.1-8B-Instruct": "z-lab/Llama-3.1-8B-Instruct-DFlash",
     # ----- gpt-oss family -----
@@ -60,6 +62,9 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3.5-7B-bf16": "Qwen/Qwen3.5-7B",
     "mlx-community/Qwen3.5-14B-bf16": "Qwen/Qwen3.5-14B",
     "mlx-community/Qwen3.5-27B-bf16": "Qwen/Qwen3.5-27B",
+    "mlx-community/Qwen3.6-35B-A3B-bf16": "Qwen/Qwen3.6-35B-A3B",
+    "mlx-community/Qwen3.6-35B-A3B-4bit": "Qwen/Qwen3.6-35B-A3B",
+    "mlx-community/Qwen3.6-35B-A3B-8bit": "Qwen/Qwen3.6-35B-A3B",
 }
 
 # Suffixes stripped during fuzzy matching (order matters — longest first).

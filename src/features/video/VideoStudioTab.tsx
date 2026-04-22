@@ -84,19 +84,21 @@ const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
   "ftfy",
 ]);
 
-// Quality presets: common starting points users can jump to without
-// knowing what each knob does. Guidance is deliberately omitted — the
-// parent hook sets it per-model (LTX wants 3, Hunyuan wants 6, others
-// 5) and the preset shouldn't overwrite that model-awareness.
+// Quality presets: common starting points for the denoising step count.
+// Frames are deliberately not part of the preset — frame count controls
+// clip LENGTH, not image quality, and bundling it into "Draft/High/Max"
+// confused users into thinking shorter clips were lower quality. Guidance
+// is also omitted because the parent hook sets it per-model (LTX wants 3,
+// Hunyuan wants 6, others 5) and presets shouldn't overwrite that.
 type VideoQualityPreset = "draft" | "standard" | "high" | "max";
 const QUALITY_PRESETS: Record<
   VideoQualityPreset,
-  { label: string; sub: string; frames: number; steps: number }
+  { label: string; sub: string; steps: number }
 > = {
-  draft: { label: "Draft", sub: "25f · 20 steps", frames: 25, steps: 20 },
-  standard: { label: "Standard", sub: "49f · 30 steps", frames: 49, steps: 30 },
-  high: { label: "High", sub: "97f · 40 steps", frames: 97, steps: 40 },
-  max: { label: "Max", sub: "161f · 50 steps", frames: 161, steps: 50 },
+  draft: { label: "Draft", sub: "20 steps", steps: 20 },
+  standard: { label: "Standard", sub: "30 steps", steps: 30 },
+  high: { label: "High", sub: "40 steps", steps: 40 },
+  max: { label: "Max", sub: "50 steps", steps: 50 },
 };
 
 // Aspect-ratio presets. Concrete resolutions rather than "apply ratio to
@@ -201,6 +203,14 @@ export function VideoStudioTab({
 }: VideoStudioTabProps) {
   const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
   const [installingGpuRuntime, setInstallingGpuRuntime] = useState(false);
+  // Opt-in acknowledgement that unlocks Generate when the safety heuristic
+  // says "danger". We keep this behind an explicit checkbox because on
+  // Apple Silicon an MPS kernel-panic can hard-reset the whole machine
+  // (not just kill the sidecar) — one confirmed crash report from a 64 GB
+  // M4 Max running Wan 2.2 A14B. The checkbox resets whenever the chosen
+  // model, resolution, or frame count change so it's a per-configuration
+  // override, not a permanent bypass.
+  const [dangerOverrideAck, setDangerOverrideAck] = useState(false);
   const missingDependencies = videoRuntimeStatus.missingDependencies ?? [];
   // imageio + imageio-ffmpeg are the two pip packages diffusers video
   // pipelines need to export mp4s. Everything else we surface as a badge;
@@ -300,6 +310,15 @@ export function VideoStudioTab({
     if (fallback?.id) onSelectedVideoModelIdChange(fallback.id);
   }, [selectedVideoModelId, videoCatalog, studioFamilies, onSelectedVideoModelIdChange]);
 
+  // Clear the danger-override acknowledgement whenever any input feeding
+  // the safety heuristic changes. A user who ticked "generate anyway" for
+  // a 720×480 × 33-frame Wan 2.2 run should not have that override still
+  // armed when they then bump frames to 161 — the new configuration has
+  // its own risk profile and needs its own conscious decision.
+  useEffect(() => {
+    setDangerOverrideAck(false);
+  }, [selectedVideoVariant?.id, videoWidth, videoHeight, videoNumFrames]);
+
   const downloadState = useMemo(
     () => (selectedVideoVariant ? activeVideoDownloads[selectedVideoVariant.repo] : undefined),
     [activeVideoDownloads, selectedVideoVariant],
@@ -316,7 +335,12 @@ export function VideoStudioTab({
   // inline why a previous failure might have left the button in a stuck state —
   // the hover-only tooltip wasn't enough ("generate stays disabled after a Wan
   // crash" bug report, April 2026). ``null`` means enabled.
-  const generateDisabledReason: string | null = !selectedVideoVariant
+  // We defer the danger-safety check until AFTER ``generationSafety`` is
+  // computed below — this variable is reassigned a few lines further down
+  // to add "danger risk without explicit acknowledgement" to the chain.
+  // Keeping the base chain readable here; see ``generateDisabledReason``
+  // reassignment after ``generationSafety``.
+  let generateDisabledReason: string | null = !selectedVideoVariant
     ? "Choose a video model first."
     : !isDownloaded
       ? `${selectedVideoVariant.name} is not installed locally yet.`
@@ -329,8 +353,6 @@ export function VideoStudioTab({
             : videoBusy
               ? (videoBusyLabel ?? "Busy…")
               : null;
-  const generateTitle = generateDisabledReason ?? "Start generating this clip.";
-  const generationDisabled = generateDisabledReason !== null;
 
   // Safety estimate for the chosen width × height × frames against the active
   // device. We surface this *before* the user hits Generate because on Apple
@@ -364,6 +386,20 @@ export function VideoStudioTab({
       selectedVideoVariant?.sizeGb,
     ],
   );
+
+  // Danger-level runs are gated behind an explicit acknowledgement because
+  // the failure mode on Apple Silicon is a hard MPS kernel panic that can
+  // reset the whole machine, not just the sidecar. The base-reason chain
+  // above covers "can't generate at all" conditions; this layer covers
+  // "could generate but we think it will crash your computer". If the user
+  // has ticked the override, we allow the generate — same UX pattern as
+  // destructive-operation confirmations elsewhere in the app.
+  if (generateDisabledReason === null && generationSafety.riskLevel === "danger" && !dangerOverrideAck) {
+    generateDisabledReason =
+      "This configuration is likely to crash the backend. Tick \"Generate anyway\" below after reviewing the warning, or lower resolution/frames/model.";
+  }
+  const generateTitle = generateDisabledReason ?? "Start generating this clip.";
+  const generationDisabled = generateDisabledReason !== null;
 
   // Format GB with one decimal for small numbers so 2.3 GB / 7.5 GB read
   // clearly, but drop the decimal once we're at 10+ (no user needs "14.0 GB").
@@ -666,19 +702,17 @@ export function VideoStudioTab({
           <div className="preset-row">
             <span className="preset-row-label">
               Quality preset
-              <InfoTooltip text="Jumps frames + steps to a common starting point. Higher presets produce sharper, longer clips but take proportionally longer. The model's recommended guidance is kept — presets don't override it." />
+              <InfoTooltip text="Sets the denoising step count. More steps = sharper frames + longer generation time. Frame count (clip length) and guidance stay as set — presets don't touch them." />
             </span>
             {(Object.keys(QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => {
               const preset = QUALITY_PRESETS[key];
-              const active =
-                videoNumFrames === preset.frames && videoSteps === preset.steps;
+              const active = videoSteps === preset.steps;
               return (
                 <button
                   key={key}
                   type="button"
                   className={`preset-pill ${active ? "active" : ""}`.trim()}
                   onClick={() => {
-                    onVideoNumFramesChange(preset.frames);
                     onVideoStepsChange(preset.steps);
                   }}
                 >
@@ -919,6 +953,32 @@ export function VideoStudioTab({
                   </button>
                 </div>
               )}
+              {/*
+                Danger-only override. Generate stays disabled until the user
+                ticks this box — the checkbox resets on any change to
+                variant / width / height / frames so it can't stay armed
+                after the configuration shifts (see the dedicated useEffect
+                that clears ``dangerOverrideAck``). Users on 128 GB M3 Ultras
+                where the heuristic over-warns can still force a run; users
+                on 16 GB base Macs get a real speed bump against "just click
+                Generate". Warning-level (not danger) still generates freely.
+              */}
+              {generationSafety.riskLevel === "danger" ? (
+                <label
+                  className="inline-label"
+                  style={{ display: "flex", alignItems: "center", gap: ".4rem", marginTop: ".6rem" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={dangerOverrideAck}
+                    onChange={(event) => setDangerOverrideAck(event.target.checked)}
+                  />
+                  <span>
+                    Generate anyway — I accept that the backend may crash and my machine may need to be
+                    restarted.
+                  </span>
+                </label>
+              ) : null}
             </div>
           ) : null}
 

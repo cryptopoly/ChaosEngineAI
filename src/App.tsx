@@ -17,6 +17,7 @@ import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
 import { VideoGenerationModal } from "./components/VideoGenerationModal";
 import { Sidebar } from "./components/Sidebar";
+import { StartupProgressPanel } from "./components/StartupProgressPanel";
 import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
@@ -93,7 +94,7 @@ export default function App() {
   const ws = useWorkspace();
   const {
     workspace, setWorkspace,
-    loading, backendOnline, setBackendOnline,
+    loading, loadingElapsedSeconds, backendOnline, setBackendOnline,
     tauriBackend, setTauriBackend,
     error, setError,
     busyAction, setBusyAction, busy,
@@ -1125,6 +1126,11 @@ export default function App() {
       const localItem = variant ? findLibraryItemForVariant(workspace.library, variant) : null;
       if (localItem) normalizedKey = `library:${localItem.path}`;
     }
+    // If no key given, or the key references a model no longer in the options
+    // (e.g. deleted/broken), fall back to the currently loaded model.
+    if ((!normalizedKey || !threadModelOptions.some((o) => o.key === normalizedKey)) && loadedModelOption) {
+      normalizedKey = loadedModelOption.key;
+    }
     setPendingLaunch({ action, preselectedKey: normalizedKey });
   }
 
@@ -1389,6 +1395,10 @@ export default function App() {
         imageNegativePrompt={imgState.imageNegativePrompt}
         onImageNegativePromptChange={imgState.setImageNegativePrompt}
         imageQualityPreset={imgState.imageQualityPreset}
+        imageDraftMode={imgState.imageDraftMode}
+        onImageDraftModeChange={imgState.setImageDraftMode}
+        imageSampler={imgState.imageSampler}
+        onImageSamplerChange={imgState.setImageSampler}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1924,7 +1934,11 @@ export default function App() {
 
         <div className="workspace-content-frame">
           {loading ? (
-            <div className="loading-state">Loading workspace state...</div>
+            <StartupProgressPanel
+              elapsedSeconds={loadingElapsedSeconds}
+              backendOnline={backendOnline}
+              tauriBackend={tauriBackend}
+            />
           ) : (
             <>
               {compareView}

@@ -40,6 +40,7 @@ import type {
   ImageModelVariant,
   ImageOutputArtifact,
   ImageQualityPreset,
+  ImageSamplerId,
   ImageRuntimeStatus,
   TabId,
 } from "../types";
@@ -92,6 +93,8 @@ export function useImageState(
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageNegativePrompt, setImageNegativePrompt] = useState("");
   const [imageQualityPreset, setImageQualityPreset] = useState<ImageQualityPreset>("balanced");
+  const [imageDraftMode, setImageDraftMode] = useState(false);
+  const [imageSampler, setImageSampler] = useState<ImageSamplerId>("default");
   const [imageRatioId, setImageRatioId] = useState<(typeof IMAGE_RATIO_PRESETS)[number]["id"]>("square");
   const [imageWidth, setImageWidth] = useState(1024);
   const [imageHeight, setImageHeight] = useState(1024);
@@ -502,6 +505,8 @@ export function useImageState(
         guidance: overrides?.guidance ?? imageGuidance,
         batchSize: overrides?.batchSize ?? imageBatchSize,
         qualityPreset: overrides?.qualityPreset ?? imageQualityPreset,
+        draftMode: imageDraftMode,
+        sampler: imageSampler === "default" ? null : imageSampler,
         seed,
       });
       setImageOutputs(response.outputs);
@@ -720,6 +725,10 @@ export function useImageState(
     imageNegativePrompt,
     setImageNegativePrompt,
     imageQualityPreset,
+    imageDraftMode,
+    setImageDraftMode,
+    imageSampler,
+    setImageSampler,
     imageRatioId,
     imageWidth,
     setImageWidth,

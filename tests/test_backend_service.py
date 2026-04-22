@@ -10,7 +10,10 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import compute_cache_preview, create_app
-from backend_service.helpers.huggingface import _search_huggingface_hub
+from backend_service.helpers.huggingface import (
+    _search_huggingface_hub,
+    _find_quantized_variants,
+)
 from backend_service.inference import GenerationResult, LoadedModelInfo, StreamChunk, _resolve_gguf_path
 from backend_service.state import ChaosEngineState, _spawn_snapshot_download
 from backend_service.helpers.discovery import _discover_local_models
@@ -566,6 +569,79 @@ class ChaosEngineBackendTests(unittest.TestCase):
             [model["repo"] for model in results],
             ["org/newer-model", "org/middle-model", "org/older-model-popular"],
         )
+
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_quantized_variants_finds_city96_gguf_mirrors(self, urlopen_mock):
+        """``_find_quantized_variants`` must pull city96 GGUF mirrors
+        for a base FLUX repo and tag them with ``format=GGUF`` so the
+        Discover panel can render them as alternate variants."""
+        # urlopen is called once per mirror author — return the same
+        # payload for all of them; only city96's contains real matches.
+        def _fake_urlopen(req, timeout=8):
+            if "author=city96" in req.full_url:
+                return fake_urlopen_json([
+                    {
+                        "id": "city96/FLUX.1-dev-gguf",
+                        "tags": ["gguf", "text-to-image"],
+                        "downloads": 50000,
+                        "likes": 1200,
+                        "lastModified": "2024-09-01T10:00:00Z",
+                    },
+                    {
+                        "id": "city96/FLUX.1-dev-extra",
+                        "tags": ["text-to-image"],
+                        "downloads": 5,
+                        "likes": 0,
+                    },
+                ])
+            return fake_urlopen_json([])
+
+        urlopen_mock.side_effect = _fake_urlopen
+        results = _find_quantized_variants("black-forest-labs/FLUX.1-dev")
+
+        repos = [r["repo"] for r in results]
+        self.assertIn("city96/FLUX.1-dev-gguf", repos)
+        # Extra repo has no quant tag and "gguf" not in its id — filtered.
+        self.assertNotIn("city96/FLUX.1-dev-extra", repos)
+        gguf_entry = next(r for r in results if r["repo"] == "city96/FLUX.1-dev-gguf")
+        self.assertEqual(gguf_entry["format"], "GGUF")
+        self.assertEqual(gguf_entry["baseRepo"], "black-forest-labs/FLUX.1-dev")
+
+    @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
+    def test_quantized_variants_detects_nf4_from_repo_name(self, urlopen_mock):
+        """NF4 mirrors sometimes ship without a tag — fall back to
+        matching ``nf4`` / ``bnb`` in the repo id so those still surface."""
+        def _fake_urlopen(req, timeout=8):
+            if "author=QuantStack" in req.full_url:
+                return fake_urlopen_json([
+                    {
+                        "id": "QuantStack/FLUX.1-dev-nf4",
+                        "tags": [],
+                        "downloads": 1000,
+                        "likes": 40,
+                    }
+                ])
+            return fake_urlopen_json([])
+
+        urlopen_mock.side_effect = _fake_urlopen
+        results = _find_quantized_variants("black-forest-labs/FLUX.1-dev")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["format"], "NF4")
+
+    def test_quantized_variants_route_returns_wrapped_payload(self):
+        with mock.patch(
+            "backend_service.routes.models._find_quantized_variants",
+            return_value=[{"repo": "city96/FLUX.1-dev-gguf", "format": "GGUF"}],
+        ):
+            response = self.client.get(
+                "/api/models/quantized-variants",
+                params={"repo": "black-forest-labs/FLUX.1-dev"},
+            )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["repo"], "black-forest-labs/FLUX.1-dev")
+        self.assertEqual(len(payload["variants"]), 1)
 
     @mock.patch("backend_service.helpers.huggingface.urllib.request.urlopen")
     def test_hub_search_matches_exact_qwen36_repo_name(self, urlopen_mock):

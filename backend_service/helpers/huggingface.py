@@ -557,3 +557,108 @@ def _hf_repo_preflight_size_gb(repo_id: str) -> float | None:
     if isinstance(total_gb, (int, float)) and total_gb > 0:
         return float(total_gb)
     return None
+
+
+# Well-known HF authors that re-host quantized mirrors of popular
+# image/video base models. The search strategy is "ask the Hub for
+# repos whose id contains the base model name + a quantization tag"
+# rather than hard-coding the full list, so newly-added city96/QuantStack
+# mirrors light up automatically once they're indexed.
+_QUANT_MIRROR_AUTHORS: tuple[str, ...] = (
+    "city96",
+    "QuantStack",
+    "calcuis",
+    "lllyasviel",
+)
+
+_QUANT_FORMAT_TAGS: dict[str, str] = {
+    "gguf": "GGUF",
+    "bitsandbytes": "NF4",
+    "nf4": "NF4",
+    "4bit": "4bit",
+    "8bit": "8bit",
+    "int8": "int8",
+}
+
+
+def _classify_quant_format(tags: list[Any]) -> str | None:
+    lowered = {str(tag or "").lower() for tag in tags}
+    for token, label in _QUANT_FORMAT_TAGS.items():
+        if token in lowered:
+            return label
+    return None
+
+
+def _find_quantized_variants(repo_id: str, limit: int = 12) -> list[dict[str, Any]]:
+    """Search HF for community-quantized mirrors of a base image/video model.
+
+    city96 ships GGUF quants of FLUX, LTX-Video, Wan, HunyuanVideo; the
+    ``bitsandbytes`` community re-hosts NF4 mirrors for consumer GPUs.
+    Instead of pre-baking every quant into the catalog, this helper
+    queries the Hub on-demand so newly published mirrors surface
+    automatically. Quiet-failure path: any network or Hub error
+    returns ``[]`` so the caller shows the catalog-only variants.
+    """
+    if not repo_id or "/" not in repo_id:
+        return []
+    base_name = repo_id.split("/", 1)[-1].strip()
+    if not base_name:
+        return []
+
+    results: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for author in _QUANT_MIRROR_AUTHORS:
+        try:
+            params = urllib.parse.urlencode({
+                "author": author,
+                "search": base_name,
+                "limit": "25",
+                "full": "true",
+            })
+            url = f"https://huggingface.co/api/models?{params}"
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "ChaosEngineAI/0.2.0"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception:
+            continue
+        for model in data:
+            model_id = str(model.get("id") or "")
+            if not model_id or model_id in seen_ids:
+                continue
+            lowered_id = model_id.lower()
+            if base_name.lower() not in lowered_id:
+                continue
+            tags = model.get("tags") or []
+            fmt = _classify_quant_format(tags)
+            # Fall back to name-pattern detection when tags are missing.
+            if fmt is None:
+                if "gguf" in lowered_id:
+                    fmt = "GGUF"
+                elif "nf4" in lowered_id or "bnb" in lowered_id:
+                    fmt = "NF4"
+            if fmt is None:
+                continue
+            seen_ids.add(model_id)
+            results.append({
+                "id": model_id,
+                "repo": model_id,
+                "baseRepo": repo_id,
+                "name": model_id.split("/", 1)[-1],
+                "provider": author,
+                "format": fmt,
+                "link": f"https://huggingface.co/{model_id}",
+                "downloads": int(model.get("downloads") or 0),
+                "likes": int(model.get("likes") or 0),
+                "lastModified": str(model.get("lastModified") or "") or None,
+            })
+
+    results.sort(
+        key=lambda entry: (
+            int(entry.get("downloads") or 0),
+            int(entry.get("likes") or 0),
+        ),
+        reverse=True,
+    )
+    return results[:limit]

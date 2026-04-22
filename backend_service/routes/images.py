@@ -25,7 +25,7 @@ from backend_service.app import (
     _find_image_output,
     _delete_image_output,
 )
-from backend_service.progress import IMAGE_PROGRESS
+from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS
 
 router = APIRouter()
 
@@ -55,6 +55,24 @@ def image_generation_progress() -> dict[str, Any]:
     estimates rather than freezing the bar at 0%.
     """
     return {"progress": IMAGE_PROGRESS.snapshot()}
+
+
+@router.post("/api/images/cancel")
+def cancel_image_generation(request: Request) -> dict[str, Any]:
+    """Signal the running image generation to abort at the next step.
+
+    Returns ``{"cancelled": true}`` when a run was in flight and received
+    the signal, ``{"cancelled": false}`` when nothing was running (treated
+    as success — the UI's intent ("make it stop") is already satisfied).
+    The actual abort is cooperative: the pipeline's step-end callback
+    reads ``IMAGE_PROGRESS.is_cancelled()`` and raises, typically within a
+    second of this call returning.
+    """
+    state = request.app.state.chaosengine
+    signalled = IMAGE_PROGRESS.request_cancel()
+    if signalled:
+        state.add_log("images", "info", "Cancel signal sent to running image generation.")
+    return {"cancelled": signalled}
 
 
 @router.post("/api/images/preload")
@@ -169,6 +187,14 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
     try:
         artifacts, runtime = _generate_image_artifacts(body, variant, state.image_runtime)
+    except GenerationCancelled:
+        # User hit Cancel on the modal. 409 (Conflict) carries a clearer
+        # semantics than 500 ("something broke") for the frontend to tell
+        # "we stopped because you asked us to" apart from an actual crash,
+        # and 499 is a non-standard nginx extension the Python stdlib
+        # HTTPException doesn't recognise.
+        state.add_log("images", "info", f"Image generation cancelled for {variant.get('name')} by user.")
+        raise HTTPException(status_code=409, detail="cancelled") from None
     except Exception as exc:
         tb_str = _tb.format_exc()
         state.add_log("images", "error", f"Image generation FAILED for {variant.get('name')}: {type(exc).__name__}: {exc}")

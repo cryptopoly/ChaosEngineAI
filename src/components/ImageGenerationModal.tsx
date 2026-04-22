@@ -16,6 +16,8 @@ export interface ImageGenerationModalProps {
   imageBusy: boolean;
   imageGenerationStartedAt: number | null;
   imageGenerationError: string | null;
+  imageGenerationCancelled: boolean;
+  imageGenerationCancelling: boolean;
   imageGenerationArtifacts: ImageOutputArtifact[];
   selectedImageGenerationArtifact: ImageOutputArtifact | null;
   imageGenerationRunInfo: ImageGenerationRunInfo | null;
@@ -30,6 +32,7 @@ export interface ImageGenerationModalProps {
   onOpenExternalUrl: (url: string) => void;
   onRevealPath: (path: string) => void;
   onDeleteArtifact: (artifactId: string) => void;
+  onCancelGeneration: () => void;
 }
 
 export function ImageGenerationModal({
@@ -37,6 +40,8 @@ export function ImageGenerationModal({
   imageBusy,
   imageGenerationStartedAt,
   imageGenerationError,
+  imageGenerationCancelled,
+  imageGenerationCancelling,
   imageGenerationArtifacts,
   selectedImageGenerationArtifact,
   imageGenerationRunInfo,
@@ -51,6 +56,7 @@ export function ImageGenerationModal({
   onOpenExternalUrl,
   onRevealPath,
   onDeleteArtifact,
+  onCancelGeneration,
 }: ImageGenerationModalProps) {
   // Hook ordering rule: react requires hooks to run in the same order on every
   // render, so we always invoke ``useGenerationProgress`` even when the modal
@@ -96,14 +102,18 @@ export function ImageGenerationModal({
         <div className="modal-header">
           <h3>
             {imageBusy
-              ? "Generating image"
-              : imageGenerationError
-                ? "Image generation failed"
-                : imageGenerationArtifacts.length > 1
-                  ? "Images ready"
-                  : "Image ready"}
+              ? imageGenerationCancelling
+                ? "Cancelling..."
+                : "Generating image"
+              : imageGenerationCancelled
+                ? "Image generation cancelled"
+                : imageGenerationError
+                  ? "Image generation failed"
+                  : imageGenerationArtifacts.length > 1
+                    ? "Images ready"
+                    : "Image ready"}
           </h3>
-          {!imageBusy && !imageGenerationError && activeArtifact ? (
+          {!imageBusy && !imageGenerationError && !imageGenerationCancelled && activeArtifact ? (
             <p>
               {activeArtifact.modelName} · {formatImageTimestamp(activeArtifact.createdAt)}
             </p>
@@ -112,13 +122,20 @@ export function ImageGenerationModal({
         <div className="modal-body">
           {imageBusy && imageGenerationStartedAt ? (
             <LiveProgress
-              title="Generating image"
+              title={imageGenerationCancelling ? "Cancelling..." : "Generating image"}
               subtitle={runInfo?.modelName ?? selectedImageVariant?.name ?? undefined}
               startedAt={imageGenerationStartedAt}
               accent="image"
               phases={imagePhases}
               realProgress={realProgress}
             />
+          ) : imageGenerationCancelled ? (
+            <div className="callout">
+              <p>You cancelled this generation. No image was saved.</p>
+              <p className="muted-text">
+                The model is still loaded — next Generate will start without the cold-start wait.
+              </p>
+            </div>
           ) : imageGenerationError ? (
             <div className="callout error">
               <h3>Image generation failed</h3>
@@ -237,17 +254,30 @@ export function ImageGenerationModal({
             </div>
           ) : null}
         </div>
-        {!imageBusy ? (
-          <div className="modal-footer">
+        <div className="modal-footer">
+          {imageBusy ? (
+            <button
+              className="secondary-button danger-button"
+              type="button"
+              onClick={onCancelGeneration}
+              disabled={imageGenerationCancelling}
+            >
+              {imageGenerationCancelling ? "Cancelling..." : "Cancel generation"}
+            </button>
+          ) : (
             <button
               className="primary-button"
               type="button"
               onClick={() => onShowImageGenerationModalChange(false)}
             >
-              {imageGenerationError ? "Close" : "Done"}
+              {imageGenerationError
+                ? "Close"
+                : imageGenerationCancelled
+                  ? "Close"
+                  : "Done"}
             </button>
-          </div>
-        ) : null}
+          )}
+        </div>
       </div>
     </div>
   );

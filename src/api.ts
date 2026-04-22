@@ -691,6 +691,11 @@ export async function generateVideo(payload: VideoGenerationPayload): Promise<Vi
   return await postJson<VideoGenerationResponse>("/api/video/generate", payload, null);
 }
 
+export async function cancelVideoGeneration(): Promise<{ cancelled: boolean }> {
+  // 10s timeout — the endpoint just sets a flag and returns, no wait.
+  return await postJson<{ cancelled: boolean }>("/api/video/cancel", {}, 10000);
+}
+
 export async function getVideoOutputs(): Promise<VideoOutputArtifact[]> {
   const result = await fetchJson<{ outputs: VideoOutputArtifact[] }>("/api/video/outputs");
   return result.outputs;
@@ -728,6 +733,10 @@ export async function fetchVideoOutputBlobUrl(artifactId: string): Promise<strin
 
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
   return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
+}
+
+export async function cancelImageGeneration(): Promise<{ cancelled: boolean }> {
+  return await postJson<{ cancelled: boolean }>("/api/images/cancel", {}, 10000);
 }
 
 export async function deleteImageOutput(artifactId: string): Promise<{ deleted: string; outputs: ImageOutputArtifact[] }> {

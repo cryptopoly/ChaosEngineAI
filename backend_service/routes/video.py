@@ -27,7 +27,7 @@ from backend_service.models import (
     VideoRuntimePreloadRequest,
     VideoRuntimeUnloadRequest,
 )
-from backend_service.progress import VIDEO_PROGRESS
+from backend_service.progress import GenerationCancelled, VIDEO_PROGRESS
 
 
 router = APIRouter()
@@ -59,6 +59,22 @@ def video_generation_progress() -> dict[str, Any]:
     falls back to its estimate-driven view.
     """
     return {"progress": VIDEO_PROGRESS.snapshot()}
+
+
+@router.post("/api/video/cancel")
+def cancel_video_generation(request: Request) -> dict[str, Any]:
+    """Signal the running video generation to abort at the next step.
+
+    Mirrors /api/images/cancel — see that handler for the full rationale.
+    The pipeline's step-end callback picks up ``VIDEO_PROGRESS.is_cancelled()``
+    and raises ``GenerationCancelled``, which the generate handler turns
+    into a 409 response.
+    """
+    state = request.app.state.chaosengine
+    signalled = VIDEO_PROGRESS.request_cancel()
+    if signalled:
+        state.add_log("video", "info", "Cancel signal sent to running video generation.")
+    return {"cancelled": signalled}
 
 
 @router.post("/api/video/preload")
@@ -220,6 +236,11 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
 
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
+    except GenerationCancelled:
+        # User hit Cancel. Same 409 contract as the image route so the
+        # frontend's generic "is this a cancel?" check is symmetric.
+        state.add_log("video", "info", f"Video generation cancelled for {variant['name']} by user.")
+        raise HTTPException(status_code=409, detail="cancelled") from None
     except RuntimeError as exc:
         state.add_log("video", "error", f"Video generation failed for {variant['name']}: {exc}")
         raise HTTPException(

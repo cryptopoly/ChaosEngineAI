@@ -18,6 +18,7 @@ from threading import RLock
 from typing import Any
 
 from backend_service.progress import (
+    GenerationCancelled,
     IMAGE_PROGRESS,
     PHASE_DECODING,
     PHASE_DIFFUSING,
@@ -474,6 +475,12 @@ class DiffusersTextToImageEngine:
         )
         try:
             pipeline = self._ensure_pipeline(config.repo)
+            # Early-cancel check: the load phase is blocking (from_pretrained
+            # is a C-extension call we can't interrupt), so if the user hit
+            # Cancel during it we catch up here and bail before kicking off
+            # the T5/VAE passes.
+            if IMAGE_PROGRESS.is_cancelled():
+                raise GenerationCancelled("Image generation cancelled by user")
             torch = self._torch
             if torch is None:
                 raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
@@ -513,6 +520,19 @@ class DiffusersTextToImageEngine:
                 # 0 means "one step done". Convert to the 1-indexed value the
                 # UI wants to display.
                 IMAGE_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+                # Cooperative cancel: the Cancel button on the modal sets
+                # IMAGE_PROGRESS.request_cancel(); we honor it at the next
+                # step boundary by setting ``_interrupt``, which makes
+                # diffusers stop the denoising loop cleanly at the next
+                # iteration. We also raise here so the outer handler can
+                # see a cancellation came from the user (not a pipeline
+                # crash) and return the right response.
+                if IMAGE_PROGRESS.is_cancelled():
+                    try:
+                        _pipeline._interrupt = True
+                    except Exception:
+                        pass
+                    raise GenerationCancelled("Image generation cancelled by user")
                 return callback_kwargs
 
             kwargs.setdefault("callback_on_step_end", _on_step_end)

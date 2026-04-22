@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
   cancelVideoDownload,
+  cancelVideoGeneration,
   deleteVideoDownload,
   deleteVideoOutput,
   downloadVideoModel,
@@ -179,6 +180,11 @@ export function useVideoState(
   const [showVideoGenerationModal, setShowVideoGenerationModal] = useState(false);
   const [videoGenerationStartedAt, setVideoGenerationStartedAt] = useState<number | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<string | null>(null);
+  // Mirrors useImageState — 409 "cancelled" response sets cancelled=true
+  // so the modal shows a calm "Cancelled" state. ``cancelling`` shows while
+  // the cancel request is in flight, before the generation promise resolves.
+  const [videoGenerationCancelled, setVideoGenerationCancelled] = useState(false);
+  const [videoGenerationCancelling, setVideoGenerationCancelling] = useState(false);
   const [videoGenerationArtifact, setVideoGenerationArtifact] = useState<VideoOutputArtifact | null>(null);
   const [videoGenerationRunInfo, setVideoGenerationRunInfo] = useState<{
     modelName: string;
@@ -593,6 +599,8 @@ export function useVideoState(
     setShowVideoGenerationModal(true);
     setVideoGenerationStartedAt(Date.now());
     setVideoGenerationError(null);
+    setVideoGenerationCancelled(false);
+    setVideoGenerationCancelling(false);
     setVideoGenerationArtifact(null);
     setVideoGenerationRunInfo({
       modelName: selectedVideoVariant.name,
@@ -615,18 +623,37 @@ export function useVideoState(
       setVideoGenerationArtifact(response.artifact);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Video generation failed.";
-      const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
-      setError(detail);
-      setVideoGenerationError(detail);
-      // Resync catalog + runtime in the background. A sidecar crash (e.g. the
-      // Wan 2.1 MPS assertion) can leave ``videoRuntimeStatus`` stale, which
-      // has been observed to leave the Studio's Generate button in a mystery
-      // disabled state after the user dismisses the failure modal. Refreshing
-      // restores a known-good view of what the backend actually reports now.
-      void refreshVideoData();
+      // Backend returns 409 detail="cancelled" for user-cancelled runs; keep
+      // the modal visually calm in that case (no red error callout).
+      if (message === "cancelled") {
+        setVideoGenerationCancelled(true);
+        setVideoGenerationError(null);
+      } else {
+        const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
+        setError(detail);
+        setVideoGenerationError(detail);
+        // Resync catalog + runtime in the background. A sidecar crash (e.g. the
+        // Wan 2.1 MPS assertion) can leave ``videoRuntimeStatus`` stale, which
+        // has been observed to leave the Studio's Generate button in a mystery
+        // disabled state after the user dismisses the failure modal. Refreshing
+        // restores a known-good view of what the backend actually reports now.
+        void refreshVideoData();
+      }
     } finally {
       setVideoBusyLabel(null);
       setVideoGenerationStartedAt(null);
+      setVideoGenerationCancelling(false);
+    }
+  }
+
+  async function handleCancelVideoGeneration() {
+    // See useImageState.handleCancelImageGeneration for rationale.
+    setVideoGenerationCancelling(true);
+    try {
+      await cancelVideoGeneration();
+    } catch {
+      // noop — the modal will surface completion state once the generation
+      // promise resolves, either with artifacts or the cancelled error.
     }
   }
 
@@ -825,6 +852,8 @@ export function useVideoState(
     setShowVideoGenerationModal,
     videoGenerationStartedAt,
     videoGenerationError,
+    videoGenerationCancelled,
+    videoGenerationCancelling,
     videoGenerationArtifact,
     videoGenerationRunInfo,
     activeVideoDownloads,
@@ -853,6 +882,7 @@ export function useVideoState(
     handlePreloadVideoModel,
     handleUnloadVideoModel,
     handleVideoGenerate,
+    handleCancelVideoGeneration,
     handleDeleteVideoOutput,
     handleInstallVideoOutputDeps,
     handleInstallVideoGpuRuntime,

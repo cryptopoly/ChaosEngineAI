@@ -19,6 +19,8 @@ export interface VideoGenerationModalProps {
   videoBusy: boolean;
   videoGenerationStartedAt: number | null;
   videoGenerationError: string | null;
+  videoGenerationCancelled: boolean;
+  videoGenerationCancelling: boolean;
   videoGenerationArtifact: VideoOutputArtifact | null;
   videoGenerationRunInfo: VideoGenerationRunInfo | null;
   selectedVideoVariant: VideoModelVariant | null;
@@ -26,6 +28,7 @@ export interface VideoGenerationModalProps {
   onActiveTabChange: (tab: TabId) => void;
   onRevealPath: (path: string) => void;
   onDeleteArtifact: (artifactId: string) => void;
+  onCancelGeneration: () => void;
 }
 
 /**
@@ -44,6 +47,8 @@ export function VideoGenerationModal({
   videoBusy,
   videoGenerationStartedAt,
   videoGenerationError,
+  videoGenerationCancelled,
+  videoGenerationCancelling,
   videoGenerationArtifact,
   videoGenerationRunInfo,
   selectedVideoVariant,
@@ -51,6 +56,7 @@ export function VideoGenerationModal({
   onActiveTabChange,
   onRevealPath,
   onDeleteArtifact,
+  onCancelGeneration,
 }: VideoGenerationModalProps) {
   // Hook ordering rule: invoke even when hidden so React's render order
   // stays consistent across mounts/unmounts.
@@ -143,12 +149,16 @@ export function VideoGenerationModal({
         <div className="modal-header">
           <h3>
             {videoBusy
-              ? "Generating video"
-              : videoGenerationError
-                ? "Video generation failed"
-                : "Video ready"}
+              ? videoGenerationCancelling
+                ? "Cancelling..."
+                : "Generating video"
+              : videoGenerationCancelled
+                ? "Video generation cancelled"
+                : videoGenerationError
+                  ? "Video generation failed"
+                  : "Video ready"}
           </h3>
-          {!videoBusy && !videoGenerationError && artifact ? (
+          {!videoBusy && !videoGenerationError && !videoGenerationCancelled && artifact ? (
             <p>
               {artifact.modelName} · {formatImageTimestamp(artifact.createdAt)}
             </p>
@@ -157,13 +167,20 @@ export function VideoGenerationModal({
         <div className="modal-body">
           {videoBusy && videoGenerationStartedAt ? (
             <LiveProgress
-              title="Generating video"
+              title={videoGenerationCancelling ? "Cancelling..." : "Generating video"}
               subtitle={runInfo?.modelName ?? selectedVideoVariant?.name ?? undefined}
               startedAt={videoGenerationStartedAt}
               accent="image"
               phases={videoPhases}
               realProgress={realProgress}
             />
+          ) : videoGenerationCancelled ? (
+            <div className="callout">
+              <p>You cancelled this generation. No clip was saved.</p>
+              <p className="muted-text">
+                The model is still loaded — next Generate will start without the cold-start wait.
+              </p>
+            </div>
           ) : videoGenerationError ? (
             <div className="callout error">
               <h3>Video generation failed</h3>
@@ -247,17 +264,30 @@ export function VideoGenerationModal({
             </div>
           ) : null}
         </div>
-        {!videoBusy ? (
-          <div className="modal-footer">
+        <div className="modal-footer">
+          {videoBusy ? (
+            <button
+              className="secondary-button danger-button"
+              type="button"
+              onClick={onCancelGeneration}
+              disabled={videoGenerationCancelling}
+            >
+              {videoGenerationCancelling ? "Cancelling..." : "Cancel generation"}
+            </button>
+          ) : (
             <button
               className="primary-button"
               type="button"
               onClick={() => onShowVideoGenerationModalChange(false)}
             >
-              {videoGenerationError ? "Close" : "Done"}
+              {videoGenerationError
+                ? "Close"
+                : videoGenerationCancelled
+                  ? "Close"
+                  : "Done"}
             </button>
-          </div>
-        ) : null}
+          )}
+        </div>
       </div>
     </div>
   );

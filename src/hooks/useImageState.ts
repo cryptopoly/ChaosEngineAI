@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import {
   cancelImageDownload,
+  cancelImageGeneration,
   deleteImageDownload,
   deleteImageOutput,
   downloadImageModel,
@@ -123,6 +124,11 @@ export function useImageState(
   const [showImageGenerationModal, setShowImageGenerationModal] = useState(false);
   const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<number | null>(null);
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
+  // Distinguishes a user-requested cancel (409 "cancelled" response) from a
+  // real failure. The modal hides the error callout and shows a calmer
+  // "Cancelled" state instead of a red error when this is true.
+  const [imageGenerationCancelled, setImageGenerationCancelled] = useState(false);
+  const [imageGenerationCancelling, setImageGenerationCancelling] = useState(false);
   const [imageGenerationArtifacts, setImageGenerationArtifacts] = useState<ImageOutputArtifact[]>([]);
   const [selectedImageGenerationArtifactId, setSelectedImageGenerationArtifactId] = useState<string | null>(null);
   const [imageGenerationRunInfo, setImageGenerationRunInfo] = useState<{
@@ -469,6 +475,8 @@ export function useImageState(
     setShowImageGenerationModal(true);
     setImageGenerationStartedAt(Date.now());
     setImageGenerationError(null);
+    setImageGenerationCancelled(false);
+    setImageGenerationCancelling(false);
     setImageGenerationArtifacts([]);
     setSelectedImageGenerationArtifactId(null);
     setImageGenerationRunInfo({
@@ -506,12 +514,37 @@ export function useImageState(
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Image generation failed.";
-      const detail = `${message}. Check the Logs tab (filter: images) for backend details.`;
-      setError(detail);
-      setImageGenerationError(detail);
+      // The backend returns HTTPException(409, detail="cancelled") when the
+      // user clicks Cancel and the pipeline aborts. Detect that specific
+      // shape so the modal transitions to a calm "Cancelled" state rather
+      // than a red error callout.
+      if (message === "cancelled") {
+        setImageGenerationCancelled(true);
+        setImageGenerationError(null);
+      } else {
+        const detail = `${message}. Check the Logs tab (filter: images) for backend details.`;
+        setError(detail);
+        setImageGenerationError(detail);
+      }
     } finally {
       setImageBusyLabel(null);
       setImageGenerationStartedAt(null);
+      setImageGenerationCancelling(false);
+    }
+  }
+
+  async function handleCancelImageGeneration() {
+    // Idempotent — clicking Cancel twice after an in-flight request is
+    // fine; the backend's request_cancel() is a no-op once the flag is
+    // already set. We still call it either way so the button always feels
+    // responsive even if the modal's busy-state cleanup is slow.
+    setImageGenerationCancelling(true);
+    try {
+      await cancelImageGeneration();
+    } catch {
+      // Transient failure. Leave cancelling=true — the generation promise
+      // is still pending and we'd rather the user see the retry path than
+      // a second red toast.
     }
   }
 
@@ -722,6 +755,8 @@ export function useImageState(
     setShowImageGenerationModal,
     imageGenerationStartedAt,
     imageGenerationError,
+    imageGenerationCancelled,
+    imageGenerationCancelling,
     imageGenerationArtifacts,
     selectedImageGenerationArtifactId,
     setSelectedImageGenerationArtifactId,
@@ -763,6 +798,7 @@ export function useImageState(
     openImageGallery,
     resetImageGalleryFilters,
     submitImageGeneration,
+    handleCancelImageGeneration,
     handlePreloadImageModel,
     handleUnloadImageModel,
     handleInstallImageRuntime,

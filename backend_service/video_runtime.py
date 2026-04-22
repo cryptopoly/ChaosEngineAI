@@ -32,6 +32,7 @@ from typing import Any
 from backend_service.helpers.gpu import nvidia_gpu_present
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
+    GenerationCancelled,
     PHASE_DECODING,
     PHASE_DIFFUSING,
     PHASE_ENCODING,
@@ -474,6 +475,12 @@ class DiffusersVideoEngine:
                 )
 
             pipeline = self._ensure_pipeline(config.repo)
+            # Early-cancel check after model load — from_pretrained is a
+            # blocking C-extension call we can't interrupt. If the user hit
+            # Cancel during load we catch up here and bail before we sink
+            # time into T5 encoding + the denoising loop.
+            if VIDEO_PROGRESS.is_cancelled():
+                raise GenerationCancelled("Video generation cancelled by user")
             torch = self._torch
             if torch is None:
                 raise RuntimeError("PyTorch was not initialised for the video runtime.")
@@ -575,6 +582,15 @@ class DiffusersVideoEngine:
 
         def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
             VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+            # Cooperative cancel: raise here when the user clicks Cancel on
+            # the modal. See ``image_runtime._on_step_end`` for the same
+            # pattern and rationale.
+            if VIDEO_PROGRESS.is_cancelled():
+                try:
+                    _pipeline._interrupt = True
+                except Exception:
+                    pass
+                raise GenerationCancelled("Video generation cancelled by user")
             return callback_kwargs
 
         kwargs.setdefault("callback_on_step_end", _on_step_end)

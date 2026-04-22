@@ -1957,6 +1957,8 @@ export default function App() {
         imageBusy={imgState.imageBusy}
         imageGenerationStartedAt={imgState.imageGenerationStartedAt}
         imageGenerationError={imgState.imageGenerationError}
+        imageGenerationCancelled={imgState.imageGenerationCancelled}
+        imageGenerationCancelling={imgState.imageGenerationCancelling}
         imageGenerationArtifacts={imgState.imageGenerationArtifacts}
         selectedImageGenerationArtifact={imgState.selectedImageGenerationArtifact}
         imageGenerationRunInfo={imgState.imageGenerationRunInfo}
@@ -1971,12 +1973,15 @@ export default function App() {
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
+        onCancelGeneration={() => void imgState.handleCancelImageGeneration()}
       />
       <VideoGenerationModal
         showVideoGenerationModal={videoState.showVideoGenerationModal}
         videoBusy={videoState.videoBusy}
         videoGenerationStartedAt={videoState.videoGenerationStartedAt}
         videoGenerationError={videoState.videoGenerationError}
+        videoGenerationCancelled={videoState.videoGenerationCancelled}
+        videoGenerationCancelling={videoState.videoGenerationCancelling}
         videoGenerationArtifact={videoState.videoGenerationArtifact}
         videoGenerationRunInfo={videoState.videoGenerationRunInfo}
         selectedVideoVariant={videoState.selectedVideoVariant}
@@ -1984,6 +1989,7 @@ export default function App() {
         onActiveTabChange={setActiveTab}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
+        onCancelGeneration={() => void videoState.handleCancelVideoGeneration()}
       />
       {(() => {
         if (!detailFamilyId) return null;

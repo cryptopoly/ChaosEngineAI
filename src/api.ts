@@ -353,6 +353,15 @@ export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
   return result.runtime;
 }
 
+export async function getLongLiveRuntime(): Promise<VideoRuntimeStatus> {
+  // LongLive probe is separate from the diffusers video runtime — it
+  // checks the isolated install marker at ~/.chaosengine/longlive rather
+  // than torch/diffusers on the host Python. Surfaces an install action
+  // in the Studio when the LongLive variant is selected but not yet set up.
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/longlive", 30000);
+  return result.runtime;
+}
+
 /** Mirror of ``getImageGenerationProgress`` for the video runtime. */
 export async function getVideoGenerationProgress(): Promise<GenerationProgressSnapshot> {
   const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(

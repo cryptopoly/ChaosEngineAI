@@ -76,6 +76,23 @@ Check for updates to external repos we build from or depend on:
 
 ---
 
+## Follow-Ups Tracker
+
+Deferred work and upstream conditions to re-check periodically. Revisit at each
+release or when touching the affected subsystem. Delete entries once shipped or
+no longer relevant.
+
+| ID | Item | Trigger / Condition | Notes |
+|----|------|---------------------|-------|
+| FU-001 | Bump `turboquant` to 0.3.x | PyPI publishes `>=0.3.0` (source at 0.3.1 since 2026-04-16) | Adds asymmetric K/V bits, layer-adaptive precision, `--no-quant` eval flag, NumPy 2.0 + transformers 5.x compat. Backward compatible per upstream README. Bump extra in [pyproject.toml](pyproject.toml) once available. |
+| FU-002 | Wire TriAttention MLX compressor into mlx_worker | When adding experimental KV compression path for mlx-lm generation | **Blocked on upstream API gap.** `TriAttentionStrategy.apply_mlx_compressor()` exists ([cache_compression/triattention.py](cache_compression/triattention.py)) and triattention 0.2.0 is installable via `pip install --no-deps` (skips triton which is CUDA-only). BUT: (1) `mlx_lm.stream_generate` exposes no per-step callback for invoking the compressor; (2) upstream's `triattention_generate_step` expects `List[Tuple[mx.array, mx.array]]` raw tensor tuples but mlx-lm passes `KVCache` wrapper objects. Fix path: custom generation loop (~100-200 lines) bridging KVCache ↔ tuples, plus calibration-stats UX + kv_budget setting. Do on a CUDA box or with a small test model — don't ship blind. |
+| FU-003 | LongLive integration for Wan 2.1 T2V 1.3B | CUDA platforms (Windows/Linux) only | Real-time causal long video gen ([triattention/longlive](https://github.com/WeianMao/triattention/tree/main/longlive)). We ship the target model already. Needs: new video backend branch in [backend_service/video_runtime.py](backend_service/video_runtime.py), LoRA weights download, torchrun orchestration, UI affordance for long-clip mode. Flash Attention dep. |
+| FU-004 | TriAttention SGLang backend | When/if we adopt SGLang as an inference backend | Added upstream 2026-04-22 as v0.2.0. No action unless SGLang lands in our runtime. |
+| ~~FU-005~~ | ~~arozanov v_only TurboQuant MLX mode~~ | **Dropped 2026-04-24** | Our current `turboquant-mlx-full` 0.1.3 path already runs without any mlx-lm fork — uses pip `TurboQuantKVCache` with `QuantizedKVCache` fallback ([turboquant_mlx/__init__.py:174-186](turboquant_mlx/__init__.py)). `VOnlyTurboQuantCache` is only in the arozanov fork (we track but don't consume). Value prop already satisfied; entry removed. |
+| FU-006 | Re-verify dflash-mlx pin | Quarterly, or when Qwen/Llama drafts land | Currently `f825ffb` = v0.1.4.1 (latest). Upstream deleted tags April 2026 — pin by commit. |
+
+---
+
 ## Testing Requirements
 
 ### When Modifying These Areas, Run These Tests:

@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TURBO_BRANCH="${LLAMA_TURBO_BRANCH:-feature/planarquant-kv-cache}"
+TURBO_BRANCH="${LLAMA_TURBO_BRANCH:-feature/turboquant-kv-cache}"
 TURBO_DIR="${LLAMA_TURBO_DIR:-/tmp/llama-cpp-turboquant}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 VERSION_FILE="$INSTALL_DIR/llama-server-turbo.version"

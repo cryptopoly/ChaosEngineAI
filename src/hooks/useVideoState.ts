@@ -7,11 +7,13 @@ import {
   downloadVideoModel,
   generateVideo,
   getGpuBundleStatus,
+  getLongLiveRuntime,
   getVideoCatalog,
   getVideoDownloadStatus,
   getVideoOutputs,
   getVideoRuntime,
   installPipPackage,
+  installSystemPackage,
   preloadVideoModel,
   startGpuBundleInstall,
   unloadVideoModel,
@@ -162,6 +164,12 @@ export function useVideoState(
     message: "Video runtime not initialised yet.",
     missingDependencies: [],
   });
+  // LongLive probe is separate from the diffusers video runtime — it
+  // checks an isolated install marker under ~/.chaosengine/longlive. We
+  // only populate it lazily when the user selects a LongLive variant so
+  // non-LongLive users don't pay the probe cost.
+  const [longLiveStatus, setLongLiveStatus] = useState<VideoRuntimeStatus | null>(null);
+  const [installingLongLive, setInstallingLongLive] = useState(false);
   const [videoBusyLabel, setVideoBusyLabel] = useState<string | null>(null);
   const videoBusy = videoBusyLabel !== null;
   // Live GPU bundle install job state — mirrors useImageState. Exposed so
@@ -886,7 +894,39 @@ export function useVideoState(
     handleDeleteVideoOutput,
     handleInstallVideoOutputDeps,
     handleInstallVideoGpuRuntime,
+    longLiveStatus,
+    installingLongLive,
+    refreshLongLiveStatus,
+    handleInstallLongLive,
     openVideoStudio,
     gpuBundleJob,
   };
+
+  async function refreshLongLiveStatus(): Promise<void> {
+    try {
+      const status = await getLongLiveRuntime();
+      setLongLiveStatus(status);
+    } catch {
+      // Ignore — LongLive probe failures just mean we show a retry prompt.
+    }
+  }
+
+  async function handleInstallLongLive(): Promise<InstallResult> {
+    setInstallingLongLive(true);
+    setError(null);
+    try {
+      const result = await installSystemPackage("longlive");
+      if (!result.ok) {
+        setError(`LongLive install failed: ${result.output.slice(0, 300)}`);
+      }
+      await refreshLongLiveStatus();
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LongLive install failed.";
+      setError(message);
+      return { ok: false, output: message, capabilities: {} };
+    } finally {
+      setInstallingLongLive(false);
+    }
+  }
 }

@@ -1565,6 +1565,10 @@ export default function App() {
         onRestartServer={() => void handleRestartServer()}
         onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
+        longLiveStatus={videoState.longLiveStatus}
+        installingLongLive={videoState.installingLongLive}
+        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
+        onInstallLongLive={() => videoState.handleInstallLongLive()}
         gpuBundleJob={videoState.gpuBundleJob}
       />
     );

@@ -18,7 +18,9 @@ router = APIRouter()
 _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "turboquant": "turboquant",
     "turboquant-mlx": "turboquant-mlx-full",
-    "triattention": "triattention",
+    # Not published on PyPI — install from git. Pairs with mlx_lm on macOS
+    # or vllm on Linux/CUDA (see the cache_compression.triattention adapter).
+    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git",
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
@@ -120,9 +122,14 @@ _TURBO_REMOTE_CACHE_TTL = 3600.0  # 1 hour
 
 
 def _installable_system_packages() -> dict[str, list[str]]:
+    # LongLive's install runs a multi-minute clone + pip install + weight
+    # download, so it needs the longer 10-minute system-install timeout
+    # rather than the 5-minute pip path. It also auto-skips on Darwin
+    # (CUDA-only) — the script itself exits 2 with a clear message.
     return {
         "llama.cpp": ["brew", "install", "llama.cpp"],
         "llama-server-turbo": [str(_workspace_root() / "scripts" / "build-llama-turbo.sh")],
+        "longlive": [str(_workspace_root() / "scripts" / "install-longlive.sh")],
     }
 
 

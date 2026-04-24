@@ -996,18 +996,52 @@ class DiffusersVideoEngine:
         return torch.float32
 
 
+def _is_longlive_repo(repo: str | None) -> bool:
+    """Route LongLive repos to the subprocess engine, everything else to diffusers.
+
+    LongLive is not a diffusers pipeline — it ships as a torchrun-launched
+    script with its own CUDA-specific deps that we keep in an isolated
+    venv (see ``backend_service.longlive_engine``). Routing happens by
+    repo prefix so the rest of the video stack doesn't need to know
+    there's a second engine behind the manager.
+    """
+    if not repo:
+        return False
+    return repo.startswith("NVlabs/LongLive")
+
+
 class VideoRuntimeManager:
     """State-level facade that mirrors ``ImageRuntimeManager``."""
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._engine = DiffusersVideoEngine()
+        # Lazy-constructed so the LongLive import (and its probe, which
+        # shells out to nvidia-smi) doesn't run on every sidecar start —
+        # only when a LongLive repo is actually selected.
+        self._longlive: Any | None = None
+
+    def _get_longlive(self) -> Any:
+        if self._longlive is None:
+            from backend_service.longlive_engine import LongLiveEngine
+            self._longlive = LongLiveEngine()
+        return self._longlive
 
     def capabilities(self) -> dict[str, Any]:
         return self._engine.probe().to_dict()
 
+    def longlive_capabilities(self) -> dict[str, Any]:
+        """Probe the LongLive engine separately so the Studio can surface install state."""
+        return self._get_longlive().probe().to_dict()
+
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:
+            if _is_longlive_repo(repo):
+                engine = self._get_longlive()
+                status = engine.probe()
+                if not status.realGenerationAvailable:
+                    raise RuntimeError(status.message)
+                return engine.preload(repo).to_dict()
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
@@ -1015,6 +1049,8 @@ class VideoRuntimeManager:
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
+            if _is_longlive_repo(repo):
+                return self._get_longlive().unload(repo).to_dict()
             return self._engine.unload(repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
@@ -1025,6 +1061,16 @@ class VideoRuntimeManager:
         the runtime isn't ready, raise a clear error so the route can return
         a proper 4xx.
         """
+        if _is_longlive_repo(config.repo):
+            engine = self._get_longlive()
+            status = engine.probe()
+            if not status.realGenerationAvailable:
+                raise RuntimeError(status.message)
+            with self._lock:
+                video = engine.generate(config)
+                runtime = engine.probe().to_dict()
+            return video, runtime
+
         status = self._engine.probe()
         if not status.realGenerationAvailable:
             raise RuntimeError(status.message)

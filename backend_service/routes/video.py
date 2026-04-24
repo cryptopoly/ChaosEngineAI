@@ -50,6 +50,18 @@ def video_runtime_status(request: Request) -> dict[str, Any]:
     return {"runtime": state.video_runtime.capabilities()}
 
 
+@router.get("/api/video/longlive")
+def longlive_runtime_status(request: Request) -> dict[str, Any]:
+    """Probe the LongLive subprocess engine install.
+
+    Separate from ``/api/video/runtime`` so the Studio can show a dedicated
+    "Install LongLive" action without conflating it with the diffusers
+    engine state.
+    """
+    state = request.app.state.chaosengine
+    return {"runtime": state.video_runtime.longlive_capabilities()}
+
+
 @router.get("/api/video/progress")
 def video_generation_progress() -> dict[str, Any]:
     """Live progress snapshot for the in-flight video generation.

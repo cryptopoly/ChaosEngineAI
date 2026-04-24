@@ -66,6 +66,14 @@ export interface VideoStudioTabProps {
   onRestartServer: () => void;
   onInstallVideoOutputDeps: (packages?: readonly string[]) => Promise<InstallResult>;
   onInstallVideoGpuRuntime: () => Promise<InstallResult>;
+  // LongLive (long-form causal video) surface — separate from the main
+  // diffusers runtime because LongLive runs via a torchrun subprocess
+  // against an isolated venv at ~/.chaosengine/longlive. Null until the
+  // user selects a LongLive variant and the status is probed.
+  longLiveStatus: VideoRuntimeStatus | null;
+  installingLongLive: boolean;
+  onRefreshLongLiveStatus: () => void;
+  onInstallLongLive: () => Promise<InstallResult>;
   // Live state of the GPU bundle install job — drives the InstallLogPanel
   // under the install button so users see per-step pip output.
   gpuBundleJob: GpuBundleJobState | null;
@@ -199,6 +207,10 @@ export function VideoStudioTab({
   onRestartServer,
   onInstallVideoOutputDeps,
   onInstallVideoGpuRuntime,
+  longLiveStatus,
+  installingLongLive,
+  onRefreshLongLiveStatus,
+  onInstallLongLive,
   gpuBundleJob,
 }: VideoStudioTabProps) {
   const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
@@ -318,6 +330,16 @@ export function VideoStudioTab({
   useEffect(() => {
     setDangerOverrideAck(false);
   }, [selectedVideoVariant?.id, videoWidth, videoHeight, videoNumFrames]);
+
+  // Probe LongLive install state whenever the user selects a LongLive
+  // variant so the Studio can surface an install callout without the
+  // user having to click "generate" to find out the subprocess engine
+  // isn't ready yet.
+  const isLongLiveVariant =
+    selectedVideoVariant?.repo?.startsWith("NVlabs/LongLive") ?? false;
+  useEffect(() => {
+    if (isLongLiveVariant) onRefreshLongLiveStatus();
+  }, [isLongLiveVariant, onRefreshLongLiveStatus]);
 
   const downloadState = useMemo(
     () => (selectedVideoVariant ? activeVideoDownloads[selectedVideoVariant.repo] : undefined),
@@ -507,7 +529,36 @@ export function VideoStudioTab({
             {otherMissingDependencies.slice(0, 4).map((dependency) => (
               <span key={dependency} className="badge subtle">{dependency}</span>
             ))}
+            {isLongLiveVariant && longLiveStatus ? (
+              <span
+                className={`badge ${
+                  longLiveStatus.realGenerationAvailable ? "success" : "warning"
+                }`}
+              >
+                {longLiveStatus.realGenerationAvailable
+                  ? "LongLive ready"
+                  : "LongLive not installed"}
+              </span>
+            ) : null}
           </div>
+          {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
+            <div className="image-runtime-actions">
+              <p className="muted-text">
+                {longLiveStatus.message} LongLive runs in an isolated venv at
+                {" "}<code>~/.chaosengine/longlive</code> so its CUDA-specific deps don't
+                clash with the main runtime. Install can take 5–15 minutes depending on
+                network + GPU.
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void onInstallLongLive()}
+                disabled={installingLongLive || !backendOnline}
+              >
+                {installingLongLive ? "Installing LongLive..." : "Install LongLive"}
+              </button>
+            </div>
+          ) : null}
           {mp4EncoderMissing ? (
             <div className="image-runtime-actions">
               <p className="muted-text">
@@ -884,6 +935,13 @@ export function VideoStudioTab({
               </div>
             </label>
           </div>
+
+          {Number.isFinite(videoNumFrames) && Number.isFinite(videoFps) && videoFps > 0 ? (
+            <p className="muted-text" aria-live="polite">
+              Clip length: {(videoNumFrames / videoFps).toFixed(2).replace(/\.?0+$/, "")}s
+              {" "}({videoNumFrames} frames ÷ {videoFps} fps)
+            </p>
+          ) : null}
 
           {/*
             Always-on "device capacity" line so the user sees their envelope

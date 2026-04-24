@@ -23,9 +23,10 @@ mlx-lm = [
     "gguf>=0.18.0",
     "mlx-lm>=0.22.0",
 ]
-triattention = ["triattention>=0.1.0", "vllm>=0.8.0"]
+triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git", "vllm>=0.8.0"]
+triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git", "mlx-lm>=0.22.0"]
 rotorquant = ["turboquant>=0.2.0"]
-turboquant = ["turboquant-mlx-full>=0.1.0"]
+turboquant = ["turboquant-mlx-full>=0.1.3"]
 vllm = ["vllm>=0.8.0"]
 dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"]
 dflash = ["dflash>=0.1.0"]

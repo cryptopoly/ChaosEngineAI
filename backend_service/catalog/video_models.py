@@ -416,4 +416,45 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
         ],
     },
+    {
+        "id": "longlive",
+        "name": "LongLive 1.3B",
+        "provider": "NVlabs",
+        "headline": "Real-time, causal long-form video — up to 240s on a Wan 2.1 1.3B base.",
+        "summary": (
+            "LongLive (ICLR 2026) extends Wan 2.1 T2V 1.3B with a causal "
+            "streaming pipeline: 20.7 FPS on a single H100, up to 240s. "
+            "CUDA only — installed into an isolated venv via "
+            "scripts/install-longlive.sh."
+        ),
+        "updatedLabel": "Experimental — long-form",
+        "badges": ["Long-form", "Real-time", "Apache 2.0", "CUDA"],
+        "defaultVariantId": "NVlabs/LongLive-1.3B",
+        "variants": [
+            {
+                "id": "NVlabs/LongLive-1.3B",
+                "familyId": "longlive",
+                "name": "LongLive 1.3B",
+                "provider": "NVlabs",
+                "repo": "NVlabs/LongLive-1.3B",
+                "link": "https://huggingface.co/Efficient-Large-Model/LongLive-1.3B",
+                "runtime": "LongLive subprocess (torchrun)",
+                "styleTags": ["general", "long-form", "motion", "causal"],
+                "taskSupport": ["txt2video"],
+                # Wan 2.1 1.3B base (~3 GB) + LongLive generator checkpoint
+                # + LoRA (~1.5 GB). Isolated venv + CUDA-only deps weigh in
+                # at ~10 GB total after install.
+                "sizeGb": 10.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 30.0,
+                "note": (
+                    "CUDA only. Needs scripts/install-longlive.sh (isolated "
+                    "venv + LongLive + Wan 2.1 base weights). Output at 16 FPS."
+                ),
+                "estimatedGenerationSeconds": 60.0,
+                "availableLocally": False,
+                "releaseDate": "2025-09",
+            },
+        ],
+    },
 ]

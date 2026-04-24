@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
+import os
 import re
 import sys
 import time
@@ -359,8 +361,46 @@ def _build_prompt_text(
     )
 
 
+# Dedicated JSON sink for the protocol channel. When the worker runs as a
+# subprocess (the ``serve`` / ``probe`` / ``gguf-metadata`` entrypoints),
+# ``_install_stdio_redirect`` replaces this with a private file object
+# pointing at the original stdout FD, then redirects FD 1 to stderr at the
+# OS level. That way ``mlx-lm``'s print-to-stdout warnings (e.g. the
+# "Generating with a model that requires 48128 MB which is close to the
+# maximum recommended size of 53084 MB" chatter on large models) land on
+# stderr instead of corrupting the JSON stream the parent reads.
+#
+# Default value keeps in-process tests working: they patch ``_emit``
+# directly and never go through ``main()``.
+_JSON_OUT: io.TextIOBase = sys.stdout  # type: ignore[assignment]
+
+
+def _install_stdio_redirect() -> None:
+    """Split the JSON protocol channel from warning chatter.
+
+    The JSON protocol uses stdout (file descriptor 1). ``mlx-lm`` and some
+    diffusers/torch paths print warnings and progress to stdout as well —
+    without isolation, a single ``[WARNING] Generating with a model that
+    requires ...`` line crashes the caller's ``json.loads`` and the user
+    sees "MLX worker returned invalid JSON".
+
+    Duplicate the original stdout FD into a fresh file object reserved for
+    protocol output, then point FD 1 at stderr so anything writing through
+    the normal stdout path (Python ``print()``, C-extension writes, tqdm
+    auto-detecting stdout) lands on stderr instead. Finally rebind
+    ``sys.stdout`` to ``sys.stderr`` so libraries that cached a reference
+    at import time follow along.
+    """
+    global _JSON_OUT
+    json_fd = os.dup(1)
+    os.dup2(2, 1)
+    _JSON_OUT = os.fdopen(json_fd, "w", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr
+
+
 def _emit(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload), flush=True)
+    _JSON_OUT.write(json.dumps(payload) + "\n")
+    _JSON_OUT.flush()
 
 
 def emit_progress(phase: str, percent: float | None, message: str | None = None) -> None:
@@ -1485,6 +1525,11 @@ def serve() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Install the stdout split before any subcommand runs — probe() and
+    # gguf_metadata() call _emit too, and both import mlx/gguf machinery
+    # that can print to stdout on their own.
+    _install_stdio_redirect()
+
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
         print("usage: python -m backend_service.mlx_worker [probe|gguf-metadata|serve]", file=sys.stderr)

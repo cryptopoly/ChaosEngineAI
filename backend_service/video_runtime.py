@@ -497,12 +497,19 @@ class DiffusersVideoEngine:
                 "will use the diffusers runtime."
             )
 
-        # ``device`` / ``deviceMemoryGb`` mirror the currently-loaded model's
-        # runtime context. Before anything is preloaded both are None — we
-        # no longer speculatively import torch just to report cuda vs cpu in
-        # the empty case, because doing so locked DLLs and broke installs.
+        # ``device`` mirrors the currently-loaded model's runtime context —
+        # None until preload, because importing torch speculatively locks
+        # DLLs on Windows and breaks /api/setup/install-gpu-bundle.
+        #
+        # ``deviceMemoryGb`` is resolved independently. It reads sysctl on
+        # macOS and nvidia-smi on Linux/Windows — neither needs a loaded
+        # model, and both are cheap (cached per-process). Gating it behind
+        # ``device is not None`` used to leave the frontend safety heuristic
+        # with no data until first load, which made it fall back to its
+        # 16 GB MPS default and warn a 64 GB M4 Max user as if they were
+        # on a base-model Mac.
         device = self._device
-        device_memory_gb = _detect_device_memory_gb(device) if device is not None else None
+        device_memory_gb = _detect_device_memory_gb(device)
 
         return VideoRuntimeStatus(
             activeEngine="diffusers",

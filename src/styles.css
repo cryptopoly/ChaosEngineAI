@@ -3840,6 +3840,17 @@ select.text-input {
   align-items: center;
 }
 
+.perf-preview__advice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warning, #e4be75) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning, #e4be75) 34%, transparent);
+  color: var(--text, #e8e8e8);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .perf-preview__compare {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

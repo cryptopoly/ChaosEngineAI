@@ -261,14 +261,15 @@ class TeaCacheStrategy(CacheStrategy):
         return None
 
     def estimate_cache_bytes(
-        self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers,
+        self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers, num_kv_heads=None,
     ):
         # TeaCache doesn't shrink the KV cache — it skips redundant DiT
         # forward passes. The "cache" here is intermediate residuals kept
         # between denoise steps, not a KV cache. The registry's estimate
         # API is sized for text LLM KV; return baseline so preview UI
         # doesn't show a bogus compression ratio.
-        kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens
+        kv_heads = num_kv_heads if num_kv_heads and num_kv_heads > 0 else num_heads
+        kv_elements = 2 * num_layers * kv_heads * (hidden_size // max(num_heads, 1)) * context_tokens
         baseline = kv_elements * 2  # FP16 = 2 bytes
         return baseline, baseline
 

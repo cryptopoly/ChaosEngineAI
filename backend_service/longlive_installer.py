@@ -32,9 +32,66 @@ LONGLIVE_REF = os.environ.get("LONGLIVE_REF", "main")
 LONGLIVE_HF_REPO = "Efficient-Large-Model/LongLive-1.3B"
 WAN_HF_REPO = "Wan-AI/Wan2.1-T2V-1.3B"
 
+# Requirements we strip from upstream's ``requirements.txt`` before handing
+# it to pip. These are TensorRT / ONNX export pipeline deps used by the
+# upstream demo's deployment scripts — none of them are needed for inference
+# via our subprocess wrapper, and they actively break Windows installs:
+#
+# - ``nvidia-pyindex`` + ``nvidia-tensorrt``: the latter is a placeholder on
+#   PyPI that errors out (``RuntimeError: This package is hosted on NVIDIA
+#   Python Package Index``). Even if you set up nvidia-pyindex first, the
+#   real ``nvidia-tensorrt`` ships only a Linux wheel — no Windows support.
+#   Pip resolves all deps before installing any, so the placeholder error
+#   aborts the entire install before a single useful package downloads.
+#   This is the root cause of every "LongLive install hangs" report on
+#   Windows.
+#
+# - ``pycuda``: needs CUDA toolkit headers + a working host C++ compiler
+#   (Visual Studio Build Tools on Windows). Most users don't have those,
+#   and LongLive doesn't import it from any inference path.
+#
+# Stripping these turns a guaranteed-fail install into a working one. We
+# log the dropped lines so the user can see what was filtered and we don't
+# silently mask a future upstream change.
+_DROPPED_REQUIREMENTS: tuple[str, ...] = (
+    "nvidia-pyindex",
+    "nvidia-tensorrt",
+    "pycuda",
+)
+
 
 class LongLiveInstallError(RuntimeError):
     """Raised when the install cannot proceed (missing git, macOS, etc.)."""
+
+
+def _filter_requirements(source: Path, target: Path) -> list[str]:
+    """Copy ``source`` to ``target`` minus the lines naming a dropped req.
+
+    Returns the list of dropped lines (with their original whitespace) so
+    the installer can log what was filtered. Comparison ignores version
+    specifiers and inline comments — ``nvidia-tensorrt>=8.6 ; sys_platform``
+    matches the bare ``nvidia-tensorrt`` entry in ``_DROPPED_REQUIREMENTS``.
+    """
+    dropped: list[str] = []
+    kept: list[str] = []
+    for raw_line in source.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
+            kept.append(raw_line)
+            continue
+        # Strip extras and version specifiers: ``foo[bar]==1.2 ; cond`` -> ``foo``
+        name = line.split(";", 1)[0].split("[", 1)[0]
+        for sep in ("==", ">=", "<=", "~=", "!=", ">", "<"):
+            if sep in name:
+                name = name.split(sep, 1)[0]
+                break
+        name = name.strip().lower()
+        if name in _DROPPED_REQUIREMENTS:
+            dropped.append(raw_line)
+            continue
+        kept.append(raw_line)
+    target.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    return dropped
 
 
 def _venv_python_path(venv_dir: Path) -> Path:
@@ -44,6 +101,32 @@ def _venv_python_path(venv_dir: Path) -> Path:
     if os.name == "nt":
         return venv_dir / "Scripts" / "python.exe"
     return venv_dir / "bin" / "python"
+
+
+# Ordered list of user-visible install phases. The async job worker uses
+# this to drive a progress counter; the CLI install path ignores it.
+# Adding a phase? Update both the order here AND the matching
+# ``progress(...)`` calls inside ``install()`` so the percentages match.
+INSTALL_PHASES: tuple[str, ...] = (
+    "clone",            # git clone or update
+    "venv",             # python -m venv
+    "pip-upgrade",      # pip / setuptools / wheel
+    "pip-requirements", # filtered requirements.txt
+    "flash-attn",       # optional, may skip
+    "pip-hub",          # huggingface-hub
+    "weights-longlive", # snapshot of LongLive checkpoints (~5 GB)
+    "weights-wan",      # snapshot of Wan2.1 T2V base (~3 GB)
+    "marker",           # ready.marker (last)
+)
+
+
+def _noop_progress(_event: dict[str, object]) -> None:
+    """Default progress sink for the CLI path.
+
+    The async job in ``setup.py`` overrides this with a writer that
+    updates ``_LONGLIVE_JOB``. Out-of-band stdout/stderr still goes
+    through the ``logger`` callback unchanged.
+    """
 
 
 def _run(
@@ -93,12 +176,19 @@ def install(
     root: Path | None = None,
     logger: Callable[[str], None] = print,
     python_executable: str | None = None,
+    progress: Callable[[dict[str, object]], None] = _noop_progress,
 ) -> None:
     """Run the full LongLive install into ``root`` (or the default path).
 
     Raises ``LongLiveInstallError`` on missing prereqs, clone/pip failures,
     or an HF download error. flash-attn is best-effort — its failure is
     logged as a warning but does not abort the install.
+
+    ``progress`` receives structured phase events for the async job
+    worker. Each event is a ``dict`` with at least ``{"phase": <name>,
+    "ok": bool}`` and optionally ``output`` for terminal display. The
+    CLI path uses a no-op sink — only the human-readable ``logger``
+    output is shown there.
     """
     system = platform.system()
     if system == "Darwin":
@@ -124,52 +214,89 @@ def install(
     target.mkdir(parents=True, exist_ok=True)
     logger(f"==> LongLive install target: {target}")
 
+    # ── Phase: clone / update repo ──────────────────────────────────
     if (repo_dir / ".git").is_dir():
         logger("==> updating existing checkout")
-        _run(["git", "-C", repo_dir, "fetch", "--all", "--prune"], logger)
-        _run(["git", "-C", repo_dir, "checkout", LONGLIVE_REF], logger)
-        _run(
-            ["git", "-C", repo_dir, "reset", "--hard", f"origin/{LONGLIVE_REF}"],
-            logger,
-        )
+        try:
+            _run(["git", "-C", repo_dir, "fetch", "--all", "--prune"], logger)
+            _run(["git", "-C", repo_dir, "checkout", LONGLIVE_REF], logger)
+            _run(
+                ["git", "-C", repo_dir, "reset", "--hard", f"origin/{LONGLIVE_REF}"],
+                logger,
+            )
+        except LongLiveInstallError:
+            progress({"phase": "clone", "ok": False})
+            raise
     else:
         logger(f"==> cloning {LONGLIVE_REPO} ({LONGLIVE_REF})")
-        _run(
-            [
-                "git", "clone", "--depth", "1",
-                "--branch", LONGLIVE_REF,
-                LONGLIVE_REPO, repo_dir,
-            ],
-            logger,
-        )
+        try:
+            _run(
+                [
+                    "git", "clone", "--depth", "1",
+                    "--branch", LONGLIVE_REF,
+                    LONGLIVE_REPO, repo_dir,
+                ],
+                logger,
+            )
+        except LongLiveInstallError:
+            progress({"phase": "clone", "ok": False})
+            raise
+    progress({"phase": "clone", "ok": True})
 
+    # ── Phase: venv ─────────────────────────────────────────────────
     if not venv_dir.is_dir():
         logger(f"==> creating venv at {venv_dir}")
-        _run([host_python, "-m", "venv", venv_dir], logger)
+        try:
+            _run([host_python, "-m", "venv", venv_dir], logger)
+        except LongLiveInstallError:
+            progress({"phase": "venv", "ok": False})
+            raise
 
     venv_python = _venv_python_path(venv_dir)
     if not venv_python.exists():
+        progress({"phase": "venv", "ok": False})
         raise LongLiveInstallError(
             f"venv python not found at {venv_python} after ``-m venv`` — "
             "the host interpreter may be an embeddable distribution without "
             "venv support. Install a full Python 3.10+ and retry."
         )
+    progress({"phase": "venv", "ok": True})
 
+    # ── Phase: pip-upgrade ──────────────────────────────────────────
     logger("==> upgrading pip")
-    _run(
-        [venv_python, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
-        logger,
-    )
+    try:
+        _run(
+            [venv_python, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
+            logger,
+        )
+    except LongLiveInstallError:
+        progress({"phase": "pip-upgrade", "ok": False})
+        raise
+    progress({"phase": "pip-upgrade", "ok": True})
 
+    # ── Phase: pip-requirements (filtered) ──────────────────────────
     logger("==> installing LongLive requirements")
-    _run(
-        [venv_python, "-m", "pip", "install", "-r", repo_dir / "requirements.txt"],
-        logger,
-    )
+    filtered_requirements = target / "requirements.filtered.txt"
+    dropped = _filter_requirements(repo_dir / "requirements.txt", filtered_requirements)
+    if dropped:
+        logger(
+            "==> dropped TensorRT/pycuda export deps (not needed for inference, "
+            "would break Windows install): " + ", ".join(d.strip() for d in dropped)
+        )
+    try:
+        _run(
+            [venv_python, "-m", "pip", "install", "-r", filtered_requirements],
+            logger,
+        )
+    except LongLiveInstallError:
+        progress({"phase": "pip-requirements", "ok": False})
+        raise
+    progress({"phase": "pip-requirements", "ok": True})
 
-    # flash-attn is optional. It requires CUDA headers + a long build, and
-    # LongLive falls back to slower attention kernels when it is missing.
-    # Probe first so we don't reinstall on re-runs.
+    # ── Phase: flash-attn (optional) ────────────────────────────────
+    # flash-attn requires CUDA headers + a long build, and LongLive falls
+    # back to slower attention kernels when it's missing. Probe first so
+    # we don't reinstall on re-runs.
     probe = subprocess.run(
         [str(venv_python), "-c", "import flash_attn"],
         capture_output=True,
@@ -183,19 +310,42 @@ def install(
         )
         if attn.returncode != 0:
             logger("warning: flash-attn install failed — LongLive will run but slower")
+            progress({"phase": "flash-attn", "ok": False, "skipped": True})
+        else:
+            progress({"phase": "flash-attn", "ok": True})
     else:
         logger("==> flash-attn already importable, skipping build")
+        progress({"phase": "flash-attn", "ok": True, "skipped": True})
 
-    _run([venv_python, "-m", "pip", "install", "huggingface-hub"], logger)
+    # ── Phase: pip-hub ──────────────────────────────────────────────
+    try:
+        _run([venv_python, "-m", "pip", "install", "huggingface-hub"], logger)
+    except LongLiveInstallError:
+        progress({"phase": "pip-hub", "ok": False})
+        raise
+    progress({"phase": "pip-hub", "ok": True})
 
+    # ── Phase: weights-longlive ─────────────────────────────────────
     weights_dir.mkdir(parents=True, exist_ok=True)
     logger(f"==> downloading LongLive checkpoints from {LONGLIVE_HF_REPO}")
-    _snapshot_download(venv_python, LONGLIVE_HF_REPO, weights_dir, logger)
+    try:
+        _snapshot_download(venv_python, LONGLIVE_HF_REPO, weights_dir, logger)
+    except LongLiveInstallError:
+        progress({"phase": "weights-longlive", "ok": False})
+        raise
+    progress({"phase": "weights-longlive", "ok": True})
 
+    # ── Phase: weights-wan ──────────────────────────────────────────
     wan_dir.mkdir(parents=True, exist_ok=True)
     logger(f"==> downloading Wan 2.1 T2V 1.3B base from {WAN_HF_REPO}")
-    _snapshot_download(venv_python, WAN_HF_REPO, wan_dir, logger)
+    try:
+        _snapshot_download(venv_python, WAN_HF_REPO, wan_dir, logger)
+    except LongLiveInstallError:
+        progress({"phase": "weights-wan", "ok": False})
+        raise
+    progress({"phase": "weights-wan", "ok": True})
 
+    # ── Phase: marker ───────────────────────────────────────────────
     # The marker is what ``LongLiveInstallInfo.ready`` keys off, so write
     # it last — a crash midway through leaves ``ready`` as False and the
     # Studio will re-prompt for install rather than silently mis-running.
@@ -210,6 +360,7 @@ def install(
         f"longlive_root={target}\n"
     )
     info.marker.write_text(marker_text, encoding="utf-8")
+    progress({"phase": "marker", "ok": True})
 
     logger("")
     logger("==> LongLive install complete")

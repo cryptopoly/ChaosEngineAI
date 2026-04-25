@@ -44,6 +44,7 @@ export const emptyPreview: PreviewMetrics = {
   fp16Layers: 0,
   numLayers: 0,
   numHeads: 0,
+  numKvHeads: 0,
   hiddenSize: 0,
   contextTokens: 0,
   paramsB: 0,

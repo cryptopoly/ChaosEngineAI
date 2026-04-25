@@ -7,6 +7,7 @@ import {
   downloadVideoModel,
   generateVideo,
   getGpuBundleStatus,
+  getLongLiveInstallStatus,
   getLongLiveRuntime,
   getMlxVideoRuntime,
   getVideoCatalog,
@@ -17,9 +18,15 @@ import {
   installSystemPackage,
   preloadVideoModel,
   startGpuBundleInstall,
+  startLongLiveInstall,
   unloadVideoModel,
 } from "../api";
-import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../api";
+import type {
+  DownloadStatus,
+  GpuBundleJobState,
+  InstallResult,
+  LongLiveJobState,
+} from "../api";
 
 // Duplicate of the same helper in useImageState — both Studio tabs surface
 // the same bundle-install progress string through their own busy labels.
@@ -37,6 +44,23 @@ function formatGpuBundleLabel(job: GpuBundleJobState): string {
   if (phase === "verifying") return "Verifying CUDA availability...";
   if (phase === "done") return job.message || "GPU bundle installed.";
   if (phase === "error") return job.error || job.message || "GPU bundle install failed.";
+  return job.message || "Working...";
+}
+
+// Same shape as ``formatGpuBundleLabel`` but worded for the LongLive
+// install. The phases there (clone repo / build venv / pip / weights /
+// marker) need different copy than the GPU bundle's CUDA-walk vocab.
+function formatLongLiveLabel(job: LongLiveJobState): string {
+  const phase = job.phase;
+  if (phase === "preflight") return job.message || "Preparing LongLive install...";
+  if (phase === "downloading") {
+    const total = job.packageTotal || 1;
+    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
+    const current = job.packageCurrent || job.message || "step";
+    return `Installing LongLive: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
+  }
+  if (phase === "done") return job.message || "LongLive installed.";
+  if (phase === "error") return job.error || job.message || "LongLive install failed.";
   return job.message || "Working...";
 }
 import {
@@ -171,6 +195,11 @@ export function useVideoState(
   // non-LongLive users don't pay the probe cost.
   const [longLiveStatus, setLongLiveStatus] = useState<VideoRuntimeStatus | null>(null);
   const [installingLongLive, setInstallingLongLive] = useState(false);
+  // Live LongLive install job — drives the InstallLogPanel rendered
+  // beside the "Install LongLive" button. Same async-poll pattern as
+  // ``gpuBundleJob`` so the user sees per-phase progress instead of
+  // staring at a spinner for 10-20 minutes.
+  const [longLiveJob, setLongLiveJob] = useState<LongLiveJobState | null>(null);
   // mlx-video probe (FU-009). Same lazy pattern as LongLive — populated
   // when the Studio mounts on Apple Silicon so the chip can render
   // alongside diffusers/torch state without forcing every host to pay
@@ -917,6 +946,7 @@ export function useVideoState(
     installingLongLive,
     refreshLongLiveStatus,
     handleInstallLongLive,
+    longLiveJob,
     mlxVideoStatus,
     installingMlxVideo,
     refreshMlxVideoStatus,
@@ -934,22 +964,73 @@ export function useVideoState(
     }
   }
 
+  // Async install — kicks off a backend daemon thread, polls the status
+  // endpoint at ~1.5 Hz, surfaces phase progress through ``longLiveJob``
+  // (rendered by InstallLogPanel) and busy label through ``videoBusyLabel``.
+  // Replaces the synchronous ``installSystemPackage("longlive")`` path
+  // because the install routinely takes 10-20 minutes (~30 pip packages,
+  // optional flash-attn build, ~8 GB of HF weights) — well past the 600s
+  // timeout that route enforces.
   async function handleInstallLongLive(): Promise<InstallResult> {
     setInstallingLongLive(true);
     setError(null);
+    setVideoBusyLabel("Starting LongLive install...");
     try {
-      const result = await installSystemPackage("longlive");
-      if (!result.ok) {
-        setError(`LongLive install failed: ${result.output.slice(0, 300)}`);
+      let job: LongLiveJobState;
+      try {
+        job = await startLongLiveInstall();
+        setLongLiveJob(job);
+      } catch (err) {
+        const message = `Failed to start LongLive install: ${err instanceof Error ? err.message : String(err)}`;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
       }
+
+      const POLL_MS = 1500;
+      // Mirrors GPU bundle ceiling. The LongLive install is bounded by
+      // HF download speed for ~8 GB; 30 minutes covers a 5 MB/s connection
+      // with comfortable headroom for the pip+flash-attn build phase.
+      const MAX_WAIT_MS = 30 * 60_000;
+      const deadline = Date.now() + MAX_WAIT_MS;
+      while (!job.done && Date.now() < deadline) {
+        setVideoBusyLabel(formatLongLiveLabel(job));
+        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+        try {
+          job = await getLongLiveInstallStatus();
+          setLongLiveJob(job);
+        } catch (err) {
+          setVideoBusyLabel(
+            `LongLive install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
+          );
+        }
+      }
+
+      // Refresh the runtime probe regardless of outcome — even a partial
+      // install changes the install marker / repo state, and we want the
+      // chip to reflect reality next time the user mounts the Studio.
       await refreshLongLiveStatus();
-      return result;
+
+      if (job.phase === "error" || job.error) {
+        const rawMessage = job.error || job.message || "LongLive install failed.";
+        const hint = " See the install log below for per-phase output.";
+        const message = rawMessage + hint;
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+      if (!job.done) {
+        const message = "LongLive install did not finish within 30 minutes. See the install log below.";
+        setError(message);
+        return { ok: false, output: message, capabilities: {} };
+      }
+
+      return { ok: true, output: job.message, capabilities: {} };
     } catch (err) {
       const message = err instanceof Error ? err.message : "LongLive install failed.";
       setError(message);
       return { ok: false, output: message, capabilities: {} };
     } finally {
       setInstallingLongLive(false);
+      setVideoBusyLabel(null);
     }
   }
 

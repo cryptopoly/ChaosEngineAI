@@ -96,6 +96,7 @@ interface CacheStrategyOption {
   availabilityTone?: string | null;
   availabilityReason?: string | null;
   requiredLlamaBinary?: string | null;
+  appliesTo?: string[];
 }
 
 interface DFlashInfo {
@@ -171,8 +172,13 @@ export function RuntimeControls({
   const dflashAvailable = dflashSupport.enabled;
   const dflashUnavailableReason = dflashSupport.reason;
   const ddtreeAvailable = dflashSupport.ddtreeAvailable;
+  const hasDraftForModel =
+    dflashSupport.matchedModel !== null
+    || (dflashInfo?.supportedModels?.length ?? 0) === 0
+    || !selectedModelRef;
   const specActive = settings.speculativeDecoding && dflashAvailable;
-  const strategies = availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}];
+  const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
+    .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
   const hasSelectedStrategy = strategies.some((strategy) => strategy.id === settings.cacheStrategy);
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
   const fp16LayersSupported = Boolean(selectedStrategy?.supportsFp16Layers) && !isGgufBackend;
@@ -468,7 +474,7 @@ export function RuntimeControls({
             />
             <span>DFlash</span>
           </label>
-          {!dflashInstalled && !isGgufBackend && onInstallPackage ? (
+          {!dflashInstalled && !isGgufBackend && hasDraftForModel && onInstallPackage ? (
             <button
               type="button"
               className="cache-strategy-install-btn"
@@ -479,7 +485,11 @@ export function RuntimeControls({
             </button>
           ) : null}
           {dflashUnavailableReason ? (
-            <span className="cache-strategy-badge cache-strategy-badge--warning" style={{ marginLeft: 4, fontSize: "0.7em" }}>N/A</span>
+            <span
+              className="cache-strategy-badge cache-strategy-badge--warning"
+              style={{ marginLeft: 4, fontSize: "0.7em" }}
+              title={dflashUnavailableReason}
+            >N/A</span>
           ) : null}
           <button
             type="button"

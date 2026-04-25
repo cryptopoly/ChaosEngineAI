@@ -47,6 +47,7 @@ export interface SystemStats {
     availabilityTone?: string | null;
     availabilityReason?: string | null;
     requiredLlamaBinary?: string | null;
+    appliesTo?: string[];
   }>;
   llamaServerTurboPath?: string | null;
   mlxAvailable: boolean;
@@ -485,6 +486,7 @@ export interface PreviewMetrics {
   fp16Layers: number;
   numLayers: number;
   numHeads: number;
+  numKvHeads: number;
   hiddenSize: number;
   contextTokens: number;
   paramsB: number;

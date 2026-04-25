@@ -84,14 +84,20 @@ class CacheStrategy(ABC):
         context_tokens: int,
         bits: int,
         fp16_layers: int,
+        num_kv_heads: int | None = None,
     ) -> tuple[int, int]:
         """Return ``(baseline_bytes, optimised_bytes)``.
 
         *baseline_bytes* is the uncompressed FP16 cache size.
         *optimised_bytes* is the estimated size under this strategy.
         The default implementation returns equal values (no compression).
+
+        ``num_kv_heads`` distinguishes Grouped Query Attention models
+        where the KV cache uses fewer heads than Q projection. Defaults
+        to ``num_heads`` (multi-head attention) for backward compat.
         """
-        kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens
+        kv_heads = num_kv_heads if num_kv_heads and num_kv_heads > 0 else num_heads
+        kv_elements = 2 * num_layers * kv_heads * (hidden_size // max(num_heads, 1)) * context_tokens
         baseline = kv_elements * 2  # FP16 = 2 bytes
         return baseline, baseline
 

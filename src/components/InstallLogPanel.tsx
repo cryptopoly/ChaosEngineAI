@@ -1,8 +1,30 @@
 import { useEffect, useRef } from "react";
-import type { GpuBundleJobState } from "../api";
+import type { GpuBundleJobState, LongLiveJobState } from "../api";
+
+// The panel renders either kind of install job — GPU bundle or LongLive.
+// They share the core fields (phase / message / attempts / progress
+// counters / targetDir) and differ only in optional metadata. Treating
+// the prop as a union keeps both Studio surfaces using one component
+// instead of duplicating the auto-scroll, pip-noise filter, and
+// terminal layout.
+export type InstallJobState = GpuBundleJobState | LongLiveJobState;
+
+// Optional fields read by the meta line. ``GpuBundleJobState`` has these;
+// ``LongLiveJobState`` doesn't. Centralised here so the meta renderer
+// can pluck whichever subset is present without a ``in`` ladder at the
+// call site.
+interface InstallJobMetaFields {
+  pythonVersion?: string | null;
+  indexUrlUsed?: string | null;
+  cudaVerified?: boolean | null;
+  noWheelForPython?: boolean;
+}
 
 interface InstallLogPanelProps {
-  job: GpuBundleJobState | null;
+  job: InstallJobState | null;
+  // Title shown in the collapsed summary. Defaults to the GPU bundle
+  // wording so existing call sites don't need to pass it.
+  variant?: "gpu-bundle" | "longlive";
 }
 
 // Single scrollable terminal rendering the GPU bundle install progress.
@@ -15,7 +37,7 @@ interface InstallLogPanelProps {
 // Auto-scrolls to the bottom whenever new attempts land, so you can
 // leave it visible and watch the install tail like a ``tail -f``.
 
-export function InstallLogPanel({ job }: InstallLogPanelProps) {
+export function InstallLogPanel({ job, variant = "gpu-bundle" }: InstallLogPanelProps) {
   const scrollRef = useRef<HTMLPreElement | null>(null);
 
   // Auto-scroll to the newest output whenever attempts grow. We don't
@@ -35,7 +57,7 @@ export function InstallLogPanel({ job }: InstallLogPanelProps) {
 
   const openByDefault = job.phase === "error" || Boolean(job.error);
   const stepLabel = formatStepCounter(job);
-  const statusLabel = formatStatusLabel(job);
+  const statusLabel = formatStatusLabel(job, variant);
 
   return (
     <details className="install-log-panel" open={openByDefault}>
@@ -56,31 +78,36 @@ export function InstallLogPanel({ job }: InstallLogPanelProps) {
   );
 }
 
-function InstallLogMeta({ job }: { job: GpuBundleJobState }) {
+function InstallLogMeta({ job }: { job: InstallJobState }) {
   // Line of context shown above the terminal. The target dir is
   // load-bearing: if the install appears to "succeed" but the app
   // still shows CPU, it's almost always because the backend wasn't
   // restarted (PYTHONPATH on the running process is fixed at spawn).
   const fragments: string[] = [];
   if (job.targetDir) fragments.push(`Target: ${job.targetDir}`);
-  if (job.pythonVersion) fragments.push(`Python ${job.pythonVersion}`);
-  if (job.indexUrlUsed) fragments.push(`CUDA index: ${job.indexUrlUsed}`);
-  if (job.cudaVerified === true) fragments.push("CUDA verified");
-  if (job.cudaVerified === false && job.phase === "done") fragments.push("CUDA verification failed");
-  if (job.noWheelForPython) fragments.push("No CUDA wheel for this Python");
+  // GPU-bundle-only fields. Reading via a typed-narrowed alias keeps
+  // both job shapes flowing through this component without runtime
+  // ``in`` checks per field.
+  const meta = job as InstallJobState & InstallJobMetaFields;
+  if (meta.pythonVersion) fragments.push(`Python ${meta.pythonVersion}`);
+  if (meta.indexUrlUsed) fragments.push(`CUDA index: ${meta.indexUrlUsed}`);
+  if (meta.cudaVerified === true) fragments.push("CUDA verified");
+  if (meta.cudaVerified === false && job.phase === "done") fragments.push("CUDA verification failed");
+  if (meta.noWheelForPython) fragments.push("No CUDA wheel for this Python");
   if (fragments.length === 0) return null;
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function formatStatusLabel(job: GpuBundleJobState): string {
-  if (job.phase === "error" || job.error) return "Install failed — see log";
-  if (job.phase === "done") return "Install complete — see log";
-  if (job.phase === "preflight") return "Install starting…";
+function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive"): string {
+  const noun = variant === "longlive" ? "LongLive install" : "Install";
+  if (job.phase === "error" || job.error) return `${noun} failed — see log`;
+  if (job.phase === "done") return `${noun} complete — see log`;
+  if (job.phase === "preflight") return `${noun} starting…`;
   if (job.phase === "verifying") return "Verifying CUDA…";
-  return "Install in progress";
+  return `${noun} in progress`;
 }
 
-function formatStepCounter(job: GpuBundleJobState): string {
+function formatStepCounter(job: InstallJobState): string {
   // Packages-complete counter. The backend tracks packages via
   // packageIndex / packageTotal; torch also has a two-pass install
   // (CUDA-index walk for the wheel + dep-pass for transitive deps)
@@ -99,7 +126,7 @@ function formatStepCounter(job: GpuBundleJobState): string {
   return `Step ${done}/${total}: ${current} · ${percent}%`;
 }
 
-function renderTerminal(job: GpuBundleJobState): string {
+function renderTerminal(job: InstallJobState): string {
   // One big string of per-attempt sections, each prefixed with a
   // status marker so you can scan down the left edge for failures.
   // pip's own output is indented two spaces — keeps our marker visible.
@@ -124,7 +151,7 @@ function renderTerminal(job: GpuBundleJobState): string {
   return lines.join("\n");
 }
 
-function attemptLabel(attempt: GpuBundleJobState["attempts"][number]): string {
+function attemptLabel(attempt: InstallJobState["attempts"][number]): string {
   // Attempts from the worker come in four shapes:
   //   - torch CUDA swap: { indexUrl, ok, output }
   //   - torch deps pass: { indexUrl, phase: "deps", ok, output }

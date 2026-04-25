@@ -124,7 +124,7 @@ export function resolveDflashSupport({
 
   return {
     enabled: false,
-    reason: "No compatible DFlash draft is registered for this model.",
+    reason: "No DFlash draft exists for this model. Supported families: Qwen3/3.5/3.6, LLaMA 3.1, gpt-oss, Kimi.",
     matchedModel: null,
     ddtreeAvailable,
   };

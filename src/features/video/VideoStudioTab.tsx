@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
-import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
+import type { DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
   TauriBackendInfo,
@@ -74,6 +74,10 @@ export interface VideoStudioTabProps {
   installingLongLive: boolean;
   onRefreshLongLiveStatus: () => void;
   onInstallLongLive: () => Promise<InstallResult>;
+  // Live state of the LongLive install job — drives the InstallLogPanel
+  // beside the "Install LongLive" button so the user sees per-phase
+  // progress (~9 phases over 10-20 minutes) rather than a static spinner.
+  longLiveJob: LongLiveJobState | null;
   // mlx-video (Blaizzy) Apple Silicon engine probe (FU-009). Same
   // separation as LongLive — mlx-video runs as an MLX-native subprocess
   // (Wan2.1/2.2/LTX-2) rather than diffusers, so it gets a dedicated
@@ -233,6 +237,7 @@ export function VideoStudioTab({
   installingLongLive,
   onRefreshLongLiveStatus,
   onInstallLongLive,
+  longLiveJob,
   mlxVideoStatus,
   installingMlxVideo,
   onRefreshMlxVideoStatus,
@@ -608,8 +613,8 @@ export function VideoStudioTab({
               <p className="muted-text">
                 {longLiveStatus.message} LongLive runs in an isolated venv at
                 {" "}<code>~/.chaosengine/longlive</code> so its CUDA-specific deps don't
-                clash with the main runtime. Install can take 5–15 minutes depending on
-                network + GPU.
+                clash with the main runtime. Install can take 10–20 minutes — pip
+                deps, optional flash-attn build, then ~8 GB of HF weights.
               </p>
               <button
                 className="primary-button"
@@ -619,6 +624,7 @@ export function VideoStudioTab({
               >
                 {installingLongLive ? "Installing LongLive..." : "Install LongLive"}
               </button>
+              <InstallLogPanel job={longLiveJob} variant="longlive" />
             </div>
           ) : null}
           {/* mlx-video install — Apple Silicon only, surfaces when the

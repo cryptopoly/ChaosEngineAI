@@ -6,14 +6,16 @@ export function parseContextK(ctx: string | undefined | null): number {
   return parseFloat(ctx) / 1024;
 }
 
-export function estimateArchFromParams(paramsB: number): { numLayers: number; hiddenSize: number; numHeads: number } {
-  if (paramsB <= 1.5) return { numLayers: 22, hiddenSize: 2048, numHeads: 32 };
-  if (paramsB <= 4) return { numLayers: 26, hiddenSize: 3072, numHeads: 24 };
-  if (paramsB <= 9) return { numLayers: 32, hiddenSize: 4096, numHeads: 32 };
-  if (paramsB <= 16) return { numLayers: 40, hiddenSize: 5120, numHeads: 40 };
-  if (paramsB <= 35) return { numLayers: 60, hiddenSize: 6656, numHeads: 52 };
-  if (paramsB <= 50) return { numLayers: 64, hiddenSize: 7168, numHeads: 56 };
-  return { numLayers: 80, hiddenSize: 8192, numHeads: 64 };
+export function estimateArchFromParams(paramsB: number): { numLayers: number; hiddenSize: number; numHeads: number; numKvHeads: number } {
+  // Modern 7B+ models standardize on Grouped Query Attention with 8 KV heads.
+  // Sub-4B models often still use Multi-Head Attention (kv = full heads).
+  if (paramsB <= 1.5) return { numLayers: 22, hiddenSize: 2048, numHeads: 32, numKvHeads: 32 };
+  if (paramsB <= 4) return { numLayers: 26, hiddenSize: 3072, numHeads: 24, numKvHeads: 24 };
+  if (paramsB <= 9) return { numLayers: 32, hiddenSize: 4096, numHeads: 32, numKvHeads: 8 };
+  if (paramsB <= 16) return { numLayers: 40, hiddenSize: 5120, numHeads: 40, numKvHeads: 8 };
+  if (paramsB <= 35) return { numLayers: 60, hiddenSize: 6656, numHeads: 52, numKvHeads: 8 };
+  if (paramsB <= 50) return { numLayers: 64, hiddenSize: 7168, numHeads: 56, numKvHeads: 8 };
+  return { numLayers: 80, hiddenSize: 8192, numHeads: 64, numKvHeads: 8 };
 }
 
 export function estimateParamsBFromDisk(diskGb: number, bitsPerWeight: number): number {

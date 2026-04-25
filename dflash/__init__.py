@@ -65,6 +65,21 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3.6-35B-A3B-bf16": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-4bit": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-8bit": "Qwen/Qwen3.6-35B-A3B",
+    # ----- LLaMA 3.1 -----
+    "mlx-community/Meta-Llama-3.1-8B-Instruct-bf16": "meta-llama/Llama-3.1-8B-Instruct",
+    "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit": "meta-llama/Llama-3.1-8B-Instruct",
+    "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit": "meta-llama/Llama-3.1-8B-Instruct",
+    # ----- gpt-oss -----
+    "mlx-community/gpt-oss-20B-bf16": "gpt-oss/gpt-oss-20B",
+    "mlx-community/gpt-oss-20B-4bit": "gpt-oss/gpt-oss-20B",
+    "mlx-community/gpt-oss-20B-8bit": "gpt-oss/gpt-oss-20B",
+    "mlx-community/gpt-oss-120B-bf16": "gpt-oss/gpt-oss-120B",
+    "mlx-community/gpt-oss-120B-4bit": "gpt-oss/gpt-oss-120B",
+    "mlx-community/gpt-oss-120B-8bit": "gpt-oss/gpt-oss-120B",
+    # ----- Kimi -----
+    "mlx-community/Kimi-K2.5-bf16": "moonshotai/Kimi-K2.5",
+    "mlx-community/Kimi-K2.5-4bit": "moonshotai/Kimi-K2.5",
+    "mlx-community/Kimi-K2.5-8bit": "moonshotai/Kimi-K2.5",
 }
 
 # Suffixes stripped during fuzzy matching (order matters — longest first).
@@ -164,8 +179,8 @@ def is_available() -> bool:
 
 
 def supported_models() -> list[str]:
-    """Return the list of target model refs that have known draft checkpoints."""
-    return sorted(DRAFT_MODEL_MAP.keys())
+    """Return target model refs (canonical + community aliases) with known DFlash drafts."""
+    return sorted(set(DRAFT_MODEL_MAP.keys()) | set(_ALIASES.keys()))
 
 
 def is_ddtree_available() -> bool:

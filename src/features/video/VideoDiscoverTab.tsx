@@ -1,6 +1,7 @@
 import { useEffect } from "react";
+import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { Panel } from "../../components/Panel";
-import type { DownloadStatus, InstallResult } from "../../api";
+import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
   VideoModelVariant,
@@ -43,6 +44,10 @@ export interface VideoDiscoverTabProps {
   fileRevealLabel: string;
   longLiveStatus: VideoRuntimeStatus | null;
   installingLongLive: boolean;
+  // Live LongLive install job — same async-poll job as VideoStudioTab so
+  // either tab's "Install LongLive" button drives the same backend
+  // worker and renders the same per-phase terminal output.
+  longLiveJob: LongLiveJobState | null;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string) => void;
@@ -69,6 +74,7 @@ export function VideoDiscoverTab({
   fileRevealLabel,
   longLiveStatus,
   installingLongLive,
+  longLiveJob,
   onActiveTabChange,
   onOpenVideoStudio,
   onVideoDownload,
@@ -270,14 +276,17 @@ export function VideoDiscoverTab({
                         Generate
                       </button>
                     ) : (
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => void onInstallLongLive()}
-                        disabled={installingLongLive}
-                      >
-                        {installingLongLive ? "Installing LongLive…" : "Install LongLive"}
-                      </button>
+                      <>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => void onInstallLongLive()}
+                          disabled={installingLongLive}
+                        >
+                          {installingLongLive ? "Installing LongLive…" : "Install LongLive"}
+                        </button>
+                        <InstallLogPanel job={longLiveJob} variant="longlive" />
+                      </>
                     )
                   ) : isComplete ? (
                     <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>

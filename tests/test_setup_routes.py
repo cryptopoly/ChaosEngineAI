@@ -750,6 +750,128 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertEqual(body["packageCurrent"], "torch")
 
 
+class InstallLongLiveTests(unittest.TestCase):
+    """Tests for the async ``/api/setup/install-longlive`` job endpoints.
+
+    Mirrors the GPU-bundle pattern: kick off the job, drive the worker to
+    each phase, assert ``InstallLogPanel`` gets the data it needs.
+    Mocks ``longlive_installer.install`` so we don't actually clone NVlabs
+    or download 8 GB of HF weights from the test runner.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        state = ChaosEngineState(
+            system_snapshot_provider=_fake_system_snapshot,
+            settings_path=Path(self.tempdir.name) / "settings.json",
+            benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
+            chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+        )
+        state.runtime = FakeRuntime()
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+
+        # Reset the module-global job state — pytest runs all tests in a
+        # single process so leftover state from a previous case bleeds in.
+        import backend_service.routes.setup as setup_module
+        self._setup_module = setup_module
+        setup_module._LONGLIVE_JOB = setup_module._LongLiveJobState()
+
+        # Force resolve_install to a temp path so we don't probe the real
+        # ~/.chaosengine/longlive directory during tests.
+        self._longlive_root = Path(self.tempdir.name) / "longlive"
+        self._env_patch = mock.patch.dict(
+            "os.environ",
+            {"CHAOSENGINE_LONGLIVE_ROOT": str(self._longlive_root)},
+        )
+        self._env_patch.start()
+
+    def tearDown(self):
+        self._env_patch.stop()
+        self.tempdir.cleanup()
+
+    def _wait_for_job_done(self, deadline_secs: float = 5.0) -> dict:
+        import time as _time
+        deadline = _time.time() + deadline_secs
+        while _time.time() < deadline:
+            status = self.client.get("/api/setup/install-longlive/status").json()
+            if status["done"]:
+                return status
+            _time.sleep(0.05)
+        return self.client.get("/api/setup/install-longlive/status").json()
+
+    def test_status_before_any_install_reports_idle(self):
+        resp = self.client.get("/api/setup/install-longlive/status")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["phase"], "idle")
+        self.assertFalse(body["done"])
+        self.assertEqual(body["packageIndex"], 0)
+
+    def test_start_install_happy_path_emits_phase_attempts(self):
+        """The fake installer fires every phase's progress callback. The job
+        worker should accumulate one attempt per phase and end at done.
+        """
+        from backend_service import longlive_installer
+
+        def fake_install(*, logger, progress, **_kwargs):
+            logger("==> fake install start")
+            for phase in longlive_installer.INSTALL_PHASES:
+                logger(f"==> fake phase {phase}")
+                progress({"phase": phase, "ok": True})
+
+        with mock.patch.object(longlive_installer, "install", side_effect=fake_install):
+            start_resp = self.client.post("/api/setup/install-longlive", json={})
+            self.assertEqual(start_resp.status_code, 200)
+            status = self._wait_for_job_done()
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "done")
+        self.assertEqual(status["percent"], 100.0)
+        # One attempt per phase.
+        self.assertEqual(
+            len(status["attempts"]),
+            len(longlive_installer.INSTALL_PHASES),
+        )
+        # ``targetDir`` should reflect the resolve_install root we patched in.
+        self.assertIsNotNone(status["targetDir"])
+
+    def test_start_install_failure_marks_job_errored(self):
+        """An installer exception should land in ``error`` and ``phase==error``."""
+        from backend_service import longlive_installer
+
+        def fake_install(*, logger, progress, **_kwargs):
+            logger("==> partial install — about to fail")
+            progress({"phase": "clone", "ok": True})
+            raise longlive_installer.LongLiveInstallError("git fetch failed")
+
+        with mock.patch.object(longlive_installer, "install", side_effect=fake_install):
+            self.client.post("/api/setup/install-longlive", json={})
+            status = self._wait_for_job_done()
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "error")
+        self.assertIn("git fetch failed", status["error"])
+        # First attempt (clone) succeeded; the failing buffer should still
+        # be flushed as an attempt so InstallLogPanel renders the partial
+        # log instead of going dark.
+        self.assertGreaterEqual(len(status["attempts"]), 1)
+
+    def test_second_start_while_running_returns_existing_job(self):
+        """Don't spawn two installers in parallel."""
+        import backend_service.routes.setup as setup_module
+        setup_module._LONGLIVE_JOB.phase = "downloading"
+        setup_module._LONGLIVE_JOB.id = "existing-longlive-id"
+        setup_module._LONGLIVE_JOB.done = False
+        setup_module._LONGLIVE_JOB.package_current = "pip-requirements"
+
+        resp = self.client.post("/api/setup/install-longlive", json={})
+        body = resp.json()
+        self.assertEqual(body["id"], "existing-longlive-id")
+        self.assertEqual(body["phase"], "downloading")
+        self.assertEqual(body["packageCurrent"], "pip-requirements")
+
+
 class DllLockDetectionTests(unittest.TestCase):
     """``_looks_like_dll_lock`` is a Windows-specific heuristic that swaps a
     generic pip rmtree failure for an actionable 'restart backend, retry

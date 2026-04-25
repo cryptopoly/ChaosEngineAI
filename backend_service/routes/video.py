@@ -62,6 +62,21 @@ def longlive_runtime_status(request: Request) -> dict[str, Any]:
     return {"runtime": state.video_runtime.longlive_capabilities()}
 
 
+@router.get("/api/video/mlx-runtime")
+def mlx_video_runtime_status(request: Request) -> dict[str, Any]:
+    """Probe the mlx-video Apple Silicon engine.
+
+    Mirrors ``/api/video/longlive`` — separate from the diffusers probe so
+    the Studio can render a dedicated "Install mlx-video" affordance on
+    Apple Silicon hosts. Reports unavailable on non-Apple platforms with a
+    platform-mismatch message; the frontend hides the chip when
+    ``activeEngine == "mlx-video"`` and ``device is None`` (gate signal).
+    See FU-009 in CLAUDE.md.
+    """
+    state = request.app.state.chaosengine
+    return {"runtime": state.video_runtime.mlx_video_capabilities()}
+
+
 @router.get("/api/video/progress")
 def video_generation_progress() -> dict[str, Any]:
     """Live progress snapshot for the in-flight video generation.

@@ -8,6 +8,7 @@ import {
   generateVideo,
   getGpuBundleStatus,
   getLongLiveRuntime,
+  getMlxVideoRuntime,
   getVideoCatalog,
   getVideoDownloadStatus,
   getVideoOutputs,
@@ -170,6 +171,13 @@ export function useVideoState(
   // non-LongLive users don't pay the probe cost.
   const [longLiveStatus, setLongLiveStatus] = useState<VideoRuntimeStatus | null>(null);
   const [installingLongLive, setInstallingLongLive] = useState(false);
+  // mlx-video probe (FU-009). Same lazy pattern as LongLive — populated
+  // when the Studio mounts on Apple Silicon so the chip can render
+  // alongside diffusers/torch state without forcing every host to pay
+  // the probe cost. ``null`` means "not yet probed"; an actual status
+  // with ``activeEngine == "mlx-video"`` is what unlocks the chip.
+  const [mlxVideoStatus, setMlxVideoStatus] = useState<VideoRuntimeStatus | null>(null);
+  const [installingMlxVideo, setInstallingMlxVideo] = useState(false);
   const [videoBusyLabel, setVideoBusyLabel] = useState<string | null>(null);
   const videoBusy = videoBusyLabel !== null;
   // Live GPU bundle install job state — mirrors useImageState. Exposed so
@@ -428,11 +436,17 @@ export function useVideoState(
 
   // ── Data fetching ───────────────────────────────────────────
   async function refreshVideoData() {
-    const [catalog, statuses, runtime, outputs] = await Promise.allSettled([
+    const [catalog, statuses, runtime, outputs, mlxVideo] = await Promise.allSettled([
       getVideoCatalog(),
       getVideoDownloadStatus(),
       getVideoRuntime(),
       getVideoOutputs(),
+      // mlx-video probe is self-gating on the backend (returns
+      // realGenerationAvailable=false with "Apple Silicon only" message
+      // off-platform). Bundling it in the Promise.allSettled keeps the
+      // Studio's chip render in sync with the diffusers status without a
+      // second round-trip. Failure here is silently swallowed below.
+      getMlxVideoRuntime(),
     ]);
     const failures = [catalog, statuses, runtime, outputs].filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -453,6 +467,11 @@ export function useVideoState(
     if (outputs.status === "fulfilled") {
       setVideoOutputs(outputs.value);
     }
+    if (mlxVideo.status === "fulfilled") {
+      setMlxVideoStatus(mlxVideo.value);
+    }
+    // mlxVideo failure intentionally not added to ``failures`` — the chip
+    // is non-blocking; Studio falls back to hiding it when status is null.
 
     if (failures.length > 0) {
       const firstError = failures[0].reason;
@@ -898,6 +917,10 @@ export function useVideoState(
     installingLongLive,
     refreshLongLiveStatus,
     handleInstallLongLive,
+    mlxVideoStatus,
+    installingMlxVideo,
+    refreshMlxVideoStatus,
+    handleInstallMlxVideo,
     openVideoStudio,
     gpuBundleJob,
   };
@@ -927,6 +950,34 @@ export function useVideoState(
       return { ok: false, output: message, capabilities: {} };
     } finally {
       setInstallingLongLive(false);
+    }
+  }
+
+  async function refreshMlxVideoStatus(): Promise<void> {
+    try {
+      const status = await getMlxVideoRuntime();
+      setMlxVideoStatus(status);
+    } catch {
+      // Ignore — same rationale as LongLive: probe failure shows retry prompt.
+    }
+  }
+
+  async function handleInstallMlxVideo(): Promise<InstallResult> {
+    setInstallingMlxVideo(true);
+    setError(null);
+    try {
+      const result = await installPipPackage("mlx-video");
+      if (!result.ok) {
+        setError(`mlx-video install failed: ${result.output.slice(0, 300)}`);
+      }
+      await refreshMlxVideoStatus();
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "mlx-video install failed.";
+      setError(message);
+      return { ok: false, output: message, capabilities: {} };
+    } finally {
+      setInstallingMlxVideo(false);
     }
   }
 }

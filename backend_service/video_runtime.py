@@ -31,6 +31,7 @@ from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present
 from backend_service.image_runtime import validate_local_diffusers_snapshot
+from cache_compression import apply_diffusion_cache_strategy
 from backend_service.progress import (
     GenerationCancelled,
     PHASE_DECODING,
@@ -247,6 +248,14 @@ class VideoGenerationConfig:
     # motion at higher frame rates without generating more DiT frames
     # (which is 10-50x more expensive than interpolation).
     interpolationFactor: int = 1
+    # Optional diffusion cache strategy id, e.g. "teacache". Mirrors the
+    # image_runtime field — video DiTs benefit even more from timestep
+    # caching (Wan2.1 720P 30% faster, HunyuanVideo up to 2.1×). When the
+    # strategy has no vendored patch for this pipeline the engine swallows
+    # the NotImplementedError and falls back to the stock pipeline — the
+    # UI shows the "Scaffold" badge so users know why.
+    cacheStrategy: str | None = None
+    cacheRelL1Thresh: float | None = None
 
 
 @dataclass(frozen=True)
@@ -595,6 +604,20 @@ class DiffusersVideoEngine:
                 message=f"Diffusing {config.numFrames} frames",
             )
             VIDEO_PROGRESS.set_step(0, total=max(1, int(config.steps)))
+
+            # TeaCache / other diffusion caches hook here — pipeline is
+            # loaded and num_inference_steps is final. Video DiTs are
+            # where TeaCache pays off most (1.6–2.1× on HunyuanVideo,
+            # ~1.3–2× on Wan). NotImplementedError is swallowed by the
+            # helper when the pipeline class has no vendored patch yet;
+            # see FU-007 in CLAUDE.md.
+            apply_diffusion_cache_strategy(
+                pipeline,
+                strategy_id=config.cacheStrategy,
+                num_inference_steps=int(config.steps),
+                rel_l1_thresh=config.cacheRelL1Thresh,
+                domain="video",
+            )
 
             started = time.perf_counter()
             frames = self._invoke_pipeline(pipeline, kwargs)
@@ -1020,6 +1043,10 @@ class VideoRuntimeManager:
         # shells out to nvidia-smi) doesn't run on every sidecar start —
         # only when a LongLive repo is actually selected.
         self._longlive: Any | None = None
+        # Same pattern for mlx-video (FU-009). Probe-only in this phase
+        # — generate() raises, preload/generate are not routed through
+        # the manager yet. See ``mlx_video_runtime`` module docstring.
+        self._mlx_video: Any | None = None
 
     def _get_longlive(self) -> Any:
         if self._longlive is None:
@@ -1027,12 +1054,27 @@ class VideoRuntimeManager:
             self._longlive = LongLiveEngine()
         return self._longlive
 
+    def _get_mlx_video(self) -> Any:
+        if self._mlx_video is None:
+            from backend_service.mlx_video_runtime import MlxVideoEngine
+            self._mlx_video = MlxVideoEngine()
+        return self._mlx_video
+
     def capabilities(self) -> dict[str, Any]:
         return self._engine.probe().to_dict()
 
     def longlive_capabilities(self) -> dict[str, Any]:
         """Probe the LongLive engine separately so the Studio can surface install state."""
         return self._get_longlive().probe().to_dict()
+
+    def mlx_video_capabilities(self) -> dict[str, Any]:
+        """Probe the mlx-video engine so Setup can surface install state.
+
+        Scaffold-only — Studio still routes generation through diffusers.
+        When FU-009 lands, preload/generate will dispatch here for the
+        repos in ``mlx_video_runtime.supported_repos()`` on Apple Silicon.
+        """
+        return self._get_mlx_video().probe().to_dict()
 
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:

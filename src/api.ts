@@ -362,6 +362,17 @@ export async function getLongLiveRuntime(): Promise<VideoRuntimeStatus> {
   return result.runtime;
 }
 
+export async function getMlxVideoRuntime(): Promise<VideoRuntimeStatus> {
+  // mlx-video probe (FU-009). Separate from the diffusers video runtime
+  // so Apple Silicon users get a dedicated "Install mlx-video" affordance
+  // on the Studio without mixing it into the diffusers/torch state. The
+  // probe returns activeEngine="mlx-video" with realGenerationAvailable=
+  // false on non-Apple platforms — the Studio hides the chip in that
+  // case (platform mismatch, not a missing-package state).
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/mlx-runtime", 30000);
+  return result.runtime;
+}
+
 /** Mirror of ``getImageGenerationProgress`` for the video runtime. */
 export async function getVideoGenerationProgress(): Promise<GenerationProgressSnapshot> {
   const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(

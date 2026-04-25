@@ -1573,6 +1573,10 @@ export default function App() {
         installingLongLive={videoState.installingLongLive}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
         onInstallLongLive={() => videoState.handleInstallLongLive()}
+        mlxVideoStatus={videoState.mlxVideoStatus}
+        installingMlxVideo={videoState.installingMlxVideo}
+        onRefreshMlxVideoStatus={() => void videoState.refreshMlxVideoStatus()}
+        onInstallMlxVideo={() => videoState.handleInstallMlxVideo()}
         gpuBundleJob={videoState.gpuBundleJob}
       />
     );

@@ -69,6 +69,23 @@ If installed by the user, each is subject to its own licence:
 | RotorQuant (marker) | `turboquant` | <https://github.com/back2matching/turboquant> | Apache 2.0 |
 | TurboQuant MLX | `turboquant-mlx` | <https://github.com/sharpner/turboquant-mlx> | MIT |
 | MegaKernel | — | <https://github.com/Luce-Org/luce-megakernel> | See upstream |
+| TeaCache (diffusion) | vendored patches | <https://github.com/ali-vilab/TeaCache> | Apache 2.0 |
+
+### TeaCache (vendored forward patches)
+
+TeaCache is distributed upstream as a collection of per-model Python files
+(one ``teacache_forward`` per DiT class) rather than a pip package. When
+ChaosEngineAI ships support for a specific diffusion pipeline it vendors
+the corresponding ``teacache_forward`` into
+``cache_compression/_teacache_patches/`` under the upstream Apache 2.0
+licence, preserving the original copyright header in the vendored file.
+
+- **Repository:** <https://github.com/ali-vilab/TeaCache>
+- **Licence:** Apache 2.0
+- **Usage:** Training-free timestep caching for FLUX, Wan2.1, Wan2.2,
+  HunyuanVideo, Mochi, CogVideoX, LTX-Video, and other DiT-based diffusion
+  pipelines. 1.5–2.0× image speedup and 1.6–2.1× video speedup with
+  negligible visual quality loss at ``rel_l1_thresh=0.4``.
 
 ## Optional Speculative Decoding
 
@@ -78,6 +95,18 @@ If installed by the user, each is subject to its own licence:
 
 These libraries are **not bundled** with ChaosEngineAI. They are
 optional pip dependencies that the user may install independently.
+
+## Optional Apple Silicon Video Runtime
+
+| Package | Repository | Licence |
+|---------|-----------|---------|
+| `mlx-video` | <https://github.com/Blaizzy/mlx-video> | MIT |
+
+`mlx-video` is an MLX-native video generation runtime for Apple Silicon
+covering Wan2.1 / Wan2.2 / LTX-2 T2V, I2V, and A2V. ChaosEngineAI drives
+it as a subprocess from ``backend_service/mlx_video_runtime.py`` — not
+bundled, installable on demand from the Setup page on Apple Silicon
+hosts. See FU-009 in CLAUDE.md.
 
 ---
 

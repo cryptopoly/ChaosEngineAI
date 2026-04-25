@@ -26,6 +26,7 @@ from backend_service.progress import (
     PHASE_LOADING,
     PHASE_SAVING,
 )
+from cache_compression import apply_diffusion_cache_strategy
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
@@ -386,6 +387,16 @@ class ImageGenerationConfig:
     # Apple Silicon MLX path for FLUX, which is noticeably faster on
     # M-series Macs and avoids MPS fp16 corner cases.
     runtime: str | None = None
+    # Optional diffusion cache strategy id, e.g. "teacache". When set to a
+    # strategy that reports ``applies_to()`` including "image", the engine
+    # calls the strategy's ``apply_diffusers_hook`` before the first pipeline
+    # forward. Unknown / inapplicable ids are ignored quietly — the caller
+    # sees the same result as not passing anything.
+    cacheStrategy: str | None = None
+    # Threshold knob for TeaCache-style rel-L1 caches. ``None`` means the
+    # strategy's default (0.4 for TeaCache → ~1.8× speedup). See
+    # ``TeaCacheStrategy.recommended_thresholds()`` for presets.
+    cacheRelL1Thresh: float | None = None
 
 
 @dataclass(frozen=True)
@@ -641,6 +652,26 @@ class DiffusersTextToImageEngine:
             # Re-publish the totalSteps in case ``num_inference_steps`` was
             # clamped above (Flux/Turbo cap at 8).
             IMAGE_PROGRESS.set_step(0, total=max(1, total_steps))
+
+            # TeaCache / other diffusion cache strategies hook here: the
+            # pipeline is loaded, num_inference_steps is final, and we
+            # haven't kicked off the forward pass yet. If the selected
+            # strategy isn't applicable to images or hasn't landed a patch
+            # for this pipeline yet we swallow NotImplementedError and run
+            # the stock pipeline — the UI surfaces the "Scaffold" badge so
+            # users know why speedup didn't appear.
+            cache_note = apply_diffusion_cache_strategy(
+                pipeline,
+                strategy_id=config.cacheStrategy,
+                num_inference_steps=total_steps,
+                rel_l1_thresh=config.cacheRelL1Thresh,
+                domain="image",
+            )
+            if cache_note:
+                # Surface for log only; sampler_note already owns the
+                # runtime_note slot on GeneratedImage. Adding cache noise
+                # to every image's metadata would flood the gallery UI.
+                pass
 
             def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
                 # Diffusers calls this *after* step ``step`` finishes, so step

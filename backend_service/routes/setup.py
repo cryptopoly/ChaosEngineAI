@@ -86,6 +86,12 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # should hide this package on other platforms (handled upstream in
     # the capability check).
     "mflux": "mflux",
+    # Apple Silicon MLX video runtime (Blaizzy/mlx-video, MIT). Subprocess
+    # wrapper in backend_service.mlx_video_runtime routes Wan2.1/2.2/LTX-2
+    # to native MLX kernels instead of diffusers+MPS. The capability probe
+    # gates this package on Apple Silicon — installer hides it elsewhere.
+    # See FU-009 in CLAUDE.md.
+    "mlx-video": "mlx-video",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {

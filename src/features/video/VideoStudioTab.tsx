@@ -74,6 +74,15 @@ export interface VideoStudioTabProps {
   installingLongLive: boolean;
   onRefreshLongLiveStatus: () => void;
   onInstallLongLive: () => Promise<InstallResult>;
+  // mlx-video (Blaizzy) Apple Silicon engine probe (FU-009). Same
+  // separation as LongLive — mlx-video runs as an MLX-native subprocess
+  // (Wan2.1/2.2/LTX-2) rather than diffusers, so it gets a dedicated
+  // chip + install action. Probe returns device="mps" on Apple Silicon
+  // and device=null off-platform; chip hides off-platform.
+  mlxVideoStatus: VideoRuntimeStatus | null;
+  installingMlxVideo: boolean;
+  onRefreshMlxVideoStatus: () => void;
+  onInstallMlxVideo: () => Promise<InstallResult>;
   // Live state of the GPU bundle install job — drives the InstallLogPanel
   // under the install button so users see per-step pip output.
   gpuBundleJob: GpuBundleJobState | null;
@@ -90,6 +99,19 @@ const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
   "sentencepiece",
   "protobuf",
   "ftfy",
+]);
+
+// Repos the mlx-video Apple Silicon engine supports natively. Mirrors
+// _SUPPORTED_REPOS in backend_service/mlx_video_runtime.py — kept here
+// so the Studio can decide when to surface the mlx-video chip without
+// an extra capabilities round-trip. See FU-009 in CLAUDE.md.
+const MLX_VIDEO_SUPPORTED_REPOS: ReadonlySet<string> = new Set([
+  "Lightricks/LTX-2-19B",
+  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+  "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+  "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+  "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
 ]);
 
 // Quality presets: common starting points for the denoising step count.
@@ -211,6 +233,10 @@ export function VideoStudioTab({
   installingLongLive,
   onRefreshLongLiveStatus,
   onInstallLongLive,
+  mlxVideoStatus,
+  installingMlxVideo,
+  onRefreshMlxVideoStatus,
+  onInstallMlxVideo,
   gpuBundleJob,
 }: VideoStudioTabProps) {
   const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
@@ -340,6 +366,32 @@ export function VideoStudioTab({
   useEffect(() => {
     if (isLongLiveVariant) onRefreshLongLiveStatus();
   }, [isLongLiveVariant, onRefreshLongLiveStatus]);
+
+  // Same probe-on-select pattern for mlx-video. Backend probe is
+  // cheap (find_spec + platform check, no torch import) so refreshing
+  // when the user picks a Wan/LTX variant gives the chip up-to-date
+  // install state. Off-platform the probe returns ``device=null``
+  // so the chip stays hidden — see render gate below.
+  const isMlxVideoVariant =
+    !!selectedVideoVariant?.repo && MLX_VIDEO_SUPPORTED_REPOS.has(selectedVideoVariant.repo);
+  useEffect(() => {
+    if (isMlxVideoVariant) onRefreshMlxVideoStatus();
+  }, [isMlxVideoVariant, onRefreshMlxVideoStatus]);
+
+  // Apple Silicon detection from the probe result rather than a
+  // separate user-agent sniff — backend reports device="mps" or
+  // expectedDevice="mps" only on Darwin arm64.
+  const isAppleSiliconHost =
+    mlxVideoStatus !== null
+    && (mlxVideoStatus.device === "mps" || mlxVideoStatus.expectedDevice === "mps");
+  const mlxVideoMissing =
+    isAppleSiliconHost
+    && !mlxVideoStatus.realGenerationAvailable
+    && (mlxVideoStatus.missingDependencies ?? []).includes("mlx-video");
+  const mlxVideoInstalledScaffold =
+    isAppleSiliconHost
+    && !mlxVideoStatus.realGenerationAvailable
+    && !(mlxVideoStatus.missingDependencies ?? []).includes("mlx-video");
 
   const downloadState = useMemo(
     () => (selectedVideoVariant ? activeVideoDownloads[selectedVideoVariant.repo] : undefined),
@@ -540,6 +592,16 @@ export function VideoStudioTab({
                   : "LongLive not installed"}
               </span>
             ) : null}
+            {/* mlx-video chip — Apple Silicon only. Three states:
+              * missing (warning), scaffold-installed (subtle), or
+              * realGenerationAvailable=true (success, after FU-009
+              * lands the actual generate path). Hidden off-platform. */}
+            {mlxVideoMissing ? (
+              <span className="badge warning">mlx-video not installed</span>
+            ) : null}
+            {mlxVideoInstalledScaffold ? (
+              <span className="badge subtle">mlx-video scaffold</span>
+            ) : null}
           </div>
           {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
             <div className="image-runtime-actions">
@@ -556,6 +618,28 @@ export function VideoStudioTab({
                 disabled={installingLongLive || !backendOnline}
               >
                 {installingLongLive ? "Installing LongLive..." : "Install LongLive"}
+              </button>
+            </div>
+          ) : null}
+          {/* mlx-video install — Apple Silicon only, surfaces when the
+            * probe reports the package missing. Once installed the chip
+            * flips to the scaffold state and the button hides; the
+            * generate path itself lands with FU-009. */}
+          {mlxVideoMissing ? (
+            <div className="image-runtime-actions">
+              <p className="muted-text">
+                {mlxVideoStatus?.message ?? "mlx-video not installed."} Adds
+                native MLX video generation for Wan2.1 / Wan2.2 / LTX-2 on
+                Apple Silicon — faster than diffusers+MPS once the
+                generation path lands.
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void onInstallMlxVideo()}
+                disabled={installingMlxVideo || !backendOnline}
+              >
+                {installingMlxVideo ? "Installing mlx-video..." : "Install mlx-video"}
               </button>
             </div>
           ) : null}

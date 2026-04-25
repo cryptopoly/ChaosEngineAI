@@ -97,8 +97,9 @@ class RotorQuantStrategy(CacheStrategy):
         clamped = max(2, min(4, bits))
         return ["--cache-type-k", f"turbo{clamped}", "--cache-type-v", f"turbo{clamped}"]
 
-    def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers):
-        kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens
+    def estimate_cache_bytes(self, num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers, num_kv_heads=None):
+        kv_heads = num_kv_heads if num_kv_heads and num_kv_heads > 0 else num_heads
+        kv_elements = 2 * num_layers * kv_heads * (hidden_size // max(num_heads, 1)) * context_tokens
         baseline = kv_elements * 2
         compressed_layers = max(0, num_layers - 2 * fp16_layers)
         fp16_layer_count = num_layers - compressed_layers

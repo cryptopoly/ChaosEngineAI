@@ -46,6 +46,7 @@ export function useSettings(
     fp16Layers: emptyLaunchPreferences.fp16Layers,
     numLayers: emptyPreview.numLayers,
     numHeads: emptyPreview.numHeads,
+    numKvHeads: emptyPreview.numKvHeads,
     hiddenSize: emptyPreview.hiddenSize,
     contextTokens: emptyLaunchPreferences.contextTokens,
     paramsB: emptyPreview.paramsB,

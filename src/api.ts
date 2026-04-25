@@ -387,6 +387,7 @@ export async function getCachePreview(options: {
   fp16Layers: number;
   numLayers: number;
   numHeads: number;
+  numKvHeads?: number;
   hiddenSize: number;
   contextTokens: number;
   paramsB: number;
@@ -401,6 +402,9 @@ export async function getCachePreview(options: {
     context_tokens: String(options.contextTokens),
     params_b: String(options.paramsB),
   });
+  if (options.numKvHeads && options.numKvHeads > 0) {
+    search.set("num_kv_heads", String(options.numKvHeads));
+  }
   if (options.strategy) {
     search.set("strategy", options.strategy);
   }
@@ -413,6 +417,7 @@ export async function getCachePreview(options: {
       fp16Layers: options.fp16Layers,
       numLayers: options.numLayers,
       numHeads: options.numHeads,
+      numKvHeads: options.numKvHeads ?? options.numHeads,
       hiddenSize: options.hiddenSize,
       contextTokens: options.contextTokens,
       paramsB: options.paramsB,

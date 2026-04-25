@@ -204,6 +204,7 @@ function useLaunchPreview(option: ChatModelOption | null, settings: LaunchPrefer
           fp16Layers: settings.fp16Layers,
           numLayers: shape.numLayers,
           numHeads: shape.numHeads,
+          numKvHeads: shape.numKvHeads,
           hiddenSize: shape.hiddenSize,
           contextTokens: settings.contextTokens,
           paramsB: shape.paramsB,

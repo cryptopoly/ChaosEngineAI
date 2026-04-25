@@ -41,7 +41,7 @@ describe("resolveDflashSupport()", () => {
     });
 
     expect(result.enabled).toBe(false);
-    expect(result.reason).toContain("No compatible DFlash draft");
+    expect(result.reason).toContain("No DFlash draft exists for this model");
   });
 
   it("rejects llama.cpp targets before checking model support", () => {

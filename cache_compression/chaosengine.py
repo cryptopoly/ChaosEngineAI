@@ -118,8 +118,10 @@ class ChaosEngineStrategy(CacheStrategy):
         context_tokens,
         bits,
         fp16_layers,
+        num_kv_heads=None,
     ):
-        kv_elements = 2 * num_layers * num_heads * (hidden_size // max(num_heads, 1)) * context_tokens
+        kv_heads = num_kv_heads if num_kv_heads and num_kv_heads > 0 else num_heads
+        kv_elements = 2 * num_layers * kv_heads * (hidden_size // max(num_heads, 1)) * context_tokens
         baseline = kv_elements * 2  # FP16 = 2 bytes per element
 
         compressed_layers = max(0, num_layers - 2 * fp16_layers)

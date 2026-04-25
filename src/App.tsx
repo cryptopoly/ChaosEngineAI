@@ -601,6 +601,7 @@ export default function App() {
       fp16Layers: workspace.settings.launchPreferences.fp16Layers,
       numLayers: workspace.preview.numLayers,
       numHeads: workspace.preview.numHeads,
+      numKvHeads: workspace.preview.numKvHeads,
       hiddenSize: workspace.preview.hiddenSize,
       contextTokens: workspace.settings.launchPreferences.contextTokens,
       paramsB: workspace.preview.paramsB,
@@ -828,7 +829,7 @@ export default function App() {
     if (!paramsB) return;
     const arch = estimateArchFromParams(paramsB);
     setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.hiddenSize === arch.hiddenSize) return current;
+      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
       return { ...current, paramsB, ...arch };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -850,7 +851,7 @@ export default function App() {
     if (!paramsB) return;
     const arch = estimateArchFromParams(paramsB);
     setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.hiddenSize === arch.hiddenSize) return current;
+      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
       return { ...current, paramsB, ...arch };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

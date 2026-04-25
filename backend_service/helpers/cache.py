@@ -40,6 +40,7 @@ def compute_cache_preview(
     fp16_layers: int = 4,
     num_layers: int = 32,
     num_heads: int = 32,
+    num_kv_heads: int | None = None,
     hidden_size: int = 4096,
     context_tokens: int = 8192,
     params_b: float = 7.0,
@@ -51,6 +52,8 @@ def compute_cache_preview(
 
     num_layers = max(1, num_layers)
     num_heads = max(1, num_heads)
+    if num_kv_heads is not None:
+        num_kv_heads = max(1, min(num_kv_heads, num_heads))
     hidden_size = max(num_heads, hidden_size)
     context_tokens = max(256, context_tokens)
 
@@ -59,7 +62,7 @@ def compute_cache_preview(
     if strategy == "native" or bits <= 0:
         # Native FP16: no compression
         baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
-            num_layers, num_heads, hidden_size, context_tokens, 0, 0,
+            num_layers, num_heads, hidden_size, context_tokens, 0, 0, num_kv_heads,
         )
         compression_ratio = 1.0
         speed_ratio = 1.0
@@ -68,7 +71,7 @@ def compute_cache_preview(
     else:
         bits = max(1, min(bits, 8))
         baseline_bytes, optimized_bytes = strat.estimate_cache_bytes(
-            num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers,
+            num_layers, num_heads, hidden_size, context_tokens, bits, fp16_layers, num_kv_heads,
         )
         compression_ratio = baseline_bytes / optimized_bytes if optimized_bytes else 1.0
 
@@ -110,6 +113,7 @@ def compute_cache_preview(
         "fp16Layers": fp16_layers,
         "numLayers": num_layers,
         "numHeads": num_heads,
+        "numKvHeads": num_kv_heads or num_heads,
         "hiddenSize": hidden_size,
         "contextTokens": context_tokens,
         "paramsB": params_b,

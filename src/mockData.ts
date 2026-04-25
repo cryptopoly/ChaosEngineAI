@@ -733,6 +733,7 @@ export const mockWorkspace: WorkspaceData = {
     fp16Layers: 4,
     numLayers: 32,
     numHeads: 32,
+    numKvHeads: 8,
     hiddenSize: 4096,
     contextTokens: 8192,
     paramsB: 7,

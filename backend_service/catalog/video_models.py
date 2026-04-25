@@ -424,8 +424,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "summary": (
             "LongLive (ICLR 2026) extends Wan 2.1 T2V 1.3B with a causal "
             "streaming pipeline: 20.7 FPS on a single H100, up to 240s. "
-            "CUDA only — installed into an isolated venv via "
-            "scripts/install-longlive.sh."
+            "CUDA only — installed into an isolated venv by the Studio "
+            "or Video Discover install action."
         ),
         "updatedLabel": "Experimental — long-form",
         "badges": ["Long-form", "Real-time", "Apache 2.0", "CUDA"],
@@ -448,8 +448,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 30.0,
                 "note": (
-                    "CUDA only. Needs scripts/install-longlive.sh (isolated "
-                    "venv + LongLive + Wan 2.1 base weights). Output at 16 FPS."
+                    "CUDA only. Click Install LongLive to set up the isolated "
+                    "venv + LongLive + Wan 2.1 base weights. Output at 16 FPS."
                 ),
                 "estimatedGenerationSeconds": 60.0,
                 "availableLocally": False,

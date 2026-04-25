@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Panel } from "../../components/Panel";
-import type { DownloadStatus } from "../../api";
+import type { DownloadStatus, InstallResult } from "../../api";
 import type {
   TabId,
   VideoModelVariant,
+  VideoRuntimeStatus,
 } from "../../types";
 import type { DiscoverSort } from "../../types/image";
 import type { VideoDiscoverTaskFilter } from "../../types/video";
@@ -14,6 +16,17 @@ import {
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
 } from "../../utils";
+
+// LongLive ships via a dedicated Python installer (isolated venv + GitHub
+// clone + HF weights at Efficient-Large-Model/LongLive-1.3B), not via
+// snapshot_download. The catalog repo id ``NVlabs/LongLive-1.3B`` is the
+// GitHub org and intentionally does not resolve on Hugging Face — we use
+// it purely as a routing key. Detect LongLive here so the Discover card
+// can swap the Download button for an Install LongLive CTA that matches
+// the Studio tab's existing install affordance.
+function isLongLiveRepo(repo: string | undefined): boolean {
+  return repo?.startsWith("NVlabs/LongLive") ?? false;
+}
 
 export interface VideoDiscoverTabProps {
   combinedVideoDiscoverResults: VideoModelVariant[];
@@ -28,6 +41,8 @@ export interface VideoDiscoverTabProps {
   activeVideoDownloads: Record<string, DownloadStatus>;
   selectedVideoVariant: VideoModelVariant | null;
   fileRevealLabel: string;
+  longLiveStatus: VideoRuntimeStatus | null;
+  installingLongLive: boolean;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string) => void;
@@ -35,6 +50,8 @@ export interface VideoDiscoverTabProps {
   onDeleteVideoDownload: (repo: string) => void;
   onOpenExternalUrl: (url: string) => void;
   onRevealPath: (path: string) => void;
+  onRefreshLongLiveStatus: () => void;
+  onInstallLongLive: () => Promise<InstallResult>;
 }
 
 export function VideoDiscoverTab({
@@ -50,6 +67,8 @@ export function VideoDiscoverTab({
   activeVideoDownloads,
   selectedVideoVariant,
   fileRevealLabel,
+  longLiveStatus,
+  installingLongLive,
   onActiveTabChange,
   onOpenVideoStudio,
   onVideoDownload,
@@ -57,7 +76,20 @@ export function VideoDiscoverTab({
   onDeleteVideoDownload,
   onOpenExternalUrl,
   onRevealPath,
+  onRefreshLongLiveStatus,
+  onInstallLongLive,
 }: VideoDiscoverTabProps) {
+  // Probe LongLive install state whenever the results include a LongLive
+  // variant so the card can render "Installed" vs "Install LongLive"
+  // without the user having to open the Studio tab first. Mirrors the
+  // same effect in VideoStudioTab.
+  const hasLongLiveVariant = combinedVideoDiscoverResults.some((variant) =>
+    isLongLiveRepo(variant.repo),
+  );
+  useEffect(() => {
+    if (hasLongLiveVariant) onRefreshLongLiveStatus();
+  }, [hasLongLiveVariant, onRefreshLongLiveStatus]);
+  const longLiveReady = longLiveStatus?.realGenerationAvailable ?? false;
   return (
     <div className="image-discover-stack">
       <Panel
@@ -159,16 +191,26 @@ export function VideoDiscoverTab({
       ) : (
         <div className="image-discover-grid image-discover-grid--latest">
           {combinedVideoDiscoverResults.map((variant) => {
+            const isLongLive = isLongLiveRepo(variant.repo);
             const downloadState = activeVideoDownloads[variant.repo];
             const isDownloading = downloadState?.state === "downloading";
             const isPaused = downloadState?.state === "cancelled";
             const isDownloadComplete = downloadState?.state === "completed";
-            const isDownloadFailed = downloadState?.state === "failed";
-            const isComplete = variant.availableLocally || isDownloadComplete;
-            const isPartial = !isComplete && variant.hasLocalData;
-            const canDeleteLocalData = Boolean(
-              isComplete || isDownloadComplete || isPaused || isDownloadFailed || isPartial,
-            );
+            // LongLive never goes through the HF download pipeline — stale
+            // failure states from a prior mis-routed Download click would
+            // otherwise keep rendering "Download Failed" even after we
+            // offer the correct install CTA.
+            const isDownloadFailed =
+              !isLongLive && downloadState?.state === "failed";
+            const isComplete = isLongLive
+              ? longLiveReady
+              : variant.availableLocally || isDownloadComplete;
+            const isPartial = !isLongLive && !isComplete && variant.hasLocalData;
+            const canDeleteLocalData = isLongLive
+              ? false
+              : Boolean(
+                  isComplete || isDownloadComplete || isPaused || isDownloadFailed || isPartial,
+                );
             return (
               <article key={variant.id} className="image-library-card">
                 <div className="image-library-card-head">
@@ -178,6 +220,12 @@ export function VideoDiscoverTab({
                   </div>
                   {isComplete ? (
                     <span className="badge success">Installed</span>
+                  ) : isLongLive ? (
+                    installingLongLive ? (
+                      <span className="badge accent">Installing…</span>
+                    ) : (
+                      <span className="badge subtle">Not installed</span>
+                    )
                   ) : isDownloading ? (
                     <span className="badge accent" title={downloadSizeTooltip(downloadState)}>
                       {downloadProgressLabel(downloadState)}
@@ -205,11 +253,33 @@ export function VideoDiscoverTab({
                   ))}
                 </div>
                 <p className="muted-text">{variant.note}</p>
+                {isLongLive && !isComplete ? (
+                  <p className="muted-text">
+                    LongLive installs into an isolated venv at{" "}
+                    <code>~/.chaosengine/longlive</code>. CUDA only, 5–15 min
+                    depending on network.
+                  </p>
+                ) : null}
                 {isDownloadFailed && downloadState?.error ? (
                   <p className="muted-text" style={{ color: "var(--error, #e26d6d)" }}>{downloadState.error}</p>
                 ) : null}
                 <div className="button-row">
-                  {isComplete ? (
+                  {isLongLive ? (
+                    isComplete ? (
+                      <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>
+                        Generate
+                      </button>
+                    ) : (
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void onInstallLongLive()}
+                        disabled={installingLongLive}
+                      >
+                        {installingLongLive ? "Installing LongLive…" : "Install LongLive"}
+                      </button>
+                    )
+                  ) : isComplete ? (
                     <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>
                       Generate
                     </button>
@@ -226,7 +296,7 @@ export function VideoDiscoverTab({
                       {isDownloadFailed ? "Retry" : isPartial ? "Resume Download" : "Download"}
                     </button>
                   )}
-                  {isDownloading || canDeleteLocalData ? (
+                  {!isLongLive && (isDownloading || canDeleteLocalData) ? (
                     <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(variant.repo)}>
                       {isDownloading ? "Cancel" : "Delete"}
                     </button>

@@ -121,15 +121,16 @@ _turbo_remote_cache: tuple[str | None, float] = (None, 0.0)
 _TURBO_REMOTE_CACHE_TTL = 3600.0  # 1 hour
 
 
-def _installable_system_packages() -> dict[str, list[str]]:
+def _installable_system_packages(python_executable: str) -> dict[str, list[str]]:
     # LongLive's install runs a multi-minute clone + pip install + weight
     # download, so it needs the longer 10-minute system-install timeout
-    # rather than the 5-minute pip path. It also auto-skips on Darwin
-    # (CUDA-only) — the script itself exits 2 with a clear message.
+    # rather than the 5-minute pip path. We invoke it as a Python module
+    # rather than a shell script so Windows hosts don't need Git Bash.
+    # The installer itself rejects macOS (CUDA-only).
     return {
         "llama.cpp": ["brew", "install", "llama.cpp"],
         "llama-server-turbo": [str(_workspace_root() / "scripts" / "build-llama-turbo.sh")],
-        "longlive": [str(_workspace_root() / "scripts" / "install-longlive.sh")],
+        "longlive": [python_executable, "-m", "backend_service.longlive_installer"],
     }
 
 
@@ -179,7 +180,8 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
 def install_system_package(request: Request, body: InstallPackageRequest) -> dict[str, Any]:
     """Install a whitelisted system package (e.g. llama.cpp via brew)."""
     state = request.app.state.chaosengine
-    cmd_template = _installable_system_packages().get(body.package)
+    python_executable = state.runtime.capabilities.pythonExecutable
+    cmd_template = _installable_system_packages(python_executable).get(body.package)
     if cmd_template is None:
         raise HTTPException(status_code=400, detail=f"System package '{body.package}' is not in the allowed install list.")
 
@@ -189,7 +191,17 @@ def install_system_package(request: Request, body: InstallPackageRequest) -> dic
         output = (result.stdout + "\n" + result.stderr).strip()
         ok = result.returncode == 0
     except FileNotFoundError:
-        output = f"'{cmd_template[0]}' is not installed. Install Homebrew first: https://brew.sh"
+        # The generic "install Homebrew" hint only makes sense when the
+        # command actually starts with ``brew``; Windows LongLive installs
+        # used to hit this branch and get a nonsense macOS error.
+        missing = cmd_template[0]
+        if missing == "brew":
+            output = f"'{missing}' is not installed. Install Homebrew first: https://brew.sh"
+        else:
+            output = (
+                f"'{missing}' is not available on PATH. "
+                "Check that the backend runtime was staged correctly and retry."
+            )
         ok = False
     except subprocess.TimeoutExpired:
         output = "Installation timed out after 10 minutes."

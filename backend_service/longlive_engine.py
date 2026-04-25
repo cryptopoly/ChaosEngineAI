@@ -7,8 +7,9 @@ script, not a diffusers pipeline, and it expects a very specific Python
 environment (diffusers==0.31.0, torchao, flash-attn optional) that we do
 not want to force on the host venv.
 
-This module wraps the LongLive install (see ``scripts/install-longlive.sh``)
-as a subprocess so the mismatched deps stay quarantined. It exposes the
+This module wraps the LongLive install (see
+``backend_service.longlive_installer``) as a subprocess so the mismatched
+deps stay quarantined from the sidecar Python. It exposes the
 same shape as ``DiffusersVideoEngine`` (``probe`` / ``generate``) so the
 video runtime dispatch can route to it without the rest of the app
 caring about torchrun.
@@ -178,9 +179,9 @@ class LongLiveEngine:
                 realGenerationAvailable=False,
                 expectedDevice="cuda" if cuda_ok else None,
                 message=(
-                    f"LongLive is not installed. Run `scripts/install-longlive.sh` "
-                    f"(or use the Studio install action) — expected install at "
-                    f"{install.root}."
+                    f"LongLive is not installed. Use the Studio or Video Discover "
+                    f"install action (or run `python -m backend_service.longlive_installer`) "
+                    f"— expected install at {install.root}."
                 ),
             )
 

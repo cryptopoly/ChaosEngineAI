@@ -1485,6 +1485,8 @@ export default function App() {
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        longLiveStatus={videoState.longLiveStatus}
+        installingLongLive={videoState.installingLongLive}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
@@ -1492,6 +1494,8 @@ export default function App() {
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
+        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
+        onInstallLongLive={() => videoState.handleInstallLongLive()}
       />
     );
   } else if (activeTab === "video-models") {

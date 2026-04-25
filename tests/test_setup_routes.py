@@ -203,6 +203,41 @@ class SetupRouteTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertIn("timed out", body["output"])
 
+    def test_install_system_longlive_invokes_python_module(self):
+        # LongLive used to shell out to install-longlive.sh, which broke on
+        # Windows. Regression guard: the command must now be a python -m
+        # invocation of backend_service.longlive_installer so it runs
+        # cross-platform.
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
+            resp = self.client.post("/api/setup/install-system-package", json={"package": "longlive"})
+        self.assertEqual(resp.status_code, 200)
+        cmd = mock_run.call_args.args[0]
+        self.assertIn("-m", cmd)
+        self.assertIn("backend_service.longlive_installer", cmd)
+
+    def test_install_system_missing_binary_does_not_suggest_brew_for_non_brew(self):
+        # Before the fix, *any* FileNotFoundError from a system-package
+        # install emitted "Install Homebrew first: https://brew.sh" — even
+        # on Windows, even for LongLive. The user-visible hint must now be
+        # scoped to brew commands only.
+        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=FileNotFoundError):
+            resp = self.client.post("/api/setup/install-system-package", json={"package": "longlive"})
+        body = resp.json()
+        self.assertFalse(body["ok"])
+        self.assertNotIn("Homebrew", body["output"])
+        self.assertNotIn("brew.sh", body["output"])
+
+    def test_install_system_missing_brew_still_suggests_homebrew(self):
+        # The Homebrew hint remains correct for llama.cpp on a fresh Mac
+        # with no brew installed — scoping the message shouldn't regress
+        # the one place it was right.
+        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=FileNotFoundError):
+            resp = self.client.post("/api/setup/install-system-package", json={"package": "llama.cpp"})
+        body = resp.json()
+        self.assertFalse(body["ok"])
+        self.assertIn("Homebrew", body["output"])
+
     # ------------------------------------------------------------------
     # Refresh capabilities
     # ------------------------------------------------------------------

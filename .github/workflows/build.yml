@@ -223,7 +223,7 @@ jobs:
       # ── Upload artifacts ───────────────────────────────────────
       - name: Upload macOS artifacts
         if: matrix.platform == 'darwin'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ChaosEngineAI-macos
           path: |
@@ -232,7 +232,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ChaosEngineAI-linux
           path: |
@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ChaosEngineAI-windows
           path: |

@@ -3,3 +3,8 @@ export type ImageGalleryOrientationFilter = "all" | "square" | "portrait" | "lan
 export type ImageGallerySort = "newest" | "oldest";
 export type ImageDiscoverTaskFilter = "all" | "txt2img" | "img2img" | "inpaint";
 export type ImageDiscoverAccessFilter = "all" | "open" | "gated";
+/** Discover sort axis. ``release`` = most recently released first (prefers
+ * the curated releaseDate, falls back to HF createdAt). ``likes`` = HF
+ * stars/hearts desc. ``downloads`` = HF downloads desc. Variants without
+ * the relevant HF metadata sort to the bottom. */
+export type DiscoverSort = "release" | "likes" | "downloads";

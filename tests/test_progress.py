@@ -49,6 +49,10 @@ _REQUIRED_SNAPSHOT_KEYS = {
     "updatedAt",
     "elapsedSeconds",
     "runLabel",
+    # Added alongside the ProgressTracker.request_cancel() wiring so the
+    # frontend can distinguish "generation running" from "cancel in flight"
+    # without a separate poll.
+    "cancelRequested",
 }
 
 
@@ -175,6 +179,32 @@ class ProgressTrackerTests(unittest.TestCase):
         self.tracker.finish()
         snap = self.tracker.snapshot()
         self.assertEqual(snap["elapsedSeconds"], 0.0)
+
+    def test_request_cancel_returns_false_when_idle(self):
+        # A cancel click before anything is running should report back "no
+        # run to cancel" rather than silently arming the flag for the next
+        # generation — that would make the user's next Generate instantly
+        # abort with no explanation.
+        self.assertFalse(self.tracker.request_cancel())
+        self.assertFalse(self.tracker.is_cancelled())
+
+    def test_request_cancel_sets_flag_mid_run(self):
+        self.tracker.begin(total_steps=10)
+        self.assertFalse(self.tracker.is_cancelled())
+        self.assertTrue(self.tracker.request_cancel())
+        self.assertTrue(self.tracker.is_cancelled())
+        # The flag should also be visible on the snapshot so the UI can
+        # render "Cancelling..." without a second poll.
+        self.assertTrue(self.tracker.snapshot()["cancelRequested"])
+
+    def test_begin_clears_stale_cancel_flag(self):
+        # A prior run's cancel flag must not carry into the next run.
+        self.tracker.begin(total_steps=10)
+        self.tracker.request_cancel()
+        self.tracker.finish()
+        self.tracker.begin(total_steps=10)
+        self.assertFalse(self.tracker.is_cancelled())
+        self.assertFalse(self.tracker.snapshot()["cancelRequested"])
 
     def test_phase_constants_match_frontend_contract(self):
         # The frontend modal phase IDs must match these strings exactly —

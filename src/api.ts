@@ -353,6 +353,26 @@ export async function getVideoRuntime(): Promise<VideoRuntimeStatus> {
   return result.runtime;
 }
 
+export async function getLongLiveRuntime(): Promise<VideoRuntimeStatus> {
+  // LongLive probe is separate from the diffusers video runtime — it
+  // checks the isolated install marker at ~/.chaosengine/longlive rather
+  // than torch/diffusers on the host Python. Surfaces an install action
+  // in the Studio when the LongLive variant is selected but not yet set up.
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/longlive", 30000);
+  return result.runtime;
+}
+
+export async function getMlxVideoRuntime(): Promise<VideoRuntimeStatus> {
+  // mlx-video probe (FU-009). Separate from the diffusers video runtime
+  // so Apple Silicon users get a dedicated "Install mlx-video" affordance
+  // on the Studio without mixing it into the diffusers/torch state. The
+  // probe returns activeEngine="mlx-video" with realGenerationAvailable=
+  // false on non-Apple platforms — the Studio hides the chip in that
+  // case (platform mismatch, not a missing-package state).
+  const result = await fetchJson<{ runtime: VideoRuntimeStatus }>("/api/video/mlx-runtime", 30000);
+  return result.runtime;
+}
+
 /** Mirror of ``getImageGenerationProgress`` for the video runtime. */
 export async function getVideoGenerationProgress(): Promise<GenerationProgressSnapshot> {
   const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
@@ -691,6 +711,11 @@ export async function generateVideo(payload: VideoGenerationPayload): Promise<Vi
   return await postJson<VideoGenerationResponse>("/api/video/generate", payload, null);
 }
 
+export async function cancelVideoGeneration(): Promise<{ cancelled: boolean }> {
+  // 10s timeout — the endpoint just sets a flag and returns, no wait.
+  return await postJson<{ cancelled: boolean }>("/api/video/cancel", {}, 10000);
+}
+
 export async function getVideoOutputs(): Promise<VideoOutputArtifact[]> {
   const result = await fetchJson<{ outputs: VideoOutputArtifact[] }>("/api/video/outputs");
   return result.outputs;
@@ -728,6 +753,10 @@ export async function fetchVideoOutputBlobUrl(artifactId: string): Promise<strin
 
 export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
   return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
+}
+
+export async function cancelImageGeneration(): Promise<{ cancelled: boolean }> {
+  return await postJson<{ cancelled: boolean }>("/api/images/cancel", {}, 10000);
 }
 
 export async function deleteImageOutput(artifactId: string): Promise<{ deleted: string; outputs: ImageOutputArtifact[] }> {
@@ -801,6 +830,7 @@ export interface CudaTorchInstallResult {
   pythonExecutable: string;
   pythonVersion: string | null;
   noWheelForPython: boolean;
+  targetDir?: string;
   capabilities: Record<string, unknown>;
 }
 
@@ -981,6 +1011,70 @@ export interface TurboUpdateInfo {
 
 export async function checkTurboUpdate(): Promise<TurboUpdateInfo> {
   return await fetchJson<TurboUpdateInfo>("/api/setup/turbo-update-check", 20000);
+}
+
+export interface ModelMoveJobState {
+  id: string;
+  phase: "idle" | "preflight" | "copying" | "cleanup" | "done" | "error";
+  message: string;
+  sourcePath: string | null;
+  destinationPath: string | null;
+  bytesTotal: number;
+  bytesCopied: number;
+  percent: number;
+  filesTotal: number;
+  filesCopied: number;
+  currentEntry: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  done: boolean;
+}
+
+export interface StorageSettingsSnapshot {
+  configuredPath: string;
+  effectivePath: string;
+  effectiveHubPath: string;
+  defaultPath: string;
+  currentHubSizeBytes: number;
+  currentFreeBytes: number | null;
+  moveJob: ModelMoveJobState;
+}
+
+export interface UpdateStoragePathResult {
+  configuredPath: string;
+  effectivePath: string;
+  restartRequired: boolean;
+}
+
+export async function getStorageSettings(): Promise<StorageSettingsSnapshot> {
+  return await fetchJson<StorageSettingsSnapshot>("/api/settings/storage", 15000);
+}
+
+export async function updateHfCachePath(path: string): Promise<UpdateStoragePathResult> {
+  return await postJson<UpdateStoragePathResult>(
+    "/api/settings/storage",
+    { hfCachePath: path },
+    20000,
+  );
+}
+
+export async function startModelMove(
+  destinationPath: string,
+  deleteSourceAfter = true,
+): Promise<ModelMoveJobState> {
+  // No client-side timeout — the move worker runs in a background thread,
+  // the POST itself returns immediately with the initial state. Status is
+  // polled via getModelMoveStatus. 30s is plenty for the spawn handshake.
+  return await postJson<ModelMoveJobState>(
+    "/api/settings/storage/move",
+    { destinationPath, deleteSourceAfter },
+    30000,
+  );
+}
+
+export async function getModelMoveStatus(): Promise<ModelMoveJobState> {
+  return await fetchJson<ModelMoveJobState>("/api/settings/storage/move/status", 10000);
 }
 
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {

@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import {
   cancelImageDownload,
+  cancelImageGeneration,
   deleteImageDownload,
   deleteImageOutput,
   downloadImageModel,
@@ -39,16 +40,19 @@ import type {
   ImageModelVariant,
   ImageOutputArtifact,
   ImageQualityPreset,
+  ImageSamplerId,
   ImageRuntimeStatus,
   TabId,
 } from "../types";
 import type {
+  DiscoverSort,
   ImageGalleryRuntimeFilter,
   ImageGalleryOrientationFilter,
   ImageGallerySort,
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../types/image";
+import { compareDiscoverVariants } from "../utils";
 
 // Human-friendly label for the GPU bundle install progress. Picks the most
 // actionable sentence from the job state so the "Installing..." text in
@@ -79,12 +83,18 @@ export function useImageState(
   const [latestImageDiscoverResults, setLatestImageDiscoverResults] = useState<ImageModelVariant[]>([]);
   const [imageDiscoverTaskFilter, setImageDiscoverTaskFilter] = useState<ImageDiscoverTaskFilter>("all");
   const [imageDiscoverAccessFilter, setImageDiscoverAccessFilter] = useState<ImageDiscoverAccessFilter>("all");
+  // Default to "release" (most recently released first) so the newest
+  // drops surface at the top of the Discover grid. Users can swap to
+  // likes / downloads via the sort dropdown.
+  const [imageDiscoverSort, setImageDiscoverSort] = useState<DiscoverSort>("release");
   const [imageDiscoverSearchInput, setImageDiscoverSearchInput] = useState("");
   const deferredImageDiscoverSearch = useDeferredValue(imageDiscoverSearchInput);
   const [selectedImageModelId, setSelectedImageModelId] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageNegativePrompt, setImageNegativePrompt] = useState("");
   const [imageQualityPreset, setImageQualityPreset] = useState<ImageQualityPreset>("balanced");
+  const [imageDraftMode, setImageDraftMode] = useState(false);
+  const [imageSampler, setImageSampler] = useState<ImageSamplerId>("default");
   const [imageRatioId, setImageRatioId] = useState<(typeof IMAGE_RATIO_PRESETS)[number]["id"]>("square");
   const [imageWidth, setImageWidth] = useState(1024);
   const [imageHeight, setImageHeight] = useState(1024);
@@ -117,6 +127,11 @@ export function useImageState(
   const [showImageGenerationModal, setShowImageGenerationModal] = useState(false);
   const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<number | null>(null);
   const [imageGenerationError, setImageGenerationError] = useState<string | null>(null);
+  // Distinguishes a user-requested cancel (409 "cancelled" response) from a
+  // real failure. The modal hides the error callout and shows a calmer
+  // "Cancelled" state instead of a red error when this is true.
+  const [imageGenerationCancelled, setImageGenerationCancelled] = useState(false);
+  const [imageGenerationCancelling, setImageGenerationCancelling] = useState(false);
   const [imageGenerationArtifacts, setImageGenerationArtifacts] = useState<ImageOutputArtifact[]>([]);
   const [selectedImageGenerationArtifactId, setSelectedImageGenerationArtifactId] = useState<string | null>(null);
   const [imageGenerationRunInfo, setImageGenerationRunInfo] = useState<{
@@ -213,14 +228,7 @@ export function useImageState(
       return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
     }),
     ...filteredLatestImageDiscoverResults,
-  ].sort((a, b) => {
-    const dateA = a.lastModified ?? "";
-    const dateB = b.lastModified ?? "";
-    if (dateB && dateA) return dateB.localeCompare(dateA);
-    if (dateB) return 1;
-    if (dateA) return -1;
-    return 0;
-  });
+  ].sort((a, b) => compareDiscoverVariants(imageDiscoverSort, a, b));
 
   const imageDiscoverHasActiveFilters =
     imageDiscoverTaskFilter !== "all" ||
@@ -470,6 +478,8 @@ export function useImageState(
     setShowImageGenerationModal(true);
     setImageGenerationStartedAt(Date.now());
     setImageGenerationError(null);
+    setImageGenerationCancelled(false);
+    setImageGenerationCancelling(false);
     setImageGenerationArtifacts([]);
     setSelectedImageGenerationArtifactId(null);
     setImageGenerationRunInfo({
@@ -495,6 +505,8 @@ export function useImageState(
         guidance: overrides?.guidance ?? imageGuidance,
         batchSize: overrides?.batchSize ?? imageBatchSize,
         qualityPreset: overrides?.qualityPreset ?? imageQualityPreset,
+        draftMode: imageDraftMode,
+        sampler: imageSampler === "default" ? null : imageSampler,
         seed,
       });
       setImageOutputs(response.outputs);
@@ -507,12 +519,37 @@ export function useImageState(
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Image generation failed.";
-      const detail = `${message}. Check the Logs tab (filter: images) for backend details.`;
-      setError(detail);
-      setImageGenerationError(detail);
+      // The backend returns HTTPException(409, detail="cancelled") when the
+      // user clicks Cancel and the pipeline aborts. Detect that specific
+      // shape so the modal transitions to a calm "Cancelled" state rather
+      // than a red error callout.
+      if (message === "cancelled") {
+        setImageGenerationCancelled(true);
+        setImageGenerationError(null);
+      } else {
+        const detail = `${message}. Check the Logs tab (filter: images) for backend details.`;
+        setError(detail);
+        setImageGenerationError(detail);
+      }
     } finally {
       setImageBusyLabel(null);
       setImageGenerationStartedAt(null);
+      setImageGenerationCancelling(false);
+    }
+  }
+
+  async function handleCancelImageGeneration() {
+    // Idempotent — clicking Cancel twice after an in-flight request is
+    // fine; the backend's request_cancel() is a no-op once the flag is
+    // already set. We still call it either way so the button always feels
+    // responsive even if the modal's busy-state cleanup is slow.
+    setImageGenerationCancelling(true);
+    try {
+      await cancelImageGeneration();
+    } catch {
+      // Transient failure. Leave cancelling=true — the generation promise
+      // is still pending and we'd rather the user see the retry path than
+      // a second red toast.
     }
   }
 
@@ -677,6 +714,8 @@ export function useImageState(
     setImageDiscoverTaskFilter,
     imageDiscoverAccessFilter,
     setImageDiscoverAccessFilter,
+    imageDiscoverSort,
+    setImageDiscoverSort,
     imageDiscoverSearchInput,
     setImageDiscoverSearchInput,
     selectedImageModelId,
@@ -686,6 +725,10 @@ export function useImageState(
     imageNegativePrompt,
     setImageNegativePrompt,
     imageQualityPreset,
+    imageDraftMode,
+    setImageDraftMode,
+    imageSampler,
+    setImageSampler,
     imageRatioId,
     imageWidth,
     setImageWidth,
@@ -721,6 +764,8 @@ export function useImageState(
     setShowImageGenerationModal,
     imageGenerationStartedAt,
     imageGenerationError,
+    imageGenerationCancelled,
+    imageGenerationCancelling,
     imageGenerationArtifacts,
     selectedImageGenerationArtifactId,
     setSelectedImageGenerationArtifactId,
@@ -762,6 +807,7 @@ export function useImageState(
     openImageGallery,
     resetImageGalleryFilters,
     submitImageGeneration,
+    handleCancelImageGeneration,
     handlePreloadImageModel,
     handleUnloadImageModel,
     handleInstallImageRuntime,

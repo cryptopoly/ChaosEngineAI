@@ -2119,6 +2119,60 @@ select.text-input {
   height: 100%;
 }
 
+.loading-state-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.loading-state-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 48px 24px;
+  border-color: rgba(224, 154, 154, 0.45);
+  color: var(--danger);
+}
+
+.loading-state-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.loading-state-detail {
+  max-width: 520px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.loading-state-elapsed {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.loading-state-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--text);
+  animation: loading-state-spin 0.9s linear infinite;
+}
+
+@keyframes loading-state-spin {
+  to { transform: rotate(360deg); }
+}
+
 .notice-banner {
   border-radius: 12px;
   padding: 10px 12px;
@@ -3784,6 +3838,17 @@ select.text-input {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.perf-preview__advice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warning, #e4be75) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning, #e4be75) 34%, transparent);
+  color: var(--text, #e8e8e8);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .perf-preview__compare {
@@ -5918,65 +5983,41 @@ select.text-input {
   color: var(--muted);
   font-style: italic;
 }
-.install-log-attempts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* One scrolling terminal region replacing the per-step cards we had
+ * before. Fixed max-height so the install log never pushes the rest
+ * of the Studio off-screen; auto-scrolls to the bottom on new output
+ * so the user doesn't have to chase streaming pip lines. */
+.install-log-step-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.install-log-attempt {
+.install-log-terminal {
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 6px;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.25);
-}
-.install-log-attempt--fail {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(127, 29, 29, 0.16);
-}
-.install-log-attempt--ok {
-  border-color: rgba(34, 197, 94, 0.18);
-}
-.install-log-attempt-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--text);
-  word-break: break-all;
-}
-.install-log-status {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-}
-.install-log-status--ok {
-  background: rgba(34, 197, 94, 0.22);
-  color: rgb(134, 239, 172);
-}
-.install-log-status--fail {
-  background: rgba(239, 68, 68, 0.28);
-  color: rgb(252, 165, 165);
-}
-.install-log-output {
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem;
-  line-height: 1.4;
+  line-height: 1.45;
   color: rgba(226, 232, 240, 0.92);
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 280px;
+  /* white-space: pre so spacing + indentation is preserved verbatim
+   * (this is what makes the [ OK ] / [FAIL] markers line up on the
+   * left edge so you can scan for failures). word-wrap keeps
+   * pathological long lines from breaking layout. */
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  max-height: 380px;
   overflow: auto;
 }
 .install-log-final {
@@ -6065,4 +6106,166 @@ select.text-input {
 .diagnostics-actions {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 12px;
+}
+
+/* ---------------------------------------------------------------- *
+ * InfoTooltip — ℹ︎ icon + hover/focus bubble. Used next to form    *
+ * field labels to explain settings without inflating the label.    *
+ * ---------------------------------------------------------------- */
+.info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  cursor: help;
+  outline: none;
+}
+.info-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: rgba(203, 213, 225, 0.9);
+  background: rgba(148, 163, 184, 0.08);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.info-tooltip:hover .info-tooltip-icon,
+.info-tooltip:focus-visible .info-tooltip-icon {
+  border-color: rgba(96, 165, 250, 0.8);
+  color: rgb(191, 219, 254);
+}
+.info-tooltip-body {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(15, 23, 42);
+  color: rgb(226, 232, 240);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  width: max-content;
+  max-width: 280px;
+  white-space: normal;
+  text-align: left;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 10;
+  transition: visibility 0.1s linear 0s, opacity 0.12s ease-out;
+}
+.info-tooltip:hover .info-tooltip-body,
+.info-tooltip:focus-visible .info-tooltip-body,
+.info-tooltip:focus-within .info-tooltip-body {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* Label text wrapper so the ℹ︎ tooltip sits beside the label without
+ * breaking the flexbox that surrounds it. Falls back to inheriting
+ * all label styling — it's only here to group the text + icon. */
+.inline-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ---------------------------------------------------------------- *
+ * Preset pill rows — quality + aspect ratio quick-select buttons.  *
+ * ---------------------------------------------------------------- */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.preset-row-label {
+  flex-basis: 100%;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+.preset-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.preset-pill:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+.preset-pill.active {
+  border-color: rgba(96, 165, 250, 0.75);
+  background: rgba(59, 130, 246, 0.18);
+  color: rgb(219, 234, 254);
+}
+.preset-pill-label {
+  font-weight: 600;
+}
+.preset-pill-sub {
+  font-size: 10px;
+  color: var(--muted);
+}
+.preset-pill.active .preset-pill-sub {
+  color: rgba(191, 219, 254, 0.75);
+}
+
+/* ---------------------------------------------------------------- *
+ * Slider + number input pair. Used for Steps and Guidance where    *
+ * the number gives exact precision but the slider makes the min/   *
+ * max range visible at a glance.                                   *
+ * ---------------------------------------------------------------- */
+.slider-number-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-number-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: rgb(96, 165, 250);
+}
+.slider-number-row input[type="number"] {
+  width: 64px;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- *
+ * Progress bar — reused by the model-move job panel. Kept generic  *
+ * so future long-running progress UIs can drop it in too.          *
+ * ---------------------------------------------------------------- */
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgb(59, 130, 246), rgb(96, 165, 250));
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }

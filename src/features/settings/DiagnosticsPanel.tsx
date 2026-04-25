@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
+  installCudaTorch,
   reextractRuntime,
+  type CudaTorchInstallResult,
   type DiagnosticsSnapshot,
 } from "../../api";
 
@@ -30,6 +32,8 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [reextractBusy, setReextractBusy] = useState(false);
   const [reextractMessage, setReextractMessage] = useState<string | null>(null);
+  const [cudaBusy, setCudaBusy] = useState(false);
+  const [cudaResult, setCudaResult] = useState<CudaTorchInstallResult | null>(null);
 
   const refresh = useCallback(async () => {
     if (!backendOnline) return;
@@ -66,6 +70,38 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
     } catch {
       setCopyStatus("failed");
       window.setTimeout(() => setCopyStatus("idle"), 2500);
+    }
+  }
+
+  async function handleInstallCuda() {
+    if (cudaBusy) return;
+    const confirmed = window.confirm(
+      "Reinstall CUDA torch into the extras directory? This downloads ~2 GB, takes 1-5 minutes, and replaces any stale or CPU-only torch currently installed. Use this when the GPU is detected but torch imports stuck as CPU.",
+    );
+    if (!confirmed) return;
+    setCudaBusy(true);
+    setCudaResult(null);
+    try {
+      const result = await installCudaTorch();
+      setCudaResult(result);
+      if (result.ok) {
+        // Re-probe so the snapshot refreshes with the new torch state.
+        await refresh();
+      }
+    } catch (err) {
+      setCudaResult({
+        ok: false,
+        output: err instanceof Error ? err.message : String(err),
+        indexUrl: null,
+        attempts: [],
+        requiresRestart: false,
+        pythonExecutable: "",
+        pythonVersion: null,
+        noWheelForPython: false,
+        capabilities: {},
+      });
+    } finally {
+      setCudaBusy(false);
     }
   }
 
@@ -223,6 +259,42 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
               </pre>
             </div>
           </details>
+
+          <div className="diagnostics-actions" style={{ marginTop: 18 }}>
+            <p className="muted-text" style={{ margin: "0 0 8px" }}>
+              Reinstall CUDA torch into the extras directory. Use this on Windows/Linux when an NVIDIA
+              GPU is detected but torch imports as CPU-only, or when a prior install left stale /
+              mismatched torch files in extras. The main-page banner offers the same action but can
+              be dismissed — this button is always available.
+            </p>
+            <div className="button-row">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => void handleInstallCuda()}
+                disabled={!backendOnline || cudaBusy}
+              >
+                {cudaBusy ? "Installing CUDA torch..." : "Install / reinstall CUDA torch"}
+              </button>
+            </div>
+            {cudaResult ? (
+              <div style={{ marginTop: 8 }}>
+                <p className="muted-text" style={{ margin: 0 }}>
+                  {cudaResult.ok
+                    ? `Installed from ${cudaResult.indexUrl ?? "(unknown index)"}. Restart the backend to activate.`
+                    : cudaResult.noWheelForPython
+                      ? `No CUDA torch wheel exists for Python ${cudaResult.pythonVersion ?? "(unknown)"}. Ship ChaosEngineAI against a supported Python (3.13 recommended).`
+                      : "Install failed — see the log tail below for the full pip output."}
+                </p>
+                {cudaResult.output ? (
+                  <details style={{ marginTop: 4 }}>
+                    <summary className="muted-text" style={{ cursor: "pointer" }}>pip output</summary>
+                    <pre className="install-log-output" style={{ maxHeight: 240 }}>{cudaResult.output}</pre>
+                  </details>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
           <div className="diagnostics-actions" style={{ marginTop: 18 }}>
             <p className="muted-text" style={{ margin: "0 0 8px" }}>

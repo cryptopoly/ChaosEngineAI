@@ -63,23 +63,44 @@ fi
 echo "==> Installing npm dependencies..."
 npm ci --silent
 
+# ── llama.cpp pre-flight ─────────────────────────────────
+# Release-mode stage-runtime.mjs throws if it can't locate a llama.cpp
+# build dir AND the prebuilt-download fallback fails (e.g. macos-arm64
+# is not in the latest ggml-org release assets). Mirror the Windows
+# preflight: if no local build is found, allow the installer to ship
+# without llama-server so the Tauri bundle step still produces a dmg.
+# Users install llama-server later via the Setup page.
+#
+# Opt-out: CHAOSENGINE_REQUIRE_LLAMA=1 keeps the hard error (useful for
+# CI that expects a fully self-contained installer).
+LLAMA_BIN_DIR="${CHAOSENGINE_LLAMA_BIN_DIR:-$(dirname "$SCRIPT_DIR")/llama.cpp/build/bin}"
+LLAMA_SERVER_BIN="$LLAMA_BIN_DIR/llama-server"
+case "$PLATFORM" in
+  windows) LLAMA_SERVER_BIN="$LLAMA_BIN_DIR/llama-server.exe" ;;
+esac
+if [ ! -x "$LLAMA_SERVER_BIN" ] && [ ! -f "$LLAMA_SERVER_BIN" ]; then
+  if [ "${CHAOSENGINE_REQUIRE_LLAMA:-}" = "1" ]; then
+    echo ""
+    echo "==> ERROR: llama-server not found at $LLAMA_SERVER_BIN"
+    echo "    CHAOSENGINE_REQUIRE_LLAMA=1 -- build llama.cpp or unset the flag."
+    exit 1
+  fi
+  echo "==> llama-server not found locally at $LLAMA_SERVER_BIN"
+  echo "    stage-runtime will try an auto-download; if that also fails"
+  echo "    (macos-arm64 is not always in ggml-org's release assets),"
+  echo "    the installer will ship without inference and users install"
+  echo "    it via the Setup page."
+  export CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA=1
+fi
+
 # ── Patch tauri.conf.json for local builds ───────────────
-# Save the fields we're about to change so we can surgically restore them
-# at the end without clobbering other pending edits (like a version bump).
+# Delegated to scripts/patch-tauri-conf.mjs so macOS and Windows share
+# one source of truth. That helper wires beforeBundleCommand to
+# ``npm run stage:runtime:release`` (NOT the dev variant — the dev
+# variant writes mode=development into the manifest and ships an empty
+# 6 MB installer with no Python runtime).
 echo "==> Patching tauri.conf.json for local build..."
-ORIGINAL_BEFORE_BUNDLE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).build.beforeBundleCommand || '')")
-ORIGINAL_CREATE_UPDATER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).bundle?.createUpdaterArtifacts ?? true)")
-export ORIGINAL_BEFORE_BUNDLE ORIGINAL_CREATE_UPDATER
-node -e "
-  const fs = require('fs');
-  const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-  conf.build.beforeBundleCommand = 'npm run stage:runtime';
-  // Disable updater artifact signing for local builds (requires CI-only secrets)
-  // Keep the pubkey and endpoints intact — the updater plugin needs them at runtime.
-  conf.bundle = conf.bundle || {};
-  conf.bundle.createUpdaterArtifacts = false;
-  fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
-"
+node scripts/patch-tauri-conf.mjs patch
 
 # ── Build ────────────────────────────────────────────────
 case "$PLATFORM" in
@@ -91,21 +112,8 @@ esac
 echo "==> Building Tauri app (bundles: $BUNDLES)..."
 npx tauri build --bundles "$BUNDLES"
 
-# Restore only the two fields we patched — don't blow away other pending
-# edits such as version bumps or plugin config changes the developer made
-# between the start of this build and now.
-node -e "
-  const fs = require('fs');
-  const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-  const origBefore = process.env.ORIGINAL_BEFORE_BUNDLE;
-  if (origBefore) conf.build.beforeBundleCommand = origBefore;
-  const origCreate = process.env.ORIGINAL_CREATE_UPDATER;
-  if (origCreate !== undefined && origCreate !== '') {
-    conf.bundle = conf.bundle || {};
-    conf.bundle.createUpdaterArtifacts = origCreate === 'true';
-  }
-  fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
-" 2>/dev/null || true
+# Restore the committed tauri.conf.json — same helper as Windows.
+node scripts/patch-tauri-conf.mjs restore 2>/dev/null || true
 
 # ── Publish installers to /assets ────────────────────────
 # The Tauri bundle tree is three directories deep and differs per target.

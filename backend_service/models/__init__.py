@@ -121,6 +121,10 @@ class UpdateSettingsRequest(BaseModel):
     # restores the default (data-dir/images/outputs or data-dir/videos/outputs).
     imageOutputsDirectory: str | None = Field(default=None, max_length=4096)
     videoOutputsDirectory: str | None = Field(default=None, max_length=4096)
+    # HF_HOME override — redirects every snapshot_download to a different
+    # drive. Applied by the Tauri shell at backend spawn; requires restart
+    # to take effect. Empty string clears the override.
+    hfCachePath: str | None = Field(default=None, max_length=4096)
 
 
 class OpenAIMessage(BaseModel):
@@ -204,6 +208,8 @@ class ImageGenerationRequest(BaseModel):
     seed: int | None = Field(default=None, ge=0, le=2147483647)
     batchSize: int = Field(default=1, ge=1, le=4)
     qualityPreset: str | None = Field(default=None, max_length=32)
+    draftMode: bool = Field(default=False)
+    sampler: str | None = Field(default=None, max_length=32)
 
 
 class ImageRuntimePreloadRequest(BaseModel):
@@ -239,3 +245,6 @@ class VideoGenerationRequest(BaseModel):
     steps: int = Field(default=50, ge=1, le=100)
     guidance: float = Field(default=3.0, ge=1.0, le=20.0)
     seed: int | None = Field(default=None, ge=0, le=2147483647)
+    # Smoothness post-processing. 1 = generated frames only; 2 or 4
+    # inserts blended intermediates to raise the effective fps.
+    interpolationFactor: int = Field(default=1, ge=1, le=4)

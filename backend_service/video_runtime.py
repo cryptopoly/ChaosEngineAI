@@ -31,7 +31,9 @@ from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present
 from backend_service.image_runtime import validate_local_diffusers_snapshot
+from cache_compression import apply_diffusion_cache_strategy
 from backend_service.progress import (
+    GenerationCancelled,
     PHASE_DECODING,
     PHASE_DIFFUSING,
     PHASE_ENCODING,
@@ -177,6 +179,13 @@ class VideoRuntimeStatus:
     realGenerationAvailable: bool
     message: str
     device: str | None = None
+    # ``expectedDevice`` is the device we'll ask torch to use on the
+    # next Generate click, predicted from nvidia-smi + platform checks
+    # WITHOUT importing torch. Lets the Studio show "Device: cuda
+    # (expected)" before anything has loaded, so users can confirm GPU
+    # will be used before sinking 2+ GB of model download into it.
+    # Mirrors ``ImageRuntimeStatus.expectedDevice``.
+    expectedDevice: str | None = None
     pythonExecutable: str | None = None
     missingDependencies: list[str] = field(default_factory=list)
     loadedModelRepo: str | None = None
@@ -194,6 +203,23 @@ class VideoRuntimeStatus:
         return asdict(self)
 
 
+def _guess_video_expected_device() -> str | None:
+    """Predict the device torch will bind to without importing torch.
+
+    Importing torch in probe() would lock torch/lib/*.dll and block the
+    GPU-bundle installer on Windows (same trap the image runtime hit).
+    ``find_spec`` + ``nvidia_gpu_present`` are free of that side effect
+    and accurate enough for the UI badge.
+    """
+    if importlib.util.find_spec("torch") is None:
+        return None
+    if nvidia_gpu_present():
+        return "cuda"
+    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+        return "mps"
+    return "cpu"
+
+
 @dataclass(frozen=True)
 class VideoGenerationConfig:
     """Shape consumed by ``DiffusersVideoEngine.generate``."""
@@ -209,6 +235,27 @@ class VideoGenerationConfig:
     guidance: float
     steps: int = 50
     seed: int | None = None
+    # GGUF quantization for video DiT transformers. When set, the
+    # transformer is loaded from a single .gguf file while the VAE /
+    # text encoders still come from the base ``repo`` snapshot. The
+    # pipeline cache keys on (repo, ggufFile) so multiple quant levels
+    # can coexist without evicting each other.
+    ggufRepo: str | None = None
+    ggufFile: str | None = None
+    # Post-processing frame interpolation. Factor of 1 means disabled;
+    # 2 or 4 insert interpolated frames between each generated frame
+    # and bump the reported fps by the same factor, producing smoother
+    # motion at higher frame rates without generating more DiT frames
+    # (which is 10-50x more expensive than interpolation).
+    interpolationFactor: int = 1
+    # Optional diffusion cache strategy id, e.g. "teacache". Mirrors the
+    # image_runtime field — video DiTs benefit even more from timestep
+    # caching (Wan2.1 720P 30% faster, HunyuanVideo up to 2.1×). When the
+    # strategy has no vendored patch for this pipeline the engine swallows
+    # the NotImplementedError and falls back to the stock pipeline — the
+    # UI shows the "Scaffold" badge so users know why.
+    cacheStrategy: str | None = None
+    cacheRelL1Thresh: float | None = None
 
 
 @dataclass(frozen=True)
@@ -241,6 +288,9 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
+    # Wan 2.2 TI2V-5B is a dense text+image-to-video model — uses the
+    # standard WanPipeline loader (no dual-expert routing like A14B).
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"class_name": "WanPipeline", "task": "txt2video"},
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
     # CogVideoX 2B and 5B share the same diffusers pipeline class — the
@@ -248,6 +298,73 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
+
+
+# Maps a base repo to the diffusers transformer class used when loading
+# GGUF-quantized DiT weights via ``from_single_file``. city96 currently
+# ships LTX-Video, Wan, and HunyuanVideo GGUFs; CogVideoX uses a
+# different loader we don't support here. Returning None leaves the
+# pipeline on the standard fp16 / bf16 transformer path.
+_GGUF_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
+    "Lightricks/LTX-Video": "LTXVideoTransformer3DModel",
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
+    "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
+}
+
+
+def _gguf_video_transformer_class_for_repo(repo: str) -> str | None:
+    return _GGUF_VIDEO_TRANSFORMER_CLASSES.get(repo)
+
+
+def _interpolate_frames(frames: list[Any], factor: int) -> list[Any]:
+    """Insert ``factor - 1`` blended frames between each source pair.
+
+    This is a linear-blend (numpy-weighted average) frame interpolator —
+    simpler and faster than RIFE but gives visibly smoother motion at
+    2x/4x. Swap this for a RIFE model call when the weights ship — the
+    pipeline shape (``list[np.ndarray]`` in RGB uint8) stays the same.
+
+    A factor of 1 is a no-op. Factors above 1 produce
+    ``(len - 1) * factor + 1`` frames so the endpoint timings align
+    with the original clip.
+    """
+    if factor <= 1 or len(frames) < 2:
+        return list(frames)
+    try:
+        import numpy as np  # type: ignore
+    except Exception:
+        return list(frames)
+
+    def _to_array(frame: Any):
+        if hasattr(frame, "shape"):
+            return np.asarray(frame)
+        return np.asarray(frame, dtype=np.uint8)
+
+    interpolated: list[Any] = []
+    total = len(frames)
+    for index in range(total - 1):
+        current = _to_array(frames[index])
+        nxt = _to_array(frames[index + 1])
+        if current.shape != nxt.shape:
+            # Different shape → skip blending, just duplicate. Robust
+            # against frames of mixed dtypes (list of PIL Images).
+            interpolated.append(frames[index])
+            for _ in range(factor - 1):
+                interpolated.append(frames[index])
+            continue
+        interpolated.append(frames[index])
+        for sub_index in range(1, factor):
+            alpha = sub_index / factor
+            blended = (current.astype(np.float32) * (1.0 - alpha)
+                       + nxt.astype(np.float32) * alpha)
+            interpolated.append(
+                np.clip(blended, 0, 255).astype(current.dtype)
+            )
+    interpolated.append(frames[-1])
+    return interpolated
 
 
 # Core packages that gate ``realGenerationAvailable``. Without these, the
@@ -323,6 +440,7 @@ class DiffusersVideoEngine:
         self._torch: Any | None = None
         self._loaded_repo: str | None = None
         self._loaded_path: str | None = None
+        self._loaded_variant_key: str | None = None
         self._device: str | None = None
 
     # ---------- public API ----------
@@ -358,6 +476,7 @@ class DiffusersVideoEngine:
                 realGenerationAvailable=False,
                 missingDependencies=missing_all,
                 pythonExecutable=_resolve_video_python(),
+                expectedDevice=_guess_video_expected_device(),
                 message=(
                     f"Video runtime needs these packages: {', '.join(missing_core)}. "
                     "Click the 'Install GPU runtime' button above to install the full bundle."
@@ -387,17 +506,25 @@ class DiffusersVideoEngine:
                 "will use the diffusers runtime."
             )
 
-        # ``device`` / ``deviceMemoryGb`` mirror the currently-loaded model's
-        # runtime context. Before anything is preloaded both are None — we
-        # no longer speculatively import torch just to report cuda vs cpu in
-        # the empty case, because doing so locked DLLs and broke installs.
+        # ``device`` mirrors the currently-loaded model's runtime context —
+        # None until preload, because importing torch speculatively locks
+        # DLLs on Windows and breaks /api/setup/install-gpu-bundle.
+        #
+        # ``deviceMemoryGb`` is resolved independently. It reads sysctl on
+        # macOS and nvidia-smi on Linux/Windows — neither needs a loaded
+        # model, and both are cheap (cached per-process). Gating it behind
+        # ``device is not None`` used to leave the frontend safety heuristic
+        # with no data until first load, which made it fall back to its
+        # 16 GB MPS default and warn a 64 GB M4 Max user as if they were
+        # on a base-model Mac.
         device = self._device
-        device_memory_gb = _detect_device_memory_gb(device) if device is not None else None
+        device_memory_gb = _detect_device_memory_gb(device)
 
         return VideoRuntimeStatus(
             activeEngine="diffusers",
             realGenerationAvailable=True,
             device=device,
+            expectedDevice=_guess_video_expected_device(),
             pythonExecutable=_resolve_video_python(),
             missingDependencies=missing_optional,
             message=message,
@@ -447,7 +574,17 @@ class DiffusersVideoEngine:
                     "Run `pip install imageio imageio-ffmpeg` and retry."
                 )
 
-            pipeline = self._ensure_pipeline(config.repo)
+            pipeline = self._ensure_pipeline(
+                config.repo,
+                gguf_repo=config.ggufRepo,
+                gguf_file=config.ggufFile,
+            )
+            # Early-cancel check after model load — from_pretrained is a
+            # blocking C-extension call we can't interrupt. If the user hit
+            # Cancel during load we catch up here and bail before we sink
+            # time into T5 encoding + the denoising loop.
+            if VIDEO_PROGRESS.is_cancelled():
+                raise GenerationCancelled("Video generation cancelled by user")
             torch = self._torch
             if torch is None:
                 raise RuntimeError("PyTorch was not initialised for the video runtime.")
@@ -468,6 +605,20 @@ class DiffusersVideoEngine:
             )
             VIDEO_PROGRESS.set_step(0, total=max(1, int(config.steps)))
 
+            # TeaCache / other diffusion caches hook here — pipeline is
+            # loaded and num_inference_steps is final. Video DiTs are
+            # where TeaCache pays off most (1.6–2.1× on HunyuanVideo,
+            # ~1.3–2× on Wan). NotImplementedError is swallowed by the
+            # helper when the pipeline class has no vendored patch yet;
+            # see FU-007 in CLAUDE.md.
+            apply_diffusion_cache_strategy(
+                pipeline,
+                strategy_id=config.cacheStrategy,
+                num_inference_steps=int(config.steps),
+                rel_l1_thresh=config.cacheRelL1Thresh,
+                domain="video",
+            )
+
             started = time.perf_counter()
             frames = self._invoke_pipeline(pipeline, kwargs)
             elapsed = max(0.1, time.perf_counter() - started)
@@ -478,8 +629,16 @@ class DiffusersVideoEngine:
                     "Try a smaller resolution or a different model."
                 )
 
+            interpolation_factor = max(1, int(config.interpolationFactor or 1))
+            if interpolation_factor > 1:
+                VIDEO_PROGRESS.set_phase(
+                    PHASE_DECODING,
+                    message=f"Interpolating {interpolation_factor}x frames",
+                )
+                frames = _interpolate_frames(frames, interpolation_factor)
+            effective_fps = config.fps * interpolation_factor
             VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Encoding mp4")
-            mp4_bytes = self._encode_frames_to_mp4(frames, config.fps)
+            mp4_bytes = self._encode_frames_to_mp4(frames, effective_fps)
             if not mp4_bytes:
                 raise RuntimeError(
                     "mp4 encoding produced an empty buffer. Check that imageio-ffmpeg is "
@@ -494,7 +653,7 @@ class DiffusersVideoEngine:
                 mimeType="video/mp4",
                 durationSeconds=round(elapsed, 2),
                 frameCount=len(frames),
-                fps=config.fps,
+                fps=effective_fps,
                 width=config.width,
                 height=config.height,
                 runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
@@ -549,6 +708,15 @@ class DiffusersVideoEngine:
 
         def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
             VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+            # Cooperative cancel: raise here when the user clicks Cancel on
+            # the modal. See ``image_runtime._on_step_end`` for the same
+            # pattern and rationale.
+            if VIDEO_PROGRESS.is_cancelled():
+                try:
+                    _pipeline._interrupt = True
+                except Exception:
+                    pass
+                raise GenerationCancelled("Video generation cancelled by user")
             return callback_kwargs
 
         kwargs.setdefault("callback_on_step_end", _on_step_end)
@@ -651,9 +819,15 @@ class DiffusersVideoEngine:
             )
         return pipeline_cls
 
-    def _ensure_pipeline(self, repo: str) -> Any:
+    def _ensure_pipeline(
+        self,
+        repo: str,
+        gguf_repo: str | None = None,
+        gguf_file: str | None = None,
+    ) -> Any:
         with self._lock:
-            if self._pipeline is not None and self._loaded_repo == repo:
+            variant_key = f"{repo}::{gguf_file}" if gguf_file else repo
+            if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
             # Loading a video pipeline can read 10+ GB from disk on cold cache.
@@ -661,7 +835,7 @@ class DiffusersVideoEngine:
             # snapshot_download + from_pretrained run.
             VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=f"Loading {repo}")
 
-            if self._pipeline is not None and self._loaded_repo != repo:
+            if self._pipeline is not None and self._loaded_variant_key != variant_key:
                 self._release_pipeline()
 
             import torch  # type: ignore
@@ -682,10 +856,28 @@ class DiffusersVideoEngine:
             device = self._detect_device(torch)
             dtype = self._preferred_torch_dtype(torch, device)
 
+            pipeline_kwargs: dict[str, Any] = {}
+            if gguf_file:
+                VIDEO_PROGRESS.set_phase(
+                    PHASE_LOADING,
+                    message=f"Loading GGUF transformer {gguf_file}",
+                )
+                quantized_transformer, gguf_note = self._try_load_gguf_transformer(
+                    repo=repo,
+                    gguf_repo=gguf_repo or repo,
+                    gguf_file=gguf_file,
+                    torch=torch,
+                )
+                if quantized_transformer is not None:
+                    pipeline_kwargs["transformer"] = quantized_transformer
+                if gguf_note:
+                    VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=gguf_note)
+
             pipeline = pipeline_cls.from_pretrained(
                 local_path,
                 torch_dtype=dtype,
                 local_files_only=True,
+                **pipeline_kwargs,
             )
 
             # Memory-saving knobs. Video pipelines are hungry on unified-memory
@@ -716,8 +908,74 @@ class DiffusersVideoEngine:
             self._torch = torch
             self._loaded_repo = repo
             self._loaded_path = local_path
+            self._loaded_variant_key = variant_key
             self._device = device
             return pipeline
+
+    def _try_load_gguf_transformer(
+        self,
+        repo: str,
+        gguf_repo: str,
+        gguf_file: str,
+        torch: Any,
+    ) -> tuple[Any, str | None]:
+        """Load a video DiT from a single ``.gguf`` file via diffusers.
+
+        Mirrors the image-side loader: GGUF weights cover the DiT only;
+        VAE and text encoders are loaded from the base ``repo`` snapshot.
+        All failure modes are non-fatal — a missing ``gguf`` package, an
+        old diffusers without ``GGUFQuantizationConfig``, or an HF cache
+        miss falls back to the standard fp16 / bf16 transformer path.
+        """
+        if importlib.util.find_spec("gguf") is None:
+            return None, (
+                "gguf package missing — install it from the Setup page to "
+                f"load {gguf_file}. Falling back to the standard transformer."
+            )
+        try:
+            from diffusers import GGUFQuantizationConfig  # type: ignore
+        except ImportError:
+            return None, (
+                "Installed diffusers doesn't expose GGUFQuantizationConfig. "
+                "Upgrade diffusers via the Setup page to use GGUF variants."
+            )
+        transformer_cls_name = _gguf_video_transformer_class_for_repo(repo)
+        if transformer_cls_name is None:
+            return None, (
+                f"No GGUF transformer class registered for {repo}. "
+                "Add it to _GGUF_VIDEO_TRANSFORMER_CLASSES."
+            )
+        try:
+            import diffusers  # type: ignore
+        except Exception:
+            return None, "diffusers import failed — cannot load GGUF transformer."
+        transformer_cls = getattr(diffusers, transformer_cls_name, None)
+        if transformer_cls is None:
+            return None, (
+                f"{transformer_cls_name} not in installed diffusers — "
+                "upgrade to use this GGUF variant."
+            )
+
+        try:
+            from huggingface_hub import hf_hub_download  # type: ignore
+            gguf_local_path = hf_hub_download(
+                repo_id=gguf_repo,
+                filename=gguf_file,
+                local_files_only=True,
+            )
+            transformer = transformer_cls.from_single_file(
+                gguf_local_path,
+                quantization_config=GGUFQuantizationConfig(
+                    compute_dtype=torch.bfloat16,
+                ),
+                torch_dtype=torch.bfloat16,
+            )
+            return transformer, f"Transformer loaded from GGUF ({gguf_file})"
+        except Exception as exc:  # noqa: BLE001 — any failure → fall back
+            return None, (
+                f"GGUF load failed ({type(exc).__name__}: {exc}) — "
+                "falling back to the standard transformer."
+            )
 
     def _release_pipeline(self) -> None:
         pipeline = self._pipeline
@@ -727,6 +985,7 @@ class DiffusersVideoEngine:
         self._torch = None
         self._loaded_repo = None
         self._loaded_path = None
+        self._loaded_variant_key = None
         self._device = None
         if pipeline is not None:
             del pipeline
@@ -760,18 +1019,71 @@ class DiffusersVideoEngine:
         return torch.float32
 
 
+def _is_longlive_repo(repo: str | None) -> bool:
+    """Route LongLive repos to the subprocess engine, everything else to diffusers.
+
+    LongLive is not a diffusers pipeline — it ships as a torchrun-launched
+    script with its own CUDA-specific deps that we keep in an isolated
+    venv (see ``backend_service.longlive_engine``). Routing happens by
+    repo prefix so the rest of the video stack doesn't need to know
+    there's a second engine behind the manager.
+    """
+    if not repo:
+        return False
+    return repo.startswith("NVlabs/LongLive")
+
+
 class VideoRuntimeManager:
     """State-level facade that mirrors ``ImageRuntimeManager``."""
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._engine = DiffusersVideoEngine()
+        # Lazy-constructed so the LongLive import (and its probe, which
+        # shells out to nvidia-smi) doesn't run on every sidecar start —
+        # only when a LongLive repo is actually selected.
+        self._longlive: Any | None = None
+        # Same pattern for mlx-video (FU-009). Probe-only in this phase
+        # — generate() raises, preload/generate are not routed through
+        # the manager yet. See ``mlx_video_runtime`` module docstring.
+        self._mlx_video: Any | None = None
+
+    def _get_longlive(self) -> Any:
+        if self._longlive is None:
+            from backend_service.longlive_engine import LongLiveEngine
+            self._longlive = LongLiveEngine()
+        return self._longlive
+
+    def _get_mlx_video(self) -> Any:
+        if self._mlx_video is None:
+            from backend_service.mlx_video_runtime import MlxVideoEngine
+            self._mlx_video = MlxVideoEngine()
+        return self._mlx_video
 
     def capabilities(self) -> dict[str, Any]:
         return self._engine.probe().to_dict()
 
+    def longlive_capabilities(self) -> dict[str, Any]:
+        """Probe the LongLive engine separately so the Studio can surface install state."""
+        return self._get_longlive().probe().to_dict()
+
+    def mlx_video_capabilities(self) -> dict[str, Any]:
+        """Probe the mlx-video engine so Setup can surface install state.
+
+        Scaffold-only — Studio still routes generation through diffusers.
+        When FU-009 lands, preload/generate will dispatch here for the
+        repos in ``mlx_video_runtime.supported_repos()`` on Apple Silicon.
+        """
+        return self._get_mlx_video().probe().to_dict()
+
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:
+            if _is_longlive_repo(repo):
+                engine = self._get_longlive()
+                status = engine.probe()
+                if not status.realGenerationAvailable:
+                    raise RuntimeError(status.message)
+                return engine.preload(repo).to_dict()
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
@@ -779,6 +1091,8 @@ class VideoRuntimeManager:
 
     def unload(self, repo: str | None = None) -> dict[str, Any]:
         with self._lock:
+            if _is_longlive_repo(repo):
+                return self._get_longlive().unload(repo).to_dict()
             return self._engine.unload(repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
@@ -789,6 +1103,16 @@ class VideoRuntimeManager:
         the runtime isn't ready, raise a clear error so the route can return
         a proper 4xx.
         """
+        if _is_longlive_repo(config.repo):
+            engine = self._get_longlive()
+            status = engine.probe()
+            if not status.realGenerationAvailable:
+                raise RuntimeError(status.message)
+            with self._lock:
+                video = engine.generate(config)
+                runtime = engine.probe().to_dict()
+            return video, runtime
+
         status = self._engine.probe()
         if not status.realGenerationAvailable:
             raise RuntimeError(status.message)

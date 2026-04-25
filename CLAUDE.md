@@ -1,73 +1,5 @@
 # ChaosEngineAI — Project Guide
 
-## Behavioral Guidelines (Karpathy)
-
-Sourced from `~/andrej-karpathy-skills/CLAUDE.md`. Bias toward caution over
-speed — for trivial tasks, use judgment.
-
-### 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-### 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-### 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: every changed line should trace directly to the user's request.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria
-("make it work") require constant clarification.
-
-**These guidelines are working if:** fewer unnecessary changes in diffs,
-fewer rewrites due to overcomplication, and clarifying questions come
-before implementation rather than after mistakes.
-
----
-
 ## Architecture Overview
 
 ChaosEngineAI is a desktop AI inference app built with:
@@ -141,6 +73,27 @@ Check for updates to external repos we build from or depend on:
 - [ ] `scripts/stage-runtime.mjs` stages both `llama-server` and `llama-server-turbo` if available
 - [ ] Manifest includes `llamaServerTurbo` field
 - [ ] `src-tauri/src/lib.rs` sets `CHAOSENGINE_LLAMA_SERVER_TURBO` env var
+
+---
+
+## Follow-Ups Tracker
+
+Deferred work and upstream conditions to re-check periodically. Revisit at each
+release or when touching the affected subsystem. Delete entries once shipped or
+no longer relevant.
+
+| ID | Item | Trigger / Condition | Notes |
+|----|------|---------------------|-------|
+| FU-001 | Bump `turboquant` to 0.3.x | PyPI publishes `>=0.3.0` (source at 0.3.1 since 2026-04-16) | Adds asymmetric K/V bits, layer-adaptive precision, `--no-quant` eval flag, NumPy 2.0 + transformers 5.x compat. Backward compatible per upstream README. Bump extra in [pyproject.toml](pyproject.toml) once available. |
+| FU-002 | Wire TriAttention MLX compressor into mlx_worker | When adding experimental KV compression path for mlx-lm generation | **Blocked on upstream API gap.** `TriAttentionStrategy.apply_mlx_compressor()` exists ([cache_compression/triattention.py](cache_compression/triattention.py)) and triattention 0.2.0 is installable via `pip install --no-deps` (skips triton which is CUDA-only). BUT: (1) `mlx_lm.stream_generate` exposes no per-step callback for invoking the compressor; (2) upstream's `triattention_generate_step` expects `List[Tuple[mx.array, mx.array]]` raw tensor tuples but mlx-lm passes `KVCache` wrapper objects. Fix path: custom generation loop (~100-200 lines) bridging KVCache ↔ tuples, plus calibration-stats UX + kv_budget setting. Do on a CUDA box or with a small test model — don't ship blind. |
+| FU-003 | LongLive integration for Wan 2.1 T2V 1.3B | CUDA platforms (Windows/Linux) only | Real-time causal long video gen ([triattention/longlive](https://github.com/WeianMao/triattention/tree/main/longlive)). We ship the target model already. Needs: new video backend branch in [backend_service/video_runtime.py](backend_service/video_runtime.py), LoRA weights download, torchrun orchestration, UI affordance for long-clip mode. Flash Attention dep. |
+| FU-004 | TriAttention SGLang backend | When/if we adopt SGLang as an inference backend | Added upstream 2026-04-22 as v0.2.0. No action unless SGLang lands in our runtime. |
+| ~~FU-005~~ | ~~arozanov v_only TurboQuant MLX mode~~ | **Dropped 2026-04-24** | Our current `turboquant-mlx-full` 0.1.3 path already runs without any mlx-lm fork — uses pip `TurboQuantKVCache` with `QuantizedKVCache` fallback ([turboquant_mlx/__init__.py:174-186](turboquant_mlx/__init__.py)). `VOnlyTurboQuantCache` is only in the arozanov fork (we track but don't consume). Value prop already satisfied; entry removed. |
+| FU-006 | Re-verify dflash-mlx pin | Quarterly, or when Qwen/Llama drafts land | Currently `f825ffb` = v0.1.4.1 (latest). Upstream deleted tags April 2026 — pin by commit. |
+| FU-007 | TeaCache diffusion cache strategy | **Scaffolded 2026-04-24** — land FLUX + Wan2.1 hooks, then expand | Training-free timestep-aware DiT cache; 1.5–2.0× on FLUX, 1.6–2.1× on HunyuanVideo, 30% faster 720P Wan2.1 ([ali-vilab/TeaCache](https://github.com/ali-vilab/TeaCache), Apache 2.0). Extends [cache_compression/](cache_compression/) registry to diffusion via `apply_diffusers_hook()`. Wired into [backend_service/image_runtime.py](backend_service/image_runtime.py) + [backend_service/video_runtime.py](backend_service/video_runtime.py). `rel_l1_thresh` knob default 0.4. Start FLUX + Wan2.1; gate HunyuanVideo/Mochi/LTX/CogVideoX behind capability probes. |
+| FU-008 | `stable-diffusion.cpp` engine (cross-platform diffusion) | Next release cycle — dedicated binary staging work | Architectural twin of llama.cpp for diffusion: CPU/CUDA/**Metal**/Vulkan/OpenCL/SYCL backends, GGUF + safetensors. Models: SD 1.x/2.x/XL, FLUX.1/2, **Wan2.1/2.2 video**, Qwen Image, Z-Image. Repo [leejet/stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) (MIT, 5.8k⭐, 587 commits, release 2026-04-23). Follow `llama-server` pattern: build binary, stage via [scripts/stage-runtime.mjs](scripts/stage-runtime.mjs), resolve path in [src-tauri/src/lib.rs](src-tauri/src/lib.rs), new engine in [backend_service/image_runtime.py](backend_service/image_runtime.py) + [backend_service/video_runtime.py](backend_service/video_runtime.py). Unlocks cross-platform Wan video GGUF on Mac — closes the single biggest video gap. |
+| FU-009 | mlx-video (Blaizzy) Apple Silicon video engine | Promote from scaffold when Wan2.2 end-to-end validated on Mac | [Blaizzy/mlx-video](https://github.com/Blaizzy/mlx-video) (MIT, 198⭐). Native MLX Wan2.1 (1.3B/14B), Wan2.2 (T2V-14B, TI2V-5B, I2V-14B), LTX-2 (19B). T2V + I2V + A2V (LTX-2). Mac-side complement to FU-003's CUDA LongLive. Scaffold exists at [backend_service/mlx_video_runtime.py](backend_service/mlx_video_runtime.py) — probe + engine shell. Finish: subprocess generate() wiring, route on Apple Silicon in [video_runtime.py](backend_service/video_runtime.py) PIPELINE_REGISTRY before falling back to diffusers+MPS. |
+| FU-010 | vllm-swift Apple Silicon backend (**watch-only**) | Re-evaluate after 1–2 releases or mid-2026; skip if stars/commits stagnate | [TheTom/vllm-swift](https://github.com/TheTom/vllm-swift) — Swift/Metal vLLM forward pass, Python orchestration only. 2.4× over mlx_lm on Qwen3-0.6B single-request; matches vLLM at concurrency 64. Fills the macOS vLLM gap. Low-activity single fork (76 commits, 1 open issue) — treat as experimental. Action: monitor. No code this cycle. |
 
 ---
 

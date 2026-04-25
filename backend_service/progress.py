@@ -32,7 +32,7 @@ so the runtimes and routes share the same instance without the
 from __future__ import annotations
 
 import time
-from threading import RLock
+from threading import Event, RLock
 from typing import Any
 
 
@@ -71,6 +71,13 @@ class ProgressTracker:
         # Optional run-shape metadata so the UI can render labels like
         # "Diffusing 3 images" without a separate request.
         self._run_label: str | None = None
+        # Cooperative cancel signal — the UI's Cancel button sets this via
+        # /api/{images,video}/cancel; the pipeline's step-end callback reads
+        # it and raises to abort the run. ``Event`` (not a plain bool)
+        # because the pipeline callback runs on a non-main thread and we
+        # want the set-from-request-thread → read-from-pipeline-thread
+        # synchronisation the stdlib primitive gives us for free.
+        self._cancel_event = Event()
 
     def begin(
         self,
@@ -90,6 +97,10 @@ class ProgressTracker:
             self._started_at = now
             self._updated_at = now
             self._run_label = run_label
+            # Clear any cancel flag from a previous run — otherwise a user
+            # who cancelled yesterday's gen would have today's first click
+            # abort before it started.
+            self._cancel_event.clear()
 
     def set_phase(self, phase: str, message: str = "") -> None:
         """Move into a new phase. Resets ``step`` so per-phase progress is
@@ -129,6 +140,31 @@ class ProgressTracker:
             self._total_steps = 0
             self._updated_at = time.time()
             self._run_label = None
+            # Leave ``_cancel_event`` alone — the route handler needs to be
+            # able to check whether the just-finished run was cancelled so
+            # it can return the right status. ``begin()`` clears it for the
+            # next run.
+
+    def request_cancel(self) -> bool:
+        """Signal the running pipeline to abort at the next step boundary.
+
+        Returns True when the signal was accepted (a run was in flight),
+        False when there was nothing to cancel. Idempotent — calling twice
+        is fine. The actual abort happens cooperatively: the pipeline's
+        step-end callback reads ``is_cancelled()`` and raises.
+        """
+        with self._lock:
+            if not self._active:
+                return False
+            self._cancel_event.set()
+            self._message = "Cancelling..."
+            self._updated_at = time.time()
+            return True
+
+    def is_cancelled(self) -> bool:
+        """Fast poll used from the pipeline's step-end callback. No lock —
+        ``Event.is_set()`` is already thread-safe and we call it every step."""
+        return self._cancel_event.is_set()
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
@@ -145,7 +181,17 @@ class ProgressTracker:
                 "updatedAt": self._updated_at,
                 "elapsedSeconds": round(elapsed, 3),
                 "runLabel": self._run_label,
+                "cancelRequested": self._cancel_event.is_set(),
             }
+
+
+class GenerationCancelled(RuntimeError):
+    """Raised by the pipeline callback when the user clicks Cancel.
+
+    Distinct from generic ``RuntimeError`` so route handlers can catch it
+    and return a 499-style "cancelled" response rather than a 500 error,
+    and so logs can tell legitimate cancels apart from pipeline crashes.
+    """
 
 
 # Module-level singletons. The runtime managers and the route handlers both

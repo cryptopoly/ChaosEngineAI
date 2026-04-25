@@ -12,6 +12,12 @@ import type { TauriBackendInfo, WorkspaceData } from "../types";
 export function useWorkspace() {
   const [workspace, setWorkspace] = useState<WorkspaceData>(emptyWorkspace);
   const [loading, setLoading] = useState(true);
+  // Elapsed seconds since the initial load started. Drives a phased
+  // startup message in App.tsx so users on first-launch cold starts
+  // (extract 280 MB runtime, spawn Python, import FastAPI/MLX) can
+  // see *what* is taking the time instead of staring at a static
+  // "Loading workspace state..." for 30 s.
+  const [loadingElapsedSeconds, setLoadingElapsedSeconds] = useState(0);
   const [backendOnline, setBackendOnline] = useState(false);
   const [tauriBackend, setTauriBackend] = useState<TauriBackendInfo | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -108,6 +114,15 @@ export function useWorkspace() {
   // at 10s) and keep going until we succeed or the component unmounts.
   useEffect(() => {
     let cancelled = false;
+    const startedAt = Date.now();
+    // Tick once per second so App.tsx can render a phased startup
+    // message ("Extracting runtime", "Starting Python", ...) driven
+    // off elapsed wall time rather than a silent spinner.
+    const elapsedTimer = setInterval(() => {
+      if (!cancelled) {
+        setLoadingElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+      }
+    }, 1000);
 
     async function loadInitial(): Promise<void> {
       let attempt = 0;
@@ -131,7 +146,19 @@ export function useWorkspace() {
           setLoading(false);
           return;
         } catch {
-          if (!cancelled) setBackendOnline(false);
+          if (!cancelled) {
+            setBackendOnline(false);
+            // Poll tauri backend info even while the FastAPI sidecar
+            // is still booting — it's served by the Rust shell so it
+            // comes online ~immediately and exposes startupError when
+            // the sidecar fails to spawn at all.
+            try {
+              const runtimeInfo = await getTauriBackendInfo();
+              if (!cancelled) setTauriBackend(runtimeInfo);
+            } catch {
+              /* tauri command not ready yet */
+            }
+          }
         }
       }
     }
@@ -139,6 +166,7 @@ export function useWorkspace() {
     void loadInitial();
     return () => {
       cancelled = true;
+      clearInterval(elapsedTimer);
     };
   }, []);
 
@@ -146,6 +174,7 @@ export function useWorkspace() {
     workspace,
     setWorkspace,
     loading,
+    loadingElapsedSeconds,
     setLoading,
     backendOnline,
     setBackendOnline,

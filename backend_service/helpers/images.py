@@ -767,6 +767,8 @@ def _hydrate_image_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "metadataPath": metadata_path or None,
         "runtimeLabel": str(payload.get("runtimeLabel") or ""),
         "runtimeNote": str(payload.get("runtimeNote") or "") or None,
+        "qualityPreset": str(payload.get("qualityPreset") or "") or None,
+        "draftMode": bool(payload.get("draftMode")),
     }
 
 

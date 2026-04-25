@@ -46,7 +46,6 @@ export function LatestImageDiscoverCard({
           <div className="image-family-title-row">
             <h3>{variant.name}</h3>
             <span className="badge muted">{variant.provider}</span>
-            {variant.source === "curated" ? <span className="badge accent">Curated</span> : null}
             {!variant.availableLocally && isDownloadComplete ? <span className="badge success">Downloaded</span> : null}
             {isDownloadPaused ? <span className="badge warning">Paused</span> : null}
             {isDownloadFailed ? <span className="badge warning">Download Failed</span> : null}

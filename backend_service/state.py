@@ -281,6 +281,11 @@ class ChaosEngineState:
             # value and the resolved path used for new artifacts.
             "imageOutputsDirectory": str(self.settings.get("imageOutputsDirectory") or ""),
             "videoOutputsDirectory": str(self.settings.get("videoOutputsDirectory") or ""),
+            # Hugging Face cache root override. Empty string means "use the
+            # platform default" — the frontend renders the resolved path
+            # alongside the override input so users always know where
+            # models are actually landing.
+            "hfCachePath": str(self.settings.get("hfCachePath") or ""),
         }
 
     def _bootstrap(self) -> None:
@@ -899,6 +904,7 @@ class ChaosEngineState:
             next_settings["huggingFaceToken"] = str(self.settings.get("huggingFaceToken") or "")
             next_settings["imageOutputsDirectory"] = str(self.settings.get("imageOutputsDirectory") or "")
             next_settings["videoOutputsDirectory"] = str(self.settings.get("videoOutputsDirectory") or "")
+            next_settings["hfCachePath"] = str(self.settings.get("hfCachePath") or "")
 
             if request.modelDirectories is not None:
                 next_settings["modelDirectories"] = _normalize_model_directories(
@@ -962,12 +968,22 @@ class ChaosEngineState:
             for field_name, label in (
                 ("imageOutputsDirectory", "imageOutputsDirectory"),
                 ("videoOutputsDirectory", "videoOutputsDirectory"),
+                ("hfCachePath", "hfCachePath"),
             ):
                 raw_value = getattr(request, field_name, None)
                 if raw_value is None:
                     continue
                 cleaned = raw_value.strip()
-                if cleaned and not (cleaned.startswith("/") or cleaned.startswith("~")):
+                # Accept Windows-style absolute paths (``D:\...``) alongside
+                # POSIX and ``~``-relative paths. Bare relative paths are
+                # rejected — silently writing artifacts to the backend's cwd
+                # is exactly the "where did my models go?" class of bug we
+                # want to avoid.
+                if cleaned and not (
+                    cleaned.startswith("/")
+                    or cleaned.startswith("~")
+                    or (len(cleaned) >= 2 and cleaned[1] == ":")
+                ):
                     raise HTTPException(
                         status_code=400,
                         detail=f"{label} must be an absolute path or start with ~.",

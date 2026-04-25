@@ -18,7 +18,9 @@ router = APIRouter()
 _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "turboquant": "turboquant",
     "turboquant-mlx": "turboquant-mlx-full",
-    "triattention": "triattention",
+    # Not published on PyPI — install from git. Pairs with mlx_lm on macOS
+    # or vllm on Linux/CUDA (see the cache_compression.triattention adapter).
+    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git",
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
@@ -62,6 +64,34 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "accelerate": "accelerate",
     "huggingface_hub": "huggingface_hub",
     "pillow": "pillow",
+    # NF4 quantization for FLUX.1 Dev on consumer GPUs. Without this, the
+    # 12B FLUX transformer fits in bf16 only on ≥32 GB VRAM cards; with
+    # NF4 it drops to ~7 GB and runs comfortably on 4090-class hardware.
+    # Windows wheels have shipped cleanly since 0.43.
+    "bitsandbytes": "bitsandbytes",
+    # GGUF transformer loading for FLUX, SD3, LTX-Video, HunyuanVideo, Wan.
+    # Unlike bitsandbytes, gguf is pure-python + CPU-side — it works on
+    # Apple Silicon and Windows without CUDA, so we ship it as the
+    # cross-platform quantization option for image and video DiTs.
+    "gguf": "gguf",
+    # TorchAO int8 weight-only quantization. Works on CUDA and MPS — the
+    # Apple Silicon FLUX path has no bitsandbytes (CUDA-only) equivalent,
+    # so int8wo is how we drop the 12B transformer from ~24 GB bf16 to
+    # ~12 GB on M-series Macs. Roughly half the memory saving of NF4
+    # but twice the platform reach.
+    "torchao": "torchao",
+    # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
+    # of diffusers+MPS, which is noticeably faster and doesn't hit the
+    # MPS fp16-black-image edge cases. Apple Silicon only — installer
+    # should hide this package on other platforms (handled upstream in
+    # the capability check).
+    "mflux": "mflux",
+    # Apple Silicon MLX video runtime (Blaizzy/mlx-video, MIT). Subprocess
+    # wrapper in backend_service.mlx_video_runtime routes Wan2.1/2.2/LTX-2
+    # to native MLX kernels instead of diffusers+MPS. The capability probe
+    # gates this package on Apple Silicon — installer hides it elsewhere.
+    # See FU-009 in CLAUDE.md.
+    "mlx-video": "mlx-video",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {
@@ -97,10 +127,16 @@ _turbo_remote_cache: tuple[str | None, float] = (None, 0.0)
 _TURBO_REMOTE_CACHE_TTL = 3600.0  # 1 hour
 
 
-def _installable_system_packages() -> dict[str, list[str]]:
+def _installable_system_packages(python_executable: str) -> dict[str, list[str]]:
+    # LongLive's install runs a multi-minute clone + pip install + weight
+    # download, so it needs the longer 10-minute system-install timeout
+    # rather than the 5-minute pip path. We invoke it as a Python module
+    # rather than a shell script so Windows hosts don't need Git Bash.
+    # The installer itself rejects macOS (CUDA-only).
     return {
         "llama.cpp": ["brew", "install", "llama.cpp"],
         "llama-server-turbo": [str(_workspace_root() / "scripts" / "build-llama-turbo.sh")],
+        "longlive": [python_executable, "-m", "backend_service.longlive_installer"],
     }
 
 
@@ -150,7 +186,8 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
 def install_system_package(request: Request, body: InstallPackageRequest) -> dict[str, Any]:
     """Install a whitelisted system package (e.g. llama.cpp via brew)."""
     state = request.app.state.chaosengine
-    cmd_template = _installable_system_packages().get(body.package)
+    python_executable = state.runtime.capabilities.pythonExecutable
+    cmd_template = _installable_system_packages(python_executable).get(body.package)
     if cmd_template is None:
         raise HTTPException(status_code=400, detail=f"System package '{body.package}' is not in the allowed install list.")
 
@@ -160,7 +197,17 @@ def install_system_package(request: Request, body: InstallPackageRequest) -> dic
         output = (result.stdout + "\n" + result.stderr).strip()
         ok = result.returncode == 0
     except FileNotFoundError:
-        output = f"'{cmd_template[0]}' is not installed. Install Homebrew first: https://brew.sh"
+        # The generic "install Homebrew" hint only makes sense when the
+        # command actually starts with ``brew``; Windows LongLive installs
+        # used to hit this branch and get a nonsense macOS error.
+        missing = cmd_template[0]
+        if missing == "brew":
+            output = f"'{missing}' is not installed. Install Homebrew first: https://brew.sh"
+        else:
+            output = (
+                f"'{missing}' is not available on PATH. "
+                "Check that the backend runtime was staged correctly and retry."
+            )
         ok = False
     except subprocess.TimeoutExpired:
         output = "Installation timed out after 10 minutes."
@@ -265,6 +312,89 @@ def _purge_broken_distributions(site_packages: Path) -> list[str]:
     return removed
 
 
+def _purge_stale_torch_from_extras(extras_dir: Path) -> list[str]:
+    """Remove torch and its NVIDIA runtime deps from the extras dir.
+
+    Reported failure mode: extras contained ``torch-2.6.0+cu124.dist-info``
+    from an earlier CUDA install plus a ``torch-2.11.0+cpu`` folder from a
+    later clobber. Python's importer couldn't resolve either cleanly, so
+    ``import torch`` raised ``ModuleNotFoundError`` even though files were
+    on disk. Wiping the family before a reinstall forces a known-clean
+    slate.
+
+    Matches by directory/file name prefix:
+      - exactly ``torch`` (the package folder)
+      - anything starting with ``torch-`` (dist-info, partial installs)
+      - anything starting with ``nvidia_`` or ``nvidia-`` (CUDA runtime deps)
+
+    Does NOT match sibling packages like ``torchvision`` or ``torchaudio`` —
+    they start with ``torchv``/``torcha``, not ``torch-``, so the prefix
+    check leaves them alone.
+    """
+    if not extras_dir.is_dir():
+        return []
+    removed: list[str] = []
+    for entry in extras_dir.iterdir():
+        name = entry.name
+        lower = name.lower()
+        is_torch = name == "torch" or lower.startswith("torch-")
+        is_nvidia = lower.startswith("nvidia_") or lower.startswith("nvidia-")
+        if not (is_torch or is_nvidia):
+            continue
+        try:
+            if entry.is_dir():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                entry.unlink(missing_ok=True)
+            if not entry.exists():
+                removed.append(name)
+        except OSError:
+            continue
+    return removed
+
+
+def _find_installed_torch_version(extras_dir: Path) -> str | None:
+    """Return the torch version recorded in its dist-info METADATA, if any.
+
+    Used after a successful CUDA torch install so we can pin torch in a
+    constraints file for the subsequent gpu-bundle packages, preventing
+    pip's resolver from silently swapping the CUDA wheel for a CPU one
+    while installing diffusers/transformers/etc. from default PyPI.
+    """
+    if not extras_dir.is_dir():
+        return None
+    for entry in extras_dir.iterdir():
+        lower = entry.name.lower()
+        if not (lower.startswith("torch-") and lower.endswith(".dist-info")):
+            continue
+        metadata = entry / "METADATA"
+        if not metadata.is_file():
+            continue
+        try:
+            text = metadata.read_text(errors="ignore")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            if line.lower().startswith("version:"):
+                return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def _write_torch_constraint(extras_dir: Path, torch_version: str) -> Path:
+    """Pin torch in a constraints.txt so follow-up installs can't swap it.
+
+    Without this pin, ``pip install diffusers --target extras/`` could let
+    pip's resolver pull a newer torch from default PyPI (which ships only
+    the CPU wheel) — silently replacing the CUDA wheel we just installed.
+    With the pin, pip is forced to respect the exact version (including
+    the ``+cu124`` local segment), and will error out if some package
+    requires a strictly newer torch rather than swapping it for CPU.
+    """
+    path = extras_dir / ".chaosengine-torch-constraints.txt"
+    path.write_text(f"torch=={torch_version}\n", encoding="utf-8")
+    return path
+
+
 def _all_attempts_lack_wheel(attempts: list[dict[str, Any]]) -> bool:
     """True when pip reported 'No matching distribution' for every attempt.
 
@@ -295,6 +425,13 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     case the user's driver doesn't match the newest, and finally the
     nightly cu128 index for very-new Python (e.g. 3.14).
 
+    Installs land in ``extras_dir`` (the user-persistent extras tree on
+    PYTHONPATH), NOT the bundled venv. The venv on packaged builds lives
+    under paths that need admin to write, and a venv install would be
+    wiped on the next app upgrade anyway. Extras is user-writable and
+    persists across upgrades — it's also where the gpu-bundle flow
+    installs, so both recovery paths agree on torch's location.
+
     If every attempt fails with "No matching distribution", we set
     ``noWheelForPython`` in the response — that means the user's Python
     version is the problem, not the CUDA index, so the UI can tell them
@@ -311,23 +448,41 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     python = state.runtime.capabilities.pythonExecutable
     python_version = _read_python_version(python)
 
-    # Sweep pip's "~<pkg>" stub directories before attempting the install.
+    extras_dir = _extras_site_packages()
+    if extras_dir is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not resolve the extras site-packages directory.",
+        )
+    extras_dir.mkdir(parents=True, exist_ok=True)
+
+    # Wipe any stale torch + nvidia-* runtime deps from extras first. A
+    # prior half-installed wheel (dist-info without a matching package
+    # folder, or vice versa) causes ``import torch`` to raise at runtime
+    # with confusing "No module named torch" messages.
+    purged_torch: list[str] = []
+    try:
+        purged_torch = _purge_stale_torch_from_extras(extras_dir)
+    except OSError as exc:
+        state.add_log("server", "warning", f"Could not purge stale torch from extras: {exc}")
+    if purged_torch:
+        state.add_log(
+            "server", "info",
+            f"Purged stale torch files from extras ({len(purged_torch)} entries)",
+        )
+
+    # Sweep pip's "~<pkg>" stub directories from the bundled site-packages.
     # These are left behind by a prior interrupted install (common on Windows
-    # where Defender briefly locks .pyd files), and they cause two problems:
-    #   1. Noisy "WARNING: Ignoring invalid distribution ~arkupsafe" spam that
-    #      confuses users reading install output.
-    #   2. pip sometimes tries to repair them and fails with an "Access denied"
-    #      write to a .pyd that the running backend process has loaded (e.g.
-    #      markupsafe/_speedups.cp314-win_amd64.pyd via FastAPI -> Jinja2).
-    # Removing the stubs is always safe — they hold no authoritative data.
+    # where Defender briefly locks .pyd files) and cause noisy "Ignoring
+    # invalid distribution" warnings in future pip runs.
     site_packages = _site_packages_for(python)
-    purged: list[str] = []
+    purged_stubs: list[str] = []
     if site_packages is not None:
-        purged = _purge_broken_distributions(site_packages)
-        if purged:
+        purged_stubs = _purge_broken_distributions(site_packages)
+        if purged_stubs:
             state.add_log(
                 "server", "info",
-                f"Removed {len(purged)} broken pip stub(s) from {site_packages}: {', '.join(purged)}",
+                f"Removed {len(purged_stubs)} broken pip stub(s) from {site_packages}: {', '.join(purged_stubs)}",
             )
 
     attempts: list[dict[str, Any]] = []
@@ -336,53 +491,35 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     winning_index: str | None = None
 
     for index_url in _CUDA_TORCH_INDEXES:
-        # Two-pass install:
-        #   Pass 1: --force-reinstall --no-deps swaps the torch wheel (CPU -> CUDA)
-        #           without overwriting transitive deps like markupsafe. Those
-        #           extensions are loaded into this Python process via FastAPI
-        #           -> Jinja2; overwriting their .pyd / .so at runtime raises
-        #           WinError 5 "Access is denied" and aborts the install.
-        #   Pass 2: plain install (no --force) fills in any genuinely missing
-        #           deps (e.g. nvidia-cublas-cu12 on Linux when swapping from
-        #           CPU torch) without touching files that are already satisfied.
-        cmd_swap = [
-            python, "-m", "pip", "install",
-            "--upgrade", "--force-reinstall", "--no-deps",
-            "--index-url", index_url,
-            "torch>=2.4.0",
-        ]
         state.add_log("server", "info", f"Installing CUDA torch from {index_url}")
-        try:
-            result = subprocess.run(cmd_swap, capture_output=True, text=True, timeout=900)
-            output = (result.stdout + "\n" + result.stderr).strip()
-            attempt_ok = result.returncode == 0
-        except subprocess.TimeoutExpired:
-            output = f"Install from {index_url} timed out after 15 minutes."
-            attempt_ok = False
-        except OSError as exc:
-            output = f"{index_url}: {exc}"
-            attempt_ok = False
+        # Two-pass install into extras (via --target in _run_pip_install):
+        #   Pass 1: --force-reinstall --no-deps swaps the torch wheel even
+        #           when a same-versioned CPU wheel is already present
+        #           (PEP 440 treats 2.6.0+cpu == 2.6.0+cu124 as equal for
+        #           upgrade purposes, so --force-reinstall is required).
+        #   Pass 2: plain install (no --force) fills transitive deps like
+        #           nvidia-cublas-cu12 without clobbering files held by
+        #           the running backend process.
+        swap_ok, swap_output = _run_pip_install(
+            python, "torch>=2.4.0", extras_dir, index_url,
+            ["--force-reinstall", "--no-deps"],
+        )
+        combined_output = swap_output
+        if swap_ok:
+            _dep_ok, dep_output = _run_pip_install(
+                python, "torch>=2.4.0", extras_dir, index_url, [],
+            )
+            if dep_output:
+                combined_output = f"{swap_output}\n\n--- deps pass ---\n{dep_output}"
 
-        if attempt_ok:
-            cmd_deps = [
-                python, "-m", "pip", "install",
-                "--index-url", index_url,
-                "torch>=2.4.0",
-            ]
-            try:
-                dep_result = subprocess.run(cmd_deps, capture_output=True, text=True, timeout=900)
-                dep_output = (dep_result.stdout + "\n" + dep_result.stderr).strip()
-                output = f"{output}\n\n--- deps pass ---\n{dep_output}" if dep_output else output
-            except (subprocess.TimeoutExpired, OSError):
-                # Best-effort: torch itself swapped successfully, a missing
-                # transitive dep will surface at runtime via an ImportError
-                # the user can resolve from the Setup page.
-                pass
-
-        attempts.append({"indexUrl": index_url, "ok": attempt_ok, "output": output})
-        if attempt_ok:
+        attempts.append({
+            "indexUrl": index_url,
+            "ok": swap_ok,
+            "output": combined_output,
+        })
+        if swap_ok:
             ok = True
-            winning_output = output
+            winning_output = combined_output
             winning_index = index_url
             break
 
@@ -406,6 +543,7 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
         "pythonExecutable": python,
         "pythonVersion": python_version,
         "noWheelForPython": no_wheel_for_python,
+        "targetDir": str(extras_dir),
         "capabilities": caps,
     }
 
@@ -433,6 +571,19 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     ("tiktoken", "tiktoken"),
     ("protobuf", "protobuf"),
     ("ftfy", "ftfy"),
+    # NF4 quantization for FLUX's 12B transformer — shrinks it from ~24 GB
+    # (bf16) to ~7 GB so it runs comfortably on 24 GB consumer GPUs. With
+    # bf16 + cpu_offload alone, a 4090 is right at the edge of VRAM and
+    # pays a heavy pagefile-thrash cost per step.
+    ("bitsandbytes", "bitsandbytes>=0.43.0"),
+    # GGUF loader for image/video DiT transformers. Cross-platform
+    # quantization (works on CUDA, MPS, CPU) complementing the
+    # CUDA-only bitsandbytes NF4 path.
+    ("gguf", "gguf>=0.10.0"),
+    # TorchAO int8wo — Apple Silicon's answer to NF4 for FLUX. Drops
+    # the 12B transformer from ~24 GB to ~12 GB on MPS so FLUX fits in
+    # 32 GB unified memory without pagefile thrash.
+    ("torchao", "torchao>=0.6.0"),
 ]
 
 # Rough total download size (torch CUDA dominates at ~2 GB; others sum to
@@ -740,6 +891,34 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             )
         state.index_url_used = index_url
 
+        # Pin torch in a constraints file so the follow-up packages
+        # (diffusers, transformers, etc.) can't cause pip to swap the
+        # CUDA wheel for a CPU one from default PyPI. Without the pin,
+        # the resolver occasionally decides a fresh torch satisfies some
+        # transitive upper bound better than the installed CUDA wheel,
+        # and silently overwrites it. Any package that strictly requires
+        # a different torch version will now error out visibly against
+        # the constraint instead of silently clobbering torch.
+        constraint_path: Path | None = None
+        torch_version = _find_installed_torch_version(extras_dir)
+        if torch_version:
+            try:
+                constraint_path = _write_torch_constraint(extras_dir, torch_version)
+                state.attempts.append({
+                    "phase": "constraint",
+                    "ok": True,
+                    "output": f"Pinned torch=={torch_version} for subsequent packages",
+                })
+            except OSError as exc:
+                # Non-fatal: we just lose the torch pin for this run. The
+                # packages below might or might not clobber torch, but the
+                # verify step at the end will detect that.
+                state.attempts.append({
+                    "phase": "constraint",
+                    "ok": False,
+                    "output": f"Could not write torch constraint: {exc}",
+                })
+
         # Remaining packages: standard PyPI. Most are small — progress
         # advances quickly here so the UI doesn't look frozen.
         for idx, (label, spec) in enumerate(_GPU_BUNDLE_PACKAGES[1:], start=2):
@@ -747,7 +926,10 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             state.package_current = label
             state.percent = ((idx - 1) / len(_GPU_BUNDLE_PACKAGES)) * 100.0
             state.message = f"Installing {label}"
-            ok, output = _run_pip_install(python, spec, extras_dir, None, [])
+            extra_flags: list[str] = []
+            if constraint_path is not None:
+                extra_flags = ["--constraint", str(constraint_path)]
+            ok, output = _run_pip_install(python, spec, extras_dir, None, extra_flags)
             state.attempts.append({"package": label, "ok": ok, "output": output[-2000:]})
             if not ok:
                 # Individual package failure is non-fatal — torch + diffusers

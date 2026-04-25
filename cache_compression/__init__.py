@@ -107,6 +107,19 @@ class CacheStrategy(ABC):
         """
         return "standard"
 
+    def applies_to(self) -> frozenset[str]:
+        """Inference domains this strategy applies to.
+
+        ``"text"``  — text LLM inference (MLX, llama.cpp, vLLM).
+        ``"image"`` — diffusion image pipelines.
+        ``"video"`` — diffusion video pipelines.
+
+        Default is text, matching every existing KV-cache strategy. Diffusion
+        strategies (e.g. TeaCache) override this so the UI surfaces them in
+        the correct Studio.
+        """
+        return frozenset({"text"})
+
     def apply_vllm_patches(self) -> None:
         """Hook for strategies that monkeypatch vLLM (e.g. TriAttention).
 
@@ -153,6 +166,7 @@ class CacheStrategyRegistry:
                 "availabilityTone": s.availability_tone(),
                 "availabilityReason": s.availability_reason(),
                 "requiredLlamaBinary": s.required_llama_binary(),
+                "appliesTo": sorted(s.applies_to()),
             })
         return out
 
@@ -209,6 +223,23 @@ class CacheStrategyRegistry:
                 "bit_range": (2, 8),
                 "default_bits": 4,
                 "supports_fp16_layers": True,
+                "required_llama_binary": "standard",
+            },
+            {
+                # Diffusion-pipeline cache — applies to image/video DiTs,
+                # not text LLMs. The `bit_range`/`default_bits` fields are
+                # N/A (TeaCache's knob is a rel-L1 threshold, not bits).
+                # `required_llama_binary="standard"` is the neutral fallback;
+                # TeaCache's llama.cpp hook raises NotImplementedError so
+                # this metadata is only shape-filling for the _BrokenStrategy
+                # path.
+                "id": "teacache",
+                "name": "TeaCache",
+                "module": "cache_compression.teacache",
+                "class_name": "TeaCacheStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
                 "required_llama_binary": "standard",
             },
         ]
@@ -294,3 +325,58 @@ class _BrokenStrategy(CacheStrategy):
 # Module-level singleton — import and use ``registry`` directly.
 registry = CacheStrategyRegistry()
 registry.discover()
+
+
+def apply_diffusion_cache_strategy(
+    pipeline: Any,
+    *,
+    strategy_id: str | None,
+    num_inference_steps: int,
+    rel_l1_thresh: float | None,
+    domain: str,
+) -> str | None:
+    """Apply a diffusion cache strategy (e.g. TeaCache) to a diffusers pipeline.
+
+    Called by image_runtime / video_runtime after pipeline load, before the
+    first denoise. Shared so both entry points agree on error handling.
+
+    ``strategy_id`` — registry id (e.g. ``"teacache"``). ``None`` or empty
+        skips silently.
+    ``num_inference_steps`` — final step count (after any FLUX / Turbo clamp).
+    ``rel_l1_thresh`` — optional threshold override; ``None`` uses strategy
+        default.
+    ``domain`` — ``"image"`` or ``"video"``; the strategy's ``applies_to()``
+        must include this.
+
+    Returns a short note describing what happened (for the runtime note on
+    generated assets), or ``None`` when no strategy was applied. Never raises
+    for expected failure modes (unsupported pipeline, strategy not available)
+    — those produce a note and the caller falls back to the stock pipeline.
+    Programming errors (wrong types) still surface.
+    """
+    if not strategy_id:
+        return None
+    strategy = registry.get(strategy_id)
+    if strategy is None:
+        return f"Cache strategy '{strategy_id}' not found; using stock pipeline."
+    if domain not in strategy.applies_to():
+        return (
+            f"{strategy.name} does not apply to {domain} pipelines "
+            f"(domains: {sorted(strategy.applies_to())}); using stock pipeline."
+        )
+    hook = getattr(strategy, "apply_diffusers_hook", None)
+    if hook is None:
+        return (
+            f"{strategy.name} has no diffusers hook; using stock pipeline."
+        )
+    try:
+        hook(
+            pipeline,
+            num_inference_steps=num_inference_steps,
+            rel_l1_thresh=rel_l1_thresh,
+        )
+    except NotImplementedError as exc:
+        # Expected path when a pipeline's patch hasn't landed yet. Return
+        # the message so the UI can show "TeaCache not applied: <reason>".
+        return f"{strategy.name} not applied: {exc}"
+    return f"{strategy.name} applied (thresh={rel_l1_thresh or 'default'})."

@@ -19,6 +19,7 @@ from backend_service.helpers.discovery import (
 from backend_service.helpers.huggingface import (
     _search_huggingface_hub,
     _hub_repo_files,
+    _find_quantized_variants,
 )
 
 router = APIRouter()
@@ -159,6 +160,19 @@ def delete_model_path(request: Request, body: DeleteModelRequest) -> dict[str, A
 @router.get("/api/models/list-weights")
 def list_weights(path: str) -> dict[str, Any]:
     return _list_weight_files(path)
+
+
+@router.get("/api/models/quantized-variants")
+def quantized_variants(
+    repo: str = Query(..., min_length=3, max_length=256),
+) -> dict[str, Any]:
+    """List community-quantized mirrors (GGUF, NF4) of a base HF repo.
+
+    Used by the image + video Discover panes to surface quantized
+    alternatives for a selected base model on demand, without
+    pre-baking every city96/QuantStack mirror into the catalog.
+    """
+    return {"repo": repo, "variants": _find_quantized_variants(repo)}
 
 
 @router.post("/api/models/download")

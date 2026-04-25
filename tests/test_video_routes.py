@@ -223,6 +223,39 @@ class VideoRuntimeRouteTests(unittest.TestCase):
         self.assertFalse(runtime["realGenerationAvailable"])
         self.assertEqual(runtime["activeEngine"], "placeholder")
 
+    def test_mlx_runtime_returns_shape(self):
+        """`/api/video/mlx-runtime` proxies VideoRuntimeManager.mlx_video_capabilities.
+
+        Result varies by host (Apple Silicon vs other) but the contract
+        is fixed: 200 OK, ``runtime`` object with the standard
+        VideoRuntimeStatus keys, ``activeEngine == "mlx-video"``.
+        """
+        response = self.client.get("/api/video/mlx-runtime")
+        self.assertEqual(response.status_code, 200)
+        runtime = response.json()["runtime"]
+        for key in ("activeEngine", "realGenerationAvailable", "message"):
+            self.assertIn(key, runtime)
+        self.assertEqual(runtime["activeEngine"], "mlx-video")
+
+    def test_mlx_runtime_delegates_to_manager(self):
+        """Endpoint must call `mlx_video_capabilities()` (not the diffusers probe)."""
+        state = self.client.app.state.chaosengine
+        with mock.patch.object(
+            state.video_runtime,
+            "mlx_video_capabilities",
+            return_value={
+                "activeEngine": "mlx-video",
+                "realGenerationAvailable": False,
+                "message": "stub",
+                "device": "mps",
+                "missingDependencies": ["mlx-video"],
+            },
+        ) as mocked:
+            runtime = self.client.get("/api/video/mlx-runtime").json()["runtime"]
+        mocked.assert_called_once()
+        self.assertEqual(runtime["device"], "mps")
+        self.assertIn("mlx-video", runtime["missingDependencies"])
+
     def test_library_is_empty_when_no_snapshots_are_installed(self):
         response = self.client.get("/api/video/library")
         self.assertEqual(response.status_code, 200)

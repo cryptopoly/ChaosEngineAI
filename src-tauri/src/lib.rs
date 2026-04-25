@@ -77,6 +77,10 @@ struct EmbeddedRuntimeManifest {
 struct SavedDesktopSettings {
     preferred_server_port: Option<u16>,
     allow_remote_connections: Option<bool>,
+    // Redirects HuggingFace cache to a user-chosen drive. We read it here
+    // so we can set HF_HOME on the backend child BEFORE huggingface_hub
+    // is first imported — setting it post-import is a no-op.
+    hf_cache_path: Option<String>,
     // `auto_start_server` was previously read here to gate Python sidecar
     // bootstrap. The sidecar now always starts (it's required for /api/*),
     // and that toggle only controls the inference engine inside the backend.
@@ -321,6 +325,15 @@ impl BackendManager {
                 command.env("CHAOSENGINE_EXTRAS_SITE_PACKAGES", extras.as_os_str());
             }
 
+            // Inject HF_HOME when the user has configured a non-default
+            // HuggingFace cache location (typically because the system
+            // drive is full). This MUST be set before the backend process
+            // starts — huggingface_hub reads HF_HOME at module import, so
+            // setting it later via os.environ has no effect.
+            if let Some(hf_home) = saved_hf_cache_path() {
+                command.env("HF_HOME", &hf_home);
+            }
+
             if let Some(runtime) = embedded_runtime.as_ref() {
                 apply_embedded_runtime_env(&mut command, runtime);
                 if let Some(llama_server) = runtime.llama_server.as_ref() {
@@ -333,6 +346,25 @@ impl BackendManager {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
                 }
             } else {
+                // Source-workspace mode: the backend runs against the
+                // developer's .venv so Python auto-loads .venv/site-packages
+                // at startup. We still want extras (the persistent
+                // ``~/.chaosengine/extras/site-packages`` dir populated by
+                // /api/setup/install-gpu-bundle) to WIN over anything in
+                // .venv — otherwise a stale CPU torch hanging around in
+                // the dev venv would shadow the freshly-installed CUDA
+                // torch in extras, which is exactly the failure the user
+                // hit on Windows (video gen silently ran on CPU despite
+                // a successful CUDA install).
+                //
+                // apply_embedded_runtime_env already does this for the
+                // embedded path; this is the matching source-workspace
+                // branch. No-op if extras doesn't exist yet.
+                if let Some(extras) = chaosengine_extras_site_packages().filter(|p| p.is_dir()) {
+                    if let Some(python_path) = join_paths(&[extras]) {
+                        command.env("PYTHONPATH", python_path);
+                    }
+                }
                 if let Some(llama_server) = resolve_llama_server(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
                 }
@@ -1115,6 +1147,44 @@ fn saved_allow_remote_connections() -> Option<bool> {
     let payload = fs::read_to_string(path).ok()?;
     let settings: SavedDesktopSettings = serde_json::from_str(&payload).ok()?;
     settings.allow_remote_connections
+}
+
+// Read the user-configured HuggingFace cache path from settings.json.
+// Returns None when the setting is missing / empty (falls through to HF's
+// platform default). Expands `~` to the user profile so the value is
+// directly usable as HF_HOME by Rust/Python consumers that don't call
+// expanduser themselves (e.g. huggingface_hub internals).
+fn saved_hf_cache_path() -> Option<String> {
+    let path = settings_path()?;
+    let payload = fs::read_to_string(path).ok()?;
+    let settings: SavedDesktopSettings = serde_json::from_str(&payload).ok()?;
+    let raw = settings.hf_cache_path?.trim().to_string();
+    if raw.is_empty() {
+        return None;
+    }
+    // Home-directory lookup uses platform env vars rather than pulling in
+    // the `dirs` crate just for this one call — USERPROFILE on Windows,
+    // HOME on Unix is enough for the `~` expansion we need here.
+    let home_dir = || -> Option<PathBuf> {
+        #[cfg(windows)]
+        {
+            std::env::var_os("USERPROFILE").map(PathBuf::from)
+        }
+        #[cfg(not(windows))]
+        {
+            std::env::var_os("HOME").map(PathBuf::from)
+        }
+    };
+    if let Some(rest) = raw.strip_prefix("~/").or_else(|| raw.strip_prefix("~\\")) {
+        if let Some(home) = home_dir() {
+            return Some(home.join(rest).to_string_lossy().into_owned());
+        }
+    } else if raw == "~" {
+        if let Some(home) = home_dir() {
+            return Some(home.to_string_lossy().into_owned());
+        }
+    }
+    Some(raw)
 }
 
 fn selected_bind_host(allow_remote_connections: bool) -> &'static str {

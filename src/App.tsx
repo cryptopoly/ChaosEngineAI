@@ -17,6 +17,7 @@ import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
 import { VideoGenerationModal } from "./components/VideoGenerationModal";
 import { Sidebar } from "./components/Sidebar";
+import { StartupProgressPanel } from "./components/StartupProgressPanel";
 import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
@@ -93,7 +94,7 @@ export default function App() {
   const ws = useWorkspace();
   const {
     workspace, setWorkspace,
-    loading, backendOnline, setBackendOnline,
+    loading, loadingElapsedSeconds, backendOnline, setBackendOnline,
     tauriBackend, setTauriBackend,
     error, setError,
     busyAction, setBusyAction, busy,
@@ -1125,6 +1126,11 @@ export default function App() {
       const localItem = variant ? findLibraryItemForVariant(workspace.library, variant) : null;
       if (localItem) normalizedKey = `library:${localItem.path}`;
     }
+    // If no key given, or the key references a model no longer in the options
+    // (e.g. deleted/broken), fall back to the currently loaded model.
+    if ((!normalizedKey || !threadModelOptions.some((o) => o.key === normalizedKey)) && loadedModelOption) {
+      normalizedKey = loadedModelOption.key;
+    }
     setPendingLaunch({ action, preselectedKey: normalizedKey });
   }
 
@@ -1332,12 +1338,10 @@ export default function App() {
         onImageDiscoverTaskFilterChange={imgState.setImageDiscoverTaskFilter}
         imageDiscoverAccessFilter={imgState.imageDiscoverAccessFilter}
         onImageDiscoverAccessFilterChange={imgState.setImageDiscoverAccessFilter}
+        imageDiscoverSort={imgState.imageDiscoverSort}
+        onImageDiscoverSortChange={imgState.setImageDiscoverSort}
         imageDiscoverHasActiveFilters={imgState.imageDiscoverHasActiveFilters}
         imageDiscoverSearchQuery={imgState.imageDiscoverSearchQuery}
-        imageRuntimeStatus={imgState.imageRuntimeStatus}
-        tauriBackend={tauriBackend}
-        busy={busy}
-        busyAction={busyAction}
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
         fileRevealLabel={fileRevealLabel}
@@ -1347,7 +1351,6 @@ export default function App() {
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
         onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
         onRevealPath={(path) => void handleRevealPath(path)}
       />
     );
@@ -1392,6 +1395,10 @@ export default function App() {
         imageNegativePrompt={imgState.imageNegativePrompt}
         onImageNegativePromptChange={imgState.setImageNegativePrompt}
         imageQualityPreset={imgState.imageQualityPreset}
+        imageDraftMode={imgState.imageDraftMode}
+        onImageDraftModeChange={imgState.setImageDraftMode}
+        imageSampler={imgState.imageSampler}
+        onImageSamplerChange={imgState.setImageSampler}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1471,23 +1478,24 @@ export default function App() {
         onVideoDiscoverSearchInputChange={videoState.setVideoDiscoverSearchInput}
         videoDiscoverTaskFilter={videoState.videoDiscoverTaskFilter}
         onVideoDiscoverTaskFilterChange={videoState.setVideoDiscoverTaskFilter}
+        videoDiscoverSort={videoState.videoDiscoverSort}
+        onVideoDiscoverSortChange={videoState.setVideoDiscoverSort}
         videoDiscoverHasActiveFilters={videoState.videoDiscoverHasActiveFilters}
         videoDiscoverSearchQuery={videoState.videoDiscoverSearchQuery}
-        videoRuntimeStatus={videoState.videoRuntimeStatus}
-        tauriBackend={tauriBackend}
-        busy={busy}
-        busyAction={busyAction}
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        longLiveStatus={videoState.longLiveStatus}
+        installingLongLive={videoState.installingLongLive}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRestartServer={() => void handleRestartServer()}
         onRevealPath={(path) => void handleRevealPath(path)}
+        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
+        onInstallLongLive={() => videoState.handleInstallLongLive()}
       />
     );
   } else if (activeTab === "video-models") {
@@ -1561,6 +1569,14 @@ export default function App() {
         onRestartServer={() => void handleRestartServer()}
         onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
+        longLiveStatus={videoState.longLiveStatus}
+        installingLongLive={videoState.installingLongLive}
+        onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
+        onInstallLongLive={() => videoState.handleInstallLongLive()}
+        mlxVideoStatus={videoState.mlxVideoStatus}
+        installingMlxVideo={videoState.installingMlxVideo}
+        onRefreshMlxVideoStatus={() => void videoState.refreshMlxVideoStatus()}
+        onInstallMlxVideo={() => videoState.handleInstallMlxVideo()}
         gpuBundleJob={videoState.gpuBundleJob}
       />
     );
@@ -1930,7 +1946,11 @@ export default function App() {
 
         <div className="workspace-content-frame">
           {loading ? (
-            <div className="loading-state">Loading workspace state...</div>
+            <StartupProgressPanel
+              elapsedSeconds={loadingElapsedSeconds}
+              backendOnline={backendOnline}
+              tauriBackend={tauriBackend}
+            />
           ) : (
             <>
               {compareView}
@@ -1963,6 +1983,8 @@ export default function App() {
         imageBusy={imgState.imageBusy}
         imageGenerationStartedAt={imgState.imageGenerationStartedAt}
         imageGenerationError={imgState.imageGenerationError}
+        imageGenerationCancelled={imgState.imageGenerationCancelled}
+        imageGenerationCancelling={imgState.imageGenerationCancelling}
         imageGenerationArtifacts={imgState.imageGenerationArtifacts}
         selectedImageGenerationArtifact={imgState.selectedImageGenerationArtifact}
         imageGenerationRunInfo={imgState.imageGenerationRunInfo}
@@ -1977,12 +1999,15 @@ export default function App() {
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
+        onCancelGeneration={() => void imgState.handleCancelImageGeneration()}
       />
       <VideoGenerationModal
         showVideoGenerationModal={videoState.showVideoGenerationModal}
         videoBusy={videoState.videoBusy}
         videoGenerationStartedAt={videoState.videoGenerationStartedAt}
         videoGenerationError={videoState.videoGenerationError}
+        videoGenerationCancelled={videoState.videoGenerationCancelled}
+        videoGenerationCancelling={videoState.videoGenerationCancelling}
         videoGenerationArtifact={videoState.videoGenerationArtifact}
         videoGenerationRunInfo={videoState.videoGenerationRunInfo}
         selectedVideoVariant={videoState.selectedVideoVariant}
@@ -1990,6 +2015,7 @@ export default function App() {
         onActiveTabChange={setActiveTab}
         onRevealPath={(path) => void handleRevealPath(path)}
         onDeleteArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
+        onCancelGeneration={() => void videoState.handleCancelVideoGeneration()}
       />
       {(() => {
         if (!detailFamilyId) return null;

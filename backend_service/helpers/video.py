@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,30 +17,67 @@ from typing import Any
 from backend_service.catalog import VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
-from backend_service.helpers.images import _snapshot_on_disk_bytes
+from backend_service.helpers.images import _image_repo_live_metadata, _snapshot_on_disk_bytes
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
 def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return the catalog families enriched with per-variant availability.
+    """Return the catalog families enriched with per-variant availability
+    plus live Hugging Face metadata (downloads, likes, lastModified).
 
-    We deliberately don't hit Hugging Face live metadata from here — the image
-    version does for download counts, etc. We can bolt that on later if the
-    discover UX needs it. For now each variant just knows whether its local
-    snapshot is ready to load.
+    Live fetches run through ``_image_repo_live_metadata`` — despite the
+    name it's a generic HF-repo fetcher, same one the image catalog uses,
+    with a 6-hour in-process cache. Called in parallel across repos with
+    an 8-second wall-clock budget; repos whose fetch times out fall back
+    to the curated defaults on the variant dict.
     """
+    repo_metadata: dict[str, dict[str, Any]] = {}
+    repos = sorted({
+        str(variant.get("repo") or "")
+        for family in VIDEO_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("repo") or "")
+    })
+    if repos:
+        with ThreadPoolExecutor(max_workers=min(4, len(repos))) as executor:
+            future_map = {
+                executor.submit(_image_repo_live_metadata, repo): repo
+                for repo in repos
+            }
+            try:
+                for future in as_completed(future_map, timeout=8):
+                    repo = future_map[future]
+                    try:
+                        repo_metadata[repo] = future.result(timeout=2)
+                    except Exception:
+                        # Individual fetch failures fall back to curated
+                        # defaults — the catalog row still renders, just
+                        # without live downloads/likes.
+                        repo_metadata[repo] = {}
+            except FuturesTimeout:
+                pass
+
     families: list[dict[str, Any]] = []
     for family in VIDEO_MODEL_FAMILIES:
         variants: list[dict[str, Any]] = []
         for variant in family["variants"]:
             enriched = dict(variant)
             repo = str(enriched.get("repo") or "")
+            live_metadata = repo_metadata.get(repo, {}) if repo else {}
+            # Merge live metadata first so curated fields (releaseDate,
+            # familyName) still win when both exist.
+            enriched = {**enriched, **live_metadata}
             enriched["availableLocally"] = _video_repo_runtime_ready(repo) if repo else False
             enriched["hasLocalData"] = enriched["availableLocally"] or _video_repo_has_any_local_data(repo)
             enriched["familyName"] = family["name"]
-            release_date = str(enriched.get("releaseDate") or "").strip() or None
+            release_date = str(variant.get("releaseDate") or "").strip() or None
             enriched["releaseDate"] = release_date
-            enriched["releaseLabel"] = _format_release_label(release_date)
+            # Prefer the curated releaseLabel when the catalog specifies a
+            # releaseDate; fall back to HF's createdAt-derived label.
+            enriched["releaseLabel"] = (
+                _format_release_label(release_date)
+                or live_metadata.get("releaseLabel")
+            )
             # Absolute path to the HF snapshot, used by the Reveal File button.
             # Only populated when there is actually something on disk so the
             # UI can reliably hide the button otherwise.

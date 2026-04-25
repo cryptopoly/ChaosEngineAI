@@ -387,22 +387,39 @@ function stageOptionalRuntimePackages(pythonBinary) {
   // so that DFlash, TurboQuant, and RotorQuant work out of the box for
   // new users without requiring manual pip installs via the Setup page.
   //
-  // Each entry: [pip install target, import name used for verification]
-  // The first element is passed verbatim to ``pip install`` so it may be a
-  // PyPI name or a PEP 508 URL (e.g. ``pkg @ git+https://…@tag``).
+  // Each entry: { pipName, importName, platforms? }
+  // - pipName: passed verbatim to ``pip install`` (may be a PyPI name or
+  //   a PEP 508 URL like ``pkg @ git+https://…@tag``)
+  // - importName: module name used to verify availability in the build venv
+  // - platforms: restricts bundling to the listed ``process.platform`` values
+  //   (e.g. ``["darwin"]`` for MLX packages which have no Linux/Windows
+  //   wheels). Omit to bundle everywhere. Without this gate the Windows
+  //   build fails at ``turboquant-mlx-full`` → ``mlx>=0.20.0`` → no
+  //   matching distribution.
   const optionalPackages = [
-    [
-      "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
-      "dflash_mlx",
-    ],
-    ["turboquant", "turboquant"],
-    ["turboquant-mlx-full", "turboquant_mlx"],
+    {
+      pipName: "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
+      importName: "dflash_mlx",
+      platforms: ["darwin"],
+    },
+    { pipName: "turboquant", importName: "turboquant" },
+    { pipName: "turboquant-mlx-full", importName: "turboquant_mlx", platforms: ["darwin"] },
   ];
 
   const installed = [];
   const skipped = [];
 
-  for (const [pipName, importName] of optionalPackages) {
+  for (const entry of optionalPackages) {
+    const { pipName, importName, platforms } = entry;
+
+    if (platforms && !platforms.includes(process.platform)) {
+      console.log(
+        `[stage-runtime] info: skipping ${pipName} (platform-gated to ${platforms.join("/")}, currently ${process.platform})`,
+      );
+      skipped.push(pipName);
+      continue;
+    }
+
     // Check if already available in the build venv
     const checkScript = `import importlib.util; exit(0 if importlib.util.find_spec("${importName}") else 1)`;
     let available = false;
@@ -590,35 +607,38 @@ function attemptPrebuiltLlamaDownload() {
     return { ok: false, reason: `no asset matched platform=${platformKey} in ${tag}. first assets: ${names}` };
   }
 
-  const tmpZip = path.join(os.tmpdir(), `llama-${tag}-${platformKey}.zip`);
+  // Preserve the real extension so the extractor dispatches correctly
+  // (.zip on Windows/Linux, .tar.gz on macOS prebuilts).
+  const assetExt = /\.tar\.gz$/i.test(asset.name) ? ".tar.gz" : ".zip";
+  const tmpArchive = path.join(os.tmpdir(), `llama-${tag}-${platformKey}${assetExt}`);
   const tmpExtract = path.join(os.tmpdir(), `llama-${tag}-${platformKey}-extract`);
-  safeRmSync(tmpZip);
+  safeRmSync(tmpArchive);
   safeRmSync(tmpExtract);
 
   console.log(`[stage-runtime] downloading prebuilt llama.cpp ${tag} (${asset.name})...`);
   try {
     execFileSync(
       "curl",
-      ["-fsSL", "-o", tmpZip, "-H", "User-Agent: ChaosEngineAI-build", asset.browser_download_url],
+      ["-fsSL", "-o", tmpArchive, "-H", "User-Agent: ChaosEngineAI-build", asset.browser_download_url],
       { stdio: "inherit" },
     );
   } catch (err) {
-    safeRmSync(tmpZip);
+    safeRmSync(tmpArchive);
     return { ok: false, reason: `download failed: ${shortError(err)}` };
   }
 
   ensureDir(tmpExtract);
   try {
-    extractZip(tmpZip, tmpExtract);
+    extractArchive(tmpArchive, tmpExtract);
   } catch (err) {
-    safeRmSync(tmpZip);
+    safeRmSync(tmpArchive);
     safeRmSync(tmpExtract);
     return { ok: false, reason: `extract failed: ${shortError(err)}` };
   }
 
   const sourceBin = findLlamaBinWithin(tmpExtract);
   if (!sourceBin) {
-    safeRmSync(tmpZip);
+    safeRmSync(tmpArchive);
     safeRmSync(tmpExtract);
     return { ok: false, reason: `no ${serverName} inside ${asset.name}` };
   }
@@ -628,7 +648,7 @@ function attemptPrebuiltLlamaDownload() {
     copyPath(path.join(sourceBin, entry), path.join(cacheBinDir, entry));
   }
 
-  safeRmSync(tmpZip);
+  safeRmSync(tmpArchive);
   safeRmSync(tmpExtract);
 
   if (!fs.existsSync(path.join(cacheBinDir, serverName))) {
@@ -675,8 +695,18 @@ function pickLlamaAsset(assets, platformKey) {
       /^llama-.*-bin-win-cpu-x64\.zip$/i,
       /^llama-.*-bin-win-noavx-x64\.zip$/i,
     ],
-    "macos-arm64": [/^llama-.*-bin-macos-arm64\.zip$/i],
-    "macos-x64": [/^llama-.*-bin-macos-x64\.zip$/i],
+    // macOS assets ship as ``.tar.gz`` and carry a backend suffix
+    // (e.g. ``-kleidiai`` for the ARM CPU-optimised build, ``-metal``
+    // historically). Upstream has never shipped a bare
+    // ``bin-macos-arm64.zip``, so the earlier regex never matched and
+    // macOS fell through to "no asset" on every build. Accept both
+    // extensions and any optional trailing backend tag.
+    "macos-arm64": [
+      /^llama-.*-bin-macos-arm64(?:-[\w]+)?\.(?:zip|tar\.gz)$/i,
+    ],
+    "macos-x64": [
+      /^llama-.*-bin-macos-x64(?:-[\w]+)?\.(?:zip|tar\.gz)$/i,
+    ],
     "linux-x64": [
       /^llama-.*-bin-ubuntu-vulkan-x64\.zip$/i,
       /^llama-.*-bin-ubuntu-x64\.zip$/i,
@@ -688,6 +718,20 @@ function pickLlamaAsset(assets, platformKey) {
     if (match) return match;
   }
   return null;
+}
+
+function extractArchive(archivePath, destDir) {
+  // macOS llama.cpp prebuilts ship as tar.gz (never .zip). Delegate to
+  // the platform's tar; BSD tar on macOS and GNU tar on Linux both
+  // auto-detect gzip via ``-xf``.
+  if (/\.tar\.gz$/i.test(archivePath)) {
+    if (!commandAvailable("tar")) {
+      throw new Error("no extractor available — 'tar' is required for .tar.gz prebuilts");
+    }
+    execFileSync("tar", ["-xzf", archivePath, "-C", destDir], { stdio: "inherit" });
+    return;
+  }
+  extractZip(archivePath, destDir);
 }
 
 function extractZip(zipPath, destDir) {

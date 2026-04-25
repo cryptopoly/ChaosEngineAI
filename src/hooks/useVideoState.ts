@@ -1,16 +1,20 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
   cancelVideoDownload,
+  cancelVideoGeneration,
   deleteVideoDownload,
   deleteVideoOutput,
   downloadVideoModel,
   generateVideo,
   getGpuBundleStatus,
+  getLongLiveRuntime,
+  getMlxVideoRuntime,
   getVideoCatalog,
   getVideoDownloadStatus,
   getVideoOutputs,
   getVideoRuntime,
   installPipPackage,
+  installSystemPackage,
   preloadVideoModel,
   startGpuBundleInstall,
   unloadVideoModel,
@@ -58,6 +62,8 @@ import type {
   VideoRuntimeStatus,
 } from "../types";
 import type { VideoDiscoverTaskFilter } from "../types/video";
+import type { DiscoverSort } from "../types/image";
+import { compareDiscoverVariants } from "../utils";
 
 const MAX_VIDEO_SEED = 2147483647;
 
@@ -71,6 +77,29 @@ const DEFAULT_VIDEO_NUM_FRAMES = 33;
 const DEFAULT_VIDEO_FPS = 24;
 const DEFAULT_VIDEO_STEPS = 30;
 const DEFAULT_VIDEO_GUIDANCE = 5.0;
+
+// Baseline negative prompt that's generic enough to apply across every
+// open-source video model we ship (LTX, Wan, HunyuanVideo, Mochi). With
+// the field blank the models render without any corrective signal and
+// produce noticeably worse geometry/anatomy — especially on LTX, which
+// has the weakest priors. Users can edit or clear this if they have a
+// model-specific preference.
+const DEFAULT_VIDEO_NEGATIVE_PROMPT =
+  "worst quality, low quality, blurry, distorted, deformed, bad anatomy, "
+  + "watermark, text, logo, static, frozen frame, jittery, flickering";
+
+// Per-family recommended CFG. LTX-Video ships with a 3.0 guidance default
+// in its reference pipeline — running it at 5.0 (the ChaosEngineAI
+// generic default) over-guides it and produces the abstract / "random
+// shapes" output users report. HunyuanVideo benefits from stronger
+// guidance. Everything else stays on the generic default.
+function recommendedGuidanceForRepo(repo: string | null | undefined): number {
+  if (!repo) return DEFAULT_VIDEO_GUIDANCE;
+  const lowered = repo.toLowerCase();
+  if (lowered.includes("ltx")) return 3.0;
+  if (lowered.includes("hunyuan")) return 6.0;
+  return DEFAULT_VIDEO_GUIDANCE;
+}
 
 // Wan-family pipelines require ``(num_frames - 1) % 4 == 0``. We round to
 // the nearest valid value so the user can type any frame count and we still
@@ -112,11 +141,13 @@ export function useVideoState(
   const [videoCatalog, setVideoCatalog] = useState<VideoModelFamily[]>([]);
   const [latestVideoDiscoverResults, setLatestVideoDiscoverResults] = useState<VideoModelVariant[]>([]);
   const [videoDiscoverTaskFilter, setVideoDiscoverTaskFilter] = useState<VideoDiscoverTaskFilter>("all");
+  // Default: most recently released first. Same contract as image.
+  const [videoDiscoverSort, setVideoDiscoverSort] = useState<DiscoverSort>("release");
   const [videoDiscoverSearchInput, setVideoDiscoverSearchInput] = useState("");
   const deferredVideoDiscoverSearch = useDeferredValue(videoDiscoverSearchInput);
   const [selectedVideoModelId, setSelectedVideoModelId] = useState("");
   const [videoPrompt, setVideoPrompt] = useState("");
-  const [videoNegativePrompt, setVideoNegativePrompt] = useState("");
+  const [videoNegativePrompt, setVideoNegativePrompt] = useState(DEFAULT_VIDEO_NEGATIVE_PROMPT);
   const [videoSeedInput, setVideoSeedInput] = useState("");
   const [videoUseRandomSeed, setVideoUseRandomSeed] = useState(true);
   // Generation knobs the user can tweak in Studio. Defaults are populated
@@ -134,6 +165,19 @@ export function useVideoState(
     message: "Video runtime not initialised yet.",
     missingDependencies: [],
   });
+  // LongLive probe is separate from the diffusers video runtime — it
+  // checks an isolated install marker under ~/.chaosengine/longlive. We
+  // only populate it lazily when the user selects a LongLive variant so
+  // non-LongLive users don't pay the probe cost.
+  const [longLiveStatus, setLongLiveStatus] = useState<VideoRuntimeStatus | null>(null);
+  const [installingLongLive, setInstallingLongLive] = useState(false);
+  // mlx-video probe (FU-009). Same lazy pattern as LongLive — populated
+  // when the Studio mounts on Apple Silicon so the chip can render
+  // alongside diffusers/torch state without forcing every host to pay
+  // the probe cost. ``null`` means "not yet probed"; an actual status
+  // with ``activeEngine == "mlx-video"`` is what unlocks the chip.
+  const [mlxVideoStatus, setMlxVideoStatus] = useState<VideoRuntimeStatus | null>(null);
+  const [installingMlxVideo, setInstallingMlxVideo] = useState(false);
   const [videoBusyLabel, setVideoBusyLabel] = useState<string | null>(null);
   const videoBusy = videoBusyLabel !== null;
   // Live GPU bundle install job state — mirrors useImageState. Exposed so
@@ -152,6 +196,11 @@ export function useVideoState(
   const [showVideoGenerationModal, setShowVideoGenerationModal] = useState(false);
   const [videoGenerationStartedAt, setVideoGenerationStartedAt] = useState<number | null>(null);
   const [videoGenerationError, setVideoGenerationError] = useState<string | null>(null);
+  // Mirrors useImageState — 409 "cancelled" response sets cancelled=true
+  // so the modal shows a calm "Cancelled" state. ``cancelling`` shows while
+  // the cancel request is in flight, before the generation promise resolves.
+  const [videoGenerationCancelled, setVideoGenerationCancelled] = useState(false);
+  const [videoGenerationCancelling, setVideoGenerationCancelling] = useState(false);
   const [videoGenerationArtifact, setVideoGenerationArtifact] = useState<VideoOutputArtifact | null>(null);
   const [videoGenerationRunInfo, setVideoGenerationRunInfo] = useState<{
     modelName: string;
@@ -254,7 +303,7 @@ export function useVideoState(
       return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
     }),
     ...filteredLatestVideoDiscoverResults,
-  ];
+  ].sort((a, b) => compareDiscoverVariants(videoDiscoverSort, a, b));
 
   const videoDiscoverHasActiveFilters =
     videoDiscoverTaskFilter !== "all" || videoDiscoverSearchQuery.length > 0;
@@ -291,7 +340,8 @@ export function useVideoState(
     setVideoNumFrames(DEFAULT_VIDEO_NUM_FRAMES);
     setVideoFps(DEFAULT_VIDEO_FPS);
     setVideoSteps(DEFAULT_VIDEO_STEPS);
-    setVideoGuidance(DEFAULT_VIDEO_GUIDANCE);
+    setVideoGuidance(recommendedGuidanceForRepo(selectedVideoVariant.repo));
+    setVideoNegativePrompt(DEFAULT_VIDEO_NEGATIVE_PROMPT);
     // Intentionally only depend on the variant ID so we don't clobber the
     // user's edits when unrelated catalog fields refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,11 +436,17 @@ export function useVideoState(
 
   // ── Data fetching ───────────────────────────────────────────
   async function refreshVideoData() {
-    const [catalog, statuses, runtime, outputs] = await Promise.allSettled([
+    const [catalog, statuses, runtime, outputs, mlxVideo] = await Promise.allSettled([
       getVideoCatalog(),
       getVideoDownloadStatus(),
       getVideoRuntime(),
       getVideoOutputs(),
+      // mlx-video probe is self-gating on the backend (returns
+      // realGenerationAvailable=false with "Apple Silicon only" message
+      // off-platform). Bundling it in the Promise.allSettled keeps the
+      // Studio's chip render in sync with the diffusers status without a
+      // second round-trip. Failure here is silently swallowed below.
+      getMlxVideoRuntime(),
     ]);
     const failures = [catalog, statuses, runtime, outputs].filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -411,6 +467,11 @@ export function useVideoState(
     if (outputs.status === "fulfilled") {
       setVideoOutputs(outputs.value);
     }
+    if (mlxVideo.status === "fulfilled") {
+      setMlxVideoStatus(mlxVideo.value);
+    }
+    // mlxVideo failure intentionally not added to ``failures`` — the chip
+    // is non-blocking; Studio falls back to hiding it when status is null.
 
     if (failures.length > 0) {
       const firstError = failures[0].reason;
@@ -565,6 +626,8 @@ export function useVideoState(
     setShowVideoGenerationModal(true);
     setVideoGenerationStartedAt(Date.now());
     setVideoGenerationError(null);
+    setVideoGenerationCancelled(false);
+    setVideoGenerationCancelling(false);
     setVideoGenerationArtifact(null);
     setVideoGenerationRunInfo({
       modelName: selectedVideoVariant.name,
@@ -587,18 +650,37 @@ export function useVideoState(
       setVideoGenerationArtifact(response.artifact);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Video generation failed.";
-      const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
-      setError(detail);
-      setVideoGenerationError(detail);
-      // Resync catalog + runtime in the background. A sidecar crash (e.g. the
-      // Wan 2.1 MPS assertion) can leave ``videoRuntimeStatus`` stale, which
-      // has been observed to leave the Studio's Generate button in a mystery
-      // disabled state after the user dismisses the failure modal. Refreshing
-      // restores a known-good view of what the backend actually reports now.
-      void refreshVideoData();
+      // Backend returns 409 detail="cancelled" for user-cancelled runs; keep
+      // the modal visually calm in that case (no red error callout).
+      if (message === "cancelled") {
+        setVideoGenerationCancelled(true);
+        setVideoGenerationError(null);
+      } else {
+        const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
+        setError(detail);
+        setVideoGenerationError(detail);
+        // Resync catalog + runtime in the background. A sidecar crash (e.g. the
+        // Wan 2.1 MPS assertion) can leave ``videoRuntimeStatus`` stale, which
+        // has been observed to leave the Studio's Generate button in a mystery
+        // disabled state after the user dismisses the failure modal. Refreshing
+        // restores a known-good view of what the backend actually reports now.
+        void refreshVideoData();
+      }
     } finally {
       setVideoBusyLabel(null);
       setVideoGenerationStartedAt(null);
+      setVideoGenerationCancelling(false);
+    }
+  }
+
+  async function handleCancelVideoGeneration() {
+    // See useImageState.handleCancelImageGeneration for rationale.
+    setVideoGenerationCancelling(true);
+    try {
+      await cancelVideoGeneration();
+    } catch {
+      // noop — the modal will surface completion state once the generation
+      // promise resolves, either with artifacts or the cancelled error.
     }
   }
 
@@ -763,6 +845,8 @@ export function useVideoState(
     setLatestVideoDiscoverResults,
     videoDiscoverTaskFilter,
     setVideoDiscoverTaskFilter,
+    videoDiscoverSort,
+    setVideoDiscoverSort,
     videoDiscoverSearchInput,
     setVideoDiscoverSearchInput,
     selectedVideoModelId,
@@ -795,6 +879,8 @@ export function useVideoState(
     setShowVideoGenerationModal,
     videoGenerationStartedAt,
     videoGenerationError,
+    videoGenerationCancelled,
+    videoGenerationCancelling,
     videoGenerationArtifact,
     videoGenerationRunInfo,
     activeVideoDownloads,
@@ -823,10 +909,75 @@ export function useVideoState(
     handlePreloadVideoModel,
     handleUnloadVideoModel,
     handleVideoGenerate,
+    handleCancelVideoGeneration,
     handleDeleteVideoOutput,
     handleInstallVideoOutputDeps,
     handleInstallVideoGpuRuntime,
+    longLiveStatus,
+    installingLongLive,
+    refreshLongLiveStatus,
+    handleInstallLongLive,
+    mlxVideoStatus,
+    installingMlxVideo,
+    refreshMlxVideoStatus,
+    handleInstallMlxVideo,
     openVideoStudio,
     gpuBundleJob,
   };
+
+  async function refreshLongLiveStatus(): Promise<void> {
+    try {
+      const status = await getLongLiveRuntime();
+      setLongLiveStatus(status);
+    } catch {
+      // Ignore — LongLive probe failures just mean we show a retry prompt.
+    }
+  }
+
+  async function handleInstallLongLive(): Promise<InstallResult> {
+    setInstallingLongLive(true);
+    setError(null);
+    try {
+      const result = await installSystemPackage("longlive");
+      if (!result.ok) {
+        setError(`LongLive install failed: ${result.output.slice(0, 300)}`);
+      }
+      await refreshLongLiveStatus();
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "LongLive install failed.";
+      setError(message);
+      return { ok: false, output: message, capabilities: {} };
+    } finally {
+      setInstallingLongLive(false);
+    }
+  }
+
+  async function refreshMlxVideoStatus(): Promise<void> {
+    try {
+      const status = await getMlxVideoRuntime();
+      setMlxVideoStatus(status);
+    } catch {
+      // Ignore — same rationale as LongLive: probe failure shows retry prompt.
+    }
+  }
+
+  async function handleInstallMlxVideo(): Promise<InstallResult> {
+    setInstallingMlxVideo(true);
+    setError(null);
+    try {
+      const result = await installPipPackage("mlx-video");
+      if (!result.ok) {
+        setError(`mlx-video install failed: ${result.output.slice(0, 300)}`);
+      }
+      await refreshMlxVideoStatus();
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "mlx-video install failed.";
+      setError(message);
+      return { ok: false, output: message, capabilities: {} };
+    } finally {
+      setInstallingMlxVideo(false);
+    }
+  }
 }

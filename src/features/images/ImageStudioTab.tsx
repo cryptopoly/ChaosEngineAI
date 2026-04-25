@@ -8,6 +8,7 @@ import type {
   ImageModelVariant,
   ImageOutputArtifact,
   ImageQualityPreset,
+  ImageSamplerId,
   ImageRuntimeStatus,
   TabId,
   TauriBackendInfo,
@@ -18,7 +19,8 @@ import {
   formatImageAccessError,
   isGatedImageAccessError,
 } from "../../utils";
-import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../../constants";
+import { assessImageGenerationSafety } from "../../utils/images";
+import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS, IMAGE_SAMPLERS, isFlowMatchingRepo } from "../../constants";
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
@@ -66,6 +68,10 @@ export interface ImageStudioTabProps {
   onSubmitImageGeneration: () => void;
   onApplyImageRatioPreset: (presetId: (typeof IMAGE_RATIO_PRESETS)[number]["id"]) => void;
   onApplyImageQuality: (presetId: ImageQualityPreset) => void;
+  imageDraftMode: boolean;
+  onImageDraftModeChange: (value: boolean) => void;
+  imageSampler: ImageSamplerId;
+  onImageSamplerChange: (value: ImageSamplerId) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -131,6 +137,10 @@ export function ImageStudioTab({
   onSubmitImageGeneration,
   onApplyImageRatioPreset,
   onApplyImageQuality,
+  imageDraftMode,
+  onImageDraftModeChange,
+  imageSampler,
+  onImageSamplerChange,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
@@ -146,6 +156,13 @@ export function ImageStudioTab({
   onDeleteImageArtifact,
 }: ImageStudioTabProps) {
   const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
+  // Per-configuration acknowledgement that unlocks Generate when the image
+  // safety heuristic flags a danger-level run. Image OOMs on MPS are less
+  // catastrophic than video (the sidecar may just die rather than kernel-
+  // panic the Mac), but FLUX dev at 2K on a 32 GB Mac is still a reliable
+  // way to nuke the backend — worth a conscious "I know what I'm doing"
+  // step. Resets whenever variant / width / height change.
+  const [dangerOverrideAck, setDangerOverrideAck] = useState(false);
 
   async function handleInstallImageRuntime() {
     if (installingImageRuntime) return;
@@ -203,6 +220,56 @@ export function ImageStudioTab({
   const selectedImageFriendlyDownloadError = formatImageAccessError(selectedImageDownload?.error, selectedImageVariant);
   const selectedImageNeedsGatedAccess = isGatedImageAccessError(selectedImageDownload?.error);
 
+  // Safety estimate for the chosen model × resolution against the active
+  // device's memory budget. Surfaces BEFORE the user clicks Generate so
+  // FLUX-dev-on-32GB-MPS and similar detonations are caught pre-flight
+  // instead of killing the sidecar mid-generate. Same pattern as the
+  // video-safety heuristic — see assessImageGenerationSafety docs for the
+  // calibration points.
+  const imageSafety = useMemo(
+    () =>
+      assessImageGenerationSafety({
+        width: imageWidth,
+        height: imageHeight,
+        device: imageRuntimeStatus.device,
+        deviceMemoryGb: imageRuntimeStatus.deviceMemoryGb,
+        baseModelFootprintGb: selectedImageVariant?.sizeGb,
+      }),
+    [
+      imageWidth,
+      imageHeight,
+      imageRuntimeStatus.device,
+      imageRuntimeStatus.deviceMemoryGb,
+      selectedImageVariant?.sizeGb,
+    ],
+  );
+
+  useEffect(() => {
+    setDangerOverrideAck(false);
+  }, [selectedImageVariant?.id, imageWidth, imageHeight]);
+
+  function handleApplySafeImageSettings() {
+    const suggestion = imageSafety.suggestion;
+    if (!suggestion) return;
+    onImageWidthChange(suggestion.width);
+    onImageHeightChange(suggestion.height);
+  }
+
+  const imageGenerateBlockedByDanger =
+    imageSafety.riskLevel === "danger" && !dangerOverrideAck;
+  const imageGenerateDisabled =
+    imageBusy || !selectedImageVariant || imageGenerateBlockedByDanger;
+  const imageGenerateTitle = imageGenerateBlockedByDanger
+    ? "Danger-level configuration — tick the acknowledgement below the safety callout to proceed."
+    : imageBusy
+      ? "Generating..."
+      : !selectedImageVariant
+        ? "Select a model first."
+        : "Generate this image.";
+
+  const formatImageGb = (gb: number): string =>
+    gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
+
   return (
     <div className="content-grid image-page-grid">
       <Panel
@@ -253,7 +320,20 @@ export function ImageStudioTab({
                   : "Using placeholder outputs"}
             </span>
             <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
-            {imageRuntimeStatus.device ? <span className="badge muted">Device: {imageRuntimeStatus.device}</span> : null}
+            {/* Prefer the actual-loaded device; fall back to the
+              * predicted expectedDevice computed cheaply via
+              * nvidia-smi + find_spec (no torch import). When
+              * nothing is loaded yet the badge reads 'Device: cuda
+              * (expected)' which tells the user what will happen on
+              * first Generate instead of leaving them to guess. */}
+            {(() => {
+              const resolved =
+                imageRuntimeStatus.device
+                ?? (imageRuntimeStatus.expectedDevice
+                  ? `${imageRuntimeStatus.expectedDevice} (expected)`
+                  : null);
+              return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
+            })()}
           </div>
           {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
             <div className="image-runtime-summary">
@@ -310,31 +390,56 @@ export function ImageStudioTab({
           {!imageRuntimeStatus.realGenerationAvailable ? (
             <>
               <div className="image-runtime-actions">
-                <p className="muted-text">
-                  Install the GPU image runtime (torch + diffusers + accelerate + transformers,
-                  ~2.5 GB) to enable real local generation. Writes to a persistent user-local
-                  folder so app updates don't wipe it.
-                </p>
-                <div className="button-row">
-                  {/* Always show the install button when the runtime isn't available.
-                    * Previously this was gated on activeEngine === "unavailable" but the
-                    * backend never returns that literal — it returns "placeholder" both
-                    * when packages are missing AND when they're installed-but-broken
-                    * (e.g. torch ImportError for 'autocast'). Both cases need the
-                    * install button, so the gate was hiding it in the exact states
-                    * where it's most useful. */}
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => void handleInstallImageRuntime()}
-                    disabled={installingImageRuntime || !backendOnline}
-                  >
-                    {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                  </button>
-                </div>
+                {/* Two display modes for the same not-available state:
+                  * (a) Fresh / broken install → offer Install GPU runtime.
+                  * (b) Install just completed this session but backend
+                  *     hasn't been restarted yet → PYTHONPATH in the
+                  *     running backend is frozen from spawn time, so
+                  *     find_spec still can't see the freshly-installed
+                  *     torch. The user doesn't need to install again,
+                  *     they need to restart. Keep the restart button
+                  *     prominent and explain why. */}
+                {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
+                  <>
+                    <p className="muted-text">
+                      GPU runtime installed to{" "}
+                      <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
+                      still has its old import cache — click Restart Backend to activate the
+                      new runtime, then image generation will use your GPU.
+                    </p>
+                    <div className="button-row">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => onRestartServer()}
+                        disabled={busy}
+                      >
+                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="muted-text">
+                      Install the GPU image runtime (torch + diffusers + accelerate + transformers,
+                      ~2.5 GB) to enable real local generation. Writes to a persistent user-local
+                      folder so app updates don't wipe it.
+                    </p>
+                    <div className="button-row">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => void handleInstallImageRuntime()}
+                        disabled={installingImageRuntime || !backendOnline}
+                      >
+                        {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
+                      </button>
+                      <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
+                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
               <InstallLogPanel job={gpuBundleJob} />
             </>
@@ -351,7 +456,8 @@ export function ImageStudioTab({
             className="primary-button"
             type="button"
             onClick={() => onSubmitImageGeneration()}
-            disabled={imageBusy || !selectedImageVariant}
+            disabled={imageGenerateDisabled}
+            title={imageGenerateTitle}
           >
             {imageBusy ? "Generating..." : "Generate"}
           </button>
@@ -532,8 +638,35 @@ export function ImageStudioTab({
                   <span>{preset.hint}</span>
                 </button>
               ))}
+              <button
+                className={imageDraftMode ? "pill-button active" : "pill-button"}
+                type="button"
+                onClick={() => onImageDraftModeChange(!imageDraftMode)}
+                title="Force a 512px long-edge render for fast prompt iteration. Output saves at the draft size — disable for a full-resolution final pass."
+              >
+                <strong>Preview</strong>
+                <span>{imageDraftMode ? "512px · on" : "Draft @ 512px"}</span>
+              </button>
             </div>
           </div>
+
+          {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
+            <div className="control-stack">
+              <span className="eyebrow">Sampler</span>
+              <select
+                className="text-input"
+                value={imageSampler}
+                onChange={(event) => onImageSamplerChange(event.target.value as ImageSamplerId)}
+                title="Scheduler / sampler algorithm. Hidden for FLUX, SD3 and other flow-matching models where swapping produces noise."
+              >
+                {IMAGE_SAMPLERS.map((sampler) => (
+                  <option key={sampler.id} value={sampler.id}>
+                    {sampler.label} · {sampler.hint}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div className="field-grid image-field-grid">
             <label>
@@ -603,6 +736,82 @@ export function ImageStudioTab({
               />
             </label>
           </div>
+
+          {/*
+            Pre-flight memory callout. Same structure as the video studio's
+            safety callout. Shows for caution AND danger, but only the
+            danger level blocks Generate — caution just warns. The
+            checkbox below the warning text is the explicit override for
+            danger runs (auto-resets on variant / width / height change).
+
+            We keep this above the Seed input (below the field-grid) so
+            users who just edited W/H see the consequence right there
+            instead of having to hunt at the bottom of the form. Mirrors
+            the video tab's placement.
+          */}
+          {imageSafety.riskLevel !== "safe" && selectedImageVariant ? (
+            <div
+              className={`callout image-callout ${
+                imageSafety.riskLevel === "danger" ? "error" : "warning"
+              }`}
+              role="alert"
+            >
+              <p>
+                <strong>
+                  {imageSafety.riskLevel === "danger"
+                    ? "Likely to crash the backend"
+                    : "Heads up — may struggle on this device"}
+                  :
+                </strong>{" "}
+                {imageSafety.reason}
+              </p>
+              {imageSafety.modelFootprintGb > 0 ? (
+                <p className="muted-text">
+                  Model ≈ {formatImageGb(imageSafety.modelFootprintGb)} · this run peak ≈ {" "}
+                  {formatImageGb(imageSafety.estimatedPeakGb)} of ~{formatImageGb(imageSafety.deviceMemoryGb)} total.
+                </p>
+              ) : null}
+              {imageSafety.suggestion ? (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={handleApplySafeImageSettings}
+                    disabled={imageBusy}
+                    title={`Apply ${imageSafety.suggestion.label}`}
+                  >
+                    Use safer settings ({imageSafety.suggestion.label})
+                  </button>
+                </div>
+              ) : (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => onActiveTabChange("image-discover")}
+                    disabled={imageBusy}
+                  >
+                    Browse smaller models
+                  </button>
+                </div>
+              )}
+              {imageSafety.riskLevel === "danger" ? (
+                <label
+                  className="inline-label"
+                  style={{ display: "flex", alignItems: "center", gap: ".4rem", marginTop: ".6rem" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={dangerOverrideAck}
+                    onChange={(event) => setDangerOverrideAck(event.target.checked)}
+                  />
+                  <span>
+                    Generate anyway — I accept that the backend may crash.
+                  </span>
+                </label>
+              ) : null}
+            </div>
+          ) : null}
 
           {!imageUseRandomSeed ? (
             <label>

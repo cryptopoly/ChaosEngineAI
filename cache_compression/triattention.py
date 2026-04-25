@@ -1,10 +1,18 @@
 """Optional adapter for TriAttention (WeianMao/triattention).
 
-TriAttention integrates via vLLM monkeypatching — it does NOT provide
-standalone KV cache objects.  Both ``triattention`` and ``vllm`` must be
-installed for this strategy to report as available.
+TriAttention ships two runtime backends:
 
-Install: ``pip install chaosengine-ai[triattention]``
+* **vLLM** (Linux/CUDA) — KV compression via monkeypatches into vLLM.
+* **MLX**  (Apple Silicon, experimental, 2026-04-09) — compressor wrapper
+  applied to an ``mlx_lm`` model via ``apply_triattention_mlx``.
+
+Either backend is enough for the strategy to report as available; on
+macOS we prefer the MLX path.  Install from git (not yet published on
+PyPI)::
+
+    pip install "triattention @ git+https://github.com/WeianMao/triattention.git"
+
+Then add either ``mlx_lm`` (macOS) or ``vllm`` (Linux/CUDA).
 """
 
 from __future__ import annotations
@@ -16,6 +24,7 @@ from cache_compression import CacheStrategy
 
 _triattention = None
 _vllm = None
+_mlx_lm = None
 try:
     import triattention as _triattention  # type: ignore[import-untyped]
 except ImportError:
@@ -24,6 +33,20 @@ try:
     import vllm as _vllm  # type: ignore[import-untyped]
 except ImportError:
     pass
+try:
+    import mlx_lm as _mlx_lm  # type: ignore[import-untyped]
+except ImportError:
+    pass
+
+
+def _has_mlx_entrypoint() -> bool:
+    if _triattention is None or _mlx_lm is None:
+        return False
+    try:
+        from triattention.mlx import apply_triattention_mlx  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 class TriAttentionStrategy(CacheStrategy):
@@ -36,29 +59,47 @@ class TriAttentionStrategy(CacheStrategy):
     def name(self) -> str:
         return "TriAttention"
 
-    def is_available(self) -> bool:
+    def has_mlx_backend(self) -> bool:
+        return _has_mlx_entrypoint()
+
+    def has_vllm_backend(self) -> bool:
         return _triattention is not None and _vllm is not None
 
+    def is_available(self) -> bool:
+        return self.has_mlx_backend() or self.has_vllm_backend()
+
     def availability_badge(self) -> str:
-        if self.is_available():
+        if self.has_mlx_backend():
+            return "Experimental"
+        if self.has_vllm_backend():
             return "Ready"
-        if self.on_macos():
-            return "Linux only"
         return "Install"
 
     def availability_tone(self) -> str:
-        if self.is_available():
+        if self.has_mlx_backend():
+            return "warning"
+        if self.has_vllm_backend():
             return "ready"
-        if self.on_macos():
-            return "unsupported"
         return "install"
 
     def availability_reason(self) -> str | None:
-        if self.is_available():
+        if self.has_mlx_backend():
+            return (
+                "MLX backend (experimental, since 2026-04-09). Requires a calibration "
+                "stats file; see triattention/docs/mlx.md."
+            )
+        if self.has_vllm_backend():
             return None
         if self.on_macos():
-            return "TriAttention requires Linux + CUDA + vLLM and is not supported on macOS."
-        return "Install triattention and vllm in ChaosEngineAI's backend runtime on a Linux/CUDA machine."
+            return (
+                "Install TriAttention + mlx_lm on macOS: pip install "
+                "'triattention @ git+https://github.com/WeianMao/triattention.git' "
+                "mlx-lm — then restart the app."
+            )
+        return (
+            "Install TriAttention + vLLM on Linux/CUDA: pip install "
+            "'triattention @ git+https://github.com/WeianMao/triattention.git' vllm."
+        )
 
     def supported_bit_range(self) -> tuple[int, int] | None:
         return (1, 4)
@@ -94,13 +135,41 @@ class TriAttentionStrategy(CacheStrategy):
             ) from exc
 
     # ------------------------------------------------------------------
+    # MLX integration (experimental)
+    # ------------------------------------------------------------------
+
+    def apply_mlx_compressor(
+        self,
+        model: Any,
+        *,
+        kv_budget: int = 2048,
+        stats_path: str | None = None,
+    ) -> Any:
+        """Wrap an ``mlx_lm`` model with TriAttention MLX compression.
+
+        Returns the compressor object; the caller uses it for generation in
+        place of the bare model.  Requires triattention + mlx_lm installed.
+        """
+        if not self.has_mlx_backend():
+            raise NotImplementedError(
+                "TriAttention MLX backend not available. Install triattention "
+                "and mlx_lm first."
+            )
+        from triattention.mlx import apply_triattention_mlx  # type: ignore[import-untyped]
+
+        kwargs: dict[str, Any] = {"kv_budget": kv_budget}
+        if stats_path is not None:
+            kwargs["stats_path"] = stats_path
+        return apply_triattention_mlx(model, **kwargs)
+
+    # ------------------------------------------------------------------
     # Engine integration
     # ------------------------------------------------------------------
 
     def make_mlx_cache(self, num_layers, bits, fp16_layers, fused, model) -> Any | None:
         raise NotImplementedError(
             "TriAttention does not provide standalone KV cache objects. "
-            "Use the vLLM backend with TriAttention enabled instead."
+            "Use the vLLM backend on Linux, or apply_mlx_compressor() on macOS."
         )
 
     def llama_cpp_cache_flags(self, bits: int) -> list[str]:

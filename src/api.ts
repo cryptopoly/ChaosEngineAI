@@ -897,6 +897,53 @@ export async function getGpuBundleStatus(): Promise<GpuBundleJobState> {
   return await fetchJson<GpuBundleJobState>("/api/setup/install-gpu-bundle/status", 10000);
 }
 
+// LongLive async install — same job pattern as the GPU bundle. The
+// backend installer takes 10-20 minutes (pip ~30 packages, optional
+// flash-attn build, ~8 GB of HF weights) so we cannot run it through
+// the synchronous ``/api/setup/install-system-package`` route.
+//
+// ``LongLiveJobState`` is shaped as a subset of ``GpuBundleJobState``
+// so the same ``InstallLogPanel`` component can render either job.
+// LongLive doesn't have a CUDA-index walk or wheel-availability check,
+// so the LongLive-specific fields just default to neutral values.
+export interface LongLiveAttempt {
+  phase?: string;
+  package?: string;
+  // Always undefined for LongLive — the field exists in the type only
+  // so the shared ``InstallLogPanel`` can read it on the discriminated
+  // union without a per-job branch. Cheap to carry, expensive to fork
+  // the panel just to drop one optional property.
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface LongLiveJobState {
+  id: string;
+  phase: "idle" | "preflight" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: LongLiveAttempt[];
+  done: boolean;
+}
+
+export async function startLongLiveInstall(): Promise<LongLiveJobState> {
+  // Returns quickly — install runs in a backend daemon thread.
+  // Poll ``getLongLiveInstallStatus`` to follow progress.
+  return await postJson<LongLiveJobState>("/api/setup/install-longlive", {}, 15000);
+}
+
+export async function getLongLiveInstallStatus(): Promise<LongLiveJobState> {
+  return await fetchJson<LongLiveJobState>("/api/setup/install-longlive/status", 10000);
+}
+
 // --- Diagnostics ---------------------------------------------------
 //
 // Surfaced in Settings → Diagnostics. The snapshot is a structured dump

@@ -1487,6 +1487,7 @@ export default function App() {
         fileRevealLabel={fileRevealLabel}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
+        longLiveJob={videoState.longLiveJob}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
@@ -1573,6 +1574,7 @@ export default function App() {
         installingLongLive={videoState.installingLongLive}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
         onInstallLongLive={() => videoState.handleInstallLongLive()}
+        longLiveJob={videoState.longLiveJob}
         mlxVideoStatus={videoState.mlxVideoStatus}
         installingMlxVideo={videoState.installingMlxVideo}
         onRefreshMlxVideoStatus={() => void videoState.refreshMlxVideoStatus()}

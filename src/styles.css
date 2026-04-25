@@ -6038,16 +6038,23 @@ select.text-input {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  /* The snapshot has ~9 sections plus a 200-line log tail; without a
-   * bounded max-height the page grows taller than the viewport and the
-   * browser doesn't scroll inside the Panel body (the outer tab
-   * container doesn't scroll either for Settings). Cap height to 75vh
-   * with internal overflow so users can actually reach the log tail
-   * and the Re-extract button at the bottom. The small right-pad
-   * prevents the scrollbar from overlapping the value cells. */
-  max-height: 75vh;
+  /* Fill the panel and scroll internally. The previous ``max-height:
+   * 75vh`` was brittle: on tall viewports it could exceed the panel
+   * (sections then squish via flex-shrink), and on short ones it left
+   * dead space. ``flex: 1; min-height: 0`` lets the body take exactly
+   * the panel's leftover height after the header, and overflow-y on
+   * its own then drives a real scrollbar when content exceeds it. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 6px;
+}
+/* Sections must keep their natural height inside the flex column —
+ * without this they flex-shrink when many are open, which collapses
+ * each table to the first row or two and makes the whole panel look
+ * "squished". */
+.diagnostics-body > * {
+  flex-shrink: 0;
 }
 .diagnostics-header {
   font-size: 0.85rem;
@@ -6085,6 +6092,12 @@ select.text-input {
 }
 .diagnostics-table {
   width: 100%;
+  /* ``table-layout: fixed`` is what makes ``word-break: break-all`` on
+   * the value cell actually wrap long paths (e.g. the embedded Python
+   * executable, conda envs, or Windows ``\\?\`` extras paths). Without
+   * it the table sizes to content and a single long unbroken string
+   * stretches the panel wider than its container. */
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.78rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -6095,13 +6108,14 @@ select.text-input {
   vertical-align: top;
 }
 .diagnostics-key {
-  width: 40%;
+  width: 32%;
   color: var(--muted);
   word-break: break-word;
 }
 .diagnostics-value {
   color: var(--text);
   word-break: break-all;
+  white-space: pre-wrap;
 }
 .diagnostics-actions {
   border-top: 1px solid rgba(255, 255, 255, 0.06);

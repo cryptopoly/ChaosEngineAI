@@ -100,6 +100,34 @@ class TeaCacheMetadataTests(unittest.TestCase):
             frozenset(_FORWARD_PATCHES.keys()),
         )
 
+    def test_phase_c_video_patches_registered(self):
+        """Phase C3 lands diffusers-shaped TeaCache forwards for the four
+        DiT video pipelines we ship. Wan 2.1 stays out — see FU-007."""
+        for klass in (
+            "HunyuanVideoTransformer3DModel",
+            "LTXVideoTransformer3DModel",
+            "CogVideoXTransformer3DModel",
+            "MochiTransformer3DModel",
+        ):
+            self.assertIn(klass, _FORWARD_PATCHES, f"{klass} missing from registry")
+        self.assertNotIn("WanTransformer3DModel", _FORWARD_PATCHES)
+
+    def test_phase_c_video_patches_import_cleanly(self):
+        """Each registered patch module should import and expose a
+        callable ``teacache_forward`` — guards against typos in the
+        registry mapping or accidental syntax errors in the patch file."""
+        import importlib
+
+        for klass in (
+            "HunyuanVideoTransformer3DModel",
+            "LTXVideoTransformer3DModel",
+            "CogVideoXTransformer3DModel",
+            "MochiTransformer3DModel",
+        ):
+            module_name, attr = _FORWARD_PATCHES[klass]
+            module = importlib.import_module(module_name)
+            self.assertTrue(callable(getattr(module, attr)), f"{klass} patch not callable")
+
 
 class TeaCacheAvailabilityTests(unittest.TestCase):
     def test_scaffold_badge_when_patches_empty(self):

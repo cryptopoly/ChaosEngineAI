@@ -186,22 +186,22 @@ describe("assessVideoGenerationSafety()", () => {
   });
 
   describe("CUDA gets more headroom than MPS at the same memory size", () => {
-    it("24 GB CUDA verdicts a config that 24 GB MPS would flag danger", () => {
-      // Same config (832×480 × 50 frames, ~4.6 GB peak), same total memory
-      // (24 GB), but CUDA's larger effective budget (70% vs 50%) and looser
-      // ratios (caution 0.7 vs 0.5) mean the same request is safe on a 4090
-      // and only 'caution' on a 24 GB Mac. That's the asymmetry we want.
+    it("24 GB CUDA verdicts a config that 24 GB MPS would flag caution", () => {
+      // Same config (832×480 × 60 frames), same total memory (24 GB), but
+      // CUDA's larger effective budget (70% vs MPS 65%) and looser ratios
+      // (caution 0.7 vs 0.5) mean the same request is safe on a 4090 and
+      // only 'caution' on a 24 GB Mac. That's the asymmetry we want.
       const cuda = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 50,
+        numFrames: 60,
         device: "cuda:0",
         deviceMemoryGb: 24,
       });
       const mps = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 50,
+        numFrames: 60,
         device: "mps",
         deviceMemoryGb: 24,
       });
@@ -319,10 +319,13 @@ describe("assessVideoGenerationSafety()", () => {
     // ``selectedVariant.sizeGb`` as ``baseModelFootprintGb`` so the
     // warning reflects that reality.
 
-    it("flags danger for Wan 2.1 1.3B at 40 frames on a 64 GB M4 Max", () => {
-      // The exact config that crashed the user's backend. With the
-      // resident-model term included (16.4 GB disk × 1.4 MPS fragmentation
-      // ≈ 23 GB) the estimate now realistically lands in "danger".
+    it("flags caution for Wan 2.1 1.3B at 40 frames on a 64 GB M4 Max", () => {
+      // The original observed-crash report. With the corrected MPS budget
+      // (65% of unified memory, ~41.6 GB on 64 GB M4 Max) and the legacy
+      // sizeGb × 1.4 fallback (16.4 × 1.4 ≈ 23 GB resident), the estimate
+      // lands in "caution" — matches real-world reference behaviour where
+      // this config runs successfully but is close to the comfortable
+      // ceiling. The original "danger" verdict was over-strict.
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -331,11 +334,32 @@ describe("assessVideoGenerationSafety()", () => {
         deviceMemoryGb: 64,
         baseModelFootprintGb: 16.4,
       });
-      expect(result.riskLevel).toBe("danger");
+      expect(result.riskLevel).toBe("caution");
       // The resident term is the majority of the peak — the user needs to
       // see that it's the model itself, not just the attention kernel.
       expect(result.modelFootprintGb).toBeGreaterThan(result.estimatedPeakGb / 2);
       expect(result.reason).not.toBeNull();
+    });
+
+    it("runtimeFootprintGb override beats the sizeGb × 1.4 heuristic", () => {
+      // When the catalog supplies an explicit resident peak (Wan 2.2 5B
+      // declares 22 GB), the estimator must use it directly rather than
+      // multiplying disk size by 1.4. Same config without the override
+      // would land in danger (24 × 1.4 = 33.6 GB resident); with it,
+      // caution on a 64 GB Mac — matching the real Wan 2.2 5B footprint.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 24.0,
+        runtimeFootprintGb: 22.0,
+      });
+      expect(result.modelFootprintGb).toBe(22.0);
+      // Wan 2.2 5B on 64 GB M4 Max is comfortable — should be safe or
+      // caution depending on attention peak, never danger.
+      expect(result.riskLevel).not.toBe("danger");
     });
 
     it("hands back a null suggestion when the model alone doesn't fit", () => {

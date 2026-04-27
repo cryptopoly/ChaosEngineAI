@@ -248,3 +248,18 @@ class VideoGenerationRequest(BaseModel):
     # Smoothness post-processing. 1 = generated frames only; 2 or 4
     # inserts blended intermediates to raise the effective fps.
     interpolationFactor: int = Field(default=1, ge=1, le=4)
+    # Diffusers scheduler override. ``"auto"`` (default) lets the runtime
+    # pick the upstream-recommended scheduler for the chosen model
+    # (Uni-PC for Wan, Euler for LTX, etc.). Explicit values short-circuit
+    # the auto-pick. Recognised ids: ``unipc``, ``euler``, ``dpm++``,
+    # ``ddim``. Anything else logs a warning and keeps the pipeline
+    # default. See ``_VIDEO_PIPELINE_DEFAULTS`` in video_runtime for the
+    # auto-pick table.
+    scheduler: Literal["auto", "unipc", "euler", "flow-euler", "dpm++", "ddim"] | None = Field(default="auto")
+    # bitsandbytes NF4 4-bit quantization for the video DiT transformer.
+    # CUDA-only; ignored on MPS / CPU. Wan 2.1 14B drops from ~28 GB bf16
+    # to ~7 GB on the RTX 4090 with negligible quality loss.
+    useNf4: bool = Field(default=False)
+    # LTX-Video two-stage spatial upscale via LTXLatentUpsamplePipeline.
+    # Frame budget grows ~1.5×; runtimeNote surfaces the substitution.
+    enableLtxRefiner: bool = Field(default=False)

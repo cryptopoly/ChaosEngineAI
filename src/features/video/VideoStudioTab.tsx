@@ -57,6 +57,10 @@ export interface VideoStudioTabProps {
   onVideoStepsChange: (value: number) => void;
   videoGuidance: number;
   onVideoGuidanceChange: (value: number) => void;
+  videoUseNf4: boolean;
+  onVideoUseNf4Change: (value: boolean) => void;
+  videoEnableLtxRefiner: boolean;
+  onVideoEnableLtxRefinerChange: (value: boolean) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -109,13 +113,16 @@ const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
 // _SUPPORTED_REPOS in backend_service/mlx_video_runtime.py — kept here
 // so the Studio can decide when to surface the mlx-video chip without
 // an extra capabilities round-trip. See FU-009 in CLAUDE.md.
+//
+// Today: LTX-2 prince-canuma pre-converted MLX repos only. Wan2.1/2.2
+// require an explicit ``mlx_video.models.wan_2.convert`` step on raw HF
+// weights (no pre-converted MLX repo today) — until that conversion is
+// bundled, Wan paths use diffusers MPS.
 const MLX_VIDEO_SUPPORTED_REPOS: ReadonlySet<string> = new Set([
-  "Lightricks/LTX-2-19B",
-  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-  "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-  "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
-  "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-  "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+  "prince-canuma/LTX-2-distilled",
+  "prince-canuma/LTX-2-dev",
+  "prince-canuma/LTX-2.3-distilled",
+  "prince-canuma/LTX-2.3-dev",
 ]);
 
 // Quality presets: common starting points for the denoising step count.
@@ -224,6 +231,10 @@ export function VideoStudioTab({
   onVideoStepsChange,
   videoGuidance,
   onVideoGuidanceChange,
+  videoUseNf4,
+  onVideoUseNf4Change,
+  videoEnableLtxRefiner,
+  onVideoEnableLtxRefinerChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -455,6 +466,7 @@ export function VideoStudioTab({
         device: videoRuntimeStatus.device,
         deviceMemoryGb: videoRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedVideoVariant?.sizeGb,
+        runtimeFootprintGb: selectedVideoVariant?.runtimeFootprintGb,
       }),
     [
       videoWidth,
@@ -463,6 +475,7 @@ export function VideoStudioTab({
       videoRuntimeStatus.device,
       videoRuntimeStatus.deviceMemoryGb,
       selectedVideoVariant?.sizeGb,
+      selectedVideoVariant?.runtimeFootprintGb,
     ],
   );
 
@@ -597,15 +610,25 @@ export function VideoStudioTab({
                   : "LongLive not installed"}
               </span>
             ) : null}
-            {/* mlx-video chip — Apple Silicon only. Three states:
-              * missing (warning), scaffold-installed (subtle), or
-              * realGenerationAvailable=true (success, after FU-009
-              * lands the actual generate path). Hidden off-platform. */}
+            {/* mlx-video chip — Apple Silicon only. Four states:
+              * missing (warning), scaffold-installed (subtle), ready
+              * (success), or active=true when an LTX-2 variant is
+              * loaded and routing through mlx-video. Hidden off-platform. */}
             {mlxVideoMissing ? (
               <span className="badge warning">mlx-video not installed</span>
             ) : null}
             {mlxVideoInstalledScaffold ? (
               <span className="badge subtle">mlx-video scaffold</span>
+            ) : null}
+            {isAppleSiliconHost
+              && mlxVideoStatus?.realGenerationAvailable
+              && !isMlxVideoVariant ? (
+              <span className="badge success">mlx-video ready</span>
+            ) : null}
+            {isAppleSiliconHost
+              && mlxVideoStatus?.realGenerationAvailable
+              && isMlxVideoVariant ? (
+              <span className="badge accent">Engine: mlx-video</span>
             ) : null}
           </div>
           {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
@@ -1023,6 +1046,12 @@ export function VideoStudioTab({
                   onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
                 />
               </div>
+              {selectedVideoVariant?.repo === "Lightricks/LTX-Video" && videoGuidance > 4 ? (
+                <p className="caution-text" role="alert">
+                  LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and
+                  produces blurred / rainbow output. Lower to 3 for the cleanest results.
+                </p>
+              ) : null}
             </label>
           </div>
 
@@ -1031,6 +1060,42 @@ export function VideoStudioTab({
               Clip length: {(videoNumFrames / videoFps).toFixed(2).replace(/\.?0+$/, "")}s
               {" "}({videoNumFrames} frames ÷ {videoFps} fps)
             </p>
+          ) : null}
+
+          {selectedVideoVariant?.repo === "Lightricks/LTX-Video" ? (
+            <p className="muted-text">
+              Backend auto-tunes LTX decode parameters (frame_rate as model conditioning,
+              decode_timestep, decode_noise_scale, guidance_rescale) to the Lightricks
+              reference defaults — no extra sliders needed.
+            </p>
+          ) : null}
+
+          {!isAppleSiliconHost ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoUseNf4}
+                onChange={(event) => onVideoUseNf4Change(event.target.checked)}
+              />
+              <span>
+                4-bit (NVIDIA NF4) — fits Wan 2.1 14B in &lt;24 GB VRAM via bitsandbytes.
+                CUDA only; ignored on CPU.
+              </span>
+            </label>
+          ) : null}
+
+          {selectedVideoVariant?.repo === "Lightricks/LTX-Video" ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoEnableLtxRefiner}
+                onChange={(event) => onVideoEnableLtxRefinerChange(event.target.checked)}
+              />
+              <span>
+                LTX two-stage spatial upscale — refines through
+                LTXLatentUpsamplePipeline. Frame budget +50%.
+              </span>
+            </label>
           ) : null}
 
           {/*

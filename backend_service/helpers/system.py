@@ -294,16 +294,10 @@ def _describe_process(
     haystack = f"{name} {cmdline}"
     binary_path = (cmdline_parts[0] if cmdline_parts else "").lower()
 
-    lmstudio_binary_markers = (
-        "/applications/lm studio.app/",
-        "/.lmstudio/",
-        "/lmstudio.app/contents/",
-    )
-    if any(marker in binary_path for marker in lmstudio_binary_markers):
-        owner = "LM Studio"
-    elif "ollama" in haystack:
-        owner = "Ollama"
-    elif any(marker in haystack for marker in ("chaosengine", "backend_service.mlx_worker", "chaosengine-embedded")):
+    if any(
+        marker in haystack
+        for marker in ("chaosengine", "backend_service.mlx_worker", "chaosengine-embedded")
+    ):
         owner = "ChaosEngineAI"
     else:
         owner = owner_hint or "System"
@@ -347,10 +341,10 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
     # Process-name keywords that indicate an LLM-related process.
     # Intentionally excludes the desktop app name itself, which is too broad
     # and can match the shell/UI process instead of the actual model worker.
-    name_keywords = ("mlx", "llama-server", "llama-cli", "ollama", "openclaw")
+    name_keywords = ("mlx", "llama-server", "llama-cli", "openclaw")
     # Match real model workers by their command line too so bundled workers
     # still show up even if their executable name is not literally "python".
-    cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli", "ollama", "openclaw")
+    cmdline_markers = ("backend_service.mlx_worker", "mlx_worker", "llama-server", "llama-cli", "openclaw")
     # Get real memory from top (includes GPU/Metal memory on macOS)
     top_mem = _get_top_memory_map() if platform.system() == "Darwin" else {}
 

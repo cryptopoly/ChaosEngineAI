@@ -671,7 +671,7 @@ def _image_download_repo_ids() -> set[str]:
 # Diffusers image pipelines (FLUX, SD3.5, SDXL, Sana, HiDream, Qwen-Image, ...)
 # always load from the per-component folder layout at the snapshot root. Many
 # repos also ship a legacy single-file checkpoint (e.g. ``flux1-schnell.safetensors``
-# in ``black-forest-labs/FLUX.1-schnell``) for ComfyUI/kijai users — ~24 GB of
+# in ``black-forest-labs/FLUX.1-schnell``) for single-file loaders — ~24 GB of
 # duplicate weights the diffusers pipeline never touches. Without an allowlist
 # ``snapshot_download`` pulls both copies, so a 23 GB model lands on disk as
 # 57+ GB. Mirrors ``_VIDEO_DIFFUSERS_ALLOW_PATTERNS`` in ``helpers/video.py``.

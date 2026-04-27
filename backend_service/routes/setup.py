@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -159,7 +160,18 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
         raise HTTPException(status_code=400, detail=f"Package '{body.package}' is not in the allowed install list.")
 
     python = state.runtime.capabilities.pythonExecutable
-    cmd = [python, "-m", "pip", "install", "--upgrade", pip_name]
+    # Persist installs to the user-writable extras dir (mirrors GPU bundle).
+    # Without --target, packaged builds install into the embedded Python's
+    # site-packages inside the .app bundle, which gets reset on every app
+    # rebuild/upgrade — users were losing mlx-video / triattention / etc.
+    # between sessions. Tauri shell injects the same dir on PYTHONPATH, so
+    # imports resolve at sidecar boot.
+    extras_dir = _extras_site_packages()
+    cmd = [python, "-m", "pip", "install", "--disable-pip-version-check", "--upgrade"]
+    if extras_dir is not None:
+        extras_dir.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["--target", str(extras_dir)])
+    cmd.append(pip_name)
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -586,6 +598,12 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     ("torchao", "torchao>=0.6.0"),
 ]
 
+# Apple Silicon: ship mlx-video alongside the diffusers GPU bundle so the
+# MLX-native LTX-2 engine is available out of the box. Skipped on Intel
+# Macs and non-Darwin hosts where mlx-video has no working backend.
+if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+    _GPU_BUNDLE_PACKAGES.append(("mlx-video", "mlx-video"))
+
 # Rough total download size (torch CUDA dominates at ~2 GB; others sum to
 # ~400 MB). We expose this to the UI so the install banner shows an
 # honest "~2.5 GB, 1-3 min on broadband" instead of a silent multi-minute
@@ -844,6 +862,14 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
     """
     state = _GPU_BUNDLE_JOB
     non_fatal_failures: list[str] = []
+    # Apple Silicon hosts ship torch (MPS-enabled) inside the bundled venv —
+    # walking CUDA indexes here would fail (no aarch64-darwin CUDA wheels)
+    # and abort the rest of the bundle. Skip the torch step on macOS arm64
+    # so diffusers + mlx-video still install. Mirror the cuda-verify skip
+    # at the tail so the summary stays accurate.
+    is_apple_silicon = (
+        platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")
+    )
     try:
         state.phase = "preflight"
         state.message = "Checking disk space"
@@ -866,11 +892,26 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         state.phase = "downloading"
         state.package_total = len(_GPU_BUNDLE_PACKAGES)
 
-        # Package 1: torch (walks CUDA indexes).
-        state.package_index = 1
-        state.package_current = "torch"
-        state.percent = 0.0
-        ok, index_url = _install_torch_walking_indexes(python, extras_dir, state)
+        if is_apple_silicon:
+            # Skip torch CUDA walk — torch is already in the bundled venv
+            # (MPS-enabled). Mark the slot as accounted for and proceed to
+            # diffusers + mlx-video.
+            state.package_index = 1
+            state.package_current = "torch"
+            state.percent = 0.0
+            state.attempts.append({
+                "package": "torch",
+                "ok": True,
+                "output": "Apple Silicon: using bundled MPS torch (CUDA install skipped)",
+            })
+            ok = True
+            index_url = None
+        else:
+            # Package 1: torch (walks CUDA indexes).
+            state.package_index = 1
+            state.package_current = "torch"
+            state.percent = 0.0
+            ok, index_url = _install_torch_walking_indexes(python, extras_dir, state)
         if not ok:
             torch_attempts = [a for a in state.attempts if a.get("phase") != "deps"]
             state.no_wheel_for_python = _all_attempts_lack_wheel(torch_attempts)
@@ -945,8 +986,16 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         state.phase = "verifying"
         state.percent = 95.0
         state.package_current = None
-        state.message = "Verifying CUDA availability"
-        cuda_ok, detail = _verify_cuda(python, extras_dir)
+        if is_apple_silicon:
+            # No CUDA on Apple Silicon — bundled torch already gives us MPS.
+            # Mark verify as a pass so the UI doesn't show a red verify badge
+            # on a successful Apple Silicon install.
+            state.message = "Apple Silicon — skipping CUDA verify (MPS via bundled torch)"
+            cuda_ok = True
+            detail = "skipped on Apple Silicon"
+        else:
+            state.message = "Verifying CUDA availability"
+            cuda_ok, detail = _verify_cuda(python, extras_dir)
         state.cuda_verified = cuda_ok
         state.attempts.append({"phase": "verify", "ok": cuda_ok, "output": detail[-2000:]})
 

@@ -777,6 +777,13 @@ export interface VideoModelVariant {
   styleTags: string[];
   taskSupport: VideoModelTask[];
   sizeGb: number;
+  /** Resident peak memory at runtime (transformer + text encoder + VAE
+   * during the heaviest phase, typically text encoding). When present, the
+   * safety estimator uses this instead of multiplying ``sizeGb`` by a fudge
+   * factor — disk size routinely overstates resident because of duplicate
+   * sharded safetensors and tokenizer caches. ``undefined`` falls back to
+   * the legacy ``sizeGb × 1.4`` heuristic. */
+  runtimeFootprintGb?: number;
   recommendedResolution: string;
   defaultDurationSeconds: number;
   note: string;
@@ -885,6 +892,8 @@ export interface VideoGenerationPayload {
   steps: number;
   guidance: number;
   seed?: number | null;
+  useNf4?: boolean;
+  enableLtxRefiner?: boolean;
 }
 
 export interface VideoGenerationResponse {

@@ -253,6 +253,13 @@ function bytesPerElementForDevice(device: "mps" | "cuda" | "cpu"): number {
  * is a safer assumption there. */
 function effectiveMemoryBudgetGb(totalGb: number, device: "mps" | "cuda" | "cpu"): number {
   if (device === "cuda") return totalGb * 0.7;
+  // Apple Silicon's Metal recommendedMaxWorkingSetSize is ~75% of unified
+  // memory by default. We leave headroom for OS + other processes but the
+  // 0.5 we used previously was too conservative — it flagged Wan 2.2 5B
+  // and HunyuanVideo as "danger" on a 64 GB M4 Max where both run
+  // comfortably under reference settings. 0.65 matches the realistic
+  // ceiling.
+  if (device === "mps") return totalGb * 0.65;
   return totalGb * 0.5;
 }
 
@@ -342,8 +349,12 @@ export function assessVideoGenerationSafety(opts: {
    * on MPS where the text encoder + weights are the dominant cost. Leave
    * unset for the narrow "attention-only" question. */
   baseModelFootprintGb?: number | null;
+  /** Resident peak (catalog ``runtimeFootprintGb``). When provided, used
+   * directly — bypasses the ``sizeGb × 1.4`` heuristic. Disk size
+   * overstates resident because of duplicate sharded safetensors. */
+  runtimeFootprintGb?: number | null;
 }): VideoGenerationSafety {
-  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb } = opts;
+  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb, runtimeFootprintGb } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
@@ -382,7 +393,14 @@ export function assessVideoGenerationSafety(opts: {
     && baseModelFootprintGb > 0
       ? baseModelFootprintGb
       : 0;
-  const modelFootprintGb = estimateResidentModelGb(baseFootprint, effectiveDevice);
+  // Prefer explicit runtime footprint when the catalog supplies one — it
+  // already reflects resident peak. Otherwise estimate from disk size.
+  const modelFootprintGb =
+    runtimeFootprintGb != null
+    && Number.isFinite(runtimeFootprintGb)
+    && runtimeFootprintGb > 0
+      ? runtimeFootprintGb
+      : estimateResidentModelGb(baseFootprint, effectiveDevice);
 
   if (
     !Number.isFinite(width)

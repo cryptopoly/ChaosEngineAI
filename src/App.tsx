@@ -1562,6 +1562,10 @@ export default function App() {
         onVideoStepsChange={videoState.setVideoSteps}
         videoGuidance={videoState.videoGuidance}
         onVideoGuidanceChange={videoState.setVideoGuidance}
+        videoUseNf4={videoState.videoUseNf4}
+        onVideoUseNf4Change={videoState.setVideoUseNf4}
+        videoEnableLtxRefiner={videoState.videoEnableLtxRefiner}
+        onVideoEnableLtxRefinerChange={videoState.setVideoEnableLtxRefiner}
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}

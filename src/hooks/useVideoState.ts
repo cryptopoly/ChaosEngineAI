@@ -183,6 +183,13 @@ export function useVideoState(
   const [videoFps, setVideoFps] = useState<number>(DEFAULT_VIDEO_FPS);
   const [videoSteps, setVideoSteps] = useState<number>(DEFAULT_VIDEO_STEPS);
   const [videoGuidance, setVideoGuidance] = useState<number>(DEFAULT_VIDEO_GUIDANCE);
+  // bnb NF4 4-bit transformer (CUDA only). Brings Wan 2.1 14B from
+  // ~28 GB bf16 to ~7 GB on RTX 4090. Hidden from the UI on Apple
+  // Silicon — bitsandbytes has no Metal backend.
+  const [videoUseNf4, setVideoUseNf4] = useState<boolean>(false);
+  // LTX-Video two-stage spatial upscale (LTXLatentUpsamplePipeline).
+  // Visible only when an LTX variant is selected. Frame budget +50%.
+  const [videoEnableLtxRefiner, setVideoEnableLtxRefiner] = useState<boolean>(false);
   const [videoRuntimeStatus, setVideoRuntimeStatus] = useState<VideoRuntimeStatus>({
     activeEngine: "placeholder",
     realGenerationAvailable: false,
@@ -643,6 +650,8 @@ export function useVideoState(
       steps: safeSteps,
       guidance: safeGuidance,
       seed: parsedSeed,
+      useNf4: videoUseNf4,
+      enableLtxRefiner: videoEnableLtxRefiner,
     };
 
     // The pipeline is "loaded" when the runtime reports the same repo as
@@ -900,6 +909,10 @@ export function useVideoState(
     setVideoSteps,
     videoGuidance,
     setVideoGuidance,
+    videoUseNf4,
+    setVideoUseNf4,
+    videoEnableLtxRefiner,
+    setVideoEnableLtxRefiner,
     videoRuntimeStatus,
     setVideoRuntimeStatus,
     videoBusyLabel,

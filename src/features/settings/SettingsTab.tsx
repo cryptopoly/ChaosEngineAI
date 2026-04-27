@@ -251,7 +251,7 @@ export function SettingsTab({
       </div>
       <Panel
         title="Model Directories"
-        subtitle="Add the folders ChaosEngineAI should scan for local models, including custom, Ollama, LM Studio, or shared model paths."
+        subtitle="Add the folders ChaosEngineAI should scan for local models, including custom paths and shared model directories."
         actions={
           <button className="primary-button" type="button" onClick={() => void onSaveSettings()}>
             Save settings
@@ -263,7 +263,7 @@ export function SettingsTab({
             <input
               className="text-input directory-add-label"
               type="text"
-              placeholder="Label (e.g. LM Studio models)"
+              placeholder="Label (e.g. Shared models)"
               value={newDirectoryLabel}
               onChange={(event) => onNewDirectoryLabelChange(event.target.value)}
             />

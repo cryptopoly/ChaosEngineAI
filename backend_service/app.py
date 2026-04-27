@@ -440,6 +440,9 @@ def _generate_video_artifact(
             ggufRepo=(variant.get("ggufRepo") or None),
             ggufFile=(variant.get("ggufFile") or None),
             interpolationFactor=request.interpolationFactor,
+            scheduler=request.scheduler,
+            useNf4=request.useNf4,
+            enableLtxRefiner=request.enableLtxRefiner,
         )
     )
 

@@ -20,12 +20,13 @@ from __future__ import annotations
 import gc
 import importlib
 import importlib.util
+import logging
 import os
 import platform
 import secrets
 import threading
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,9 @@ from backend_service.progress import (
     PHASE_SAVING,
     VIDEO_PROGRESS,
 )
+
+
+_LOG = logging.getLogger(__name__)
 
 
 MAX_VIDEO_SEED = 2147483647
@@ -256,6 +260,23 @@ class VideoGenerationConfig:
     # UI shows the "Scaffold" badge so users know why.
     cacheStrategy: str | None = None
     cacheRelL1Thresh: float | None = None
+    # Optional diffusers scheduler override. ``None`` (or ``"auto"``) keeps
+    # whatever scheduler the per-model defaults table picks, which in turn
+    # falls back to the pipeline's baked-in default. Recognised ids match
+    # ``_SCHEDULER_CLASSES`` below — anything else logs a warning and
+    # leaves the pipeline scheduler untouched.
+    scheduler: str | None = None
+    # bitsandbytes NF4 quantization for the video DiT transformer. CUDA
+    # only; ignored on MPS / CPU. Brings Wan 2.1 14B from ~28 GB bf16 to
+    # ~7 GB on the RTX 4090 with negligible quality loss for video DiTs
+    # (NF4 is the same scheme bitsandbytes ships for QLoRA).
+    useNf4: bool = False
+    # LTX-Video two-stage spatial upscale. When True and the pipeline is
+    # ``LTXPipeline``, the engine runs the base sampler at the requested
+    # resolution then refines through ``LTXLatentUpsamplePipeline``
+    # (Lightricks/LTX-Video-0.9.5-spatial-upscaler). Frame budget grows
+    # ~1.5×; the ``runtimeNote`` surfaces the substitution to users.
+    enableLtxRefiner: bool = False
 
 
 @dataclass(frozen=True)
@@ -317,6 +338,221 @@ _GGUF_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
 
 def _gguf_video_transformer_class_for_repo(repo: str) -> str | None:
     return _GGUF_VIDEO_TRANSFORMER_CLASSES.get(repo)
+
+
+# Repos for which we know the diffusers transformer subfolder layout used
+# by ``BitsAndBytesConfig + from_pretrained(subfolder="transformer")``.
+# Same class mapping as GGUF — bnb is just a different quant scheme on
+# the same DiT classes. Returning None means we don't have a verified
+# NF4 path for this repo (the loader will surface a clear note rather
+# than failing the run).
+_BNB_NF4_VIDEO_TRANSFORMER_CLASSES: dict[str, str] = {
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": "WanTransformer3DModel",
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": "WanTransformer3DModel",
+    "hunyuanvideo-community/HunyuanVideo": "HunyuanVideoTransformer3DModel",
+    "Lightricks/LTX-Video": "LTXVideoTransformer3DModel",
+}
+
+
+def _bnb_nf4_transformer_class_for_repo(repo: str) -> str | None:
+    return _BNB_NF4_VIDEO_TRANSFORMER_CLASSES.get(repo)
+
+
+# Per-model sweet-spot inference defaults sourced from upstream model cards
+# and reference workflows. The schema-level defaults
+# (steps=50, guidance=3.0) are conservative blanks; without per-model
+# substitution a Wan 2.1 generation comes out grey/washed because CFG=3
+# is half the value the model was trained with. Values come from:
+#   - LTX-Video: Lightricks model card recommends 30 steps CFG 3 for the
+#     full model; distilled variants override to 8 steps CFG 1.
+#   - Wan 2.1 / 2.2: Wan-AI model card recommendations, Uni-PC
+#     scheduler with CFG 6 (2.1) or 7.5 (2.2).
+#   - HunyuanVideo: tencent/HunyuanVideo recommends 50 steps CFG 6.
+#   - Mochi: genmo/mochi-1-preview defaults from upstream pipeline.
+#   - CogVideoX: THUDM model cards.
+_VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
+    # LTX-Video pipeline calls ``set_timesteps(mu=...)`` which only
+    # ``FlowMatchEulerDiscreteScheduler`` accepts. Older cached snapshots
+    # have plain ``EulerDiscreteScheduler`` baked in, so force-swap on
+    # every load to keep the pipeline call valid.
+    "Lightricks/LTX-Video": {"steps": 30, "guidance": 3.0, "scheduler": "flow-euler"},
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": {"steps": 30, "guidance": 6.0, "scheduler": "unipc"},
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": {"steps": 30, "guidance": 6.0, "scheduler": "unipc"},
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": {"steps": 20, "guidance": 7.5, "scheduler": "unipc"},
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": {"steps": 30, "guidance": 7.5, "scheduler": "unipc"},
+    "hunyuanvideo-community/HunyuanVideo": {"steps": 50, "guidance": 6.0, "scheduler": None},
+    "genmo/mochi-1-preview": {"steps": 64, "guidance": 4.5, "scheduler": None},
+    "THUDM/CogVideoX-2b": {"steps": 50, "guidance": 6.0, "scheduler": None},
+    "THUDM/CogVideoX-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
+}
+
+# Schema-level defaults — must mirror ``VideoGenerationRequest`` in
+# ``backend_service/models/__init__.py``. We only substitute model-tuned
+# values when the user kept the schema defaults, so explicit slider
+# tweaks survive untouched.
+_REQUEST_DEFAULT_STEPS = 50
+_REQUEST_DEFAULT_GUIDANCE = 3.0
+
+# Lightricks' recommended negative-prompt template for LTX-Video. Applied
+# only when the request's negativePrompt is empty (or the schema's softer
+# default). LTX was trained with strong negative-prompt conditioning, so
+# the template materially improves output quality vs an empty / generic
+# negative. Reference: huggingface.co/Lightricks/LTX-Video model card +
+# Lightricks LTX-Video reference defaults.
+_LTX_DEFAULT_NEGATIVE_PROMPT = (
+    "worst quality, inconsistent motion, blurry, jittery, distorted"
+)
+
+
+# Rough bf16 footprint for the full pipeline (transformer + VAE + text
+# encoders) keyed on repo. Used by the memory-saver gate — slicing and
+# tiling cut quality, so we only enable them when there's actual memory
+# pressure. Numbers come from the catalog ``sizeGb`` estimates for the
+# stock variants; GGUF Q4/Q6/Q8 variants override at the call site.
+_VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
+    "Lightricks/LTX-Video": 14.0,
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 9.0,
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
+    "hunyuanvideo-community/HunyuanVideo": 26.0,
+    "genmo/mochi-1-preview": 20.0,
+    "THUDM/CogVideoX-2b": 10.0,
+    "THUDM/CogVideoX-5b": 18.0,
+}
+
+# GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as
+# substrings in the gguf filename so future quant levels (e.g. ``Q5_K_M``)
+# fall through to a sensible default.
+_GGUF_QUANT_MULTIPLIERS: tuple[tuple[str, float], ...] = (
+    ("Q4", 0.30),
+    ("Q5", 0.36),
+    ("Q6", 0.42),
+    ("Q8", 0.55),
+)
+
+
+def _estimate_model_footprint_gb(
+    repo: str, dtype_name: str, gguf_file: str | None = None
+) -> float | None:
+    """Cheap estimate of a video pipeline's GPU/MPS memory footprint in GB.
+
+    Returns ``None`` if the repo is unrecognised — callers treat that as
+    "stay safe" and enable slicing. The dtype name is the str of the
+    torch dtype (``"torch.bfloat16"`` etc.); we treat fp16/bf16 as the
+    catalog baseline and double for fp32.
+    """
+    base = _VIDEO_MODEL_FOOTPRINT_BF16_GB.get(repo)
+    if base is None:
+        return None
+    if gguf_file:
+        upper = gguf_file.upper()
+        for marker, multiplier in _GGUF_QUANT_MULTIPLIERS:
+            if marker in upper:
+                base = base * multiplier
+                break
+    if "float32" in dtype_name and "bfloat16" not in dtype_name:
+        base = base * 2.0
+    return base
+
+
+def _should_apply_memory_savers(
+    device: str, total_memory_gb: float | None, estimated_footprint_gb: float | None
+) -> bool:
+    """Decide whether to enable attention slicing + VAE slicing/tiling.
+
+    Slicing trades quality for VRAM. The reference workflows don't enable it —
+    we used to do it unconditionally, which left a 64 GB Mac running a
+    1.3B model in slicing mode for no reason. Heuristic:
+
+    - ``CHAOSENGINE_VIDEO_FORCE_SLICING=1`` always wins (rollback lever).
+    - Unknown memory or unknown footprint → stay safe, enable slicing.
+    - CPU device → enable, system RAM is shared.
+    - Footprint > 70% of device memory → enable.
+    - Otherwise → leave the pipeline at full quality.
+    """
+    if os.getenv("CHAOSENGINE_VIDEO_FORCE_SLICING") == "1":
+        return True
+    if device == "cpu":
+        return True
+    if total_memory_gb is None or estimated_footprint_gb is None:
+        return True
+    if total_memory_gb <= 0:
+        return True
+    return (estimated_footprint_gb / total_memory_gb) > 0.7
+
+
+# Diffusers scheduler classes we expose via the ``scheduler`` request field.
+# Resolved on the ``diffusers`` module at runtime so an old install that
+# lacks one of these classes degrades to a logged warning instead of an
+# import-time crash.
+_SCHEDULER_CLASSES: dict[str, str] = {
+    "unipc": "UniPCMultistepScheduler",
+    "euler": "EulerDiscreteScheduler",
+    # ``FlowMatchEulerDiscreteScheduler`` is the only scheduler that
+    # accepts the ``mu`` kwarg LTXPipeline passes to ``set_timesteps``.
+    # Older cached LTX snapshots have plain ``EulerDiscreteScheduler``
+    # baked in; we force-swap on LTX to keep the pipeline call valid.
+    "flow-euler": "FlowMatchEulerDiscreteScheduler",
+    "dpm++": "DPMSolverMultistepScheduler",
+    "ddim": "DDIMScheduler",
+}
+
+
+def _align_wan_num_frames(repo: str, requested: int) -> tuple[int, str | None]:
+    """Round Wan's ``num_frames`` to the nearest valid ``(4k + 1)`` value.
+
+    Wan models compute ``(n_frames - 1) / 4 + 1`` latent frames internally;
+    off-spec counts produce mostly-black/garbled output. We round down to
+    the nearest valid count rather than up so we don't silently exceed the
+    user's requested clip length and frame budget.
+
+    Returns ``(aligned_count, note_or_None)``. The note is surface-ready
+    text — if non-None the caller should publish it to ``VIDEO_PROGRESS``
+    and the run log so the UI explains why the count changed.
+    """
+    if "Wan" not in repo:
+        return requested, None
+    if requested < 5:
+        return 5, "Wan requires num_frames >= 5; clamped."
+    aligned = ((requested - 1) // 4) * 4 + 1
+    if aligned != requested:
+        return aligned, (
+            f"Aligned num_frames {requested} → {aligned} (Wan requires 4k+1)."
+        )
+    return aligned, None
+
+
+def _resolve_video_defaults(
+    repo: str, requested_steps: int, requested_guidance: float
+) -> dict[str, Any]:
+    """Substitute per-model sweet-spot values when the user kept schema defaults.
+
+    Heuristic: if the request matches the schema defaults exactly (50 steps,
+    CFG 3.0) we treat it as "user did not dial this in" and substitute the
+    upstream-recommended values. Any explicit deviation is preserved.
+
+    Returns the resolved dict with ``steps``, ``guidance``, ``scheduler``,
+    and ``substituted`` (True when at least one value was rewritten).
+    """
+    overrides = _VIDEO_PIPELINE_DEFAULTS.get(repo, {})
+    resolved_steps = requested_steps
+    resolved_guidance = requested_guidance
+    substituted = False
+    if requested_steps == _REQUEST_DEFAULT_STEPS and "steps" in overrides:
+        resolved_steps = int(overrides["steps"])
+        substituted = substituted or resolved_steps != requested_steps
+    if requested_guidance == _REQUEST_DEFAULT_GUIDANCE and "guidance" in overrides:
+        resolved_guidance = float(overrides["guidance"])
+        substituted = substituted or resolved_guidance != requested_guidance
+    return {
+        "steps": resolved_steps,
+        "guidance": resolved_guidance,
+        "scheduler": overrides.get("scheduler"),
+        "substituted": substituted,
+    }
 
 
 def _interpolate_frames(frames: list[Any], factor: int) -> list[Any]:
@@ -557,12 +793,16 @@ class DiffusersVideoEngine:
         (``_invoke_pipeline``, ``_encode_frames_to_mp4``) so tests can stub
         them without needing real 10+GB video weights on disk.
         """
+        config, finalize_notes = self._finalize_config(config)
         VIDEO_PROGRESS.begin(
             run_label=self._format_run_label(config),
             total_steps=max(1, int(config.steps)),
             phase=PHASE_LOADING,
             message=f"Preparing {config.modelName}",
         )
+        for note in finalize_notes:
+            VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=note)
+            _LOG.info("video.finalize: %s", note)
         try:
             # mp4 encoding needs imageio-ffmpeg. Check before we spend 60+ seconds
             # doing a full generation we then can't save anywhere.
@@ -578,6 +818,7 @@ class DiffusersVideoEngine:
                 config.repo,
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
+                use_nf4=config.useNf4,
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -585,6 +826,11 @@ class DiffusersVideoEngine:
             # time into T5 encoding + the denoising loop.
             if VIDEO_PROGRESS.is_cancelled():
                 raise GenerationCancelled("Video generation cancelled by user")
+
+            scheduler_note = self._swap_scheduler(pipeline, config.scheduler)
+            if scheduler_note:
+                VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=scheduler_note)
+                _LOG.info("video.scheduler: %s", scheduler_note)
             torch = self._torch
             if torch is None:
                 raise RuntimeError("PyTorch was not initialised for the video runtime.")
@@ -620,7 +866,25 @@ class DiffusersVideoEngine:
             )
 
             started = time.perf_counter()
-            frames = self._invoke_pipeline(pipeline, kwargs)
+            if config.enableLtxRefiner and config.repo == "Lightricks/LTX-Video":
+                try:
+                    frames = self._invoke_pipeline_with_ltx_refiner(
+                        pipeline, kwargs, torch
+                    )
+                    VIDEO_PROGRESS.set_phase(
+                        PHASE_DIFFUSING,
+                        message="LTX two-stage spatial upscale applied.",
+                    )
+                except Exception as exc:  # noqa: BLE001 — refiner is best-effort
+                    note = (
+                        f"LTX refiner skipped ({type(exc).__name__}: {exc}) — "
+                        "running base pipeline only."
+                    )
+                    _LOG.info("video.ltx_refiner: %s", note)
+                    VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=note)
+                    frames = self._invoke_pipeline(pipeline, kwargs)
+            else:
+                frames = self._invoke_pipeline(pipeline, kwargs)
             elapsed = max(0.1, time.perf_counter() - started)
 
             if not frames:
@@ -666,6 +930,94 @@ class DiffusersVideoEngine:
 
     # ---------- internals ----------
 
+    def _finalize_config(
+        self, config: VideoGenerationConfig
+    ) -> tuple[VideoGenerationConfig, list[str]]:
+        """Apply per-model defaults + frame alignment + scheduler resolution.
+
+        Centralised here so VIDEO_PROGRESS, the cache strategy hook, and the
+        pipeline invocation all see the same resolved values. Returns a new
+        (frozen) config + a list of human-readable notes the caller publishes
+        to the run log.
+        """
+        notes: list[str] = []
+        resolved = _resolve_video_defaults(config.repo, config.steps, config.guidance)
+        steps = int(resolved["steps"])
+        guidance = float(resolved["guidance"])
+        if resolved.get("substituted"):
+            notes.append(
+                f"Substituting model-tuned defaults for {config.modelName}: "
+                f"steps {config.steps} → {steps}, CFG {config.guidance} → {guidance}."
+            )
+
+        aligned_frames, frame_note = _align_wan_num_frames(config.repo, config.numFrames)
+        if frame_note:
+            notes.append(frame_note)
+
+        # Scheduler: explicit request > model default > leave alone.
+        requested_scheduler = (config.scheduler or "").strip().lower() or None
+        if requested_scheduler == "auto":
+            requested_scheduler = None
+        scheduler = requested_scheduler or resolved.get("scheduler")
+        if scheduler and scheduler not in _SCHEDULER_CLASSES:
+            notes.append(
+                f"Unknown scheduler {scheduler!r} — keeping the pipeline default."
+            )
+            scheduler = None
+
+        # LTX-Video: surface the auto-tuned decode params + frame_rate
+        # conditioning so the user sees why output quality matches the
+        # Lightricks reference even though we didn't expose new sliders.
+        if config.repo == "Lightricks/LTX-Video":
+            notes.append(
+                f"LTX-Video auto-tuned to Lightricks reference defaults: "
+                f"frame_rate={int(config.fps)} (model conditioning), "
+                f"decode_timestep=0.05, decode_noise_scale=0.025, "
+                f"guidance_rescale=0.7."
+            )
+
+        return (
+            replace(
+                config,
+                steps=steps,
+                guidance=guidance,
+                numFrames=aligned_frames,
+                scheduler=scheduler,
+            ),
+            notes,
+        )
+
+    def _swap_scheduler(self, pipeline: Any, scheduler_id: str | None) -> str | None:
+        """Replace the pipeline's scheduler with the requested class.
+
+        Returns a status message (non-None) iff the swap actually happened
+        or failed in a user-relevant way. ``None`` means "no swap requested
+        or pipeline already on this scheduler" — silent path.
+        """
+        if not scheduler_id:
+            return None
+        cls_name = _SCHEDULER_CLASSES.get(scheduler_id)
+        if cls_name is None:
+            return None
+        current_cls = type(getattr(pipeline, "scheduler", None)).__name__
+        if current_cls == cls_name:
+            return None
+        try:
+            diffusers = importlib.import_module("diffusers")
+        except Exception:
+            return f"Scheduler swap skipped: diffusers import failed."
+        scheduler_cls = getattr(diffusers, cls_name, None)
+        if scheduler_cls is None:
+            return (
+                f"Scheduler {scheduler_id!r} ({cls_name}) not available in the "
+                "installed diffusers — keeping the pipeline default."
+            )
+        try:
+            pipeline.scheduler = scheduler_cls.from_config(pipeline.scheduler.config)
+        except Exception as exc:  # noqa: BLE001
+            return f"Scheduler swap to {scheduler_id!r} failed: {exc}"
+        return f"Scheduler swapped to {scheduler_id} ({cls_name})."
+
     def _build_pipeline_kwargs(
         self,
         config: VideoGenerationConfig,
@@ -689,6 +1041,26 @@ class DiffusersVideoEngine:
         lowered_repo = config.repo.lower()
         if "hunyuanvideo" not in lowered_repo and config.negativePrompt.strip():
             kwargs["negative_prompt"] = config.negativePrompt
+
+        # LTX-Video kwargs parity with Lightricks' reference defaults.
+        # Without these, diffusers' LTXPipeline produces rainbow / blurry
+        # output because (1) the model conditions on default frame_rate=25
+        # while our exporter writes config.fps, (2) the VAE decodes from
+        # final latent without the small denoise pass that cleans
+        # compression artifacts, (3) flow-match models oversaturate
+        # without rescale. Reference: Lightricks LTX-Video model card.
+        pipeline_cls = type(self._pipeline).__name__ if self._pipeline is not None else ""
+        if pipeline_cls == "LTXPipeline":
+            kwargs["frame_rate"] = int(config.fps)
+            kwargs["decode_timestep"] = 0.05
+            kwargs["decode_noise_scale"] = 0.025
+            kwargs["guidance_rescale"] = 0.7
+            # Inject Lightricks' recommended negative-prompt template when
+            # the user hasn't overridden — LTX was trained with strong
+            # negative-prompt conditioning, so the schema's softer default
+            # ("blurry, low quality") leaves quality on the table.
+            if not kwargs.get("negative_prompt"):
+                kwargs["negative_prompt"] = _LTX_DEFAULT_NEGATIVE_PROMPT
         return kwargs
 
     def _invoke_pipeline(self, pipeline: Any, kwargs: dict[str, Any]) -> list[Any]:
@@ -752,6 +1124,71 @@ class DiffusersVideoEngine:
                 "This usually means the installed diffusers version returns a "
                 "different output shape. Upgrade diffusers: pip install -U diffusers"
             )
+        if isinstance(frames, (list, tuple)) and frames and isinstance(frames[0], (list, tuple)):
+            return list(frames[0])
+        return list(frames)
+
+    def _invoke_pipeline_with_ltx_refiner(
+        self, pipeline: Any, kwargs: dict[str, Any], torch: Any
+    ) -> list[Any]:
+        """Run LTX base + LTXLatentUpsamplePipeline spatial 2× upscale.
+
+        Mirrors the upstream Lightricks LTX-Video two-stage pattern:
+        sample latents through ``LTXPipeline`` then refine through
+        ``LTXLatentUpsamplePipeline`` loaded from the
+        ``Lightricks/LTX-Video-0.9.5-spatial-upscaler`` snapshot. Both
+        snapshots must be locally cached — we never auto-download from
+        within ``generate``. Failure modes (snapshot missing, diffusers
+        too old, decode error) propagate to the caller which falls back
+        to the base pipeline.
+        """
+        from huggingface_hub import snapshot_download  # type: ignore
+
+        diffusers = importlib.import_module("diffusers")
+        upscaler_cls = getattr(diffusers, "LTXLatentUpsamplePipeline", None)
+        if upscaler_cls is None:
+            raise RuntimeError(
+                "Installed diffusers does not expose LTXLatentUpsamplePipeline."
+            )
+        upscaler_repo = "Lightricks/LTX-Video-0.9.5-spatial-upscaler"
+        upscaler_path = snapshot_download(
+            repo_id=upscaler_repo,
+            local_files_only=True,
+            resume_download=True,
+        )
+
+        base_kwargs = dict(kwargs)
+        base_kwargs["output_type"] = "latent"
+        base_result = pipeline(**base_kwargs)
+        latents = getattr(base_result, "frames", None)
+        if latents is None:
+            raise RuntimeError("LTX base pipeline returned no latents.")
+
+        device = self._device or "cpu"
+        dtype = self._preferred_torch_dtype(torch, device)
+        upscaler = upscaler_cls.from_pretrained(
+            upscaler_path,
+            torch_dtype=dtype,
+            local_files_only=True,
+        )
+        if device != "cpu":
+            try:
+                upscaler = upscaler.to(device)
+            except (RuntimeError, MemoryError):
+                if hasattr(upscaler, "enable_sequential_cpu_offload"):
+                    upscaler.enable_sequential_cpu_offload()
+                else:
+                    raise
+
+        try:
+            refined = upscaler(latents=latents)
+        finally:
+            del upscaler
+            gc.collect()
+
+        frames = getattr(refined, "frames", None)
+        if frames is None:
+            raise RuntimeError("LTX refiner returned no frames.")
         if isinstance(frames, (list, tuple)) and frames and isinstance(frames[0], (list, tuple)):
             return list(frames[0])
         return list(frames)
@@ -824,9 +1261,15 @@ class DiffusersVideoEngine:
         repo: str,
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
+        use_nf4: bool = False,
     ) -> Any:
         with self._lock:
-            variant_key = f"{repo}::{gguf_file}" if gguf_file else repo
+            variant_suffix = ""
+            if gguf_file:
+                variant_suffix = f"::{gguf_file}"
+            elif use_nf4:
+                variant_suffix = "::nf4"
+            variant_key = f"{repo}{variant_suffix}" if variant_suffix else repo
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
@@ -872,6 +1315,21 @@ class DiffusersVideoEngine:
                     pipeline_kwargs["transformer"] = quantized_transformer
                 if gguf_note:
                     VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=gguf_note)
+            elif use_nf4:
+                VIDEO_PROGRESS.set_phase(
+                    PHASE_LOADING,
+                    message="Loading NF4 transformer (bitsandbytes)",
+                )
+                nf4_transformer, nf4_note = self._try_load_bnb_nf4_transformer(
+                    repo=repo,
+                    local_path=local_path,
+                    torch=torch,
+                    device=device,
+                )
+                if nf4_transformer is not None:
+                    pipeline_kwargs["transformer"] = nf4_transformer
+                if nf4_note:
+                    VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=nf4_note)
 
             pipeline = pipeline_cls.from_pretrained(
                 local_path,
@@ -880,29 +1338,71 @@ class DiffusersVideoEngine:
                 **pipeline_kwargs,
             )
 
-            # Memory-saving knobs. Video pipelines are hungry on unified-memory
-            # and consumer GPUs alike — slice everything we reasonably can.
             if hasattr(pipeline, "set_progress_bar_config"):
                 pipeline.set_progress_bar_config(disable=True)
-            if hasattr(pipeline, "enable_attention_slicing"):
-                pipeline.enable_attention_slicing()
-            vae = getattr(pipeline, "vae", None)
-            if vae is not None:
-                if hasattr(vae, "enable_slicing"):
-                    vae.enable_slicing()
-                if hasattr(vae, "enable_tiling"):
-                    vae.enable_tiling()
+
+            # Memory-saving knobs. Slicing + tiling are quality-lossy and
+            # Reference workflows don't enable them by default — only flip them on
+            # when there's real pressure. See ``_should_apply_memory_savers``
+            # for the decision matrix.
+            total_memory_gb = _detect_device_memory_gb(device)
+            estimated_footprint_gb = _estimate_model_footprint_gb(
+                repo, str(dtype), gguf_file=gguf_file
+            )
+            if _should_apply_memory_savers(device, total_memory_gb, estimated_footprint_gb):
+                _LOG.info(
+                    "video.memory_savers: enabled (device=%s, total_gb=%s, "
+                    "estimated_gb=%s)",
+                    device,
+                    total_memory_gb,
+                    estimated_footprint_gb,
+                )
+                if hasattr(pipeline, "enable_attention_slicing"):
+                    pipeline.enable_attention_slicing()
+                vae = getattr(pipeline, "vae", None)
+                if vae is not None:
+                    if hasattr(vae, "enable_slicing"):
+                        vae.enable_slicing()
+                    if hasattr(vae, "enable_tiling"):
+                        vae.enable_tiling()
+            else:
+                _LOG.info(
+                    "video.memory_savers: skipped (device=%s, total_gb=%s, "
+                    "estimated_gb=%s) — full quality path.",
+                    device,
+                    total_memory_gb,
+                    estimated_footprint_gb,
+                )
 
             if device != "cpu":
-                # Try full-device placement first; fall back to sequential CPU
-                # offload if the model is too big to fit.
-                try:
-                    pipeline = pipeline.to(device)
-                except (RuntimeError, MemoryError):
-                    if hasattr(pipeline, "enable_sequential_cpu_offload"):
-                        pipeline.enable_sequential_cpu_offload()
-                    else:
-                        raise
+                # MoE pipelines (Wan 2.2 A14B has both ``transformer`` and
+                # ``transformer_2``) cannot fit two 28 GB experts in unified
+                # memory on a 64 GB Mac. Skip the full-device placement path
+                # and engage sequential CPU offload directly so the active
+                # expert lives on-device while the inactive one swaps to
+                # CPU. Without this, ``.to("mps")`` would raise mid-copy
+                # and the user would see a hard crash.
+                is_moe = (
+                    hasattr(pipeline, "transformer_2")
+                    and getattr(pipeline, "transformer_2", None) is not None
+                )
+                if is_moe and hasattr(pipeline, "enable_sequential_cpu_offload"):
+                    _LOG.info(
+                        "video.placement: MoE pipeline detected (transformer + transformer_2) — "
+                        "engaging enable_sequential_cpu_offload() proactively to keep peak under "
+                        "device memory."
+                    )
+                    pipeline.enable_sequential_cpu_offload()
+                else:
+                    # Try full-device placement first; fall back to sequential
+                    # CPU offload if the model is too big to fit.
+                    try:
+                        pipeline = pipeline.to(device)
+                    except (RuntimeError, MemoryError):
+                        if hasattr(pipeline, "enable_sequential_cpu_offload"):
+                            pipeline.enable_sequential_cpu_offload()
+                        else:
+                            raise
 
             self._pipeline = pipeline
             self._torch = torch
@@ -977,6 +1477,81 @@ class DiffusersVideoEngine:
                 "falling back to the standard transformer."
             )
 
+    def _try_load_bnb_nf4_transformer(
+        self,
+        repo: str,
+        local_path: str,
+        torch: Any,
+        device: str,
+    ) -> tuple[Any, str | None]:
+        """Load a video DiT in NF4 4-bit via bitsandbytes.
+
+        CUDA-only — bitsandbytes has no Metal/MPS backend, and the kernels
+        wouldn't help on a 64 GB Mac anyway. Failure modes (non-CUDA host,
+        missing bitsandbytes, old diffusers without ``BitsAndBytesConfig``,
+        unmapped repo, broken snapshot subfolder) all return ``(None, note)``
+        so the caller falls back to the standard fp16 / bf16 transformer.
+
+        The transformer subfolder pattern (``from_pretrained(local_path,
+        subfolder="transformer", quantization_config=...)``) matches the
+        Wan / HunyuanVideo / LTX-Video diffusers snapshots — VAE and text
+        encoders still load via the parent pipeline ``from_pretrained`` on
+        the same snapshot root.
+        """
+        if device != "cuda":
+            return None, (
+                "NF4 (bitsandbytes) requires CUDA. "
+                "Falling back to the standard transformer."
+            )
+        if importlib.util.find_spec("bitsandbytes") is None:
+            return None, (
+                "bitsandbytes package missing — install it from the Setup "
+                "page to enable NF4. Falling back to the standard transformer."
+            )
+        try:
+            from diffusers import BitsAndBytesConfig  # type: ignore
+        except ImportError:
+            return None, (
+                "Installed diffusers doesn't expose BitsAndBytesConfig. "
+                "Upgrade diffusers via the Setup page to use NF4 variants."
+            )
+        transformer_cls_name = _bnb_nf4_transformer_class_for_repo(repo)
+        if transformer_cls_name is None:
+            return None, (
+                f"No NF4 transformer class registered for {repo}. "
+                "Add it to _BNB_NF4_VIDEO_TRANSFORMER_CLASSES."
+            )
+        try:
+            import diffusers  # type: ignore
+        except Exception:
+            return None, "diffusers import failed — cannot load NF4 transformer."
+        transformer_cls = getattr(diffusers, transformer_cls_name, None)
+        if transformer_cls is None:
+            return None, (
+                f"{transformer_cls_name} not in installed diffusers — "
+                "upgrade to use NF4 quantization."
+            )
+
+        try:
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+            transformer = transformer_cls.from_pretrained(
+                local_path,
+                subfolder="transformer",
+                quantization_config=quant_config,
+                torch_dtype=torch.bfloat16,
+                local_files_only=True,
+            )
+            return transformer, "Transformer loaded with NF4 (bitsandbytes)"
+        except Exception as exc:  # noqa: BLE001 — any failure → fall back
+            return None, (
+                f"NF4 load failed ({type(exc).__name__}: {exc}) — "
+                "falling back to the standard transformer."
+            )
+
     def _release_pipeline(self) -> None:
         pipeline = self._pipeline
         torch = self._torch
@@ -1015,7 +1590,20 @@ class DiffusersVideoEngine:
         if device == "cuda":
             return torch.bfloat16
         if device == "mps":
-            return torch.float16
+            # M2 and newer support bf16 on MPS; M1 silently downcasts to
+            # fp16 inside operators which costs accuracy on long DiT
+            # sequences. Probe the capability with a one-element tensor —
+            # if MPS rejects it, fall back to fp16 cleanly. Honour an env
+            # opt-out so we have a rollback lever if a future MPS update
+            # regresses.
+            if os.getenv("CHAOSENGINE_VIDEO_MPS_BF16") == "0":
+                return torch.float16
+            try:
+                probe = torch.zeros(1, dtype=torch.bfloat16, device="mps")
+                del probe
+                return torch.bfloat16
+            except (RuntimeError, NotImplementedError, TypeError):
+                return torch.float16
         return torch.float32
 
 
@@ -1047,6 +1635,10 @@ class VideoRuntimeManager:
         # — generate() raises, preload/generate are not routed through
         # the manager yet. See ``mlx_video_runtime`` module docstring.
         self._mlx_video: Any | None = None
+        # sd.cpp video engine (FU-008). Scaffold only: probe + preload
+        # routed; generate() raises NotImplementedError so the manager
+        # falls through to diffusers until the CLI subprocess lands.
+        self._sdcpp_video: Any | None = None
 
     def _get_longlive(self) -> Any:
         if self._longlive is None:
@@ -1060,6 +1652,26 @@ class VideoRuntimeManager:
             self._mlx_video = MlxVideoEngine()
         return self._mlx_video
 
+    def _is_mlx_video_repo(self, repo: str | None) -> bool:
+        """Routing predicate for mlx-video. Avoids importing the engine
+        module unless the repo prefix actually matches."""
+        if not repo:
+            return False
+        from backend_service.mlx_video_runtime import _is_mlx_video_repo
+        return _is_mlx_video_repo(repo)
+
+    def _get_sdcpp_video(self) -> Any:
+        if self._sdcpp_video is None:
+            from backend_service.sdcpp_video_runtime import SdCppVideoEngine
+            self._sdcpp_video = SdCppVideoEngine()
+        return self._sdcpp_video
+
+    def _is_sdcpp_video_repo(self, repo: str | None) -> bool:
+        if not repo:
+            return False
+        from backend_service.sdcpp_video_runtime import _is_sdcpp_video_repo
+        return _is_sdcpp_video_repo(repo)
+
     def capabilities(self) -> dict[str, Any]:
         return self._engine.probe().to_dict()
 
@@ -1070,11 +1682,22 @@ class VideoRuntimeManager:
     def mlx_video_capabilities(self) -> dict[str, Any]:
         """Probe the mlx-video engine so Setup can surface install state.
 
-        Scaffold-only — Studio still routes generation through diffusers.
-        When FU-009 lands, preload/generate will dispatch here for the
-        repos in ``mlx_video_runtime.supported_repos()`` on Apple Silicon.
+        On Apple Silicon with mlx-video installed, the manager routes
+        ``prince-canuma/LTX-2-*`` repos here before falling through to
+        diffusers — see ``generate``. Wan paths still use diffusers MPS
+        until the mlx-video Wan conversion step is bundled.
         """
         return self._get_mlx_video().probe().to_dict()
+
+    def sdcpp_video_capabilities(self) -> dict[str, Any]:
+        """Probe the sd.cpp engine so Setup/Studio can surface staging state.
+
+        Scaffold today: ``realGenerationAvailable`` is always ``False``
+        because ``generate()`` is unwired. Probe still reports binary
+        presence so the UI can prompt the user to stage `sd` ahead of
+        the FU-008 generation cutover.
+        """
+        return self._get_sdcpp_video().probe().to_dict()
 
     def preload(self, repo: str) -> dict[str, Any]:
         with self._lock:
@@ -1084,6 +1707,12 @@ class VideoRuntimeManager:
                 if not status.realGenerationAvailable:
                     raise RuntimeError(status.message)
                 return engine.preload(repo).to_dict()
+            if self._is_mlx_video_repo(repo):
+                mlx = self._get_mlx_video()
+                status = mlx.probe()
+                if not status.realGenerationAvailable:
+                    raise RuntimeError(status.message)
+                return mlx.preload(repo).to_dict()
             status = self._engine.probe()
             if not status.realGenerationAvailable:
                 raise RuntimeError(status.message)
@@ -1093,6 +1722,8 @@ class VideoRuntimeManager:
         with self._lock:
             if _is_longlive_repo(repo):
                 return self._get_longlive().unload(repo).to_dict()
+            if self._is_mlx_video_repo(repo):
+                return self._get_mlx_video().unload(repo).to_dict()
             return self._engine.unload(repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:
@@ -1112,6 +1743,20 @@ class VideoRuntimeManager:
                 video = engine.generate(config)
                 runtime = engine.probe().to_dict()
             return video, runtime
+
+        if self._is_mlx_video_repo(config.repo):
+            mlx = self._get_mlx_video()
+            status = mlx.probe()
+            if status.realGenerationAvailable:
+                with self._lock:
+                    video = mlx.generate(config)
+                    runtime = mlx.probe().to_dict()
+                return video, runtime
+            # mlx-video not available (Intel Mac, missing package, etc.) —
+            # fall through to diffusers so the supported repo doesn't dead-
+            # end. Diffusers won't actually load LTX-2-* (no compatible
+            # pipeline yet), so this branch effectively only covers the
+            # "supported repo on a non-Apple-Silicon host" edge case.
 
         status = self._engine.probe()
         if not status.realGenerationAvailable:

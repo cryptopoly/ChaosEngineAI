@@ -513,6 +513,48 @@ class VideoGenerateRouteTests(unittest.TestCase):
             404,
         )
 
+    def test_generate_threads_phase_b_request_fields_into_config(self):
+        """``scheduler``, ``useNf4``, ``enableLtxRefiner`` reach VideoGenerationConfig.
+
+        Pydantic accepts the fields, the route handler propagates them, and the
+        runtime manager sees the resolved config. We don't run a real pass —
+        just assert the kwargs the manager would've used.
+        """
+        state = self.client.app.state.chaosengine
+        captured: dict[str, Any] = {}
+
+        def _capture(config):
+            captured["config"] = config
+            return self._fake_generated_video(), {
+                "activeEngine": "diffusers",
+                "realGenerationAvailable": True,
+                "message": "Ready",
+                "missingDependencies": [],
+            }
+
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            side_effect=_capture
+        )
+
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            response = self.client.post(
+                "/api/video/generate",
+                json=self._payload(
+                    scheduler="unipc",
+                    useNf4=True,
+                    enableLtxRefiner=False,
+                ),
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        config = captured["config"]
+        self.assertEqual(config.scheduler, "unipc")
+        self.assertTrue(config.useNf4)
+        self.assertFalse(config.enableLtxRefiner)
+
     def test_generate_surfaces_runtime_error_as_400(self):
         state = self.client.app.state.chaosengine
         state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]

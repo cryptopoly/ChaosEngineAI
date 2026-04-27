@@ -995,6 +995,115 @@ class EnhancePromptTests(unittest.TestCase):
         self.assertEqual(resolved.prompt, "cartoon llama")
         self.assertFalse(any("Auto-enhanced" in n for n in notes))
 
+    def test_short_ltx2_prompt_gets_enhanced(self):
+        # Phase E2.1: prince-canuma/LTX-2-* now in enhancer dict.
+        from backend_service.video_runtime import _enhance_prompt
+        out, note = _enhance_prompt("prince-canuma/LTX-2-distilled", "drone shot")
+        self.assertNotEqual(out, "drone shot")
+        self.assertIn("drone shot", out)
+        self.assertIn("cinematic", out.lower())
+        self.assertIsNotNone(note)
+
+    def test_short_ltx2_3_prompt_gets_enhanced(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, _ = _enhance_prompt("prince-canuma/LTX-2.3-distilled", "skater in tokyo")
+        self.assertIn("skater in tokyo", out)
+        self.assertIn("cinematic", out.lower())
+
+
+class CfgDecayTests(unittest.TestCase):
+    """Phase E2.2: linear CFG decay across the sampling schedule.
+
+    Flow-match video models oversaturate when CFG stays high throughout;
+    decay lets early steps lock semantics (high CFG) while late steps
+    preserve fine detail (low CFG → 1.0 by the final step).
+    """
+
+    def test_decay_sets_pipeline_guidance_scale_at_each_step(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=4.0, cfg_decay=True,
+        )
+        # Stub pipeline carrying a mutable guidance_scale.
+        class StubPipeline:
+            guidance_scale = 4.0
+        pipeline = StubPipeline()
+        # Step 0 finished — set up scale for step 1. Linear ramp from
+        # 4.0 (i=0) to 1.0 (i=total-1=3): scale at i=1 is 4 - 1*(3/3) = 3.
+        callback(pipeline, 0, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 3.0, places=5)
+        callback(pipeline, 1, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 2.0, places=5)
+        callback(pipeline, 2, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 1.0, places=5)
+
+    def test_decay_disabled_leaves_guidance_scale_alone(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=4.0, cfg_decay=False,
+        )
+        class StubPipeline:
+            guidance_scale = 4.0
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        callback(pipeline, 1, None, {})
+        self.assertEqual(pipeline.guidance_scale, 4.0)
+
+    def test_decay_skipped_when_initial_guidance_is_one(self):
+        # No floor to ramp toward — decay would flatline.
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=1.0, cfg_decay=True,
+        )
+        class StubPipeline:
+            guidance_scale = 1.0
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        self.assertEqual(pipeline.guidance_scale, 1.0)
+
+    def test_finalize_emits_cfg_decay_note(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a long detailed cinematic prompt about a cat in a kitchen with lots of sun",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            cfgDecay=True,
+        )
+        _, notes = engine._finalize_config(cfg)
+        self.assertTrue(any("CFG decay" in n for n in notes))
+
+    def test_finalize_no_cfg_decay_note_when_disabled(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a long detailed cinematic prompt about a cat in a kitchen with lots of sun",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            cfgDecay=False,
+        )
+        _, notes = engine._finalize_config(cfg)
+        self.assertFalse(any("CFG decay" in n for n in notes))
+
 
 class BuildPipelineKwargsLtxTests(unittest.TestCase):
     """Phase D: LTX-Video kwarg parity with Lightricks reference defaults.

@@ -270,3 +270,10 @@ class VideoGenerationRequest(BaseModel):
     # ``false`` opts out for users who've crafted a long custom prompt
     # and want it sent verbatim.
     enhancePrompt: bool = Field(default=True)
+    # Phase E2: CFG decay schedule. Flow-match video models (LTX-Video,
+    # Wan, HunyuanVideo) benefit from higher CFG early in sampling
+    # (locks semantic structure) and lower CFG late (preserves fine
+    # detail, reduces oversaturation). When True, the engine decays
+    # ``guidance_scale`` linearly from the user's setting at step 0
+    # to 1.0 at the final step. Default-on for flow-match pipelines.
+    cfgDecay: bool = Field(default=True)

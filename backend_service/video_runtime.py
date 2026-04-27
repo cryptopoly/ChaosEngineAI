@@ -280,6 +280,9 @@ class VideoGenerationConfig:
     # Phase E1: opt-in template-based prompt enhancement for short prompts
     # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
     enhancePrompt: bool = True
+    # Phase E2: CFG decay schedule. Linear ramp from initial guidance_scale
+    # at step 0 to 1.0 at the last step. Default-on for flow-match pipelines.
+    cfgDecay: bool = True
 
 
 @dataclass(frozen=True)
@@ -466,6 +469,29 @@ _PROMPT_ENHANCEMENT_SUFFIXES: dict[str, str] = {
     "THUDM/CogVideoX-5b": (
         ", cinematic composition, smooth motion, soft natural lighting, "
         "high detail."
+    ),
+    # LTX-2 family (mlx-video on Apple Silicon). LTX-2 is a 19B model
+    # with stronger structural understanding than LTX 0.9 — slightly
+    # less hand-holding via suffix, more emphasis on motion + lighting.
+    "prince-canuma/LTX-2-distilled": (
+        ", cinematic composition, soft natural lighting, smooth fluid "
+        "motion, gentle camera dolly, shallow depth of field, high "
+        "fidelity detail."
+    ),
+    "prince-canuma/LTX-2-dev": (
+        ", cinematic composition, soft natural lighting, smooth fluid "
+        "motion, gentle camera dolly, shallow depth of field, high "
+        "fidelity detail."
+    ),
+    "prince-canuma/LTX-2.3-distilled": (
+        ", cinematic composition, soft natural lighting, smooth fluid "
+        "motion, gentle camera dolly, shallow depth of field, high "
+        "fidelity detail."
+    ),
+    "prince-canuma/LTX-2.3-dev": (
+        ", cinematic composition, soft natural lighting, smooth fluid "
+        "motion, gentle camera dolly, shallow depth of field, high "
+        "fidelity detail."
     ),
 }
 
@@ -1085,6 +1111,16 @@ class DiffusersVideoEngine:
             if enhance_note:
                 notes.append(enhance_note)
 
+        # Phase E2 — CFG decay note. Only surfaces when decay actually
+        # has somewhere to ramp (initial CFG > 1.0 and steps > 1).
+        if config.cfgDecay and guidance > 1.0 and steps > 1:
+            notes.append(
+                f"CFG decay enabled: linearly ramping guidance_scale from "
+                f"{guidance:.2f} (step 0) to 1.0 (final step) — flow-match "
+                f"video models tend to oversaturate when CFG stays high "
+                f"throughout sampling."
+            )
+
         return (
             replace(
                 config,
@@ -1171,7 +1207,57 @@ class DiffusersVideoEngine:
             # ("blurry, low quality") leaves quality on the table.
             if not kwargs.get("negative_prompt"):
                 kwargs["negative_prompt"] = _LTX_DEFAULT_NEGATIVE_PROMPT
+        # Private kwarg consumed by ``_invoke_pipeline`` — pop'd before
+        # passing to the diffusers pipeline, so it never reaches the
+        # underlying call. Lets the engine plumb decay through one
+        # callback factory rather than threading state through self.
+        kwargs["__cfg_decay"] = bool(config.cfgDecay)
         return kwargs
+
+    def _make_step_callback(
+        self,
+        total_steps: int,
+        initial_guidance: float,
+        cfg_decay: bool,
+    ) -> Any:
+        """Build the per-step callback the pipeline calls during sampling.
+
+        Wires three concerns into one callback:
+          1. Progress reporting via ``VIDEO_PROGRESS.set_step``.
+          2. Cooperative cancel — raise ``GenerationCancelled`` when the
+             user hits Cancel on the modal.
+          3. Phase E2 CFG decay — linearly ramp ``pipeline.guidance_scale``
+             from ``initial_guidance`` at step 0 toward 1.0 at the last
+             step. Flow-match video models (LTX, Wan, HunyuanVideo) tend
+             to oversaturate when CFG is held high through the whole
+             schedule; decaying lets the early steps lock semantics
+             (high CFG) while late steps preserve fine detail (low CFG).
+        """
+        decay_floor = 1.0
+        decay_active = cfg_decay and total_steps > 1 and initial_guidance > decay_floor
+
+        def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
+            VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
+            if VIDEO_PROGRESS.is_cancelled():
+                try:
+                    _pipeline._interrupt = True
+                except Exception:
+                    pass
+                raise GenerationCancelled("Video generation cancelled by user")
+            if decay_active:
+                # Step `step` just finished (step uses scale set BEFORE it).
+                # Set the scale for step `step+1`. Linear ramp from initial
+                # at step 0 to decay_floor at step total_steps-1.
+                next_step = step + 1
+                progress = min(1.0, next_step / max(1, total_steps - 1))
+                next_scale = initial_guidance * (1.0 - progress) + decay_floor * progress
+                try:
+                    _pipeline.guidance_scale = float(next_scale)
+                except Exception:
+                    pass
+            return callback_kwargs
+
+        return _on_step_end
 
     def _invoke_pipeline(self, pipeline: Any, kwargs: dict[str, Any]) -> list[Any]:
         """Run the diffusers pipeline and return the first batch's frames.
@@ -1187,21 +1273,13 @@ class DiffusersVideoEngine:
         invocation on older diffusers versions that don't expose the kwarg.
         """
         total_steps = int(kwargs.get("num_inference_steps") or 0)
-
-        def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
-            VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
-            # Cooperative cancel: raise here when the user clicks Cancel on
-            # the modal. See ``image_runtime._on_step_end`` for the same
-            # pattern and rationale.
-            if VIDEO_PROGRESS.is_cancelled():
-                try:
-                    _pipeline._interrupt = True
-                except Exception:
-                    pass
-                raise GenerationCancelled("Video generation cancelled by user")
-            return callback_kwargs
-
-        kwargs.setdefault("callback_on_step_end", _on_step_end)
+        initial_guidance = float(kwargs.get("guidance_scale") or 1.0)
+        # Phase E2: CFG decay flag is plumbed via a private kwarg the
+        # caller pops before passing to the pipeline. Default-on when
+        # absent so existing call sites pick up the schedule.
+        cfg_decay = bool(kwargs.pop("__cfg_decay", True))
+        callback = self._make_step_callback(total_steps, initial_guidance, cfg_decay)
+        kwargs.setdefault("callback_on_step_end", callback)
 
         try:
             result = pipeline(**kwargs)

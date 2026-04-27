@@ -63,6 +63,8 @@ export interface VideoStudioTabProps {
   onVideoEnableLtxRefinerChange: (value: boolean) => void;
   videoEnhancePrompt: boolean;
   onVideoEnhancePromptChange: (value: boolean) => void;
+  videoCfgDecay: boolean;
+  onVideoCfgDecayChange: (value: boolean) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -239,6 +241,8 @@ export function VideoStudioTab({
   onVideoEnableLtxRefinerChange,
   videoEnhancePrompt,
   onVideoEnhancePromptChange,
+  videoCfgDecay,
+  onVideoCfgDecayChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -1122,6 +1126,20 @@ export function VideoStudioTab({
               Auto-enhance short prompts — appends model-tuned structural hints
               (cinematic descriptors, lighting, camera direction) when the prompt
               is under 25 words. Long custom prompts are sent verbatim.
+            </span>
+          </label>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoCfgDecay}
+              onChange={(event) => onVideoCfgDecayChange(event.target.checked)}
+            />
+            <span>
+              CFG decay — linearly drop guidance_scale from your setting (step 0)
+              to 1.0 (final step). Flow-match video models tend to oversaturate
+              when CFG stays high throughout sampling; decay lets early steps
+              lock semantics and late steps preserve fine detail.
             </span>
           </label>
 

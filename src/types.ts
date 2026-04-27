@@ -895,6 +895,7 @@ export interface VideoGenerationPayload {
   useNf4?: boolean;
   enableLtxRefiner?: boolean;
   enhancePrompt?: boolean;
+  cfgDecay?: boolean;
 }
 
 export interface VideoGenerationResponse {

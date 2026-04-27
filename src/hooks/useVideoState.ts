@@ -195,6 +195,12 @@ export function useVideoState(
   // uplift; explicit-off survives if the user has crafted a long custom
   // prompt and wants it sent verbatim.
   const [videoEnhancePrompt, setVideoEnhancePrompt] = useState<boolean>(true);
+  // Phase E2: linearly decay guidance_scale across the sampling
+  // schedule. Flow-match video models oversaturate at constant high
+  // CFG; decaying lets early steps lock semantics and late steps
+  // preserve fine detail. Default-on; opt-out for users who prefer
+  // constant CFG (matches the diffusers pipeline default behaviour).
+  const [videoCfgDecay, setVideoCfgDecay] = useState<boolean>(true);
   const [videoRuntimeStatus, setVideoRuntimeStatus] = useState<VideoRuntimeStatus>({
     activeEngine: "placeholder",
     realGenerationAvailable: false,
@@ -658,6 +664,7 @@ export function useVideoState(
       useNf4: videoUseNf4,
       enableLtxRefiner: videoEnableLtxRefiner,
       enhancePrompt: videoEnhancePrompt,
+      cfgDecay: videoCfgDecay,
     };
 
     // The pipeline is "loaded" when the runtime reports the same repo as
@@ -921,6 +928,8 @@ export function useVideoState(
     setVideoEnableLtxRefiner,
     videoEnhancePrompt,
     setVideoEnhancePrompt,
+    videoCfgDecay,
+    setVideoCfgDecay,
     videoRuntimeStatus,
     setVideoRuntimeStatus,
     videoBusyLabel,

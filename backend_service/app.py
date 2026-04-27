@@ -444,6 +444,7 @@ def _generate_video_artifact(
             useNf4=request.useNf4,
             enableLtxRefiner=request.enableLtxRefiner,
             enhancePrompt=request.enhancePrompt,
+            cfgDecay=request.cfgDecay,
         )
     )
 

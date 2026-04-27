@@ -1568,6 +1568,8 @@ export default function App() {
         onVideoEnableLtxRefinerChange={videoState.setVideoEnableLtxRefiner}
         videoEnhancePrompt={videoState.videoEnhancePrompt}
         onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
+        videoCfgDecay={videoState.videoCfgDecay}
+        onVideoCfgDecayChange={videoState.setVideoCfgDecay}
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}

@@ -62,11 +62,17 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
 })
 
 
-# Maps repo prefix → mlx-video module entry point. Today every supported
-# repo is LTX-2; the dict shape is kept so Wan (and future families) can
-# be slotted in without re-plumbing the dispatch.
+# Maps repo prefix → mlx-video MODULE path (NOT the console-script alias).
+# Blaizzy/mlx-video declares ``mlx_video.ltx_2.generate`` and
+# ``mlx_video.wan_2.generate`` as console scripts in ``pyproject.toml``,
+# but those are entry-point aliases — ``python -m mlx_video.ltx_2.generate``
+# fails with ``ModuleNotFoundError: No module named 'mlx_video.ltx_2'``
+# because the actual code lives at ``mlx_video.models.ltx_2.generate``.
+# We invoke via ``python -m`` to avoid PATH dependencies (the console
+# script binary may not land on PATH inside the embedded runtime), so
+# this dict points at the real module path.
 _REPO_ENTRY_POINTS: dict[str, str] = {
-    "prince-canuma/LTX-2": "mlx_video.ltx_2.generate",
+    "prince-canuma/LTX-2": "mlx_video.models.ltx_2.generate",
 }
 
 
@@ -100,6 +106,27 @@ def _resolve_entry_point(repo: str) -> str:
         f"No mlx-video entry point registered for {repo}. "
         f"Supported prefixes: {sorted(_REPO_ENTRY_POINTS)}"
     )
+
+
+def _resolve_pipeline_flag(repo: str) -> str:
+    """Pick mlx-video's ``--pipeline`` value from the repo name.
+
+    mlx-video's LTX-2 generate supports four pipeline modes:
+        distilled        — fastest, single-stage (default)
+        dev              — higher quality, single-stage with CFG
+        dev-two-stage    — two-stage refinement
+        dev-two-stage-hq — highest quality, slowest
+
+    We map ``LTX-2-distilled`` / ``LTX-2.3-distilled`` repos to
+    ``distilled`` and ``LTX-2-dev`` / ``LTX-2.3-dev`` to ``dev``.
+    Two-stage modes are not surfaced today — pre-converted weights
+    can drive both, but exposing the toggle requires an extra UI
+    affordance + per-pipeline timing budget.
+    """
+    repo_lower = repo.lower()
+    if repo_lower.endswith("-dev"):
+        return "dev"
+    return "distilled"
 
 
 class _ProgressSink(Protocol):
@@ -233,17 +260,23 @@ class MlxVideoEngine:
         """Compose the ``python -m mlx_video.<entry> --...`` invocation.
 
         Split out so tests can assert the CLI shape without spawning a
-        real subprocess. The flag set mirrors mlx-video upstream's
-        ``ltx_2.generate`` argparse surface as of 2026-04 (Blaizzy/mlx-video).
+        real subprocess. Flags mirror Blaizzy/mlx-video's
+        ``mlx_video.models.ltx_2.generate`` argparse surface — note the
+        names differ from diffusers conventions: ``--model-repo`` (not
+        ``--model``), ``--cfg-scale`` (not ``--guidance``),
+        ``--output-path`` (not ``--output``).
         """
         entry = _resolve_entry_point(config.repo)
         python = _resolve_video_python()
+        pipeline_flag = _resolve_pipeline_flag(config.repo)
         cmd = [
             python,
             "-m",
             entry,
-            "--model",
+            "--model-repo",
             config.repo,
+            "--pipeline",
+            pipeline_flag,
             "--prompt",
             config.prompt,
             "--num-frames",
@@ -256,15 +289,22 @@ class MlxVideoEngine:
             str(config.width),
             "--steps",
             str(config.steps),
-            "--guidance",
+            "--cfg-scale",
             str(config.guidance),
-            "--output",
+            "--output-path",
             str(output_path),
         ]
         if config.negativePrompt:
             cmd.extend(["--negative-prompt", config.negativePrompt])
         if config.seed is not None:
             cmd.extend(["--seed", str(config.seed)])
+        # STG (Spatial-Temporal Guidance) is mlx-video's built-in quality
+        # lever — perturbs final transformer blocks during sampling to
+        # reduce object breakup / chroma drift. Default 1.0 mirrors the
+        # upstream README's quality recommendation. This closes the FU-013
+        # gap for the mlx-video path (still pending for the diffusers
+        # LTX path on CUDA / non-Apple-Silicon hosts).
+        cmd.extend(["--stg-scale", "1.0"])
         return cmd
 
     def _launch(

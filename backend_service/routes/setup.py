@@ -178,6 +178,13 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     if extras_dir is not None:
         extras_dir.mkdir(parents=True, exist_ok=True)
         cmd.extend(["--target", str(extras_dir)])
+    # ``mlx-video`` users may already have the unrelated PyPI 0.1.0
+    # package on disk from before we switched to the git spec —
+    # ``--upgrade`` won't always reach for a git URL when an existing
+    # version is present in --target. ``--force-reinstall`` guarantees
+    # the git source replaces whatever name-collides on disk.
+    if body.package == "mlx-video":
+        cmd.append("--force-reinstall")
     cmd.append(pip_name)
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
     try:

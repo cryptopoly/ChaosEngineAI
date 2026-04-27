@@ -84,13 +84,16 @@ class MlxVideoSupportedReposTests(unittest.TestCase):
 
 class MlxVideoEntryPointTests(unittest.TestCase):
     def test_resolve_entry_point_for_ltx2(self):
+        # Real module path under ``mlx_video.models.ltx_2.generate`` —
+        # the ``mlx_video.ltx_2.generate`` name is a console-script
+        # alias in mlx-video's pyproject, not an importable module.
         self.assertEqual(
             _resolve_entry_point("prince-canuma/LTX-2-distilled"),
-            "mlx_video.ltx_2.generate",
+            "mlx_video.models.ltx_2.generate",
         )
         self.assertEqual(
             _resolve_entry_point("prince-canuma/LTX-2.3-dev"),
-            "mlx_video.ltx_2.generate",
+            "mlx_video.models.ltx_2.generate",
         )
 
     def test_resolve_entry_point_unknown_raises(self):
@@ -188,9 +191,15 @@ class MlxVideoGenerateCmdTests(unittest.TestCase):
         config = _make_config("prince-canuma/LTX-2-distilled")
         cmd = engine._build_cmd(config, Path("/tmp/out.mp4"))
         self.assertIn("-m", cmd)
-        self.assertIn("mlx_video.ltx_2.generate", cmd)
-        self.assertIn("--model", cmd)
+        # Real module path — ``mlx_video.ltx_2.generate`` is a console-
+        # script alias, not an importable module.
+        self.assertIn("mlx_video.models.ltx_2.generate", cmd)
+        # mlx-video CLI uses ``--model-repo`` (not ``--model``).
+        self.assertIn("--model-repo", cmd)
         self.assertIn("prince-canuma/LTX-2-distilled", cmd)
+        # Distilled repo → ``--pipeline distilled`` (fastest path).
+        self.assertIn("--pipeline", cmd)
+        self.assertIn("distilled", cmd)
         self.assertIn("--prompt", cmd)
         self.assertIn("a cat surfing", cmd)
         self.assertIn("--num-frames", cmd)
@@ -202,12 +211,34 @@ class MlxVideoGenerateCmdTests(unittest.TestCase):
         self.assertIn("--width", cmd)
         self.assertIn("--steps", cmd)
         self.assertIn("20", cmd)
-        self.assertIn("--guidance", cmd)
+        # ``--cfg-scale`` (not ``--guidance``).
+        self.assertIn("--cfg-scale", cmd)
         self.assertIn("5.0", cmd)
-        self.assertIn("--output", cmd)
+        # ``--output-path`` (not ``--output``).
+        self.assertIn("--output-path", cmd)
         self.assertIn("/tmp/out.mp4", cmd)
         self.assertIn("--seed", cmd)
         self.assertIn("42", cmd)
+        # STG (Spatial-Temporal Guidance) — quality lever default-on.
+        self.assertIn("--stg-scale", cmd)
+        self.assertIn("1.0", cmd)
+
+    def test_build_cmd_picks_dev_pipeline_for_dev_repo(self):
+        engine = MlxVideoEngine()
+        config = _make_config("prince-canuma/LTX-2-dev")
+        cmd = engine._build_cmd(config, Path("/tmp/out.mp4"))
+        # Dev repo → ``--pipeline dev`` (higher quality, single-stage).
+        self.assertIn("--pipeline", cmd)
+        # Find the value after --pipeline.
+        idx = cmd.index("--pipeline")
+        self.assertEqual(cmd[idx + 1], "dev")
+
+    def test_build_cmd_picks_dev_pipeline_for_ltx2_3_dev(self):
+        engine = MlxVideoEngine()
+        config = _make_config("prince-canuma/LTX-2.3-dev")
+        cmd = engine._build_cmd(config, Path("/tmp/out.mp4"))
+        idx = cmd.index("--pipeline")
+        self.assertEqual(cmd[idx + 1], "dev")
 
     def test_build_cmd_omits_seed_when_none(self):
         engine = MlxVideoEngine()

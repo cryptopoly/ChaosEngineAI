@@ -89,10 +89,17 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "mflux": "mflux",
     # Apple Silicon MLX video runtime (Blaizzy/mlx-video, MIT). Subprocess
     # wrapper in backend_service.mlx_video_runtime routes Wan2.1/2.2/LTX-2
+    #
+    # IMPORTANT: install from git, not PyPI. The PyPI package named
+    # ``mlx-video`` is an unrelated 0.1.0 utilities package (just `load`,
+    # `normalize`, `resize`, `to_float`) — does NOT ship the LTX-2 / Wan
+    # / HunyuanVideo generation entry points. Blaizzy's repo lives only
+    # on GitHub; pin by branch so we pick up new model entries without
+    # needing a PyPI release every time.
     # to native MLX kernels instead of diffusers+MPS. The capability probe
     # gates this package on Apple Silicon — installer hides it elsewhere.
     # See FU-009 in CLAUDE.md.
-    "mlx-video": "mlx-video",
+    "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {
@@ -602,7 +609,10 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
 # MLX-native LTX-2 engine is available out of the box. Skipped on Intel
 # Macs and non-Darwin hosts where mlx-video has no working backend.
 if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
-    _GPU_BUNDLE_PACKAGES.append(("mlx-video", "mlx-video"))
+    _GPU_BUNDLE_PACKAGES.append((
+        "mlx-video",
+        "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
+    ))
 
 # Rough total download size (torch CUDA dominates at ~2 GB; others sum to
 # ~400 MB). We expose this to the UI so the install banner shows an

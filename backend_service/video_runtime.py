@@ -1183,6 +1183,17 @@ class DiffusersVideoEngine:
             "num_inference_steps": config.steps,
             "guidance_scale": config.guidance,
             "generator": generator,
+            # Force PIL output so ``_encode_frames_to_mp4`` always receives
+            # ``list[PIL.Image]``. WanPipeline defaults to ``"np"``, which
+            # returns a 5D numpy array (B, F, H, W, C). Our frame
+            # post-processing assumes the diffusers PIL convention; a raw
+            # numpy tensor leaks through and ``PIL.Image.fromarray`` then
+            # raises "Image must have 1, 2, 3 or 4 channels" because it
+            # reads the first non-batch dim as height. LTXPipeline
+            # already defaults to "pil"; setting it explicitly here is
+            # a no-op for LTX and the fix for Wan / Hunyuan / Mochi /
+            # CogVideoX (all default to "np").
+            "output_type": "pil",
         }
         lowered_repo = config.repo.lower()
         if "hunyuanvideo" not in lowered_repo and config.negativePrompt.strip():
@@ -1233,7 +1244,15 @@ class DiffusersVideoEngine:
              schedule; decaying lets the early steps lock semantics
              (high CFG) while late steps preserve fine detail (low CFG).
         """
-        decay_floor = 1.0
+        # Floor MUST stay strictly above 1.0 so the pipeline's
+        # ``do_classifier_free_guidance`` property (``_guidance_scale > 1.0``)
+        # does not flip to False mid-loop. If it did, the pipeline would
+        # switch from 2-batch (cond+uncond) to 1-batch on the last step
+        # while the embeddings + scheduler state are still 2-batch shape,
+        # crashing with shape mismatches or producing garbled frames
+        # ("Image must have 1, 2, 3 or 4 channels" on Wan, batch
+        # dimension errors on LTX).
+        decay_floor = 1.5
         decay_active = cfg_decay and total_steps > 1 and initial_guidance > decay_floor
 
         def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):

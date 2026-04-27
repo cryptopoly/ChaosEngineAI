@@ -1029,14 +1029,21 @@ class CfgDecayTests(unittest.TestCase):
         class StubPipeline:
             guidance_scale = 4.0
         pipeline = StubPipeline()
-        # Step 0 finished — set up scale for step 1. Linear ramp from
-        # 4.0 (i=0) to 1.0 (i=total-1=3): scale at i=1 is 4 - 1*(3/3) = 3.
+        # Linear ramp from 4.0 (i=0) to FLOOR=1.5 (i=total-1=3).
+        # Floor MUST stay above 1.0 so do_classifier_free_guidance stays
+        # True throughout the loop — see ``_make_step_callback``.
+        # scale at step 1: 4.0*(2/3) + 1.5*(1/3) ≈ 3.167
+        # scale at step 2: 4.0*(1/3) + 1.5*(2/3) ≈ 2.333
+        # scale at step 3: 4.0*0 + 1.5*1 = 1.5
         callback(pipeline, 0, None, {})
-        self.assertAlmostEqual(pipeline.guidance_scale, 3.0, places=5)
+        self.assertAlmostEqual(pipeline.guidance_scale, 3.16666667, places=5)
         callback(pipeline, 1, None, {})
-        self.assertAlmostEqual(pipeline.guidance_scale, 2.0, places=5)
+        self.assertAlmostEqual(pipeline.guidance_scale, 2.33333333, places=5)
         callback(pipeline, 2, None, {})
-        self.assertAlmostEqual(pipeline.guidance_scale, 1.0, places=5)
+        self.assertAlmostEqual(pipeline.guidance_scale, 1.5, places=5)
+        # Crucial: floor stays strictly above 1.0 so classifier-free
+        # guidance does NOT flip off mid-loop.
+        self.assertGreater(pipeline.guidance_scale, 1.0)
 
     def test_decay_disabled_leaves_guidance_scale_alone(self):
         from backend_service.video_runtime import DiffusersVideoEngine
@@ -1051,8 +1058,8 @@ class CfgDecayTests(unittest.TestCase):
         callback(pipeline, 1, None, {})
         self.assertEqual(pipeline.guidance_scale, 4.0)
 
-    def test_decay_skipped_when_initial_guidance_is_one(self):
-        # No floor to ramp toward — decay would flatline.
+    def test_decay_skipped_when_initial_below_floor(self):
+        # Initial guidance 1.0 ≤ floor 1.5 — nothing to ramp.
         from backend_service.video_runtime import DiffusersVideoEngine
         engine = DiffusersVideoEngine()
         callback = engine._make_step_callback(
@@ -1063,6 +1070,19 @@ class CfgDecayTests(unittest.TestCase):
         pipeline = StubPipeline()
         callback(pipeline, 0, None, {})
         self.assertEqual(pipeline.guidance_scale, 1.0)
+
+    def test_decay_skipped_when_initial_at_or_below_floor(self):
+        # Initial 1.5 == floor — no ramp, scale stays put.
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=1.5, cfg_decay=True,
+        )
+        class StubPipeline:
+            guidance_scale = 1.5
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        self.assertEqual(pipeline.guidance_scale, 1.5)
 
     def test_finalize_emits_cfg_decay_note(self):
         from backend_service.video_runtime import DiffusersVideoEngine
@@ -1176,6 +1196,17 @@ class BuildPipelineKwargsLtxTests(unittest.TestCase):
         self.assertNotIn("decode_noise_scale", kwargs)
         self.assertNotIn("guidance_rescale", kwargs)
         self.assertNotIn("frame_rate", kwargs)
+
+    def test_output_type_pil_forced_for_all_pipelines(self):
+        # Wan / Hunyuan / Mochi / CogVideoX all default ``output_type="np"``,
+        # which leaks raw numpy ndarrays back to ``_encode_frames_to_mp4`` —
+        # the cause of the "Image must have 1, 2, 3 or 4 channels" crash.
+        # Forcing PIL gives a uniform shape across every video pipeline.
+        for pipeline_class in ("WanPipeline", "LTXPipeline", "HunyuanVideoPipeline", "MochiPipeline"):
+            engine = self._engine_with_pipeline_class(pipeline_class)
+            kwargs = engine._build_pipeline_kwargs(self._config(), generator=None)
+            self.assertEqual(kwargs.get("output_type"), "pil",
+                             f"{pipeline_class} kwargs missing output_type='pil'")
 
 
 class TryLoadBnbNf4TransformerTests(unittest.TestCase):

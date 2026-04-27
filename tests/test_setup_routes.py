@@ -121,7 +121,16 @@ class SetupRouteTests(unittest.TestCase):
         self.assertIn("--target", cmd)
         target_idx = cmd.index("--target")
         self.assertEqual(cmd[target_idx + 1], "/tmp/test-extras-site-packages")
-        self.assertIn("mlx-video", cmd)
+        # mlx-video is now pinned to the GitHub source (PyPI ships an
+        # unrelated 0.1.0 utilities package). Match on the spec prefix.
+        self.assertTrue(
+            any("mlx-video" in arg for arg in cmd),
+            f"mlx-video spec missing from pip cmd: {cmd}",
+        )
+        self.assertTrue(
+            any("github.com/Blaizzy/mlx-video" in arg for arg in cmd),
+            f"mlx-video spec must point to Blaizzy git URL: {cmd}",
+        )
 
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:

@@ -838,6 +838,16 @@ export function VideoStudioTab({
               onChange={(event) => onVideoPromptChange(event.target.value)}
               placeholder="A cinematic drone shot of a misty pine forest at dawn..."
             />
+            {selectedVideoVariant?.repo === "Lightricks/LTX-Video"
+              && hasPrompt
+              && videoPrompt.trim().split(/\s+/).length < 25 ? (
+              <p className="caution-text" role="note">
+                LTX-Video produces best results with detailed prompts (~50-100 words).
+                Short prompts ("cartoon llama eating straw") under-condition the model
+                and tend to drift. Lightricks recommends starting with the action,
+                then adding visual details, lighting, and camera direction.
+              </p>
+            ) : null}
           </label>
 
           <label>

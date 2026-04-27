@@ -253,13 +253,14 @@ function bytesPerElementForDevice(device: "mps" | "cuda" | "cpu"): number {
  * is a safer assumption there. */
 function effectiveMemoryBudgetGb(totalGb: number, device: "mps" | "cuda" | "cpu"): number {
   if (device === "cuda") return totalGb * 0.7;
-  // Apple Silicon's Metal recommendedMaxWorkingSetSize is ~75% of unified
-  // memory by default. We leave headroom for OS + other processes but the
-  // 0.5 we used previously was too conservative — it flagged Wan 2.2 5B
-  // and HunyuanVideo as "danger" on a 64 GB M4 Max where both run
-  // comfortably under reference settings. 0.65 matches the realistic
-  // ceiling.
-  if (device === "mps") return totalGb * 0.65;
+  // Apple Silicon's Metal ``recommendedMaxWorkingSetSize`` is ~75% of
+  // unified memory by default — that's the actual ceiling. Earlier
+  // values (0.5, then 0.65) were leaving real headroom unused; Wan 2.2
+  // 5B at 22 GB resident on a 64 GB M4 Max kept tripping caution
+  // (22/41.6 = 53%) even though it fits in ~33% of total memory.
+  // 0.75 matches the real device limit and lets the comparable models
+  // clear the caution band.
+  if (device === "mps") return totalGb * 0.75;
   return totalGb * 0.5;
 }
 

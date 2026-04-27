@@ -187,21 +187,24 @@ describe("assessVideoGenerationSafety()", () => {
 
   describe("CUDA gets more headroom than MPS at the same memory size", () => {
     it("24 GB CUDA verdicts a config that 24 GB MPS would flag caution", () => {
-      // Same config (832×480 × 60 frames), same total memory (24 GB), but
-      // CUDA's larger effective budget (70% vs MPS 65%) and looser ratios
-      // (caution 0.7 vs 0.5) mean the same request is safe on a 4090 and
-      // only 'caution' on a 24 GB Mac. That's the asymmetry we want.
+      // Same config (832×480 × 65 frames), same total memory (24 GB).
+      // MPS effective budget = 24*0.75 = 18 GB with a tighter caution
+      // ratio (0.5); CUDA budget = 24*0.7 = 16.8 GB with a looser
+      // caution ratio (0.7). Picked frame count to land in the band
+      // where MPS trips caution but CUDA stays safe — this is the
+      // asymmetry we surface to users so they understand why the same
+      // request is "safe" on a 4090 and "caution" on a 24 GB Mac.
       const cuda = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 60,
+        numFrames: 65,
         device: "cuda:0",
         deviceMemoryGb: 24,
       });
       const mps = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 60,
+        numFrames: 65,
         device: "mps",
         deviceMemoryGb: 24,
       });
@@ -363,16 +366,20 @@ describe("assessVideoGenerationSafety()", () => {
     });
 
     it("hands back a null suggestion when the model alone doesn't fit", () => {
-      // On a 64 GB M4 Max, Wan 2.1 1.3B's 23 GB resident footprint fills
-      // most of the 32 GB MPS budget all by itself — no per-request tweak
-      // (smaller resolution, fewer frames) can recover. The right answer
-      // is "try a smaller model", which we signal by a null suggestion.
+      // 24 GB Mac with Wan 2.1 1.3B's 23 GB resident footprint
+      // (16.4 GB disk × 1.4 fallback). MPS budget = 18 GB; the model
+      // alone exceeds the 9 GB caution threshold so no per-request
+      // tweak (smaller resolution, fewer frames) can recover. Right
+      // answer is "try a smaller model", signalled by a null
+      // suggestion. (The 64 GB M4 Max no longer trips this path
+      // since the bumped MPS budget gives Wan 2.1 1.3B real
+      // headroom — matching real ComfyUI behaviour.)
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
         numFrames: 40,
         device: "mps",
-        deviceMemoryGb: 64,
+        deviceMemoryGb: 24,
         baseModelFootprintGb: 16.4,
       });
       expect(result.suggestion).toBeNull();

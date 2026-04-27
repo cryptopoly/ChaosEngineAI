@@ -286,13 +286,24 @@ class MlxVideoEngine:
             stderr=subprocess.STDOUT,
             text=True,
         )
+        # Capture the tail of stdout/stderr so a fast-fail subprocess
+        # error surfaces in the user-visible RuntimeError instead of
+        # being silently lost to "code 1 after 0.2s. See stdout above."
+        # — which is opaque on a packaged build where stdout never
+        # makes it back to the user.
+        tail_lines: list[str] = []
+        max_tail_chars = 1500
         try:
             assert process.stdout is not None
             for line in process.stdout:
-                if not on_progress:
-                    continue
                 stripped = line.strip()
-                if not stripped:
+                if stripped:
+                    tail_lines.append(stripped)
+                    # Bound memory: drop oldest lines once the running
+                    # tail exceeds max_tail_chars.
+                    while sum(len(l) for l in tail_lines) > max_tail_chars and len(tail_lines) > 1:
+                        tail_lines.pop(0)
+                if not on_progress or not stripped:
                     continue
                 fraction = _parse_step_fraction(stripped)
                 if fraction is not None:
@@ -304,9 +315,10 @@ class MlxVideoEngine:
 
         duration = time.monotonic() - start
         if return_code != 0:
+            tail = "\n".join(tail_lines[-12:]) if tail_lines else "(no output captured)"
             raise RuntimeError(
                 f"mlx-video subprocess exited with code {return_code} "
-                f"after {duration:.1f}s. See stdout above."
+                f"after {duration:.1f}s. Tail of stdout/stderr:\n{tail}"
             )
 
 

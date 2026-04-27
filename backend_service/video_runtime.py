@@ -1112,13 +1112,16 @@ class DiffusersVideoEngine:
                 notes.append(enhance_note)
 
         # Phase E2 — CFG decay note. Only surfaces when decay actually
-        # has somewhere to ramp (initial CFG > 1.0 and steps > 1).
-        if config.cfgDecay and guidance > 1.0 and steps > 1:
+        # has somewhere to ramp (initial CFG > 1.5 — the floor that
+        # keeps classifier-free guidance enabled throughout the loop).
+        _CFG_DECAY_FLOOR = 1.5
+        if config.cfgDecay and guidance > _CFG_DECAY_FLOOR and steps > 1:
             notes.append(
                 f"CFG decay enabled: linearly ramping guidance_scale from "
-                f"{guidance:.2f} (step 0) to 1.0 (final step) — flow-match "
-                f"video models tend to oversaturate when CFG stays high "
-                f"throughout sampling."
+                f"{guidance:.2f} (step 0) to {_CFG_DECAY_FLOOR} (final step) — "
+                f"flow-match video models oversaturate when CFG stays high "
+                f"throughout sampling. Floor stays above 1.0 so classifier-"
+                f"free guidance keeps running 2-batch end-to-end."
             )
 
         return (

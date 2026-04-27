@@ -263,3 +263,10 @@ class VideoGenerationRequest(BaseModel):
     # LTX-Video two-stage spatial upscale via LTXLatentUpsamplePipeline.
     # Frame budget grows ~1.5×; runtimeNote surfaces the substitution.
     enableLtxRefiner: bool = Field(default=False)
+    # Phase E1: append model-specific structural hints to short prompts
+    # (< 25 words). Diffusion video models train against detailed prompts;
+    # short user prompts under-condition the model and drift. Default on
+    # so the typical short-prompt user gets quality uplift; explicit
+    # ``false`` opts out for users who've crafted a long custom prompt
+    # and want it sent verbatim.
+    enhancePrompt: bool = Field(default=True)

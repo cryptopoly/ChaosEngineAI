@@ -277,6 +277,9 @@ class VideoGenerationConfig:
     # (Lightricks/LTX-Video-0.9.5-spatial-upscaler). Frame budget grows
     # ~1.5×; the ``runtimeNote`` surfaces the substitution to users.
     enableLtxRefiner: bool = False
+    # Phase E1: opt-in template-based prompt enhancement for short prompts
+    # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
+    enhancePrompt: bool = True
 
 
 @dataclass(frozen=True)
@@ -404,6 +407,103 @@ _REQUEST_DEFAULT_GUIDANCE = 3.0
 _LTX_DEFAULT_NEGATIVE_PROMPT = (
     "worst quality, inconsistent motion, blurry, jittery, distorted"
 )
+
+
+# Phase E1 — Prompt enhancement.
+#
+# Diffusion video models train against highly-detailed prompts. Short user
+# prompts ("cartoon llama eating straw" — 4 words) under-condition the
+# model and produce drifty / blurry output. Reference flows ship a small
+# captioning LLM (e.g. Florence-2) that auto-expands short prompts into
+# the structured 50-100 word format the model was trained on.
+#
+# Until we wire a real LLM-based enhancer (Phase E follow-up — would
+# require a small instruction model + extra runtime cost), we deterministic-
+# ally append model-specific structural hints. This is much weaker than a
+# real captioner, but provides immediate uplift for short prompts and
+# costs zero extra inference time.
+#
+# Each entry is the suffix appended to the user's prompt — never replaces
+# what the user wrote. The structure mirrors what each upstream model
+# card recommends:
+#   - LTX-Video: action + visual details + lighting + camera direction
+#   - Wan: cinematic descriptors + lens / depth-of-field language
+#   - HunyuanVideo: scene + lighting + motion descriptors
+#   - Mochi / CogVideoX: high-fidelity descriptors
+_PROMPT_ENHANCEMENT_SUFFIXES: dict[str, str] = {
+    "Lightricks/LTX-Video": (
+        ", smooth natural motion, soft cinematic lighting, shallow depth of "
+        "field, gentle camera movement, high detail, 4k cinematic quality."
+    ),
+    "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": (
+        ", cinematic composition, 35mm film look, shallow depth of field, "
+        "soft natural lighting, smooth motion, high detail."
+    ),
+    "Wan-AI/Wan2.1-T2V-14B-Diffusers": (
+        ", cinematic composition, 35mm film look, shallow depth of field, "
+        "soft natural lighting, smooth motion, high detail."
+    ),
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": (
+        ", cinematic composition, 35mm film look, shallow depth of field, "
+        "soft natural lighting, smooth motion, high detail."
+    ),
+    "Wan-AI/Wan2.2-T2V-A14B-Diffusers": (
+        ", cinematic composition, 35mm film look, shallow depth of field, "
+        "soft natural lighting, smooth motion, high detail."
+    ),
+    "hunyuanvideo-community/HunyuanVideo": (
+        ", cinematic scene, dramatic lighting, smooth realistic motion, "
+        "high fidelity detail, 4k quality."
+    ),
+    "genmo/mochi-1-preview": (
+        ", cinematic composition, smooth motion, soft natural lighting, "
+        "high detail, 4k quality."
+    ),
+    "THUDM/CogVideoX-2b": (
+        ", cinematic composition, smooth motion, soft natural lighting, "
+        "high detail."
+    ),
+    "THUDM/CogVideoX-5b": (
+        ", cinematic composition, smooth motion, soft natural lighting, "
+        "high detail."
+    ),
+}
+
+# Word-count threshold under which auto-enhancement fires. Above this the
+# user is assumed to have written a structured prompt already and we leave
+# it alone.
+_PROMPT_ENHANCE_MIN_WORDS = 25
+
+
+def _enhance_prompt(repo: str, prompt: str) -> tuple[str, str | None]:
+    """Append per-model structural hints to short prompts.
+
+    Returns ``(enhanced_prompt, note)``. ``note`` is non-None iff the
+    suffix was appended; the caller publishes it to the run log so the
+    user sees what was sent to the pipeline.
+
+    Idempotent — a second call on an already-enhanced prompt is a no-op
+    (the suffix is detected via substring match). Caller-side word count
+    threshold means a long custom prompt is never modified.
+    """
+    suffix = _PROMPT_ENHANCEMENT_SUFFIXES.get(repo)
+    if not suffix:
+        return prompt, None
+    cleaned = prompt.strip()
+    if not cleaned:
+        return prompt, None
+    if len(cleaned.split()) >= _PROMPT_ENHANCE_MIN_WORDS:
+        return prompt, None
+    if suffix.strip() in cleaned:
+        return prompt, None
+    enhanced = cleaned.rstrip(",.!? ") + suffix
+    note = (
+        f"Auto-enhanced short prompt with model-specific structural hints "
+        f"(was {len(cleaned.split())} words, now {len(enhanced.split())} "
+        f"words). Toggle off via ``enhancePrompt: false`` if you'd rather "
+        f"send the prompt verbatim."
+    )
+    return enhanced, note
 
 
 # Rough bf16 footprint for the full pipeline (transformer + VAE + text
@@ -976,9 +1076,19 @@ class DiffusersVideoEngine:
                 f"guidance_rescale=0.7."
             )
 
+        # Phase E1 — auto-enhance short prompts. Default-on; opt-out via
+        # config.enhancePrompt=False. Only fires below the word-count
+        # threshold so a long custom prompt is never modified.
+        enhanced_prompt = config.prompt
+        if config.enhancePrompt:
+            enhanced_prompt, enhance_note = _enhance_prompt(config.repo, config.prompt)
+            if enhance_note:
+                notes.append(enhance_note)
+
         return (
             replace(
                 config,
+                prompt=enhanced_prompt,
                 steps=steps,
                 guidance=guidance,
                 numFrames=aligned_frames,

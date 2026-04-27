@@ -894,6 +894,7 @@ export interface VideoGenerationPayload {
   seed?: number | null;
   useNf4?: boolean;
   enableLtxRefiner?: boolean;
+  enhancePrompt?: boolean;
 }
 
 export interface VideoGenerationResponse {

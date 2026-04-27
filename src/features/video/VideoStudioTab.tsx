@@ -61,6 +61,8 @@ export interface VideoStudioTabProps {
   onVideoUseNf4Change: (value: boolean) => void;
   videoEnableLtxRefiner: boolean;
   onVideoEnableLtxRefinerChange: (value: boolean) => void;
+  videoEnhancePrompt: boolean;
+  onVideoEnhancePromptChange: (value: boolean) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -235,6 +237,8 @@ export function VideoStudioTab({
   onVideoUseNf4Change,
   videoEnableLtxRefiner,
   onVideoEnableLtxRefinerChange,
+  videoEnhancePrompt,
+  onVideoEnhancePromptChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -1107,6 +1111,19 @@ export function VideoStudioTab({
               </span>
             </label>
           ) : null}
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoEnhancePrompt}
+              onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
+            />
+            <span>
+              Auto-enhance short prompts — appends model-tuned structural hints
+              (cinematic descriptors, lighting, camera direction) when the prompt
+              is under 25 words. Long custom prompts are sent verbatim.
+            </span>
+          </label>
 
           {/*
             Always-on "device capacity" line so the user sees their envelope

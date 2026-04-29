@@ -150,8 +150,26 @@ jobs:
           restore-keys: cargo-release-${{ matrix.os }}-
 
       - uses: actions/setup-python@v6
+        if: matrix.platform != 'darwin'
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      # macOS uses python-build-standalone (Astral) instead of
+      # actions/setup-python. The setup-python framework is pre-signed
+      # with hardened-runtime flags, and Xcode 16.4's install_name_tool
+      # rejects edits with "link edit information does not fill the
+      # __LINKEDIT segment" — making bundled Python crash at launch on
+      # any user machine without /Library/Frameworks/Python.framework.
+      # python-build-standalone ships relocatable @loader_path / @rpath
+      # references baked in, so no install_name_tool dance is needed.
+      - name: Setup portable Python (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          set -euo pipefail
+          PYBS_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20241016/cpython-3.12.7+20241016-aarch64-apple-darwin-install_only.tar.gz"
+          mkdir -p .python-portable
+          curl -fsSL "$PYBS_URL" | tar -xz -C .python-portable --strip-components=1
+          echo "$(pwd)/.python-portable/bin" >> "$GITHUB_PATH"
 
       - name: Import Apple certificate (macOS)
         if: matrix.platform == 'darwin'
@@ -196,7 +214,7 @@ jobs:
       - name: Create Python venv (macOS)
         if: matrix.platform == 'darwin'
         run: |
-          python -m venv .venv
+          .python-portable/bin/python3 -m venv .venv
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
 

@@ -704,11 +704,14 @@ def _extras_site_packages() -> Path | None:
     """Resolve the user-persistent extras site-packages dir.
 
     The Tauri shell sets ``CHAOSENGINE_EXTRAS_SITE_PACKAGES`` to a path
-    like ``%LOCALAPPDATA%\\ChaosEngineAI\\extras\\site-packages`` (Windows)
-    or ``~/Library/Application Support/ChaosEngineAI/extras/site-packages``
-    (macOS). When the backend runs outside Tauri (``python -m backend_service``
-    for dev / tests) we fall back to a predictable default so pip --target
-    still has somewhere to write.
+    namespaced by Python ``major.minor`` (e.g.
+    ``~/Library/Application Support/ChaosEngineAI/extras/cp312/site-packages``)
+    so wheels compiled against one Python ABI can't shadow a different
+    interpreter on the next launch — that bit users in v0.7.0-rc.4 when
+    a switch from cp311 to cp312 left a dead pydantic_core wheel in
+    place. When the backend runs outside Tauri (``python -m backend_service``
+    for dev / tests) we fall back to a predictable default that uses the
+    *current* interpreter's tag.
     """
     env_path = os.environ.get("CHAOSENGINE_EXTRAS_SITE_PACKAGES")
     if env_path:
@@ -720,7 +723,8 @@ def _extras_site_packages() -> Path | None:
         base = home / "Library" / "Application Support"
     else:
         base = Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share")
-    return base / "ChaosEngineAI" / "extras" / "site-packages"
+    tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    return base / "ChaosEngineAI" / "extras" / tag / "site-packages"
 
 
 def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:

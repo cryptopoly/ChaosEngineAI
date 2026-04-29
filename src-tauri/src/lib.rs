@@ -71,6 +71,9 @@ struct EmbeddedRuntimeManifest {
     llama_server_turbo: Option<String>,
     llama_cli: Option<String>,
     sd_cpp: Option<String>,
+    // ``"3.12"`` etc. — used to namespace the persistent extras dir so
+    // wheels compiled for Python X.Y don't get loaded by a different X.Z.
+    python_version: Option<String>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -99,6 +102,7 @@ struct EmbeddedRuntime {
     llama_server_turbo: Option<PathBuf>,
     llama_cli: Option<PathBuf>,
     sd_cpp: Option<PathBuf>,
+    python_version: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -322,8 +326,15 @@ impl BackendManager {
             // backend whether we're in embedded-runtime or dev-source mode.
             // The install-gpu-bundle endpoint always writes to this path so
             // users can switch between dev builds / packaged builds without
-            // redownloading 2 GB of CUDA torch every time.
-            if let Some(extras) = ensure_extras_site_packages() {
+            // redownloading 2 GB of CUDA torch every time. The path is
+            // namespaced by Python ``major.minor`` so cp311 wheels can't
+            // shadow a cp312 runtime (or vice versa).
+            let python_version_hint = embedded_runtime
+                .as_ref()
+                .and_then(|runtime| runtime.python_version.as_deref());
+            if let Some(extras) =
+                ensure_extras_site_packages_for_python(&python_executable, python_version_hint)
+            {
                 command.env("CHAOSENGINE_EXTRAS_SITE_PACKAGES", extras.as_os_str());
             }
 
@@ -365,7 +376,10 @@ impl BackendManager {
                 // apply_embedded_runtime_env already does this for the
                 // embedded path; this is the matching source-workspace
                 // branch. No-op if extras doesn't exist yet.
-                if let Some(extras) = chaosengine_extras_site_packages().filter(|p| p.is_dir()) {
+                if let Some(extras) =
+                    chaosengine_extras_site_packages_for_python(&python_executable, python_version_hint)
+                        .filter(|p| p.is_dir())
+                {
                     if let Some(python_path) = join_paths(&[extras]) {
                         command.env("PYTHONPATH", python_path);
                     }
@@ -630,8 +644,11 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
     // on each launch, but never touches the extras tree.
     // (CHAOSENGINE_EXTRAS_SITE_PACKAGES is already set by the caller so
     // the backend can target it for pip --target installs.)
-    let extras_dir = chaosengine_extras_site_packages()
-        .filter(|path| path.is_dir());
+    let extras_dir = chaosengine_extras_site_packages_for_python(
+        &runtime.python_binary,
+        runtime.python_version.as_deref(),
+    )
+    .filter(|path| path.is_dir());
     let mut python_path_entries: Vec<PathBuf> = Vec::with_capacity(runtime.python_path.len() + 1);
     if let Some(extras) = extras_dir.as_ref() {
         python_path_entries.push(extras.clone());
@@ -660,15 +677,20 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
 /// Persistent user-local site-packages directory. Survives app updates,
 /// so CUDA torch / diffusers installed once stays installed forever.
 ///
-/// - Windows: ``%LOCALAPPDATA%\ChaosEngineAI\extras\site-packages``
-/// - macOS:   ``~/Library/Application Support/ChaosEngineAI/extras/site-packages``
-/// - Linux:   ``$XDG_DATA_HOME/ChaosEngineAI/extras/site-packages`` (falls
-///            back to ``~/.local/share/ChaosEngineAI/extras/site-packages``)
+/// Path is namespaced by Python ``major.minor`` (``cp312``, ``cp311``)
+/// because compiled C-extensions are ABI-incompatible across Python
+/// versions. A pydantic_core wheel built for cp311 will fail to import
+/// on cp312 and stall app launch — see the rc.4 boot crash that drove
+/// this scheme.
+///
+/// - Windows: ``%LOCALAPPDATA%\ChaosEngineAI\extras\cp{tag}\site-packages``
+/// - macOS:   ``~/Library/Application Support/ChaosEngineAI/extras/cp{tag}/site-packages``
+/// - Linux:   ``$XDG_DATA_HOME/ChaosEngineAI/extras/cp{tag}/site-packages``
+///            (fallback ``~/.local/share/...``)
 ///
 /// Returns ``None`` if we can't resolve a home directory at all (headless
-/// environments). Callers treat that as "no extras available" and proceed
-/// with whatever's bundled.
-fn chaosengine_extras_site_packages() -> Option<PathBuf> {
+/// environments). Callers treat that as "no extras available".
+fn chaosengine_extras_root() -> Option<PathBuf> {
     let base = if cfg!(windows) {
         env::var_os("LOCALAPPDATA")
             .map(PathBuf::from)
@@ -681,11 +703,47 @@ fn chaosengine_extras_site_packages() -> Option<PathBuf> {
             .map(PathBuf::from)
             .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share")))
     }?;
-    Some(base.join("ChaosEngineAI").join("extras").join("site-packages"))
+    Some(base.join("ChaosEngineAI").join("extras"))
 }
 
-fn ensure_extras_site_packages() -> Option<PathBuf> {
-    let path = chaosengine_extras_site_packages()?;
+fn python_version_tag(raw: &str) -> Option<String> {
+    // Accept "3.12", "3.12.7", "cpython-3.12.7+...", etc. Extract major.minor.
+    let mut parts = raw.split(|c: char| !c.is_ascii_digit() && c != '.');
+    let candidate = parts.find(|chunk| chunk.contains('.'))?;
+    let mut iter = candidate.split('.');
+    let major = iter.next()?.parse::<u32>().ok()?;
+    let minor = iter.next()?.parse::<u32>().ok()?;
+    Some(format!("cp{major}{minor}"))
+}
+
+fn detect_python_version_tag(python: &Path) -> Option<String> {
+    let output = Command::new(python)
+        .args([
+            "-c",
+            "import sys;print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(output.stdout).ok()?;
+    python_version_tag(raw.trim())
+}
+
+fn chaosengine_extras_site_packages_for(tag: &str) -> Option<PathBuf> {
+    Some(chaosengine_extras_root()?.join(tag).join("site-packages"))
+}
+
+fn chaosengine_extras_site_packages_for_python(python: &Path, hint: Option<&str>) -> Option<PathBuf> {
+    let tag = hint
+        .and_then(python_version_tag)
+        .or_else(|| detect_python_version_tag(python))?;
+    chaosengine_extras_site_packages_for(&tag)
+}
+
+fn ensure_extras_site_packages_for_python(python: &Path, hint: Option<&str>) -> Option<PathBuf> {
+    let path = chaosengine_extras_site_packages_for_python(python, hint)?;
     match fs::create_dir_all(&path) {
         Ok(_) => Some(path),
         Err(error) => {
@@ -889,6 +947,7 @@ fn resolve_embedded_runtime(app: &AppHandle) -> Option<EmbeddedRuntime> {
             .map(|entry| extracted_root.join(entry)),
         llama_cli: manifest.llama_cli.as_ref().map(|entry| extracted_root.join(entry)),
         sd_cpp: manifest.sd_cpp.as_ref().map(|entry| extracted_root.join(entry)),
+        python_version: manifest.python_version.clone(),
     };
 
     if runtime.backend_root.exists() && runtime.python_binary.exists() && runtime.python_home.exists() {

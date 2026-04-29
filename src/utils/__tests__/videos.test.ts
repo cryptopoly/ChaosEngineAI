@@ -3,14 +3,73 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assessVideoGenerationSafety,
   inferDeviceFromHostPlatform,
+  videoDiscoverFamilyMatchesQuery,
+  videoDiscoverVariantMatchesQuery,
   videoRuntimeErrorStatus,
 } from "../videos";
+import type { VideoModelFamily, VideoModelVariant } from "../../types";
 
 // The safety heuristic now scales with device memory rather than a flat
 // token threshold — a 64 GB M4 Max should tolerate far more frames than a
 // 16 GB base M2. These tests pin both ends of that scale against the concrete
 // bug report (Wan 2.1 T2V 1.3B at 832×480 × 96 frames detonating MPS) and
 // the Studio defaults (832×480 × 33 frames staying safe).
+
+function makeVideoVariant(overrides: Partial<VideoModelVariant>): VideoModelVariant {
+  return {
+    id: "variant",
+    familyId: "family",
+    name: "Variant",
+    provider: "Provider",
+    repo: "provider/repo",
+    link: "https://huggingface.co/provider/repo",
+    runtime: "runtime",
+    styleTags: ["general"],
+    taskSupport: ["txt2video"],
+    sizeGb: 1,
+    recommendedResolution: "512x512",
+    defaultDurationSeconds: 4,
+    note: "note",
+    availableLocally: false,
+    estimatedGenerationSeconds: 60,
+    ...overrides,
+  };
+}
+
+describe("video discover search helpers", () => {
+  it("keeps variant-only terms from matching every variant in a family", () => {
+    const family: VideoModelFamily = {
+      id: "ltx-2",
+      name: "LTX-2 (MLX)",
+      provider: "Lightricks",
+      headline: "Native Apple Silicon LTX-2 models",
+      summary: "Pre-converted MLX weights.",
+      updatedLabel: "Native MLX",
+      badges: ["MLX Native"],
+      defaultVariantId: "ltx-distilled",
+      variants: [
+        makeVideoVariant({
+          id: "ltx-distilled",
+          name: "LTX-2 distilled (MLX)",
+          repo: "prince-canuma/LTX-2-distilled",
+          styleTags: ["fast"],
+        }),
+        makeVideoVariant({
+          id: "ltx-dev",
+          name: "LTX-2 dev (MLX)",
+          repo: "prince-canuma/LTX-2-dev",
+          styleTags: ["quality"],
+          note: "Dev pipeline for quality.",
+        }),
+      ],
+    };
+
+    expect(videoDiscoverFamilyMatchesQuery(family, "ltx-2")).toBe(true);
+    expect(videoDiscoverFamilyMatchesQuery(family, "dev")).toBe(false);
+    expect(videoDiscoverVariantMatchesQuery(family.variants[0], "dev")).toBe(false);
+    expect(videoDiscoverVariantMatchesQuery(family.variants[1], "dev")).toBe(true);
+  });
+});
 
 describe("assessVideoGenerationSafety()", () => {
   describe("safe envelope on base hardware", () => {
@@ -430,6 +489,26 @@ describe("assessVideoGenerationSafety()", () => {
         baseModelFootprintGb: 2.0,
       });
       expect(result.riskLevel).toBe("safe");
+    });
+
+    it("frames LTX-2 MLX on a 64 GB M4 Max as caution, not a hard no", () => {
+      // LTX-2 MLX is large enough to deserve a heads-up, but the old copy
+      // called the 50% comfort band the "safe usage" ceiling. That made a
+      // 64 GB M4 Max look unsupported even though the run is below the
+      // estimated Apple Silicon working set.
+      const result = assessVideoGenerationSafety({
+        width: 768,
+        height: 512,
+        numFrames: 24,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 19.0,
+      });
+      expect(result.riskLevel).toBe("caution");
+      expect(result.exceedsDevice).toBe(false);
+      expect(result.reason).toMatch(/comfort target/i);
+      expect(result.reason).toMatch(/working set/i);
+      expect(result.reason).not.toMatch(/safe usage tops out/i);
     });
 
     it("flags danger for Wan 2.1 14B on a 24 GB RTX 4090", () => {

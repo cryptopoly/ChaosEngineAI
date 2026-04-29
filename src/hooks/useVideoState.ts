@@ -112,11 +112,10 @@ const DEFAULT_VIDEO_NEGATIVE_PROMPT =
   "worst quality, low quality, blurry, distorted, deformed, bad anatomy, "
   + "watermark, text, logo, static, frozen frame, jittery, flickering";
 
-// Per-family recommended CFG. LTX-Video ships with a 3.0 guidance default
-// in its reference pipeline — running it at 5.0 (the ChaosEngineAI
-// generic default) over-guides it and produces the abstract / "random
-// shapes" output users report. HunyuanVideo benefits from stronger
-// guidance. Everything else stays on the generic default.
+// Per-family recommended CFG. LTX dev pipelines commonly use CFG 3.0; the
+// distilled LTX-2 MLX path ignores CFG entirely, but keeping the visible
+// slider at 3.0 avoids over-guiding when the user switches to dev. HunyuanVideo
+// benefits from stronger guidance. Everything else stays on the generic default.
 function recommendedGuidanceForRepo(repo: string | null | undefined): number {
   if (!repo) return DEFAULT_VIDEO_GUIDANCE;
   const lowered = repo.toLowerCase();
@@ -345,10 +344,12 @@ export function useVideoState(
   );
 
   const combinedVideoDiscoverResults: VideoModelVariant[] = [
-    ...filteredVideoDiscoverFamilies.flatMap((family) => {
-      const variant = defaultVideoVariantForFamily(family);
-      return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
-    }),
+    ...filteredVideoDiscoverFamilies.flatMap((family) =>
+      family.variants.map((variant) => ({
+        ...variant,
+        familyName: variant.familyName ?? family.name,
+      })),
+    ),
     ...filteredLatestVideoDiscoverResults,
   ].sort((a, b) => compareDiscoverVariants(videoDiscoverSort, a, b));
 

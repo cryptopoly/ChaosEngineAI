@@ -129,6 +129,10 @@ const MLX_VIDEO_SUPPORTED_REPOS: ReadonlySet<string> = new Set([
   "prince-canuma/LTX-2.3-dev",
 ]);
 
+function isLtx2DistilledRepo(repo: string | null | undefined): boolean {
+  return !!repo && repo.toLowerCase().startsWith("prince-canuma/ltx-2") && repo.toLowerCase().endsWith("-distilled");
+}
+
 // Quality presets: common starting points for the denoising step count.
 // Frames are deliberately not part of the preset — frame count controls
 // clip LENGTH, not image quality, and bundling it into "Draft/High/Max"
@@ -398,6 +402,10 @@ export function VideoStudioTab({
   // so the chip stays hidden — see render gate below.
   const isMlxVideoVariant =
     !!selectedVideoVariant?.repo && MLX_VIDEO_SUPPORTED_REPOS.has(selectedVideoVariant.repo);
+  const isLtx2DistilledVariant = isLtx2DistilledRepo(selectedVideoVariant?.repo);
+  const ltx2DevSibling = selectedVideoFamily?.variants.find(
+    (variant) => variant.repo === selectedVideoVariant?.repo.replace(/-distilled$/i, "-dev"),
+  ) ?? null;
   useEffect(() => {
     if (isMlxVideoVariant) onRefreshMlxVideoStatus();
   }, [isMlxVideoVariant, onRefreshMlxVideoStatus]);
@@ -425,6 +433,13 @@ export function VideoStudioTab({
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
   const hasPrompt = videoPrompt.trim().length > 0;
+  const selectedVideoRuntimeStatus: VideoRuntimeStatus =
+    isMlxVideoVariant && mlxVideoStatus?.realGenerationAvailable
+      ? {
+          ...mlxVideoStatus,
+          deviceMemoryGb: mlxVideoStatus.deviceMemoryGb ?? videoRuntimeStatus.deviceMemoryGb,
+        }
+      : videoRuntimeStatus;
   const generateButtonLabel =
     videoBusy && videoBusyLabel?.startsWith("Generating")
       ? videoBusyLabel
@@ -442,8 +457,8 @@ export function VideoStudioTab({
     ? "Choose a video model first."
     : !isDownloaded
       ? `${selectedVideoVariant.name} is not installed locally yet.`
-      : !videoRuntimeStatus.realGenerationAvailable
-        ? (videoRuntimeStatus.message || "Video runtime is not ready.")
+      : !selectedVideoRuntimeStatus.realGenerationAvailable
+        ? (selectedVideoRuntimeStatus.message || "Video runtime is not ready.")
         : !hasPrompt
           ? "Write a prompt before generating."
           : !backendOnline
@@ -471,8 +486,8 @@ export function VideoStudioTab({
         width: videoWidth,
         height: videoHeight,
         numFrames: videoNumFrames,
-        device: videoRuntimeStatus.device,
-        deviceMemoryGb: videoRuntimeStatus.deviceMemoryGb,
+        device: selectedVideoRuntimeStatus.device,
+        deviceMemoryGb: selectedVideoRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedVideoVariant?.sizeGb,
         runtimeFootprintGb: selectedVideoVariant?.runtimeFootprintGb,
       }),
@@ -480,8 +495,8 @@ export function VideoStudioTab({
       videoWidth,
       videoHeight,
       videoNumFrames,
-      videoRuntimeStatus.device,
-      videoRuntimeStatus.deviceMemoryGb,
+      selectedVideoRuntimeStatus.device,
+      selectedVideoRuntimeStatus.deviceMemoryGb,
       selectedVideoVariant?.sizeGb,
       selectedVideoVariant?.runtimeFootprintGb,
     ],
@@ -524,12 +539,15 @@ export function VideoStudioTab({
       : generationSafety.effectiveDevice === "cpu"
         ? "CPU (detected)"
         : "Apple Silicon (detected)";
-  const deviceLabel = videoRuntimeStatus.device
-    ? videoRuntimeStatus.device.toUpperCase().startsWith("CUDA")
-      ? "GPU"
-      : videoRuntimeStatus.device.toUpperCase() === "MPS"
-        ? "Apple Silicon"
-        : videoRuntimeStatus.device.toUpperCase()
+  const reportedDevice = selectedVideoRuntimeStatus.device?.toUpperCase() ?? null;
+  const deviceLabel = selectedVideoRuntimeStatus.device
+    ? selectedVideoRuntimeStatus.activeEngine === "mlx-video"
+      ? "Apple Silicon (MLX)"
+      : reportedDevice?.startsWith("CUDA")
+        ? "GPU"
+        : reportedDevice === "MPS"
+          ? "Apple Silicon"
+          : reportedDevice ?? selectedVideoRuntimeStatus.device
     : inferredDeviceLabel;
   // Mark the memory figure as a fallback when the backend didn't actually
   // report it — e.g. a stale sidecar that pre-dates the deviceMemoryGb
@@ -539,9 +557,9 @@ export function VideoStudioTab({
   // prefix + "(default)" suffix reads as "we're guessing" without scaring
   // the user about a real hardware issue.
   const backendReportedMemory =
-    videoRuntimeStatus.deviceMemoryGb != null
-    && Number.isFinite(videoRuntimeStatus.deviceMemoryGb)
-    && videoRuntimeStatus.deviceMemoryGb > 0;
+    selectedVideoRuntimeStatus.deviceMemoryGb != null
+    && Number.isFinite(selectedVideoRuntimeStatus.deviceMemoryGb)
+    && selectedVideoRuntimeStatus.deviceMemoryGb > 0;
   const memoryLabel = backendReportedMemory
     ? formatGb(generationSafety.deviceMemoryGb)
     : `~${formatGb(generationSafety.deviceMemoryGb)} (default — restart backend for real detection)`;
@@ -904,6 +922,27 @@ export function VideoStudioTab({
               );
             })}
           </div>
+          {isLtx2DistilledVariant ? (
+            <div className="callout quiet video-model-note" role="note">
+              <p>
+                <strong>LTX-2 distilled is the fast sampler.</strong> mlx-video runs it as fixed
+                8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not
+                improve this variant. Use a dev variant for quality comparisons with ComfyUI.
+              </p>
+              {ltx2DevSibling ? (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => onSelectedVideoModelIdChange(ltx2DevSibling.id)}
+                    disabled={videoBusy}
+                  >
+                    Switch to {ltx2DevSibling.name}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/*
             Aspect-ratio preset pills. Fixed resolutions (not "apply ratio
@@ -1199,7 +1238,7 @@ export function VideoStudioTab({
                     Use safer settings ({generationSafety.suggestion.label})
                   </button>
                 </div>
-              ) : (
+              ) : generationSafety.riskLevel === "danger" ? (
                 <div className="button-row">
                   <button
                     className="secondary-button"
@@ -1210,7 +1249,7 @@ export function VideoStudioTab({
                     Browse smaller models
                   </button>
                 </div>
-              )}
+              ) : null}
               {/*
                 Danger-only override. Generate stays disabled until the user
                 ticks this box — the checkbox resets on any change to

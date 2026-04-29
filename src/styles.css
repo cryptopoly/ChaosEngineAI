@@ -6171,11 +6171,23 @@ select.text-input {
   max-width: 280px;
   white-space: normal;
   text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  overflow-wrap: break-word;
   border: 1px solid rgba(96, 165, 250, 0.25);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
   pointer-events: none;
-  z-index: 10;
+  z-index: 1000;
   transition: visibility 0.1s linear 0s, opacity 0.12s ease-out;
+}
+.info-tooltip-body--portal {
+  visibility: visible;
+  opacity: 1;
+  position: fixed;
+  transform: none;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 24px));
+  z-index: 10000;
 }
 .info-tooltip:hover .info-tooltip-body,
 .info-tooltip:focus-visible .info-tooltip-body,

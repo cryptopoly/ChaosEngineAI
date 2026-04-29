@@ -505,6 +505,7 @@ export interface WorkspaceData {
   recommendation: Recommendation;
   featuredModels: ModelFamily[];
   library: LibraryItem[];
+  libraryStatus?: "scanning" | "ready";
   settings: AppSettings;
   chatSessions: ChatSession[];
   runtime: RuntimeStatus;

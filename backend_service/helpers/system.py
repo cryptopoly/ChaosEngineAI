@@ -414,8 +414,23 @@ def _build_system_snapshot(app_version: str, app_started_at: float) -> dict[str,
         try:
             from dflash import availability_info
             return availability_info()
-        except ImportError:
-            return {"available": False, "mlxAvailable": False, "vllmAvailable": False, "supportedModels": []}
+        except (ImportError, AttributeError):
+            local_integration = WORKSPACE_ROOT / "dflash" / "__init__.py"
+            if local_integration.exists():
+                try:
+                    import importlib.util
+
+                    spec = importlib.util.spec_from_file_location(
+                        "_chaosengine_dflash_integration",
+                        local_integration,
+                    )
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
+                        return module.availability_info()
+                except Exception:
+                    pass
+            return {"available": False, "mlxAvailable": False, "vllmAvailable": False, "ddtreeAvailable": False, "supportedModels": []}
 
     return {
         "platform": platform.system(),

@@ -8,6 +8,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import create_app
+from backend_service.routes.setup import _cleanup_mlx_video_shadow_metadata
 from backend_service.state import ChaosEngineState
 
 TEST_API_TOKEN = "test-api-token"
@@ -131,6 +132,28 @@ class SetupRouteTests(unittest.TestCase):
             any("github.com/Blaizzy/mlx-video" in arg for arg in cmd),
             f"mlx-video spec must point to Blaizzy git URL: {cmd}",
         )
+
+    def test_cleanup_mlx_video_shadow_metadata_keeps_blaizzy_dist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shadow = root / "mlx_video-0.1.0.dist-info"
+            blaizzy = root / "mlx_video-0.0.1.dist-info"
+            shadow.mkdir()
+            blaizzy.mkdir()
+            (shadow / "METADATA").write_text(
+                "Name: mlx-video\nProject-URL: Repository, https://github.com/AmiraniLabs/mlx-video\n",
+                encoding="utf-8",
+            )
+            (blaizzy / "METADATA").write_text(
+                "Name: mlx-video\nProject-URL: Repository, https://github.com/Blaizzy/mlx-video\n",
+                encoding="utf-8",
+            )
+
+            removed = _cleanup_mlx_video_shadow_metadata(root)
+
+            self.assertEqual(removed, ["mlx_video-0.1.0.dist-info"])
+            self.assertFalse(shadow.exists())
+            self.assertTrue(blaizzy.exists())
 
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:

@@ -199,6 +199,16 @@ _VIDEO_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "LICENSE*",
 ]
 
+_VIDEO_MLX_ALLOW_PATTERNS: list[str] = [
+    "text_encoder/**",
+    "tokenizer/**",
+    "transformer/**",
+    "vae/**",
+    "*spatial-upscaler*.safetensors",
+    "*.md",
+    "LICENSE*",
+]
+
 
 def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """Patterns to pass to ``snapshot_download`` for a video repo.
@@ -211,6 +221,8 @@ def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """
     if not _is_video_repo(repo_id):
         return None
+    if _is_mlx_video_routed_repo(repo_id):
+        return list(_VIDEO_MLX_ALLOW_PATTERNS)
     return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
 
 

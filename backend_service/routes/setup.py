@@ -187,6 +187,9 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
         cmd.append("--force-reinstall")
     cmd.append(pip_name)
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
+    cleaned_mlx_metadata: list[str] = []
+    if body.package == "mlx-video" and extras_dir is not None:
+        cleaned_mlx_metadata.extend(_cleanup_mlx_video_shadow_metadata(extras_dir))
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         output = (result.stdout + "\n" + result.stderr).strip()
@@ -197,6 +200,15 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     except OSError as exc:
         output = str(exc)
         ok = False
+
+    if body.package == "mlx-video" and extras_dir is not None:
+        cleaned_mlx_metadata.extend(_cleanup_mlx_video_shadow_metadata(extras_dir))
+        if cleaned_mlx_metadata:
+            unique = sorted(set(cleaned_mlx_metadata))
+            output = (
+                f"{output}\n\nCleaned stale mlx-video metadata: "
+                f"{', '.join(unique)}"
+            ).strip()
 
     # Re-probe capabilities after install
     state.runtime.refresh_capabilities(force=True)
@@ -711,6 +723,31 @@ def _extras_site_packages() -> Path | None:
     return base / "ChaosEngineAI" / "extras" / "site-packages"
 
 
+def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:
+    """Remove stale PyPI ``mlx-video`` dist-info folders from ``--target``.
+
+    Blaizzy's generator package and the unrelated PyPI preprocessing package
+    share the normalized project name ``mlx-video``. pip's ``--target`` mode
+    can leave both ``mlx_video-*.dist-info`` folders behind after a forced git
+    reinstall, which makes version/provenance checks ambiguous even when the
+    importable package directory was correctly overwritten.
+    """
+    removed: list[str] = []
+    if not extras_dir.exists():
+        return removed
+    for dist_info in extras_dir.glob("mlx_video-*.dist-info"):
+        metadata_path = dist_info / "METADATA"
+        try:
+            metadata = metadata_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            metadata = ""
+        if "github.com/Blaizzy/mlx-video" in metadata:
+            continue
+        shutil.rmtree(dist_info, ignore_errors=True)
+        removed.append(dist_info.name)
+    return removed
+
+
 def _free_bytes(path: Path) -> int | None:
     """Return free disk space in bytes for the volume hosting ``path``.
 
@@ -988,6 +1025,13 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             if constraint_path is not None:
                 extra_flags = ["--constraint", str(constraint_path)]
             ok, output = _run_pip_install(python, spec, extras_dir, None, extra_flags)
+            if label == "mlx-video":
+                cleaned = _cleanup_mlx_video_shadow_metadata(extras_dir)
+                if cleaned:
+                    output = (
+                        f"{output}\n\nCleaned stale mlx-video metadata: "
+                        f"{', '.join(sorted(set(cleaned)))}"
+                    ).strip()
             state.attempts.append({"package": label, "ok": ok, "output": output[-2000:]})
             if not ok:
                 # Individual package failure is non-fatal — torch + diffusers

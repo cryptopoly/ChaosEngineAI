@@ -21,6 +21,7 @@ from backend_service.mlx_video_runtime import (
     MlxVideoEngine,
     _SUPPORTED_REPOS,
     _is_mlx_video_repo,
+    _ltx2_generation_needs_spatial_upscaler,
     _parse_step_fraction,
     _resolve_entry_point,
     supported_repos,
@@ -260,6 +261,34 @@ class MlxVideoGenerateCmdTests(unittest.TestCase):
         cmd = engine._build_cmd(config, Path("/tmp/out.mp4"))
         self.assertNotIn("--seed", cmd)
 
+    def test_distilled_pipeline_needs_spatial_upscaler(self):
+        self.assertTrue(_ltx2_generation_needs_spatial_upscaler("prince-canuma/LTX-2-distilled"))
+        self.assertTrue(_ltx2_generation_needs_spatial_upscaler("prince-canuma/LTX-2.3-distilled"))
+        self.assertFalse(_ltx2_generation_needs_spatial_upscaler("prince-canuma/LTX-2-dev"))
+
+    def test_build_cmd_can_pin_resolved_spatial_upscaler(self):
+        engine = MlxVideoEngine()
+        config = _make_config("prince-canuma/LTX-2-distilled")
+        with patch(
+            "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
+            return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+        ) as resolve_upscaler:
+            cmd = engine._build_cmd(
+                config,
+                Path("/tmp/out.mp4"),
+                resolve_aux_files=True,
+            )
+        resolve_upscaler.assert_called_once_with(
+            "prince-canuma/LTX-2-distilled",
+            allow_download=True,
+        )
+        self.assertIn("--spatial-upscaler", cmd)
+        idx = cmd.index("--spatial-upscaler")
+        self.assertEqual(
+            cmd[idx + 1],
+            "/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors",
+        )
+
 
 class MlxVideoGenerateE2ETests(unittest.TestCase):
     def test_generate_writes_output_and_returns_video(self):
@@ -269,7 +298,12 @@ class MlxVideoGenerateE2ETests(unittest.TestCase):
             (workspace / "out.mp4").write_bytes(b"\x00\x01fakeMP4")
 
         with patch.object(engine, "_launch", side_effect=fake_launch), \
-             patch.object(engine, "probe") as mock_probe:
+             patch.object(engine, "probe") as mock_probe, \
+             patch("backend_service.mlx_video_runtime.time.monotonic", side_effect=[100.0, 102.5]), \
+             patch(
+                 "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
+                 return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+             ):
             mock_probe.return_value = MagicMock(
                 realGenerationAvailable=True,
                 message="ready",
@@ -278,10 +312,57 @@ class MlxVideoGenerateE2ETests(unittest.TestCase):
             video = engine.generate(_make_config())
 
         self.assertEqual(video.bytes, b"\x00\x01fakeMP4")
+        self.assertEqual(video.seed, 42)
         self.assertEqual(video.extension, "mp4")
+        self.assertEqual(video.durationSeconds, 2.5)
         self.assertEqual(video.fps, 16)
         self.assertEqual(video.frameCount, 24)
         self.assertEqual(video.runtimeLabel, "mlx-video (MLX native)")
+        self.assertIn("fixed 8+3", video.runtimeNote or "")
+        self.assertEqual(video.effectiveSteps, 11)
+        self.assertEqual(video.effectiveGuidance, 1.0)
+
+    def test_generate_resolves_random_seed_before_launch(self):
+        engine = MlxVideoEngine()
+        config = _make_config()
+        config = VideoGenerationConfig(
+            modelId=config.modelId,
+            modelName=config.modelName,
+            repo=config.repo,
+            prompt=config.prompt,
+            negativePrompt=config.negativePrompt,
+            width=config.width,
+            height=config.height,
+            numFrames=config.numFrames,
+            fps=config.fps,
+            guidance=config.guidance,
+            steps=config.steps,
+            seed=None,
+        )
+        launched_cmd: list[str] = []
+
+        def fake_launch(cmd, workspace, on_progress):
+            launched_cmd[:] = cmd
+            (workspace / "out.mp4").write_bytes(b"\x00\x01fakeMP4")
+
+        with patch.object(engine, "_launch", side_effect=fake_launch), \
+             patch.object(engine, "probe") as mock_probe, \
+             patch("backend_service.mlx_video_runtime._resolve_video_seed", return_value=1234), \
+             patch("backend_service.mlx_video_runtime.time.monotonic", side_effect=[10.0, 11.0]), \
+             patch(
+                 "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
+                 return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+             ):
+            mock_probe.return_value = MagicMock(
+                realGenerationAvailable=True,
+                message="ready",
+                to_dict=lambda: {"activeEngine": "mlx-video"},
+            )
+            video = engine.generate(config)
+
+        self.assertEqual(video.seed, 1234)
+        self.assertIn("--seed", launched_cmd)
+        self.assertEqual(launched_cmd[launched_cmd.index("--seed") + 1], "1234")
 
     def test_generate_raises_when_no_output_produced(self):
         engine = MlxVideoEngine()
@@ -290,7 +371,11 @@ class MlxVideoGenerateE2ETests(unittest.TestCase):
             return None  # no mp4 produced
 
         with patch.object(engine, "_launch", side_effect=fake_launch), \
-             patch.object(engine, "probe") as mock_probe:
+             patch.object(engine, "probe") as mock_probe, \
+             patch(
+                 "backend_service.mlx_video_runtime._resolve_ltx2_spatial_upscaler",
+                 return_value=Path("/tmp/ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+             ):
             mock_probe.return_value = MagicMock(
                 realGenerationAvailable=True,
                 message="ready",

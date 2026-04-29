@@ -29,6 +29,7 @@ code rather than an import error in the sidecar.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import importlib.util
 import os
 import platform
@@ -43,6 +44,7 @@ from backend_service.video_runtime import (
     GeneratedVideo,
     VideoGenerationConfig,
     VideoRuntimeStatus,
+    _resolve_video_seed,
     _resolve_video_python,
 )
 
@@ -74,6 +76,20 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
 _REPO_ENTRY_POINTS: dict[str, str] = {
     "prince-canuma/LTX-2": "mlx_video.models.ltx_2.generate",
 }
+
+
+_LTX2_SPATIAL_UPSCALER_CANDIDATES: dict[str, tuple[tuple[str, str], ...]] = {
+    "2": (
+        ("prince-canuma/LTX-2-dev", "ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+        ("Lightricks/LTX-2", "ltx-2-spatial-upscaler-x2-1.0.safetensors"),
+    ),
+    "2.3": (
+        ("Lightricks/LTX-2.3", "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"),
+        ("Lightricks/LTX-2.3", "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"),
+    ),
+}
+_LTX2_DISTILLED_STAGE_1_STEPS = 8
+_LTX2_DISTILLED_STAGE_2_STEPS = 3
 
 
 def supported_repos() -> frozenset[str]:
@@ -127,6 +143,116 @@ def _resolve_pipeline_flag(repo: str) -> str:
     if repo_lower.endswith("-dev"):
         return "dev"
     return "distilled"
+
+
+def _ltx2_generation_needs_spatial_upscaler(repo: str) -> bool:
+    """Return True when the selected mlx-video pipeline is two-stage.
+
+    mlx-video's distilled LTX-2 path always upsamples the half-resolution
+    stage-1 latents before stage 2. Some pre-converted repos omit the root
+    upscaler file, so ChaosEngineAI resolves the canonical upscaler and
+    passes it explicitly rather than letting the subprocess fail after the
+    first stage has already run.
+    """
+    return _resolve_pipeline_flag(repo) in {
+        "distilled",
+        "dev-two-stage",
+        "dev-two-stage-hq",
+    }
+
+
+def _ltx2_model_version(repo: str) -> str:
+    return "2.3" if "ltx-2.3" in repo.lower() else "2"
+
+
+def _ltx2_effective_steps(repo: str, requested_steps: int) -> int:
+    if _resolve_pipeline_flag(repo) == "distilled":
+        return _LTX2_DISTILLED_STAGE_1_STEPS + _LTX2_DISTILLED_STAGE_2_STEPS
+    return requested_steps
+
+
+def _ltx2_effective_guidance(repo: str, requested_guidance: float) -> float:
+    if _resolve_pipeline_flag(repo) == "distilled":
+        return 1.0
+    return requested_guidance
+
+
+def _ltx2_runtime_note(repo: str) -> str:
+    pipeline = _resolve_pipeline_flag(repo)
+    if pipeline == "distilled":
+        return (
+            "mlx-video subprocess (MLX native, distilled pipeline: "
+            "fixed 8+3 denoise passes, CFG disabled)"
+        )
+    return f"mlx-video subprocess (MLX native, {pipeline} pipeline)"
+
+
+def _ltx2_spatial_upscaler_candidates(repo: str) -> tuple[tuple[str, str], ...]:
+    version = _ltx2_model_version(repo)
+    filename_candidates = tuple(dict.fromkeys(
+        filename for _, filename in _LTX2_SPATIAL_UPSCALER_CANDIDATES[version]
+    ))
+    candidates = (
+        tuple((repo, filename) for filename in filename_candidates)
+        + _LTX2_SPATIAL_UPSCALER_CANDIDATES[version]
+    )
+    return tuple(dict.fromkeys(candidates))
+
+
+def _download_hf_file(repo_id: str, filename: str, *, local_files_only: bool) -> Path:
+    from huggingface_hub import hf_hub_download  # type: ignore
+
+    return Path(
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            local_files_only=local_files_only,
+            resume_download=True,
+        )
+    )
+
+
+def _resolve_ltx2_spatial_upscaler(
+    repo: str,
+    *,
+    allow_download: bool,
+) -> Path | None:
+    """Find the required LTX-2 spatial upscaler for two-stage generation."""
+    if not _ltx2_generation_needs_spatial_upscaler(repo):
+        return None
+
+    candidates = _ltx2_spatial_upscaler_candidates(repo)
+    errors: list[str] = []
+
+    for candidate_repo, filename in candidates:
+        try:
+            return _download_hf_file(
+                candidate_repo,
+                filename,
+                local_files_only=True,
+            )
+        except Exception as exc:
+            errors.append(f"{candidate_repo}/{filename}: {type(exc).__name__}: {exc}")
+
+    if not allow_download:
+        return None
+
+    for candidate_repo, filename in candidates:
+        try:
+            return _download_hf_file(
+                candidate_repo,
+                filename,
+                local_files_only=False,
+            )
+        except Exception as exc:
+            errors.append(f"{candidate_repo}/{filename}: {type(exc).__name__}: {exc}")
+
+    checked = ", ".join(f"{repo_id}/{filename}" for repo_id, filename in candidates)
+    raise RuntimeError(
+        "LTX-2 distilled generation requires a spatial upscaler, but none "
+        f"could be found or downloaded. Checked: {checked}. Last errors: "
+        f"{'; '.join(errors[-3:])}"
+    )
 
 
 class _ProgressSink(Protocol):
@@ -225,12 +351,18 @@ class MlxVideoEngine:
 
         if on_progress:
             on_progress("loading", "Preparing mlx-video workspace", 0.0)
+            if _ltx2_generation_needs_spatial_upscaler(config.repo):
+                on_progress("loading", "Checking LTX-2 spatial upscaler", 0.03)
 
         workspace = Path(tempfile.mkdtemp(prefix="mlx-video-run-"))
         try:
             output_path = workspace / "out.mp4"
-            cmd = self._build_cmd(config, output_path)
+            resolved_seed = _resolve_video_seed(config.seed)
+            run_config = replace(config, seed=resolved_seed)
+            cmd = self._build_cmd(run_config, output_path, resolve_aux_files=True)
+            start = time.monotonic()
             self._launch(cmd, workspace, on_progress)
+            elapsed = time.monotonic() - start
 
             if not output_path.exists():
                 raise RuntimeError(
@@ -239,24 +371,32 @@ class MlxVideoEngine:
                 )
             data = output_path.read_bytes()
             return GeneratedVideo(
-                seed=config.seed if config.seed is not None else 0,
+                seed=resolved_seed,
                 bytes=data,
                 extension="mp4",
                 mimeType="video/mp4",
-                durationSeconds=config.numFrames / max(1, config.fps),
+                durationSeconds=round(elapsed, 2),
                 frameCount=config.numFrames,
                 fps=config.fps,
                 width=config.width,
                 height=config.height,
                 runtimeLabel=self.runtime_label,
-                runtimeNote="mlx-video subprocess (MLX native)",
+                runtimeNote=_ltx2_runtime_note(config.repo),
+                effectiveSteps=_ltx2_effective_steps(config.repo, config.steps),
+                effectiveGuidance=_ltx2_effective_guidance(config.repo, config.guidance),
             )
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
 
     # ---------- internals ----------
 
-    def _build_cmd(self, config: VideoGenerationConfig, output_path: Path) -> list[str]:
+    def _build_cmd(
+        self,
+        config: VideoGenerationConfig,
+        output_path: Path,
+        *,
+        resolve_aux_files: bool = False,
+    ) -> list[str]:
         """Compose the ``python -m mlx_video.<entry> --...`` invocation.
 
         Split out so tests can assert the CLI shape without spawning a
@@ -298,6 +438,13 @@ class MlxVideoEngine:
             cmd.extend(["--negative-prompt", config.negativePrompt])
         if config.seed is not None:
             cmd.extend(["--seed", str(config.seed)])
+        if resolve_aux_files:
+            spatial_upscaler = _resolve_ltx2_spatial_upscaler(
+                config.repo,
+                allow_download=True,
+            )
+            if spatial_upscaler is not None:
+                cmd.extend(["--spatial-upscaler", str(spatial_upscaler)])
         # STG (Spatial-Temporal Guidance) is mlx-video's built-in quality
         # lever — perturbs final transformer blocks during sampling to
         # reduce object breakup / chroma drift. Default 1.0 mirrors the

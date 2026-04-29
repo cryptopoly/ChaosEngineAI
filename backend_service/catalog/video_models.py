@@ -111,7 +111,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "headline": "LTX-2 19B with pre-converted MLX weights — native Apple Silicon path.",
         "summary": (
             "Pre-converted LTX-2 weights for mlx-video on Apple Silicon. Distilled variants "
-            "trade some quality for ~3-4× faster sampling; 'dev' variants run more steps for "
+            "are fast iteration paths with fixed low-step sampling; 'dev' variants run CFG steps for "
             "best fidelity. Routes through Blaizzy/mlx-video — no torch/MPS round trip."
         ),
         "updatedLabel": "Native MLX",
@@ -131,7 +131,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 19.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
-                "note": "Distilled LTX-2 — fastest MLX path on Apple Silicon. Recommended starter pick.",
+                "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
                 "estimatedGenerationSeconds": 60.0,
                 "availableLocally": False,
                 "releaseDate": "2026-01",
@@ -167,7 +167,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 19.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
-                "note": "LTX-2.3 distilled — refreshed weights with sharper texture detail vs LTX-2. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable.",
+                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity.",
                 "estimatedGenerationSeconds": 60.0,
                 "availableLocally": False,
                 "releaseDate": "2026-03",

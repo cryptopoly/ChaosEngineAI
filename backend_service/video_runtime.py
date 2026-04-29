@@ -299,6 +299,8 @@ class GeneratedVideo:
     height: int
     runtimeLabel: str
     runtimeNote: str | None = None
+    effectiveSteps: int | None = None
+    effectiveGuidance: float | None = None
 
 
 # Maps a Hugging Face repo id to the diffusers pipeline class that loads it.

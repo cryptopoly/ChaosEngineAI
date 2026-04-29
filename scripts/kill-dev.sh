@@ -32,8 +32,8 @@ kill_match "tauri dev"             "node .*tauri.*dev"
 kill_match "vite"                  "node .*vite"
 kill_match "python backend"        "backend_service.app"
 kill_match "mlx_worker"            "backend_service.mlx_worker"
-# llama-server orphans — only target ChaosEngineAI-spawned copies, never
-# LM Studio's (which lives under /Applications/LM Studio.app/ or ~/.lmstudio/).
+# llama-server orphans — only target ChaosEngineAI-spawned copies, leave
+# instances spawned by other tools (e.g. system-installed binaries) alone.
 kill_match "llama-server (chaos embedded)" "chaosengine-embedded-runtime.*llama-server"
 kill_match "llama-server (local build)"    "llama.cpp/build/bin/llama-server"
 

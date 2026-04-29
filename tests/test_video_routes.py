@@ -513,6 +513,48 @@ class VideoGenerateRouteTests(unittest.TestCase):
             404,
         )
 
+    def test_generate_threads_phase_b_request_fields_into_config(self):
+        """``scheduler``, ``useNf4``, ``enableLtxRefiner`` reach VideoGenerationConfig.
+
+        Pydantic accepts the fields, the route handler propagates them, and the
+        runtime manager sees the resolved config. We don't run a real pass —
+        just assert the kwargs the manager would've used.
+        """
+        state = self.client.app.state.chaosengine
+        captured: dict[str, Any] = {}
+
+        def _capture(config):
+            captured["config"] = config
+            return self._fake_generated_video(), {
+                "activeEngine": "diffusers",
+                "realGenerationAvailable": True,
+                "message": "Ready",
+                "missingDependencies": [],
+            }
+
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            side_effect=_capture
+        )
+
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            response = self.client.post(
+                "/api/video/generate",
+                json=self._payload(
+                    scheduler="unipc",
+                    useNf4=True,
+                    enableLtxRefiner=False,
+                ),
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        config = captured["config"]
+        self.assertEqual(config.scheduler, "unipc")
+        self.assertTrue(config.useNf4)
+        self.assertFalse(config.enableLtxRefiner)
+
     def test_generate_surfaces_runtime_error_as_400(self):
         state = self.client.app.state.chaosengine
         state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
@@ -682,6 +724,71 @@ class VideoDownloadRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         result = response.json()["result"]
         self.assertEqual(result["state"], "not_found")
+
+
+class MlxVideoSnapshotValidationTests(unittest.TestCase):
+    """mlx-video repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX layout —
+    text_encoder / tokenizer / transformer / vae folders WITHOUT
+    ``model_index.json``. The diffusers-shape validator must not flag
+    these as incomplete; ``_video_download_validation_error`` must route
+    through the mlx-video schema check instead.
+    """
+
+    def test_complete_mlx_snapshot_validates_clean(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("text_encoder", "tokenizer", "transformer", "vae"):
+                folder = root / name
+                folder.mkdir()
+                (folder / "config.json").write_text("{}")
+            self.assertIsNone(_validate_mlx_video_snapshot(str(root)))
+
+    def test_missing_component_reports_which_one(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("text_encoder", "tokenizer", "transformer"):  # vae absent
+                folder = root / name
+                folder.mkdir()
+                (folder / "config.json").write_text("{}")
+            err = _validate_mlx_video_snapshot(str(root))
+            self.assertIsNotNone(err)
+            self.assertIn("vae", err)
+
+    def test_empty_component_dir_reports_as_incomplete(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("text_encoder", "tokenizer", "transformer", "vae"):
+                (root / name).mkdir()
+            # All folders exist but are empty — partial download.
+            err = _validate_mlx_video_snapshot(str(root))
+            self.assertIsNotNone(err)
+            self.assertIn("empty", err.lower())
+
+    def test_mlx_routed_repo_skips_diffusers_check(self):
+        from backend_service.helpers.video import (
+            _is_mlx_video_routed_repo,
+            _video_download_validation_error,
+        )
+        repo = "prince-canuma/LTX-2-distilled"
+        # Confirm the routing predicate matches.
+        self.assertTrue(_is_mlx_video_routed_repo(repo))
+        # Non-existent snapshot returns the standard "no snapshot" error
+        # rather than tripping the diffusers-shape check (which would say
+        # "missing model_index.json" — the original bug).
+        with mock.patch(
+            "backend_service.helpers.video._hf_repo_snapshot_dir",
+            return_value=None,
+        ):
+            err = _video_download_validation_error(repo)
+            self.assertIsNotNone(err)
+            self.assertIn("Download did not produce", err)
+            # Crucially, no mention of model_index.json — that's the
+            # diffusers-shape error that misled users into thinking
+            # their LTX-2 download was broken.
+            self.assertNotIn("model_index", err)
 
 
 if __name__ == "__main__":

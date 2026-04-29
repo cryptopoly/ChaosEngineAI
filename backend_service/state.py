@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from collections import deque
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
@@ -21,12 +21,10 @@ from starlette.responses import StreamingResponse
 from cache_compression import registry as cache_registry
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
-from backend_service.image_runtime import (
-    ImageRuntimeManager,
-)
-from backend_service.video_runtime import (
-    VideoRuntimeManager,
-)
+
+if TYPE_CHECKING:
+    from backend_service.image_runtime import ImageRuntimeManager
+    from backend_service.video_runtime import VideoRuntimeManager
 from backend_service.models import (
     LoadModelRequest,
     ConvertModelRequest,
@@ -67,6 +65,9 @@ from backend_service.helpers.settings import (
 )
 from backend_service.helpers.persistence import (
     _default_chat_variant,
+    _library_cache_fingerprint,
+    _load_library_cache,
+    _save_library_cache,
     MAX_BENCHMARK_RUNS,
 )
 from backend_service.model_resolution import infer_hf_repo_from_local_path
@@ -168,6 +169,7 @@ class ChaosEngineState:
         settings_path: Path | None = None,
         benchmarks_path: Path | None = None,
         chat_sessions_path: Path | None = None,
+        library_cache_path: Path | None = None,
     ) -> None:
         # Defer imports of module-level constants to avoid circular imports
         from backend_service.app import (
@@ -179,6 +181,7 @@ class ChaosEngineState:
             SETTINGS_PATH,
             BENCHMARKS_PATH,
             CHAT_SESSIONS_PATH,
+            LIBRARY_CACHE_PATH,
         )
 
         self._lock = RLock()
@@ -187,11 +190,28 @@ class ChaosEngineState:
         self.server_port = server_port if server_port is not None else DEFAULT_PORT
         self._settings_path = settings_path if settings_path is not None else SETTINGS_PATH
         self._benchmarks_path = benchmarks_path if benchmarks_path is not None else BENCHMARKS_PATH
+        self._library_cache_path = library_cache_path if library_cache_path is not None else LIBRARY_CACHE_PATH
         self.settings = _load_settings(self._settings_path)
         self._library_cache: tuple[float, list[dict[str, Any]]] | None = None
+        self._library_scan_started: bool = False
+        self._library_scan_done: threading.Event = threading.Event()
+        self._library_scan_generation: int = 0
+        self._library_fingerprint: dict[str, float] = {}
+        if library_provider is None:
+            cached_payload = _load_library_cache(self._library_cache_path)
+            if cached_payload is not None:
+                fingerprint = _library_cache_fingerprint(self.settings["modelDirectories"])
+                stored_fingerprint = cached_payload.get("fingerprint") or {}
+                self._library_fingerprint = {str(k): float(v) for k, v in stored_fingerprint.items()}
+                items = cached_payload.get("items") or []
+                self._library_cache = (float(cached_payload.get("scannedAt") or time.time()), items)
+                if self._library_fingerprint == fingerprint:
+                    self._library_scan_done.set()
+        else:
+            self._library_scan_done.set()
         self.runtime = RuntimeController()
-        self.image_runtime = ImageRuntimeManager()
-        self.video_runtime = VideoRuntimeManager()
+        self._image_runtime: "ImageRuntimeManager | None" = None
+        self._video_runtime: "VideoRuntimeManager | None" = None
         self._chat_sessions_path = chat_sessions_path if chat_sessions_path is not None else CHAT_SESSIONS_PATH
         loaded_sessions = _load_chat_sessions(self._chat_sessions_path)
         self.chat_sessions = loaded_sessions
@@ -210,19 +230,117 @@ class ChaosEngineState:
         self._download_tokens: dict[str, str] = {}
         self._bootstrap()
 
+    @property
+    def image_runtime(self) -> "ImageRuntimeManager":
+        if self._image_runtime is None:
+            with self._lock:
+                if self._image_runtime is None:
+                    from backend_service.image_runtime import ImageRuntimeManager
+                    self._image_runtime = ImageRuntimeManager()
+        return self._image_runtime
+
+    @image_runtime.setter
+    def image_runtime(self, value: "ImageRuntimeManager | None") -> None:
+        self._image_runtime = value
+
+    @property
+    def video_runtime(self) -> "VideoRuntimeManager":
+        if self._video_runtime is None:
+            with self._lock:
+                if self._video_runtime is None:
+                    from backend_service.video_runtime import VideoRuntimeManager
+                    self._video_runtime = VideoRuntimeManager()
+        return self._video_runtime
+
+    @video_runtime.setter
+    def video_runtime(self, value: "VideoRuntimeManager | None") -> None:
+        self._video_runtime = value
+
     def _launch_preferences(self) -> dict[str, Any]:
         return dict(self.settings["launchPreferences"])
 
     def _library(self, *, force: bool = False) -> list[dict[str, Any]]:
         if self._library_provider is not None:
             return self._library_provider()
-        if not force and self._library_cache is not None:
-            cached_at, cached_items = self._library_cache
-            if (time.time() - cached_at) < 30.0:
-                return cached_items
-        library = _discover_local_models(self.settings["modelDirectories"])
-        self._library_cache = (time.time(), library)
-        return library
+        if force:
+            with self._lock:
+                self._library_scan_generation += 1
+                generation = self._library_scan_generation
+                directories_snapshot = [dict(item) for item in self.settings["modelDirectories"]]
+            fingerprint = _library_cache_fingerprint(directories_snapshot)
+            library = _discover_local_models(directories_snapshot)
+            with self._lock:
+                if generation == self._library_scan_generation:
+                    self._library_cache = (time.time(), library)
+                    self._library_fingerprint = fingerprint
+                    self._persist_library_cache(library, fingerprint)
+                self._library_scan_done.set()
+                self._library_scan_started = False
+            return library
+        if self._library_cache is not None:
+            return self._library_cache[1]
+        if self._library_scan_started:
+            return []
+        return self._library(force=True)
+
+    def _persist_library_cache(
+        self,
+        library: list[dict[str, Any]],
+        fingerprint: dict[str, float],
+    ) -> None:
+        try:
+            _save_library_cache(library, fingerprint, self._library_cache_path)
+        except OSError as exc:
+            self.add_log("library", "warn", f"Failed to persist library cache: {exc}")
+
+    def _kick_library_scan(self, *, force: bool = False) -> None:
+        if self._library_provider is not None:
+            return
+        with self._lock:
+            if self._library_scan_started and not force:
+                return
+            self._library_scan_started = True
+            self._library_scan_generation += 1
+            generation = self._library_scan_generation
+            directories_snapshot = [dict(item) for item in self.settings["modelDirectories"]]
+            if self._library_cache is None:
+                self._library_scan_done.clear()
+        thread = threading.Thread(
+            target=self._scan_library_into_cache,
+            args=(directories_snapshot, generation),
+            name="chaosengine-library-scan",
+            daemon=True,
+        )
+        thread.start()
+
+    def _scan_library_into_cache(
+        self,
+        directories_snapshot: list[dict[str, Any]],
+        generation: int,
+    ) -> None:
+        try:
+            fingerprint = _library_cache_fingerprint(directories_snapshot)
+            library = _discover_local_models(directories_snapshot)
+        except Exception as exc:
+            self.add_log("library", "error", f"Library scan failed: {exc}")
+            with self._lock:
+                if generation == self._library_scan_generation:
+                    self._library_scan_started = False
+                    self._library_scan_done.set()
+            return
+        with self._lock:
+            if generation != self._library_scan_generation:
+                return
+            self._library_cache = (time.time(), library)
+            self._library_fingerprint = fingerprint
+            self._library_scan_started = False
+            self._persist_library_cache(library, fingerprint)
+            self._library_scan_done.set()
+        self.add_log("library", "info", f"Discovered {len(library)} local model entries.")
+        self.add_activity(
+            "Library scan completed",
+            f"{len(library)} local entries found across configured model directories.",
+        )
 
     def _settings_payload(self, library: list[dict[str, Any]]) -> dict[str, Any]:
         from backend_service.app import DATA_LOCATION
@@ -292,13 +410,10 @@ class ChaosEngineState:
         from backend_service.app import app_version
 
         system = self._system_snapshot_provider()
-        library = self._library(force=True)
         recommendation = _best_fit_recommendation(system)
         self.add_log("chaosengine", "info", f"Workspace booted in {system['backendLabel']} mode.")
         self.add_log("chaosengine", "info", f"ChaosEngine v{app_version} detected.")
-        self.add_log("library", "info", f"Discovered {len(library)} local model entries.")
         self.add_activity("Hardware profile refreshed", recommendation["title"])
-        self.add_activity("Library scan completed", f"{len(library)} local entries found across configured model directories.")
         self.add_activity(
             "Backend readiness",
             " / ".join(
@@ -310,6 +425,7 @@ class ChaosEngineState:
                 ]
             ),
         )
+        self._kick_library_scan()
 
     @staticmethod
     def _time_label() -> str:
@@ -609,6 +725,12 @@ class ChaosEngineState:
     def _find_library_entry(self, path: str | None, model_ref: str | None) -> dict[str, Any] | None:
         if path is None and model_ref is None:
             return None
+        if (
+            self._library_provider is None
+            and self._library_cache is None
+            and not self._library_scan_done.is_set()
+        ):
+            self._library_scan_done.wait(timeout=10.0)
         for entry in self._library():
             if path and entry["path"] == path:
                 return entry
@@ -2869,6 +2991,7 @@ class ChaosEngineState:
             "recommendation": recommendation,
             "featuredModels": _model_family_payloads(system_stats, library),
             "library": library,
+            "libraryStatus": "ready" if self._library_scan_done.is_set() else "scanning",
             "settings": self._settings_payload(library),
             "chatSessions": self.chat_sessions,
             "runtime": self.runtime.status(

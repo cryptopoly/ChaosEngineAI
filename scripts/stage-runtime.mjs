@@ -88,6 +88,11 @@ function main() {
     llamaServer: fs.existsSync(path.join(binDest, binaryName("llama-server"))) ? `bin/${binaryName("llama-server")}` : null,
     llamaServerTurbo: fs.existsSync(path.join(binDest, binaryName("llama-server-turbo"))) ? `bin/${binaryName("llama-server-turbo")}` : null,
     llamaCli: fs.existsSync(path.join(binDest, binaryName("llama-cli"))) ? `bin/${binaryName("llama-cli")}` : null,
+    // sd.cpp produces a CLI binary called `sd` (or `sd.exe` on Windows). The
+    // staging hook below copies it from CHAOSENGINE_SDCPP_BIN_DIR or
+    // ~/.chaosengine/bin if available; if absent we leave the field null so
+    // the backend probe reports the engine as unavailable. See FU-008.
+    sdCpp: fs.existsSync(path.join(binDest, binaryName("sd"))) ? `bin/${binaryName("sd")}` : null,
     pythonVersion: pythonInfo.versionTag,
     bundledCacheStrategies: chaosEngineBundle ? ["chaosengine"] : [],
     bundledOptionalPackages: bundledOptionalPackages,
@@ -554,6 +559,28 @@ function stageLlamaBinaries() {
     const turboCandidatePath = path.join(chaosEngineBinDir, turboName);
     if (fs.existsSync(turboCandidatePath)) {
       copyPath(turboCandidatePath, path.join(binDest, turboName));
+    }
+  }
+
+  // sd.cpp's `sd` binary — optional cross-platform diffusion engine. We
+  // mirror the llama-server-turbo pattern: prefer an explicit env-var dir
+  // (CHAOSENGINE_SDCPP_BIN_DIR), then ~/.chaosengine/bin/, then a sibling
+  // `../stable-diffusion.cpp/build/bin` checkout. Missing is non-fatal —
+  // the staging just records `sdCpp: null` in the manifest and the
+  // backend probe reports the engine as unavailable.
+  const sdName = binaryName("sd");
+  if (!fs.existsSync(path.join(binDest, sdName))) {
+    const sdcppCandidates = [];
+    if (process.env.CHAOSENGINE_SDCPP_BIN_DIR) {
+      sdcppCandidates.push(path.join(process.env.CHAOSENGINE_SDCPP_BIN_DIR, sdName));
+    }
+    sdcppCandidates.push(path.join(os.homedir(), ".chaosengine", "bin", sdName));
+    sdcppCandidates.push(path.resolve(workspaceRoot, "..", "stable-diffusion.cpp", "build", "bin", sdName));
+    for (const candidate of sdcppCandidates) {
+      if (fs.existsSync(candidate)) {
+        copyPath(candidate, path.join(binDest, sdName));
+        break;
+      }
     }
   }
 

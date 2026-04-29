@@ -66,7 +66,6 @@ export function videoDiscoverFamilyHaystack(family: VideoModelFamily): string {
     family.summary,
     family.updatedLabel,
     family.badges.join(" "),
-    ...family.variants.map((variant) => videoDiscoverVariantHaystack(variant)),
   ]
     .join(" ")
     .toLowerCase();
@@ -253,6 +252,14 @@ function bytesPerElementForDevice(device: "mps" | "cuda" | "cpu"): number {
  * is a safer assumption there. */
 function effectiveMemoryBudgetGb(totalGb: number, device: "mps" | "cuda" | "cpu"): number {
   if (device === "cuda") return totalGb * 0.7;
+  // Apple Silicon's Metal ``recommendedMaxWorkingSetSize`` is ~75% of
+  // unified memory by default — that's the actual ceiling. Earlier
+  // values (0.5, then 0.65) were leaving real headroom unused; Wan 2.2
+  // 5B at 22 GB resident on a 64 GB M4 Max kept tripping caution
+  // (22/41.6 = 53%) even though it fits in ~33% of total memory.
+  // 0.75 matches the real device limit and lets the comparable models
+  // clear the caution band.
+  if (device === "mps") return totalGb * 0.75;
   return totalGb * 0.5;
 }
 
@@ -324,8 +331,8 @@ function estimateResidentModelGb(
  *   on 16 GB+ — preserves the attention-only heuristic when the caller
  *   doesn't know which model is loaded.
  * - Wan 2.1 T2V 1.3B (baseFootprint 16.4 GB) at 832×480 × 40 frames on a
- *   64 GB M4 Max: lands on "danger" — matches the observed-crash bug
- *   report where actual MPS use hit 88 GB under PyTorch's 1.4× watermark.
+ *   64 GB M4 Max: lands on "caution" — large but within the bumped MPS
+ *   working-set budget after the catalog started carrying resident peaks.
  * - Same Wan config on 128 GB M3 Ultra: stays "safe" — the machine has
  *   real headroom for the 23 GB resident footprint + attention peak.
  * - LTX-Video (baseFootprint 2 GB) at 768×512 × 41 frames on 32 GB:
@@ -342,8 +349,12 @@ export function assessVideoGenerationSafety(opts: {
    * on MPS where the text encoder + weights are the dominant cost. Leave
    * unset for the narrow "attention-only" question. */
   baseModelFootprintGb?: number | null;
+  /** Resident peak (catalog ``runtimeFootprintGb``). When provided, used
+   * directly — bypasses the ``sizeGb × 1.4`` heuristic. Disk size
+   * overstates resident because of duplicate sharded safetensors. */
+  runtimeFootprintGb?: number | null;
 }): VideoGenerationSafety {
-  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb } = opts;
+  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb, runtimeFootprintGb } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
@@ -382,7 +393,14 @@ export function assessVideoGenerationSafety(opts: {
     && baseModelFootprintGb > 0
       ? baseModelFootprintGb
       : 0;
-  const modelFootprintGb = estimateResidentModelGb(baseFootprint, effectiveDevice);
+  // Prefer explicit runtime footprint when the catalog supplies one — it
+  // already reflects resident peak. Otherwise estimate from disk size.
+  const modelFootprintGb =
+    runtimeFootprintGb != null
+    && Number.isFinite(runtimeFootprintGb)
+    && runtimeFootprintGb > 0
+      ? runtimeFootprintGb
+      : estimateResidentModelGb(baseFootprint, effectiveDevice);
 
   if (
     !Number.isFinite(width)
@@ -455,15 +473,14 @@ export function assessVideoGenerationSafety(opts: {
   // suggestions in the caution band either.
   const safeRatioTarget = cautionRatio * 0.7; // leave a real margin after apply
   if (modelFootprintGb > cautionRatio * budgetGb) {
-    // Phrase the comparison against the caution threshold (the point where
-    // we start warning), not the total budget — it's the number the user
-    // actually needs to stay under. Avoids the "23 GB is bigger than
-    // 32 GB??" head-scratch.
-    const cautionBudgetGb = cautionRatio * budgetGb;
+    const comfortBudgetGb = cautionRatio * budgetGb;
+    const highRiskBudgetGb = dangerRatio * budgetGb;
     const reason =
       riskLevel === "danger"
-        ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, safe usage tops out around ${fmt(cautionBudgetGb)} GB — the model alone is already over that. Even the smallest clip would be likely to crash the backend. Try a smaller model (LTX-Video is ~2 GB) or a machine with more memory.`
-        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, safe usage tops out around ${fmt(cautionBudgetGb)} GB — you're right on the edge. Generation may run slowly or fail; consider a smaller model.`;
+        ? modelFootprintGb > budgetGb
+          ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, the estimated working set is ~${fmt(budgetGb)} GB, so the model alone is already over that. Even the smallest clip would be likely to crash the backend. Try a smaller model (LTX-Video is ~2 GB) or a machine with more memory.`
+          : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder, and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). Generation is likely to crash the backend; lower the settings or choose a smaller model.`
+        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation may run slowly or fail; consider lowering settings if it becomes unstable.`;
     return {
       riskLevel,
       latentTokens,

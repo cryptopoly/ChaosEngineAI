@@ -46,9 +46,11 @@ class DiagnosticsSnapshotTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         state = ChaosEngineState(
             system_snapshot_provider=_fake_system_snapshot,
+            library_provider=lambda: [],
             settings_path=Path(self.tempdir.name) / "settings.json",
             benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
             chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+            library_cache_path=Path(self.tempdir.name) / "library_cache.json",
         )
         state.runtime = FakeRuntime()
         self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
@@ -130,9 +132,11 @@ class DiagnosticsLogTailTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         state = ChaosEngineState(
             system_snapshot_provider=_fake_system_snapshot,
+            library_provider=lambda: [],
             settings_path=Path(self.tempdir.name) / "settings.json",
             benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
             chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+            library_cache_path=Path(self.tempdir.name) / "library_cache.json",
         )
         state.runtime = FakeRuntime()
         self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
@@ -167,9 +171,11 @@ class DiagnosticsReextractTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         state = ChaosEngineState(
             system_snapshot_provider=_fake_system_snapshot,
+            library_provider=lambda: [],
             settings_path=Path(self.tempdir.name) / "settings.json",
             benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
             chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+            library_cache_path=Path(self.tempdir.name) / "library_cache.json",
         )
         state.runtime = FakeRuntime()
         self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))

@@ -172,10 +172,7 @@ export function RuntimeControls({
   const dflashAvailable = dflashSupport.enabled;
   const dflashUnavailableReason = dflashSupport.reason;
   const ddtreeAvailable = dflashSupport.ddtreeAvailable;
-  const hasDraftForModel =
-    dflashSupport.matchedModel !== null
-    || (dflashInfo?.supportedModels?.length ?? 0) === 0
-    || !selectedModelRef;
+  const canInstallDflashForModel = dflashSupport.modelSupported === true;
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
@@ -288,7 +285,7 @@ export function RuntimeControls({
           const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
           const isIncompat = incompatReason != null;
           const needsTurbo = strategy.requiredLlamaBinary === "turbo";
-          const turboMissing = needsTurbo && turboInstalled === false;
+          const turboMissing = needsTurbo && isGgufBackend && turboInstalled === false;
           const isDisabled = !strategy.available || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
 
           return (
@@ -343,7 +340,7 @@ export function RuntimeControls({
                           onClick={() => onInstallPackage(strategy.id)}
                         >
                           {installingPackage === strategy.id
-                            ? strategy.requiredLlamaBinary === "turbo" && !turboInstalled
+                            ? strategy.requiredLlamaBinary === "turbo" && isGgufBackend && !turboInstalled
                               ? "Building llama-server-turbo..."
                               : "Installing..."
                             : "Install now"}
@@ -351,7 +348,7 @@ export function RuntimeControls({
                       ) : (
                         <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
                       )}
-                      {strategy.available && strategy.requiredLlamaBinary === "turbo" && turboUpdateAvailable && onInstallPackage ? (
+                      {strategy.available && strategy.requiredLlamaBinary === "turbo" && isGgufBackend && turboUpdateAvailable && onInstallPackage ? (
                         <button
                           type="button"
                           className="cache-strategy-install-btn"
@@ -474,7 +471,7 @@ export function RuntimeControls({
             />
             <span>DFlash</span>
           </label>
-          {!dflashInstalled && !isGgufBackend && hasDraftForModel && onInstallPackage ? (
+          {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (
             <button
               type="button"
               className="cache-strategy-install-btn"
@@ -519,7 +516,7 @@ export function RuntimeControls({
               <span className="cache-strategy-meta-label">DDTree:</span>
               <span>{ddtreeAvailable ? "Available" : "Not available in the current dflash runtime."}</span>
             </div>
-            {!dflashInstalled ? (
+            {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
                 <span className="cache-strategy-meta-label">Install:</span>
                 <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"</code>

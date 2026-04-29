@@ -118,10 +118,18 @@ def _is_video_repo(repo_id: str) -> bool:
 
 
 def _video_repo_runtime_ready(repo_id: str) -> bool:
-    """True if the local snapshot is complete enough to load via diffusers."""
+    """True if the local snapshot is complete enough to load.
+
+    Routes the validator by engine: mlx-video repos ship text_encoder /
+    tokenizer / transformer / vae folders without ``model_index.json``,
+    so the diffusers-shape check would always falsely fail for them.
+    Diffusers repos still go through ``validate_local_diffusers_snapshot``.
+    """
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
+    if _is_mlx_video_routed_repo(repo_id):
+        return _validate_mlx_video_snapshot(snapshot_dir) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
 
 
@@ -191,6 +199,16 @@ _VIDEO_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "LICENSE*",
 ]
 
+_VIDEO_MLX_ALLOW_PATTERNS: list[str] = [
+    "text_encoder/**",
+    "tokenizer/**",
+    "transformer/**",
+    "vae/**",
+    "*spatial-upscaler*.safetensors",
+    "*.md",
+    "LICENSE*",
+]
+
 
 def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """Patterns to pass to ``snapshot_download`` for a video repo.
@@ -203,6 +221,8 @@ def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     """
     if not _is_video_repo(repo_id):
         return None
+    if _is_mlx_video_routed_repo(repo_id):
+        return list(_VIDEO_MLX_ALLOW_PATTERNS)
     return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
 
 
@@ -215,7 +235,74 @@ def _video_download_validation_error(repo_id: str) -> str | None:
             f"Download did not produce a local snapshot for {repo_id}. "
             "Retry the download and make sure the backend can access Hugging Face."
         )
+    # mlx-video routed repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX
+    # layout — text_encoder / tokenizer / transformer / vae folders
+    # without ``model_index.json``. Don't apply the diffusers-shape
+    # validator to them; check for the MLX component folders instead.
+    if _is_mlx_video_routed_repo(repo_id):
+        return _validate_mlx_video_snapshot(snapshot_dir)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
+
+
+def _is_mlx_video_routed_repo(repo_id: str) -> bool:
+    """True iff this repo is meant to load through mlx-video on Apple Silicon.
+
+    Imports ``mlx_video_runtime`` lazily so the validator path doesn't drag
+    that module's torch warmup costs into every video catalog refresh.
+    """
+    try:
+        from backend_service.mlx_video_runtime import _is_mlx_video_repo
+    except Exception:
+        return False
+    return _is_mlx_video_repo(repo_id)
+
+
+# Component folders any mlx-video LTX-2 snapshot must carry. Subset of the
+# diffusers layout — no model_index.json. Lifted from the ``prince-canuma/
+# LTX-2-distilled`` repo tree as the canonical shape; bump as new mlx-video
+# families with different layouts come online.
+_MLX_VIDEO_REQUIRED_COMPONENTS: tuple[str, ...] = (
+    "text_encoder",
+    "tokenizer",
+    "transformer",
+    "vae",
+)
+
+
+def _validate_mlx_video_snapshot(snapshot_dir: str) -> str | None:
+    """Return ``None`` if the snapshot has the four MLX component folders.
+
+    Mirrors the contract of ``validate_local_diffusers_snapshot`` so the
+    callers can swap one for the other without restructuring the result
+    handling. Each missing folder is named explicitly so the user sees
+    which file an interrupted download stopped on.
+    """
+    root = Path(snapshot_dir)
+    if not root.exists():
+        return (
+            f"Local snapshot directory does not exist at {root}. "
+            "Re-download the model."
+        )
+    missing: list[str] = []
+    for component in _MLX_VIDEO_REQUIRED_COMPONENTS:
+        component_dir = root / component
+        if not component_dir.is_dir():
+            missing.append(component)
+            continue
+        # Empty component dirs indicate a half-completed download — count
+        # them as missing so the retry CTA fires.
+        try:
+            if not any(component_dir.iterdir()):
+                missing.append(f"{component} (empty)")
+        except OSError:
+            missing.append(component)
+    if missing:
+        return (
+            "The local snapshot is incomplete. Missing mlx-video components: "
+            f"{', '.join(missing)}. Re-download the model and keep ChaosEngineAI "
+            "open until the download completes."
+        )
+    return None
 
 
 # ---- Video output CRUD ----

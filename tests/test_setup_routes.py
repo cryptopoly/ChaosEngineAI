@@ -8,6 +8,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from backend_service.app import create_app
+from backend_service.routes.setup import _cleanup_mlx_video_shadow_metadata
 from backend_service.state import ChaosEngineState
 
 TEST_API_TOKEN = "test-api-token"
@@ -104,6 +105,55 @@ class SetupRouteTests(unittest.TestCase):
         body = resp.json()
         self.assertTrue(body["ok"])
         self.assertIn("capabilities", body)
+
+    def test_install_pip_persists_to_extras_dir(self):
+        """install-package must use ``--target`` so packaged builds keep
+        the install across app rebuilds. Without this, mlx-video etc.
+        get wiped from the embedded site-packages on every release.
+        """
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages") as mock_extras:
+            from pathlib import Path
+            mock_extras.return_value = Path("/tmp/test-extras-site-packages")
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
+        self.assertEqual(resp.status_code, 200)
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("--target", cmd)
+        target_idx = cmd.index("--target")
+        self.assertEqual(cmd[target_idx + 1], "/tmp/test-extras-site-packages")
+        # mlx-video is now pinned to the GitHub source (PyPI ships an
+        # unrelated 0.1.0 utilities package). Match on the spec prefix.
+        self.assertTrue(
+            any("mlx-video" in arg for arg in cmd),
+            f"mlx-video spec missing from pip cmd: {cmd}",
+        )
+        self.assertTrue(
+            any("github.com/Blaizzy/mlx-video" in arg for arg in cmd),
+            f"mlx-video spec must point to Blaizzy git URL: {cmd}",
+        )
+
+    def test_cleanup_mlx_video_shadow_metadata_keeps_blaizzy_dist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shadow = root / "mlx_video-0.1.0.dist-info"
+            blaizzy = root / "mlx_video-0.0.1.dist-info"
+            shadow.mkdir()
+            blaizzy.mkdir()
+            (shadow / "METADATA").write_text(
+                "Name: mlx-video\nProject-URL: Repository, https://github.com/AmiraniLabs/mlx-video\n",
+                encoding="utf-8",
+            )
+            (blaizzy / "METADATA").write_text(
+                "Name: mlx-video\nProject-URL: Repository, https://github.com/Blaizzy/mlx-video\n",
+                encoding="utf-8",
+            )
+
+            removed = _cleanup_mlx_video_shadow_metadata(root)
+
+            self.assertEqual(removed, ["mlx_video-0.1.0.dist-info"])
+            self.assertFalse(shadow.exists())
+            self.assertTrue(blaizzy.exists())
 
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
@@ -668,7 +718,9 @@ class InstallGpuBundleTests(unittest.TestCase):
         with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=fake_run), \
              mock.patch("backend_service.routes.setup._verify_cuda", return_value=(True, "cuda_available=true")), \
              mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"), \
+             mock.patch("backend_service.routes.setup.platform.system", return_value="Linux"), \
+             mock.patch("backend_service.routes.setup.platform.machine", return_value="x86_64"):
             start_resp = self.client.post("/api/setup/install-gpu-bundle", json={})
             self.assertEqual(start_resp.status_code, 200)
             # Wait for the background thread to finish. The worker is daemon=True
@@ -717,7 +769,9 @@ class InstallGpuBundleTests(unittest.TestCase):
 
         with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=no_wheel_run), \
              mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.14.0"):
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.14.0"), \
+             mock.patch("backend_service.routes.setup.platform.system", return_value="Linux"), \
+             mock.patch("backend_service.routes.setup.platform.machine", return_value="x86_64"):
             self.client.post("/api/setup/install-gpu-bundle", json={})
             import time as _time
             deadline = _time.time() + 5.0
@@ -731,6 +785,42 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertEqual(status["phase"], "error")
         self.assertTrue(status["noWheelForPython"])
         self.assertIn("3.14.0", status["error"])
+
+    def test_apple_silicon_skips_cuda_walk_and_still_runs_remaining_packages(self):
+        """On Apple Silicon, torch CUDA install is skipped; remaining bundle still runs."""
+        pip_calls: list[str] = []
+
+        def fake_run(cmd, *args, **kwargs):
+            # Track which packages pip was asked to install so we can confirm
+            # mlx-video appears (added only on Apple Silicon) and torch does
+            # not (skipped on Apple Silicon).
+            if isinstance(cmd, (list, tuple)):
+                joined = " ".join(str(c) for c in cmd)
+                pip_calls.append(joined)
+            return mock.Mock(returncode=0, stdout="Successfully installed", stderr="")
+
+        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=fake_run), \
+             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"), \
+             mock.patch("backend_service.routes.setup.platform.system", return_value="Darwin"), \
+             mock.patch("backend_service.routes.setup.platform.machine", return_value="arm64"):
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertTrue(status["done"])
+        self.assertEqual(status["phase"], "done")
+        self.assertTrue(status["cudaVerified"])
+        self.assertIsNone(status["indexUrlUsed"])
+        # Torch was never pip-installed (we use the bundled MPS torch).
+        self.assertFalse(any("torch>=2.4.0" in call for call in pip_calls))
+        # Diffusers still got installed (regression guard for the Apple Silicon branch).
+        self.assertTrue(any("diffusers" in call for call in pip_calls))
 
     def test_second_start_while_running_returns_existing_job(self):
         """Don't spawn two installers in parallel — UI gets whichever started first."""

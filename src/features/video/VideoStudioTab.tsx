@@ -57,6 +57,14 @@ export interface VideoStudioTabProps {
   onVideoStepsChange: (value: number) => void;
   videoGuidance: number;
   onVideoGuidanceChange: (value: number) => void;
+  videoUseNf4: boolean;
+  onVideoUseNf4Change: (value: boolean) => void;
+  videoEnableLtxRefiner: boolean;
+  onVideoEnableLtxRefinerChange: (value: boolean) => void;
+  videoEnhancePrompt: boolean;
+  onVideoEnhancePromptChange: (value: boolean) => void;
+  videoCfgDecay: boolean;
+  onVideoCfgDecayChange: (value: boolean) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -109,14 +117,21 @@ const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
 // _SUPPORTED_REPOS in backend_service/mlx_video_runtime.py — kept here
 // so the Studio can decide when to surface the mlx-video chip without
 // an extra capabilities round-trip. See FU-009 in CLAUDE.md.
+//
+// Today: LTX-2 prince-canuma pre-converted MLX repos only. Wan2.1/2.2
+// require an explicit ``mlx_video.models.wan_2.convert`` step on raw HF
+// weights (no pre-converted MLX repo today) — until that conversion is
+// bundled, Wan paths use diffusers MPS.
 const MLX_VIDEO_SUPPORTED_REPOS: ReadonlySet<string> = new Set([
-  "Lightricks/LTX-2-19B",
-  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-  "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-  "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
-  "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-  "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+  "prince-canuma/LTX-2-distilled",
+  "prince-canuma/LTX-2-dev",
+  "prince-canuma/LTX-2.3-distilled",
+  "prince-canuma/LTX-2.3-dev",
 ]);
+
+function isLtx2DistilledRepo(repo: string | null | undefined): boolean {
+  return !!repo && repo.toLowerCase().startsWith("prince-canuma/ltx-2") && repo.toLowerCase().endsWith("-distilled");
+}
 
 // Quality presets: common starting points for the denoising step count.
 // Frames are deliberately not part of the preset — frame count controls
@@ -224,6 +239,14 @@ export function VideoStudioTab({
   onVideoStepsChange,
   videoGuidance,
   onVideoGuidanceChange,
+  videoUseNf4,
+  onVideoUseNf4Change,
+  videoEnableLtxRefiner,
+  onVideoEnableLtxRefinerChange,
+  videoEnhancePrompt,
+  onVideoEnhancePromptChange,
+  videoCfgDecay,
+  onVideoCfgDecayChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -379,6 +402,10 @@ export function VideoStudioTab({
   // so the chip stays hidden — see render gate below.
   const isMlxVideoVariant =
     !!selectedVideoVariant?.repo && MLX_VIDEO_SUPPORTED_REPOS.has(selectedVideoVariant.repo);
+  const isLtx2DistilledVariant = isLtx2DistilledRepo(selectedVideoVariant?.repo);
+  const ltx2DevSibling = selectedVideoFamily?.variants.find(
+    (variant) => variant.repo === selectedVideoVariant?.repo.replace(/-distilled$/i, "-dev"),
+  ) ?? null;
   useEffect(() => {
     if (isMlxVideoVariant) onRefreshMlxVideoStatus();
   }, [isMlxVideoVariant, onRefreshMlxVideoStatus]);
@@ -406,6 +433,13 @@ export function VideoStudioTab({
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
   const hasPrompt = videoPrompt.trim().length > 0;
+  const selectedVideoRuntimeStatus: VideoRuntimeStatus =
+    isMlxVideoVariant && mlxVideoStatus?.realGenerationAvailable
+      ? {
+          ...mlxVideoStatus,
+          deviceMemoryGb: mlxVideoStatus.deviceMemoryGb ?? videoRuntimeStatus.deviceMemoryGb,
+        }
+      : videoRuntimeStatus;
   const generateButtonLabel =
     videoBusy && videoBusyLabel?.startsWith("Generating")
       ? videoBusyLabel
@@ -423,8 +457,8 @@ export function VideoStudioTab({
     ? "Choose a video model first."
     : !isDownloaded
       ? `${selectedVideoVariant.name} is not installed locally yet.`
-      : !videoRuntimeStatus.realGenerationAvailable
-        ? (videoRuntimeStatus.message || "Video runtime is not ready.")
+      : !selectedVideoRuntimeStatus.realGenerationAvailable
+        ? (selectedVideoRuntimeStatus.message || "Video runtime is not ready.")
         : !hasPrompt
           ? "Write a prompt before generating."
           : !backendOnline
@@ -452,17 +486,19 @@ export function VideoStudioTab({
         width: videoWidth,
         height: videoHeight,
         numFrames: videoNumFrames,
-        device: videoRuntimeStatus.device,
-        deviceMemoryGb: videoRuntimeStatus.deviceMemoryGb,
+        device: selectedVideoRuntimeStatus.device,
+        deviceMemoryGb: selectedVideoRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedVideoVariant?.sizeGb,
+        runtimeFootprintGb: selectedVideoVariant?.runtimeFootprintGb,
       }),
     [
       videoWidth,
       videoHeight,
       videoNumFrames,
-      videoRuntimeStatus.device,
-      videoRuntimeStatus.deviceMemoryGb,
+      selectedVideoRuntimeStatus.device,
+      selectedVideoRuntimeStatus.deviceMemoryGb,
       selectedVideoVariant?.sizeGb,
+      selectedVideoVariant?.runtimeFootprintGb,
     ],
   );
 
@@ -503,12 +539,15 @@ export function VideoStudioTab({
       : generationSafety.effectiveDevice === "cpu"
         ? "CPU (detected)"
         : "Apple Silicon (detected)";
-  const deviceLabel = videoRuntimeStatus.device
-    ? videoRuntimeStatus.device.toUpperCase().startsWith("CUDA")
-      ? "GPU"
-      : videoRuntimeStatus.device.toUpperCase() === "MPS"
-        ? "Apple Silicon"
-        : videoRuntimeStatus.device.toUpperCase()
+  const reportedDevice = selectedVideoRuntimeStatus.device?.toUpperCase() ?? null;
+  const deviceLabel = selectedVideoRuntimeStatus.device
+    ? selectedVideoRuntimeStatus.activeEngine === "mlx-video"
+      ? "Apple Silicon (MLX)"
+      : reportedDevice?.startsWith("CUDA")
+        ? "GPU"
+        : reportedDevice === "MPS"
+          ? "Apple Silicon"
+          : reportedDevice ?? selectedVideoRuntimeStatus.device
     : inferredDeviceLabel;
   // Mark the memory figure as a fallback when the backend didn't actually
   // report it — e.g. a stale sidecar that pre-dates the deviceMemoryGb
@@ -518,9 +557,9 @@ export function VideoStudioTab({
   // prefix + "(default)" suffix reads as "we're guessing" without scaring
   // the user about a real hardware issue.
   const backendReportedMemory =
-    videoRuntimeStatus.deviceMemoryGb != null
-    && Number.isFinite(videoRuntimeStatus.deviceMemoryGb)
-    && videoRuntimeStatus.deviceMemoryGb > 0;
+    selectedVideoRuntimeStatus.deviceMemoryGb != null
+    && Number.isFinite(selectedVideoRuntimeStatus.deviceMemoryGb)
+    && selectedVideoRuntimeStatus.deviceMemoryGb > 0;
   const memoryLabel = backendReportedMemory
     ? formatGb(generationSafety.deviceMemoryGb)
     : `~${formatGb(generationSafety.deviceMemoryGb)} (default — restart backend for real detection)`;
@@ -597,15 +636,25 @@ export function VideoStudioTab({
                   : "LongLive not installed"}
               </span>
             ) : null}
-            {/* mlx-video chip — Apple Silicon only. Three states:
-              * missing (warning), scaffold-installed (subtle), or
-              * realGenerationAvailable=true (success, after FU-009
-              * lands the actual generate path). Hidden off-platform. */}
+            {/* mlx-video chip — Apple Silicon only. Four states:
+              * missing (warning), scaffold-installed (subtle), ready
+              * (success), or active=true when an LTX-2 variant is
+              * loaded and routing through mlx-video. Hidden off-platform. */}
             {mlxVideoMissing ? (
               <span className="badge warning">mlx-video not installed</span>
             ) : null}
             {mlxVideoInstalledScaffold ? (
               <span className="badge subtle">mlx-video scaffold</span>
+            ) : null}
+            {isAppleSiliconHost
+              && mlxVideoStatus?.realGenerationAvailable
+              && !isMlxVideoVariant ? (
+              <span className="badge success">mlx-video ready</span>
+            ) : null}
+            {isAppleSiliconHost
+              && mlxVideoStatus?.realGenerationAvailable
+              && isMlxVideoVariant ? (
+              <span className="badge accent">Engine: mlx-video</span>
             ) : null}
           </div>
           {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
@@ -815,6 +864,16 @@ export function VideoStudioTab({
               onChange={(event) => onVideoPromptChange(event.target.value)}
               placeholder="A cinematic drone shot of a misty pine forest at dawn..."
             />
+            {selectedVideoVariant?.repo === "Lightricks/LTX-Video"
+              && hasPrompt
+              && videoPrompt.trim().split(/\s+/).length < 25 ? (
+              <p className="caution-text" role="note">
+                LTX-Video produces best results with detailed prompts (~50-100 words).
+                Short prompts ("cartoon llama eating straw") under-condition the model
+                and tend to drift. Lightricks recommends starting with the action,
+                then adding visual details, lighting, and camera direction.
+              </p>
+            ) : null}
           </label>
 
           <label>
@@ -863,6 +922,27 @@ export function VideoStudioTab({
               );
             })}
           </div>
+          {isLtx2DistilledVariant ? (
+            <div className="callout quiet video-model-note" role="note">
+              <p>
+                <strong>LTX-2 distilled is the fast sampler.</strong> mlx-video runs it as fixed
+                8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not
+                improve this variant. Use a dev variant for quality comparisons with ComfyUI.
+              </p>
+              {ltx2DevSibling ? (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => onSelectedVideoModelIdChange(ltx2DevSibling.id)}
+                    disabled={videoBusy}
+                  >
+                    Switch to {ltx2DevSibling.name}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/*
             Aspect-ratio preset pills. Fixed resolutions (not "apply ratio
@@ -1023,6 +1103,12 @@ export function VideoStudioTab({
                   onBlur={() => onNumericBlur(videoGuidance, onVideoGuidanceChange, 5)}
                 />
               </div>
+              {selectedVideoVariant?.repo === "Lightricks/LTX-Video" && videoGuidance > 4 ? (
+                <p className="caution-text" role="alert">
+                  LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and
+                  produces blurred / rainbow output. Lower to 3 for the cleanest results.
+                </p>
+              ) : null}
             </label>
           </div>
 
@@ -1032,6 +1118,69 @@ export function VideoStudioTab({
               {" "}({videoNumFrames} frames ÷ {videoFps} fps)
             </p>
           ) : null}
+
+          {selectedVideoVariant?.repo === "Lightricks/LTX-Video" ? (
+            <p className="muted-text">
+              Backend auto-tunes LTX decode parameters (frame_rate as model conditioning,
+              decode_timestep, decode_noise_scale, guidance_rescale) to the Lightricks
+              reference defaults — no extra sliders needed.
+            </p>
+          ) : null}
+
+          {!isAppleSiliconHost ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoUseNf4}
+                onChange={(event) => onVideoUseNf4Change(event.target.checked)}
+              />
+              <span>
+                4-bit (NVIDIA NF4) — fits Wan 2.1 14B in &lt;24 GB VRAM via bitsandbytes.
+                CUDA only; ignored on CPU.
+              </span>
+            </label>
+          ) : null}
+
+          {selectedVideoVariant?.repo === "Lightricks/LTX-Video" ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoEnableLtxRefiner}
+                onChange={(event) => onVideoEnableLtxRefinerChange(event.target.checked)}
+              />
+              <span>
+                LTX two-stage spatial upscale — refines through
+                LTXLatentUpsamplePipeline. Frame budget +50%.
+              </span>
+            </label>
+          ) : null}
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoEnhancePrompt}
+              onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
+            />
+            <span>
+              Auto-enhance short prompts — appends model-tuned structural hints
+              (cinematic descriptors, lighting, camera direction) when the prompt
+              is under 25 words. Long custom prompts are sent verbatim.
+            </span>
+          </label>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoCfgDecay}
+              onChange={(event) => onVideoCfgDecayChange(event.target.checked)}
+            />
+            <span>
+              CFG decay — linearly drop guidance_scale from your setting (step 0)
+              to 1.0 (final step). Flow-match video models tend to oversaturate
+              when CFG stays high throughout sampling; decay lets early steps
+              lock semantics and late steps preserve fine detail.
+            </span>
+          </label>
 
           {/*
             Always-on "device capacity" line so the user sees their envelope
@@ -1089,7 +1238,7 @@ export function VideoStudioTab({
                     Use safer settings ({generationSafety.suggestion.label})
                   </button>
                 </div>
-              ) : (
+              ) : generationSafety.riskLevel === "danger" ? (
                 <div className="button-row">
                   <button
                     className="secondary-button"
@@ -1100,7 +1249,7 @@ export function VideoStudioTab({
                     Browse smaller models
                   </button>
                 </div>
-              )}
+              ) : null}
               {/*
                 Danger-only override. Generate stays disabled until the user
                 ticks this box — the checkbox resets on any change to

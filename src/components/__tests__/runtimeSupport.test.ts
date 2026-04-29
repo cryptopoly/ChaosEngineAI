@@ -15,6 +15,7 @@ describe("resolveDflashSupport()", () => {
     ddtreeAvailable: true,
     supportedModels: [
       "Qwen/Qwen3.5-35B-A3B",
+      "Qwen/Qwen3.6-35B-A3B",
       "Qwen/Qwen3-Coder-30B-A3B",
     ],
   };
@@ -65,6 +66,41 @@ describe("resolveDflashSupport()", () => {
 
     expect(result.enabled).toBe(true);
     expect(result.matchedModel).toBe("Qwen/Qwen3.5-35B-A3B");
+  });
+
+  it("keeps model support when the DFlash runtime is not installed", () => {
+    const result = resolveDflashSupport({
+      dflashInfo: {
+        ...dflashInfo,
+        available: false,
+        mlxAvailable: false,
+      },
+      selectedBackend: "mlx",
+      canonicalRepo: "mlx-community/Qwen3.6-35B-A3B-4bit",
+      modelName: "Qwen3.6-35B-A3B-4bit",
+    });
+
+    expect(result.enabled).toBe(false);
+    expect(result.modelSupported).toBe(true);
+    expect(result.matchedModel).toBe("Qwen/Qwen3.6-35B-A3B");
+    expect(result.reason).toContain("Install dflash-mlx");
+  });
+
+  it("marks unsupported models even when the DFlash runtime is not installed", () => {
+    const result = resolveDflashSupport({
+      dflashInfo: {
+        ...dflashInfo,
+        available: false,
+        mlxAvailable: false,
+      },
+      selectedBackend: "mlx",
+      canonicalRepo: "some-org/UnknownModel-7B",
+      modelName: "UnknownModel-7B-4bit",
+    });
+
+    expect(result.enabled).toBe(false);
+    expect(result.modelSupported).toBe(false);
+    expect(result.reason).toContain("No DFlash draft exists");
   });
 });
 

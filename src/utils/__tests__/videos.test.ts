@@ -3,14 +3,73 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assessVideoGenerationSafety,
   inferDeviceFromHostPlatform,
+  videoDiscoverFamilyMatchesQuery,
+  videoDiscoverVariantMatchesQuery,
   videoRuntimeErrorStatus,
 } from "../videos";
+import type { VideoModelFamily, VideoModelVariant } from "../../types";
 
 // The safety heuristic now scales with device memory rather than a flat
 // token threshold — a 64 GB M4 Max should tolerate far more frames than a
 // 16 GB base M2. These tests pin both ends of that scale against the concrete
 // bug report (Wan 2.1 T2V 1.3B at 832×480 × 96 frames detonating MPS) and
 // the Studio defaults (832×480 × 33 frames staying safe).
+
+function makeVideoVariant(overrides: Partial<VideoModelVariant>): VideoModelVariant {
+  return {
+    id: "variant",
+    familyId: "family",
+    name: "Variant",
+    provider: "Provider",
+    repo: "provider/repo",
+    link: "https://huggingface.co/provider/repo",
+    runtime: "runtime",
+    styleTags: ["general"],
+    taskSupport: ["txt2video"],
+    sizeGb: 1,
+    recommendedResolution: "512x512",
+    defaultDurationSeconds: 4,
+    note: "note",
+    availableLocally: false,
+    estimatedGenerationSeconds: 60,
+    ...overrides,
+  };
+}
+
+describe("video discover search helpers", () => {
+  it("keeps variant-only terms from matching every variant in a family", () => {
+    const family: VideoModelFamily = {
+      id: "ltx-2",
+      name: "LTX-2 (MLX)",
+      provider: "Lightricks",
+      headline: "Native Apple Silicon LTX-2 models",
+      summary: "Pre-converted MLX weights.",
+      updatedLabel: "Native MLX",
+      badges: ["MLX Native"],
+      defaultVariantId: "ltx-distilled",
+      variants: [
+        makeVideoVariant({
+          id: "ltx-distilled",
+          name: "LTX-2 distilled (MLX)",
+          repo: "prince-canuma/LTX-2-distilled",
+          styleTags: ["fast"],
+        }),
+        makeVideoVariant({
+          id: "ltx-dev",
+          name: "LTX-2 dev (MLX)",
+          repo: "prince-canuma/LTX-2-dev",
+          styleTags: ["quality"],
+          note: "Dev pipeline for quality.",
+        }),
+      ],
+    };
+
+    expect(videoDiscoverFamilyMatchesQuery(family, "ltx-2")).toBe(true);
+    expect(videoDiscoverFamilyMatchesQuery(family, "dev")).toBe(false);
+    expect(videoDiscoverVariantMatchesQuery(family.variants[0], "dev")).toBe(false);
+    expect(videoDiscoverVariantMatchesQuery(family.variants[1], "dev")).toBe(true);
+  });
+});
 
 describe("assessVideoGenerationSafety()", () => {
   describe("safe envelope on base hardware", () => {
@@ -186,22 +245,25 @@ describe("assessVideoGenerationSafety()", () => {
   });
 
   describe("CUDA gets more headroom than MPS at the same memory size", () => {
-    it("24 GB CUDA verdicts a config that 24 GB MPS would flag danger", () => {
-      // Same config (832×480 × 50 frames, ~4.6 GB peak), same total memory
-      // (24 GB), but CUDA's larger effective budget (70% vs 50%) and looser
-      // ratios (caution 0.7 vs 0.5) mean the same request is safe on a 4090
-      // and only 'caution' on a 24 GB Mac. That's the asymmetry we want.
+    it("24 GB CUDA verdicts a config that 24 GB MPS would flag caution", () => {
+      // Same config (832×480 × 65 frames), same total memory (24 GB).
+      // MPS effective budget = 24*0.75 = 18 GB with a tighter caution
+      // ratio (0.5); CUDA budget = 24*0.7 = 16.8 GB with a looser
+      // caution ratio (0.7). Picked frame count to land in the band
+      // where MPS trips caution but CUDA stays safe — this is the
+      // asymmetry we surface to users so they understand why the same
+      // request is "safe" on a 4090 and "caution" on a 24 GB Mac.
       const cuda = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 50,
+        numFrames: 65,
         device: "cuda:0",
         deviceMemoryGb: 24,
       });
       const mps = assessVideoGenerationSafety({
         width: 832,
         height: 480,
-        numFrames: 50,
+        numFrames: 65,
         device: "mps",
         deviceMemoryGb: 24,
       });
@@ -319,10 +381,13 @@ describe("assessVideoGenerationSafety()", () => {
     // ``selectedVariant.sizeGb`` as ``baseModelFootprintGb`` so the
     // warning reflects that reality.
 
-    it("flags danger for Wan 2.1 1.3B at 40 frames on a 64 GB M4 Max", () => {
-      // The exact config that crashed the user's backend. With the
-      // resident-model term included (16.4 GB disk × 1.4 MPS fragmentation
-      // ≈ 23 GB) the estimate now realistically lands in "danger".
+    it("flags caution for Wan 2.1 1.3B at 40 frames on a 64 GB M4 Max", () => {
+      // The original observed-crash report. With the corrected MPS budget
+      // (65% of unified memory, ~41.6 GB on 64 GB M4 Max) and the legacy
+      // sizeGb × 1.4 fallback (16.4 × 1.4 ≈ 23 GB resident), the estimate
+      // lands in "caution" — matches real-world reference behaviour where
+      // this config runs successfully but is close to the comfortable
+      // ceiling. The original "danger" verdict was over-strict.
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -331,24 +396,49 @@ describe("assessVideoGenerationSafety()", () => {
         deviceMemoryGb: 64,
         baseModelFootprintGb: 16.4,
       });
-      expect(result.riskLevel).toBe("danger");
+      expect(result.riskLevel).toBe("caution");
       // The resident term is the majority of the peak — the user needs to
       // see that it's the model itself, not just the attention kernel.
       expect(result.modelFootprintGb).toBeGreaterThan(result.estimatedPeakGb / 2);
       expect(result.reason).not.toBeNull();
     });
 
+    it("runtimeFootprintGb override beats the sizeGb × 1.4 heuristic", () => {
+      // When the catalog supplies an explicit resident peak (Wan 2.2 5B
+      // declares 22 GB), the estimator must use it directly rather than
+      // multiplying disk size by 1.4. Same config without the override
+      // would land in danger (24 × 1.4 = 33.6 GB resident); with it,
+      // caution on a 64 GB Mac — matching the real Wan 2.2 5B footprint.
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 24.0,
+        runtimeFootprintGb: 22.0,
+      });
+      expect(result.modelFootprintGb).toBe(22.0);
+      // Wan 2.2 5B on 64 GB M4 Max is comfortable — should be safe or
+      // caution depending on attention peak, never danger.
+      expect(result.riskLevel).not.toBe("danger");
+    });
+
     it("hands back a null suggestion when the model alone doesn't fit", () => {
-      // On a 64 GB M4 Max, Wan 2.1 1.3B's 23 GB resident footprint fills
-      // most of the 32 GB MPS budget all by itself — no per-request tweak
-      // (smaller resolution, fewer frames) can recover. The right answer
-      // is "try a smaller model", which we signal by a null suggestion.
+      // 24 GB Mac with Wan 2.1 1.3B's 23 GB resident footprint
+      // (16.4 GB disk × 1.4 fallback). MPS budget = 18 GB; the model
+      // alone exceeds the 9 GB caution threshold so no per-request
+      // tweak (smaller resolution, fewer frames) can recover. Right
+      // answer is "try a smaller model", signalled by a null
+      // suggestion. (The 64 GB M4 Max no longer trips this path
+      // since the bumped MPS budget gives Wan 2.1 1.3B real
+      // headroom — matching real ComfyUI behaviour.)
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
         numFrames: 40,
         device: "mps",
-        deviceMemoryGb: 64,
+        deviceMemoryGb: 24,
         baseModelFootprintGb: 16.4,
       });
       expect(result.suggestion).toBeNull();
@@ -399,6 +489,26 @@ describe("assessVideoGenerationSafety()", () => {
         baseModelFootprintGb: 2.0,
       });
       expect(result.riskLevel).toBe("safe");
+    });
+
+    it("frames LTX-2 MLX on a 64 GB M4 Max as caution, not a hard no", () => {
+      // LTX-2 MLX is large enough to deserve a heads-up, but the old copy
+      // called the 50% comfort band the "safe usage" ceiling. That made a
+      // 64 GB M4 Max look unsupported even though the run is below the
+      // estimated Apple Silicon working set.
+      const result = assessVideoGenerationSafety({
+        width: 768,
+        height: 512,
+        numFrames: 24,
+        device: "mps",
+        deviceMemoryGb: 64,
+        baseModelFootprintGb: 19.0,
+      });
+      expect(result.riskLevel).toBe("caution");
+      expect(result.exceedsDevice).toBe(false);
+      expect(result.reason).toMatch(/comfort target/i);
+      expect(result.reason).toMatch(/working set/i);
+      expect(result.reason).not.toMatch(/safe usage tops out/i);
     });
 
     it("flags danger for Wan 2.1 14B on a 24 GB RTX 4090", () => {

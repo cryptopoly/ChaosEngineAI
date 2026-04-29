@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
+from typing import Any
 from unittest import mock
 
 from backend_service import video_runtime
@@ -588,6 +589,933 @@ class InterpolateFramesTests(unittest.TestCase):
         frames = self._solid_frames(1)
         out = _interpolate_frames(frames, 4)
         self.assertEqual(len(out), 1)
+
+
+class AlignWanNumFramesTests(unittest.TestCase):
+    """Wan models need num_frames in the (4k+1) form."""
+
+    def test_non_wan_repo_passes_through_unchanged(self):
+        from backend_service.video_runtime import _align_wan_num_frames
+        out, note = _align_wan_num_frames("Lightricks/LTX-Video", 24)
+        self.assertEqual(out, 24)
+        self.assertIsNone(note)
+
+    def test_wan_24_rounds_down_to_21(self):
+        from backend_service.video_runtime import _align_wan_num_frames
+        out, note = _align_wan_num_frames("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 24)
+        self.assertEqual(out, 21)
+        self.assertIsNotNone(note)
+        self.assertIn("21", note or "")
+
+    def test_wan_already_aligned_emits_no_note(self):
+        from backend_service.video_runtime import _align_wan_num_frames
+        for valid in (5, 9, 25, 49, 81, 97):
+            out, note = _align_wan_num_frames("Wan-AI/Wan2.1-T2V-14B-Diffusers", valid)
+            self.assertEqual(out, valid)
+            self.assertIsNone(note)
+
+    def test_wan_below_minimum_clamps_to_5(self):
+        from backend_service.video_runtime import _align_wan_num_frames
+        out, note = _align_wan_num_frames("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 4)
+        self.assertEqual(out, 5)
+        self.assertIsNotNone(note)
+
+
+class ResolveVideoDefaultsTests(unittest.TestCase):
+    """``_resolve_video_defaults`` only substitutes when the request kept
+    schema defaults (50 steps / CFG 3.0). Explicit values must survive."""
+
+    def test_schema_defaults_substituted_for_wan(self):
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 50, 3.0)
+        self.assertEqual(resolved["steps"], 30)
+        self.assertEqual(resolved["guidance"], 6.0)
+        self.assertEqual(resolved["scheduler"], "unipc")
+        self.assertTrue(resolved["substituted"])
+
+    def test_user_overrides_preserved(self):
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", 60, 8.5)
+        self.assertEqual(resolved["steps"], 60)
+        self.assertEqual(resolved["guidance"], 8.5)
+        self.assertFalse(resolved["substituted"])
+
+    def test_partial_override_preserves_user_field(self):
+        # User explicitly tuned guidance to 8.0 but kept default 50 steps.
+        # Steps gets the model-tuned value; guidance stays 8.0.
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("Lightricks/LTX-Video", 50, 8.0)
+        self.assertEqual(resolved["steps"], 30)
+        self.assertEqual(resolved["guidance"], 8.0)
+        self.assertTrue(resolved["substituted"])
+
+    def test_unknown_repo_returns_request_values(self):
+        from backend_service.video_runtime import _resolve_video_defaults
+        resolved = _resolve_video_defaults("not/a-real-repo", 50, 3.0)
+        self.assertEqual(resolved["steps"], 50)
+        self.assertEqual(resolved["guidance"], 3.0)
+        self.assertIsNone(resolved["scheduler"])
+        self.assertFalse(resolved["substituted"])
+
+
+class ShouldApplyMemorySaversTests(unittest.TestCase):
+    """Slicing + tiling cut quality. Only enable under real pressure."""
+
+    def test_force_env_overrides_everything(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        with mock.patch.dict("os.environ", {"CHAOSENGINE_VIDEO_FORCE_SLICING": "1"}):
+            self.assertTrue(_should_apply_memory_savers("cuda", 24.0, 1.0))
+
+    def test_cpu_always_enables_savers(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        self.assertTrue(_should_apply_memory_savers("cpu", 64.0, 5.0))
+
+    def test_unknown_memory_stays_safe(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        self.assertTrue(_should_apply_memory_savers("mps", None, 5.0))
+        self.assertTrue(_should_apply_memory_savers("mps", 64.0, None))
+
+    def test_64gb_mac_with_small_wan_does_not_slice(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        # Wan 2.1 1.3B on a 64 GB Mac → ~9 / 64 = 14% → no slicing.
+        self.assertFalse(_should_apply_memory_savers("mps", 64.0, 9.0))
+
+    def test_4090_with_wan_14b_bf16_engages_slicing(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        # 28 / 24 = 117% → slicing required.
+        self.assertTrue(_should_apply_memory_savers("cuda", 24.0, 28.0))
+
+    def test_just_above_threshold_engages_slicing(self):
+        from backend_service.video_runtime import _should_apply_memory_savers
+        # 17.5 / 24 = 72.9% → past the 70% threshold.
+        self.assertTrue(_should_apply_memory_savers("cuda", 24.0, 17.5))
+
+
+class EstimateModelFootprintTests(unittest.TestCase):
+    def test_known_repo_returns_table_value(self):
+        from backend_service.video_runtime import _estimate_model_footprint_gb
+        self.assertAlmostEqual(
+            _estimate_model_footprint_gb(
+                "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "torch.bfloat16"
+            ),
+            9.0,
+        )
+
+    def test_gguf_q4_shrinks_footprint(self):
+        from backend_service.video_runtime import _estimate_model_footprint_gb
+        full = _estimate_model_footprint_gb(
+            "Wan-AI/Wan2.1-T2V-14B-Diffusers", "torch.bfloat16"
+        )
+        gguf_q4 = _estimate_model_footprint_gb(
+            "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+            "torch.bfloat16",
+            gguf_file="wan2.1-t2v-14B-Q4_K_M.gguf",
+        )
+        self.assertLess(gguf_q4, full)
+
+    def test_unknown_repo_returns_none(self):
+        from backend_service.video_runtime import _estimate_model_footprint_gb
+        self.assertIsNone(_estimate_model_footprint_gb("not/known", "torch.bfloat16"))
+
+
+class PreferredTorchDtypeTests(unittest.TestCase):
+    """``_preferred_torch_dtype`` must return bf16 on CUDA, probe MPS for
+    bf16 capability with a clean fp16 fallback, and stay fp32 on CPU."""
+
+    def _engine(self) -> DiffusersVideoEngine:
+        return DiffusersVideoEngine()
+
+    def test_cuda_returns_bfloat16(self):
+        engine = self._engine()
+        torch_shim = SimpleNamespace(bfloat16="bf16", float16="fp16", float32="fp32")
+        self.assertEqual(engine._preferred_torch_dtype(torch_shim, "cuda"), "bf16")
+
+    def test_cpu_returns_float32(self):
+        engine = self._engine()
+        torch_shim = SimpleNamespace(bfloat16="bf16", float16="fp16", float32="fp32")
+        self.assertEqual(engine._preferred_torch_dtype(torch_shim, "cpu"), "fp32")
+
+    def test_mps_probe_succeeds_returns_bfloat16(self):
+        engine = self._engine()
+        zeros = mock.MagicMock(return_value=mock.MagicMock())
+        torch_shim = SimpleNamespace(
+            bfloat16="bf16", float16="fp16", float32="fp32", zeros=zeros
+        )
+        self.assertEqual(engine._preferred_torch_dtype(torch_shim, "mps"), "bf16")
+        zeros.assert_called_once()
+
+    def test_mps_probe_falls_back_to_fp16_on_runtime_error(self):
+        engine = self._engine()
+        zeros = mock.MagicMock(side_effect=RuntimeError("MPS bf16 unsupported"))
+        torch_shim = SimpleNamespace(
+            bfloat16="bf16", float16="fp16", float32="fp32", zeros=zeros
+        )
+        self.assertEqual(engine._preferred_torch_dtype(torch_shim, "mps"), "fp16")
+
+    def test_mps_env_opt_out_forces_fp16(self):
+        engine = self._engine()
+        zeros = mock.MagicMock()
+        torch_shim = SimpleNamespace(
+            bfloat16="bf16", float16="fp16", float32="fp32", zeros=zeros
+        )
+        with mock.patch.dict("os.environ", {"CHAOSENGINE_VIDEO_MPS_BF16": "0"}):
+            self.assertEqual(engine._preferred_torch_dtype(torch_shim, "mps"), "fp16")
+        zeros.assert_not_called()
+
+
+class SwapSchedulerTests(unittest.TestCase):
+    def _pipeline_with_scheduler(self, scheduler_cls_name: str) -> mock.MagicMock:
+        # Build a real class with the desired name so ``type(instance).__name__``
+        # matches what ``_swap_scheduler`` checks for.
+        scheduler_cls = type(scheduler_cls_name, (), {})
+        scheduler_instance = scheduler_cls()
+        scheduler_instance.config = {"baked": "config"}
+        pipeline = mock.MagicMock(name="pipeline")
+        pipeline.scheduler = scheduler_instance
+        return pipeline
+
+    def test_none_scheduler_id_short_circuits(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._pipeline_with_scheduler("FlowMatchEulerDiscreteScheduler")
+        self.assertIsNone(engine._swap_scheduler(pipeline, None))
+
+    def test_unknown_scheduler_id_short_circuits(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._pipeline_with_scheduler("FlowMatchEulerDiscreteScheduler")
+        self.assertIsNone(engine._swap_scheduler(pipeline, "not-a-scheduler"))
+
+    def test_swap_replaces_scheduler_via_from_config(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._pipeline_with_scheduler("FlowMatchEulerDiscreteScheduler")
+
+        new_scheduler_instance = mock.MagicMock(name="UniPCInstance")
+        scheduler_cls = mock.MagicMock(from_config=mock.MagicMock(
+            return_value=new_scheduler_instance
+        ))
+        fake_diffusers = SimpleNamespace(UniPCMultistepScheduler=scheduler_cls)
+        with mock.patch.object(
+            video_runtime.importlib, "import_module", return_value=fake_diffusers
+        ):
+            note = engine._swap_scheduler(pipeline, "unipc")
+
+        self.assertIsNotNone(note)
+        self.assertIn("unipc", note or "")
+        self.assertIs(pipeline.scheduler, new_scheduler_instance)
+        scheduler_cls.from_config.assert_called_once_with({"baked": "config"})
+
+    def test_swap_skipped_when_already_on_target(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._pipeline_with_scheduler("UniPCMultistepScheduler")
+        self.assertIsNone(engine._swap_scheduler(pipeline, "unipc"))
+
+    def test_missing_class_in_diffusers_returns_warning_note(self):
+        engine = DiffusersVideoEngine()
+        pipeline = self._pipeline_with_scheduler("FlowMatchEulerDiscreteScheduler")
+        empty_diffusers = SimpleNamespace()
+        with mock.patch.object(
+            video_runtime.importlib, "import_module", return_value=empty_diffusers
+        ):
+            note = engine._swap_scheduler(pipeline, "unipc")
+        self.assertIsNotNone(note)
+        self.assertIn("not available", note or "")
+
+
+class FinalizeConfigTests(unittest.TestCase):
+    def _config(self, **overrides) -> VideoGenerationConfig:
+        defaults = dict(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="p",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=24,
+            fps=24,
+            steps=50,
+            guidance=3.0,
+        )
+        defaults.update(overrides)
+        return VideoGenerationConfig(**defaults)
+
+    def test_finalize_substitutes_defaults_for_ltx(self):
+        engine = DiffusersVideoEngine()
+        cfg, notes = engine._finalize_config(self._config())
+        self.assertEqual(cfg.steps, 30)
+        self.assertEqual(cfg.guidance, 3.0)
+        # LTX force-swaps to FlowMatchEulerDiscreteScheduler — only
+        # scheduler that accepts ``set_timesteps(mu=...)``. Older cached
+        # snapshots have plain EulerDiscreteScheduler baked in.
+        self.assertEqual(cfg.scheduler, "flow-euler")
+        self.assertTrue(any("Substituting" in n for n in notes))
+
+    def test_finalize_aligns_wan_frames_and_keeps_user_steps(self):
+        engine = DiffusersVideoEngine()
+        cfg, notes = engine._finalize_config(self._config(
+            repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            numFrames=24,
+            steps=40,
+            guidance=6.5,
+        ))
+        self.assertEqual(cfg.numFrames, 21)
+        self.assertEqual(cfg.steps, 40)
+        self.assertEqual(cfg.guidance, 6.5)
+        self.assertTrue(any("Aligned" in n for n in notes))
+
+    def test_explicit_scheduler_overrides_model_default(self):
+        engine = DiffusersVideoEngine()
+        cfg, _ = engine._finalize_config(self._config(scheduler="ddim"))
+        self.assertEqual(cfg.scheduler, "ddim")
+
+    def test_unknown_scheduler_drops_to_pipeline_default(self):
+        engine = DiffusersVideoEngine()
+        cfg, notes = engine._finalize_config(self._config(scheduler="not-real"))
+        self.assertIsNone(cfg.scheduler)
+        self.assertTrue(any("Unknown scheduler" in n for n in notes))
+
+    def test_auto_scheduler_uses_model_table(self):
+        engine = DiffusersVideoEngine()
+        cfg, _ = engine._finalize_config(self._config(
+            repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            numFrames=25,
+            scheduler="auto",
+        ))
+        self.assertEqual(cfg.scheduler, "unipc")
+
+    def test_finalize_emits_ltx_auto_tune_note(self):
+        # Phase D: surface the LTX kwarg auto-tune so the user knows why
+        # output matches the Lightricks reference even without new sliders.
+        engine = DiffusersVideoEngine()
+        _, notes = engine._finalize_config(self._config(fps=24))
+        self.assertTrue(any("LTX-Video auto-tuned" in n for n in notes))
+        self.assertTrue(any("frame_rate=24" in n for n in notes))
+        self.assertTrue(any("decode_timestep=0.05" in n for n in notes))
+
+    def test_finalize_no_ltx_note_for_wan(self):
+        engine = DiffusersVideoEngine()
+        _, notes = engine._finalize_config(self._config(
+            repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            numFrames=25,
+        ))
+        self.assertFalse(any("LTX-Video auto-tuned" in n for n in notes))
+
+
+class EnhancePromptTests(unittest.TestCase):
+    """Phase E1: template-based prompt enhancer.
+
+    Short prompts (< 25 words) get a per-model structural suffix appended.
+    Long prompts pass through untouched. ``enhancePrompt=False`` skips
+    the enhancer entirely. The enhancer is idempotent — a second call on
+    an already-enhanced prompt is a no-op.
+    """
+
+    def test_short_ltx_prompt_gets_enhanced(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, note = _enhance_prompt("Lightricks/LTX-Video", "cartoon llama eating straw")
+        self.assertNotEqual(out, "cartoon llama eating straw")
+        self.assertIn("cartoon llama eating straw", out)
+        self.assertIn("cinematic", out.lower())
+        self.assertIsNotNone(note)
+        self.assertIn("Auto-enhanced", note)
+
+    def test_short_wan_prompt_gets_enhanced(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, _ = _enhance_prompt("Wan-AI/Wan2.1-T2V-1.3B-Diffusers", "a cat in snow")
+        self.assertIn("a cat in snow", out)
+        self.assertIn("35mm", out)
+
+    def test_long_prompt_skips_enhancement(self):
+        from backend_service.video_runtime import _enhance_prompt
+        long_prompt = " ".join(["word"] * 30)
+        out, note = _enhance_prompt("Lightricks/LTX-Video", long_prompt)
+        self.assertEqual(out, long_prompt)
+        self.assertIsNone(note)
+
+    def test_unknown_repo_returns_unchanged(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, note = _enhance_prompt("not/a-real-repo", "short prompt")
+        self.assertEqual(out, "short prompt")
+        self.assertIsNone(note)
+
+    def test_empty_prompt_returns_unchanged(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, note = _enhance_prompt("Lightricks/LTX-Video", "")
+        self.assertEqual(out, "")
+        self.assertIsNone(note)
+
+    def test_idempotent_when_suffix_already_present(self):
+        # Second call must not double-append the suffix.
+        from backend_service.video_runtime import _enhance_prompt
+        first, _ = _enhance_prompt("Lightricks/LTX-Video", "cartoon llama")
+        second, note = _enhance_prompt("Lightricks/LTX-Video", first)
+        self.assertEqual(first, second)
+        self.assertIsNone(note)
+
+    def test_finalize_config_appends_when_enhance_enabled(self):
+        # End-to-end: short LTX prompt with enhancePrompt=True should
+        # land on the resolved config with the suffix attached and a
+        # run-log note generated.
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="cartoon llama",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            enhancePrompt=True,
+        )
+        resolved, notes = engine._finalize_config(cfg)
+        self.assertNotEqual(resolved.prompt, "cartoon llama")
+        self.assertIn("cartoon llama", resolved.prompt)
+        self.assertTrue(any("Auto-enhanced" in n for n in notes))
+
+    def test_finalize_config_skips_when_enhance_disabled(self):
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="cartoon llama",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            enhancePrompt=False,
+        )
+        resolved, notes = engine._finalize_config(cfg)
+        self.assertEqual(resolved.prompt, "cartoon llama")
+        self.assertFalse(any("Auto-enhanced" in n for n in notes))
+
+    def test_short_ltx2_prompt_gets_enhanced(self):
+        # Phase E2.1: prince-canuma/LTX-2-* now in enhancer dict.
+        from backend_service.video_runtime import _enhance_prompt
+        out, note = _enhance_prompt("prince-canuma/LTX-2-distilled", "drone shot")
+        self.assertNotEqual(out, "drone shot")
+        self.assertIn("drone shot", out)
+        self.assertIn("cinematic", out.lower())
+        self.assertIsNotNone(note)
+
+    def test_short_ltx2_3_prompt_gets_enhanced(self):
+        from backend_service.video_runtime import _enhance_prompt
+        out, _ = _enhance_prompt("prince-canuma/LTX-2.3-distilled", "skater in tokyo")
+        self.assertIn("skater in tokyo", out)
+        self.assertIn("cinematic", out.lower())
+
+
+class CfgDecayTests(unittest.TestCase):
+    """Phase E2.2: linear CFG decay across the sampling schedule.
+
+    Flow-match video models oversaturate when CFG stays high throughout;
+    decay lets early steps lock semantics (high CFG) while late steps
+    preserve fine detail (low CFG → 1.0 by the final step).
+    """
+
+    def test_decay_sets_pipeline_guidance_scale_at_each_step(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=4.0, cfg_decay=True,
+        )
+        # Stub pipeline carrying a mutable guidance_scale.
+        class StubPipeline:
+            guidance_scale = 4.0
+        pipeline = StubPipeline()
+        # Linear ramp from 4.0 (i=0) to FLOOR=1.5 (i=total-1=3).
+        # Floor MUST stay above 1.0 so do_classifier_free_guidance stays
+        # True throughout the loop — see ``_make_step_callback``.
+        # scale at step 1: 4.0*(2/3) + 1.5*(1/3) ≈ 3.167
+        # scale at step 2: 4.0*(1/3) + 1.5*(2/3) ≈ 2.333
+        # scale at step 3: 4.0*0 + 1.5*1 = 1.5
+        callback(pipeline, 0, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 3.16666667, places=5)
+        callback(pipeline, 1, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 2.33333333, places=5)
+        callback(pipeline, 2, None, {})
+        self.assertAlmostEqual(pipeline.guidance_scale, 1.5, places=5)
+        # Crucial: floor stays strictly above 1.0 so classifier-free
+        # guidance does NOT flip off mid-loop.
+        self.assertGreater(pipeline.guidance_scale, 1.0)
+
+    def test_decay_disabled_leaves_guidance_scale_alone(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=4.0, cfg_decay=False,
+        )
+        class StubPipeline:
+            guidance_scale = 4.0
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        callback(pipeline, 1, None, {})
+        self.assertEqual(pipeline.guidance_scale, 4.0)
+
+    def test_decay_skipped_when_initial_below_floor(self):
+        # Initial guidance 1.0 ≤ floor 1.5 — nothing to ramp.
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=1.0, cfg_decay=True,
+        )
+        class StubPipeline:
+            guidance_scale = 1.0
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        self.assertEqual(pipeline.guidance_scale, 1.0)
+
+    def test_decay_skipped_when_initial_at_or_below_floor(self):
+        # Initial 1.5 == floor — no ramp, scale stays put.
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        callback = engine._make_step_callback(
+            total_steps=4, initial_guidance=1.5, cfg_decay=True,
+        )
+        class StubPipeline:
+            guidance_scale = 1.5
+        pipeline = StubPipeline()
+        callback(pipeline, 0, None, {})
+        self.assertEqual(pipeline.guidance_scale, 1.5)
+
+    def test_finalize_emits_cfg_decay_note(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a long detailed cinematic prompt about a cat in a kitchen with lots of sun",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            cfgDecay=True,
+        )
+        _, notes = engine._finalize_config(cfg)
+        self.assertTrue(any("CFG decay" in n for n in notes))
+
+    def test_finalize_no_cfg_decay_note_when_disabled(self):
+        from backend_service.video_runtime import DiffusersVideoEngine
+        engine = DiffusersVideoEngine()
+        cfg = VideoGenerationConfig(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a long detailed cinematic prompt about a cat in a kitchen with lots of sun",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+            cfgDecay=False,
+        )
+        _, notes = engine._finalize_config(cfg)
+        self.assertFalse(any("CFG decay" in n for n in notes))
+
+
+class BuildPipelineKwargsLtxTests(unittest.TestCase):
+    """Phase D: LTX-Video kwarg parity with Lightricks reference defaults.
+
+    Without these kwargs the diffusers LTXPipeline produces rainbow / blurry
+    output because the model conditions on default frame_rate=25 (mismatch
+    with our 24 fps export) and the VAE decodes from final latent without
+    the small denoise pass that cleans compression artifacts.
+    """
+
+    def _config(self, **overrides):
+        defaults = dict(
+            modelId="x",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a cat in a kitchen",
+            negativePrompt="",
+            width=768,
+            height=512,
+            numFrames=25,
+            fps=24,
+            steps=30,
+            guidance=3.0,
+        )
+        defaults.update(overrides)
+        return VideoGenerationConfig(**defaults)
+
+    def _engine_with_pipeline_class(self, class_name: str) -> DiffusersVideoEngine:
+        engine = DiffusersVideoEngine()
+        # Inject a stand-in pipeline whose ``type(...).__name__`` matches
+        # the dispatch the LTX branch keys on. Real diffusers pipelines
+        # carry a lot of state; we only need the class name probe.
+        Pipeline = type(class_name, (), {})
+        engine._pipeline = Pipeline()
+        return engine
+
+    def test_ltx_pipeline_receives_decode_timestep(self):
+        engine = self._engine_with_pipeline_class("LTXPipeline")
+        kwargs = engine._build_pipeline_kwargs(self._config(), generator=None)
+        self.assertEqual(kwargs["decode_timestep"], 0.05)
+        self.assertEqual(kwargs["decode_noise_scale"], 0.025)
+        self.assertEqual(kwargs["guidance_rescale"], 0.7)
+
+    def test_ltx_pipeline_receives_frame_rate_from_config_fps(self):
+        engine = self._engine_with_pipeline_class("LTXPipeline")
+        kwargs = engine._build_pipeline_kwargs(self._config(fps=30), generator=None)
+        self.assertEqual(kwargs["frame_rate"], 30)
+
+    def test_ltx_pipeline_default_negative_when_empty(self):
+        engine = self._engine_with_pipeline_class("LTXPipeline")
+        kwargs = engine._build_pipeline_kwargs(self._config(negativePrompt=""), generator=None)
+        self.assertIn("worst quality", kwargs["negative_prompt"])
+        self.assertIn("inconsistent motion", kwargs["negative_prompt"])
+
+    def test_ltx_pipeline_user_negative_preserved(self):
+        engine = self._engine_with_pipeline_class("LTXPipeline")
+        kwargs = engine._build_pipeline_kwargs(
+            self._config(negativePrompt="my custom negative"),
+            generator=None,
+        )
+        self.assertEqual(kwargs["negative_prompt"], "my custom negative")
+
+    def test_non_ltx_pipeline_does_not_get_ltx_kwargs(self):
+        engine = self._engine_with_pipeline_class("WanPipeline")
+        kwargs = engine._build_pipeline_kwargs(
+            self._config(repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers"),
+            generator=None,
+        )
+        self.assertNotIn("decode_timestep", kwargs)
+        self.assertNotIn("decode_noise_scale", kwargs)
+        self.assertNotIn("guidance_rescale", kwargs)
+        self.assertNotIn("frame_rate", kwargs)
+
+    def test_output_type_pil_forced_for_all_pipelines(self):
+        # Wan / Hunyuan / Mochi / CogVideoX all default ``output_type="np"``,
+        # which leaks raw numpy ndarrays back to ``_encode_frames_to_mp4`` —
+        # the cause of the "Image must have 1, 2, 3 or 4 channels" crash.
+        # Forcing PIL gives a uniform shape across every video pipeline.
+        for pipeline_class in ("WanPipeline", "LTXPipeline", "HunyuanVideoPipeline", "MochiPipeline"):
+            engine = self._engine_with_pipeline_class(pipeline_class)
+            kwargs = engine._build_pipeline_kwargs(self._config(), generator=None)
+            self.assertEqual(kwargs.get("output_type"), "pil",
+                             f"{pipeline_class} kwargs missing output_type='pil'")
+
+
+class TryLoadBnbNf4TransformerTests(unittest.TestCase):
+    """Cover the NF4 loader's failure modes + happy path.
+
+    Mirrors the GGUF loader's contract: every failure returns
+    ``(None, note)`` so the caller falls back to the standard transformer.
+    """
+
+    def setUp(self) -> None:
+        self.engine = DiffusersVideoEngine()
+        self.torch = SimpleNamespace(bfloat16="bfloat16-sentinel")
+
+    def test_non_cuda_device_returns_note(self):
+        result, note = self.engine._try_load_bnb_nf4_transformer(
+            repo="Wan-AI/Wan2.1-T2V-14B-Diffusers",
+            local_path="/tmp/snap",
+            torch=self.torch,
+            device="mps",
+        )
+        self.assertIsNone(result)
+        self.assertIn("CUDA", note)
+
+    def test_missing_bitsandbytes_returns_note(self):
+        with mock.patch(
+            "importlib.util.find_spec",
+            side_effect=lambda name: None if name == "bitsandbytes" else mock.DEFAULT,
+        ):
+            result, note = self.engine._try_load_bnb_nf4_transformer(
+                repo="Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                local_path="/tmp/snap",
+                torch=self.torch,
+                device="cuda",
+            )
+        self.assertIsNone(result)
+        self.assertIn("bitsandbytes", note)
+
+    def test_unmapped_repo_returns_note(self):
+        # bitsandbytes + diffusers BitsAndBytesConfig present, but the repo
+        # has no class registered → we surface a clear note.
+        fake_diffusers = SimpleNamespace(BitsAndBytesConfig=lambda **kw: None)
+        with mock.patch("importlib.util.find_spec", return_value=object()), \
+             mock.patch.dict(
+                 "sys.modules",
+                 {"diffusers": fake_diffusers},
+                 clear=False,
+             ):
+            result, note = self.engine._try_load_bnb_nf4_transformer(
+                repo="some/unknown-repo",
+                local_path="/tmp/snap",
+                torch=self.torch,
+                device="cuda",
+            )
+        self.assertIsNone(result)
+        self.assertIn("No NF4 transformer class", note)
+
+    def test_happy_path_returns_transformer(self):
+        captured: dict[str, Any] = {}
+
+        class _FakeTransformer:
+            @classmethod
+            def from_pretrained(cls, path, **kwargs):
+                captured["path"] = path
+                captured.update(kwargs)
+                return SimpleNamespace(name="fake-transformer")
+
+        class _FakeBnbConfig:
+            def __init__(self, **kwargs):
+                captured["bnb_kwargs"] = kwargs
+
+        fake_diffusers = SimpleNamespace(
+            BitsAndBytesConfig=_FakeBnbConfig,
+            WanTransformer3DModel=_FakeTransformer,
+        )
+        with mock.patch("importlib.util.find_spec", return_value=object()), \
+             mock.patch.dict(
+                 "sys.modules",
+                 {"diffusers": fake_diffusers},
+                 clear=False,
+             ):
+            result, note = self.engine._try_load_bnb_nf4_transformer(
+                repo="Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                local_path="/tmp/snap",
+                torch=self.torch,
+                device="cuda",
+            )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "fake-transformer")
+        self.assertIn("NF4", note)
+        # Confirm we passed subfolder="transformer" and the bf16 compute dtype.
+        self.assertEqual(captured["path"], "/tmp/snap")
+        self.assertEqual(captured["subfolder"], "transformer")
+        self.assertEqual(captured["torch_dtype"], "bfloat16-sentinel")
+        self.assertEqual(captured["bnb_kwargs"]["bnb_4bit_quant_type"], "nf4")
+        self.assertTrue(captured["bnb_kwargs"]["load_in_4bit"])
+
+    def test_load_failure_returns_fallback_note(self):
+        class _FakeTransformer:
+            @classmethod
+            def from_pretrained(cls, *_a, **_kw):
+                raise RuntimeError("snapshot subfolder missing")
+
+        fake_diffusers = SimpleNamespace(
+            BitsAndBytesConfig=lambda **kw: None,
+            WanTransformer3DModel=_FakeTransformer,
+        )
+        with mock.patch("importlib.util.find_spec", return_value=object()), \
+             mock.patch.dict(
+                 "sys.modules",
+                 {"diffusers": fake_diffusers},
+                 clear=False,
+             ):
+            result, note = self.engine._try_load_bnb_nf4_transformer(
+                repo="Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                local_path="/tmp/snap",
+                torch=self.torch,
+                device="cuda",
+            )
+        self.assertIsNone(result)
+        self.assertIn("falling back", note)
+
+
+class InvokeLtxRefinerTests(unittest.TestCase):
+    """Two-stage spatial upscale via LTXLatentUpsamplePipeline."""
+
+    def _make_engine(self) -> DiffusersVideoEngine:
+        engine = DiffusersVideoEngine()
+        engine._device = "cpu"
+        return engine
+
+    def test_missing_upscaler_class_raises(self):
+        engine = self._make_engine()
+        fake_diffusers = SimpleNamespace()  # no LTXLatentUpsamplePipeline
+        torch = SimpleNamespace(float32="fp32")
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "diffusers": fake_diffusers,
+                "huggingface_hub": SimpleNamespace(
+                    snapshot_download=lambda **_kw: "/tmp/upscaler"
+                ),
+            },
+            clear=False,
+        ):
+            with self.assertRaises(RuntimeError):
+                engine._invoke_pipeline_with_ltx_refiner(
+                    pipeline=lambda **_kw: SimpleNamespace(frames=[1, 2, 3]),
+                    kwargs={"prompt": "p"},
+                    torch=torch,
+                )
+
+    def test_latents_none_raises(self):
+        engine = self._make_engine()
+
+        class _FakeUpscaler:
+            @classmethod
+            def from_pretrained(cls, *_a, **_kw):
+                return cls()
+
+        fake_diffusers = SimpleNamespace(LTXLatentUpsamplePipeline=_FakeUpscaler)
+        torch = SimpleNamespace(float32="fp32")
+        # Base pipeline returns no frames attribute → wrapper raises before
+        # touching the upscaler.
+        def _bad_base(**_kw):
+            return SimpleNamespace(frames=None)
+
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "diffusers": fake_diffusers,
+                "huggingface_hub": SimpleNamespace(
+                    snapshot_download=lambda **_kw: "/tmp/upscaler"
+                ),
+            },
+            clear=False,
+        ):
+            with self.assertRaises(RuntimeError):
+                engine._invoke_pipeline_with_ltx_refiner(
+                    pipeline=_bad_base,
+                    kwargs={"prompt": "p"},
+                    torch=torch,
+                )
+
+    def test_happy_path_returns_refined_frames(self):
+        engine = self._make_engine()
+
+        # Stub upscaler that records the latents it was handed and returns
+        # a list of fake frames.
+        captured: dict[str, Any] = {}
+
+        class _FakeUpscaler:
+            @classmethod
+            def from_pretrained(cls, path, **kwargs):
+                captured["upscaler_path"] = path
+                captured["upscaler_kwargs"] = kwargs
+                return cls()
+
+            def __call__(self, *, latents):
+                captured["latents"] = latents
+                return SimpleNamespace(frames=[["frame-a", "frame-b"]])
+
+            def to(self, _device):
+                return self
+
+        fake_diffusers = SimpleNamespace(LTXLatentUpsamplePipeline=_FakeUpscaler)
+        torch = SimpleNamespace(float32="fp32")
+
+        def _base_pipeline(**kwargs):
+            captured["base_kwargs"] = kwargs
+            return SimpleNamespace(frames="latents-tensor-stub")
+
+        with mock.patch.dict(
+            "sys.modules",
+            {
+                "diffusers": fake_diffusers,
+                "huggingface_hub": SimpleNamespace(
+                    snapshot_download=lambda **_kw: "/tmp/upscaler"
+                ),
+            },
+            clear=False,
+        ):
+            frames = engine._invoke_pipeline_with_ltx_refiner(
+                pipeline=_base_pipeline,
+                kwargs={"prompt": "p", "num_inference_steps": 30},
+                torch=torch,
+            )
+
+        self.assertEqual(frames, ["frame-a", "frame-b"])
+        # Base run requested latents; upscaler got the latents tensor.
+        self.assertEqual(captured["base_kwargs"]["output_type"], "latent")
+        self.assertEqual(captured["latents"], "latents-tensor-stub")
+        self.assertEqual(captured["upscaler_path"], "/tmp/upscaler")
+
+
+class TryLoadGgufTransformerTests(unittest.TestCase):
+    """Backfill for the GGUF transformer loader's failure paths."""
+
+    def setUp(self) -> None:
+        self.engine = DiffusersVideoEngine()
+        self.torch = SimpleNamespace(bfloat16="bfloat16-sentinel")
+
+    def test_missing_gguf_package(self):
+        with mock.patch(
+            "importlib.util.find_spec",
+            side_effect=lambda name: None if name == "gguf" else mock.DEFAULT,
+        ):
+            result, note = self.engine._try_load_gguf_transformer(
+                repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                gguf_repo="city96/Wan2.1-T2V-1.3B-gguf",
+                gguf_file="wan2.1-t2v-1.3B-Q6_K.gguf",
+                torch=self.torch,
+            )
+        self.assertIsNone(result)
+        self.assertIn("gguf", note)
+
+    def test_unmapped_repo(self):
+        fake_diffusers = SimpleNamespace(GGUFQuantizationConfig=lambda **kw: None)
+        with mock.patch("importlib.util.find_spec", return_value=object()), \
+             mock.patch.dict(
+                 "sys.modules",
+                 {"diffusers": fake_diffusers},
+                 clear=False,
+             ):
+            result, note = self.engine._try_load_gguf_transformer(
+                repo="some/unknown-repo",
+                gguf_repo="some/unknown-repo-gguf",
+                gguf_file="x.gguf",
+                torch=self.torch,
+            )
+        self.assertIsNone(result)
+        self.assertIn("No GGUF transformer class", note)
+
+    def test_happy_path_returns_transformer(self):
+        captured: dict[str, Any] = {}
+
+        class _FakeTransformer:
+            @classmethod
+            def from_single_file(cls, path, **kwargs):
+                captured["path"] = path
+                captured.update(kwargs)
+                return SimpleNamespace(name="gguf-transformer")
+
+        class _FakeQuantConfig:
+            def __init__(self, **kwargs):
+                captured["quant_kwargs"] = kwargs
+
+        fake_diffusers = SimpleNamespace(
+            GGUFQuantizationConfig=_FakeQuantConfig,
+            WanTransformer3DModel=_FakeTransformer,
+        )
+        fake_hub = SimpleNamespace(
+            hf_hub_download=lambda **kwargs: f"/tmp/{kwargs['filename']}"
+        )
+        with mock.patch("importlib.util.find_spec", return_value=object()), \
+             mock.patch.dict(
+                 "sys.modules",
+                 {"diffusers": fake_diffusers, "huggingface_hub": fake_hub},
+                 clear=False,
+             ):
+            result, note = self.engine._try_load_gguf_transformer(
+                repo="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                gguf_repo="city96/Wan2.1-T2V-1.3B-gguf",
+                gguf_file="wan2.1-t2v-1.3B-Q6_K.gguf",
+                torch=self.torch,
+            )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.name, "gguf-transformer")
+        self.assertIn("GGUF", note)
+        self.assertEqual(captured["path"], "/tmp/wan2.1-t2v-1.3B-Q6_K.gguf")
 
 
 if __name__ == "__main__":

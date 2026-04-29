@@ -112,11 +112,10 @@ const DEFAULT_VIDEO_NEGATIVE_PROMPT =
   "worst quality, low quality, blurry, distorted, deformed, bad anatomy, "
   + "watermark, text, logo, static, frozen frame, jittery, flickering";
 
-// Per-family recommended CFG. LTX-Video ships with a 3.0 guidance default
-// in its reference pipeline — running it at 5.0 (the ChaosEngineAI
-// generic default) over-guides it and produces the abstract / "random
-// shapes" output users report. HunyuanVideo benefits from stronger
-// guidance. Everything else stays on the generic default.
+// Per-family recommended CFG. LTX dev pipelines commonly use CFG 3.0; the
+// distilled LTX-2 MLX path ignores CFG entirely, but keeping the visible
+// slider at 3.0 avoids over-guiding when the user switches to dev. HunyuanVideo
+// benefits from stronger guidance. Everything else stays on the generic default.
 function recommendedGuidanceForRepo(repo: string | null | undefined): number {
   if (!repo) return DEFAULT_VIDEO_GUIDANCE;
   const lowered = repo.toLowerCase();
@@ -183,6 +182,24 @@ export function useVideoState(
   const [videoFps, setVideoFps] = useState<number>(DEFAULT_VIDEO_FPS);
   const [videoSteps, setVideoSteps] = useState<number>(DEFAULT_VIDEO_STEPS);
   const [videoGuidance, setVideoGuidance] = useState<number>(DEFAULT_VIDEO_GUIDANCE);
+  // bnb NF4 4-bit transformer (CUDA only). Brings Wan 2.1 14B from
+  // ~28 GB bf16 to ~7 GB on RTX 4090. Hidden from the UI on Apple
+  // Silicon — bitsandbytes has no Metal backend.
+  const [videoUseNf4, setVideoUseNf4] = useState<boolean>(false);
+  // LTX-Video two-stage spatial upscale (LTXLatentUpsamplePipeline).
+  // Visible only when an LTX variant is selected. Frame budget +50%.
+  const [videoEnableLtxRefiner, setVideoEnableLtxRefiner] = useState<boolean>(false);
+  // Phase E1: auto-enhance short prompts with model-specific structural
+  // hints. Default-on so the typical 4-word prompt user gets quality
+  // uplift; explicit-off survives if the user has crafted a long custom
+  // prompt and wants it sent verbatim.
+  const [videoEnhancePrompt, setVideoEnhancePrompt] = useState<boolean>(true);
+  // Phase E2: linearly decay guidance_scale across the sampling
+  // schedule. Flow-match video models oversaturate at constant high
+  // CFG; decaying lets early steps lock semantics and late steps
+  // preserve fine detail. Default-on; opt-out for users who prefer
+  // constant CFG (matches the diffusers pipeline default behaviour).
+  const [videoCfgDecay, setVideoCfgDecay] = useState<boolean>(true);
   const [videoRuntimeStatus, setVideoRuntimeStatus] = useState<VideoRuntimeStatus>({
     activeEngine: "placeholder",
     realGenerationAvailable: false,
@@ -327,10 +344,12 @@ export function useVideoState(
   );
 
   const combinedVideoDiscoverResults: VideoModelVariant[] = [
-    ...filteredVideoDiscoverFamilies.flatMap((family) => {
-      const variant = defaultVideoVariantForFamily(family);
-      return variant ? [{ ...variant, familyName: variant.familyName ?? family.name }] : [];
-    }),
+    ...filteredVideoDiscoverFamilies.flatMap((family) =>
+      family.variants.map((variant) => ({
+        ...variant,
+        familyName: variant.familyName ?? family.name,
+      })),
+    ),
     ...filteredLatestVideoDiscoverResults,
   ].sort((a, b) => compareDiscoverVariants(videoDiscoverSort, a, b));
 
@@ -643,6 +662,10 @@ export function useVideoState(
       steps: safeSteps,
       guidance: safeGuidance,
       seed: parsedSeed,
+      useNf4: videoUseNf4,
+      enableLtxRefiner: videoEnableLtxRefiner,
+      enhancePrompt: videoEnhancePrompt,
+      cfgDecay: videoCfgDecay,
     };
 
     // The pipeline is "loaded" when the runtime reports the same repo as
@@ -900,6 +923,14 @@ export function useVideoState(
     setVideoSteps,
     videoGuidance,
     setVideoGuidance,
+    videoUseNf4,
+    setVideoUseNf4,
+    videoEnableLtxRefiner,
+    setVideoEnableLtxRefiner,
+    videoEnhancePrompt,
+    setVideoEnhancePrompt,
+    videoCfgDecay,
+    setVideoCfgDecay,
     videoRuntimeStatus,
     setVideoRuntimeStatus,
     videoBusyLabel,

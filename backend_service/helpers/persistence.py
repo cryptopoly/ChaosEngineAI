@@ -11,6 +11,8 @@ MAX_BENCHMARK_RUNS = 48
 LEGACY_SEEDED_CHAT_IDS = {"ui-direction", "model-shortlist"}
 LEGACY_SEEDED_BENCHMARK_IDS = {"baseline", "native-34", "native-36", "native-44"}
 
+LIBRARY_CACHE_VERSION = 1
+
 
 def _default_chat_variant() -> dict[str, Any]:
     from backend_service.catalog import CATALOG
@@ -89,6 +91,75 @@ def _save_chat_sessions(sessions: list[dict[str, Any]], path: Path) -> None:
         tmp.chmod(0o600)
     except OSError:
         pass
+    os.replace(str(tmp), str(path))
+
+
+def _library_cache_fingerprint(model_directories: list[dict[str, Any]]) -> dict[str, float]:
+    fingerprint: dict[str, float] = {}
+    for directory in model_directories:
+        if not directory.get("enabled", True):
+            continue
+        raw_path = str(directory.get("path") or "").strip()
+        if not raw_path:
+            continue
+        root = Path(os.path.expanduser(raw_path))
+        if not root.exists():
+            fingerprint[str(root)] = 0.0
+            continue
+        max_mtime = 0.0
+        try:
+            max_mtime = root.stat().st_mtime
+        except OSError:
+            pass
+        try:
+            with os.scandir(root) as entries:
+                for entry in entries:
+                    try:
+                        mtime = entry.stat(follow_symlinks=False).st_mtime
+                    except OSError:
+                        continue
+                    if mtime > max_mtime:
+                        max_mtime = mtime
+        except OSError:
+            pass
+        fingerprint[str(root)] = max_mtime
+    return fingerprint
+
+
+def _load_library_cache(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("version") != LIBRARY_CACHE_VERSION:
+        return None
+    fingerprint = payload.get("fingerprint")
+    items = payload.get("items")
+    if not isinstance(fingerprint, dict) or not isinstance(items, list):
+        return None
+    return payload
+
+
+def _save_library_cache(
+    items: list[dict[str, Any]],
+    fingerprint: dict[str, float],
+    path: Path,
+) -> None:
+    import time as _time
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "version": LIBRARY_CACHE_VERSION,
+        "scannedAt": _time.time(),
+        "fingerprint": fingerprint,
+        "items": items,
+    }
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     os.replace(str(tmp), str(path))
 
 

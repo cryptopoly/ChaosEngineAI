@@ -70,6 +70,7 @@ struct EmbeddedRuntimeManifest {
     llama_server: Option<String>,
     llama_server_turbo: Option<String>,
     llama_cli: Option<String>,
+    sd_cpp: Option<String>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -97,6 +98,7 @@ struct EmbeddedRuntime {
     llama_server: Option<PathBuf>,
     llama_server_turbo: Option<PathBuf>,
     llama_cli: Option<PathBuf>,
+    sd_cpp: Option<PathBuf>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -345,6 +347,9 @@ impl BackendManager {
                 if let Some(llama_cli) = runtime.llama_cli.as_ref() {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
                 }
+                if let Some(sd_cpp) = runtime.sd_cpp.as_ref() {
+                    command.env("CHAOSENGINE_SDCPP_BIN", sd_cpp.as_os_str());
+                }
             } else {
                 // Source-workspace mode: the backend runs against the
                 // developer's .venv so Python auto-loads .venv/site-packages
@@ -373,6 +378,9 @@ impl BackendManager {
                 }
                 if let Some(llama_cli) = resolve_llama_cli(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
+                }
+                if let Some(sd_cpp) = resolve_sd_cpp(&workspace_root) {
+                    command.env("CHAOSENGINE_SDCPP_BIN", sd_cpp.as_os_str());
                 }
             }
 
@@ -880,6 +888,7 @@ fn resolve_embedded_runtime(app: &AppHandle) -> Option<EmbeddedRuntime> {
             .as_ref()
             .map(|entry| extracted_root.join(entry)),
         llama_cli: manifest.llama_cli.as_ref().map(|entry| extracted_root.join(entry)),
+        sd_cpp: manifest.sd_cpp.as_ref().map(|entry| extracted_root.join(entry)),
     };
 
     if runtime.backend_root.exists() && runtime.python_binary.exists() && runtime.python_home.exists() {
@@ -1076,6 +1085,23 @@ fn resolve_llama_cli(_workspace_root: &Path) -> Option<PathBuf> {
     }
 
     find_in_path(&["llama-cli"])
+}
+
+fn resolve_sd_cpp(_workspace_root: &Path) -> Option<PathBuf> {
+    if let Some(value) = env::var_os("CHAOSENGINE_SDCPP_BIN") {
+        if let Some(path) = resolve_candidate(value) {
+            return Some(path);
+        }
+    }
+
+    if let Ok(home) = env::var("HOME") {
+        let managed = PathBuf::from(home).join(".chaosengine").join("bin").join("sd");
+        if managed.exists() {
+            return Some(managed);
+        }
+    }
+
+    find_in_path(&["sd"])
 }
 
 fn resolve_candidate(value: impl Into<PathBuf>) -> Option<PathBuf> {

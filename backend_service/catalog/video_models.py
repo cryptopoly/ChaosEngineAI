@@ -105,6 +105,94 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "ltx-2",
+        "name": "LTX-2 (MLX)",
+        "provider": "Lightricks · prince-canuma",
+        "headline": "LTX-2 19B with pre-converted MLX weights — native Apple Silicon path.",
+        "summary": (
+            "Pre-converted LTX-2 weights for mlx-video on Apple Silicon. Distilled variants "
+            "are fast iteration paths with fixed low-step sampling; 'dev' variants run CFG steps for "
+            "best fidelity. Routes through Blaizzy/mlx-video — no torch/MPS round trip."
+        ),
+        "updatedLabel": "Native MLX",
+        "badges": ["MLX Native", "Apple Silicon", "Apache 2.0"],
+        "defaultVariantId": "prince-canuma/LTX-2-distilled",
+        "variants": [
+            {
+                "id": "prince-canuma/LTX-2-distilled",
+                "familyId": "ltx-2",
+                "name": "LTX-2 · distilled (MLX)",
+                "provider": "Lightricks · prince-canuma",
+                "repo": "prince-canuma/LTX-2-distilled",
+                "link": "https://huggingface.co/prince-canuma/LTX-2-distilled",
+                "runtime": "mlx-video (MLX native)",
+                "styleTags": ["general", "fast", "motion", "mlx"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 19.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
+                "estimatedGenerationSeconds": 60.0,
+                "availableLocally": False,
+                "releaseDate": "2026-01",
+            },
+            {
+                "id": "prince-canuma/LTX-2-dev",
+                "familyId": "ltx-2",
+                "name": "LTX-2 · dev (MLX)",
+                "provider": "Lightricks · prince-canuma",
+                "repo": "prince-canuma/LTX-2-dev",
+                "link": "https://huggingface.co/prince-canuma/LTX-2-dev",
+                "runtime": "mlx-video (MLX native)",
+                "styleTags": ["general", "quality", "motion", "mlx"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 19.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "Full LTX-2 dev weights — higher fidelity, longer sampling than distilled.",
+                "estimatedGenerationSeconds": 180.0,
+                "availableLocally": False,
+                "releaseDate": "2026-01",
+            },
+            {
+                "id": "prince-canuma/LTX-2.3-distilled",
+                "familyId": "ltx-2",
+                "name": "LTX-2.3 · distilled (MLX)",
+                "provider": "Lightricks · prince-canuma",
+                "repo": "prince-canuma/LTX-2.3-distilled",
+                "link": "https://huggingface.co/prince-canuma/LTX-2.3-distilled",
+                "runtime": "mlx-video (MLX native)",
+                "styleTags": ["general", "fast", "motion", "mlx"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 19.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity.",
+                "estimatedGenerationSeconds": 60.0,
+                "availableLocally": False,
+                "releaseDate": "2026-03",
+            },
+            {
+                "id": "prince-canuma/LTX-2.3-dev",
+                "familyId": "ltx-2",
+                "name": "LTX-2.3 · dev (MLX)",
+                "provider": "Lightricks · prince-canuma",
+                "repo": "prince-canuma/LTX-2.3-dev",
+                "link": "https://huggingface.co/prince-canuma/LTX-2.3-dev",
+                "runtime": "mlx-video (MLX native)",
+                "styleTags": ["general", "quality", "motion", "mlx"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 19.0,
+                "recommendedResolution": "768x512",
+                "defaultDurationSeconds": 4.0,
+                "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable.",
+                "estimatedGenerationSeconds": 180.0,
+                "availableLocally": False,
+                "releaseDate": "2026-03",
+            },
+        ],
+    },
+    {
         "id": "wan-2-1",
         "name": "Wan 2.1",
         "provider": "Alibaba",
@@ -131,6 +219,9 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # ~16GB on disk — 1.3B is just the transformer. The repo also
                 # ships a UMT5-XXL text encoder (~11GB) and VAE/CLIP weights.
                 "sizeGb": 16.4,
+                # Resident peak ~14 GB during text encoding (UMT5-XXL bf16);
+                # drops to ~4 GB during diffusion when encoder is freed.
+                "runtimeFootprintGb": 14.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 4.0,
                 "note": "1.3B transformer + UMT5 text encoder. ~16GB on disk. Best starter pick for trying local video end-to-end on modest hardware.",
@@ -151,12 +242,139 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # 14B transformer in bf16 (~28GB) + UMT5-XXL text encoder (~11GB)
                 # + VAE/CLIP weights.
                 "sizeGb": 45.0,
+                # 14B trans bf16 (~28 GB) + UMT5-XXL (~11 GB) peak.
+                # 24 GB CUDA needs NF4 (~7 GB trans → ~18 GB peak).
+                "runtimeFootprintGb": 39.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": "Wan 2.1 quality tier. ~45GB. Same WanPipeline class as the 1.3B and Wan 2.2.",
                 "estimatedGenerationSeconds": 180.0,
                 "availableLocally": False,
                 "releaseDate": "2025-02",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-1.3B-gguf-q4km",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 1.3B · GGUF Q4_K_M",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufFile": "wan2.1-t2v-1.3B-Q4_K_M.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "fast", "small", "gguf"],
+                "taskSupport": ["txt2video"],
+                # ~0.9 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE base.
+                "sizeGb": 14.9,
+                "runtimeFootprintGb": 12.5,  # Q4_K_M trans (~0.9 GB) + UMT5 (~11 GB)
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 4.0,
+                "note": "Q4_K_M — smallest quantized 1.3B; runs in <8 GB unified memory once base is cached.",
+                "estimatedGenerationSeconds": 70.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-1.3B-gguf-q6k",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 1.3B · GGUF Q6_K",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufFile": "wan2.1-t2v-1.3B-Q6_K.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "fast", "small", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 15.2,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 4.0,
+                "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
+                "estimatedGenerationSeconds": 68.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-1.3B-gguf-q8",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 1.3B · GGUF Q8_0",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufFile": "wan2.1-t2v-1.3B-Q8_0.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "quality", "small", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 15.5,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 4.0,
+                "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
+                "estimatedGenerationSeconds": 65.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-14B-gguf-q4km",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 14B · GGUF Q4_K_M",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
+                "ggufFile": "wan2.1-t2v-14B-Q4_K_M.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "quality", "motion", "gguf"],
+                "taskSupport": ["txt2video"],
+                # ~7 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE — fits
+                # comfortably on a 24 GB RTX 4090 with VAE headroom.
+                "sizeGb": 21.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q4_K_M — unlocks Wan 2.1 14B on 24 GB VRAM (RTX 4090) without bnb.",
+                "estimatedGenerationSeconds": 220.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-14B-gguf-q6k",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 14B · GGUF Q6_K",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
+                "ggufFile": "wan2.1-t2v-14B-Q6_K.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "quality", "motion", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 24.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
+                "estimatedGenerationSeconds": 210.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
+            },
+            {
+                "id": "city96/Wan2.1-T2V-14B-gguf-q8",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 14B · GGUF Q8_0",
+                "provider": "Alibaba · city96",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
+                "ggufFile": "wan2.1-t2v-14B-Q8_0.gguf",
+                "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
+                "runtime": "diffusers WanPipeline + GGUF transformer",
+                "styleTags": ["general", "quality", "motion", "gguf"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 28.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
+                "estimatedGenerationSeconds": 200.0,
+                "availableLocally": False,
+                "releaseDate": "2025-03",
             },
         ],
     },
@@ -192,6 +410,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # + VAE. Sits right around 24 GB on disk which is a similar
                 # footprint to Wan 2.1 1.3B but with a much larger transformer.
                 "sizeGb": 24.0,
+                # Runtime resident peak (text encode phase): ~22 GB. Drops to
+                # ~12 GB during diffusion once UMT5 is freed. Disk size
+                # over-estimates resident because the repo carries duplicate
+                # sharded safetensors + tokenizer caches.
+                "runtimeFootprintGb": 22.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": "Best Wan 2.2 pick for consumer hardware. 24 GB on disk, runs on a 24 GB GPU or a 32 GB+ Mac.",
@@ -215,6 +438,8 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # the base repo. Users installing this variant still pay the
                 # ~14 GB text-encoder+VAE download once.
                 "sizeGb": 17.5,
+                # GGUF Q4_K_M trans (~3.5 GB) + UMT5-XXL during encode (~11 GB).
+                "runtimeFootprintGb": 14.5,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": "Q4_K_M — smallest Wan 2.2 that still generates usable quality. Best fit for 16 GB unified memory.",
@@ -235,6 +460,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "balanced", "quality", "gguf"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 18.2,
+                "runtimeFootprintGb": 16.5,  # Q6_K trans ~5 GB + UMT5 ~11 GB
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": "Q6_K — mid-point between Q4 footprint and Q8 fidelity.",
@@ -255,6 +481,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "quality", "gguf"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 19.0,
+                "runtimeFootprintGb": 18.0,  # Q8 trans ~7 GB + UMT5 ~11 GB
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": "Q8_0 — near-bf16 quality at roughly half the transformer footprint.",
@@ -281,12 +508,23 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "quality", "motion", "heavy"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 126.0,
+                # MoE: two 14B experts (high-/low-noise) at ~28 GB each on disk,
+                # plus UMT5-XXL ~11 GB. Naive diffusers load keeps BOTH experts
+                # resident → ~67 GB peak (crashes 64 GB Mac). With diffusers'
+                # ``enable_sequential_cpu_offload()`` only one expert is in
+                # memory at a time → ~30 GB peak (active expert ~28 GB +
+                # UMT5 during encode, dropping to ~14 GB during diffusion).
+                # We declare the offloaded peak so 64 GB+ Macs don't see a
+                # bogus "needs 176 GB" warning, but the note flags that the
+                # offload mode is required.
+                "runtimeFootprintGb": 30.0,
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": (
-                    "MoE architecture with dual high-/low-noise experts — ~126 GB on disk. "
-                    "Needs a data-center GPU (80 GB+) or 192 GB+ unified memory. "
-                    "Consumer hardware should use TI2V-5B above."
+                    "MoE — dual high-/low-noise experts, ~27B total / 14B active per step. "
+                    "126 GB on disk. Runs on 64 GB+ Apple Silicon or 40 GB+ CUDA with "
+                    "enable_sequential_cpu_offload() (peak ~30 GB resident). For 24 GB CUDA "
+                    "use the TI2V-5B variant above."
                 ),
                 "estimatedGenerationSeconds": 300.0,
                 "availableLocally": False,
@@ -318,9 +556,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "quality", "cinematic"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 25.0,
+                # 13B trans bf16 (~26 GB) + T5-XXL + LLaMA encoders (~12 GB)
+                # peak during text encode; drops to ~28 GB during diffusion.
+                # Apple Silicon 64 GB+ Max/Ultra runs this comfortably with
+                # diffusers' enable_model_cpu_offload(); 24 GB CUDA needs NF4.
+                "runtimeFootprintGb": 34.0,
                 "recommendedResolution": "1280x720",
                 "defaultDurationSeconds": 5.0,
-                "note": "High quality. Needs 40GB+ VRAM or Apple Silicon Max/Ultra class memory.",
+                "note": "High quality. Runs on 64 GB+ Apple Silicon Max/Ultra or 40GB+ CUDA (24 GB CUDA with NF4). Sequential text-encoder loading keeps the diffusion phase under ~28 GB resident.",
                 "estimatedGenerationSeconds": 420.0,
                 "availableLocally": False,
                 "releaseDate": "2024-12",
@@ -458,3 +701,16 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
 ]
+
+
+# FU-003: LongLive HF repo paths are stale (`NVlabs/LongLive-1.3B` 404s; the
+# linked `Efficient-Large-Model/LongLive-1.3B` mirror is also unreachable).
+# Hide the family from the catalog until the working HF repo is verified
+# and the install script is Mac-aware. Preserving the entry above so the
+# data isn't lost when the flag flips back on.
+_LONGLIVE_ENABLED = False
+
+if not _LONGLIVE_ENABLED:
+    VIDEO_MODEL_FAMILIES = [
+        family for family in VIDEO_MODEL_FAMILIES if family.get("id") != "longlive"
+    ]

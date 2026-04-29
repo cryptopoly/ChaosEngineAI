@@ -66,11 +66,33 @@ _DEFAULT_REL_L1_THRESH = 0.4
 # when vendoring each upstream ``teacache_forward_<model>.py`` under
 # Apache 2.0, with the preserved copyright header in the vendored file.
 _FORWARD_PATCHES: dict[str, tuple[str, str]] = {
-    # Example (to be uncommented when patch lands):
-    # "FluxTransformer2DModel":
-    #   ("cache_compression._teacache_patches.flux", "teacache_forward"),
-    # "WanTransformer3DModel":
-    #   ("cache_compression._teacache_patches.wan", "teacache_forward"),
+    "FluxTransformer2DModel": (
+        "cache_compression._teacache_patches.flux",
+        "teacache_forward",
+    ),
+    "HunyuanVideoTransformer3DModel": (
+        "cache_compression._teacache_patches.hunyuan_video",
+        "teacache_forward",
+    ),
+    "LTXVideoTransformer3DModel": (
+        "cache_compression._teacache_patches.ltx_video",
+        "teacache_forward",
+    ),
+    "CogVideoXTransformer3DModel": (
+        "cache_compression._teacache_patches.cogvideox",
+        "teacache_forward",
+    ),
+    "MochiTransformer3DModel": (
+        "cache_compression._teacache_patches.mochi",
+        "teacache_forward",
+    ),
+    # WanTransformer3DModel intentionally absent — upstream
+    # TeaCache4Wan2.1/teacache_generate.py targets the standalone
+    # Wan-Video/Wan2.1 repo (signature ``forward(self, x, t, context,
+    # seq_len, clip_fea, y)``), not diffusers' ``WanTransformer3DModel``
+    # (signature ``forward(self, hidden_states, timestep,
+    # encoder_hidden_states, ...)``). Adding Wan TeaCache means authoring
+    # a fresh diffusers-shaped forward, not vendoring. See FU-007.
 }
 
 
@@ -123,7 +145,10 @@ class TeaCacheStrategy(CacheStrategy):
                 "first. See FU-007 in CLAUDE.md."
             )
         supported = ", ".join(sorted(_FORWARD_PATCHES.keys()))
-        return f"Ready for: {supported}."
+        return (
+            f"Ready for: {supported}. Wan2.1 TeaCache forward still pending "
+            f"(diffusers signature mismatch with upstream) — see FU-007."
+        )
 
     # ------------------------------------------------------------------
     # Registry metadata

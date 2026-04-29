@@ -87,6 +87,7 @@ SETTINGS_DIR = DATA_LOCATION.data_dir
 SETTINGS_PATH = DATA_LOCATION.settings_path
 BENCHMARKS_PATH = DATA_LOCATION.benchmarks_path
 CHAT_SESSIONS_PATH = DATA_LOCATION.chat_sessions_path
+LIBRARY_CACHE_PATH = DATA_LOCATION.data_dir / "library_cache.json"
 DOCUMENTS_DIR = DATA_LOCATION.documents_dir
 IMAGE_OUTPUTS_DIR = DATA_LOCATION.image_outputs_dir
 VIDEO_OUTPUTS_DIR = DATA_LOCATION.video_outputs_dir
@@ -440,6 +441,11 @@ def _generate_video_artifact(
             ggufRepo=(variant.get("ggufRepo") or None),
             ggufFile=(variant.get("ggufFile") or None),
             interpolationFactor=request.interpolationFactor,
+            scheduler=request.scheduler,
+            useNf4=request.useNf4,
+            enableLtxRefiner=request.enableLtxRefiner,
+            enhancePrompt=request.enhancePrompt,
+            cfgDecay=request.cfgDecay,
         )
     )
 
@@ -455,8 +461,8 @@ def _generate_video_artifact(
         "height": video.height,
         "numFrames": video.frameCount,
         "fps": video.fps,
-        "steps": request.steps,
-        "guidance": request.guidance,
+        "steps": video.effectiveSteps if video.effectiveSteps is not None else request.steps,
+        "guidance": video.effectiveGuidance if video.effectiveGuidance is not None else request.guidance,
         "seed": video.seed,
         "createdAt": created_at,
         "durationSeconds": video.durationSeconds,

@@ -75,17 +75,59 @@ export function resolveDflashSupport({
   enabled: boolean;
   reason: string | null;
   matchedModel: string | null;
+  modelSupported: boolean | null;
   ddtreeAvailable: boolean;
 } {
   const backend = selectedBackend ?? null;
   const isGgufBackend = backend ? (backend.includes("gguf") || backend.includes("llama")) : false;
   const ddtreeAvailable = Boolean(dflashInfo?.ddtreeAvailable);
+  const supportedModels = dflashInfo?.supportedModels ?? [];
+  const candidates = candidateKeys([canonicalRepo, modelRef, modelName]);
+  let matchedModel: string | null = null;
 
   if (isGgufBackend) {
     return {
       enabled: false,
       reason: "DFlash is not supported with llama.cpp models. Use an MLX or vLLM model.",
       matchedModel: null,
+      modelSupported: false,
+      ddtreeAvailable,
+    };
+  }
+
+  if (supportedModels.length === 0 || candidates.length === 0) {
+    if (!(dflashInfo?.available ?? false)) {
+      return {
+        enabled: false,
+        reason: "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable.",
+        matchedModel: null,
+        modelSupported: null,
+        ddtreeAvailable,
+      };
+    }
+    return {
+      enabled: true,
+      reason: null,
+      matchedModel: null,
+      modelSupported: null,
+      ddtreeAvailable,
+    };
+  }
+
+  for (const supportedModel of supportedModels) {
+    const supportedKeys = candidateKeys([supportedModel]);
+    if (supportedKeys.some((key) => candidates.includes(key))) {
+      matchedModel = supportedModel;
+      break;
+    }
+  }
+
+  if (!matchedModel) {
+    return {
+      enabled: false,
+      reason: "No DFlash draft exists for this model. Supported families: Qwen3/3.5/3.6, LLaMA 3.1, gpt-oss, Kimi.",
+      matchedModel: null,
+      modelSupported: false,
       ddtreeAvailable,
     };
   }
@@ -94,38 +136,17 @@ export function resolveDflashSupport({
     return {
       enabled: false,
       reason: "Install dflash-mlx (Apple Silicon) or dflash (CUDA) to enable.",
-      matchedModel: null,
+      matchedModel,
+      modelSupported: true,
       ddtreeAvailable,
     };
-  }
-
-  const supportedModels = dflashInfo?.supportedModels ?? [];
-  const candidates = candidateKeys([canonicalRepo, modelRef, modelName]);
-  if (supportedModels.length === 0 || candidates.length === 0) {
-    return {
-      enabled: true,
-      reason: null,
-      matchedModel: null,
-      ddtreeAvailable,
-    };
-  }
-
-  for (const supportedModel of supportedModels) {
-    const supportedKeys = candidateKeys([supportedModel]);
-    if (supportedKeys.some((key) => candidates.includes(key))) {
-      return {
-        enabled: true,
-        reason: null,
-        matchedModel: supportedModel,
-        ddtreeAvailable,
-      };
-    }
   }
 
   return {
-    enabled: false,
-    reason: "No DFlash draft exists for this model. Supported families: Qwen3/3.5/3.6, LLaMA 3.1, gpt-oss, Kimi.",
-    matchedModel: null,
+    enabled: true,
+    reason: null,
+    matchedModel,
+    modelSupported: true,
     ddtreeAvailable,
   };
 }

@@ -222,13 +222,13 @@ jobs:
         if: matrix.platform == 'windows'
         run: echo "CHAOSENGINE_EMBED_PYTHON_BIN=${{ github.workspace }}\.venv\Scripts\python.exe" >> $env:GITHUB_ENV
 
-      - name: Override bundle command to dev mode staging
+      - name: Override bundle command to release staging
         shell: bash
         run: |
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-            conf.build.beforeBundleCommand = 'npm run stage:runtime';
+            conf.build.beforeBundleCommand = 'npm run stage:runtime:release';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
@@ -241,6 +241,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CHAOSENGINE_RELEASE_ALLOW_NO_LLAMA: "1"
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           tagName: ${{ inputs.release_tag || github.ref_name }}

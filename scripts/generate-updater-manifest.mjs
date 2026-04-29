@@ -87,8 +87,22 @@ async function main() {
     missing.push(`${windowsAssetName} / ${windowsSigName}`);
   }
 
+  if (Object.keys(platforms).length === 0) {
+    // tauri.conf.json has bundle.createUpdaterArtifacts=false (or signing
+    // failed silently across every platform). Without any signatures we
+    // can't publish a useful updater manifest, but this isn't a release
+    // failure — the bundles themselves are still valid installers.
+    console.log(
+      `No updater signatures attached to this release (${missing.join(", ")}). ` +
+      `Skipping latest.json generation.`,
+    );
+    return;
+  }
   if (missing.length) {
-    throw new Error(`Cannot generate updater manifest; missing updater assets: ${missing.join(", ")}`);
+    console.log(
+      `Updater manifest will cover only the platforms with attached signatures. ` +
+      `Skipping: ${missing.join(", ")}.`,
+    );
   }
 
   const manifest = {

@@ -337,26 +337,9 @@ export default function App() {
   const selectedLibraryVariant = selectedLibraryRow?.matchedVariant ?? null;
 
   // ── Chat model options ─────────────────────────────────────
-  const catalogChatOptions: ChatModelOption[] = allFeaturedVariants
-    .filter((variant) => variant.launchMode === "direct")
-    .map((variant) => ({
-      key: `catalog:${variant.id}`,
-      label: variant.name,
-      detail: `${variant.format} / ${variant.quantization}`,
-      group: "Catalog",
-      model: variant.name,
-      modelRef: variant.id,
-      canonicalRepo: variant.repo,
-      source: "catalog",
-      backend: variant.backend,
-      paramsB: variant.paramsB,
-      sizeGb: variant.sizeGb,
-      contextWindow: variant.contextWindow,
-      format: variant.format,
-      quantization: variant.quantization,
-      maxContext: variant.maxContext ?? null,
-    }));
-
+  // Only list models present in the local library — catalog-only entries
+  // would let the user pick a model that isn't downloaded yet, which then
+  // 500s on Load. Discover tab is the place to pull a new model.
   const libraryChatOptions: ChatModelOption[] = workspace.library
     .filter((item) => (item.modelType === "text" || (!item.modelType)) && !item.broken)
     .map((item) => {
@@ -383,7 +366,7 @@ export default function App() {
       };
     });
 
-  const threadModelOptions = [...catalogChatOptions, ...libraryChatOptions];
+  const threadModelOptions = libraryChatOptions;
 
   // ── Cache labels (needed early by useChat) ──────────────────
   const currentCacheLabel = launchSettings.cacheStrategy === "native"

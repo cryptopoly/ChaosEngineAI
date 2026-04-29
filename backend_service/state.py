@@ -853,6 +853,40 @@ class ChaosEngineState:
                 "treeBudget": model_info.treeBudget,
             }
 
+        # No model is currently loaded. Prefer a model the user actually has
+        # downloaded over a catalog default — surfacing a catalog-only entry
+        # (e.g. nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF) just produces a
+        # confusing "Failed to load … isn't downloaded on this machine"
+        # error when the user clicks Load.
+        for entry in self._library():
+            entry_type = entry.get("modelType")
+            if entry_type and entry_type != "text":
+                continue
+            if entry.get("broken"):
+                continue
+            return {
+                "model": entry["name"],
+                "modelRef": entry["name"],
+                "canonicalRepo": entry.get("canonicalRepo") or entry.get("repo"),
+                "modelSource": "library",
+                "modelPath": entry["path"],
+                "modelBackend": entry.get("backend", "auto"),
+                "cacheLabel": self._cache_label(
+                    cache_strategy=str(launch_preferences["cacheStrategy"]),
+                    bits=int(launch_preferences["cacheBits"]),
+                    fp16_layers=int(launch_preferences["fp16Layers"]),
+                ),
+                "cacheStrategy": launch_preferences["cacheStrategy"],
+                "cacheBits": launch_preferences["cacheBits"],
+                "fp16Layers": launch_preferences["fp16Layers"],
+                "fusedAttention": launch_preferences["fusedAttention"],
+                "fitModelInMemory": launch_preferences["fitModelInMemory"],
+                "contextTokens": launch_preferences["contextTokens"],
+                "speculativeDecoding": launch_preferences.get("speculativeDecoding", False),
+                "dflashDraftModel": None,
+                "treeBudget": launch_preferences.get("treeBudget", 0),
+            }
+
         default_variant = _default_chat_variant()
         return {
             "model": default_variant["name"],

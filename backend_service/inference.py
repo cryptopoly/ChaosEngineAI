@@ -2165,7 +2165,13 @@ class LlamaCppEngine(BaseInferenceEngine):
 
 
 class RuntimeController:
+    # Hard upper bound on the warm pool independently of memory accounting —
+    # if psutil isn't available we still want a sane cap.
     MAX_WARM_MODELS = 2
+    # Reserve this much physical memory for the OS / UI / unrelated
+    # processes when deciding whether a new (or incoming) model fits. Mirrors
+    # the headroom used by ``helpers/system.py::spareHeadroomGb``.
+    WARM_POOL_MEMORY_HEADROOM_BYTES = 6 * 1024 * 1024 * 1024
 
     def __init__(self) -> None:
         self.capabilities = get_backend_capabilities()
@@ -2284,7 +2290,9 @@ class RuntimeController:
             except Exception:
                 pass
             return
-        self._evict_warm_pool()
+        self._evict_warm_pool(
+            incoming_bytes=self._model_resident_bytes(self.loaded_model),
+        )
         self._warm_pool[current_key] = (self.engine, self.loaded_model)
 
     def _tracked_process_pids(self) -> set[int]:
@@ -2540,15 +2548,64 @@ class RuntimeController:
             result.append({**info.to_dict(), "warm": True, "active": False})
         return result
 
-    def _evict_warm_pool(self) -> None:
-        """Remove the oldest entry from the warm pool if at capacity."""
+    @staticmethod
+    def _model_resident_bytes(info: LoadedModelInfo) -> int:
+        """Best-effort estimate of RAM held by a loaded model.
+
+        For local weights we use on-disk size as a proxy — mlx-lm mmaps the
+        weights so RSS tracks file size closely; for llama.cpp / GGUF the
+        whole file ends up resident once warm. For catalog/no-path entries
+        we fall back to 0 (no useful estimate, treat as memory-free).
+        """
+        return _path_size_bytes(info.path) if info.path else 0
+
+    def _warm_pool_resident_bytes(self) -> int:
+        return sum(self._model_resident_bytes(info) for _, info in self._warm_pool.values())
+
+    def _memory_budget_bytes(self) -> int:
+        """Bytes available for warm-pool weights, after OS headroom.
+
+        Returns 0 when psutil isn't usable; callers must fall back to the
+        count-based MAX_WARM_MODELS cap in that case.
+        """
+        try:
+            import psutil
+
+            available = int(psutil.virtual_memory().available)
+        except Exception:
+            return 0
+        return max(0, available - self.WARM_POOL_MEMORY_HEADROOM_BYTES)
+
+    def _pop_oldest_warm_entry(self) -> None:
+        if not self._warm_pool:
+            return
+        oldest_key = next(iter(self._warm_pool))
+        old_engine, _ = self._warm_pool.pop(oldest_key)
+        try:
+            old_engine.unload_model()
+        except Exception:
+            pass
+
+    def _evict_warm_pool(self, *, incoming_bytes: int = 0) -> None:
+        """Make room for an incoming entry in the warm pool.
+
+        First applies the count cap (MAX_WARM_MODELS) so a flapping budget
+        can never grow the pool unboundedly. Then, if ``psutil`` reports a
+        live memory budget, evicts oldest entries until the pool plus the
+        incoming model fits within ``available - headroom``.
+
+        ``incoming_bytes`` is the resident-byte estimate for the model
+        about to enter the pool (typically the model being parked from
+        active to warm). Passing 0 still triggers the count cap.
+        """
         while len(self._warm_pool) >= self.MAX_WARM_MODELS:
-            oldest_key = next(iter(self._warm_pool))
-            old_engine, _ = self._warm_pool.pop(oldest_key)
-            try:
-                old_engine.unload_model()
-            except Exception:
-                pass
+            self._pop_oldest_warm_entry()
+
+        budget = self._memory_budget_bytes()
+        if budget <= 0:
+            return
+        while self._warm_pool and self._warm_pool_resident_bytes() + incoming_bytes > budget:
+            self._pop_oldest_warm_entry()
 
     def load_model(
         self,

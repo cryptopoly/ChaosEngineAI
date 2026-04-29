@@ -1132,6 +1132,7 @@ function relocateDarwinPythonReferences(rootPath) {
 
   let rewrites = 0;
   let touchedFiles = 0;
+  let filesWithMatches = 0;
   let firstFailureLogged = false;
   for (const target of machoTargets) {
     let deps;
@@ -1142,6 +1143,7 @@ function relocateDarwinPythonReferences(rootPath) {
     }
     const matches = Array.from(deps.matchAll(frameworkRefPattern));
     if (matches.length === 0) continue;
+    filesWithMatches++;
 
     // Dedupe on the full reference so we only run install_name_tool once
     // per unique path per Mach-O.
@@ -1196,13 +1198,20 @@ function relocateDarwinPythonReferences(rootPath) {
     console.warn(`[stage-runtime] warning: ad-hoc re-sign failed on ${pythonDylibPath}: ${err.message}`);
   }
 
+  if (filesWithMatches === 0) {
+    console.log(
+      `[stage-runtime] no Python framework relocation needed across ${machoTargets.length} Mach-O files (already portable — likely python-build-standalone)`,
+    );
+    return;
+  }
+
   console.log(
-    `[stage-runtime] relocated Python framework references (${rewrites} rewrites across ${touchedFiles}/${machoTargets.length} Mach-O files)`,
+    `[stage-runtime] relocated Python framework references (${rewrites} rewrites across ${touchedFiles}/${filesWithMatches} affected Mach-O files; ${machoTargets.length} scanned)`,
   );
 
-  if (strict && touchedFiles < machoTargets.length / 2) {
+  if (strict && touchedFiles < filesWithMatches) {
     throw new Error(
-      `Python framework relocation rewrote only ${touchedFiles}/${machoTargets.length} Mach-O files. ` +
+      `Python framework relocation rewrote only ${touchedFiles}/${filesWithMatches} affected Mach-O files. ` +
       `The bundle will crash on user machines without /Library/Frameworks/Python.framework installed. ` +
       `Check the install_name_tool warning above for the underlying error.`,
     );

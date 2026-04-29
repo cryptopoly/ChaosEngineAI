@@ -196,6 +196,7 @@ class ChaosEngineState:
         self._library_scan_started: bool = False
         self._library_scan_done: threading.Event = threading.Event()
         self._library_scan_generation: int = 0
+        self._library_scan_threads: list[threading.Thread] = []
         self._library_fingerprint: dict[str, float] = {}
         if library_provider is None:
             cached_payload = _load_library_cache(self._library_cache_path)
@@ -312,6 +313,18 @@ class ChaosEngineState:
             daemon=True,
         )
         thread.start()
+        with self._lock:
+            self._library_scan_threads = [
+                t for t in self._library_scan_threads if t.is_alive()
+            ]
+            self._library_scan_threads.append(thread)
+
+    def shutdown(self, timeout: float = 5.0) -> None:
+        with self._lock:
+            threads = list(self._library_scan_threads)
+        for t in threads:
+            if t.is_alive():
+                t.join(timeout=timeout)
 
     def _scan_library_into_cache(
         self,

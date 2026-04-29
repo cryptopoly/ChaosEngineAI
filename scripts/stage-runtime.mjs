@@ -1086,18 +1086,37 @@ function relocateDarwinPythonReferences(rootPath) {
     return;
   }
 
-  // Clear any inherited signature so install_name_tool edits don't trip
-  // over existing code signatures (maybeSignEmbeddedRuntime re-signs after).
-  try {
-    execFileSync("codesign", ["--remove-signature", pythonDylibPath], { stdio: "ignore" });
-  } catch {
-    // Not signed yet — fine.
+  // python.org / actions/setup-python ship the framework pre-signed with
+  // hardened-runtime flags and read-only permission bits. install_name_tool
+  // refuses to modify a sealed binary, and codesign --remove-signature can
+  // silently fail while the LC_CODE_SIGNATURE blob remains. To make every
+  // Mach-O writeable for editing we (1) chmod u+w, (2) strip extended
+  // attributes (clears com.apple.cs.CodeDirectory), then (3) remove the
+  // signature. Re-signing happens at the end of relocation.
+  function unsealForRewrite(filePath) {
+    try { execFileSync("chmod", ["u+w", filePath], { stdio: "ignore" }); } catch {}
+    try { execFileSync("xattr", ["-cr", filePath], { stdio: "ignore" }); } catch {}
+    try { execFileSync("codesign", ["--remove-signature", filePath], { stdio: "ignore" }); } catch {}
   }
 
-  try {
-    execFileSync("install_name_tool", ["-id", "@rpath/Python", pythonDylibPath], { stdio: "ignore" });
-  } catch (err) {
-    console.warn(`[stage-runtime] warning: could not set install id on ${pythonDylibPath}: ${err.message}`);
+  // Run install_name_tool / similar and surface the real stderr in any
+  // failure. Without this, Node's execFileSync swallows stderr behind a
+  // generic "Command failed: ..." message and we can't see why dyld
+  // editing was rejected.
+  function runCapturingStderr(cmd, args) {
+    try {
+      execFileSync(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
+      return null;
+    } catch (err) {
+      const stderr = err.stderr ? err.stderr.toString().trim() : "";
+      return stderr || err.message.split("\n")[0];
+    }
+  }
+
+  unsealForRewrite(pythonDylibPath);
+  const idErr = runCapturingStderr("install_name_tool", ["-id", "@rpath/Python", pythonDylibPath]);
+  if (idErr) {
+    console.warn(`[stage-runtime] warning: could not set install id on ${pythonDylibPath}: ${idErr}`);
   }
 
   // Match any absolute reference into the python.org framework. The
@@ -1113,6 +1132,7 @@ function relocateDarwinPythonReferences(rootPath) {
 
   let rewrites = 0;
   let touchedFiles = 0;
+  let firstFailureLogged = false;
   for (const target of machoTargets) {
     let deps;
     try {
@@ -1134,27 +1154,26 @@ function relocateDarwinPythonReferences(rootPath) {
       }
     }
 
-    // install_name_tool refuses to modify signed binaries. Drop the
-    // signature first; we re-sign ad-hoc below and maybeSignEmbeddedRuntime
-    // re-signs with the release identity if configured.
-    try {
-      execFileSync("codesign", ["--remove-signature", target], { stdio: "ignore" });
-    } catch {
-      // Unsigned — fine.
-    }
+    unsealForRewrite(target);
 
     let touchedThis = false;
     for (const [fullRef, suffix] of uniqueRefs) {
       const stagedPath = path.join(pythonHomeDest, suffix);
       const newRef = loaderPathReference(target, stagedPath);
-      try {
-        execFileSync("install_name_tool", ["-change", fullRef, newRef, target], { stdio: "ignore" });
+      const err = runCapturingStderr("install_name_tool", ["-change", fullRef, newRef, target]);
+      if (err) {
+        // Avoid spamming hundreds of identical warnings; the first failure
+        // typically points at a systemic cause (signature, headerpad,
+        // permissions). Subsequent ones are usually the same root cause.
+        if (!firstFailureLogged) {
+          console.warn(
+            `[stage-runtime] warning: install_name_tool -change failed on ${target} for ${fullRef}: ${err}`,
+          );
+          firstFailureLogged = true;
+        }
+      } else {
         rewrites++;
         touchedThis = true;
-      } catch (err) {
-        console.warn(
-          `[stage-runtime] warning: install_name_tool -change failed on ${target} for ${fullRef}: ${err.message}`,
-        );
       }
     }
     if (touchedThis) {
@@ -1180,6 +1199,14 @@ function relocateDarwinPythonReferences(rootPath) {
   console.log(
     `[stage-runtime] relocated Python framework references (${rewrites} rewrites across ${touchedFiles}/${machoTargets.length} Mach-O files)`,
   );
+
+  if (strict && touchedFiles < machoTargets.length / 2) {
+    throw new Error(
+      `Python framework relocation rewrote only ${touchedFiles}/${machoTargets.length} Mach-O files. ` +
+      `The bundle will crash on user machines without /Library/Frameworks/Python.framework installed. ` +
+      `Check the install_name_tool warning above for the underlying error.`,
+    );
+  }
 }
 
 function loaderPathReference(consumer, target) {

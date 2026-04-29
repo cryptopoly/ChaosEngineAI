@@ -16,7 +16,6 @@ from backend_service.helpers.formatting import (
     _main_gguf_file,
 )
 from backend_service.helpers.settings import _normalize_slug
-from backend_service.helpers.system import _safe_run
 
 _UNSUPPORTED_MLX_QUANT_ALGOS = {"NVFP4", "NVINT4"}
 
@@ -24,45 +23,49 @@ _UNSUPPORTED_MLX_QUANT_ALGOS = {"NVFP4", "NVINT4"}
 def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) -> int:
     visited = seen if seen is not None else set()
     try:
-        stat_result = path.stat()
+        root_stat = path.stat()
     except OSError:
         return 0
 
-    file_id = (stat_result.st_dev, stat_result.st_ino)
-    if file_id in visited:
+    root_id = (root_stat.st_dev, root_stat.st_ino)
+    if root_id in visited:
         return 0
-    visited.add(file_id)
+    visited.add(root_id)
 
-    if path.is_file():
-        return int(stat_result.st_size)
+    if not path.is_dir():
+        return int(root_stat.st_size)
 
     total = 0
-    try:
-        children = list(path.iterdir())
-    except OSError:
-        return 0
-
-    for child in children:
-        total += _path_size_bytes(child, seen=visited)
+    stack: list[str] = [str(path)]
+    while stack:
+        current = stack.pop()
+        try:
+            iterator = os.scandir(current)
+        except OSError:
+            continue
+        with iterator as entries:
+            for entry in entries:
+                try:
+                    entry_stat = entry.stat(follow_symlinks=False)
+                except OSError:
+                    continue
+                entry_id = (entry_stat.st_dev, entry_stat.st_ino)
+                if entry_id in visited:
+                    continue
+                visited.add(entry_id)
+                try:
+                    is_dir = entry.is_dir(follow_symlinks=False)
+                except OSError:
+                    is_dir = False
+                if is_dir:
+                    stack.append(entry.path)
+                else:
+                    total += int(entry_stat.st_size)
     return total
 
 
 def _du_size_gb(path: Path) -> float:
-    if path.is_file():
-        return _bytes_to_gb(_path_size_bytes(path))
-
-    payload = _safe_run(["du", "-sk", str(path)], timeout=4.0)
-    if payload:
-        try:
-            size_kb = int(payload.split()[0])
-            size_gb = round(size_kb / (1024 ** 2), 1)
-            if size_gb > 0:
-                return size_gb
-        except (ValueError, IndexError):
-            pass
-
-    fallback_bytes = _path_size_bytes(path)
-    return _bytes_to_gb(fallback_bytes) if fallback_bytes > 0 else 0.0
+    return _bytes_to_gb(_path_size_bytes(path))
 
 
 def _relative_depth(path: Path, root: Path) -> int:

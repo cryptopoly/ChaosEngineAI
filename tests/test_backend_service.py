@@ -2034,6 +2034,19 @@ class VideoRepoAllowPatternsTests(unittest.TestCase):
         self.assertIn("scheduler/**", patterns)
         self.assertIn("tokenizer/**", patterns)
 
+    def test_returns_mlx_layout_for_ltx2_repo(self):
+        from backend_service.helpers.video import _video_repo_allow_patterns
+
+        patterns = _video_repo_allow_patterns("prince-canuma/LTX-2-distilled")
+        self.assertIsNotNone(patterns)
+        assert patterns is not None
+        self.assertIn("transformer/**", patterns)
+        self.assertIn("vae/**", patterns)
+        self.assertIn("text_encoder/**", patterns)
+        self.assertIn("tokenizer/**", patterns)
+        self.assertIn("*spatial-upscaler*.safetensors", patterns)
+        self.assertNotIn("model_index.json", patterns)
+
     def test_returns_fresh_list_each_call(self):
         """Callers get their own copy so mutating the list doesn't leak
         back into the module-level constant."""

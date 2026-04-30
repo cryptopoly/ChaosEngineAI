@@ -419,11 +419,15 @@ def _is_latest_image_candidate(model: dict[str, Any], curated_repos: set[str]) -
     lowered = model_id.lower()
     excluded_fragments = (
         "-lora",
+        "_lora",
+        "lora-",
         "controlnet",
         "ip-adapter",
+        "adapter",
         "tensorrt",
         "_amdgpu",
         "onnx",
+        "embedding",
         "instruct-pix2pix",
     )
     if any(fragment in lowered for fragment in excluded_fragments):
@@ -431,19 +435,44 @@ def _is_latest_image_candidate(model: dict[str, Any], curated_repos: set[str]) -
 
     tags = {str(tag).lower() for tag in (model.get("tags") or [])}
     pipeline_tag = str(model.get("pipeline_tag") or "").lower()
-    allowed_orgs = {
+    excluded_tags = {
+        "lora",
+        "controlnet",
+        "adapter",
+        "adapters",
+        "textual-inversion",
+        "embedding",
+        "embeddings",
+        "onnx",
+    }
+    if tags & excluded_tags:
+        return False
+
+    trusted_providers = {
         "black-forest-labs",
+        "baidu",
         "stabilityai",
         "qwen",
         "hidream-ai",
         "zai-org",
+        "tongyi-mai",
+        "nucleusai",
         "efficient-large-model",
         "hunyuanvideo-community",
         "tencent-hunyuan",
         "thudm",
+        "diffusers",
     }
     provider = model_id.split("/", 1)[0].lower() if "/" in model_id else ""
-    if provider and provider not in allowed_orgs:
+    try:
+        downloads = int(model.get("downloads") or 0)
+    except (TypeError, ValueError):
+        downloads = 0
+    try:
+        likes = int(model.get("likes") or 0)
+    except (TypeError, ValueError):
+        likes = 0
+    if provider and provider not in trusted_providers and downloads < 1000 and likes < 25:
         return False
 
     if "diffusers" not in tags:
@@ -481,9 +510,9 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
     try:
         params = urllib.parse.urlencode({
             "filter": "diffusers",
-            "sort": "modified",
+            "sort": "createdAt",
             "direction": "-1",
-            "limit": "48",
+            "limit": "96",
             "full": "true",
         })
         url = f"https://huggingface.co/api/models?{params}"
@@ -502,10 +531,16 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             ]
         return _tracked_latest_seed_payloads(library)[:limit]
 
-    candidates: list[dict[str, Any]] = []
+    accepted_models: list[dict[str, Any]] = []
     for model in data:
         if not isinstance(model, dict) or not _is_latest_image_candidate(model, curated_repos):
             continue
+        accepted_models.append(model)
+        if len(accepted_models) >= max(limit * 2, limit):
+            break
+
+    candidates: list[dict[str, Any]] = []
+    for model in accepted_models:
         model_id = str(model.get("id") or "")
         provider = model_id.split("/", 1)[0] if "/" in model_id else "Community"
         tags = [str(tag) for tag in (model.get("tags") or [])]

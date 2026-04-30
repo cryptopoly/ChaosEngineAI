@@ -593,6 +593,7 @@ class BackendCapabilities:
     converterAvailable: bool = False
     vllmAvailable: bool = False
     vllmVersion: str | None = None
+    probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -610,11 +611,41 @@ class BackendCapabilities:
             "converterAvailable": self.converterAvailable,
             "vllmAvailable": self.vllmAvailable,
             "vllmVersion": self.vllmVersion,
+            "probing": self.probing,
         }
 
 
 _capability_cache: tuple[float, BackendCapabilities] | None = None
 _capability_lock = RLock()
+
+
+def _initial_backend_capabilities() -> BackendCapabilities:
+    """Cheap capability placeholder used while the real probe runs.
+
+    The full probe imports/spawns MLX and checks vLLM, which can add seconds
+    to cold start. These path checks are safe enough for initial UI rendering;
+    load_model() still refreshes capabilities synchronously before selecting
+    an engine.
+    """
+    python_executable = _resolve_mlx_python()
+    llama_server_path = _resolve_llama_server()
+    llama_server_turbo_path = _resolve_llama_server_turbo()
+    llama_cli_path = _resolve_llama_cli()
+    return BackendCapabilities(
+        pythonExecutable=python_executable,
+        mlxAvailable=False,
+        mlxLmAvailable=False,
+        mlxUsable=False,
+        mlxMessage="Native backend detection is still running.",
+        ggufAvailable=bool(llama_server_path) or bool(llama_server_turbo_path),
+        llamaCliPath=llama_cli_path,
+        llamaServerPath=llama_server_path,
+        llamaServerTurboPath=llama_server_turbo_path,
+        converterAvailable=False,
+        vllmAvailable=False,
+        vllmVersion=None,
+        probing=True,
+    )
 
 
 def _probe_native_backends() -> BackendCapabilities:
@@ -2173,8 +2204,8 @@ class RuntimeController:
     # the headroom used by ``helpers/system.py::spareHeadroomGb``.
     WARM_POOL_MEMORY_HEADROOM_BYTES = 6 * 1024 * 1024 * 1024
 
-    def __init__(self) -> None:
-        self.capabilities = get_backend_capabilities()
+    def __init__(self, *, background_probe: bool = False) -> None:
+        self.capabilities = _initial_backend_capabilities()
         self.engine: BaseInferenceEngine = MockInferenceEngine(self.capabilities)
         self.loaded_model: LoadedModelInfo | None = None
         self.runtime_note: str | None = None
@@ -2184,6 +2215,51 @@ class RuntimeController:
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
+        self._capability_probe_thread: Thread | None = None
+        self._capability_probe_lock = Lock()
+        if background_probe:
+            self.start_capability_probe()
+
+    def start_capability_probe(self, *, force: bool = False) -> None:
+        with self._capability_probe_lock:
+            if (
+                self._capability_probe_thread is not None
+                and self._capability_probe_thread.is_alive()
+                and not force
+            ):
+                return
+            thread = Thread(
+                target=self._capability_probe_worker,
+                kwargs={"force": force},
+                name="chaosengine-capability-probe",
+                daemon=True,
+            )
+            self._capability_probe_thread = thread
+            thread.start()
+
+    def _capability_probe_worker(self, *, force: bool = False) -> None:
+        try:
+            capabilities = get_backend_capabilities(force=force)
+        except Exception as exc:
+            current = self.capabilities
+            capabilities = BackendCapabilities(
+                pythonExecutable=current.pythonExecutable,
+                mlxAvailable=False,
+                mlxLmAvailable=False,
+                mlxUsable=False,
+                mlxMessage=f"Native backend detection failed: {type(exc).__name__}: {exc}",
+                ggufAvailable=current.ggufAvailable,
+                llamaCliPath=current.llamaCliPath,
+                llamaServerPath=current.llamaServerPath,
+                llamaServerTurboPath=current.llamaServerTurboPath,
+                converterAvailable=False,
+                vllmAvailable=False,
+                vllmVersion=None,
+                probing=False,
+            )
+        self.capabilities = capabilities
+        if isinstance(self.engine, MockInferenceEngine):
+            self.engine.capabilities = capabilities
 
     @staticmethod
     def _warm_pool_key(
@@ -2468,6 +2544,8 @@ class RuntimeController:
                 _LLAMA_HELP_CACHE.clear()
             _CACHE_TYPE_CACHE.clear()
         self.capabilities = get_backend_capabilities(force=force)
+        if isinstance(self.engine, MockInferenceEngine):
+            self.engine.capabilities = self.capabilities
         return self.capabilities
 
     def _select_engine(

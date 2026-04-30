@@ -195,6 +195,7 @@ class DeleteModelRequest(BaseModel):
 
 class DownloadModelRequest(BaseModel):
     repo: str = Field(min_length=3, max_length=256)
+    modelId: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class ImageGenerationRequest(BaseModel):

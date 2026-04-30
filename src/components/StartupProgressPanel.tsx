@@ -12,8 +12,8 @@ interface Props {
 //   1. Tauri extracts the bundled ~280 MB runtime tarball into a
 //      manifest-hash-suffixed cache dir. Cold SSD + gunzip = 5-15 s.
 //   2. The Rust shell spawns the Python sidecar. Python 3.11 imports
-//      FastAPI + uvicorn + huggingface_hub + dflash registry + the
-//      image/video catalogs. First-time page cache warmup = 10-25 s.
+//      the core FastAPI app. Heavier image/video/cache runtimes stay lazy
+//      until their routes are used.
 //   3. The FastAPI server finishes binding its port and answers
 //      /api/workspace, which releases the splash.
 //
@@ -85,14 +85,14 @@ function pickPhase(
   if (elapsedSeconds < 25) {
     return {
       title: "Starting Python runtime",
-      detail: "Loading FastAPI, HuggingFace hub, and the cache strategies.",
+      detail: "Loading the core API and restoring workspace state.",
     };
   }
   if (elapsedSeconds < 45) {
     return {
-      title: "Importing modules",
+      title: "Waiting for backend",
       detail:
-        "Warming up diffusers / MLX / dflash — most of the wait on a cold start.",
+        "The sidecar is still binding its API port and checking local runtime state.",
     };
   }
   return {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assessVideoGenerationSafety,
   inferDeviceFromHostPlatform,
+  videoDiscoverMemoryEstimate,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
   videoRuntimeErrorStatus,
@@ -68,6 +69,32 @@ describe("video discover search helpers", () => {
     expect(videoDiscoverFamilyMatchesQuery(family, "dev")).toBe(false);
     expect(videoDiscoverVariantMatchesQuery(family.variants[0], "dev")).toBe(false);
     expect(videoDiscoverVariantMatchesQuery(family.variants[1], "dev")).toBe(true);
+  });
+});
+
+describe("videoDiscoverMemoryEstimate()", () => {
+  it("returns a GB label at the recommended resolution and default clip length", () => {
+    const result = videoDiscoverMemoryEstimate(makeVideoVariant({
+      sizeGb: 16.4,
+      recommendedResolution: "832x480",
+      defaultDurationSeconds: 4,
+    }));
+
+    expect(result).not.toBeNull();
+    expect(result!.label).toMatch(/^~\d+ GB @ 832×480$/);
+    expect(result!.frameCount).toBe(33);
+    expect(result!.estimatedPeakGb).toBeGreaterThan(0);
+  });
+
+  it("returns null when no size or runtime footprint metadata is available", () => {
+    const result = videoDiscoverMemoryEstimate(makeVideoVariant({
+      sizeGb: 0,
+      coreWeightsGb: null,
+      repoSizeGb: null,
+      runtimeFootprintGb: undefined,
+    }));
+
+    expect(result).toBeNull();
   });
 });
 

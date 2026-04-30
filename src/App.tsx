@@ -1474,7 +1474,7 @@ export default function App() {
         longLiveJob={videoState.longLiveJob}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
@@ -1496,7 +1496,7 @@ export default function App() {
         fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
@@ -1556,7 +1556,7 @@ export default function App() {
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onGenerateVideo={() => void videoState.handleVideoGenerate()}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}

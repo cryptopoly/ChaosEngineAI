@@ -16,28 +16,16 @@ GitHub:  https://github.com/cryptopoly/ChaosEngine
 
 from __future__ import annotations
 
-import importlib
+import importlib.util
 from typing import Any
 
 from cache_compression import CacheStrategy
 
 
-def _load_chaosengine() -> Any | None:
-    try:
-        return importlib.import_module("chaos_engine")
-    except ImportError:
-        return None
-
-
 def _chaosengine_available() -> bool:
-    mod = _load_chaosengine()
-    if mod is None:
-        return False
-    # Check for the core cache module
     try:
-        cache_mod = importlib.import_module("chaos_engine.cache")
-        return hasattr(cache_mod, "config") or True
-    except ImportError:
+        return importlib.util.find_spec("chaos_engine") is not None
+    except (ImportError, AttributeError, ValueError):
         return False
 
 

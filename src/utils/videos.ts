@@ -30,6 +30,28 @@ export function findVideoVariantByRepo(
   return null;
 }
 
+export function videoDownloadRepos(variant: VideoModelVariant): string[] {
+  const repos = [variant.repo];
+  if (variant.ggufRepo && variant.ggufFile) repos.push(variant.ggufRepo);
+  if (variant.hasLocalData && variant.textEncoderRepo) repos.push(variant.textEncoderRepo);
+  return repos;
+}
+
+export function videoDownloadStatusForVariant<T extends { state: string }>(
+  downloads: Record<string, T>,
+  variant: VideoModelVariant,
+): T | undefined {
+  const statuses = videoDownloadRepos(variant)
+    .map((repo) => downloads[repo])
+    .filter((status): status is T => Boolean(status));
+  return (
+    statuses.find((status) => status.state === "downloading")
+    ?? statuses.find((status) => status.state === "failed")
+    ?? statuses.find((status) => status.state === "cancelled")
+    ?? statuses.find((status) => status.state === "completed")
+  );
+}
+
 export function videoVariantMatchesDiscoverFilters(
   variant: VideoModelVariant,
   taskFilter: VideoDiscoverTaskFilter,
@@ -79,6 +101,95 @@ export function videoDiscoverVariantMatchesQuery(variant: VideoModelVariant, que
 export function videoDiscoverFamilyMatchesQuery(family: VideoModelFamily, query: string): boolean {
   if (!query) return true;
   return videoDiscoverFamilyHaystack(family).includes(query);
+}
+
+export interface VideoDiscoverMemoryEstimate {
+  estimatedPeakGb: number;
+  modelFootprintGb: number;
+  resolutionLabel: string;
+  frameCount: number;
+  label: string;
+  title: string;
+}
+
+function formatVideoDiscoverGb(gb: number): string {
+  if (!Number.isFinite(gb) || gb <= 0) return "Unknown";
+  return gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
+}
+
+function parseRecommendedVideoResolution(value: string | null | undefined): { width: number; height: number } {
+  const match = /(\d{3,5})\s*[x×]\s*(\d{3,5})/i.exec(value ?? "");
+  if (!match) return { width: 832, height: 480 };
+  const width = Number.parseInt(match[1], 10);
+  const height = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return { width: 832, height: 480 };
+  }
+  return { width, height };
+}
+
+function videoVariantSizeForMemoryEstimate(variant: VideoModelVariant): number {
+  const candidates = [
+    variant.coreWeightsGb,
+    variant.sizeGb,
+    variant.onDiskGb,
+    variant.repoSizeGb,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+      return candidate;
+    }
+  }
+  return 0;
+}
+
+function defaultFrameCountForVideoVariant(variant: VideoModelVariant): number {
+  const seconds = Number.isFinite(variant.defaultDurationSeconds)
+    ? variant.defaultDurationSeconds
+    : 4;
+  const estimated = Math.round(seconds * 8);
+  const clamped = Math.max(1, Math.min(257, estimated));
+  const remainder = (clamped - 1) % 4;
+  if (remainder === 0) return clamped;
+  const down = clamped - remainder;
+  const up = down + 4;
+  return up - clamped < clamped - down ? up : down;
+}
+
+export function videoDiscoverMemoryEstimate(variant: VideoModelVariant): VideoDiscoverMemoryEstimate | null {
+  const baseModelFootprintGb = videoVariantSizeForMemoryEstimate(variant);
+  const hasRuntimeFootprint =
+    typeof variant.runtimeFootprintGb === "number"
+    && Number.isFinite(variant.runtimeFootprintGb)
+    && variant.runtimeFootprintGb > 0;
+  if (!(baseModelFootprintGb > 0) && !hasRuntimeFootprint) return null;
+
+  const { width, height } = parseRecommendedVideoResolution(variant.recommendedResolution);
+  const frameCount = defaultFrameCountForVideoVariant(variant);
+  const safety = assessVideoGenerationSafety({
+    width,
+    height,
+    numFrames: frameCount,
+    device: null,
+    // Discover is a requirement estimate, not a live compatibility check.
+    deviceMemoryGb: 512,
+    baseModelFootprintGb,
+    runtimeFootprintGb: variant.runtimeFootprintGb,
+  });
+  const resolutionLabel = `${width}×${height}`;
+  const estimatedPeakGb = Math.max(safety.estimatedPeakGb, safety.modelFootprintGb);
+  return {
+    estimatedPeakGb,
+    modelFootprintGb: safety.modelFootprintGb,
+    resolutionLabel,
+    frameCount,
+    label: `~${formatVideoDiscoverGb(estimatedPeakGb)} @ ${resolutionLabel}`,
+    title: (
+      `Estimated peak RAM/VRAM at ${resolutionLabel} with ${frameCount} frames. Includes resident model memory`
+      + (safety.modelFootprintGb > 0 ? ` (~${formatVideoDiscoverGb(safety.modelFootprintGb)})` : "")
+      + " plus a temporal attention estimate. Actual usage varies by runtime, frame count, and device."
+    ),
+  };
 }
 
 /** WebKit's ``fetch()`` (Safari + macOS Tauri's WKWebView) produces the

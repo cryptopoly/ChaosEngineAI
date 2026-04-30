@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
-from cache_compression import registry as cache_registry
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
 
@@ -170,6 +169,7 @@ class ChaosEngineState:
         benchmarks_path: Path | None = None,
         chat_sessions_path: Path | None = None,
         library_cache_path: Path | None = None,
+        background_capability_probe: bool = False,
     ) -> None:
         # Defer imports of module-level constants to avoid circular imports
         from backend_service.app import (
@@ -210,7 +210,7 @@ class ChaosEngineState:
                     self._library_scan_done.set()
         else:
             self._library_scan_done.set()
-        self.runtime = RuntimeController()
+        self.runtime = RuntimeController(background_probe=background_capability_probe)
         self._image_runtime: "ImageRuntimeManager | None" = None
         self._video_runtime: "VideoRuntimeManager | None" = None
         self._chat_sessions_path = chat_sessions_path if chat_sessions_path is not None else CHAT_SESSIONS_PATH
@@ -419,10 +419,16 @@ class ChaosEngineState:
             "hfCachePath": str(self.settings.get("hfCachePath") or ""),
         }
 
+    def _system_snapshot(self) -> dict[str, Any]:
+        try:
+            return self._system_snapshot_provider(capabilities=self.runtime.capabilities)
+        except TypeError:
+            return self._system_snapshot_provider()
+
     def _bootstrap(self) -> None:
         from backend_service.app import app_version
 
-        system = self._system_snapshot_provider()
+        system = self._system_snapshot()
         recommendation = _best_fit_recommendation(system)
         self.add_log("chaosengine", "info", f"Workspace booted in {system['backendLabel']} mode.")
         self.add_log("chaosengine", "info", f"ChaosEngine v{app_version} detected.")
@@ -494,6 +500,8 @@ class ChaosEngineState:
         return "Native f16 cache"
 
     def _cache_label(self, *, cache_strategy: str, bits: int, fp16_layers: int) -> str:
+        from cache_compression import registry as cache_registry
+
         strategy = cache_registry.get(cache_strategy)
         if strategy is not None:
             return strategy.label(bits, fp16_layers)
@@ -1233,7 +1241,7 @@ class ChaosEngineState:
                 fp16_layers=launch_preferences["fp16Layers"],
                 context_tokens=launch_preferences["contextTokens"],
                 params_b=params_b,
-                system_stats=self._system_snapshot_provider(),
+                system_stats=self._system_snapshot(),
             )
             if params_b is not None
             else None
@@ -1341,7 +1349,7 @@ class ChaosEngineState:
                 fp16_layers=request.fp16Layers,
                 context_tokens=request.contextTokens,
                 params_b=params_b,
-                system_stats=self._system_snapshot_provider(),
+                system_stats=self._system_snapshot(),
             )
             use_compressed = request.cacheBits > 0
             cache_gb = preview["optimizedCacheGb"] if use_compressed else preview["baselineCacheGb"]
@@ -2462,7 +2470,7 @@ class ChaosEngineState:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
 
-    def start_download(self, repo: str) -> dict[str, Any]:
+    def start_download(self, repo: str, allow_patterns: list[str] | None = None) -> dict[str, Any]:
         from backend_service.helpers.huggingface import (
             _friendly_hf_download_error,
             _hf_repo_downloaded_bytes,
@@ -2569,7 +2577,7 @@ class ChaosEngineState:
                     # allowlist so we skip legacy single-file checkpoints the
                     # pipelines never load. Both helpers return None for repos
                     # outside their catalog, so only one ever applies.
-                    allow_patterns = (
+                    effective_allow_patterns = allow_patterns or (
                         _video_repo_allow_patterns(repo)
                         or _image_repo_allow_patterns(repo)
                     )
@@ -2577,7 +2585,7 @@ class ChaosEngineState:
                         repo,
                         env,
                         process_log,
-                        allow_patterns=allow_patterns,
+                        allow_patterns=effective_allow_patterns,
                     )
                     with self._lock:
                         if self._download_tokens.get(repo) == download_token:
@@ -2903,7 +2911,7 @@ class ChaosEngineState:
     def workspace(self) -> dict[str, Any]:
         from backend_service.app import compute_cache_preview
 
-        system_stats = self._system_snapshot_provider()
+        system_stats = self._system_snapshot()
         try:
             loaded_name = self.runtime.loaded_model.name if self.runtime.loaded_model else None
             loaded_engine = self.runtime.engine.engine_name if self.runtime.engine else None

@@ -106,6 +106,8 @@ export interface ModelVariant {
   familyId: string;
   name: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
   link: string;
   paramsB: number;
   sizeGb: number;
@@ -387,6 +389,7 @@ export interface NativeBackendStatus {
   llamaServerPath?: string | null;
   llamaServerTurboPath?: string | null;
   converterAvailable: boolean;
+  probing?: boolean;
 }
 
 export interface GenerationMetrics {
@@ -713,6 +716,8 @@ export interface ImageModelVariant {
   name: string;
   provider: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];
@@ -773,6 +778,9 @@ export interface VideoModelVariant {
   name: string;
   provider: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
+  textEncoderRepo?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];
@@ -790,6 +798,7 @@ export interface VideoModelVariant {
   note: string;
   availableLocally: boolean;
   hasLocalData?: boolean;
+  localStatusReason?: string | null;
   estimatedGenerationSeconds: number | null;
   onDiskBytes?: number | null;
   onDiskGb?: number | null;

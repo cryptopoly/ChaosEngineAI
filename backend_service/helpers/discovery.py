@@ -46,7 +46,7 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
         with iterator as entries:
             for entry in entries:
                 try:
-                    entry_stat = entry.stat(follow_symlinks=False)
+                    entry_stat = entry.stat(follow_symlinks=True)
                 except OSError:
                     continue
                 entry_id = (entry_stat.st_dev, entry_stat.st_ino)
@@ -54,7 +54,7 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
                     continue
                 visited.add(entry_id)
                 try:
-                    is_dir = entry.is_dir(follow_symlinks=False)
+                    is_dir = entry.is_dir(follow_symlinks=True)
                 except OSError:
                     is_dir = False
                 if is_dir:

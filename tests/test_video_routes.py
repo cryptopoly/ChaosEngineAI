@@ -463,6 +463,55 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.assertEqual(len(listing), 1)
         self.assertEqual(listing[0]["artifactId"], artifact["artifactId"])
 
+    def test_generate_unloads_idle_image_runtime_first(self):
+        state = self.client.app.state.chaosengine
+        state.image_runtime = mock.MagicMock()
+        state.image_runtime.capabilities.return_value = {
+            "activeEngine": "diffusers",
+            "realGenerationAvailable": True,
+            "loadedModelRepo": "black-forest-labs/FLUX.1-schnell",
+        }
+        state.image_runtime.unload.return_value = {"loadedModelRepo": None}
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            return_value=(
+                self._fake_generated_video(),
+                {
+                    "activeEngine": "diffusers",
+                    "realGenerationAvailable": True,
+                    "message": "Ready",
+                    "missingDependencies": [],
+                    "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                },
+            )
+        )
+
+        with mock.patch.object(
+            video_routes,
+            "_video_variant_available_locally",
+            return_value=True,
+        ):
+            response = self.client.post("/api/video/generate", json=self._payload())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        state.image_runtime.unload.assert_called_once_with()
+
+    def test_generate_rejects_while_image_generation_active(self):
+        from backend_service.progress import IMAGE_PROGRESS
+
+        IMAGE_PROGRESS.begin(run_label="FLUX test", total_steps=4, message="Diffusing")
+        try:
+            with mock.patch.object(
+                video_routes,
+                "_video_variant_available_locally",
+                return_value=True,
+            ):
+                response = self.client.post("/api/video/generate", json=self._payload())
+        finally:
+            IMAGE_PROGRESS.finish()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("image generation is still running", response.json()["detail"])
+
     def test_generate_then_stream_file_then_delete_round_trip(self):
         state = self.client.app.state.chaosengine
         state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
@@ -727,9 +776,8 @@ class VideoDownloadRouteTests(unittest.TestCase):
 
 
 class MlxVideoSnapshotValidationTests(unittest.TestCase):
-    """mlx-video repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX layout —
-    text_encoder / tokenizer / transformer / vae folders WITHOUT
-    ``model_index.json``. The diffusers-shape validator must not flag
+    """mlx-video repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX layouts
+    WITHOUT ``model_index.json``. The diffusers-shape validator must not flag
     these as incomplete; ``_video_download_validation_error`` must route
     through the mlx-video schema check instead.
     """
@@ -738,7 +786,13 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
         from backend_service.helpers.video import _validate_mlx_video_snapshot
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ("text_encoder", "tokenizer", "transformer", "vae"):
+            for name in (
+                "text_encoder",
+                "tokenizer",
+                "text_projections",
+                "transformer",
+                "vae",
+            ):
                 folder = root / name
                 folder.mkdir()
                 (folder / "config.json").write_text("{}")
@@ -748,7 +802,12 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
         from backend_service.helpers.video import _validate_mlx_video_snapshot
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ("text_encoder", "tokenizer", "transformer"):  # vae absent
+            for name in (
+                "text_encoder",
+                "tokenizer",
+                "text_projections",
+                "transformer",
+            ):  # vae absent
                 folder = root / name
                 folder.mkdir()
                 (folder / "config.json").write_text("{}")
@@ -760,12 +819,63 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
         from backend_service.helpers.video import _validate_mlx_video_snapshot
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ("text_encoder", "tokenizer", "transformer", "vae"):
+            for name in (
+                "text_encoder",
+                "tokenizer",
+                "text_projections",
+                "transformer",
+                "vae",
+            ):
                 (root / name).mkdir()
             # All folders exist but are empty — partial download.
             err = _validate_mlx_video_snapshot(str(root))
             self.assertIsNotNone(err)
             self.assertIn("empty", err.lower())
+
+    def test_ltx2_missing_text_projections_reports_incomplete(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("text_encoder", "tokenizer", "transformer", "vae"):
+                folder = root / name
+                folder.mkdir()
+                (folder / "config.json").write_text("{}")
+            err = _validate_mlx_video_snapshot(
+                str(root),
+                "prince-canuma/LTX-2-distilled",
+            )
+            self.assertIsNotNone(err)
+            self.assertIn("text_projections", err)
+
+    def test_ltx23_snapshot_uses_current_mlx_layout(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in (
+                "audio_vae",
+                "text_projections",
+                "transformer",
+                "vae",
+                "vocoder",
+            ):
+                folder = root / name
+                folder.mkdir()
+                (folder / "config.json").write_text("{}")
+            self.assertIsNone(
+                _validate_mlx_video_snapshot(str(root), "prince-canuma/LTX-2.3-dev")
+            )
+
+    def test_ltx23_missing_component_reports_current_name(self):
+        from backend_service.helpers.video import _validate_mlx_video_snapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("audio_vae", "transformer", "vae", "vocoder"):
+                folder = root / name
+                folder.mkdir()
+                (folder / "config.json").write_text("{}")
+            err = _validate_mlx_video_snapshot(str(root), "prince-canuma/LTX-2.3-dev")
+            self.assertIsNotNone(err)
+            self.assertIn("text_projections", err)
 
     def test_mlx_routed_repo_skips_diffusers_check(self):
         from backend_service.helpers.video import (
@@ -789,6 +899,158 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
             # diffusers-shape error that misled users into thinking
             # their LTX-2 download was broken.
             self.assertNotIn("model_index", err)
+
+
+class VideoGgufVariantValidationTests(unittest.TestCase):
+    def test_gguf_variant_requires_cached_transformer_file(self):
+        from backend_service.helpers.video import _video_variant_validation_error
+
+        variant = {
+            "name": "Wan 2.2 TI2V 5B · GGUF Q8_0",
+            "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+            "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+            "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
+        }
+        with mock.patch(
+            "backend_service.helpers.video._video_download_validation_error",
+            return_value=None,
+        ), mock.patch(
+            "huggingface_hub.hf_hub_download",
+            side_effect=FileNotFoundError("not cached"),
+        ):
+            err = _video_variant_validation_error(variant)
+
+        self.assertIsNotNone(err)
+        self.assertIn("GGUF transformer file is missing", err)
+        self.assertIn("Wan2.2-TI2V-5B-Q8_0.gguf", err)
+
+    def test_gguf_missing_file_status_reason_is_specific(self):
+        from backend_service.helpers.video import _video_variant_local_status_reason
+
+        variant = {
+            "name": "Wan 2.2 TI2V 5B · GGUF Q8_0",
+            "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+            "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+            "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
+        }
+        reason = _video_variant_local_status_reason(
+            variant,
+            (
+                "The base diffusers snapshot is installed, but the selected GGUF "
+                "transformer file is missing: QuantStack/Wan2.2-TI2V-5B-GGUF/"
+                "Wan2.2-TI2V-5B-Q8_0.gguf."
+            ),
+        )
+        self.assertEqual(
+            reason,
+            (
+                "Base model installed; missing GGUF transformer: "
+                "QuantStack/Wan2.2-TI2V-5B-GGUF/Wan2.2-TI2V-5B-Q8_0.gguf."
+            ),
+        )
+
+    def test_mlx_missing_components_status_reason_is_specific(self):
+        from backend_service.helpers.video import _video_variant_local_status_reason
+
+        reason = _video_variant_local_status_reason(
+            {"repo": "prince-canuma/LTX-2-distilled"},
+            (
+                "The local snapshot is incomplete. Missing mlx-video components: "
+                "text_projections (empty). Re-download the model and keep "
+                "ChaosEngineAI open until the download completes."
+            ),
+        )
+        self.assertEqual(reason, "Missing MLX components: text_projections (empty).")
+
+    def test_ltx23_variant_requires_shared_text_encoder(self):
+        from backend_service.helpers.video import _video_variant_validation_error
+
+        variant = {
+            "name": "LTX-2.3 · dev (MLX)",
+            "repo": "prince-canuma/LTX-2.3-dev",
+            "textEncoderRepo": "prince-canuma/LTX-2-distilled",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "ltx23"
+            shared = Path(tmp) / "ltx2"
+            base.mkdir()
+            shared.mkdir()
+
+            def snapshot(repo: str):
+                if repo == "prince-canuma/LTX-2.3-dev":
+                    return base
+                if repo == "prince-canuma/LTX-2-distilled":
+                    return shared
+                return None
+
+            with mock.patch(
+                "backend_service.helpers.video._video_download_validation_error",
+                return_value=None,
+            ), mock.patch(
+                "backend_service.helpers.video._hf_repo_snapshot_dir",
+                side_effect=snapshot,
+            ):
+                err = _video_variant_validation_error(variant)
+
+        self.assertIsNotNone(err)
+        self.assertIn("shared mlx-video text components", err)
+        self.assertIn("prince-canuma/LTX-2-distilled", err)
+
+    def test_ltx23_variant_accepts_shared_text_encoder_repo(self):
+        from backend_service.helpers.video import _video_variant_validation_error
+
+        variant = {
+            "name": "LTX-2.3 · dev (MLX)",
+            "repo": "prince-canuma/LTX-2.3-dev",
+            "textEncoderRepo": "prince-canuma/LTX-2-distilled",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "ltx23"
+            shared = Path(tmp) / "ltx2"
+            base.mkdir()
+            (shared / "text_encoder").mkdir(parents=True)
+            (shared / "text_encoder" / "config.json").write_text("{}")
+            (shared / "text_encoder" / "model.safetensors.index.json").write_text("{}")
+            (shared / "tokenizer").mkdir()
+            (shared / "tokenizer" / "tokenizer.json").write_text("{}")
+            (shared / "tokenizer" / "tokenizer.model").write_text("tokenizer")
+
+            def snapshot(repo: str):
+                if repo == "prince-canuma/LTX-2.3-dev":
+                    return base
+                if repo == "prince-canuma/LTX-2-distilled":
+                    return shared
+                return None
+
+            with mock.patch(
+                "backend_service.helpers.video._video_download_validation_error",
+                return_value=None,
+            ), mock.patch(
+                "backend_service.helpers.video._hf_repo_snapshot_dir",
+                side_effect=snapshot,
+            ):
+                self.assertIsNone(_video_variant_validation_error(variant))
+
+    def test_gguf_variant_validates_when_base_and_gguf_are_cached(self):
+        from backend_service.helpers.video import _video_variant_validation_error
+
+        variant = {
+            "name": "Wan 2.2 TI2V 5B · GGUF Q8_0",
+            "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+            "ggufRepo": "QuantStack/Wan2.2-TI2V-5B-GGUF",
+            "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            gguf = Path(tmp) / "Wan2.2-TI2V-5B-Q8_0.gguf"
+            gguf.write_bytes(b"gguf")
+            with mock.patch(
+                "backend_service.helpers.video._video_download_validation_error",
+                return_value=None,
+            ), mock.patch(
+                "huggingface_hub.hf_hub_download",
+                return_value=str(gguf),
+            ):
+                self.assertIsNone(_video_variant_validation_error(variant))
 
 
 if __name__ == "__main__":

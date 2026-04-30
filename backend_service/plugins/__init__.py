@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from threading import RLock
 from typing import Any
 import importlib
 import json
@@ -38,28 +39,43 @@ class BasePlugin(ABC):
     def manifest(self) -> PluginManifest: ...
 
 class PluginRegistry:
-    def __init__(self):
+    def __init__(self, *, auto_register_builtins: bool = False):
         self._plugins: dict[str, tuple[PluginManifest, Any]] = {}
+        self._auto_register_builtins = auto_register_builtins
+        self._builtins_registered = False
+        self._lock = RLock()
 
     def register(self, manifest: PluginManifest, instance: Any = None):
         self._plugins[manifest.id] = (manifest, instance)
 
+    def ensure_builtins(self) -> None:
+        if not self._auto_register_builtins or self._builtins_registered:
+            return
+        with self._lock:
+            if not self._builtins_registered:
+                self.register_builtins()
+
     def get(self, plugin_id: str) -> tuple[PluginManifest, Any] | None:
+        self.ensure_builtins()
         return self._plugins.get(plugin_id)
 
     def list_all(self) -> list[PluginManifest]:
+        self.ensure_builtins()
         return [m for m, _ in self._plugins.values()]
 
     def list_by_type(self, plugin_type: PluginType) -> list[tuple[PluginManifest, Any]]:
+        self.ensure_builtins()
         return [(m, i) for m, i in self._plugins.values() if m.plugin_type == plugin_type]
 
     def enable(self, plugin_id: str) -> bool:
+        self.ensure_builtins()
         if plugin_id in self._plugins:
             self._plugins[plugin_id][0].enabled = True
             return True
         return False
 
     def disable(self, plugin_id: str) -> bool:
+        self.ensure_builtins()
         if plugin_id in self._plugins:
             self._plugins[plugin_id][0].enabled = False
             return True
@@ -89,7 +105,7 @@ class PluginRegistry:
         """Register all built-in components as plugins."""
         # Cache strategies
         from cache_compression import registry as cache_registry
-        for strategy in cache_registry._strategies.values():
+        for strategy in cache_registry.strategies():
             manifest = PluginManifest(
                 id=f"cache.{strategy.strategy_id}",
                 name=strategy.name,
@@ -110,7 +126,7 @@ class PluginRegistry:
                 description=tool.description,
             )
             self.register(manifest, tool)
+        self._builtins_registered = True
 
 # Module singleton
-plugin_registry = PluginRegistry()
-plugin_registry.register_builtins()
+plugin_registry = PluginRegistry(auto_register_builtins=True)

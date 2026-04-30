@@ -8,24 +8,19 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
-from backend_service.image_runtime import (
-    ImageGenerationConfig,
-    ImageRuntimeManager,
-)
-from backend_service.video_runtime import (
-    VideoGenerationConfig,
-    VideoRuntimeManager,
-    start_torch_warmup,
-)
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
 from backend_service.state import ChaosEngineState
+
+if TYPE_CHECKING:
+    from backend_service.image_runtime import ImageRuntimeManager
+    from backend_service.video_runtime import VideoRuntimeManager
 
 # ---------------------------------------------------------------------------
 # Helper modules -- extracted from this file for maintainability.
@@ -121,8 +116,8 @@ EXEMPT_AUTH_PATHS = frozenset({
 # extracted signatures require them explicitly.
 # ---------------------------------------------------------------------------
 
-def _build_system_snapshot() -> dict[str, Any]:
-    return _build_system_snapshot_impl(app_version, APP_STARTED_AT)
+def _build_system_snapshot(*, capabilities: Any | None = None) -> dict[str, Any]:
+    return _build_system_snapshot_impl(app_version, APP_STARTED_AT, capabilities=capabilities)
 
 
 def _default_settings() -> dict[str, Any]:
@@ -231,6 +226,7 @@ def compute_cache_preview(
     fp16_layers: int = 4,
     num_layers: int = 32,
     num_heads: int = 32,
+    num_kv_heads: int | None = None,
     hidden_size: int = 4096,
     context_tokens: int = 8192,
     params_b: float = 7.0,
@@ -242,6 +238,7 @@ def compute_cache_preview(
         fp16_layers=fp16_layers,
         num_layers=num_layers,
         num_heads=num_heads,
+        num_kv_heads=num_kv_heads,
         hidden_size=hidden_size,
         context_tokens=context_tokens,
         params_b=params_b,
@@ -343,6 +340,8 @@ def _generate_image_artifacts(
     runtime_manager: ImageRuntimeManager | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     import logging
+    from backend_service.image_runtime import ImageGenerationConfig, ImageRuntimeManager
+
     logger = logging.getLogger("chaosengine.images")
     effective_width, effective_height = (
         _apply_draft_resolution(request.width, request.height)
@@ -413,6 +412,8 @@ def _generate_video_artifact(
     HTTP error rather than a fake clip.
     """
     import logging
+    from backend_service.video_runtime import VideoGenerationConfig
+
     logger = logging.getLogger("chaosengine.video")
     logger.info(
         "Generating video: model=%s repo=%s size=%dx%d frames=%d steps=%d",
@@ -489,7 +490,10 @@ def create_app(
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Authorization", "Content-Type", "X-ChaosEngine-Token"],
     )
-    app.state.chaosengine = state or ChaosEngineState(server_port=DEFAULT_PORT)
+    app.state.chaosengine = state or ChaosEngineState(
+        server_port=DEFAULT_PORT,
+        background_capability_probe=True,
+    )
     app.state.chaosengine_api_token = _resolve_api_token(api_token)
     app.state.chaosengine_allowed_origins = frozenset(allowed_origins)
     # Bearer-token enforcement toggle. Reads from (in order) env override,

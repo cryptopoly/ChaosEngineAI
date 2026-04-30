@@ -231,15 +231,20 @@ export function ImageStudioTab({
       assessImageGenerationSafety({
         width: imageWidth,
         height: imageHeight,
-        device: imageRuntimeStatus.device,
+        device: imageRuntimeStatus.device ?? imageRuntimeStatus.expectedDevice,
         deviceMemoryGb: imageRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedImageVariant?.sizeGb,
+        repo: selectedImageVariant?.repo,
+        ggufFile: selectedImageVariant?.ggufFile,
       }),
     [
       imageWidth,
       imageHeight,
       imageRuntimeStatus.device,
+      imageRuntimeStatus.expectedDevice,
       imageRuntimeStatus.deviceMemoryGb,
+      selectedImageVariant?.repo,
+      selectedImageVariant?.ggufFile,
       selectedImageVariant?.sizeGb,
     ],
   );

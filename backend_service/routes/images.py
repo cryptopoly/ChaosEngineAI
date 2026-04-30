@@ -25,9 +25,51 @@ from backend_service.app import (
     _find_image_output,
     _delete_image_output,
 )
-from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS
+from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS, VIDEO_PROGRESS
 
 router = APIRouter()
+
+
+def _unload_idle_video_runtime_for_image(request: Request, action: str) -> None:
+    """Free resident video diffusion weights before image work starts.
+
+    Image and video pipelines live in separate managers, so loading an image
+    model no longer implicitly releases a previously-loaded video model. That
+    can leave tens of GB resident across Studio switches. If video generation
+    is actively running, fail fast instead of blocking the image request behind
+    a long render.
+    """
+    state = request.app.state.chaosengine
+    if VIDEO_PROGRESS.snapshot().get("active"):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A video generation is still running. Wait for it to finish or cancel it "
+                "before loading an image model."
+            ),
+        )
+    try:
+        runtime = state.video_runtime.capabilities()
+    except Exception:
+        return
+    loaded_repo = str(runtime.get("loadedModelRepo") or "")
+    if not loaded_repo:
+        return
+    try:
+        state.video_runtime.unload()
+    except Exception as exc:
+        state.add_log(
+            "images",
+            "warning",
+            f"Could not unload video model before {action}: {type(exc).__name__}: {exc}",
+        )
+        return
+    state.add_log(
+        "images",
+        "info",
+        f"Unloaded video model {loaded_repo} before {action} to free memory.",
+    )
+    state.add_activity("Video model unloaded", f"Freed memory for {action}")
 
 
 @router.get("/api/images/catalog")
@@ -89,6 +131,7 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
         validation_error = _image_download_validation_error(variant["repo"])
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
+    _unload_idle_video_runtime_for_image(request, "image preload")
     try:
         runtime = state.image_runtime.preload(variant["repo"])
     except RuntimeError as exc:
@@ -185,6 +228,7 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         state.add_log("images", "error", f"Image model not found in catalog or tracked seeds: '{body.modelId}'")
         raise HTTPException(status_code=404, detail=f"Unknown image model '{body.modelId}'. The model isn't in the curated catalog or tracked seeds.")
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    _unload_idle_video_runtime_for_image(request, "image generation")
     try:
         artifacts, runtime = _generate_image_artifacts(body, variant, state.image_runtime)
     except GenerationCancelled:

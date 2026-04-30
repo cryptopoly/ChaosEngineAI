@@ -17,36 +17,23 @@ Then add either ``mlx_lm`` (macOS) or ``vllm`` (Linux/CUDA).
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
 from cache_compression import CacheStrategy
 
 
-_triattention = None
-_vllm = None
-_mlx_lm = None
-try:
-    import triattention as _triattention  # type: ignore[import-untyped]
-except ImportError:
-    pass
-try:
-    import vllm as _vllm  # type: ignore[import-untyped]
-except ImportError:
-    pass
-try:
-    import mlx_lm as _mlx_lm  # type: ignore[import-untyped]
-except ImportError:
-    pass
+def _module_available(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except (ImportError, AttributeError, ValueError):
+        return False
 
 
 def _has_mlx_entrypoint() -> bool:
-    if _triattention is None or _mlx_lm is None:
-        return False
-    try:
-        from triattention.mlx import apply_triattention_mlx  # noqa: F401
-        return True
-    except ImportError:
-        return False
+    # Keep availability checks side-effect free. Importing mlx_lm can touch
+    # MLX/Metal at module load and can abort in headless or sandboxed contexts.
+    return _module_available("triattention") and _module_available("mlx_lm")
 
 
 class TriAttentionStrategy(CacheStrategy):
@@ -63,7 +50,7 @@ class TriAttentionStrategy(CacheStrategy):
         return _has_mlx_entrypoint()
 
     def has_vllm_backend(self) -> bool:
-        return _triattention is not None and _vllm is not None
+        return _module_available("triattention") and _module_available("vllm")
 
     def is_available(self) -> bool:
         return self.has_mlx_backend() or self.has_vllm_backend()
@@ -119,7 +106,7 @@ class TriAttentionStrategy(CacheStrategy):
 
         Must be called BEFORE creating a ``vllm.LLM`` instance.
         """
-        if _triattention is None:
+        if not _module_available("triattention"):
             raise RuntimeError("triattention is not installed.")
         try:
             from triattention.vllm.runtime.integration_monkeypatch import (

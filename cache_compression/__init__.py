@@ -10,6 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import importlib
 import platform
+from threading import RLock
 from typing import Any
 
 
@@ -147,18 +148,27 @@ class CacheStrategyRegistry:
 
     def __init__(self) -> None:
         self._strategies: dict[str, CacheStrategy] = {}
+        self._discovered = False
+        self._lock = RLock()
 
     def register(self, strategy: CacheStrategy) -> None:
         self._strategies[strategy.strategy_id] = strategy
 
     def get(self, strategy_id: str) -> CacheStrategy | None:
+        self._ensure_discovered()
         return self._strategies.get(strategy_id)
 
     def default(self) -> CacheStrategy:
+        self._ensure_discovered()
         return self._strategies["native"]
+
+    def strategies(self) -> list[CacheStrategy]:
+        self._ensure_discovered()
+        return list(self._strategies.values())
 
     def available(self) -> list[dict[str, Any]]:
         """Return a JSON-friendly list for the frontend."""
+        self._ensure_discovered()
         out: list[dict[str, Any]] = []
         for s in self._strategies.values():
             out.append({
@@ -176,11 +186,19 @@ class CacheStrategyRegistry:
             })
         return out
 
+    def _ensure_discovered(self) -> None:
+        if self._discovered:
+            return
+        with self._lock:
+            if not self._discovered:
+                self.discover()
+
     def discover(self) -> list[CacheStrategy]:
         """Import all known adapter modules and return available strategies."""
-        self._strategies = {}
+        with self._lock:
+            self._strategies = {}
 
-        strategy_specs = [
+            strategy_specs = [
             {
                 "id": "native",
                 "name": "Native f16",
@@ -248,31 +266,32 @@ class CacheStrategyRegistry:
                 "supports_fp16_layers": False,
                 "required_llama_binary": "standard",
             },
-        ]
+            ]
 
-        for spec in strategy_specs:
-            try:
-                module = importlib.import_module(spec["module"])
-                cls = getattr(module, spec["class_name"])
-                instance = cls()
-            except Exception as exc:
-                if spec["id"] == "native":
-                    raise
-                instance = _BrokenStrategy(
-                    strategy_id=str(spec["id"]),
-                    name=str(spec["name"]),
-                    bit_range=spec["bit_range"],
-                    default_bits=spec["default_bits"],
-                    supports_fp16_layers=bool(spec["supports_fp16_layers"]),
-                    required_llama_binary=str(spec.get("required_llama_binary", "standard")),
-                    reason=(
-                        f"{spec['name']} could not be loaded in this runtime. "
-                        f"ChaosEngineAI kept the card visible so the UI does not silently collapse to Native f16 only. "
-                        f"Import error: {exc}"
-                    ),
-                )
-            self.register(instance)
-        return list(self._strategies.values())
+            for spec in strategy_specs:
+                try:
+                    module = importlib.import_module(spec["module"])
+                    cls = getattr(module, spec["class_name"])
+                    instance = cls()
+                except Exception as exc:
+                    if spec["id"] == "native":
+                        raise
+                    instance = _BrokenStrategy(
+                        strategy_id=str(spec["id"]),
+                        name=str(spec["name"]),
+                        bit_range=spec["bit_range"],
+                        default_bits=spec["default_bits"],
+                        supports_fp16_layers=bool(spec["supports_fp16_layers"]),
+                        required_llama_binary=str(spec.get("required_llama_binary", "standard")),
+                        reason=(
+                            f"{spec['name']} could not be loaded in this runtime. "
+                            f"ChaosEngineAI kept the card visible so the UI does not silently collapse to Native f16 only. "
+                            f"Import error: {exc}"
+                        ),
+                    )
+                self.register(instance)
+            self._discovered = True
+            return list(self._strategies.values())
 
 
 class _BrokenStrategy(CacheStrategy):
@@ -330,7 +349,6 @@ class _BrokenStrategy(CacheStrategy):
 
 # Module-level singleton — import and use ``registry`` directly.
 registry = CacheStrategyRegistry()
-registry.discover()
 
 
 def apply_diffusion_cache_strategy(

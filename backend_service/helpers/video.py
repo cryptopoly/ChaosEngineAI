@@ -67,8 +67,17 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             # Merge live metadata first so curated fields (releaseDate,
             # familyName) still win when both exist.
             enriched = {**enriched, **live_metadata}
-            enriched["availableLocally"] = _video_repo_runtime_ready(repo) if repo else False
-            enriched["hasLocalData"] = enriched["availableLocally"] or _video_repo_has_any_local_data(repo)
+            validation_error = _video_variant_validation_error(enriched)
+            enriched["availableLocally"] = validation_error is None
+            enriched["hasLocalData"] = (
+                enriched["availableLocally"]
+                or _video_variant_has_any_local_data(enriched)
+            )
+            enriched["localStatusReason"] = (
+                _video_variant_local_status_reason(enriched, validation_error)
+                if enriched["hasLocalData"] and validation_error
+                else None
+            )
             enriched["familyName"] = family["name"]
             release_date = str(variant.get("releaseDate") or "").strip() or None
             enriched["releaseDate"] = release_date
@@ -120,16 +129,16 @@ def _is_video_repo(repo_id: str) -> bool:
 def _video_repo_runtime_ready(repo_id: str) -> bool:
     """True if the local snapshot is complete enough to load.
 
-    Routes the validator by engine: mlx-video repos ship text_encoder /
-    tokenizer / transformer / vae folders without ``model_index.json``,
-    so the diffusers-shape check would always falsely fail for them.
-    Diffusers repos still go through ``validate_local_diffusers_snapshot``.
+    Routes the validator by engine: mlx-video repos ship component folders
+    without ``model_index.json``, so the diffusers-shape check would always
+    falsely fail for them. Diffusers repos still go through
+    ``validate_local_diffusers_snapshot``.
     """
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
     if _is_mlx_video_routed_repo(repo_id):
-        return _validate_mlx_video_snapshot(snapshot_dir) is None
+        return _validate_mlx_video_snapshot(snapshot_dir, repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
 
 
@@ -156,19 +165,151 @@ def _video_repo_has_any_local_data(repo_id: str) -> bool:
 
 
 def _video_variant_available_locally(variant: dict[str, Any]) -> bool:
+    return _video_variant_validation_error(variant) is None
+
+
+def _video_variant_has_any_local_data(variant: dict[str, Any]) -> bool:
+    repo = str(variant.get("repo") or "")
+    if repo and _video_repo_has_any_local_data(repo):
+        return True
+    gguf_repo = str(variant.get("ggufRepo") or "")
+    if gguf_repo and _video_repo_has_any_local_data(gguf_repo):
+        return True
+    return False
+
+
+def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     repo = str(variant.get("repo") or "")
     if not repo:
-        return False
-    return _video_repo_runtime_ready(repo)
+        return "Video model variant is missing its base repo id."
+    repo_error = _video_download_validation_error(repo)
+    if repo_error:
+        return repo_error
+    text_error = _video_variant_mlx_text_components_validation_error(variant)
+    if text_error:
+        return text_error
+    return _video_variant_gguf_validation_error(variant)
+
+
+def _video_variant_mlx_text_components_validation_error(variant: dict[str, Any]) -> str | None:
+    repo = str(variant.get("repo") or "")
+    if not _is_mlx_video_routed_repo(repo):
+        return None
+    snapshot_dir = _hf_repo_snapshot_dir(repo)
+    if snapshot_dir is None:
+        return None
+    missing = _missing_mlx_text_components(Path(snapshot_dir))
+    if not missing:
+        return None
+
+    text_encoder_repo = str(variant.get("textEncoderRepo") or "").strip()
+    if text_encoder_repo and text_encoder_repo != repo:
+        text_snapshot = _hf_repo_snapshot_dir(text_encoder_repo)
+        if text_snapshot is not None and not _missing_mlx_text_components(Path(text_snapshot)):
+            return None
+        return (
+            "The local snapshot is missing shared mlx-video text components: "
+            f"{', '.join(missing)}. Download the shared text encoder "
+            f"({text_encoder_repo}) and retry."
+        )
+
+    return (
+        "The local snapshot is incomplete. Missing mlx-video components: "
+        f"{', '.join(missing)}. Re-download the model and keep ChaosEngineAI "
+        "open until the download completes."
+    )
+
+
+def _video_variant_missing_text_encoder_repo(variant: dict[str, Any]) -> str | None:
+    error = _video_variant_mlx_text_components_validation_error(variant)
+    text_encoder_repo = str(variant.get("textEncoderRepo") or "").strip()
+    if error and text_encoder_repo:
+        return text_encoder_repo
+    return None
+
+
+def _video_variant_local_status_reason(
+    variant: dict[str, Any],
+    validation_error: str | None,
+) -> str | None:
+    if not validation_error:
+        return None
+    gguf_file = str(variant.get("ggufFile") or "").strip()
+    gguf_repo = str(variant.get("ggufRepo") or "").strip()
+    if gguf_file and gguf_repo and "GGUF transformer file is missing" in validation_error:
+        return f"Base model installed; missing GGUF transformer: {gguf_repo}/{gguf_file}."
+
+    prefix = "The local snapshot is incomplete. Missing mlx-video components: "
+    if validation_error.startswith(prefix):
+        missing = validation_error[len(prefix):].split(". Re-download", 1)[0]
+        return f"Missing MLX components: {missing}."
+
+    shared_prefix = "The local snapshot is missing shared mlx-video text components: "
+    if validation_error.startswith(shared_prefix):
+        missing = validation_error[len(shared_prefix):].split(". Download", 1)[0]
+        text_encoder_repo = str(variant.get("textEncoderRepo") or "").strip()
+        source = f" from {text_encoder_repo}" if text_encoder_repo else ""
+        return f"Missing shared MLX text components{source}: {missing}."
+
+    if validation_error.startswith("The selected GGUF transformer resolved to a cache path"):
+        return f"GGUF transformer cache path is invalid: {gguf_repo}/{gguf_file}."
+
+    return validation_error
+
+
+def _video_variant_gguf_validation_error(variant: dict[str, Any]) -> str | None:
+    gguf_file = str(variant.get("ggufFile") or "").strip()
+    if not gguf_file:
+        return None
+    gguf_repo = str(variant.get("ggufRepo") or "").strip()
+    if not gguf_repo:
+        return (
+            f"{variant.get('name') or 'This GGUF video variant'} is missing "
+            "its GGUF repository metadata."
+        )
+    try:
+        from huggingface_hub import hf_hub_download  # type: ignore
+
+        local_path = hf_hub_download(
+            repo_id=gguf_repo,
+            filename=gguf_file,
+            local_files_only=True,
+        )
+    except Exception:
+        return (
+            "The base diffusers snapshot is installed, but the selected GGUF "
+            f"transformer file is missing: {gguf_repo}/{gguf_file}. Download "
+            "the GGUF variant before generating so the app does not fall back "
+            "to the full BF16 transformer."
+        )
+    if not Path(local_path).exists():
+        return (
+            "The selected GGUF transformer resolved to a cache path that does "
+            f"not exist: {gguf_repo}/{gguf_file}. Retry the GGUF download."
+        )
+    return None
 
 
 def _video_download_repo_ids() -> set[str]:
-    return {
+    repos = {
         str(variant.get("repo") or "")
         for family in VIDEO_MODEL_FAMILIES
         for variant in family["variants"]
         if str(variant.get("repo") or "")
     }
+    repos.update(
+        str(variant.get("ggufRepo") or "")
+        for family in VIDEO_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("ggufRepo") or "")
+    )
+    repos.update(
+        str(variant.get("textEncoderRepo") or "")
+        for family in VIDEO_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("textEncoderRepo") or "")
+    )
+    return repos
 
 
 # Diffusers pipelines only need the standard per-component folders
@@ -202,9 +343,19 @@ _VIDEO_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
 _VIDEO_MLX_ALLOW_PATTERNS: list[str] = [
     "text_encoder/**",
     "tokenizer/**",
+    "text_projections/**",
+    "audio_vae/**",
     "transformer/**",
     "vae/**",
+    "vocoder/**",
     "*spatial-upscaler*.safetensors",
+    "*.md",
+    "LICENSE*",
+]
+
+_VIDEO_MLX_TEXT_ENCODER_ALLOW_PATTERNS: list[str] = [
+    "text_encoder/**",
+    "tokenizer/**",
     "*.md",
     "LICENSE*",
 ]
@@ -236,11 +387,10 @@ def _video_download_validation_error(repo_id: str) -> str | None:
             "Retry the download and make sure the backend can access Hugging Face."
         )
     # mlx-video routed repos (e.g. ``prince-canuma/LTX-2-*``) ship MLX
-    # layout — text_encoder / tokenizer / transformer / vae folders
-    # without ``model_index.json``. Don't apply the diffusers-shape
-    # validator to them; check for the MLX component folders instead.
+    # layouts without ``model_index.json``. Don't apply the diffusers-shape
+    # validator to them; check for the expected MLX component folders instead.
     if _is_mlx_video_routed_repo(repo_id):
-        return _validate_mlx_video_snapshot(snapshot_dir)
+        return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
 
 
@@ -261,16 +411,54 @@ def _is_mlx_video_routed_repo(repo_id: str) -> bool:
 # diffusers layout — no model_index.json. Lifted from the ``prince-canuma/
 # LTX-2-distilled`` repo tree as the canonical shape; bump as new mlx-video
 # families with different layouts come online.
-_MLX_VIDEO_REQUIRED_COMPONENTS: tuple[str, ...] = (
+_MLX_VIDEO_LTX2_REQUIRED_COMPONENTS: tuple[str, ...] = (
     "text_encoder",
     "tokenizer",
+    "text_projections",
     "transformer",
     "vae",
 )
 
+_MLX_VIDEO_LTX23_REQUIRED_COMPONENTS: tuple[str, ...] = (
+    "audio_vae",
+    "text_projections",
+    "transformer",
+    "vae",
+    "vocoder",
+)
 
-def _validate_mlx_video_snapshot(snapshot_dir: str) -> str | None:
-    """Return ``None`` if the snapshot has the four MLX component folders.
+
+def _mlx_video_required_components(repo_id: str | None = None) -> tuple[str, ...]:
+    repo_key = str(repo_id or "").lower()
+    if "ltx-2.3" in repo_key:
+        return _MLX_VIDEO_LTX23_REQUIRED_COMPONENTS
+    return _MLX_VIDEO_LTX2_REQUIRED_COMPONENTS
+
+
+def _missing_mlx_text_components(root: Path) -> list[str]:
+    missing: list[str] = []
+    checks = {
+        "text_encoder": (
+            root / "text_encoder" / "config.json",
+            root / "text_encoder" / "model.safetensors.index.json",
+        ),
+        "tokenizer": (
+            root / "tokenizer" / "tokenizer.json",
+            root / "tokenizer" / "tokenizer.model",
+        ),
+    }
+    for component, required_paths in checks.items():
+        component_dir = root / component
+        if not component_dir.is_dir():
+            missing.append(component)
+            continue
+        if not all(path.exists() for path in required_paths):
+            missing.append(component)
+    return missing
+
+
+def _validate_mlx_video_snapshot(snapshot_dir: str, repo_id: str | None = None) -> str | None:
+    """Return ``None`` if the snapshot has the required MLX component folders.
 
     Mirrors the contract of ``validate_local_diffusers_snapshot`` so the
     callers can swap one for the other without restructuring the result
@@ -284,7 +472,7 @@ def _validate_mlx_video_snapshot(snapshot_dir: str) -> str | None:
             "Re-download the model."
         )
     missing: list[str] = []
-    for component in _MLX_VIDEO_REQUIRED_COMPONENTS:
+    for component in _mlx_video_required_components(repo_id):
         component_dir = root / component
         if not component_dir.is_dir():
             missing.append(component)

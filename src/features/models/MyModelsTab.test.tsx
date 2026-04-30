@@ -118,8 +118,8 @@ describe("MyModelsTab", () => {
 
     expect(markup).toContain("Paused 36%");
     expect(markup).toContain("23.9 / 67.0 GB downloaded.");
-    expect(markup).toContain("RESUME");
-    expect(markup).toContain("DELETE");
+    expect(markup).toContain("aria-label=\"Resume download\"");
+    expect(markup).toContain("aria-label=\"Delete download\"");
     expect(markup).not.toContain("BROKEN");
   });
 
@@ -148,8 +148,8 @@ describe("MyModelsTab", () => {
 
     expect(markup).toContain("Downloading 13%");
     expect(markup).toContain("8.4 / 67.0 GB downloaded.");
-    expect(markup).toContain("PAUSE");
-    expect(markup).toContain("CANCEL");
+    expect(markup).toContain("aria-label=\"Pause download\"");
+    expect(markup).toContain("aria-label=\"Cancel download\"");
     expect(markup).not.toContain("BROKEN");
     expect(markup).not.toContain("No .gguf, .safetensors, or pytorch weights found");
   });
@@ -170,8 +170,8 @@ describe("MyModelsTab", () => {
 
     expect(markup).toContain("BROKEN");
     expect(markup).toContain("No .gguf, .safetensors, or pytorch weights found in HF cache entry");
-    expect(markup).toContain("RETRY");
-    expect(markup).toContain("DELETE");
+    expect(markup).toContain("aria-label=\"Retry download\"");
+    expect(markup).toContain("aria-label=\"Delete download\"");
     expect(markup).not.toContain("CHAT");
     expect(markup).not.toContain("SERVER");
   });
@@ -213,8 +213,8 @@ describe("MyModelsTab", () => {
     });
 
     expect(markup).toContain("Downloading 3%");
-    expect(markup).toContain("PAUSE");
-    expect(markup).toContain("CANCEL");
+    expect(markup).toContain("aria-label=\"Pause download\"");
+    expect(markup).toContain("aria-label=\"Cancel download\"");
     // Sentinel path should not leak into the reveal button or expanded detail.
     expect(markup).not.toContain("download://Qwen/Qwen3.6-35B-A3B");
     // Reveal button should be hidden for rows with no real file on disk.
@@ -253,8 +253,8 @@ describe("MyModelsTab", () => {
 
     expect(markup).toContain("Downloading 1%");
     expect(markup).toContain("2.5 / 494.1 GB downloaded.");
-    expect(markup).toContain("PAUSE");
-    expect(markup).toContain("CANCEL");
+    expect(markup).toContain("aria-label=\"Pause download\"");
+    expect(markup).toContain("aria-label=\"Cancel download\"");
     expect(markup).not.toContain("CHAT");
     expect(markup).not.toContain("SERVER");
   });

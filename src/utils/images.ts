@@ -135,7 +135,7 @@ function parseRecommendedImageResolution(value: string | null | undefined): { wi
   return { width, height };
 }
 
-function imageVariantSizeForMemoryEstimate(variant: ImageModelVariant): number {
+export function imageVariantSizeForMemoryEstimate(variant: ImageModelVariant): number {
   const candidates = [
     variant.coreWeightsGb,
     variant.sizeGb,
@@ -164,6 +164,10 @@ export function imageDiscoverMemoryEstimate(variant: ImageModelVariant): ImageDi
     // computes the actual risk against the live backend/device.
     deviceMemoryGb: 512,
     baseModelFootprintGb,
+    runtimeFootprintGb: variant.runtimeFootprintGb,
+    runtimeFootprintMpsGb: variant.runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb: variant.runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb: variant.runtimeFootprintCpuGb,
     repo: variant.repo,
     ggufFile: variant.ggufFile,
   });
@@ -248,6 +252,13 @@ function isFluxRepo(repo?: string | null): boolean {
   return (repo ?? "").toLowerCase().includes("flux");
 }
 
+function runsOnCpuForMps(repo?: string | null): boolean {
+  // image_runtime.py intentionally routes Qwen-Image away from MPS because
+  // the naive fp16 MPS path can produce black outputs. Keep the warning and
+  // capacity math aligned with the backend's actual execution device.
+  return (repo ?? "").toLowerCase().includes("qwen-image");
+}
+
 function estimateResidentModelGb(
   baseGb: number,
   device: ImageEffectiveDevice,
@@ -257,6 +268,18 @@ function estimateResidentModelGb(
   if (!(baseGb > 0) || !Number.isFinite(baseGb)) return 0;
   const flux = isFluxRepo(repo);
   const hasExplicitQuant = Boolean(ggufFile);
+  if (flux && hasExplicitQuant) {
+    // GGUF image variants quantize only the FLUX transformer. Diffusers still
+    // loads the base repo's text encoders + VAE, and on Apple Silicon the
+    // Python process includes Metal allocator/watermark overhead. A real
+    // FLUX.1 Dev Q4_K_M run on a 64 GB M-series Mac sits around 43 GB in
+    // Activity Monitor despite the GGUF transformer being ~7 GB, so include
+    // that fixed pipeline residency rather than showing the transformer size
+    // as if it were the whole model.
+    if (device === "mps") return baseGb + 34.5;
+    if (device === "cuda") return baseGb + 11.5;
+    return baseGb + 18;
+  }
   if (flux && !hasExplicitQuant) {
     // Mirrors image_runtime.py:
     // - MPS quantizes FLUX's transformer to int8wo before pipeline load.
@@ -267,6 +290,26 @@ function estimateResidentModelGb(
   }
   const factor = device === "mps" ? 1.15 : device === "cpu" ? 1.25 : 1.05;
   return baseGb * factor;
+}
+
+function positiveRuntimeFootprint(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function runtimeFootprintForDevice(opts: {
+  device: ImageEffectiveDevice;
+  runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
+}): number | null {
+  if (opts.device === "mps") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintMpsGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  if (opts.device === "cuda") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintCudaGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  return positiveRuntimeFootprint(opts.runtimeFootprintCpuGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
 }
 
 /**
@@ -288,22 +331,41 @@ export function assessImageGenerationSafety(opts: {
   device: string | null | undefined;
   deviceMemoryGb?: number | null;
   baseModelFootprintGb?: number | null;
+  runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
   repo?: string | null;
   ggufFile?: string | null;
 }): ImageGenerationSafety {
-  const { width, height, device, deviceMemoryGb, baseModelFootprintGb, repo, ggufFile } = opts;
+  const {
+    width,
+    height,
+    device,
+    deviceMemoryGb,
+    baseModelFootprintGb,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+    repo,
+    ggufFile,
+  } = opts;
 
   const normalised = (device ?? "").toLowerCase();
   const isCuda = normalised.startsWith("cuda");
   const isCpu = normalised === "cpu";
   const isMps = normalised === "mps";
-  const effectiveDevice: ImageEffectiveDevice = isCuda
+  let effectiveDevice: ImageEffectiveDevice = isCuda
     ? "cuda"
     : isCpu
       ? "cpu"
       : isMps
         ? "mps"
         : inferDeviceFromHostPlatform();
+  if (effectiveDevice === "mps" && runsOnCpuForMps(repo)) {
+    effectiveDevice = "cpu";
+  }
   const effectiveDeviceWasInferred = !isCuda && !isCpu && !isMps;
 
   const fallback =
@@ -322,7 +384,17 @@ export function assessImageGenerationSafety(opts: {
     baseModelFootprintGb != null && Number.isFinite(baseModelFootprintGb) && baseModelFootprintGb > 0
       ? baseModelFootprintGb
       : 0;
-  const modelFootprintGb = estimateResidentModelGb(baseFootprint, effectiveDevice, repo, ggufFile);
+  const runtimeOverrideGb = runtimeFootprintForDevice({
+    device: effectiveDevice,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+  });
+  const modelFootprintGb =
+    runtimeOverrideGb != null
+      ? runtimeOverrideGb
+      : estimateResidentModelGb(baseFootprint, effectiveDevice, repo, ggufFile);
 
   if (
     !Number.isFinite(width)

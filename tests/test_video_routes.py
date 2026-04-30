@@ -192,6 +192,16 @@ class VideoCatalogRouteTests(unittest.TestCase):
                 # availableLocally should be False on a fresh test env (no snapshots).
                 self.assertEqual(variant.get("availableLocally"), False)
                 self.assertEqual(variant.get("familyName"), family["name"])
+                runtime_fields = (
+                    variant.get("runtimeFootprintGb"),
+                    variant.get("runtimeFootprintMpsGb"),
+                    variant.get("runtimeFootprintCudaGb"),
+                    variant.get("runtimeFootprintCpuGb"),
+                )
+                self.assertTrue(
+                    any(float(value or 0) > 0 for value in runtime_fields),
+                    f"{variant.get('id')} missing runtime footprint metadata",
+                )
 
 
 class VideoRuntimeRouteTests(unittest.TestCase):
@@ -758,6 +768,15 @@ class VideoDownloadRouteTests(unittest.TestCase):
         download = response.json()["download"]
         self.assertEqual(download["state"], "not_found")
 
+    def test_cancel_accepts_shared_gguf_repo(self):
+        response = self.client.post(
+            "/api/video/download/cancel",
+            json={"repo": "city96/LTX-Video-gguf"},
+        )
+        self.assertEqual(response.status_code, 200)
+        download = response.json()["download"]
+        self.assertEqual(download["state"], "not_found")
+
     def test_delete_rejects_repo_outside_video_catalog(self):
         response = self.client.post(
             "/api/video/download/delete",
@@ -769,6 +788,15 @@ class VideoDownloadRouteTests(unittest.TestCase):
         response = self.client.post(
             "/api/video/download/delete",
             json={"repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
+        )
+        self.assertEqual(response.status_code, 200)
+        result = response.json()["result"]
+        self.assertEqual(result["state"], "not_found")
+
+    def test_delete_accepts_shared_gguf_repo(self):
+        response = self.client.post(
+            "/api/video/download/delete",
+            json={"repo": "city96/LTX-Video-gguf"},
         )
         self.assertEqual(response.status_code, 200)
         result = response.json()["result"]
@@ -902,6 +930,42 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
 
 
 class VideoGgufVariantValidationTests(unittest.TestCase):
+    def test_gguf_partial_local_data_reports_shared_repo_delete_target(self):
+        from backend_service.helpers.video import _video_model_payloads
+
+        with tempfile.TemporaryDirectory() as tmp:
+            gguf_snapshot = Path(tmp) / "gguf"
+            gguf_snapshot.mkdir()
+            (gguf_snapshot / "partial.gguf").write_bytes(b"partial")
+
+            def snapshot(repo: str):
+                if repo == "city96/LTX-Video-gguf":
+                    return gguf_snapshot
+                return None
+
+            with mock.patch(
+                "backend_service.helpers.video._hf_repo_snapshot_dir",
+                side_effect=snapshot,
+            ), mock.patch(
+                "backend_service.helpers.video._image_repo_live_metadata",
+                return_value={},
+            ):
+                families = _video_model_payloads([])
+
+        variants = [
+            variant
+            for family in families
+            for variant in family["variants"]
+            if variant["id"] == "Lightricks/LTX-Video-gguf-q6k"
+        ]
+        self.assertEqual(len(variants), 1)
+        variant = variants[0]
+        self.assertTrue(variant["hasLocalData"])
+        self.assertFalse(variant["availableLocally"])
+        self.assertEqual(variant["localDataRepos"], ["city96/LTX-Video-gguf"])
+        self.assertEqual(variant["primaryLocalRepo"], "city96/LTX-Video-gguf")
+        self.assertEqual(variant["localPath"], str(gguf_snapshot))
+
     def test_gguf_variant_requires_cached_transformer_file(self):
         from backend_service.helpers.video import _video_variant_validation_error
 

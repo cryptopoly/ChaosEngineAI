@@ -324,6 +324,7 @@ _IMAGE_MODEL_KEYWORDS = (
     "stable-diffusion", "sdxl", "flux.", "flux1", "flux-",
     "dall-e", "imagen", "kandinsky", "wuerstchen",
     "diffusion-pipe", "qwen-image", "qwen/qwen-image",
+    "sana_sprint", "sana-sprint", "sana sprint", "sana_1600m", "sana-1600m",
 )
 
 
@@ -348,6 +349,7 @@ _VIDEO_MODEL_KEYWORDS = (
     "mochi-1",
     "cogvideo",
     "ltx-video",
+    "ltx-2",
     "zeroscope",
     "animatediff",
 )

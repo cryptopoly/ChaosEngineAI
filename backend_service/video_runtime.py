@@ -539,15 +539,15 @@ def _enhance_prompt(repo: str, prompt: str) -> tuple[str, str | None]:
 # pressure. Numbers come from the catalog ``sizeGb`` estimates for the
 # stock variants; GGUF Q4/Q6/Q8 variants override at the call site.
 _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
-    "Lightricks/LTX-Video": 14.0,
+    "Lightricks/LTX-Video": 10.0,
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 9.0,
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
-    "genmo/mochi-1-preview": 20.0,
-    "THUDM/CogVideoX-2b": 10.0,
-    "THUDM/CogVideoX-5b": 18.0,
+    "genmo/mochi-1-preview": 22.0,
+    "THUDM/CogVideoX-2b": 19.0,
+    "THUDM/CogVideoX-5b": 33.0,
 }
 
 # GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as

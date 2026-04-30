@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { DownloadStatus } from "../../api";
 import { Panel } from "../../components/Panel";
+import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
+import type { ModelStatusKind } from "../../components/ModelActionIcons";
 import type {
   LibraryItem,
   ModelVariant,
@@ -346,6 +348,7 @@ export function MyModelsTab({
               <button className="sort-header" type="button" onClick={() => toggleLibrarySort("ram")}>RAM{sortIndicator("ram")}</button>
               <button className="sort-header" type="button" onClick={() => toggleLibrarySort("compressed")}>Compressed{sortIndicator("compressed")}</button>
               <button className="sort-header" type="button" onClick={() => toggleLibrarySort("context")}>Context{sortIndicator("context")}</button>
+              <span className="sort-header">Status</span>
               <span className="sort-header"></span>
             </div>
             <div className="library-rows">
@@ -371,11 +374,19 @@ export function MyModelsTab({
                 const hasDownloadOverlay = Boolean(isDownloading || isPaused || isDownloadFailed);
                 const showBroken = Boolean(item.broken && !hasDownloadOverlay);
                 const canRetryBrokenRepo = Boolean(showBroken && repo);
-                const downloadActionLabel = isDownloadFailed ? "RETRY" : "RESUME";
                 // Rows synthesised from an in-flight download use a
                 // ``download://<repo>`` sentinel path — they have no real
                 // file on disk yet, so hide path-only actions.
                 const isSyntheticDownloadRow = item.path.startsWith("download://");
+                const rowStatus: { kind: ModelStatusKind; label: string; detail?: string | null } = isDownloading && downloadState
+                  ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                  : isPaused && downloadState
+                    ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                    : isDownloadFailed && downloadState
+                      ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
+                      : showBroken
+                        ? { kind: "incomplete", label: "Incomplete", detail: item.brokenReason ?? "Incomplete or broken" }
+                        : { kind: "installed", label: "Installed" };
                 const wrapperClassName = [
                   "library-item-wrap",
                   isExpanded ? "expanded" : "",
@@ -395,12 +406,7 @@ export function MyModelsTab({
                         <div className="library-item-meta-row">
                           <span className="badge muted">{sourceKind}</span>
                           {hasDownloadOverlay && downloadState ? (
-                            <span
-                              className={`badge ${isDownloading ? "accent" : "warning"}`}
-                              title={downloadSizeTooltip(downloadState)}
-                            >
-                              {isDownloadFailed ? "DOWNLOAD FAILED" : downloadProgressLabel(downloadState)}
-                            </span>
+                            <span className="badge muted" title={downloadSizeTooltip(downloadState)}>Active download</span>
                           ) : null}
                         </div>
                         {matchedVariant ? renderCapabilityIcons(matchedVariant.capabilities, 5) : null}
@@ -429,59 +435,42 @@ export function MyModelsTab({
                         {estimatedCompressedGb != null ? `~${number(estimatedCompressedGb)} GB` : "?"}
                       </span>
                       <span>{matchedVariant?.contextWindow ?? ""}</span>
+                      <span className="library-row-status">
+                        <StatusIcon status={rowStatus.kind} label={rowStatus.label} detail={rowStatus.detail} />
+                      </span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
                         {hasDownloadOverlay && repo ? (
                           <>
                             {isDownloading ? (
-                              <button className="secondary-button" type="button" onClick={() => onCancelModelDownload(repo)}>PAUSE</button>
+                              <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(repo)} />
                             ) : (
-                              <button className="primary-button" type="button" onClick={() => onDownloadModel(repo)}>{downloadActionLabel}</button>
+                              <IconActionButton icon={isDownloadFailed ? "retry" : "resume"} label={isDownloadFailed ? "Retry download" : "Resume download"} buttonStyle="primary" onClick={() => onDownloadModel(repo)} />
                             )}
-                            <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(repo)}>
-                              {isDownloading ? "CANCEL" : "DELETE"}
-                            </button>
+                            <IconActionButton icon={isDownloading ? "cancel" : "delete"} label={isDownloading ? "Cancel download" : "Delete download"} danger onClick={() => onDeleteModelDownload(repo)} />
                           </>
                         ) : canRetryBrokenRepo ? (
                           <>
-                            <button className="primary-button" type="button" onClick={() => onDownloadModel(repo!)}>
-                              RETRY
-                            </button>
-                            <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(repo!)}>
-                              DELETE
-                            </button>
+                            <IconActionButton icon="retry" label="Retry download" buttonStyle="primary" onClick={() => onDownloadModel(repo!)} />
+                            <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(repo!)} />
                           </>
                         ) : (
                           <>
                             {!item.broken && displayFormat !== "MLX" ? (
-                              <button className="primary-button action-convert" type="button" onClick={() => onPrepareLibraryConversion(item)}>CONVERT</button>
+                              <IconActionButton icon="convert" label="Convert model" buttonStyle="primary" className="action-convert" onClick={() => onPrepareLibraryConversion(item)} />
                             ) : null}
                             {!item.broken ? (
                               <>
-                                <button className="primary-button action-chat" type="button" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)}>CHAT</button>
-                                <button className="primary-button action-server" type="button" onClick={() => onOpenModelSelector("server", `library:${item.path}`)}>SERVER</button>
+                                <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)} />
+                                <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", `library:${item.path}`)} />
                               </>
                             ) : null}
                           </>
                         )}
                         {!isSyntheticDownloadRow ? (
-                          <button className="secondary-button icon-button" type="button" title={fileRevealLabel} onClick={() => onRevealPath(item.path)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                              <polyline points="15 3 21 3 21 9" />
-                              <line x1="10" y1="14" x2="21" y2="3" />
-                            </svg>
-                          </button>
+                          <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(item.path)} />
                         ) : null}
                         {!hasDownloadOverlay ? (
-                          <button className="secondary-button icon-button danger-button" type="button" title="Delete model" onClick={() => onDeleteModel(item)}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                            </svg>
-                          </button>
+                          <IconActionButton icon="delete" label="Delete model" danger onClick={() => onDeleteModel(item)} />
                         ) : null}
                       </div>
                     </div>

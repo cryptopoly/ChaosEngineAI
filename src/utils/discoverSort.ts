@@ -6,6 +6,9 @@ import type { DiscoverSort } from "../types/image";
 // level. Every field is optional; missing fields sink to the bottom
 // of the sorted list.
 interface DiscoverSortable {
+  name?: string | null;
+  provider?: string | null;
+  taskSupport?: string[] | null;
   releaseDate?: string | null;
   createdAt?: string | null;
   lastModified?: string | null;
@@ -16,6 +19,9 @@ interface DiscoverSortable {
   coreWeightsGb?: number | null;
   onDiskGb?: number | null;
   runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
 }
 
 function releaseSortKey(variant: DiscoverSortable): string {
@@ -50,7 +56,15 @@ function sizeSortKey(variant: DiscoverSortable): number | null {
 }
 
 function ramSortKey(variant: DiscoverSortable): number | null {
+  const runtimeValues = [
+    variant.runtimeFootprintGb,
+    variant.runtimeFootprintMpsGb,
+    variant.runtimeFootprintCudaGb,
+    variant.runtimeFootprintCpuGb,
+  ].filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+  const runtimeMax = runtimeValues.length > 0 ? Math.max(...runtimeValues) : null;
   return firstPositiveNumber([
+    runtimeMax,
     variant.runtimeFootprintGb,
     variant.coreWeightsGb,
     variant.sizeGb,
@@ -68,11 +82,28 @@ function compareNullableNumberDesc(left: number | null, right: number | null): n
   return 0;
 }
 
+function taskSortKey(variant: DiscoverSortable): string {
+  return (variant.taskSupport ?? []).join(" ");
+}
+
 export function compareDiscoverVariants(
   sort: DiscoverSort,
   a: DiscoverSortable,
   b: DiscoverSortable,
 ): number {
+  if (sort === "name") {
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  }
+  if (sort === "provider") {
+    const diff = (a.provider ?? "").localeCompare(b.provider ?? "");
+    if (diff !== 0) return diff;
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  }
+  if (sort === "tasks") {
+    const diff = taskSortKey(a).localeCompare(taskSortKey(b));
+    if (diff !== 0) return diff;
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  }
   if (sort === "size") {
     const diff = compareNullableNumberDesc(sizeSortKey(a), sizeSortKey(b));
     if (diff !== 0) return diff;

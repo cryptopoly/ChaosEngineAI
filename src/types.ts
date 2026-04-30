@@ -185,6 +185,23 @@ export interface LaunchPreferences {
   treeBudget: number;
 }
 
+export interface StrategyInstallLogStep {
+  id: string;
+  label: string;
+  command: string;
+  status: "running" | "success" | "failed";
+  output: string;
+}
+
+export interface StrategyInstallLog {
+  strategyId: string;
+  label: string;
+  status: "running" | "success" | "failed";
+  startedAt: string;
+  finishedAt?: string | null;
+  steps: StrategyInstallLogStep[];
+}
+
 export interface RemoteProvider {
   id: string;
   label: string;
@@ -723,6 +740,14 @@ export interface ImageModelVariant {
   styleTags: string[];
   taskSupport: ImageModelTask[];
   sizeGb: number;
+  /** Resident peak memory at runtime. Useful when on-disk / quantized
+   * transformer size materially understates the full pipeline footprint
+   * (for example FLUX GGUF: GGUF covers the transformer only, while T5/CLIP,
+   * VAE, and runtime buffers still dominate the Python process). */
+  runtimeFootprintGb?: number;
+  runtimeFootprintMpsGb?: number;
+  runtimeFootprintCudaGb?: number;
+  runtimeFootprintCpuGb?: number;
   recommendedResolution: string;
   note: string;
   availableLocally: boolean;
@@ -793,11 +818,16 @@ export interface VideoModelVariant {
    * sharded safetensors and tokenizer caches. ``undefined`` falls back to
    * the legacy ``sizeGb × 1.4`` heuristic. */
   runtimeFootprintGb?: number;
+  runtimeFootprintMpsGb?: number;
+  runtimeFootprintCudaGb?: number;
+  runtimeFootprintCpuGb?: number;
   recommendedResolution: string;
   defaultDurationSeconds: number;
   note: string;
   availableLocally: boolean;
   hasLocalData?: boolean;
+  localDataRepos?: string[];
+  primaryLocalRepo?: string | null;
   localStatusReason?: string | null;
   estimatedGenerationSeconds: number | null;
   onDiskBytes?: number | null;

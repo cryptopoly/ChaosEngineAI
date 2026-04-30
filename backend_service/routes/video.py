@@ -16,6 +16,7 @@ from backend_service.helpers.video import (
     _VIDEO_MLX_TEXT_ENCODER_ALLOW_PATTERNS,
     _find_video_variant,
     _find_video_variant_by_repo,
+    _is_video_download_repo,
     _is_video_repo,
     _video_download_repo_ids,
     _video_download_validation_error,
@@ -407,7 +408,7 @@ def video_download_status(request: Request) -> dict[str, Any]:
 @router.post("/api/video/download/cancel")
 def cancel_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    if not _is_video_repo(body.repo):
+    if not _is_video_download_repo(body.repo):
         raise HTTPException(
             status_code=404,
             detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
@@ -418,7 +419,7 @@ def cancel_video_download(request: Request, body: DownloadModelRequest) -> dict[
 @router.post("/api/video/download/delete")
 def delete_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    if not _is_video_repo(body.repo):
+    if not _is_video_download_repo(body.repo):
         raise HTTPException(
             status_code=404,
             detail=f"Repo '{body.repo}' is not in the curated video model catalog.",

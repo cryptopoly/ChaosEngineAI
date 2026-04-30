@@ -494,6 +494,9 @@ export function VideoStudioTab({
         deviceMemoryGb: selectedVideoRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedVideoVariant?.sizeGb,
         runtimeFootprintGb: selectedVideoVariant?.runtimeFootprintGb,
+        runtimeFootprintMpsGb: selectedVideoVariant?.runtimeFootprintMpsGb,
+        runtimeFootprintCudaGb: selectedVideoVariant?.runtimeFootprintCudaGb,
+        runtimeFootprintCpuGb: selectedVideoVariant?.runtimeFootprintCpuGb,
       }),
     [
       videoWidth,
@@ -503,6 +506,9 @@ export function VideoStudioTab({
       selectedVideoRuntimeStatus.deviceMemoryGb,
       selectedVideoVariant?.sizeGb,
       selectedVideoVariant?.runtimeFootprintGb,
+      selectedVideoVariant?.runtimeFootprintMpsGb,
+      selectedVideoVariant?.runtimeFootprintCudaGb,
+      selectedVideoVariant?.runtimeFootprintCpuGb,
     ],
   );
 

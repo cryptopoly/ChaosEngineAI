@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { LaunchPreferences, PreviewMetrics } from "../types";
+import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
@@ -121,6 +121,7 @@ interface RuntimeControlsProps {
   availableCacheStrategies?: CacheStrategyOption[];
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
   dflashInfo?: DFlashInfo;
   /** Backend of the selected model (e.g. "mlx", "gguf", "vllm", "auto"). Used for compatibility validation. */
   selectedBackend?: string | null;
@@ -131,6 +132,44 @@ interface RuntimeControlsProps {
   turboInstalled?: boolean;
   /** Whether an update is available for llama-server-turbo. */
   turboUpdateAvailable?: boolean;
+}
+
+function StrategyInstallTerminal({
+  label,
+  log,
+}: {
+  label: string;
+  log?: StrategyInstallLog;
+}) {
+  const status = log?.status ?? "idle";
+  const summaryStatus =
+    status === "running" ? "running" :
+    status === "success" ? "complete" :
+    status === "failed" ? "failed" :
+    "ready";
+  const lines = log?.steps.length
+    ? log.steps.map((step) => [
+      `$ ${step.command}`,
+      `[${step.status.toUpperCase()}] ${step.label}`,
+      step.output.trim() || "(no output)",
+    ].join("\n")).join("\n\n")
+    : "No install output yet. Run the installer to capture stdout and stderr here.";
+
+  return (
+    <details className={`strategy-install-terminal strategy-install-terminal--${status}`}>
+      <summary className="strategy-install-terminal-summary">
+        <span>{label} install terminal</span>
+        <span className={`strategy-install-terminal-status strategy-install-terminal-status--${status}`}>
+          {summaryStatus}
+        </span>
+      </summary>
+      <div className="strategy-install-terminal-meta">
+        {log?.startedAt ? <span>Started {log.startedAt}</span> : <span>Collapsed by default. Open after an install attempt to inspect failures.</span>}
+        {log?.finishedAt ? <span>Finished {log.finishedAt}</span> : null}
+      </div>
+      <pre className="strategy-install-terminal-output">{lines}</pre>
+    </details>
+  );
 }
 
 export function RuntimeControls({
@@ -147,6 +186,7 @@ export function RuntimeControls({
   availableCacheStrategies,
   onInstallPackage,
   installingPackage,
+  installLogs,
   dflashInfo,
   selectedBackend,
   selectedModelRef,
@@ -173,6 +213,8 @@ export function RuntimeControls({
   const dflashUnavailableReason = dflashSupport.reason;
   const ddtreeAvailable = dflashSupport.ddtreeAvailable;
   const canInstallDflashForModel = dflashSupport.modelSupported === true;
+  const dflashInstallLog = installLogs?.["dflash-mlx"] ?? installLogs?.dflash;
+  const showDflashInstallTerminal = Boolean(dflashInstallLog || (!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage));
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
@@ -358,6 +400,12 @@ export function RuntimeControls({
                           {installingPackage === strategy.id ? "Updating..." : "Update available"}
                         </button>
                       ) : null}
+                      {info.autoInstallPackage || installLogs?.[strategy.id] ? (
+                        <StrategyInstallTerminal
+                          label={strategy.name}
+                          log={installLogs?.[strategy.id]}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -523,6 +571,9 @@ export function RuntimeControls({
               </div>
             ) : null}
           </div>
+        ) : null}
+        {showDflashInstallTerminal ? (
+          <StrategyInstallTerminal label="DFlash" log={dflashInstallLog} />
         ) : null}
         {settings.speculativeDecoding && dflashAvailable ? (
           <div className="slider-row" style={{ marginTop: 6 }}>

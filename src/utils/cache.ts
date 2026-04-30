@@ -43,3 +43,39 @@ export function compareOptionalNumber(left: number | null | undefined, right: nu
   if (!leftKnown && rightKnown) return 1;
   return 0;
 }
+
+export interface CacheFitStatus {
+  label: string;
+  className: string;
+  advice: string | null;
+}
+
+export function getCacheFitStatus(
+  optimizedCacheGb: number,
+  diskSizeGb: number,
+  totalGb: number,
+  bits: number,
+): CacheFitStatus {
+  // Use total system memory because loading a new chat model unloads the old
+  // one. Keep a reserve for the OS and other desktop apps.
+  const usable = totalGb > 0 ? totalGb * 0.80 : 0;
+  if (usable <= 0) return { label: "May not fit", className: "warning", advice: null };
+
+  if (diskSizeGb > usable) {
+    return {
+      label: "Model may not fit",
+      className: "warning",
+      advice: "Model weights alone exceed estimated usable RAM. Pick a smaller model or a more aggressive quantisation.",
+    };
+  }
+
+  const totalNeeded = optimizedCacheGb + diskSizeGb;
+  const ratio = totalNeeded / usable;
+  if (ratio < 0.7) return { label: "Fits easily", className: "success", advice: null };
+  if (ratio < 0.95) return { label: "Tight fit", className: "warning", advice: null };
+
+  const advice = bits <= 0
+    ? "The model can load, but a full native f16 cache at this context may exceed RAM as the thread fills. Lower context, or pick a compressed strategy."
+    : "The model can load, but the selected context cache may exceed RAM as the thread fills. Lower context or reduce FP16 layers.";
+  return { label: "Full context may not fit", className: "warning", advice };
+}

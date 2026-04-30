@@ -1,5 +1,5 @@
 import { ModelLaunchModal } from "./ModelLaunchModal";
-import type { LaunchPreferences, PreviewMetrics, SystemStats } from "../types";
+import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
 
 export interface PendingLaunch {
@@ -19,6 +19,7 @@ export interface LaunchModalProps {
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
   dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
   turboInstalled?: boolean;
   onPendingLaunchChange: (value: PendingLaunch | null | ((prev: PendingLaunch | null) => PendingLaunch | null)) => void;
   onLaunchModelSearchChange: (value: string) => void;
@@ -39,6 +40,7 @@ export function LaunchModal({
   availableCacheStrategies,
   dflashInfo,
   installingPackage,
+  installLogs,
   turboInstalled,
   onPendingLaunchChange,
   onLaunchModelSearchChange,
@@ -76,6 +78,7 @@ export function LaunchModal({
       availableCacheStrategies={availableCacheStrategies}
       dflashInfo={dflashInfo}
       installingPackage={installingPackage}
+      installLogs={installLogs}
       turboInstalled={turboInstalled}
       onSelectedKeyChange={setSelectedLaunchKey}
       onSearchChange={onLaunchModelSearchChange}

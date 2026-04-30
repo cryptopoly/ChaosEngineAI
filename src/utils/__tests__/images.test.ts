@@ -94,6 +94,23 @@ describe("assessImageGenerationSafety()", () => {
     expect(result.reason).toMatch(/CPU generation/);
   });
 
+  it("matches Qwen-Image's backend CPU route on Apple Silicon", () => {
+    const result = assessImageGenerationSafety({
+      width: 1024,
+      height: 1024,
+      device: "mps",
+      deviceMemoryGb: 64,
+      baseModelFootprintGb: 57.7,
+      runtimeFootprintMpsGb: 60,
+      runtimeFootprintCpuGb: 72,
+      repo: "Qwen/Qwen-Image",
+    });
+
+    expect(result.effectiveDevice).toBe("cpu");
+    expect(result.modelFootprintGb).toBe(72);
+    expect(result.reason).toMatch(/CPU generation/);
+  });
+
   it("falls back safely for invalid dimensions", () => {
     const result = assessImageGenerationSafety({
       width: 0,
@@ -143,6 +160,42 @@ describe("imageDiscoverMemoryEstimate()", () => {
     });
 
     expect(result!.modelFootprintGb).toBeCloseTo(7.5, 2);
+  });
+
+  it("accounts for FLUX GGUF text encoders and MPS runtime overhead", () => {
+    const result = imageDiscoverMemoryEstimate({
+      ...baseVariant,
+      id: "black-forest-labs/FLUX.1-dev-gguf-q4km",
+      name: "FLUX.1 Dev · GGUF Q4_K_M",
+      repo: "black-forest-labs/FLUX.1-dev",
+      ggufRepo: "city96/FLUX.1-dev-gguf",
+      ggufFile: "flux1-dev-Q4_K_M.gguf",
+      sizeGb: 6.8,
+      coreWeightsGb: null,
+      onDiskGb: 53.9,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.modelFootprintGb).toBeCloseTo(41.3, 1);
+    expect(result!.estimatedPeakGb).toBeGreaterThan(42);
+    expect(result!.estimatedPeakGb).toBeLessThan(45);
+    expect(result!.label).toMatch(/^~43 GB @ 1024×1024$/);
+  });
+
+  it("prefers host-specific runtime footprint metadata when present", () => {
+    const result = imageDiscoverMemoryEstimate({
+      ...baseVariant,
+      id: "Tongyi-MAI/Z-Image-Turbo",
+      name: "Z-Image-Turbo",
+      repo: "Tongyi-MAI/Z-Image-Turbo",
+      sizeGb: 30.58,
+      runtimeFootprintGb: 16,
+      runtimeFootprintMpsGb: 20,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.modelFootprintGb).toBe(20);
+    expect(result!.label).toMatch(/^~22 GB @ 1024×1024$/);
   });
 
   it("returns null when model size is unknown", () => {

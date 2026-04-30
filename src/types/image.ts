@@ -7,5 +7,15 @@ export type ImageDiscoverAccessFilter = "all" | "open" | "gated";
  * the curated releaseDate, falls back to HF createdAt). ``size`` and ``ram``
  * sort largest first using the same metadata that powers the row labels.
  * ``likes`` = HF stars/hearts desc. ``downloads`` = HF downloads desc.
+ * Row views also use name/provider/tasks/status for table headers.
  * Variants without the relevant metadata sort to the bottom. */
-export type DiscoverSort = "release" | "size" | "ram" | "likes" | "downloads";
+export type DiscoverSort =
+  | "name"
+  | "provider"
+  | "tasks"
+  | "release"
+  | "size"
+  | "ram"
+  | "likes"
+  | "downloads"
+  | "status";

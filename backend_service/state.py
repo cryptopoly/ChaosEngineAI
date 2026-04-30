@@ -1129,6 +1129,7 @@ class ChaosEngineState:
                 next_settings["remoteProviders"] = normalized
 
             if request.huggingFaceToken is not None:
+                previous_token_value = str(next_settings.get("huggingFaceToken") or "")
                 token_value = request.huggingFaceToken.strip()
                 next_settings["huggingFaceToken"] = token_value
                 if token_value:
@@ -1137,6 +1138,12 @@ class ChaosEngineState:
                 else:
                     os.environ.pop("HF_TOKEN", None)
                     os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
+                if token_value != previous_token_value:
+                    from backend_service.helpers.huggingface import _clear_huggingface_caches
+                    from backend_service.helpers.images import _clear_image_discover_caches
+
+                    _clear_huggingface_caches()
+                    _clear_image_discover_caches()
 
             # Output directory overrides. Empty string clears the override.
             # Anything non-empty must be absolute or ~-relative — same rule as

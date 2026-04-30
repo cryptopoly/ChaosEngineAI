@@ -5,7 +5,7 @@ import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
 import { emptyPreview } from "../../defaults";
-import type { GenerationMetrics, LaunchPreferences, PreviewMetrics, SystemStats } from "../../types";
+import type { GenerationMetrics, LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import {
   detectBitsPerWeight,
@@ -51,6 +51,7 @@ interface CompareViewProps {
   turboInstalled?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
 }
 
 interface CompareStreamEvent extends Partial<GenerationMetrics> {
@@ -257,6 +258,7 @@ export function CompareView({
   turboInstalled,
   onInstallPackage,
   installingPackage,
+  installLogs,
 }: CompareViewProps) {
   const [modelKeyA, setModelKeyA] = useState("");
   const [modelKeyB, setModelKeyB] = useState("");
@@ -702,6 +704,7 @@ export function CompareView({
         availableCacheStrategies={availableCacheStrategies}
         dflashInfo={dflashInfo}
         installingPackage={installingPackage ?? null}
+        installLogs={installLogs}
         turboInstalled={turboInstalled}
         onSelectedKeyChange={setPickerDraftKey}
         onSearchChange={setPickerSearch}

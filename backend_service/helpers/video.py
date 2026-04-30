@@ -68,11 +68,21 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             # familyName) still win when both exist.
             enriched = {**enriched, **live_metadata}
             validation_error = _video_variant_validation_error(enriched)
+            local_data_repos = _video_variant_local_data_repos(enriched)
             enriched["availableLocally"] = validation_error is None
             enriched["hasLocalData"] = (
                 enriched["availableLocally"]
-                or _video_variant_has_any_local_data(enriched)
+                or bool(local_data_repos)
             )
+            primary_local_repo = (
+                repo
+                if repo and repo in local_data_repos
+                else local_data_repos[0]
+                if local_data_repos
+                else None
+            )
+            enriched["localDataRepos"] = local_data_repos
+            enriched["primaryLocalRepo"] = primary_local_repo
             enriched["localStatusReason"] = (
                 _video_variant_local_status_reason(enriched, validation_error)
                 if enriched["hasLocalData"] and validation_error
@@ -90,7 +100,11 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             # Absolute path to the HF snapshot, used by the Reveal File button.
             # Only populated when there is actually something on disk so the
             # UI can reliably hide the button otherwise.
-            snapshot_dir = _hf_repo_snapshot_dir(repo) if (enriched["hasLocalData"] and repo) else None
+            snapshot_dir = (
+                _hf_repo_snapshot_dir(primary_local_repo)
+                if (enriched["hasLocalData"] and primary_local_repo)
+                else None
+            )
             enriched["localPath"] = str(snapshot_dir) if snapshot_dir else None
             on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
             enriched["onDiskBytes"] = on_disk_bytes
@@ -113,9 +127,18 @@ def _find_video_variant(model_id: str) -> dict[str, Any] | None:
 def _find_video_variant_by_repo(repo: str) -> dict[str, Any] | None:
     for family in VIDEO_MODEL_FAMILIES:
         for variant in family["variants"]:
-            if variant["repo"] == repo:
+            if repo in _video_variant_download_repos(variant):
                 return variant
     return None
+
+
+def _video_variant_download_repos(variant: dict[str, Any]) -> list[str]:
+    repos: list[str] = []
+    for key in ("repo", "ggufRepo", "textEncoderRepo"):
+        repo = str(variant.get(key) or "").strip()
+        if repo and repo not in repos:
+            repos.append(repo)
+    return repos
 
 
 def _is_video_repo(repo_id: str) -> bool:
@@ -124,6 +147,10 @@ def _is_video_repo(repo_id: str) -> bool:
         for family in VIDEO_MODEL_FAMILIES
         for variant in family["variants"]
     )
+
+
+def _is_video_download_repo(repo_id: str) -> bool:
+    return repo_id in _video_download_repo_ids()
 
 
 def _video_repo_runtime_ready(repo_id: str) -> bool:
@@ -164,18 +191,20 @@ def _video_repo_has_any_local_data(repo_id: str) -> bool:
         return False
 
 
+def _video_variant_local_data_repos(variant: dict[str, Any]) -> list[str]:
+    return [
+        repo
+        for repo in _video_variant_download_repos(variant)
+        if _video_repo_has_any_local_data(repo)
+    ]
+
+
 def _video_variant_available_locally(variant: dict[str, Any]) -> bool:
     return _video_variant_validation_error(variant) is None
 
 
 def _video_variant_has_any_local_data(variant: dict[str, Any]) -> bool:
-    repo = str(variant.get("repo") or "")
-    if repo and _video_repo_has_any_local_data(repo):
-        return True
-    gguf_repo = str(variant.get("ggufRepo") or "")
-    if gguf_repo and _video_repo_has_any_local_data(gguf_repo):
-        return True
-    return False
+    return bool(_video_variant_local_data_repos(variant))
 
 
 def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:

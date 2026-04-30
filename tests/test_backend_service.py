@@ -1884,6 +1884,53 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(library[0]["sourceKind"], "HF cache")
         self.assertFalse(library[0]["broken"])
 
+    def test_discovery_classifies_ltx2_hf_cache_as_video(self):
+        models_root = Path(self.tempdir.name) / "HF"
+        hf_repo = models_root / "models--prince-canuma--LTX-2.3-dev" / "snapshots" / "1234"
+        hf_repo.mkdir(parents=True)
+        (hf_repo / "config.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model.safetensors.index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model-00001-of-00001.safetensors").write_bytes(b"x" * 4096)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "HF",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "prince-canuma/LTX-2.3-dev")
+        self.assertEqual(library[0]["modelType"], "video")
+
+    def test_discovery_classifies_sana_hf_cache_as_image(self):
+        models_root = Path(self.tempdir.name) / "HF"
+        hf_repo = models_root / "models--Efficient-Large-Model--Sana_Sprint_1.6B_1024px_diffusers" / "snapshots" / "1234"
+        hf_repo.mkdir(parents=True)
+        (hf_repo / "config.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model_index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model.safetensors.index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model-00001-of-00001.safetensors").write_bytes(b"x" * 4096)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "HF",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers")
+        self.assertEqual(library[0]["modelType"], "image")
+
     def test_discovery_marks_nvfp4_modelopt_repo_as_unsupported_for_mlx(self):
         models_root = Path(self.tempdir.name) / "HF"
         hf_repo = models_root / "models--LilaRest--gemma-4-31B-it-NVFP4-turbo" / "snapshots" / "1234"

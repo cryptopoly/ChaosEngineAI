@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
 import type {
   TabId,
@@ -8,16 +9,20 @@ import type {
   VideoRuntimeStatus,
 } from "../../types";
 import {
+  compactModelSizeLabel,
+  compactReleaseLabel,
   downloadProgressLabel,
   formatReleaseLabel,
-  number,
   videoDiscoverMemoryEstimate,
+  videoDeleteLabelForRepo,
+  videoDeleteRepoForVariant,
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
 } from "../../utils";
 
-type InstalledVideoSort = "date" | "size" | "ram" | "name";
+type InstalledVideoSort = "name" | "provider" | "tasks" | "size" | "ram" | "date" | "status";
+type SortDir = "asc" | "desc";
 type InstalledVideoStatusFilter = "all" | "loaded" | "installed" | "incomplete" | "downloading" | "paused" | "failed";
 
 export interface VideoModelsTabProps {
@@ -61,6 +66,25 @@ function compareNullableNumberDesc(left: number | null, right: number | null): n
   return 0;
 }
 
+function compareNullableNumber(left: number | null, right: number | null, dir: SortDir): number {
+  const desc = compareNullableNumberDesc(left, right);
+  return dir === "desc" ? desc : -desc;
+}
+
+function statusSortKey(status: InstalledVideoStatusFilter): number {
+  if (status === "loaded") return 0;
+  if (status === "installed") return 1;
+  if (status === "downloading") return 2;
+  if (status === "paused") return 3;
+  if (status === "failed") return 4;
+  if (status === "incomplete") return 5;
+  return 6;
+}
+
+function defaultSortDir(sort: InstalledVideoSort): SortDir {
+  return sort === "name" || sort === "provider" || sort === "tasks" ? "asc" : "desc";
+}
+
 function videoStatus(
   variant: VideoModelVariant,
   downloadState: DownloadStatus | undefined,
@@ -75,23 +99,35 @@ function videoStatus(
 }
 
 function statusBadge(status: InstalledVideoStatusFilter, downloadState?: DownloadStatus) {
-  if (status === "loaded") return <span className="badge accent">In Memory</span>;
-  if (status === "installed") return <span className="badge success">Installed</span>;
-  if (status === "downloading" && downloadState) return <span className="badge accent">{downloadProgressLabel(downloadState)}</span>;
-  if (status === "paused" && downloadState) return <span className="badge warning">{downloadProgressLabel(downloadState)}</span>;
-  if (status === "failed") return <span className="badge warning">Download Failed</span>;
-  return <span className="badge warning">Incomplete</span>;
+  if (status === "loaded") return <StatusIcon status="loaded" label="Loaded in memory" />;
+  if (status === "installed") return <StatusIcon status="installed" label="Installed" />;
+  if (status === "downloading" && downloadState) return <StatusIcon status="downloading" label="Downloading" detail={downloadProgressLabel(downloadState)} />;
+  if (status === "paused" && downloadState) return <StatusIcon status="paused" label="Paused" detail={downloadProgressLabel(downloadState)} />;
+  if (status === "failed") return <StatusIcon status="failed" label="Failed" detail={downloadState?.error ?? "Download failed"} />;
+  return <StatusIcon status="incomplete" label="Incomplete" />;
 }
 
-function sortIndicator(activeSort: InstalledVideoSort, key: InstalledVideoSort): string {
-  return activeSort === key ? " \u25BC" : "";
+function sortIndicator(activeSort: InstalledVideoSort, sortDir: SortDir, key: InstalledVideoSort): string {
+  if (activeSort !== key) return "";
+  return sortDir === "asc" ? " \u25B2" : " \u25BC";
 }
 
-function sortLabel(sort: InstalledVideoSort): string {
-  if (sort === "size") return "largest size first";
-  if (sort === "ram") return "highest RAM/VRAM first";
-  if (sort === "name") return "name A-Z";
-  return "newest released first";
+function sortLabel(sort: InstalledVideoSort, sortDir: SortDir): string {
+  const direction = sortDir === "asc" ? "ascending" : "descending";
+  if (sort === "provider") return `provider ${direction}`;
+  if (sort === "tasks") return `tasks ${direction}`;
+  if (sort === "size") return sortDir === "desc" ? "largest size first" : "smallest size first";
+  if (sort === "ram") return sortDir === "desc" ? "highest RAM/VRAM first" : "lowest RAM/VRAM first";
+  if (sort === "status") return `status ${direction}`;
+  if (sort === "name") return sortDir === "asc" ? "name A-Z" : "name Z-A";
+  return sortDir === "desc" ? "newest released first" : "oldest released first";
+}
+
+function memoryParts(label: string | null | undefined): { primary: string; secondary: string | null } {
+  if (!label) return { primary: "pending", secondary: null };
+  const [primary, secondary] = label.split(" @ ");
+  if (!secondary) return { primary, secondary: null };
+  return { primary: `${primary} @`, secondary };
 }
 
 export function VideoModelsTab({
@@ -117,9 +153,19 @@ export function VideoModelsTab({
   const [taskFilter, setTaskFilter] = useState<"all" | VideoModelVariant["taskSupport"][number]>("all");
   const [statusFilter, setStatusFilter] = useState<InstalledVideoStatusFilter>("all");
   const [sort, setSort] = useState<InstalledVideoSort>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const normalizedSearch = searchInput.trim().toLowerCase();
   const hasActiveFilters =
-    normalizedSearch.length > 0 || taskFilter !== "all" || statusFilter !== "all" || sort !== "date";
+    normalizedSearch.length > 0 || taskFilter !== "all" || statusFilter !== "all" || sort !== "date" || sortDir !== "desc";
+
+  function applySort(nextSort: InstalledVideoSort) {
+    if (sort === nextSort) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSort(nextSort);
+      setSortDir(defaultSortDir(nextSort));
+    }
+  }
 
   const rows = useMemo(() => {
     return installedVideoVariants
@@ -149,19 +195,33 @@ export function VideoModelsTab({
         return haystack.includes(normalizedSearch);
       })
       .sort((left, right) => {
-        if (sort === "name") return left.variant.name.localeCompare(right.variant.name);
+        if (sort === "name") {
+          const diff = left.variant.name.localeCompare(right.variant.name);
+          return sortDir === "asc" ? diff : -diff;
+        }
+        if (sort === "provider") {
+          const diff = left.variant.provider.localeCompare(right.variant.provider);
+          if (diff !== 0) return sortDir === "asc" ? diff : -diff;
+        }
+        if (sort === "tasks") {
+          const diff = left.variant.taskSupport.join(" ").localeCompare(right.variant.taskSupport.join(" "));
+          if (diff !== 0) return sortDir === "asc" ? diff : -diff;
+        }
         if (sort === "size") {
-          const diff = compareNullableNumberDesc(sizeSortKey(left.variant), sizeSortKey(right.variant));
+          const diff = compareNullableNumber(sizeSortKey(left.variant), sizeSortKey(right.variant), sortDir);
           if (diff !== 0) return diff;
         } else if (sort === "ram") {
-          const diff = compareNullableNumberDesc(left.memoryEstimate?.estimatedPeakGb ?? null, right.memoryEstimate?.estimatedPeakGb ?? null);
+          const diff = compareNullableNumber(left.memoryEstimate?.estimatedPeakGb ?? null, right.memoryEstimate?.estimatedPeakGb ?? null, sortDir);
           if (diff !== 0) return diff;
+        } else if (sort === "status") {
+          const diff = statusSortKey(left.status) - statusSortKey(right.status);
+          if (diff !== 0) return sortDir === "asc" ? diff : -diff;
         }
         const dateDiff = releaseSortKey(right.variant).localeCompare(releaseSortKey(left.variant));
-        if (dateDiff !== 0) return dateDiff;
+        if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
         return left.variant.name.localeCompare(right.variant.name);
       });
-  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, statusFilter, taskFilter, videoCatalog]);
+  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, sortDir, statusFilter, taskFilter, videoCatalog]);
 
   return (
     <div className="content-grid image-page-grid">
@@ -228,12 +288,19 @@ export function VideoModelsTab({
                 <select
                   className="text-input"
                   value={sort}
-                  onChange={(event) => setSort(event.target.value as InstalledVideoSort)}
+                  onChange={(event) => {
+                    const nextSort = event.target.value as InstalledVideoSort;
+                    setSort(nextSort);
+                    setSortDir(defaultSortDir(nextSort));
+                  }}
                 >
+                  <option value="name">Name</option>
+                  <option value="provider">Provider</option>
+                  <option value="tasks">Tasks</option>
                   <option value="date">Newest released</option>
                   <option value="size">Largest size</option>
                   <option value="ram">Highest RAM/VRAM</option>
-                  <option value="name">Name A-Z</option>
+                  <option value="status">Status</option>
                 </select>
               </label>
               <div className="image-discover-filter-actions">
@@ -245,6 +312,7 @@ export function VideoModelsTab({
                     setTaskFilter("all");
                     setStatusFilter("all");
                     setSort("date");
+                    setSortDir("desc");
                   }}
                   disabled={!hasActiveFilters}
                 >
@@ -253,7 +321,7 @@ export function VideoModelsTab({
               </div>
             </div>
             <div className="image-discover-results-summary">
-              <span>{rows.length} model{rows.length !== 1 ? "s" : ""} · {sortLabel(sort)}</span>
+              <span>{rows.length} model{rows.length !== 1 ? "s" : ""} · {sortLabel(sort, sortDir)}</span>
               {normalizedSearch ? <span className="badge subtle">Search: {searchInput.trim()}</span> : null}
               {taskFilter !== "all" ? <span className="badge muted">Task: {taskFilter}</span> : null}
               {statusFilter !== "all" ? <span className="badge muted">Status: {statusFilter}</span> : null}
@@ -265,14 +333,13 @@ export function VideoModelsTab({
             ) : (
               <div className="media-model-table media-model-table--video">
                 <div className="media-model-head">
-                  <button className="sort-header" type="button" onClick={() => setSort("name")}>Model{sortIndicator(sort, "name")}</button>
-                  <span className="sort-header">Provider</span>
-                  <span className="sort-header">Tasks</span>
-                  <button className="sort-header" type="button" onClick={() => setSort("size")}>Size{sortIndicator(sort, "size")}</button>
-                  <button className="sort-header" type="button" onClick={() => setSort("ram")}>RAM/VRAM{sortIndicator(sort, "ram")}</button>
-                  <span className="sort-header">Spec</span>
-                  <button className="sort-header" type="button" onClick={() => setSort("date")}>Date{sortIndicator(sort, "date")}</button>
-                  <span className="sort-header">Status</span>
+                  <button className="sort-header" type="button" onClick={() => applySort("name")}>Model{sortIndicator(sort, sortDir, "name")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("provider")}>Provider{sortIndicator(sort, sortDir, "provider")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("tasks")}>Tasks{sortIndicator(sort, sortDir, "tasks")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("size")}>Size{sortIndicator(sort, sortDir, "size")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("ram")}>RAM/VRAM{sortIndicator(sort, sortDir, "ram")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("date")}>Released{sortIndicator(sort, sortDir, "date")}</button>
+                  <button className="sort-header" type="button" onClick={() => applySort("status")}>Status{sortIndicator(sort, sortDir, "status")}</button>
                   <span className="sort-header"></span>
                 </div>
                 <div className="media-model-rows">
@@ -285,9 +352,15 @@ export function VideoModelsTab({
                     const isPartial = status === "incomplete";
                     const canDeleteLocalData = Boolean(isComplete || isPaused || isDownloadFailed || isPartial);
                     const localStatusReason = !isComplete && !isDownloading ? variant.localStatusReason : null;
-                    const canPreload = isComplete && videoRuntimeStatus.realGenerationAvailable && !isLoadedInMemory;
                     const secondarySize = videoSecondarySizeLabel(variant);
-                    const releaseLabel = formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt);
+                    const releaseLabel = compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt));
+                    const primarySizeLabel = videoPrimarySizeLabel(variant);
+                    const sizeTitle = [primarySizeLabel, secondarySize].filter(Boolean).join(" / ");
+                    const memory = memoryParts(memoryEstimate?.label);
+                    const deleteRepo = videoDeleteRepoForVariant(variant, downloadState);
+                    const deleteLabel = isDownloading
+                      ? "Cancel download"
+                      : videoDeleteLabelForRepo(variant, deleteRepo, "Delete model");
                     return (
                       <div key={variant.id} className={`media-model-row-wrap${isComplete ? " downloaded" : ""}`}>
                         <div className="media-model-row">
@@ -306,75 +379,30 @@ export function VideoModelsTab({
                               <span key={task} className="badge muted">{task}</span>
                             ))}
                           </div>
-                          <span title={secondarySize ?? undefined}>
-                            {videoPrimarySizeLabel(variant)}
-                            {secondarySize ? <small>{secondarySize}</small> : null}
+                          <span title={sizeTitle || undefined}>
+                            {compactModelSizeLabel(primarySizeLabel)}
                           </span>
-                          <span title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
-                            {memoryEstimate?.label ?? "pending"}
-                          </span>
-                          <span>
-                            {variant.recommendedResolution}
-                            <small>{number(variant.defaultDurationSeconds)}s clip</small>
+                          <span className="media-model-memory" title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
+                            <span>{memory.primary}</span>
+                            {memory.secondary ? <small>{memory.secondary}</small> : null}
                           </span>
                           <span>{releaseLabel ?? "Unknown"}</span>
                           <span>{statusBadge(status, downloadState)}</span>
                           <div className="media-model-actions">
                             {isComplete ? (
-                              <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>
-                                Open Studio
-                              </button>
+                              <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenVideoStudio(variant.id)} />
                             ) : isDownloading ? (
-                              <button className="secondary-button" type="button" onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)}>
-                                Pause
-                              </button>
+                              <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)} />
                             ) : (
-                              <button className="secondary-button" type="button" onClick={() => onVideoDownload(variant.repo, variant.id)}>
-                                {isDownloadFailed ? "Retry" : isPartial ? "Resume" : "Download"}
-                              </button>
+                              <IconActionButton icon={isDownloadFailed ? "retry" : isPartial ? "resume" : "download"} label={isDownloadFailed ? "Retry download" : isPartial ? "Resume download" : "Download model"} onClick={() => onVideoDownload(variant.repo, variant.id)} />
                             )}
-                            {canPreload ? (
-                              <button
-                                className="secondary-button"
-                                type="button"
-                                disabled={videoBusy}
-                                onClick={() => onPreloadVideoModel(variant)}
-                              >
-                                {videoBusy && videoBusyLabel?.includes(variant.name) ? "Loading..." : "Load"}
-                              </button>
-                            ) : null}
-                            {isLoadedInMemory ? (
-                              <button
-                                className="secondary-button"
-                                type="button"
-                                disabled={videoBusy}
-                                onClick={() => onUnloadVideoModel(variant)}
-                              >
-                                {videoBusy && videoBusyLabel?.includes("Unloading") ? "Unloading..." : "Unload"}
-                              </button>
-                            ) : null}
                             {isDownloading || canDeleteLocalData ? (
-                              <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(downloadState?.repo ?? variant.repo)}>
-                                {isDownloading ? "Cancel" : "Delete"}
-                              </button>
+                              <IconActionButton icon={isDownloading ? "cancel" : "delete"} label={deleteLabel} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
                             ) : null}
                             {variant.localPath ? (
-                              <button
-                                className="secondary-button icon-button"
-                                type="button"
-                                title={fileRevealLabel}
-                                onClick={() => onRevealPath(variant.localPath as string)}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                  <polyline points="15 3 21 3 21 9" />
-                                  <line x1="10" y1="14" x2="21" y2="3" />
-                                </svg>
-                              </button>
+                              <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(variant.localPath as string)} />
                             ) : null}
-                            <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>
-                              Model Card
-                            </button>
+                            <IconActionButton icon="modelCard" label="Open model card" onClick={() => onOpenExternalUrl(variant.link)} />
                           </div>
                         </div>
                         {isDownloadFailed && downloadState?.error ? (

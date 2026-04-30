@@ -52,6 +52,26 @@ export function videoDownloadStatusForVariant<T extends { state: string }>(
   );
 }
 
+export function videoDeleteRepoForVariant<T extends { repo?: string | null }>(
+  variant: VideoModelVariant,
+  downloadState?: T,
+): string {
+  const activeRepo = String(downloadState?.repo ?? "").trim();
+  if (activeRepo) return activeRepo;
+  const primaryLocalRepo = String(variant.primaryLocalRepo ?? "").trim();
+  if (primaryLocalRepo) return primaryLocalRepo;
+  const [firstLocalRepo] = variant.localDataRepos ?? [];
+  if (firstLocalRepo) return firstLocalRepo;
+  return variant.repo;
+}
+
+export function videoDeleteLabelForRepo(variant: VideoModelVariant, repo: string, fallback = "Delete model"): string {
+  if (repo === variant.ggufRepo) return "Delete shared GGUF download";
+  if (repo === variant.textEncoderRepo) return "Delete shared text encoder download";
+  if (repo !== variant.repo) return "Delete shared component download";
+  return fallback;
+}
+
 export function videoVariantMatchesDiscoverFilters(
   variant: VideoModelVariant,
   taskFilter: VideoDiscoverTaskFilter,
@@ -129,9 +149,15 @@ function parseRecommendedVideoResolution(value: string | null | undefined): { wi
 }
 
 function videoVariantSizeForMemoryEstimate(variant: VideoModelVariant): number {
+  // Runtime memory should follow the curated runtime/catalog footprint, not
+  // local storage size. Some video repos (notably LTX-2.3 MLX) keep shared
+  // components or duplicate sharded weights on disk, so ``onDiskGb`` /
+  // live ``coreWeightsGb`` can be much larger than the resident model the
+  // Studio actually loads. Keep those fields as storage/download fallbacks
+  // only for uncurated rows with no catalog size.
   const candidates = [
-    variant.coreWeightsGb,
     variant.sizeGb,
+    variant.coreWeightsGb,
     variant.onDiskGb,
     variant.repoSizeGb,
   ];
@@ -175,9 +201,21 @@ export function videoDiscoverMemoryEstimate(variant: VideoModelVariant): VideoDi
     deviceMemoryGb: 512,
     baseModelFootprintGb,
     runtimeFootprintGb: variant.runtimeFootprintGb,
+    runtimeFootprintMpsGb: variant.runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb: variant.runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb: variant.runtimeFootprintCpuGb,
   });
   const resolutionLabel = `${width}×${height}`;
   const estimatedPeakGb = Math.max(safety.estimatedPeakGb, safety.modelFootprintGb);
+  const storageNote = (
+    typeof variant.onDiskGb === "number"
+    && Number.isFinite(variant.onDiskGb)
+    && variant.onDiskGb > 0
+    && baseModelFootprintGb > 0
+    && variant.onDiskGb > baseModelFootprintGb * 1.25
+  )
+    ? ` Local storage is ${formatVideoDiscoverGb(variant.onDiskGb)} because the snapshot can include shared or duplicate components; runtime RAM uses the catalog footprint.`
+    : "";
   return {
     estimatedPeakGb,
     modelFootprintGb: safety.modelFootprintGb,
@@ -188,6 +226,7 @@ export function videoDiscoverMemoryEstimate(variant: VideoModelVariant): VideoDi
       `Estimated peak RAM/VRAM at ${resolutionLabel} with ${frameCount} frames. Includes resident model memory`
       + (safety.modelFootprintGb > 0 ? ` (~${formatVideoDiscoverGb(safety.modelFootprintGb)})` : "")
       + " plus a temporal attention estimate. Actual usage varies by runtime, frame count, and device."
+      + storageNote
     ),
   };
 }
@@ -411,6 +450,26 @@ function estimateResidentModelGb(
   return baseFootprintGb * factor;
 }
 
+function positiveRuntimeFootprint(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function runtimeFootprintForDevice(opts: {
+  device: VideoEffectiveDevice;
+  runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
+}): number | null {
+  if (opts.device === "mps") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintMpsGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  if (opts.device === "cuda") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintCudaGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  return positiveRuntimeFootprint(opts.runtimeFootprintCpuGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+}
+
 /**
  * Estimate whether a video generation request is in danger of detonating
  * the inference device. The estimate combines two memory terms:
@@ -464,8 +523,22 @@ export function assessVideoGenerationSafety(opts: {
    * directly — bypasses the ``sizeGb × 1.4`` heuristic. Disk size
    * overstates resident because of duplicate sharded safetensors. */
   runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
 }): VideoGenerationSafety {
-  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb, runtimeFootprintGb } = opts;
+  const {
+    width,
+    height,
+    numFrames,
+    device,
+    deviceMemoryGb,
+    baseModelFootprintGb,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+  } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
@@ -506,11 +579,16 @@ export function assessVideoGenerationSafety(opts: {
       : 0;
   // Prefer explicit runtime footprint when the catalog supplies one — it
   // already reflects resident peak. Otherwise estimate from disk size.
+  const runtimeOverrideGb = runtimeFootprintForDevice({
+    device: effectiveDevice,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+  });
   const modelFootprintGb =
-    runtimeFootprintGb != null
-    && Number.isFinite(runtimeFootprintGb)
-    && runtimeFootprintGb > 0
-      ? runtimeFootprintGb
+    runtimeOverrideGb != null
+      ? runtimeOverrideGb
       : estimateResidentModelGb(baseFootprint, effectiveDevice);
 
   if (

@@ -6,7 +6,7 @@ import { RuntimeControls } from "../../components/RuntimeControls";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkGauge } from "../../components/BenchmarkGauge";
-import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, SystemStats } from "../../types";
+import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
@@ -35,6 +35,7 @@ export interface BenchmarkRunTabProps {
   showBenchmarkPicker: boolean;
   showBenchmarkModal: boolean;
   installingPackage: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
   onBenchmarkDraftChange: <K extends keyof BenchmarkRunPayload>(key: K, value: BenchmarkRunPayload[K]) => void;
   onBenchmarkPromptIdChange: (id: string) => void;
   onBenchmarkModelKeyChange: (key: string) => void;
@@ -62,6 +63,7 @@ export function BenchmarkRunTab({
   showBenchmarkPicker,
   showBenchmarkModal,
   installingPackage,
+  installLogs,
   onBenchmarkDraftChange,
   onBenchmarkPromptIdChange,
   onBenchmarkModelKeyChange,
@@ -229,6 +231,7 @@ export function BenchmarkRunTab({
               selectedModelName={benchmarkOption?.model}
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
+              installLogs={installLogs}
               turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
               showTemperature={false}
               showPreview={false}
@@ -466,6 +469,7 @@ export function BenchmarkRunTab({
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}
+        installLogs={installLogs}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
         onSelectedKeyChange={(key) => {
           onBenchmarkModelKeyChange(key);

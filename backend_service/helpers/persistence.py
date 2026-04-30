@@ -11,7 +11,7 @@ MAX_BENCHMARK_RUNS = 48
 LEGACY_SEEDED_CHAT_IDS = {"ui-direction", "model-shortlist"}
 LEGACY_SEEDED_BENCHMARK_IDS = {"baseline", "native-34", "native-36", "native-44"}
 
-LIBRARY_CACHE_VERSION = 1
+LIBRARY_CACHE_VERSION = 3
 
 
 def _default_chat_variant() -> dict[str, Any]:

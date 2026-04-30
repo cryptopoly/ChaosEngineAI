@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assessVideoGenerationSafety,
   inferDeviceFromHostPlatform,
+  videoDeleteLabelForRepo,
+  videoDeleteRepoForVariant,
   videoDiscoverMemoryEstimate,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
@@ -72,6 +74,33 @@ describe("video discover search helpers", () => {
   });
 });
 
+describe("video delete target helpers", () => {
+  it("uses the active component download repo before the base repo", () => {
+    const variant = makeVideoVariant({
+      repo: "Lightricks/LTX-Video",
+      ggufRepo: "city96/LTX-Video-gguf",
+      ggufFile: "ltx-video-2b-v0.9-Q6_K.gguf",
+    });
+
+    expect(videoDeleteRepoForVariant(variant, { repo: "city96/LTX-Video-gguf" })).toBe("city96/LTX-Video-gguf");
+  });
+
+  it("uses the primary local repo for partial shared GGUF data", () => {
+    const variant = makeVideoVariant({
+      repo: "Lightricks/LTX-Video",
+      ggufRepo: "city96/LTX-Video-gguf",
+      ggufFile: "ltx-video-2b-v0.9-Q6_K.gguf",
+      hasLocalData: true,
+      localDataRepos: ["city96/LTX-Video-gguf"],
+      primaryLocalRepo: "city96/LTX-Video-gguf",
+    });
+
+    const repo = videoDeleteRepoForVariant(variant);
+    expect(repo).toBe("city96/LTX-Video-gguf");
+    expect(videoDeleteLabelForRepo(variant, repo)).toBe("Delete shared GGUF download");
+  });
+});
+
 describe("videoDiscoverMemoryEstimate()", () => {
   it("returns a GB label at the recommended resolution and default clip length", () => {
     const result = videoDiscoverMemoryEstimate(makeVideoVariant({
@@ -95,6 +124,50 @@ describe("videoDiscoverMemoryEstimate()", () => {
     }));
 
     expect(result).toBeNull();
+  });
+
+  it("uses catalog runtime size instead of inflated local snapshot size", () => {
+    const result = videoDiscoverMemoryEstimate(makeVideoVariant({
+      name: "LTX-2.3 · dev (MLX)",
+      repo: "prince-canuma/LTX-2.3-dev",
+      sizeGb: 19,
+      runtimeFootprintGb: 27,
+      coreWeightsGb: 45.8,
+      onDiskGb: 45.8,
+      recommendedResolution: "768x512",
+      defaultDurationSeconds: 4,
+    }));
+
+    expect(result).not.toBeNull();
+    expect(result!.modelFootprintGb).toBeCloseTo(27, 1);
+    expect(result!.estimatedPeakGb).toBeLessThan(35);
+    expect(result!.title).toMatch(/local storage/i);
+  });
+
+  it("prefers host-specific runtime footprint metadata when present", () => {
+    const mps = assessVideoGenerationSafety({
+      width: 832,
+      height: 480,
+      numFrames: 33,
+      device: "mps",
+      deviceMemoryGb: 64,
+      baseModelFootprintGb: 16.4,
+      runtimeFootprintGb: 14,
+      runtimeFootprintMpsGb: 23,
+    });
+    const cuda = assessVideoGenerationSafety({
+      width: 832,
+      height: 480,
+      numFrames: 33,
+      device: "cuda:0",
+      deviceMemoryGb: 24,
+      baseModelFootprintGb: 16.4,
+      runtimeFootprintGb: 14,
+      runtimeFootprintMpsGb: 23,
+    });
+
+    expect(mps.modelFootprintGb).toBe(23);
+    expect(cuda.modelFootprintGb).toBe(14);
   });
 });
 

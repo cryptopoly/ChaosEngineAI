@@ -18,6 +18,10 @@ from backend_service.catalog import VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
 from backend_service.helpers.images import _image_repo_live_metadata, _snapshot_on_disk_bytes
+from backend_service.helpers.platform_filter import (
+    filter_mlx_only_families,
+    is_apple_silicon,
+)
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
@@ -113,7 +117,7 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
         payload = dict(family)
         payload["variants"] = variants
         families.append(payload)
-    return families
+    return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
 
 
 def _find_video_variant(model_id: str) -> dict[str, Any] | None:

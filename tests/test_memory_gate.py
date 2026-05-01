@@ -27,10 +27,20 @@ class GateChatGenerationTests(unittest.TestCase):
         self.assertIn("free", result["message"])
 
     def test_refuses_when_pressure_exceeds_ceiling(self):
-        result = gate_chat_generation(available_gb=2.5, pressure_percent=95.0)
+        # Ceiling raised to 98% in the post-launch tuning pass — only
+        # near-OOM pressure trips the gate now since macOS routinely
+        # sits at 90-97% during normal use thanks to compression.
+        result = gate_chat_generation(available_gb=2.5, pressure_percent=99.0)
         self.assertIsNotNone(result)
         self.assertEqual(result["code"], "memory_gate_high_pressure")
-        self.assertIn("95", result["message"])
+        self.assertIn("99", result["message"])
+
+    def test_passes_at_high_macos_pressure_with_headroom(self):
+        # 95% pressure with several GB free is normal macOS — must not
+        # trip the gate. This is the regression fix from the user
+        # report ("models that ran fine before now blocked at 97%").
+        result = gate_chat_generation(available_gb=4.0, pressure_percent=95.0)
+        self.assertIsNone(result)
 
     def test_low_available_takes_precedence_over_pressure(self):
         # When both signals trip, the low-available message is more
@@ -70,7 +80,7 @@ class GateImageGenerationTests(unittest.TestCase):
         self.assertEqual(result["code"], "memory_gate_image_low_available")
 
     def test_refuses_when_image_pressure_high(self):
-        result = gate_image_generation(available_gb=10.0, pressure_percent=92.0)
+        result = gate_image_generation(available_gb=10.0, pressure_percent=96.0)
         self.assertIsNotNone(result)
         self.assertEqual(result["code"], "memory_gate_image_high_pressure")
 
@@ -88,7 +98,7 @@ class GateVideoGenerationTests(unittest.TestCase):
         self.assertEqual(result["code"], "memory_gate_video_low_available")
 
     def test_refuses_when_video_pressure_high(self):
-        result = gate_video_generation(available_gb=20.0, pressure_percent=88.0)
+        result = gate_video_generation(available_gb=20.0, pressure_percent=94.0)
         self.assertIsNotNone(result)
         self.assertEqual(result["code"], "memory_gate_video_high_pressure")
 

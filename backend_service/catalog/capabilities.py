@@ -148,12 +148,22 @@ def _heuristic_capabilities(model_ref: str | None) -> list[str]:
 def resolve_capabilities(
     model_ref: str | None,
     canonical_repo: str | None = None,
+    engine: str | None = None,
 ) -> ModelCapabilities:
     """Public entry point — returns a typed capability blob for a model.
 
     Catalog match wins; heuristic fallback applies only when nothing in
     the catalog matched. Always returns a valid `ModelCapabilities` (no
     None) so callers don't need to null-check.
+
+    `engine` (optional) gates capability flags by what the loaded
+    runtime can actually serve. The MLX worker subprocess never wired
+    vision input through — so even though Gemma-4 / Qwen-VL etc.
+    advertise vision in the catalog, the user gets silent base64-drop
+    if the route is MLX. Demote vision to False when engine is "mlx"
+    or "turboquant" until a real mlx-vlm path lands. Llama.cpp keeps
+    full catalog rights since it accepts image_url parts natively
+    when an mmproj is loaded.
     """
     raw = _catalog_lookup(model_ref, canonical_repo)
     if raw is None:
@@ -170,4 +180,11 @@ def resolve_capabilities(
         if flag is not None:
             setattr(caps, flag, True)
     caps.tags = tuple(sorted(seen))
+
+    # Engine-side reality check: strip capabilities the active runtime
+    # can't actually serve. Today only vision is at risk on the MLX
+    # path; expand here when more engine-specific gates appear.
+    engine_normalised = (engine or "").strip().lower()
+    if engine_normalised in {"mlx", "mlx_worker", "turboquant"}:
+        caps.supportsVision = False
     return caps

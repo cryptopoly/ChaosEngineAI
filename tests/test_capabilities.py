@@ -82,6 +82,47 @@ class ResolveCapabilitiesTests(unittest.TestCase):
             caps.supportsVideo, caps.supportsMultilingual,
         ]))
 
+    def test_mlx_engine_demotes_vision(self):
+        # Hotfix (2026-05-01): the MLX worker subprocess never wired
+        # vision input through, so even when the catalog says a model
+        # supports vision the resolver must demote that flag for the
+        # MLX engine. Catalog-level "vision" tag stays in `tags` so the
+        # UI can still surface "this model would support vision via
+        # llama.cpp" later, but the typed flag drives the composer
+        # gate that hides the image-attach button today.
+        caps = resolve_capabilities(
+            "google/gemma-4-E4B-it",
+            None,
+            engine="mlx",
+        )
+        self.assertFalse(caps.supportsVision)
+        self.assertIn("vision", caps.tags)
+
+    def test_turboquant_engine_demotes_vision(self):
+        caps = resolve_capabilities(
+            "google/gemma-4-E4B-it",
+            None,
+            engine="turboquant",
+        )
+        self.assertFalse(caps.supportsVision)
+
+    def test_llama_cpp_engine_keeps_vision(self):
+        # llama.cpp accepts image_url parts natively when an mmproj is
+        # loaded, so vision should remain promoted on this path.
+        caps = resolve_capabilities(
+            "google/gemma-4-E4B-it",
+            None,
+            engine="llama.cpp",
+        )
+        self.assertTrue(caps.supportsVision)
+
+    def test_engine_unset_keeps_catalog_capabilities(self):
+        # Default behaviour (no engine specified) preserves the catalog
+        # capability list — important for tests / callers that don't
+        # know the engine yet.
+        caps = resolve_capabilities("google/gemma-4-E4B-it", None)
+        self.assertTrue(caps.supportsVision)
+
 
 if __name__ == "__main__":
     unittest.main()

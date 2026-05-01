@@ -2435,6 +2435,24 @@ class ChaosEngineState:
             model_tag = self.runtime.loaded_model.name
             self.add_log("chat", "info", f"[{model_tag}] Streaming response...")
             self.active_requests += 1
+            # Hotfix (2026-05-01): the MLX worker subprocess never wired
+            # vision input through, so images attached on an MLX-routed
+            # turn were silently dropped and the model hallucinated about
+            # whatever was in the prompt text. Strip + warn loudly here
+            # so the user gets an unambiguous signal instead of a
+            # plausible-looking hallucination. The capability resolver
+            # also demotes vision for these engines so the composer
+            # hides the attach button — this branch is the belt-and-
+            # braces for legacy clients that bypass the gate.
+            if request.images and (self.runtime.loaded_model.engine or "").lower() in {"mlx", "mlx_worker", "turboquant"}:
+                self.add_log(
+                    "chat", "warning",
+                    f"[{model_tag}] Stripped {len(request.images)} attached "
+                    "image(s): the MLX runtime does not currently carry "
+                    "vision input through to the model. Switch to a "
+                    "llama.cpp-routed vision model to attach images.",
+                )
+                request.images = None
             effective_system_prompt = _compose_chat_system_prompt(request.systemPrompt, effective_thinking_mode)
             doc_context, stream_rag_citations = self._retrieve_session_context(session["id"], request.prompt)
             if doc_context:

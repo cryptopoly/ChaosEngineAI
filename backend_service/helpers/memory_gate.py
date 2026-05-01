@@ -28,22 +28,27 @@ from typing import Any
 # image/video gates because chat KV growth per turn is typically <1 GB; the
 # model itself is already resident.
 CHAT_MIN_AVAILABLE_GB = 1.0
-# Combined-pressure ceiling. Above this percentage the system is at imminent
-# risk of swap thrashing or OOM kill regardless of what `available` says.
-CHAT_MAX_PRESSURE_PERCENT = 92.0
+# Combined-pressure ceiling. macOS unified memory routinely sits at 90-97%
+# pressure during normal use because the kernel aggressively compresses
+# pages — the original 92% threshold turned out to be too strict and
+# refused generations that would have completed comfortably. We now treat
+# `available_gb` as the primary signal and only fall back to the pressure
+# ceiling at near-OOM levels (98%+). Raise this only if the available-GB
+# floor proves insufficient.
+CHAT_MAX_PRESSURE_PERCENT = 98.0
 
 # Phase 2.0.5-H: image generation typically needs 4-12 GB working set on
 # top of the already-resident pipeline (latents, attention buffers, VAE
 # decode). The gate is a backstop — refuses when the host is already
 # strained enough that an OOM during inference would wedge the laptop.
 IMAGE_MIN_AVAILABLE_GB = 4.0
-IMAGE_MAX_PRESSURE_PERCENT = 88.0
+IMAGE_MAX_PRESSURE_PERCENT = 95.0
 
 # Video gen working set scales with frame count + resolution. Strictest
 # of the three gates — a hung video gen on Apple Silicon will typically
 # swap-thrash for minutes before recovering.
 VIDEO_MIN_AVAILABLE_GB = 6.0
-VIDEO_MAX_PRESSURE_PERCENT = 85.0
+VIDEO_MAX_PRESSURE_PERCENT = 92.0
 
 
 def gate_chat_generation(

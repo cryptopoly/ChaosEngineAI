@@ -779,9 +779,15 @@ class LoadedModelInfo:
         # gate composer affordances (vision, tools, reasoning, etc.)
         # without a separate fetch. Resolved lazily — adding a field on
         # the dataclass would force a migration in every load path.
+        # The active engine is passed so capability flags get demoted
+        # for runtime gaps (e.g. MLX worker doesn't carry images).
         from backend_service.catalog.capabilities import resolve_capabilities
 
-        capabilities = resolve_capabilities(self.ref, self.canonicalRepo).to_dict()
+        capabilities = resolve_capabilities(
+            self.ref,
+            self.canonicalRepo,
+            engine=self.engine,
+        ).to_dict()
         return {
             "ref": self.ref,
             "name": self.name,

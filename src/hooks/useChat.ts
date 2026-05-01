@@ -5,6 +5,7 @@ import {
   createSession,
   deleteSession,
   deleteSessionDocument,
+  forkChatSession,
   generateChatStream,
   getTauriBackendInfo,
   restartManagedBackend,
@@ -525,6 +526,27 @@ export function useChat(
         }));
       })
       .catch(() => {});
+  }
+
+  async function handleForkAtMessage(index: number): Promise<void> {
+    // Phase 2.4: fork the active thread at the given message index.
+    // Backend deep-copies messages [0..index] into a new session and
+    // returns it; we swap activeChatId to land the user inside the
+    // fork so their next message diverges. Parent linkage stays on
+    // `parentSessionId` for the sidebar hint.
+    if (!activeChat) return;
+    if (index < 0 || index >= activeChat.messages.length) return;
+    try {
+      const fork = await forkChatSession(activeChat.id, index);
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, fork),
+      }));
+      setActiveChatId(fork.id);
+      setThreadTitleDraft(fork.title);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fork failed");
+    }
   }
 
   async function handleRetryMessage(index: number) {
@@ -1055,6 +1077,7 @@ export function useChat(
     handleLoadActiveThreadModel,
     handleCopyMessage,
     handleDeleteMessage,
+    handleForkAtMessage,
     handleRetryMessage,
     handleChatFileDrop,
     sendMessage,

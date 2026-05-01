@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 
 from backend_service.models import (
     CreateSessionRequest,
+    ForkSessionRequest,
     UpdateSessionRequest,
     GenerateRequest,
 )
@@ -18,6 +19,28 @@ router = APIRouter()
 def create_session(request: Request, body: CreateSessionRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
     session = state.create_session(title=body.title)
+    return {"session": session}
+
+
+@router.post("/api/chat/sessions/{session_id}/fork")
+def fork_session(request: Request, session_id: str, body: ForkSessionRequest) -> dict[str, Any]:
+    """Phase 2.4: fork an existing thread at a chosen message.
+
+    Returns the freshly-created session payload (same shape as
+    create_session) plus the parent linkage on its
+    `parentSessionId` / `forkedAtMessageIndex` fields. Frontend
+    swaps the active chat to the new fork and lets the user
+    continue divergently.
+    """
+    state = request.app.state.chaosengine
+    try:
+        session = state.fork_session(
+            source_session_id=session_id,
+            fork_at_message_index=body.forkAtMessageIndex,
+            title=body.title,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"session": session}
 
 

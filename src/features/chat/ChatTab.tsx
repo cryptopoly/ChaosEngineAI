@@ -84,6 +84,8 @@ export interface ChatTabProps {
   onCopyMessage: (text: string) => void;
   onRetryMessage: (index: number) => void;
   onDeleteMessage: (index: number) => void;
+  /** Phase 2.4: fork the thread at this assistant message index. */
+  onForkAtMessage: (index: number) => void;
   onDetailsToggle: (opened: boolean) => void;
   onSendMessage: () => void;
   onSetError: (msg: string | null) => void;
@@ -141,6 +143,7 @@ export function ChatTab({
   onCopyMessage,
   onRetryMessage,
   onDeleteMessage,
+  onForkAtMessage,
   onDetailsToggle,
   onSendMessage,
   onSetError,
@@ -385,6 +388,7 @@ export function ChatTab({
           onCopyMessage={onCopyMessage}
           onRetryMessage={onRetryMessage}
           onDeleteMessage={onDeleteMessage}
+          onForkAtMessage={onForkAtMessage}
           onDetailsToggle={onDetailsToggle}
           onCancelGeneration={onCancelGeneration}
           onLoadModel={onLoadModel}

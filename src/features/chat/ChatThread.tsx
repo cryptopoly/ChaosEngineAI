@@ -39,6 +39,8 @@ export interface ChatThreadProps {
   onCopyMessage: (text: string) => void;
   onRetryMessage: (index: number) => void;
   onDeleteMessage: (index: number) => void;
+  /** Phase 2.4: fork-from-here action on assistant messages. */
+  onForkAtMessage: (index: number) => void;
   onDetailsToggle: (opened: boolean) => void;
   onCancelGeneration: () => void;
   onLoadModel: (payload: {
@@ -72,6 +74,7 @@ export function ChatThread({
   onCopyMessage,
   onRetryMessage,
   onDeleteMessage,
+  onForkAtMessage,
   onDetailsToggle,
   onCancelGeneration,
   onLoadModel,
@@ -135,6 +138,22 @@ export function ChatThread({
                           <polyline points="23 4 23 10 17 10" />
                           <polyline points="1 20 1 14 7 14" />
                           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                        </svg>
+                      </button>
+                    ) : null}
+                    {message.role === "assistant" ? (
+                      <button
+                        type="button"
+                        className="message-action-btn"
+                        title="Fork from here (creates a new thread)"
+                        onClick={() => void onForkAtMessage(index)}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="6" cy="3" r="2" />
+                          <circle cx="6" cy="21" r="2" />
+                          <circle cx="18" cy="6" r="2" />
+                          <path d="M6 5v14" />
+                          <path d="M6 12c0-3 6-3 12-6" />
                         </svg>
                       </button>
                     ) : null}

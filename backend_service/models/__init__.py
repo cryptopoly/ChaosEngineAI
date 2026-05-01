@@ -48,6 +48,20 @@ class CreateSessionRequest(BaseModel):
     title: str | None = None
 
 
+class ForkSessionRequest(BaseModel):
+    """Phase 2.4: fork a thread at a specific assistant message.
+
+    `forkAtMessageIndex` is the 0-based index of the last message to
+    include in the fork — typically the assistant turn the user
+    wants to branch from. The fork keeps every message up to and
+    including this index, then becomes a fresh thread for divergent
+    continuation.
+    """
+
+    forkAtMessageIndex: int = Field(ge=0)
+    title: str | None = Field(default=None, max_length=200)
+
+
 class UpdateSessionRequest(BaseModel):
     title: str | None = None
     model: str | None = None

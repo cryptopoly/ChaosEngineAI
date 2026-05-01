@@ -455,6 +455,24 @@ export async function createSession(title?: string): Promise<ChatSession> {
   return result.session;
 }
 
+/**
+ * Phase 2.4: fork an existing thread at a specific message index.
+ * Returns the new session, which the caller swaps active to so the
+ * user can continue divergently. Parent linkage is preserved on
+ * `parentSessionId` + `forkedAtMessageIndex`.
+ */
+export async function forkChatSession(
+  sourceSessionId: string,
+  forkAtMessageIndex: number,
+  title?: string,
+): Promise<ChatSession> {
+  const result = await postJson<CreateSessionResponse>(
+    `/api/chat/sessions/${encodeURIComponent(sourceSessionId)}/fork`,
+    { forkAtMessageIndex, title },
+  );
+  return result.session;
+}
+
 export async function updateSession(sessionId: string, payload: UpdateSessionPayload): Promise<ChatSession> {
   const result = await patchJson<CreateSessionResponse>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, payload);
   return result.session;

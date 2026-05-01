@@ -1661,6 +1661,7 @@ export default function App() {
         onCopyMessage={chat.handleCopyMessage}
         onRetryMessage={chat.handleRetryMessage}
         onDeleteMessage={chat.handleDeleteMessage}
+        onForkAtMessage={chat.handleForkAtMessage}
         onDetailsToggle={handleDetailsToggle}
         onSendMessage={sendMessage}
         onSetError={setError}

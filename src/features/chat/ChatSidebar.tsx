@@ -129,6 +129,14 @@ export function ChatSidebar({
                 </div>
                 <div className="session-meta-row">
                   <small>{session.updatedAt}</small>
+                  {session.parentSessionId ? (
+                    <span
+                      className="badge session-fork-badge"
+                      title={`Forked from another thread at message #${(session.forkedAtMessageIndex ?? 0) + 1}`}
+                    >
+                      ⑂ fork
+                    </span>
+                  ) : null}
                   {session.modelRef && warmModels.some((w) => w.ref === session.modelRef) ? (
                     <span
                       className="badge success session-warm-badge"

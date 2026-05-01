@@ -1082,6 +1082,82 @@ class ChaosEngineState:
             session = self._ensure_session(title=title)
             return session
 
+    def fork_session(
+        self,
+        source_session_id: str,
+        fork_at_message_index: int,
+        title: str | None = None,
+    ) -> dict[str, Any]:
+        """Phase 2.4: branch a thread at a specific message.
+
+        Creates a new session containing a deep copy of the source's
+        messages up to (and including) `fork_at_message_index`, plus
+        the source's runtime profile (model, cache, thinking mode) so
+        the fork resumes exactly where the user diverged. The new
+        session carries `parentSessionId` and `forkedAtMessageIndex`
+        metadata so the sidebar can render a relationship hint and
+        future features (compare-vs-parent, merge) have the linkage.
+
+        Raises ``ValueError`` when the source session doesn't exist
+        or the fork index is out of range.
+        """
+        import copy
+
+        with self._lock:
+            source = next(
+                (s for s in self.chat_sessions if s.get("id") == source_session_id),
+                None,
+            )
+            if source is None:
+                raise ValueError(f"Source session not found: {source_session_id}")
+            messages = source.get("messages") or []
+            if fork_at_message_index < 0 or fork_at_message_index >= len(messages):
+                raise ValueError(
+                    f"fork_at_message_index {fork_at_message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+
+            fork_title = title or f"{source.get('title', 'Chat')} (fork)"
+            new_id = f"session-{uuid.uuid4().hex[:8]}"
+            new_session: dict[str, Any] = {
+                "id": new_id,
+                "title": fork_title,
+                "updatedAt": self._time_label(),
+                "pinned": False,
+                # Carry the runtime profile so the fork resumes on the
+                # same model + cache config as the parent.
+                "model": source.get("model"),
+                "modelRef": source.get("modelRef"),
+                "canonicalRepo": source.get("canonicalRepo"),
+                "modelSource": source.get("modelSource"),
+                "modelPath": source.get("modelPath"),
+                "modelBackend": source.get("modelBackend"),
+                "thinkingMode": source.get("thinkingMode") or "off",
+                "cacheLabel": source.get("cacheLabel"),
+                "cacheStrategy": source.get("cacheStrategy"),
+                "cacheBits": source.get("cacheBits"),
+                "fp16Layers": source.get("fp16Layers"),
+                "fusedAttention": source.get("fusedAttention"),
+                "fitModelInMemory": source.get("fitModelInMemory"),
+                "contextTokens": source.get("contextTokens"),
+                "speculativeDecoding": source.get("speculativeDecoding"),
+                "dflashDraftModel": source.get("dflashDraftModel"),
+                "treeBudget": source.get("treeBudget"),
+                # Branching linkage so the UI can render the
+                # parent-child relationship and so future features
+                # (diff, merge) have the tie.
+                "parentSessionId": source_session_id,
+                "forkedAtMessageIndex": fork_at_message_index,
+                "messages": copy.deepcopy(messages[: fork_at_message_index + 1]),
+            }
+            self.chat_sessions.insert(0, new_session)
+            self.add_activity(
+                "Chat session forked",
+                f"{source.get('title', 'Chat')} → {fork_title}",
+            )
+            self._persist_sessions()
+            return new_session
+
     def update_session(self, session_id: str, request: UpdateSessionRequest) -> dict[str, Any]:
         with self._lock:
             session = self._ensure_session(session_id=session_id)

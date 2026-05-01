@@ -7272,6 +7272,17 @@ select.text-input {
   border: 1px solid var(--border);
 }
 
+/* Fork badge in sidebar (Phase 2.4) */
+.session-fork-badge {
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c4b5fd;
+  font-size: 9px;
+  padding: 1px 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Mid-thread model swap menu (Phase 2.12) */
 .swap-menu {
   position: relative;

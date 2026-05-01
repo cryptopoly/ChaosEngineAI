@@ -353,6 +353,14 @@ export interface ChatSession {
   speculativeDecoding?: boolean | null;
   dflashDraftModel?: string | null;
   treeBudget?: number | null;
+  /**
+   * Phase 2.4: when this session was forked from another, the source
+   * session's id. Sidebar reads this to render a fork-relationship
+   * hint and the future merge/diff features key off it.
+   */
+  parentSessionId?: string | null;
+  /** Phase 2.4: index of the last message copied from the parent. */
+  forkedAtMessageIndex?: number | null;
   messages: ChatMessage[];
 }
 

@@ -464,11 +464,21 @@ export async function generateChat(payload: GeneratePayload): Promise<GenerateRe
   return await postJson<GenerateResponse>("/api/chat/generate", payload, 300000);
 }
 
+export type ChatStreamPhase = "prompt_eval" | "generating";
+
 export interface StreamCallbacks {
   onToken: (token: string) => void;
   onReasoning?: (reasoning: string) => void;
   onReasoningDone?: () => void;
   onCancelled?: () => void;
+  /**
+   * Phase transition signal (Phase 2.0). Backend emits `prompt_eval`
+   * immediately when generation begins, then `generating` (with a
+   * `ttftSeconds` measurement) the moment the model produces its first
+   * token or reasoning fragment. Use this to render an explicit
+   * "Processing prompt..." indicator instead of a blank flashing cursor.
+   */
+  onPhase?: (phase: ChatStreamPhase, ttftSeconds?: number) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
 }
@@ -558,6 +568,10 @@ export async function generateChatStream(
           }
           if (event.cancelled) {
             callbacks.onCancelled?.();
+          }
+          if (event.phase === "prompt_eval" || event.phase === "generating") {
+            const ttft = typeof event.ttftSeconds === "number" ? event.ttftSeconds : undefined;
+            callbacks.onPhase?.(event.phase, ttft);
           }
           if (event.done) {
             callbacks.onDone({

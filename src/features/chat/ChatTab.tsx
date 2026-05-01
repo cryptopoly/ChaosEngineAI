@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RichMarkdown } from "../../components/RichMarkdown";
+import { PromptPhaseIndicator } from "../../components/PromptPhaseIndicator";
 import { downloadExport, type ExportFormat } from "./exportThread";
 import { filterSessions } from "./sessionSearch";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
@@ -659,8 +660,11 @@ export function ChatTab({
                     streaming={isStreamingMessage && message.reasoningDone !== true}
                   />
                 ) : null}
+                {message.role === "assistant" && isStreamingMessage && message.streamPhase ? (
+                  <PromptPhaseIndicator phase={message.streamPhase} />
+                ) : null}
                 {message.role === "assistant" ? (
-                  <div className={`markdown-content${isStreamingMessage ? " streaming-cursor" : ""}`}>
+                  <div className={`markdown-content${isStreamingMessage && !message.streamPhase ? " streaming-cursor" : ""}`}>
                     <RichMarkdown>{message.text || "\u200B"}</RichMarkdown>
                   </div>
                 ) : (

@@ -260,6 +260,8 @@ export interface CitationInfo {
   preview: string;
 }
 
+export type ChatStreamPhase = "prompt_eval" | "generating";
+
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -269,6 +271,13 @@ export interface ChatMessage {
   metrics?: GenerationMetrics | null;
   toolCalls?: ToolCallInfo[];
   citations?: CitationInfo[];
+  /**
+   * Live phase tracker for the streaming assistant message (Phase 2.0).
+   * Cleared once the message finalises via the backend's done event. Used
+   * to render an explicit prompt-processing indicator before the first
+   * token arrives instead of a blank flashing cursor.
+   */
+  streamPhase?: ChatStreamPhase | null;
 }
 
 export interface SessionDocument {
@@ -417,6 +426,10 @@ export interface GenerationMetrics {
   totalTokens: number;
   tokS: number;
   responseSeconds?: number | null;
+  /** Time-to-first-token in seconds (Phase 2.0). Time from generation start
+   * to the moment the model produced its first reasoning or text token.
+   * Useful for diagnosing slow prompt-eval phases on long contexts. */
+  ttftSeconds?: number | null;
   runtimeNote: string | null;
   dflashAcceptanceRate?: number | null;
   model?: string | null;

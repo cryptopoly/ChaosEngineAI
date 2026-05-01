@@ -180,7 +180,17 @@ export function useChat(
               messages: [
                 ...session.messages,
                 { role: "user" as const, text: prompt, metrics: null },
-                { role: "assistant" as const, text: "", reasoning: "", reasoningDone: true, metrics: null },
+                {
+                  role: "assistant" as const,
+                  text: "",
+                  reasoning: "",
+                  reasoningDone: true,
+                  metrics: null,
+                  // Phase 2.0: start in prompt_eval so the indicator shows
+                  // immediately on send, before backend's first SSE phase
+                  // event arrives. Cleared by onDone via the session refresh.
+                  streamPhase: "prompt_eval",
+                },
               ],
             }
           : session,

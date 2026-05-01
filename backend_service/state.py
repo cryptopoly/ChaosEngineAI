@@ -642,6 +642,7 @@ class ChaosEngineState:
         tok_s: float,
         response_seconds: float,
         requested_runtime: dict[str, Any] | None = None,
+        ttft_seconds: float | None = None,
     ) -> dict[str, Any]:
         metrics: dict[str, Any] = {
             "finishReason": final_chunk.finish_reason if final_chunk else "stop",
@@ -654,6 +655,8 @@ class ChaosEngineState:
         }
         if final_chunk and getattr(final_chunk, "dflash_acceptance_rate", None) is not None:
             metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
+        if ttft_seconds is not None:
+            metrics["ttftSeconds"] = ttft_seconds
         return {
             **self._loaded_model_metrics_fields(),
             **self._result_runtime_metrics_fields(final_chunk),
@@ -2414,6 +2417,25 @@ class ChaosEngineState:
             final_chunk = None
             agent_tool_calls: list[dict[str, Any]] = []
             cancelled = False
+            # Phase 2.0: track prompt-eval → generating phase transition so the
+            # client can render an explicit "Processing prompt..." indicator
+            # instead of a blank flashing cursor while the model is still
+            # ingesting the prompt. The OpenAI-compat streaming endpoint
+            # exposes nothing until the first decoded token, so phase here is
+            # binary (prompt_eval | generating) plus a TTFT measurement on
+            # transition.
+            phase_first_output_seen = False
+            ttft_seconds: float | None = None
+
+            yield f"data: {json.dumps({'phase': 'prompt_eval'})}\n\n"
+
+            def _maybe_emit_generating_phase() -> str:
+                nonlocal phase_first_output_seen, ttft_seconds
+                if phase_first_output_seen:
+                    return ""
+                phase_first_output_seen = True
+                ttft_seconds = round(time.perf_counter() - gen_start, 3)
+                return f"data: {json.dumps({'phase': 'generating', 'ttftSeconds': ttft_seconds})}\n\n"
 
             try:
                 if enable_tools:
@@ -2431,9 +2453,15 @@ class ChaosEngineState:
                             cancelled = True
                             break
                         if "token" in event:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_text += event["token"]
                             yield f"data: {json.dumps({'token': event['token']})}\n\n"
                         elif "tool_call_start" in event:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             yield f"data: {json.dumps({'toolCallStart': event['tool_call_start']})}\n\n"
                         elif "tool_call_result" in event:
                             agent_tool_calls.append(event["tool_call_result"])
@@ -2453,11 +2481,17 @@ class ChaosEngineState:
                             cancelled = True
                             break
                         if chunk.reasoning:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_reasoning += chunk.reasoning
                             yield f"data: {json.dumps({'reasoning': chunk.reasoning})}\n\n"
                         if chunk.reasoning_done:
                             yield f"data: {json.dumps({'reasoningDone': True})}\n\n"
                         if chunk.text:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_text += chunk.text
                             yield f"data: {json.dumps({'token': chunk.text})}\n\n"
                         if chunk.done:
@@ -2498,6 +2532,7 @@ class ChaosEngineState:
                     tok_s=tok_s,
                     response_seconds=gen_elapsed,
                     requested_runtime=requested_runtime,
+                    ttft_seconds=ttft_seconds,
                 )
                 if agent_tool_calls:
                     metrics["toolCalls"] = agent_tool_calls

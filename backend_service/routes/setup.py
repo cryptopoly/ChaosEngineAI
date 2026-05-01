@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import platform
 import shutil
@@ -209,6 +210,8 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
                 f"{output}\n\nCleaned stale mlx-video metadata: "
                 f"{', '.join(unique)}"
             ).strip()
+
+    importlib.invalidate_caches()
 
     # Re-probe capabilities after install
     state.runtime.refresh_capabilities(force=True)

@@ -2348,6 +2348,7 @@ class RuntimeController:
         *,
         requested_identity: str,
         keep_warm_previous: bool = True,
+        required_free_bytes: int = 0,
     ) -> None:
         if not self.loaded_model or not self.engine:
             return
@@ -2366,9 +2367,19 @@ class RuntimeController:
             except Exception:
                 pass
             return
-        self._evict_warm_pool(
-            incoming_bytes=self._model_resident_bytes(self.loaded_model),
+        active_bytes = max(
+            self._model_resident_bytes(self.loaded_model),
+            self._engine_resident_bytes(self.engine),
         )
+        self._evict_warm_pool(
+            incoming_bytes=active_bytes,
+        )
+        if not self._can_keep_warm_model(active_bytes, required_free_bytes=required_free_bytes):
+            try:
+                self.engine.unload_model()
+            except Exception:
+                pass
+            return
         self._warm_pool[current_key] = (self.engine, self.loaded_model)
 
     def _tracked_process_pids(self) -> set[int]:
@@ -2637,8 +2648,36 @@ class RuntimeController:
         """
         return _path_size_bytes(info.path) if info.path else 0
 
+    @staticmethod
+    def _target_resident_bytes(*, path: str | None, runtime_target: str | None) -> int:
+        for candidate in (path, runtime_target):
+            if not candidate:
+                continue
+            size = _path_size_bytes(candidate)
+            if size > 0:
+                return size
+        return 0
+
+    @staticmethod
+    def _engine_resident_bytes(engine: BaseInferenceEngine | None) -> int:
+        if engine is None:
+            return 0
+        pid_getter = getattr(engine, "process_pid", None)
+        pid = pid_getter() if callable(pid_getter) else None
+        if not isinstance(pid, int):
+            return 0
+        try:
+            import psutil
+
+            return int(psutil.Process(pid).memory_info().rss)
+        except Exception:
+            return 0
+
     def _warm_pool_resident_bytes(self) -> int:
-        return sum(self._model_resident_bytes(info) for _, info in self._warm_pool.values())
+        return sum(
+            max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
+            for engine, info in self._warm_pool.values()
+        )
 
     def _memory_budget_bytes(self) -> int:
         """Bytes available for warm-pool weights, after OS headroom.
@@ -2663,6 +2702,14 @@ class RuntimeController:
             old_engine.unload_model()
         except Exception:
             pass
+
+    def _can_keep_warm_model(self, incoming_bytes: int, *, required_free_bytes: int = 0) -> bool:
+        budget = self._memory_budget_bytes()
+        if budget <= 0:
+            return True
+        if required_free_bytes > budget:
+            return False
+        return self._warm_pool_resident_bytes() + incoming_bytes <= budget
 
     def _evict_warm_pool(self, *, incoming_bytes: int = 0) -> None:
         """Make room for an incoming entry in the warm pool.
@@ -2733,6 +2780,10 @@ class RuntimeController:
             runtime_target=runtime_target,
             path=path,
         )
+        incoming_load_bytes = self._target_resident_bytes(
+            path=path,
+            runtime_target=runtime_target,
+        )
 
         # Check warm pool first — instant switch if the exact runtime profile is cached
         pool_key = self._warm_pool_key(
@@ -2774,6 +2825,7 @@ class RuntimeController:
         self._park_active_engine_or_unload(
             requested_identity=requested_identity,
             keep_warm_previous=keep_warm_previous,
+            required_free_bytes=incoming_load_bytes,
         )
 
         self.engine = selected_engine

@@ -537,6 +537,17 @@ class DiffusersTextToImageEngine:
         # find_spec answers "is it installable?" without triggering the
         # import side effects. Device detection (cuda vs cpu) is deferred
         # to preload/generate where we're about to import torch anyway.
+        #
+        # ``invalidate_caches`` matters when the GPU bundle install has
+        # finished mid-process: pip writes the new packages into the
+        # extras dir (already on ``sys.path`` from process start), but
+        # ``importlib`` keeps a per-finder cache of negative lookups, so
+        # the find_spec calls below would still report None even though
+        # the .dist-info folders are sitting on disk. Calling
+        # ``invalidate_caches`` first re-walks the path entries so the
+        # newly installed packages are picked up without a process
+        # restart.
+        importlib.invalidate_caches()
         missing = [
             package
             for package, module_name in (

@@ -697,6 +697,12 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
 /// Returns ``None`` if we can't resolve a home directory at all (headless
 /// environments). Callers treat that as "no extras available".
 fn chaosengine_extras_root() -> Option<PathBuf> {
+    // The extras tree lives OUTSIDE the Tauri install directory so it
+    // survives uninstall + reinstall cycles — re-downloading the 2.5 GB
+    // GPU bundle on every desktop upgrade is unacceptable. The Windows
+    // NSIS installer is told to leave this path alone via the empty
+    // hooks in ``src-tauri/installer.nsh``; if anyone changes either
+    // side the other MUST be kept in sync.
     let base = if cfg!(windows) {
         env::var_os("LOCALAPPDATA")
             .map(PathBuf::from)

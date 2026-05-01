@@ -418,6 +418,48 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
     return None
 
 
+def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
+    """Locate the mmproj projector sibling for a vision-capable GGUF.
+
+    Vision support in llama.cpp is gated by the `--mmproj` flag; the
+    projector lives as a separate `*mmproj*.gguf` file alongside the
+    main weights. HF repos for vision-capable models usually ship both
+    in the same snapshot (e.g. `gemma-3-27b-it-qat-4bit/` contains
+    `model.gguf` and `mmproj.gguf`). This helper scans the same
+    directory tree the main GGUF was found in and returns the largest
+    matching projector file, or None when no projector is present (the
+    model is text-only, or the user only downloaded the main weights).
+    """
+    if not model_gguf_path:
+        return None
+    main_path = Path(model_gguf_path)
+    if not main_path.exists():
+        return None
+
+    # Search the parent directory and the snapshot tree it's nested in.
+    # HF caches typically nest as
+    # `models--<org>--<repo>/snapshots/<rev>/<file>.gguf` so we walk up
+    # to the snapshot root and recurse.
+    candidates: list[Path] = []
+    parent = main_path.parent
+    if parent.is_dir():
+        candidates.extend(parent.rglob("*mmproj*.gguf"))
+    # Also walk one level up in case the model file lives directly in
+    # the snapshot root and the projector is in a sibling directory.
+    grandparent = parent.parent
+    if grandparent.is_dir() and grandparent != parent:
+        candidates.extend(
+            p for p in grandparent.rglob("*mmproj*.gguf")
+            if p not in candidates
+        )
+
+    valid = [p for p in candidates if p.is_file() and p != main_path]
+    if not valid:
+        return None
+    valid.sort(key=lambda f: f.stat().st_size, reverse=True)
+    return str(valid[0])
+
+
 def _is_local_target(candidate: str | None) -> bool:
     if not candidate:
         return False
@@ -1930,7 +1972,20 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             raise RuntimeError("GGUF loading requires a local model path or a Hugging Face GGUF repository.")
 
-        return command, runtime_note, fell_back_to_native
+        # Vision wiring: if a sibling mmproj file is present, pass it
+        # via `--mmproj` so llama-server enables image input. Capture
+        # the path so the caller can flip `LoadedModelInfo.visionEnabled`
+        # to True; the capability resolver reads that flag to enable
+        # the composer's image-attach button. Older llama-server builds
+        # without `--mmproj` skip the flag silently — verify support
+        # via the help-text gate to avoid startup failure on those.
+        mmproj_path: str | None = None
+        if resolved_gguf and _llama_server_supports(binary, "--mmproj"):
+            mmproj_path = _resolve_mmproj_path(resolved_gguf)
+            if mmproj_path:
+                command.extend(["--mmproj", mmproj_path])
+
+        return command, runtime_note, fell_back_to_native, mmproj_path
 
     def _wait_for_server(self) -> None:
         deadline = time.time() + DEFAULT_LLAMA_TIMEOUT_SECONDS
@@ -2011,9 +2066,10 @@ class LlamaCppEngine(BaseInferenceEngine):
             attempts.append(("native", False, True))
         last_error: str | None = None
 
+        attempt_mmproj_path: str | None = None
         for strategy_id, fit_enabled, is_fallback in attempts:
             strategy = _strategy_registry.get(strategy_id) or _strategy_registry.default()
-            command, attempt_note, prevalidation_fallback = self._build_command(
+            command, attempt_note, prevalidation_fallback, attempt_mmproj_path = self._build_command(
                 path=path,
                 runtime_target=runtime_target,
                 cache_strategy=strategy_id,
@@ -2093,6 +2149,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             path=path,
             runtimeTarget=runtime_target or path,
             runtimeNote=runtime_note,
+            visionEnabled=attempt_mmproj_path is not None,
         )
         return self.loaded_model
 

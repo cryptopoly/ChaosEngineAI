@@ -1,5 +1,19 @@
-import type { ChatSession, ModelLoadingState } from "../../types";
+import type { ChatSession, ModelCapabilities, ModelLoadingState } from "../../types";
 import { downloadExport, type ExportFormat } from "./exportThread";
+
+const CAPABILITY_BADGES: Array<{
+  flag: keyof ModelCapabilities;
+  label: string;
+  title: string;
+}> = [
+  { flag: "supportsVision", label: "Vision", title: "Model accepts image input" },
+  { flag: "supportsTools", label: "Tools", title: "Model supports tool / function calling" },
+  { flag: "supportsReasoning", label: "Reasoning", title: "Model emits a reasoning trace" },
+  { flag: "supportsCoding", label: "Code", title: "Model is tuned for code generation" },
+  { flag: "supportsAgents", label: "Agents", title: "Model is tuned for multi-step agentic flows" },
+  { flag: "supportsAudio", label: "Audio", title: "Model accepts audio input" },
+  { flag: "supportsVideo", label: "Video", title: "Model accepts video input" },
+];
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. The thread header — title
@@ -13,6 +27,7 @@ export interface ChatHeaderProps {
   threadTitleDraft: string;
   activeThreadOptionKey: string | undefined;
   loadedModelRef: string | undefined;
+  loadedModelCapabilities?: ModelCapabilities | null;
   serverLoading: ModelLoadingState | null;
   modelBusyLabel: string | null;
   busy: boolean;
@@ -48,6 +63,7 @@ export function ChatHeader({
   threadTitleDraft,
   activeThreadOptionKey,
   loadedModelRef,
+  loadedModelCapabilities,
   serverLoading,
   modelBusyLabel,
   busy,
@@ -130,6 +146,15 @@ export function ChatHeader({
                 ))}
               </div>
             </details>
+          ) : null}
+          {activeChat?.modelRef === loadedModelRef && loadedModelCapabilities ? (
+            <span className="capability-badges" aria-label="Model capabilities">
+              {CAPABILITY_BADGES.filter((entry) => loadedModelCapabilities[entry.flag]).map((entry) => (
+                <span key={entry.flag} className="capability-badge" title={entry.title}>
+                  {entry.label}
+                </span>
+              ))}
+            </span>
           ) : null}
           {activeChat?.modelRef === loadedModelRef ? (
             <span className="badge success">Ready</span>

@@ -775,6 +775,13 @@ class LoadedModelInfo:
     treeBudget: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        # Phase 2.11: include resolved capabilities so the frontend can
+        # gate composer affordances (vision, tools, reasoning, etc.)
+        # without a separate fetch. Resolved lazily — adding a field on
+        # the dataclass would force a migration in every load path.
+        from backend_service.catalog.capabilities import resolve_capabilities
+
+        capabilities = resolve_capabilities(self.ref, self.canonicalRepo).to_dict()
         return {
             "ref": self.ref,
             "name": self.name,
@@ -795,6 +802,7 @@ class LoadedModelInfo:
             "speculativeDecoding": self.speculativeDecoding,
             "dflashDraftModel": self.dflashDraftModel,
             "treeBudget": self.treeBudget,
+            "capabilities": capabilities,
         }
 
 

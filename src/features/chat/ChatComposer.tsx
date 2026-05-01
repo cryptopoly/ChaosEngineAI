@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
-import type { ChatSession, ChatThinkingMode, LaunchPreferences, SamplerOverrides } from "../../types";
+import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilities, SamplerOverrides } from "../../types";
 import type { SlashCommand } from "./slashCommands";
 
 /**
@@ -20,6 +20,7 @@ export interface ChatComposerProps {
   draftMessage: string;
   pendingImages: string[];
   loadedModelRef: string | undefined;
+  loadedModelCapabilities?: ModelCapabilities | null;
   thinkingMode: ChatThinkingMode;
   reasoningEffort: ReasoningEffortLevel;
   enableTools: boolean;
@@ -51,6 +52,7 @@ export function ChatComposer({
   draftMessage,
   pendingImages,
   loadedModelRef,
+  loadedModelCapabilities,
   thinkingMode,
   reasoningEffort,
   enableTools,
@@ -77,6 +79,13 @@ export function ChatComposer({
   handleEffortOff,
   handleEffortChange,
 }: ChatComposerProps) {
+  // Phase 2.11: when capabilities are known, hide affordances the loaded
+  // model can't honour. When capabilities are absent (unknown model or
+  // freshly downloaded HF entry without a catalog mapping) all
+  // affordances stay visible so the user isn't blocked from trying.
+  const showImageAttach = !loadedModelCapabilities || loadedModelCapabilities.supportsVision;
+  const showToolsToggle = !loadedModelCapabilities || loadedModelCapabilities.supportsTools;
+  const showThinkingControl = !loadedModelCapabilities || loadedModelCapabilities.supportsReasoning;
   return (
     <div className="composer">
       {pendingImages.length > 0 ? (
@@ -173,29 +182,32 @@ export function ChatComposer({
       </div>
       <div className="button-row composer-button-row">
         <div className="composer-button-group composer-button-group--left">
-          <label className="secondary-button composer-attach-btn" title="Attach image">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={(event) => {
-                const files = event.target.files;
-                if (!files) return;
-                for (const file of Array.from(files)) {
-                  if (file.size > 10 * 1024 * 1024) { onSetError("Image must be under 10MB"); continue; }
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const b64 = (reader.result as string).split(",")[1];
-                    if (b64) onPendingImagesChange((prev) => [...prev, b64]);
-                  };
-                  reader.readAsDataURL(file);
-                }
-                event.target.value = "";
-              }}
-            />
-            {"📎"}
-          </label>
+          {showImageAttach ? (
+            <label className="secondary-button composer-attach-btn" title="Attach image">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(event) => {
+                  const files = event.target.files;
+                  if (!files) return;
+                  for (const file of Array.from(files)) {
+                    if (file.size > 10 * 1024 * 1024) { onSetError("Image must be under 10MB"); continue; }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const b64 = (reader.result as string).split(",")[1];
+                      if (b64) onPendingImagesChange((prev) => [...prev, b64]);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                  event.target.value = "";
+                }}
+              />
+              {"📎"}
+            </label>
+          ) : null}
+          {showThinkingControl ? (
           <div
             className="composer-mode-control"
             title="Choose how much reasoning the model performs before answering. Off = direct answers; Low / Medium / High = increasing reasoning depth for capable models."
@@ -240,6 +252,7 @@ export function ChatComposer({
               </button>
             </div>
           </div>
+          ) : null}
           <TemperatureChip
             defaultValue={launchSettings.temperature}
             override={temperatureOverride}
@@ -251,21 +264,23 @@ export function ChatComposer({
             onChange={onSamplerOverridesChange}
             disabled={chatBusySessionId === activeChat?.id}
           />
-          <button
-            className={`secondary-button${enableTools ? " active-toggle" : ""}`}
-            type="button"
-            onClick={() => onToggleTools(!enableTools)}
-            title={enableTools ? "Tools enabled (web search, code, calculator, file reader)" : "Enable agent tools"}
-            style={{
-              background: enableTools ? "#1e3a5f" : undefined,
-              borderColor: enableTools ? "#3b82f6" : undefined,
-              color: enableTools ? "#8fb4ff" : undefined,
-              fontSize: 12,
-              padding: "4px 10px",
-            }}
-          >
-            {enableTools ? "Tools ON" : "Tools"}
-          </button>
+          {showToolsToggle ? (
+            <button
+              className={`secondary-button${enableTools ? " active-toggle" : ""}`}
+              type="button"
+              onClick={() => onToggleTools(!enableTools)}
+              title={enableTools ? "Tools enabled (web search, code, calculator, file reader)" : "Enable agent tools"}
+              style={{
+                background: enableTools ? "#1e3a5f" : undefined,
+                borderColor: enableTools ? "#3b82f6" : undefined,
+                color: enableTools ? "#8fb4ff" : undefined,
+                fontSize: 12,
+                padding: "4px 10px",
+              }}
+            >
+              {enableTools ? "Tools ON" : "Tools"}
+            </button>
+          ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">
           <button className="secondary-button" type="button" onClick={onClearDraft}>

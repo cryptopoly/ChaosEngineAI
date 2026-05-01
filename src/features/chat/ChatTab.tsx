@@ -1,7 +1,7 @@
 import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
-import type { ChatSession, ChatThinkingMode, ModelLoadingState, LaunchPreferences, SamplerOverrides, WarmModel } from "../../types";
+import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, WarmModel } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
@@ -38,6 +38,7 @@ export interface ChatTabProps {
   chatScrollRef: Ref<HTMLDivElement>;
   serverLoading: ModelLoadingState | null;
   loadedModelRef: string | undefined;
+  loadedModelCapabilities?: ModelCapabilities | null;
   engineLabel: string;
   launchSettings: LaunchPreferences;
   warmModels: WarmModel[];
@@ -103,6 +104,7 @@ export function ChatTab({
   chatScrollRef,
   serverLoading,
   loadedModelRef,
+  loadedModelCapabilities,
   engineLabel,
   launchSettings,
   warmModels,
@@ -341,6 +343,7 @@ export function ChatTab({
           threadTitleDraft={threadTitleDraft}
           activeThreadOptionKey={activeThreadOptionKey}
           loadedModelRef={loadedModelRef}
+          loadedModelCapabilities={loadedModelCapabilities ?? null}
           serverLoading={serverLoading}
           modelBusyLabel={modelBusyLabel}
           busy={busy}
@@ -374,6 +377,7 @@ export function ChatTab({
           draftMessage={draftMessage}
           pendingImages={pendingImages}
           loadedModelRef={loadedModelRef}
+          loadedModelCapabilities={loadedModelCapabilities ?? null}
           thinkingMode={thinkingMode}
           reasoningEffort={reasoningEffort}
           enableTools={enableTools}

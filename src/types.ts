@@ -380,6 +380,28 @@ export interface ServerStatus {
   logTail: string[];
 }
 
+/**
+ * Phase 2.11: typed capability declarations for the loaded model.
+ *
+ * Resolved by the backend from the curated catalog (with a heuristic
+ * fallback for non-catalog models). The frontend uses these to gate
+ * composer affordances — image attach hides when !supportsVision, the
+ * Tools toggle hides when !supportsTools, etc. — and to render capability
+ * badges next to the model picker.
+ */
+export interface ModelCapabilities {
+  supportsVision: boolean;
+  supportsTools: boolean;
+  supportsReasoning: boolean;
+  supportsCoding: boolean;
+  supportsAgents: boolean;
+  supportsAudio: boolean;
+  supportsVideo: boolean;
+  supportsMultilingual: boolean;
+  /** Free-form tags from the catalog ("reasoning", "vision", etc.). */
+  tags: string[];
+}
+
 export interface LoadedModel {
   ref: string;
   name: string;
@@ -400,6 +422,8 @@ export interface LoadedModel {
   speculativeDecoding: boolean;
   dflashDraftModel?: string | null;
   treeBudget: number;
+  /** Phase 2.11: capability declarations (vision / tools / reasoning / etc.) */
+  capabilities?: ModelCapabilities | null;
 }
 
 export interface WarmModel {

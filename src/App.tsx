@@ -1637,6 +1637,7 @@ export default function App() {
         chatScrollRef={chatScrollRef}
         serverLoading={workspace.server.loading}
         loadedModelRef={workspace.runtime.loadedModel?.ref}
+        loadedModelCapabilities={workspace.runtime.loadedModel?.capabilities ?? null}
         engineLabel={workspace.runtime.engineLabel}
         launchSettings={launchSettings}
         warmModels={workspace.runtime.warmModels ?? []}

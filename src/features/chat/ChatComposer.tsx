@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
-import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilities, SamplerOverrides } from "../../types";
+import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilities, SamplerOverrides, WarmModel } from "../../types";
+import { MidThreadSwapMenu } from "./MidThreadSwapMenu";
 import type { SlashCommand } from "./slashCommands";
 
 /**
@@ -26,6 +27,9 @@ export interface ChatComposerProps {
   enableTools: boolean;
   chatBusySessionId: string | null;
   activeChat: ChatSession | undefined;
+  warmModels: WarmModel[];
+  oneTurnOverride: WarmModel | null;
+  onOneTurnOverrideChange: (warm: WarmModel | null) => void;
   launchSettings: LaunchPreferences;
   temperatureOverride: number | null;
   samplerOverrides: SamplerOverrides;
@@ -58,6 +62,9 @@ export function ChatComposer({
   enableTools,
   chatBusySessionId,
   activeChat,
+  warmModels,
+  oneTurnOverride,
+  onOneTurnOverrideChange,
   launchSettings,
   temperatureOverride,
   samplerOverrides,
@@ -262,6 +269,13 @@ export function ChatComposer({
           <SamplerPanel
             overrides={samplerOverrides}
             onChange={onSamplerOverridesChange}
+            disabled={chatBusySessionId === activeChat?.id}
+          />
+          <MidThreadSwapMenu
+            warmModels={warmModels}
+            sessionModelRef={activeChat?.modelRef ?? undefined}
+            overrideRef={oneTurnOverride?.ref ?? null}
+            onSelect={onOneTurnOverrideChange}
             disabled={chatBusySessionId === activeChat?.id}
           />
           {showToolsToggle ? (

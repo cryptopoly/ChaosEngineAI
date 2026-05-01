@@ -2155,12 +2155,19 @@ class ChaosEngineState:
             )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
-            session["model"] = self.runtime.loaded_model.name
-            session["modelRef"] = self.runtime.loaded_model.ref
-            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
-            session["modelSource"] = self.runtime.loaded_model.source
-            session["modelPath"] = self.runtime.loaded_model.path
-            session["modelBackend"] = self.runtime.loaded_model.backend
+            # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
+            # active runtime's model identity onto the session so the
+            # session default (the previously-loaded model) sticks for
+            # the next plain message. Other session metadata (cache
+            # strategy, context, thinking mode) still updates so the
+            # picked model's runtime profile is reflected on this turn.
+            if not getattr(request, "oneTurnOverride", False):
+                session["model"] = self.runtime.loaded_model.name
+                session["modelRef"] = self.runtime.loaded_model.ref
+                session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
+                session["modelSource"] = self.runtime.loaded_model.source
+                session["modelPath"] = self.runtime.loaded_model.path
+                session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
             session["cacheLabel"] = self._cache_label(
                 cache_strategy=str(self.runtime.loaded_model.cacheStrategy),
@@ -2390,12 +2397,19 @@ class ChaosEngineState:
             )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
-            session["model"] = self.runtime.loaded_model.name
-            session["modelRef"] = self.runtime.loaded_model.ref
-            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
-            session["modelSource"] = self.runtime.loaded_model.source
-            session["modelPath"] = self.runtime.loaded_model.path
-            session["modelBackend"] = self.runtime.loaded_model.backend
+            # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
+            # active runtime's model identity onto the session so the
+            # session default (the previously-loaded model) sticks for
+            # the next plain message. Other session metadata (cache
+            # strategy, context, thinking mode) still updates so the
+            # picked model's runtime profile is reflected on this turn.
+            if not getattr(request, "oneTurnOverride", False):
+                session["model"] = self.runtime.loaded_model.name
+                session["modelRef"] = self.runtime.loaded_model.ref
+                session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
+                session["modelSource"] = self.runtime.loaded_model.source
+                session["modelPath"] = self.runtime.loaded_model.path
+                session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
             session["cacheLabel"] = self._cache_label(
                 cache_strategy=str(self.runtime.loaded_model.cacheStrategy),

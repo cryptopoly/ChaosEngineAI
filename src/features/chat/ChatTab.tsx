@@ -2,6 +2,12 @@ import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, WarmModel } from "../../types";
+
+/**
+ * Phase 2.12: imported here so the type appears in the ChatTab module
+ * surface and is forwarded as a prop to consumers like the ChatComposer.
+ */
+type WarmModelType = WarmModel;
 import type { ChatModelOption } from "../../types/chat";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
@@ -85,6 +91,14 @@ export interface ChatTabProps {
   onToggleTools: (enabled: boolean) => void;
   onCompareMode: () => void;
   onCancelGeneration: () => void;
+  /**
+   * Phase 2.12: lifted to the parent so it survives across re-renders
+   * and so useChat can read it without prop drilling. The "warm model
+   * to send the next turn through" — null means use the session
+   * default. Cleared after a successful onDone in useChat.
+   */
+  oneTurnOverride: WarmModelType | null;
+  onOneTurnOverrideChange: (warm: WarmModelType | null) => void;
 }
 
 // Avoid an unused-import diagnostic — ChatModelOption is still part of
@@ -134,6 +148,8 @@ export function ChatTab({
   onToggleTools,
   onCompareMode,
   onCancelGeneration,
+  oneTurnOverride,
+  onOneTurnOverrideChange,
 }: ChatTabProps) {
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
@@ -386,6 +402,9 @@ export function ChatTab({
           launchSettings={launchSettings}
           temperatureOverride={temperatureOverride}
           samplerOverrides={samplerOverrides}
+          warmModels={warmModels}
+          oneTurnOverride={oneTurnOverride}
+          onOneTurnOverrideChange={onOneTurnOverrideChange}
           showSlashMenu={showSlashMenu}
           slashMatches={slashMatches}
           slashIndex={slashIndex}

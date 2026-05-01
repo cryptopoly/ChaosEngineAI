@@ -1668,6 +1668,8 @@ export default function App() {
         onToggleTools={chat.setEnableTools}
         onCompareMode={() => setCompareMode(true)}
         onCancelGeneration={chat.cancelGeneration}
+        oneTurnOverride={chat.oneTurnOverride}
+        onOneTurnOverrideChange={chat.setOneTurnOverride}
       />
     );
   } else if (activeTab === "server") {

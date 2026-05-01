@@ -687,6 +687,13 @@ export interface GeneratePayload {
   // Agent tool-use
   enableTools?: boolean;
   availableTools?: string[];
+  /**
+   * Phase 2.12: when true, the model selectors in this payload override
+   * the loaded runtime for THIS turn only — the session's stored
+   * `modelRef` / `model` / `modelSource` etc. are not updated, so the
+   * thread reverts to its default model on the next plain message.
+   */
+  oneTurnOverride?: boolean;
 }
 
 /**

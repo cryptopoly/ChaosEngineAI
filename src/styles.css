@@ -7211,3 +7211,130 @@ select.text-input {
   font-weight: 500;
   user-select: none;
 }
+
+/* Mid-thread model swap menu (Phase 2.12) */
+.swap-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.swap-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.swap-menu__trigger--active {
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.swap-menu__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.swap-menu__clear:hover {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+.swap-menu__popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 25;
+  min-width: 240px;
+  max-width: 320px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.swap-menu__heading {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.swap-menu__heading strong {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.swap-menu__heading small {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.swap-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.swap-menu__item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.swap-menu__item--active {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-strong);
+}
+
+.swap-menu__item-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swap-menu__item-engine {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.swap-menu__reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.swap-menu__reset:hover {
+  color: var(--text);
+}

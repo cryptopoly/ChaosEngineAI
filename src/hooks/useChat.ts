@@ -29,6 +29,7 @@ import type {
   LoadModelActionResult,
   ModelVariant,
   TabId,
+  WarmModel,
   WorkspaceData,
 } from "../types";
 import type { ChatModelOption } from "../types/chat";
@@ -138,6 +139,11 @@ export function useChat(
   const [enableTools, setEnableTools] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Phase 2.12: one-turn model override. Survives across re-renders so
+  // the ChatComposer dropdown can pre-select; cleared in onDone after
+  // a successful turn so the next plain message goes back to the
+  // session default. Nulling pre-stream cancels also clears it.
+  const [oneTurnOverride, setOneTurnOverride] = useState<WarmModel | null>(null);
   // Phase 2.0.5-A: stuck prompt-eval watchdog. Fires if a generation lingers
   // in `prompt_eval` past PROMPT_EVAL_TIMEOUT_MS without producing the first
   // token — which usually means the model wedged on a too-long context, an
@@ -732,17 +738,25 @@ export function useChat(
         setChatBusySessionId(session.id);
       }
 
+      // Phase 2.12: when a warm-model override is selected for the next
+      // turn, take its identity instead of the session default. The
+      // `oneTurnOverride: true` flag tells the backend not to persist
+      // the override onto the session, so the thread reverts to its
+      // default model on the next plain message.
+      const overrideWarm = oneTurnOverride;
+      const useOverride = Boolean(overrideWarm && overrideWarm.ref !== threadModel?.modelRef);
       const streamPayload = {
         sessionId,
         title: threadTitleDraft.trim() || activeChat?.title,
         prompt: trimmed,
         images: pendingImagesSnapshot.length > 0 ? pendingImagesSnapshot : undefined,
-        modelRef: threadModel?.modelRef,
-        modelName: threadModel?.modelName,
-        canonicalRepo: threadModel?.canonicalRepo,
-        source: threadModel?.source,
-        path: threadModel?.path,
-        backend: threadModel?.backend,
+        modelRef: useOverride ? overrideWarm!.ref : threadModel?.modelRef,
+        modelName: useOverride ? overrideWarm!.name : threadModel?.modelName,
+        canonicalRepo: useOverride ? undefined : threadModel?.canonicalRepo,
+        source: useOverride ? undefined : threadModel?.source,
+        path: useOverride ? undefined : threadModel?.path,
+        backend: useOverride ? overrideWarm!.engine : threadModel?.backend,
+        oneTurnOverride: useOverride || undefined,
         thinkingMode: activeThinkingMode,
         reasoningEffort: activeThinkingMode === "auto" ? readReasoningEffort(sessionId) : undefined,
         temperature: readTemperatureOverride(sessionId) ?? launchSettings.temperature,
@@ -914,6 +928,10 @@ export function useChat(
             clearTimeout(promptEvalTimeoutRef.current);
             promptEvalTimeoutRef.current = null;
           }
+          // Phase 2.12: clear the one-turn override now that this turn
+          // has finished — next plain message reverts to the session
+          // default. Preserves "one-turn" semantics.
+          setOneTurnOverride(null);
           setWorkspace((current) =>
             syncRuntime(
               { ...current, chatSessions: upsertSession(current.chatSessions, response.session) },
@@ -1042,5 +1060,7 @@ export function useChat(
     sendMessage,
     cancelGeneration,
     deleteSessionDocument,
+    oneTurnOverride,
+    setOneTurnOverride,
   };
 }

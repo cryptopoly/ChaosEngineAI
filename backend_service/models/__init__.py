@@ -128,6 +128,16 @@ class GenerateRequest(BaseModel):
     # Agent tool-use
     enableTools: bool = False
     availableTools: list[str] | None = None  # None = all registered tools
+    # Phase 2.12: when True, the modelRef / canonicalRepo / source / etc.
+    # in this request are treated as a one-turn override — the model
+    # loads (or stays) for this turn, but the session's stored
+    # `modelRef` / `model` / `canonicalRepo` / `modelSource` /
+    # `modelPath` / `modelBackend` fields are NOT updated. The session
+    # default sticks so the next plain message goes back to the
+    # original model. Default False preserves the existing behaviour
+    # where sending with a different model permanently switches the
+    # thread.
+    oneTurnOverride: bool = False
 
 
 class RemoteProviderRequest(BaseModel):

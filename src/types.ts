@@ -293,6 +293,7 @@ export interface ChatSession {
   modelPath?: string | null;
   modelBackend?: string | null;
   thinkingMode?: ChatThinkingMode | null;
+  reasoningEffort?: ChatReasoningEffort | null;
   cacheLabel: string;
   cacheStrategy?: string | null;
   cacheBits?: number | null;
@@ -558,6 +559,7 @@ export interface CreateSessionResponse {
 }
 
 export type ChatThinkingMode = "off" | "auto";
+export type ChatReasoningEffort = "low" | "medium" | "high";
 
 export interface UpdateSessionPayload {
   title?: string;
@@ -568,6 +570,7 @@ export interface UpdateSessionPayload {
   modelPath?: string | null;
   modelBackend?: string | null;
   thinkingMode?: ChatThinkingMode | null;
+  reasoningEffort?: ChatReasoningEffort | null;
   pinned?: boolean | null;
   cacheStrategy?: string | null;
   cacheBits?: number | null;
@@ -593,6 +596,7 @@ export interface GeneratePayload {
   path?: string;
   backend?: string;
   thinkingMode?: ChatThinkingMode;
+  reasoningEffort?: ChatReasoningEffort;
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;

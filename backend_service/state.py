@@ -97,6 +97,38 @@ def _compose_chat_system_prompt(system_prompt: str | None, thinking_mode: str | 
     return (system_prompt or "").strip()
 
 
+def _build_history_with_reasoning(
+    messages: list[dict[str, Any]],
+    *,
+    preserve_reasoning: bool,
+) -> list[dict[str, Any]]:
+    """Project a session's stored messages into the history list passed to the
+    inference layer.
+
+    When `preserve_reasoning` is true and an assistant message has a
+    `reasoning` field captured by ThinkingTokenFilter on a previous turn,
+    the reasoning is re-emitted inside `<think>...</think>` tags ahead of
+    the visible answer. Reasoning-capable models (Qwen3, DeepSeek R1, etc.)
+    consume this naturally on follow-up turns; non-reasoning models will
+    treat it as inline text. Falsy / missing reasoning is skipped, so this
+    is safe to call unconditionally.
+    """
+    history: list[dict[str, Any]] = []
+    for message in messages:
+        role = message.get("role")
+        text = str(message.get("text") or "")
+        if (
+            preserve_reasoning
+            and role == "assistant"
+            and message.get("reasoning")
+        ):
+            reasoning_str = str(message["reasoning"]).strip()
+            if reasoning_str:
+                text = f"<think>\n{reasoning_str}\n</think>\n\n{text}"
+        history.append({"role": role, "text": text})
+    return history
+
+
 def _title_from_prompt(prompt: str | None) -> str:
     words = str(prompt or "").strip().split()
     return " ".join(words[:4]) or "New chat"
@@ -227,6 +259,12 @@ class ChaosEngineState:
         self._loading_state: dict[str, Any] | None = None
         self._downloads: dict[str, dict[str, Any]] = {}
         self._download_cancel: dict[str, bool] = {}
+        # Cancellation flags for in-flight chat generations, keyed by session id.
+        # Set to True via request_cancel_chat(); the streaming loop in
+        # generate_stream() checks this flag between events and breaks early.
+        # Cleared at the start of each new generation so a stale flag from a
+        # prior turn never aborts a fresh request.
+        self._chat_cancel: dict[str, bool] = {}
         self._download_processes: dict[str, subprocess.Popen[str]] = {}
         self._download_tokens: dict[str, str] = {}
         self._bootstrap()
@@ -2080,7 +2118,10 @@ class ChaosEngineState:
             if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
                 self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
 
-            history = [{"role": message["role"], "text": message["text"]} for message in session["messages"]]
+            history = _build_history_with_reasoning(
+                session["messages"],
+                preserve_reasoning=(effective_thinking_mode == "auto"),
+            )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
             session["model"] = self.runtime.loaded_model.name
@@ -2309,7 +2350,10 @@ class ChaosEngineState:
             if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
                 self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
 
-            history = [{"role": m["role"], "text": m["text"]} for m in session["messages"]]
+            history = _build_history_with_reasoning(
+                session["messages"],
+                preserve_reasoning=(effective_thinking_mode == "auto"),
+            )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
             session["model"] = self.runtime.loaded_model.name
@@ -2359,12 +2403,17 @@ class ChaosEngineState:
         enable_tools = request.enableTools
         available_tools = request.availableTools
         gen_start = time.perf_counter()
+        # Reset any stale cancellation flag from a prior turn so this fresh
+        # generation isn't aborted before it starts.
+        chaosengine.clear_chat_cancel(session["id"])
+        session_id_for_cancel = session["id"]
 
         def _sse_stream():
             full_text = ""
             full_reasoning = ""
             final_chunk = None
             agent_tool_calls: list[dict[str, Any]] = []
+            cancelled = False
 
             try:
                 if enable_tools:
@@ -2378,6 +2427,9 @@ class ChaosEngineState:
                         images=request.images,
                         available_tools=available_tools,
                     ):
+                        if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
+                            cancelled = True
+                            break
                         if "token" in event:
                             full_text += event["token"]
                             yield f"data: {json.dumps({'token': event['token']})}\n\n"
@@ -2397,6 +2449,9 @@ class ChaosEngineState:
                         images=request.images,
                         thinking_mode=effective_thinking_mode,
                     ):
+                        if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
+                            cancelled = True
+                            break
                         if chunk.reasoning:
                             full_reasoning += chunk.reasoning
                             yield f"data: {json.dumps({'reasoning': chunk.reasoning})}\n\n"
@@ -2417,8 +2472,15 @@ class ChaosEngineState:
                         chaosengine._persist_sessions()
                     chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
                     chaosengine.add_log("chat", "error", f"[{model_tag}] Streaming failed: {exc}")
+                chaosengine.clear_chat_cancel(session_id_for_cancel)
                 yield f"data: {json.dumps({'error': str(exc)})}\n\n"
                 return
+            finally:
+                chaosengine.clear_chat_cancel(session_id_for_cancel)
+
+            if cancelled:
+                yield f"data: {json.dumps({'cancelled': True})}\n\n"
+                chaosengine.add_log("chat", "info", f"[{model_tag}] Generation cancelled by user.")
 
             gen_elapsed = round(time.perf_counter() - gen_start, 2)
             with chaosengine._lock:
@@ -2469,6 +2531,8 @@ class ChaosEngineState:
                         requests_served=chaosengine.requests_served,
                     ),
                 }
+                if cancelled:
+                    done_payload["cancelled"] = True
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         return StreamingResponse(
@@ -2765,6 +2829,34 @@ class ChaosEngineState:
                     engine.unload_model()
                 except Exception:
                     pass
+
+    def request_cancel_chat(self, session_id: str) -> dict[str, Any]:
+        """Mark a chat generation for cancellation.
+
+        The streaming loop in generate_stream() checks this flag between
+        events and breaks early, persisting whatever output has accumulated
+        so far. Returns metadata about whether the session is currently
+        generating so the UI can decide whether to show a "stop" toast.
+        """
+        with self._lock:
+            self._chat_cancel[session_id] = True
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            return {
+                "sessionId": session_id,
+                "cancelled": True,
+                "wasActive": session is not None,
+            }
+
+    def is_chat_cancel_requested(self, session_id: str) -> bool:
+        with self._lock:
+            return bool(self._chat_cancel.get(session_id, False))
+
+    def clear_chat_cancel(self, session_id: str) -> None:
+        with self._lock:
+            self._chat_cancel.pop(session_id, None)
 
     def cancel_download(self, repo: str) -> dict[str, Any]:
         from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes

@@ -9,6 +9,34 @@ _THINK_CLOSE = "</think>"
 _THINK_TAIL_GUARD = len(_THINK_OPEN) - 1
 _STARTUP_BUFFER_LIMIT = 500
 
+# Per-model-family overrides for reasoning delimiters. Keyed by canonical
+# repo or family prefix (case-insensitive prefix match). Models that do not
+# match any entry use the default `<think>...</think>` tags. Add new entries
+# here when adopting models that emit a non-standard reasoning marker.
+# Values are (open_tag, close_tag) pairs.
+_REASONING_DELIMITER_REGISTRY: dict[str, tuple[str, str]] = {
+    # Default registry left empty — DeepSeek R1, Qwen3, GPT-OSS all emit
+    # `<think>...</think>` and need no override. Populate per-family entries
+    # here when a future model uses a different convention.
+}
+
+
+def reasoning_delimiters_for(model_ref: str | None) -> tuple[str, str]:
+    """Resolve the reasoning open/close tag pair for a given model reference.
+
+    Looks up `model_ref` against `_REASONING_DELIMITER_REGISTRY` using a
+    case-insensitive prefix match (so `Qwen/Qwen3-8B-Instruct` matches a
+    registry key of `qwen/qwen3`). Returns the default `<think>`/`</think>`
+    pair when no match is found.
+    """
+    if not model_ref:
+        return (_THINK_OPEN, _THINK_CLOSE)
+    lower = model_ref.lower()
+    for key, tags in _REASONING_DELIMITER_REGISTRY.items():
+        if lower.startswith(key.lower()):
+            return tags
+    return (_THINK_OPEN, _THINK_CLOSE)
+
 _RAW_REASONING_LABELS = (
     "thinking process",
     "chain of thought",
@@ -196,7 +224,19 @@ class ThinkingTokenFilter:
         XML ``<think>`` tags are always processed regardless.
     """
 
-    def __init__(self, *, detect_raw_reasoning: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        detect_raw_reasoning: bool = True,
+        open_tag: str = _THINK_OPEN,
+        close_tag: str = _THINK_CLOSE,
+    ) -> None:
+        # `open_tag` / `close_tag` let downstream callers override the XML
+        # delimiters per model family — see `reasoning_delimiters_for()`.
+        # Defaults match the `<think>...</think>` convention used by Qwen3,
+        # DeepSeek R1, GPT-OSS, and most other reasoning models.
+        if not open_tag or not close_tag:
+            raise ValueError("ThinkingTokenFilter requires non-empty open/close tags.")
         self._inside_xml_think = False
         self._inside_raw_think = False
         self._startup_done = False
@@ -204,6 +244,9 @@ class ThinkingTokenFilter:
         self._pending_raw_final = ""
         self._total_fed = 0
         self._detect_raw = detect_raw_reasoning
+        self._open_tag = open_tag
+        self._close_tag = close_tag
+        self._tail_guard = max(0, len(open_tag) - 1)
 
     def feed(self, text: str) -> ThinkingStreamResult:
         self._buffer += text
@@ -212,10 +255,10 @@ class ThinkingTokenFilter:
 
         while True:
             if not self._startup_done and not self._inside_xml_think and not self._inside_raw_think:
-                think_idx = _find_tag(self._buffer, _THINK_OPEN)
+                think_idx = _find_tag(self._buffer, self._open_tag)
                 if think_idx != -1:
                     output.text += self._buffer[:think_idx]
-                    self._buffer = self._buffer[think_idx + len(_THINK_OPEN):]
+                    self._buffer = self._buffer[think_idx + len(self._open_tag):]
                     self._inside_xml_think = True
                     self._startup_done = True
                     continue
@@ -256,27 +299,31 @@ class ThinkingTokenFilter:
                 break
 
             if self._inside_xml_think:
-                end_idx = _find_tag(self._buffer, _THINK_CLOSE)
+                end_idx = _find_tag(self._buffer, self._close_tag)
                 if end_idx == -1:
                     output.reasoning += self._buffer
                     self._buffer = ""
                     break
                 output.reasoning += self._buffer[:end_idx]
-                self._buffer = self._buffer[end_idx + len(_THINK_CLOSE):]
+                self._buffer = self._buffer[end_idx + len(self._close_tag):]
                 self._inside_xml_think = False
                 output.reasoning_done = True
                 continue
 
-            start_idx = _find_tag(self._buffer, _THINK_OPEN)
+            start_idx = _find_tag(self._buffer, self._open_tag)
             if start_idx != -1:
                 output.text += self._buffer[:start_idx]
-                self._buffer = self._buffer[start_idx + len(_THINK_OPEN):]
+                self._buffer = self._buffer[start_idx + len(self._open_tag):]
                 self._inside_xml_think = True
                 continue
 
-            if len(self._buffer) > _THINK_TAIL_GUARD:
-                output.text += self._buffer[:-_THINK_TAIL_GUARD]
-                self._buffer = self._buffer[-_THINK_TAIL_GUARD:]
+            if len(self._buffer) > self._tail_guard:
+                if self._tail_guard == 0:
+                    output.text += self._buffer
+                    self._buffer = ""
+                else:
+                    output.text += self._buffer[:-self._tail_guard]
+                    self._buffer = self._buffer[-self._tail_guard:]
             break
 
         return output

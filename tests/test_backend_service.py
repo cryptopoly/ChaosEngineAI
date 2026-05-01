@@ -2104,6 +2104,34 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.json()["revealed"], str(target.resolve()))
         popen.assert_called()
 
+    def test_cancel_chat_endpoint_sets_flag_and_reports_active(self):
+        create_response = self.client.post("/api/chat/sessions", json={"title": "Cancel test"})
+        self.assertEqual(create_response.status_code, 200)
+        session = create_response.json()["session"]
+        session_id = session["id"]
+
+        # Endpoint flips the in-memory flag and reports session was active
+        cancel_response = self.client.post(f"/api/chat/generate/{session_id}/cancel")
+        self.assertEqual(cancel_response.status_code, 200)
+        payload = cancel_response.json()
+        self.assertEqual(payload["sessionId"], session_id)
+        self.assertTrue(payload["cancelled"])
+        self.assertTrue(payload["wasActive"])
+
+        # State exposes the flag for the streaming loop to read
+        state = self.client.app.state.chaosengine
+        self.assertTrue(state.is_chat_cancel_requested(session_id))
+        state.clear_chat_cancel(session_id)
+        self.assertFalse(state.is_chat_cancel_requested(session_id))
+
+    def test_cancel_chat_endpoint_for_unknown_session_still_records_flag(self):
+        cancel_response = self.client.post("/api/chat/generate/no-such-session/cancel")
+        self.assertEqual(cancel_response.status_code, 200)
+        payload = cancel_response.json()
+        self.assertEqual(payload["sessionId"], "no-such-session")
+        self.assertTrue(payload["cancelled"])
+        self.assertFalse(payload["wasActive"])
+
 
 class VideoRepoAllowPatternsTests(unittest.TestCase):
     """``_video_repo_allow_patterns`` scopes video downloads to the diffusers

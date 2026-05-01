@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { RichMarkdown } from "./RichMarkdown";
 
 interface ReasoningPanelProps {
   text?: string | null;
@@ -68,7 +68,7 @@ export function ReasoningPanel({ text, streaming = false }: ReasoningPanelProps)
       {open ? (
         <div className="reasoning-panel__body">
           <div className="markdown-content reasoning-panel__content">
-            <Markdown>{content}</Markdown>
+            <RichMarkdown>{content}</RichMarkdown>
           </div>
         </div>
       ) : null}

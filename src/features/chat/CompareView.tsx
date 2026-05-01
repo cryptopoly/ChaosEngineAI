@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
@@ -622,7 +622,7 @@ export function CompareView({
             <p style={{ color: "#f87171" }}>{modelState.error}</p>
           ) : modelState.text ? (
             <div className="markdown-content">
-              <Markdown>{modelState.text}</Markdown>
+              <RichMarkdown>{modelState.text}</RichMarkdown>
             </div>
           ) : modelState.loading ? (
             <p className="muted-text" style={{ fontSize: 13 }}>{modelState.loadingMessage ?? "Loading model..."}</p>

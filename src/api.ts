@@ -468,8 +468,22 @@ export interface StreamCallbacks {
   onToken: (token: string) => void;
   onReasoning?: (reasoning: string) => void;
   onReasoningDone?: () => void;
+  onCancelled?: () => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
+}
+
+/**
+ * Ask the backend to cancel an in-flight chat generation. The streaming loop
+ * checks this flag between events and stops within ~one tick, persisting
+ * whatever output has accumulated. Safe to call when no generation is active.
+ */
+export async function cancelChatGeneration(sessionId: string): Promise<{ sessionId: string; cancelled: boolean; wasActive: boolean }> {
+  return await postJson<{ sessionId: string; cancelled: boolean; wasActive: boolean }>(
+    `/api/chat/generate/${encodeURIComponent(sessionId)}/cancel`,
+    {},
+    10000,
+  );
 }
 
 export async function generateChatStream(
@@ -541,6 +555,9 @@ export async function generateChatStream(
           }
           if (event.reasoningDone) {
             callbacks.onReasoningDone?.();
+          }
+          if (event.cancelled) {
+            callbacks.onCancelled?.();
           }
           if (event.done) {
             callbacks.onDone({

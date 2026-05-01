@@ -57,6 +57,7 @@ class UpdateSessionRequest(BaseModel):
     modelPath: str | None = None
     modelBackend: str | None = None
     thinkingMode: Literal["off", "auto"] | None = None
+    reasoningEffort: Literal["low", "medium", "high"] | None = None
     pinned: bool | None = None
     cacheStrategy: str | None = None
     cacheBits: int | None = None
@@ -82,9 +83,20 @@ class GenerateRequest(BaseModel):
     path: str | None = None
     backend: str = "auto"
     thinkingMode: Literal["off", "auto"] | None = None
+    # Phase 1.12: reasoning effort hint forwarded to OpenAI-compat
+    # `reasoning_effort` chat-completion parameter on backends that respect it
+    # (recent llama-server builds + several reasoning models). Backends that
+    # ignore it remain unaffected. Null means no override.
+    reasoningEffort: Literal["low", "medium", "high"] | None = None
     systemPrompt: str | None = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     maxTokens: int = Field(default=4096, ge=1, le=32768)
+    # Optional per-message sampler overrides. None means "let backend default
+    # apply" (llama.cpp / mlx-lm defaults). Phase 1 exposes the most-used three;
+    # full sampler chain (top_k, min_p, repeat_penalty, mirostat, DRY, XTC,
+    # grammar) lands in Phase 2.
+    topP: float | None = Field(default=None, ge=0.0, le=1.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
     cacheStrategy: str | None = None
     cacheBits: int | None = Field(default=None, ge=0, le=8)
     fp16Layers: int | None = Field(default=None, ge=0, le=16)

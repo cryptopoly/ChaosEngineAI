@@ -1,5 +1,10 @@
 import type { Ref } from "react";
-import Markdown from "react-markdown";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RichMarkdown } from "../../components/RichMarkdown";
+import { downloadExport, type ExportFormat } from "./exportThread";
+import { filterSessions } from "./sessionSearch";
+import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
+import { TemperatureChip } from "../../components/TemperatureChip";
 import { Panel } from "../../components/Panel";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { ToolCallCard } from "../../components/ToolCallCard";
@@ -131,8 +136,181 @@ export function ChatTab({
       ? busyAction
       : null;
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem("chat.sidebarCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("chat.sidebarCollapsed", next ? "1" : "0");
+      } catch {
+        // localStorage may be unavailable; collapse still works in-memory
+      }
+      return next;
+    });
+  }, []);
+
+  const [sessionSearchQuery, setSessionSearchQuery] = useState("");
+  const filteredChatSessions = useMemo(
+    () => filterSessions(sortedChatSessions, sessionSearchQuery),
+    [sortedChatSessions, sessionSearchQuery],
+  );
+
+  const onClearDraft = useCallback(() => {
+    onDraftMessageChange("");
+    onPendingImagesChange([]);
+  }, [onDraftMessageChange, onPendingImagesChange]);
+
+  const slashContext = useMemo<SlashCommandContext>(() => ({
+    args: "",
+    activeChat,
+    loadedModelRef,
+    enableTools,
+    chatBusySessionId,
+    onClearDraft,
+    onThinkingModeChange,
+    onToggleTools,
+    onOpenModelSelector,
+    onCancelGeneration,
+    activeThreadOptionKey,
+  }), [
+    activeChat,
+    loadedModelRef,
+    enableTools,
+    chatBusySessionId,
+    onClearDraft,
+    onThinkingModeChange,
+    onToggleTools,
+    onOpenModelSelector,
+    onCancelGeneration,
+    activeThreadOptionKey,
+  ]);
+
+  const slashMatches = useMemo(
+    () => matchSlashCommands(draftMessage, slashContext),
+    [draftMessage, slashContext],
+  );
+  const showSlashMenu = slashMatches.length > 0;
+  const [slashIndex, setSlashIndex] = useState(0);
+  useEffect(() => {
+    setSlashIndex((current) => (current >= slashMatches.length ? 0 : current));
+  }, [slashMatches]);
+
+  const runSlashCommand = useCallback((cmd: SlashCommand) => {
+    const keepDraft = cmd.run(slashContext);
+    if (!keepDraft) {
+      onDraftMessageChange("");
+    }
+  }, [slashContext, onDraftMessageChange]);
+
+  // Per-thread temperature override (Phase 1.10). Persisted in localStorage
+  // keyed by session id so the chip survives navigation between threads.
+  // useChat reads the same key when assembling the stream payload — see
+  // readTemperatureOverride() in useChat.ts.
+  const tempOverrideKey = activeChat ? `chat.tempOverride.${activeChat.id}` : null;
+  const [temperatureOverride, setTemperatureOverride] = useState<number | null>(() => {
+    if (!tempOverrideKey || typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(tempOverrideKey);
+      if (raw == null) return null;
+      const parsed = parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Re-read when the active thread changes
+  useEffect(() => {
+    if (!tempOverrideKey) {
+      setTemperatureOverride(null);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(tempOverrideKey);
+      if (raw == null) { setTemperatureOverride(null); return; }
+      const parsed = parseFloat(raw);
+      setTemperatureOverride(Number.isFinite(parsed) ? parsed : null);
+    } catch {
+      setTemperatureOverride(null);
+    }
+  }, [tempOverrideKey]);
+
+  const handleTemperatureOverrideChange = useCallback((value: number | null) => {
+    setTemperatureOverride(value);
+    if (!tempOverrideKey) return;
+    try {
+      if (value == null) {
+        window.localStorage.removeItem(tempOverrideKey);
+      } else {
+        window.localStorage.setItem(tempOverrideKey, String(value));
+      }
+    } catch {
+      // localStorage may be unavailable; override still applies to current render
+    }
+  }, [tempOverrideKey]);
+
+  // Phase 1.12: reasoning effort levels. Stored alongside thinkingMode but
+  // separate so a session can be Off (no thinking) OR Low/Medium/High effort.
+  // useChat reads the same localStorage key when assembling stream payloads.
+  const effortKey = activeChat ? `chat.reasoningEffort.${activeChat.id}` : null;
+  type EffortLevel = "low" | "medium" | "high";
+  const [reasoningEffort, setReasoningEffort] = useState<EffortLevel>(() => {
+    if (!effortKey || typeof window === "undefined") return "medium";
+    try {
+      const raw = window.localStorage.getItem(effortKey);
+      if (raw === "low" || raw === "medium" || raw === "high") return raw;
+    } catch {
+      // ignore
+    }
+    return "medium";
+  });
+
+  useEffect(() => {
+    if (!effortKey) {
+      setReasoningEffort("medium");
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(effortKey);
+      if (raw === "low" || raw === "medium" || raw === "high") setReasoningEffort(raw);
+      else setReasoningEffort("medium");
+    } catch {
+      setReasoningEffort("medium");
+    }
+  }, [effortKey]);
+
+  const handleEffortChange = useCallback((level: EffortLevel) => {
+    setReasoningEffort(level);
+    if (effortKey) {
+      try {
+        window.localStorage.setItem(effortKey, level);
+      } catch {
+        // ignore
+      }
+    }
+    // Selecting any effort level implies thinking is on
+    if (thinkingMode !== "auto") {
+      onThinkingModeChange("auto");
+    }
+  }, [effortKey, thinkingMode, onThinkingModeChange]);
+
+  const handleEffortOff = useCallback(() => {
+    if (thinkingMode !== "off") {
+      onThinkingModeChange("off");
+    }
+  }, [thinkingMode, onThinkingModeChange]);
+
   return (
-    <div className="chat-layout-2col">
+    <div className={`chat-layout-2col${sidebarCollapsed ? " chat-layout-2col--sidebar-collapsed" : ""}`}>
+      {!sidebarCollapsed ? (
       <Panel
         title="Chats"
         subtitle=""
@@ -145,12 +323,52 @@ export function ChatTab({
             <button className="secondary-button" type="button" onClick={onCompareMode} title="Compare two models side-by-side" style={{ fontSize: 11 }}>
               Compare
             </button>
+            <button
+              className="secondary-button sidebar-collapse-toggle"
+              type="button"
+              onClick={toggleSidebar}
+              title="Collapse chat list"
+              aria-label="Collapse chat list"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
           </>
         }
       >
         <div className="thread-list-panel">
+          <div className="session-search">
+            <input
+              type="search"
+              className="text-input session-search__input"
+              placeholder="Search threads..."
+              value={sessionSearchQuery}
+              onChange={(event) => setSessionSearchQuery(event.target.value)}
+              aria-label="Search threads"
+            />
+            {sessionSearchQuery ? (
+              <button
+                type="button"
+                className="session-search__clear"
+                onClick={() => setSessionSearchQuery("")}
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            ) : null}
+          </div>
+          {sessionSearchQuery && filteredChatSessions.length === 0 ? (
+            <p className="muted-text" style={{ fontSize: 12, padding: "8px 4px", margin: 0 }}>
+              No threads match "{sessionSearchQuery}".
+            </p>
+          ) : null}
           <div className="session-list">
-            {sortedChatSessions.map((session) => (
+            {filteredChatSessions.map((session) => (
               <div className="session-row" key={session.id}>
                 <button
                   className={session.id === activeChat?.id ? "session-button active" : "session-button"}
@@ -199,8 +417,23 @@ export function ChatTab({
           </div>
         </div>
       </Panel>
+      ) : null}
 
       <Panel title="Active Thread" subtitle="Response metadata is collapsed by default, but available per agent turn." className="chat-thread">
+        {sidebarCollapsed ? (
+          <button
+            type="button"
+            className="secondary-button sidebar-expand-toggle"
+            onClick={toggleSidebar}
+            title="Expand chat list"
+            aria-label="Expand chat list"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span style={{ fontSize: 11 }}>Chats</span>
+          </button>
+        ) : null}
         <div className="thread-toolbar">
           <label className="thread-title-field">
             Thread name
@@ -222,6 +455,39 @@ export function ChatTab({
             <button className="secondary-button" type="button" onClick={() => onOpenModelSelector("chat", activeThreadOptionKey)}>
               {activeChat?.model ?? "Select Model"}
             </button>
+            {activeChat && activeChat.messages.length > 0 ? (
+              <details className="thread-export-menu">
+                <summary
+                  className="secondary-button thread-export-menu__summary"
+                  title="Export this thread"
+                  aria-label="Export this thread"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Export</span>
+                </summary>
+                <div className="thread-export-menu__content">
+                  {(["md", "json", "txt"] as ExportFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      className="thread-export-menu__item"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        downloadExport(activeChat, fmt);
+                        const details = (event.currentTarget.closest("details")) as HTMLDetailsElement | null;
+                        if (details) details.open = false;
+                      }}
+                    >
+                      {fmt === "md" ? "Markdown (.md)" : fmt === "json" ? "JSON (.json)" : "Plain text (.txt)"}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            ) : null}
             {activeChat?.modelRef === loadedModelRef ? (
               <span className="badge success">Ready</span>
             ) : serverLoading ? (
@@ -395,7 +661,7 @@ export function ChatTab({
                 ) : null}
                 {message.role === "assistant" ? (
                   <div className={`markdown-content${isStreamingMessage ? " streaming-cursor" : ""}`}>
-                    <Markdown>{message.text || "\u200B"}</Markdown>
+                    <RichMarkdown>{message.text || "\u200B"}</RichMarkdown>
                   </div>
                 ) : (
                   <p>{message.text}</p>
@@ -580,17 +846,65 @@ export function ChatTab({
               ))}
             </div>
           ) : null}
+          <div className="composer-input-wrap">
+          {showSlashMenu ? (
+            <div className="slash-command-menu" role="listbox" aria-label="Slash commands">
+              {slashMatches.map((cmd, idx) => (
+                <button
+                  key={cmd.command}
+                  type="button"
+                  role="option"
+                  aria-selected={idx === slashIndex}
+                  className={`slash-command-menu__item${idx === slashIndex ? " slash-command-menu__item--active" : ""}`}
+                  onMouseEnter={() => setSlashIndex(idx)}
+                  onClick={() => runSlashCommand(cmd)}
+                >
+                  <span className="slash-command-menu__command">{cmd.command}</span>
+                  <span className="slash-command-menu__desc">{cmd.description}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           <textarea
             className="text-area"
             placeholder={
               loadedModelRef
-                ? "Type a message... (Enter to send, Shift+Enter for new line)"
+                ? "Type a message... (Enter to send, Shift+Enter for new line, / for commands)"
                 : "Load a model first — pick one from My Models or Discover, then hit CHAT."
             }
             rows={3}
             value={draftMessage}
             onChange={(event) => onDraftMessageChange(event.target.value)}
             onKeyDown={(event) => {
+              if (showSlashMenu) {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSlashIndex((current) => (current + 1) % slashMatches.length);
+                  return;
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSlashIndex((current) => (current - 1 + slashMatches.length) % slashMatches.length);
+                  return;
+                }
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  const target = slashMatches[slashIndex];
+                  if (target) runSlashCommand(target);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  onDraftMessageChange("");
+                  return;
+                }
+                if (event.key === "Tab") {
+                  event.preventDefault();
+                  const target = slashMatches[slashIndex];
+                  if (target) onDraftMessageChange(`${target.command} `);
+                  return;
+                }
+              }
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 // Mirror the Send button's disabled state — if no model is
@@ -608,6 +922,7 @@ export function ChatTab({
             }}
             onDragOver={(event) => event.preventDefault()}
           />
+          </div>
           <div className="button-row composer-button-row">
             <div className="composer-button-group composer-button-group--left">
               <label className="secondary-button composer-attach-btn" title="Attach image">
@@ -635,7 +950,7 @@ export function ChatTab({
               </label>
               <div
                 className="composer-mode-control"
-                title="Choose whether the thread should bias toward direct answers or use the model's default reasoning behavior."
+                title="Choose how much reasoning the model performs before answering. Off = direct answers; Low / Medium / High = increasing reasoning depth for capable models."
               >
                 <span className="composer-mode-label">Thinking</span>
                 <div className="thread-mode-toggle composer-thinking-toggle" role="group" aria-label="Thinking mode">
@@ -643,20 +958,46 @@ export function ChatTab({
                     type="button"
                     className={`thread-mode-button${thinkingMode === "off" ? " thread-mode-button--active" : ""}`}
                     disabled={chatBusySessionId === activeChat?.id}
-                    onClick={() => onThinkingModeChange("off")}
+                    onClick={handleEffortOff}
+                    title="No reasoning — model answers directly"
                   >
                     Off
                   </button>
                   <button
                     type="button"
-                    className={`thread-mode-button${thinkingMode === "auto" ? " thread-mode-button--active" : ""}`}
+                    className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "low" ? " thread-mode-button--active" : ""}`}
                     disabled={chatBusySessionId === activeChat?.id}
-                    onClick={() => onThinkingModeChange("auto")}
+                    onClick={() => handleEffortChange("low")}
+                    title="Brief reasoning"
                   >
-                    Default
+                    Low
+                  </button>
+                  <button
+                    type="button"
+                    className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "medium" ? " thread-mode-button--active" : ""}`}
+                    disabled={chatBusySessionId === activeChat?.id}
+                    onClick={() => handleEffortChange("medium")}
+                    title="Default reasoning depth"
+                  >
+                    Med
+                  </button>
+                  <button
+                    type="button"
+                    className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "high" ? " thread-mode-button--active" : ""}`}
+                    disabled={chatBusySessionId === activeChat?.id}
+                    onClick={() => handleEffortChange("high")}
+                    title="Extended reasoning"
+                  >
+                    High
                   </button>
                 </div>
               </div>
+              <TemperatureChip
+                defaultValue={launchSettings.temperature}
+                override={temperatureOverride}
+                onChange={handleTemperatureOverrideChange}
+                disabled={chatBusySessionId === activeChat?.id}
+              />
               <button
                 className={`secondary-button${enableTools ? " active-toggle" : ""}`}
                 type="button"
@@ -674,7 +1015,7 @@ export function ChatTab({
               </button>
             </div>
             <div className="composer-button-group composer-button-group--right">
-              <button className="secondary-button" type="button" onClick={() => { onDraftMessageChange(""); onPendingImagesChange([]); }}>
+              <button className="secondary-button" type="button" onClick={onClearDraft}>
                 Clear
               </button>
               {chatBusySessionId !== null ? (

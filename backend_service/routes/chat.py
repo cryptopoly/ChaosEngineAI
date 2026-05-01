@@ -46,6 +46,18 @@ def generate_stream(request: Request, body: GenerateRequest):
     return state.generate_stream(body)
 
 
+@router.post("/api/chat/generate/{session_id}/cancel")
+def cancel_generate(request: Request, session_id: str) -> dict[str, Any]:
+    """Mark an in-flight chat generation for cancellation.
+
+    The streaming loop checks this flag between events and stops gracefully,
+    persisting whatever output has accumulated. Returning is fast — the
+    actual stream termination happens on the client's open SSE connection.
+    """
+    state = request.app.state.chaosengine
+    return state.request_cancel_chat(session_id)
+
+
 @router.get("/api/chat/sessions/{session_id}/documents")
 def list_session_documents(request: Request, session_id: str) -> dict[str, Any]:
     state = request.app.state.chaosengine

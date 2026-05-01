@@ -402,6 +402,40 @@ class ThinkingTokenFilterTests(unittest.TestCase):
         self.assertIn("Mental Sandbox", reasoning)
         self.assertTrue(reasoning_done)
 
+    def test_custom_open_close_tags_split_reasoning(self):
+        f = ThinkingTokenFilter(
+            open_tag="<analysis>",
+            close_tag="</analysis>",
+            detect_raw_reasoning=False,
+        )
+        parts = [
+            f.feed("<analysis>weighing the options</analysis>"),
+            f.feed("Final answer: 42."),
+            f.flush(),
+        ]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(text, "Final answer: 42.")
+        self.assertEqual(reasoning, "weighing the options")
+        self.assertTrue(reasoning_done)
+
+    def test_custom_tags_ignore_default_think_tags(self):
+        f = ThinkingTokenFilter(
+            open_tag="<r>",
+            close_tag="</r>",
+            detect_raw_reasoning=False,
+        )
+        # `<think>` isn't the configured delimiter — should pass through as text
+        parts = [f.feed("<think>not reasoning</think>visible"), f.flush()]
+        text, reasoning, _ = self._collect(*parts)
+        self.assertIn("<think>not reasoning</think>visible", text)
+        self.assertEqual(reasoning, "")
+
+    def test_constructor_rejects_empty_tags(self):
+        with self.assertRaises(ValueError):
+            ThinkingTokenFilter(open_tag="", close_tag="</think>")
+        with self.assertRaises(ValueError):
+            ThinkingTokenFilter(open_tag="<think>", close_tag="")
+
     def test_keeps_draft_and_verification_sections_inside_reasoning(self):
         f = ThinkingTokenFilter()
         parts = [

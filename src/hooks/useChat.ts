@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  cancelChatGeneration,
   checkBackend,
   createSession,
   deleteSession,
@@ -31,6 +32,40 @@ import type {
   WorkspaceData,
 } from "../types";
 import type { ChatModelOption } from "../types/chat";
+
+/**
+ * Read the per-thread temperature override stored by ChatTab's TemperatureChip.
+ * Returns null when no override is set, in which case the launch-settings
+ * default applies. Mirrors the localStorage key produced by the chip.
+ */
+function readTemperatureOverride(sessionId: string | null | undefined): number | null {
+  if (!sessionId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`chat.tempOverride.${sessionId}`);
+    if (raw == null) return null;
+    const parsed = parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the per-thread reasoning effort level (Phase 1.12). Stored alongside
+ * thinkingMode but separate so a session can independently track "Off" vs
+ * Low/Medium/High effort. Returns undefined when no level is stored, which
+ * lets the backend treat absence as "use whatever the model defaults to".
+ */
+function readReasoningEffort(sessionId: string | null | undefined): "low" | "medium" | "high" | undefined {
+  if (!sessionId || typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`chat.reasoningEffort.${sessionId}`);
+    if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
 
 export function useChat(
   workspace: WorkspaceData,
@@ -663,7 +698,8 @@ export function useChat(
         path: threadModel?.path,
         backend: threadModel?.backend,
         thinkingMode: activeThinkingMode,
-        temperature: launchSettings.temperature,
+        reasoningEffort: activeThinkingMode === "auto" ? readReasoningEffort(sessionId) : undefined,
+        temperature: readTemperatureOverride(sessionId) ?? launchSettings.temperature,
         maxTokens: launchSettings.maxTokens,
         systemPrompt: systemPrompt || undefined,
         cacheBits: activeRuntimeProfile.cacheBits,
@@ -808,6 +844,15 @@ export function useChat(
   }
 
   function cancelGeneration() {
+    // First, ask the backend to flip the cancel flag for the active session
+    // so the streaming loop stops generating tokens. Then abort the local
+    // fetch so the client stops decoding remaining buffered output.
+    const activeSessionId = chatBusySessionId;
+    if (activeSessionId) {
+      void cancelChatGeneration(activeSessionId).catch(() => {
+        // Backend may already be done or unreachable; client-side abort still applies
+      });
+    }
     if (streamAbortRef.current) {
       streamAbortRef.current.abort();
       streamAbortRef.current = null;

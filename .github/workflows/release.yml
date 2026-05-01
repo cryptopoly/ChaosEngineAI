@@ -287,15 +287,19 @@ jobs:
             echo "No $bundle_dir directory; skipping signature upload."
             exit 0
           fi
-          mapfile -t sig_files < <(find "$bundle_dir" -type f -name "*.sig")
-          if [ ${#sig_files[@]} -eq 0 ]; then
-            echo "No *.sig files found under $bundle_dir; skipping signature upload."
-            exit 0
-          fi
-          for sig in "${sig_files[@]}"; do
+          # macOS runners ship bash 3.2, which has no `mapfile`. Use a
+          # while-read loop with process substitution instead — works on
+          # bash 3.2+ across all three runner OSes.
+          sig_count=0
+          while IFS= read -r sig; do
+            [ -z "$sig" ] && continue
             echo "Uploading $(basename "$sig")"
             gh release upload "$RELEASE_TAG" "$sig" --clobber
-          done
+            sig_count=$((sig_count + 1))
+          done < <(find "$bundle_dir" -type f -name "*.sig")
+          if [ "$sig_count" -eq 0 ]; then
+            echo "No *.sig files found under $bundle_dir; skipping signature upload."
+          fi
 
   publish-manifest:
     needs: [create-release, build]

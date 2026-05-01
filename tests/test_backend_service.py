@@ -248,6 +248,9 @@ class FakeRuntime:
         images=None,
         tools=None,
         engine=None,
+        samplers=None,
+        reasoning_effort=None,
+        json_schema=None,
     ) -> GenerationResult:
         self.last_generate_kwargs = {
             "prompt": prompt,
@@ -257,6 +260,9 @@ class FakeRuntime:
             "temperature": temperature,
             "images": images,
             "tools": tools,
+            "samplers": samplers,
+            "reasoning_effort": reasoning_effort,
+            "json_schema": json_schema,
         }
         text = (
             "Cache compression shrinks KV memory so longer contexts fit, "
@@ -286,6 +292,10 @@ class FakeRuntime:
         images=None,
         tools=None,
         engine=None,
+        thinking_mode=None,
+        samplers=None,
+        reasoning_effort=None,
+        json_schema=None,
     ):
         self.last_generate_kwargs = {
             "prompt": prompt,
@@ -295,6 +305,10 @@ class FakeRuntime:
             "temperature": temperature,
             "images": images,
             "tools": tools,
+            "thinking_mode": thinking_mode,
+            "samplers": samplers,
+            "reasoning_effort": reasoning_effort,
+            "json_schema": json_schema,
         }
         text = "Streaming compare output."
         prompt_tokens = max(1, len(str(prompt).split()))

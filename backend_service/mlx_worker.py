@@ -89,6 +89,37 @@ _TRANSCRIPT_ROLE_LINE_RE = re.compile(r"^\s*(SYSTEM|USER|ASSISTANT):\s*(.*)$", r
 from backend_service.runaway_guard import RunawayGuard  # noqa: E402,F401
 
 
+def _build_mlx_sampler(request: dict[str, Any]) -> Any:
+    """Phase 2.2: build an mlx-lm sampler with whichever Phase 2.2 sampler
+    overrides the installed `make_sampler` actually supports.
+
+    `mlx_lm.sample_utils.make_sampler` has gained kwargs across versions
+    (top_p, top_k, min_p, ...). Call sites used to pass `temp` only — we
+    now collect the request's `samplers` block and forward whatever
+    survives a signature filter, so newer mlx-lm builds get the full
+    sampler chain while older builds fall back gracefully.
+    """
+    import inspect
+
+    from mlx_lm.sample_utils import make_sampler
+
+    kwargs: dict[str, Any] = {"temp": float(request.get("temperature") or 0.0)}
+    samplers = request.get("samplers") or {}
+    if isinstance(samplers, dict):
+        for src in ("top_p", "top_k", "min_p"):
+            value = samplers.get(src)
+            if value is not None:
+                kwargs[src] = value
+
+    try:
+        sig = inspect.signature(make_sampler)
+        allowed = set(sig.parameters.keys())
+        filtered = {k: v for k, v in kwargs.items() if k in allowed}
+    except (TypeError, ValueError):
+        filtered = {"temp": kwargs["temp"]}
+    return make_sampler(**filtered)
+
+
 def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
     """Format tool schemas into a system prompt block for open-source models.
 
@@ -953,7 +984,7 @@ class WorkerState:
             prompt=str(request.get("prompt") or ""),
             system_prompt=system_prompt,
         )
-        sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
+        sampler = _build_mlx_sampler(request)
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
         runtime_fields = self._runtime_fields(prompt_cache=prompt_cache)
@@ -1141,7 +1172,7 @@ class WorkerState:
             prompt=str(request.get("prompt") or ""),
             system_prompt=system_prompt,
         )
-        sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
+        sampler = _build_mlx_sampler(request)
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
         runtime_note = _merge_runtime_notes(runtime_note, speculative_stream_fallback_note)

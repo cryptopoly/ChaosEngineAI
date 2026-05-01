@@ -97,6 +97,34 @@ def _compose_chat_system_prompt(system_prompt: str | None, thinking_mode: str | 
     return (system_prompt or "").strip()
 
 
+def _build_sampler_overrides(request: Any) -> dict[str, Any]:
+    """Phase 2.2: collect the request's sampler overrides into a flat dict
+    keyed using the llama-server `/v1/chat/completions` field names.
+
+    The dict contains only fields the user actually set — `None` defaults
+    are skipped so the backend's defaults stay in force when the UI sends
+    no override. Both engines treat unknown keys as no-ops, so the output
+    is forward-compatible across llama-server / mlx-lm versions.
+    """
+    overrides: dict[str, Any] = {}
+
+    def _put(dst: str, value: Any) -> None:
+        if value is not None:
+            overrides[dst] = value
+
+    _put("top_p", getattr(request, "topP", None))
+    _put("top_k", getattr(request, "topK", None))
+    _put("min_p", getattr(request, "minP", None))
+    _put("repeat_penalty", getattr(request, "repeatPenalty", None))
+    _put("seed", getattr(request, "seed", None))
+    mirostat_mode = getattr(request, "mirostatMode", None)
+    if mirostat_mode is not None:
+        overrides["mirostat"] = mirostat_mode
+    _put("mirostat_tau", getattr(request, "mirostatTau", None))
+    _put("mirostat_eta", getattr(request, "mirostatEta", None))
+    return overrides
+
+
 def _build_history_with_reasoning(
     messages: list[dict[str, Any]],
     *,
@@ -2216,6 +2244,9 @@ class ChaosEngineState:
                     max_tokens=request.maxTokens,
                     temperature=request.temperature,
                     images=request.images,
+                    samplers=_build_sampler_overrides(request),
+                    reasoning_effort=request.reasoningEffort,
+                    json_schema=request.jsonSchema,
                 )
                 tool_call_payloads = []
         except RuntimeError as exc:
@@ -2576,6 +2607,9 @@ class ChaosEngineState:
                         max_tokens=request.maxTokens, temperature=request.temperature,
                         images=request.images,
                         thinking_mode=effective_thinking_mode,
+                        samplers=_build_sampler_overrides(request),
+                        reasoning_effort=request.reasoningEffort,
+                        json_schema=request.jsonSchema,
                     ):
                         if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
                             cancelled = True

@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
+import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
-import type { ChatSession, ChatThinkingMode, LaunchPreferences } from "../../types";
+import type { ChatSession, ChatThinkingMode, LaunchPreferences, SamplerOverrides } from "../../types";
 import type { SlashCommand } from "./slashCommands";
 
 /**
@@ -26,6 +27,7 @@ export interface ChatComposerProps {
   activeChat: ChatSession | undefined;
   launchSettings: LaunchPreferences;
   temperatureOverride: number | null;
+  samplerOverrides: SamplerOverrides;
   showSlashMenu: boolean;
   slashMatches: SlashCommand[];
   slashIndex: number;
@@ -39,6 +41,7 @@ export interface ChatComposerProps {
   onToggleTools: (enabled: boolean) => void;
   onSetError: (msg: string | null) => void;
   onTemperatureOverrideChange: (value: number | null) => void;
+  onSamplerOverridesChange: (overrides: SamplerOverrides) => void;
   runSlashCommand: (cmd: SlashCommand) => void;
   handleEffortOff: () => void;
   handleEffortChange: (level: ReasoningEffortLevel) => void;
@@ -55,6 +58,7 @@ export function ChatComposer({
   activeChat,
   launchSettings,
   temperatureOverride,
+  samplerOverrides,
   showSlashMenu,
   slashMatches,
   slashIndex,
@@ -68,6 +72,7 @@ export function ChatComposer({
   onToggleTools,
   onSetError,
   onTemperatureOverrideChange,
+  onSamplerOverridesChange,
   runSlashCommand,
   handleEffortOff,
   handleEffortChange,
@@ -239,6 +244,11 @@ export function ChatComposer({
             defaultValue={launchSettings.temperature}
             override={temperatureOverride}
             onChange={onTemperatureOverrideChange}
+            disabled={chatBusySessionId === activeChat?.id}
+          />
+          <SamplerPanel
+            overrides={samplerOverrides}
+            onChange={onSamplerOverridesChange}
             disabled={chatBusySessionId === activeChat?.id}
           />
           <button

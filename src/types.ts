@@ -640,6 +640,19 @@ export interface GeneratePayload {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  // Phase 2.2: full sampler chain. None means "use backend default".
+  // llama-server applies all of these natively; mlx-lm uses what its
+  // make_sampler signature supports (top_p, top_k, min_p) and silently
+  // ignores the rest.
+  topP?: number;
+  topK?: number;
+  minP?: number;
+  repeatPenalty?: number;
+  seed?: number;
+  mirostatMode?: 0 | 1 | 2;
+  mirostatTau?: number;
+  mirostatEta?: number;
+  jsonSchema?: Record<string, unknown>;
   cacheBits?: number;
   fp16Layers?: number;
   fusedAttention?: boolean;
@@ -650,6 +663,22 @@ export interface GeneratePayload {
   // Agent tool-use
   enableTools?: boolean;
   availableTools?: string[];
+}
+
+/**
+ * Phase 2.2: per-thread sampler override blob. Stored in localStorage
+ * keyed by session id. useChat reads it when assembling stream payloads;
+ * the SamplerPanel writes it back when the user adjusts a slider.
+ */
+export interface SamplerOverrides {
+  topP?: number | null;
+  topK?: number | null;
+  minP?: number | null;
+  repeatPenalty?: number | null;
+  seed?: number | null;
+  mirostatMode?: 0 | 1 | 2 | null;
+  mirostatTau?: number | null;
+  mirostatEta?: number | null;
 }
 
 export interface GenerateResponse {

@@ -32,6 +32,55 @@ DEFAULT_MLX_TIMEOUT_SECONDS = 120.0
 MLX_LOAD_TIMEOUT_SECONDS = 1800.0
 DEFAULT_LLAMA_TIMEOUT_SECONDS = 120.0
 CAPABILITY_CACHE_TTL_SECONDS = 10.0
+
+
+# Phase 2.2: keys forwarded as-is from `samplers` into the llama-server
+# /v1/chat/completions payload. Anything not in this set is silently
+# ignored so the frontend can blindly send the union of supported knobs
+# without breaking older llama-server builds that don't recognise some.
+_LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
+    "top_p",
+    "top_k",
+    "min_p",
+    "repeat_penalty",
+    "seed",
+    "mirostat",
+    "mirostat_tau",
+    "mirostat_eta",
+)
+
+
+def _apply_sampler_kwargs(
+    payload: dict[str, Any],
+    *,
+    samplers: dict[str, Any] | None,
+    reasoning_effort: str | None,
+    json_schema: dict[str, Any] | None,
+) -> None:
+    """Merge Phase 2.2 sampler overrides into a chat-completions payload.
+
+    Mutates `payload` in place. Skips keys whose value is None so an
+    explicit "use the default" from a UI that always sends every field
+    doesn't override server-side defaults. Json-schema is wrapped in
+    the OpenAI structured-outputs `response_format` envelope.
+    """
+    if samplers:
+        for key in _LLAMA_SAMPLER_KEYS:
+            value = samplers.get(key)
+            if value is None:
+                continue
+            payload[key] = value
+    if reasoning_effort:
+        payload["reasoning_effort"] = reasoning_effort
+    if json_schema:
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "response",
+                "schema": json_schema,
+                "strict": True,
+            },
+        }
 _LLAMA_HELP_CACHE: dict[str, str] = {}
 _LLAMA_HELP_LOCK = RLock()
 
@@ -854,6 +903,9 @@ class BaseInferenceEngine:
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         raise NotImplementedError
 
@@ -889,6 +941,9 @@ class BaseInferenceEngine:
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         result = self.generate(
             prompt=prompt,
@@ -896,6 +951,11 @@ class BaseInferenceEngine:
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
+            images=images,
+            tools=tools,
+            samplers=samplers,
+            reasoning_effort=reasoning_effort,
+            json_schema=json_schema,
         )
         yield StreamChunk(text=result.text)
         yield StreamChunk(
@@ -992,7 +1052,8 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
         return urllib.request.urlopen(req, timeout=120.0)
 
     def generate(self, *, prompt, history, system_prompt, max_tokens, temperature,
-                 images=None, tools=None) -> GenerationResult:
+                 images=None, tools=None,
+                 samplers=None, reasoning_effort=None, json_schema=None) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("Remote model not configured.")
         started = time.perf_counter()
@@ -1475,6 +1536,9 @@ class MLXWorkerEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -1499,6 +1563,15 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["images"] = images
         if tools:
             payload["tools"] = tools
+        # Phase 2.2: forward whatever sampler subset mlx-lm supports.
+        # Worker side reads these out of the payload and ignores keys it
+        # doesn't recognise, so this is forward-compatible.
+        if samplers:
+            payload["samplers"] = samplers
+        if reasoning_effort:
+            payload["reasoningEffort"] = reasoning_effort
+        if json_schema:
+            payload["jsonSchema"] = json_schema
         result = self.worker.request(payload)
         elapsed = max(time.perf_counter() - started_at, 1e-6)
         return GenerationResult(
@@ -1533,6 +1606,9 @@ class MLXWorkerEngine(BaseInferenceEngine):
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -1557,6 +1633,17 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["images"] = images
         if tools:
             payload["tools"] = tools
+        # Phase 2.2: forward sampler / reasoning / schema overrides. The
+        # MLX worker reads these from the payload and applies what it
+        # supports (top_p, top_k, min_p, repeat_penalty, seed via
+        # mlx-lm); reasoning_effort + json_schema are accepted for
+        # forward-compat with future mlx-lm releases.
+        if samplers:
+            payload["samplers"] = samplers
+        if reasoning_effort:
+            payload["reasoningEffort"] = reasoning_effort
+        if json_schema:
+            payload["jsonSchema"] = json_schema
         try:
             request_iter = self.worker.stream_request(payload)
         except RuntimeError as exc:
@@ -1999,6 +2086,9 @@ class LlamaCppEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -2033,6 +2123,12 @@ class LlamaCppEngine(BaseInferenceEngine):
         }
         if tools:
             payload["tools"] = tools
+        _apply_sampler_kwargs(
+            payload,
+            samplers=samplers,
+            reasoning_effort=reasoning_effort,
+            json_schema=json_schema,
+        )
         try:
             response = _http_json(
                 self._server_url("/v1/chat/completions"),
@@ -2076,6 +2172,9 @@ class LlamaCppEngine(BaseInferenceEngine):
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -2108,6 +2207,12 @@ class LlamaCppEngine(BaseInferenceEngine):
         }
         if tools:
             payload["tools"] = tools
+        _apply_sampler_kwargs(
+            payload,
+            samplers=samplers,
+            reasoning_effort=reasoning_effort,
+            json_schema=json_schema,
+        )
         url = self._server_url("/v1/chat/completions")
         data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
@@ -2910,6 +3015,9 @@ class RuntimeController:
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         engine: BaseInferenceEngine | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("Load a model before sending prompts.")
@@ -2923,6 +3031,9 @@ class RuntimeController:
             temperature=temperature,
             images=images,
             tools=tools,
+            samplers=samplers,
+            reasoning_effort=reasoning_effort,
+            json_schema=json_schema,
         )
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
@@ -2940,6 +3051,9 @@ class RuntimeController:
         tools: list[dict[str, Any]] | None = None,
         engine: BaseInferenceEngine | None = None,
         thinking_mode: str | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("Load a model before sending prompts.")
@@ -2954,6 +3068,9 @@ class RuntimeController:
             images=images,
             tools=tools,
             thinking_mode=thinking_mode,
+            samplers=samplers,
+            reasoning_effort=reasoning_effort,
+            json_schema=json_schema,
         )
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:

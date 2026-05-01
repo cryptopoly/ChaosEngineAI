@@ -51,6 +51,36 @@ function readTemperatureOverride(sessionId: string | null | undefined): number |
 }
 
 /**
+ * Phase 2.2: read the per-thread sampler overrides (top_p, top_k, etc.)
+ * stashed by SamplerPanel. Returns the GeneratePayload field shape so
+ * useChat can spread it into the stream payload. Empty object = no
+ * overrides; backend defaults apply.
+ */
+function readSamplerPayload(sessionId: string | null | undefined): Record<string, unknown> {
+  if (!sessionId || typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(`chat.samplers.${sessionId}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, unknown> = {};
+    for (const key of ["topP", "topK", "minP", "repeatPenalty", "seed", "mirostatTau", "mirostatEta"]) {
+      const value = (parsed as Record<string, unknown>)[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        out[key] = value;
+      }
+    }
+    const mode = (parsed as Record<string, unknown>).mirostatMode;
+    if (mode === 0 || mode === 1 || mode === 2) {
+      out.mirostatMode = mode;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Read the per-thread reasoning effort level (Phase 1.12). Stored alongside
  * thinkingMode but separate so a session can independently track "Off" vs
  * Low/Medium/High effort. Returns undefined when no level is stored, which
@@ -717,6 +747,9 @@ export function useChat(
         reasoningEffort: activeThinkingMode === "auto" ? readReasoningEffort(sessionId) : undefined,
         temperature: readTemperatureOverride(sessionId) ?? launchSettings.temperature,
         maxTokens: launchSettings.maxTokens,
+        // Phase 2.2: per-thread sampler overrides. Backend ignores fields
+        // it doesn't recognise so this is forward-compatible.
+        ...readSamplerPayload(sessionId),
         systemPrompt: systemPrompt || undefined,
         cacheBits: activeRuntimeProfile.cacheBits,
         fp16Layers: activeRuntimeProfile.fp16Layers,

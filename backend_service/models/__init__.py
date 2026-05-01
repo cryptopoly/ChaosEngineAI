@@ -92,11 +92,31 @@ class GenerateRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     maxTokens: int = Field(default=4096, ge=1, le=32768)
     # Optional per-message sampler overrides. None means "let backend default
-    # apply" (llama.cpp / mlx-lm defaults). Phase 1 exposes the most-used three;
-    # full sampler chain (top_k, min_p, repeat_penalty, mirostat, DRY, XTC,
-    # grammar) lands in Phase 2.
+    # apply" (llama.cpp / mlx-lm defaults). Phase 2.2 closes the Phase 1.10
+    # deferral and exposes the full sampler chain end-to-end. Each backend
+    # forwards what it supports and silently ignores the rest:
+    #   - llama-server: all of these (native /v1/chat/completions params)
+    #   - mlx-lm: temperature, topP, topK, minP, repeatPenalty, seed
+    # DRY / XTC are intentionally deferred — DRY ships in llama-server but
+    # is sensitive to context-length growth; XTC is too new to expose
+    # broadly. Free-form GBNF grammars are skipped in favour of the safer
+    # JSON-schema response format which covers most practical use cases.
     topP: float | None = Field(default=None, ge=0.0, le=1.0)
+    topK: int | None = Field(default=None, ge=0, le=200)
+    minP: float | None = Field(default=None, ge=0.0, le=1.0)
+    repeatPenalty: float | None = Field(default=None, ge=0.0, le=2.0)
+    # Mirostat: mode 0 = off, 1 = mirostat v1, 2 = mirostat v2. tau is the
+    # target entropy; eta the learning rate. Pass None to use llama-server
+    # defaults; pass mode=0 to explicitly disable on a model whose template
+    # leaves it on.
+    mirostatMode: Literal[0, 1, 2] | None = None
+    mirostatTau: float | None = Field(default=None, ge=0.0, le=10.0)
+    mirostatEta: float | None = Field(default=None, ge=0.0, le=1.0)
     seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    # Constrained decoding: when set, llama-server enforces a JSON schema
+    # via its `response_format: {type: "json_schema", json_schema: {...}}`
+    # parameter. The shape mirrors the OpenAI structured-outputs spec.
+    jsonSchema: dict[str, Any] | None = None
     cacheStrategy: str | None = None
     cacheBits: int | None = Field(default=None, ge=0, le=8)
     fp16Layers: int | None = Field(default=None, ge=0, le=16)

@@ -1,12 +1,13 @@
 import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
-import type { ChatSession, ChatThinkingMode, ModelLoadingState, LaunchPreferences, WarmModel } from "../../types";
+import type { ChatSession, ChatThinkingMode, ModelLoadingState, LaunchPreferences, SamplerOverrides, WarmModel } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatThread } from "./ChatThread";
 import { ChatComposer } from "./ChatComposer";
+import { readSamplerOverrides, writeSamplerOverrides } from "./samplerOverrides";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
 
 /**
@@ -302,6 +303,21 @@ export function ChatTab({
     }
   }, [thinkingMode, onThinkingModeChange]);
 
+  // Phase 2.2: per-thread sampler overrides (top_p, top_k, min_p,
+  // repeat_penalty, seed, mirostat). Persisted to localStorage; read
+  // back when the thread changes. useChat reads the same key when
+  // assembling stream payloads — single source of truth.
+  const [samplerOverrides, setSamplerOverridesState] = useState<SamplerOverrides>(() =>
+    readSamplerOverrides(activeChat?.id),
+  );
+  useEffect(() => {
+    setSamplerOverridesState(readSamplerOverrides(activeChat?.id));
+  }, [activeChat?.id]);
+  const handleSamplerOverridesChange = useCallback((overrides: SamplerOverrides) => {
+    setSamplerOverridesState(overrides);
+    writeSamplerOverrides(activeChat?.id, overrides);
+  }, [activeChat?.id]);
+
   return (
     <div className={`chat-layout-2col${sidebarCollapsed ? " chat-layout-2col--sidebar-collapsed" : ""}`}>
       {!sidebarCollapsed ? (
@@ -365,6 +381,7 @@ export function ChatTab({
           activeChat={activeChat}
           launchSettings={launchSettings}
           temperatureOverride={temperatureOverride}
+          samplerOverrides={samplerOverrides}
           showSlashMenu={showSlashMenu}
           slashMatches={slashMatches}
           slashIndex={slashIndex}
@@ -378,6 +395,7 @@ export function ChatTab({
           onToggleTools={onToggleTools}
           onSetError={onSetError}
           onTemperatureOverrideChange={handleTemperatureOverrideChange}
+          onSamplerOverridesChange={handleSamplerOverridesChange}
           runSlashCommand={runSlashCommand}
           handleEffortOff={handleEffortOff}
           handleEffortChange={handleEffortChange}

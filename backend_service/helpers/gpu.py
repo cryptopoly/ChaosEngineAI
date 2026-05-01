@@ -106,6 +106,14 @@ class GPUMonitor:
     # ------------------------------------------------------------------
 
     def _snapshot_nvidia(self) -> dict[str, Any]:
+        # Try torch.cuda first — when the GPU bundle is installed it reads
+        # the right total VRAM via the CUDA driver without shelling out,
+        # and works even if ``nvidia-smi`` isn't on PATH (common on Windows
+        # when the user installs the driver but not the CUDA toolkit).
+        torch_snapshot = self._snapshot_torch_cuda()
+        if torch_snapshot is not None:
+            return torch_snapshot
+
         try:
             out = subprocess.check_output(
                 [
@@ -130,8 +138,60 @@ class GPUMonitor:
         except (FileNotFoundError, subprocess.SubprocessError, ValueError):
             pass
 
-        # Fallback: system RAM via psutil
-        return self._fallback_psutil()
+        # No GPU detected — return a None-VRAM dict rather than reporting
+        # system RAM as if it were VRAM. The image / video safety
+        # estimators downstream treat ``vram_total_gb is None`` as
+        # "unknown" and skip the crash warning, which is the correct
+        # behaviour when we genuinely don't know the card's capacity.
+        return self._no_gpu_detected()
+
+    def _snapshot_torch_cuda(self) -> dict[str, Any] | None:
+        """Read total + used VRAM from torch.cuda when available.
+
+        Returns ``None`` if torch isn't importable, has no CUDA build, or
+        no CUDA device is currently visible (driver missing, GPU
+        passthrough disabled, etc.). The caller then falls through to
+        ``nvidia-smi``.
+
+        Importing torch is heavy (~200ms first time) but the result is
+        cached one level up by ``get_device_vram_total_gb``, so the cost
+        is paid at most once per backend session.
+        """
+        try:
+            import torch  # type: ignore
+        except Exception:
+            return None
+        try:
+            if not torch.cuda.is_available():
+                return None
+            device = torch.cuda.current_device()
+            props = torch.cuda.get_device_properties(device)
+            total_bytes = int(props.total_memory)
+            try:
+                free_bytes, _ = torch.cuda.mem_get_info(device)
+                used_bytes = max(0, total_bytes - int(free_bytes))
+            except Exception:
+                used_bytes = 0
+            return {
+                "gpu_name": props.name,
+                "vram_total_gb": round(total_bytes / (1024 ** 3), 2),
+                "vram_used_gb": round(used_bytes / (1024 ** 3), 2),
+                "utilization_pct": None,
+                "temperature_c": None,
+                "power_w": None,
+            }
+        except Exception:
+            return None
+
+    def _no_gpu_detected(self) -> dict[str, Any]:
+        return {
+            "gpu_name": "No GPU detected",
+            "vram_total_gb": None,
+            "vram_used_gb": None,
+            "utilization_pct": None,
+            "temperature_c": None,
+            "power_w": None,
+        }
 
     # ------------------------------------------------------------------
     # Fallback

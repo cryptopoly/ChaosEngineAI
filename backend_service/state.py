@@ -2435,22 +2435,25 @@ class ChaosEngineState:
             model_tag = self.runtime.loaded_model.name
             self.add_log("chat", "info", f"[{model_tag}] Streaming response...")
             self.active_requests += 1
-            # Hotfix (2026-05-01): the MLX worker subprocess never wired
-            # vision input through, so images attached on an MLX-routed
-            # turn were silently dropped and the model hallucinated about
-            # whatever was in the prompt text. Strip + warn loudly here
-            # so the user gets an unambiguous signal instead of a
-            # plausible-looking hallucination. The capability resolver
-            # also demotes vision for these engines so the composer
-            # hides the attach button — this branch is the belt-and-
-            # braces for legacy clients that bypass the gate.
-            if request.images and (self.runtime.loaded_model.engine or "").lower() in {"mlx", "mlx_worker", "turboquant"}:
+            # Hotfix (2026-05-01 v2): vision input has no working path
+            # on either runtime today. The MLX worker subprocess never
+            # wired images, and `_resolve_gguf_path` strips mmproj
+            # projector files so llama-server never gets `--mmproj`.
+            # Until mmproj wiring lands (Phase 2.6+ work), the
+            # `visionEnabled` flag on LoadedModelInfo stays False on
+            # every load and we strip + warn loudly here. The capability
+            # resolver also demotes vision via this same flag so the
+            # composer hides the attach button — this branch is the
+            # belt-and-braces for legacy clients that bypass the gate.
+            if request.images and not self.runtime.loaded_model.visionEnabled:
+                engine_label = self.runtime.loaded_model.engine or "current"
                 self.add_log(
                     "chat", "warning",
                     f"[{model_tag}] Stripped {len(request.images)} attached "
-                    "image(s): the MLX runtime does not currently carry "
-                    "vision input through to the model. Switch to a "
-                    "llama.cpp-routed vision model to attach images.",
+                    f"image(s): the {engine_label} runtime has no mmproj "
+                    "vision projector wired up, so images would be silently "
+                    "dropped and the model would hallucinate. Vision support "
+                    "lands with the mmproj loader.",
                 )
                 request.images = None
             effective_system_prompt = _compose_chat_system_prompt(request.systemPrompt, effective_thinking_mode)

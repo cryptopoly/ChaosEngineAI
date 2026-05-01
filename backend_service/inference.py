@@ -773,6 +773,14 @@ class LoadedModelInfo:
     speculativeDecoding: bool = False
     dflashDraftModel: str | None = None
     treeBudget: int = 0
+    # Hotfix (2026-05-01 v2): the runtime currently has no mmproj path
+    # wired for either backend — `_resolve_gguf_path` strips mmproj
+    # files, and the MLX worker has never carried images. Until those
+    # paths land (Phase 2.6+ work), `visionEnabled` stays False on every
+    # load and the capability resolver demotes the typed `supportsVision`
+    # flag accordingly. The catalog `tags` keep "vision" so the UI can
+    # still surface "this model supports vision once mmproj loads".
+    visionEnabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         # Phase 2.11: include resolved capabilities so the frontend can
@@ -787,6 +795,7 @@ class LoadedModelInfo:
             self.ref,
             self.canonicalRepo,
             engine=self.engine,
+            vision_enabled=self.visionEnabled,
         ).to_dict()
         return {
             "ref": self.ref,
@@ -808,6 +817,7 @@ class LoadedModelInfo:
             "speculativeDecoding": self.speculativeDecoding,
             "dflashDraftModel": self.dflashDraftModel,
             "treeBudget": self.treeBudget,
+            "visionEnabled": self.visionEnabled,
             "capabilities": capabilities,
         }
 

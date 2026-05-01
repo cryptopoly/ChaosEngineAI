@@ -149,6 +149,7 @@ def resolve_capabilities(
     model_ref: str | None,
     canonical_repo: str | None = None,
     engine: str | None = None,
+    vision_enabled: bool = False,
 ) -> ModelCapabilities:
     """Public entry point — returns a typed capability blob for a model.
 
@@ -160,10 +161,15 @@ def resolve_capabilities(
     runtime can actually serve. The MLX worker subprocess never wired
     vision input through — so even though Gemma-4 / Qwen-VL etc.
     advertise vision in the catalog, the user gets silent base64-drop
-    if the route is MLX. Demote vision to False when engine is "mlx"
-    or "turboquant" until a real mlx-vlm path lands. Llama.cpp keeps
-    full catalog rights since it accepts image_url parts natively
-    when an mmproj is loaded.
+    if the route is MLX. Demote vision to False for those engines.
+
+    `vision_enabled` is the runtime-side ground truth: True only when
+    the loaded model actually has an mmproj projector wired up. Until
+    that wiring lands the flag stays False on every load, so even the
+    llama.cpp path (which accepts image_url parts natively if mmproj
+    is configured) demotes vision until proven otherwise. Catalog
+    tags keep "vision" so the UI can still surface "supported once
+    mmproj loads" once the path is live.
     """
     raw = _catalog_lookup(model_ref, canonical_repo)
     if raw is None:
@@ -181,10 +187,15 @@ def resolve_capabilities(
             setattr(caps, flag, True)
     caps.tags = tuple(sorted(seen))
 
-    # Engine-side reality check: strip capabilities the active runtime
-    # can't actually serve. Today only vision is at risk on the MLX
-    # path; expand here when more engine-specific gates appear.
+    # Engine-side reality check + runtime-side proof: strip vision
+    # unless the runtime explicitly says mmproj is loaded. Today no
+    # path sets this True so the typed flag is always False — exactly
+    # the right behaviour to prevent silent image drop. The MLX-engine
+    # demotion is kept as belt-and-braces for any caller that forgets
+    # to thread `vision_enabled` through.
     engine_normalised = (engine or "").strip().lower()
     if engine_normalised in {"mlx", "mlx_worker", "turboquant"}:
+        caps.supportsVision = False
+    if not vision_enabled:
         caps.supportsVision = False
     return caps

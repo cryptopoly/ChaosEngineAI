@@ -23,7 +23,10 @@ class ResolveCapabilitiesTests(unittest.TestCase):
         self.assertFalse(caps.supportsReasoning)
 
     def test_catalog_match_promotes_typed_flags(self):
-        caps = resolve_capabilities("google/gemma-4-E4B-it", None)
+        # Vision flag depends on the runtime confirming mmproj is loaded.
+        # Pass vision_enabled=True to simulate the post-mmproj-wiring
+        # state; the catalog has both vision and reasoning tags.
+        caps = resolve_capabilities("google/gemma-4-E4B-it", None, vision_enabled=True)
         self.assertTrue(caps.supportsVision)
         self.assertTrue(caps.supportsReasoning)
         self.assertIn("vision", caps.tags)
@@ -32,11 +35,16 @@ class ResolveCapabilitiesTests(unittest.TestCase):
         caps = resolve_capabilities(
             "mlx-community/gemma-4-12B-it-4bit",
             canonical_repo="google/gemma-4-12B-it",
+            vision_enabled=True,
         )
         self.assertTrue(caps.supportsVision)
 
     def test_heuristic_picks_up_vision_in_ref_name(self):
-        caps = resolve_capabilities("custom-org/my-llava-vision-model-7b", None)
+        caps = resolve_capabilities(
+            "custom-org/my-llava-vision-model-7b",
+            None,
+            vision_enabled=True,
+        )
         self.assertTrue(caps.supportsVision)
         self.assertIn("vision", caps.tags)
 
@@ -82,18 +90,16 @@ class ResolveCapabilitiesTests(unittest.TestCase):
             caps.supportsVideo, caps.supportsMultilingual,
         ]))
 
-    def test_mlx_engine_demotes_vision(self):
-        # Hotfix (2026-05-01): the MLX worker subprocess never wired
-        # vision input through, so even when the catalog says a model
-        # supports vision the resolver must demote that flag for the
-        # MLX engine. Catalog-level "vision" tag stays in `tags` so the
-        # UI can still surface "this model would support vision via
-        # llama.cpp" later, but the typed flag drives the composer
-        # gate that hides the image-attach button today.
+    def test_mlx_engine_demotes_vision_even_when_runtime_says_enabled(self):
+        # Belt-and-braces: even if a future mmproj-equivalent path on
+        # MLX claims vision_enabled=True, the engine demotion still
+        # fires because the MLX worker subprocess has no image-carrying
+        # code. Re-enable this check only after mlx-vlm is actually wired.
         caps = resolve_capabilities(
             "google/gemma-4-E4B-it",
             None,
             engine="mlx",
+            vision_enabled=True,
         )
         self.assertFalse(caps.supportsVision)
         self.assertIn("vision", caps.tags)
@@ -103,25 +109,38 @@ class ResolveCapabilitiesTests(unittest.TestCase):
             "google/gemma-4-E4B-it",
             None,
             engine="turboquant",
+            vision_enabled=True,
         )
         self.assertFalse(caps.supportsVision)
 
-    def test_llama_cpp_engine_keeps_vision(self):
+    def test_llama_cpp_engine_keeps_vision_when_runtime_enabled(self):
         # llama.cpp accepts image_url parts natively when an mmproj is
-        # loaded, so vision should remain promoted on this path.
+        # loaded — vision_enabled=True simulates that runtime state.
+        caps = resolve_capabilities(
+            "google/gemma-4-E4B-it",
+            None,
+            engine="llama.cpp",
+            vision_enabled=True,
+        )
+        self.assertTrue(caps.supportsVision)
+
+    def test_llama_cpp_engine_demotes_vision_when_runtime_disabled(self):
+        # Default vision_enabled=False — even on llama.cpp, vision must
+        # be demoted until the runtime confirms mmproj is loaded. This
+        # is the post-launch fix for the user's "model hallucinates
+        # about attached image" report.
         caps = resolve_capabilities(
             "google/gemma-4-E4B-it",
             None,
             engine="llama.cpp",
         )
-        self.assertTrue(caps.supportsVision)
+        self.assertFalse(caps.supportsVision)
 
-    def test_engine_unset_keeps_catalog_capabilities(self):
-        # Default behaviour (no engine specified) preserves the catalog
-        # capability list — important for tests / callers that don't
-        # know the engine yet.
+    def test_engine_unset_demotes_vision_without_runtime_proof(self):
+        # Default behaviour (no engine, no vision_enabled) demotes
+        # vision — callers must opt in by proving runtime support.
         caps = resolve_capabilities("google/gemma-4-E4B-it", None)
-        self.assertTrue(caps.supportsVision)
+        self.assertFalse(caps.supportsVision)
 
 
 if __name__ == "__main__":

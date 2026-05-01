@@ -6269,6 +6269,15 @@ select.text-input {
   width: 100%;
   max-width: 100%;
   overflow: hidden;
+  /* Establishes a stacking context so the streaming pip output stays
+   * above the Prompt + Recent Outputs cards in Image Studio and Video
+   * Studio. Without these the panel renders behind those siblings on
+   * Windows during a long GPU bundle install — the log is still alive
+   * but the user can't see it. ``z-index: 5`` is enough to win against
+   * the surrounding ``.panel`` cards (which set no z-index of their
+   * own) without fighting the global tooltip portal (z-index: 1000+). */
+  position: relative;
+  z-index: 5;
 }
 .install-log-summary {
   cursor: pointer;

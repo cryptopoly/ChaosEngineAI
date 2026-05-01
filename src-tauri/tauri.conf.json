@@ -52,6 +52,11 @@
       "hardenedRuntime": true,
       "entitlements": "macos/ChaosEngineAI.entitlements"
     },
+    "windows": {
+      "nsis": {
+        "installerHooks": "./installer.nsh"
+      }
+    },
     "resources": {
       "resources/": ""
     }

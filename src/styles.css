@@ -6990,3 +6990,67 @@ select.text-input {
     transform: rotate(360deg);
   }
 }
+
+/* Panic banner (Phase 2.0.5-G) + thermal-warning variant (Phase 2.0.5-I) */
+.panic-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 8px;
+  color: #fca5a5;
+}
+
+.panic-banner__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panic-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+}
+
+.panic-banner__message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.panic-banner__metrics {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.panic-banner__cancel {
+  align-self: flex-start;
+  background: rgba(127, 29, 29, 0.4);
+  border-color: #dc2626;
+  color: #fca5a5;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.panic-banner__cancel:hover {
+  background: rgba(127, 29, 29, 0.6);
+}
+
+/* Thermal variant uses amber to distinguish from red memory panic */
+.panic-banner--thermal {
+  background: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 0.4);
+  color: #fdba74;
+}
+
+.panic-banner--thermal .panic-banner__title {
+  color: #fdba74;
+}

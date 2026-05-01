@@ -262,6 +262,22 @@ export interface CitationInfo {
 
 export type ChatStreamPhase = "prompt_eval" | "generating";
 
+export interface ChatPanicSignal {
+  /** User-visible panic message from the backend. */
+  message: string;
+  /** Available RAM (GB) sampled at panic emission. */
+  availableGb?: number;
+  /** Combined memory pressure percentage at panic emission. */
+  pressurePercent?: number;
+}
+
+export interface ChatThermalWarning {
+  /** Reported thermal state from backend ("moderate" | "critical"). */
+  state: "moderate" | "critical";
+  /** User-visible thermal message from backend. */
+  message: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -278,6 +294,17 @@ export interface ChatMessage {
    * token arrives instead of a blank flashing cursor.
    */
   streamPhase?: ChatStreamPhase | null;
+  /**
+   * Phase 2.0.5-G: panic signal emitted mid-stream when system memory
+   * crosses critical thresholds. Renders a non-blocking warning banner
+   * so the user can decide whether to cancel before the host wedges.
+   */
+  panic?: ChatPanicSignal | null;
+  /**
+   * Phase 2.0.5-I: thermal pressure warning emitted mid-stream when
+   * the host is throttling. Renders a non-blocking warning banner.
+   */
+  thermalWarning?: ChatThermalWarning | null;
 }
 
 export interface SessionDocument {

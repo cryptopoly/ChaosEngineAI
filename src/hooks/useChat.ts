@@ -838,6 +838,42 @@ export function useChat(
             }),
           }));
         },
+        onPanic: (signal) => {
+          // Phase 2.0.5-G: stash the panic signal on the streaming
+          // assistant message so ChatTab can render a non-blocking
+          // banner. Generation continues — the user decides whether
+          // to cancel.
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, panic: signal };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
+        onThermalWarning: (signal) => {
+          // Phase 2.0.5-I: stash thermal warning on the streaming
+          // assistant message. Same banner pattern as panic.
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, thermalWarning: signal };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
         onDone: (response) => {
           // Phase 2.0.5-A: clear the prompt-eval watchdog when generation
           // completes naturally so a stale timer can't abort a follow-up turn.

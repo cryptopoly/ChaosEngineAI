@@ -295,6 +295,29 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
+    # Phase 2.0.5-H: pre-flight memory gate. Video gen has the highest
+    # working set of the three flows — a hung diffusion loop on a memory-
+    # starved Apple Silicon machine can swap-thrash the host for minutes.
+    # Refuse early when the floor is breached; gate exceptions never block.
+    try:
+        from backend_service.helpers.memory_gate import (
+            gate_video_generation,
+            snapshot_memory_signals,
+        )
+
+        available_gb, pressure_percent = snapshot_memory_signals()
+        refusal = gate_video_generation(available_gb, pressure_percent)
+        if refusal is not None:
+            state.add_log(
+                "video", "warning",
+                f"Memory gate refused video gen: {refusal['code']} "
+                f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
+            )
+            raise HTTPException(status_code=503, detail=refusal["message"])
+    except HTTPException:
+        raise
+    except Exception as gate_exc:
+        state.add_log("video", "warning", f"Memory gate skipped: {gate_exc}")
 
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)

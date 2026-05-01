@@ -228,6 +228,30 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         state.add_log("images", "error", f"Image model not found in catalog or tracked seeds: '{body.modelId}'")
         raise HTTPException(status_code=404, detail=f"Unknown image model '{body.modelId}'. The model isn't in the curated catalog or tracked seeds.")
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    # Phase 2.0.5-H: pre-flight memory gate. Refuse before invoking the
+    # diffusion pipeline if the host is already memory-starved — image
+    # gen on a swap-thrashing laptop typically takes minutes to recover
+    # and can wedge the desktop entirely. Gate failure (psutil error)
+    # never blocks legitimate work; logged + skipped.
+    try:
+        from backend_service.helpers.memory_gate import (
+            gate_image_generation,
+            snapshot_memory_signals,
+        )
+
+        available_gb, pressure_percent = snapshot_memory_signals()
+        refusal = gate_image_generation(available_gb, pressure_percent)
+        if refusal is not None:
+            state.add_log(
+                "images", "warning",
+                f"Memory gate refused image gen: {refusal['code']} "
+                f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
+            )
+            raise HTTPException(status_code=503, detail=refusal["message"])
+    except HTTPException:
+        raise
+    except Exception as gate_exc:
+        state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")
     _unload_idle_video_runtime_for_image(request, "image generation")
     try:
         artifacts, runtime = _generate_image_artifacts(body, variant, state.image_runtime)

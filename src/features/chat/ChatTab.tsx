@@ -663,6 +663,44 @@ export function ChatTab({
                 {message.role === "assistant" && isStreamingMessage && message.streamPhase ? (
                   <PromptPhaseIndicator phase={message.streamPhase} />
                 ) : null}
+                {message.role === "assistant" && message.thermalWarning ? (
+                  <div className={`panic-banner panic-banner--thermal panic-banner--${message.thermalWarning.state}`} role="alert">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
+                    </svg>
+                    <div className="panic-banner__body">
+                      <strong className="panic-banner__title">Thermal throttle</strong>
+                      <p className="panic-banner__message">{message.thermalWarning.message}</p>
+                    </div>
+                  </div>
+                ) : null}
+                {message.role === "assistant" && message.panic ? (
+                  <div className="panic-banner" role="alert">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <div className="panic-banner__body">
+                      <strong className="panic-banner__title">System memory critical</strong>
+                      <p className="panic-banner__message">{message.panic.message}</p>
+                      {message.panic.availableGb != null && message.panic.pressurePercent != null ? (
+                        <small className="panic-banner__metrics">
+                          {message.panic.availableGb.toFixed(1)} GB free · pressure {message.panic.pressurePercent.toFixed(0)}%
+                        </small>
+                      ) : null}
+                    </div>
+                    {isStreamingMessage ? (
+                      <button
+                        className="secondary-button panic-banner__cancel"
+                        type="button"
+                        onClick={onCancelGeneration}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
                 {message.role === "assistant" ? (
                   <div className={`markdown-content${isStreamingMessage && !message.streamPhase ? " streaming-cursor" : ""}`}>
                     <RichMarkdown>{message.text || "\u200B"}</RichMarkdown>

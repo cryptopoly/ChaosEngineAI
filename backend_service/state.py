@@ -2480,6 +2480,50 @@ class ChaosEngineState:
             # markdown code, so the threshold is `max_tokens * 6` chars.
             runaway_char_budget = max(2000, int(request.maxTokens) * 6)
             runaway_triggered = False
+            runaway_loop_reason: str | None = None
+
+            # Phase 2.0.5-F: per-stream repetition / reasoning-loop guard for
+            # the llama.cpp path. The MLX worker has run this guard inside the
+            # subprocess for a while; the llama-server REST stream had no
+            # equivalent and a runaway model could decode tokens indefinitely
+            # against a paused UI. Same RunawayGuard module both paths use.
+            from backend_service.runaway_guard import RunawayGuard as _RunawayGuard
+
+            llama_path_guard = _RunawayGuard()
+
+            # Phase 2.0.5-C: tok/s floor monitor. After the model has
+            # produced output for a 30-second window, check the rolling
+            # decode rate. Falling below 0.3 tok/s for that long usually
+            # means thermal throttle, GPU stall, or a corrupted model
+            # state — none of which recovers on its own. Abort with a
+            # diagnostic so the user can switch model / cool down /
+            # restart the worker.
+            TOKS_FLOOR_WINDOW_S = 30.0
+            TOKS_FLOOR_MIN = 0.3
+            window_started_at: float | None = None
+            window_tokens = 0
+            stall_triggered = False
+
+            # Phase 2.0.5-G: in-stream panic monitor. While a generation
+            # is in flight, sample memory every PANIC_SAMPLE_INTERVAL_S
+            # and emit a `panic` SSE event when free RAM crosses the
+            # critical floor or pressure goes critical. The front-end
+            # renders a non-blocking banner offering Cancel / Unload
+            # warm / Continue. Generation is NOT auto-cancelled here —
+            # that's the user's call. The stricter pre-flight gate
+            # (Phase 2.0.5-B) blocks tight starts, this catches mid-
+            # flight degradation as KV cache or other activity grows.
+            PANIC_SAMPLE_INTERVAL_S = 5.0
+            PANIC_AVAILABLE_FLOOR_GB = 0.5
+            PANIC_PRESSURE_CEILING = 96.0
+            last_panic_sample_at: float | None = None
+            panic_emitted = False
+            # Phase 2.0.5-I: thermal pressure watch. `pmset -g therm` on
+            # macOS reports warning levels when CPU/GPU is throttling.
+            # We surface the first transition to "critical" via a SSE
+            # event so the user sees why decode just slowed. Linux /
+            # Windows: read returns None and this watch is a no-op.
+            thermal_warning_emitted = False
 
             def _maybe_emit_generating_phase() -> str:
                 nonlocal phase_first_output_seen, ttft_seconds
@@ -2554,6 +2598,116 @@ class ChaosEngineState:
                                 runaway_triggered = True
                                 cancelled = True
                                 break
+                            # Phase 2.0.5-F: feed loop / repetition guard.
+                            try:
+                                llama_path_guard.feed(chunk.text)
+                            except RuntimeError as guard_exc:
+                                runaway_triggered = True
+                                runaway_loop_reason = str(guard_exc)
+                                cancelled = True
+                                break
+                            # Phase 2.0.5-C: tok/s floor sampling. Each
+                            # chunk roughly maps to one token from the
+                            # SSE stream; chunk count is a workable proxy.
+                            now = time.perf_counter()
+                            if window_started_at is None:
+                                window_started_at = now
+                                window_tokens = 0
+                            window_tokens += 1
+                            if now - window_started_at >= TOKS_FLOOR_WINDOW_S:
+                                rate = window_tokens / max(1e-6, now - window_started_at)
+                                if rate < TOKS_FLOOR_MIN:
+                                    stall_triggered = True
+                                    cancelled = True
+                                    runaway_loop_reason = (
+                                        f"Decode stalled at {rate:.2f} tok/s "
+                                        f"for {TOKS_FLOOR_WINDOW_S:.0f}s — "
+                                        "likely thermal throttle, GPU stall, "
+                                        "or worker deadlock. Aborting."
+                                    )
+                                    break
+                                window_started_at = now
+                                window_tokens = 0
+                            # Phase 2.0.5-G + I: panic + thermal monitors.
+                            # Sampled at PANIC_SAMPLE_INTERVAL_S together to
+                            # keep subprocess / psutil cost bounded. Each
+                            # emits at most once per turn.
+                            if (
+                                (not panic_emitted or not thermal_warning_emitted)
+                                and (
+                                    last_panic_sample_at is None
+                                    or now - last_panic_sample_at >= PANIC_SAMPLE_INTERVAL_S
+                                )
+                            ):
+                                last_panic_sample_at = now
+                                if not panic_emitted:
+                                    try:
+                                        from backend_service.helpers.memory_gate import (
+                                            snapshot_memory_signals as _panic_snapshot,
+                                        )
+                                        p_avail, p_pressure = _panic_snapshot()
+                                        if (
+                                            p_avail < PANIC_AVAILABLE_FLOOR_GB
+                                            or p_pressure > PANIC_PRESSURE_CEILING
+                                        ):
+                                            panic_emitted = True
+                                            chaosengine.add_log(
+                                                "chat", "warning",
+                                                f"[{model_tag}] Panic: avail="
+                                                f"{p_avail:.1f} GB, "
+                                                f"pressure={p_pressure:.0f}%.",
+                                            )
+                                            yield (
+                                                "data: "
+                                                + json.dumps({
+                                                    "panic": True,
+                                                    "availableGb": p_avail,
+                                                    "pressurePercent": p_pressure,
+                                                    "message": (
+                                                        "System memory critical mid-"
+                                                        "generation. Consider cancelling "
+                                                        "this turn or unloading warm "
+                                                        "models before retrying."
+                                                    ),
+                                                })
+                                                + "\n\n"
+                                            )
+                                    except Exception as panic_exc:
+                                        chaosengine.add_log(
+                                            "chat", "warning",
+                                            f"[{model_tag}] Panic sample skipped: {panic_exc}",
+                                        )
+                                if not thermal_warning_emitted:
+                                    try:
+                                        from backend_service.helpers.thermal import (
+                                            read_thermal_state,
+                                        )
+                                        thermal_state = read_thermal_state()
+                                        if thermal_state == "critical":
+                                            thermal_warning_emitted = True
+                                            chaosengine.add_log(
+                                                "chat", "warning",
+                                                f"[{model_tag}] Thermal warning: critical.",
+                                            )
+                                            yield (
+                                                "data: "
+                                                + json.dumps({
+                                                    "thermalWarning": True,
+                                                    "state": thermal_state,
+                                                    "message": (
+                                                        "System is thermally throttling. "
+                                                        "Decode speed will drop until the "
+                                                        "machine cools. Consider pausing "
+                                                        "and retrying after a cooldown."
+                                                    ),
+                                                })
+                                                + "\n\n"
+                                            )
+                                    except Exception as thermal_exc:
+                                        chaosengine.add_log(
+                                            "chat", "warning",
+                                            f"[{model_tag}] Thermal sample skipped: {thermal_exc}",
+                                        )
                         if chunk.done:
                             final_chunk = chunk
             except RuntimeError as exc:
@@ -2574,7 +2728,13 @@ class ChaosEngineState:
 
             if cancelled:
                 yield f"data: {json.dumps({'cancelled': True})}\n\n"
-                if runaway_triggered:
+                if runaway_loop_reason is not None:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] {runaway_loop_reason} "
+                        f"(after {len(full_text)} chars).",
+                    )
+                elif runaway_triggered:
                     chaosengine.add_log(
                         "chat", "warning",
                         f"[{model_tag}] Output runaway guard tripped at "

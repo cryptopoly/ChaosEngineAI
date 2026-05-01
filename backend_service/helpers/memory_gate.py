@@ -32,6 +32,19 @@ CHAT_MIN_AVAILABLE_GB = 1.0
 # risk of swap thrashing or OOM kill regardless of what `available` says.
 CHAT_MAX_PRESSURE_PERCENT = 92.0
 
+# Phase 2.0.5-H: image generation typically needs 4-12 GB working set on
+# top of the already-resident pipeline (latents, attention buffers, VAE
+# decode). The gate is a backstop — refuses when the host is already
+# strained enough that an OOM during inference would wedge the laptop.
+IMAGE_MIN_AVAILABLE_GB = 4.0
+IMAGE_MAX_PRESSURE_PERCENT = 88.0
+
+# Video gen working set scales with frame count + resolution. Strictest
+# of the three gates — a hung video gen on Apple Silicon will typically
+# swap-thrash for minutes before recovering.
+VIDEO_MIN_AVAILABLE_GB = 6.0
+VIDEO_MAX_PRESSURE_PERCENT = 85.0
+
 
 def gate_chat_generation(
     available_gb: float,
@@ -64,6 +77,77 @@ def gate_chat_generation(
                 f"System memory pressure is {pressure_percent:.0f}% — generation "
                 "would risk swap thrashing or an OOM kill. Free some memory "
                 "(unload warm models, close apps) and retry."
+            ),
+        }
+    return None
+
+
+def gate_image_generation(
+    available_gb: float,
+    pressure_percent: float,
+    *,
+    min_available_gb: float = IMAGE_MIN_AVAILABLE_GB,
+    max_pressure_percent: float = IMAGE_MAX_PRESSURE_PERCENT,
+) -> dict[str, Any] | None:
+    """Pre-flight check for image generation. Returns refusal or None.
+
+    Image inference can OOM swap-thrash for minutes before recovering, so
+    we require materially more headroom than chat. Same shape as
+    `gate_chat_generation` so call sites can render the message uniformly.
+    """
+    if available_gb < min_available_gb:
+        return {
+            "code": "memory_gate_image_low_available",
+            "message": (
+                f"Only {available_gb:.1f} GB of RAM available — image "
+                f"generation needs at least {min_available_gb:.1f} GB free "
+                "to run safely. Unload warm models or close other apps "
+                "before retrying."
+            ),
+        }
+    if pressure_percent > max_pressure_percent:
+        return {
+            "code": "memory_gate_image_high_pressure",
+            "message": (
+                f"Memory pressure is {pressure_percent:.0f}% — image "
+                "generation would risk swap thrashing. Free some memory "
+                "before retrying."
+            ),
+        }
+    return None
+
+
+def gate_video_generation(
+    available_gb: float,
+    pressure_percent: float,
+    *,
+    min_available_gb: float = VIDEO_MIN_AVAILABLE_GB,
+    max_pressure_percent: float = VIDEO_MAX_PRESSURE_PERCENT,
+) -> dict[str, Any] | None:
+    """Pre-flight check for video generation. Returns refusal or None.
+
+    Video working sets scale with frame count + resolution, so the floor
+    is the strictest of the three gates. A hung diffusion loop on a memory
+    -starved Apple Silicon machine has historically taken the whole host
+    down — this gate is the cheapest possible defence.
+    """
+    if available_gb < min_available_gb:
+        return {
+            "code": "memory_gate_video_low_available",
+            "message": (
+                f"Only {available_gb:.1f} GB of RAM available — video "
+                f"generation needs at least {min_available_gb:.1f} GB free "
+                "to avoid swap thrashing. Unload warm models or close "
+                "other apps before retrying."
+            ),
+        }
+    if pressure_percent > max_pressure_percent:
+        return {
+            "code": "memory_gate_video_high_pressure",
+            "message": (
+                f"Memory pressure is {pressure_percent:.0f}% — video "
+                "generation would likely OOM. Free some memory before "
+                "retrying."
             ),
         }
     return None

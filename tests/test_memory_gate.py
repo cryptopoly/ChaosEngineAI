@@ -7,7 +7,11 @@ without false-positive blocks during normal operation.
 
 import unittest
 
-from backend_service.helpers.memory_gate import gate_chat_generation
+from backend_service.helpers.memory_gate import (
+    gate_chat_generation,
+    gate_image_generation,
+    gate_video_generation,
+)
 
 
 class GateChatGenerationTests(unittest.TestCase):
@@ -51,6 +55,42 @@ class GateChatGenerationTests(unittest.TestCase):
         # a system stable at exactly the floor would be perpetually refused.
         result = gate_chat_generation(available_gb=1.0, pressure_percent=70.0)
         self.assertIsNone(result)
+
+
+class GateImageGenerationTests(unittest.TestCase):
+    def test_passes_when_memory_is_healthy(self):
+        result = gate_image_generation(available_gb=12.0, pressure_percent=45.0)
+        self.assertIsNone(result)
+
+    def test_refuses_below_image_floor(self):
+        # Image needs more headroom than chat — 3.5 GB is fine for chat
+        # but should trip the image gate (default 4 GB floor).
+        result = gate_image_generation(available_gb=3.5, pressure_percent=70.0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_image_low_available")
+
+    def test_refuses_when_image_pressure_high(self):
+        result = gate_image_generation(available_gb=10.0, pressure_percent=92.0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_image_high_pressure")
+
+
+class GateVideoGenerationTests(unittest.TestCase):
+    def test_passes_when_memory_is_healthy(self):
+        result = gate_video_generation(available_gb=18.0, pressure_percent=40.0)
+        self.assertIsNone(result)
+
+    def test_video_floor_strictest_of_three(self):
+        # 5 GB available is fine for chat (1 GB) and image (4 GB) but
+        # below the video floor (6 GB).
+        result = gate_video_generation(available_gb=5.0, pressure_percent=70.0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_video_low_available")
+
+    def test_refuses_when_video_pressure_high(self):
+        result = gate_video_generation(available_gb=20.0, pressure_percent=88.0)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_video_high_pressure")
 
 
 if __name__ == "__main__":

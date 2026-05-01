@@ -479,6 +479,17 @@ export interface StreamCallbacks {
    * "Processing prompt..." indicator instead of a blank flashing cursor.
    */
   onPhase?: (phase: ChatStreamPhase, ttftSeconds?: number) => void;
+  /**
+   * Phase 2.0.5-G: mid-stream panic signal. Backend emits at most once
+   * per turn when memory crosses critical floors (free < 0.5 GB OR
+   * pressure > 96%). Stream continues; user decides whether to cancel.
+   */
+  onPanic?: (signal: { message: string; availableGb?: number; pressurePercent?: number }) => void;
+  /**
+   * Phase 2.0.5-I: mid-stream thermal warning. Backend emits when host
+   * is actively thermally throttling. Stream continues.
+   */
+  onThermalWarning?: (signal: { state: "moderate" | "critical"; message: string }) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
 }
@@ -572,6 +583,20 @@ export async function generateChatStream(
           if (event.phase === "prompt_eval" || event.phase === "generating") {
             const ttft = typeof event.ttftSeconds === "number" ? event.ttftSeconds : undefined;
             callbacks.onPhase?.(event.phase, ttft);
+          }
+          if (event.panic === true && typeof event.message === "string") {
+            callbacks.onPanic?.({
+              message: event.message,
+              availableGb: typeof event.availableGb === "number" ? event.availableGb : undefined,
+              pressurePercent: typeof event.pressurePercent === "number" ? event.pressurePercent : undefined,
+            });
+          }
+          if (event.thermalWarning === true && typeof event.message === "string"
+              && (event.state === "moderate" || event.state === "critical")) {
+            callbacks.onThermalWarning?.({
+              state: event.state,
+              message: event.message,
+            });
           }
           if (event.done) {
             callbacks.onDone({

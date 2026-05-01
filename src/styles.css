@@ -7212,6 +7212,66 @@ select.text-input {
   user-select: none;
 }
 
+/* Structured tool output (Phase 2.8) */
+.tool-output-table {
+  font-size: 12px;
+  background: #0f1215;
+  border-radius: 6px;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.tool-output-table__title {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.tool-output-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.tool-output-table th,
+.tool-output-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tool-output-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.tool-output-table td a {
+  color: var(--accent-strong);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.tool-output-table td a:hover {
+  text-decoration: underline;
+}
+
+.tool-output-markdown {
+  background: #0f1215;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.tool-output-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 /* Mid-thread model swap menu (Phase 2.12) */
 .swap-menu {
   position: relative;

@@ -20,7 +20,7 @@ import re
 from typing import Any
 
 from backend_service.mcp.client import McpClient, McpClientError, McpToolDescriptor
-from backend_service.tools import BaseTool
+from backend_service.tools import BaseTool, StructuredToolOutput
 
 
 # MCP tool names can include slashes / colons that aren't legal in
@@ -84,3 +84,62 @@ class McpTool(BaseTool):
             # something to feed back to the model. Raising would
             # require a more invasive change to the loop's error path.
             return f"[MCP server '{self._descriptor.server_id}' error] {exc}"
+
+    def execute_structured(self, **kwargs: Any) -> StructuredToolOutput | None:
+        """Phase 2.8: surface MCP content parts as structured output.
+
+        MCP servers return a list of content parts under
+        ``result.content`` (text, image, embedded resources). When the
+        first part is an image we render it inline; when there's a
+        single text part we leave it for the legacy fallback so the UI
+        can still pick markdown / table renderers added later by tool
+        introspection. Multiple-part results render as markdown with
+        each part stringified.
+        """
+        try:
+            raw = self._client.call_tool_raw(self._descriptor.name, kwargs)
+        except AttributeError:
+            # Older clients without the raw helper — just fall through
+            # to the plain text path.
+            return None
+        except McpClientError as exc:
+            return StructuredToolOutput(
+                text=f"[MCP server '{self._descriptor.server_id}' error] {exc}",
+                render_as="markdown",
+            )
+        if not isinstance(raw, dict):
+            return None
+        content = raw.get("content")
+        if not isinstance(content, list) or not content:
+            return None
+
+        # Single image part: render inline.
+        if len(content) == 1 and isinstance(content[0], dict) and content[0].get("type") == "image":
+            img = content[0]
+            data_uri = _image_part_to_data_uri(img)
+            if data_uri:
+                return StructuredToolOutput(
+                    text=f"[image: {img.get('mimeType', 'image/png')}]",
+                    render_as="image",
+                    data={"src": data_uri, "alt": img.get("alt", "")},
+                )
+
+        # Multiple parts or non-image: stringify into markdown so the
+        # UI shows each part with its own framing.
+        from backend_service.mcp.client import _flatten_tool_result
+
+        text = _flatten_tool_result(raw)
+        return StructuredToolOutput(
+            text=text,
+            render_as="markdown",
+            data={"markdown": text},
+        )
+
+
+def _image_part_to_data_uri(part: dict[str, Any]) -> str | None:
+    """Convert an MCP image content part to a `data:` URI for inline render."""
+    data = part.get("data")
+    if not isinstance(data, str) or not data:
+        return None
+    mime = part.get("mimeType") or "image/png"
+    return f"data:{mime};base64,{data}"

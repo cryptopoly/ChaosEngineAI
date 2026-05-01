@@ -8,7 +8,27 @@ through the registry, and injects results back into the conversation.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
+
+
+# Phase 2.8: rich tool output payload.
+#
+# `text` is what the language model sees on the next turn (preserves
+# the existing contract — the agent loop feeds tool results back as
+# message content). `render_as` + `data` are an optional UI hint the
+# frontend's `ToolCallCard` reads to render a table / code block /
+# markdown / image / chart instead of dumping raw JSON. Tools that
+# don't override `execute_structured` continue to return plain text
+# and the UI falls back to the existing collapsible-JSON view.
+RenderAsLiteral = str  # "table" | "code" | "markdown" | "image" | "chart" | "json"
+
+
+@dataclass
+class StructuredToolOutput:
+    text: str
+    render_as: RenderAsLiteral = "json"
+    data: dict[str, Any] | None = None
 
 
 class BaseTool(ABC):
@@ -31,6 +51,18 @@ class BaseTool(ABC):
     @abstractmethod
     def execute(self, **kwargs: Any) -> str:
         """Run the tool with the given arguments and return a text result."""
+
+    def execute_structured(self, **kwargs: Any) -> StructuredToolOutput | None:
+        """Phase 2.8: optional rich-output entry point.
+
+        Tools that want the UI to render a table / code block / markdown
+        instead of a JSON dump override this to return a
+        `StructuredToolOutput`. The agent loop calls this first; when
+        it returns None (the default), the loop falls back to
+        `execute(...)` and treats the result as plain text. Built-in
+        tools that haven't been migrated yet keep working unchanged.
+        """
+        return None
 
     @property
     def provenance(self) -> str:

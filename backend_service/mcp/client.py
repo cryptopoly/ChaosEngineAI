@@ -217,16 +217,31 @@ class McpClient:
         parts and stringifying anything else, matching the contract
         every existing built-in tool already follows.
         """
+        return _flatten_tool_result(self.call_tool_raw(name, arguments, timeout=timeout))
+
+    def call_tool_raw(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        timeout: float | None = None,
+    ) -> Any:
+        """Phase 2.8: invoke and return the raw `tools/call` result.
+
+        Adapter callers that want to render MCP content parts natively
+        (images, embedded resources) read the raw envelope so they can
+        inspect each part's `type` / `mimeType` / `data` / `text`
+        before falling back to flattened text.
+        """
         if not self._initialized:
             raise McpClientError(
                 f"MCP server '{self.config.id}' not initialised — call initialize() first"
             )
-        result = self._request(
+        return self._request(
             "tools/call",
             {"name": name, "arguments": arguments},
             timeout=timeout,
         )
-        return _flatten_tool_result(result)
 
     def close(self) -> None:
         if self._proc is None:

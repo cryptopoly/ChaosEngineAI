@@ -2265,6 +2265,12 @@ class ChaosEngineState:
                         "arguments": tc.arguments,
                         "result": tc.result,
                         "elapsed": tc.elapsed_seconds,
+                        # Phase 2.8: forward structured output hint +
+                        # data through to the frontend `ToolCallInfo`.
+                        # When `render_as` is None the frontend falls
+                        # back to the legacy collapsible-JSON view.
+                        "renderAs": tc.render_as,
+                        "data": tc.data,
                     }
                     for tc in agent_result.tool_calls
                 ]

@@ -108,3 +108,18 @@ class CalculatorTool(BaseTool):
             return f"{expression} = {result}"
         except (ValueError, TypeError, ZeroDivisionError, SyntaxError, OverflowError) as exc:
             return f"Error evaluating '{expression}': {exc}"
+
+    def execute_structured(self, **kwargs: Any) -> Any:
+        """Phase 2.8: render the calculation as a one-line code block
+        so the result reads like ``2 + 2 = 4`` in monospace rather
+        than getting collapsed into a JSON dump."""
+        from backend_service.tools import StructuredToolOutput
+
+        text = self.execute(**kwargs)
+        if text.startswith("Error"):
+            return StructuredToolOutput(text=text, render_as="markdown")
+        return StructuredToolOutput(
+            text=text,
+            render_as="code",
+            data={"code": text, "language": "text"},
+        )

@@ -244,12 +244,25 @@ export interface SettingsUpdateResponse {
   };
 }
 
+/**
+ * Phase 2.8: rendering hint for tool-call output. Tools that opt in
+ * to structured output set this on their result so the UI knows
+ * whether to render a table, code block, markdown body, image, or a
+ * chart. Tools that don't override `execute_structured` send `null`
+ * and the frontend falls back to the legacy collapsible-JSON view.
+ */
+export type ToolRenderAs = "table" | "code" | "markdown" | "image" | "chart" | "json";
+
 export interface ToolCallInfo {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
   result: string;
   elapsed: number;
+  /** Phase 2.8: rendering hint. Null/undefined → JSON fallback. */
+  renderAs?: ToolRenderAs | null;
+  /** Phase 2.8: structured payload matching the renderAs shape. */
+  data?: Record<string, unknown> | null;
 }
 
 export interface CitationInfo {

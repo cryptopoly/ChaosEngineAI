@@ -327,6 +327,13 @@ class DocumentIndex:
         self._bm25 = BM25Scorer()
         self._fitted = False
         self._persist_path = persist_path
+        # Phase 2.6: optional dense-embedding store. Lazily created when
+        # `add_document` is called with an `embedding_client`. Stays
+        # None when no semantic path is wired so the legacy TF-IDF +
+        # BM25 hybrid runs unchanged.
+        from backend_service.rag import VectorStore  # local import: avoid cycle
+
+        self._embeddings: VectorStore | None = None
 
         if persist_path and persist_path.exists():
             self._load(persist_path)
@@ -340,8 +347,16 @@ class DocumentIndex:
         text: str,
         doc_id: str | None = None,
         doc_name: str = "document",
+        embedding_client: Any = None,
     ) -> int:
-        """Add a document to the index. Returns number of chunks created."""
+        """Add a document to the index. Returns number of chunks created.
+
+        Phase 2.6: when `embedding_client` is provided, also computes
+        per-chunk embeddings and appends them to the dense store. Embed
+        failures fall through silently — the lexical (TF-IDF + BM25)
+        path always succeeds, so document retrieval never breaks
+        because the embedding subprocess is misconfigured.
+        """
         if not text.strip():
             return 0
 
@@ -362,6 +377,23 @@ class DocumentIndex:
         self._bm25.fit(self._chunks)
         self._fitted = True
 
+        # Phase 2.6: dense embeddings (best-effort).
+        if embedding_client is not None and chunks:
+            from backend_service.rag import VectorStore
+
+            if self._embeddings is None:
+                self._embeddings = VectorStore()
+            try:
+                vectors = embedding_client.embed_batch(chunks)
+                if len(vectors) == len(chunks):
+                    self._embeddings.add_batch(vectors)
+                else:
+                    # Embedding output mismatch — drop the partial state
+                    # so the search fallback path runs cleanly.
+                    self._embeddings = None
+            except Exception:
+                self._embeddings = None
+
         if self._persist_path:
             self._save()
 
@@ -377,6 +409,12 @@ class DocumentIndex:
 
         self._chunks = [c for i, c in enumerate(self._chunks) if i not in indices_to_remove]
         self._citations = [c for i, c in enumerate(self._citations) if i not in indices_to_remove]
+
+        # Phase 2.6: keep the dense store in lockstep with chunks/citations.
+        if self._embeddings is not None:
+            self._embeddings.remove_indices(indices_to_remove)
+            if self._embeddings.size == 0:
+                self._embeddings = None
 
         if self._chunks:
             self._vectoriser.fit(self._chunks)
@@ -398,40 +436,82 @@ class DocumentIndex:
         top_k: int = 5,
         vector_weight: float = 0.6,
         bm25_weight: float = 0.4,
+        embedding_client: Any = None,
     ) -> list[dict[str, Any]]:
         """Hybrid search combining vector similarity and BM25 keyword matching.
+
+        Phase 2.6: when an `embedding_client` is provided AND the index
+        has a populated `_embeddings` store with the same chunk count
+        as `_chunks`, the search rotates to a semantic primary +
+        keyword/BM25 secondary blend (semantic 70%, BM25 30%). When the
+        embedding client is missing or returns empty, the function
+        falls back to the legacy TF-IDF + BM25 blend so no document
+        retrieval ever fails because semantic was unavailable.
 
         Returns list of ``{"text": str, "citation": dict, "score": float}`` dicts.
         """
         if not self._fitted or not self._chunks:
             return []
 
-        # Get scores from both methods
-        vec_results = self._vectoriser.query(query, top_k=top_k * 2)
         bm25_results = self._bm25.query(query, top_k=top_k * 2)
 
-        # Normalise scores to [0, 1]
-        vec_scores: dict[int, float] = {}
-        if vec_results:
-            max_vec = max(s for _, s in vec_results) or 1
-            vec_scores = {idx: s / max_vec for idx, s in vec_results}
+        # Try the semantic path first when an embedding client + a fully
+        # populated vector store are both present. Any error during query
+        # embedding falls through to the legacy TF-IDF blend below so a
+        # transient subprocess hang doesn't break document retrieval.
+        semantic_scores: dict[int, float] = {}
+        if (
+            embedding_client is not None
+            and getattr(self, "_embeddings", None) is not None
+            and self._embeddings.size == len(self._chunks)
+        ):
+            try:
+                query_vector = embedding_client.embed(query)
+            except Exception:
+                query_vector = None
+            if query_vector:
+                semantic_results = self._embeddings.search(query_vector, top_k=top_k * 2)
+                if semantic_results:
+                    max_sem = max(s for _, s in semantic_results) or 1
+                    semantic_scores = {idx: s / max_sem for idx, s in semantic_results}
 
         bm25_scores: dict[int, float] = {}
         if bm25_results:
             max_bm25 = max(s for _, s in bm25_results) or 1
             bm25_scores = {idx: s / max_bm25 for idx, s in bm25_results}
 
-        # Merge with weighted combination
-        all_indices = set(vec_scores.keys()) | set(bm25_scores.keys())
-        combined: list[tuple[int, float]] = []
-        for idx in all_indices:
-            score = (
-                vector_weight * vec_scores.get(idx, 0)
-                + bm25_weight * bm25_scores.get(idx, 0)
-            )
-            combined.append((idx, score))
+        if semantic_scores:
+            # Semantic primary + BM25 secondary. Heavier semantic weight
+            # because the embedding model captures synonyms / paraphrase
+            # which BM25 cannot.
+            sem_weight = 0.7
+            bm_weight = 0.3
+            all_indices = set(semantic_scores.keys()) | set(bm25_scores.keys())
+            combined: list[tuple[int, float]] = []
+            for idx in all_indices:
+                score = (
+                    sem_weight * semantic_scores.get(idx, 0)
+                    + bm_weight * bm25_scores.get(idx, 0)
+                )
+                combined.append((idx, score))
+            combined.sort(key=lambda x: x[1], reverse=True)
+        else:
+            # Legacy TF-IDF + BM25 fallback.
+            vec_results = self._vectoriser.query(query, top_k=top_k * 2)
+            vec_scores: dict[int, float] = {}
+            if vec_results:
+                max_vec = max(s for _, s in vec_results) or 1
+                vec_scores = {idx: s / max_vec for idx, s in vec_results}
 
-        combined.sort(key=lambda x: x[1], reverse=True)
+            all_indices = set(vec_scores.keys()) | set(bm25_scores.keys())
+            combined = []
+            for idx in all_indices:
+                score = (
+                    vector_weight * vec_scores.get(idx, 0)
+                    + bm25_weight * bm25_scores.get(idx, 0)
+                )
+                combined.append((idx, score))
+            combined.sort(key=lambda x: x[1], reverse=True)
 
         results: list[dict[str, Any]] = []
         for idx, score in combined[:top_k]:

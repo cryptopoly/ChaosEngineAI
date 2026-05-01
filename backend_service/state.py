@@ -2022,14 +2022,34 @@ class ChaosEngineState:
 
         Returns (context_text, citations) where citations is a list of
         dicts with docId, docName, chunkIndex, page, preview keys.
+
+        Phase 2.6: when an llama-embedding binary + embedding GGUF are
+        both discoverable via env vars or `<dataDir>/embeddings/`,
+        retrieval uses semantic cosine similarity blended with BM25
+        (70/30) instead of TF-IDF + BM25. The embedding client is
+        resolved per-call so newly-installed models pick up without a
+        restart, and the legacy lexical path remains the fallback when
+        anything goes wrong.
         """
         from backend_service.helpers.documents import DocumentIndex
+        from backend_service.rag import resolve_embedding_client
 
         session_dir = self._session_docs_dir(session_id)
         if not session_dir.exists():
             return "", []
 
-        # Build a temporary index from all session documents
+        # Embedding client discovery: env vars override path; if no
+        # CHAOSENGINE_EMBEDDING_MODEL is set we look under
+        # `<documents-parent>/embeddings/*.gguf`. Returns None when
+        # nothing is wired, in which case retrieval transparently
+        # falls back to TF-IDF + BM25.
+        from backend_service.app import DOCUMENTS_DIR
+
+        embedding_client = resolve_embedding_client(DOCUMENTS_DIR.parent)
+
+        # Build a temporary index from all session documents. When the
+        # embedding client is available, chunks are embedded as they're
+        # added so the search call below routes through cosine + BM25.
         index = DocumentIndex()
         for chunk_file in session_dir.glob("*.chunks.json"):
             try:
@@ -2037,11 +2057,16 @@ class ChaosEngineState:
                 doc_name = chunk_file.stem.replace(".chunks", "")
                 full_text = "\n\n".join(c.get("text", "") for c in doc_chunks)
                 if full_text.strip():
-                    index.add_document(full_text, doc_id=doc_name, doc_name=doc_name)
+                    index.add_document(
+                        full_text,
+                        doc_id=doc_name,
+                        doc_name=doc_name,
+                        embedding_client=embedding_client,
+                    )
             except (OSError, json.JSONDecodeError):
                 continue
 
-        results = index.search(prompt, top_k=top_k)
+        results = index.search(prompt, top_k=top_k, embedding_client=embedding_client)
         if not results:
             return "", []
 

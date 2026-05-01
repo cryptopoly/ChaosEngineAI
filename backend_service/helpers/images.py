@@ -26,6 +26,10 @@ from backend_service.helpers.huggingface import (
     _parse_iso_datetime,
 )
 from backend_service.helpers.discovery import _candidate_model_dirs, _path_size_bytes
+from backend_service.helpers.platform_filter import (
+    filter_mlx_only_families,
+    is_apple_silicon,
+)
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
@@ -196,7 +200,7 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                 "variants": variants,
             }
         )
-    return families
+    return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
 
 
 def _find_image_variant(model_id: str) -> dict[str, Any] | None:

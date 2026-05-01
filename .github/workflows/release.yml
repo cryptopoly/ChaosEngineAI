@@ -265,7 +265,7 @@ jobs:
           tagName: ${{ inputs.release_tag || github.ref_name }}
           tauriScript: npx tauri
           args: --bundles ${{ matrix.bundle_targets }} --ci
-          includeUpdaterJson: false
+          includeUpdaterJson: true
           updaterJsonPreferNsis: false
 
   publish-manifest:

@@ -108,6 +108,12 @@ export function useChat(
   const [enableTools, setEnableTools] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Phase 2.0.5-A: stuck prompt-eval watchdog. Fires if a generation lingers
+  // in `prompt_eval` past PROMPT_EVAL_TIMEOUT_MS without producing the first
+  // token — which usually means the model wedged on a too-long context, an
+  // OOM hang, or a thermal-throttled prefill. We cancel via the existing
+  // backend cancel endpoint and surface a diagnostic error to the user.
+  const promptEvalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedChatSessions = sortSessions(workspace.chatSessions);
   const activeChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? sortedChatSessions[0];
@@ -784,7 +790,61 @@ export function useChat(
             }));
           }
         },
+        onPhase: (phase, _ttftSeconds) => {
+          if (!streamingChatId) return;
+
+          // Phase 2.0.5-A: stuck prompt-eval watchdog. Arm a timer when the
+          // backend announces prompt_eval. If the timer fires before the
+          // generating phase begins (60s), cancel the generation — the
+          // model is almost certainly hung on prefill.
+          if (phase === "prompt_eval") {
+            if (promptEvalTimeoutRef.current) {
+              clearTimeout(promptEvalTimeoutRef.current);
+            }
+            const PROMPT_EVAL_TIMEOUT_MS = 60_000;
+            promptEvalTimeoutRef.current = setTimeout(() => {
+              promptEvalTimeoutRef.current = null;
+              setError(
+                "Prompt processing exceeded 60 seconds without producing a token. " +
+                "The model may be stuck on prefill (large context, OOM, or thermal throttle). " +
+                "Cancelling — try again with a shorter prompt or a smaller model.",
+              );
+              void cancelChatGeneration(streamingChatId).catch(() => {
+                // backend may already be done; client abort below still applies
+              });
+              if (streamAbortRef.current) {
+                streamAbortRef.current.abort();
+                streamAbortRef.current = null;
+              }
+              setChatBusySessionId(null);
+            }, PROMPT_EVAL_TIMEOUT_MS);
+          } else if (phase === "generating") {
+            if (promptEvalTimeoutRef.current) {
+              clearTimeout(promptEvalTimeoutRef.current);
+              promptEvalTimeoutRef.current = null;
+            }
+          }
+
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, streamPhase: phase };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
         onDone: (response) => {
+          // Phase 2.0.5-A: clear the prompt-eval watchdog when generation
+          // completes naturally so a stale timer can't abort a follow-up turn.
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
           setWorkspace((current) =>
             syncRuntime(
               { ...current, chatSessions: upsertSession(current.chatSessions, response.session) },
@@ -794,6 +854,10 @@ export function useChat(
           setActiveChatId(response.session.id);
         },
         onError: (errMsg) => {
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
           setError(`Chat error: ${errMsg}`);
           if (streamingChatId) {
             setWorkspace((current) => ({
@@ -854,6 +918,12 @@ export function useChat(
   }
 
   function cancelGeneration() {
+    // Phase 2.0.5-A: clear watchdog so the manual cancel path doesn't race
+    // with the timeout firing.
+    if (promptEvalTimeoutRef.current) {
+      clearTimeout(promptEvalTimeoutRef.current);
+      promptEvalTimeoutRef.current = null;
+    }
     // First, ask the backend to flip the cancel flag for the active session
     // so the streaming loop stops generating tokens. Then abort the local
     // fetch so the client stops decoding remaining buffered output.

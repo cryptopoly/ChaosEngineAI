@@ -436,6 +436,60 @@ class ThinkingTokenFilterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ThinkingTokenFilter(open_tag="<think>", close_tag="")
 
+    def test_reasoning_budget_cap_force_closes_runaway_thinking(self):
+        # Phase 2.0.5-E: when reasoning exceeds the cap without a close tag,
+        # the filter must force-close the block and emit reasoning_done so
+        # the assistant turn can finalise.
+        f = ThinkingTokenFilter(
+            detect_raw_reasoning=False,
+            max_reasoning_chars=20,
+        )
+        # Open tag, then 50 chars of reasoning with no close in sight.
+        parts = [
+            f.feed("<think>"),
+            f.feed("a" * 50),
+            f.flush(),
+        ]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(len(reasoning), 20)
+        self.assertTrue(reasoning_done)
+        # Surplus bytes after the cap should land in text since they came
+        # after the forced close, so the assistant turn isn't empty.
+        self.assertIn("a", text)
+
+    def test_reasoning_budget_cap_disabled_when_none(self):
+        f = ThinkingTokenFilter(
+            detect_raw_reasoning=False,
+            max_reasoning_chars=None,
+        )
+        # 200 chars of reasoning without a close — should accept all
+        # reasoning when the cap is disabled.
+        parts = [f.feed("<think>"), f.feed("x" * 200), f.flush()]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(len(reasoning), 200)
+        # Flush emits reasoning_done as part of the flush path.
+        self.assertTrue(reasoning_done)
+        self.assertEqual(text, "")
+
+    def test_reasoning_budget_cap_rejects_non_positive(self):
+        with self.assertRaises(ValueError):
+            ThinkingTokenFilter(max_reasoning_chars=0)
+        with self.assertRaises(ValueError):
+            ThinkingTokenFilter(max_reasoning_chars=-5)
+
+    def test_reasoning_budget_cap_does_not_trip_when_close_tag_arrives(self):
+        # A normal-sized reasoning block followed by close should not be
+        # affected by the cap.
+        f = ThinkingTokenFilter(
+            detect_raw_reasoning=False,
+            max_reasoning_chars=100,
+        )
+        parts = [f.feed("<think>short reasoning</think>visible"), f.flush()]
+        text, reasoning, reasoning_done = self._collect(*parts)
+        self.assertEqual(reasoning, "short reasoning")
+        self.assertTrue(reasoning_done)
+        self.assertEqual(text, "visible")
+
     def test_keeps_draft_and_verification_sections_inside_reasoning(self):
         f = ThinkingTokenFilter()
         parts = [

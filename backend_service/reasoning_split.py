@@ -230,13 +230,23 @@ class ThinkingTokenFilter:
         detect_raw_reasoning: bool = True,
         open_tag: str = _THINK_OPEN,
         close_tag: str = _THINK_CLOSE,
+        max_reasoning_chars: int | None = 32_000,
     ) -> None:
         # `open_tag` / `close_tag` let downstream callers override the XML
         # delimiters per model family — see `reasoning_delimiters_for()`.
         # Defaults match the `<think>...</think>` convention used by Qwen3,
         # DeepSeek R1, GPT-OSS, and most other reasoning models.
+        #
+        # Phase 2.0.5-E: `max_reasoning_chars` caps the size of a single
+        # reasoning block. When the cap is hit while still inside the open
+        # tag, the filter force-closes the block, emits `reasoning_done`,
+        # and routes any further bytes to `text` so the assistant turn
+        # finalises instead of streaming reasoning forever. Defaults to
+        # 32,000 chars (~8000 tokens). Pass `None` to disable.
         if not open_tag or not close_tag:
             raise ValueError("ThinkingTokenFilter requires non-empty open/close tags.")
+        if max_reasoning_chars is not None and max_reasoning_chars <= 0:
+            raise ValueError("max_reasoning_chars must be positive or None.")
         self._inside_xml_think = False
         self._inside_raw_think = False
         self._startup_done = False
@@ -247,6 +257,9 @@ class ThinkingTokenFilter:
         self._open_tag = open_tag
         self._close_tag = close_tag
         self._tail_guard = max(0, len(open_tag) - 1)
+        self._max_reasoning_chars = max_reasoning_chars
+        self._reasoning_emitted = 0
+        self._reasoning_capped = False
 
     def feed(self, text: str) -> ThinkingStreamResult:
         self._buffer += text
@@ -301,10 +314,32 @@ class ThinkingTokenFilter:
             if self._inside_xml_think:
                 end_idx = _find_tag(self._buffer, self._close_tag)
                 if end_idx == -1:
+                    # Phase 2.0.5-E: reasoning budget cap. If the model is
+                    # rambling past `max_reasoning_chars` without ever
+                    # emitting a close tag, force the close so the
+                    # assistant turn can finalise. Surplus bytes route to
+                    # text from this point on.
+                    if (
+                        self._max_reasoning_chars is not None
+                        and self._reasoning_emitted + len(self._buffer) >= self._max_reasoning_chars
+                    ):
+                        slice_end = max(0, self._max_reasoning_chars - self._reasoning_emitted)
+                        output.reasoning += self._buffer[:slice_end]
+                        self._reasoning_emitted += slice_end
+                        leftover = self._buffer[slice_end:]
+                        self._buffer = leftover
+                        self._inside_xml_think = False
+                        self._reasoning_capped = True
+                        output.reasoning_done = True
+                        # Continue the loop so the leftover bytes get
+                        # routed through the post-think text/tail logic.
+                        continue
                     output.reasoning += self._buffer
+                    self._reasoning_emitted += len(self._buffer)
                     self._buffer = ""
                     break
                 output.reasoning += self._buffer[:end_idx]
+                self._reasoning_emitted += end_idx
                 self._buffer = self._buffer[end_idx + len(self._close_tag):]
                 self._inside_xml_think = False
                 output.reasoning_done = True

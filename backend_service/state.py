@@ -2427,7 +2427,59 @@ class ChaosEngineState:
             phase_first_output_seen = False
             ttft_seconds: float | None = None
 
+            # Phase 2.0.5-B: pre-flight memory gate. Refuse the generation
+            # before it starts when the host is already memory-starved, so
+            # the user gets an actionable error instead of a silent OOM /
+            # swap-thrash that wedges the laptop. The gate is conservative
+            # — it does not predict working-set size, just bails when the
+            # available-memory floor or pressure ceiling is breached.
+            try:
+                from backend_service.helpers.memory_gate import (
+                    gate_chat_generation,
+                    snapshot_memory_signals,
+                )
+
+                available_gb, pressure_percent = snapshot_memory_signals()
+                refusal = gate_chat_generation(available_gb, pressure_percent)
+                if refusal is not None:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] Memory gate refused generation: "
+                        f"{refusal['code']} (avail={available_gb:.1f} GB, "
+                        f"pressure={pressure_percent:.0f}%).",
+                    )
+                    with chaosengine._lock:
+                        # Roll back the optimistic user message we appended
+                        # earlier so the refusal looks like the request never
+                        # happened, matching the existing RuntimeError path.
+                        if (session["messages"]
+                                and session["messages"][-1].get("role") == "user"
+                                and session["messages"][-1].get("text") == request.prompt):
+                            session["messages"].pop()
+                            session["updatedAt"] = chaosengine._time_label()
+                            chaosengine._persist_sessions()
+                        chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
+                    yield f"data: {json.dumps({'error': refusal['message']})}\n\n"
+                    return
+            except Exception as exc:
+                # Gate failure must not block legitimate generations. Log and
+                # continue — better to risk a possible OOM than to refuse
+                # everything when psutil glitches.
+                chaosengine.add_log(
+                    "chat", "warning",
+                    f"[{model_tag}] Memory gate skipped due to error: {exc}",
+                )
+
             yield f"data: {json.dumps({'phase': 'prompt_eval'})}\n\n"
+
+            # Phase 2.0.5-D: output-length runaway guard. Abort the generation
+            # if accumulated visible text exceeds the user's max_tokens budget
+            # by 1.5×, which catches decoder loops that ignore the EOS token
+            # (a known failure mode on certain quantised models). Char count
+            # is a fast proxy — average ~4 chars per token across English +
+            # markdown code, so the threshold is `max_tokens * 6` chars.
+            runaway_char_budget = max(2000, int(request.maxTokens) * 6)
+            runaway_triggered = False
 
             def _maybe_emit_generating_phase() -> str:
                 nonlocal phase_first_output_seen, ttft_seconds
@@ -2458,6 +2510,10 @@ class ChaosEngineState:
                                 yield phase_event
                             full_text += event["token"]
                             yield f"data: {json.dumps({'token': event['token']})}\n\n"
+                            if len(full_text) > runaway_char_budget:
+                                runaway_triggered = True
+                                cancelled = True
+                                break
                         elif "tool_call_start" in event:
                             phase_event = _maybe_emit_generating_phase()
                             if phase_event:
@@ -2494,6 +2550,10 @@ class ChaosEngineState:
                                 yield phase_event
                             full_text += chunk.text
                             yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+                            if len(full_text) > runaway_char_budget:
+                                runaway_triggered = True
+                                cancelled = True
+                                break
                         if chunk.done:
                             final_chunk = chunk
             except RuntimeError as exc:
@@ -2514,7 +2574,15 @@ class ChaosEngineState:
 
             if cancelled:
                 yield f"data: {json.dumps({'cancelled': True})}\n\n"
-                chaosengine.add_log("chat", "info", f"[{model_tag}] Generation cancelled by user.")
+                if runaway_triggered:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] Output runaway guard tripped at "
+                        f"{len(full_text)} chars (budget {runaway_char_budget}); "
+                        "stream aborted to prevent decoder loop.",
+                    )
+                else:
+                    chaosengine.add_log("chat", "info", f"[{model_tag}] Generation cancelled by user.")
 
             gen_elapsed = round(time.perf_counter() - gen_start, 2)
             with chaosengine._lock:

@@ -2,46 +2,26 @@
 
 The pre-fix path returned system RAM via ``psutil.virtual_memory().total``
 when ``nvidia-smi`` wasn't on PATH — so an RTX 4090 box on Windows showed
-12 GB total in the safety estimator instead of 24 GB. The new path tries
-``torch.cuda`` first, falls back to ``nvidia-smi``, and only returns a
-``vram_total_gb=None`` when neither answers. The frontend treats ``None``
-as "unknown" and skips the spurious crash warning.
+12 GB total in the safety estimator instead of 24 GB. The new path probes
+``torch.cuda`` via a short-lived subprocess (so we don't lock torch DLLs
+in the backend process and break the next ``Install GPU runtime``), then
+falls back to ``nvidia-smi``, and only returns ``vram_total_gb=None`` when
+neither answers. The frontend treats ``None`` as "unknown" and skips the
+spurious crash warning.
 """
 
 from __future__ import annotations
 
-import sys
-import types
+import json
 import unittest
 from unittest import mock
 
 from backend_service.helpers import gpu as gpu_module
 
 
-def _fake_torch_with_cuda(total_bytes: int, free_bytes: int, name: str = "NVIDIA GeForce RTX 4090") -> types.ModuleType:
-    cuda = types.SimpleNamespace()
-    cuda.is_available = lambda: True
-    cuda.current_device = lambda: 0
-
-    class _Props:
-        def __init__(self, mem: int, gpu_name: str) -> None:
-            self.total_memory = mem
-            self.name = gpu_name
-
-    cuda.get_device_properties = lambda device: _Props(total_bytes, name)
-    cuda.mem_get_info = lambda device: (free_bytes, total_bytes)
-
-    fake = types.ModuleType("torch")
-    fake.cuda = cuda  # type: ignore[attr-defined]
-    return fake
-
-
-def _fake_torch_no_cuda() -> types.ModuleType:
-    cuda = types.SimpleNamespace()
-    cuda.is_available = lambda: False
-    fake = types.ModuleType("torch")
-    fake.cuda = cuda  # type: ignore[attr-defined]
-    return fake
+def _fake_completed_process(returncode: int, stdout: str, stderr: str = ""):
+    """Build a CompletedProcess-shaped mock for ``subprocess.run``."""
+    return mock.MagicMock(returncode=returncode, stdout=stdout, stderr=stderr)
 
 
 class SnapshotTorchCudaTests(unittest.TestCase):
@@ -58,7 +38,14 @@ class SnapshotTorchCudaTests(unittest.TestCase):
     def test_torch_cuda_returns_full_vram_for_rtx_4090(self) -> None:
         twenty_four_gb = 24 * 1024 ** 3
         free = 22 * 1024 ** 3
-        with mock.patch.dict(sys.modules, {"torch": _fake_torch_with_cuda(twenty_four_gb, free)}):
+        used = twenty_four_gb - free
+        payload = json.dumps({
+            "gpu_name": "NVIDIA GeForce RTX 4090",
+            "total": twenty_four_gb,
+            "used": used,
+        })
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value="/usr/bin/python3"), \
+             mock.patch("backend_service.helpers.gpu.subprocess.run", return_value=_fake_completed_process(0, payload)):
             snapshot = self.monitor._snapshot_torch_cuda()
         self.assertIsNotNone(snapshot)
         assert snapshot is not None  # type narrow
@@ -68,26 +55,61 @@ class SnapshotTorchCudaTests(unittest.TestCase):
         self.assertEqual(snapshot["vram_used_gb"], 2.0)
 
     def test_torch_cuda_unavailable_returns_none(self) -> None:
-        with mock.patch.dict(sys.modules, {"torch": _fake_torch_no_cuda()}):
+        # Subprocess exits 0 with empty stdout — the inline script printed
+        # nothing because torch.cuda.is_available() was False.
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value="/usr/bin/python3"), \
+             mock.patch("backend_service.helpers.gpu.subprocess.run", return_value=_fake_completed_process(0, "")):
             snapshot = self.monitor._snapshot_torch_cuda()
         self.assertIsNone(snapshot)
 
     def test_torch_not_installed_returns_none(self) -> None:
-        # Monkeypatch the import to raise ImportError.
-        original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+        # Subprocess exits 0 with empty stdout — the inline script's
+        # ``import torch`` raised, the except branch did sys.exit(0).
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value="/usr/bin/python3"), \
+             mock.patch("backend_service.helpers.gpu.subprocess.run", return_value=_fake_completed_process(0, "")):
+            snapshot = self.monitor._snapshot_torch_cuda()
+        self.assertIsNone(snapshot)
 
-        def fake_import(name, *args, **kwargs):
-            if name == "torch":
-                raise ImportError("No module named 'torch'")
-            return original_import(name, *args, **kwargs)
+    def test_subprocess_error_returns_none(self) -> None:
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value="/usr/bin/python3"), \
+             mock.patch(
+                "backend_service.helpers.gpu.subprocess.run",
+                side_effect=FileNotFoundError("python3 missing"),
+             ):
+            snapshot = self.monitor._snapshot_torch_cuda()
+        self.assertIsNone(snapshot)
 
-        with mock.patch("builtins.__import__", side_effect=fake_import):
-            # Also remove any previously cached torch entry so the
-            # function's ``import torch`` actually invokes the patched
-            # ``__import__`` instead of resolving via sys.modules.
-            with mock.patch.dict(sys.modules, {}, clear=False):
-                sys.modules.pop("torch", None)
-                snapshot = self.monitor._snapshot_torch_cuda()
+    def test_no_python_executable_returns_none(self) -> None:
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value=None):
+            snapshot = self.monitor._snapshot_torch_cuda()
+        self.assertIsNone(snapshot)
+
+    def test_does_not_import_torch_in_main_process(self) -> None:
+        """Critical: importing torch in-process locks Windows DLLs and
+        breaks the next Install GPU runtime click. The probe MUST go via
+        a child process so its DLL handles are released on exit."""
+        twenty_four_gb = 24 * 1024 ** 3
+        payload = json.dumps({"gpu_name": "RTX 4090", "total": twenty_four_gb, "used": 0})
+        captured: list[list[str]] = []
+
+        def fake_run(cmd, **kwargs):
+            captured.append(list(cmd))
+            return _fake_completed_process(0, payload)
+
+        with mock.patch.object(self.monitor, "_resolve_python_executable", return_value="/usr/bin/python3"), \
+             mock.patch("backend_service.helpers.gpu.subprocess.run", side_effect=fake_run):
+            self.monitor._snapshot_torch_cuda()
+        self.assertEqual(len(captured), 1)
+        cmd = captured[0]
+        # The probe must spawn a Python with a -c script containing
+        # 'import torch'. If the implementation ever switches back to
+        # an in-process import this assertion will catch it.
+        self.assertEqual(cmd[1], "-c")
+        self.assertIn("import torch", cmd[2])
+
+    def test_skipped_on_macos(self) -> None:
+        self.monitor._system = "Darwin"
+        snapshot = self.monitor._snapshot_torch_cuda()
         self.assertIsNone(snapshot)
 
 

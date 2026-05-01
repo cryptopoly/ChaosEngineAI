@@ -6265,19 +6265,25 @@ select.text-input {
   margin-top: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  /* Fully opaque card background — the previous rgba(0, 0, 0, 0.22) let
+   * the Prompt and Recent Outputs panel headers bleed through visually
+   * during a long GPU install, making the streaming pip output look
+   * like it was overlapping those cards on Windows. Match the rest of
+   * the surface tokens so the install log reads as a solid card. */
+  background: var(--surface);
   width: 100%;
   max-width: 100%;
   overflow: hidden;
   /* Establishes a stacking context so the streaming pip output stays
-   * above the Prompt + Recent Outputs cards in Image Studio and Video
-   * Studio. Without these the panel renders behind those siblings on
-   * Windows during a long GPU bundle install — the log is still alive
-   * but the user can't see it. ``z-index: 5`` is enough to win against
-   * the surrounding ``.panel`` cards (which set no z-index of their
-   * own) without fighting the global tooltip portal (z-index: 1000+). */
+   * above the Prompt + Recent Outputs cards even on Chrome / WebKit
+   * versions that lay out adjacent grid rows with subpixel overlap. */
   position: relative;
   z-index: 5;
+  /* ``contain: layout`` keeps the panel's growth from leaking into
+   * sibling grid rows — important when the parent runtime callout is
+   * laid out as a flex column and the install log expands by 350+ px
+   * during a torch download. */
+  contain: layout;
 }
 .install-log-summary {
   cursor: pointer;

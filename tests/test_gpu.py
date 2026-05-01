@@ -29,11 +29,15 @@ class GPUMonitorSnapshotTests(unittest.TestCase):
         snapshot = monitor.snapshot()
         self.assertIsInstance(snapshot["gpu_name"], str)
 
-    def test_snapshot_vram_values_are_numeric(self):
+    def test_snapshot_vram_values_are_numeric_or_none(self):
+        # ``None`` is a valid response when neither torch.cuda nor
+        # nvidia-smi can answer — we deliberately don't fall back to
+        # system RAM via psutil any more (would mislead the safety
+        # estimator). Numeric otherwise.
         monitor = GPUMonitor()
         snapshot = monitor.snapshot()
-        self.assertIsInstance(snapshot["vram_total_gb"], (int, float))
-        self.assertIsInstance(snapshot["vram_used_gb"], (int, float))
+        self.assertIsInstance(snapshot["vram_total_gb"], (int, float, type(None)))
+        self.assertIsInstance(snapshot["vram_used_gb"], (int, float, type(None)))
 
 
 class GPUMonitorNvidiaTests(unittest.TestCase):

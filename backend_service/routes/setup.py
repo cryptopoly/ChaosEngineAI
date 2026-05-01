@@ -1067,6 +1067,23 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         state.cuda_verified = cuda_ok
         state.attempts.append({"phase": "verify", "ok": cuda_ok, "output": detail[-2000:]})
 
+        # Tell the import system to re-scan ``sys.path`` so packages
+        # written into the extras dir during this run are visible to the
+        # next ``importlib.util.find_spec`` call (the image-runtime probe
+        # uses one). Without this, the runtime continues reporting
+        # "placeholder" until a backend restart even though the bundle
+        # is on disk. Also reset the cached VRAM total so the post-install
+        # capabilities snapshot reflects the freshly importable torch.
+        try:
+            importlib.invalidate_caches()
+        except Exception:
+            pass
+        try:
+            from backend_service.helpers.gpu import reset_vram_total_cache
+            reset_vram_total_cache()
+        except Exception:
+            pass
+
         state.phase = "done"
         state.percent = 100.0
         state.done = True

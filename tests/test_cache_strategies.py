@@ -1,5 +1,7 @@
 import unittest
 import importlib
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -8,6 +10,7 @@ from cache_compression.native import NativeStrategy
 from cache_compression.rotorquant import RotorQuantStrategy
 from cache_compression.triattention import TriAttentionStrategy
 from cache_compression.turboquant import TurboQuantStrategy
+from turboquant_mlx import _find_pip_turboquant_path
 
 
 class CacheStrategyRegistryTests(unittest.TestCase):
@@ -167,13 +170,21 @@ class CacheStrategyRegistryTests(unittest.TestCase):
     # TurboQuant
     # ------------------------------------------------------------------
 
-    def test_turboquant_is_available_when_required_hooks_exist(self):
+    def test_turboquant_is_available_when_required_hooks_and_package_exist(self):
         tq = TurboQuantStrategy()
         with patch(
             "cache_compression.turboquant._turboquant_mlx_source_blobs",
             return_value=["def make_adaptive_cache():\n    pass", "def apply_patch():\n    pass"],
-        ):
+        ), patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=True):
             self.assertTrue(tq.is_available())
+
+    def test_turboquant_is_unavailable_without_full_package(self):
+        tq = TurboQuantStrategy()
+        with patch(
+            "cache_compression.turboquant._turboquant_mlx_source_blobs",
+            return_value=["def make_adaptive_cache():\n    pass", "def apply_patch():\n    pass"],
+        ), patch("cache_compression.turboquant._has_full_turboquant_mlx_package", return_value=False):
+            self.assertFalse(tq.is_available())
 
     def test_turboquant_is_unavailable_without_required_hooks(self):
         tq = TurboQuantStrategy()
@@ -192,6 +203,15 @@ class CacheStrategyRegistryTests(unittest.TestCase):
             with self.assertRaises(NotImplementedError) as ctx:
                 tq.make_mlx_cache(32, 3, 4, False, None)
         self.assertIn("required MLX adapter hooks", str(ctx.exception))
+
+    def test_turboquant_adapter_finds_package_in_extras_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp) / "turboquant_mlx"
+            marker = package / "layers" / "polar_kv_cache.py"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("class TurboQuantKVCache:\n    pass\n", encoding="utf-8")
+            with patch.dict("os.environ", {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": tmp}):
+                self.assertEqual(_find_pip_turboquant_path(), str(package.resolve()))
 
     # ------------------------------------------------------------------
     # ChaosEngine — cache type validation

@@ -678,8 +678,8 @@ export async function unloadImageModel(modelId?: string): Promise<ImageRuntimeSt
   return result.runtime;
 }
 
-export async function downloadVideoModel(repo: string): Promise<DownloadStatus> {
-  const result = await postJson<{ download: DownloadStatus }>("/api/video/download", { repo });
+export async function downloadVideoModel(repo: string, modelId?: string): Promise<DownloadStatus> {
+  const result = await postJson<{ download: DownloadStatus }>("/api/video/download", { repo, modelId });
   return result.download;
 }
 

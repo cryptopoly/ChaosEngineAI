@@ -21,20 +21,63 @@ from backend_service.helpers.huggingface import (
     _format_release_label,
     _hf_number_label,
     _hf_repo_snapshot_dir,
+    _hf_token_cache_key,
+    _hf_token_value,
     _parse_iso_datetime,
 )
 from backend_service.helpers.discovery import _candidate_model_dirs, _path_size_bytes
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
 
-_IMAGE_DISCOVER_METADATA_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_IMAGE_DISCOVER_METADATA_CACHE: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
 _IMAGE_DISCOVER_METADATA_TTL_SECONDS = 6 * 60 * 60
-_LATEST_IMAGE_MODELS_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+_LATEST_IMAGE_MODELS_CACHE: tuple[float, str, list[dict[str, Any]]] | None = None
 _LATEST_IMAGE_MODELS_TTL_SECONDS = 3 * 60 * 60
 
 # Cache keyed by (path, mtime_ns) — we recompute only when the snapshot dir
 # actually changes. A fresh os.stat() is cheap enough to do per payload call.
 _SNAPSHOT_SIZE_CACHE: dict[tuple[str, int], int] = {}
+
+
+def _positive_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed > 0:
+        return parsed
+    return None
+
+
+def _positive_int(value: Any) -> int | None:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed > 0:
+        return parsed
+    return None
+
+
+def _image_seed_size_metadata(seed: dict[str, Any]) -> tuple[float, float | None, float | None]:
+    catalog_size_gb = _positive_float(seed.get("sizeGb"))
+    core_weights_gb = _positive_float(seed.get("coreWeightsGb")) or catalog_size_gb
+    repo_size_gb = _positive_float(seed.get("repoSizeGb"))
+    size_gb = core_weights_gb or repo_size_gb or catalog_size_gb or 0.0
+    return float(size_gb), core_weights_gb, repo_size_gb
+
+
+def _tracked_seed_for_repo(repo_id: str) -> dict[str, Any] | None:
+    for seed in LATEST_IMAGE_TRACKED_SEEDS:
+        if str(seed.get("repo") or "") == repo_id:
+            return seed
+    return None
+
+
+def _clear_image_discover_caches() -> None:
+    global _LATEST_IMAGE_MODELS_CACHE
+    _IMAGE_DISCOVER_METADATA_CACHE.clear()
+    _LATEST_IMAGE_MODELS_CACHE = None
 
 
 def _snapshot_on_disk_bytes(snapshot_dir: Path | None) -> int | None:
@@ -166,12 +209,19 @@ def _find_image_variant(model_id: str) -> dict[str, Any] | None:
     for seed in LATEST_IMAGE_TRACKED_SEEDS:
         repo = str(seed.get("repo") or "")
         if repo == model_id:
+            size_gb, core_weights_gb, repo_size_gb = _image_seed_size_metadata(seed)
             return {
                 "id": repo,
                 "repo": repo,
                 "name": seed.get("name") or repo.split("/", 1)[-1],
                 "provider": seed.get("provider") or "Community",
-                "sizeGb": seed.get("sizeGb") or 0,
+                "sizeGb": size_gb,
+                "runtimeFootprintGb": seed.get("runtimeFootprintGb"),
+                "runtimeFootprintMpsGb": seed.get("runtimeFootprintMpsGb"),
+                "runtimeFootprintCudaGb": seed.get("runtimeFootprintCudaGb"),
+                "runtimeFootprintCpuGb": seed.get("runtimeFootprintCpuGb"),
+                "coreWeightsGb": core_weights_gb,
+                "repoSizeGb": repo_size_gb,
                 "styleTags": list(seed.get("styleTags") or []),
                 "taskSupport": list(seed.get("taskSupport") or ["txt2img"]),
                 "recommendedResolution": seed.get("recommendedResolution") or "1024x1024",
@@ -188,12 +238,19 @@ def _find_image_variant_by_repo(repo: str) -> dict[str, Any] | None:
     for seed in LATEST_IMAGE_TRACKED_SEEDS:
         seed_repo = str(seed.get("repo") or "")
         if seed_repo == repo:
+            size_gb, core_weights_gb, repo_size_gb = _image_seed_size_metadata(seed)
             return {
                 "id": seed_repo,
                 "repo": seed_repo,
                 "name": seed.get("name") or seed_repo.split("/", 1)[-1],
                 "provider": seed.get("provider") or "Community",
-                "sizeGb": seed.get("sizeGb") or 0,
+                "sizeGb": size_gb,
+                "runtimeFootprintGb": seed.get("runtimeFootprintGb"),
+                "runtimeFootprintMpsGb": seed.get("runtimeFootprintMpsGb"),
+                "runtimeFootprintCudaGb": seed.get("runtimeFootprintCudaGb"),
+                "runtimeFootprintCpuGb": seed.get("runtimeFootprintCpuGb"),
+                "coreWeightsGb": core_weights_gb,
+                "repoSizeGb": repo_size_gb,
                 "styleTags": list(seed.get("styleTags") or []),
                 "taskSupport": list(seed.get("taskSupport") or ["txt2img"]),
                 "recommendedResolution": seed.get("recommendedResolution") or "1024x1024",
@@ -203,13 +260,14 @@ def _find_image_variant_by_repo(repo: str) -> dict[str, Any] | None:
 
 def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
     now = time.time()
-    cached = _IMAGE_DISCOVER_METADATA_CACHE.get(repo_id)
+    cache_key = (repo_id, _hf_token_cache_key())
+    cached = _IMAGE_DISCOVER_METADATA_CACHE.get(cache_key)
     if cached is not None:
         cached_at, payload = cached
         if (now - cached_at) < _IMAGE_DISCOVER_METADATA_TTL_SECONDS:
             return payload
 
-    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    token = _hf_token_value()
     payload: dict[str, Any]
     try:
         encoded_repo = urllib.parse.quote(repo_id, safe="/")
@@ -222,6 +280,7 @@ def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
 
         total_bytes = 0
         weight_bytes = 0
+        used_storage_bytes = _positive_int(data.get("usedStorage"))
         for sibling in data.get("siblings") or []:
             if not isinstance(sibling, dict):
                 continue
@@ -229,14 +288,12 @@ def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
             if not path:
                 continue
             lfs = sibling.get("lfs") if isinstance(sibling.get("lfs"), dict) else {}
-            size_bytes = sibling.get("size") or lfs.get("size") or 0
-            try:
-                size_int = int(size_bytes)
-            except (TypeError, ValueError):
-                size_int = 0
+            size_int = _positive_int(sibling.get("size")) or _positive_int(lfs.get("size")) or 0
             total_bytes += size_int
             if _classify_hub_file(path) == "weight":
                 weight_bytes += size_int
+        if total_bytes <= 0 and used_storage_bytes is not None:
+            total_bytes = used_storage_bytes
 
         card = data.get("cardData") or {}
         license_value = str(card.get("license") or "").strip() or None if isinstance(card, dict) else None
@@ -276,7 +333,7 @@ def _image_repo_live_metadata(repo_id: str) -> dict[str, Any]:
             "metadataWarning": "Live Hugging Face metadata is temporarily unavailable. Showing curated defaults.",
         }
 
-    _IMAGE_DISCOVER_METADATA_CACHE[repo_id] = (now, payload)
+    _IMAGE_DISCOVER_METADATA_CACHE[cache_key] = (now, payload)
     return payload
 
 
@@ -365,6 +422,7 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
         release_date = str(seed.get("releaseDate") or "").strip() or None
         snapshot_dir = _hf_repo_snapshot_dir(repo_id)
         on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
+        size_gb, core_weights_gb, repo_size_gb = _image_seed_size_metadata(seed)
         payloads.append(
             {
                 "id": repo_id,
@@ -377,7 +435,11 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "runtime": "Tracked diffusers candidate",
                 "styleTags": list(seed.get("styleTags") or []),
                 "taskSupport": list(seed.get("taskSupport") or ["txt2img"]),
-                "sizeGb": float(seed.get("sizeGb") or 0.0),
+                "sizeGb": size_gb,
+                "runtimeFootprintGb": seed.get("runtimeFootprintGb"),
+                "runtimeFootprintMpsGb": seed.get("runtimeFootprintMpsGb"),
+                "runtimeFootprintCudaGb": seed.get("runtimeFootprintCudaGb"),
+                "runtimeFootprintCpuGb": seed.get("runtimeFootprintCpuGb"),
                 "recommendedResolution": str(seed.get("recommendedResolution") or "Unknown"),
                 "note": str(
                     seed.get("note")
@@ -402,9 +464,9 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "gated": seed.get("gated"),
                 "pipelineTag": seed.get("pipelineTag"),
                 "repoSizeBytes": None,
-                "repoSizeGb": None,
+                "repoSizeGb": repo_size_gb,
                 "coreWeightsBytes": None,
-                "coreWeightsGb": None,
+                "coreWeightsGb": core_weights_gb,
                 "metadataWarning": "Showing ChaosEngineAI tracked latest defaults until live Hugging Face metadata is available.",
                 "source": "latest",
             }
@@ -419,11 +481,15 @@ def _is_latest_image_candidate(model: dict[str, Any], curated_repos: set[str]) -
     lowered = model_id.lower()
     excluded_fragments = (
         "-lora",
+        "_lora",
+        "lora-",
         "controlnet",
         "ip-adapter",
+        "adapter",
         "tensorrt",
         "_amdgpu",
         "onnx",
+        "embedding",
         "instruct-pix2pix",
     )
     if any(fragment in lowered for fragment in excluded_fragments):
@@ -431,19 +497,44 @@ def _is_latest_image_candidate(model: dict[str, Any], curated_repos: set[str]) -
 
     tags = {str(tag).lower() for tag in (model.get("tags") or [])}
     pipeline_tag = str(model.get("pipeline_tag") or "").lower()
-    allowed_orgs = {
+    excluded_tags = {
+        "lora",
+        "controlnet",
+        "adapter",
+        "adapters",
+        "textual-inversion",
+        "embedding",
+        "embeddings",
+        "onnx",
+    }
+    if tags & excluded_tags:
+        return False
+
+    trusted_providers = {
         "black-forest-labs",
+        "baidu",
         "stabilityai",
         "qwen",
         "hidream-ai",
         "zai-org",
+        "tongyi-mai",
+        "nucleusai",
         "efficient-large-model",
         "hunyuanvideo-community",
         "tencent-hunyuan",
         "thudm",
+        "diffusers",
     }
     provider = model_id.split("/", 1)[0].lower() if "/" in model_id else ""
-    if provider and provider not in allowed_orgs:
+    try:
+        downloads = int(model.get("downloads") or 0)
+    except (TypeError, ValueError):
+        downloads = 0
+    try:
+        likes = int(model.get("likes") or 0)
+    except (TypeError, ValueError):
+        likes = 0
+    if provider and provider not in trusted_providers and downloads < 1000 and likes < 25:
         return False
 
     if "diffusers" not in tags:
@@ -467,9 +558,14 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
     }
 
     now = time.time()
+    token_cache_key = _hf_token_cache_key()
     cached_entries = _LATEST_IMAGE_MODELS_CACHE
-    if cached_entries is not None and (now - cached_entries[0]) < _LATEST_IMAGE_MODELS_TTL_SECONDS:
-        latest = cached_entries[1]
+    if (
+        cached_entries is not None
+        and cached_entries[1] == token_cache_key
+        and (now - cached_entries[0]) < _LATEST_IMAGE_MODELS_TTL_SECONDS
+    ):
+        latest = cached_entries[2]
         return [
             {
                 **entry,
@@ -481,18 +577,21 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
     try:
         params = urllib.parse.urlencode({
             "filter": "diffusers",
-            "sort": "modified",
+            "sort": "createdAt",
             "direction": "-1",
-            "limit": "48",
+            "limit": "96",
             "full": "true",
         })
         url = f"https://huggingface.co/api/models?{params}"
         req = urllib.request.Request(url, headers={"User-Agent": "ChaosEngineAI/0.2.0"})
+        token = _hf_token_value()
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
     except Exception:
-        if cached_entries is not None:
-            latest = cached_entries[1]
+        if cached_entries is not None and cached_entries[1] == token_cache_key:
+            latest = cached_entries[2]
             return [
                 {
                     **entry,
@@ -502,10 +601,16 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             ]
         return _tracked_latest_seed_payloads(library)[:limit]
 
-    candidates: list[dict[str, Any]] = []
+    accepted_models: list[dict[str, Any]] = []
     for model in data:
         if not isinstance(model, dict) or not _is_latest_image_candidate(model, curated_repos):
             continue
+        accepted_models.append(model)
+        if len(accepted_models) >= max(limit * 2, limit):
+            break
+
+    candidates: list[dict[str, Any]] = []
+    for model in accepted_models:
         model_id = str(model.get("id") or "")
         provider = model_id.split("/", 1)[0] if "/" in model_id else "Community"
         tags = [str(tag) for tag in (model.get("tags") or [])]
@@ -513,6 +618,22 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
         metadata = _image_repo_live_metadata(model_id)
         snapshot_dir = _hf_repo_snapshot_dir(model_id)
         on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
+        on_disk_gb = _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None
+        tracked_seed = _tracked_seed_for_repo(model_id)
+        fallback_size_gb, fallback_core_weights_gb, fallback_repo_size_gb = (
+            _image_seed_size_metadata(tracked_seed)
+            if tracked_seed is not None
+            else (0.0, None, None)
+        )
+        core_weights_gb = _positive_float(metadata.get("coreWeightsGb")) or fallback_core_weights_gb
+        repo_size_gb = _positive_float(metadata.get("repoSizeGb")) or fallback_repo_size_gb
+        size_gb = (
+            _positive_float(metadata.get("coreWeightsGb"))
+            or _positive_float(metadata.get("repoSizeGb"))
+            or _positive_float(on_disk_gb)
+            or _positive_float(fallback_size_gb)
+            or 0.0
+        )
         candidates.append({
             "id": model_id,
             "familyId": "latest",
@@ -524,7 +645,7 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "runtime": "Diffusers candidate",
             "styleTags": _image_discover_style_tags(tags),
             "taskSupport": _image_task_support_from_metadata(pipeline_tag, tags),
-            "sizeGb": float(metadata.get("coreWeightsGb") or metadata.get("repoSizeGb") or 0.0),
+            "sizeGb": size_gb,
             "recommendedResolution": _image_recommended_resolution(model_id, pipeline_tag, tags),
             "note": (
                 "Latest official diffusers-compatible image model tracked by ChaosEngineAI. "
@@ -534,7 +655,7 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "hasLocalData": snapshot_dir is not None,
             "localPath": str(snapshot_dir) if snapshot_dir else None,
             "onDiskBytes": on_disk_bytes,
-            "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
+            "onDiskGb": on_disk_gb,
             "estimatedGenerationSeconds": None,
             "downloads": metadata.get("downloads"),
             "likes": metadata.get("likes"),
@@ -548,9 +669,9 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "gated": bool(metadata.get("gated")) if metadata.get("gated") is not None else None,
             "pipelineTag": metadata.get("pipelineTag") or pipeline_tag,
             "repoSizeBytes": metadata.get("repoSizeBytes"),
-            "repoSizeGb": metadata.get("repoSizeGb"),
+            "repoSizeGb": repo_size_gb,
             "coreWeightsBytes": metadata.get("coreWeightsBytes"),
-            "coreWeightsGb": metadata.get("coreWeightsGb"),
+            "coreWeightsGb": core_weights_gb,
             "metadataWarning": metadata.get("metadataWarning"),
             "source": "latest",
         })
@@ -572,7 +693,7 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
         seen_repos.add(repo_id)
 
     latest = candidates[:limit]
-    _LATEST_IMAGE_MODELS_CACHE = (now, latest)
+    _LATEST_IMAGE_MODELS_CACHE = (now, token_cache_key, latest)
     return latest
 
 
@@ -662,7 +783,7 @@ def _image_download_repo_ids() -> set[str]:
     if cached_entries is not None:
         repos.update(
             str(entry.get("repo") or "")
-            for entry in cached_entries[1]
+            for entry in cached_entries[2]
             if str(entry.get("repo") or "")
         )
     return repos

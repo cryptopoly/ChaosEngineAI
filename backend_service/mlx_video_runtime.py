@@ -88,6 +88,11 @@ _LTX2_SPATIAL_UPSCALER_CANDIDATES: dict[str, tuple[tuple[str, str], ...]] = {
         ("Lightricks/LTX-2.3", "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"),
     ),
 }
+_LTX2_SHARED_TEXT_ENCODER_CANDIDATES: tuple[str, ...] = (
+    "prince-canuma/LTX-2-distilled",
+    "Lightricks/LTX-2",
+)
+_LTX2_TEXT_COMPONENTS: tuple[str, ...] = ("text_encoder", "tokenizer")
 _LTX2_DISTILLED_STAGE_1_STEPS = 8
 _LTX2_DISTILLED_STAGE_2_STEPS = 3
 
@@ -255,6 +260,86 @@ def _resolve_ltx2_spatial_upscaler(
     )
 
 
+def _resolve_local_snapshot(repo_or_path: str) -> Path | None:
+    candidate = Path(repo_or_path)
+    if candidate.exists():
+        return candidate
+    try:
+        from huggingface_hub import snapshot_download  # type: ignore
+
+        return Path(snapshot_download(repo_id=repo_or_path, local_files_only=True))
+    except Exception:
+        return None
+
+
+def _missing_ltx2_text_components(root: Path) -> list[str]:
+    missing: list[str] = []
+    checks = {
+        "text_encoder": (
+            root / "text_encoder" / "config.json",
+            root / "text_encoder" / "model.safetensors.index.json",
+        ),
+        "tokenizer": (
+            root / "tokenizer" / "tokenizer.json",
+            root / "tokenizer" / "tokenizer.model",
+        ),
+    }
+    for component, required_paths in checks.items():
+        if not (root / component).is_dir():
+            missing.append(component)
+            continue
+        if not all(path.exists() for path in required_paths):
+            missing.append(component)
+    return missing
+
+
+def _resolve_ltx2_text_component_source(repo: str) -> Path:
+    for candidate_repo in tuple(dict.fromkeys((repo, *_LTX2_SHARED_TEXT_ENCODER_CANDIDATES))):
+        snapshot = _resolve_local_snapshot(candidate_repo)
+        if snapshot is not None and not _missing_ltx2_text_components(snapshot):
+            return snapshot
+    checked = ", ".join(_LTX2_SHARED_TEXT_ENCODER_CANDIDATES)
+    raise RuntimeError(
+        "LTX-2.3 MLX generation needs shared text_encoder and tokenizer "
+        f"components, but none were found locally. Download {checked} or "
+        "resume this model download, then try again."
+    )
+
+
+def _prepare_ltx2_model_path(repo: str, workspace: Path) -> Path:
+    model_path = _resolve_local_snapshot(repo)
+    if model_path is None:
+        raise RuntimeError(
+            f"LTX-2 MLX model snapshot is not available locally for {repo}. "
+            "Download the model before generating."
+        )
+
+    missing = _missing_ltx2_text_components(model_path)
+    if not missing:
+        return model_path
+
+    text_source = _resolve_ltx2_text_component_source(repo)
+    overlay = workspace / "model-overlay"
+    shutil.rmtree(overlay, ignore_errors=True)
+    overlay.mkdir(parents=True, exist_ok=True)
+
+    missing_set = set(missing)
+    for entry in model_path.iterdir():
+        if entry.name in missing_set:
+            continue
+        (overlay / entry.name).symlink_to(entry, target_is_directory=entry.is_dir())
+    for component in _LTX2_TEXT_COMPONENTS:
+        target = overlay / component
+        if target.exists() or target.is_symlink():
+            if target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        source = text_source / component
+        target.symlink_to(source, target_is_directory=True)
+    return overlay
+
+
 class _ProgressSink(Protocol):
     def __call__(self, phase: str, message: str, fraction: float) -> None: ...
 
@@ -409,12 +494,15 @@ class MlxVideoEngine:
         entry = _resolve_entry_point(config.repo)
         python = _resolve_video_python()
         pipeline_flag = _resolve_pipeline_flag(config.repo)
+        model_repo_arg = config.repo
+        if resolve_aux_files and "ltx-2.3" in config.repo.lower():
+            model_repo_arg = str(_prepare_ltx2_model_path(config.repo, output_path.parent))
         cmd = [
             python,
             "-m",
             entry,
             "--model-repo",
-            config.repo,
+            model_repo_arg,
             "--pipeline",
             pipeline_flag,
             "--prompt",

@@ -593,6 +593,7 @@ class BackendCapabilities:
     converterAvailable: bool = False
     vllmAvailable: bool = False
     vllmVersion: str | None = None
+    probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -610,11 +611,41 @@ class BackendCapabilities:
             "converterAvailable": self.converterAvailable,
             "vllmAvailable": self.vllmAvailable,
             "vllmVersion": self.vllmVersion,
+            "probing": self.probing,
         }
 
 
 _capability_cache: tuple[float, BackendCapabilities] | None = None
 _capability_lock = RLock()
+
+
+def _initial_backend_capabilities() -> BackendCapabilities:
+    """Cheap capability placeholder used while the real probe runs.
+
+    The full probe imports/spawns MLX and checks vLLM, which can add seconds
+    to cold start. These path checks are safe enough for initial UI rendering;
+    load_model() still refreshes capabilities synchronously before selecting
+    an engine.
+    """
+    python_executable = _resolve_mlx_python()
+    llama_server_path = _resolve_llama_server()
+    llama_server_turbo_path = _resolve_llama_server_turbo()
+    llama_cli_path = _resolve_llama_cli()
+    return BackendCapabilities(
+        pythonExecutable=python_executable,
+        mlxAvailable=False,
+        mlxLmAvailable=False,
+        mlxUsable=False,
+        mlxMessage="Native backend detection is still running.",
+        ggufAvailable=bool(llama_server_path) or bool(llama_server_turbo_path),
+        llamaCliPath=llama_cli_path,
+        llamaServerPath=llama_server_path,
+        llamaServerTurboPath=llama_server_turbo_path,
+        converterAvailable=False,
+        vllmAvailable=False,
+        vllmVersion=None,
+        probing=True,
+    )
 
 
 def _probe_native_backends() -> BackendCapabilities:
@@ -2165,10 +2196,16 @@ class LlamaCppEngine(BaseInferenceEngine):
 
 
 class RuntimeController:
+    # Hard upper bound on the warm pool independently of memory accounting —
+    # if psutil isn't available we still want a sane cap.
     MAX_WARM_MODELS = 2
+    # Reserve this much physical memory for the OS / UI / unrelated
+    # processes when deciding whether a new (or incoming) model fits. Mirrors
+    # the headroom used by ``helpers/system.py::spareHeadroomGb``.
+    WARM_POOL_MEMORY_HEADROOM_BYTES = 6 * 1024 * 1024 * 1024
 
-    def __init__(self) -> None:
-        self.capabilities = get_backend_capabilities()
+    def __init__(self, *, background_probe: bool = False) -> None:
+        self.capabilities = _initial_backend_capabilities()
         self.engine: BaseInferenceEngine = MockInferenceEngine(self.capabilities)
         self.loaded_model: LoadedModelInfo | None = None
         self.runtime_note: str | None = None
@@ -2178,6 +2215,51 @@ class RuntimeController:
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
+        self._capability_probe_thread: Thread | None = None
+        self._capability_probe_lock = Lock()
+        if background_probe:
+            self.start_capability_probe()
+
+    def start_capability_probe(self, *, force: bool = False) -> None:
+        with self._capability_probe_lock:
+            if (
+                self._capability_probe_thread is not None
+                and self._capability_probe_thread.is_alive()
+                and not force
+            ):
+                return
+            thread = Thread(
+                target=self._capability_probe_worker,
+                kwargs={"force": force},
+                name="chaosengine-capability-probe",
+                daemon=True,
+            )
+            self._capability_probe_thread = thread
+            thread.start()
+
+    def _capability_probe_worker(self, *, force: bool = False) -> None:
+        try:
+            capabilities = get_backend_capabilities(force=force)
+        except Exception as exc:
+            current = self.capabilities
+            capabilities = BackendCapabilities(
+                pythonExecutable=current.pythonExecutable,
+                mlxAvailable=False,
+                mlxLmAvailable=False,
+                mlxUsable=False,
+                mlxMessage=f"Native backend detection failed: {type(exc).__name__}: {exc}",
+                ggufAvailable=current.ggufAvailable,
+                llamaCliPath=current.llamaCliPath,
+                llamaServerPath=current.llamaServerPath,
+                llamaServerTurboPath=current.llamaServerTurboPath,
+                converterAvailable=False,
+                vllmAvailable=False,
+                vllmVersion=None,
+                probing=False,
+            )
+        self.capabilities = capabilities
+        if isinstance(self.engine, MockInferenceEngine):
+            self.engine.capabilities = capabilities
 
     @staticmethod
     def _warm_pool_key(
@@ -2266,6 +2348,7 @@ class RuntimeController:
         *,
         requested_identity: str,
         keep_warm_previous: bool = True,
+        required_free_bytes: int = 0,
     ) -> None:
         if not self.loaded_model or not self.engine:
             return
@@ -2284,7 +2367,19 @@ class RuntimeController:
             except Exception:
                 pass
             return
-        self._evict_warm_pool()
+        active_bytes = max(
+            self._model_resident_bytes(self.loaded_model),
+            self._engine_resident_bytes(self.engine),
+        )
+        self._evict_warm_pool(
+            incoming_bytes=active_bytes,
+        )
+        if not self._can_keep_warm_model(active_bytes, required_free_bytes=required_free_bytes):
+            try:
+                self.engine.unload_model()
+            except Exception:
+                pass
+            return
         self._warm_pool[current_key] = (self.engine, self.loaded_model)
 
     def _tracked_process_pids(self) -> set[int]:
@@ -2460,6 +2555,8 @@ class RuntimeController:
                 _LLAMA_HELP_CACHE.clear()
             _CACHE_TYPE_CACHE.clear()
         self.capabilities = get_backend_capabilities(force=force)
+        if isinstance(self.engine, MockInferenceEngine):
+            self.engine.capabilities = self.capabilities
         return self.capabilities
 
     def _select_engine(
@@ -2540,15 +2637,100 @@ class RuntimeController:
             result.append({**info.to_dict(), "warm": True, "active": False})
         return result
 
-    def _evict_warm_pool(self) -> None:
-        """Remove the oldest entry from the warm pool if at capacity."""
+    @staticmethod
+    def _model_resident_bytes(info: LoadedModelInfo) -> int:
+        """Best-effort estimate of RAM held by a loaded model.
+
+        For local weights we use on-disk size as a proxy — mlx-lm mmaps the
+        weights so RSS tracks file size closely; for llama.cpp / GGUF the
+        whole file ends up resident once warm. For catalog/no-path entries
+        we fall back to 0 (no useful estimate, treat as memory-free).
+        """
+        return _path_size_bytes(info.path) if info.path else 0
+
+    @staticmethod
+    def _target_resident_bytes(*, path: str | None, runtime_target: str | None) -> int:
+        for candidate in (path, runtime_target):
+            if not candidate:
+                continue
+            size = _path_size_bytes(candidate)
+            if size > 0:
+                return size
+        return 0
+
+    @staticmethod
+    def _engine_resident_bytes(engine: BaseInferenceEngine | None) -> int:
+        if engine is None:
+            return 0
+        pid_getter = getattr(engine, "process_pid", None)
+        pid = pid_getter() if callable(pid_getter) else None
+        if not isinstance(pid, int):
+            return 0
+        try:
+            import psutil
+
+            return int(psutil.Process(pid).memory_info().rss)
+        except Exception:
+            return 0
+
+    def _warm_pool_resident_bytes(self) -> int:
+        return sum(
+            max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
+            for engine, info in self._warm_pool.values()
+        )
+
+    def _memory_budget_bytes(self) -> int:
+        """Bytes available for warm-pool weights, after OS headroom.
+
+        Returns 0 when psutil isn't usable; callers must fall back to the
+        count-based MAX_WARM_MODELS cap in that case.
+        """
+        try:
+            import psutil
+
+            available = int(psutil.virtual_memory().available)
+        except Exception:
+            return 0
+        return max(0, available - self.WARM_POOL_MEMORY_HEADROOM_BYTES)
+
+    def _pop_oldest_warm_entry(self) -> None:
+        if not self._warm_pool:
+            return
+        oldest_key = next(iter(self._warm_pool))
+        old_engine, _ = self._warm_pool.pop(oldest_key)
+        try:
+            old_engine.unload_model()
+        except Exception:
+            pass
+
+    def _can_keep_warm_model(self, incoming_bytes: int, *, required_free_bytes: int = 0) -> bool:
+        budget = self._memory_budget_bytes()
+        if budget <= 0:
+            return True
+        if required_free_bytes > budget:
+            return False
+        return self._warm_pool_resident_bytes() + incoming_bytes <= budget
+
+    def _evict_warm_pool(self, *, incoming_bytes: int = 0) -> None:
+        """Make room for an incoming entry in the warm pool.
+
+        First applies the count cap (MAX_WARM_MODELS) so a flapping budget
+        can never grow the pool unboundedly. Then, if ``psutil`` reports a
+        live memory budget, evicts oldest entries until the pool plus the
+        incoming model fits within ``available - headroom``.
+
+        ``incoming_bytes`` is the resident-byte estimate for the model
+        about to enter the pool (typically the model being parked from
+        active to warm). Passing 0 still triggers the count cap.
+        """
         while len(self._warm_pool) >= self.MAX_WARM_MODELS:
-            oldest_key = next(iter(self._warm_pool))
-            old_engine, _ = self._warm_pool.pop(oldest_key)
-            try:
-                old_engine.unload_model()
-            except Exception:
-                pass
+            self._pop_oldest_warm_entry()
+
+        budget = self._memory_budget_bytes()
+        if budget <= 0:
+            return
+        while self._warm_pool and self._warm_pool_resident_bytes() + incoming_bytes > budget:
+            self._pop_oldest_warm_entry()
 
     def load_model(
         self,
@@ -2598,6 +2780,10 @@ class RuntimeController:
             runtime_target=runtime_target,
             path=path,
         )
+        incoming_load_bytes = self._target_resident_bytes(
+            path=path,
+            runtime_target=runtime_target,
+        )
 
         # Check warm pool first — instant switch if the exact runtime profile is cached
         pool_key = self._warm_pool_key(
@@ -2639,6 +2825,7 @@ class RuntimeController:
         self._park_active_engine_or_unload(
             requested_identity=requested_identity,
             keep_warm_previous=keep_warm_previous,
+            required_free_bytes=incoming_load_bytes,
         )
 
         self.engine = selected_engine

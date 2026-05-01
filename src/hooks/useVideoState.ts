@@ -74,6 +74,7 @@ import {
   pendingDownloadStatus,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
+  videoDownloadRepos,
   videoRuntimeErrorStatus,
   videoVariantMatchesDiscoverFilters,
 } from "../utils";
@@ -484,7 +485,7 @@ export function useVideoState(
 
   // ── Data fetching ───────────────────────────────────────────
   async function refreshVideoData() {
-    const [catalog, statuses, runtime, outputs, mlxVideo] = await Promise.allSettled([
+    const [catalog, statuses, runtime, outputs, mlxVideo, gpuBundle] = await Promise.allSettled([
       getVideoCatalog(),
       getVideoDownloadStatus(),
       getVideoRuntime(),
@@ -495,6 +496,7 @@ export function useVideoState(
       // Studio's chip render in sync with the diffusers status without a
       // second round-trip. Failure here is silently swallowed below.
       getMlxVideoRuntime(),
+      getGpuBundleStatus(),
     ]);
     const failures = [catalog, statuses, runtime, outputs].filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -518,6 +520,9 @@ export function useVideoState(
     if (mlxVideo.status === "fulfilled") {
       setMlxVideoStatus(mlxVideo.value);
     }
+    if (gpuBundle.status === "fulfilled" && (gpuBundle.value.phase !== "idle" || gpuBundle.value.done)) {
+      setGpuBundleJob(gpuBundle.value);
+    }
     // mlxVideo failure intentionally not added to ``failures`` — the chip
     // is non-blocking; Studio falls back to hiding it when status is null.
 
@@ -533,11 +538,11 @@ export function useVideoState(
   }
 
   // ── Download handlers ───────────────────────────────────────
-  async function handleVideoDownload(repo: string) {
+  async function handleVideoDownload(repo: string, modelId?: string) {
     try {
       setActiveVideoDownloads((prev) => ({ ...prev, [repo]: pendingDownloadStatus(repo, prev[repo]) }));
-      const download = await downloadVideoModel(repo);
-      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: download }));
+      const download = await downloadVideoModel(repo, modelId);
+      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: download, [download.repo]: download }));
       void refreshVideoData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Video download failed");
@@ -605,7 +610,12 @@ export function useVideoState(
       return;
     }
     if (!selectedVideoVariant.availableLocally) {
-      setError(`${selectedVideoVariant.name} is not installed locally yet. Download it first.`);
+      const missingRepos = videoDownloadRepos(selectedVideoVariant).join(" + ");
+      setError(`${selectedVideoVariant.name} is not installed locally yet. Download required files first: ${missingRepos}.`);
+      return;
+    }
+    if (gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart) {
+      setError("Restart the backend to activate the newly installed GPU runtime before generating video.");
       return;
     }
     if (!videoRuntimeStatus.realGenerationAvailable) {

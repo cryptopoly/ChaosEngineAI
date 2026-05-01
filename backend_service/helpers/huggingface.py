@@ -7,6 +7,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from backend_service.helpers.discovery import _path_size_bytes
 
 
 _HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+/[a-zA-Z0-9_.\-]+$")
-_HUB_FILE_CACHE: dict[str, dict[str, Any]] = {}
+_HUB_FILE_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
 _DISCOVER_SEARCH_PUNCT_RE = re.compile(r"[^a-z0-9]+")
 _DISCOVER_SEARCH_ALPHA_NUM_RE = re.compile(r"([a-z])(\d)|(\d)([a-z])")
 _TEXT_DISCOVER_PIPELINES = {
@@ -28,6 +29,21 @@ _TEXT_DISCOVER_PIPELINES = {
     "visual-question-answering",
 }
 _HF_QUERY_URL_HOSTS = {"huggingface.co", "www.huggingface.co", "hf.co", "www.hf.co"}
+
+
+def _hf_token_value() -> str:
+    return str(os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or "").strip()
+
+
+def _hf_token_cache_key() -> str:
+    token = _hf_token_value()
+    if not token:
+        return "anonymous"
+    return f"token:{sha256(token.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _clear_huggingface_caches() -> None:
+    _HUB_FILE_CACHE.clear()
 
 
 def _extract_hf_repo_id_from_query(value: str) -> str | None:
@@ -122,6 +138,9 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
         })
         url = f"https://huggingface.co/api/models?{params}"
         req = urllib.request.Request(url, headers={"User-Agent": "ChaosEngineAI/0.2.0"})
+        token = _hf_token_value()
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
     except Exception:
@@ -246,11 +265,12 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
     HUGGING_FACE_HUB_TOKEN for gated repos and degrades to a non-fatal
     warning on transient upstream 5xx errors.
     """
-    cached = _HUB_FILE_CACHE.get(repo_id)
+    cache_key = (repo_id, _hf_token_cache_key())
+    cached = _HUB_FILE_CACHE.get(cache_key)
     if cached is not None:
         return cached
 
-    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    token = _hf_token_value()
     try:
         encoded_repo = urllib.parse.quote(repo_id, safe="/")
         url = f"https://huggingface.co/api/models/{encoded_repo}?blobs=true"
@@ -326,7 +346,7 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
         pipeline_tag=data.get("pipeline_tag"),
         last_modified=data.get("lastModified"),
     )
-    _HUB_FILE_CACHE[repo_id] = payload
+    _HUB_FILE_CACHE[cache_key] = payload
     return payload
 
 
@@ -509,7 +529,7 @@ def _hf_repo_snapshot_dir(repo_id: str) -> Path | None:
 
 
 def _known_repo_size_gb(repo_id: str) -> float | None:
-    cached = _HUB_FILE_CACHE.get(repo_id)
+    cached = _HUB_FILE_CACHE.get((repo_id, _hf_token_cache_key()))
     if cached is not None:
         cached_total = cached.get("totalSizeGb")
         if isinstance(cached_total, (int, float)) and cached_total > 0:

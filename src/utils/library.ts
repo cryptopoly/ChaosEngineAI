@@ -49,6 +49,55 @@ export function inferHfRepoFromLocalPath(path: string | null | undefined): strin
   return repo || null;
 }
 
+const CHAT_EXCLUDED_MODEL_TYPES = new Set(["image", "video", "draft"]);
+
+const VIDEO_LIBRARY_KEYWORDS = [
+  "hunyuanvideo",
+  "wan-ai/",
+  "wan2.",
+  "wan2-",
+  "-t2v-",
+  "-i2v-",
+  "-v2v-",
+  "mochi-1",
+  "cogvideo",
+  "ltx-video",
+  "ltx-2",
+  "zeroscope",
+  "animatediff",
+];
+
+const IMAGE_LIBRARY_KEYWORDS = [
+  "stable-diffusion",
+  "sdxl",
+  "flux.",
+  "flux1",
+  "flux-",
+  "dall-e",
+  "imagen",
+  "kandinsky",
+  "wuerstchen",
+  "diffusion-pipe",
+  "qwen-image",
+  "qwen/qwen-image",
+  "sana_sprint",
+  "sana-sprint",
+  "sana sprint",
+  "sana_1600m",
+  "sana-1600m",
+];
+
+export function isChatLibraryItem(item: LibraryItem): boolean {
+  const modelType = String(item.modelType ?? "").trim().toLowerCase();
+  if (modelType && CHAT_EXCLUDED_MODEL_TYPES.has(modelType)) return false;
+
+  const repo = inferHfRepoFromLocalPath(item.path);
+  const haystack = `${item.name} ${item.path} ${repo ?? ""}`.toLowerCase();
+  if (VIDEO_LIBRARY_KEYWORDS.some((keyword) => haystack.includes(keyword))) return false;
+  if (IMAGE_LIBRARY_KEYWORDS.some((keyword) => haystack.includes(keyword))) return false;
+  return true;
+}
+
 export function libraryItemFormat(item: LibraryItem, matchedVariant?: ModelVariant | null): string {
   const explicit = (item.format ?? "").trim();
   if (explicit && explicit.toLowerCase() !== "hf cache" && explicit.toLowerCase() !== "unknown") {

@@ -15,6 +15,7 @@ import {
   defaultVideoVariantForFamily,
   downloadProgressLabel,
   number,
+  videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
 } from "../../utils";
@@ -68,7 +69,7 @@ export interface VideoStudioTabProps {
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
-  onVideoDownload: (repo: string) => void;
+  onVideoDownload: (repo: string, modelId?: string) => void;
   onGenerateVideo: () => void;
   onOpenExternalUrl: (url: string) => void;
   onRestartServer: () => void;
@@ -285,6 +286,7 @@ export function VideoStudioTab({
   const mp4EncoderMissing = missingDependencies.some(
     (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
   );
+  const gpuBundleRestartRequired = gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart;
   // Tokenizer / text-encoder packages individual pipelines need lazily —
   // tiktoken for LTX-Video, sentencepiece for Wan / HunyuanVideo / CogVideoX
   // / Mochi, plus the protobuf + ftfy support libs. We list them out as a
@@ -343,7 +345,7 @@ export function VideoStudioTab({
           variants: family.variants.filter((variant) => {
             if (variant.availableLocally) return true;
             if (variant.hasLocalData) return true;
-            const downloadState = activeVideoDownloads[variant.repo];
+            const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
             return downloadState?.state === "downloading" || downloadState?.state === "completed";
           }),
         }))
@@ -426,7 +428,7 @@ export function VideoStudioTab({
     && !(mlxVideoStatus.missingDependencies ?? []).includes("mlx-video");
 
   const downloadState = useMemo(
-    () => (selectedVideoVariant ? activeVideoDownloads[selectedVideoVariant.repo] : undefined),
+    () => (selectedVideoVariant ? videoDownloadStatusForVariant(activeVideoDownloads, selectedVideoVariant) : undefined),
     [activeVideoDownloads, selectedVideoVariant],
   );
   const isDownloading = downloadState?.state === "downloading";
@@ -457,6 +459,8 @@ export function VideoStudioTab({
     ? "Choose a video model first."
     : !isDownloaded
       ? `${selectedVideoVariant.name} is not installed locally yet.`
+      : gpuBundleRestartRequired
+        ? "Restart the backend to activate the newly installed GPU runtime before generating."
       : !selectedVideoRuntimeStatus.realGenerationAvailable
         ? (selectedVideoRuntimeStatus.message || "Video runtime is not ready.")
         : !hasPrompt
@@ -490,6 +494,9 @@ export function VideoStudioTab({
         deviceMemoryGb: selectedVideoRuntimeStatus.deviceMemoryGb,
         baseModelFootprintGb: selectedVideoVariant?.sizeGb,
         runtimeFootprintGb: selectedVideoVariant?.runtimeFootprintGb,
+        runtimeFootprintMpsGb: selectedVideoVariant?.runtimeFootprintMpsGb,
+        runtimeFootprintCudaGb: selectedVideoVariant?.runtimeFootprintCudaGb,
+        runtimeFootprintCpuGb: selectedVideoVariant?.runtimeFootprintCpuGb,
       }),
     [
       videoWidth,
@@ -499,6 +506,9 @@ export function VideoStudioTab({
       selectedVideoRuntimeStatus.deviceMemoryGb,
       selectedVideoVariant?.sizeGb,
       selectedVideoVariant?.runtimeFootprintGb,
+      selectedVideoVariant?.runtimeFootprintMpsGb,
+      selectedVideoVariant?.runtimeFootprintCudaGb,
+      selectedVideoVariant?.runtimeFootprintCpuGb,
     ],
   );
 
@@ -599,6 +609,9 @@ export function VideoStudioTab({
             <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
             </span>
+            {gpuBundleRestartRequired ? (
+              <span className="badge warning">Restart required</span>
+            ) : null}
             <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
             {/* Prefer the actual-loaded device; fall back to the predicted
               * expectedDevice computed via nvidia-smi + find_spec (no torch
@@ -733,36 +746,31 @@ export function VideoStudioTab({
               </button>
             </div>
           ) : null}
-          {!videoRuntimeStatus.realGenerationAvailable ? (
+          {gpuBundleRestartRequired ? (
             <>
               <div className="image-runtime-actions">
-                {/* Same post-install-awaiting-restart branch Image Studio
-                  * uses. After a successful GPU bundle install, the
-                  * running backend still can't see the new torch in
-                  * extras (PYTHONPATH is snapshotted at spawn). Nudge
-                  * the user toward Restart Backend instead of asking
-                  * them to install again. */}
-                {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
-                  <>
-                    <p className="muted-text">
-                      GPU runtime installed to{" "}
-                      <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
-                      still has its old import cache — click Restart Backend to activate the
-                      new runtime, then video generation will use your GPU.
-                    </p>
-                    <div className="button-row">
-                      <button
-                        className="primary-button"
-                        type="button"
-                        onClick={() => onRestartServer()}
-                        disabled={busy}
-                      >
-                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
+                <p className="muted-text">
+                  GPU runtime installed to{" "}
+                  <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
+                  still has its old import cache — click Restart Backend to activate the
+                  new runtime, then video generation will use it.
+                </p>
+                <div className="button-row">
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onRestartServer()}
+                    disabled={busy}
+                  >
+                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                  </button>
+                </div>
+              </div>
+              <InstallLogPanel job={gpuBundleJob} />
+            </>
+          ) : !videoRuntimeStatus.realGenerationAvailable ? (
+            <>
+              <div className="image-runtime-actions">
                 <p className="muted-text">
                   Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers,
                   ~2.5 GB). Install it once — it writes to a persistent user-local directory so
@@ -781,8 +789,6 @@ export function VideoStudioTab({
                     {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
                   </button>
                 </div>
-                  </>
-                )}
               </div>
               <InstallLogPanel job={gpuBundleJob} />
             </>
@@ -800,7 +806,7 @@ export function VideoStudioTab({
               >
                 {studioFamilies.flatMap((family) =>
                   family.variants.map((variant) => {
-                    const downloadState = activeVideoDownloads[variant.repo];
+                    const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
                     const isDownloadingVariant = downloadState?.state === "downloading";
                     const suffix = variant.availableLocally
                       ? " (installed)"
@@ -846,13 +852,21 @@ export function VideoStudioTab({
               ) : isDownloading ? (
                 <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
               ) : (
-                <span className="badge warning">Not downloaded</span>
+                <span className="badge warning" title={selectedVideoVariant.localStatusReason ?? undefined}>
+                  {selectedVideoVariant.hasLocalData ? "Incomplete" : "Not downloaded"}
+                </span>
               )}
               {selectedVideoLoaded ? <span className="badge accent">In Memory</span> : null}
               {videoRuntimeLoadedDifferentModel && loadedVideoVariant ? (
                 <span className="badge muted">Loaded model: {loadedVideoVariant.name}</span>
               ) : null}
             </div>
+          ) : null}
+
+          {selectedVideoVariant?.localStatusReason && !isDownloaded && !isDownloading ? (
+            <p className="muted-text" style={{ color: "var(--warning, #f2c66d)" }}>
+              {selectedVideoVariant.localStatusReason}
+            </p>
           ) : null}
 
           <label>
@@ -1306,7 +1320,7 @@ export function VideoStudioTab({
                 className="secondary-button"
                 type="button"
                 disabled={!backendOnline}
-                onClick={() => selectedVideoVariant && onVideoDownload(selectedVideoVariant.repo)}
+                onClick={() => selectedVideoVariant && onVideoDownload(selectedVideoVariant.repo, selectedVideoVariant.id)}
               >
                 Download model
               </button>
@@ -1329,6 +1343,18 @@ export function VideoStudioTab({
                 onClick={() => selectedVideoVariant && onUnloadVideoModel(selectedVideoVariant)}
               >
                 {videoBusy && videoBusyLabel?.includes("Unloading") ? videoBusyLabel : "Unload"}
+              </button>
+            ) : null}
+            {!selectedVideoLoaded && loadedVideoVariant ? (
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={videoBusy}
+                onClick={() => onUnloadVideoModel()}
+              >
+                {videoBusy && videoBusyLabel?.includes("Unloading")
+                  ? videoBusyLabel
+                  : `Unload ${loadedVideoVariant.name}`}
               </button>
             ) : null}
             <button

@@ -55,11 +55,21 @@ export function formatReleaseLabel(
   return `Released ${MONTH_SHORT[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
 }
 
+export function compactReleaseLabel(value?: string | null) {
+  if (!value) return null;
+  return value.replace(/^Released\s+/i, "").trim() || null;
+}
+
 export function formatImageLicenseLabel(value?: string | null) {
   if (!value) return null;
   return value
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function compactModelSizeLabel(value: string | null | undefined) {
+  if (!value) return "Unknown";
+  return value.replace(/\s+(on disk|weights|download|full repo)$/i, "").trim();
 }
 
 export function imagePrimarySizeLabel(variant: ImageModelVariant) {

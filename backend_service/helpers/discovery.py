@@ -46,7 +46,7 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
         with iterator as entries:
             for entry in entries:
                 try:
-                    entry_stat = entry.stat(follow_symlinks=False)
+                    entry_stat = entry.stat(follow_symlinks=True)
                 except OSError:
                     continue
                 entry_id = (entry_stat.st_dev, entry_stat.st_ino)
@@ -54,7 +54,7 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
                     continue
                 visited.add(entry_id)
                 try:
-                    is_dir = entry.is_dir(follow_symlinks=False)
+                    is_dir = entry.is_dir(follow_symlinks=True)
                 except OSError:
                     is_dir = False
                 if is_dir:
@@ -324,6 +324,7 @@ _IMAGE_MODEL_KEYWORDS = (
     "stable-diffusion", "sdxl", "flux.", "flux1", "flux-",
     "dall-e", "imagen", "kandinsky", "wuerstchen",
     "diffusion-pipe", "qwen-image", "qwen/qwen-image",
+    "sana_sprint", "sana-sprint", "sana sprint", "sana_1600m", "sana-1600m",
 )
 
 
@@ -348,6 +349,7 @@ _VIDEO_MODEL_KEYWORDS = (
     "mochi-1",
     "cogvideo",
     "ltx-video",
+    "ltx-2",
     "zeroscope",
     "animatediff",
 )

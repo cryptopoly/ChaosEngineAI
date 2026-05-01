@@ -38,17 +38,51 @@ _patched = False
 def _find_pip_turboquant_path() -> str | None:
     """Find the pip-installed turboquant-mlx-full package in site-packages.
 
-    Our local ``turboquant_mlx/`` directory shadows the pip package, so
-    we locate it directly in site-packages.
+    Our local ``turboquant_mlx/`` adapter intentionally shadows the upstream
+    package so ChaosEngineAI can expose stable hooks. The actual TurboQuant
+    implementation may live in the embedded site-packages directory, the
+    persistent extras directory used by the one-click installer, or a source
+    checkout venv, so locate it directly instead of importing by name.
     """
+    import os
+    import sys
     import sysconfig
     from pathlib import Path
 
-    site_packages = sysconfig.get_path("purelib")
-    if site_packages:
-        candidate = Path(site_packages) / "turboquant_mlx" / "layers" / "polar_kv_cache.py"
+    def resolved(path: Path) -> Path:
+        try:
+            return path.resolve()
+        except OSError:
+            return path
+
+    local_adapter = resolved(Path(__file__).parent)
+    roots: list[Path] = []
+
+    extras = os.environ.get("CHAOSENGINE_EXTRAS_SITE_PACKAGES")
+    if extras:
+        roots.append(Path(extras))
+
+    for entry in sys.path:
+        if entry:
+            roots.append(Path(entry))
+
+    for key in ("purelib", "platlib"):
+        site_packages = sysconfig.get_path(key)
+        if site_packages:
+            roots.append(Path(site_packages))
+
+    seen: set[Path] = set()
+    for root in roots:
+        root = resolved(root)
+        if root in seen:
+            continue
+        seen.add(root)
+        package_dir = resolved(root / "turboquant_mlx")
+        candidate = package_dir / "layers" / "polar_kv_cache.py"
+        if package_dir == local_adapter and not candidate.exists():
+            continue
         if candidate.exists():
-            return str(Path(site_packages) / "turboquant_mlx")
+            return str(package_dir)
     return None
 
 

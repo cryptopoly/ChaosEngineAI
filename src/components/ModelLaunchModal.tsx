@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
-import type { LaunchPreferences, PreviewMetrics, SystemStats } from "../types";
+import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
 
 export interface ModelLaunchModalProps {
@@ -19,6 +19,7 @@ export interface ModelLaunchModalProps {
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
   dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
   turboInstalled?: boolean;
   onSelectedKeyChange: (key: string) => void;
   onSearchChange: (value: string) => void;
@@ -43,6 +44,7 @@ export function ModelLaunchModal({
   availableCacheStrategies,
   dflashInfo,
   installingPackage,
+  installLogs,
   turboInstalled,
   onSelectedKeyChange,
   onSearchChange,
@@ -161,6 +163,7 @@ export function ModelLaunchModal({
               availableCacheStrategies={availableCacheStrategies}
               onInstallPackage={onInstallPackage}
               installingPackage={installingPackage}
+              installLogs={installLogs}
               dflashInfo={dflashInfo}
               selectedBackend={selectedOption?.backend}
               selectedModelRef={selectedOption?.modelRef}

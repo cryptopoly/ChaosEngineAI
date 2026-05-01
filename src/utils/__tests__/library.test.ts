@@ -4,6 +4,7 @@ import {
   estimateLibraryItemCompressedGb,
   estimateLibraryItemResidentGb,
   findCatalogVariantForLibraryItem,
+  isChatLibraryItem,
 } from "../library";
 import type { LibraryItem, ModelFamily, ModelVariant } from "../../types";
 
@@ -128,6 +129,42 @@ describe("findCatalogVariantForLibraryItem()", () => {
 
     const matched = findCatalogVariantForLibraryItem([makeFamily([qwen9, qwen35])], item);
     expect(matched?.id).toBe(qwen9.id);
+  });
+});
+
+describe("isChatLibraryItem()", () => {
+  it("keeps text models", () => {
+    expect(isChatLibraryItem(makeItem({ name: "Qwen3-8B", path: "/models/Qwen3-8B" }))).toBe(true);
+  });
+
+  it("excludes explicit non-chat model types", () => {
+    expect(isChatLibraryItem(makeItem({ name: "Flux", path: "/models/Flux", modelType: "image" }))).toBe(false);
+    expect(isChatLibraryItem(makeItem({ name: "LTX-Video", path: "/models/LTX-Video", modelType: "video" }))).toBe(false);
+    expect(isChatLibraryItem(makeItem({ name: "Qwen-Draft", path: "/models/Qwen-Draft", modelType: "draft" }))).toBe(false);
+  });
+
+  it("filters legacy cached LTX-2 entries without modelType", () => {
+    expect(isChatLibraryItem(makeItem({
+      name: "prince-canuma/LTX-2.3-dev",
+      path: "/hf/models--prince-canuma--LTX-2.3-dev/snapshots/1234",
+      modelType: null,
+    }))).toBe(false);
+  });
+
+  it("filters stale LTX-2 entries previously misclassified as text", () => {
+    expect(isChatLibraryItem(makeItem({
+      name: "prince-canuma/LTX-2-distilled",
+      path: "/hf/models--prince-canuma--LTX-2-distilled/snapshots/1234",
+      modelType: "text",
+    }))).toBe(false);
+  });
+
+  it("filters stale Sana image entries previously misclassified as text", () => {
+    expect(isChatLibraryItem(makeItem({
+      name: "Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers",
+      path: "/hf/models--Efficient-Large-Model--Sana_Sprint_1.6B_1024px_diffusers/snapshots/1234",
+      modelType: "text",
+    }))).toBe(false);
   });
 });
 

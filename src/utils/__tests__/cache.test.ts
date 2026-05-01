@@ -5,6 +5,7 @@ import {
   estimateParamsBFromDisk,
   detectBitsPerWeight,
   compareOptionalNumber,
+  getCacheFitStatus,
 } from "../cache";
 
 describe("parseContextK()", () => {
@@ -105,5 +106,26 @@ describe("compareOptionalNumber()", () => {
   it("treats two nulls as equal", () => {
     expect(compareOptionalNumber(null, null, 1)).toBe(0);
     expect(compareOptionalNumber(undefined, undefined, 1)).toBe(0);
+  });
+});
+
+describe("getCacheFitStatus()", () => {
+  it("calls out full context cache pressure separately from model loading", () => {
+    const status = getCacheFitStatus(60, 48.1, 128, 0);
+    expect(status.label).toBe("Full context may not fit");
+    expect(status.advice).toContain("model can load");
+    expect(status.advice).toContain("full native f16 cache");
+  });
+
+  it("only says model weights are the problem when weights exceed usable RAM", () => {
+    const status = getCacheFitStatus(8, 110, 128, 0);
+    expect(status.label).toBe("Model may not fit");
+    expect(status.advice).toContain("Model weights alone exceed");
+  });
+
+  it("keeps ordinary headroom as a success", () => {
+    const status = getCacheFitStatus(10, 20, 128, 0);
+    expect(status.label).toBe("Fits easily");
+    expect(status.advice).toBeNull();
   });
 });

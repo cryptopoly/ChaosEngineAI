@@ -13,6 +13,7 @@ Covers:
 
 from __future__ import annotations
 
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -240,6 +241,50 @@ class MlxVideoGenerateCmdTests(unittest.TestCase):
         cmd = engine._build_cmd(config, Path("/tmp/out.mp4"))
         idx = cmd.index("--pipeline")
         self.assertEqual(cmd[idx + 1], "dev")
+
+    def test_build_cmd_overlays_shared_text_encoder_for_ltx2_3(self):
+        engine = MlxVideoEngine()
+        config = _make_config("prince-canuma/LTX-2.3-dev")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "ltx23"
+            shared = root / "ltx2"
+            workspace = root / "run"
+            model.mkdir()
+            shared.mkdir()
+            workspace.mkdir()
+            for name in ("transformer", "text_projections", "audio_vae", "vae", "vocoder"):
+                (model / name).mkdir()
+            (shared / "text_encoder").mkdir()
+            (shared / "text_encoder" / "config.json").write_text("{}")
+            (shared / "text_encoder" / "model.safetensors.index.json").write_text("{}")
+            (shared / "tokenizer").mkdir()
+            (shared / "tokenizer" / "tokenizer.json").write_text("{}")
+            (shared / "tokenizer" / "tokenizer.model").write_text("tokenizer")
+
+            def fake_snapshot(repo: str) -> Path | None:
+                if repo == "prince-canuma/LTX-2.3-dev":
+                    return model
+                if repo == "prince-canuma/LTX-2-distilled":
+                    return shared
+                return None
+
+            with patch(
+                "backend_service.mlx_video_runtime._resolve_local_snapshot",
+                side_effect=fake_snapshot,
+            ):
+                cmd = engine._build_cmd(
+                    config,
+                    workspace / "out.mp4",
+                    resolve_aux_files=True,
+                )
+
+            model_arg = Path(cmd[cmd.index("--model-repo") + 1])
+            self.assertEqual(model_arg.parent, workspace)
+            self.assertTrue((model_arg / "transformer").is_dir())
+            self.assertTrue((model_arg / "text_encoder" / "config.json").exists())
+            self.assertTrue((model_arg / "tokenizer" / "tokenizer.json").exists())
+            self.assertNotIn("--text-encoder-repo", cmd)
 
     def test_build_cmd_omits_seed_when_none(self):
         engine = MlxVideoEngine()

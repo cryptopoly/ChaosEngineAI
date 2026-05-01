@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   checkBackend,
   convertModel,
@@ -67,6 +67,7 @@ import {
   libraryItemBackend,
   libraryItemSourceKind,
   inferHfRepoFromLocalPath,
+  isChatLibraryItem,
   downloadProgressLabel,
   syncRuntime,
   settingsDraftFromWorkspace,
@@ -174,6 +175,7 @@ export default function App() {
     systemPrompt, setSystemPrompt,
     serverModelKey, setServerModelKey,
     installingPackage,
+    installLogs,
     updateLaunchSetting,
     updateConversionDraft,
     handleAddDirectory,
@@ -230,17 +232,18 @@ export default function App() {
 
   // ── Library state ──────────────────────────────────────────
   const [librarySearchInput, setLibrarySearchInput] = useState("");
-  const [selectedLibraryPath, setSelectedLibraryPath] = useState(workspace.library[0]?.path ?? "");
+  const [selectedLibraryPath, setSelectedLibraryPath] = useState(workspace.library.find(isChatLibraryItem)?.path ?? "");
   const [expandedLibraryPath, setExpandedLibraryPath] = useState<string | null>(null);
   const [librarySortKey, setLibrarySortKey] = useState<"name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context">("modified");
   const [librarySortDir, setLibrarySortDir] = useState<"asc" | "desc">("desc");
   const [libraryCapFilter, setLibraryCapFilter] = useState<string | null>(null);
   const [libraryFormatFilter, setLibraryFormatFilter] = useState<string | null>(null);
   const [libraryBackendFilter, setLibraryBackendFilter] = useState<string | null>(null);
+  const chatLibrary = useMemo(() => workspace.library.filter(isChatLibraryItem), [workspace.library]);
 
   // Library search sync
   useEffect(() => {
-    const nextFilteredLibrary = workspace.library
+    const nextFilteredLibrary = chatLibrary
       .filter((item) => {
         const haystack = `${item.name} ${item.path} ${item.format} ${item.directoryLabel ?? ""}`.toLowerCase();
         return haystack.includes(librarySearchInput.trim().toLowerCase());
@@ -253,10 +256,10 @@ export default function App() {
     setSelectedLibraryPath((current) =>
       nextFilteredLibrary.some((item) => item.path === current) ? current : nextFilteredLibrary[0].path,
     );
-  }, [workspace.library, librarySearchInput]);
+  }, [chatLibrary, librarySearchInput]);
 
   // Library rows
-  const libraryRows = workspace.library.map((item) => {
+  const libraryRows = chatLibrary.map((item) => {
     const matchedVariant = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
     return {
       item,
@@ -314,7 +317,6 @@ export default function App() {
       };
     });
   const filteredLibraryRows = [...libraryRows, ...syntheticDownloadRows]
-    .filter(({ item }) => item.modelType === "text" || (!item.modelType))
     .filter(({ item, displayFormat, displayQuantization, displayBackend, sourceKind }) => {
       const haystack = `${item.name} ${item.path} ${displayFormat} ${displayQuantization ?? ""} ${displayBackend} ${sourceKind} ${item.directoryLabel ?? ""}`.toLowerCase();
       return haystack.includes(librarySearchInput.trim().toLowerCase());
@@ -337,28 +339,11 @@ export default function App() {
   const selectedLibraryVariant = selectedLibraryRow?.matchedVariant ?? null;
 
   // ── Chat model options ─────────────────────────────────────
-  const catalogChatOptions: ChatModelOption[] = allFeaturedVariants
-    .filter((variant) => variant.launchMode === "direct")
-    .map((variant) => ({
-      key: `catalog:${variant.id}`,
-      label: variant.name,
-      detail: `${variant.format} / ${variant.quantization}`,
-      group: "Catalog",
-      model: variant.name,
-      modelRef: variant.id,
-      canonicalRepo: variant.repo,
-      source: "catalog",
-      backend: variant.backend,
-      paramsB: variant.paramsB,
-      sizeGb: variant.sizeGb,
-      contextWindow: variant.contextWindow,
-      format: variant.format,
-      quantization: variant.quantization,
-      maxContext: variant.maxContext ?? null,
-    }));
-
-  const libraryChatOptions: ChatModelOption[] = workspace.library
-    .filter((item) => (item.modelType === "text" || (!item.modelType)) && !item.broken)
+  // Only list models present in the local library — catalog-only entries
+  // would let the user pick a model that isn't downloaded yet, which then
+  // 500s on Load. Discover tab is the place to pull a new model.
+  const libraryChatOptions: ChatModelOption[] = chatLibrary
+    .filter((item) => !item.broken)
     .map((item) => {
       const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
       const displayFormat = libraryItemFormat(item, matched);
@@ -383,7 +368,7 @@ export default function App() {
       };
     });
 
-  const threadModelOptions = [...catalogChatOptions, ...libraryChatOptions];
+  const threadModelOptions = libraryChatOptions;
 
   // ── Cache labels (needed early by useChat) ──────────────────
   const currentCacheLabel = launchSettings.cacheStrategy === "native"
@@ -639,7 +624,7 @@ export default function App() {
   const previewSavings = Math.max(0, preview.baselineCacheGb - preview.optimizedCacheGb);
   const conversionReady = Boolean(nativeBackends?.converterAvailable ?? workspace.system.mlxLmAvailable);
   const enabledDirectoryCount = (workspace.settings?.modelDirectories ?? []).filter((directory) => directory.enabled).length;
-  const libraryTotalSizeGb = workspace.library.reduce((sum, item) => sum + item.sizeGb, 0);
+  const libraryTotalSizeGb = chatLibrary.reduce((sum, item) => sum + item.sizeGb, 0);
   const localVariantCount = allFeaturedVariants.filter((variant) => variant.availableLocally).length;
   const fileRevealLabel =
     workspace.system.platform === "Darwin" ? "Show in Finder" :
@@ -664,11 +649,11 @@ export default function App() {
     if (!selectedServerOptionBase || selectedServerOptionBase.source !== "catalog") return selectedServerOptionBase;
     const variant = findVariantForReference(workspace.featuredModels, selectedServerOptionBase.modelRef, selectedServerOptionBase.model);
     if (!variant) return selectedServerOptionBase;
-    const localItem = findLibraryItemForVariant(workspace.library, variant);
+    const localItem = findLibraryItemForVariant(chatLibrary, variant);
     if (!localItem) return selectedServerOptionBase;
     return libraryChatOptions.find((option) => option.path === localItem.path) ?? selectedServerOptionBase;
   })();
-  const convertibleLibrary = workspace.library.filter((item) => libraryItemFormat(item) !== "MLX");
+  const convertibleLibrary = chatLibrary.filter((item) => libraryItemFormat(item) !== "MLX");
   const conversionSource = convertibleLibrary.find((item) => item.path === conversionDraft.path) ?? null;
   const conversionVariant =
     (conversionSource ? findCatalogVariantForLibraryItem(workspace.featuredModels, conversionSource) : null) ??
@@ -777,12 +762,12 @@ export default function App() {
     if (!threadModelOptions.length) { setBenchmarkModelKey(""); return; }
     setBenchmarkModelKey((current) => {
       if (threadModelOptions.some((option) => option.key === current)) return current;
-      const firstHealthy = workspace.library.find((item) => !item.broken);
+      const firstHealthy = chatLibrary.find((item) => !item.broken);
       if (firstHealthy) return `library:${firstHealthy.path}`;
-      if (workspace.library.length > 0) return `library:${workspace.library[0].path}`;
+      if (chatLibrary.length > 0) return `library:${chatLibrary[0].path}`;
       return activeThreadOption?.key ?? loadedModelOption?.key ?? threadModelOptions[0].key;
     });
-  }, [activeThreadOption?.key, loadedModelOption?.key, serverOptionKeySignature, workspace.library, setBenchmarkModelKey]);
+  }, [activeThreadOption?.key, chatLibrary, loadedModelOption?.key, serverOptionKeySignature, setBenchmarkModelKey]);
 
   // Sync benchmarkDraft model fields
   useEffect(() => {
@@ -1022,7 +1007,7 @@ export default function App() {
   }
 
   function loadPayloadFromVariant(variant: ModelVariant, nextTab?: TabId) {
-    const localItem = findLibraryItemForVariant(workspace.library, variant);
+    const localItem = findLibraryItemForVariant(chatLibrary, variant);
     if (localItem) {
       return {
         modelRef: localItem.name,
@@ -1050,7 +1035,7 @@ export default function App() {
     | "cacheStrategy" | "cacheBits" | "fp16Layers" | "fusedAttention" | "fitModelInMemory"
     | "contextTokens" | "speculativeDecoding" | "dflashDraftModel" | "treeBudget"
   > {
-    const localItem = findLibraryItemForVariant(workspace.library, variant);
+    const localItem = findLibraryItemForVariant(chatLibrary, variant);
     const modelRef = localItem?.name ?? variant.id;
     const modelName = localItem?.name ?? variant.name;
     const modelBackend = localItem ? libraryItemBackend(localItem, variant) : variant.backend;
@@ -1124,7 +1109,7 @@ export default function App() {
     if (normalizedKey?.startsWith("catalog:")) {
       const modelRef = normalizedKey.slice("catalog:".length);
       const variant = findVariantForReference(workspace.featuredModels, modelRef, undefined);
-      const localItem = variant ? findLibraryItemForVariant(workspace.library, variant) : null;
+      const localItem = variant ? findLibraryItemForVariant(chatLibrary, variant) : null;
       if (localItem) normalizedKey = `library:${localItem.path}`;
     }
     // If no key given, or the key references a model no longer in the options
@@ -1276,7 +1261,7 @@ export default function App() {
         expandedVariantId={expandedVariantId}
         onExpandedVariantIdChange={setExpandedVariantId}
         onDetailFamilyIdChange={setDetailFamilyId}
-        library={workspace.library}
+        library={chatLibrary}
         activeDownloads={activeDownloads}
         onDownloadModel={(repo) => void handleDownloadModel(repo)}
         onCancelModelDownload={(repo) => void handleCancelModelDownload(repo)}
@@ -1491,7 +1476,7 @@ export default function App() {
         longLiveJob={videoState.longLiveJob}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
@@ -1513,7 +1498,7 @@ export default function App() {
         fileRevealLabel={fileRevealLabel}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onCancelVideoDownload={(repo) => void videoState.handleCancelVideoDownload(repo)}
         onDeleteVideoDownload={(repo) => void videoState.handleDeleteVideoDownload(repo)}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
@@ -1573,7 +1558,7 @@ export default function App() {
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
-        onVideoDownload={(repo) => void videoState.handleVideoDownload(repo)}
+        onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
         onGenerateVideo={() => void videoState.handleVideoGenerate()}
         onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
         onRestartServer={() => void handleRestartServer()}
@@ -1613,7 +1598,7 @@ export default function App() {
         convertibleLibrary={convertibleLibrary}
         nativeBackends={nativeBackends}
         preview={preview}
-        workspace={{ system: workspace.system, library: workspace.library }}
+        workspace={{ system: workspace.system, library: chatLibrary }}
         launchCacheLabel={launchCacheLabel}
         busy={busy}
         busyAction={busyAction}
@@ -1730,7 +1715,7 @@ export default function App() {
       <BenchmarkRunTab
         workspace={{
           benchmarks: workspace.benchmarks,
-          library: workspace.library,
+          library: chatLibrary,
           system: {
             availableMemoryGb: workspace.system.availableMemoryGb,
             totalMemoryGb: workspace.system.totalMemoryGb,
@@ -1751,6 +1736,7 @@ export default function App() {
         showBenchmarkPicker={showBenchmarkPicker}
         showBenchmarkModal={showBenchmarkModal}
         installingPackage={installingPackage}
+        installLogs={installLogs}
         onBenchmarkDraftChange={updateBenchmarkDraft}
         onBenchmarkPromptIdChange={setBenchmarkPromptId}
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
@@ -1829,6 +1815,7 @@ export default function App() {
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
+        installLogs={installLogs}
       />
     </div>
   ) : null;
@@ -1982,6 +1969,7 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}
+        installLogs={installLogs}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}
@@ -2056,7 +2044,7 @@ export default function App() {
                 <div className="detail-variants">
                   <span className="eyebrow">Variants ({family.variants.length})</span>
                   {family.variants.map((variant) => {
-                    const matchedLocal = findLibraryItemForVariant(workspace.library, variant);
+                    const matchedLocal = findLibraryItemForVariant(chatLibrary, variant);
                     const downloadState = activeDownloads[variant.repo];
                     const isDownloading = downloadState?.state === "downloading";
                     const isDownloadPaused = downloadState?.state === "cancelled";

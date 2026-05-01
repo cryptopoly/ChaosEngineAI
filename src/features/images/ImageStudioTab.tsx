@@ -19,7 +19,7 @@ import {
   formatImageAccessError,
   isGatedImageAccessError,
 } from "../../utils";
-import { assessImageGenerationSafety } from "../../utils/images";
+import { assessImageGenerationSafety, imageVariantSizeForMemoryEstimate } from "../../utils/images";
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS, IMAGE_SAMPLERS, isFlowMatchingRepo } from "../../constants";
 
 export interface ImageStudioTabProps {
@@ -231,16 +231,34 @@ export function ImageStudioTab({
       assessImageGenerationSafety({
         width: imageWidth,
         height: imageHeight,
-        device: imageRuntimeStatus.device,
+        device: imageRuntimeStatus.device ?? imageRuntimeStatus.expectedDevice,
         deviceMemoryGb: imageRuntimeStatus.deviceMemoryGb,
-        baseModelFootprintGb: selectedImageVariant?.sizeGb,
+        baseModelFootprintGb: selectedImageVariant
+          ? imageVariantSizeForMemoryEstimate(selectedImageVariant)
+          : undefined,
+        runtimeFootprintGb: selectedImageVariant?.runtimeFootprintGb,
+        runtimeFootprintMpsGb: selectedImageVariant?.runtimeFootprintMpsGb,
+        runtimeFootprintCudaGb: selectedImageVariant?.runtimeFootprintCudaGb,
+        runtimeFootprintCpuGb: selectedImageVariant?.runtimeFootprintCpuGb,
+        repo: selectedImageVariant?.repo,
+        ggufFile: selectedImageVariant?.ggufFile,
       }),
     [
       imageWidth,
       imageHeight,
       imageRuntimeStatus.device,
+      imageRuntimeStatus.expectedDevice,
       imageRuntimeStatus.deviceMemoryGb,
+      selectedImageVariant?.repo,
+      selectedImageVariant?.ggufFile,
       selectedImageVariant?.sizeGb,
+      selectedImageVariant?.coreWeightsGb,
+      selectedImageVariant?.onDiskGb,
+      selectedImageVariant?.repoSizeGb,
+      selectedImageVariant?.runtimeFootprintGb,
+      selectedImageVariant?.runtimeFootprintMpsGb,
+      selectedImageVariant?.runtimeFootprintCudaGb,
+      selectedImageVariant?.runtimeFootprintCpuGb,
     ],
   );
 

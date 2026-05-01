@@ -51,6 +51,22 @@ def _has_required_turboquant_mlx_hooks() -> bool:
     return all(any(hook in source for source in sources) for hook in _REQUIRED_HOOKS)
 
 
+def _has_full_turboquant_mlx_package() -> bool:
+    if not _has_required_turboquant_mlx_hooks():
+        return False
+    try:
+        module = importlib.import_module("turboquant_mlx")
+    except ImportError:
+        return False
+    checker = getattr(module, "_has_full_turboquant", None)
+    if not callable(checker):
+        return False
+    try:
+        return bool(checker())
+    except Exception:
+        return False
+
+
 def _load_turboquant_mlx_hooks() -> tuple[Any | None, Any | None]:
     if not _has_required_turboquant_mlx_hooks():
         return None, None
@@ -72,10 +88,10 @@ class TurboQuantStrategy(CacheStrategy):
         return "TurboQuant"
 
     def is_available(self) -> bool:
-        # Keep availability probing side-effect free. Some MLX packages touch
-        # Metal during import, so we only report ready when the expected hooks
-        # are present in the installed source tree.
-        return _has_required_turboquant_mlx_hooks()
+        # The in-tree adapter provides ChaosEngineAI's stable hooks, while
+        # turboquant-mlx-full provides the actual TurboQuantKVCache. Report
+        # "Ready" only when both are visible to the backend runtime.
+        return _has_full_turboquant_mlx_package()
 
     def availability_badge(self) -> str:
         return "Ready" if self.is_available() else "Experimental"
@@ -86,6 +102,11 @@ class TurboQuantStrategy(CacheStrategy):
     def availability_reason(self) -> str | None:
         if self.is_available():
             return None
+        if not _has_required_turboquant_mlx_hooks():
+            return (
+                "ChaosEngineAI's TurboQuant MLX adapter is not available in "
+                "this runtime. Rebuild or update the app, then retry."
+            )
         return (
             "Install turboquant-mlx (arozanov fork; PyPI name "
             "``turboquant-mlx-full``) into ChaosEngineAI's backend runtime: "

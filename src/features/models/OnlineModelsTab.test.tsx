@@ -197,8 +197,8 @@ describe("OnlineModelsTab", () => {
     });
 
     expect(markup).toContain("Qwen/Qwen3-Coder-Next-FP8 was not found on Hugging Face.");
-    expect(markup).toContain("RETRY");
-    expect(markup).toContain("DELETE");
+    expect(markup).toContain("aria-label=\"Retry download\"");
+    expect(markup).toContain("aria-label=\"Delete download\"");
   });
 
   it("renders live hub results even when no curated families match", () => {

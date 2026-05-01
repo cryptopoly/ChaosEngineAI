@@ -32,7 +32,6 @@ from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present
 from backend_service.image_runtime import validate_local_diffusers_snapshot
-from cache_compression import apply_diffusion_cache_strategy
 from backend_service.progress import (
     GenerationCancelled,
     PHASE_DECODING,
@@ -540,15 +539,15 @@ def _enhance_prompt(repo: str, prompt: str) -> tuple[str, str | None]:
 # pressure. Numbers come from the catalog ``sizeGb`` estimates for the
 # stock variants; GGUF Q4/Q6/Q8 variants override at the call site.
 _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
-    "Lightricks/LTX-Video": 14.0,
+    "Lightricks/LTX-Video": 10.0,
     "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 9.0,
     "Wan-AI/Wan2.1-T2V-14B-Diffusers": 28.0,
     "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 11.0,
     "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 28.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
-    "genmo/mochi-1-preview": 20.0,
-    "THUDM/CogVideoX-2b": 10.0,
-    "THUDM/CogVideoX-5b": 18.0,
+    "genmo/mochi-1-preview": 22.0,
+    "THUDM/CogVideoX-2b": 19.0,
+    "THUDM/CogVideoX-5b": 33.0,
 }
 
 # GGUF quant level → multiplier vs the bf16 footprint. Keys are matched as
@@ -985,6 +984,8 @@ class DiffusersVideoEngine:
             # ~1.3–2× on Wan). NotImplementedError is swallowed by the
             # helper when the pipeline class has no vendored patch yet;
             # see FU-007 in CLAUDE.md.
+            from cache_compression import apply_diffusion_cache_strategy
+
             apply_diffusion_cache_strategy(
                 pipeline,
                 strategy_id=config.cacheStrategy,
@@ -1527,6 +1528,11 @@ class DiffusersVideoEngine:
                     pipeline_kwargs["transformer"] = quantized_transformer
                 if gguf_note:
                     VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=gguf_note)
+                if quantized_transformer is None:
+                    raise RuntimeError(
+                        gguf_note
+                        or f"Could not load requested GGUF transformer {gguf_file}."
+                    )
             elif use_nf4:
                 VIDEO_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -1635,9 +1641,10 @@ class DiffusersVideoEngine:
 
         Mirrors the image-side loader: GGUF weights cover the DiT only;
         VAE and text encoders are loaded from the base ``repo`` snapshot.
-        All failure modes are non-fatal — a missing ``gguf`` package, an
-        old diffusers without ``GGUFQuantizationConfig``, or an HF cache
-        miss falls back to the standard fp16 / bf16 transformer path.
+        The helper itself only reports ``(None, note)`` on failure so tests
+        can exercise each missing-dependency path. ``_ensure_pipeline`` treats
+        a requested GGUF variant as strict and raises with that note rather
+        than silently loading the full fp16 / bf16 transformer.
         """
         if importlib.util.find_spec("gguf") is None:
             return None, (

@@ -378,9 +378,23 @@ def _list_llm_processes(limit: int = 12) -> list[dict[str, Any]]:
     return matches[:limit]
 
 
-def _build_system_snapshot(app_version: str, app_started_at: float) -> dict[str, Any]:
-    from backend_service.inference import get_backend_capabilities
-    native = get_backend_capabilities().to_dict()
+def _capabilities_payload(capabilities: Any | None = None) -> dict[str, Any]:
+    if capabilities is None:
+        from backend_service.inference import get_backend_capabilities
+        return get_backend_capabilities().to_dict()
+    to_dict = getattr(capabilities, "to_dict", None)
+    if callable(to_dict):
+        return dict(to_dict())
+    return dict(capabilities)
+
+
+def _build_system_snapshot(
+    app_version: str,
+    app_started_at: float,
+    *,
+    capabilities: Any | None = None,
+) -> dict[str, Any]:
+    native = _capabilities_payload(capabilities)
     memory = psutil.virtual_memory()
     try:
         swap = psutil.swap_memory()

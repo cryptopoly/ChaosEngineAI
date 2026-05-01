@@ -43,6 +43,21 @@ class PathSizeBytesTests(unittest.TestCase):
             self.assertGreaterEqual(total, 512)
             self.assertLess(total, 1024)
 
+    def test_follows_snapshot_symlinks_to_blob_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshots" / "rev-a"
+            blobs = root / "blobs"
+            snapshot.mkdir(parents=True)
+            blobs.mkdir()
+            blob = blobs / "sha256"
+            blob.write_bytes(b"x" * 2048)
+            try:
+                os.symlink(str(blob), str(snapshot / "model.safetensors"))
+            except (OSError, NotImplementedError):
+                self.skipTest("symlink not supported on this platform")
+            self.assertEqual(_path_size_bytes(snapshot), 2048)
+
     def test_dedupes_hardlinks_via_inode(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from backend_service.app import _build_system_snapshot, compute_cache_preview
 
@@ -11,6 +11,7 @@ router = APIRouter()
 
 @router.get("/api/cache/preview")
 def cache_preview(
+    request: Request,
     bits: int = Query(3, ge=0, le=8),
     fp16_layers: int = Query(4, ge=0, le=16),
     num_layers: int = Query(32, ge=1, le=160),
@@ -21,7 +22,7 @@ def cache_preview(
     params_b: float = Query(7.0, ge=0.5, le=1000.0),
     strategy: str = Query("native"),
 ) -> dict[str, Any]:
-    system_stats = _build_system_snapshot()
+    system_stats = _build_system_snapshot(capabilities=request.app.state.chaosengine.runtime.capabilities)
     return compute_cache_preview(
         bits=bits,
         fp16_layers=fp16_layers,

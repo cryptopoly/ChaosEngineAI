@@ -1,5 +1,6 @@
 import type { PreviewMetrics } from "../types";
 import { ProgressRow } from "./ProgressRow";
+import { getCacheFitStatus } from "../utils/cache";
 
 interface PerformancePreviewProps {
   preview: PreviewMetrics;
@@ -13,48 +14,6 @@ function fmt(value: number, digits = 1): string {
   return value.toFixed(digits);
 }
 
-interface FitStatus {
-  label: string;
-  className: string;
-  /** Human-readable explanation of the dominant lever when things don't
-   * fit. Only populated for the "May not fit" tier — the other tiers are
-   * self-explanatory. */
-  advice: string | null;
-}
-
-function getFitStatus(
-  optimizedCacheGb: number,
-  diskSizeGb: number,
-  totalGb: number,
-  bits: number,
-): FitStatus {
-  // Use total system memory since loading a new model unloads the previous one.
-  const totalNeeded = optimizedCacheGb + diskSizeGb;
-  // Reserve ~20% for OS and other apps
-  const usable = totalGb * 0.80;
-  const ratio = usable > 0 ? totalNeeded / usable : 1;
-  if (ratio < 0.7) return { label: "Fits easily", className: "success", advice: null };
-  if (ratio < 0.95) return { label: "Tight fit", className: "warning", advice: null };
-
-  // "May not fit" — pick the most useful lever to show the user. When the
-  // cache pool dwarfs the weights (classic "256K context on a 26B model"
-  // situation), the right fix is context + strategy, not model size. When
-  // the weights themselves are the problem, no context lever will help.
-  const cacheDominates = optimizedCacheGb > diskSizeGb * 1.5;
-  let advice: string;
-  if (!cacheDominates) {
-    advice =
-      "Model weights alone exceed available RAM. Pick a smaller model or a more aggressive quantisation.";
-  } else if (bits <= 0) {
-    advice =
-      "Native f16 cache grows with context — at this setting it's bigger than RAM. Lower the context slider, or pick a compressed strategy (RotorQuant / TriAttention).";
-  } else {
-    advice =
-      "Compressed cache still exceeds RAM at this context. Lower the context slider or reduce FP16 layers.";
-  }
-  return { label: "May not fit", className: "warning", advice };
-}
-
 function getSpeedLabel(tokS: number): { label: string; className: string } | null {
   if (tokS < 5) return { label: "Slow", className: "perf-preview__speed-label--slow" };
   if (tokS < 15) return { label: "Good", className: "perf-preview__speed-label--good" };
@@ -64,7 +23,7 @@ function getSpeedLabel(tokS: number): { label: string; className: string } | nul
 
 export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, compact, actualDiskSizeGb }: PerformancePreviewProps) {
   const diskGb = actualDiskSizeGb ?? preview.diskSizeGb;
-  const fitStatus = getFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits);
+  const fitStatus = getCacheFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits);
   const cacheDelta = preview.baselineCacheGb - preview.optimizedCacheGb;
   const qualityDelta = preview.qualityPercent - 100;
   const cacheMax = Math.max(preview.baselineCacheGb, totalMemoryGb * 0.6, 1);

@@ -1084,6 +1084,60 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertNotIn(repo, state._download_cancel)
         self.assertNotIn(repo, state._download_tokens)
 
+    def test_image_generate_unloads_idle_video_runtime_first(self):
+        state = self.client.app.state.chaosengine
+        state.video_runtime = SimpleNamespace(
+            capabilities=mock.Mock(
+                return_value={
+                    "activeEngine": "diffusers",
+                    "realGenerationAvailable": True,
+                    "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                }
+            ),
+            unload=mock.Mock(return_value={"loadedModelRepo": None}),
+        )
+
+        with mock.patch(
+            "backend_service.routes.images._generate_image_artifacts",
+            return_value=([], {"activeEngine": "diffusers", "loadedModelRepo": "black-forest-labs/FLUX.1-schnell"}),
+        ):
+            response = self.client.post(
+                "/api/images/generate",
+                json={
+                    "modelId": "black-forest-labs/FLUX.1-schnell",
+                    "prompt": "A quiet studio product photo",
+                    "width": 512,
+                    "height": 512,
+                    "steps": 4,
+                    "guidance": 3.5,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        state.video_runtime.unload.assert_called_once_with()
+
+    def test_image_generate_rejects_while_video_generation_active(self):
+        from backend_service.progress import VIDEO_PROGRESS
+
+        VIDEO_PROGRESS.begin(run_label="Wan test", total_steps=10, message="Diffusing")
+        try:
+            response = self.client.post(
+                "/api/images/generate",
+                json={
+                    "modelId": "black-forest-labs/FLUX.1-schnell",
+                    "prompt": "A quiet studio product photo",
+                    "width": 512,
+                    "height": 512,
+                    "steps": 4,
+                    "guidance": 3.5,
+                },
+            )
+        finally:
+            VIDEO_PROGRESS.finish()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("video generation is still running", response.json()["detail"])
+
     def test_image_download_delete_removes_cache_and_unloads_matching_models(self):
         repo = "black-forest-labs/FLUX.1-dev"
         hf_cache = Path(self.tempdir.name) / "hf-cache"
@@ -1830,6 +1884,53 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(library[0]["sourceKind"], "HF cache")
         self.assertFalse(library[0]["broken"])
 
+    def test_discovery_classifies_ltx2_hf_cache_as_video(self):
+        models_root = Path(self.tempdir.name) / "HF"
+        hf_repo = models_root / "models--prince-canuma--LTX-2.3-dev" / "snapshots" / "1234"
+        hf_repo.mkdir(parents=True)
+        (hf_repo / "config.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model.safetensors.index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model-00001-of-00001.safetensors").write_bytes(b"x" * 4096)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "HF",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "prince-canuma/LTX-2.3-dev")
+        self.assertEqual(library[0]["modelType"], "video")
+
+    def test_discovery_classifies_sana_hf_cache_as_image(self):
+        models_root = Path(self.tempdir.name) / "HF"
+        hf_repo = models_root / "models--Efficient-Large-Model--Sana_Sprint_1.6B_1024px_diffusers" / "snapshots" / "1234"
+        hf_repo.mkdir(parents=True)
+        (hf_repo / "config.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model_index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model.safetensors.index.json").write_text("{}", encoding="utf-8")
+        (hf_repo / "model-00001-of-00001.safetensors").write_bytes(b"x" * 4096)
+
+        library = _discover_local_models(
+            [
+                {
+                    "label": "HF",
+                    "path": str(models_root),
+                    "enabled": True,
+                    "source": "user",
+                }
+            ]
+        )
+
+        self.assertEqual(len(library), 1)
+        self.assertEqual(library[0]["name"], "Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers")
+        self.assertEqual(library[0]["modelType"], "image")
+
     def test_discovery_marks_nvfp4_modelopt_repo_as_unsupported_for_mlx(self):
         models_root = Path(self.tempdir.name) / "HF"
         hf_repo = models_root / "models--LilaRest--gemma-4-31B-it-NVFP4-turbo" / "snapshots" / "1234"
@@ -2044,6 +2145,9 @@ class VideoRepoAllowPatternsTests(unittest.TestCase):
         self.assertIn("vae/**", patterns)
         self.assertIn("text_encoder/**", patterns)
         self.assertIn("tokenizer/**", patterns)
+        self.assertIn("text_projections/**", patterns)
+        self.assertIn("audio_vae/**", patterns)
+        self.assertIn("vocoder/**", patterns)
         self.assertIn("*spatial-upscaler*.safetensors", patterns)
         self.assertNotIn("model_index.json", patterns)
 

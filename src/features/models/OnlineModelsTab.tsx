@@ -1,4 +1,6 @@
 import { Panel } from "../../components/Panel";
+import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
+import type { ModelStatusKind } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
 import type {
   HubFileListResponse,
@@ -230,13 +232,13 @@ export function OnlineModelsTab({
                       <span className="badge muted">{family.provider}</span>
                       <span className="badge muted">{paramRange}</span>
                       {formats.map((f) => <span key={f} className="badge muted">{f}</span>)}
-                      {localCount > 0 ? <span className="badge success">{localCount} downloaded</span> : null}
+                      {localCount > 0 ? <StatusIcon status="installed" label={`${localCount} installed`} /> : null}
                       {headerIsDownloading ? (
-                        <span className="badge accent">{downloadProgressLabel(headerDownload)}</span>
+                        <StatusIcon status="downloading" label="Downloading" detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
                       ) : headerIsPaused ? (
-                        <span className="badge warning">{downloadProgressLabel(headerDownload)}</span>
+                        <StatusIcon status="paused" label="Paused" detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
                       ) : headerIsFailed ? (
-                        <span className="badge warning">DOWNLOAD FAILED</span>
+                        <StatusIcon status="failed" label="Download failed" detail={headerDownload?.error ?? null} />
                       ) : null}
                     </div>
                     <p>{family.headline}</p>
@@ -275,6 +277,7 @@ export function OnlineModelsTab({
                         <span>RAM</span>
                         <span>Compressed</span>
                         <span>Context</span>
+                        <span>Status</span>
                         <span></span>
                       </div>
                       {family.variants.map((variant) => {
@@ -285,6 +288,15 @@ export function OnlineModelsTab({
                         const isDownloadPaused = downloadState?.state === "cancelled";
                         const isDownloadFailed = downloadState?.state === "failed";
                         const isDownloadComplete = downloadState?.state === "completed";
+                        const variantStatus: { kind: ModelStatusKind; label: string; detail?: string | null } = variant.availableLocally || isDownloadComplete
+                          ? { kind: "installed", label: variant.availableLocally ? "Installed" : "Download complete" }
+                          : isDownloading && downloadState
+                            ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                            : isDownloadPaused && downloadState
+                              ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                              : isDownloadFailed && downloadState
+                                ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
+                                : { kind: "incomplete", label: "Not installed" };
                         return (
                           <div key={variant.id}>
                             <div
@@ -304,37 +316,35 @@ export function OnlineModelsTab({
                               <span>{variant.estimatedMemoryGb ? `~${number(variant.estimatedMemoryGb)}GB` : "?"}</span>
                               <span>{variant.estimatedCompressedMemoryGb ? `~${number(variant.estimatedCompressedMemoryGb)}GB` : "?"}</span>
                               <span>{variant.contextWindow}</span>
+                              <span><StatusIcon status={variantStatus.kind} label={variantStatus.label} detail={variantStatus.detail} /></span>
                               <div className="discover-variant-actions" onClick={(e) => e.stopPropagation()}>
                                 {variant.availableLocally ? (
                                   <>
                                     {variant.launchMode === "convert" ? (
-                                      <button className="primary-button action-convert" type="button" onClick={() => onPrepareCatalogConversion(variant)}>CONVERT</button>
+                                      <IconActionButton icon="convert" label="Convert model" buttonStyle="primary" className="action-convert" onClick={() => onPrepareCatalogConversion(variant)} />
                                     ) : null}
-                                    <button className="primary-button action-chat" type="button" onClick={() => onOpenModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)}>CHAT</button>
-                                    <button className="primary-button action-server" type="button" onClick={() => onOpenModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)}>SERVER</button>
+                                    <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
+                                    <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
                                   </>
                                 ) : isDownloading ? (
                                   <>
-                                    <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                                    <button className="secondary-button" type="button" onClick={() => onCancelModelDownload(variant.repo)}>PAUSE</button>
-                                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(variant.repo)}>CANCEL</button>
+                                    <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(variant.repo)} />
+                                    <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadPaused ? (
                                   <>
-                                    <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                                    <button className="secondary-button" type="button" onClick={() => onDownloadModel(variant.repo)}>RESUME</button>
-                                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(variant.repo)}>DELETE</button>
+                                    <IconActionButton icon="resume" label="Resume download" onClick={() => onDownloadModel(variant.repo)} />
+                                    <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadFailed ? (
                                   <>
-                                    <span className="badge warning">DOWNLOAD FAILED</span>
-                                    <button className="secondary-button" type="button" onClick={() => onDownloadModel(variant.repo)}>RETRY</button>
-                                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(variant.repo)}>DELETE</button>
+                                    <IconActionButton icon="retry" label="Retry download" onClick={() => onDownloadModel(variant.repo)} />
+                                    <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadComplete ? (
-                                  <span className="badge success">DOWNLOAD COMPLETE</span>
+                                  null
                                 ) : (
-                                  <button className="secondary-button" type="button" onClick={() => onDownloadModel(variant.repo)}>DOWNLOAD</button>
+                                  <IconActionButton icon="download" label="Download model" onClick={() => onDownloadModel(variant.repo)} />
                                 )}
                               </div>
                             </div>
@@ -353,18 +363,7 @@ export function OnlineModelsTab({
                                     </p>
                                   ) : null}
                                   {matchedLocal ? <p className="mono-text variant-local-path">{matchedLocal.path}</p> : null}
-                                  <a
-                                    className="text-link"
-                                    href={variant.link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      onOpenExternalUrl(variant.link);
-                                    }}
-                                  >
-                                    Open model card on HuggingFace
-                                  </a>
+                                  <IconActionButton icon="huggingFace" label="Open model card on Hugging Face" onClick={() => onOpenExternalUrl(variant.link)} />
                                 </div>
                               </div>
                             ) : null}
@@ -408,6 +407,17 @@ export function OnlineModelsTab({
             const isDownloadPaused = downloadState?.state === "cancelled";
             const isDownloadFailed = downloadState?.state === "failed";
             const isDownloadComplete = downloadState?.state === "completed";
+            const hubStatus: { kind: ModelStatusKind; label: string; detail?: string | null } | null = model.availableLocally
+              ? { kind: "installed", label: "Installed" }
+              : isDownloadComplete
+                ? { kind: "downloaded", label: "Download complete" }
+                : isDownloading && downloadState
+                  ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                  : isDownloadPaused && downloadState
+                    ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                    : isDownloadFailed && downloadState
+                      ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
+                      : null;
             return (
               <div key={model.id} className={`discover-card${isExpanded ? " expanded" : ""}`}>
                 <div
@@ -424,17 +434,7 @@ export function OnlineModelsTab({
                       <strong>{model.name}</strong>
                       <span className="badge muted">{model.provider}</span>
                       <span className={`badge ${model.format === "GGUF" ? "accent" : "muted"}`}>{model.format}</span>
-                      {model.availableLocally ? <span className="badge success">Downloaded</span> : null}
-                      {!model.availableLocally && isDownloadComplete ? <span className="badge success">Download complete</span> : null}
-                      {!model.availableLocally && isDownloading ? (
-                        <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                      ) : null}
-                      {!model.availableLocally && isDownloadPaused ? (
-                        <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                      ) : null}
-                      {!model.availableLocally && isDownloadFailed ? (
-                        <span className="badge warning">Download failed</span>
-                      ) : null}
+                      {hubStatus ? <StatusIcon status={hubStatus.kind} label={hubStatus.label} detail={hubStatus.detail} /> : null}
                     </div>
                     <div className="discover-card-meta">
                       {formatReleaseLabel(model.releaseLabel, model.createdAt) ? (
@@ -554,66 +554,30 @@ export function OnlineModelsTab({
                     <div className="button-row">
                       {model.availableLocally ? (
                         <>
-                          <button className="primary-button action-chat" type="button" onClick={() => onOpenModelSelector("thread")}>Chat</button>
-                          <button className="primary-button action-server" type="button" onClick={() => onOpenModelSelector("server")}>Server</button>
+                          <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread")} />
+                          <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server")} />
                         </>
                       ) : isDownloading ? (
                         <>
-                          <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                          <button className="secondary-button" type="button" onClick={() => onCancelModelDownload(model.repo)}>
-                            Pause
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(model.repo)}>
-                            Cancel
-                          </button>
+                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(model.repo)} />
+                          <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadPaused ? (
                         <>
-                          <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            onClick={() => onDownloadModel(model.repo)}
-                          >
-                            Resume
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(model.repo)}>
-                            Delete
-                          </button>
+                          <IconActionButton icon="resume" label="Resume download" onClick={() => onDownloadModel(model.repo)} />
+                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadFailed ? (
                         <>
-                          <span className="badge warning">Download failed</span>
-                          <button className="secondary-button" type="button" onClick={() => onDownloadModel(model.repo)}>
-                            Retry
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteModelDownload(model.repo)}>
-                            Delete
-                          </button>
+                          <IconActionButton icon="retry" label="Retry download" onClick={() => onDownloadModel(model.repo)} />
+                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadComplete ? (
-                        <span className="badge success">Download complete</span>
+                        <StatusIcon status="downloaded" label="Download complete" />
                       ) : (
-                        <button
-                          className="primary-button"
-                          type="button"
-                          onClick={() => onDownloadModel(model.repo)}
-                        >
-                          Download
-                        </button>
+                        <IconActionButton icon="download" label="Download model" buttonStyle="primary" onClick={() => onDownloadModel(model.repo)} />
                       )}
-                      <a
-                        className="text-link"
-                        href={model.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onOpenExternalUrl(model.link);
-                        }}
-                      >
-                        Open on HuggingFace ↗
-                      </a>
+                      <IconActionButton icon="huggingFace" label="Open on Hugging Face" onClick={() => onOpenExternalUrl(model.link)} />
                     </div>
                   </div>
                 ) : null}

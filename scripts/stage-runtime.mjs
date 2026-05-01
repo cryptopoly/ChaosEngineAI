@@ -61,7 +61,7 @@ function main() {
   pruneBundledProjectArtifacts();
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service", "cache_compression"]) {
+  for (const relativePath of ["backend_service", "cache_compression", "turboquant_mlx"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {

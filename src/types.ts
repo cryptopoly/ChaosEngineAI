@@ -106,6 +106,8 @@ export interface ModelVariant {
   familyId: string;
   name: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
   link: string;
   paramsB: number;
   sizeGb: number;
@@ -181,6 +183,23 @@ export interface LaunchPreferences {
   fitModelInMemory: boolean;
   speculativeDecoding: boolean;
   treeBudget: number;
+}
+
+export interface StrategyInstallLogStep {
+  id: string;
+  label: string;
+  command: string;
+  status: "running" | "success" | "failed";
+  output: string;
+}
+
+export interface StrategyInstallLog {
+  strategyId: string;
+  label: string;
+  status: "running" | "success" | "failed";
+  startedAt: string;
+  finishedAt?: string | null;
+  steps: StrategyInstallLogStep[];
 }
 
 export interface RemoteProvider {
@@ -387,6 +406,7 @@ export interface NativeBackendStatus {
   llamaServerPath?: string | null;
   llamaServerTurboPath?: string | null;
   converterAvailable: boolean;
+  probing?: boolean;
 }
 
 export interface GenerationMetrics {
@@ -713,11 +733,21 @@ export interface ImageModelVariant {
   name: string;
   provider: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];
   taskSupport: ImageModelTask[];
   sizeGb: number;
+  /** Resident peak memory at runtime. Useful when on-disk / quantized
+   * transformer size materially understates the full pipeline footprint
+   * (for example FLUX GGUF: GGUF covers the transformer only, while T5/CLIP,
+   * VAE, and runtime buffers still dominate the Python process). */
+  runtimeFootprintGb?: number;
+  runtimeFootprintMpsGb?: number;
+  runtimeFootprintCudaGb?: number;
+  runtimeFootprintCpuGb?: number;
   recommendedResolution: string;
   note: string;
   availableLocally: boolean;
@@ -773,6 +803,9 @@ export interface VideoModelVariant {
   name: string;
   provider: string;
   repo: string;
+  ggufRepo?: string | null;
+  ggufFile?: string | null;
+  textEncoderRepo?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];
@@ -785,11 +818,17 @@ export interface VideoModelVariant {
    * sharded safetensors and tokenizer caches. ``undefined`` falls back to
    * the legacy ``sizeGb × 1.4`` heuristic. */
   runtimeFootprintGb?: number;
+  runtimeFootprintMpsGb?: number;
+  runtimeFootprintCudaGb?: number;
+  runtimeFootprintCpuGb?: number;
   recommendedResolution: string;
   defaultDurationSeconds: number;
   note: string;
   availableLocally: boolean;
   hasLocalData?: boolean;
+  localDataRepos?: string[];
+  primaryLocalRepo?: string | null;
+  localStatusReason?: string | null;
   estimatedGenerationSeconds: number | null;
   onDiskBytes?: number | null;
   onDiskGb?: number | null;

@@ -636,12 +636,15 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
         .env("PYTHONNOUSERSITE", "1")
         .env("CHAOSENGINE_EMBEDDED_RUNTIME", "1");
 
-    // Prepend the user-local extras dir to PYTHONPATH so packages installed
-    // at runtime (CUDA torch, diffusers, etc. via /api/setup/install-gpu-bundle)
-    // shadow anything in the bundled site-packages. The extras dir lives
-    // outside the ephemeral %TEMP% runtime extraction so it survives app
-    // updates — the installer re-extracts the bundled runtime from scratch
-    // on each launch, but never touches the extras tree.
+    // Insert the user-local extras dir after the app backend but before
+    // bundled site-packages. Runtime-installed packages (CUDA torch,
+    // diffusers, etc.) still shadow bundled third-party wheels, while
+    // app-owned adapter modules in backend/ keep priority over same-named
+    // upstream packages installed into extras.
+    //
+    // The extras dir lives outside the ephemeral %TEMP% runtime extraction
+    // so it survives app updates — the installer re-extracts the bundled
+    // runtime from scratch on each launch, but never touches the extras tree.
     // (CHAOSENGINE_EXTRAS_SITE_PACKAGES is already set by the caller so
     // the backend can target it for pip --target installs.)
     let extras_dir = chaosengine_extras_site_packages_for_python(
@@ -650,10 +653,13 @@ fn apply_embedded_runtime_env(command: &mut Command, runtime: &EmbeddedRuntime) 
     )
     .filter(|path| path.is_dir());
     let mut python_path_entries: Vec<PathBuf> = Vec::with_capacity(runtime.python_path.len() + 1);
+    if let Some(first) = runtime.python_path.first() {
+        python_path_entries.push(first.clone());
+    }
     if let Some(extras) = extras_dir.as_ref() {
         python_path_entries.push(extras.clone());
     }
-    python_path_entries.extend(runtime.python_path.iter().cloned());
+    python_path_entries.extend(runtime.python_path.iter().skip(1).cloned());
     if let Some(python_path) = join_paths(&python_path_entries) {
         command.env("PYTHONPATH", python_path);
     }

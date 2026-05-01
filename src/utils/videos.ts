@@ -30,6 +30,48 @@ export function findVideoVariantByRepo(
   return null;
 }
 
+export function videoDownloadRepos(variant: VideoModelVariant): string[] {
+  const repos = [variant.repo];
+  if (variant.ggufRepo && variant.ggufFile) repos.push(variant.ggufRepo);
+  if (variant.hasLocalData && variant.textEncoderRepo) repos.push(variant.textEncoderRepo);
+  return repos;
+}
+
+export function videoDownloadStatusForVariant<T extends { state: string }>(
+  downloads: Record<string, T>,
+  variant: VideoModelVariant,
+): T | undefined {
+  const statuses = videoDownloadRepos(variant)
+    .map((repo) => downloads[repo])
+    .filter((status): status is T => Boolean(status));
+  return (
+    statuses.find((status) => status.state === "downloading")
+    ?? statuses.find((status) => status.state === "failed")
+    ?? statuses.find((status) => status.state === "cancelled")
+    ?? statuses.find((status) => status.state === "completed")
+  );
+}
+
+export function videoDeleteRepoForVariant<T extends { repo?: string | null }>(
+  variant: VideoModelVariant,
+  downloadState?: T,
+): string {
+  const activeRepo = String(downloadState?.repo ?? "").trim();
+  if (activeRepo) return activeRepo;
+  const primaryLocalRepo = String(variant.primaryLocalRepo ?? "").trim();
+  if (primaryLocalRepo) return primaryLocalRepo;
+  const [firstLocalRepo] = variant.localDataRepos ?? [];
+  if (firstLocalRepo) return firstLocalRepo;
+  return variant.repo;
+}
+
+export function videoDeleteLabelForRepo(variant: VideoModelVariant, repo: string, fallback = "Delete model"): string {
+  if (repo === variant.ggufRepo) return "Delete shared GGUF download";
+  if (repo === variant.textEncoderRepo) return "Delete shared text encoder download";
+  if (repo !== variant.repo) return "Delete shared component download";
+  return fallback;
+}
+
 export function videoVariantMatchesDiscoverFilters(
   variant: VideoModelVariant,
   taskFilter: VideoDiscoverTaskFilter,
@@ -79,6 +121,114 @@ export function videoDiscoverVariantMatchesQuery(variant: VideoModelVariant, que
 export function videoDiscoverFamilyMatchesQuery(family: VideoModelFamily, query: string): boolean {
   if (!query) return true;
   return videoDiscoverFamilyHaystack(family).includes(query);
+}
+
+export interface VideoDiscoverMemoryEstimate {
+  estimatedPeakGb: number;
+  modelFootprintGb: number;
+  resolutionLabel: string;
+  frameCount: number;
+  label: string;
+  title: string;
+}
+
+function formatVideoDiscoverGb(gb: number): string {
+  if (!Number.isFinite(gb) || gb <= 0) return "Unknown";
+  return gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
+}
+
+function parseRecommendedVideoResolution(value: string | null | undefined): { width: number; height: number } {
+  const match = /(\d{3,5})\s*[x×]\s*(\d{3,5})/i.exec(value ?? "");
+  if (!match) return { width: 832, height: 480 };
+  const width = Number.parseInt(match[1], 10);
+  const height = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return { width: 832, height: 480 };
+  }
+  return { width, height };
+}
+
+function videoVariantSizeForMemoryEstimate(variant: VideoModelVariant): number {
+  // Runtime memory should follow the curated runtime/catalog footprint, not
+  // local storage size. Some video repos (notably LTX-2.3 MLX) keep shared
+  // components or duplicate sharded weights on disk, so ``onDiskGb`` /
+  // live ``coreWeightsGb`` can be much larger than the resident model the
+  // Studio actually loads. Keep those fields as storage/download fallbacks
+  // only for uncurated rows with no catalog size.
+  const candidates = [
+    variant.sizeGb,
+    variant.coreWeightsGb,
+    variant.onDiskGb,
+    variant.repoSizeGb,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+      return candidate;
+    }
+  }
+  return 0;
+}
+
+function defaultFrameCountForVideoVariant(variant: VideoModelVariant): number {
+  const seconds = Number.isFinite(variant.defaultDurationSeconds)
+    ? variant.defaultDurationSeconds
+    : 4;
+  const estimated = Math.round(seconds * 8);
+  const clamped = Math.max(1, Math.min(257, estimated));
+  const remainder = (clamped - 1) % 4;
+  if (remainder === 0) return clamped;
+  const down = clamped - remainder;
+  const up = down + 4;
+  return up - clamped < clamped - down ? up : down;
+}
+
+export function videoDiscoverMemoryEstimate(variant: VideoModelVariant): VideoDiscoverMemoryEstimate | null {
+  const baseModelFootprintGb = videoVariantSizeForMemoryEstimate(variant);
+  const hasRuntimeFootprint =
+    typeof variant.runtimeFootprintGb === "number"
+    && Number.isFinite(variant.runtimeFootprintGb)
+    && variant.runtimeFootprintGb > 0;
+  if (!(baseModelFootprintGb > 0) && !hasRuntimeFootprint) return null;
+
+  const { width, height } = parseRecommendedVideoResolution(variant.recommendedResolution);
+  const frameCount = defaultFrameCountForVideoVariant(variant);
+  const safety = assessVideoGenerationSafety({
+    width,
+    height,
+    numFrames: frameCount,
+    device: null,
+    // Discover is a requirement estimate, not a live compatibility check.
+    deviceMemoryGb: 512,
+    baseModelFootprintGb,
+    runtimeFootprintGb: variant.runtimeFootprintGb,
+    runtimeFootprintMpsGb: variant.runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb: variant.runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb: variant.runtimeFootprintCpuGb,
+  });
+  const resolutionLabel = `${width}×${height}`;
+  const estimatedPeakGb = Math.max(safety.estimatedPeakGb, safety.modelFootprintGb);
+  const storageNote = (
+    typeof variant.onDiskGb === "number"
+    && Number.isFinite(variant.onDiskGb)
+    && variant.onDiskGb > 0
+    && baseModelFootprintGb > 0
+    && variant.onDiskGb > baseModelFootprintGb * 1.25
+  )
+    ? ` Local storage is ${formatVideoDiscoverGb(variant.onDiskGb)} because the snapshot can include shared or duplicate components; runtime RAM uses the catalog footprint.`
+    : "";
+  return {
+    estimatedPeakGb,
+    modelFootprintGb: safety.modelFootprintGb,
+    resolutionLabel,
+    frameCount,
+    label: `~${formatVideoDiscoverGb(estimatedPeakGb)} @ ${resolutionLabel}`,
+    title: (
+      `Estimated peak RAM/VRAM at ${resolutionLabel} with ${frameCount} frames. Includes resident model memory`
+      + (safety.modelFootprintGb > 0 ? ` (~${formatVideoDiscoverGb(safety.modelFootprintGb)})` : "")
+      + " plus a temporal attention estimate. Actual usage varies by runtime, frame count, and device."
+      + storageNote
+    ),
+  };
 }
 
 /** WebKit's ``fetch()`` (Safari + macOS Tauri's WKWebView) produces the
@@ -300,6 +450,26 @@ function estimateResidentModelGb(
   return baseFootprintGb * factor;
 }
 
+function positiveRuntimeFootprint(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function runtimeFootprintForDevice(opts: {
+  device: VideoEffectiveDevice;
+  runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
+}): number | null {
+  if (opts.device === "mps") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintMpsGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  if (opts.device === "cuda") {
+    return positiveRuntimeFootprint(opts.runtimeFootprintCudaGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+  }
+  return positiveRuntimeFootprint(opts.runtimeFootprintCpuGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
+}
+
 /**
  * Estimate whether a video generation request is in danger of detonating
  * the inference device. The estimate combines two memory terms:
@@ -353,8 +523,22 @@ export function assessVideoGenerationSafety(opts: {
    * directly — bypasses the ``sizeGb × 1.4`` heuristic. Disk size
    * overstates resident because of duplicate sharded safetensors. */
   runtimeFootprintGb?: number | null;
+  runtimeFootprintMpsGb?: number | null;
+  runtimeFootprintCudaGb?: number | null;
+  runtimeFootprintCpuGb?: number | null;
 }): VideoGenerationSafety {
-  const { width, height, numFrames, device, deviceMemoryGb, baseModelFootprintGb, runtimeFootprintGb } = opts;
+  const {
+    width,
+    height,
+    numFrames,
+    device,
+    deviceMemoryGb,
+    baseModelFootprintGb,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+  } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
   const isCuda = normalisedDevice.startsWith("cuda");
@@ -395,11 +579,16 @@ export function assessVideoGenerationSafety(opts: {
       : 0;
   // Prefer explicit runtime footprint when the catalog supplies one — it
   // already reflects resident peak. Otherwise estimate from disk size.
+  const runtimeOverrideGb = runtimeFootprintForDevice({
+    device: effectiveDevice,
+    runtimeFootprintGb,
+    runtimeFootprintMpsGb,
+    runtimeFootprintCudaGb,
+    runtimeFootprintCpuGb,
+  });
   const modelFootprintGb =
-    runtimeFootprintGb != null
-    && Number.isFinite(runtimeFootprintGb)
-    && runtimeFootprintGb > 0
-      ? runtimeFootprintGb
+    runtimeOverrideGb != null
+      ? runtimeOverrideGb
       : estimateResidentModelGb(baseFootprint, effectiveDevice);
 
   if (

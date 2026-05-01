@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { LaunchPreferences, PreviewMetrics } from "../types";
+import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
@@ -121,6 +121,7 @@ interface RuntimeControlsProps {
   availableCacheStrategies?: CacheStrategyOption[];
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
+  installLogs?: Record<string, StrategyInstallLog>;
   dflashInfo?: DFlashInfo;
   /** Backend of the selected model (e.g. "mlx", "gguf", "vllm", "auto"). Used for compatibility validation. */
   selectedBackend?: string | null;
@@ -131,6 +132,77 @@ interface RuntimeControlsProps {
   turboInstalled?: boolean;
   /** Whether an update is available for llama-server-turbo. */
   turboUpdateAvailable?: boolean;
+}
+
+function StrategyInstallTerminal({
+  label,
+  log,
+}: {
+  label: string;
+  log?: StrategyInstallLog;
+}) {
+  const status = log?.status ?? "idle";
+  const summaryStatus =
+    status === "running" ? "running" :
+    status === "success" ? "complete" :
+    status === "failed" ? "failed" :
+    "ready";
+  const lines = log?.steps.length
+    ? log.steps.map((step) => [
+      `$ ${step.command}`,
+      `[${step.status.toUpperCase()}] ${step.label}`,
+      formatStrategyInstallOutput(step.output, step.status),
+    ].join("\n")).join("\n\n")
+    : "No install output yet. Run the installer to capture stdout and stderr here.";
+
+  return (
+    <details className={`strategy-install-terminal strategy-install-terminal--${status}`}>
+      <summary className="strategy-install-terminal-summary">
+        <span>{label} install terminal</span>
+        <span className={`strategy-install-terminal-status strategy-install-terminal-status--${status}`}>
+          {summaryStatus}
+        </span>
+      </summary>
+      <div className="strategy-install-terminal-meta">
+        {log?.startedAt ? <span>Started {log.startedAt}</span> : <span>Collapsed by default. Open after an install attempt to inspect failures.</span>}
+        {log?.finishedAt ? <span>Finished {log.finishedAt}</span> : null}
+      </div>
+      <pre className="strategy-install-terminal-output">{lines}</pre>
+    </details>
+  );
+}
+
+function formatStrategyInstallOutput(output: string, status: string): string {
+  const trimmed = output.trim();
+  if (!trimmed || status !== "success") return trimmed || "(no output)";
+
+  const lines = trimmed.split(/\r?\n/);
+  const filtered: string[] = [];
+  let omittedResolverWarning = false;
+  let inResolverWarning = false;
+  for (const line of lines) {
+    const text = line.trim();
+    if (/^ERROR: pip's dependency resolver does not currently take into account/i.test(text)) {
+      omittedResolverWarning = true;
+      inResolverWarning = true;
+      continue;
+    }
+    if (inResolverWarning) {
+      if (
+        text === "" ||
+        /^\S+\s+\S+\s+requires\s+.+which is not installed\.$/i.test(text) ||
+        /^\S+\s+\S+\s+requires\s+.+but you have .+ which is incompatible\.$/i.test(text)
+      ) {
+        continue;
+      }
+      inResolverWarning = false;
+    }
+    filtered.push(line);
+  }
+  if (omittedResolverWarning) {
+    filtered.push("[pip resolver warnings omitted; install command exited successfully]");
+  }
+  return filtered.join("\n").trim() || "(no output)";
 }
 
 export function RuntimeControls({
@@ -147,6 +219,7 @@ export function RuntimeControls({
   availableCacheStrategies,
   onInstallPackage,
   installingPackage,
+  installLogs,
   dflashInfo,
   selectedBackend,
   selectedModelRef,
@@ -173,6 +246,8 @@ export function RuntimeControls({
   const dflashUnavailableReason = dflashSupport.reason;
   const ddtreeAvailable = dflashSupport.ddtreeAvailable;
   const canInstallDflashForModel = dflashSupport.modelSupported === true;
+  const dflashInstallLog = installLogs?.["dflash-mlx"] ?? installLogs?.dflash;
+  const showDflashInstallTerminal = Boolean(dflashInstallLog || (!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage));
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
@@ -180,6 +255,13 @@ export function RuntimeControls({
   const selectedStrategy = strategies.find(s => s.id === settings.cacheStrategy) ?? strategies[0];
   const fp16LayersSupported = Boolean(selectedStrategy?.supportsFp16Layers) && !isGgufBackend;
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
+  const isStrategyRuntimeAvailable = (strategy: CacheStrategyOption) => {
+    if (strategy.requiredLlamaBinary === "turbo" && isGgufBackend) {
+      return Boolean(turboInstalled);
+    }
+    return strategy.available;
+  };
+  const selectedStrategyRuntimeAvailable = selectedStrategy ? isStrategyRuntimeAvailable(selectedStrategy) : false;
 
   useEffect(() => {
     if (isGgufBackend && settings.fp16Layers !== 0) {
@@ -189,7 +271,7 @@ export function RuntimeControls({
 
   useEffect(() => {
     if (settings.cacheStrategy === "native") return;
-    if (hasSelectedStrategy && selectedStrategy?.available && isStrategyCompatible(settings.cacheStrategy, selectedBackend)) return;
+    if (hasSelectedStrategy && selectedStrategyRuntimeAvailable && isStrategyCompatible(settings.cacheStrategy, selectedBackend)) return;
     onChange("cacheStrategy", "native");
     if (settings.cacheBits !== 0) onChange("cacheBits", 0);
     if (settings.fp16Layers !== 0) onChange("fp16Layers", 0);
@@ -197,7 +279,7 @@ export function RuntimeControls({
     hasSelectedStrategy,
     onChange,
     selectedBackend,
-    selectedStrategy?.available,
+    selectedStrategyRuntimeAvailable,
     settings.cacheBits,
     settings.cacheStrategy,
     settings.fp16Layers,
@@ -253,7 +335,7 @@ export function RuntimeControls({
   }
 
   function selectStrategy(strategy: CacheStrategyOption) {
-    if (!strategy.available || !isStrategyCompatible(strategy.id, selectedBackend)) return;
+    if (!isStrategyRuntimeAvailable(strategy) || !isStrategyCompatible(strategy.id, selectedBackend)) return;
     onChange("cacheStrategy", strategy.id);
     if (strategy.defaultBits != null) {
       onChange("cacheBits", strategy.defaultBits);
@@ -285,8 +367,9 @@ export function RuntimeControls({
           const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
           const isIncompat = incompatReason != null;
           const needsTurbo = strategy.requiredLlamaBinary === "turbo";
-          const turboMissing = needsTurbo && isGgufBackend && turboInstalled === false;
-          const isDisabled = !strategy.available || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
+          const turboMissing = needsTurbo && isGgufBackend && !turboInstalled;
+          const runtimeAvailable = isStrategyRuntimeAvailable(strategy);
+          const isDisabled = !runtimeAvailable || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
 
           return (
             <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
@@ -301,10 +384,10 @@ export function RuntimeControls({
                   <span className="cache-strategy-card-name">{strategy.name}</span>
                   <span
                     className={`cache-strategy-badge cache-strategy-badge--${
-                      isIncompat ? "warning" : turboMissing ? "warning" : strategy.available ? "ready" : strategy.availabilityTone ?? "install"
+                      isIncompat ? "warning" : turboMissing ? "warning" : runtimeAvailable ? "ready" : strategy.availabilityTone ?? "install"
                     }`}
                   >
-                    {isIncompat ? "N/A" : turboMissing ? "No turbo binary" : strategy.available ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                    {isIncompat ? "N/A" : turboMissing ? "No turbo binary" : runtimeAvailable ? "Ready" : strategy.availabilityBadge ?? "Install"}
                   </span>
                 </button>
                 {info ? (
@@ -321,7 +404,7 @@ export function RuntimeControls({
               {isExpanded && info ? (
                 <div className="cache-strategy-info-panel">
                   <p>{info.description}</p>
-                  {!strategy.available && strategy.availabilityReason ? (
+                  {!runtimeAvailable && strategy.availabilityReason ? (
                     <p className="cache-strategy-status-note">{strategy.availabilityReason}</p>
                   ) : null}
                   <div className="cache-strategy-meta">
@@ -332,7 +415,7 @@ export function RuntimeControls({
                     <div className="cache-strategy-install">
                       <span className="cache-strategy-meta-label">Install:</span>
                       <code>{info.install}</code>
-                      {info.autoInstallPackage && onInstallPackage && !strategy.available ? (
+                      {info.autoInstallPackage && onInstallPackage && !runtimeAvailable ? (
                         <button
                           type="button"
                           className="cache-strategy-install-btn"
@@ -357,6 +440,12 @@ export function RuntimeControls({
                         >
                           {installingPackage === strategy.id ? "Updating..." : "Update available"}
                         </button>
+                      ) : null}
+                      {info.autoInstallPackage || installLogs?.[strategy.id] ? (
+                        <StrategyInstallTerminal
+                          label={strategy.name}
+                          log={installLogs?.[strategy.id]}
+                        />
                       ) : null}
                     </div>
                   ) : null}
@@ -523,6 +612,9 @@ export function RuntimeControls({
               </div>
             ) : null}
           </div>
+        ) : null}
+        {showDflashInstallTerminal ? (
+          <StrategyInstallTerminal label="DFlash" log={dflashInstallLog} />
         ) : null}
         {settings.speculativeDecoding && dflashAvailable ? (
           <div className="slider-row" style={{ marginTop: 6 }}>

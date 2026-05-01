@@ -26,7 +26,6 @@ from backend_service.progress import (
     PHASE_LOADING,
     PHASE_SAVING,
 )
-from cache_compression import apply_diffusion_cache_strategy
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
@@ -660,6 +659,8 @@ class DiffusersTextToImageEngine:
             # for this pipeline yet we swallow NotImplementedError and run
             # the stock pipeline — the UI surfaces the "Scaffold" badge so
             # users know why speedup didn't appear.
+            from cache_compression import apply_diffusion_cache_strategy
+
             cache_note = apply_diffusion_cache_strategy(
                 pipeline,
                 strategy_id=config.cacheStrategy,

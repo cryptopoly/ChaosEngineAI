@@ -418,6 +418,24 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         self.assertEqual(engine_a.unload_calls, 1)
         self.assertEqual(controller._warm_pool, {})
 
+    def test_large_incoming_load_unloads_previous_model_instead_of_parking_it(self):
+        controller = self._controller()
+        engine_a = DummyEngine("A")
+        engine_b = DummyEngine("B")
+        controller._select_engine = mock.Mock(side_effect=[engine_a, engine_b])
+
+        self._load(controller, "model-a", context_tokens=8192)
+        with (
+            mock.patch.object(RuntimeController, "_target_resident_bytes", return_value=20),
+            mock.patch.object(controller, "_memory_budget_bytes", return_value=10),
+        ):
+            loaded = self._load(controller, "model-b", context_tokens=8192)
+
+        self.assertIs(controller.engine, engine_b)
+        self.assertEqual(loaded.ref, "model-b")
+        self.assertEqual(engine_a.unload_calls, 1)
+        self.assertEqual(controller._warm_pool, {})
+
     def test_clear_warm_pool_unloads_every_parked_engine(self):
         controller = self._controller()
         engine_a = DummyEngine("A")

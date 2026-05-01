@@ -15,18 +15,16 @@ def health(request: Request) -> dict[str, Any]:
     state = request.app.state.chaosengine
     from backend_service.app import WORKSPACE_ROOT, app_version
 
-    runtime_status = state.runtime.status(
-        active_requests=state.active_requests,
-        requests_served=state.requests_served,
-    )
+    capabilities = state.runtime.capabilities
+    loaded_model = state.runtime.loaded_model
     return {
         "status": "ok",
         "workspaceRoot": str(WORKSPACE_ROOT),
-        "runtime": _runtime_label(),
+        "runtime": _runtime_label(capabilities.to_dict()),
         "appVersion": app_version,
-        "engine": runtime_status["engine"],
-        "loadedModel": runtime_status["loadedModel"],
-        "nativeBackends": runtime_status["nativeBackends"],
+        "engine": state.runtime.engine.engine_name,
+        "loadedModel": loaded_model.to_dict() if loaded_model is not None else None,
+        "nativeBackends": capabilities.to_dict(),
     }
 
 

@@ -13,13 +13,17 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from backend_service.helpers.video import (
+    _VIDEO_MLX_TEXT_ENCODER_ALLOW_PATTERNS,
     _find_video_variant,
     _find_video_variant_by_repo,
+    _is_video_download_repo,
     _is_video_repo,
     _video_download_repo_ids,
     _video_download_validation_error,
     _video_model_payloads,
+    _video_variant_missing_text_encoder_repo,
     _video_variant_available_locally,
+    _video_variant_validation_error,
 )
 from backend_service.models import (
     DownloadModelRequest,
@@ -27,10 +31,45 @@ from backend_service.models import (
     VideoRuntimePreloadRequest,
     VideoRuntimeUnloadRequest,
 )
-from backend_service.progress import GenerationCancelled, VIDEO_PROGRESS
+from backend_service.progress import GenerationCancelled, IMAGE_PROGRESS, VIDEO_PROGRESS
 
 
 router = APIRouter()
+
+
+def _unload_idle_image_runtime_for_video(request: Request, action: str) -> None:
+    """Free resident image diffusion weights before video work starts."""
+    state = request.app.state.chaosengine
+    if IMAGE_PROGRESS.snapshot().get("active"):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "An image generation is still running. Wait for it to finish or cancel it "
+                "before loading a video model."
+            ),
+        )
+    try:
+        runtime = state.image_runtime.capabilities()
+    except Exception:
+        return
+    loaded_repo = str(runtime.get("loadedModelRepo") or "")
+    if not loaded_repo:
+        return
+    try:
+        state.image_runtime.unload()
+    except Exception as exc:
+        state.add_log(
+            "video",
+            "warning",
+            f"Could not unload image model before {action}: {type(exc).__name__}: {exc}",
+        )
+        return
+    state.add_log(
+        "video",
+        "info",
+        f"Unloaded image model {loaded_repo} before {action} to free memory.",
+    )
+    state.add_activity("Image model unloaded", f"Freed memory for {action}")
 
 
 @router.get("/api/video/catalog")
@@ -114,10 +153,11 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
         raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
 
     if not _video_variant_available_locally(variant):
-        validation_error = _video_download_validation_error(variant["repo"])
+        validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
+    _unload_idle_image_runtime_for_video(request, "video preload")
     try:
         runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
@@ -257,10 +297,11 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
         )
 
     if not _video_variant_available_locally(variant):
-        validation_error = _video_download_validation_error(variant["repo"])
+        validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
+    _unload_idle_image_runtime_for_video(request, "video generation")
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
     except GenerationCancelled:
@@ -305,12 +346,47 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
     at an arbitrary model via the API.
     """
     state = request.app.state.chaosengine
+    variant = _find_video_variant(body.modelId) if body.modelId else None
+    if body.modelId and variant is None:
+        raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+    if variant is not None and variant.get("ggufFile"):
+        base_error = _video_download_validation_error(str(variant["repo"]))
+        if base_error:
+            label = variant["name"]
+            state.add_log("video", "info", f"Video download requested: {label} base ({variant['repo']})")
+            return {"download": state.start_download(str(variant["repo"]))}
+        gguf_repo = str(variant.get("ggufRepo") or "")
+        gguf_file = str(variant.get("ggufFile") or "")
+        if not gguf_repo or not gguf_file:
+            raise HTTPException(status_code=400, detail=f"GGUF metadata is incomplete for {variant['name']}.")
+        state.add_log("video", "info", f"Video download requested: {variant['name']} GGUF ({gguf_repo}/{gguf_file})")
+        return {
+            "download": state.start_download(
+                gguf_repo,
+                allow_patterns=[gguf_file, "*.md", "LICENSE*"],
+            )
+        }
+
+    if variant is not None:
+        text_encoder_repo = _video_variant_missing_text_encoder_repo(variant)
+        if text_encoder_repo:
+            state.add_log(
+                "video",
+                "info",
+                f"Video download requested: {variant['name']} shared text encoder ({text_encoder_repo})",
+            )
+            return {
+                "download": state.start_download(
+                    text_encoder_repo,
+                    allow_patterns=list(_VIDEO_MLX_TEXT_ENCODER_ALLOW_PATTERNS),
+                )
+            }
+
     if not _is_video_repo(body.repo):
         raise HTTPException(
             status_code=404,
             detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
         )
-    variant = _find_video_variant_by_repo(body.repo)
     label = variant["name"] if variant else body.repo
     state.add_log("video", "info", f"Video download requested: {label} ({body.repo})")
     return {"download": state.start_download(body.repo)}
@@ -332,7 +408,7 @@ def video_download_status(request: Request) -> dict[str, Any]:
 @router.post("/api/video/download/cancel")
 def cancel_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    if not _is_video_repo(body.repo):
+    if not _is_video_download_repo(body.repo):
         raise HTTPException(
             status_code=404,
             detail=f"Repo '{body.repo}' is not in the curated video model catalog.",
@@ -343,7 +419,7 @@ def cancel_video_download(request: Request, body: DownloadModelRequest) -> dict[
 @router.post("/api/video/download/delete")
 def delete_video_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    if not _is_video_repo(body.repo):
+    if not _is_video_download_repo(body.repo):
         raise HTTPException(
             status_code=404,
             detail=f"Repo '{body.repo}' is not in the curated video model catalog.",

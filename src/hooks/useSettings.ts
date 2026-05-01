@@ -20,6 +20,7 @@ import type {
   LaunchPreferences,
   ModelDirectorySetting,
   PreviewMetrics,
+  StrategyInstallLog,
   TauriBackendInfo,
   WorkspaceData,
 } from "../types";
@@ -69,6 +70,89 @@ export function useSettings(
   const [systemPrompt, setSystemPrompt] = useState("");
   const [serverModelKey, setServerModelKey] = useState("");
   const [installingPackage, setInstallingPackage] = useState<string | null>(null);
+  const [installLogs, setInstallLogs] = useState<Record<string, StrategyInstallLog>>({});
+
+  function installLabelFor(strategyId: string): string {
+    const labels: Record<string, string> = {
+      rotorquant: "RotorQuant",
+      turboquant: "TurboQuant",
+      triattention: "TriAttention",
+      "dflash-mlx": "DFlash",
+      dflash: "DFlash",
+      chaosengine: "ChaosEngine",
+    };
+    return labels[strategyId] ?? strategyId;
+  }
+
+  function beginInstallLog(strategyId: string) {
+    setInstallLogs((current) => ({
+      ...current,
+      [strategyId]: {
+        strategyId,
+        label: installLabelFor(strategyId),
+        status: "running",
+        startedAt: new Date().toLocaleString(),
+        finishedAt: null,
+        steps: [],
+      },
+    }));
+  }
+
+  function addInstallLogStep(strategyId: string, stepId: string, label: string, command: string) {
+    setInstallLogs((current) => {
+      const existing = current[strategyId] ?? {
+        strategyId,
+        label: installLabelFor(strategyId),
+        status: "running" as const,
+        startedAt: new Date().toLocaleString(),
+        finishedAt: null,
+        steps: [],
+      };
+      return {
+        ...current,
+        [strategyId]: {
+          ...existing,
+          status: "running",
+          finishedAt: null,
+          steps: [
+            ...existing.steps,
+            { id: stepId, label, command, status: "running", output: "" },
+          ],
+        },
+      };
+    });
+  }
+
+  function finishInstallLogStep(strategyId: string, stepId: string, status: "success" | "failed", output: string) {
+    setInstallLogs((current) => {
+      const existing = current[strategyId];
+      if (!existing) return current;
+      return {
+        ...current,
+        [strategyId]: {
+          ...existing,
+          steps: existing.steps.map((step) =>
+            step.id === stepId ? { ...step, status, output } : step,
+          ),
+        },
+      };
+    });
+  }
+
+  function finishInstallLog(strategyId: string, status: "success" | "failed") {
+    setInstallLogs((current) => {
+      const existing = current[strategyId];
+      if (!existing) return current;
+      return {
+        ...current,
+        [strategyId]: {
+          ...existing,
+          status,
+          finishedAt: new Date().toLocaleString(),
+        },
+      };
+    });
+  }
 
   // Cache preview calculation
   useEffect(() => {
@@ -393,15 +477,32 @@ export function useSettings(
       "dflash-mlx": "dflash-mlx",
       dflash: "dflash",
     };
+    const pipCommandMap: Record<string, string> = {
+      rotorquant: "./.venv/bin/python3 -m pip install turboquant",
+      turboquant: "./.venv/bin/python3 -m pip install turboquant-mlx-full",
+      triattention: "./.venv/bin/python3 -m pip install 'triattention @ git+https://github.com/WeianMao/triattention.git'",
+      "dflash-mlx": "./.venv/bin/python3 -m pip install 'dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd'",
+      dflash: "./.venv/bin/python3 -m pip install dflash",
+    };
     const pipName = pipPackageMap[strategyId];
     if (!pipName) {
+      beginInstallLog(strategyId);
       if (strategyId === "chaosengine") {
-        setError(
-          "ChaosEngine is not on PyPI. Desktop builds can bundle a vendored vendor/ChaosEngine checkout during npm run stage:runtime. For source/dev installs, clone https://github.com/cryptopoly/ChaosEngine and install it into the backend runtime with ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine, then restart ChaosEngineAI.",
-        );
+        const message = "ChaosEngine is not on PyPI. Desktop builds can bundle a vendored vendor/ChaosEngine checkout during npm run stage:runtime. For source/dev installs, clone https://github.com/cryptopoly/ChaosEngine and install it into the backend runtime with ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine, then restart ChaosEngineAI.";
+        addInstallLogStep(strategyId, "manual", "Manual install required", "./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine");
+        finishInstallLogStep(strategyId, "manual", "failed", message);
+        finishInstallLog(strategyId, "failed");
+        setError(message);
+      } else {
+        const message = `No installer is configured for ${strategyId}.`;
+        addInstallLogStep(strategyId, "manual", "No installer configured", strategyId);
+        finishInstallLogStep(strategyId, "manual", "failed", message);
+        finishInstallLog(strategyId, "failed");
+        setError(message);
       }
       return;
     }
+    beginInstallLog(strategyId);
     setInstallingPackage(strategyId);
     setError(null);
     try {
@@ -410,22 +511,38 @@ export function useSettings(
       if (needsTurboBinary) {
         const turboInstalled = workspace?.system?.llamaServerTurboPath;
         if (!turboInstalled) {
+          addInstallLogStep(strategyId, "llama-server-turbo", "Build llama-server-turbo", "./scripts/build-llama-turbo.sh");
           const turboResult = await installSystemPackage("llama-server-turbo");
+          finishInstallLogStep(
+            strategyId,
+            "llama-server-turbo",
+            turboResult.ok ? "success" : "failed",
+            turboResult.output,
+          );
           if (!turboResult.ok) {
+            finishInstallLog(strategyId, "failed");
             setError(`llama-server-turbo build failed: ${turboResult.output.slice(0, 300)}`);
             return;
           }
         }
       }
 
+      addInstallLogStep(strategyId, "pip", "Install Python package", pipCommandMap[strategyId] ?? `./.venv/bin/python3 -m pip install ${pipName}`);
       const result = await installPipPackage(pipName);
+      finishInstallLogStep(strategyId, "pip", result.ok ? "success" : "failed", result.output);
       if (result.ok) {
         await refreshWorkspace(activeChatId || undefined);
+        finishInstallLog(strategyId, "success");
       } else {
+        finishInstallLog(strategyId, "failed");
         setError(`Install failed: ${result.output.slice(0, 300)}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Install failed.");
+      const message = err instanceof Error ? err.message : "Install failed.";
+      addInstallLogStep(strategyId, "request", "Install request failed", "ChaosEngineAI install request");
+      finishInstallLogStep(strategyId, "request", "failed", message);
+      finishInstallLog(strategyId, "failed");
+      setError(message);
     } finally {
       setInstallingPackage(null);
     }
@@ -472,6 +589,7 @@ export function useSettings(
     serverModelKey,
     setServerModelKey,
     installingPackage,
+    installLogs,
     updateLaunchSetting,
     updateConversionDraft,
     handleAddDirectory,

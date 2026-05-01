@@ -436,22 +436,49 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     if not main_path.exists():
         return None
 
-    # Search the parent directory and the snapshot tree it's nested in.
-    # HF caches typically nest as
-    # `models--<org>--<repo>/snapshots/<rev>/<file>.gguf` so we walk up
-    # to the snapshot root and recurse.
+    # Search the parent directory + its immediate sibling directories
+    # (covers the HF snapshot layout where projectors might live in a
+    # `projectors/` peer to the `weights/` folder). We deliberately do
+    # NOT recurse via `rglob` past one level — on macOS test rigs the
+    # parent's parent is sometimes a system-cache root that raises
+    # `OSError: Result too large` mid-scandir. Bounded depth keeps the
+    # resolver predictable across hosts.
     candidates: list[Path] = []
     parent = main_path.parent
     if parent.is_dir():
-        candidates.extend(parent.rglob("*mmproj*.gguf"))
-    # Also walk one level up in case the model file lives directly in
-    # the snapshot root and the projector is in a sibling directory.
+        for entry in parent.iterdir():
+            if entry.is_file() and entry.suffix.lower() == ".gguf" and "mmproj" in entry.name.lower():
+                candidates.append(entry)
+            elif entry.is_dir():
+                try:
+                    for child in entry.iterdir():
+                        if (
+                            child.is_file()
+                            and child.suffix.lower() == ".gguf"
+                            and "mmproj" in child.name.lower()
+                        ):
+                            candidates.append(child)
+                except OSError:
+                    continue
     grandparent = parent.parent
     if grandparent.is_dir() and grandparent != parent:
-        candidates.extend(
-            p for p in grandparent.rglob("*mmproj*.gguf")
-            if p not in candidates
-        )
+        try:
+            for entry in grandparent.iterdir():
+                if not entry.is_dir() or entry == parent:
+                    continue
+                try:
+                    for child in entry.iterdir():
+                        if (
+                            child.is_file()
+                            and child.suffix.lower() == ".gguf"
+                            and "mmproj" in child.name.lower()
+                            and child not in candidates
+                        ):
+                            candidates.append(child)
+                except OSError:
+                    continue
+        except OSError:
+            pass
 
     valid = [p for p in candidates if p.is_file() and p != main_path]
     if not valid:

@@ -149,6 +149,23 @@ class RemoteProviderRequest(BaseModel):
     providerType: str = "openai"
 
 
+class McpServerConfigRequest(BaseModel):
+    """Phase 2.10: one MCP server entry for the settings payload.
+
+    Maps onto `backend_service.mcp.McpServerConfig`. The shape mirrors
+    the standard mcp-clients config blob (`command`, `args`, `env`) so
+    config files copied from other MCP-aware tools work with minimal
+    edits. `id` is a short opaque key surfaced on tool provenance
+    badges.
+    """
+
+    id: str = Field(min_length=1, max_length=64)
+    command: str = Field(min_length=1, max_length=512)
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    enabled: bool = True
+
+
 class UpdateSettingsRequest(BaseModel):
     modelDirectories: list[ModelDirectoryRequest] | None = None
     preferredServerPort: int | None = Field(default=None, ge=1024, le=65535)
@@ -157,6 +174,11 @@ class UpdateSettingsRequest(BaseModel):
     autoStartServer: bool | None = None
     launchPreferences: LaunchPreferencesRequest | None = None
     remoteProviders: list[RemoteProviderRequest] | None = None
+    # Phase 2.10: list of MCP servers to spawn at startup. Each entry's
+    # `tools/list` output is merged into the agent tool registry with
+    # `provenance: mcp:<id>` tags. None = leave existing list alone;
+    # empty list = remove all configured servers.
+    mcpServers: list[McpServerConfigRequest] | None = None
     huggingFaceToken: str | None = Field(default=None, max_length=512)
     dataDirectory: str | None = Field(default=None, max_length=4096)
     # Per-modality output overrides. Empty string clears the override and

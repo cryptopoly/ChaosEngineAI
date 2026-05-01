@@ -79,7 +79,14 @@ def delete_session_document(request: Request, session_id: str, doc_id: str) -> d
 
 @router.get("/api/tools")
 def list_tools() -> dict[str, Any]:
-    """List all available agent tools with their schemas."""
+    """List all available agent tools with their schemas.
+
+    Phase 2.10: each entry now carries a `provenance` field — either
+    ``"builtin"`` for the in-tree tools (web search, calculator,
+    file reader, code executor) or ``"mcp:<server-id>"`` for tools
+    sourced from a configured MCP server. The frontend renders a
+    badge per source so users can tell which tools came from where.
+    """
     tools = tool_registry.list_tools()
     return {
         "tools": [
@@ -87,6 +94,7 @@ def list_tools() -> dict[str, Any]:
                 "name": t.name,
                 "description": t.description,
                 "schema": t.openai_schema(),
+                "provenance": getattr(t, "provenance", "builtin"),
             }
             for t in tools
         ],

@@ -268,6 +268,35 @@ jobs:
           includeUpdaterJson: true
           updaterJsonPreferNsis: false
 
+      # tauri-action 0.6.2 does not upload the *.sig sidecar files
+      # alongside the installer bundles, even when includeUpdaterJson is
+      # true. Without those signatures, generate-updater-manifest.mjs
+      # cannot build latest.json and the in-app updater never sees the
+      # release. Find every *.sig under the bundle output and attach it
+      # to the draft release directly.
+      - name: Upload updater signatures
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          bundle_dir="src-tauri/target/release/bundle"
+          if [ ! -d "$bundle_dir" ]; then
+            echo "No $bundle_dir directory; skipping signature upload."
+            exit 0
+          fi
+          mapfile -t sig_files < <(find "$bundle_dir" -type f -name "*.sig")
+          if [ ${#sig_files[@]} -eq 0 ]; then
+            echo "No *.sig files found under $bundle_dir; skipping signature upload."
+            exit 0
+          fi
+          for sig in "${sig_files[@]}"; do
+            echo "Uploading $(basename "$sig")"
+            gh release upload "$RELEASE_TAG" "$sig" --clobber
+          done
+
   publish-manifest:
     needs: [create-release, build]
     runs-on: ubuntu-22.04

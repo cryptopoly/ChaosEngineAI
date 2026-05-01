@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "chaosengine-ai"
-version = "0.6.3"
+version = "0.7.2"
 description = "Local AI model runner with pluggable cache/compression strategies"
 readme = "README.md"
 license = {text = "Apache-2.0"}

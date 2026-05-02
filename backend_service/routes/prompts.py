@@ -45,6 +45,10 @@ class PromptTemplateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     category: str = Field(default="General", max_length=80)
     fewShotExamples: list[dict[str, Any]] = Field(default_factory=list)
+    # Phase 2.7: optional variable declarations + preset samplers + preset model
+    variables: list[dict[str, Any]] = Field(default_factory=list)
+    presetSamplers: dict[str, Any] | None = None
+    presetModelRef: str | None = Field(default=None, max_length=200)
 
 
 # ---------------------------------------------------------------------------

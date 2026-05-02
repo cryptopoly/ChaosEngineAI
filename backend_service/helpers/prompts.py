@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import uuid
 from pathlib import Path
@@ -139,6 +140,11 @@ class PromptLibrary:
             "tags": data.get("tags", []),
             "category": data.get("category", "General"),
             "fewShotExamples": data.get("fewShotExamples", []),
+            # Phase 2.7: variable declarations + preset samplers + preset model
+            # default to empty / None so existing templates keep their shape.
+            "variables": _normalise_variables(data.get("variables", [])),
+            "presetSamplers": data.get("presetSamplers"),
+            "presetModelRef": data.get("presetModelRef"),
             "createdAt": now,
             "updatedAt": now,
         }
@@ -155,6 +161,13 @@ class PromptLibrary:
             for key in ("name", "systemPrompt", "tags", "category", "fewShotExamples"):
                 if key in data:
                     existing[key] = data[key]
+            # Phase 2.7: optional fields — set when present, leave alone otherwise.
+            if "variables" in data:
+                existing["variables"] = _normalise_variables(data["variables"])
+            if "presetSamplers" in data:
+                existing["presetSamplers"] = data["presetSamplers"]
+            if "presetModelRef" in data:
+                existing["presetModelRef"] = data["presetModelRef"]
             existing["updatedAt"] = time.time()
             self.save()
             return existing
@@ -198,3 +211,91 @@ class PromptLibrary:
             ]
 
         return results
+
+
+# ---------------------------------------------------------------------------
+# Phase 2.7: variable substitution helpers
+# ---------------------------------------------------------------------------
+
+# Match `{{name}}` placeholders. Names are alphanumeric + underscore + dash;
+# whitespace inside the braces is tolerated so users can write `{{ topic }}`
+# in templates and still have it match the declared variable name `topic`.
+_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*([A-Za-z0-9_\-]+)\s*\}\}")
+
+_VALID_VARIABLE_TYPES: tuple[str, ...] = ("string", "number", "boolean")
+
+
+def _normalise_variables(raw: Any) -> list[dict[str, Any]]:
+    """Coerce a user-supplied variable list into the canonical schema.
+
+    Each entry is `{name: str, type: "string"|"number"|"boolean", default: Any}`.
+    Invalid entries are dropped silently rather than raising — the UI
+    does the validation work; this layer just keeps storage clean.
+    """
+    if not isinstance(raw, list):
+        return []
+    cleaned: list[dict[str, Any]] = []
+    seen_names: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        name = name.strip()
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        var_type = entry.get("type", "string")
+        if var_type not in _VALID_VARIABLE_TYPES:
+            var_type = "string"
+        cleaned.append({
+            "name": name,
+            "type": var_type,
+            "default": entry.get("default"),
+            "description": str(entry.get("description") or "")[:200],
+        })
+    return cleaned
+
+
+def extract_placeholders(text: str) -> list[str]:
+    """Return the unique placeholder names present in `text`.
+
+    Order is the order of first appearance — the form renderer uses this
+    to match declared-variable order with text-occurrence order so
+    declarations not present in the text fall to the bottom.
+    """
+    if not text:
+        return []
+    seen: list[str] = []
+    seen_set: set[str] = set()
+    for match in _PLACEHOLDER_PATTERN.finditer(text):
+        name = match.group(1)
+        if name not in seen_set:
+            seen_set.add(name)
+            seen.append(name)
+    return seen
+
+
+def apply_variables(text: str, values: dict[str, Any]) -> str:
+    """Replace `{{name}}` placeholders with stringified values.
+
+    Missing names stay as the literal placeholder so the user notices
+    the gap in the assembled prompt rather than getting a silently
+    truncated message. Boolean / numeric values are coerced via str().
+    """
+    if not text:
+        return text
+
+    def _sub(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name not in values:
+            return match.group(0)
+        value = values[name]
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return str(value)
+
+    return _PLACEHOLDER_PATTERN.sub(_sub, text)

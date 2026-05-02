@@ -3,7 +3,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend_service.helpers.prompts import PromptLibrary
+from backend_service.helpers.prompts import (
+    PromptLibrary,
+    apply_variables,
+    extract_placeholders,
+)
 
 
 class PromptLibraryTests(unittest.TestCase):
@@ -134,6 +138,92 @@ class PromptLibraryTests(unittest.TestCase):
             self.assertIn("createdAt", tmpl)
             self.assertIn("updatedAt", tmpl)
             self.assertIsInstance(tmpl["createdAt"], float)
+
+
+class VariableSubstitutionTests(unittest.TestCase):
+    def test_extract_placeholders_returns_unique_in_order(self):
+        text = "Hi {{name}}, you owe {{amount}}. Thanks {{name}}."
+        self.assertEqual(extract_placeholders(text), ["name", "amount"])
+
+    def test_extract_placeholders_tolerates_inner_whitespace(self):
+        text = "Topic: {{ topic }} | Audience: {{audience}}"
+        self.assertEqual(extract_placeholders(text), ["topic", "audience"])
+
+    def test_apply_variables_substitutes_known_names(self):
+        text = "Hello {{name}}, welcome to {{place}}."
+        out = apply_variables(text, {"name": "Ada", "place": "Earth"})
+        self.assertEqual(out, "Hello Ada, welcome to Earth.")
+
+    def test_apply_variables_keeps_unknown_placeholders(self):
+        text = "Hi {{name}}, your token is {{secret}}."
+        out = apply_variables(text, {"name": "Ada"})
+        self.assertEqual(out, "Hi Ada, your token is {{secret}}.")
+
+    def test_apply_variables_coerces_booleans_and_numbers(self):
+        text = "Active: {{active}}, count: {{count}}"
+        out = apply_variables(text, {"active": True, "count": 42})
+        self.assertEqual(out, "Active: true, count: 42")
+
+    def test_apply_variables_treats_none_as_empty(self):
+        text = "Note: {{note}}"
+        out = apply_variables(text, {"note": None})
+        self.assertEqual(out, "Note: ")
+
+
+class TemplatePresetTests(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.library = PromptLibrary(Path(self.tmpdir.name))
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_create_persists_variables_and_presets(self):
+        new = self.library.create({
+            "name": "Pirate translator",
+            "systemPrompt": "Translate {{text}} into {{tone}} pirate.",
+            "variables": [
+                {"name": "text", "type": "string"},
+                {"name": "tone", "type": "string", "default": "swashbuckling"},
+            ],
+            "presetSamplers": {"topP": 0.85, "topK": 40},
+            "presetModelRef": "Qwen3-7B",
+        })
+        self.assertEqual(len(new["variables"]), 2)
+        self.assertEqual(new["variables"][0]["name"], "text")
+        self.assertEqual(new["presetSamplers"], {"topP": 0.85, "topK": 40})
+        self.assertEqual(new["presetModelRef"], "Qwen3-7B")
+
+    def test_update_preserves_unspecified_preset_fields(self):
+        created = self.library.create({
+            "name": "Pirate translator",
+            "systemPrompt": "Translate {{text}}",
+            "variables": [{"name": "text", "type": "string"}],
+            "presetSamplers": {"topP": 0.9},
+            "presetModelRef": "Qwen3-7B",
+        })
+        # Only update the name; presets should stick.
+        updated = self.library.update(created["id"], {"name": "Renamed"})
+        self.assertEqual(updated["name"], "Renamed")
+        self.assertEqual(updated["presetSamplers"], {"topP": 0.9})
+        self.assertEqual(updated["presetModelRef"], "Qwen3-7B")
+        self.assertEqual(len(updated["variables"]), 1)
+
+    def test_create_drops_invalid_variable_entries(self):
+        new = self.library.create({
+            "name": "Mixed bag",
+            "systemPrompt": "Hi {{name}}",
+            "variables": [
+                {"name": "name", "type": "string"},
+                {"type": "string"},  # missing name
+                "not-an-object",  # wrong shape
+                {"name": "name", "type": "string"},  # duplicate
+                {"name": "count", "type": "weird"},  # invalid type → coerces to string
+            ],
+        })
+        names = [v["name"] for v in new["variables"]]
+        self.assertEqual(names, ["name", "count"])
+        self.assertEqual(new["variables"][1]["type"], "string")
 
 
 if __name__ == "__main__":

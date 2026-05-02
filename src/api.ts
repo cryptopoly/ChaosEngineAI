@@ -483,6 +483,24 @@ export async function addMessageVariant(
 }
 
 /**
+ * Phase 3.6: ask the loaded model to re-read an assistant message
+ * with a critic's framing and produce a Critique / Revised answer
+ * pair. Result attaches as a "Delve critique" variant on the
+ * message so the frontend's existing variant card surfaces it.
+ */
+export async function delveMessage(
+  sessionId: string,
+  messageIndex: number,
+): Promise<ChatSession> {
+  const result = await postJson<CreateSessionResponse>(
+    `/api/chat/sessions/${encodeURIComponent(sessionId)}/delve/${messageIndex}`,
+    {},
+    300000,
+  );
+  return result.session;
+}
+
+/**
  * Phase 2.4: fork an existing thread at a specific message index.
  * Returns the new session, which the caller swaps active to so the
  * user can continue divergently. Parent linkage is preserved on

@@ -1217,6 +1217,119 @@ class ChaosEngineState:
             self._persist_sessions()
             return session
 
+    def delve_message(
+        self,
+        session_id: str,
+        message_index: int,
+        max_tokens: int = 1024,
+        temperature: float = 0.5,
+    ) -> dict[str, Any]:
+        """Phase 3.6: re-process an assistant message with a critique system
+        prompt and attach the result as a variant.
+
+        The Delve pass asks the currently-loaded model to read the prior
+        answer with a critic's eye and surface anything wrong / missing
+        / misleading, then propose a corrected response. Attached as a
+        ``modelName: "Delve critique"`` variant so the frontend's
+        existing variant rendering surfaces it under the original turn.
+
+        Like add_message_variant, requires the model to already be
+        loaded (no auto-reload).
+        """
+        with self._lock:
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            if session is None:
+                raise ValueError(f"Session not found: {session_id}")
+            messages = session.get("messages") or []
+            if message_index < 0 or message_index >= len(messages):
+                raise ValueError(
+                    f"message_index {message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+            target = messages[message_index]
+            if target.get("role") != "assistant":
+                raise ValueError(
+                    f"Delve only works on assistant messages "
+                    f"(message {message_index} role: {target.get('role')})"
+                )
+            if message_index == 0:
+                raise ValueError("Cannot delve on the first message — no prompt available")
+            user_msg = messages[message_index - 1]
+            user_prompt = str(user_msg.get("text") or "")
+            original_answer = str(target.get("text") or "")
+
+            if self.runtime.loaded_model is None:
+                raise ValueError("Load a model before requesting a Delve pass")
+            loaded = self.runtime.loaded_model
+
+            # Build the critique-mode system prompt. We deliberately ask
+            # for both critique + improved answer in one pass so the
+            # variant card renders something the user can drop straight
+            # back into the thread if they like the result.
+            critique_system = (
+                "You are a careful reviewer. Read the prior assistant answer with a "
+                "critic's eye. First, list any factual errors, missing context, or "
+                "misleading claims under a 'Critique:' heading. Then, under a 'Revised "
+                "answer:' heading, write a corrected response that fixes the issues "
+                "you identified. Be concise."
+            )
+
+            history = _build_history_with_reasoning(
+                messages[: message_index - 1],
+                preserve_reasoning=False,
+            )
+            # Append the user prompt + original answer as context, then
+            # ask the model to delve into it.
+            history.append({"role": "user", "text": user_prompt})
+            history.append({"role": "assistant", "text": original_answer})
+            delve_prompt = (
+                "Apply the Critique / Revised answer treatment to the assistant's "
+                "previous response."
+            )
+
+            started_at = time.perf_counter()
+            try:
+                result = self.runtime.generate(
+                    prompt=delve_prompt,
+                    history=history,
+                    system_prompt=critique_system,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except RuntimeError as exc:
+                raise ValueError(f"Delve generation failed: {exc}") from exc
+            elapsed = round(time.perf_counter() - started_at, 2)
+
+            metrics = self._stream_assistant_metrics_payload(
+                final_chunk=type("Chunk", (), {
+                    "finish_reason": result.finishReason,
+                    "prompt_tokens": result.promptTokens,
+                    "completion_tokens": result.completionTokens,
+                    "tok_s": result.tokS,
+                    "runtime_note": result.runtimeNote,
+                    "dflash_acceptance_rate": getattr(result, "dflashAcceptanceRate", None),
+                })(),
+                tok_s=result.tokS,
+                response_seconds=elapsed,
+            )
+            metrics["model"] = "Delve critique"
+            metrics["modelRef"] = loaded.ref
+
+            variant = {
+                "modelRef": loaded.ref,
+                "modelName": "Delve critique",
+                "text": result.text,
+                "metrics": metrics,
+                "generatedAt": self._time_label(),
+            }
+            target.setdefault("variants", []).append(variant)
+            session["updatedAt"] = self._time_label()
+            self._persist_sessions()
+            return session
+
     def fork_session(
         self,
         source_session_id: str,

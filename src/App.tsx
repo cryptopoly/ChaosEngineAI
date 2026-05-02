@@ -1669,6 +1669,7 @@ export default function App() {
         onDeleteMessage={chat.handleDeleteMessage}
         onForkAtMessage={chat.handleForkAtMessage}
         onAddVariant={chat.handleAddVariant}
+        onDelveMessage={chat.handleDelveMessage}
         onDetailsToggle={handleDetailsToggle}
         onSendMessage={sendMessage}
         onSetError={setError}

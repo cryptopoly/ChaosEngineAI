@@ -23,6 +23,26 @@ def create_session(request: Request, body: CreateSessionRequest) -> dict[str, An
     return {"session": session}
 
 
+@router.post("/api/chat/sessions/{session_id}/delve/{message_index}")
+def delve_message(request: Request, session_id: str, message_index: int) -> dict[str, Any]:
+    """Phase 3.6: re-process an assistant message with a critique pass.
+
+    The currently-loaded model re-reads the answer with a reviewer's
+    framing and produces a Critique / Revised answer pair. The result
+    attaches as a ``Delve critique`` variant on the message so the
+    frontend's existing variant card surfaces it without bespoke UI.
+    """
+    state = request.app.state.chaosengine
+    try:
+        session = state.delve_message(
+            session_id=session_id,
+            message_index=message_index,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"session": session}
+
+
 @router.post("/api/chat/sessions/{session_id}/variants")
 def add_message_variant(request: Request, session_id: str, body: AddVariantRequest) -> dict[str, Any]:
     """Phase 2.5: generate a sibling variant of an assistant message

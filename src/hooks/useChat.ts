@@ -6,6 +6,7 @@ import {
   createSession,
   deleteSession,
   deleteSessionDocument,
+  delveMessage,
   forkChatSession,
   generateChatStream,
   getTauriBackendInfo,
@@ -573,6 +574,23 @@ export function useChat(
     }
   }
 
+  async function handleDelveMessage(messageIndex: number): Promise<void> {
+    // Phase 3.6: ask the loaded model to re-read its own answer with a
+    // reviewer's framing. Result attaches as a "Delve critique" variant
+    // on the message so the existing variant card surfaces it.
+    if (!activeChat) return;
+    if (messageIndex < 0 || messageIndex >= activeChat.messages.length) return;
+    try {
+      const updated = await delveMessage(activeChat.id, messageIndex);
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, updated),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delve failed");
+    }
+  }
+
   async function handleForkAtMessage(index: number): Promise<void> {
     // Phase 2.4: fork the active thread at the given message index.
     // Backend deep-copies messages [0..index] into a new session and
@@ -1136,6 +1154,7 @@ export function useChat(
     handleCopyMessage,
     handleAddVariant,
     handleDeleteMessage,
+    handleDelveMessage,
     handleForkAtMessage,
     handleRetryMessage,
     handleChatFileDrop,

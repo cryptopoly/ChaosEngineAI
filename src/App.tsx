@@ -1280,6 +1280,7 @@ export default function App() {
         hubFileCache={hubFileCache}
         hubFileLoading={hubFileLoading}
         hubFileError={hubFileError}
+        availableMemoryGb={workspace.system.availableMemoryGb}
       />
     );
   } else if (activeTab === "my-models") {

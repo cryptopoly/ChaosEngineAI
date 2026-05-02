@@ -7214,6 +7214,37 @@ select.text-input {
   font-size: 10px;
 }
 
+/* Memory fit badges (Phase 2.14) */
+.memory-fit-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 8px;
+  vertical-align: middle;
+}
+
+.memory-fit-badge--comfortable {
+  background: rgba(74, 222, 128, 0.16);
+  color: #86efac;
+  border: 1px solid rgba(74, 222, 128, 0.4);
+}
+
+.memory-fit-badge--tight {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.memory-fit-badge--over {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
 /* Capability badges (Phase 2.11) */
 .capability-badges {
   display: inline-flex;

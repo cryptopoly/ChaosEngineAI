@@ -2859,19 +2859,27 @@ select.text-input {
   margin: 0 0 4px;
 }
 
-/* My Models: full-width expandable table */
+/* My Models: full-width expandable table.
+ *
+ * The action column needs to fit up to 5 icon buttons (convert, chat, server,
+ * reveal, delete) at 32px each plus 6px gaps = ~184px content. 200px gives a
+ * touch of breathing room. Earlier 250px combined with 16px column gaps and
+ * generous data columns pushed total min-width past ~1400px, which on Windows
+ * with 125%/150% DPI scaling clipped the action buttons off the right edge
+ * before horizontal scroll kicked in. Tighter gaps + a leaner action column
+ * keep everything visible at typical Windows screen widths. */
 .library-full-table {
   --library-grid-columns:
-    minmax(280px, 2fr)
-    minmax(100px, 0.7fr)
-    minmax(110px, 0.8fr)
+    minmax(240px, 2fr)
     minmax(90px, 0.7fr)
+    minmax(100px, 0.8fr)
     minmax(80px, 0.7fr)
-    minmax(80px, 0.7fr)
-    minmax(110px, 0.8fr)
-    minmax(80px, 0.6fr)
-    52px
-    250px;
+    minmax(70px, 0.7fr)
+    minmax(70px, 0.7fr)
+    minmax(100px, 0.8fr)
+    minmax(70px, 0.6fr)
+    44px
+    200px;
   flex: 1;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -2885,9 +2893,9 @@ select.text-input {
 .library-head {
   display: grid;
   grid-template-columns: var(--library-grid-columns);
-  gap: 16px;
+  gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--panel-alt);
   position: sticky;
   top: 0;
@@ -2919,9 +2927,9 @@ select.text-input {
 .library-item-row {
   display: grid;
   grid-template-columns: var(--library-grid-columns);
-  gap: 16px;
+  gap: 10px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 0.9rem;
   color: var(--text);
@@ -2936,10 +2944,12 @@ select.text-input {
 
 .library-row-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   justify-self: stretch;
   justify-content: flex-end;
   align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .icon-button {

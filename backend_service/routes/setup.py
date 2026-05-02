@@ -51,6 +51,13 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "sentencepiece": "sentencepiece",
     "protobuf": "protobuf",
     "ftfy": "ftfy",
+    # huggingface_hub imports PyYAML at module load. A partially-extracted
+    # wheel in the user-local extras dir ships error.py / __init__.py that
+    # don't agree on submodule layout, surfacing as
+    # ``ModuleNotFoundError: No module named 'yaml.error'`` when the download
+    # subprocess imports snapshot_download. Exposing pyyaml as an installable
+    # package lets users repair this without reinstalling the whole bundle.
+    "pyyaml": "pyyaml",
     # Core image / video runtime packages. Installed together via the
     # one-click button in Image Studio / Video Studio when the probe
     # reports the real engine as unavailable. Each is also individually
@@ -622,6 +629,14 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     ("transformers", "transformers>=4.44.0"),
     ("safetensors", "safetensors>=0.4.5"),
     ("pillow", "pillow>=10.4.0"),
+    # huggingface_hub depends on pyyaml at import time. When pip --target
+    # picks up a partial wheel cache for PyYAML on Windows, the snapshot_download
+    # subprocess dies with ``ModuleNotFoundError: No module named 'yaml.error'``
+    # which then surfaces as the per-row download error in Image / Video
+    # Discover. Installing pyyaml explicitly (instead of relying on transitive
+    # resolution) gives pip a clean install of the wheel into extras and
+    # prevents that mode from happening on first launch.
+    ("pyyaml", "pyyaml>=6.0"),
     ("huggingface-hub", "huggingface-hub>=0.26.0"),
     ("imageio", "imageio"),
     ("imageio-ffmpeg", "imageio-ffmpeg"),

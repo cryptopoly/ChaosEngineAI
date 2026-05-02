@@ -286,7 +286,15 @@ export function VideoStudioTab({
   const mp4EncoderMissing = missingDependencies.some(
     (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
   );
-  const gpuBundleRestartRequired = gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart;
+  // Hide once the runtime probe confirms torch/diffusers actually loaded —
+  // the auto-restart at install completion may already have made the new
+  // packages live, in which case ``requiresRestart`` from the install job
+  // is stale. Without this check the banner stayed forever and clicking
+  // Restart Backend appeared to do nothing because the badge never cleared.
+  const gpuBundleRestartRequired =
+    gpuBundleJob?.phase === "done"
+    && gpuBundleJob.requiresRestart
+    && !videoRuntimeStatus.realGenerationAvailable;
   // Tokenizer / text-encoder packages individual pipelines need lazily —
   // tiktoken for LTX-Video, sentencepiece for Wan / HunyuanVideo / CogVideoX
   // / Mochi, plus the protobuf + ftfy support libs. We list them out as a
@@ -617,7 +625,7 @@ export function VideoStudioTab({
             <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
             </span>
-            {gpuBundleRestartRequired ? (
+            {gpuBundleRestartRequired && !videoRuntimeStatus.realGenerationAvailable ? (
               <span className="badge warning">Restart required</span>
             ) : null}
             <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>

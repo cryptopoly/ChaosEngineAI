@@ -489,6 +489,17 @@ function nf4RuntimeFootprintForRepo(repo: string | null | undefined, runtimeFoot
   return null;
 }
 
+/** When the catalog supplies a CUDA runtime override and we layer the
+ * resolution-driven attention term on top, we use 60% of the raw
+ * ``attentionPeakGb`` instead of 100%. The raw figure assumes a dense
+ * fp16 8-head slab (see ``EFFECTIVE_HEAD_SLAB_MULTIPLIER``); CUDA
+ * pipelines with override metadata in practice run with attention
+ * slicing / fp8 KV / sequence-parallel kernels that cut the resident
+ * peak by roughly that factor. Without the discount the HunyuanVideo
+ * 1280×720 × 33 frames NF4 case crosses the danger ratio even though
+ * the real run fits inside 24 GB on a 4090. */
+const CUDA_OVERRIDE_ATTENTION_DISCOUNT = 0.6;
+
 function estimateVideoRequestPeakGb(opts: {
   modelFootprintGb: number;
   attentionPeakGb: number;
@@ -500,8 +511,11 @@ function estimateVideoRequestPeakGb(opts: {
     // Catalog CUDA runtime footprints are phase peaks for pipelines with
     // offload / sequential text-encoder handling. Adding the full attention
     // estimate on top double-counts separate phases: Wan 2.2 5B peaks near
-    // 22 GB while text encoding, then drops before denoising.
-    return Math.max(modelFootprintGb, modelFootprintGb * 0.55 + attentionPeakGb);
+    // 22 GB while text encoding, then drops before denoising. The 0.55×
+    // resident factor models the offloaded weights at denoise time;
+    // ``CUDA_OVERRIDE_ATTENTION_DISCOUNT`` accounts for attention slicing.
+    const slicedAttention = attentionPeakGb * CUDA_OVERRIDE_ATTENTION_DISCOUNT;
+    return Math.max(modelFootprintGb, modelFootprintGb * 0.55 + slicedAttention);
   }
   return modelFootprintGb + attentionPeakGb;
 }

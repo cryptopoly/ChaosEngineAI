@@ -357,6 +357,33 @@ export function useVideoState(
   const videoDiscoverHasActiveFilters =
     videoDiscoverTaskFilter !== "all" || videoDiscoverSearchQuery.length > 0;
 
+  const knownVideoDownloadVariants = flattenVideoVariants(videoCatalogWithLatest);
+
+  function pickVideoDownloadStatus(statuses: DownloadStatus[]): DownloadStatus | undefined {
+    return (
+      statuses.find((status) => status.state === "downloading")
+      ?? statuses.find((status) => status.state === "failed")
+      ?? statuses.find((status) => status.state === "cancelled")
+      ?? statuses.find((status) => status.state === "completed")
+    );
+  }
+
+  function buildVariantAwareDownloadMap(
+    statuses: DownloadStatus[],
+    previous: Record<string, DownloadStatus>,
+  ): Record<string, DownloadStatus> {
+    const repoMap = buildDownloadStatusMap(statuses);
+    const next = { ...repoMap };
+    for (const variant of knownVideoDownloadVariants) {
+      if (!previous[variant.id]) continue;
+      const variantStatuses = videoDownloadRepos(variant)
+        .map((repo) => repoMap[repo])
+        .filter((status): status is DownloadStatus => Boolean(status));
+      next[variant.id] = pickVideoDownloadStatus(variantStatuses) ?? previous[variant.id];
+    }
+    return next;
+  }
+
   // ── Selection sync ──────────────────────────────────────────
   useEffect(() => {
     if (!videoCatalog.length) {
@@ -444,7 +471,7 @@ export function useVideoState(
       void (async () => {
         try {
           const statuses = await getVideoDownloadStatus();
-          setActiveVideoDownloads(buildDownloadStatusMap(statuses));
+          setActiveVideoDownloads((prev) => buildVariantAwareDownloadMap(statuses, prev));
           if (statuses.some((status) => status.state === "completed")) {
             void refreshVideoData();
           }
@@ -507,7 +534,7 @@ export function useVideoState(
       setLatestVideoDiscoverResults(catalog.value.latest ?? []);
     }
     if (statuses.status === "fulfilled") {
-      setActiveVideoDownloads(buildDownloadStatusMap(statuses.value));
+      setActiveVideoDownloads((prev) => buildVariantAwareDownloadMap(statuses.value, prev));
     }
     if (runtime.status === "fulfilled") {
       setVideoRuntimeStatus(runtime.value);
@@ -539,23 +566,27 @@ export function useVideoState(
 
   // ── Download handlers ───────────────────────────────────────
   async function handleVideoDownload(repo: string, modelId?: string) {
+    const activeKey = modelId ?? repo;
     try {
-      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: pendingDownloadStatus(repo, prev[repo]) }));
+      setActiveVideoDownloads((prev) => ({
+        ...prev,
+        [activeKey]: pendingDownloadStatus(repo, prev[activeKey] ?? prev[repo]),
+      }));
       const download = await downloadVideoModel(repo, modelId);
-      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: download, [download.repo]: download }));
+      setActiveVideoDownloads((prev) => ({ ...prev, [activeKey]: download, [download.repo]: download }));
       void refreshVideoData();
     } catch (err) {
       if (isTransientNetworkError(err)) {
         setError("Backend is restarting or temporarily unreachable. Try the download again when it is online.");
         setActiveVideoDownloads((prev) => {
           const next = { ...prev };
-          delete next[repo];
+          delete next[activeKey];
           return next;
         });
         return;
       }
       setError(err instanceof Error ? err.message : "Video download failed");
-      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: failedDownloadStatus(repo, String(err)) }));
+      setActiveVideoDownloads((prev) => ({ ...prev, [activeKey]: failedDownloadStatus(repo, String(err)) }));
     }
   }
 

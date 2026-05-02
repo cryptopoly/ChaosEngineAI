@@ -8,6 +8,7 @@ import {
   videoDiscoverMemoryEstimate,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
+  videoDownloadStatusForVariant,
   videoRuntimeErrorStatus,
 } from "../videos";
 import type { VideoModelFamily, VideoModelVariant } from "../../types";
@@ -98,6 +99,33 @@ describe("video delete target helpers", () => {
     const repo = videoDeleteRepoForVariant(variant);
     expect(repo).toBe("city96/LTX-Video-gguf");
     expect(videoDeleteLabelForRepo(variant, repo)).toBe("Delete shared GGUF download");
+  });
+});
+
+describe("videoDownloadStatusForVariant()", () => {
+  it("uses an exact variant status instead of shared repo status", () => {
+    const q4 = makeVideoVariant({
+      id: "wan-q4",
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      ggufRepo: "QuantStack/Wan2.2-TI2V-5B-GGUF",
+      ggufFile: "Wan2.2-TI2V-5B-Q4_K_M.gguf",
+    });
+    const q6 = makeVideoVariant({
+      id: "wan-q6",
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      ggufRepo: "QuantStack/Wan2.2-TI2V-5B-GGUF",
+      ggufFile: "Wan2.2-TI2V-5B-Q6_K.gguf",
+    });
+    const status = {
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      state: "downloading",
+    };
+
+    expect(videoDownloadStatusForVariant({ [q4.id]: status }, q4)).toBe(status);
+    expect(videoDownloadStatusForVariant({
+      "Wan-AI/Wan2.2-TI2V-5B-Diffusers": status,
+      "QuantStack/Wan2.2-TI2V-5B-GGUF": status,
+    }, q6)).toBeUndefined();
   });
 });
 

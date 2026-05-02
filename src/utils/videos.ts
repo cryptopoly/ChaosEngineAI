@@ -41,6 +41,15 @@ export function videoDownloadStatusForVariant<T extends { state: string }>(
   downloads: Record<string, T>,
   variant: VideoModelVariant,
 ): T | undefined {
+  const exactVariantStatus = downloads[variant.id];
+  if (exactVariantStatus) return exactVariantStatus;
+  return undefined;
+}
+
+export function sharedVideoDownloadStatusForVariant<T extends { state: string }>(
+  downloads: Record<string, T>,
+  variant: VideoModelVariant,
+): T | undefined {
   const statuses = videoDownloadRepos(variant)
     .map((repo) => downloads[repo])
     .filter((status): status is T => Boolean(status));

@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import type { WarmModel } from "../../types";
+import type { ModelCapabilities, WarmModel } from "../../types";
+import { resolveCapabilities } from "../../utils";
+
+const CAPABILITY_HINT_FLAGS: Array<{
+  flag: keyof Omit<ModelCapabilities, "tags">;
+  label: string;
+}> = [
+  { flag: "supportsVision", label: "Vision" },
+  { flag: "supportsTools", label: "Tools" },
+  { flag: "supportsReasoning", label: "Reasoning" },
+  { flag: "supportsCoding", label: "Code" },
+];
 
 /**
  * Phase 2.5: dropdown that triggers in-thread compare. Picking a warm
@@ -59,20 +70,35 @@ export function VariantPickerButton({
             <strong>Compare with</strong>
             <small>Adds a sibling response from another warm model.</small>
           </div>
-          {candidates.map((warm) => (
-            <button
-              key={warm.ref}
-              type="button"
-              className="variant-picker__item"
-              onClick={() => {
-                onPick(warm);
-                setOpen(false);
-              }}
-            >
-              <span className="variant-picker__item-name">{warm.name}</span>
-              <span className="variant-picker__item-engine">{warm.engine}</span>
-            </button>
-          ))}
+          {candidates.map((warm) => {
+            const caps = resolveCapabilities(warm.ref, null);
+            const hints = CAPABILITY_HINT_FLAGS.filter((entry) => caps[entry.flag]);
+            return (
+              <button
+                key={warm.ref}
+                type="button"
+                className="variant-picker__item"
+                onClick={() => {
+                  onPick(warm);
+                  setOpen(false);
+                }}
+              >
+                <div className="variant-picker__item-main">
+                  <span className="variant-picker__item-name">{warm.name}</span>
+                  <span className="variant-picker__item-engine">{warm.engine}</span>
+                </div>
+                {hints.length ? (
+                  <span className="variant-picker__item-hints">
+                    {hints.map((entry) => (
+                      <span key={entry.flag} className="capability-badge">
+                        {entry.label}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>

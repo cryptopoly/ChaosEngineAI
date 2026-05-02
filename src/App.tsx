@@ -68,6 +68,7 @@ import {
   libraryItemSourceKind,
   inferHfRepoFromLocalPath,
   isChatLibraryItem,
+  resolveCapabilities,
   downloadProgressLabel,
   syncRuntime,
   settingsDraftFromWorkspace,
@@ -348,6 +349,7 @@ export default function App() {
       const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
       const displayFormat = libraryItemFormat(item, matched);
       const displayQuantization = libraryItemQuantization(item, matched);
+      const canonicalRepo = matched?.repo ?? inferHfRepoFromLocalPath(item.path);
       return {
         key: `library:${item.path}`,
         label: item.name,
@@ -355,7 +357,7 @@ export default function App() {
         group: "Local library",
         model: item.name,
         modelRef: item.name,
-        canonicalRepo: matched?.repo ?? inferHfRepoFromLocalPath(item.path),
+        canonicalRepo,
         source: "library",
         path: item.path,
         backend: libraryItemBackend(item, matched),
@@ -365,6 +367,9 @@ export default function App() {
         format: displayFormat,
         quantization: displayQuantization ?? undefined,
         maxContext: item.maxContext ?? matched?.maxContext ?? null,
+        // Phase 2.11: resolve typed capabilities so the picker can show
+        // capability badges per option without re-deriving in each view.
+        capabilities: resolveCapabilities(canonicalRepo ?? item.name, matched?.capabilities ?? null),
       };
     });
 

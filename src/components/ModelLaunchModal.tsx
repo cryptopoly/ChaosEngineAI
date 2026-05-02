@@ -1,8 +1,42 @@
 import { useEffect, useState } from "react";
 import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
-import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
+import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
+
+/**
+ * Phase 2.11: typed capability badges for the picker. Mirrors the
+ * map in ChatHeader so the same flag surfaces with the same label
+ * across the loaded-model header and the picker.
+ */
+const CAPABILITY_BADGES: Array<{
+  flag: keyof Omit<ModelCapabilities, "tags">;
+  label: string;
+  title: string;
+}> = [
+  { flag: "supportsVision", label: "Vision", title: "Model accepts image input" },
+  { flag: "supportsTools", label: "Tools", title: "Model supports tool / function calling" },
+  { flag: "supportsReasoning", label: "Reasoning", title: "Model emits a reasoning trace" },
+  { flag: "supportsCoding", label: "Code", title: "Model is tuned for code generation" },
+  { flag: "supportsAgents", label: "Agents", title: "Model is tuned for multi-step agentic flows" },
+  { flag: "supportsAudio", label: "Audio", title: "Model accepts audio input" },
+  { flag: "supportsVideo", label: "Video", title: "Model accepts video input" },
+];
+
+function renderCapabilityBadges(capabilities: ModelCapabilities | null | undefined) {
+  if (!capabilities) return null;
+  const active = CAPABILITY_BADGES.filter((entry) => capabilities[entry.flag]);
+  if (active.length === 0) return null;
+  return (
+    <span className="capability-badges" aria-label="Model capabilities">
+      {active.map((entry) => (
+        <span key={entry.flag} className="capability-badge" title={entry.title}>
+          {entry.label}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export interface ModelLaunchModalProps {
   open: boolean;
@@ -95,6 +129,7 @@ export function ModelLaunchModal({
                   {selectedOption.contextWindow ? <span className="badge muted">{selectedOption.contextWindow}</span> : null}
                   <span className={`badge ${selectedOption.source === "library" ? "success" : "accent"}`}>{selectedOption.group}</span>
                 </div>
+                {renderCapabilityBadges(selectedOption.capabilities)}
               </div>
               <button
                 className="secondary-button"
@@ -141,6 +176,7 @@ export function ModelLaunchModal({
                         {option.contextWindow ? <span>{option.contextWindow}</span> : null}
                         {option.maxContext ? <span>{`${option.maxContext >= 1_000_000 ? (option.maxContext / 1_048_576).toFixed(1) + "M" : Math.round(option.maxContext / 1024) + "K"} detected`}</span> : null}
                       </div>
+                      {renderCapabilityBadges(option.capabilities)}
                     </div>
                     <span className={`badge ${option.source === "library" ? "success" : "accent"}`}>{option.group}</span>
                   </button>

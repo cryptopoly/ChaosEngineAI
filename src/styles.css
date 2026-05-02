@@ -7470,6 +7470,13 @@ select.text-input {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.variant-picker__item-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
 .variant-picker__item-name {
   flex: 1;
   white-space: nowrap;
@@ -7481,6 +7488,13 @@ select.text-input {
   font-size: 10px;
   color: var(--muted);
   margin-left: 8px;
+}
+
+.variant-picker__item-hints {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  flex-wrap: wrap;
 }
 
 .variant-stack {

@@ -168,7 +168,10 @@ export function ImageStudioTab({
     if (installingImageRuntime) return;
     setInstallingImageRuntime(true);
     try {
-      await onInstallImageRuntime();
+      const result = await onInstallImageRuntime();
+      if (result.ok && result.output.toLowerCase().includes("restart")) {
+        onRestartServer();
+      }
     } finally {
       setInstallingImageRuntime(false);
     }

@@ -1653,10 +1653,11 @@ class DiffusersVideoEngine:
             )
         try:
             from diffusers import GGUFQuantizationConfig  # type: ignore
-        except ImportError:
+        except Exception as exc:
             return None, (
-                "Installed diffusers doesn't expose GGUFQuantizationConfig. "
-                "Upgrade diffusers via the Setup page to use GGUF variants."
+                f"Installed diffusers cannot load GGUFQuantizationConfig "
+                f"({type(exc).__name__}: {exc}). Upgrade diffusers via the "
+                "Setup page to use GGUF variants."
             )
         transformer_cls_name = _gguf_video_transformer_class_for_repo(repo)
         if transformer_cls_name is None:

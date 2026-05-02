@@ -15,6 +15,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from backend_service.runtime_paths import extras_site_packages
+
 router = APIRouter()
 
 _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
@@ -421,6 +423,11 @@ def _find_installed_torch_version(extras_dir: Path) -> str | None:
     return None
 
 
+def _is_cuda_torch_version(torch_version: str | None) -> bool:
+    """Return True for PyTorch wheels with a CUDA local-version tag."""
+    return bool(torch_version and "+cu" in torch_version.lower())
+
+
 def _write_torch_constraint(extras_dir: Path, torch_version: str) -> Path:
     """Pin torch in a constraints.txt so follow-up installs can't swap it.
 
@@ -726,18 +733,7 @@ def _extras_site_packages() -> Path | None:
     for dev / tests) we fall back to a predictable default that uses the
     *current* interpreter's tag.
     """
-    env_path = os.environ.get("CHAOSENGINE_EXTRAS_SITE_PACKAGES")
-    if env_path:
-        return Path(env_path)
-    home = Path.home()
-    if sys.platform == "win32":
-        base = Path(os.environ.get("LOCALAPPDATA") or home / "AppData" / "Local")
-    elif sys.platform == "darwin":
-        base = home / "Library" / "Application Support"
-    else:
-        base = Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share")
-    tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
-    return base / "ChaosEngineAI" / "extras" / tag / "site-packages"
+    return extras_site_packages()
 
 
 def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:
@@ -911,7 +907,8 @@ def _install_torch_walking_indexes(
     for index_url in _CUDA_TORCH_INDEXES:
         state.message = f"Downloading torch from {index_url}"
         ok, output = _run_pip_install(
-            python, "torch>=2.4.0", extras_dir, index_url, ["--no-deps"],
+            python, "torch>=2.4.0", extras_dir, index_url,
+            ["--force-reinstall", "--no-deps"],
         )
         state.attempts.append({"indexUrl": index_url, "ok": ok, "output": output[-2000:]})
         if not ok and _looks_like_dll_lock(output):
@@ -987,6 +984,18 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         if purged:
             state.message = f"Cleaned up {len(purged)} broken stub(s) from prior run"
 
+        if not is_apple_silicon:
+            purged_torch = _purge_stale_torch_from_extras(extras_dir)
+            if purged_torch:
+                state.attempts.append({
+                    "phase": "torch-cleanup",
+                    "ok": True,
+                    "output": (
+                        "Removed stale torch/CUDA runtime entries before reinstall: "
+                        + ", ".join(purged_torch[:16])
+                    ),
+                })
+
         state.phase = "downloading"
         state.package_total = len(_GPU_BUNDLE_PACKAGES)
 
@@ -1011,7 +1020,10 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             state.percent = 0.0
             ok, index_url = _install_torch_walking_indexes(python, extras_dir, state)
         if not ok:
-            torch_attempts = [a for a in state.attempts if a.get("phase") != "deps"]
+            torch_attempts = [
+                a for a in state.attempts
+                if a.get("indexUrl") and a.get("phase") != "deps"
+            ]
             state.no_wheel_for_python = _all_attempts_lack_wheel(torch_attempts)
             if state.no_wheel_for_python:
                 raise RuntimeError(
@@ -1098,17 +1110,15 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         # is the one that survives even if pip's resolver decides to
         # upgrade torch despite the constraint.
         #
-        # The pass is a no-op if torch in extras still has the local
-        # version segment (``+cu124`` / ``+cu126`` / ...) — pip with
-        # --upgrade-strategy=only-if-needed sees the existing wheel
-        # satisfies torch>=2.4.0 and skips. Only kicks in when the CUDA
-        # wheel was actually clobbered.
+        # The pass is a no-op if torch in extras still has a CUDA local
+        # version segment (``+cu124`` / ``+cu126`` / ...). It kicks in
+        # when the CUDA wheel was clobbered by a bare or ``+cpu`` wheel.
         if not is_apple_silicon and index_url:
             current_torch = _find_installed_torch_version(extras_dir)
-            if current_torch and "+" not in current_torch:
+            if current_torch and not _is_cuda_torch_version(current_torch):
                 state.message = "Repairing CUDA torch wheel (clobbered by transitive deps)"
                 repair_note = (
-                    f"Torch was downgraded to {current_torch} (no local segment) — "
+                    f"Torch was downgraded to {current_torch} (not a CUDA wheel) - "
                     "a follow-up install pulled CPU torch from default PyPI. "
                     f"Reinstalling from {index_url} to restore CUDA support.\n\n"
                 )

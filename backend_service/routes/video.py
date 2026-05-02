@@ -19,8 +19,10 @@ from backend_service.helpers.video import (
     _is_video_download_repo,
     _is_video_repo,
     _video_download_repo_ids,
-    _video_download_validation_error,
+    _video_gguf_base_allow_patterns,
+    _video_gguf_base_validation_error,
     _video_model_payloads,
+    _video_variant_gguf_validation_error,
     _video_variant_missing_text_encoder_repo,
     _video_variant_available_locally,
     _video_variant_validation_error,
@@ -350,15 +352,31 @@ def download_video_model(request: Request, body: DownloadModelRequest) -> dict[s
     if body.modelId and variant is None:
         raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
     if variant is not None and variant.get("ggufFile"):
-        base_error = _video_download_validation_error(str(variant["repo"]))
-        if base_error:
-            label = variant["name"]
-            state.add_log("video", "info", f"Video download requested: {label} base ({variant['repo']})")
-            return {"download": state.start_download(str(variant["repo"]))}
         gguf_repo = str(variant.get("ggufRepo") or "")
         gguf_file = str(variant.get("ggufFile") or "")
         if not gguf_repo or not gguf_file:
             raise HTTPException(status_code=400, detail=f"GGUF metadata is incomplete for {variant['name']}.")
+        base_repo = str(variant["repo"])
+        base_download = None
+        gguf_download = None
+        base_error = _video_gguf_base_validation_error(base_repo)
+        if base_error:
+            state.add_log("video", "info", f"Video download requested: {variant['name']} base ({base_repo})")
+            base_download = state.start_download(
+                base_repo,
+                allow_patterns=_video_gguf_base_allow_patterns(),
+                validation_error_fn=_video_gguf_base_validation_error,
+            )
+        if _video_variant_gguf_validation_error(variant):
+            state.add_log("video", "info", f"Video download requested: {variant['name']} GGUF ({gguf_repo}/{gguf_file})")
+            gguf_download = state.start_download(
+                gguf_repo,
+                allow_patterns=[gguf_file, "*.md", "LICENSE*"],
+            )
+        if base_download is not None:
+            return {"download": base_download}
+        if gguf_download is not None:
+            return {"download": gguf_download}
         state.add_log("video", "info", f"Video download requested: {variant['name']} GGUF ({gguf_repo}/{gguf_file})")
         return {
             "download": state.start_download(

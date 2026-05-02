@@ -348,7 +348,7 @@ describe("assessVideoGenerationSafety()", () => {
     it("24 GB CUDA verdicts a config that 24 GB MPS would flag caution", () => {
       // Same config (832×480 × 65 frames), same total memory (24 GB).
       // MPS effective budget = 24*0.75 = 18 GB with a tighter caution
-      // ratio (0.5); CUDA budget = 24*0.7 = 16.8 GB with a looser
+      // ratio (0.5); CUDA budget = 24*0.95 = 22.8 GB with a looser
       // caution ratio (0.7). Picked frame count to land in the band
       // where MPS trips caution but CUDA stays safe — this is the
       // asymmetry we surface to users so they understand why the same
@@ -371,11 +371,10 @@ describe("assessVideoGenerationSafety()", () => {
       expect(mps.riskLevel).toBe("caution");
     });
 
-    it("still flags danger when the peak genuinely exceeds CUDA VRAM", () => {
+    it("flags caution when an attention-only CUDA estimate gets close to VRAM", () => {
       // A 4090 with 24 GB can't really handle 832×480 × 96 frames without
-      // model offload (~20 GB attention peak vs 16.8 GB effective budget)
-      // so the heuristic correctly stays at danger here. This test locks
-      // that behaviour so we don't accidentally tune CUDA to be too loose.
+      // model offload (~20 GB attention peak vs 22.8 GB effective budget)
+      // so the heuristic warns without hard-blocking.
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -383,13 +382,12 @@ describe("assessVideoGenerationSafety()", () => {
         device: "cuda:0",
         deviceMemoryGb: 24,
       });
-      expect(result.riskLevel).toBe("danger");
+      expect(result.riskLevel).toBe("caution");
     });
 
-    it("A100-class (40 GB) lands the observed-crash config at caution", () => {
+    it("A100-class (40 GB) handles the attention-only observed-crash config", () => {
       // With a larger dedicated VRAM pool, the same 96-frame clip is still
-      // close to the limit (~20.9 GB peak vs 28 GB budget ≈ 75%) so the
-      // user gets a heads-up without a hard block.
+      // comfortably below the limit (~20.9 GB peak vs 38 GB budget).
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -397,7 +395,7 @@ describe("assessVideoGenerationSafety()", () => {
         device: "cuda:0",
         deviceMemoryGb: 40,
       });
-      expect(result.riskLevel).toBe("caution");
+      expect(result.riskLevel).toBe("safe");
     });
 
     it("the observed-crash config on CPU is danger", () => {
@@ -524,6 +522,84 @@ describe("assessVideoGenerationSafety()", () => {
       expect(result.riskLevel).not.toBe("danger");
     });
 
+    it("does not hard-block Wan 2.2 5B on a 24 GB RTX 4090", () => {
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 24.0,
+        runtimeFootprintGb: 22.0,
+      });
+      expect(result.modelFootprintGb).toBe(22.0);
+      expect(result.estimatedPeakGb).toBeCloseTo(22.0, 1);
+      expect(result.riskLevel).toBe("caution");
+      expect(result.suggestion).toBeNull();
+    });
+
+    it("accounts for NF4 on standard Wan 2.2 5B CUDA runs", () => {
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 24.0,
+        runtimeFootprintGb: 22.0,
+        repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        useNf4: true,
+      });
+      expect(result.modelFootprintGb).toBe(14.5);
+      expect(result.riskLevel).toBe("safe");
+    });
+
+    it("accounts for NF4 on standard Wan 2.1 14B CUDA runs", () => {
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 45.0,
+        runtimeFootprintGb: 39.0,
+        repo: "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+        useNf4: true,
+      });
+      expect(result.modelFootprintGb).toBe(18.0);
+      expect(result.riskLevel).toBe("caution");
+    });
+
+    it("accounts for NF4 on HunyuanVideo CUDA runs", () => {
+      const result = assessVideoGenerationSafety({
+        width: 1280,
+        height: 720,
+        numFrames: 33,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 25.0,
+        runtimeFootprintGb: 34.0,
+        repo: "hunyuanvideo-community/HunyuanVideo",
+        useNf4: true,
+      });
+      expect(result.modelFootprintGb).toBe(22.0);
+      expect(result.riskLevel).not.toBe("danger");
+    });
+
+    it("still warns hard for very long Wan 2.2 5B clips on a 24 GB RTX 4090", () => {
+      const result = assessVideoGenerationSafety({
+        width: 832,
+        height: 480,
+        numFrames: 96,
+        device: "cuda:0",
+        deviceMemoryGb: 24,
+        baseModelFootprintGb: 24.0,
+        runtimeFootprintGb: 22.0,
+      });
+      expect(result.riskLevel).toBe("danger");
+      expect(result.suggestion).toBeNull();
+    });
+
     it("hands back a null suggestion when the model alone doesn't fit", () => {
       // 24 GB Mac with Wan 2.1 1.3B's 23 GB resident footprint
       // (16.4 GB disk × 1.4 fallback). MPS budget = 18 GB; the model
@@ -532,7 +608,7 @@ describe("assessVideoGenerationSafety()", () => {
       // answer is "try a smaller model", signalled by a null
       // suggestion. (The 64 GB M4 Max no longer trips this path
       // since the bumped MPS budget gives Wan 2.1 1.3B real
-      // headroom — matching real ComfyUI behaviour.)
+      // headroom — matching upstream reference behaviour.)
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -613,7 +689,7 @@ describe("assessVideoGenerationSafety()", () => {
 
     it("flags danger for Wan 2.1 14B on a 24 GB RTX 4090", () => {
       // 45 GB catalog size × 1.05 CUDA factor ≈ 47 GB resident. A 4090's
-      // 16.8 GB effective VRAM can't hold the weights at all without
+      // 22.8 GB effective VRAM can't hold the weights at all without
       // aggressive offload, so the heuristic correctly short-circuits
       // regardless of resolution / frames.
       const result = assessVideoGenerationSafety({

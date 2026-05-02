@@ -111,13 +111,30 @@ function formatStepCounter(job: InstallJobState): string {
   // Packages-complete counter. The backend tracks packages via
   // packageIndex / packageTotal; torch also has a two-pass install
   // (CUDA-index walk for the wheel + dep-pass for transitive deps)
-  // that fires in the same packageIndex=1 slot. We count finished
-  // packages as attempts whose ok=true AND whose shape is a unique
-  // package row (not the deps sub-pass or the cuda verify step).
-  const done = job.attempts.filter(
-    (a) => a.ok && a.phase !== "deps" && a.phase !== "verify",
-  ).length;
-  const total = job.packageTotal || Math.max(done, 1);
+  // that fires in the same packageIndex=1 slot. Count logical packages,
+  // not attempt rows, so cleanup / constraint / repair / verify entries
+  // can show in the terminal without inflating "Final: n/n packages".
+  const nonPackagePhases = new Set([
+    "constraint",
+    "deps",
+    "torch-cleanup",
+    "torch-repair",
+    "verify",
+  ]);
+  const packagesDone = new Set<string>();
+  let phaseStepsDone = 0;
+  for (const attempt of job.attempts) {
+    if (!attempt.ok || nonPackagePhases.has(attempt.phase ?? "")) continue;
+    if (attempt.package) {
+      packagesDone.add(attempt.package);
+    } else if (attempt.indexUrl) {
+      packagesDone.add("torch");
+    } else if (attempt.phase) {
+      phaseStepsDone += 1;
+    }
+  }
+  const done = packagesDone.size > 0 ? packagesDone.size : phaseStepsDone;
+  const total = Math.max(job.packageTotal || 0, done, 1);
   const current = job.packageCurrent ?? "(waiting)";
   const percent = Math.max(0, Math.min(100, Math.round(job.percent)));
   if (job.phase === "error" || job.phase === "done") {
@@ -159,6 +176,9 @@ function attemptLabel(attempt: InstallJobState["attempts"][number]): string {
   //   - cuda verify:     { phase: "verify", ok, output }
   if (attempt.phase === "verify") return "Verify torch.cuda.is_available()";
   if (attempt.phase === "deps" && attempt.indexUrl) return `torch deps (from ${attempt.indexUrl})`;
+  if (attempt.phase === "torch-cleanup") return "Clean stale torch files";
+  if (attempt.phase === "torch-repair") return "Repair CUDA torch wheel";
+  if (attempt.phase === "constraint") return "Pin torch version";
   if (attempt.indexUrl) return `torch (from ${attempt.indexUrl})`;
   if (attempt.package) return `pip install ${attempt.package}`;
   if (attempt.phase) return attempt.phase;

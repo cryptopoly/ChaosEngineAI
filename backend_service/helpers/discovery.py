@@ -22,17 +22,48 @@ _UNSUPPORTED_MLX_QUANT_ALGOS = {"NVFP4", "NVINT4"}
 
 def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) -> int:
     visited = seen if seen is not None else set()
+    zero_inode_dirs: set[str] = set()
+    zero_inode_files_by_size: dict[int, list[str]] = {}
+
+    def _mark_seen(candidate: str | Path, stat_result: os.stat_result, *, is_dir: bool) -> bool:
+        identity = (stat_result.st_dev, stat_result.st_ino)
+        if identity[1]:
+            if identity in visited:
+                return False
+            visited.add(identity)
+            return True
+
+        candidate_str = str(candidate)
+        if is_dir:
+            dir_key = os.path.normcase(os.path.realpath(candidate_str))
+            if dir_key in zero_inode_dirs:
+                return False
+            zero_inode_dirs.add(dir_key)
+            return True
+
+        same_size_files = zero_inode_files_by_size.setdefault(int(stat_result.st_size), [])
+        for existing in same_size_files:
+            try:
+                if os.path.samefile(candidate_str, existing):
+                    return False
+            except OSError:
+                continue
+        same_size_files.append(candidate_str)
+        return True
+
     try:
         root_stat = path.stat()
     except OSError:
         return 0
 
-    root_id = (root_stat.st_dev, root_stat.st_ino)
-    if root_id in visited:
+    try:
+        root_is_dir = path.is_dir()
+    except OSError:
+        root_is_dir = False
+    if not _mark_seen(path, root_stat, is_dir=root_is_dir):
         return 0
-    visited.add(root_id)
 
-    if not path.is_dir():
+    if not root_is_dir:
         return int(root_stat.st_size)
 
     total = 0
@@ -49,14 +80,12 @@ def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) ->
                     entry_stat = entry.stat(follow_symlinks=True)
                 except OSError:
                     continue
-                entry_id = (entry_stat.st_dev, entry_stat.st_ino)
-                if entry_id in visited:
-                    continue
-                visited.add(entry_id)
                 try:
                     is_dir = entry.is_dir(follow_symlinks=True)
                 except OSError:
                     is_dir = False
+                if not _mark_seen(entry.path, entry_stat, is_dir=is_dir):
+                    continue
                 if is_dir:
                     stack.append(entry.path)
                 else:

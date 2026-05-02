@@ -1,6 +1,7 @@
 """Tests for the setup routes — package installation, turbo update check."""
 
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,44 @@ from backend_service.routes.setup import _cleanup_mlx_video_shadow_metadata
 from backend_service.state import ChaosEngineState
 
 TEST_API_TOKEN = "test-api-token"
+
+
+class RuntimePathTests(unittest.TestCase):
+    def test_env_extras_are_inserted_on_sys_path(self):
+        from backend_service.runtime_paths import ensure_extras_on_sys_path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp) / "site-packages"
+            extras.mkdir()
+            original_sys_path = list(sys.path)
+            try:
+                with mock.patch.dict(os.environ, {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": str(extras)}):
+                    inserted = ensure_extras_on_sys_path()
+                    self.assertEqual(os.environ["PYTHONPATH"].split(os.pathsep)[0], str(extras))
+                self.assertEqual(inserted, [extras])
+                self.assertIn(str(extras), sys.path)
+            finally:
+                sys.path[:] = original_sys_path
+
+    def test_legacy_tauri_app_data_extras_are_import_candidates(self):
+        from backend_service.runtime_paths import ensure_extras_on_sys_path
+
+        tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy = Path(tmp) / "com.chaosengineai.desktop" / "extras" / tag / "site-packages"
+            legacy.mkdir(parents=True)
+            original_sys_path = list(sys.path)
+            try:
+                with mock.patch.dict(
+                    os.environ,
+                    {"LOCALAPPDATA": tmp, "CHAOSENGINE_EXTRAS_SITE_PACKAGES": ""},
+                    clear=False,
+                ):
+                    inserted = ensure_extras_on_sys_path()
+                self.assertIn(legacy, inserted)
+                self.assertIn(str(legacy), sys.path)
+            finally:
+                sys.path[:] = original_sys_path
 
 
 def _fake_system_snapshot():
@@ -565,6 +604,34 @@ class SetupRouteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(_find_installed_torch_version(Path(tmp)))
 
+    def test_is_cuda_torch_version_rejects_cpu_local_segment(self):
+        from backend_service.routes.setup import _is_cuda_torch_version
+
+        self.assertTrue(_is_cuda_torch_version("2.6.0+cu124"))
+        self.assertTrue(_is_cuda_torch_version("2.7.0+CU128"))
+        self.assertFalse(_is_cuda_torch_version("2.6.0+cpu"))
+        self.assertFalse(_is_cuda_torch_version("2.6.0"))
+        self.assertFalse(_is_cuda_torch_version(None))
+
+    def test_gpu_bundle_torch_install_forces_reinstall(self):
+        """Existing CPU torch must not satisfy the CUDA bundle torch step."""
+        from backend_service.routes.setup import (
+            _GpuBundleJobState,
+            _install_torch_walking_indexes,
+        )
+
+        with mock.patch("backend_service.routes.setup._run_pip_install") as run_pip:
+            run_pip.return_value = (True, "Successfully installed torch")
+            ok, index_url = _install_torch_walking_indexes(
+                "python", Path("/tmp/extras"), _GpuBundleJobState(),
+            )
+
+        self.assertTrue(ok)
+        self.assertIsNotNone(index_url)
+        first_flags = run_pip.call_args_list[0].args[4]
+        self.assertIn("--force-reinstall", first_flags)
+        self.assertIn("--no-deps", first_flags)
+
     def test_write_torch_constraint_produces_pip_parseable_pin(self):
         """Constraint file must be a valid pip constraints.txt format with
         the local-version segment stripped.
@@ -820,6 +887,59 @@ class InstallGpuBundleTests(unittest.TestCase):
         self.assertEqual(status["pythonVersion"], "3.13.1")
         self.assertIsNotNone(status["indexUrlUsed"])
 
+    def test_start_install_repairs_cpu_torch_after_dependency_clobber(self):
+        """A ``+cpu`` local version is still a clobber and must be repaired."""
+        index_url = "https://download.pytorch.org/whl/cu124"
+        pip_calls: list[tuple[str, str | None, list[str]]] = []
+
+        def fake_pip(_python, spec, _target, pip_index_url, extra_flags):
+            pip_calls.append((spec, pip_index_url, list(extra_flags)))
+            return True, f"Successfully installed {spec}"
+
+        with mock.patch(
+            "backend_service.routes.setup._install_torch_walking_indexes",
+            return_value=(True, index_url),
+        ), mock.patch(
+            "backend_service.routes.setup._find_installed_torch_version",
+            side_effect=["2.6.0+cu124", "2.6.0+cpu"],
+        ), mock.patch(
+            "backend_service.routes.setup._run_pip_install",
+            side_effect=fake_pip,
+        ), mock.patch(
+            "backend_service.routes.setup._verify_cuda",
+            return_value=(True, "cuda_available=true"),
+        ), mock.patch(
+            "backend_service.routes.setup._free_bytes",
+            return_value=100_000_000_000,
+        ), mock.patch(
+            "backend_service.routes.setup._read_python_version",
+            return_value="3.13.1",
+        ), mock.patch(
+            "backend_service.routes.setup.platform.system",
+            return_value="Linux",
+        ), mock.patch(
+            "backend_service.routes.setup.platform.machine",
+            return_value="x86_64",
+        ):
+            self.client.post("/api/setup/install-gpu-bundle", json={})
+            import time as _time
+            deadline = _time.time() + 5.0
+            while _time.time() < deadline:
+                status = self.client.get("/api/setup/install-gpu-bundle/status").json()
+                if status["done"]:
+                    break
+                _time.sleep(0.05)
+
+        self.assertEqual(status["phase"], "done")
+        self.assertTrue(status["cudaVerified"])
+        self.assertTrue(any(a.get("phase") == "torch-repair" for a in status["attempts"]))
+        repair_calls = [
+            call for call in pip_calls
+            if call[0] == "torch>=2.4.0" and call[1] == index_url
+        ]
+        self.assertEqual(len(repair_calls), 1)
+        self.assertIn("--force-reinstall", repair_calls[0][2])
+
     def test_start_install_fails_when_disk_space_low(self):
         """A preflight check stops the install before any pip calls."""
         with mock.patch("backend_service.routes.setup._free_bytes", return_value=1_000_000), \
@@ -849,6 +969,7 @@ class InstallGpuBundleTests(unittest.TestCase):
 
         with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=no_wheel_run), \
              mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup._purge_stale_torch_from_extras", return_value=["torch"]), \
              mock.patch("backend_service.routes.setup._read_python_version", return_value="3.14.0"), \
              mock.patch("backend_service.routes.setup.platform.system", return_value="Linux"), \
              mock.patch("backend_service.routes.setup.platform.machine", return_value="x86_64"):

@@ -545,6 +545,15 @@ export function useVideoState(
       setActiveVideoDownloads((prev) => ({ ...prev, [repo]: download, [download.repo]: download }));
       void refreshVideoData();
     } catch (err) {
+      if (isTransientNetworkError(err)) {
+        setError("Backend is restarting or temporarily unreachable. Try the download again when it is online.");
+        setActiveVideoDownloads((prev) => {
+          const next = { ...prev };
+          delete next[repo];
+          return next;
+        });
+        return;
+      }
       setError(err instanceof Error ? err.message : "Video download failed");
       setActiveVideoDownloads((prev) => ({ ...prev, [repo]: failedDownloadStatus(repo, String(err)) }));
     }

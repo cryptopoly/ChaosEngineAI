@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 from collections import deque
 from pathlib import Path
 from threading import RLock
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
@@ -2477,7 +2477,12 @@ class ChaosEngineState:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
 
-    def start_download(self, repo: str, allow_patterns: list[str] | None = None) -> dict[str, Any]:
+    def start_download(
+        self,
+        repo: str,
+        allow_patterns: list[str] | None = None,
+        validation_error_fn: Callable[[str], str | None] | None = None,
+    ) -> dict[str, Any]:
         from backend_service.helpers.huggingface import (
             _friendly_hf_download_error,
             _hf_repo_downloaded_bytes,
@@ -2647,10 +2652,12 @@ class ChaosEngineState:
                 # a successful video download isn't flagged for missing image
                 # shape. Each validator returns None for repos outside its
                 # catalog.
-                validation_error = (
-                    _image_download_validation_error(repo)
-                    or _video_download_validation_error(repo)
+                video_validation_error = (
+                    validation_error_fn(repo)
+                    if validation_error_fn is not None
+                    else _video_download_validation_error(repo)
                 )
+                validation_error = _image_download_validation_error(repo) or video_validation_error
                 if validation_error:
                     with self._lock:
                         if self._download_tokens.get(repo) != download_token:

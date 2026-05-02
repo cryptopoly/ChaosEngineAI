@@ -103,8 +103,8 @@ def _library_cache_fingerprint(model_directories: list[dict[str, Any]]) -> dict[
         if not raw_path:
             continue
         root = Path(os.path.expanduser(raw_path))
+        fingerprint[raw_path] = 0.0
         if not root.exists():
-            fingerprint[str(root)] = 0.0
             continue
         max_mtime = 0.0
         try:
@@ -122,7 +122,7 @@ def _library_cache_fingerprint(model_directories: list[dict[str, Any]]) -> dict[
                         max_mtime = mtime
         except OSError:
             pass
-        fingerprint[str(root)] = max_mtime
+        fingerprint[raw_path] = max_mtime
     return fingerprint
 
 

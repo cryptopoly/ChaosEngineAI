@@ -5852,11 +5852,22 @@ select.text-input {
 }
 
 .image-runtime-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  justify-content: space-between;
   gap: 10px 14px;
+  padding-top: 4px;
+}
+
+.image-runtime-actions > .muted-text {
+  min-width: 0;
+  margin: 0;
+}
+
+.image-runtime-actions > .button-row,
+.image-runtime-actions > .primary-button,
+.image-runtime-actions > .secondary-button {
+  justify-self: end;
 }
 
 .image-runtime-summary {
@@ -5876,6 +5887,22 @@ select.text-input {
 
 .image-runtime-actions .button-row {
   margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .image-runtime-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .image-runtime-actions > .button-row,
+  .image-runtime-actions > .primary-button,
+  .image-runtime-actions > .secondary-button {
+    justify-self: start;
+  }
+
+  .image-runtime-actions .button-row {
+    margin-left: 0;
+  }
 }
 
 .image-discover-section-note {

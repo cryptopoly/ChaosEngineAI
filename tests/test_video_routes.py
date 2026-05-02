@@ -752,6 +752,59 @@ class VideoDownloadRouteTests(unittest.TestCase):
         self.assertEqual(len(downloads), 1)
         self.assertEqual(downloads[0]["repo"], "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
 
+    def test_gguf_variant_download_starts_base_and_selected_gguf_file(self):
+        state = self.client.app.state.chaosengine
+        calls: list[tuple[str, list[str] | None]] = []
+
+        def fake_start_download(
+            repo: str,
+            allow_patterns: list[str] | None = None,
+            validation_error_fn=None,
+        ):
+            calls.append((repo, allow_patterns))
+            return {
+                "repo": repo,
+                "state": "downloading",
+                "progress": 0.0,
+                "downloadedGb": 0.0,
+                "totalGb": 0.0,
+                "error": None,
+            }
+
+        with mock.patch.object(state, "start_download", side_effect=fake_start_download), \
+                mock.patch.object(
+                    video_routes,
+                    "_video_gguf_base_validation_error",
+                    return_value="base missing",
+                ), mock.patch.object(
+                    video_routes,
+                    "_video_variant_gguf_validation_error",
+                    return_value="gguf missing",
+                ):
+            response = self.client.post(
+                "/api/video/download",
+                json={
+                    "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                    "modelId": "QuantStack/Wan2.2-TI2V-5B-GGUF-q4km",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(
+            [repo for repo, _ in calls],
+            [
+                "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "QuantStack/Wan2.2-TI2V-5B-GGUF",
+            ],
+        )
+        base_patterns = calls[0][1]
+        self.assertIsNotNone(base_patterns)
+        assert base_patterns is not None
+        self.assertIn("transformer/config.json", base_patterns)
+        self.assertNotIn("transformer/**", base_patterns)
+        self.assertEqual(calls[1][1], ["Wan2.2-TI2V-5B-Q4_K_M.gguf", "*.md", "LICENSE*"])
+        self.assertEqual(response.json()["download"]["repo"], "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+
     def test_cancel_rejects_repo_outside_video_catalog(self):
         response = self.client.post(
             "/api/video/download/cancel",
@@ -930,6 +983,47 @@ class MlxVideoSnapshotValidationTests(unittest.TestCase):
 
 
 class VideoGgufVariantValidationTests(unittest.TestCase):
+    def _write_minimal_wan_snapshot(
+        self,
+        root: Path,
+        *,
+        include_transformer_index: bool = False,
+        include_transformer_weight: bool = False,
+    ) -> None:
+        import json
+
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "model_index.json").write_text(
+            json.dumps(
+                {
+                    "_class_name": "WanPipeline",
+                    "transformer": ["diffusers", "WanTransformer3DModel"],
+                    "scheduler": ["diffusers", "FlowMatchEulerDiscreteScheduler"],
+                    "tokenizer": ["transformers", "T5Tokenizer"],
+                    "text_encoder": ["transformers", "T5EncoderModel"],
+                    "vae": ["diffusers", "AutoencoderKLWan"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        for folder, config in (
+            ("transformer", "config.json"),
+            ("scheduler", "scheduler_config.json"),
+            ("tokenizer", "tokenizer_config.json"),
+            ("text_encoder", "config.json"),
+            ("vae", "config.json"),
+        ):
+            component = root / folder
+            component.mkdir(parents=True, exist_ok=True)
+            (component / config).write_text("{}", encoding="utf-8")
+        if include_transformer_index:
+            (root / "transformer" / "model.safetensors.index.json").write_text(
+                json.dumps({"weight_map": {"layer": "missing-shard.safetensors"}}),
+                encoding="utf-8",
+            )
+        if include_transformer_weight:
+            (root / "transformer" / "diffusion_pytorch_model.safetensors").write_bytes(b"weights")
+
     def test_gguf_partial_local_data_reports_shared_repo_delete_target(self):
         from backend_service.helpers.video import _video_model_payloads
 
@@ -976,7 +1070,7 @@ class VideoGgufVariantValidationTests(unittest.TestCase):
             "ggufFile": "Wan2.2-TI2V-5B-Q8_0.gguf",
         }
         with mock.patch(
-            "backend_service.helpers.video._video_download_validation_error",
+            "backend_service.helpers.video._video_gguf_base_validation_error",
             return_value=None,
         ), mock.patch(
             "huggingface_hub.hf_hub_download",
@@ -987,6 +1081,39 @@ class VideoGgufVariantValidationTests(unittest.TestCase):
         self.assertIsNotNone(err)
         self.assertIn("GGUF transformer file is missing", err)
         self.assertIn("Wan2.2-TI2V-5B-Q8_0.gguf", err)
+
+    def test_gguf_base_validation_ignores_full_transformer_index(self):
+        from backend_service.helpers.video import _video_gguf_base_validation_error
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wan-base"
+            self._write_minimal_wan_snapshot(root, include_transformer_index=True)
+            with mock.patch(
+                "backend_service.helpers.video._hf_repo_snapshot_dir",
+                return_value=root,
+            ):
+                err = _video_gguf_base_validation_error("Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+
+        self.assertIsNone(err)
+
+    def test_full_precision_variant_requires_transformer_weights(self):
+        from backend_service.helpers.video import _video_variant_validation_error
+
+        variant = {
+            "name": "Wan 2.2 TI2V 5B",
+            "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wan-base"
+            self._write_minimal_wan_snapshot(root)
+            with mock.patch(
+                "backend_service.helpers.video._hf_repo_snapshot_dir",
+                return_value=root,
+            ):
+                err = _video_variant_validation_error(variant)
+
+        self.assertIsNotNone(err)
+        self.assertIn("missing weights", err)
 
     def test_gguf_missing_file_status_reason_is_specific(self):
         from backend_service.helpers.video import _video_variant_local_status_reason
@@ -1108,7 +1235,7 @@ class VideoGgufVariantValidationTests(unittest.TestCase):
             gguf = Path(tmp) / "Wan2.2-TI2V-5B-Q8_0.gguf"
             gguf.write_bytes(b"gguf")
             with mock.patch(
-                "backend_service.helpers.video._video_download_validation_error",
+                "backend_service.helpers.video._video_gguf_base_validation_error",
                 return_value=None,
             ), mock.patch(
                 "huggingface_hub.hf_hub_download",

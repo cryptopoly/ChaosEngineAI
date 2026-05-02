@@ -328,7 +328,10 @@ export function VideoStudioTab({
     if (installingGpuRuntime) return;
     setInstallingGpuRuntime(true);
     try {
-      await onInstallVideoGpuRuntime();
+      const result = await onInstallVideoGpuRuntime();
+      if (result.ok && result.output.toLowerCase().includes("restart")) {
+        onRestartServer();
+      }
     } finally {
       setInstallingGpuRuntime(false);
     }
@@ -497,6 +500,8 @@ export function VideoStudioTab({
         runtimeFootprintMpsGb: selectedVideoVariant?.runtimeFootprintMpsGb,
         runtimeFootprintCudaGb: selectedVideoVariant?.runtimeFootprintCudaGb,
         runtimeFootprintCpuGb: selectedVideoVariant?.runtimeFootprintCpuGb,
+        repo: selectedVideoVariant?.repo,
+        useNf4: videoUseNf4 && !selectedVideoVariant?.ggufFile,
       }),
     [
       videoWidth,
@@ -509,6 +514,9 @@ export function VideoStudioTab({
       selectedVideoVariant?.runtimeFootprintMpsGb,
       selectedVideoVariant?.runtimeFootprintCudaGb,
       selectedVideoVariant?.runtimeFootprintCpuGb,
+      selectedVideoVariant?.repo,
+      selectedVideoVariant?.ggufFile,
+      videoUseNf4,
     ],
   );
 
@@ -521,7 +529,7 @@ export function VideoStudioTab({
   // destructive-operation confirmations elsewhere in the app.
   if (generateDisabledReason === null && generationSafety.riskLevel === "danger" && !dangerOverrideAck) {
     generateDisabledReason =
-      "This configuration is likely to crash the backend. Tick \"Generate anyway\" below after reviewing the warning, or lower resolution/frames/model.";
+      "This configuration is likely to crash the backend. Tick \"Allow high-risk generation\" below after reviewing the warning, or lower resolution/frames/model.";
   }
   const generateTitle = generateDisabledReason ?? "Start generating this clip.";
   const generationDisabled = generateDisabledReason !== null;
@@ -941,7 +949,7 @@ export function VideoStudioTab({
               <p>
                 <strong>LTX-2 distilled is the fast sampler.</strong> mlx-video runs it as fixed
                 8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not
-                improve this variant. Use a dev variant for quality comparisons with ComfyUI.
+                improve this variant. Use a dev variant for quality comparisons against the reference defaults.
               </p>
               {ltx2DevSibling ? (
                 <div className="button-row">
@@ -1285,7 +1293,7 @@ export function VideoStudioTab({
                     onChange={(event) => setDangerOverrideAck(event.target.checked)}
                   />
                   <span>
-                    Generate anyway — I accept that the backend may crash and my machine may need to be
+                    Allow high-risk generation — I accept that the backend may crash and my machine may need to be
                     restarted.
                   </span>
                 </label>

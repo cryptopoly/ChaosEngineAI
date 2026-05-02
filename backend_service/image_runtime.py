@@ -54,7 +54,11 @@ def _snapshot_visible_label(local_root: Path) -> str:
     return ", ".join(visible_files[:6]) if visible_files else "no files"
 
 
-def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None) -> str | None:
+def validate_local_diffusers_snapshot(
+    local_root: Path,
+    repo: str | None = None,
+    ignored_weight_index_dirs: set[str] | None = None,
+) -> str | None:
     model_index_path = local_root / "model_index.json"
     if not model_index_path.exists():
         visible_label = _snapshot_visible_label(local_root)
@@ -125,6 +129,9 @@ def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None)
             if candidate.is_symlink() and not candidate.exists():
                 broken_links.append(candidate.relative_to(local_root).as_posix())
             if candidate.name.endswith(".index.json"):
+                rel_parts = candidate.relative_to(local_root).parts
+                if rel_parts and ignored_weight_index_dirs and rel_parts[0] in ignored_weight_index_dirs:
+                    continue
                 weight_index_paths.append(candidate)
     except OSError as exc:
         return (
@@ -1103,10 +1110,11 @@ class DiffusersTextToImageEngine:
             )
         try:
             from diffusers import GGUFQuantizationConfig  # type: ignore
-        except ImportError:
+        except Exception as exc:
             return None, (
-                "Installed diffusers doesn't expose GGUFQuantizationConfig. "
-                "Upgrade diffusers via the Setup page to use GGUF variants."
+                f"Installed diffusers cannot load GGUFQuantizationConfig "
+                f"({type(exc).__name__}: {exc}). Upgrade diffusers via the "
+                "Setup page to use GGUF variants."
             )
 
         # Pick the transformer class from the base repo. Most flow-matching

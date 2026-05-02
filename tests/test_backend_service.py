@@ -2135,6 +2135,18 @@ class VideoRepoAllowPatternsTests(unittest.TestCase):
         self.assertIn("scheduler/**", patterns)
         self.assertIn("tokenizer/**", patterns)
 
+    def test_gguf_base_download_omits_full_transformer_weights(self):
+        from backend_service.helpers.video import _video_gguf_base_allow_patterns
+
+        patterns = _video_gguf_base_allow_patterns()
+        self.assertIn("model_index.json", patterns)
+        self.assertIn("transformer/config.json", patterns)
+        self.assertIn("transformer_2/config.json", patterns)
+        self.assertIn("text_encoder/**", patterns)
+        self.assertIn("vae/**", patterns)
+        self.assertNotIn("transformer/**", patterns)
+        self.assertNotIn("transformer_2/**", patterns)
+
     def test_returns_mlx_layout_for_ltx2_repo(self):
         from backend_service.helpers.video import _video_repo_allow_patterns
 

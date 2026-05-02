@@ -170,6 +170,20 @@ class DataLocation:
         return self.data_dir / "chat-sessions.json"
 
     @property
+    def workspaces_path(self) -> Path:
+        """Phase 3.7: workspace registry. JSON list of workspaces with
+        title + descriptions; documents live under workspaces_dir."""
+        return self.data_dir / "workspaces.json"
+
+    @property
+    def workspaces_dir(self) -> Path:
+        """Phase 3.7: per-workspace document directory. Each workspace
+        gets a subdirectory containing its uploaded files; the RAG
+        retriever reads from both this dir and the active session's
+        own documents dir."""
+        return self.data_dir / "workspaces"
+
+    @property
     def documents_dir(self) -> Path:
         return self.data_dir / "documents"
 

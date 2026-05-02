@@ -105,6 +105,9 @@ class UpdateSessionRequest(BaseModel):
     treeBudget: int | None = None
     dflashDraftModel: str | None = None
     messages: list[dict[str, Any]] | None = None
+    # Phase 3.7: assign / unassign a session to a workspace.
+    # Pass empty string to clear; None leaves the value untouched.
+    workspaceId: str | None = None
 
 
 class GenerateRequest(BaseModel):

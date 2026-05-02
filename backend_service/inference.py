@@ -957,6 +957,12 @@ class StreamChunk:
     # token's logprob plus the top-k alternatives. Only populated
     # when the request had `logprobs: N` set.
     token_logprobs: list[dict[str, Any]] | None = None
+    # Phase 3.1: DDTree accepted-span overlay data. `accepted_spans`
+    # is a run-length-encoded list of {start, length, accepted} over
+    # the per-token rendered text in `accepted_token_text`. Only
+    # populated when DFLASH speculative decoding ran.
+    accepted_spans: list[dict[str, Any]] | None = None
+    accepted_token_text: str | None = None
 
 
 class BaseInferenceEngine:
@@ -1793,6 +1799,10 @@ class MLXWorkerEngine(BaseInferenceEngine):
                             else None
                         ),
                         tree_budget=int(result.get("treeBudget")) if result.get("treeBudget") is not None else None,
+                        # Phase 3.1: forward accepted-span data when DDTree
+                        # populated it. Llama path leaves these as None.
+                        accepted_spans=result.get("acceptedSpans"),
+                        accepted_token_text=result.get("acceptedTokenText"),
                     )
         except RuntimeError as exc:
             if "No MLX model is loaded" in str(exc):

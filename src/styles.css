@@ -7423,6 +7423,67 @@ select.text-input {
   font-variant-numeric: tabular-nums;
 }
 
+/* DDTree accepted-token overlay (Phase 3.1) */
+.accepted-overlay {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(74, 222, 128, 0.04);
+}
+
+.accepted-overlay__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted-strong);
+  list-style: none;
+}
+
+.accepted-overlay__head::-webkit-details-marker {
+  display: none;
+}
+
+.accepted-overlay__head small {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.accepted-overlay__hint {
+  margin: 8px 0;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.accepted-overlay__text {
+  margin: 0;
+  padding: 8px 10px;
+  font-family: var(--font-mono, "Menlo", "Monaco", monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.accepted-overlay__span {
+  /* Default = verifier-decoded; no tint */
+}
+
+.accepted-overlay__span--accepted {
+  background: rgba(74, 222, 128, 0.20);
+  color: #bef0c8;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* KV strategy chip (Phase 3.2) */
 .kv-chip {
   position: relative;

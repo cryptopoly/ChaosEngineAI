@@ -694,6 +694,13 @@ class ChaosEngineState:
             metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
         if ttft_seconds is not None:
             metrics["ttftSeconds"] = ttft_seconds
+        # Phase 3.1: forward DDTree accepted-span data when present.
+        accepted_spans = getattr(final_chunk, "accepted_spans", None) if final_chunk else None
+        if accepted_spans:
+            metrics["acceptedSpans"] = accepted_spans
+        accepted_token_text = getattr(final_chunk, "accepted_token_text", None) if final_chunk else None
+        if accepted_token_text:
+            metrics["acceptedTokenText"] = accepted_token_text
 
         # Phase 3.5: per-turn perf telemetry snapshot. Best-effort —
         # samplers fail silently and the telemetry strip just omits the

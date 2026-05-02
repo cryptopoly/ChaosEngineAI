@@ -823,6 +823,15 @@ class WorkerState:
         # followed by a final ``{"event": "summary", ...}`` payload whose shape
         # matches what the old ``generate_dflash_once`` helper returned.
         summary: dict[str, Any] = {}
+        # Phase 3.1: per-token accepted-from-draft tracking. Tokens that
+        # share `cycles_completed` with the previous token are commits
+        # from the same DDTree cycle — the first is verifier-decoded,
+        # the rest are draft-accepted. Build a parallel list of
+        # (token_text, accepted: bool) so the UI can tint accepted runs.
+        per_token_accepted: list[bool] = []
+        per_token_text: list[str] = []
+        prev_cycle: int = -1
+        prev_gen_count: int = 0
         for event in stream_dflash_generate(
             target_model=self._dflash_target or self.model,
             tokenizer=self.tokenizer,
@@ -835,6 +844,29 @@ class WorkerState:
         ):
             if event.get("event") == "summary":
                 summary = dict(event)
+                continue
+            if event.get("event") != "token":
+                continue
+            cycle = int(event.get("cycles_completed") or 0)
+            gen_count = int(event.get("generated_tokens") or 0)
+            token_id = event.get("token_id")
+            if token_id is None:
+                continue
+            # First token of a new cycle (cycle increments) is
+            # verifier-decoded; subsequent tokens within the same
+            # cycle are draft-accepted. Cycle 0 (the initial seed
+            # token) is also verifier-decoded.
+            if gen_count <= prev_gen_count:
+                # Defensive — skip duplicates / out-of-order events.
+                continue
+            accepted = cycle == prev_cycle and prev_cycle > 0
+            per_token_accepted.append(accepted)
+            try:
+                per_token_text.append(self.tokenizer.decode([int(token_id)]))
+            except Exception:
+                per_token_text.append("")
+            prev_cycle = cycle
+            prev_gen_count = gen_count
 
         gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
         text = self.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
@@ -873,6 +905,31 @@ class WorkerState:
             ),
         )
 
+        # Phase 3.1: build run-length-encoded accepted spans from the
+        # per-token accepted bools. Each span has start (char offset
+        # into the rendered text), length (chars), and accepted (bool).
+        accepted_spans: list[dict[str, Any]] = []
+        if per_token_accepted and per_token_text:
+            offset = 0
+            run_start = 0
+            run_kind = per_token_accepted[0]
+            for idx, accepted in enumerate(per_token_accepted):
+                tok_text = per_token_text[idx] if idx < len(per_token_text) else ""
+                if accepted != run_kind:
+                    accepted_spans.append({
+                        "start": run_start,
+                        "length": offset - run_start,
+                        "accepted": run_kind,
+                    })
+                    run_start = offset
+                    run_kind = accepted
+                offset += len(tok_text)
+            accepted_spans.append({
+                "start": run_start,
+                "length": offset - run_start,
+                "accepted": run_kind,
+            })
+
         return {
             "text": text,
             "finishReason": "stop",
@@ -884,6 +941,8 @@ class WorkerState:
             "peakMemoryGb": round(float(summary.get("peak_memory_gb") or 0.0), 3),
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate is not None else None,
+            "acceptedSpans": accepted_spans,
+            "acceptedTokenText": "".join(per_token_text) if per_token_text else None,
             **self._runtime_fields(prompt_cache=None, speculative_decoding=True, tree_budget=0),
         }
 

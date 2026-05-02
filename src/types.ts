@@ -552,6 +552,15 @@ export interface GenerationMetrics {
   responseSeconds?: number | null;
   /** Phase 3.5: host telemetry sampled at turn finalisation. */
   perfTelemetry?: PerfTelemetry | null;
+  /**
+   * Phase 3.1: DDTree accepted-span overlay data. `acceptedSpans` is
+   * a run-length-encoded list over `acceptedTokenText` describing
+   * which character ranges came from accepted draft tokens vs
+   * verifier-decoded tokens. Only populated when speculative
+   * decoding ran (DFLASH path).
+   */
+  acceptedSpans?: Array<{ start: number; length: number; accepted: boolean }> | null;
+  acceptedTokenText?: string | null;
   /** Time-to-first-token in seconds (Phase 2.0). Time from generation start
    * to the moment the model produced its first reasoning or text token.
    * Useful for diagnosing slow prompt-eval phases on long contexts. */

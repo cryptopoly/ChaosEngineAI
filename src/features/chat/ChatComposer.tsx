@@ -1,8 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
+import { KvStrategyChip } from "../../components/KvStrategyChip";
 import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
-import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilities, SamplerOverrides, WarmModel } from "../../types";
+import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilities, SamplerOverrides, SystemStats, WarmModel } from "../../types";
 import { MidThreadSwapMenu } from "./MidThreadSwapMenu";
+import type { KvStrategyOverride } from "./kvStrategyOverride";
 import type { SlashCommand } from "./slashCommands";
 
 /**
@@ -33,6 +35,11 @@ export interface ChatComposerProps {
   launchSettings: LaunchPreferences;
   temperatureOverride: number | null;
   samplerOverrides: SamplerOverrides;
+  /** Phase 3.2: per-thread KV strategy override (null = use session default). */
+  kvStrategyOverride: KvStrategyOverride | null;
+  onKvStrategyOverrideChange: (override: KvStrategyOverride | null) => void;
+  /** Phase 3.2: list of installable cache strategies for the picker. */
+  availableCacheStrategies: SystemStats["availableCacheStrategies"];
   showSlashMenu: boolean;
   slashMatches: SlashCommand[];
   slashIndex: number;
@@ -68,6 +75,9 @@ export function ChatComposer({
   launchSettings,
   temperatureOverride,
   samplerOverrides,
+  kvStrategyOverride,
+  onKvStrategyOverrideChange,
+  availableCacheStrategies,
   showSlashMenu,
   slashMatches,
   slashIndex,
@@ -269,6 +279,14 @@ export function ChatComposer({
           <SamplerPanel
             overrides={samplerOverrides}
             onChange={onSamplerOverridesChange}
+            disabled={chatBusySessionId === activeChat?.id}
+          />
+          <KvStrategyChip
+            override={kvStrategyOverride}
+            defaultStrategy={activeChat?.cacheStrategy ?? launchSettings.cacheStrategy}
+            defaultBits={activeChat?.cacheBits ?? launchSettings.cacheBits}
+            availableStrategies={availableCacheStrategies}
+            onChange={onKvStrategyOverrideChange}
             disabled={chatBusySessionId === activeChat?.id}
           />
           <MidThreadSwapMenu

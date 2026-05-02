@@ -24,6 +24,7 @@ import {
   resolveChatRuntimeProfile,
 } from "../utils/chatRuntime";
 import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
+import { readKvStrategyOverride } from "../features/chat/kvStrategyOverride";
 import type {
   ChatSession,
   ChatThinkingMode,
@@ -831,10 +832,23 @@ export function useChat(
         // it doesn't recognise so this is forward-compatible.
         ...readSamplerPayload(sessionId),
         systemPrompt: systemPrompt || undefined,
-        cacheBits: activeRuntimeProfile.cacheBits,
+        // Phase 3.2: per-thread KV strategy override. Falls through to
+        // the session's runtime profile when no override is set.
+        ...(() => {
+          const kvOverride = readKvStrategyOverride(sessionId);
+          if (!kvOverride) {
+            return {
+              cacheBits: activeRuntimeProfile.cacheBits,
+              cacheStrategy: activeRuntimeProfile.cacheStrategy,
+            };
+          }
+          return {
+            cacheBits: kvOverride.bits,
+            cacheStrategy: kvOverride.strategy,
+          };
+        })(),
         fp16Layers: activeRuntimeProfile.fp16Layers,
         fusedAttention: activeRuntimeProfile.fusedAttention,
-        cacheStrategy: activeRuntimeProfile.cacheStrategy,
         fitModelInMemory: activeRuntimeProfile.fitModelInMemory,
         contextTokens: activeRuntimeProfile.contextTokens,
         speculativeDecoding: activeRuntimeProfile.speculativeDecoding,

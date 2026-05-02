@@ -1678,6 +1678,7 @@ export default function App() {
         onCancelGeneration={chat.cancelGeneration}
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
       />
     );
   } else if (activeTab === "server") {

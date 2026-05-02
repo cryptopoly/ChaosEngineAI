@@ -7315,6 +7315,159 @@ select.text-input {
   border-color: rgba(251, 191, 36, 0.32);
 }
 
+/* KV strategy chip (Phase 3.2) */
+.kv-chip {
+  position: relative;
+  display: inline-block;
+}
+
+.kv-chip__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.kv-chip__trigger--active {
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.kv-chip__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.kv-chip__clear:hover {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+.kv-chip__popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 25;
+  min-width: 280px;
+  max-width: 340px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kv-chip__heading {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.kv-chip__heading strong {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.kv-chip__heading small {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.kv-chip__strategy {
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.kv-chip__strategy--active {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.kv-chip__strategy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.kv-chip__strategy-name {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.kv-chip__strategy-flag {
+  margin-left: 6px;
+  font-size: 9px;
+  color: #fca5a5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kv-chip__strategy-bits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.kv-chip__bits-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted-strong);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kv-chip__bits-button:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  color: var(--text);
+}
+
+.kv-chip__bits-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.kv-chip__bits-button--active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+.kv-chip__reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kv-chip__reset:hover {
+  color: var(--text);
+}
+
 /* Capability badges (Phase 2.11) */
 .capability-badges {
   display: inline-flex;

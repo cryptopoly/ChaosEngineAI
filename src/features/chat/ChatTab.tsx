@@ -1,7 +1,8 @@
 import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
-import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, WarmModel } from "../../types";
+import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, SystemStats, WarmModel } from "../../types";
+import { readKvStrategyOverride, writeKvStrategyOverride, type KvStrategyOverride } from "./kvStrategyOverride";
 
 /**
  * Phase 2.12: imported here so the type appears in the ChatTab module
@@ -103,6 +104,9 @@ export interface ChatTabProps {
    */
   oneTurnOverride: WarmModelType | null;
   onOneTurnOverrideChange: (warm: WarmModelType | null) => void;
+  /** Phase 3.2: cache strategies the system advertises so the chip
+   * popover lists matching options. */
+  availableCacheStrategies: SystemStats["availableCacheStrategies"];
 }
 
 // Avoid an unused-import diagnostic — ChatModelOption is still part of
@@ -156,6 +160,7 @@ export function ChatTab({
   onCancelGeneration,
   oneTurnOverride,
   onOneTurnOverrideChange,
+  availableCacheStrategies,
 }: ChatTabProps) {
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
@@ -342,6 +347,20 @@ export function ChatTab({
     writeSamplerOverrides(activeChat?.id, overrides);
   }, [activeChat?.id]);
 
+  // Phase 3.2: per-thread KV strategy override. Same persistence shape
+  // as sampler overrides — useChat reads the same key when assembling
+  // the stream payload, so this is the single source of truth.
+  const [kvStrategyOverride, setKvStrategyOverrideState] = useState<KvStrategyOverride | null>(() =>
+    readKvStrategyOverride(activeChat?.id),
+  );
+  useEffect(() => {
+    setKvStrategyOverrideState(readKvStrategyOverride(activeChat?.id));
+  }, [activeChat?.id]);
+  const handleKvStrategyOverrideChange = useCallback((override: KvStrategyOverride | null) => {
+    setKvStrategyOverrideState(override);
+    writeKvStrategyOverride(activeChat?.id, override);
+  }, [activeChat?.id]);
+
   return (
     <div className={`chat-layout-2col${sidebarCollapsed ? " chat-layout-2col--sidebar-collapsed" : ""}`}>
       {!sidebarCollapsed ? (
@@ -411,6 +430,9 @@ export function ChatTab({
           launchSettings={launchSettings}
           temperatureOverride={temperatureOverride}
           samplerOverrides={samplerOverrides}
+          kvStrategyOverride={kvStrategyOverride}
+          onKvStrategyOverrideChange={handleKvStrategyOverrideChange}
+          availableCacheStrategies={availableCacheStrategies}
           warmModels={warmModels}
           oneTurnOverride={oneTurnOverride}
           onOneTurnOverrideChange={onOneTurnOverrideChange}

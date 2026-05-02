@@ -40,6 +40,12 @@ function sanitize(raw: unknown): SamplerOverrides {
   if (obj.mirostatMode === 0 || obj.mirostatMode === 1 || obj.mirostatMode === 2) {
     result.mirostatMode = obj.mirostatMode;
   }
+  // Phase 2.2: keep raw JSON-schema text round-trippable. We intentionally
+  // don't validate-parse here so a half-typed schema persists across
+  // remounts; the parse + validation happens at send time and on render.
+  if (typeof obj.jsonSchemaText === "string" && obj.jsonSchemaText.length > 0) {
+    result.jsonSchemaText = obj.jsonSchemaText;
+  }
   return result;
 }
 
@@ -89,5 +95,19 @@ export function samplerPayload(overrides: SamplerOverrides): Record<string, unkn
   if (overrides.mirostatMode != null) out.mirostatMode = overrides.mirostatMode;
   if (overrides.mirostatTau != null) out.mirostatTau = overrides.mirostatTau;
   if (overrides.mirostatEta != null) out.mirostatEta = overrides.mirostatEta;
+  // Phase 2.2: parse raw schema text just-in-time. Mid-type / malformed
+  // input drops out silently rather than 400-ing the request — the user
+  // sees the in-panel error indicator while typing.
+  const schemaText = overrides.jsonSchemaText;
+  if (schemaText && typeof schemaText === "string" && schemaText.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(schemaText);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        out.jsonSchema = parsed;
+      }
+    } catch {
+      // Surface only via the panel UI; don't block the send.
+    }
+  }
   return out;
 }

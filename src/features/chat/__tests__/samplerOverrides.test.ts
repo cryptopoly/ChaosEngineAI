@@ -121,4 +121,46 @@ describe("samplerPayload projection", () => {
   it("skips null overrides", () => {
     expect(samplerPayload({ topP: 0.9, topK: null, seed: null })).toEqual({ topP: 0.9 });
   });
+
+  it("parses jsonSchemaText into jsonSchema when valid", () => {
+    const schemaText = '{"type":"object","properties":{"answer":{"type":"string"}}}';
+    expect(samplerPayload({ jsonSchemaText: schemaText })).toEqual({
+      jsonSchema: { type: "object", properties: { answer: { type: "string" } } },
+    });
+  });
+
+  it("drops malformed jsonSchemaText silently", () => {
+    expect(samplerPayload({ jsonSchemaText: '{not valid json' })).toEqual({});
+  });
+
+  it("rejects jsonSchemaText that parses to an array", () => {
+    expect(samplerPayload({ jsonSchemaText: '[1,2,3]' })).toEqual({});
+  });
+
+  it("ignores empty jsonSchemaText", () => {
+    expect(samplerPayload({ jsonSchemaText: "   " })).toEqual({});
+  });
+});
+
+describe("samplerOverrides jsonSchemaText round-trip", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("preserves raw schema text across read/write", () => {
+    const schemaText = '{\n  "type": "object"\n}';
+    writeSamplerOverrides("s1", { jsonSchemaText: schemaText });
+    expect(readSamplerOverrides("s1").jsonSchemaText).toBe(schemaText);
+  });
+
+  it("preserves mid-type unparseable schema text", () => {
+    const schemaText = '{ "type": "obj';
+    writeSamplerOverrides("s1", { jsonSchemaText: schemaText });
+    expect(readSamplerOverrides("s1").jsonSchemaText).toBe(schemaText);
+  });
+
+  it("treats empty schema text as no override", () => {
+    writeSamplerOverrides("s1", { jsonSchemaText: "" });
+    expect(readSamplerOverrides("s1")).toEqual({});
+  });
 });

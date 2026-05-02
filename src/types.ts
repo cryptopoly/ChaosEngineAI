@@ -747,6 +747,14 @@ export interface SamplerOverrides {
   mirostatMode?: 0 | 1 | 2 | null;
   mirostatTau?: number | null;
   mirostatEta?: number | null;
+  /**
+   * Phase 2.2: opt-in constrained decoding. Raw JSON-schema text the
+   * user typed in the SamplerPanel. Parsed at send-time and forwarded
+   * as `jsonSchema` on the GenerateRequest. Stored as raw text rather
+   * than a parsed object so we can round-trip user edits even when
+   * the schema is mid-type and not valid JSON yet.
+   */
+  jsonSchemaText?: string | null;
 }
 
 export interface GenerateResponse {

@@ -86,8 +86,29 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const overrideCount = Object.values(overrides).filter((v) => v != null).length;
+  // Treat empty-string jsonSchemaText as "no override" so an empty
+  // textarea doesn't bloat the badge count.
+  const overrideCount = Object.entries(overrides).filter(([key, value]) => {
+    if (value == null) return false;
+    if (key === "jsonSchemaText" && typeof value === "string" && value.trim() === "") {
+      return false;
+    }
+    return true;
+  }).length;
   const hasOverrides = overrideCount > 0;
+  const schemaText = overrides.jsonSchemaText ?? "";
+  const schemaError = (() => {
+    if (!schemaText.trim()) return null;
+    try {
+      const parsed = JSON.parse(schemaText);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return "Schema must be a JSON object";
+      }
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : "Invalid JSON";
+    }
+  })();
 
   function patch<K extends keyof SamplerOverrides>(key: K, value: SamplerOverrides[K]) {
     const next = { ...overrides };
@@ -235,6 +256,29 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
               />
             </>
           ) : null}
+          <div className="sampler-row sampler-row--schema">
+            <div className="sampler-row__label">
+              <strong>JSON schema</strong>
+              <small>Constrained output (llama.cpp only)</small>
+            </div>
+            <textarea
+              className="text-input sampler-row__schema"
+              rows={4}
+              value={schemaText}
+              placeholder={'{\n  "type": "object",\n  "properties": {...}\n}'}
+              disabled={disabled}
+              spellCheck={false}
+              onChange={(event) => {
+                const raw = event.target.value;
+                patch("jsonSchemaText", raw === "" ? null : raw);
+              }}
+            />
+            {schemaError ? (
+              <small className="sampler-row__error">{schemaError}</small>
+            ) : schemaText.trim() ? (
+              <small className="sampler-row__ok">Schema parsed; will constrain next response.</small>
+            ) : null}
+          </div>
           <p className="sampler-panel__hint">
             Per-thread overrides. llama.cpp applies all; mlx-lm uses what it
             supports (top_p / top_k / min_p) and ignores the rest. Empty

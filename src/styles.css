@@ -7190,6 +7190,30 @@ select.text-input {
   line-height: 1.4;
 }
 
+.sampler-row--schema {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.sampler-row__schema {
+  width: 100%;
+  font-family: var(--font-mono, "Menlo", "Monaco", monospace);
+  font-size: 11px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.sampler-row__error {
+  color: #fca5a5;
+  font-size: 10px;
+}
+
+.sampler-row__ok {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 /* Capability badges (Phase 2.11) */
 .capability-badges {
   display: inline-flex;

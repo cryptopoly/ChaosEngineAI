@@ -77,6 +77,22 @@ function readSamplerPayload(sessionId: string | null | undefined): Record<string
     if (mode === 0 || mode === 1 || mode === 2) {
       out.mirostatMode = mode;
     }
+    // Phase 2.2: opt-in constrained decoding. The SamplerPanel stores
+    // the schema as raw JSON text so we can round-trip mid-type edits;
+    // parse here and only forward when the result is a valid object.
+    // Invalid JSON falls through silently — the backend will then use
+    // unconstrained decoding rather than 400-ing the request.
+    const schemaText = (parsed as Record<string, unknown>).jsonSchemaText;
+    if (typeof schemaText === "string" && schemaText.trim().length > 0) {
+      try {
+        const schema = JSON.parse(schemaText);
+        if (schema && typeof schema === "object" && !Array.isArray(schema)) {
+          out.jsonSchema = schema;
+        }
+      } catch {
+        // Mid-type / malformed — silently skip rather than block the send.
+      }
+    }
     return out;
   } catch {
     return {};

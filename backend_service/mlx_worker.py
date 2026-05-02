@@ -89,6 +89,68 @@ _TRANSCRIPT_ROLE_LINE_RE = re.compile(r"^\s*(SYSTEM|USER|ASSISTANT):\s*(.*)$", r
 from backend_service.runaway_guard import RunawayGuard  # noqa: E402,F401
 
 
+def _extract_top_logprobs(
+    response: Any,
+    tokenizer: Any,
+    top_k: int,
+) -> list[dict[str, Any]] | None:
+    """Phase 3.3 follow-up: extract top-k logprob entries from an
+    mlx-lm GenerationResponse for the just-emitted token.
+
+    Returns a list with a single entry shaped like the OpenAI
+    `logprobs.content[]` payload — token + logprob + alternatives —
+    so the frontend overlay treats MLX and llama-server output
+    identically. Returns None on any failure (missing logprobs,
+    unsupported tensor shape, etc.) — logprobs are diagnostic, not
+    correctness-critical.
+    """
+    if top_k <= 0:
+        return None
+    logprobs = getattr(response, "logprobs", None)
+    chosen_token_id = getattr(response, "token", None)
+    if logprobs is None or chosen_token_id is None:
+        return None
+    try:
+        import numpy as np  # noqa: WPS433 — keep import lazy
+
+        arr = np.array(logprobs, dtype=np.float32)
+        if arr.ndim != 1 or arr.size == 0:
+            return None
+        # argpartition gets top-k unsorted; sort just the slice.
+        k = min(int(top_k), int(arr.size))
+        if k >= int(arr.size):
+            top_idx = np.argsort(-arr)
+        else:
+            partial = np.argpartition(-arr, k - 1)[:k]
+            top_idx = partial[np.argsort(-arr[partial])]
+        alternatives: list[dict[str, Any]] = []
+        for token_id in top_idx[:k].tolist():
+            try:
+                token_text = tokenizer.decode([int(token_id)])
+            except Exception:
+                token_text = ""
+            alternatives.append({
+                "token": token_text,
+                "logprob": float(arr[token_id]),
+            })
+        try:
+            chosen_text = tokenizer.decode([int(chosen_token_id)])
+        except Exception:
+            chosen_text = ""
+        chosen_logprob: float | None
+        try:
+            chosen_logprob = float(arr[int(chosen_token_id)])
+        except Exception:
+            chosen_logprob = None
+        return [{
+            "token": chosen_text,
+            "logprob": chosen_logprob,
+            "alternatives": alternatives,
+        }]
+    except Exception:
+        return None
+
+
 def _build_mlx_sampler(request: dict[str, Any]) -> Any:
     """Phase 2.2: build an mlx-lm sampler with whichever Phase 2.2 sampler
     overrides the installed `make_sampler` actually supports.
@@ -1268,6 +1330,10 @@ class WorkerState:
         transcript_trimmed = False
         runaway_guard = RunawayGuard()
         runaway_stopped = False
+        # Phase 3.3 follow-up: when the request opted into logprobs,
+        # extract top-k per token via the helper and forward inline
+        # with each text chunk.
+        logprobs_top_k = int(request.get("logprobs") or 0)
 
         try:
             last_response = None
@@ -1298,7 +1364,12 @@ class WorkerState:
                         if transcript_filter.stopped:
                             transcript_trimmed = True
                     if visible_text:
-                        _emit({"ok": True, "chunk": {"text": visible_text}})
+                        chunk_payload: dict[str, Any] = {"text": visible_text}
+                        if logprobs_top_k > 0:
+                            entries = _extract_top_logprobs(response, self.tokenizer, logprobs_top_k)
+                            if entries:
+                                chunk_payload["tokenLogprobs"] = entries
+                        _emit({"ok": True, "chunk": chunk_payload})
                     if transcript_filter is not None and transcript_filter.stopped:
                         last_response = response
                         break

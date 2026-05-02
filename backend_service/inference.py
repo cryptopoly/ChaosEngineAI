@@ -1817,7 +1817,17 @@ class MLXWorkerEngine(BaseInferenceEngine):
                     if chunk.get("reasoningDone"):
                         yield StreamChunk(reasoning_done=True)
                     if chunk.get("text"):
-                        yield StreamChunk(text=chunk["text"])
+                        token_logprobs = chunk.get("tokenLogprobs")
+                        yield StreamChunk(
+                            text=chunk["text"],
+                            token_logprobs=token_logprobs if token_logprobs else None,
+                        )
+                    elif chunk.get("tokenLogprobs"):
+                        # Phase 3.3 follow-up: forward logprobs even when
+                        # the chunk has no text (e.g. emitted alongside
+                        # reasoning) so the frontend overlay still gets
+                        # a complete trace.
+                        yield StreamChunk(token_logprobs=chunk["tokenLogprobs"])
                 if response.get("done"):
                     result = response.get("result") or {}
                     yield StreamChunk(

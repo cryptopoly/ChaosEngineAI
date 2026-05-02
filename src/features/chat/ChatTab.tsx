@@ -46,6 +46,10 @@ export interface ChatTabProps {
   serverLoading: ModelLoadingState | null;
   loadedModelRef: string | undefined;
   loadedModelCapabilities?: ModelCapabilities | null;
+  /** Phase 3.2 hotfix: engine name for the currently-loaded model.
+   * Used by the KV strategy chip to filter strategies the substrate
+   * can actually run. */
+  loadedModelEngine?: string | null;
   engineLabel: string;
   launchSettings: LaunchPreferences;
   warmModels: WarmModel[];
@@ -129,6 +133,7 @@ export function ChatTab({
   serverLoading,
   loadedModelRef,
   loadedModelCapabilities,
+  loadedModelEngine,
   engineLabel,
   launchSettings,
   warmModels,
@@ -437,6 +442,7 @@ export function ChatTab({
           kvStrategyOverride={kvStrategyOverride}
           onKvStrategyOverrideChange={handleKvStrategyOverrideChange}
           availableCacheStrategies={availableCacheStrategies}
+          loadedModelEngine={loadedModelEngine ?? null}
           warmModels={warmModels}
           oneTurnOverride={oneTurnOverride}
           onOneTurnOverrideChange={onOneTurnOverrideChange}

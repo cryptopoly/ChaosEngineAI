@@ -40,6 +40,8 @@ export interface ChatComposerProps {
   onKvStrategyOverrideChange: (override: KvStrategyOverride | null) => void;
   /** Phase 3.2: list of installable cache strategies for the picker. */
   availableCacheStrategies: SystemStats["availableCacheStrategies"];
+  /** Phase 3.2 hotfix: loaded model's engine, used to filter the picker. */
+  loadedModelEngine?: string | null;
   showSlashMenu: boolean;
   slashMatches: SlashCommand[];
   slashIndex: number;
@@ -78,6 +80,7 @@ export function ChatComposer({
   kvStrategyOverride,
   onKvStrategyOverrideChange,
   availableCacheStrategies,
+  loadedModelEngine,
   showSlashMenu,
   slashMatches,
   slashIndex,
@@ -286,6 +289,7 @@ export function ChatComposer({
             defaultStrategy={activeChat?.cacheStrategy ?? launchSettings.cacheStrategy}
             defaultBits={activeChat?.cacheBits ?? launchSettings.cacheBits}
             availableStrategies={availableCacheStrategies}
+            engine={loadedModelEngine}
             onChange={onKvStrategyOverrideChange}
             disabled={chatBusySessionId === activeChat?.id}
           />

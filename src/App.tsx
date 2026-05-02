@@ -1644,6 +1644,7 @@ export default function App() {
         serverLoading={workspace.server.loading}
         loadedModelRef={workspace.runtime.loadedModel?.ref}
         loadedModelCapabilities={workspace.runtime.loadedModel?.capabilities ?? null}
+        loadedModelEngine={workspace.runtime.loadedModel?.engine ?? null}
         engineLabel={workspace.runtime.engineLabel}
         launchSettings={launchSettings}
         warmModels={workspace.runtime.warmModels ?? []}

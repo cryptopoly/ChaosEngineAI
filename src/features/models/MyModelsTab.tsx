@@ -322,13 +322,23 @@ export function MyModelsTab({
             </button>
             {STRATEGY_FILTERS.map((sf) => {
               const count = filteredLibraryRows.filter((row) => modelSupportsStrategy(row, sf.id)).length;
+              // DFlash gets a more explanatory tooltip when zero models
+              // match — speculative-decode drafts are pinned per family,
+              // so users land on "0" often unless they have a base
+              // Qwen3 / Llama-3.1 / gpt-oss / Kimi model.
+              const tooltip = sf.id === "dflash" && count === 0
+                ? "DFlash speculative-decode drafts only exist for specific base models: "
+                  + "Qwen/Qwen3-{4B,8B}, Qwen/Qwen3-Coder-{4B,8B,30B-A3B,Next}, Qwen/Qwen3.5-{4B,7B,9B,14B,27B,35B-A3B}, "
+                  + "Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss-{20B,120B}, moonshotai/Kimi-K2.5. "
+                  + "Fine-tunes typically don't match. Download a base model from Discover to enable DFlash."
+                : `Show models compatible with ${sf.label} (${count})`;
               return (
                 <button
                   key={sf.id}
                   className={`cap-filter-btn${strategyFilter === sf.id ? " cap-filter-btn--active" : ""}`}
                   type="button"
                   onClick={() => setStrategyFilter(strategyFilter === sf.id ? null : sf.id)}
-                  title={`Show models compatible with ${sf.label} (${count})`}
+                  title={tooltip}
                   style={strategyFilter === sf.id ? { borderColor: sf.color, color: sf.color, background: `${sf.color}15` } : undefined}
                 >
                   {sf.label} ({count})

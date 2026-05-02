@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SystemStats } from "../types";
 import type { KvStrategyOverride } from "../features/chat/kvStrategyOverride";
+import { filterTextStrategies } from "./kvStrategyFilter";
 
 /**
  * Phase 3.2: per-turn KV strategy chip for the composer.
@@ -21,6 +22,14 @@ export interface KvStrategyChipProps {
   defaultStrategy: string;
   defaultBits: number;
   availableStrategies: SystemStats["availableCacheStrategies"];
+  /**
+   * Phase 3.2 hotfix: the loaded model's engine. Used to filter
+   * strategies down to ones the substrate can actually run — e.g.
+   * MLX runtime can't use llama.cpp-only RotorQuant / ChaosEngine,
+   * and TeaCache is diffusion-only. Pass undefined / null when no
+   * model is loaded; the chip then shows all text-domain strategies.
+   */
+  engine?: string | null;
   onChange: (override: KvStrategyOverride | null) => void;
   disabled?: boolean;
 }
@@ -39,6 +48,7 @@ export function KvStrategyChip({
   defaultStrategy,
   defaultBits,
   availableStrategies,
+  engine,
   onChange,
   disabled,
 }: KvStrategyChipProps) {
@@ -60,10 +70,19 @@ export function KvStrategyChip({
   const effectiveBits = override?.bits ?? defaultBits;
   const isOverridden = override != null;
 
-  // Bit-options come from the strategy's bitRange. When none is set
-  // (e.g. native f16), default to a single 0-bits ("f16") option.
-  const selectedEntry = availableStrategies?.find((s) => s.id === effectiveStrategy);
-  const bitOptions = selectedEntry?.bitRange?.length ? selectedEntry.bitRange : [0];
+  // Phase 3.2 hotfix: filter strategies to ones the loaded engine
+  // can actually run. Drops TeaCache (diffusion-only) and removes
+  // engine-incompatible options so picking them doesn't 500.
+  const filteredStrategies = useMemo(
+    () => filterTextStrategies(availableStrategies, engine),
+    [availableStrategies, engine],
+  );
+
+  // Trigger label uses the strategy's metadata regardless of whether
+  // it survived the filter — so a session whose default strategy got
+  // filtered out (e.g. session loaded under llama.cpp, current model
+  // is MLX) still shows the right label on the trigger.
+  void availableStrategies?.find((s) => s.id === effectiveStrategy);
 
   return (
     <div className="kv-chip" ref={wrapRef}>
@@ -107,7 +126,7 @@ export function KvStrategyChip({
             <strong>KV cache for next turn</strong>
             <small>Switching reloads the runtime if needed.</small>
           </div>
-          {(availableStrategies ?? []).map((strategy) => {
+          {filteredStrategies.map((strategy) => {
             const isActive = strategy.id === effectiveStrategy;
             const range = strategy.bitRange?.length ? strategy.bitRange : [0];
             return (

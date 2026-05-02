@@ -34,6 +34,17 @@ class RuntimePathTests(unittest.TestCase):
                 sys.path[:] = original_sys_path
 
     def test_legacy_tauri_app_data_extras_are_import_candidates(self):
+        # ``_user_data_base`` only consults ``LOCALAPPDATA`` when
+        # ``sys.platform == "win32"``. On macOS dev boxes and the
+        # ubuntu-latest CI runner that branch is skipped, so just
+        # patching the env var leaves the legacy candidate path
+        # rooted at the host's real ``~/Library/Application Support``
+        # / ``~/.local/share`` instead of the temp dir we created
+        # below — and the assertion fails because the legacy dir we
+        # mkdir'd isn't where the helper looks. Patch
+        # ``sys.platform`` to ``win32`` for the duration of this test
+        # so the Windows branch is exercised regardless of host OS.
+        from backend_service import runtime_paths
         from backend_service.runtime_paths import ensure_extras_on_sys_path
 
         tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
@@ -42,11 +53,12 @@ class RuntimePathTests(unittest.TestCase):
             legacy.mkdir(parents=True)
             original_sys_path = list(sys.path)
             try:
-                with mock.patch.dict(
-                    os.environ,
-                    {"LOCALAPPDATA": tmp, "CHAOSENGINE_EXTRAS_SITE_PACKAGES": ""},
-                    clear=False,
-                ):
+                with mock.patch.object(runtime_paths.sys, "platform", "win32"), \
+                    mock.patch.dict(
+                        os.environ,
+                        {"LOCALAPPDATA": tmp, "CHAOSENGINE_EXTRAS_SITE_PACKAGES": ""},
+                        clear=False,
+                    ):
                     inserted = ensure_extras_on_sys_path()
                 self.assertIn(legacy, inserted)
                 self.assertIn(str(legacy), sys.path)

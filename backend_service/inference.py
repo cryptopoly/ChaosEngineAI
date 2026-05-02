@@ -62,6 +62,45 @@ _LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
 )
 
 
+def _apply_llama_chat_template_fixes(
+    messages: list[dict[str, Any]],
+    loaded_model: Any,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Phase 3.8 follow-up: apply known chat-template auto-fixes before
+    sending the message list to llama-server.
+
+    The llama.cpp server applies the chat template internally based on
+    GGUF metadata, so we can't observe template Jinja directly. But we
+    know certain families (Gemma) reject the system role entirely;
+    folding the system message into the first user message client-side
+    avoids the template error.
+
+    Returns ``(new_messages, runtime_note)``. The note is None when no
+    fix was applied; when set it's a single line suitable for the
+    GenerationResult.runtimeNote channel so the substrate badge can
+    show "auto-fixed: Gemma family — fold system into first user".
+    """
+    if not loaded_model or not messages:
+        return messages, None
+
+    from backend_service.helpers.chat_template import (
+        fold_system_into_first_user,
+        is_gemma_family,
+    )
+
+    model_ref = getattr(loaded_model, "ref", None)
+    canonical = getattr(loaded_model, "canonicalRepo", None)
+    target = canonical or model_ref
+
+    if is_gemma_family(target):
+        new_messages = fold_system_into_first_user(messages)
+        if len(new_messages) != len(messages):
+            return new_messages, "Chat template auto-fixed: Gemma family — fold system into first user message"
+        return new_messages, None
+
+    return messages, None
+
+
 def _apply_sampler_kwargs(
     payload: dict[str, Any],
     *,
@@ -2247,6 +2286,11 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             messages.append({"role": "user", "content": prompt})
 
+        # Phase 3.8 follow-up: apply known chat-template auto-fixes
+        # before the messages reach llama-server (e.g. Gemma family
+        # rejects the system role outright).
+        messages, template_fix_note = _apply_llama_chat_template_fixes(messages, self.loaded_model)
+
         started_at = time.perf_counter()
         payload: dict[str, Any] = {
             "model": self.loaded_model.ref,
@@ -2292,7 +2336,11 @@ class LlamaCppEngine(BaseInferenceEngine):
             totalTokens=total_tokens,
             tokS=round(completion_tokens / elapsed, 1) if completion_tokens else 0.0,
             responseSeconds=round(elapsed, 2),
-            runtimeNote=self.loaded_model.runtimeNote,
+            runtimeNote=(
+                _append_runtime_note(self.loaded_model.runtimeNote, template_fix_note)
+                if template_fix_note
+                else self.loaded_model.runtimeNote
+            ),
         )
 
     def stream_generate(
@@ -2332,6 +2380,11 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             messages.append({"role": "user", "content": prompt})
 
+        # Phase 3.8 follow-up: chat-template auto-fix on the streaming
+        # path matches the non-stream behaviour. The note is forwarded
+        # via the final StreamChunk's runtime_note.
+        messages, template_fix_note = _apply_llama_chat_template_fixes(messages, self.loaded_model)
+
         payload: dict[str, Any] = {
             "model": self.loaded_model.ref,
             "messages": messages,
@@ -2365,6 +2418,8 @@ class LlamaCppEngine(BaseInferenceEngine):
         stream_start = time.perf_counter()
         first_token_time: float | None = None
         runtime_note = self.loaded_model.runtimeNote
+        if template_fix_note:
+            runtime_note = _append_runtime_note(runtime_note, template_fix_note)
         think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
         try:

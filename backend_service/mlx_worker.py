@@ -1013,6 +1013,12 @@ class WorkerState:
             "peakMemoryGb": 0.0,
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
+            # Phase 3.1 follow-up: DDTree path now ships accepted-span
+            # data alongside the linear DFLASH path so the frontend
+            # AcceptedTokenOverlay tints draft-accepted ranges for
+            # both speculative-decode strategies.
+            "acceptedSpans": result.get("accepted_spans") or [],
+            "acceptedTokenText": result.get("accepted_token_text"),
             **self._runtime_fields(
                 prompt_cache=None,
                 speculative_decoding=True,

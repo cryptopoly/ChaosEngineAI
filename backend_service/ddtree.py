@@ -331,6 +331,11 @@ def generate_ddtree_mlx(
     mx.eval(first_token, target_hidden)
 
     generated_tokens: list[int] = [int(first_token.item())]
+    # Phase 3.1 follow-up: track per-token accepted-from-draft bools so
+    # the AcceptedTokenOverlay can tint draft-accepted spans for the
+    # DDTree path the same way it does for linear DFLASH. The first
+    # token is the prefill posterior (verifier-decoded), so it's False.
+    per_token_accepted: list[bool] = [False]
     start = prompt_len
     cycles = 0
     accepted_from_draft = 0
@@ -395,6 +400,14 @@ def generate_ddtree_mlx(
             committed.append(next_tok)
 
             generated_tokens.extend(committed)
+            # Per-token accepted bools: first `acceptance_len` are
+            # draft-accepted; final one is the verifier's posterior
+            # decode for the position the draft got wrong (or the
+            # natural next token when the whole draft block was
+            # accepted).
+            for _ in range(acceptance_len):
+                per_token_accepted.append(True)
+            per_token_accepted.append(False)
             accepted_from_draft += acceptance_len
             acceptance_history.append(acceptance_len)
             start += commit_count
@@ -490,6 +503,12 @@ def generate_ddtree_mlx(
             committed = [tree_ids_list[idx] for idx in accepted_indices[1:]]  # skip root
             committed.append(next_tok)
             generated_tokens.extend(committed)
+            # Per-token accepted bools — same shape as the linear path:
+            # `acceptance_len` tokens came from the draft tree (True),
+            # the final next_tok is verifier-decoded (False).
+            for _ in range(acceptance_len):
+                per_token_accepted.append(True)
+            per_token_accepted.append(False)
             start += len(accepted_indices)
 
             # Compact cache: keep only accepted nodes
@@ -514,6 +533,10 @@ def generate_ddtree_mlx(
                     for si, st in enumerate(generated_tokens):
                         if st in stop_set:
                             generated_tokens = generated_tokens[:si + 1]
+                            # Phase 3.1 follow-up: keep per_token_accepted
+                            # length aligned with generated_tokens after
+                            # stop-token truncation.
+                            per_token_accepted = per_token_accepted[:si + 1]
                             break
                     break
 
@@ -524,6 +547,51 @@ def generate_ddtree_mlx(
     output_tokens = len(generated_tokens)
     avg_acceptance = float(np.mean(acceptance_history)) if acceptance_history else 0.0
 
+    # Phase 3.1 follow-up: per-token text decode + run-length encode
+    # the accepted bools into character spans so the frontend overlay
+    # can tint draft-accepted ranges. Defensive try/except — token
+    # decoders sometimes fail on rare ids; we fall through to no
+    # overlay rather than crashing the turn.
+    accepted_spans: list[dict[str, Any]] = []
+    accepted_token_text: str | None = None
+    try:
+        if generated_tokens and per_token_accepted:
+            # Defensive align — slice both to the same length in case
+            # truncation paths drift.
+            limit = min(len(generated_tokens), len(per_token_accepted))
+            tokens = generated_tokens[:limit]
+            accepted = per_token_accepted[:limit]
+            per_token_text: list[str] = []
+            for tok_id in tokens:
+                try:
+                    per_token_text.append(tokenizer.decode([int(tok_id)]))
+                except Exception:
+                    per_token_text.append("")
+            accepted_token_text = "".join(per_token_text)
+            offset = 0
+            run_start = 0
+            run_kind = accepted[0] if accepted else False
+            for idx, is_accepted in enumerate(accepted):
+                tok_text = per_token_text[idx]
+                if is_accepted != run_kind:
+                    accepted_spans.append({
+                        "start": run_start,
+                        "length": offset - run_start,
+                        "accepted": run_kind,
+                    })
+                    run_start = offset
+                    run_kind = is_accepted
+                offset += len(tok_text)
+            if accepted:
+                accepted_spans.append({
+                    "start": run_start,
+                    "length": offset - run_start,
+                    "accepted": run_kind,
+                })
+    except Exception:
+        accepted_spans = []
+        accepted_token_text = None
+
     return {
         "generated_tokens": generated_tokens,
         "output_tokens": output_tokens,
@@ -532,4 +600,6 @@ def generate_ddtree_mlx(
         "accepted_from_draft": accepted_from_draft,
         "avg_acceptance_length": avg_acceptance,
         "tree_budget": effective_budget,
+        "accepted_spans": accepted_spans,
+        "accepted_token_text": accepted_token_text,
     }

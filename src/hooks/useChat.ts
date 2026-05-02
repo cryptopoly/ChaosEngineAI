@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  addMessageVariant,
   cancelChatGeneration,
   checkBackend,
   createSession,
@@ -526,6 +527,33 @@ export function useChat(
         }));
       })
       .catch(() => {});
+  }
+
+  async function handleAddVariant(messageIndex: number, warm: WarmModel): Promise<void> {
+    // Phase 2.5: generate a sibling response using a different
+    // currently-loaded model. Variant is attached to the assistant
+    // message at `messageIndex`. Caller (ChatThread hover action)
+    // restricts the picker to warm models so the backend's
+    // already-loaded check passes; we still surface backend errors
+    // through the standard chat error path.
+    if (!activeChat) return;
+    if (messageIndex < 0 || messageIndex >= activeChat.messages.length) return;
+    try {
+      const updated = await addMessageVariant(activeChat.id, {
+        messageIndex,
+        modelRef: warm.ref,
+        modelName: warm.name,
+        backend: warm.engine,
+        maxTokens: launchSettings.maxTokens,
+        temperature: launchSettings.temperature,
+      });
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, updated),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Variant generation failed");
+    }
   }
 
   async function handleForkAtMessage(index: number): Promise<void> {
@@ -1076,6 +1104,7 @@ export function useChat(
     handleSelectThreadModel,
     handleLoadActiveThreadModel,
     handleCopyMessage,
+    handleAddVariant,
     handleDeleteMessage,
     handleForkAtMessage,
     handleRetryMessage,

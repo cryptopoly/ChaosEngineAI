@@ -1,12 +1,14 @@
 import type { Ref } from "react";
+import { useState } from "react";
 import { CitationBadge } from "../../components/CitationBadge";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { PromptPhaseIndicator } from "../../components/PromptPhaseIndicator";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
 import { RichMarkdown } from "../../components/RichMarkdown";
 import { ToolCallCard } from "../../components/ToolCallCard";
-import type { ChatSession, LaunchPreferences, ModelLoadingState } from "../../types";
+import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
+import { VariantPickerButton } from "./VariantPickerButton";
 import {
   requestedCacheLabel,
   requestedSpeculativeMode,
@@ -41,6 +43,10 @@ export interface ChatThreadProps {
   onDeleteMessage: (index: number) => void;
   /** Phase 2.4: fork-from-here action on assistant messages. */
   onForkAtMessage: (index: number) => void;
+  /** Phase 2.5: warm models available for variant generation. */
+  warmModels: WarmModel[];
+  /** Phase 2.5: kick off variant generation against an alternate model. */
+  onAddVariant: (messageIndex: number, warm: WarmModel) => void;
   onDetailsToggle: (opened: boolean) => void;
   onCancelGeneration: () => void;
   onLoadModel: (payload: {
@@ -75,6 +81,8 @@ export function ChatThread({
   onRetryMessage,
   onDeleteMessage,
   onForkAtMessage,
+  warmModels,
+  onAddVariant,
   onDetailsToggle,
   onCancelGeneration,
   onLoadModel,
@@ -157,6 +165,13 @@ export function ChatThread({
                         </svg>
                       </button>
                     ) : null}
+                    {message.role === "assistant" && warmModels.length > 1 ? (
+                      <VariantPickerButton
+                        warmModels={warmModels}
+                        currentModelRef={message.metrics?.modelRef ?? activeChat?.modelRef ?? null}
+                        onPick={(warm) => onAddVariant(index, warm)}
+                      />
+                    ) : null}
                     <button
                       type="button"
                       className="message-action-btn message-action-delete"
@@ -236,6 +251,17 @@ export function ChatThread({
               ) : null}
               {message.citations?.length ? (
                 <CitationBadge citations={message.citations} />
+              ) : null}
+              {message.role === "assistant" && message.variants?.length ? (
+                <div className="variant-stack">
+                  <div className="variant-stack__heading">
+                    <strong>Comparing responses</strong>
+                    <small>Same prompt routed through alternate warm models.</small>
+                  </div>
+                  {message.variants.map((variant, vIdx) => (
+                    <VariantCard key={`${variant.modelRef}-${vIdx}`} variant={variant} />
+                  ))}
+                </div>
               ) : null}
               {message.metrics ? (
                 <details className="message-details" onToggle={(event) => void onDetailsToggle(event.currentTarget.open)}>
@@ -389,6 +415,36 @@ export function ChatThread({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Phase 2.5: renders a single sibling response under the primary
+ * assistant bubble. Includes the model name, decode tok/s if known,
+ * the response markdown, and a collapsible reasoning panel when
+ * the model emitted thinking tokens.
+ */
+function VariantCard({ variant }: { variant: ChatMessageVariant }) {
+  const tokS = variant.metrics?.tokS;
+  const responseSeconds = variant.metrics?.responseSeconds;
+  return (
+    <div className="variant-card">
+      <div className="variant-card__header">
+        <span className="variant-card__model">{variant.modelName}</span>
+        {tokS != null ? (
+          <small className="variant-card__metric">{number(tokS)} tok/s</small>
+        ) : null}
+        {responseSeconds != null ? (
+          <small className="variant-card__metric">{number(responseSeconds)} s</small>
+        ) : null}
+      </div>
+      {variant.reasoning ? (
+        <ReasoningPanel text={variant.reasoning} streaming={false} />
+      ) : null}
+      <div className="markdown-content">
+        <RichMarkdown>{variant.text || "​"}</RichMarkdown>
+      </div>
     </div>
   );
 }

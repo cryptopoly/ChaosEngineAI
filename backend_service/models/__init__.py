@@ -48,6 +48,28 @@ class CreateSessionRequest(BaseModel):
     title: str | None = None
 
 
+class AddVariantRequest(BaseModel):
+    """Phase 2.5: generate a sibling variant of an assistant message.
+
+    The frontend calls this after the user picks an alternate model
+    from the assistant-message hover action. The chosen model must
+    already be the loaded runtime (call /api/models/load first if
+    needed). Backend runs a non-streaming generation using messages
+    truncated to the prior user prompt, then attaches the result as
+    a new entry on `messages[messageIndex].variants`.
+    """
+
+    messageIndex: int = Field(ge=0)
+    modelRef: str = Field(min_length=1)
+    modelName: str = Field(min_length=1)
+    canonicalRepo: str | None = None
+    source: str = "catalog"
+    path: str | None = None
+    backend: str = "auto"
+    maxTokens: int = Field(default=2048, ge=1, le=32768)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+
+
 class ForkSessionRequest(BaseModel):
     """Phase 2.4: fork a thread at a specific assistant message.
 

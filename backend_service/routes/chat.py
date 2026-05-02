@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 
 from backend_service.models import (
+    AddVariantRequest,
     CreateSessionRequest,
     ForkSessionRequest,
     UpdateSessionRequest,
@@ -19,6 +20,30 @@ router = APIRouter()
 def create_session(request: Request, body: CreateSessionRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
     session = state.create_session(title=body.title)
+    return {"session": session}
+
+
+@router.post("/api/chat/sessions/{session_id}/variants")
+def add_message_variant(request: Request, session_id: str, body: AddVariantRequest) -> dict[str, Any]:
+    """Phase 2.5: generate a sibling variant of an assistant message
+    using a different model. Returns the updated session payload so
+    the frontend can swap its local copy in one round-trip."""
+    state = request.app.state.chaosengine
+    try:
+        session = state.add_message_variant(
+            session_id=session_id,
+            message_index=body.messageIndex,
+            model_ref=body.modelRef,
+            model_name=body.modelName,
+            canonical_repo=body.canonicalRepo,
+            source=body.source,
+            path=body.path,
+            backend=body.backend,
+            max_tokens=body.maxTokens,
+            temperature=body.temperature,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"session": session}
 
 

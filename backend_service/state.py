@@ -1082,6 +1082,126 @@ class ChaosEngineState:
             session = self._ensure_session(title=title)
             return session
 
+    def add_message_variant(
+        self,
+        session_id: str,
+        message_index: int,
+        model_ref: str,
+        model_name: str,
+        canonical_repo: str | None,
+        source: str,
+        path: str | None,
+        backend: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> dict[str, Any]:
+        """Phase 2.5: generate a sibling variant of an assistant message.
+
+        Truncates the session's message list to the user message that
+        produced the target assistant turn (i.e. messages[0..index-1]
+        plus the user prompt at index-1), then runs a non-streaming
+        generation against the override model. The result is attached
+        to ``messages[message_index].variants`` so the frontend can
+        render it side-by-side with the original answer.
+
+        The override model must already be loaded as the current
+        runtime — callers should preload via the existing My Models
+        flow before invoking compare. Raising on misalignment keeps
+        the contract simple: variant generation never reloads the
+        runtime under the user.
+
+        Returns the updated session dict so the frontend can replace
+        its local copy in one round-trip.
+        """
+        with self._lock:
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            if session is None:
+                raise ValueError(f"Session not found: {session_id}")
+            messages = session.get("messages") or []
+            if message_index < 0 or message_index >= len(messages):
+                raise ValueError(
+                    f"message_index {message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+            target = messages[message_index]
+            if target.get("role") != "assistant":
+                raise ValueError(
+                    f"Variants can only be added to assistant messages "
+                    f"(message {message_index} role: {target.get('role')})"
+                )
+            if message_index == 0:
+                raise ValueError("Cannot add a variant to the first message — no prompt available")
+            user_msg = messages[message_index - 1]
+            if user_msg.get("role") != "user":
+                raise ValueError(
+                    f"Variant prompt must come from a user message at index "
+                    f"{message_index - 1}, got role {user_msg.get('role')}"
+                )
+            history = _build_history_with_reasoning(
+                messages[: message_index - 1],
+                preserve_reasoning=False,
+            )
+            user_prompt = str(user_msg.get("text") or "")
+
+            if self.runtime.loaded_model is None:
+                raise ValueError("Load the override model before requesting a variant")
+            loaded = self.runtime.loaded_model
+            # Sanity check the runtime is the requested model. We don't
+            # auto-reload because the user explicitly wants to compare
+            # against an already-warm choice.
+            if loaded.ref != model_ref and loaded.runtimeTarget != model_ref:
+                raise ValueError(
+                    f"Loaded runtime is {loaded.ref}, but variant requested {model_ref}. "
+                    "Load the desired model first via My Models, then retry."
+                )
+
+            started_at = time.perf_counter()
+            try:
+                result = self.runtime.generate(
+                    prompt=user_prompt,
+                    history=history,
+                    system_prompt=_compose_chat_system_prompt(None),
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except RuntimeError as exc:
+                raise ValueError(f"Variant generation failed: {exc}") from exc
+            elapsed = round(time.perf_counter() - started_at, 2)
+
+            metrics = self._stream_assistant_metrics_payload(
+                final_chunk=type("Chunk", (), {
+                    "finish_reason": result.finishReason,
+                    "prompt_tokens": result.promptTokens,
+                    "completion_tokens": result.completionTokens,
+                    "tok_s": result.tokS,
+                    "runtime_note": result.runtimeNote,
+                    "dflash_acceptance_rate": getattr(result, "dflashAcceptanceRate", None),
+                })(),
+                tok_s=result.tokS,
+                response_seconds=elapsed,
+            )
+            metrics["model"] = model_name
+            metrics["modelRef"] = model_ref
+            metrics["canonicalRepo"] = canonical_repo
+            metrics["modelSource"] = source
+            metrics["modelPath"] = path
+            metrics["backend"] = backend
+
+            variant = {
+                "modelRef": model_ref,
+                "modelName": model_name,
+                "text": result.text,
+                "metrics": metrics,
+                "generatedAt": self._time_label(),
+            }
+            target.setdefault("variants", []).append(variant)
+            session["updatedAt"] = self._time_label()
+            self._persist_sessions()
+            return session
+
     def fork_session(
         self,
         source_session_id: str,

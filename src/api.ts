@@ -456,6 +456,33 @@ export async function createSession(title?: string): Promise<ChatSession> {
 }
 
 /**
+ * Phase 2.5: generate a sibling variant for an assistant message
+ * using a different (currently-loaded) model. Returns the updated
+ * session payload with `messages[messageIndex].variants` populated.
+ */
+export async function addMessageVariant(
+  sessionId: string,
+  payload: {
+    messageIndex: number;
+    modelRef: string;
+    modelName: string;
+    canonicalRepo?: string | null;
+    source?: string;
+    path?: string;
+    backend?: string;
+    maxTokens?: number;
+    temperature?: number;
+  },
+): Promise<ChatSession> {
+  const result = await postJson<CreateSessionResponse>(
+    `/api/chat/sessions/${encodeURIComponent(sessionId)}/variants`,
+    payload,
+    300000,
+  );
+  return result.session;
+}
+
+/**
  * Phase 2.4: fork an existing thread at a specific message index.
  * Returns the new session, which the caller swaps active to so the
  * user can continue divergently. Parent linkage is preserved on

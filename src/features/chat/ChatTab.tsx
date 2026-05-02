@@ -86,6 +86,8 @@ export interface ChatTabProps {
   onDeleteMessage: (index: number) => void;
   /** Phase 2.4: fork the thread at this assistant message index. */
   onForkAtMessage: (index: number) => void;
+  /** Phase 2.5: kick off a sibling variant for an assistant message. */
+  onAddVariant: (messageIndex: number, warm: WarmModel) => void;
   onDetailsToggle: (opened: boolean) => void;
   onSendMessage: () => void;
   onSetError: (msg: string | null) => void;
@@ -144,6 +146,7 @@ export function ChatTab({
   onRetryMessage,
   onDeleteMessage,
   onForkAtMessage,
+  onAddVariant,
   onDetailsToggle,
   onSendMessage,
   onSetError,
@@ -389,6 +392,8 @@ export function ChatTab({
           onRetryMessage={onRetryMessage}
           onDeleteMessage={onDeleteMessage}
           onForkAtMessage={onForkAtMessage}
+          warmModels={warmModels}
+          onAddVariant={onAddVariant}
           onDetailsToggle={onDetailsToggle}
           onCancelGeneration={onCancelGeneration}
           onLoadModel={onLoadModel}

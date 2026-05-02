@@ -7282,6 +7282,39 @@ select.text-input {
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
+/* Substrate routing inspector badge (Phase 3.4) */
+.substrate-routing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+
+.substrate-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted-strong);
+  white-space: nowrap;
+}
+
+.substrate-chip--accent {
+  background: rgba(92, 200, 255, 0.12);
+  color: #9bd6ff;
+  border-color: rgba(92, 200, 255, 0.32);
+}
+
+.substrate-chip--warn {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.32);
+}
+
 /* Capability badges (Phase 2.11) */
 .capability-badges {
   display: inline-flex;

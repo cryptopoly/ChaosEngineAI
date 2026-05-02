@@ -237,6 +237,8 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # drive. Moving existing models between locations is handled by
         # the ``/api/settings/storage/move`` endpoint.
         "hfCachePath": "",
+        # Phase 3.3: advanced-mode logprobs flag. Off by default.
+        "advancedLogprobs": False,
     }
 
 
@@ -344,6 +346,8 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
     # preserve the secure default rather than silently opening the API.
     settings["requireApiAuth"] = bool(payload.get("requireApiAuth", True))
     settings["autoStartServer"] = bool(payload.get("autoStartServer", False))
+    # Phase 3.3: advanced-mode logprobs toggle.
+    settings["advancedLogprobs"] = bool(payload.get("advancedLogprobs", False))
 
     settings["launchPreferences"] = _normalize_launch_preferences(payload.get("launchPreferences"))
 

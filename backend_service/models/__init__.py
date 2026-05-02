@@ -156,6 +156,11 @@ class GenerateRequest(BaseModel):
     # via its `response_format: {type: "json_schema", json_schema: {...}}`
     # parameter. The shape mirrors the OpenAI structured-outputs spec.
     jsonSchema: dict[str, Any] | None = None
+    # Phase 3.3: when set, ask llama-server to return top-k logprobs per
+    # token. Gated behind an advanced-mode setting on the frontend so the
+    # bandwidth + render cost is only paid when explicitly requested.
+    # Pass None to omit (default — no logprobs returned).
+    logprobs: int | None = Field(default=None, ge=1, le=20)
     cacheStrategy: str | None = None
     cacheBits: int | None = Field(default=None, ge=0, le=8)
     fp16Layers: int | None = Field(default=None, ge=0, le=16)
@@ -228,6 +233,10 @@ class UpdateSettingsRequest(BaseModel):
     # drive. Applied by the Tauri shell at backend spawn; requires restart
     # to take effect. Empty string clears the override.
     hfCachePath: str | None = Field(default=None, max_length=4096)
+    # Phase 3.3: when true, the chat composer adds `logprobs: 5` to
+    # every send so llama-server returns top-k per-token confidence
+    # info. Off by default.
+    advancedLogprobs: bool | None = None
 
 
 class OpenAIMessage(BaseModel):

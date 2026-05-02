@@ -553,6 +553,17 @@ export interface StreamCallbacks {
    * is actively thermally throttling. Stream continues.
    */
   onThermalWarning?: (signal: { state: "moderate" | "critical"; message: string }) => void;
+  /**
+   * Phase 3.3: per-token logprob batches. The backend forwards
+   * llama-server's `logprobs.content` shape verbatim — each entry has
+   * the chosen token + top-k alternatives. Only fires when the request
+   * had `logprobs: N` set.
+   */
+  onTokenLogprobs?: (entries: Array<{
+    token: string | null;
+    logprob: number | null;
+    alternatives: Array<{ token: string | null; logprob: number | null }>;
+  }>) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
 }
@@ -660,6 +671,9 @@ export async function generateChatStream(
               state: event.state,
               message: event.message,
             });
+          }
+          if (Array.isArray(event.tokenLogprobs) && event.tokenLogprobs.length > 0) {
+            callbacks.onTokenLogprobs?.(event.tokenLogprobs);
           }
           if (event.done) {
             callbacks.onDone({

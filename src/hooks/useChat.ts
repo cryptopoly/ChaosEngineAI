@@ -849,6 +849,9 @@ export function useChat(
         // Phase 2.2: per-thread sampler overrides. Backend ignores fields
         // it doesn't recognise so this is forward-compatible.
         ...readSamplerPayload(sessionId),
+        // Phase 3.3: when advanced-mode logprobs is on, ask llama-server
+        // for top-5 alternatives per token. Default off.
+        ...(workspace.settings?.advancedLogprobs ? { logprobs: 5 } : {}),
         systemPrompt: systemPrompt || undefined,
         // Phase 3.2: per-thread KV strategy override. Falls through to
         // the session's runtime profile when no override is set.
@@ -918,6 +921,27 @@ export function useChat(
               }),
             }));
           }
+        },
+        onTokenLogprobs: (entries) => {
+          // Phase 3.3: append entries to the streaming assistant
+          // message's tokenLogprobs array so the hover overlay can
+          // resolve per-token alternatives once streaming finishes.
+          if (!streamingChatId || entries.length === 0) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = {
+                  ...last,
+                  tokenLogprobs: [...(last.tokenLogprobs ?? []), ...entries],
+                };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
         },
         onReasoningDone: () => {
           if (streamingChatId) {

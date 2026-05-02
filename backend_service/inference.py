@@ -54,6 +54,11 @@ _LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
     "frequency_penalty",
     "presence_penalty",
     "stop",
+    # Phase 3.3: per-token confidence info. llama-server returns
+    # top-k alternatives with their logprobs in each delta when
+    # `logprobs: true` + `top_logprobs: N` are set.
+    "logprobs",
+    "top_logprobs",
 )
 
 
@@ -948,6 +953,10 @@ class StreamChunk:
     speculative_decoding: bool | None = None
     tree_budget: int | None = None
     done: bool = False
+    # Phase 3.3: per-token logprobs. When set, contains the chosen
+    # token's logprob plus the top-k alternatives. Only populated
+    # when the request had `logprobs: N` set.
+    token_logprobs: list[dict[str, Any]] | None = None
 
 
 class BaseInferenceEngine:
@@ -2363,6 +2372,28 @@ class LlamaCppEngine(BaseInferenceEngine):
                 choice = (chunk.get("choices") or [{}])[0]
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
+                # Phase 3.3: extract per-token logprobs when llama-server
+                # returns them. The `logprobs.content` field is a list of
+                # token entries with top_logprobs alternatives.
+                logprob_entries: list[dict[str, Any]] | None = None
+                logprobs_payload = choice.get("logprobs") or {}
+                if isinstance(logprobs_payload, dict):
+                    raw_entries = logprobs_payload.get("content")
+                    if isinstance(raw_entries, list) and raw_entries:
+                        logprob_entries = []
+                        for entry in raw_entries:
+                            if not isinstance(entry, dict):
+                                continue
+                            top = entry.get("top_logprobs") or []
+                            logprob_entries.append({
+                                "token": entry.get("token"),
+                                "logprob": entry.get("logprob"),
+                                "alternatives": [
+                                    {"token": alt.get("token"), "logprob": alt.get("logprob")}
+                                    for alt in top
+                                    if isinstance(alt, dict)
+                                ],
+                            })
                 if content:
                     split = think_filter.feed(str(content))
                     if split.reasoning:
@@ -2374,7 +2405,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                         if first_token_time is None:
                             first_token_time = time.perf_counter()
                         completion_tokens += 1
-                        yield StreamChunk(text=split.text)
+                        yield StreamChunk(text=split.text, token_logprobs=logprob_entries)
                 fr = choice.get("finish_reason")
                 if fr:
                     finish_reason = fr

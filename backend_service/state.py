@@ -123,6 +123,14 @@ def _build_sampler_overrides(request: Any) -> dict[str, Any]:
         overrides["mirostat"] = mirostat_mode
     _put("mirostat_tau", getattr(request, "mirostatTau", None))
     _put("mirostat_eta", getattr(request, "mirostatEta", None))
+    # Phase 3.3: when the user enables logprobs on a request the
+    # frontend sends a top-k count; map it onto llama-server's
+    # `logprobs` + `top_logprobs` parameters so the response delta
+    # carries the per-token info.
+    logprobs = getattr(request, "logprobs", None)
+    if logprobs is not None and logprobs > 0:
+        overrides["logprobs"] = True
+        overrides["top_logprobs"] = int(logprobs)
     return overrides
 
 
@@ -3158,6 +3166,10 @@ class ChaosEngineState:
                                 yield phase_event
                             full_text += chunk.text
                             yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+                            # Phase 3.3: forward per-token logprobs when
+                            # the inference layer captured them.
+                            if chunk.token_logprobs:
+                                yield f"data: {json.dumps({'tokenLogprobs': chunk.token_logprobs})}\n\n"
                             if len(full_text) > runaway_char_budget:
                                 runaway_triggered = True
                                 cancelled = True

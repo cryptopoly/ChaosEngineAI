@@ -231,6 +231,12 @@ export interface AppSettings {
   // external SSD or a cloud-synced delivery folder).
   imageOutputsDirectory?: string;
   videoOutputsDirectory?: string;
+  /**
+   * Phase 3.3: when true, the chat composer adds `logprobs: 5` to
+   * every send so llama-server returns top-k per-token confidence
+   * info. Off by default — bandwidth + render cost is non-trivial.
+   */
+  advancedLogprobs?: boolean;
 }
 
 export interface SettingsUpdateResponse {
@@ -289,6 +295,17 @@ export interface ChatMessageVariant {
   generatedAt?: string;
 }
 
+/**
+ * Phase 3.3: per-token logprob entry. Mirrors the OpenAI-spec
+ * `logprobs.content[]` shape. Top-k alternatives let the hover
+ * popover show what the model nearly said instead.
+ */
+export interface TokenLogprob {
+  token: string | null;
+  logprob: number | null;
+  alternatives: Array<{ token: string | null; logprob: number | null }>;
+}
+
 export interface ChatPanicSignal {
   /** User-visible panic message from the backend. */
   message: string;
@@ -334,6 +351,12 @@ export interface ChatMessage {
   thermalWarning?: ChatThermalWarning | null;
   /** Phase 2.5: alternate responses from other models for the same prompt. */
   variants?: ChatMessageVariant[];
+  /**
+   * Phase 3.3: cumulative per-token logprobs captured during streaming
+   * when the request had `logprobs: N` set. Only populated for
+   * llama-server; MLX worker passthrough is a follow-up.
+   */
+  tokenLogprobs?: TokenLogprob[];
 }
 
 export interface SessionDocument {
@@ -729,6 +752,12 @@ export interface GeneratePayload {
   mirostatTau?: number;
   mirostatEta?: number;
   jsonSchema?: Record<string, unknown>;
+  /**
+   * Phase 3.3: when set, asks llama-server to return top-k logprobs
+   * per token. Bandwidth cost is non-trivial — gate via the advanced
+   * mode setting, not a per-turn chip.
+   */
+  logprobs?: number;
   cacheBits?: number;
   fp16Layers?: number;
   fusedAttention?: boolean;

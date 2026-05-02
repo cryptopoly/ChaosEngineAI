@@ -7349,6 +7349,80 @@ select.text-input {
   border-color: rgba(239, 68, 68, 0.32);
 }
 
+/* Logprob summary (Phase 3.3) */
+.logprob-summary {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.logprob-summary__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted-strong);
+  list-style: none;
+}
+
+.logprob-summary__head::-webkit-details-marker {
+  display: none;
+}
+
+.logprob-summary__head small {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.logprob-summary__empty {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.logprob-summary__hint {
+  margin: 6px 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.logprob-summary__list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.logprob-summary__list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  cursor: help;
+}
+
+.logprob-summary__list code {
+  font-family: var(--font-mono, "Menlo", monospace);
+  font-size: 10px;
+  color: #fcd34d;
+}
+
+.logprob-summary__metric {
+  font-size: 9px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* KV strategy chip (Phase 3.2) */
 .kv-chip {
   position: relative;

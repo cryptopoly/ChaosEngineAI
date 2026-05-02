@@ -256,7 +256,19 @@ def _build_prompt_text(
     history: list[dict[str, Any]],
     prompt: str,
     system_prompt: str | None,
+    model_ref: str | None = None,
 ) -> tuple[str, str | None]:
+    # Phase 3.8: detect chat-template quirks at render time and apply
+    # the matching auto-fix. Today: Gemma family rejects the system role
+    # entirely, so we fold the system prompt into the first user message
+    # before handing off to apply_chat_template. The report's
+    # `to_runtime_note()` surfaces the fix to the UI's substrate badge.
+    from backend_service.helpers.chat_template import (
+        fold_system_into_first_user,
+        inspect_chat_template,
+        is_gemma_family,
+    )
+
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -268,19 +280,25 @@ def _build_prompt_text(
     messages.append({"role": "user", "content": prompt})
     messages = _sanitize_messages(messages)
 
+    template_note: str | None = None
+    if is_gemma_family(model_ref):
+        messages = fold_system_into_first_user(messages)
+        report = inspect_chat_template(getattr(tokenizer, "chat_template", None), model_ref)
+        template_note = report.to_runtime_note()
+
     apply_template = getattr(tokenizer, "apply_chat_template", None)
     if callable(apply_template):
         try:
             rendered = apply_template(messages, tokenize=False, add_generation_prompt=True)
             if isinstance(rendered, str):
-                return rendered, None
+                return rendered, template_note
         except TypeError:
             try:
                 rendered = apply_template(messages, add_generation_prompt=True)
                 if isinstance(rendered, str):
-                    return rendered, None
+                    return rendered, template_note
                 if isinstance(rendered, list):
-                    return tokenizer.decode(rendered), None
+                    return tokenizer.decode(rendered), template_note
             except Exception as exc:  # pragma: no cover - exercised via fallback path below
                 reason = str(exc).strip() or exc.__class__.__name__
                 return (

@@ -1240,6 +1240,63 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(payload["choices"][0]["message"]["role"], "assistant")
         self.assertGreater(payload["usage"]["total_tokens"], 0)
 
+    def test_openai_completion_forwards_sampler_fields(self):
+        # Phase 2.13: standard OpenAI sampler fields should reach the runtime.
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [
+                    {"role": "user", "content": "test"},
+                ],
+                "max_tokens": 32,
+                "top_p": 0.85,
+                "frequency_penalty": 0.5,
+                "presence_penalty": -0.2,
+                "seed": 1234,
+                "stop": ["END"],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "answer",
+                        "schema": {"type": "object", "properties": {"out": {"type": "string"}}},
+                    },
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        runtime_kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertEqual(runtime_kwargs["samplers"]["top_p"], 0.85)
+        self.assertEqual(runtime_kwargs["samplers"]["frequency_penalty"], 0.5)
+        self.assertEqual(runtime_kwargs["samplers"]["presence_penalty"], -0.2)
+        self.assertEqual(runtime_kwargs["samplers"]["seed"], 1234)
+        self.assertEqual(runtime_kwargs["samplers"]["stop"], ["END"])
+        self.assertIn("properties", runtime_kwargs["json_schema"])
+
+    def test_openai_completion_omits_sampler_dict_when_none_set(self):
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 32,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        runtime_kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertIsNone(runtime_kwargs["samplers"])
+        self.assertIsNone(runtime_kwargs["json_schema"])
+
+    def test_openai_embeddings_returns_503_when_no_client(self):
+        # No embedding model wired in tests → expect a clean 503 with
+        # actionable detail rather than a 500.
+        response = self.client.post(
+            "/v1/embeddings",
+            json={"input": "test", "model": "any"},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("embedding", response.json()["detail"].lower())
+
     def test_compare_stream_includes_requested_and_actual_runtime_metadata(self):
         response = self.client.post(
             "/api/chat/compare",

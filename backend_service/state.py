@@ -30,6 +30,7 @@ from backend_service.models import (
     UpdateSessionRequest,
     GenerateRequest,
     OpenAIChatCompletionRequest,
+    OpenAIEmbeddingsRequest,
     BenchmarkRunRequest,
     UpdateSettingsRequest,
 )
@@ -3750,6 +3751,65 @@ class ChaosEngineState:
                 })
         return {"object": "list", "data": data}
 
+    def openai_embeddings(self, request: OpenAIEmbeddingsRequest) -> dict[str, Any]:
+        """Phase 2.13: OpenAI-compatible embeddings endpoint.
+
+        Routes through the bundled GGUF embedding model (Phase 2.6).
+        Returns a 503 when no embedding client is available; returns
+        the OpenAI-shaped response shape on success so external
+        scripts can drop us in for OpenAI without code changes.
+        """
+        from backend_service.app import DOCUMENTS_DIR
+        from backend_service.rag import resolve_embedding_client
+        from backend_service.rag.embedding_client import EmbeddingClientUnavailable
+
+        client = resolve_embedding_client(DOCUMENTS_DIR.parent)
+        if client is None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "No embedding model is configured. Set CHAOSENGINE_EMBEDDING_MODEL "
+                    "or drop a *.gguf into <dataDir>/embeddings/."
+                ),
+            )
+
+        if isinstance(request.input, str):
+            inputs = [request.input]
+        else:
+            inputs = list(request.input)
+
+        if not inputs:
+            raise HTTPException(status_code=400, detail="`input` must be a non-empty string or list of strings.")
+
+        try:
+            vectors = client.embed_batch(inputs)
+        except EmbeddingClientUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        # Truncate per OpenAI's `dimensions` parameter when set. We don't
+        # re-normalise after truncation; the bundled model is already
+        # L2-normalised end-to-end, so cosine similarity stays well-defined.
+        if request.dimensions is not None:
+            vectors = [vec[: request.dimensions] for vec in vectors]
+
+        prompt_tokens = sum(max(1, len(text.split())) for text in inputs)
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "object": "embedding",
+                    "embedding": vec,
+                    "index": idx,
+                }
+                for idx, vec in enumerate(vectors)
+            ],
+            "model": request.model or "chaosengine-embed",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "total_tokens": prompt_tokens,
+            },
+        }
+
     def openai_chat_completion(self, request: OpenAIChatCompletionRequest) -> dict[str, Any] | StreamingResponse:
         if not request.messages:
             raise HTTPException(status_code=400, detail="At least one message is required.")
@@ -3829,6 +3889,39 @@ class ChaosEngineState:
             created = int(time.time())
             self.add_log("server", "info", f"[{model_tag}] Running chat completion on conversation with {msg_count} messages.")
 
+        # Phase 2.13: build a sampler dict from OpenAI-shaped fields. The
+        # runtime accepts the same llama-server key names so we map field
+        # → key here once and pass the dict to both stream + non-stream
+        # paths. None values drop out so they don't override server
+        # defaults.
+        oai_samplers: dict[str, Any] = {}
+        if request.top_p is not None:
+            oai_samplers["top_p"] = request.top_p
+        if request.top_k is not None:
+            oai_samplers["top_k"] = request.top_k
+        if request.frequency_penalty is not None:
+            oai_samplers["frequency_penalty"] = request.frequency_penalty
+        if request.presence_penalty is not None:
+            oai_samplers["presence_penalty"] = request.presence_penalty
+        if request.seed is not None:
+            oai_samplers["seed"] = request.seed
+        if request.stop is not None:
+            oai_samplers["stop"] = request.stop if isinstance(request.stop, list) else [request.stop]
+
+        # Phase 2.13: pull a JSON schema out of OpenAI's response_format
+        # envelope so the constrained-decode path lights up. Anything
+        # other than `json_schema` → no constraint (json_object would
+        # require a different code path llama-server already handles
+        # via response_format= but we don't surface that here).
+        oai_json_schema: dict[str, Any] | None = None
+        if isinstance(request.response_format, dict):
+            rf_type = request.response_format.get("type")
+            if rf_type == "json_schema":
+                schema_envelope = request.response_format.get("json_schema") or {}
+                schema_obj = schema_envelope.get("schema")
+                if isinstance(schema_obj, dict):
+                    oai_json_schema = schema_obj
+
         if request.stream:
             chaosengine = self
 
@@ -3849,6 +3942,8 @@ class ChaosEngineState:
                         images=last_user_images or None,
                         tools=request.tools,
                         engine=target_engine,
+                        samplers=oai_samplers or None,
+                        json_schema=oai_json_schema,
                     ):
                         if chunk.text:
                             token_count += 1
@@ -3924,6 +4019,8 @@ class ChaosEngineState:
                 images=last_user_images or None,
                 tools=request.tools,
                 engine=target_engine,
+                samplers=oai_samplers or None,
+                json_schema=oai_json_schema,
             )
         except RuntimeError as exc:
             with self._lock:

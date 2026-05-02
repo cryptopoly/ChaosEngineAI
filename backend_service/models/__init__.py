@@ -243,6 +243,30 @@ class OpenAIChatCompletionRequest(BaseModel):
     stream: bool = False
     tools: list[dict[str, Any]] | None = None
     tool_choice: Any = None
+    # Phase 2.13: standard OpenAI sampler parameters. llama-server
+    # supports them natively; mlx-lm consumes top_p / top_k / seed and
+    # silently ignores the rest. Pass None to use the runtime default.
+    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    top_k: int | None = Field(default=None, ge=0, le=200)
+    frequency_penalty: float | None = Field(default=None, ge=-2.0, le=2.0)
+    presence_penalty: float | None = Field(default=None, ge=-2.0, le=2.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    stop: list[str] | str | None = None
+    response_format: dict[str, Any] | None = None
+
+
+class OpenAIEmbeddingsRequest(BaseModel):
+    """Phase 2.13: OpenAI-shaped embeddings input.
+
+    `input` accepts a single string or a list of strings, mirroring
+    the OpenAI spec. The `model` field is informational — we use the
+    bundled embedding GGUF regardless.
+    """
+    model: str | None = None
+    input: str | list[str]
+    encoding_format: Literal["float"] | None = "float"
+    dimensions: int | None = Field(default=None, ge=8, le=8192)
+    user: str | None = None
 
 
 class ConvertModelRequest(BaseModel):

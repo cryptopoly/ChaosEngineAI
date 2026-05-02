@@ -47,6 +47,13 @@ _LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
     "mirostat",
     "mirostat_tau",
     "mirostat_eta",
+    # Phase 2.13: OpenAI-spec penalty fields. llama-server accepts these
+    # natively under the same names. mlx-lm doesn't pass them through
+    # but `_apply_sampler_kwargs` only adds them to the llama path
+    # payload, so the worker subprocess is unaffected.
+    "frequency_penalty",
+    "presence_penalty",
+    "stop",
 )
 
 

@@ -7315,6 +7315,40 @@ select.text-input {
   border-color: rgba(251, 191, 36, 0.32);
 }
 
+/* Cross-platform perf strip (Phase 3.5) */
+.chat-perf-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.perf-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.perf-chip--warn {
+  background: rgba(251, 191, 36, 0.10);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+.perf-chip--alert {
+  background: rgba(239, 68, 68, 0.10);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.32);
+}
+
 /* KV strategy chip (Phase 3.2) */
 .kv-chip {
   position: relative;

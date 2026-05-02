@@ -5,6 +5,7 @@ import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { PromptPhaseIndicator } from "../../components/PromptPhaseIndicator";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
 import { RichMarkdown } from "../../components/RichMarkdown";
+import { ChatPerfStrip } from "../../components/ChatPerfStrip";
 import { SubstrateRoutingBadge } from "../../components/SubstrateRoutingBadge";
 import { ToolCallCard } from "../../components/ToolCallCard";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
@@ -266,6 +267,9 @@ export function ChatThread({
               ) : null}
               {message.role === "assistant" && message.metrics ? (
                 <SubstrateRoutingBadge metrics={message.metrics} />
+              ) : null}
+              {message.role === "assistant" && message.metrics ? (
+                <ChatPerfStrip metrics={message.metrics} />
               ) : null}
               {message.metrics ? (
                 <details className="message-details" onToggle={(event) => void onDetailsToggle(event.currentTarget.open)}>

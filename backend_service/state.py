@@ -686,6 +686,20 @@ class ChaosEngineState:
             metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
         if ttft_seconds is not None:
             metrics["ttftSeconds"] = ttft_seconds
+
+        # Phase 3.5: per-turn perf telemetry snapshot. Best-effort —
+        # samplers fail silently and the telemetry strip just omits the
+        # missing fields. Captured at finalisation so the values reflect
+        # the load the turn actually generated, not idle baseline.
+        try:
+            from backend_service.helpers.perf import snapshot_perf_telemetry
+            telemetry = snapshot_perf_telemetry()
+            if not telemetry.is_empty:
+                metrics["perfTelemetry"] = telemetry.to_dict()
+        except Exception:
+            # Telemetry must never block a turn from finalising.
+            pass
+
         return {
             **self._loaded_model_metrics_fields(),
             **self._result_runtime_metrics_fields(final_chunk),

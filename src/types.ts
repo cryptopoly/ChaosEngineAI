@@ -507,6 +507,19 @@ export interface NativeBackendStatus {
   probing?: boolean;
 }
 
+/**
+ * Phase 3.5: per-turn host telemetry snapshot. Captured at stream
+ * finalisation so the values reflect the load the turn generated,
+ * not idle baseline. Any field can be null when the underlying
+ * sampler is unavailable on this OS.
+ */
+export interface PerfTelemetry {
+  cpuPercent?: number | null;
+  gpuPercent?: number | null;
+  thermalState?: "nominal" | "moderate" | "critical" | null;
+  availableMemoryGb?: number | null;
+}
+
 export interface GenerationMetrics {
   finishReason: string;
   promptTokens: number;
@@ -514,6 +527,8 @@ export interface GenerationMetrics {
   totalTokens: number;
   tokS: number;
   responseSeconds?: number | null;
+  /** Phase 3.5: host telemetry sampled at turn finalisation. */
+  perfTelemetry?: PerfTelemetry | null;
   /** Time-to-first-token in seconds (Phase 2.0). Time from generation start
    * to the moment the model produced its first reasoning or text token.
    * Useful for diagnosing slow prompt-eval phases on long contexts. */

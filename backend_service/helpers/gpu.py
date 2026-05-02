@@ -351,6 +351,96 @@ _CUDA_WHEEL_HINT = (
 )
 
 
+# Cached torch availability — see ``gpu_status_snapshot``. Cleared after a
+# successful GPU bundle install via ``reset_torch_status_cache``.
+_TORCH_STATUS_LOCK = threading.Lock()
+_TORCH_STATUS_CACHE: dict[str, dict[str, bool]] = {}
+
+
+def _probe_torch_status_subprocess() -> dict[str, bool]:
+    """Probe torch availability via a short-lived subprocess.
+
+    We must NOT ``import torch`` in the backend process. On Windows the
+    import maps ``torch/lib/*.dll`` (asmjit, cublas, cudnn, ...) into the
+    process handle table; transitively it also imports ``numpy`` which
+    maps ``numpy/linalg/_umath_linalg.cp312-win_amd64.pyd``, and pulls
+    other compiled deps like PyYAML's ``_yaml.cp312-win_amd64.pyd`` via
+    HuggingFace's config loaders. Once those handles are open, pip's
+    ``--upgrade --target extras`` install can't ``rmtree`` the existing
+    package directories — every retry fails with::
+
+        PermissionError: [WinError 5] Access is denied:
+        '...\\extras\\cp312\\site-packages\\numpy\\linalg\\_umath_linalg.cp312-win_amd64.pyd'
+
+    Spawning a child Python lets us answer "is torch importable / does it
+    see CUDA / MPS?" without poisoning the long-running backend.
+    """
+    executable = _monitor._resolve_python_executable()
+    if executable is None:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    script = (
+        "import json, sys\n"
+        "out = {'torchImported': False, 'cudaAvailable': False, 'mpsAvailable': False}\n"
+        "try:\n"
+        "    import torch\n"
+        "    out['torchImported'] = True\n"
+        "    try:\n"
+        "        out['cudaAvailable'] = bool(getattr(torch.cuda, 'is_available', lambda: False)())\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "    try:\n"
+        "        mps = getattr(torch.backends, 'mps', None)\n"
+        "        if mps is not None:\n"
+        "            out['mpsAvailable'] = bool(getattr(mps, 'is_available', lambda: False)())\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "except Exception:\n"
+        "    pass\n"
+        "json.dump(out, sys.stdout)\n"
+    )
+
+    try:
+        result = subprocess.run(
+            [executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            **_SUBPROCESS_KWARGS,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    if result.returncode != 0:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    payload = (result.stdout or "").strip()
+    if not payload:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    try:
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    return {
+        "torchImported": bool(data.get("torchImported")),
+        "cudaAvailable": bool(data.get("cudaAvailable")),
+        "mpsAvailable": bool(data.get("mpsAvailable")),
+    }
+
+
+def reset_torch_status_cache() -> None:
+    """Clear the cached torch status.
+
+    Called after a successful GPU bundle install so the next health probe
+    re-runs the subprocess and picks up the freshly-installed wheel rather
+    than serving the pre-install "torch not importable" snapshot.
+    """
+    with _TORCH_STATUS_LOCK:
+        _TORCH_STATUS_CACHE.clear()
+
+
 def gpu_status_snapshot() -> dict[str, Any]:
     """Unified GPU status for the frontend warning banner.
 
@@ -359,32 +449,26 @@ def gpu_status_snapshot() -> dict[str, Any]:
     when torch falls back to CPU on a machine with an NVIDIA GPU. All fields
     are optional so this can be called before torch has been imported without
     failing.
+
+    Critical: this MUST stay out-of-process. The torch availability probe
+    runs in a short-lived subprocess (see ``_probe_torch_status_subprocess``)
+    and the result is cached for the backend's lifetime — wheels on disk
+    don't change without a restart, and importing torch into this process
+    locks DLLs/PYDs that block ``/api/setup/install-gpu-bundle``.
     """
     system = platform.system()
     nvidia_present = nvidia_gpu_present()
 
-    torch_imported = False
-    cuda_available = False
-    mps_available = False
-    try:
-        import torch  # type: ignore
-    except Exception:
-        torch_module = None
-    else:
-        torch_module = torch
-        torch_imported = True
+    with _TORCH_STATUS_LOCK:
+        cached = _TORCH_STATUS_CACHE.get("value")
+    if cached is None:
+        cached = _probe_torch_status_subprocess()
+        with _TORCH_STATUS_LOCK:
+            _TORCH_STATUS_CACHE["value"] = cached
 
-    if torch_module is not None:
-        try:
-            cuda_available = bool(getattr(torch_module.cuda, "is_available", lambda: False)())
-        except Exception:
-            cuda_available = False
-        try:
-            mps_module = getattr(torch_module.backends, "mps", None)
-            if mps_module is not None:
-                mps_available = bool(getattr(mps_module, "is_available", lambda: False)())
-        except Exception:
-            mps_available = False
+    torch_imported = cached["torchImported"]
+    cuda_available = cached["cudaAvailable"]
+    mps_available = cached["mpsAvailable"]
 
     if system in ("Windows", "Linux") and nvidia_present and torch_imported and not cuda_available:
         recommendation = (

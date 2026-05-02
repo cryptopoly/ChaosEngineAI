@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -9,6 +10,7 @@ from backend_service.helpers.gpu import (
     get_gpu_metrics,
     gpu_status_snapshot,
     nvidia_gpu_present,
+    reset_torch_status_cache,
     reset_vram_total_cache,
 )
 
@@ -170,8 +172,18 @@ class CachedVramTotalTests(unittest.TestCase):
 class GpuStatusSnapshotTests(unittest.TestCase):
     """The /api/system/gpu-status endpoint feeds the frontend CPU-fallback banner."""
 
+    def setUp(self):
+        # Each test gets a fresh subprocess probe — without this, the first
+        # test's cached value bleeds into the next, and platform/cuda mocks
+        # would silently no-op.
+        reset_torch_status_cache()
+
     def test_snapshot_has_expected_shape(self):
-        snapshot = gpu_status_snapshot()
+        with patch(
+            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            return_value={"torchImported": False, "cudaAvailable": False, "mpsAvailable": False},
+        ):
+            snapshot = gpu_status_snapshot()
         for key in (
             "platform",
             "nvidiaGpuDetected",
@@ -188,12 +200,12 @@ class GpuStatusSnapshotTests(unittest.TestCase):
 
     @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
-    def test_recommendation_when_nvidia_present_but_cuda_unavailable(self, _nv, _plat):
-        fake_torch = MagicMock()
-        fake_torch.cuda.is_available.return_value = False
-        fake_torch.backends.mps.is_available.return_value = False
-        with patch.dict("sys.modules", {"torch": fake_torch}):
-            snapshot = gpu_status_snapshot()
+    @patch(
+        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        return_value={"torchImported": True, "cudaAvailable": False, "mpsAvailable": False},
+    )
+    def test_recommendation_when_nvidia_present_but_cuda_unavailable(self, _probe, _nv, _plat):
+        snapshot = gpu_status_snapshot()
         self.assertTrue(snapshot["torchImported"])
         self.assertFalse(snapshot["torchCudaAvailable"])
         self.assertTrue(snapshot["cpuFallbackWarning"])
@@ -208,26 +220,83 @@ class GpuStatusSnapshotTests(unittest.TestCase):
 
     @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
-    def test_no_warning_when_cuda_available(self, _nv, _plat):
-        fake_torch = MagicMock()
-        fake_torch.cuda.is_available.return_value = True
-        fake_torch.backends.mps.is_available.return_value = False
-        with patch.dict("sys.modules", {"torch": fake_torch}):
-            snapshot = gpu_status_snapshot()
+    @patch(
+        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
+    )
+    def test_no_warning_when_cuda_available(self, _probe, _nv, _plat):
+        snapshot = gpu_status_snapshot()
         self.assertTrue(snapshot["torchCudaAvailable"])
         self.assertFalse(snapshot["cpuFallbackWarning"])
         self.assertIsNone(snapshot["recommendation"])
 
     @patch("backend_service.helpers.gpu.platform.system", return_value="Darwin")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=False)
-    def test_no_warning_on_macos_even_with_cpu_torch(self, _nv, _plat):
-        fake_torch = MagicMock()
-        fake_torch.cuda.is_available.return_value = False
-        fake_torch.backends.mps.is_available.return_value = True
-        with patch.dict("sys.modules", {"torch": fake_torch}):
-            snapshot = gpu_status_snapshot()
+    @patch(
+        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        return_value={"torchImported": True, "cudaAvailable": False, "mpsAvailable": True},
+    )
+    def test_no_warning_on_macos_even_with_cpu_torch(self, _probe, _nv, _plat):
+        snapshot = gpu_status_snapshot()
         self.assertFalse(snapshot["cpuFallbackWarning"])
         self.assertIsNone(snapshot["recommendation"])
+
+    def test_snapshot_does_not_import_torch_in_process(self):
+        """Regression: importing torch in-process locks DLLs/PYDs (numpy,
+        yaml, torch/lib/*.dll) on Windows, which then blocks
+        /api/setup/install-gpu-bundle from upgrading those packages in the
+        extras tree (pip's --upgrade --target rmtree fails with WinError 5).
+        The probe MUST stay subprocess-only.
+        """
+        # Simulate the subprocess saying torch is importable. If the
+        # backend implementation accidentally falls back to an in-process
+        # ``import torch`` we'd see ``torch`` show up in ``sys.modules``
+        # (a real torch wheel isn't required for the assertion — the test
+        # asserts the *absence* of an in-process import attempt).
+        had_torch = "torch" in sys.modules
+        with patch(
+            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
+        ):
+            gpu_status_snapshot()
+        if not had_torch:
+            self.assertNotIn(
+                "torch", sys.modules,
+                "gpu_status_snapshot must not import torch in-process — the import "
+                "locks torch/lib/*.dll on Windows and blocks pip --upgrade --target.",
+            )
+
+    def test_snapshot_caches_subprocess_result(self):
+        """Calling the snapshot twice must only spawn one subprocess —
+        repeated polls from the frontend (every 10s) shouldn't pay for
+        a fresh Python boot each time.
+        """
+        with patch(
+            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
+        ) as mock_probe:
+            gpu_status_snapshot()
+            gpu_status_snapshot()
+            gpu_status_snapshot()
+        self.assertEqual(mock_probe.call_count, 1)
+
+    def test_reset_torch_status_cache_re_probes(self):
+        """After a successful install, the install worker must reset the
+        cache so the stale "torch not importable" answer doesn't survive."""
+        with patch(
+            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            return_value={"torchImported": False, "cudaAvailable": False, "mpsAvailable": False},
+        ) as mock_probe:
+            first = gpu_status_snapshot()
+            self.assertFalse(first["torchImported"])
+        reset_torch_status_cache()
+        with patch(
+            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
+        ) as mock_probe:
+            second = gpu_status_snapshot()
+        self.assertTrue(second["torchImported"])
+        self.assertTrue(second["torchCudaAvailable"])
 
     def test_nvidia_gpu_present_respects_path(self):
         with patch("backend_service.helpers.gpu.shutil.which", return_value="/usr/bin/nvidia-smi"):

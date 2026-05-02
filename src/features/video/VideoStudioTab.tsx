@@ -742,7 +742,7 @@ export function VideoStudioTab({
               >
                 {installingOutputDeps
                   ? "Installing..."
-                  : `Install ${missingTokenizerDeps.join(" + ")}`}
+                  : `Install tokenizers (${missingTokenizerDeps.length})`}
               </button>
             </div>
           ) : null}

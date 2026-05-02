@@ -1,5 +1,6 @@
 """Tests for the setup routes — package installation, turbo update check."""
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -111,17 +112,20 @@ class SetupRouteTests(unittest.TestCase):
         the install across app rebuilds. Without this, mlx-video etc.
         get wiped from the embedded site-packages on every release.
         """
+        target_path = Path("/tmp/test-extras-site-packages")
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
              mock.patch("backend_service.routes.setup._extras_site_packages") as mock_extras:
-            from pathlib import Path
-            mock_extras.return_value = Path("/tmp/test-extras-site-packages")
+            mock_extras.return_value = target_path
             mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
             resp = self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
         self.assertEqual(resp.status_code, 200)
         cmd = mock_run.call_args[0][0]
         self.assertIn("--target", cmd)
         target_idx = cmd.index("--target")
-        self.assertEqual(cmd[target_idx + 1], "/tmp/test-extras-site-packages")
+        # Compare via str(Path(...)) so Windows backslashes vs Unix forward
+        # slashes don't fail the assertion — we care that the target arg
+        # matches the patched extras path, not the literal separator style.
+        self.assertEqual(cmd[target_idx + 1], str(target_path))
         # mlx-video is now pinned to the GitHub source (PyPI ships an
         # unrelated 0.1.0 utilities package). Match on the spec prefix.
         self.assertTrue(
@@ -562,14 +566,90 @@ class SetupRouteTests(unittest.TestCase):
             self.assertIsNone(_find_installed_torch_version(Path(tmp)))
 
     def test_write_torch_constraint_produces_pip_parseable_pin(self):
-        """Constraint file must be a valid pip constraints.txt format."""
+        """Constraint file must be a valid pip constraints.txt format with
+        the local-version segment stripped.
+
+        Regression: with the local segment kept (``torch==2.6.0+cu124``), pip
+        treats the constraint as unsatisfiable when resolving accelerate /
+        bitsandbytes against default PyPI, because PyPI ships only CPU torch
+        wheels (no ``+cu124``). The base-version pin ``torch==2.6.0`` matches
+        the installed CUDA wheel per PEP 440 (a public-only specifier ignores
+        local segments) AND keeps pip from swapping torch for a CPU wheel.
+        """
         from backend_service.routes.setup import _write_torch_constraint
 
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_torch_constraint(Path(tmp), "2.6.0+cu124")
             self.assertTrue(path.exists())
             content = path.read_text()
-            self.assertEqual(content.strip(), "torch==2.6.0+cu124")
+            self.assertEqual(content.strip(), "torch==2.6.0")
+
+    def test_write_torch_constraint_handles_version_without_local(self):
+        """A bare version (no ``+local`` segment) must be written as-is."""
+        from backend_service.routes.setup import _write_torch_constraint
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_torch_constraint(Path(tmp), "2.6.0")
+            self.assertEqual(path.read_text().strip(), "torch==2.6.0")
+
+    def test_run_pip_install_passes_upgrade_strategy_only_if_needed(self):
+        """Without this flag pip can eagerly upgrade torch's transitive deps,
+        pulling the CPU wheel from default PyPI and clobbering the CUDA wheel
+        installed by step 1 of the bundle. Regression: v0.7.2 install logs
+        showed ``Successfully installed ... torch-2.6.0`` (CPU) immediately
+        after the cu124 install, breaking image / video gen.
+        """
+        from backend_service.routes.setup import _run_pip_install
+
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            _run_pip_install("python", "diffusers>=0.30.0", Path("/tmp/extras"), None, [])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("--upgrade-strategy", cmd)
+        idx = cmd.index("--upgrade-strategy")
+        self.assertEqual(cmd[idx + 1], "only-if-needed")
+
+    def test_run_pip_install_puts_target_on_pythonpath(self):
+        """Pip's ``--target`` writes wheels to extras but doesn't add it
+        to sys.path, so pip's resolver doesn't see those wheels as
+        already-installed. We splice extras onto PYTHONPATH for the child
+        process so pip reads the dist-info we just wrote and skips
+        torch reinstalls during accelerate / bitsandbytes resolves.
+        """
+        from backend_service.routes.setup import _run_pip_install
+
+        target = Path("/tmp/test-extras")
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            _run_pip_install("python", "accelerate>=0.34.0", target, None, [])
+        # subprocess.run gets env via kwarg; assert PYTHONPATH starts with target
+        call_kwargs = mock_run.call_args.kwargs
+        self.assertIn("env", call_kwargs)
+        env = call_kwargs["env"]
+        self.assertIn("PYTHONPATH", env)
+        self.assertTrue(
+            env["PYTHONPATH"].startswith(str(target)),
+            f"PYTHONPATH must start with target dir, got: {env['PYTHONPATH']!r}",
+        )
+
+    def test_run_pip_install_preserves_existing_pythonpath(self):
+        """If the parent process already has PYTHONPATH set (Tauri injects
+        the bundled site-packages), we must prepend extras rather than
+        replacing — otherwise pip's child can't find the bundled packages
+        it needs to run pip itself.
+        """
+        from backend_service.routes.setup import _run_pip_install
+
+        target = Path("/tmp/test-extras")
+        original_pythonpath = "/some/bundled/site-packages"
+        with mock.patch.dict(os.environ, {"PYTHONPATH": original_pythonpath}, clear=False), \
+             mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            _run_pip_install("python", "diffusers", target, None, [])
+        env = mock_run.call_args.kwargs["env"]
+        # Both target and original entries are present; target comes first.
+        self.assertIn(original_pythonpath, env["PYTHONPATH"])
+        self.assertTrue(env["PYTHONPATH"].startswith(str(target)))
 
     def test_install_cuda_torch_default_list_starts_with_cu124(self):
         """cu124 is the broadest 3.9-3.13 match; cu121 must not be first anymore."""

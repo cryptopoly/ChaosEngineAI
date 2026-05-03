@@ -1,6 +1,6 @@
 [package]
 name = "chaosengineai"
-version = "0.7.2"
+version = "0.7.4"
 description = "ChaosEngineAI desktop shell for local AI model inference"
 authors = ["OpenAI Codex"]
 edition = "2021"

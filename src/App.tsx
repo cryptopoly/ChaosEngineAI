@@ -1391,6 +1391,12 @@ export default function App() {
         onImageDraftModeChange={imgState.setImageDraftMode}
         imageSampler={imgState.imageSampler}
         onImageSamplerChange={imgState.setImageSampler}
+        imageCacheStrategy={imgState.imageCacheStrategy}
+        onImageCacheStrategyChange={imgState.setImageCacheStrategy}
+        imageCacheRelL1Thresh={imgState.imageCacheRelL1Thresh}
+        onImageCacheRelL1ThreshChange={imgState.setImageCacheRelL1Thresh}
+        imageCfgDecay={imgState.imageCfgDecay}
+        onImageCfgDecayChange={imgState.setImageCfgDecay}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1561,6 +1567,14 @@ export default function App() {
         onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
         videoCfgDecay={videoState.videoCfgDecay}
         onVideoCfgDecayChange={videoState.setVideoCfgDecay}
+        videoCacheStrategy={videoState.videoCacheStrategy}
+        onVideoCacheStrategyChange={videoState.setVideoCacheStrategy}
+        videoCacheRelL1Thresh={videoState.videoCacheRelL1Thresh}
+        onVideoCacheRelL1ThreshChange={videoState.setVideoCacheRelL1Thresh}
+        videoStgScale={videoState.videoStgScale}
+        onVideoStgScaleChange={videoState.setVideoStgScale}
+        videoFastPreview={videoState.videoFastPreview}
+        onVideoFastPreviewChange={videoState.setVideoFastPreview}
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}

@@ -182,6 +182,62 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2024-10",
             },
+            # FU-019 distill LoRAs. Drop FLUX.1-dev from 25-step base
+            # quality to 8-step quality. Stacks cleanly with NF4
+            # (CUDA) / int8wo (MPS) / GGUF — the LoRA is loaded onto
+            # the already-quantized transformer at fuse time. CFG and
+            # step counts come from the LoRA author's recommended
+            # workflow.
+            {
+                "id": "black-forest-labs/FLUX.1-dev-hyper-sd-8step",
+                "familyId": "flux-dev",
+                "name": "FLUX.1 Dev · Hyper-SD 8-step",
+                "provider": "Black Forest Labs · ByteDance",
+                "repo": "black-forest-labs/FLUX.1-dev",
+                "loraRepo": "ByteDance/Hyper-SD",
+                "loraFile": "Hyper-FLUX.1-dev-8steps-lora.safetensors",
+                "loraScale": 0.125,
+                "defaultSteps": 8,
+                "cfgOverride": 3.5,
+                "link": "https://huggingface.co/ByteDance/Hyper-SD",
+                "runtime": "diffusers + Hyper-SD LoRA",
+                "styleTags": ["general", "detailed", "fast", "lora"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 23.8,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "8-step Hyper-SD distillation LoRA fused into FLUX.1 Dev. "
+                    "Matches base FLUX.1 Dev 25-step quality at ≈3× speed. "
+                    "Stacks with NF4/int8wo/GGUF."
+                ),
+                "estimatedGenerationSeconds": 2.4,
+                "releaseDate": "2024-10",
+            },
+            {
+                "id": "black-forest-labs/FLUX.1-dev-turbo-alpha",
+                "familyId": "flux-dev",
+                "name": "FLUX.1 Dev · Turbo Alpha",
+                "provider": "Black Forest Labs · alimama-creative",
+                "repo": "black-forest-labs/FLUX.1-dev",
+                "loraRepo": "alimama-creative/FLUX.1-Turbo-Alpha",
+                "loraFile": "diffusion_pytorch_model.safetensors",
+                "loraScale": 1.0,
+                "defaultSteps": 8,
+                "cfgOverride": 3.5,
+                "link": "https://huggingface.co/alimama-creative/FLUX.1-Turbo-Alpha",
+                "runtime": "diffusers + FLUX.1-Turbo-Alpha LoRA",
+                "styleTags": ["general", "detailed", "fast", "lora"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 23.8,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "alimama's 8-step Turbo Alpha LoRA fused into FLUX.1 Dev. "
+                    "Same wall-time win as Hyper-SD with slightly different "
+                    "stylistic bias — try both and pick by output."
+                ),
+                "estimatedGenerationSeconds": 2.4,
+                "releaseDate": "2025-02",
+            },
         ],
     },
     {
@@ -363,6 +419,29 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-02",
+    },
+    {
+        "repo": "fal/FLUX.2-dev-Turbo",
+        "name": "FLUX.2 Dev · Turbo",
+        "provider": "Black Forest Labs · fal",
+        "styleTags": ["general", "fast", "flux"],
+        "taskSupport": ["txt2img", "img2img"],
+        "sizeGb": 49.5,
+        "runtimeFootprintGb": 50.0,
+        "runtimeFootprintMpsGb": 60.0,
+        "runtimeFootprintCpuGb": 70.0,
+        "coreWeightsGb": 49.5,
+        "repoSizeGb": 49.6,
+        "recommendedResolution": "1024x1024",
+        "note": (
+            "fal's Turbo distillation of FLUX.2 Dev — 8-step Turbo Alpha "
+            "matches the base 25-step quality. Tracked for catalog refresh "
+            "(FU-019 catalog round)."
+        ),
+        "gated": False,
+        "pipelineTag": "text-to-image",
+        "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-12",
     },
     {
         "repo": "Tongyi-MAI/Z-Image-Turbo",

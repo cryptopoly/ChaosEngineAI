@@ -347,6 +347,18 @@ class ImageGenerationRequest(BaseModel):
     qualityPreset: str | None = Field(default=None, max_length=32)
     draftMode: bool = Field(default=False)
     sampler: str | None = Field(default=None, max_length=32)
+    # FU-015 / FBCache: optional diffusion cache strategy id
+    # ("fbcache" | "teacache" | "native"). Default ``None`` keeps the
+    # stock pipeline. See ``cache_compression`` registry for available
+    # ids; the runtime ignores ids that don't apply to image pipelines.
+    cacheStrategy: str | None = Field(default=None, max_length=32)
+    # Threshold for caching strategies. ``None`` uses the strategy
+    # default (FBCache: 0.12, TeaCache: 0.4). Lower = stricter (more
+    # blocks recomputed, less cached, less speedup, less quality drift).
+    cacheRelL1Thresh: float | None = Field(default=None, ge=0.0, le=1.0)
+    # FU-021: CFG decay schedule for flow-match image models. Mirrors
+    # the video runtime knob. Default off; opt-in.
+    cfgDecay: bool = Field(default=False)
 
 
 class ImageRuntimePreloadRequest(BaseModel):
@@ -414,3 +426,13 @@ class VideoGenerationRequest(BaseModel):
     # ``guidance_scale`` linearly from the user's setting at step 0
     # to 1.0 at the final step. Default-on for flow-match pipelines.
     cfgDecay: bool = Field(default=True)
+    # Spatial-Temporal Guidance scale for the mlx-video LTX-2 path.
+    # mlx-video implements STG by running an extra "perturbed" forward
+    # pass per sampler step alongside the cond/uncond CFG passes — the
+    # perturbed branch skips final transformer blocks to reduce object
+    # breakup and chroma drift on long motion. ``1.0`` matches Blaizzy's
+    # upstream README quality recommendation; ``0.0`` disables STG and
+    # frees ~33 % wall time per step at a mild quality cost. Distilled
+    # pipelines ignore the value (they run a fixed sampler), and other
+    # video runtimes (diffusers MPS, LongLive) do not consume it.
+    stgScale: float = Field(default=1.0, ge=0.0, le=3.0)

@@ -137,7 +137,10 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
-                "estimatedGenerationSeconds": 60.0,
+                # Distilled is 8 + 3 fixed sampler passes with CFG off; STG is
+                # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
+                # lands around 90 s including model load.
+                "estimatedGenerationSeconds": 90.0,
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -156,7 +159,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Full LTX-2 dev weights — higher fidelity, longer sampling than distilled.",
-                "estimatedGenerationSeconds": 180.0,
+                # Dev runs single-stage CFG sampling; with STG=1.0 (default)
+                # that's 3 forward passes per step. ~600 s for a 4-s clip at
+                # 30 steps on M4 Max. Drops to ~400 s with STG=0.0.
+                "estimatedGenerationSeconds": 600.0,
+                # Fast-preview swap target — Studio toggle renders the
+                # distilled sibling instead so the user gets a quick draft
+                # of the same prompt + seed in ~1/6 of the time.
+                "fastPreviewSiblingId": "prince-canuma/LTX-2-distilled",
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -176,7 +186,10 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity.",
-                "estimatedGenerationSeconds": 60.0,
+                # Same fixed 8 + 3 sampler shape as LTX-2 distilled with the
+                # 2.3 weight refresh; wall time tracks the LTX-2 distilled
+                # entry within measurement noise.
+                "estimatedGenerationSeconds": 100.0,
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -196,7 +209,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable.",
-                "estimatedGenerationSeconds": 180.0,
+                # Dev pipeline + CFG + STG=1.0 = 3 forward passes per step;
+                # observed wall time on M4 Max for a 4-s / 30-step / 768×512
+                # render is ~600 s. Drops to ~400 s with STG=0.0. Old 180 s
+                # estimate predated STG and the dev pipeline-mode change.
+                "estimatedGenerationSeconds": 600.0,
+                "fastPreviewSiblingId": "prince-canuma/LTX-2.3-distilled",
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -397,6 +415,68 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 200.0,
                 "availableLocally": False,
                 "releaseDate": "2025-03",
+            },
+            # FU-019 distill LoRAs. lightx2v's CausVid LoRAs collapse
+            # the 30-step base schedule to 4 steps, CFG-free. Wall-time
+            # win is ~7-8× before any caching strategy stacks on top.
+            # Keep the full-fat Wan 2.1 1.3B / 14B variants above for
+            # users who want the un-distilled quality ceiling.
+            {
+                "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers-causvid",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 1.3B · CausVid (4-step)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "loraRepo": "lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "loraFile": "wan21_t2v_1.3b_causvid_lora.safetensors",
+                "loraScale": 1.0,
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "runtime": "diffusers WanPipeline + CausVid LoRA",
+                "styleTags": ["general", "fast", "small", "lora"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 16.4,
+                "runtimeFootprintGb": 14.0,
+                "runtimeFootprintMpsGb": 23.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 1.3B. "
+                    "Runs at 4 steps, CFG-free — roughly 7-8× faster than the "
+                    "base 30-step schedule on the same hardware."
+                ),
+                "estimatedGenerationSeconds": 9.0,
+                "availableLocally": False,
+                "releaseDate": "2025-04",
+            },
+            {
+                "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers-causvid",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 14B · CausVid (4-step)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "loraRepo": "lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "loraFile": "wan21_t2v_14b_causvid_lora.safetensors",
+                "loraScale": 1.0,
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "runtime": "diffusers WanPipeline + CausVid LoRA",
+                "styleTags": ["general", "quality", "motion", "lora"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 45.0,
+                "runtimeFootprintGb": 39.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 14B. "
+                    "Runs at 4 steps, CFG-free — quality holds close to the base "
+                    "30-step Wan 2.1 14B at a fraction of the wall time."
+                ),
+                "estimatedGenerationSeconds": 24.0,
+                "availableLocally": False,
+                "releaseDate": "2025-04",
             },
         ],
     },
@@ -686,6 +766,34 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 200.0,
                 "availableLocally": False,
                 "releaseDate": "2024-08",
+            },
+            # FU-019 catalog refresh: CogVideoX 1.5 5B. Same architecture
+            # as 5B, refreshed weights with stronger prompt adherence and
+            # higher-resolution training (1360×768). Routed via the same
+            # CogVideoXPipeline class, so PIPELINE_REGISTRY only needs the
+            # repo id added.
+            {
+                "id": "THUDM/CogVideoX-1.5-5b",
+                "familyId": "cogvideox",
+                "name": "CogVideoX 1.5 · 5B",
+                "provider": "THUDM",
+                "repo": "THUDM/CogVideoX-1.5-5b",
+                "link": "https://huggingface.co/THUDM/CogVideoX-1.5-5b",
+                "runtime": "diffusers CogVideoXPipeline",
+                "styleTags": ["general", "quality", "balanced", "refreshed"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 18.5,
+                "runtimeFootprintGb": 34.0,
+                "recommendedResolution": "1360x768",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "Refreshed CogVideoX 1.5 5B weights with stronger prompt "
+                    "adherence and 1360×768 training resolution. Same "
+                    "CogVideoXPipeline class as 5B."
+                ),
+                "estimatedGenerationSeconds": 220.0,
+                "availableLocally": False,
+                "releaseDate": "2024-11",
             },
         ],
     },

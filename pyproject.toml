@@ -40,22 +40,23 @@ desktop = [
 ]
 images = [
     "accelerate>=0.34.0",
-    "diffusers>=0.30.0",
+    "diffusers>=0.36.0",
     "huggingface-hub>=0.26.0",
     "pillow>=10.4.0",
     "safetensors>=0.4.5",
     "torch>=2.4.0",
 ]
-# Diffusion cache acceleration. The TeaCache strategy scaffold ships in
-# cache_compression/ without a runtime dependency; upstream ali-vilab/TeaCache
-# is distributed as a repo of per-model patches, not a pip package, so we
-# vendor the ``teacache_forward`` functions into cache_compression/_teacache_patches/
-# under Apache 2.0 as each model lands (FLUX, Wan2.1 first — see FU-007).
-# This extra exists so the Setup page can pin the minimum diffusers version
-# known to work with our vendored patches without bumping the core ``images``
-# extra that non-diffusion installs pull in.
+# Diffusion cache acceleration. Two strategies live here:
+#   1. TeaCache (vendored per-model forwards under cache_compression/
+#      _teacache_patches/ — FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi).
+#   2. First Block Cache (FU-015) — diffusers 0.36+ ships
+#      ``apply_first_block_cache`` as a model-agnostic hook, so it covers
+#      every DiT (FLUX, SD3, Wan, HunyuanVideo, LTX, CogVideoX, Mochi)
+#      without per-model vendoring. This obsoletes FU-007's Wan TeaCache
+#      port — Wan now caches via the same generic hook.
+# Pin diffusers >=0.36 so both paths can rely on the cache-hooks API.
 diffusion-accel = [
-    "diffusers>=0.30.0",
+    "diffusers>=0.36.0",
 ]
 # Apple Silicon MLX video runtime (Blaizzy/mlx-video) — MIT. Covers Wan2.1
 # (1.3B/14B), Wan2.2 (T2V-14B, TI2V-5B, I2V-14B), LTX-2 (19B) with T2V, I2V,

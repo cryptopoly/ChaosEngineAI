@@ -353,6 +353,20 @@ def _generate_image_artifacts(
     logger.info("Generating image: model=%s repo=%s size=%dx%d steps=%d draft=%s",
                 variant.get("name"), variant.get("repo"), effective_width, effective_height, request.steps, request.draftMode)
     runtime_manager = runtime_manager or ImageRuntimeManager()
+    # FU-019: variant-declared defaults override schema defaults only
+    # when the user hasn't moved the slider. Schema defaults (24 steps,
+    # CFG 5.5) come from ImageGenerationRequest in models/__init__.py.
+    SCHEMA_DEFAULT_STEPS = 24
+    SCHEMA_DEFAULT_GUIDANCE = 5.5
+    effective_steps = request.steps
+    effective_guidance = request.guidance
+    variant_default_steps = variant.get("defaultSteps")
+    variant_cfg_override = variant.get("cfgOverride")
+    if variant_default_steps is not None and request.steps == SCHEMA_DEFAULT_STEPS:
+        effective_steps = int(variant_default_steps)
+    if variant_cfg_override is not None and abs(request.guidance - SCHEMA_DEFAULT_GUIDANCE) < 1e-3:
+        effective_guidance = float(variant_cfg_override)
+
     rendered_images, runtime_status = runtime_manager.generate(
         ImageGenerationConfig(
             modelId=request.modelId,
@@ -362,8 +376,8 @@ def _generate_image_artifacts(
             negativePrompt=request.negativePrompt or "",
             width=effective_width,
             height=effective_height,
-            steps=request.steps,
-            guidance=request.guidance,
+            steps=effective_steps,
+            guidance=effective_guidance,
             batchSize=request.batchSize,
             seed=request.seed,
             qualityPreset=request.qualityPreset,
@@ -371,6 +385,20 @@ def _generate_image_artifacts(
             ggufRepo=(variant.get("ggufRepo") or None),
             ggufFile=(variant.get("ggufFile") or None),
             runtime=(variant.get("engine") or None),
+            cacheStrategy=request.cacheStrategy,
+            cacheRelL1Thresh=request.cacheRelL1Thresh,
+            cfgDecay=request.cfgDecay,
+            # FU-019: variant-declared LoRA + step / guidance overrides.
+            # When the catalog variant pins a Hyper-SD / FLUX-Turbo /
+            # lightx2v LoRA, the engine fuses it into the pipeline at
+            # load time. ``defaultSteps`` / ``cfgOverride`` substitute
+            # only when the user kept the schema defaults — explicit
+            # slider tweaks survive untouched.
+            loraRepo=(variant.get("loraRepo") or None),
+            loraFile=(variant.get("loraFile") or None),
+            loraScale=(variant.get("loraScale") if variant.get("loraScale") is not None else None),
+            defaultSteps=(variant.get("defaultSteps") if variant.get("defaultSteps") is not None else None),
+            cfgOverride=(variant.get("cfgOverride") if variant.get("cfgOverride") is not None else None),
         )
     )
     created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -427,6 +455,21 @@ def _generate_video_artifact(
         request.steps,
     )
 
+    # FU-019: variant-declared step / CFG defaults override schema
+    # defaults only when the user kept the schema defaults — explicit
+    # slider movement on the frontend is preserved untouched. The
+    # video schema default is steps=50 (see VideoGenerationRequest).
+    SCHEMA_DEFAULT_STEPS = 50
+    SCHEMA_DEFAULT_GUIDANCE = 3.0
+    effective_steps = request.steps
+    effective_guidance = request.guidance
+    variant_default_steps = variant.get("defaultSteps")
+    variant_cfg_override = variant.get("cfgOverride")
+    if variant_default_steps is not None and request.steps == SCHEMA_DEFAULT_STEPS:
+        effective_steps = int(variant_default_steps)
+    if variant_cfg_override is not None and abs(request.guidance - SCHEMA_DEFAULT_GUIDANCE) < 1e-3:
+        effective_guidance = float(variant_cfg_override)
+
     video, runtime_status = runtime_manager.generate(
         VideoGenerationConfig(
             modelId=request.modelId,
@@ -438,8 +481,8 @@ def _generate_video_artifact(
             height=request.height,
             numFrames=request.numFrames,
             fps=request.fps,
-            steps=request.steps,
-            guidance=request.guidance,
+            steps=effective_steps,
+            guidance=effective_guidance,
             seed=request.seed,
             ggufRepo=(variant.get("ggufRepo") or None),
             ggufFile=(variant.get("ggufFile") or None),
@@ -449,6 +492,13 @@ def _generate_video_artifact(
             enableLtxRefiner=request.enableLtxRefiner,
             enhancePrompt=request.enhancePrompt,
             cfgDecay=request.cfgDecay,
+            stgScale=request.stgScale,
+            # FU-019: variant-declared LoRA + override metadata.
+            loraRepo=(variant.get("loraRepo") or None),
+            loraFile=(variant.get("loraFile") or None),
+            loraScale=(variant.get("loraScale") if variant.get("loraScale") is not None else None),
+            defaultSteps=(variant.get("defaultSteps") if variant.get("defaultSteps") is not None else None),
+            cfgOverride=(variant.get("cfgOverride") if variant.get("cfgOverride") is not None else None),
         )
     )
 

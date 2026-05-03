@@ -266,6 +266,22 @@ class CacheStrategyRegistry:
                 "supports_fp16_layers": False,
                 "required_llama_binary": "standard",
             },
+            {
+                # FU-015: First Block Cache via diffusers 0.36+ generic
+                # ``apply_first_block_cache`` hook. Same diffusion-cache
+                # contract as TeaCache (image+video only, threshold-based)
+                # but model-agnostic — covers Wan2.1/2.2 without a vendored
+                # forward, which closes FU-007. Same metadata shape as
+                # TeaCache; llama.cpp hook is N/A.
+                "id": "fbcache",
+                "name": "First Block Cache",
+                "module": "cache_compression.firstblockcache",
+                "class_name": "FirstBlockCacheStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
+            },
             ]
 
             for spec in strategy_specs:

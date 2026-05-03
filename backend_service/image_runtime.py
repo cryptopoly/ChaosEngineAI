@@ -207,6 +207,60 @@ def _guess_expected_device() -> str | None:
     return "cpu"
 
 
+# FU-017: madebyollin's SDXL VAE fp16 fix. The stock SDXL VAE silently
+# decodes to NaN at fp16 on MPS and on consumer CUDA fp16 paths — the
+# image_runtime currently sidesteps the bug by forcing fp32 on MPS for
+# SDXL repos, which doubles wall time. The fp16-fix VAE is a drop-in
+# replacement (same architecture, weights re-quantised to avoid NaN
+# overflow on fp16 sigmoid) so swapping it in lets MPS / CUDA stay on
+# fp16 without producing black images.
+#
+# We only attempt the swap when the snapshot is already in the user's
+# HF cache (``local_files_only=True``) — the runtime never triggers a
+# surprise download. Users who haven't fetched the fix repo see the
+# original fp32 fallback path.
+_SDXL_VAE_FIX_REPO = "madebyollin/sdxl-vae-fp16-fix"
+
+
+def _is_sdxl_repo(repo: str) -> bool:
+    """Match SDXL family repos (Stability XL base, refiner, community fine-tunes).
+
+    Matches loosely on substring — a false positive would attempt the
+    VAE swap on a non-SDXL repo, but the fp16-fix VAE only loads
+    successfully against an SDXL pipeline because the encoder/decoder
+    shape has to match. ``AutoencoderKL.from_pretrained`` raises on
+    mismatch and the swap silently no-ops, so an over-broad match is
+    self-correcting.
+    """
+    lower = repo.lower()
+    return "stable-diffusion-xl" in lower or "sdxl" in lower or "sd_xl" in lower
+
+
+def _locate_sdxl_vae_fix_snapshot() -> str | None:
+    """Return the local path to ``madebyollin/sdxl-vae-fp16-fix`` if cached.
+
+    Uses ``snapshot_download(local_files_only=True)`` so a missing snapshot
+    returns ``None`` rather than triggering a download mid-generate. Users
+    who want the fp16-fix path opt in by downloading the repo from the
+    Setup page (or via ``huggingface-cli download``); until then the
+    runtime stays on the existing fp32-on-MPS fallback for SDXL.
+    """
+    if importlib.util.find_spec("huggingface_hub") is None:
+        return None
+    try:
+        from huggingface_hub import snapshot_download  # type: ignore
+    except Exception:
+        return None
+    try:
+        return snapshot_download(
+            repo_id=_SDXL_VAE_FIX_REPO,
+            local_files_only=True,
+            resume_download=True,
+        )
+    except Exception:
+        return None
+
+
 def _is_flux_repo(repo: str) -> bool:
     """Does this HF repo look like a FLUX.1 family model?
 
@@ -259,11 +313,39 @@ def _gguf_transformer_class_for_repo(repo: str) -> str | None:
     return None
 
 
+# FU-020: Align Your Steps (AYS) — NVIDIA's hand-optimised 10-step
+# timestep schedules for SD1.5, SDXL and SVD. At 7-10 steps the AYS
+# arrays preserve substantially more detail than DPM++ 2M Karras —
+# the user study cited in the paper shows a 2× preference at low step
+# counts. Numbers are the *timesteps* (not sigmas) the scheduler
+# should sample at, not the count itself; passing them via
+# ``pipeline(timesteps=...)`` overrides the standard
+# ``num_inference_steps`` path.
+#
+# Reference: NVIDIA AYS project page,
+# https://research.nvidia.com/labs/toronto-ai/AlignYourSteps/
+_AYS_TIMESTEPS: dict[str, list[int]] = {
+    "sd15": [999, 850, 736, 645, 545, 455, 343, 233, 124, 24],
+    "sdxl": [999, 845, 730, 587, 443, 310, 193, 116, 53, 13],
+    # SVD reserved for the video runtime; not exposed in the image
+    # sampler dropdown today but registered here so the same
+    # ``_ays_family`` token works if/when we surface it on a video
+    # path.
+    "svd":  [999, 963, 911, 833, 720, 562, 387, 219, 90, 8],
+}
+
+
 # Maps a stable UI-facing sampler id to (diffusers scheduler class name,
 # optional from_config kwargs). The class is imported lazily from
 # ``diffusers`` so the runtime doesn't pay the import cost unless a user
 # actually picks a non-default sampler. Kwargs let us configure the
 # Karras/SDE variants without adding separate classes.
+#
+# The ``_ays_family`` key is a private marker consumed by
+# ``_apply_scheduler`` — when present it pops out of the kwargs (so it
+# never reaches diffusers' ``from_config``) and stashes the matching
+# AYS timestep array on the pipeline for ``_build_pipeline_kwargs`` to
+# pass via the ``timesteps=`` arg.
 _SAMPLER_REGISTRY: dict[str, tuple[str, dict[str, Any]]] = {
     "dpmpp_2m": ("DPMSolverMultistepScheduler", {}),
     "dpmpp_2m_karras": ("DPMSolverMultistepScheduler", {"use_karras_sigmas": True}),
@@ -272,6 +354,8 @@ _SAMPLER_REGISTRY: dict[str, tuple[str, dict[str, Any]]] = {
     "euler_a": ("EulerAncestralDiscreteScheduler", {}),
     "ddim": ("DDIMScheduler", {}),
     "unipc": ("UniPCMultistepScheduler", {}),
+    "ays_dpmpp_2m_sd15": ("DPMSolverMultistepScheduler", {"_ays_family": "sd15"}),
+    "ays_dpmpp_2m_sdxl": ("DPMSolverMultistepScheduler", {"_ays_family": "sdxl"}),
 }
 
 
@@ -282,6 +366,12 @@ def _apply_scheduler(pipeline: Any, sampler_id: str | None) -> str | None:
     nothing was), to surface in ``GeneratedImage.runtimeNote``. Silent
     failure modes (missing scheduler class on old diffusers, pipeline
     with no ``scheduler`` attribute) fall back to the model default.
+
+    FU-020: when the registry entry includes the ``_ays_family`` private
+    marker, the matching AYS timestep array is stashed on
+    ``pipeline._chaosengine_ays_timesteps`` so
+    ``_build_pipeline_kwargs`` can pass it via the ``timesteps=`` arg
+    instead of the usual ``num_inference_steps``.
     """
     if not sampler_id:
         return None
@@ -290,7 +380,7 @@ def _apply_scheduler(pipeline: Any, sampler_id: str | None) -> str | None:
         return f"Unknown sampler '{sampler_id}' — using model default."
     if not hasattr(pipeline, "scheduler") or pipeline.scheduler is None:
         return None
-    class_name, extra_kwargs = entry
+    class_name, registry_kwargs = entry
     try:
         import diffusers  # type: ignore
     except Exception:
@@ -298,12 +388,35 @@ def _apply_scheduler(pipeline: Any, sampler_id: str | None) -> str | None:
     scheduler_cls = getattr(diffusers, class_name, None)
     if scheduler_cls is None:
         return f"Sampler '{sampler_id}' not available in installed diffusers."
+    # Pop private markers (e.g. ``_ays_family``) before passing to
+    # ``from_config`` — diffusers rejects unknown kwargs.
+    extra_kwargs = dict(registry_kwargs)
+    ays_family = extra_kwargs.pop("_ays_family", None)
     try:
         pipeline.scheduler = scheduler_cls.from_config(
             pipeline.scheduler.config, **extra_kwargs,
         )
     except Exception as exc:
         return f"Sampler swap to '{sampler_id}' failed: {type(exc).__name__}. Using model default."
+    if ays_family:
+        timesteps = _AYS_TIMESTEPS.get(ays_family)
+        if timesteps:
+            try:
+                pipeline._chaosengine_ays_timesteps = list(timesteps)  # type: ignore[attr-defined]
+            except Exception:
+                # Pipeline objects are usually attribute-friendly, but
+                # if a future diffusers version locks slots we swallow
+                # and keep the swap-only behaviour rather than failing
+                # the run.
+                pass
+        return f"Sampler: {sampler_id} ({len(timesteps or [])}-step AYS)"
+    # Clear any stale stash from a previous AYS-using generate so a
+    # later non-AYS run doesn't reuse the timestep array.
+    if hasattr(pipeline, "_chaosengine_ays_timesteps"):
+        try:
+            delattr(pipeline, "_chaosengine_ays_timesteps")
+        except Exception:
+            pass
     return f"Sampler: {sampler_id}"
 
 
@@ -396,6 +509,35 @@ class ImageGenerationConfig:
     # strategy's default (0.4 for TeaCache → ~1.8× speedup). See
     # ``TeaCacheStrategy.recommended_thresholds()`` for presets.
     cacheRelL1Thresh: float | None = None
+    # FU-021: CFG decay schedule, mirroring the video runtime knob. When
+    # True and the model is flow-match (FLUX/SD3/Qwen-Image/Sana/HiDream),
+    # the engine ramps ``guidance_scale`` linearly from the user's
+    # setting at step 0 toward 1.5 (the floor that keeps
+    # ``do_classifier_free_guidance`` True end-to-end). Default off:
+    # image users typically want consistent CFG; turning on the knob is
+    # opt-in. Non-flow-match repos (SD1.5/SDXL) ignore the flag because
+    # CFG decay on UNet-based ε-prediction pipelines doesn't carry the
+    # same oversaturation benefit.
+    cfgDecay: bool = False
+    # FU-019 distill LoRAs: when the catalog variant pins a LoRA
+    # (Hyper-SD FLUX, alimama FLUX.1-Turbo-Alpha, lightx2v Wan
+    # CausVid), the engine fuses it into the pipeline at load time so
+    # subsequent generates run at the LoRA's lower step count without
+    # re-loading. ``loraRepo`` is the HF repo id, ``loraFile`` is the
+    # specific weight name within that repo (LoRAs commonly ship
+    # multiple step variants), ``loraScale`` is the fuse strength
+    # (Hyper-SD recommends 0.125, alimama Turbo wants 1.0, lightx2v
+    # CausVid wants 1.0).
+    loraRepo: str | None = None
+    loraFile: str | None = None
+    loraScale: float | None = None
+    # Variant-declared step / CFG defaults. Used by
+    # ``_generate_image_artifacts`` in app.py to substitute the schema
+    # defaults when the user hasn't moved the sliders — distill LoRAs
+    # have very different optimal points (4-8 steps, CFG 1.0-3.5)
+    # than the schema defaults (24 steps, CFG 5.5).
+    defaultSteps: int | None = None
+    cfgOverride: float | None = None
 
 
 @dataclass(frozen=True)
@@ -528,6 +670,12 @@ class DiffusersTextToImageEngine:
         self._loaded_path: str | None = None
         self._loaded_variant_key: str | None = None
         self._device: str | None = None
+        # FU-017 / FU-019 / FU-016: notes accumulated during pipeline load
+        # (VAE swap, LoRA fuse, attention backend). Surfaced as part of
+        # ``runtimeNote`` on every GeneratedImage produced by the loaded
+        # pipeline so the user sees what was applied without polling
+        # capabilities mid-batch. Reset on each pipeline load.
+        self._load_notes: list[str] = []
 
     def probe(self) -> ImageRuntimeStatus:
         # Deliberately does NOT ``import torch`` — that would load
@@ -614,6 +762,9 @@ class DiffusersTextToImageEngine:
                 config.repo,
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
+                lora_repo=config.loraRepo,
+                lora_file=config.loraFile,
+                lora_scale=config.loraScale,
             )
             # Early-cancel check: the load phase is blocking (from_pretrained
             # is a C-extension call we can't interrupt), so if the user hit
@@ -654,7 +805,14 @@ class DiffusersTextToImageEngine:
             # most models. ``callback_on_step_end`` is the non-deprecated name
             # in modern diffusers (>=0.27); some pipelines also accept the
             # legacy ``callback`` arg, but we prefer the new one.
-            total_steps = int(kwargs.get("num_inference_steps", config.steps) or config.steps)
+            # AYS path passes ``timesteps=[...]`` instead of
+            # ``num_inference_steps`` — derive the step count from the
+            # array length so the progress bar / decay schedule still
+            # report the right total.
+            if isinstance(kwargs.get("timesteps"), list):
+                total_steps = len(kwargs["timesteps"])
+            else:
+                total_steps = int(kwargs.get("num_inference_steps", config.steps) or config.steps)
             IMAGE_PROGRESS.set_phase(
                 PHASE_DIFFUSING,
                 message=self._diffuse_message(config),
@@ -685,6 +843,23 @@ class DiffusersTextToImageEngine:
                 # to every image's metadata would flood the gallery UI.
                 pass
 
+            # FU-021: CFG decay schedule for flow-match image pipelines.
+            # Same shape as the video-runtime ramp — linear from initial
+            # guidance to a 1.5 floor that keeps
+            # ``do_classifier_free_guidance`` True for the entire schedule
+            # (dropping below 1.0 mid-loop swaps the pipeline from
+            # 2-batch to 1-batch shape and produces shape-mismatch
+            # crashes; 1.5 is the documented floor we use on video).
+            # Gated to flow-match so SD1.5 / SDXL stay on constant CFG.
+            decay_floor = 1.5
+            initial_guidance = float(kwargs.get("guidance_scale", config.guidance) or config.guidance)
+            decay_active = (
+                config.cfgDecay
+                and _is_flow_matching_repo(config.repo)
+                and total_steps > 1
+                and initial_guidance > decay_floor
+            )
+
             def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
                 # Diffusers calls this *after* step ``step`` finishes, so step
                 # 0 means "one step done". Convert to the 1-indexed value the
@@ -703,6 +878,17 @@ class DiffusersTextToImageEngine:
                     except Exception:
                         pass
                     raise GenerationCancelled("Image generation cancelled by user")
+                if decay_active:
+                    next_step = step + 1
+                    progress = min(1.0, next_step / max(1, total_steps - 1))
+                    next_scale = (
+                        initial_guidance * (1.0 - progress)
+                        + decay_floor * progress
+                    )
+                    try:
+                        _pipeline.guidance_scale = float(next_scale)
+                    except Exception:
+                        pass
                 return callback_kwargs
 
             kwargs.setdefault("callback_on_step_end", _on_step_end)
@@ -740,6 +926,15 @@ class DiffusersTextToImageEngine:
                     )
                 buffer = io.BytesIO()
                 image.save(buffer, format="PNG", optimize=True)
+                # Combine all per-load notes (VAE swap, LoRA fuse,
+                # attention backend) with the per-generate sampler note.
+                # Joined with " · " so the UI can show a single line.
+                note_parts: list[str] = list(self._load_notes)
+                if sampler_note:
+                    note_parts.append(sampler_note)
+                if cache_note:
+                    note_parts.append(cache_note)
+                runtime_note = " · ".join(note_parts) if note_parts else None
                 artifacts.append(
                     GeneratedImage(
                         seed=base_seed + index,
@@ -748,7 +943,7 @@ class DiffusersTextToImageEngine:
                         mimeType="image/png",
                         durationSeconds=round(elapsed / max(1, config.batchSize), 1),
                         runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
-                        runtimeNote=sampler_note,
+                        runtimeNote=runtime_note,
                     )
                 )
             if not artifacts:
@@ -782,9 +977,20 @@ class DiffusersTextToImageEngine:
         repo: str,
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
+        lora_repo: str | None = None,
+        lora_file: str | None = None,
+        lora_scale: float | None = None,
     ) -> Any:
         with self._lock:
-            variant_key = f"{repo}::{gguf_file}" if gguf_file else repo
+            # Variant key folds LoRA identity in too — switching LoRAs
+            # on the same base repo must rebuild the pipeline because
+            # ``fuse_lora`` mutates the transformer weights in place.
+            variant_parts = [repo]
+            if gguf_file:
+                variant_parts.append(f"gguf={gguf_file}")
+            if lora_repo and lora_file:
+                variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+            variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
@@ -811,8 +1017,21 @@ class DiffusersTextToImageEngine:
                 raise RuntimeError(validation_error)
             detected_device = self._detect_device(torch)
             device = self._preferred_execution_device(repo, detected_device)
-            dtype = self._preferred_torch_dtype(torch, repo, device)
+            # FU-017: probe the SDXL fp16-fix VAE before deciding dtype so
+            # SDXL on MPS can stay on fp16 when the fix snapshot is cached.
+            # Probe only fires for SDXL repos on devices that actually
+            # benefit (MPS / CUDA) — CPU stays on fp32 regardless.
+            sdxl_vae_fix_path: str | None = None
+            if _is_sdxl_repo(repo) and device in ("mps", "cuda"):
+                sdxl_vae_fix_path = _locate_sdxl_vae_fix_snapshot()
+            dtype = self._preferred_torch_dtype(
+                torch, repo, device,
+                sdxl_vae_fix_available=sdxl_vae_fix_path is not None,
+            )
             use_cpu_offload = self._should_use_model_cpu_offload(repo, device)
+            # Clear load notes on each pipeline (re)load so stale entries
+            # from a previously-loaded model don't bleed into new outputs.
+            self._load_notes = []
 
             # Three transformer-loading strategies, in preference order:
             #   1. GGUF (cross-platform, any quant level the user picked)
@@ -886,6 +1105,80 @@ class DiffusersTextToImageEngine:
                 pipeline.requires_safety_checker = False
             if hasattr(pipeline, "set_progress_bar_config"):
                 pipeline.set_progress_bar_config(disable=True)
+
+            # FU-017: swap in madebyollin's SDXL VAE fp16-fix when the
+            # snapshot is cached. The pipeline already loaded with fp16
+            # weights (decided above) so the VAE swap is the load-bearing
+            # piece — without it the stock SDXL VAE silently NaN-overflows
+            # on the fp16 sigmoid and outputs black images on MPS / consumer
+            # CUDA. Failure modes (corrupt snapshot, dtype mismatch) fall
+            # back to the original VAE so the user still gets *some* image.
+            if sdxl_vae_fix_path and getattr(pipeline, "vae", None) is not None:
+                try:
+                    from diffusers import AutoencoderKL  # type: ignore
+                    fix_vae = AutoencoderKL.from_pretrained(
+                        sdxl_vae_fix_path,
+                        torch_dtype=torch.float16,
+                        local_files_only=True,
+                    )
+                    pipeline.vae = fix_vae
+                    self._load_notes.append("VAE: SDXL fp16-fix")
+                except Exception as exc:  # noqa: BLE001 — fall back to stock VAE
+                    self._load_notes.append(
+                        f"SDXL VAE fp16-fix swap failed ({type(exc).__name__}); using stock VAE."
+                    )
+
+            # FU-016: SageAttention CUDA backend. No-op on MPS / CPU and
+            # when the pipeline lacks ``transformer.set_attention_backend``.
+            # Stacks multiplicatively with FBCache. Must run *before*
+            # placement so the kernel selection is locked in before the
+            # first forward pass.
+            try:
+                from backend_service.helpers.attention_backend import (
+                    maybe_apply_sage_attention,
+                )
+                sage_note = maybe_apply_sage_attention(pipeline)
+                if sage_note:
+                    self._load_notes.append(sage_note)
+            except Exception:
+                # Helper is wrapped in its own try/except; any leakage
+                # here is a bug in the helper, not a runtime concern.
+                pass
+
+            # FU-019: distill LoRAs (Hyper-SD FLUX, alimama FLUX.1-Turbo,
+            # lightx2v Wan CausVid). Load + fuse at pipeline build time
+            # so subsequent ``pipeline(...)`` calls run with the LoRA
+            # baked into the transformer — no per-generate fuse cost.
+            # ``unload_lora_weights`` after fuse drops the un-fused
+            # state dict from RAM (the fused weights live in the
+            # transformer itself).
+            if lora_repo and lora_file:
+                try:
+                    pipeline.load_lora_weights(
+                        lora_repo,
+                        weight_name=lora_file,
+                        local_files_only=True,
+                    )
+                    effective_scale = (
+                        float(lora_scale) if lora_scale is not None else 1.0
+                    )
+                    pipeline.fuse_lora(lora_scale=effective_scale)
+                    try:
+                        pipeline.unload_lora_weights()
+                    except Exception:
+                        # Best-effort cleanup — older diffusers don't
+                        # always succeed at unloading after fuse, and
+                        # the fused transformer is correct either way.
+                        pass
+                    self._load_notes.append(
+                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                    )
+                except Exception as exc:  # noqa: BLE001 — non-fatal
+                    self._load_notes.append(
+                        f"LoRA load failed ({type(exc).__name__}: {exc}). "
+                        "Pipeline continuing without LoRA."
+                    )
+
             if use_cpu_offload:
                 # Diffusers' stock recipe for FLUX on <32 GB VRAM: keep only
                 # the active component (T5, then transformer, then VAE) on
@@ -948,7 +1241,13 @@ class DiffusersTextToImageEngine:
             except Exception:
                 pass
 
-    def _preferred_torch_dtype(self, torch: Any, repo: str, device: str) -> Any:
+    def _preferred_torch_dtype(
+        self,
+        torch: Any,
+        repo: str,
+        device: str,
+        sdxl_vae_fix_available: bool = False,
+    ) -> Any:
         if device == "cuda":
             # FLUX was trained and validated in bfloat16. Loading it as
             # float16 produces slightly off saturations and occasional
@@ -961,8 +1260,14 @@ class DiffusersTextToImageEngine:
         if device == "mps":
             lowered_repo = repo.lower()
             # SDXL / Stable Diffusion on MPS can silently decode to black
-            # images in fp16. Favor correctness over speed for those repos.
+            # images in fp16 due to the stock SDXL VAE overflowing the
+            # fp16 sigmoid. FU-017: when madebyollin/sdxl-vae-fp16-fix is
+            # cached locally we swap that VAE in and stay on fp16 (≈2×
+            # faster than fp32). Without the fix snapshot we keep the
+            # safe fp32 fallback so users still get correct images.
             if any(token in lowered_repo for token in ("stable-diffusion", "sdxl", "sd_xl")):
+                if sdxl_vae_fix_available and _is_sdxl_repo(repo):
+                    return torch.float16
                 return torch.float32
             return torch.float16
         return torch.float32
@@ -1137,12 +1442,23 @@ class DiffusersTextToImageEngine:
                 filename=gguf_file,
                 local_files_only=True,
             )
+            # Pin the architecture config to the base repo's
+            # ``transformer/config.json`` — without this hint
+            # ``from_single_file`` falls back to the transformer class's
+            # default layout, which is fine for the largest variant in a
+            # family but breaks smaller variants (different cross-attn
+            # dim, hidden size, layer count). Mirrors the video-side
+            # loader. See ``backend_service/video_runtime.py``'s
+            # ``_try_load_gguf_transformer`` for the Wan 2.2 5B repro
+            # that motivated the fix.
             transformer = transformer_cls.from_single_file(
                 gguf_local_path,
                 quantization_config=GGUFQuantizationConfig(
                     compute_dtype=torch.bfloat16,
                 ),
                 torch_dtype=torch.bfloat16,
+                config=repo,
+                subfolder="transformer",
             )
             return transformer, (
                 f"Transformer loaded from GGUF ({gguf_file})"
@@ -1182,6 +1498,18 @@ class DiffusersTextToImageEngine:
             "num_images_per_prompt": config.batchSize,
             "generator": generator,
         }
+        # FU-020: when the user picked an AYS sampler,
+        # ``_apply_scheduler`` stashed the precomputed timestep array on
+        # the pipeline. Diffusers accepts ``timesteps=`` as an explicit
+        # override; when present it takes precedence over
+        # ``num_inference_steps`` so we drop the latter to avoid the
+        # "got both" warning.
+        pipeline = self._pipeline
+        if pipeline is not None:
+            ays_timesteps = getattr(pipeline, "_chaosengine_ays_timesteps", None)
+            if ays_timesteps:
+                kwargs["timesteps"] = list(ays_timesteps)
+                kwargs.pop("num_inference_steps", None)
         lowered_repo = config.repo.lower()
         if "qwen-image" in lowered_repo:
             kwargs.pop("guidance_scale", None)

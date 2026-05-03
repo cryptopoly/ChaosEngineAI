@@ -282,6 +282,25 @@ class VideoGenerationConfig:
     # Phase E2: CFG decay schedule. Linear ramp from initial guidance_scale
     # at step 0 to 1.0 at the last step. Default-on for flow-match pipelines.
     cfgDecay: bool = True
+    # Spatial-Temporal Guidance scale, consumed only by the mlx-video LTX-2
+    # path. 1.0 keeps the upstream-recommended perturbed forward pass per
+    # step; 0.0 disables it and saves ~33 % wall time at a mild quality
+    # cost. Other runtimes ignore the value.
+    stgScale: float = 1.0
+    # FU-019 distill LoRAs: when the catalog variant pins a LoRA
+    # (lightx2v Wan2.1 CausVid, Wan2.2-Distill-Models, FastWan), the
+    # engine fuses it into the pipeline transformer at load time so
+    # subsequent ``pipeline(...)`` calls run with the LoRA baked in.
+    # 4-step Wan via lightx2v cuts wall-time 7-8× vs the 30-step base.
+    loraRepo: str | None = None
+    loraFile: str | None = None
+    loraScale: float | None = None
+    # Variant-declared step / CFG defaults. Used by app.py's
+    # ``_generate_video_artifact`` to substitute the schema defaults
+    # (50 steps, CFG 3.0) when the user hasn't moved the sliders —
+    # distill LoRAs run at 4 steps CFG 1.0.
+    defaultSteps: int | None = None
+    cfgOverride: float | None = None
 
 
 @dataclass(frozen=True)
@@ -322,9 +341,12 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
     # CogVideoX 2B and 5B share the same diffusers pipeline class — the
-    # transformer scales but the loader is the same.
+    # transformer scales but the loader is the same. CogVideoX 1.5 5B
+    # (catalog refresh, FU-019 round) uses the same class with refreshed
+    # weights and a higher training resolution.
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    "THUDM/CogVideoX-1.5-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
 
 
@@ -393,6 +415,9 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     "genmo/mochi-1-preview": {"steps": 64, "guidance": 4.5, "scheduler": None},
     "THUDM/CogVideoX-2b": {"steps": 50, "guidance": 6.0, "scheduler": None},
     "THUDM/CogVideoX-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
+    # CogVideoX 1.5 5B inherits the 5B defaults — refreshed weights but
+    # the same step / CFG sweet spot per upstream model card.
+    "THUDM/CogVideoX-1.5-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in
@@ -805,6 +830,10 @@ class DiffusersVideoEngine:
         self._loaded_path: str | None = None
         self._loaded_variant_key: str | None = None
         self._device: str | None = None
+        # FU-019 / FU-016: notes accumulated during pipeline load (LoRA
+        # fuse, attention backend). Reset on each load; surfaced via
+        # GeneratedVideo.runtimeNote.
+        self._load_notes: list[str] = []
 
     # ---------- public API ----------
 
@@ -946,6 +975,9 @@ class DiffusersVideoEngine:
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
                 use_nf4=config.useNf4,
+                lora_repo=config.loraRepo,
+                lora_file=config.loraFile,
+                lora_scale=config.loraScale,
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -1039,6 +1071,13 @@ class DiffusersVideoEngine:
                 )
 
             VIDEO_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+            # FU-019 / FU-016: surface per-pipeline load notes (LoRA
+            # fuse, attention backend) on every generated mp4 so the
+            # user sees what was applied. Joined with " · " for a
+            # single-line UI presentation.
+            runtime_note = (
+                " · ".join(self._load_notes) if self._load_notes else None
+            )
             return GeneratedVideo(
                 seed=base_seed,
                 bytes=mp4_bytes,
@@ -1050,6 +1089,9 @@ class DiffusersVideoEngine:
                 width=config.width,
                 height=config.height,
                 runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                runtimeNote=runtime_note,
+                effectiveSteps=int(config.steps),
+                effectiveGuidance=float(config.guidance),
             )
         finally:
             VIDEO_PROGRESS.finish()
@@ -1475,14 +1517,22 @@ class DiffusersVideoEngine:
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
         use_nf4: bool = False,
+        lora_repo: str | None = None,
+        lora_file: str | None = None,
+        lora_scale: float | None = None,
     ) -> Any:
         with self._lock:
-            variant_suffix = ""
+            # Variant key folds in LoRA identity — switching LoRAs on the
+            # same base repo must rebuild the pipeline because fuse_lora
+            # mutates the transformer weights in place.
+            variant_parts = [repo]
             if gguf_file:
-                variant_suffix = f"::{gguf_file}"
+                variant_parts.append(f"gguf={gguf_file}")
             elif use_nf4:
-                variant_suffix = "::nf4"
-            variant_key = f"{repo}{variant_suffix}" if variant_suffix else repo
+                variant_parts.append("nf4")
+            if lora_repo and lora_file:
+                variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+            variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
@@ -1558,6 +1608,52 @@ class DiffusersVideoEngine:
 
             if hasattr(pipeline, "set_progress_bar_config"):
                 pipeline.set_progress_bar_config(disable=True)
+
+            # FU-019: clear stale load notes from the previous pipeline
+            # and apply distill LoRAs (lightx2v Wan CausVid /
+            # Wan2.2-Distill-Models / FastWan) before placement so
+            # ``pipeline.to(device)`` moves the fused transformer weights
+            # in one pass. Failure is non-fatal — the user gets a note
+            # explaining why the LoRA didn't apply.
+            self._load_notes = []
+
+            # FU-016: SageAttention CUDA backend. No-op on MPS / CPU.
+            # Must run before LoRA fuse so the LoRA's adapter modules
+            # don't trip the backend swap (set_attention_backend
+            # mutates the attention class on existing modules).
+            try:
+                from backend_service.helpers.attention_backend import (
+                    maybe_apply_sage_attention,
+                )
+                sage_note = maybe_apply_sage_attention(pipeline)
+                if sage_note:
+                    self._load_notes.append(sage_note)
+            except Exception:
+                pass
+
+            if lora_repo and lora_file:
+                try:
+                    pipeline.load_lora_weights(
+                        lora_repo,
+                        weight_name=lora_file,
+                        local_files_only=True,
+                    )
+                    effective_scale = (
+                        float(lora_scale) if lora_scale is not None else 1.0
+                    )
+                    pipeline.fuse_lora(lora_scale=effective_scale)
+                    try:
+                        pipeline.unload_lora_weights()
+                    except Exception:
+                        pass
+                    self._load_notes.append(
+                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                    )
+                except Exception as exc:  # noqa: BLE001 — non-fatal
+                    self._load_notes.append(
+                        f"LoRA load failed ({type(exc).__name__}: {exc}). "
+                        "Pipeline continuing without LoRA."
+                    )
 
             # Memory-saving knobs. Slicing + tiling are quality-lossy and
             # Reference workflows don't enable them by default — only flip them on
@@ -1682,12 +1778,26 @@ class DiffusersVideoEngine:
                 filename=gguf_file,
                 local_files_only=True,
             )
+            # ``from_single_file`` defaults the architecture config to the
+            # transformer class's largest known variant. For Wan that is the
+            # 14 B / A14B layout (cross-attn dim 5120). The TI2V 5B uses
+            # cross-attn dim 3072, so loading its GGUF without an explicit
+            # config raises:
+            #     blocks.0.attn2.to_k.bias expected torch.Size([5120]),
+            #     but got torch.Size([3072])
+            # Pointing at the base diffusers repo's transformer subfolder
+            # makes diffusers build the model from the matching
+            # ``transformer/config.json`` before mapping in GGUF tensors,
+            # which fixes Wan 2.2 5B and stays correct for every other
+            # variant (the config dim happens to match the GGUF anyway).
             transformer = transformer_cls.from_single_file(
                 gguf_local_path,
                 quantization_config=GGUFQuantizationConfig(
                     compute_dtype=torch.bfloat16,
                 ),
                 torch_dtype=torch.bfloat16,
+                config=repo,
+                subfolder="transformer",
             )
             return transformer, f"Transformer loaded from GGUF ({gguf_file})"
         except Exception as exc:  # noqa: BLE001 — any failure → fall back

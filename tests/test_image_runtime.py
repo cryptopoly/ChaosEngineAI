@@ -557,5 +557,200 @@ class MfluxEngineTests(unittest.TestCase):
             self.assertIn("flux", variant["repo"].lower())
 
 
+class SdxlVaeFp16FixTests(unittest.TestCase):
+    """FU-017: madebyollin/sdxl-vae-fp16-fix snapshot probing + dtype gate."""
+
+    def test_is_sdxl_repo_matches_stability_xl(self):
+        from backend_service.image_runtime import _is_sdxl_repo
+
+        self.assertTrue(_is_sdxl_repo("stabilityai/stable-diffusion-xl-base-1.0"))
+        self.assertTrue(_is_sdxl_repo("stabilityai/stable-diffusion-xl-refiner-1.0"))
+        self.assertTrue(_is_sdxl_repo("some-finetune-author/sdxl-anime-mix"))
+
+    def test_is_sdxl_repo_excludes_flux_and_sd15(self):
+        from backend_service.image_runtime import _is_sdxl_repo
+
+        self.assertFalse(_is_sdxl_repo("black-forest-labs/FLUX.1-dev"))
+        self.assertFalse(_is_sdxl_repo("runwayml/stable-diffusion-v1-5"))
+        self.assertFalse(_is_sdxl_repo("stabilityai/stable-diffusion-3.5-medium"))
+
+    def test_preferred_dtype_drops_fp32_when_vae_fix_available(self):
+        """SDXL on MPS stays on fp16 when the fix VAE is locally cached."""
+        import torch  # type: ignore
+        from backend_service.image_runtime import DiffusersTextToImageEngine
+
+        engine = DiffusersTextToImageEngine()
+        sdxl_repo = "stabilityai/stable-diffusion-xl-base-1.0"
+
+        # Without the fix snapshot: original fp32 fallback path.
+        dtype_no_fix = engine._preferred_torch_dtype(
+            torch, sdxl_repo, "mps", sdxl_vae_fix_available=False,
+        )
+        self.assertEqual(dtype_no_fix, torch.float32)
+
+        # With the fix snapshot: fp16 — 2× faster on MPS.
+        dtype_with_fix = engine._preferred_torch_dtype(
+            torch, sdxl_repo, "mps", sdxl_vae_fix_available=True,
+        )
+        self.assertEqual(dtype_with_fix, torch.float16)
+
+    def test_preferred_dtype_unaffected_for_non_sdxl(self):
+        """Non-SDXL repos should ignore the sdxl_vae_fix_available flag."""
+        import torch  # type: ignore
+        from backend_service.image_runtime import DiffusersTextToImageEngine
+
+        engine = DiffusersTextToImageEngine()
+        flux = "black-forest-labs/FLUX.1-dev"
+
+        # FLUX on CUDA stays on bf16 regardless of the fix flag.
+        self.assertEqual(
+            engine._preferred_torch_dtype(torch, flux, "cuda", sdxl_vae_fix_available=True),
+            torch.bfloat16,
+        )
+        self.assertEqual(
+            engine._preferred_torch_dtype(torch, flux, "cuda", sdxl_vae_fix_available=False),
+            torch.bfloat16,
+        )
+
+
+class AysSchedulerTests(unittest.TestCase):
+    """FU-020: AYS sampler entries + custom-timestep wiring."""
+
+    def test_ays_samplers_registered(self):
+        from backend_service.image_runtime import _SAMPLER_REGISTRY
+
+        self.assertIn("ays_dpmpp_2m_sd15", _SAMPLER_REGISTRY)
+        self.assertIn("ays_dpmpp_2m_sdxl", _SAMPLER_REGISTRY)
+
+    def test_ays_timesteps_match_published_arrays(self):
+        from backend_service.image_runtime import _AYS_TIMESTEPS
+
+        # NVIDIA's published 10-step arrays — exact values matter for
+        # quality reproduction.
+        self.assertEqual(len(_AYS_TIMESTEPS["sd15"]), 10)
+        self.assertEqual(len(_AYS_TIMESTEPS["sdxl"]), 10)
+        self.assertEqual(_AYS_TIMESTEPS["sdxl"][0], 999)
+        self.assertEqual(_AYS_TIMESTEPS["sdxl"][-1], 13)
+
+    def test_ays_family_marker_stripped_from_scheduler_kwargs(self):
+        """The private ``_ays_family`` marker must not reach diffusers' from_config."""
+        from backend_service.image_runtime import _SAMPLER_REGISTRY
+
+        _, registry_kwargs = _SAMPLER_REGISTRY["ays_dpmpp_2m_sdxl"]
+        self.assertEqual(registry_kwargs.get("_ays_family"), "sdxl")
+        # Whatever else lives there, the marker is the only "private"
+        # field — confirms we keep our internals separate from
+        # diffusers' public scheduler kwargs.
+        public_keys = {k for k in registry_kwargs if not k.startswith("_")}
+        # No public kwargs needed for AYS — diffusers picks the schedule
+        # from the timestep array.
+        self.assertEqual(public_keys, set())
+
+
+class LoraVariantTests(unittest.TestCase):
+    """FU-019: catalog distill LoRA variants + dataclass field surface."""
+
+    def test_image_config_accepts_lora_fields(self):
+        config = ImageGenerationConfig(
+            modelId="black-forest-labs/FLUX.1-dev-hyper-sd-8step",
+            modelName="FLUX.1 Dev · Hyper-SD 8-step",
+            repo="black-forest-labs/FLUX.1-dev",
+            prompt="A skyline",
+            negativePrompt="",
+            width=1024,
+            height=1024,
+            steps=8,
+            guidance=3.5,
+            batchSize=1,
+            loraRepo="ByteDance/Hyper-SD",
+            loraFile="Hyper-FLUX.1-dev-8steps-lora.safetensors",
+            loraScale=0.125,
+            defaultSteps=8,
+            cfgOverride=3.5,
+        )
+        self.assertEqual(config.loraRepo, "ByteDance/Hyper-SD")
+        self.assertEqual(config.loraScale, 0.125)
+        self.assertEqual(config.defaultSteps, 8)
+
+    def test_catalog_includes_hyper_sd_flux_variant(self):
+        from backend_service.catalog.image_models import IMAGE_MODEL_FAMILIES
+
+        flux_dev_family = next(
+            f for f in IMAGE_MODEL_FAMILIES if f["id"] == "flux-dev"
+        )
+        lora_variants = [
+            v for v in flux_dev_family["variants"]
+            if v.get("loraRepo")
+        ]
+        # Hyper-SD + Turbo-Alpha — two distill variants on FLUX.1-dev.
+        self.assertGreaterEqual(len(lora_variants), 2)
+        for variant in lora_variants:
+            self.assertIn("loraFile", variant)
+            self.assertIsNotNone(variant.get("loraScale"))
+            self.assertEqual(variant.get("defaultSteps"), 8)
+
+    def test_catalog_variant_ids_unique(self):
+        from backend_service.catalog.image_models import IMAGE_MODEL_FAMILIES
+
+        ids = []
+        for family in IMAGE_MODEL_FAMILIES:
+            for variant in family["variants"]:
+                ids.append(variant["id"])
+        self.assertEqual(len(ids), len(set(ids)), "duplicate variant ids in image catalog")
+
+
+class CfgDecayImageTests(unittest.TestCase):
+    """FU-021: CFG decay knob + flow-match gate on image runtime."""
+
+    def test_image_config_default_cfg_decay_off(self):
+        config = ImageGenerationConfig(
+            modelId="x", modelName="x", repo="black-forest-labs/FLUX.1-dev",
+            prompt="x", negativePrompt="", width=1024, height=1024,
+            steps=8, guidance=3.5, batchSize=1,
+        )
+        self.assertFalse(config.cfgDecay)
+
+    def test_image_config_accepts_cfg_decay_true(self):
+        config = ImageGenerationConfig(
+            modelId="x", modelName="x", repo="black-forest-labs/FLUX.1-dev",
+            prompt="x", negativePrompt="", width=1024, height=1024,
+            steps=8, guidance=7.0, batchSize=1, cfgDecay=True,
+        )
+        self.assertTrue(config.cfgDecay)
+
+
+class SageAttentionHelperTests(unittest.TestCase):
+    """FU-016: SageAttention CUDA backend gating."""
+
+    def test_helper_returns_none_without_cuda(self):
+        """No-op on macOS / CPU even when sageattention import would succeed."""
+        from unittest import mock as mock_mod
+        from backend_service.helpers import attention_backend as ab_mod
+
+        with mock_mod.patch.object(
+            ab_mod, "__name__", ab_mod.__name__,
+        ):
+            # Patch torch.cuda.is_available to False at the function call
+            # site by reaching into the helper's import path.
+            import torch  # type: ignore
+
+            with mock_mod.patch.object(
+                torch.cuda, "is_available", return_value=False,
+            ):
+                from types import SimpleNamespace
+                pipeline = SimpleNamespace(transformer=SimpleNamespace())
+                result = ab_mod.maybe_apply_sage_attention(pipeline)
+                self.assertIsNone(result)
+
+    def test_helper_returns_none_when_pipeline_lacks_transformer(self):
+        from backend_service.helpers import attention_backend as ab_mod
+        from types import SimpleNamespace
+
+        # UNet pipeline (no .transformer) → no swap attempted.
+        pipeline = SimpleNamespace(unet=object())
+        result = ab_mod.maybe_apply_sage_attention(pipeline)
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()

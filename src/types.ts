@@ -927,7 +927,20 @@ export type ImageSamplerId =
   | "euler"
   | "euler_a"
   | "ddim"
-  | "unipc";
+  | "unipc"
+  // FU-020: Align Your Steps schedules. Wins meaningful detail at
+  // 7-10 step counts on SD1.5 / SDXL where Karras / Euler look soft.
+  // Flow-match families (FLUX, SD3, Qwen, Sana, HiDream) keep the
+  // sampler dropdown hidden — backend ignores the flag for them.
+  | "ays_dpmpp_2m_sd15"
+  | "ays_dpmpp_2m_sdxl";
+
+// FU-015 + TeaCache. UI-facing strategy id surface — must match the
+// keys of ``cache_compression`` in the backend. Default ``"none"`` keeps
+// the stock pipeline; ``"fbcache"`` is the cross-platform recommendation
+// for DiT pipelines (FLUX, SD3, Wan, Hunyuan, LTX, CogVideoX, Mochi).
+export type ImageCacheStrategyId = "none" | "fbcache" | "teacache";
+export type VideoCacheStrategyId = "none" | "fbcache" | "teacache";
 
 export interface ImageModelVariant {
   id: string;
@@ -1061,6 +1074,11 @@ export interface VideoModelVariant {
    * Closer to what the diffusers allow-pattern download actually pulls. */
   coreWeightsBytes?: number | null;
   coreWeightsGb?: number | null;
+  /** Optional Fast-preview swap target. When set, the Studio shows a
+   * Fast preview toggle that submits this sibling's variant id instead
+   * — typically pointing a "dev" variant at its "distilled" sibling so
+   * the same prompt + seed renders in a fraction of the time. */
+  fastPreviewSiblingId?: string | null;
 }
 
 export interface VideoModelFamily {
@@ -1138,6 +1156,11 @@ export interface VideoGenerationPayload {
   enableLtxRefiner?: boolean;
   enhancePrompt?: boolean;
   cfgDecay?: boolean;
+  stgScale?: number;
+  /** FU-015: cache strategy id ("fbcache" / "teacache" / "none"). */
+  cacheStrategy?: VideoCacheStrategyId | null;
+  /** Optional caching threshold override; null uses strategy default. */
+  cacheRelL1Thresh?: number | null;
 }
 
 export interface VideoGenerationResponse {
@@ -1181,6 +1204,24 @@ export interface ImageGenerationPayload {
   qualityPreset?: ImageQualityPreset;
   draftMode?: boolean;
   sampler?: ImageSamplerId | null;
+  /** FU-015: diffusion cache strategy id ("fbcache" / "teacache" /
+   * unset / "none"). Reserved id "none" maps to no header on the
+   * payload — the backend treats missing/empty/"none" identically. */
+  cacheStrategy?: ImageCacheStrategyId | null;
+  /** Threshold knob for caching strategies. Lower = stricter
+   * (less speedup, less quality drift). Default unset → strategy
+   * default (FBCache 0.12, TeaCache 0.4). */
+  cacheRelL1Thresh?: number | null;
+  /** FU-021: opt-in CFG decay schedule for flow-match image models
+   * (FLUX, SD3, Qwen, Sana, HiDream). Default off — image users
+   * typically want consistent CFG. Backend gates non-flow-match
+   * repos automatically. */
+  cfgDecay?: boolean;
+}
+
+export interface VideoGenerationCachePayload {
+  cacheStrategy?: VideoCacheStrategyId | null;
+  cacheRelL1Thresh?: number | null;
 }
 
 export interface ImageRuntimeStatus {

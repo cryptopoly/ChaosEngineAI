@@ -508,6 +508,26 @@ function runtimeFootprintForDevice(opts: {
  * - LTX-Video (baseFootprint 2 GB) at 768×512 × 41 frames on 32 GB:
  *   stays "safe" — small model, proven to run on consumer Macs.
  */
+// FU-019 / NF4 footprint table. Mirrors backend
+// ``_BNB_NF4_VIDEO_TRANSFORMER_CLASSES`` in video_runtime.py — when the user
+// flips the NF4 toggle on a CUDA host with bitsandbytes installed, the
+// resident peak drops because the DiT transformer goes from bf16 (large) to
+// 4-bit. The exact savings differ per model because NF4 only quantizes the
+// transformer; the text encoder + VAE stay in their original dtype.
+//
+// Keys are the diffusers-mirror repo ids. Values are the resident peak in
+// GB once NF4 is applied, derived from the same upstream model-card numbers
+// the catalog quotes for the bf16 path. CUDA-only — MPS / CPU ignore the
+// flag and fall back to the un-quantized footprint.
+const NF4_VIDEO_RESIDENT_GB: Record<string, number> = {
+  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 12.0,
+  "Wan-AI/Wan2.1-T2V-14B-Diffusers": 18.0,
+  "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 18.0,
+  "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 14.5,
+  "hunyuanvideo-community/HunyuanVideo": 22.0,
+  "Lightricks/LTX-Video": 8.0,
+};
+
 export function assessVideoGenerationSafety(opts: {
   width: number;
   height: number;
@@ -526,6 +546,15 @@ export function assessVideoGenerationSafety(opts: {
   runtimeFootprintMpsGb?: number | null;
   runtimeFootprintCudaGb?: number | null;
   runtimeFootprintCpuGb?: number | null;
+  /** Diffusers-mirror repo id for the selected model. Drives the NF4
+   * footprint lookup when ``useNf4`` is true. Optional — when omitted the
+   * heuristic falls back to the bf16 / fp16 path even with the toggle on. */
+  repo?: string | null;
+  /** When true and the host is CUDA, swap the bf16 resident footprint for
+   * the model's NF4 entry from ``NF4_VIDEO_RESIDENT_GB``. Mirrors the
+   * backend's ``useNf4`` field on ``VideoGenerationConfig``. Ignored on
+   * MPS (Apple Silicon — bitsandbytes has no Metal kernels) and CPU. */
+  useNf4?: boolean | null;
 }): VideoGenerationSafety {
   const {
     width,
@@ -538,6 +567,8 @@ export function assessVideoGenerationSafety(opts: {
     runtimeFootprintMpsGb,
     runtimeFootprintCudaGb,
     runtimeFootprintCpuGb,
+    repo,
+    useNf4,
   } = opts;
 
   const normalisedDevice = (device ?? "").toLowerCase();
@@ -586,10 +617,22 @@ export function assessVideoGenerationSafety(opts: {
     runtimeFootprintCudaGb,
     runtimeFootprintCpuGb,
   });
+  // FU-019: NF4 footprint override — only applies on CUDA. On Apple
+  // Silicon (MPS) and CPU, bitsandbytes has no kernels so the toggle is
+  // a no-op; the user keeps the un-quantized footprint estimate.
+  const nf4OverrideGb =
+    useNf4
+    && effectiveDevice === "cuda"
+    && repo
+    && repo in NF4_VIDEO_RESIDENT_GB
+      ? NF4_VIDEO_RESIDENT_GB[repo]
+      : null;
   const modelFootprintGb =
-    runtimeOverrideGb != null
-      ? runtimeOverrideGb
-      : estimateResidentModelGb(baseFootprint, effectiveDevice);
+    nf4OverrideGb != null
+      ? nf4OverrideGb
+      : runtimeOverrideGb != null
+        ? runtimeOverrideGb
+        : estimateResidentModelGb(baseFootprint, effectiveDevice);
 
   if (
     !Number.isFinite(width)
@@ -619,12 +662,16 @@ export function assessVideoGenerationSafety(opts: {
     estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
   const estimatedPeakGb = modelFootprintGb + attentionPeakGb;
 
-  // MPS has a lower danger ratio (0.8 vs CUDA 1.0) because Apple's Metal
-  // backend has historically been less tolerant of approaching the ceiling
-  // — it asserts and kills the process where CUDA would surface a catchable
-  // OOM. We want an earlier warning specifically on MPS.
-  const cautionRatio = effectiveDevice === "cuda" ? 0.7 : 0.5;
-  const dangerRatio = effectiveDevice === "cuda" ? 1.0 : 0.8;
+  // Risk thresholds expressed as a fraction of the effective memory
+  // budget (the post-OS-and-overhead ceiling, see effectiveMemoryBudgetGb).
+  // MPS still gets a slightly earlier warning than CUDA because Metal
+  // asserts at the ceiling rather than surfacing a catchable OOM, but
+  // 0.5 was far too aggressive — a 27 GB peak on a 64 GB M4 Max
+  // (budget 48 GB → 56 % of budget, 42 % of total memory) was lighting
+  // up "close to the safe limit". Aligns with the image-side
+  // ``riskRatios`` for MPS (caution 0.8, danger 0.95).
+  const cautionRatio = effectiveDevice === "cuda" ? 0.85 : 0.8;
+  const dangerRatio = effectiveDevice === "cuda" ? 1.0 : 0.95;
   const ratio = estimatedPeakGb / budgetGb;
   const exceedsDevice = estimatedPeakGb > budgetGb;
   const riskLevel: VideoGenerationRiskLevel =

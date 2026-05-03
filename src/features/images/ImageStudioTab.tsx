@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
+  ImageCacheStrategyId,
   ImageModelFamily,
   ImageModelVariant,
   ImageOutputArtifact,
@@ -20,7 +22,15 @@ import {
   isGatedImageAccessError,
 } from "../../utils";
 import { assessImageGenerationSafety, imageVariantSizeForMemoryEstimate } from "../../utils/images";
-import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS, IMAGE_SAMPLERS, isFlowMatchingRepo } from "../../constants";
+import {
+  IMAGE_RATIO_PRESETS,
+  IMAGE_QUALITY_PRESETS,
+  IMAGE_SAMPLERS,
+  IMAGE_CACHE_STRATEGY_DEFAULT_THRESH,
+  imageCacheStrategiesForRepo,
+  isFlowMatchingRepo,
+  isUnetImageRepo,
+} from "../../constants";
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
@@ -72,6 +82,15 @@ export interface ImageStudioTabProps {
   onImageDraftModeChange: (value: boolean) => void;
   imageSampler: ImageSamplerId;
   onImageSamplerChange: (value: ImageSamplerId) => void;
+  /** FU-015: diffusion cache strategy id ("none" / "fbcache" / "teacache"). */
+  imageCacheStrategy: ImageCacheStrategyId;
+  onImageCacheStrategyChange: (value: ImageCacheStrategyId) => void;
+  /** Optional threshold override; null defers to strategy default. */
+  imageCacheRelL1Thresh: number | null;
+  onImageCacheRelL1ThreshChange: (value: number | null) => void;
+  /** FU-021: opt-in CFG decay for flow-match image models. */
+  imageCfgDecay: boolean;
+  onImageCfgDecayChange: (value: boolean) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -141,6 +160,12 @@ export function ImageStudioTab({
   onImageDraftModeChange,
   imageSampler,
   onImageSamplerChange,
+  imageCacheStrategy,
+  onImageCacheStrategyChange,
+  imageCacheRelL1Thresh,
+  onImageCacheRelL1ThreshChange,
+  imageCfgDecay,
+  onImageCfgDecayChange,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
@@ -265,6 +290,25 @@ export function ImageStudioTab({
   useEffect(() => {
     setDangerOverrideAck(false);
   }, [selectedImageVariant?.id, imageWidth, imageHeight]);
+
+  // FU-015: image cache strategy filter. Match the video-side gating —
+  // hide TeaCache for non-FLUX DiTs (calibrated forward exists for
+  // FLUX only) and hide both strategies entirely for UNet pipelines
+  // (SDXL / SD1.5 / SD2 — no .transformer attribute to attach to).
+  // Auto-reset to "none" if the user previously picked something
+  // that no longer applies after switching variants.
+  const selectedImageRepo = selectedImageVariant?.repo ?? "";
+  const isUnetVariant = isUnetImageRepo(selectedImageRepo);
+  const availableImageCacheStrategies = useMemo(
+    () => imageCacheStrategiesForRepo(selectedImageRepo),
+    [selectedImageRepo],
+  );
+  useEffect(() => {
+    const allowedIds = new Set(availableImageCacheStrategies.map((s) => s.id));
+    if (!allowedIds.has(imageCacheStrategy)) {
+      onImageCacheStrategyChange("none");
+    }
+  }, [availableImageCacheStrategies, imageCacheStrategy, onImageCacheStrategyChange]);
 
   function handleApplySafeImageSettings() {
     const suggestion = imageSafety.suggestion;
@@ -670,12 +714,14 @@ export function ImageStudioTab({
 
           {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
             <div className="control-stack">
-              <span className="eyebrow">Sampler</span>
+              <span className="eyebrow">
+                Sampler
+                <InfoTooltip text="Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise." />
+              </span>
               <select
                 className="text-input"
                 value={imageSampler}
                 onChange={(event) => onImageSamplerChange(event.target.value as ImageSamplerId)}
-                title="Scheduler / sampler algorithm. Hidden for FLUX, SD3 and other flow-matching models where swapping produces noise."
               >
                 {IMAGE_SAMPLERS.map((sampler) => (
                   <option key={sampler.id} value={sampler.id}>
@@ -684,6 +730,95 @@ export function ImageStudioTab({
                 ))}
               </select>
             </div>
+          ) : null}
+
+          {/*
+            FU-015: diffusion cache strategy. Cross-platform — runs on
+            macOS (MPS), Windows (CUDA / DirectML) and Linux (CUDA / CPU)
+            because both FBCache and TeaCache attach to the diffusers
+            transformer regardless of device. Hidden for the placeholder
+            engine and for variants that lack a transformer attribute
+            (UNet-based SD1.5/SDXL fall through gracefully on the
+            backend with a runtimeNote).
+          */}
+          {selectedImageVariant && !isUnetVariant ? (
+            <div className="control-stack">
+              <span className="eyebrow">
+                Diffusion cache
+                <InfoTooltip text="Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point." />
+              </span>
+              <select
+                className="text-input"
+                value={imageCacheStrategy}
+                onChange={(event) =>
+                  onImageCacheStrategyChange(event.target.value as ImageCacheStrategyId)
+                }
+              >
+                {availableImageCacheStrategies.map((strategy) => (
+                  <option key={strategy.id} value={strategy.id}>
+                    {strategy.label} · {strategy.hint}
+                  </option>
+                ))}
+              </select>
+              {availableImageCacheStrategies.length === 2 ? (
+                <span className="muted-text" style={{ fontSize: 11 }}>
+                  TeaCache hidden — its image-side calibration only covers
+                  the FLUX family. First Block Cache works on every DiT
+                  pipeline shipped today (cross-platform).
+                </span>
+              ) : null}
+              {imageCacheStrategy !== "none" ? (
+                <label className="control-stack-inline">
+                  <span className="muted-text">
+                    Threshold ({imageCacheRelL1Thresh ??
+                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]})
+                    <InfoTooltip text="Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev." />
+                  </span>
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={0.01}
+                    max={0.6}
+                    step={0.01}
+                    value={
+                      imageCacheRelL1Thresh ??
+                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]
+                    }
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      onImageCacheRelL1ThreshChange(
+                        Number.isFinite(value) && value > 0 ? value : null,
+                      );
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/*
+            FU-021: opt-in CFG decay schedule. Applies only to
+            flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream)
+            where late-step high CFG drifts toward oversaturation.
+            Backend gates non-flow-match repos automatically; we hide
+            the toggle for SD1.5/SDXL so the UI matches behaviour.
+          */}
+          {selectedImageVariant && isFlowMatchingRepo(selectedImageVariant.repo) ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={imageCfgDecay}
+                onChange={(event) => onImageCfgDecayChange(event.target.checked)}
+              />
+              <span>
+                <strong>CFG decay</strong> — linearly relax guidance from your
+                slider value toward 1.5 across the schedule. Reduces
+                oversaturation on late steps without changing semantics
+                from early steps. Off by default; backend ignores this on
+                SD1.5 / SDXL.
+                <InfoTooltip text="Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use." />
+              </span>
+            </label>
           ) : null}
 
           <div className="field-grid image-field-grid">

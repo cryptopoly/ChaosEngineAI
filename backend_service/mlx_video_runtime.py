@@ -535,11 +535,12 @@ class MlxVideoEngine:
                 cmd.extend(["--spatial-upscaler", str(spatial_upscaler)])
         # STG (Spatial-Temporal Guidance) is mlx-video's built-in quality
         # lever — perturbs final transformer blocks during sampling to
-        # reduce object breakup / chroma drift. Default 1.0 mirrors the
-        # upstream README's quality recommendation. This closes the FU-013
-        # gap for the mlx-video path (still pending for the diffusers
-        # LTX path on CUDA / non-Apple-Silicon hosts).
-        cmd.extend(["--stg-scale", "1.0"])
+        # reduce object breakup / chroma drift. Value comes from
+        # ``VideoGenerationConfig.stgScale``: 1.0 matches Blaizzy's
+        # upstream README recommendation, 0.0 disables the perturbed
+        # forward pass and frees ~33 % wall time per step. Distilled
+        # pipelines ignore the flag (fixed sampler).
+        cmd.extend(["--stg-scale", str(config.stgScale)])
         return cmd
 
     def _launch(

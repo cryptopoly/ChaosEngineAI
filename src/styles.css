@@ -6125,6 +6125,35 @@ select.text-input {
   margin-top: 16px;
 }
 
+/* Compact modifier for the runtime callout — used by the Video Studio
+ * top section to claw back vertical space when the chip row + status
+ * line otherwise dominate the viewport. Image studio shares the
+ * unmodified callout class, so it is unaffected unless the same
+ * modifier is applied there too. */
+.image-runtime-callout.compact {
+  margin-top: 8px;
+  padding: 10px 12px;
+}
+.image-runtime-callout.compact > p {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.image-runtime-callout.compact .chip-row {
+  gap: 4px;
+}
+
+/* Tightened layout for the Video Studio top section. The base
+ * image-studio-grid is also used by the Image Studio tab, which has
+ * different spacing needs, so we apply the tweaks via this modifier
+ * class instead of editing the shared grid. */
+.video-studio-top-grid > label {
+  font-size: 12px;
+}
+.video-studio-top-grid .image-library-stats {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
 .image-runtime-actions {
   display: flex;
   flex-wrap: wrap;
@@ -6823,6 +6852,22 @@ select.text-input {
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0 2px;
+}
+/* Side-by-side container for paired preset groups (Quality + Aspect
+ * ratio in the Video Studio). Each child .preset-row keeps its own
+ * label + pills layout; the wrapper handles cross-group spacing and
+ * wraps onto two lines on narrow workspaces. */
+.preset-row-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  align-items: flex-start;
+  margin: 6px 0 2px;
+}
+.preset-row-pair > .preset-row {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .preset-row-label {
   flex-basis: 100%;

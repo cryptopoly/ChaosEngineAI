@@ -29,9 +29,13 @@ mlx-lm = [
 # ``backend_service/mlx_worker.py`` via ``is_multimodal_family``
 # detection — the worker swaps from mlx_lm.load → mlx_vlm.load when
 # a multimodal repo prefix is hit. Pulls mlx + transformers + Pillow
-# transitively; ~150 MB extra in the venv.
+# transitively; ~150 MB extra in the venv. ``torchvision`` is needed
+# by HF's Qwen2VLVideoProcessor (loaded transitively by Qwen2.5-VL
+# AutoProcessor); without it ``mlx_vlm.load`` raises ImportError on
+# the Qwen2.5-VL family during processor build.
 mlx-vlm = [
     "mlx-vlm>=0.4.0",
+    "torchvision>=0.20",
 ]
 triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git", "vllm>=0.8.0"]
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git", "mlx-lm>=0.22.0"]

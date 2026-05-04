@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { WanInstallPanel } from "../../components/WanInstallPanel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { Panel } from "../../components/Panel";
 import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
@@ -285,6 +286,12 @@ export function VideoDiscoverTab({
             </button>
           </div>
         </div>
+
+        {/* FU-025 Phase 9: GUI install action for the Apple-Silicon-only
+            Wan MLX runtime. Lists every supported raw Wan-AI repo,
+            shows converted-on-disk state, and runs the convert action
+            via the /api/setup/install-mlx-video-wan background job. */}
+        <WanInstallPanel />
 
         <div className="image-discover-filter-row">
           <label className="image-discover-search">

@@ -1082,6 +1082,102 @@ export async function getLongLiveInstallStatus(): Promise<LongLiveJobState> {
   return await fetchJson<LongLiveJobState>("/api/setup/install-longlive/status", 10000);
 }
 
+// --- mlx-video Wan install (FU-025) -------------------------------
+//
+// Apple-Silicon only. Same pattern as LongLive: kick off a background
+// job (download raw HF weights → run mlx_video.models.wan_2.convert →
+// verify), poll status, render attempts via InstallLogPanel. The
+// shared LongLive panel variant works as-is — we just supply the
+// matching state shape.
+
+export interface WanInstallAttempt {
+  phase?: string;
+  package?: string;
+  /** Always undefined for Wan; carried for the shared InstallLogPanel union. */
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface WanInstallJobState {
+  id: string;
+  phase: "idle" | "preflight" | "downloading" | "converting" | "verifying" | "done" | "error";
+  message: string;
+  repo: string | null;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  outputDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: WanInstallAttempt[];
+  done: boolean;
+}
+
+export interface WanConvertStatusFields {
+  repo: string;
+  converted: boolean;
+  outputDir: string;
+  hasTransformer: boolean;
+  hasMoeExperts: boolean;
+  hasVae: boolean;
+  hasTextEncoder: boolean;
+  note: string | null;
+}
+
+export interface WanInventoryItem {
+  repo: string;
+  approxRawSizeGb: number | null;
+  converted: boolean;
+  status: WanConvertStatusFields;
+}
+
+export interface WanInventory {
+  items: WanInventoryItem[];
+  convertRoot: string;
+  rawRoot: string;
+}
+
+export async function startWanInstall(
+  repo: string,
+  options: {
+    dtype?: "bfloat16" | "float16" | "float32";
+    quantize?: boolean;
+    bits?: 4 | 8;
+    groupSize?: 32 | 64 | 128;
+    cleanupRaw?: boolean;
+  } = {},
+): Promise<WanInstallJobState> {
+  return await postJson<WanInstallJobState>(
+    "/api/setup/install-mlx-video-wan",
+    {
+      repo,
+      dtype: options.dtype ?? "bfloat16",
+      quantize: options.quantize ?? false,
+      bits: options.bits ?? 4,
+      groupSize: options.groupSize ?? 64,
+      cleanupRaw: options.cleanupRaw ?? false,
+    },
+    15000,
+  );
+}
+
+export async function getWanInstallStatus(): Promise<WanInstallJobState> {
+  return await fetchJson<WanInstallJobState>(
+    "/api/setup/install-mlx-video-wan/status",
+    10000,
+  );
+}
+
+export async function getWanInventory(): Promise<WanInventory> {
+  return await fetchJson<WanInventory>(
+    "/api/setup/mlx-video-wan/inventory",
+    10000,
+  );
+}
+
 // --- Diagnostics ---------------------------------------------------
 //
 // Surfaced in Settings → Diagnostics. The snapshot is a structured dump

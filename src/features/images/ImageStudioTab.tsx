@@ -3,6 +3,7 @@ import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
+import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
   ImageCacheStrategyId,
@@ -652,7 +653,14 @@ export function ImageStudioTab({
           ) : null}
 
           <label>
-            Prompt
+            <span className="prompt-label-row">
+              Prompt
+              <PromptEnhanceButton
+                prompt={imagePrompt}
+                repo={selectedImageVariant?.repo ?? ""}
+                onEnhanced={onImagePromptChange}
+              />
+            </span>
             <textarea
               className="text-input prompt-area"
               rows={5}

@@ -5716,6 +5716,37 @@ select.text-input {
   text-transform: uppercase;
 }
 
+/* FU-022: prompt enhancer button. Sits inline with the "Prompt" label
+   above the textarea so it's discoverable without taking floor space.
+   Disabled state when no prompt typed or no model selected. */
+.prompt-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.prompt-enhance-button {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.prompt-enhance-button:hover:not(:disabled) {
+  background: var(--accent);
+  color: #0f1317;
+}
+.prompt-enhance-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Token-flow waveform (benchmark accent) */
 .live-progress__waveform {
   display: flex;

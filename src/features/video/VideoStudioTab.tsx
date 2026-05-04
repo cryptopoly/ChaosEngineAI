@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import type { DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
@@ -962,7 +963,14 @@ export function VideoStudioTab({
           ) : null}
 
           <label>
-            Prompt
+            <span className="prompt-label-row">
+              Prompt
+              <PromptEnhanceButton
+                prompt={videoPrompt}
+                repo={selectedVideoVariant?.repo ?? ""}
+                onEnhanced={onVideoPromptChange}
+              />
+            </span>
             <textarea
               className="text-input"
               rows={3}

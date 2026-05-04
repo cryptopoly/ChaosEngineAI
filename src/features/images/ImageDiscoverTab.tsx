@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
 import type {
   ImageModelVariant,
@@ -11,6 +12,8 @@ import type {
   ImageDiscoverAccessFilter,
 } from "../../types/image";
 import {
+  compactModelSizeLabel,
+  compactReleaseLabel,
   downloadProgressLabel,
   downloadSizeTooltip,
   formatImageAccessError,
@@ -23,6 +26,7 @@ import {
 } from "../../utils";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
+type SortDir = "asc" | "desc";
 
 export interface ImageDiscoverTabProps {
   combinedImageDiscoverResults: ImageModelVariant[];
@@ -49,15 +53,67 @@ export interface ImageDiscoverTabProps {
 }
 
 function imageDiscoverSortLabel(sort: DiscoverSort): string {
+  if (sort === "name") return "name";
+  if (sort === "provider") return "provider";
+  if (sort === "tasks") return "tasks";
   if (sort === "size") return "largest size first";
   if (sort === "ram") return "highest RAM/VRAM first";
   if (sort === "likes") return "most liked first";
   if (sort === "downloads") return "most downloads first";
+  if (sort === "status") return "status";
   return "newest released first";
 }
 
-function sortIndicator(activeSort: DiscoverSort, key: DiscoverSort): string {
-  return activeSort === key ? " \u25BC" : "";
+function sortIndicator(activeSort: DiscoverSort, sortDir: SortDir, key: DiscoverSort): string {
+  if (activeSort !== key) return "";
+  return sortDir === "asc" ? " \u25B2" : " \u25BC";
+}
+
+function defaultSortDir(sort: DiscoverSort): SortDir {
+  return sort === "name" || sort === "provider" || sort === "tasks" ? "asc" : "desc";
+}
+
+function releaseSortKey(variant: ImageModelVariant): string {
+  return variant.releaseDate ?? variant.createdAt ?? variant.lastModified ?? "";
+}
+
+function sizeSortKey(variant: ImageModelVariant): number | null {
+  const candidates = [variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  }
+  return null;
+}
+
+function compareNullableNumberDesc(left: number | null, right: number | null): number {
+  const leftKnown = typeof left === "number" && Number.isFinite(left);
+  const rightKnown = typeof right === "number" && Number.isFinite(right);
+  if (leftKnown && rightKnown) return (right as number) - (left as number);
+  if (leftKnown) return -1;
+  if (rightKnown) return 1;
+  return 0;
+}
+
+function compareNullableNumber(left: number | null, right: number | null, dir: SortDir): number {
+  const desc = compareNullableNumberDesc(left, right);
+  return dir === "desc" ? desc : -desc;
+}
+
+function statusSortKey(status: MediaStatusFilter): number {
+  if (status === "installed") return 0;
+  if (status === "downloading") return 1;
+  if (status === "paused") return 2;
+  if (status === "failed") return 3;
+  if (status === "incomplete") return 4;
+  if (status === "not-installed") return 5;
+  return 6;
+}
+
+function memoryParts(label: string | null | undefined): { primary: string; secondary: string | null } {
+  if (!label) return { primary: "pending", secondary: null };
+  const [primary, secondary] = label.split(" @ ");
+  if (!secondary) return { primary, secondary: null };
+  return { primary: `${primary} @`, secondary };
 }
 
 function imageVariantStatus(
@@ -73,16 +129,19 @@ function imageVariantStatus(
 }
 
 function statusBadge(status: MediaStatusFilter, downloadState?: DownloadStatus) {
-  if (status === "installed") return <span className="badge success">Installed</span>;
+  const downloadDetail = downloadState
+    ? [downloadProgressLabel(downloadState), downloadSizeTooltip(downloadState)].filter(Boolean).join(" / ")
+    : null;
+  if (status === "installed") return <StatusIcon status="installed" label="Installed" />;
   if (status === "downloading" && downloadState) {
-    return <span className="badge accent" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>;
+    return <StatusIcon status="downloading" label="Downloading" detail={downloadDetail} />;
   }
   if (status === "paused" && downloadState) {
-    return <span className="badge warning" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>;
+    return <StatusIcon status="paused" label="Paused" detail={downloadDetail} />;
   }
-  if (status === "failed") return <span className="badge warning">Download Failed</span>;
-  if (status === "incomplete") return <span className="badge warning">Incomplete</span>;
-  return <span className="badge subtle">Not installed</span>;
+  if (status === "failed") return <StatusIcon status="failed" label="Failed" detail={downloadState?.error ?? "Download failed"} />;
+  if (status === "incomplete") return <StatusIcon status="incomplete" label="Incomplete" />;
+  return <StatusIcon status="incomplete" label="Not installed" />;
 }
 
 export function ImageDiscoverTab({
@@ -109,15 +168,62 @@ export function ImageDiscoverTab({
   onRevealPath,
 }: ImageDiscoverTabProps) {
   const [statusFilter, setStatusFilter] = useState<MediaStatusFilter>("all");
+  const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir(imageDiscoverSort));
   const filteredResults = useMemo(
     () =>
-      combinedImageDiscoverResults.filter((variant) => {
-        if (statusFilter === "all") return true;
-        return imageVariantStatus(variant, activeImageDownloads[variant.repo]) === statusFilter;
-      }),
-    [activeImageDownloads, combinedImageDiscoverResults, statusFilter],
+      combinedImageDiscoverResults
+        .map((variant) => {
+          const downloadState = activeImageDownloads[variant.repo];
+          const status = imageVariantStatus(variant, downloadState);
+          const memoryEstimate = imageDiscoverMemoryEstimate(variant);
+          return { variant, status, memoryEstimate };
+        })
+        .filter(({ status }) => statusFilter === "all" || status === statusFilter)
+        .sort((left, right) => {
+          if (imageDiscoverSort === "name") {
+            const diff = left.variant.name.localeCompare(right.variant.name);
+            return sortDir === "asc" ? diff : -diff;
+          }
+          if (imageDiscoverSort === "provider") {
+            const diff = left.variant.provider.localeCompare(right.variant.provider);
+            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
+          }
+          if (imageDiscoverSort === "tasks") {
+            const diff = left.variant.taskSupport.join(" ").localeCompare(right.variant.taskSupport.join(" "));
+            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
+          }
+          if (imageDiscoverSort === "size") {
+            const diff = compareNullableNumber(sizeSortKey(left.variant), sizeSortKey(right.variant), sortDir);
+            if (diff !== 0) return diff;
+          } else if (imageDiscoverSort === "ram") {
+            const diff = compareNullableNumber(left.memoryEstimate?.estimatedPeakGb ?? null, right.memoryEstimate?.estimatedPeakGb ?? null, sortDir);
+            if (diff !== 0) return diff;
+          } else if (imageDiscoverSort === "status") {
+            const diff = statusSortKey(left.status) - statusSortKey(right.status);
+            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
+          } else if (imageDiscoverSort === "likes") {
+            const diff = compareNullableNumber(left.variant.likes ?? null, right.variant.likes ?? null, sortDir);
+            if (diff !== 0) return diff;
+          } else if (imageDiscoverSort === "downloads") {
+            const diff = compareNullableNumber(left.variant.downloads ?? null, right.variant.downloads ?? null, sortDir);
+            if (diff !== 0) return diff;
+          }
+          const dateDiff = releaseSortKey(right.variant).localeCompare(releaseSortKey(left.variant));
+          if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
+          return left.variant.name.localeCompare(right.variant.name);
+        }),
+    [activeImageDownloads, combinedImageDiscoverResults, imageDiscoverSort, sortDir, statusFilter],
   );
   const hasActiveFilters = imageDiscoverHasActiveFilters || statusFilter !== "all";
+
+  function applySort(nextSort: DiscoverSort) {
+    if (imageDiscoverSort === nextSort) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      onImageDiscoverSortChange(nextSort);
+      setSortDir(defaultSortDir(nextSort));
+    }
+  }
 
   return (
     <div className="image-discover-stack">
@@ -199,13 +305,21 @@ export function ImageDiscoverTab({
             <select
               className="text-input"
               value={imageDiscoverSort}
-              onChange={(event) => onImageDiscoverSortChange(event.target.value as DiscoverSort)}
+              onChange={(event) => {
+                const nextSort = event.target.value as DiscoverSort;
+                onImageDiscoverSortChange(nextSort);
+                setSortDir(defaultSortDir(nextSort));
+              }}
             >
+              <option value="name">Name</option>
+              <option value="provider">Provider</option>
+              <option value="tasks">Tasks</option>
               <option value="release">Newest released</option>
               <option value="size">Largest size</option>
               <option value="ram">Highest RAM/VRAM</option>
               <option value="likes">Most likes</option>
               <option value="downloads">Most downloads</option>
+              <option value="status">Status</option>
             </select>
           </label>
           <div className="image-discover-filter-actions">
@@ -217,6 +331,8 @@ export function ImageDiscoverTab({
                 onImageDiscoverTaskFilterChange("all");
                 onImageDiscoverAccessFilterChange("all");
                 setStatusFilter("all");
+                onImageDiscoverSortChange("release");
+                setSortDir("desc");
               }}
               disabled={!hasActiveFilters}
             >
@@ -253,26 +369,24 @@ export function ImageDiscoverTab({
       ) : (
         <div className="media-model-table media-model-table--image">
           <div className="media-model-head">
-            <span className="sort-header">Model</span>
-            <span className="sort-header">Provider</span>
-            <span className="sort-header">Tasks</span>
-            <button className="sort-header" type="button" onClick={() => onImageDiscoverSortChange("size")}>
-              Size{sortIndicator(imageDiscoverSort, "size")}
+            <button className="sort-header" type="button" onClick={() => applySort("name")}>Model{sortIndicator(imageDiscoverSort, sortDir, "name")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("provider")}>Provider{sortIndicator(imageDiscoverSort, sortDir, "provider")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>Tasks{sortIndicator(imageDiscoverSort, sortDir, "tasks")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("size")}>
+              Size{sortIndicator(imageDiscoverSort, sortDir, "size")}
             </button>
-            <button className="sort-header" type="button" onClick={() => onImageDiscoverSortChange("ram")}>
-              RAM/VRAM{sortIndicator(imageDiscoverSort, "ram")}
+            <button className="sort-header" type="button" onClick={() => applySort("ram")}>
+              RAM/VRAM{sortIndicator(imageDiscoverSort, sortDir, "ram")}
             </button>
-            <span className="sort-header">Spec</span>
-            <button className="sort-header" type="button" onClick={() => onImageDiscoverSortChange("release")}>
-              Date{sortIndicator(imageDiscoverSort, "release")}
+            <button className="sort-header" type="button" onClick={() => applySort("release")}>
+              Released{sortIndicator(imageDiscoverSort, sortDir, "release")}
             </button>
-            <span className="sort-header">Status</span>
+            <button className="sort-header" type="button" onClick={() => applySort("status")}>Status{sortIndicator(imageDiscoverSort, sortDir, "status")}</button>
             <span className="sort-header"></span>
           </div>
           <div className="media-model-rows">
-            {filteredResults.map((variant) => {
+            {filteredResults.map(({ variant, status, memoryEstimate }) => {
               const downloadState = activeImageDownloads[variant.repo];
-              const status = imageVariantStatus(variant, downloadState);
               const isComplete = status === "installed";
               const isDownloading = status === "downloading";
               const isPaused = status === "paused";
@@ -282,9 +396,11 @@ export function ImageDiscoverTab({
               const hasLocalData = Boolean(variant.hasLocalData || isDownloadComplete || isPaused || isDownloadFailed);
               const friendlyDownloadError = formatImageAccessError(downloadState?.error, variant);
               const needsGatedAccess = isGatedImageAccessError(downloadState?.error);
-              const memoryEstimate = imageDiscoverMemoryEstimate(variant);
               const secondarySize = imageSecondarySizeLabel(variant);
-              const releaseLabel = formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt);
+              const releaseLabel = compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt));
+              const primarySizeLabel = imagePrimarySizeLabel(variant);
+              const sizeTitle = [primarySizeLabel, secondarySize].filter(Boolean).join(" / ");
+              const memory = memoryParts(memoryEstimate?.label);
               return (
                 <div key={variant.id} className={`media-model-row-wrap${isComplete ? " downloaded" : ""}`}>
                   <div className="media-model-row">
@@ -306,16 +422,12 @@ export function ImageDiscoverTab({
                         <span key={task} className="badge muted">{task}</span>
                       ))}
                     </div>
-                    <span title={secondarySize ?? undefined}>
-                      {imagePrimarySizeLabel(variant)}
-                      {secondarySize ? <small>{secondarySize}</small> : null}
+                    <span title={sizeTitle || undefined}>
+                      {compactModelSizeLabel(primarySizeLabel)}
                     </span>
-                    <span title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
-                      {memoryEstimate?.label ?? "pending"}
-                    </span>
-                    <span>
-                      {variant.recommendedResolution}
-                      {variant.pipelineTag ? <small>{variant.pipelineTag}</small> : null}
+                    <span className="media-model-memory" title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
+                      <span>{memory.primary}</span>
+                      {memory.secondary ? <small>{memory.secondary}</small> : null}
                     </span>
                     <span>
                       {releaseLabel ?? "Unknown"}
@@ -326,65 +438,34 @@ export function ImageDiscoverTab({
                     <span>{statusBadge(status, downloadState)}</span>
                     <div className="media-model-actions">
                       {isComplete ? (
-                        <button className="primary-button" type="button" onClick={() => onOpenImageStudio(variant.id)}>
-                          Generate
-                        </button>
+                        <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenImageStudio(variant.id)} />
                       ) : isDownloading ? (
                         <>
-                          <button className="secondary-button" type="button" onClick={() => onCancelImageDownload(variant.repo)}>
-                            Pause
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(variant.repo)}>
-                            Cancel
-                          </button>
+                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelImageDownload(variant.repo)} />
+                          <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
                         </>
                       ) : isPaused ? (
                         <>
-                          <button className="secondary-button" type="button" onClick={() => onImageDownload(variant.repo)}>
-                            Resume
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(variant.repo)}>
-                            Delete
-                          </button>
+                          <IconActionButton icon="resume" label="Resume download" onClick={() => onImageDownload(variant.repo)} />
+                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
                         </>
                       ) : isDownloadFailed ? (
                         <>
-                          <button className="secondary-button" type="button" onClick={() => onImageDownload(variant.repo)}>
-                            Retry
-                          </button>
-                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(variant.repo)}>
-                            Delete
-                          </button>
+                          <IconActionButton icon="retry" label="Retry download" onClick={() => onImageDownload(variant.repo)} />
+                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
                         </>
                       ) : (
                         <>
-                          <button className="secondary-button" type="button" onClick={() => onImageDownload(variant.repo)}>
-                            {isPartial ? "Resume" : "Download"}
-                          </button>
+                          <IconActionButton icon={isPartial ? "resume" : "download"} label={isPartial ? "Resume download" : "Download model"} onClick={() => onImageDownload(variant.repo)} />
                           {hasLocalData ? (
-                            <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(variant.repo)}>
-                              Delete
-                            </button>
+                            <IconActionButton icon="delete" label="Delete model" danger onClick={() => onDeleteImageDownload(variant.repo)} />
                           ) : null}
                         </>
                       )}
                       {variant.localPath ? (
-                        <button
-                          className="secondary-button icon-button"
-                          type="button"
-                          title={fileRevealLabel}
-                          onClick={() => onRevealPath(variant.localPath as string)}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                            <polyline points="15 3 21 3 21 9" />
-                            <line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
-                        </button>
+                        <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(variant.localPath as string)} />
                       ) : null}
-                      <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>
-                        Hugging Face
-                      </button>
+                      <IconActionButton icon="huggingFace" label="Open on Hugging Face" onClick={() => onOpenExternalUrl(variant.link)} />
                     </div>
                   </div>
                   {isDownloadFailed && downloadState?.error ? (

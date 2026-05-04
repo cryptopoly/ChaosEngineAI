@@ -1300,6 +1300,11 @@ class DiffusersVideoEngine:
         # underlying call. Lets the engine plumb decay through one
         # callback factory rather than threading state through self.
         kwargs["__cfg_decay"] = bool(config.cfgDecay)
+        # FU-018 part 2: same private-kwarg plumbing for the live
+        # denoise thumbnail emit. When on, the step callback decodes
+        # the current latent's middle frame via the TAEHV/TAEW preview
+        # VAE that ``_ensure_pipeline`` swapped onto ``pipeline.vae``.
+        kwargs["__preview_vae"] = bool(config.previewVae)
         return kwargs
 
     def _make_step_callback(
@@ -1307,10 +1312,11 @@ class DiffusersVideoEngine:
         total_steps: int,
         initial_guidance: float,
         cfg_decay: bool,
+        preview_vae: bool = False,
     ) -> Any:
         """Build the per-step callback the pipeline calls during sampling.
 
-        Wires three concerns into one callback:
+        Wires four concerns into one callback:
           1. Progress reporting via ``VIDEO_PROGRESS.set_step``.
           2. Cooperative cancel — raise ``GenerationCancelled`` when the
              user hits Cancel on the modal.
@@ -1320,6 +1326,10 @@ class DiffusersVideoEngine:
              to oversaturate when CFG is held high through the whole
              schedule; decaying lets the early steps lock semantics
              (high CFG) while late steps preserve fine detail (low CFG).
+          4. FU-018 part 2 — when ``preview_vae`` is on, every Nth step
+             decode the current latent's middle frame via the swapped
+             TAEHV/TAEW preview VAE and publish a base64 PNG to
+             ``VIDEO_PROGRESS.set_thumbnail`` for the modal to render.
         """
         # Floor MUST stay strictly above 1.0 so the pipeline's
         # ``do_classifier_free_guidance`` property (``_guidance_scale > 1.0``)
@@ -1331,6 +1341,11 @@ class DiffusersVideoEngine:
         # dimension errors on LTX).
         decay_floor = 1.5
         decay_active = cfg_decay and total_steps > 1 and initial_guidance > decay_floor
+        thumb_active = bool(preview_vae)
+        # Stride keeps the polled endpoint payload small. Video
+        # latent decode is more expensive than image (5D tensor), so
+        # we cap thumbnails at ~6 per gen.
+        thumb_stride = max(1, total_steps // 6) if thumb_active else 1
 
         def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
             VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
@@ -1351,6 +1366,21 @@ class DiffusersVideoEngine:
                     _pipeline.guidance_scale = float(next_scale)
                 except Exception:
                     pass
+            if thumb_active:
+                is_final = (step + 1) >= total_steps
+                if is_final or (step % thumb_stride == 0):
+                    latents = callback_kwargs.get("latents") if callback_kwargs else None
+                    try:
+                        from backend_service.helpers.preview_thumbnails import (
+                            decode_video_latent_to_b64,
+                        )
+                        b64 = decode_video_latent_to_b64(_pipeline, latents)
+                        if b64 is not None:
+                            VIDEO_PROGRESS.set_thumbnail(b64)
+                    except Exception:
+                        # Best-effort — never fail the gen on a preview
+                        # decode error.
+                        pass
             return callback_kwargs
 
         return _on_step_end
@@ -1374,7 +1404,13 @@ class DiffusersVideoEngine:
         # caller pops before passing to the pipeline. Default-on when
         # absent so existing call sites pick up the schedule.
         cfg_decay = bool(kwargs.pop("__cfg_decay", True))
-        callback = self._make_step_callback(total_steps, initial_guidance, cfg_decay)
+        # FU-018 part 2: previewVae flag plumbs through the same
+        # private-kwarg pattern. When on, ``_make_step_callback`` emits
+        # a per-step base64 thumbnail decoded via the TAESD/TAEHV swap.
+        preview_vae = bool(kwargs.pop("__preview_vae", False))
+        callback = self._make_step_callback(
+            total_steps, initial_guidance, cfg_decay, preview_vae=preview_vae,
+        )
         kwargs.setdefault("callback_on_step_end", callback)
 
         try:
@@ -1442,6 +1478,12 @@ class DiffusersVideoEngine:
         )
 
         base_kwargs = dict(kwargs)
+        # Strip private kwargs the diffusers pipeline doesn't accept —
+        # ``_invoke_pipeline`` pops these before its own pipeline call,
+        # but the refiner path bypasses that and would otherwise leak
+        # ``__cfg_decay`` / ``__preview_vae`` into ``LTXPipeline.__call__``.
+        base_kwargs.pop("__cfg_decay", None)
+        base_kwargs.pop("__preview_vae", None)
         base_kwargs["output_type"] = "latent"
         base_result = pipeline(**base_kwargs)
         latents = getattr(base_result, "frames", None)

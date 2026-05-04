@@ -5689,6 +5689,33 @@ select.text-input {
   50%      { left: 60%; }
 }
 
+/* FU-018 part 2: live denoise thumbnail. Sits between the bar and the
+   phase list when previewVae is on; updates every Nth step as the
+   backend publishes a base64-encoded TAESD/TAEHV decode of the current
+   latent. Capped at 192px on the long edge backend-side; CSS keeps it
+   inside the modal so a wide aspect doesn't push the layout. */
+.live-progress__thumbnail {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.live-progress__thumbnail img {
+  max-width: 192px;
+  max-height: 192px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0f1317;
+  image-rendering: auto;
+}
+.live-progress__thumbnail-caption {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Token-flow waveform (benchmark accent) */
 .live-progress__waveform {
   display: flex;

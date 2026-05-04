@@ -867,6 +867,16 @@ class DiffusersTextToImageEngine:
                 and initial_guidance > decay_floor
             )
 
+            # FU-018 part 2: live denoise thumbnails. Emit a base64 PNG
+            # of the current latent every Nth step when previewVae is on
+            # (the swap to TAESD makes per-step decode cheap enough to do
+            # without dragging total wall time). Stride keeps the polled
+            # endpoint payload manageable on long schedules — 50 steps at
+            # one decode each would push 1.5 MB of base64 through the
+            # poller per gen. Always emit on the final step.
+            thumb_active = bool(config.previewVae)
+            thumb_stride = max(1, total_steps // 8) if thumb_active else 1
+
             def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
                 # Diffusers calls this *after* step ``step`` finishes, so step
                 # 0 means "one step done". Convert to the 1-indexed value the
@@ -896,6 +906,22 @@ class DiffusersTextToImageEngine:
                         _pipeline.guidance_scale = float(next_scale)
                     except Exception:
                         pass
+                if thumb_active:
+                    is_final = (step + 1) >= total_steps
+                    if is_final or (step % thumb_stride == 0):
+                        latents = callback_kwargs.get("latents") if callback_kwargs else None
+                        try:
+                            from backend_service.helpers.preview_thumbnails import (
+                                decode_image_latent_to_b64,
+                            )
+                            b64 = decode_image_latent_to_b64(_pipeline, latents)
+                            if b64 is not None:
+                                IMAGE_PROGRESS.set_thumbnail(b64)
+                        except Exception:
+                            # Thumbnail decode is best-effort — never fail
+                            # the actual generation because of a preview
+                            # decode error.
+                            pass
                 return callback_kwargs
 
             kwargs.setdefault("callback_on_step_end", _on_step_end)

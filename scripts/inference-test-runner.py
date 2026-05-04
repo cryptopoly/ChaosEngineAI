@@ -427,6 +427,9 @@ def run_inference(
             "contextTokens": config["contextTokens"],
             "speculativeDecoding": config["speculativeDecoding"],
             "treeBudget": config["treeBudget"],
+            # FU-002: forward kvBudget so TriAttention MLX strategy
+            # picks up the configured budget at apply time.
+            "kvBudget": config.get("kvBudget", 2048),
         }, timeout=300)
     except RuntimeError as exc:
         return {
@@ -484,6 +487,11 @@ def run_inference(
                 "contextTokens": config["contextTokens"],
                 "speculativeDecoding": config["speculativeDecoding"],
                 "treeBudget": config["treeBudget"],
+                "kvBudget": config.get("kvBudget", 2048),
+                # Bug 1 / multimodal images: base64 blobs forwarded
+                # straight through; backend dispatches via
+                # is_multimodal_family + mlx_vlm.generate.
+                "images": config.get("images") or [],
             },
             timeout=300,
         )
@@ -650,6 +658,14 @@ def run_batch(port: int, batch_file: Path) -> None:
             "speculativeDecoding": test.get("speculativeDecoding", False),
             "treeBudget": test.get("treeBudget", 0),
             "thinkingMode": test.get("thinkingMode", "off"),
+            # FU-002: TriAttention MLX kv_budget. Backend defaults
+            # to 2048 server-side; only consulted when
+            # cacheStrategy == "triattention".
+            "kvBudget": test.get("kvBudget", 2048),
+            # Bug 1 / multimodal images: base64-encoded image blobs
+            # forwarded to the chat /stream endpoint. Empty list →
+            # text-only request.
+            "images": test.get("images", []),
         }
         prompt = test.get("prompt", DEFAULT_PROMPT)
         result = run_inference(port, model, config, prompt, run_id)

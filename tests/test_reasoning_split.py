@@ -28,24 +28,26 @@ class ReasoningDelimitersForTests(unittest.TestCase):
             ("<think>", "</think>"),
         )
 
-    def test_gemma_4_canonical_uses_harmony(self):
+    def test_gemma_4_canonical_uses_asymmetric_channel_tags(self):
+        # Gemma 4 ships asymmetric channel markers — open tag is
+        # <|channel>, close tag is <channel|> (mirror).
         self.assertEqual(
             reasoning_delimiters_for("google/gemma-4-26B-A4B-it"),
-            ("<|channel|>thought", "<|end|>"),
+            ("<|channel>thought", "<channel|>"),
         )
         self.assertEqual(
             reasoning_delimiters_for("google/gemma-4-E4B-it"),
-            ("<|channel|>thought", "<|end|>"),
+            ("<|channel>thought", "<channel|>"),
         )
 
-    def test_gemma_4_community_mirrors_use_harmony(self):
+    def test_gemma_4_community_mirrors_use_asymmetric_channel_tags(self):
         self.assertEqual(
             reasoning_delimiters_for("mlx-community/gemma-4-26b-a4b-it-5bit"),
-            ("<|channel|>thought", "<|end|>"),
+            ("<|channel>thought", "<channel|>"),
         )
         self.assertEqual(
             reasoning_delimiters_for("lmstudio-community/gemma-4-12B-it"),
-            ("<|channel|>thought", "<|end|>"),
+            ("<|channel>thought", "<channel|>"),
         )
 
     def test_gemma_3_falls_through_to_default(self):
@@ -68,7 +70,7 @@ class ReasoningDelimitersForTests(unittest.TestCase):
     def test_case_insensitive_match(self):
         self.assertEqual(
             reasoning_delimiters_for("GOOGLE/GEMMA-4-26B-A4B-IT"),
-            ("<|channel|>thought", "<|end|>"),
+            ("<|channel>thought", "<channel|>"),
         )
 
 
@@ -130,14 +132,15 @@ class GemmaThinkFilterIntegrationTests(unittest.TestCase):
             open_tag=open_tag,
             close_tag=close_tag,
         )
-        # Simulate Gemma 4 Harmony output.
+        # Simulate actual Gemma 4 output as observed live:
+        #   <|channel>thought
+        #   ...reasoning...
+        #   <channel|>final answer text
         stream = (
-            "<|start|>assistant"
-            "<|channel|>thought"
-            "<|message|>The user asks about caching. I should explain LRU.<|end|>"
-            "<|start|>assistant"
-            "<|channel|>final"
-            "<|message|>LRU caches evict least-recently-used entries first.<|end|>"
+            "<|channel>thought\n"
+            "The user asks about caching. I should explain LRU.\n"
+            "<channel|>"
+            "LRU caches evict least-recently-used entries first."
         )
         result = filt.feed(stream)
         flushed = filt.flush()

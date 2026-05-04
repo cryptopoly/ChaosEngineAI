@@ -15,28 +15,53 @@ _STARTUP_BUFFER_LIMIT = 500
 # here when adopting models that emit a non-standard reasoning marker.
 # Values are (open_tag, close_tag) pairs.
 _REASONING_DELIMITER_REGISTRY: dict[str, tuple[str, str]] = {
-    # Gemma 4 emits OpenAI Harmony channels:
-    #   <|start|>assistant<|channel|>thought<|message|>...reasoning...<|end|>
-    #   <|start|>assistant<|channel|>final<|message|>...answer...<|end|>
-    # The pair below captures the thought channel; ``strip_harmony_boilerplate``
-    # then removes the residual <|start|>/<|channel|>/<|message|>/<|end|>
-    # markers from the remaining text so the user sees a clean answer.
-    "google/gemma-4": ("<|channel|>thought", "<|end|>"),
-    "mlx-community/gemma-4": ("<|channel|>thought", "<|end|>"),
-    "lmstudio-community/gemma-4": ("<|channel|>thought", "<|end|>"),
-    # gpt-oss family ships the same Harmony format upstream — keep the
-    # delimiters aligned so swaps between the two are seamless.
+    # Gemma 4 emits ASYMMETRIC channel markers (verified against the
+    # mlx-community/gemma-4-26b-a4b-it-5bit tokenizer):
+    #   <|channel>thought ...reasoning... <channel|>
+    #   ...final answer text...
+    # Note: open tag is ``<|channel>`` (open + pipe + name + close,
+    # NO second pipe before the close angle), close tag is
+    # ``<channel|>`` (mirror — pipe goes BEFORE the closing angle).
+    # This is NOT the OpenAI Harmony ``<|channel|>...<|message|>``
+    # symmetric format despite looking similar at a glance.
+    "google/gemma-4": ("<|channel>thought", "<channel|>"),
+    "mlx-community/gemma-4": ("<|channel>thought", "<channel|>"),
+    "lmstudio-community/gemma-4": ("<|channel>thought", "<channel|>"),
+    # gpt-oss + OpenAI Harmony format ships SYMMETRIC delimiters
+    # (<|channel|>thought ... <|message|>...content...<|end|>). Stays
+    # at the original tags so swaps between gpt-oss and Gemma 4 work.
     "openai/gpt-oss": ("<|channel|>thought", "<|end|>"),
     "mlx-community/gpt-oss": ("<|channel|>thought", "<|end|>"),
 }
 
 
-# Harmony chat-format boilerplate. Stripped as a final pass after the
-# ThinkingTokenFilter to remove leftover ``<|start|>assistant``,
-# ``<|channel|>final``, ``<|message|>``, ``<|end|>``, ``<|return|>``
-# tokens that the model emits to delimit channel boundaries.
+# Channel-format boilerplate. Stripped as a final pass after the
+# ThinkingTokenFilter to remove leftover channel/turn/message markers.
+# Covers BOTH formats:
+#
+# * **Gemma 4 asymmetric** — ``<|NAME>`` opens, ``<NAME|>`` closes.
+#   Open variants: ``<|channel>``, ``<|turn>``, ``<|tool>``,
+#   ``<|tool_call>``, ``<|tool_response>``, ``<|image>``, ``<|audio>``.
+#   Close variants: same set with the pipe migrated before the angle.
+#   Open tags optionally carry a sub-name suffix (``thought`` /
+#   ``final`` / ``analysis`` / ``commentary``).
+#
+# * **OpenAI Harmony symmetric** (gpt-oss) — ``<|NAME|>`` for both
+#   open and close, plus ``<|start|>``/``<|message|>``/``<|end|>``/
+#   ``<|return|>`` boilerplate around the channel content.
 _HARMONY_BOILERPLATE_RE = re.compile(
-    r"<\|(?:start|channel|message|end|return)\|>(?:assistant|final|analysis|commentary|thought)?",
+    r"(?:"
+    # Gemma 4 open: <|channel>, <|turn>, etc. + optional sub-name suffix.
+    r"<\|(?:channel|turn|tool_call|tool_response|tool|image|audio|message|start|end|return)>"
+    r"(?:[a-z]+)?"
+    r"|"
+    # Gemma 4 close: <channel|>, <turn|>, etc.
+    r"<(?:channel|turn|tool_call|tool_response|tool|image|audio|message|start|end|return)\|>"
+    r"|"
+    # OpenAI Harmony symmetric: <|start|>, <|channel|>, <|message|>, <|end|>, <|return|>
+    r"<\|(?:start|channel|message|end|return)\|>"
+    r"(?:assistant|final|analysis|commentary|thought)?"
+    r")",
     re.IGNORECASE,
 )
 

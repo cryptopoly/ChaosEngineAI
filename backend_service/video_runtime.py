@@ -279,6 +279,30 @@ class VideoGenerationConfig:
     # Phase E1: opt-in template-based prompt enhancement for short prompts
     # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
     enhancePrompt: bool = True
+    # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
+    # knob — when True the engine swaps ``pipeline.vae`` for the matching
+    # tiny VAE (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for
+    # HunyuanVideo, taecogvideox for CogVideoX, taemochi for Mochi)
+    # before the first denoise. Each step decodes in a fraction of the
+    # wall-time. Default off — video users typically want full fidelity.
+    previewVae: bool = False
+    # Phase 3 / Wan2.2-Distill 4-step: catalog-pinned distilled
+    # transformers. Wan 2.2 A14B is MoE with two transformer experts
+    # (``transformer`` = high-noise, ``transformer_2`` = low-noise).
+    # lightx2v's 4-step distillation publishes both experts as standalone
+    # safetensors files; the runtime swaps both onto the pipeline at
+    # build time so subsequent ``pipeline(...)`` calls run the distilled
+    # 4-step schedule. Mutually exclusive with LoRA loading — when the
+    # distill files are pinned, the LoRA path is skipped.
+    distillTransformerRepo: str | None = None
+    distillTransformerHighNoiseFile: str | None = None
+    distillTransformerLowNoiseFile: str | None = None
+    # ``"bf16"`` | ``"fp8_e4m3"`` | ``"int8"`` — dictates the torch dtype
+    # used at load. FP8/INT8 distill weights ship pre-quantized and need
+    # the corresponding torch dtype + a CUDA backend that exposes the
+    # native kernel. On platforms without FP8/INT8 ops the runtime falls
+    # back to bf16 dequant.
+    distillTransformerPrecision: str | None = None
     # Phase E2: CFG decay schedule. Linear ramp from initial guidance_scale
     # at step 0 to 1.0 at the last step. Default-on for flow-match pipelines.
     cfgDecay: bool = True
@@ -978,6 +1002,11 @@ class DiffusersVideoEngine:
                 lora_repo=config.loraRepo,
                 lora_file=config.loraFile,
                 lora_scale=config.loraScale,
+                preview_vae=config.previewVae,
+                distill_repo=config.distillTransformerRepo,
+                distill_high_file=config.distillTransformerHighNoiseFile,
+                distill_low_file=config.distillTransformerLowNoiseFile,
+                distill_precision=config.distillTransformerPrecision,
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -1520,11 +1549,19 @@ class DiffusersVideoEngine:
         lora_repo: str | None = None,
         lora_file: str | None = None,
         lora_scale: float | None = None,
+        preview_vae: bool = False,
+        distill_repo: str | None = None,
+        distill_high_file: str | None = None,
+        distill_low_file: str | None = None,
+        distill_precision: str | None = None,
     ) -> Any:
         with self._lock:
             # Variant key folds in LoRA identity — switching LoRAs on the
             # same base repo must rebuild the pipeline because fuse_lora
-            # mutates the transformer weights in place.
+            # mutates the transformer weights in place. ``preview_vae``
+            # joins the same key set so toggling the FU-018 preview-decode
+            # knob triggers a clean rebuild. Distilled transformers replace
+            # both expert modules outright, so they also key on the variant.
             variant_parts = [repo]
             if gguf_file:
                 variant_parts.append(f"gguf={gguf_file}")
@@ -1532,6 +1569,13 @@ class DiffusersVideoEngine:
                 variant_parts.append("nf4")
             if lora_repo and lora_file:
                 variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+            if preview_vae:
+                variant_parts.append("preview_vae")
+            if distill_repo and distill_high_file and distill_low_file:
+                variant_parts.append(
+                    f"distill={distill_repo}/{distill_precision or 'bf16'}/"
+                    f"{distill_high_file}/{distill_low_file}"
+                )
             variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -1631,7 +1675,43 @@ class DiffusersVideoEngine:
             except Exception:
                 pass
 
-            if lora_repo and lora_file:
+            # FU-018: TAESD / TAEHV preview-decode VAE swap. No-op when
+            # toggle is off or no preview VAE is mapped for this repo.
+            # Runs before LoRA fuse so the swap settles before any
+            # transformer-side adapters touch the pipeline.
+            try:
+                from backend_service.helpers.preview_vae import (
+                    maybe_apply_preview_vae,
+                )
+                preview_note = maybe_apply_preview_vae(
+                    pipeline, repo=repo, enabled=preview_vae
+                )
+                if preview_note:
+                    self._load_notes.append(preview_note)
+            except Exception:
+                pass
+
+            # Phase 3 / Wan2.2-Distill 4-step: replace transformer +
+            # transformer_2 with the lightx2v distilled experts. Skips
+            # LoRA below — distill weights already encode the 4-step
+            # schedule and are not LoRA-shaped. Failure is non-fatal:
+            # the stock Wan transformers stay in place and the user
+            # gets a runtimeNote explaining why.
+            distill_active = bool(
+                distill_repo and distill_high_file and distill_low_file
+            )
+            if distill_active:
+                distill_note = self._swap_distill_transformers(
+                    pipeline,
+                    repo=distill_repo,
+                    high_file=distill_high_file,
+                    low_file=distill_low_file,
+                    precision=distill_precision or "bf16",
+                    torch=torch,
+                )
+                self._load_notes.append(distill_note)
+
+            if lora_repo and lora_file and not distill_active:
                 try:
                     pipeline.load_lora_weights(
                         lora_repo,
@@ -1880,6 +1960,100 @@ class DiffusersVideoEngine:
                 f"NF4 load failed ({type(exc).__name__}: {exc}) — "
                 "falling back to the standard transformer."
             )
+
+    def _swap_distill_transformers(
+        self,
+        pipeline: Any,
+        *,
+        repo: str,
+        high_file: str,
+        low_file: str,
+        precision: str,
+        torch: Any,
+    ) -> str:
+        """Swap ``pipeline.transformer`` + ``pipeline.transformer_2`` for
+        the lightx2v 4-step distilled experts (Wan 2.2 A14B I2V).
+
+        Wan 2.2 A14B is MoE: ``transformer`` is the high-noise expert and
+        ``transformer_2`` is the low-noise expert. Distillation publishes
+        both as standalone safetensors files; the swap is the load-bearing
+        substitution that takes the pipeline from 30-step base to 4-step
+        distilled. Returns a runtimeNote describing what happened. Failure
+        is non-fatal — the stock transformers stay in place and the user
+        sees the failure in the note.
+        """
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError as exc:
+            return (
+                f"Distill swap skipped: huggingface_hub unavailable ({exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        try:
+            from diffusers import WanTransformer3DModel
+        except ImportError as exc:
+            return (
+                f"Distill swap skipped: WanTransformer3DModel unavailable "
+                f"({exc}). Pipeline continuing with stock Wan transformers."
+            )
+
+        # FP8/INT8 distill weights ship pre-quantized; they need a torch
+        # backend that exposes the matching kernels (CUDA SM 8.9+ for FP8,
+        # CUDA / Metal for INT8). On platforms without those kernels we
+        # load as bf16 and let diffusers do the dequant — quality holds
+        # but the memory savings disappear. ``bf16`` (no quantization)
+        # always loads at native precision.
+        torch_dtype = torch.bfloat16
+        if precision == "fp8_e4m3":
+            torch_dtype = getattr(torch, "float8_e4m3fn", torch.bfloat16)
+
+        try:
+            high_local = hf_hub_download(
+                repo_id=repo, filename=high_file, local_files_only=False
+            )
+            low_local = hf_hub_download(
+                repo_id=repo, filename=low_file, local_files_only=False
+            )
+        except Exception as exc:  # noqa: BLE001 — non-fatal
+            return (
+                f"Distill download failed ({type(exc).__name__}: {exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        try:
+            high_transformer = WanTransformer3DModel.from_single_file(
+                high_local, torch_dtype=torch_dtype
+            )
+            low_transformer = WanTransformer3DModel.from_single_file(
+                low_local, torch_dtype=torch_dtype
+            )
+        except Exception as exc:  # noqa: BLE001 — non-fatal
+            return (
+                f"Distill load failed ({type(exc).__name__}: {exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        if not hasattr(pipeline, "transformer"):
+            return (
+                "Distill swap skipped: pipeline has no .transformer attribute. "
+                "This Wan distill path requires a WanPipeline-shaped object."
+            )
+
+        pipeline.transformer = high_transformer
+        if hasattr(pipeline, "transformer_2"):
+            pipeline.transformer_2 = low_transformer
+        else:
+            return (
+                f"Distill: high-noise expert applied, but pipeline lacks "
+                f"transformer_2 (low-noise expert). Verify base repo {repo} "
+                "is the A14B MoE pipeline. Quality may be degraded."
+            )
+
+        return (
+            f"Distill: swapped transformer + transformer_2 from {repo} "
+            f"(precision={precision}, 4-step schedule)."
+        )
 
     def _release_pipeline(self) -> None:
         pipeline = self._pipeline

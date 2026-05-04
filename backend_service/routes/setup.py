@@ -82,6 +82,15 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # ~12 GB on M-series Macs. Roughly half the memory saving of NF4
     # but twice the platform reach.
     "torchao": "torchao",
+    # SageAttention CUDA fast-attention kernels. Wired through
+    # ``backend_service/helpers/attention_backend.py`` (FU-016). Pin to 2.2.0
+    # (SageAttention2++) — PyPI's default resolves to the stale 1.0.6
+    # (2024-11) which lacks the SA2++ kernels. SageAttention3 lives on the
+    # ``sageattention3_blackwell`` branch (Blackwell SM10.0 only) and is
+    # not yet on PyPI; install path here always pulls the released SA2++
+    # kernels regardless of GPU generation. No-op on macOS / CPU / non-DiT
+    # pipelines — the helper guards before invoking.
+    "sageattention": "sageattention==2.2.0",
     # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
     # of diffusers+MPS, which is noticeably faster and doesn't hit the
     # MPS fp16-black-image edge cases. Apple Silicon only — installer

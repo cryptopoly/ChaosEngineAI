@@ -519,6 +519,12 @@ class ImageGenerationConfig:
     # CFG decay on UNet-based ε-prediction pipelines doesn't carry the
     # same oversaturation benefit.
     cfgDecay: bool = False
+    # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
+    # knob — when True the engine swaps ``pipeline.vae`` for the matching
+    # tiny VAE before the first denoise so each step decodes in a fraction
+    # of the wall-time. Final output goes through the same fast VAE; users
+    # trade fidelity for iteration speed. Default off.
+    previewVae: bool = False
     # FU-019 distill LoRAs: when the catalog variant pins a LoRA
     # (Hyper-SD FLUX, alimama FLUX.1-Turbo-Alpha, lightx2v Wan
     # CausVid), the engine fuses it into the pipeline at load time so
@@ -765,6 +771,7 @@ class DiffusersTextToImageEngine:
                 lora_repo=config.loraRepo,
                 lora_file=config.loraFile,
                 lora_scale=config.loraScale,
+                preview_vae=config.previewVae,
             )
             # Early-cancel check: the load phase is blocking (from_pretrained
             # is a C-extension call we can't interrupt), so if the user hit
@@ -980,16 +987,21 @@ class DiffusersTextToImageEngine:
         lora_repo: str | None = None,
         lora_file: str | None = None,
         lora_scale: float | None = None,
+        preview_vae: bool = False,
     ) -> Any:
         with self._lock:
             # Variant key folds LoRA identity in too — switching LoRAs
             # on the same base repo must rebuild the pipeline because
             # ``fuse_lora`` mutates the transformer weights in place.
+            # ``preview_vae`` joins the same key set so toggling the
+            # FU-018 preview-decode knob triggers a clean rebuild.
             variant_parts = [repo]
             if gguf_file:
                 variant_parts.append(f"gguf={gguf_file}")
             if lora_repo and lora_file:
                 variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+            if preview_vae:
+                variant_parts.append("preview_vae")
             variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -1143,6 +1155,24 @@ class DiffusersTextToImageEngine:
             except Exception:
                 # Helper is wrapped in its own try/except; any leakage
                 # here is a bug in the helper, not a runtime concern.
+                pass
+
+            # FU-018: TAESD preview-decode VAE swap. No-op when toggle
+            # is off or no preview VAE is mapped for this repo. Runs
+            # before LoRA fuse so the LoRA's adapter modules don't trip
+            # the VAE swap (they target the transformer, not the VAE,
+            # but ordering keeps the swap close to other VAE-touching
+            # code like the SDXL fp16-fix above).
+            try:
+                from backend_service.helpers.preview_vae import (
+                    maybe_apply_preview_vae,
+                )
+                preview_note = maybe_apply_preview_vae(
+                    pipeline, repo=repo, enabled=preview_vae
+                )
+                if preview_note:
+                    self._load_notes.append(preview_note)
+            except Exception:
                 pass
 
             # FU-019: distill LoRAs (Hyper-SD FLUX, alimama FLUX.1-Turbo,
@@ -1633,6 +1663,12 @@ class ImageRuntimeManager:
         self._placeholder = PlaceholderImageEngine()
         self._diffusers = DiffusersTextToImageEngine()
         self._mflux = MfluxImageEngine()
+        # FU-008 image subset: sd.cpp engine. Wired lazily so the import
+        # cost (small) is paid only when the manager is actually
+        # constructed. Engine probe is cheap; full binary check happens
+        # at generate time.
+        from backend_service.sdcpp_image_runtime import SdCppImageEngine
+        self._sdcpp = SdCppImageEngine()
 
     def capabilities(self) -> dict[str, Any]:
         return self._diffusers.probe().to_dict()
@@ -1677,6 +1713,41 @@ class ImageRuntimeManager:
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:
             _mflux_fallback_note = None
+
+        # FU-008 image subset: sd.cpp path. Routed when the catalog
+        # variant declares ``engine="sdcpp"`` (which app.py threads onto
+        # ``config.runtime``). Failure modes (missing binary, unsupported
+        # repo, missing GGUF, subprocess error) fall through to the
+        # diffusers path below and surface a runtimeNote so the user
+        # still gets an image rendered.
+        if (config.runtime or "").lower() == "sdcpp":
+            probe = self._sdcpp.probe()
+            if probe.get("available"):
+                try:
+                    images = self._sdcpp.generate(config)
+                    status = self._diffusers.probe().to_dict()
+                    status["activeEngine"] = "sd.cpp"
+                    status["message"] = "Generated via stable-diffusion.cpp subprocess."
+                    return images, status
+                except Exception as exc:
+                    _sdcpp_fallback_note = (
+                        f"sd.cpp failed ({type(exc).__name__}: {exc}) — "
+                        "falling back to diffusers."
+                    )
+                else:
+                    _sdcpp_fallback_note = None
+            else:
+                _sdcpp_fallback_note = probe.get("reason") or "sd.cpp unavailable"
+            # Combine mflux + sdcpp fallback notes if both fired (rare but
+            # possible if a variant lists ``engine="sdcpp"`` AND the user
+            # has overridden the runtime selector to ``"mflux"`` somehow).
+            if _sdcpp_fallback_note:
+                if _mflux_fallback_note:
+                    _mflux_fallback_note = (
+                        f"{_mflux_fallback_note} {_sdcpp_fallback_note}"
+                    )
+                else:
+                    _mflux_fallback_note = _sdcpp_fallback_note
 
         status = self._diffusers.probe()
         if status.realGenerationAvailable:

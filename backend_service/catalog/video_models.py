@@ -637,6 +637,83 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
                 "releaseDate": "2025-07",
             },
+            # Phase 3 / Wan2.2-Distill 4-step (lightx2v): drops the A14B
+            # I2V schedule from ~30 to 4 steps with CFG-free sampling. The
+            # base repo is ``Wan-AI/Wan2.2-I2V-A14B-Diffusers`` (text
+            # encoder + VAE come from there); the runtime swaps both
+            # transformer experts (``transformer`` high-noise +
+            # ``transformer_2`` low-noise) for the lightx2v distilled
+            # safetensors. ``defaultSteps=4`` + ``cfgOverride=1.0``
+            # substitute the schema defaults so users running the
+            # default sliders pick up the distill schedule automatically.
+            {
+                "id": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-bf16",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 I2V A14B · Distill 4-step (BF16)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+                "distillTransformerPrecision": "bf16",
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.2-Distill-Models",
+                "runtime": "diffusers WanPipeline + lightx2v distill (bf16)",
+                "styleTags": ["i2v", "general", "fast", "motion", "distill"],
+                "taskSupport": ["img2video"],
+                "sizeGb": 56.0,
+                # Both BF16 distilled experts (~28 GB each) plus UMT5-XXL
+                # text encoder + VAE from base repo. MoE offload required
+                # on hosts under ~60 GB unified memory.
+                "runtimeFootprintGb": 30.0,
+                "runtimeFootprintMpsGb": 36.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v 4-step distillation of Wan 2.2 A14B I2V "
+                    "(BF16). Replaces both MoE transformer experts; runs "
+                    "at 4 steps, CFG-free. Quality holds close to the "
+                    "30-step base at ~7-8x faster wall-time."
+                ),
+                "estimatedGenerationSeconds": 40.0,
+                "availableLocally": False,
+                "releaseDate": "2026-04",
+            },
+            {
+                "id": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-fp8",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 I2V A14B · Distill 4-step (FP8)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_scaled_fp8_e4m3_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_scaled_fp8_e4m3_lightx2v_4step.safetensors",
+                "distillTransformerPrecision": "fp8_e4m3",
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.2-Distill-Models",
+                "runtime": "diffusers WanPipeline + lightx2v distill (FP8 E4M3)",
+                "styleTags": ["i2v", "general", "fast", "motion", "distill", "fp8"],
+                "taskSupport": ["img2video"],
+                "sizeGb": 28.0,
+                # FP8 distilled experts (~14 GB each) plus UMT5-XXL.
+                # CUDA SM 8.9+ (Hopper / Ada) loads natively; older
+                # CUDA + MPS dequant to bf16 at load (~28 GB resident).
+                "runtimeFootprintGb": 18.0,
+                "runtimeFootprintMpsGb": 30.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v 4-step Wan 2.2 A14B I2V distill in FP8 E4M3. "
+                    "Best on CUDA SM 8.9+ (RTX 4090 / Hopper) for native "
+                    "FP8 ops; older hardware dequants to bf16 at load and "
+                    "loses the memory saving but keeps the 4-step speedup."
+                ),
+                "estimatedGenerationSeconds": 32.0,
+                "availableLocally": False,
+                "releaseDate": "2026-04",
+            },
         ],
     },
     {

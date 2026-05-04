@@ -83,6 +83,34 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 2.4,
                 "releaseDate": "2024-10",
             },
+            {
+                # FU-008 image subset: sd.cpp engine routes via the
+                # ``sd`` binary built by ``./scripts/build-sdcpp.sh``.
+                # Cross-platform — Metal on Apple Silicon, CUDA on
+                # Linux/Windows. Pairs the city96 GGUF transformer with
+                # the binary's text-encoder + VAE handling so the user
+                # avoids the diffusers Python overhead entirely.
+                "id": "black-forest-labs/FLUX.1-schnell-sdcpp-q4km",
+                "familyId": "flux-fast",
+                "name": "FLUX.1 Schnell · sd.cpp Q4_K_M",
+                "provider": "Black Forest Labs · sd.cpp",
+                "repo": "black-forest-labs/FLUX.1-schnell",
+                "engine": "sdcpp",
+                "ggufRepo": "city96/FLUX.1-schnell-gguf",
+                "ggufFile": "flux1-schnell-Q4_K_M.gguf",
+                "link": "https://github.com/leejet/stable-diffusion.cpp",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.8,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
+                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                ),
+                "estimatedGenerationSeconds": 4.5,
+                "releaseDate": "2026-05",
+            },
         ],
     },
     {
@@ -164,6 +192,28 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "GGUF Q8_0 — near-bf16 transformer quality; text encoders/VAE still make the full FLUX runtime memory-heavy.",
                 "estimatedGenerationSeconds": 7.8,
                 "releaseDate": "2024-09",
+            },
+            {
+                "id": "black-forest-labs/FLUX.1-dev-sdcpp-q4km",
+                "familyId": "flux-dev",
+                "name": "FLUX.1 Dev · sd.cpp Q4_K_M",
+                "provider": "Black Forest Labs · sd.cpp",
+                "repo": "black-forest-labs/FLUX.1-dev",
+                "engine": "sdcpp",
+                "ggufRepo": "city96/FLUX.1-dev-gguf",
+                "ggufFile": "flux1-dev-Q4_K_M.gguf",
+                "link": "https://github.com/leejet/stable-diffusion.cpp",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["general", "detailed", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 7.2,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
+                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                ),
+                "estimatedGenerationSeconds": 6.0,
+                "releaseDate": "2026-05",
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-mflux",
@@ -421,6 +471,34 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "releaseDate": "2026-02",
     },
     {
+        # Apache 2.0 4B FLUX.2 — fixed 4-step inference, ~13 GB VRAM.
+        # Smallest FLUX.2 lane; first one suitable for catalog ship without
+        # gating. Pipeline class is ``Flux2KleinPipeline`` (new in diffusers
+        # 0.38+); existing PIPELINE_REGISTRY routing for FLUX.2 family
+        # covers the dispatch.
+        "repo": "black-forest-labs/FLUX.2-klein-4B",
+        "name": "FLUX.2 Klein 4B",
+        "provider": "Black Forest Labs",
+        "styleTags": ["general", "flux", "fast", "small"],
+        "taskSupport": ["txt2img", "img2img"],
+        "sizeGb": 14.5,
+        "runtimeFootprintGb": 13.0,
+        "runtimeFootprintMpsGb": 16.0,
+        "runtimeFootprintCpuGb": 22.0,
+        "coreWeightsGb": 14.5,
+        "repoSizeGb": 14.6,
+        "recommendedResolution": "1024x1024",
+        "note": (
+            "Apache 2.0 4B FLUX.2 — fixed 4-step inference, sub-second "
+            "images on RTX 3090/4070+. Smaller and shippable cousin of "
+            "the 9B Klein variant."
+        ),
+        "gated": False,
+        "pipelineTag": "text-to-image",
+        "updatedLabel": "Tracked latest",
+        "releaseDate": "2026-01",
+    },
+    {
         "repo": "fal/FLUX.2-dev-Turbo",
         "name": "FLUX.2 Dev · Turbo",
         "provider": "Black Forest Labs · fal",
@@ -514,6 +592,33 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-08",
+    },
+    {
+        # Dec 2025 refresh of Qwen-Image. Same QwenImagePipeline architecture
+        # (9-shard transformer, Qwen2.5-VL text encoder) and Apache 2.0
+        # license as the base Qwen-Image entry above; weights tuned for
+        # stronger prompt adherence on multi-element scenes and CJK glyph
+        # rendering. Uses Qwen's YYMM dated-release convention (cf.
+        # Qwen-Image-Edit-2511 / -2509).
+        "repo": "Qwen/Qwen-Image-2512",
+        "name": "Qwen-Image (Dec 2025)",
+        "provider": "Qwen",
+        "styleTags": ["general", "detailed", "qwenimage", "refreshed"],
+        "taskSupport": ["txt2img"],
+        "sizeGb": 57.7,
+        "runtimeFootprintGb": 58.0,
+        "runtimeFootprintMpsGb": 72.0,
+        "runtimeFootprintCpuGb": 72.0,
+        "recommendedResolution": "1024x1024",
+        "note": (
+            "December 2025 Qwen-Image refresh with stronger prompt "
+            "adherence and improved CJK rendering. Apache 2.0; same "
+            "QwenImagePipeline as base Qwen-Image."
+        ),
+        "gated": False,
+        "pipelineTag": "text-to-image",
+        "updatedLabel": "Tracked latest",
+        "releaseDate": "2025-12",
     },
     {
         "repo": "Qwen/Qwen-Image-Edit",

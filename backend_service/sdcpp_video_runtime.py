@@ -9,12 +9,10 @@ only the video subset.
 
 SCOPE
 -----
-Phase C scaffold: ``probe()`` reports availability based on the staged
-``sd`` binary (path resolved by the Tauri shell into ``CHAOSENGINE_SDCPP_BIN``).
-``generate()`` raises ``NotImplementedError`` until the per-model CLI
-arg builders + stdout progress parser land. The hooks the manager calls
-(``probe``/``preload``/``unload``) match the contract expected by
-``VideoRuntimeManager`` so routing can be wired before the heavy lift.
+Phase 3 lift (FU-008): ``generate()`` is wired. Builds the CLI invocation
+from a ``VideoGenerationConfig``, spawns the staged ``sd`` binary, parses
+``step N/M`` lines off stdout into ``VIDEO_PROGRESS``, then reads the
+output mp4 back as bytes for the standard ``GeneratedVideo`` contract.
 
 ROUTING
 -------
@@ -29,6 +27,10 @@ from __future__ import annotations
 
 import os
 import platform
+import re
+import subprocess
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +39,15 @@ from backend_service.video_runtime import (
     VideoGenerationConfig,
     VideoRuntimeStatus,
 )
+
+
+# Progress regex — sd.cpp emits ``[INFO] step N/M (..)`` style lines on
+# stdout during the denoise loop. Loose pattern catches both the older
+# ``step N/M`` and the newer ``[N/M]`` formats; whichever matches gets
+# fed into ``VIDEO_PROGRESS``.
+_STEP_RE = re.compile(r"(?:step\s+|\[)(\d+)\s*/\s*(\d+)")
+_LAST_OUTPUT_LINES = 80
+_RUNTIME_LABEL = "stable-diffusion.cpp"
 
 
 # Repos sd.cpp supports natively via GGUF. Kept narrow on the video side —
@@ -110,22 +121,22 @@ class SdCppVideoEngine:
                 expectedDevice=None,
                 missingDependencies=["sd"],
                 message=(
-                    "stable-diffusion.cpp binary not staged. Build "
-                    "leejet/stable-diffusion.cpp and either set "
-                    "CHAOSENGINE_SDCPP_BIN or copy `sd` to "
-                    "~/.chaosengine/bin/. See FU-008 in CLAUDE.md."
+                    "stable-diffusion.cpp binary not staged. Run "
+                    "``./scripts/build-sdcpp.sh`` (or set "
+                    "CHAOSENGINE_SDCPP_BIN) to build and install. "
+                    "See FU-008 in CLAUDE.md."
                 ),
             )
         device = "mps" if platform.system() == "Darwin" else "cuda"
         return VideoRuntimeStatus(
             activeEngine="sd.cpp",
-            realGenerationAvailable=False,  # scaffold — generate() not wired yet
+            realGenerationAvailable=True,
             device=device,
             expectedDevice=device,
             message=(
-                f"sd.cpp binary detected at {binary}. Generation pipeline "
-                "still scaffold — Wan GGUF generate path lands in the "
-                "next iteration of FU-008."
+                f"sd.cpp binary detected at {binary}. Wan GGUF "
+                "generate path active — pass ``ggufRepo`` + "
+                "``ggufFile`` on the catalog variant to route here."
             ),
             loadedModelRepo=self._loaded_repo,
         )
@@ -145,11 +156,211 @@ class SdCppVideoEngine:
         return self.probe()
 
     def generate(self, config: VideoGenerationConfig) -> GeneratedVideo:
-        raise NotImplementedError(
-            "sd.cpp video generate() is scaffold-only. Wan GGUF "
-            "subprocess wiring lands in the next FU-008 iteration: "
-            "build CLI args from VideoGenerationConfig (prompt, "
-            "num_frames, fps, steps, guidance, seed, output path), "
-            "spawn the staged `sd` binary, stream stdout into "
-            "VIDEO_PROGRESS, then return the rendered mp4."
+        binary = _resolve_sd_binary()
+        if binary is None:
+            raise RuntimeError(
+                "stable-diffusion.cpp binary not staged. "
+                "Run ``./scripts/build-sdcpp.sh`` first."
+            )
+        if not _is_sdcpp_video_repo(config.repo):
+            raise RuntimeError(
+                f"sd.cpp does not support {config.repo}. "
+                f"Supported: {sorted(_SUPPORTED_REPOS)}"
+            )
+
+        # The Wan video path needs a GGUF transformer file — sd.cpp
+        # cannot consume a sharded diffusers safetensors snapshot
+        # directly. The catalog variant pins ``ggufRepo`` + ``ggufFile``
+        # for the GGUF lanes (e.g. QuantStack/Wan2.2-TI2V-5B-GGUF).
+        if not config.ggufFile:
+            raise RuntimeError(
+                "sd.cpp video generate requires a GGUF variant. Pick a "
+                "catalog entry that pins ``ggufRepo`` + ``ggufFile`` "
+                "(e.g. Wan 2.2 TI2V 5B · GGUF Q4_K_M)."
+            )
+
+        seed = config.seed if config.seed is not None else int(time.time())
+
+        with tempfile.TemporaryDirectory(prefix="chaosengine-sdcpp-") as tmpdir:
+            # sd.cpp's single-file video outputs are .avi / .webm /
+            # animated .webp (no native .mp4). webm is the smallest +
+            # most broadly playable in the desktop's webview.
+            output_path = Path(tmpdir) / f"sdcpp-{seed}.webm"
+            model_path = self._resolve_gguf_path(config)
+            args = self._build_cli_args(
+                binary=binary,
+                config=config,
+                model_path=model_path,
+                output_path=output_path,
+                seed=seed,
+            )
+            output_bytes = self._run_subprocess(
+                args=args,
+                config=config,
+                output_path=output_path,
+            )
+
+        duration = round(config.numFrames / max(1, config.fps), 3)
+        return GeneratedVideo(
+            seed=seed,
+            bytes=output_bytes,
+            extension="webm",
+            mimeType="video/webm",
+            durationSeconds=duration,
+            frameCount=config.numFrames,
+            fps=config.fps,
+            width=config.width,
+            height=config.height,
+            runtimeLabel=_RUNTIME_LABEL,
+            runtimeNote=(
+                f"Generated via sd.cpp subprocess "
+                f"({Path(model_path).name})."
+            ),
+            effectiveSteps=config.steps,
+            effectiveGuidance=config.guidance,
         )
+
+    # ------------------------------------------------------------------
+    # CLI builders + subprocess plumbing
+    # ------------------------------------------------------------------
+
+    def _resolve_gguf_path(self, config: VideoGenerationConfig) -> str:
+        """Resolve the absolute on-disk path for the GGUF transformer.
+
+        The catalog variant carries ``ggufRepo`` (HF repo) + ``ggufFile``
+        (filename within the repo); the standard diffusers download
+        machinery pulls them into the HF cache. Reuse that — we just
+        re-resolve the file path so sd.cpp can read it directly.
+        """
+        if not config.ggufFile or not config.ggufRepo:
+            raise RuntimeError(
+                "GGUF transformer required for sd.cpp video. Catalog variant "
+                "must pin ``ggufRepo`` + ``ggufFile``."
+            )
+        try:
+            from huggingface_hub import hf_hub_download  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                f"huggingface_hub is required to resolve the GGUF path: {exc}"
+            ) from exc
+        return hf_hub_download(
+            repo_id=config.ggufRepo,
+            filename=config.ggufFile,
+        )
+
+    def _build_cli_args(
+        self,
+        *,
+        binary: Path,
+        config: VideoGenerationConfig,
+        model_path: str,
+        output_path: Path,
+        seed: int,
+    ) -> list[str]:
+        """Map a ``VideoGenerationConfig`` onto sd.cpp's CLI flags.
+
+        The mapping mirrors the ``--help`` output of leejet's master tip
+        as of 2026-04-29 (master-593). If a future sd.cpp release renames
+        a flag (e.g. ``--video-frames`` → ``--frames``) update here. The
+        binary fails fast on unknown flags so a regression surfaces as a
+        clean stderr message rather than silently bad output.
+        """
+        args: list[str] = [
+            str(binary),
+            "--diffusion-model",
+            model_path,
+            "-p",
+            config.prompt,
+            "-W",
+            str(config.width),
+            "-H",
+            str(config.height),
+            "--steps",
+            str(config.steps),
+            "--cfg-scale",
+            f"{config.guidance:g}",
+            "--seed",
+            str(seed),
+            "-o",
+            str(output_path),
+            "--video-frames",
+            str(config.numFrames),
+            "--fps",
+            str(config.fps),
+        ]
+        if config.negativePrompt:
+            args.extend(["--negative-prompt", config.negativePrompt])
+        return args
+
+    def _run_subprocess(
+        self,
+        *,
+        args: list[str],
+        config: VideoGenerationConfig,
+        output_path: Path,
+    ) -> bytes:
+        """Spawn ``sd``, stream stdout into ``VIDEO_PROGRESS``, read result.
+
+        Uses ``stderr=STDOUT`` so the same parser sees both info-level
+        progress lines and any error chatter. Tail of the output is kept
+        in ``last_lines`` so a non-zero exit can include the last few
+        lines in the raised RuntimeError. Cancellation is cooperative:
+        we poll ``VIDEO_PROGRESS.is_cancelled()`` per stdout line and
+        terminate the child if a cancel comes in mid-run.
+        """
+        from backend_service.progress import VIDEO_PROGRESS
+
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
+        last_lines: list[str] = []
+        try:
+            stdout = proc.stdout
+            if stdout is None:
+                proc.wait()
+                raise RuntimeError("sd.cpp subprocess produced no stdout.")
+            for line in stdout:
+                stripped = line.rstrip()
+                last_lines.append(stripped)
+                if len(last_lines) > _LAST_OUTPUT_LINES:
+                    last_lines.pop(0)
+
+                match = _STEP_RE.search(stripped)
+                if match:
+                    step = int(match.group(1))
+                    total = int(match.group(2))
+                    VIDEO_PROGRESS.set_step(step, total=total)
+
+                if VIDEO_PROGRESS.is_cancelled():
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                    raise RuntimeError("sd.cpp generation cancelled by user.")
+
+            rc = proc.wait()
+        except KeyboardInterrupt:
+            proc.terminate()
+            raise
+
+        if rc != 0:
+            tail = "\n".join(last_lines[-20:])
+            raise RuntimeError(
+                f"sd.cpp exited with code {rc}.\n"
+                f"Last output:\n{tail}"
+            )
+
+        if not output_path.exists():
+            tail = "\n".join(last_lines[-10:])
+            raise RuntimeError(
+                f"sd.cpp completed but output file {output_path.name} is "
+                f"missing. Last output:\n{tail}"
+            )
+
+        return output_path.read_bytes()

@@ -1521,5 +1521,215 @@ class TryLoadGgufTransformerTests(unittest.TestCase):
         self.assertEqual(captured["path"], "/tmp/wan2.1-t2v-1.3B-Q6_K.gguf")
 
 
+class DistillTransformerSwapTests(unittest.TestCase):
+    """Phase 3: Wan 2.2 A14B I2V distill 4-step transformer swap.
+
+    Tests ``DiffusersVideoEngine._swap_distill_transformers`` — replaces
+    both Wan A14B MoE expert modules (``transformer`` + ``transformer_2``)
+    with the lightx2v distilled safetensors. Catches each failure mode
+    (missing deps, download failure, load failure, pipeline shape
+    mismatch) and verifies the happy path swaps both modules in place.
+    """
+
+    def setUp(self):
+        self.engine = DiffusersVideoEngine()
+        self.torch = SimpleNamespace(bfloat16="bf16", float8_e4m3fn="fp8")
+
+    def _kwargs(self, **overrides):
+        defaults = {
+            "repo": "lightx2v/Wan2.2-Distill-Models",
+            "high_file": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+            "low_file": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+            "precision": "bf16",
+            "torch": self.torch,
+        }
+        defaults.update(overrides)
+        return defaults
+
+    def test_missing_huggingface_hub_returns_skip_note(self):
+        pipeline = SimpleNamespace(transformer=object(), transformer_2=object())
+        with mock.patch.dict("sys.modules", {"huggingface_hub": None}):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+        self.assertIn("huggingface_hub unavailable", note)
+
+    def test_missing_wan_transformer_class_returns_skip_note(self):
+        pipeline = SimpleNamespace(transformer=object(), transformer_2=object())
+        fake_hub = SimpleNamespace(hf_hub_download=lambda **kw: "/tmp/fake")
+        # diffusers exists but lacks WanTransformer3DModel — accessing the
+        # attr raises AttributeError, which the helper treats as ImportError
+        # via the ``from diffusers import`` failure path.
+        fake_diffusers = SimpleNamespace()
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+        self.assertIn("WanTransformer3DModel unavailable", note)
+
+    def test_download_failure_returns_failure_note(self):
+        pipeline = SimpleNamespace(transformer=object(), transformer_2=object())
+
+        def boom(**kw):
+            raise RuntimeError("network down")
+
+        fake_hub = SimpleNamespace(hf_hub_download=boom)
+
+        class _FakeWanTransformer:
+            @classmethod
+            def from_single_file(cls, path, **kw):
+                return SimpleNamespace(name="should-not-reach")
+
+        fake_diffusers = SimpleNamespace(WanTransformer3DModel=_FakeWanTransformer)
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+        self.assertIn("download failed", note.lower())
+        self.assertIn("network down", note)
+
+    def test_load_failure_returns_failure_note(self):
+        pipeline = SimpleNamespace(transformer=object(), transformer_2=object())
+        fake_hub = SimpleNamespace(hf_hub_download=lambda **kw: f"/tmp/{kw['filename']}")
+
+        class _FakeWanTransformer:
+            @classmethod
+            def from_single_file(cls, path, **kw):
+                raise RuntimeError("corrupt safetensors")
+
+        fake_diffusers = SimpleNamespace(WanTransformer3DModel=_FakeWanTransformer)
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+        self.assertIn("load failed", note.lower())
+        self.assertIn("corrupt safetensors", note)
+
+    def test_pipeline_without_transformer_returns_skip_note(self):
+        pipeline = SimpleNamespace()  # no .transformer
+        fake_hub = SimpleNamespace(hf_hub_download=lambda **kw: f"/tmp/{kw['filename']}")
+
+        class _FakeWanTransformer:
+            @classmethod
+            def from_single_file(cls, path, **kw):
+                return SimpleNamespace(name="loaded")
+
+        fake_diffusers = SimpleNamespace(WanTransformer3DModel=_FakeWanTransformer)
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+        self.assertIn("no .transformer", note)
+
+    def test_happy_path_swaps_both_experts(self):
+        original_high = SimpleNamespace(name="stock-high")
+        original_low = SimpleNamespace(name="stock-low")
+        pipeline = SimpleNamespace(transformer=original_high, transformer_2=original_low)
+
+        captured: dict[str, Any] = {"loads": []}
+
+        def fake_download(**kw):
+            return f"/tmp/{kw['filename']}"
+
+        fake_hub = SimpleNamespace(hf_hub_download=fake_download)
+
+        class _FakeWanTransformer:
+            counter = 0
+
+            @classmethod
+            def from_single_file(cls, path, **kw):
+                cls.counter += 1
+                captured["loads"].append({"path": path, "kwargs": kw})
+                return SimpleNamespace(name=f"distill-{cls.counter}")
+
+        fake_diffusers = SimpleNamespace(WanTransformer3DModel=_FakeWanTransformer)
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            note = self.engine._swap_distill_transformers(pipeline, **self._kwargs())
+
+        # Both experts swapped to fresh distilled instances.
+        self.assertNotEqual(pipeline.transformer, original_high)
+        self.assertNotEqual(pipeline.transformer_2, original_low)
+        self.assertEqual(pipeline.transformer.name, "distill-1")
+        self.assertEqual(pipeline.transformer_2.name, "distill-2")
+        self.assertEqual(len(captured["loads"]), 2)
+        self.assertIn("swapped transformer + transformer_2", note)
+        self.assertIn("bf16", note)
+
+    def test_fp8_precision_uses_torch_float8(self):
+        pipeline = SimpleNamespace(transformer=object(), transformer_2=object())
+        captured: dict[str, Any] = {"dtypes": []}
+
+        fake_hub = SimpleNamespace(hf_hub_download=lambda **kw: f"/tmp/{kw['filename']}")
+
+        class _FakeWanTransformer:
+            @classmethod
+            def from_single_file(cls, path, **kw):
+                captured["dtypes"].append(kw.get("torch_dtype"))
+                return SimpleNamespace(name="distill")
+
+        fake_diffusers = SimpleNamespace(WanTransformer3DModel=_FakeWanTransformer)
+        with mock.patch.dict(
+            "sys.modules",
+            {"huggingface_hub": fake_hub, "diffusers": fake_diffusers},
+            clear=False,
+        ):
+            self.engine._swap_distill_transformers(
+                pipeline, **self._kwargs(precision="fp8_e4m3")
+            )
+
+        # Both loads should have used the FP8 dtype from the torch sentinel.
+        self.assertEqual(captured["dtypes"], ["fp8", "fp8"])
+
+
+class Wan22DistillCatalogTests(unittest.TestCase):
+    """Catalog shape contract — Wan2.2 distill variant dicts must carry
+    the distillTransformer* keys plus ``defaultSteps`` + ``cfgOverride``
+    so the runtime knows which experts to swap and the default-substitution
+    path can lock the 4-step schedule."""
+
+    def test_wan22_distill_variants_have_distill_keys(self):
+        from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
+
+        wan22 = next(
+            (f for f in VIDEO_MODEL_FAMILIES if f.get("id") == "wan-2-2"),
+            None,
+        )
+        self.assertIsNotNone(wan22, "wan-2-2 family missing from catalog")
+        distill_variants = [
+            v for v in wan22.get("variants", [])
+            if v.get("distillTransformerRepo")
+        ]
+        self.assertGreaterEqual(len(distill_variants), 2)
+        for variant in distill_variants:
+            self.assertEqual(
+                variant.get("distillTransformerRepo"),
+                "lightx2v/Wan2.2-Distill-Models",
+            )
+            self.assertTrue(variant.get("distillTransformerHighNoiseFile"))
+            self.assertTrue(variant.get("distillTransformerLowNoiseFile"))
+            self.assertIn(
+                variant.get("distillTransformerPrecision"),
+                {"bf16", "fp8_e4m3", "int8"},
+            )
+            self.assertEqual(variant.get("defaultSteps"), 4)
+            self.assertEqual(variant.get("cfgOverride"), 1.0)
+            # Distill targets the I2V-A14B base repo for the MoE
+            # transformer + transformer_2 layout to line up.
+            self.assertEqual(
+                variant.get("repo"),
+                "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

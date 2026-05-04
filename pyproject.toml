@@ -23,6 +23,16 @@ mlx-lm = [
     "gguf>=0.18.0",
     "mlx-lm>=0.22.0",
 ]
+# Apple Silicon vision-language runtime (Blaizzy/mlx-vlm). Loads
+# multimodal MLX models like Gemma 4, Qwen2.5-VL, LLaVA, etc. and
+# routes images + audio through the matching processors. Wired in
+# ``backend_service/mlx_worker.py`` via ``is_multimodal_family``
+# detection — the worker swaps from mlx_lm.load → mlx_vlm.load when
+# a multimodal repo prefix is hit. Pulls mlx + transformers + Pillow
+# transitively; ~150 MB extra in the venv.
+mlx-vlm = [
+    "mlx-vlm>=0.4.0",
+]
 triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git", "vllm>=0.8.0"]
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git", "mlx-lm>=0.22.0"]
 rotorquant = ["turboquant>=0.2.0"]
@@ -40,23 +50,27 @@ desktop = [
 ]
 images = [
     "accelerate>=0.34.0",
-    "diffusers>=0.36.0",
+    "diffusers>=0.38.0",
     "huggingface-hub>=0.26.0",
     "pillow>=10.4.0",
     "safetensors>=0.4.5",
     "torch>=2.4.0",
 ]
-# Diffusion cache acceleration. Two strategies live here:
+# Diffusion cache acceleration. Multiple strategies live here:
 #   1. TeaCache (vendored per-model forwards under cache_compression/
 #      _teacache_patches/ — FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi).
 #   2. First Block Cache (FU-015) — diffusers 0.36+ ships
 #      ``apply_first_block_cache`` as a model-agnostic hook, so it covers
 #      every DiT (FLUX, SD3, Wan, HunyuanVideo, LTX, CogVideoX, Mochi)
-#      without per-model vendoring. This obsoletes FU-007's Wan TeaCache
-#      port — Wan now caches via the same generic hook.
-# Pin diffusers >=0.36 so both paths can rely on the cache-hooks API.
+#      without per-model vendoring. Obsoletes the original FU-007 Wan
+#      TeaCache port.
+#   3. TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache
+#      (post-FU-026) — all four configs ship in diffusers 0.38 core and
+#      attach via ``pipeline.transformer.enable_cache(config)``. No extra
+#      pip dep beyond diffusers.
+# Pin diffusers >=0.38 so the full cache-hooks set is available.
 diffusion-accel = [
-    "diffusers>=0.36.0",
+    "diffusers>=0.38.0",
 ]
 # Apple Silicon MLX video runtime (Blaizzy/mlx-video) — MIT. Covers Wan2.1
 # (1.3B/14B), Wan2.2 (T2V-14B, TI2V-5B, I2V-14B), LTX-2 (19B) with T2V, I2V,

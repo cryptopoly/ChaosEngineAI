@@ -359,6 +359,11 @@ class ImageGenerationRequest(BaseModel):
     # FU-021: CFG decay schedule for flow-match image models. Mirrors
     # the video runtime knob. Default off; opt-in.
     cfgDecay: bool = Field(default=False)
+    # FU-018: TAESD preview-decode VAE swap. Preview-only quality knob —
+    # toggling on swaps ``pipeline.vae`` for the matching tiny VAE for
+    # the duration of the run. Final output goes through the fast VAE
+    # so the user trades fidelity for wall-time. Default off; opt-in.
+    previewVae: bool = Field(default=False)
 
 
 class ImageRuntimePreloadRequest(BaseModel):
@@ -436,3 +441,8 @@ class VideoGenerationRequest(BaseModel):
     # pipelines ignore the value (they run a fixed sampler), and other
     # video runtimes (diffusers MPS, LongLive) do not consume it.
     stgScale: float = Field(default=1.0, ge=0.0, le=3.0)
+    # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
+    # knob — when True the engine swaps ``pipeline.vae`` for the matching
+    # tiny VAE for the duration of the run. Default off — video users
+    # typically want full fidelity.
+    previewVae: bool = Field(default=False)

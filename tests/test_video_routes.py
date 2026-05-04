@@ -188,7 +188,15 @@ class VideoCatalogRouteTests(unittest.TestCase):
             for variant in family["variants"]:
                 for key in ("id", "repo", "name", "provider", "sizeGb", "taskSupport"):
                     self.assertIn(key, variant, f"{variant.get('id')} missing {key}")
-                self.assertIn("txt2video", variant["taskSupport"])
+                # Must declare at least one supported video task. Phase 3
+                # adds I2V-only variants (Wan2.2-Distill) so accept either.
+                self.assertTrue(
+                    any(
+                        task in variant["taskSupport"]
+                        for task in ("txt2video", "img2video")
+                    ),
+                    f"{variant.get('id')} declares no video task in taskSupport",
+                )
                 # availableLocally should be False on a fresh test env (no snapshots).
                 self.assertEqual(variant.get("availableLocally"), False)
                 self.assertEqual(variant.get("familyName"), family["name"])

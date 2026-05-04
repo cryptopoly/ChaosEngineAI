@@ -282,6 +282,55 @@ class CacheStrategyRegistry:
                 "supports_fp16_layers": False,
                 "required_llama_binary": "standard",
             },
+            {
+                # Post-FU-026: TaylorSeer / MagCache / PAB / FasterCache
+                # all ship in diffusers 0.38 core via
+                # ``pipeline.transformer.enable_cache(<Config>)``. Same
+                # diffusion-cache contract as TeaCache / FBCache — image
+                # + video DiTs only, threshold-shaped slider repurposed as
+                # the per-strategy primary knob (cache_interval for
+                # TaylorSeer, skip_range for PAB / FasterCache). UNet
+                # pipelines (SD1.5/SDXL) raise NotImplementedError into
+                # a runtimeNote.
+                "id": "taylorseer",
+                "name": "TaylorSeer Cache",
+                "module": "cache_compression.taylorseer",
+                "class_name": "TaylorSeerCacheStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
+            },
+            {
+                "id": "magcache",
+                "name": "MagCache",
+                "module": "cache_compression.magcache",
+                "class_name": "MagCacheStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
+            },
+            {
+                "id": "pab",
+                "name": "Pyramid Attention Broadcast",
+                "module": "cache_compression.pab",
+                "class_name": "PyramidAttentionBroadcastStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
+            },
+            {
+                "id": "fastercache",
+                "name": "FasterCache",
+                "module": "cache_compression.fastercache",
+                "class_name": "FasterCacheStrategy",
+                "bit_range": None,
+                "default_bits": None,
+                "supports_fp16_layers": False,
+                "required_llama_binary": "standard",
+            },
             ]
 
             for spec in strategy_specs:

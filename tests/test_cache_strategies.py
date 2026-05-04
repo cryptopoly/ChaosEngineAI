@@ -3,6 +3,7 @@ import importlib
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 from cache_compression import CacheStrategyRegistry
@@ -374,6 +375,250 @@ class FirstBlockCacheStrategyTests(unittest.TestCase):
             # match what the hook expects" outcome — exactly what we
             # want this smoke test to confirm.
             pass
+
+
+# ----------------------------------------------------------------------
+# Post-FU-026: diffusers 0.38+ core cache hooks
+#
+# TaylorSeer / MagCache / PAB / FasterCache all attach via
+# ``pipeline.transformer.enable_cache(<Config>)``. These tests share a
+# common shape: registered, applies_to image+video, raises NotImplemented
+# on UNet pipelines, raises NotImplemented when transformer lacks
+# enable_cache, calls enable_cache on a DiT-shaped pipeline.
+# ----------------------------------------------------------------------
+
+
+class _FakeEnableCacheTransformer:
+    """Minimal stand-in for a diffusers transformer with enable_cache."""
+
+    def __init__(self) -> None:
+        self.calls: list[Any] = []
+
+    def enable_cache(self, config: Any) -> None:
+        self.calls.append(config)
+
+
+class TaylorSeerCacheStrategyTests(unittest.TestCase):
+    """Post-FU-026: diffusers 0.38+ ``TaylorSeerCacheConfig`` adapter."""
+
+    def setUp(self):
+        self.registry = CacheStrategyRegistry()
+        self.registry.discover()
+        self.strategy = self.registry.get("taylorseer")
+
+    def test_registered(self):
+        self.assertIsNotNone(self.strategy)
+        self.assertEqual(self.strategy.strategy_id, "taylorseer")
+        self.assertEqual(self.strategy.name, "TaylorSeer Cache")
+
+    def test_applies_to_image_and_video(self):
+        self.assertEqual(self.strategy.applies_to(), frozenset({"image", "video"}))
+
+    def test_recommended_thresholds_present(self):
+        thresholds = self.strategy.recommended_thresholds()
+        self.assertIn("image", thresholds)
+        self.assertIn("video", thresholds)
+
+    def test_apply_hook_raises_on_unet_pipeline(self):
+        unet_pipeline = SimpleNamespace(unet=object())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                unet_pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("DiT", str(ctx.exception))
+
+    def test_apply_hook_raises_when_transformer_missing_enable_cache(self):
+        try:
+            from diffusers import TaylorSeerCacheConfig  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers TaylorSeerCacheConfig not present (needs 0.38+)")
+        old_pipeline = SimpleNamespace(transformer=object())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                old_pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("enable_cache", str(ctx.exception))
+
+    def test_apply_hook_calls_enable_cache_on_dit(self):
+        try:
+            from diffusers import TaylorSeerCacheConfig  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers TaylorSeerCacheConfig not present (needs 0.38+)")
+        transformer = _FakeEnableCacheTransformer()
+        pipeline = SimpleNamespace(transformer=transformer)
+        self.strategy.apply_diffusers_hook(
+            pipeline,
+            num_inference_steps=20,
+            rel_l1_thresh=None,
+        )
+        self.assertEqual(len(transformer.calls), 1)
+
+
+class MagCacheStrategyTests(unittest.TestCase):
+    """Post-FU-026: diffusers 0.38+ ``MagCacheConfig`` adapter (FLUX-only)."""
+
+    def setUp(self):
+        self.registry = CacheStrategyRegistry()
+        self.registry.discover()
+        self.strategy = self.registry.get("magcache")
+
+    def test_registered(self):
+        self.assertIsNotNone(self.strategy)
+        self.assertEqual(self.strategy.strategy_id, "magcache")
+        self.assertEqual(self.strategy.name, "MagCache")
+
+    def test_applies_to_image_and_video(self):
+        self.assertEqual(self.strategy.applies_to(), frozenset({"image", "video"}))
+
+    def test_apply_hook_raises_on_unet_pipeline(self):
+        unet_pipeline = SimpleNamespace(unet=object())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                unet_pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("DiT", str(ctx.exception))
+
+    def test_apply_hook_raises_on_non_flux_dit_without_calibration(self):
+        try:
+            from diffusers import MagCacheConfig  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers MagCacheConfig not present (needs 0.38+)")
+
+        class FakeWanPipeline:
+            def __init__(self, transformer):
+                self.transformer = transformer
+
+        pipeline = FakeWanPipeline(_FakeEnableCacheTransformer())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("calibration", str(ctx.exception).lower())
+
+    def test_apply_hook_succeeds_on_flux_dit(self):
+        try:
+            from diffusers import MagCacheConfig  # noqa: F401
+            from diffusers.hooks.mag_cache import FLUX_MAG_RATIOS  # noqa: F401
+        except ImportError:
+            self.skipTest("FLUX_MAG_RATIOS not present in diffusers (needs 0.38+)")
+
+        class FakeFluxPipeline:
+            def __init__(self, transformer):
+                self.transformer = transformer
+
+        transformer = _FakeEnableCacheTransformer()
+        pipeline = FakeFluxPipeline(transformer)
+        self.strategy.apply_diffusers_hook(
+            pipeline,
+            num_inference_steps=4,
+            rel_l1_thresh=None,
+        )
+        self.assertEqual(len(transformer.calls), 1)
+
+
+class PyramidAttentionBroadcastStrategyTests(unittest.TestCase):
+    """Post-FU-026: diffusers 0.38+ ``PyramidAttentionBroadcastConfig`` adapter."""
+
+    def setUp(self):
+        self.registry = CacheStrategyRegistry()
+        self.registry.discover()
+        self.strategy = self.registry.get("pab")
+
+    def test_registered(self):
+        self.assertIsNotNone(self.strategy)
+        self.assertEqual(self.strategy.strategy_id, "pab")
+        self.assertEqual(self.strategy.name, "Pyramid Attention Broadcast")
+
+    def test_applies_to_image_and_video(self):
+        self.assertEqual(self.strategy.applies_to(), frozenset({"image", "video"}))
+
+    def test_apply_hook_raises_on_unet_pipeline(self):
+        unet_pipeline = SimpleNamespace(unet=object())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                unet_pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("DiT", str(ctx.exception))
+
+    def test_apply_hook_calls_enable_cache_on_dit(self):
+        try:
+            from diffusers import PyramidAttentionBroadcastConfig  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers PyramidAttentionBroadcastConfig not present (needs 0.38+)")
+        transformer = _FakeEnableCacheTransformer()
+        pipeline = SimpleNamespace(transformer=transformer)
+        self.strategy.apply_diffusers_hook(
+            pipeline,
+            num_inference_steps=50,
+            rel_l1_thresh=3.0,
+        )
+        self.assertEqual(len(transformer.calls), 1)
+
+
+class FasterCacheStrategyTests(unittest.TestCase):
+    """Post-FU-026: diffusers 0.38+ ``FasterCacheConfig`` adapter."""
+
+    def setUp(self):
+        self.registry = CacheStrategyRegistry()
+        self.registry.discover()
+        self.strategy = self.registry.get("fastercache")
+
+    def test_registered(self):
+        self.assertIsNotNone(self.strategy)
+        self.assertEqual(self.strategy.strategy_id, "fastercache")
+        self.assertEqual(self.strategy.name, "FasterCache")
+
+    def test_applies_to_image_and_video(self):
+        self.assertEqual(self.strategy.applies_to(), frozenset({"image", "video"}))
+
+    def test_apply_hook_raises_on_unet_pipeline(self):
+        unet_pipeline = SimpleNamespace(unet=object())
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.strategy.apply_diffusers_hook(
+                unet_pipeline,
+                num_inference_steps=20,
+                rel_l1_thresh=None,
+            )
+        self.assertIn("DiT", str(ctx.exception))
+
+    def test_apply_hook_calls_enable_cache_on_dit(self):
+        try:
+            from diffusers import FasterCacheConfig  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers FasterCacheConfig not present (needs 0.38+)")
+        transformer = _FakeEnableCacheTransformer()
+        pipeline = SimpleNamespace(transformer=transformer)
+        self.strategy.apply_diffusers_hook(
+            pipeline,
+            num_inference_steps=50,
+            rel_l1_thresh=2.0,
+        )
+        self.assertEqual(len(transformer.calls), 1)
+
+
+class NewStrategiesRegistryTests(unittest.TestCase):
+    """All four post-FU-026 strategies present in the available() output."""
+
+    def setUp(self):
+        self.registry = CacheStrategyRegistry()
+        self.registry.discover()
+
+    def test_all_four_present(self):
+        ids = {s["id"] for s in self.registry.available()}
+        self.assertIn("taylorseer", ids)
+        self.assertIn("magcache", ids)
+        self.assertIn("pab", ids)
+        self.assertIn("fastercache", ids)
 
 
 if __name__ == "__main__":

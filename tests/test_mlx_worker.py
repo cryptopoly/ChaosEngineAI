@@ -1,5 +1,6 @@
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 from unittest.mock import Mock, patch
 
 from backend_service.mlx_worker import (
@@ -161,6 +162,116 @@ class CacheProfileTests(unittest.TestCase):
         self.assertTrue(_should_retry_cache_failure(AttributeError("'tuple' object has no attribute 'swapaxes'")))
         self.assertTrue(_should_retry_cache_failure(RuntimeError("[broadcast_shapes] Shapes (1,1,117,48) and (1,1,117,51) cannot be broadcast.")))
         self.assertFalse(_should_retry_cache_failure(RuntimeError("Tokenizer chat template missing.")))
+
+
+class TriAttentionCacheProfileTests(unittest.TestCase):
+    """FU-002: TriAttention MLX path through ``_apply_cache_profile``."""
+
+    def test_triattention_no_model_falls_back_to_native(self):
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        worker.model = None
+
+        note = worker._apply_cache_profile(
+            cache_strategy="triattention",
+            cache_bits=3,
+            fp16_layers=4,
+            fused_attention=False,
+        )
+
+        self.assertEqual(worker.cache_strategy, "native")
+        self.assertIsNotNone(note)
+        self.assertIn("no model", note.lower())
+
+    def test_triattention_unavailable_strategy_falls_back_to_native(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+
+        import cache_compression
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        worker.model = SimpleNamespace()  # truthy stand-in
+
+        fake_strategy = MagicMock()
+        fake_strategy.is_available.return_value = False
+        fake_registry = MagicMock()
+        fake_registry.get.return_value = fake_strategy
+
+        with patch.object(cache_compression, "registry", fake_registry):
+            note = worker._apply_cache_profile(
+                cache_strategy="triattention",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+            )
+
+        self.assertEqual(worker.cache_strategy, "native")
+        self.assertIsNotNone(note)
+        self.assertIn("not available", note.lower())
+
+    def test_triattention_happy_path_calls_apply_compressor(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+
+        import cache_compression
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        fake_model = SimpleNamespace()
+        worker.model = fake_model
+        worker.kv_budget = 1024
+
+        fake_strategy = MagicMock()
+        fake_strategy.is_available.return_value = True
+        fake_strategy.apply_mlx_compressor = MagicMock()
+        fake_registry = MagicMock()
+        fake_registry.get.return_value = fake_strategy
+
+        with patch.object(cache_compression, "registry", fake_registry):
+            note = worker._apply_cache_profile(
+                cache_strategy="triattention",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+            )
+
+        fake_strategy.apply_mlx_compressor.assert_called_once_with(
+            fake_model, kv_budget=1024
+        )
+        self.assertEqual(worker.cache_strategy, "triattention")
+        self.assertIsNotNone(note)
+        self.assertIn("kv_budget=1024", note)
+
+    def test_triattention_apply_raises_falls_back_to_native(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+
+        import cache_compression
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        worker.model = SimpleNamespace()
+
+        fake_strategy = MagicMock()
+        fake_strategy.is_available.return_value = True
+        fake_strategy.apply_mlx_compressor.side_effect = RuntimeError("kaboom")
+        fake_registry = MagicMock()
+        fake_registry.get.return_value = fake_strategy
+
+        with patch.object(cache_compression, "registry", fake_registry):
+            note = worker._apply_cache_profile(
+                cache_strategy="triattention",
+                cache_bits=3,
+                fp16_layers=4,
+                fused_attention=False,
+            )
+
+        self.assertEqual(worker.cache_strategy, "native")
+        self.assertIsNotNone(note)
+        self.assertIn("RuntimeError", note)
+        self.assertIn("kaboom", note)
 
 
 class _FakeTokenizer:
@@ -529,6 +640,239 @@ class StripThinkingTokensTests(unittest.TestCase):
     def test_preserves_normal_text(self):
         text = "Hello! I'm an AI assistant."
         self.assertEqual(_strip_thinking_tokens(text), text)
+
+
+class MultimodalGenerationTests(unittest.TestCase):
+    """Bug 1: vision-capable models route through mlx_vlm.
+
+    These tests cover the helper plumbing in ``WorkerState``:
+    - ``_decode_images_to_paths`` materialises base64 images to temp files
+    - ``_vlm_generate_kwargs`` forwards temperature + top_p
+    - ``_generate_multimodal`` calls ``mlx_vlm.generate`` with image paths
+    - ``_stream_generate_multimodal`` emits chunks via ``_emit``
+
+    The actual mlx_vlm.generate / stream_generate calls are mocked so the
+    tests run without loading a real VLM (they're 5-15 GB on disk).
+    """
+
+    def setUp(self):
+        from backend_service.mlx_worker import WorkerState
+        self.WorkerState = WorkerState
+
+    def _make_worker_with_multimodal(self):
+        worker = self.WorkerState()
+        worker.model = object()
+        worker.tokenizer = SimpleNamespace(decode=lambda toks: "")
+        worker.processor = SimpleNamespace(tokenizer=worker.tokenizer)
+        worker.is_multimodal = True
+        worker._loaded_model_ref = "google/gemma-4-26B-A4B-it"
+        worker.config = {}
+        return worker
+
+    def test_decode_images_to_paths_writes_files(self):
+        import base64
+        import tempfile
+        from pathlib import Path
+
+        worker = self._make_worker_with_multimodal()
+        # Two valid base64 blobs — content doesn't matter for the test;
+        # the helper just decodes and writes bytes.
+        blobs = [
+            base64.b64encode(b"image-1-bytes").decode("ascii"),
+            base64.b64encode(b"image-2-bytes").decode("ascii"),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = worker._decode_images_to_paths(blobs, tmpdir)
+            self.assertEqual(len(paths), 2)
+            for path in paths:
+                self.assertTrue(Path(path).exists())
+            # Filenames are deterministic.
+            self.assertTrue(paths[0].endswith("img_000.png"))
+            self.assertTrue(paths[1].endswith("img_001.png"))
+
+    def test_decode_images_to_paths_skips_malformed(self):
+        import base64
+        import tempfile
+
+        worker = self._make_worker_with_multimodal()
+        blobs = [
+            base64.b64encode(b"valid").decode("ascii"),
+            "!!!not-base64!!!",  # malformed
+            "",  # empty
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = worker._decode_images_to_paths(blobs, tmpdir)
+            # Note: `validate=False` silently accepts invalid b64 and returns
+            # zero or partial bytes, but empty string and explicit failures
+            # short-circuit. At minimum the valid blob lands on disk.
+            self.assertGreaterEqual(len(paths), 1)
+            self.assertLessEqual(len(paths), 2)
+
+    def test_decode_images_to_paths_handles_empty_list(self):
+        import tempfile
+
+        worker = self._make_worker_with_multimodal()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.assertEqual(worker._decode_images_to_paths([], tmpdir), [])
+            self.assertEqual(worker._decode_images_to_paths(None, tmpdir), [])
+
+    def test_vlm_generate_kwargs_includes_temperature_and_top_p(self):
+        worker = self._make_worker_with_multimodal()
+        kwargs = worker._vlm_generate_kwargs(
+            {"maxTokens": 128, "temperature": 0.5, "topP": 0.9}
+        )
+        self.assertEqual(kwargs["max_tokens"], 128)
+        self.assertEqual(kwargs["temperature"], 0.5)
+        self.assertEqual(kwargs["top_p"], 0.9)
+
+    def test_vlm_generate_kwargs_omits_unset_fields(self):
+        worker = self._make_worker_with_multimodal()
+        kwargs = worker._vlm_generate_kwargs({})
+        self.assertEqual(kwargs["max_tokens"], 256)
+        self.assertNotIn("temperature", kwargs)
+        self.assertNotIn("top_p", kwargs)
+
+    def test_generate_multimodal_passes_image_paths_to_vlm_generate(self):
+        import base64
+        import sys
+
+        worker = self._make_worker_with_multimodal()
+
+        # Stub mlx_vlm.generate to capture invocation.
+        captured = {}
+
+        def _fake_generate(model, processor, prompt, image=None, **kwargs):
+            captured["model"] = model
+            captured["processor"] = processor
+            captured["prompt"] = prompt
+            captured["image"] = image
+            captured["kwargs"] = kwargs
+            return SimpleNamespace(
+                text="Final answer about the cat.",
+                finish_reason="stop",
+                prompt_tokens=10,
+                generation_tokens=8,
+                generation_tps=42.0,
+                prompt_tps=120.0,
+                peak_memory=12.3,
+            )
+
+        # Stub mlx_vlm module hierarchy. Falls back to existing if installed.
+        fake_mlx_vlm = SimpleNamespace(generate=_fake_generate)
+        fake_prompt_utils = SimpleNamespace(
+            apply_chat_template=lambda processor, config, messages, **kw: "RENDERED"
+        )
+
+        modules_patch = {
+            "mlx_vlm": fake_mlx_vlm,
+            "mlx_vlm.prompt_utils": fake_prompt_utils,
+        }
+        with mock.patch.dict("sys.modules", modules_patch, clear=False):
+            blobs = [base64.b64encode(b"img-bytes").decode("ascii")]
+            response = worker._generate_multimodal({
+                "prompt": "describe this",
+                "history": [],
+                "images": blobs,
+                "maxTokens": 64,
+            })
+
+        self.assertEqual(response["text"], "Final answer about the cat.")
+        self.assertEqual(response["finishReason"], "stop")
+        self.assertEqual(response["promptTokens"], 10)
+        self.assertEqual(response["completionTokens"], 8)
+        self.assertEqual(response["totalTokens"], 18)
+        self.assertEqual(response["cacheStrategy"], "native")
+        self.assertIsNotNone(response["runtimeNote"])
+        self.assertIn("mlx-vlm", response["runtimeNote"])
+        # Image path should have been passed through.
+        self.assertIsNotNone(captured["image"])
+        self.assertEqual(len(captured["image"]), 1)
+        self.assertTrue(captured["image"][0].endswith("img_000.png"))
+        self.assertEqual(captured["prompt"], "RENDERED")
+        self.assertEqual(captured["kwargs"]["max_tokens"], 64)
+
+    def test_generate_multimodal_text_only_when_no_images(self):
+        worker = self._make_worker_with_multimodal()
+
+        captured = {}
+
+        def _fake_generate(model, processor, prompt, image=None, **kwargs):
+            captured["image"] = image
+            return SimpleNamespace(text="Hi.")
+
+        fake_mlx_vlm = SimpleNamespace(generate=_fake_generate)
+        fake_prompt_utils = SimpleNamespace(
+            apply_chat_template=lambda *args, **kw: "PROMPT"
+        )
+
+        with mock.patch.dict(
+            "sys.modules",
+            {"mlx_vlm": fake_mlx_vlm, "mlx_vlm.prompt_utils": fake_prompt_utils},
+            clear=False,
+        ):
+            response = worker._generate_multimodal({
+                "prompt": "hi",
+                "history": [],
+                "images": [],
+            })
+
+        # No images → image kwarg falls through to default (None).
+        self.assertIsNone(captured.get("image"))
+        self.assertEqual(response["text"], "Hi.")
+
+    def test_generate_multimodal_raises_when_mlx_vlm_missing(self):
+        worker = self._make_worker_with_multimodal()
+        with mock.patch.dict("sys.modules", {"mlx_vlm": None}):
+            with self.assertRaises(RuntimeError) as ctx:
+                worker._generate_multimodal({"prompt": "hi", "images": []})
+        self.assertIn("mlx-vlm is not installed", str(ctx.exception))
+
+    def test_generate_routes_to_multimodal_when_is_multimodal(self):
+        worker = self._make_worker_with_multimodal()
+        with mock.patch.object(
+            worker, "_generate_multimodal", return_value={"text": "done"}
+        ) as mock_mm:
+            result = worker.generate({"prompt": "hi", "images": []})
+        mock_mm.assert_called_once()
+        self.assertEqual(result["text"], "done")
+
+    def test_generate_routes_to_standard_when_not_multimodal(self):
+        worker = self.WorkerState()
+        worker.model = object()
+        worker.tokenizer = SimpleNamespace()
+        worker.is_multimodal = False
+        with mock.patch.object(
+            worker, "_generate_standard", return_value={"text": "txt"}
+        ) as mock_std:
+            result = worker.generate({"prompt": "hi"})
+        mock_std.assert_called_once()
+        self.assertEqual(result["text"], "txt")
+
+
+class LoadedModelRefDelimitersTests(unittest.TestCase):
+    """Bug 2 wiring: ThinkingTokenFilter sites must read delimiters from
+    the loaded model ref so Gemma 4's Harmony format is recognised."""
+
+    def test_loaded_model_ref_default_is_none(self):
+        from backend_service.mlx_worker import WorkerState
+        worker = WorkerState()
+        self.assertIsNone(worker._loaded_model_ref)
+
+    def test_unload_clears_loaded_model_ref(self):
+        from backend_service.mlx_worker import WorkerState
+        worker = WorkerState()
+        worker._loaded_model_ref = "google/gemma-4-26B-A4B-it"
+        worker.unload_model()
+        self.assertIsNone(worker._loaded_model_ref)
+
+    def test_unload_clears_multimodal_state(self):
+        from backend_service.mlx_worker import WorkerState
+        worker = WorkerState()
+        worker.processor = object()
+        worker.is_multimodal = True
+        worker.unload_model()
+        self.assertIsNone(worker.processor)
+        self.assertFalse(worker.is_multimodal)
 
 
 if __name__ == "__main__":

@@ -388,6 +388,7 @@ def _generate_image_artifacts(
             cacheStrategy=request.cacheStrategy,
             cacheRelL1Thresh=request.cacheRelL1Thresh,
             cfgDecay=request.cfgDecay,
+            previewVae=request.previewVae,
             # FU-019: variant-declared LoRA + step / guidance overrides.
             # When the catalog variant pins a Hyper-SD / FLUX-Turbo /
             # lightx2v LoRA, the engine fuses it into the pipeline at
@@ -493,12 +494,19 @@ def _generate_video_artifact(
             enhancePrompt=request.enhancePrompt,
             cfgDecay=request.cfgDecay,
             stgScale=request.stgScale,
+            previewVae=request.previewVae,
             # FU-019: variant-declared LoRA + override metadata.
             loraRepo=(variant.get("loraRepo") or None),
             loraFile=(variant.get("loraFile") or None),
             loraScale=(variant.get("loraScale") if variant.get("loraScale") is not None else None),
             defaultSteps=(variant.get("defaultSteps") if variant.get("defaultSteps") is not None else None),
             cfgOverride=(variant.get("cfgOverride") if variant.get("cfgOverride") is not None else None),
+            # Phase 3 / Wan2.2-Distill 4-step: catalog-pinned distilled
+            # transformers replace both Wan A14B experts at pipeline load.
+            distillTransformerRepo=(variant.get("distillTransformerRepo") or None),
+            distillTransformerHighNoiseFile=(variant.get("distillTransformerHighNoiseFile") or None),
+            distillTransformerLowNoiseFile=(variant.get("distillTransformerLowNoiseFile") or None),
+            distillTransformerPrecision=(variant.get("distillTransformerPrecision") or None),
         )
     )
 

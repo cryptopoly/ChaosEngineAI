@@ -73,6 +73,32 @@ _GEMMA_PREFIXES: tuple[str, ...] = (
     "lmstudio-community/gemma-",
 )
 
+# Multimodal (vision-capable) repo prefixes. Lowercased prefix match.
+# Models in this set get loaded via ``mlx_vlm.load`` instead of
+# ``mlx_lm.load`` and route through the multimodal generate path
+# (which decodes the chat ``images`` field into per-image paths and
+# passes them to ``mlx_vlm.generate`` / ``stream_generate``).
+#
+# Add new prefixes here when adopting a vision-capable family. Text-only
+# Gemma variants (e.g. older Gemma 1/2 text-only quants on mlx-community
+# would go here NEGATIVELY — but Gemma 4 is multimodal across the entire
+# family per Google's release, so all gemma-4 variants qualify).
+_MULTIMODAL_PREFIXES: tuple[str, ...] = (
+    # Gemma 4 family: every variant is multimodal.
+    "google/gemma-4",
+    "mlx-community/gemma-4",
+    "lmstudio-community/gemma-4",
+    # Qwen2.5-VL family: vision-language model, every variant is multimodal.
+    "qwen/qwen2.5-vl",
+    "mlx-community/qwen2.5-vl",
+    # Qwen3-VL family: future-proofing — same naming convention.
+    "qwen/qwen3-vl",
+    "mlx-community/qwen3-vl",
+    # LLaVA-style models running through mlx-vlm.
+    "mlx-community/llava-",
+    "llava-hf/llava-",
+)
+
 # ChatML / Qwen2/3 templates ship `<|im_start|>` markers. When a quant
 # ships without `add_generation_prompt` support, the rendered prompt
 # stops mid-turn and the model continues the user turn instead of
@@ -89,6 +115,18 @@ def _model_ref_lower(model_ref: str | None) -> str:
 def is_gemma_family(model_ref: str | None) -> bool:
     lowered = _model_ref_lower(model_ref)
     return any(lowered.startswith(prefix) for prefix in _GEMMA_PREFIXES)
+
+
+def is_multimodal_family(model_ref: str | None) -> bool:
+    """Return ``True`` when the repo id matches a vision-capable family
+    that should be loaded via ``mlx_vlm`` rather than ``mlx_lm``.
+
+    Match is a lowercased prefix scan against ``_MULTIMODAL_PREFIXES``.
+    Returns ``False`` for text-only models, including Gemma 1/2 quants
+    that share the ``gemma-`` prefix but are not multimodal.
+    """
+    lowered = _model_ref_lower(model_ref)
+    return any(lowered.startswith(prefix) for prefix in _MULTIMODAL_PREFIXES)
 
 
 def fold_system_into_first_user(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:

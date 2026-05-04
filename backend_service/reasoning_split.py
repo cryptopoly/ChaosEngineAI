@@ -15,10 +15,51 @@ _STARTUP_BUFFER_LIMIT = 500
 # here when adopting models that emit a non-standard reasoning marker.
 # Values are (open_tag, close_tag) pairs.
 _REASONING_DELIMITER_REGISTRY: dict[str, tuple[str, str]] = {
-    # Default registry left empty — DeepSeek R1, Qwen3, GPT-OSS all emit
-    # `<think>...</think>` and need no override. Populate per-family entries
-    # here when a future model uses a different convention.
+    # Gemma 4 emits OpenAI Harmony channels:
+    #   <|start|>assistant<|channel|>thought<|message|>...reasoning...<|end|>
+    #   <|start|>assistant<|channel|>final<|message|>...answer...<|end|>
+    # The pair below captures the thought channel; ``strip_harmony_boilerplate``
+    # then removes the residual <|start|>/<|channel|>/<|message|>/<|end|>
+    # markers from the remaining text so the user sees a clean answer.
+    "google/gemma-4": ("<|channel|>thought", "<|end|>"),
+    "mlx-community/gemma-4": ("<|channel|>thought", "<|end|>"),
+    "lmstudio-community/gemma-4": ("<|channel|>thought", "<|end|>"),
+    # gpt-oss family ships the same Harmony format upstream — keep the
+    # delimiters aligned so swaps between the two are seamless.
+    "openai/gpt-oss": ("<|channel|>thought", "<|end|>"),
+    "mlx-community/gpt-oss": ("<|channel|>thought", "<|end|>"),
 }
+
+
+# Harmony chat-format boilerplate. Stripped as a final pass after the
+# ThinkingTokenFilter to remove leftover ``<|start|>assistant``,
+# ``<|channel|>final``, ``<|message|>``, ``<|end|>``, ``<|return|>``
+# tokens that the model emits to delimit channel boundaries.
+_HARMONY_BOILERPLATE_RE = re.compile(
+    r"<\|(?:start|channel|message|end|return)\|>(?:assistant|final|analysis|commentary|thought)?",
+    re.IGNORECASE,
+)
+
+
+def strip_harmony_boilerplate(text: str) -> str:
+    """Remove OpenAI Harmony channel-format markers from a model's output.
+
+    The Harmony format wraps multi-channel responses with
+    ``<|start|>``, ``<|channel|>NAME``, ``<|message|>``, ``<|end|>``
+    delimiters. After ``ThinkingTokenFilter`` extracts the ``thought``
+    channel into the reasoning sidecar, this helper sweeps the residual
+    boilerplate out of the user-visible text. Idempotent on text that
+    contains no Harmony markers (e.g. plain ``<think>`` output from
+    Qwen3 / DeepSeek R1).
+    """
+    if not text:
+        return text
+    cleaned = _HARMONY_BOILERPLATE_RE.sub("", text)
+    # Collapse runs of blank lines that the boilerplate removal can leave
+    # behind — keeps the rendered chat tidy without blowing away
+    # intentional paragraph breaks.
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 def reasoning_delimiters_for(model_ref: str | None) -> tuple[str, str]:

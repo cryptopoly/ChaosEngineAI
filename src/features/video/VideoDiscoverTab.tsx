@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
-import { WanInstallPanel } from "../../components/WanInstallPanel";
-import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { Panel } from "../../components/Panel";
+import { WanInstallPanel } from "../../components/WanInstallPanel";
 import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
@@ -12,21 +11,17 @@ import type {
 import type { DiscoverSort } from "../../types/image";
 import type { VideoDiscoverTaskFilter } from "../../types/video";
 import {
-  compactModelSizeLabel,
-  compactReleaseLabel,
   downloadProgressLabel,
   downloadSizeTooltip,
   formatReleaseLabel,
+  number,
   videoDiscoverMemoryEstimate,
-  videoDeleteLabelForRepo,
-  videoDeleteRepoForVariant,
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
 } from "../../utils";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
-type SortDir = "asc" | "desc";
 
 // LongLive ships via a dedicated Python installer (isolated venv + GitHub
 // clone + HF weights at Efficient-Large-Model/LongLive-1.3B), not via
@@ -65,67 +60,15 @@ export interface VideoDiscoverTabProps {
 }
 
 function videoDiscoverSortLabel(sort: DiscoverSort): string {
-  if (sort === "name") return "name";
-  if (sort === "provider") return "provider";
-  if (sort === "tasks") return "tasks";
   if (sort === "size") return "largest size first";
   if (sort === "ram") return "highest RAM/VRAM first";
   if (sort === "likes") return "most liked first";
   if (sort === "downloads") return "most downloads first";
-  if (sort === "status") return "status";
   return "newest released first";
 }
 
-function sortIndicator(activeSort: DiscoverSort, sortDir: SortDir, key: DiscoverSort): string {
-  if (activeSort !== key) return "";
-  return sortDir === "asc" ? " \u25B2" : " \u25BC";
-}
-
-function defaultSortDir(sort: DiscoverSort): SortDir {
-  return sort === "name" || sort === "provider" || sort === "tasks" ? "asc" : "desc";
-}
-
-function releaseSortKey(variant: VideoModelVariant): string {
-  return variant.releaseDate ?? variant.createdAt ?? variant.lastModified ?? "";
-}
-
-function sizeSortKey(variant: VideoModelVariant): number | null {
-  const candidates = [variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
-  for (const value of candidates) {
-    if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
-  }
-  return null;
-}
-
-function compareNullableNumberDesc(left: number | null, right: number | null): number {
-  const leftKnown = typeof left === "number" && Number.isFinite(left);
-  const rightKnown = typeof right === "number" && Number.isFinite(right);
-  if (leftKnown && rightKnown) return (right as number) - (left as number);
-  if (leftKnown) return -1;
-  if (rightKnown) return 1;
-  return 0;
-}
-
-function compareNullableNumber(left: number | null, right: number | null, dir: SortDir): number {
-  const desc = compareNullableNumberDesc(left, right);
-  return dir === "desc" ? desc : -desc;
-}
-
-function statusSortKey(status: MediaStatusFilter): number {
-  if (status === "installed") return 0;
-  if (status === "downloading") return 1;
-  if (status === "paused") return 2;
-  if (status === "failed") return 3;
-  if (status === "incomplete") return 4;
-  if (status === "not-installed") return 5;
-  return 6;
-}
-
-function memoryParts(label: string | null | undefined): { primary: string; secondary: string | null } {
-  if (!label) return { primary: "pending", secondary: null };
-  const [primary, secondary] = label.split(" @ ");
-  if (!secondary) return { primary, secondary: null };
-  return { primary: `${primary} @`, secondary };
+function sortIndicator(activeSort: DiscoverSort, key: DiscoverSort): string {
+  return activeSort === key ? " \u25BC" : "";
 }
 
 function videoVariantStatus(
@@ -148,20 +91,17 @@ function videoVariantStatus(
 }
 
 function statusBadge(status: MediaStatusFilter, downloadState?: DownloadStatus, longLiveInstalling = false) {
-  const downloadDetail = downloadState
-    ? [downloadProgressLabel(downloadState), downloadSizeTooltip(downloadState)].filter(Boolean).join(" / ")
-    : null;
-  if (status === "installed") return <StatusIcon status="installed" label="Installed" />;
-  if (longLiveInstalling) return <StatusIcon status="downloading" label="Installing" />;
+  if (status === "installed") return <span className="badge success">Installed</span>;
+  if (longLiveInstalling) return <span className="badge accent">Installing…</span>;
   if (status === "downloading" && downloadState) {
-    return <StatusIcon status="downloading" label="Downloading" detail={downloadDetail} />;
+    return <span className="badge accent" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>;
   }
   if (status === "paused" && downloadState) {
-    return <StatusIcon status="paused" label="Paused" detail={downloadDetail} />;
+    return <span className="badge warning" title={downloadSizeTooltip(downloadState)}>{downloadProgressLabel(downloadState)}</span>;
   }
-  if (status === "failed") return <StatusIcon status="failed" label="Failed" detail={downloadState?.error ?? "Download failed"} />;
-  if (status === "incomplete") return <StatusIcon status="incomplete" label="Incomplete" />;
-  return <StatusIcon status="incomplete" label="Not installed" />;
+  if (status === "failed") return <span className="badge warning">Download Failed</span>;
+  if (status === "incomplete") return <span className="badge warning">Incomplete</span>;
+  return <span className="badge subtle">Not installed</span>;
 }
 
 export function VideoDiscoverTab({
@@ -198,71 +138,17 @@ export function VideoDiscoverTab({
   }, [hasLongLiveVariant, onRefreshLongLiveStatus]);
 
   const [statusFilter, setStatusFilter] = useState<MediaStatusFilter>("all");
-  const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir(videoDiscoverSort));
   const longLiveReady = longLiveStatus?.realGenerationAvailable ?? false;
   const filteredResults = useMemo(
     () =>
-      combinedVideoDiscoverResults
-        .map((variant) => {
-          const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
-          const status = videoVariantStatus(variant, downloadState, longLiveReady, installingLongLive);
-          const memoryEstimate = videoDiscoverMemoryEstimate(variant);
-          return { variant, status, memoryEstimate };
-        })
-        .filter(({ status }) => statusFilter === "all" || status === statusFilter)
-        .sort((left, right) => {
-          if (videoDiscoverSort === "name") {
-            const diff = left.variant.name.localeCompare(right.variant.name);
-            return sortDir === "asc" ? diff : -diff;
-          }
-          if (videoDiscoverSort === "provider") {
-            const diff = left.variant.provider.localeCompare(right.variant.provider);
-            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
-          }
-          if (videoDiscoverSort === "tasks") {
-            const diff = left.variant.taskSupport.join(" ").localeCompare(right.variant.taskSupport.join(" "));
-            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
-          }
-          if (videoDiscoverSort === "size") {
-            const diff = compareNullableNumber(sizeSortKey(left.variant), sizeSortKey(right.variant), sortDir);
-            if (diff !== 0) return diff;
-          } else if (videoDiscoverSort === "ram") {
-            const diff = compareNullableNumber(left.memoryEstimate?.estimatedPeakGb ?? null, right.memoryEstimate?.estimatedPeakGb ?? null, sortDir);
-            if (diff !== 0) return diff;
-          } else if (videoDiscoverSort === "status") {
-            const diff = statusSortKey(left.status) - statusSortKey(right.status);
-            if (diff !== 0) return sortDir === "asc" ? diff : -diff;
-          } else if (videoDiscoverSort === "likes") {
-            const diff = compareNullableNumber(left.variant.likes ?? null, right.variant.likes ?? null, sortDir);
-            if (diff !== 0) return diff;
-          } else if (videoDiscoverSort === "downloads") {
-            const diff = compareNullableNumber(left.variant.downloads ?? null, right.variant.downloads ?? null, sortDir);
-            if (diff !== 0) return diff;
-          }
-          const dateDiff = releaseSortKey(right.variant).localeCompare(releaseSortKey(left.variant));
-          if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
-          return left.variant.name.localeCompare(right.variant.name);
-        }),
-    [
-      activeVideoDownloads,
-      combinedVideoDiscoverResults,
-      installingLongLive,
-      longLiveReady,
-      sortDir,
-      statusFilter,
-      videoDiscoverSort,
-    ],
+      combinedVideoDiscoverResults.filter((variant) => {
+        if (statusFilter === "all") return true;
+        const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
+        return videoVariantStatus(variant, downloadState, longLiveReady, installingLongLive) === statusFilter;
+      }),
+    [activeVideoDownloads, combinedVideoDiscoverResults, installingLongLive, longLiveReady, statusFilter],
   );
   const hasActiveFilters = videoDiscoverHasActiveFilters || statusFilter !== "all";
-
-  function applySort(nextSort: DiscoverSort) {
-    if (videoDiscoverSort === nextSort) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      onVideoDiscoverSortChange(nextSort);
-      setSortDir(defaultSortDir(nextSort));
-    }
-  }
 
   return (
     <div className="image-discover-stack">
@@ -288,9 +174,8 @@ export function VideoDiscoverTab({
         </div>
 
         {/* FU-025 Phase 9: GUI install action for the Apple-Silicon-only
-            Wan MLX runtime. Lists every supported raw Wan-AI repo,
-            shows converted-on-disk state, and runs the convert action
-            via the /api/setup/install-mlx-video-wan background job. */}
+            Wan MLX runtime. Lists supported raw Wan-AI repos with raw-size
+            hints + install button + live progress via InstallLogPanel. */}
         <WanInstallPanel />
 
         <div className="image-discover-filter-row">
@@ -338,21 +223,13 @@ export function VideoDiscoverTab({
             <select
               className="text-input"
               value={videoDiscoverSort}
-              onChange={(event) => {
-                const nextSort = event.target.value as DiscoverSort;
-                onVideoDiscoverSortChange(nextSort);
-                setSortDir(defaultSortDir(nextSort));
-              }}
+              onChange={(event) => onVideoDiscoverSortChange(event.target.value as DiscoverSort)}
             >
-              <option value="name">Name</option>
-              <option value="provider">Provider</option>
-              <option value="tasks">Tasks</option>
               <option value="release">Newest released</option>
               <option value="size">Largest size</option>
               <option value="ram">Highest RAM/VRAM</option>
               <option value="likes">Most likes</option>
               <option value="downloads">Most downloads</option>
-              <option value="status">Status</option>
             </select>
           </label>
           <div className="image-discover-filter-actions">
@@ -363,8 +240,6 @@ export function VideoDiscoverTab({
                 onVideoDiscoverSearchInputChange("");
                 onVideoDiscoverTaskFilterChange("all");
                 setStatusFilter("all");
-                onVideoDiscoverSortChange("release");
-                setSortDir("desc");
               }}
               disabled={!hasActiveFilters}
             >
@@ -396,25 +271,27 @@ export function VideoDiscoverTab({
       ) : (
         <div className="media-model-table media-model-table--video">
           <div className="media-model-head">
-            <button className="sort-header" type="button" onClick={() => applySort("name")}>Model{sortIndicator(videoDiscoverSort, sortDir, "name")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("provider")}>Provider{sortIndicator(videoDiscoverSort, sortDir, "provider")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>Tasks{sortIndicator(videoDiscoverSort, sortDir, "tasks")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("size")}>
-              Size{sortIndicator(videoDiscoverSort, sortDir, "size")}
+            <span className="sort-header">Model</span>
+            <span className="sort-header">Provider</span>
+            <span className="sort-header">Tasks</span>
+            <button className="sort-header" type="button" onClick={() => onVideoDiscoverSortChange("size")}>
+              Size{sortIndicator(videoDiscoverSort, "size")}
             </button>
-            <button className="sort-header" type="button" onClick={() => applySort("ram")}>
-              RAM/VRAM{sortIndicator(videoDiscoverSort, sortDir, "ram")}
+            <button className="sort-header" type="button" onClick={() => onVideoDiscoverSortChange("ram")}>
+              RAM/VRAM{sortIndicator(videoDiscoverSort, "ram")}
             </button>
-            <button className="sort-header" type="button" onClick={() => applySort("release")}>
-              Released{sortIndicator(videoDiscoverSort, sortDir, "release")}
+            <span className="sort-header">Spec</span>
+            <button className="sort-header" type="button" onClick={() => onVideoDiscoverSortChange("release")}>
+              Date{sortIndicator(videoDiscoverSort, "release")}
             </button>
-            <button className="sort-header" type="button" onClick={() => applySort("status")}>Status{sortIndicator(videoDiscoverSort, sortDir, "status")}</button>
+            <span className="sort-header">Status</span>
             <span className="sort-header"></span>
           </div>
           <div className="media-model-rows">
-            {filteredResults.map(({ variant, status, memoryEstimate }) => {
+            {filteredResults.map((variant) => {
               const isLongLive = isLongLiveRepo(variant.repo);
               const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
+              const status = videoVariantStatus(variant, downloadState, longLiveReady, installingLongLive);
               const isComplete = status === "installed";
               const isDownloading = status === "downloading";
               const isPaused = status === "paused";
@@ -425,15 +302,9 @@ export function VideoDiscoverTab({
                 ? false
                 : Boolean(isComplete || isDownloadComplete || isPaused || isDownloadFailed || isPartial);
               const localStatusReason = !isComplete && !isDownloading ? variant.localStatusReason : null;
+              const memoryEstimate = videoDiscoverMemoryEstimate(variant);
               const secondarySize = videoSecondarySizeLabel(variant);
-              const releaseLabel = compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt));
-              const primarySizeLabel = videoPrimarySizeLabel(variant);
-              const sizeTitle = [primarySizeLabel, secondarySize].filter(Boolean).join(" / ");
-              const memory = memoryParts(memoryEstimate?.label);
-              const deleteRepo = videoDeleteRepoForVariant(variant, downloadState);
-              const deleteLabel = isDownloading
-                ? "Cancel download"
-                : videoDeleteLabelForRepo(variant, deleteRepo, "Delete model");
+              const releaseLabel = formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt);
               return (
                 <div key={variant.id} className={`media-model-row-wrap${isComplete ? " downloaded" : ""}`}>
                   <div className="media-model-row">
@@ -452,12 +323,16 @@ export function VideoDiscoverTab({
                         <span key={task} className="badge muted">{task}</span>
                       ))}
                     </div>
-                    <span title={sizeTitle || undefined}>
-                      {compactModelSizeLabel(primarySizeLabel)}
+                    <span title={secondarySize ?? undefined}>
+                      {videoPrimarySizeLabel(variant)}
+                      {secondarySize ? <small>{secondarySize}</small> : null}
                     </span>
-                    <span className="media-model-memory" title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
-                      <span>{memory.primary}</span>
-                      {memory.secondary ? <small>{memory.secondary}</small> : null}
+                    <span title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
+                      {memoryEstimate?.label ?? "pending"}
+                    </span>
+                    <span>
+                      {variant.recommendedResolution}
+                      <small>{number(variant.defaultDurationSeconds)}s clip</small>
                     </span>
                     <span>
                       {releaseLabel ?? "Unknown"}
@@ -468,35 +343,71 @@ export function VideoDiscoverTab({
                     <div className="media-model-actions">
                       {isLongLive ? (
                         isComplete ? (
-                          <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenVideoStudio(variant.id)} />
+                          <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>
+                            Generate
+                          </button>
                         ) : (
                           <>
-                            <IconActionButton icon="install" label={installingLongLive ? "Installing" : "Install"} onClick={() => void onInstallLongLive()} disabled={installingLongLive} />
+                            <button
+                              className="secondary-button"
+                              type="button"
+                              onClick={() => void onInstallLongLive()}
+                              disabled={installingLongLive}
+                            >
+                              {installingLongLive ? "Installing…" : "Install"}
+                            </button>
                             <InstallLogPanel job={longLiveJob} variant="longlive" />
                           </>
                         )
                       ) : isComplete ? (
-                        <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenVideoStudio(variant.id)} />
+                        <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(variant.id)}>
+                          Generate
+                        </button>
                       ) : isDownloading ? (
                         <>
-                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)} />
-                          <IconActionButton icon="cancel" label={deleteLabel} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
+                          <button className="secondary-button" type="button" onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)}>
+                            Pause
+                          </button>
+                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(downloadState?.repo ?? variant.repo)}>
+                            Cancel
+                          </button>
                         </>
                       ) : isPaused ? (
                         <>
-                          <IconActionButton icon="resume" label="Resume download" onClick={() => onVideoDownload(variant.repo, variant.id)} />
-                          <IconActionButton icon="delete" label={videoDeleteLabelForRepo(variant, deleteRepo, "Delete download")} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
+                          <button className="secondary-button" type="button" onClick={() => onVideoDownload(variant.repo, variant.id)}>
+                            Resume
+                          </button>
+                          <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(downloadState?.repo ?? variant.repo)}>
+                            Delete
+                          </button>
                         </>
                       ) : (
-                        <IconActionButton icon={isDownloadFailed ? "retry" : isPartial ? "resume" : "download"} label={isDownloadFailed ? "Retry download" : isPartial ? "Resume download" : "Download model"} onClick={() => onVideoDownload(variant.repo, variant.id)} />
+                        <button className="secondary-button" type="button" onClick={() => onVideoDownload(variant.repo, variant.id)}>
+                          {isDownloadFailed ? "Retry" : isPartial ? "Resume" : "Download"}
+                        </button>
                       )}
-                      {!isLongLive && !isDownloading && !isPaused && canDeleteLocalData ? (
-                        <IconActionButton icon="delete" label={deleteLabel} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
+                      {!isLongLive && !isDownloading && canDeleteLocalData ? (
+                        <button className="secondary-button danger-button" type="button" onClick={() => onDeleteVideoDownload(downloadState?.repo ?? variant.repo)}>
+                          Delete
+                        </button>
                       ) : null}
                       {variant.localPath ? (
-                        <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(variant.localPath as string)} />
+                        <button
+                          className="secondary-button icon-button"
+                          type="button"
+                          title={fileRevealLabel}
+                          onClick={() => onRevealPath(variant.localPath as string)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </button>
                       ) : null}
-                      <IconActionButton icon="modelCard" label="Open model card" onClick={() => onOpenExternalUrl(variant.link)} />
+                      <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>
+                        Model Card
+                      </button>
                     </div>
                   </div>
                   {isLongLive && !isComplete ? (

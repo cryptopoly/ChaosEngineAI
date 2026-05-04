@@ -49,19 +49,23 @@ from backend_service.video_runtime import (
 )
 
 
-# Repos that route to mlx-video on Apple Silicon. Kept as a frozenset so
-# the Setup page and tests can introspect the supported surface without
-# importing the engine class.
-#
-# Only LTX-2 ships pre-converted MLX weights today — Wan paths go through
-# diffusers MPS until we automate the ``mlx_video.models.wan_2.convert``
-# step. See module docstring for the staged plan.
-_SUPPORTED_REPOS: frozenset[str] = frozenset({
+# Statically-supported repos. LTX-2 ships pre-converted on
+# prince-canuma/LTX-2-* and routes through this set unconditionally.
+# Wan-AI raw checkpoints become routable only when their converted MLX
+# artifacts exist on disk (FU-025) — see ``supported_repos()`` for the
+# dynamic union.
+_LTX2_SUPPORTED_REPOS: frozenset[str] = frozenset({
     "prince-canuma/LTX-2-distilled",
     "prince-canuma/LTX-2-dev",
     "prince-canuma/LTX-2.3-distilled",
     "prince-canuma/LTX-2.3-dev",
 })
+
+# Backwards-compatible alias. Tests + the Setup page used to import
+# ``_SUPPORTED_REPOS`` directly; keep it pointing at the LTX-2 set so
+# their assertions don't break. Callers that want the full dynamic
+# (LTX-2 + converted-Wan) view should use ``supported_repos()``.
+_SUPPORTED_REPOS: frozenset[str] = _LTX2_SUPPORTED_REPOS
 
 
 # Maps repo prefix → mlx-video MODULE path (NOT the console-script alias).
@@ -75,6 +79,11 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
 # this dict points at the real module path.
 _REPO_ENTRY_POINTS: dict[str, str] = {
     "prince-canuma/LTX-2": "mlx_video.models.ltx_2.generate",
+    # FU-025: Wan2.1/2.2 routes through the converted MLX dir.
+    # The CLI takes ``--model-dir <converted path>`` rather than
+    # ``--model-repo <hf id>``; ``_build_wan_cmd`` resolves the
+    # converted dir from ``mlx_video_wan_convert.output_dir_for(repo)``.
+    "Wan-AI/": "mlx_video.models.wan_2.generate",
 }
 
 
@@ -97,26 +106,59 @@ _LTX2_DISTILLED_STAGE_1_STEPS = 8
 _LTX2_DISTILLED_STAGE_2_STEPS = 3
 
 
+def _converted_wan_repos() -> frozenset[str]:
+    """FU-025: Wan-AI repos whose converted MLX artifacts exist on disk.
+
+    Defers the import of ``mlx_video_wan_convert`` so a missing helper
+    module (very unlikely; same package) doesn't bomb the whole
+    runtime. Each call rescans ``CONVERT_ROOT`` so newly-converted
+    weights show up without a process restart — the lookup is cheap
+    (one ``Path.iterdir`` plus per-entry stat checks).
+    """
+    try:
+        from backend_service import mlx_video_wan_convert
+    except Exception:  # noqa: BLE001 — defensive
+        return frozenset()
+    try:
+        return frozenset(s.repo for s in mlx_video_wan_convert.list_converted())
+    except Exception:  # noqa: BLE001
+        return frozenset()
+
+
 def supported_repos() -> frozenset[str]:
-    """Repo ids the MLX video engine accepts.
+    """Repo ids the MLX video engine accepts (dynamic).
+
+    Returns the union of:
+    - LTX-2 pre-converted repos (always available when mlx-video is
+      installed)
+    - Wan-AI raw checkpoints whose ``mlx_video_wan_convert`` artifacts
+      exist on disk (FU-025).
 
     Exposed so the Setup page and tests can enumerate the supported set
     without importing the engine class (which would pull in the heavy
     ``video_runtime`` module and its torch-warmup side effects).
     """
-    return _SUPPORTED_REPOS
+    return _LTX2_SUPPORTED_REPOS | _converted_wan_repos()
 
 
 def _is_mlx_video_repo(repo: str | None) -> bool:
     """Routing helper for the video manager.
 
-    Returns ``True`` only for repos mlx-video supports natively. The
-    manager still consults ``MlxVideoEngine.probe()`` before dispatching
-    — a supported repo on an Intel Mac must fall through to diffusers.
+    Returns ``True`` only for repos mlx-video supports natively at this
+    moment. The manager still consults ``MlxVideoEngine.probe()`` before
+    dispatching — a supported repo on an Intel Mac must fall through to
+    diffusers.
     """
     if not repo:
         return False
-    return repo in _SUPPORTED_REPOS
+    return repo in supported_repos()
+
+
+def _is_wan_repo(repo: str) -> bool:
+    """FU-025 dispatch helper. ``True`` for any Wan-AI repo whose
+    converted artifact exists on disk; the engine then routes through
+    ``_build_wan_cmd`` instead of the LTX-2 builder."""
+    return repo.startswith("Wan-AI/") and repo in _converted_wan_repos()
 
 
 def _resolve_entry_point(repo: str) -> str:
@@ -455,6 +497,20 @@ class MlxVideoEngine:
                     f"{output_path}. Check the subprocess log above."
                 )
             data = output_path.read_bytes()
+            is_wan = _is_wan_repo(config.repo)
+            runtime_note = (
+                self._wan_runtime_note(config.repo)
+                if is_wan
+                else _ltx2_runtime_note(config.repo)
+            )
+            effective_steps = (
+                config.steps if is_wan
+                else _ltx2_effective_steps(config.repo, config.steps)
+            )
+            effective_guidance = (
+                config.guidance if is_wan
+                else _ltx2_effective_guidance(config.repo, config.guidance)
+            )
             return GeneratedVideo(
                 seed=resolved_seed,
                 bytes=data,
@@ -466,9 +522,9 @@ class MlxVideoEngine:
                 width=config.width,
                 height=config.height,
                 runtimeLabel=self.runtime_label,
-                runtimeNote=_ltx2_runtime_note(config.repo),
-                effectiveSteps=_ltx2_effective_steps(config.repo, config.steps),
-                effectiveGuidance=_ltx2_effective_guidance(config.repo, config.guidance),
+                runtimeNote=runtime_note,
+                effectiveSteps=effective_steps,
+                effectiveGuidance=effective_guidance,
             )
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
@@ -485,12 +541,13 @@ class MlxVideoEngine:
         """Compose the ``python -m mlx_video.<entry> --...`` invocation.
 
         Split out so tests can assert the CLI shape without spawning a
-        real subprocess. Flags mirror Blaizzy/mlx-video's
-        ``mlx_video.models.ltx_2.generate`` argparse surface — note the
-        names differ from diffusers conventions: ``--model-repo`` (not
-        ``--model``), ``--cfg-scale`` (not ``--guidance``),
-        ``--output-path`` (not ``--output``).
+        real subprocess. Wan-AI repos route to ``_build_wan_cmd``
+        because the Wan generate CLI takes ``--model-dir <converted
+        path>`` and a different flag set than LTX-2's
+        ``--model-repo``/``--pipeline``/``--cfg-scale``.
         """
+        if _is_wan_repo(config.repo):
+            return self._build_wan_cmd(config, output_path)
         entry = _resolve_entry_point(config.repo)
         python = _resolve_video_python()
         pipeline_flag = _resolve_pipeline_flag(config.repo)
@@ -542,6 +599,60 @@ class MlxVideoEngine:
         # pipelines ignore the flag (fixed sampler).
         cmd.extend(["--stg-scale", str(config.stgScale)])
         return cmd
+
+    def _build_wan_cmd(
+        self,
+        config: VideoGenerationConfig,
+        output_path: Path,
+    ) -> list[str]:
+        """FU-025: Wan2.1/2.2 generate CLI is shaped differently than
+        LTX-2 (``--model-dir`` instead of ``--model-repo``, no
+        ``--pipeline``, no ``--cfg-scale`` / ``--fps``, single
+        ``--guide-scale`` string that can carry a low,high pair).
+
+        The converted MLX dir comes from
+        ``mlx_video_wan_convert.output_dir_for(repo)`` — runtime
+        resolution is centralised so a future change to the convert
+        layout doesn't fragment across builders.
+        """
+        from backend_service import mlx_video_wan_convert
+
+        entry = _resolve_entry_point(config.repo)
+        python = _resolve_video_python()
+        model_dir = mlx_video_wan_convert.output_dir_for(config.repo)
+        cmd = [
+            python,
+            "-m", entry,
+            "--model-dir", str(model_dir),
+            "--prompt", config.prompt,
+            "--num-frames", str(config.numFrames),
+            "--height", str(config.height),
+            "--width", str(config.width),
+            "--output-path", str(output_path),
+            # Wan generate accepts a string ``low,high`` pair; pass the
+            # configured guidance as a single float and let upstream
+            # default to balanced when it's the canonical 5.0/3.0 pair.
+            "--guide-scale", f"{config.guidance:g}",
+        ]
+        if config.steps and config.steps > 0:
+            cmd.extend(["--steps", str(config.steps)])
+        if config.negativePrompt:
+            cmd.extend(["--negative-prompt", config.negativePrompt])
+        if config.seed is not None:
+            cmd.extend(["--seed", str(config.seed)])
+        if config.scheduler and config.scheduler in {"unipc", "euler", "dpm++"}:
+            cmd.extend(["--scheduler", config.scheduler])
+        return cmd
+
+    def _wan_runtime_note(self, repo: str) -> str:
+        from backend_service.mlx_video_wan_convert import output_dir_for, status_for
+
+        status = status_for(repo)
+        suffix = " (MoE high+low noise experts)" if status.hasMoeExperts else ""
+        return (
+            f"mlx-video subprocess (MLX native, Wan2.x{suffix}, "
+            f"converted at {output_dir_for(repo).name})"
+        )
 
     def _launch(
         self,

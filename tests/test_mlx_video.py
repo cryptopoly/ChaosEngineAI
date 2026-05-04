@@ -517,5 +517,201 @@ class VideoManagerExposesMlxVideoTests(unittest.TestCase):
         self.assertEqual(runtime["activeEngine"], "diffusers")
 
 
+class MlxVideoWanRoutingTests(unittest.TestCase):
+    """FU-025: Wan-AI repos route through mlx-video only when their
+    converted MLX artifacts exist on disk.
+
+    Tests mock ``mlx_video_wan_convert.list_converted`` (and
+    ``status_for`` / ``output_dir_for`` where needed) so the suite
+    runs without real converted weights on disk.
+    """
+
+    @staticmethod
+    def _fake_status(repo: str, *, has_moe: bool = False):
+        from backend_service.mlx_video_wan_convert import WanConvertStatus
+        return WanConvertStatus(
+            repo=repo,
+            converted=True,
+            outputDir=f"/tmp/fake-mlx-video-wan/{repo.replace('/', '__')}",
+            hasTransformer=True,
+            hasMoeExperts=has_moe,
+            hasVae=True,
+            hasTextEncoder=True,
+            note=None,
+        )
+
+    def test_supported_repos_excludes_wan_when_no_converted(self):
+        from backend_service import mlx_video_runtime
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=[],
+        ):
+            repos = mlx_video_runtime.supported_repos()
+        self.assertNotIn("Wan-AI/Wan2.1-T2V-1.3B", repos)
+        # LTX-2 stays supported regardless.
+        self.assertIn("prince-canuma/LTX-2-distilled", repos)
+
+    def test_supported_repos_includes_converted_wan(self):
+        from backend_service import mlx_video_runtime
+        fakes = [
+            self._fake_status("Wan-AI/Wan2.1-T2V-1.3B"),
+            self._fake_status("Wan-AI/Wan2.2-TI2V-5B"),
+        ]
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=fakes,
+        ):
+            repos = mlx_video_runtime.supported_repos()
+        self.assertIn("Wan-AI/Wan2.1-T2V-1.3B", repos)
+        self.assertIn("Wan-AI/Wan2.2-TI2V-5B", repos)
+        self.assertIn("prince-canuma/LTX-2-distilled", repos)
+
+    def test_is_wan_repo_only_when_converted(self):
+        from backend_service import mlx_video_runtime
+        fake = [self._fake_status("Wan-AI/Wan2.1-T2V-1.3B")]
+
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=fake,
+        ):
+            self.assertTrue(mlx_video_runtime._is_wan_repo("Wan-AI/Wan2.1-T2V-1.3B"))
+            self.assertFalse(mlx_video_runtime._is_wan_repo("Wan-AI/Wan2.2-TI2V-5B"))
+
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=[],
+        ):
+            self.assertFalse(mlx_video_runtime._is_wan_repo("Wan-AI/Wan2.1-T2V-1.3B"))
+
+    def test_is_mlx_video_repo_routes_converted_wan(self):
+        from backend_service import mlx_video_runtime
+        fake = [self._fake_status("Wan-AI/Wan2.1-T2V-1.3B")]
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=fake,
+        ):
+            self.assertTrue(
+                mlx_video_runtime._is_mlx_video_repo("Wan-AI/Wan2.1-T2V-1.3B")
+            )
+            # -Diffusers mirror still routes through diffusers.
+            self.assertFalse(
+                mlx_video_runtime._is_mlx_video_repo("Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
+            )
+
+    def test_resolve_entry_point_routes_wan_to_wan_2_module(self):
+        from backend_service.mlx_video_runtime import _resolve_entry_point
+        self.assertEqual(
+            _resolve_entry_point("Wan-AI/Wan2.1-T2V-1.3B"),
+            "mlx_video.models.wan_2.generate",
+        )
+        self.assertEqual(
+            _resolve_entry_point("Wan-AI/Wan2.2-T2V-A14B"),
+            "mlx_video.models.wan_2.generate",
+        )
+
+    def test_build_wan_cmd_emits_correct_cli_flags(self):
+        from backend_service.mlx_video_runtime import MlxVideoEngine
+        from backend_service.video_runtime import VideoGenerationConfig
+        engine = MlxVideoEngine()
+        config = VideoGenerationConfig(
+            modelId="wan-test",
+            modelName="Wan 2.1 T2V 1.3B",
+            repo="Wan-AI/Wan2.1-T2V-1.3B",
+            prompt="A serene mountain landscape at sunset",
+            negativePrompt="blurry, low quality",
+            width=832,
+            height=480,
+            numFrames=81,
+            fps=24,
+            steps=30,
+            guidance=5.0,
+            seed=42,
+            scheduler="unipc",
+        )
+        cmd = engine._build_wan_cmd(config, output_path=Path("/tmp/wan-out.mp4"))
+        # Entry point + key flags
+        self.assertIn("-m", cmd)
+        self.assertIn("mlx_video.models.wan_2.generate", cmd)
+        self.assertIn("--model-dir", cmd)
+        self.assertIn("--prompt", cmd)
+        self.assertIn("A serene mountain landscape at sunset", cmd)
+        self.assertIn("--num-frames", cmd)
+        self.assertIn("81", cmd)
+        self.assertIn("--width", cmd)
+        self.assertIn("832", cmd)
+        self.assertIn("--height", cmd)
+        self.assertIn("480", cmd)
+        self.assertIn("--steps", cmd)
+        self.assertIn("30", cmd)
+        self.assertIn("--guide-scale", cmd)
+        self.assertIn("5", cmd)
+        self.assertIn("--seed", cmd)
+        self.assertIn("42", cmd)
+        self.assertIn("--negative-prompt", cmd)
+        self.assertIn("blurry, low quality", cmd)
+        self.assertIn("--scheduler", cmd)
+        self.assertIn("unipc", cmd)
+        self.assertIn("--output-path", cmd)
+        # Wan CLI does NOT take LTX-2 flags — must NOT leak in.
+        self.assertNotIn("--model-repo", cmd)
+        self.assertNotIn("--pipeline", cmd)
+        self.assertNotIn("--cfg-scale", cmd)
+        self.assertNotIn("--fps", cmd)
+
+    def test_build_wan_cmd_omits_optional_flags_when_unset(self):
+        from backend_service.mlx_video_runtime import MlxVideoEngine
+        from backend_service.video_runtime import VideoGenerationConfig
+        engine = MlxVideoEngine()
+        config = VideoGenerationConfig(
+            modelId="x", modelName="x",
+            repo="Wan-AI/Wan2.2-T2V-A14B",
+            prompt="cat",
+            negativePrompt="",
+            width=832, height=480,
+            numFrames=49, fps=24, steps=0, guidance=5.0,
+            seed=None,
+            scheduler=None,
+        )
+        cmd = engine._build_wan_cmd(config, output_path=Path("/tmp/wan-out.mp4"))
+        # Optional flags absent
+        self.assertNotIn("--negative-prompt", cmd)
+        self.assertNotIn("--seed", cmd)
+        self.assertNotIn("--scheduler", cmd)
+        self.assertNotIn("--steps", cmd)
+
+    def test_build_cmd_dispatches_to_wan_when_repo_converted(self):
+        from backend_service.mlx_video_runtime import MlxVideoEngine
+        from backend_service.video_runtime import VideoGenerationConfig
+        engine = MlxVideoEngine()
+        fake = [self._fake_status("Wan-AI/Wan2.1-T2V-1.3B")]
+        config = VideoGenerationConfig(
+            modelId="x", modelName="x",
+            repo="Wan-AI/Wan2.1-T2V-1.3B",
+            prompt="hi",
+            negativePrompt="",
+            width=512, height=512, numFrames=33, fps=24, steps=20, guidance=5.0,
+        )
+        with patch(
+            "backend_service.mlx_video_wan_convert.list_converted",
+            return_value=fake,
+        ):
+            cmd = engine._build_cmd(config, Path("/tmp/x.mp4"))
+        # Wan branch wins → wan_2.generate, not ltx_2.generate
+        self.assertIn("mlx_video.models.wan_2.generate", cmd)
+        self.assertNotIn("mlx_video.models.ltx_2.generate", cmd)
+
+    def test_wan_runtime_note_flags_moe_experts(self):
+        from backend_service.mlx_video_runtime import MlxVideoEngine
+        engine = MlxVideoEngine()
+        moe_status = self._fake_status("Wan-AI/Wan2.2-T2V-A14B", has_moe=True)
+        with patch(
+            "backend_service.mlx_video_wan_convert.status_for",
+            return_value=moe_status,
+        ):
+            note = engine._wan_runtime_note("Wan-AI/Wan2.2-T2V-A14B")
+        self.assertIn("MoE", note)
+        self.assertIn("Wan2.x", note)
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

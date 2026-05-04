@@ -149,7 +149,18 @@ def status_for(repo: str) -> WanConvertStatus:
             note="Output directory does not exist; conversion not run yet.",
         )
 
-    has_single_transformer = any(out.glob("transformer*.safetensors")) or (out / "transformer").is_dir()
+    # mlx-video upstream layout (verified 2026-05-04 against Wan2.1-T2V-1.3B):
+    #   - Single-DiT (Wan2.1, Wan2.2 5B):  model.safetensors at the root
+    #   - MoE (Wan2.2 A14B):               high_noise_model/ + low_noise_model/ subdirs
+    #   - Text encoder:                     t5_encoder.safetensors at the root
+    #   - VAE:                              vae.safetensors at the root
+    # The legacy `transformer*.safetensors` / `text_encoder*.safetensors`
+    # patterns stay as fallbacks in case upstream renames in a future cut.
+    has_single_transformer = (
+        (out / "model.safetensors").exists()
+        or any(out.glob("transformer*.safetensors"))
+        or (out / "transformer").is_dir()
+    )
     has_high = (out / "high_noise_model").is_dir()
     has_low = (out / "low_noise_model").is_dir()
     has_moe = has_high and has_low
@@ -160,7 +171,8 @@ def status_for(repo: str) -> WanConvertStatus:
         or any(out.glob("vae*.safetensors"))
     )
     has_text_encoder = (
-        any(out.glob("text_encoder*.safetensors"))
+        (out / "t5_encoder.safetensors").exists()
+        or any(out.glob("text_encoder*.safetensors"))
         or any(out.glob("models_t5*.safetensors"))
         or any(out.glob("umt5*.safetensors"))
     )

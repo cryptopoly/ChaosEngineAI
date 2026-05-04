@@ -69,7 +69,12 @@ class MlxVideoSupportedReposTests(unittest.TestCase):
 
     def test_supported_repos_is_frozen(self):
         self.assertIsInstance(supported_repos(), frozenset)
-        self.assertEqual(supported_repos(), _SUPPORTED_REPOS)
+        # supported_repos() returns the dynamic union of LTX-2 + on-disk
+        # converted Wan repos (FU-009 / FU-025 Phase 8). The static
+        # ``_SUPPORTED_REPOS`` constant is the LTX-2 baseline only —
+        # always a subset of the live result, never equal once a Wan
+        # conversion lands under CONVERT_ROOT.
+        self.assertTrue(_SUPPORTED_REPOS.issubset(supported_repos()))
 
     def test_is_mlx_video_repo_matches_set(self):
         for repo in _SUPPORTED_REPOS:

@@ -108,6 +108,23 @@ class StatusForTests(unittest.TestCase):
         self.assertTrue(status.hasVae)
         self.assertTrue(status.hasTextEncoder)
 
+    def test_status_recognises_mlx_video_upstream_layout(self):
+        """Live mlx-video upstream layout (verified 2026-05-04 against
+        Wan-AI/Wan2.1-T2V-1.3B): root-level ``model.safetensors`` for the
+        transformer, ``t5_encoder.safetensors`` for the text encoder,
+        ``vae.safetensors`` for the VAE, plus ``config.json``."""
+        out = output_dir_for("Wan-AI/Wan2.1-T2V-1.3B")
+        out.mkdir(parents=True)
+        (out / "model.safetensors").write_bytes(b"fake")
+        (out / "vae.safetensors").write_bytes(b"fake")
+        (out / "t5_encoder.safetensors").write_bytes(b"fake")
+        (out / "config.json").write_text("{}")
+        status = status_for("Wan-AI/Wan2.1-T2V-1.3B")
+        self.assertTrue(status.converted)
+        self.assertTrue(status.hasTransformer)
+        self.assertTrue(status.hasVae)
+        self.assertTrue(status.hasTextEncoder)
+
     def test_status_when_wan22_moe_experts_present(self):
         out = output_dir_for("Wan-AI/Wan2.2-T2V-A14B")
         out.mkdir(parents=True)

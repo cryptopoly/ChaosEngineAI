@@ -109,6 +109,12 @@ export function useImageState(
     useState<number | null>(null);
   // FU-021: opt-in CFG decay schedule for flow-match models.
   const [imageCfgDecay, setImageCfgDecay] = useState(false);
+  // FU-018: opt-in TAESD preview-decode VAE swap. Off by default —
+  // image users typically want full fidelity. When on, the engine
+  // swaps ``pipeline.vae`` for the matching tiny VAE for the run, so
+  // each step decodes in a fraction of the wall-time at the cost of
+  // final image fidelity.
+  const [imagePreviewVae, setImagePreviewVae] = useState(false);
   const [imageRatioId, setImageRatioId] = useState<(typeof IMAGE_RATIO_PRESETS)[number]["id"]>("square");
   const [imageWidth, setImageWidth] = useState(1024);
   const [imageHeight, setImageHeight] = useState(1024);
@@ -528,6 +534,7 @@ export function useImageState(
         cacheStrategy: imageCacheStrategy === "none" ? null : imageCacheStrategy,
         cacheRelL1Thresh: imageCacheRelL1Thresh,
         cfgDecay: imageCfgDecay,
+        previewVae: imagePreviewVae,
       });
       setImageOutputs(response.outputs);
       if (response.runtime) setImageRuntimeStatus(response.runtime);
@@ -755,6 +762,8 @@ export function useImageState(
     setImageCacheRelL1Thresh,
     imageCfgDecay,
     setImageCfgDecay,
+    imagePreviewVae,
+    setImagePreviewVae,
     imageRatioId,
     imageWidth,
     setImageWidth,

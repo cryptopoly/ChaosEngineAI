@@ -462,6 +462,7 @@ export function BenchmarkRunTab({
           fitModelInMemory: benchmarkDraft.fitModelInMemory,
           speculativeDecoding: benchmarkDraft.speculativeDecoding,
           treeBudget: benchmarkDraft.treeBudget,
+          kvBudget: benchmarkDraft.kvBudget,
         }}
         preview={preview}
         availableMemoryGb={workspace.system.availableMemoryGb}

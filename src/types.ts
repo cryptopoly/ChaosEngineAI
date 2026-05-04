@@ -183,6 +183,13 @@ export interface LaunchPreferences {
   fitModelInMemory: boolean;
   speculativeDecoding: boolean;
   treeBudget: number;
+  /** FU-002: TriAttention MLX kv_budget — number of KV positions kept
+   * per layer; older positions get scored + evicted by the
+   * apply_triattention_mlx compressor. Only consulted when
+   * cacheStrategy === "triattention"; ignored otherwise. Default
+   * 2048 matches the upstream default + the spike-validated value
+   * on Qwen2.5-0.5B (2.6× speedup, identical output). */
+  kvBudget: number;
 }
 
 export interface StrategyInstallLogStep {
@@ -700,6 +707,9 @@ export interface LoadModelPayload {
   fitModelInMemory?: boolean;
   contextTokens?: number;
   speculativeDecoding?: boolean;
+  /** FU-002: TriAttention MLX kv_budget. Backend defaults to 2048
+   * when omitted; only consulted when ``cacheStrategy === "triattention"``. */
+  kvBudget?: number;
 }
 
 export interface CreateSessionResponse {
@@ -883,6 +893,8 @@ export interface BenchmarkRunPayload {
   fitModelInMemory: boolean;
   speculativeDecoding: boolean;
   treeBudget: number;
+  /** FU-002: TriAttention MLX kv_budget. Defaults to 2048 server-side. */
+  kvBudget: number;
   contextTokens: number;
   maxTokens: number;
   temperature: number;
@@ -1157,6 +1169,10 @@ export interface VideoGenerationPayload {
   enhancePrompt?: boolean;
   cfgDecay?: boolean;
   stgScale?: number;
+  /** FU-018: TAESD/TAEHV preview-decode VAE swap. Preview-only
+   * quality knob; default off (video users typically want full
+   * fidelity). */
+  previewVae?: boolean;
   /** FU-015: cache strategy id ("fbcache" / "teacache" / "none"). */
   cacheStrategy?: VideoCacheStrategyId | null;
   /** Optional caching threshold override; null uses strategy default. */
@@ -1217,6 +1233,10 @@ export interface ImageGenerationPayload {
    * typically want consistent CFG. Backend gates non-flow-match
    * repos automatically. */
   cfgDecay?: boolean;
+  /** FU-018: TAESD preview-decode VAE swap. Preview-only quality
+   * knob — when on, the engine swaps ``pipeline.vae`` for the
+   * matching tiny VAE for the duration of the run. Default off. */
+  previewVae?: boolean;
 }
 
 export interface VideoGenerationCachePayload {

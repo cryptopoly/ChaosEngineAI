@@ -91,6 +91,8 @@ export interface ImageStudioTabProps {
   /** FU-021: opt-in CFG decay for flow-match image models. */
   imageCfgDecay: boolean;
   onImageCfgDecayChange: (value: boolean) => void;
+  imagePreviewVae: boolean;
+  onImagePreviewVaeChange: (value: boolean) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -166,6 +168,8 @@ export function ImageStudioTab({
   onImageCacheRelL1ThreshChange,
   imageCfgDecay,
   onImageCfgDecayChange,
+  imagePreviewVae,
+  onImagePreviewVaeChange,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
@@ -820,6 +824,28 @@ export function ImageStudioTab({
               </span>
             </label>
           ) : null}
+
+          {/*
+            FU-018: TAESD preview-decode VAE swap. Off by default —
+            image users typically want full fidelity. Backend maps
+            the loaded repo to the matching tiny VAE
+            (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
+            repos no-op silently.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={imagePreviewVae}
+              onChange={(event) => onImagePreviewVaeChange(event.target.checked)}
+            />
+            <span>
+              <strong>Preview VAE</strong> — swap the full VAE for the
+              matching tiny VAE (TAESD / TAEHV) so each step decodes
+              in a fraction of the wall-time. Trades final fidelity
+              for iteration speed. Off by default.
+              <InfoTooltip text="Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises." />
+            </span>
+          </label>
 
           <div className="field-grid image-field-grid">
             <label>

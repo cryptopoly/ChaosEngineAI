@@ -202,6 +202,12 @@ export function useVideoState(
   // preserve fine detail. Default-on; opt-out for users who prefer
   // constant CFG (matches the diffusers pipeline default behaviour).
   const [videoCfgDecay, setVideoCfgDecay] = useState<boolean>(true);
+  // FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default —
+  // video users typically want full fidelity. When on, the engine
+  // swaps ``pipeline.vae`` for the matching tiny VAE (taew2_2 for
+  // Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo,
+  // taecogvideox / taemochi for the others) for the run.
+  const [videoPreviewVae, setVideoPreviewVae] = useState<boolean>(false);
   // FU-015 + TeaCache. Cross-platform diffusion cache strategy id —
   // ``"none"`` keeps the stock pipeline (default for upgrade
   // compatibility), ``"fbcache"`` is the broad recommendation,
@@ -714,6 +720,7 @@ export function useVideoState(
       enhancePrompt: videoEnhancePrompt,
       cfgDecay: videoCfgDecay,
       stgScale: videoStgScale,
+      previewVae: videoPreviewVae,
       // FU-015: forward the cache knob. ``"none"`` collapses to null
       // so the backend skips the strategy lookup entirely.
       cacheStrategy: videoCacheStrategy === "none" ? null : videoCacheStrategy,
@@ -987,6 +994,8 @@ export function useVideoState(
     videoCacheRelL1Thresh,
     setVideoCacheRelL1Thresh,
     setVideoCfgDecay,
+    videoPreviewVae,
+    setVideoPreviewVae,
     videoStgScale,
     setVideoStgScale,
     videoFastPreview,

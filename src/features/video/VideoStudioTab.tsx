@@ -71,6 +71,9 @@ export interface VideoStudioTabProps {
   onVideoEnhancePromptChange: (value: boolean) => void;
   videoCfgDecay: boolean;
   onVideoCfgDecayChange: (value: boolean) => void;
+  /** FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default. */
+  videoPreviewVae: boolean;
+  onVideoPreviewVaeChange: (value: boolean) => void;
   /** FU-015: diffusion cache strategy id ("none" / "fbcache" / "teacache"). */
   videoCacheStrategy: VideoCacheStrategyId;
   onVideoCacheStrategyChange: (value: VideoCacheStrategyId) => void;
@@ -263,6 +266,8 @@ export function VideoStudioTab({
   onVideoEnhancePromptChange,
   videoCfgDecay,
   onVideoCfgDecayChange,
+  videoPreviewVae,
+  onVideoPreviewVaeChange,
   videoCacheStrategy,
   onVideoCacheStrategyChange,
   videoCacheRelL1Thresh,
@@ -1311,6 +1316,26 @@ export function VideoStudioTab({
             <span>
               <strong>CFG decay</strong>
               <InfoTooltip text="Linearly drops guidance_scale from your slider value at step 0 toward 1.5 (the floor that keeps classifier-free guidance enabled end-to-end) at the final step. Flow-match video models (Wan, LTX, HunyuanVideo) oversaturate when CFG stays high throughout sampling; decay lets early steps lock semantics and late steps preserve fine detail. Default on for video — the runtime gates non-flow-match repos automatically." />
+            </span>
+          </label>
+
+          {/*
+            FU-018: TAESD/TAEHV preview-decode VAE swap. Off by
+            default — video users typically want full fidelity.
+            Backend maps the loaded repo to the matching tiny VAE
+            (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for
+            HunyuanVideo, taecogvideox / taemochi for the others);
+            unmapped repos no-op silently.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoPreviewVae}
+              onChange={(event) => onVideoPreviewVaeChange(event.target.checked)}
+            />
+            <span>
+              <strong>Preview VAE</strong>
+              <InfoTooltip text="Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE." />
             </span>
           </label>
 

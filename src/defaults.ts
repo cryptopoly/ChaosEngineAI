@@ -24,6 +24,7 @@ export const emptyLaunchPreferences: LaunchPreferences = {
   fitModelInMemory: true,
   speculativeDecoding: false,
   treeBudget: 0,
+  kvBudget: 2048,
 };
 
 export const emptySettings: AppSettings = {

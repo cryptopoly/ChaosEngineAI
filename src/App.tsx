@@ -423,6 +423,7 @@ export default function App() {
     contextTokens?: number;
     speculativeDecoding?: boolean;
     treeBudget?: number;
+    kvBudget?: number;
   }): Promise<LoadModelActionResult> {
     setError(null);
     setBusyAction(payload.busyLabel ?? "Loading model...");
@@ -450,6 +451,7 @@ export default function App() {
         contextTokens: payload.contextTokens ?? launchSettings.contextTokens,
         speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
         treeBudget: sanitizedSpeculative.treeBudget,
+        kvBudget: payload.kvBudget ?? launchSettings.kvBudget,
       };
 
       let loadSucceeded = false;
@@ -1397,6 +1399,8 @@ export default function App() {
         onImageCacheRelL1ThreshChange={imgState.setImageCacheRelL1Thresh}
         imageCfgDecay={imgState.imageCfgDecay}
         onImageCfgDecayChange={imgState.setImageCfgDecay}
+        imagePreviewVae={imgState.imagePreviewVae}
+        onImagePreviewVaeChange={imgState.setImagePreviewVae}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1567,6 +1571,8 @@ export default function App() {
         onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
         videoCfgDecay={videoState.videoCfgDecay}
         onVideoCfgDecayChange={videoState.setVideoCfgDecay}
+        videoPreviewVae={videoState.videoPreviewVae}
+        onVideoPreviewVaeChange={videoState.setVideoPreviewVae}
         videoCacheStrategy={videoState.videoCacheStrategy}
         onVideoCacheStrategyChange={videoState.setVideoCacheStrategy}
         videoCacheRelL1Thresh={videoState.videoCacheRelL1Thresh}

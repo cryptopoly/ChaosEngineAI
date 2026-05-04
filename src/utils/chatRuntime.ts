@@ -2,7 +2,7 @@ import type { ChatSession, LaunchPreferences, LoadedModel } from "../types";
 
 export type ChatRuntimeProfile = Pick<
   LaunchPreferences,
-  "cacheBits" | "fp16Layers" | "fusedAttention" | "cacheStrategy" | "fitModelInMemory" | "contextTokens" | "speculativeDecoding" | "treeBudget"
+  "cacheBits" | "fp16Layers" | "fusedAttention" | "cacheStrategy" | "fitModelInMemory" | "contextTokens" | "speculativeDecoding" | "treeBudget" | "kvBudget"
 >;
 
 export function resolveChatRuntimeProfile(
@@ -24,6 +24,7 @@ export function resolveChatRuntimeProfile(
     contextTokens: launchSettings.contextTokens,
     speculativeDecoding: launchSettings.speculativeDecoding,
     treeBudget: launchSettings.treeBudget,
+    kvBudget: launchSettings.kvBudget,
   };
 }
 

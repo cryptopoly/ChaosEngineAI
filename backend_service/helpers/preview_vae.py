@@ -40,6 +40,11 @@ _PREVIEW_VAE_MAP: list[tuple[str, str]] = [
     ("fal/FLUX.2", "madebyollin/taef2"),
     ("stabilityai/stable-diffusion-3", "madebyollin/taesd3"),
     ("stabilityai/stable-diffusion-xl", "madebyollin/taesdxl"),
+    # Turbo / Lightning variants ship under shorter repo ids
+    # (no ``stable-diffusion-xl`` prefix) so they need explicit entries.
+    ("stabilityai/sdxl-turbo", "madebyollin/taesdxl"),
+    ("stabilityai/sd-turbo", "madebyollin/taesd"),
+    ("ByteDance/SDXL-Lightning", "madebyollin/taesdxl"),
     ("stabilityai/stable-diffusion-2", "madebyollin/taesd"),
     ("stabilityai/stable-diffusion-v1", "madebyollin/taesd"),
     ("runwayml/stable-diffusion-v1", "madebyollin/taesd"),
@@ -90,6 +95,7 @@ def maybe_apply_preview_vae(
         return "Preview VAE skipped: pipeline has no .vae attribute."
 
     target_dtype = getattr(target_vae, "dtype", None)
+    target_device = getattr(target_vae, "device", None)
 
     try:
         from diffusers import AutoencoderTiny
@@ -116,6 +122,21 @@ def maybe_apply_preview_vae(
             return (
                 f"Preview VAE {preview_id} not cached and download failed "
                 f"({type(exc).__name__}: {exc}). Using stock VAE."
+            )
+
+    # ``from_pretrained`` defaults to CPU. Match the stock VAE's device
+    # so the swap doesn't trigger a device-type mismatch on the first
+    # decoder call (e.g. SDXL on MPS would otherwise raise
+    # ``Input type (MPSHalfType) and weight type (torch.HalfTensor)
+    # should be the same``).
+    if target_device is not None:
+        try:
+            preview_vae = preview_vae.to(target_device)
+        except Exception as exc:
+            return (
+                f"Preview VAE {preview_id} loaded but device move to "
+                f"{target_device} failed ({type(exc).__name__}: {exc}). "
+                "Using stock VAE."
             )
 
     pipeline.vae = preview_vae

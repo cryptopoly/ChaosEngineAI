@@ -45,6 +45,27 @@ class ResolvePreviewVaeIdTests(unittest.TestCase):
             "madebyollin/taesdxl",
         )
 
+    def test_sdxl_turbo_maps_to_taesdxl(self):
+        # Turbo + Lightning variants ship under shorter repo ids that don't
+        # share the ``stable-diffusion-xl`` prefix, so they need explicit
+        # mapping entries (live smoke 2026-05-04 caught the gap).
+        self.assertEqual(
+            resolve_preview_vae_id("stabilityai/sdxl-turbo"),
+            "madebyollin/taesdxl",
+        )
+
+    def test_sd_turbo_maps_to_taesd(self):
+        self.assertEqual(
+            resolve_preview_vae_id("stabilityai/sd-turbo"),
+            "madebyollin/taesd",
+        )
+
+    def test_sdxl_lightning_maps_to_taesdxl(self):
+        self.assertEqual(
+            resolve_preview_vae_id("ByteDance/SDXL-Lightning"),
+            "madebyollin/taesdxl",
+        )
+
     def test_sd3_maps_to_taesd3(self):
         self.assertEqual(
             resolve_preview_vae_id("stabilityai/stable-diffusion-3.5-large"),
@@ -218,6 +239,71 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         self.assertIn("madebyollin/taeltx2_3_wide", note)
         self.assertIs(pipeline.vae, sentinel)
         self.assertEqual(mock_cls.from_pretrained.call_count, 2)
+
+    def test_swap_moves_preview_vae_to_target_device(self):
+        """Live SDXL-Turbo on MPS surfaced the device gap (2026-05-04):
+        ``AutoencoderTiny.from_pretrained`` defaults to CPU. Without a
+        ``.to(device)`` call the first decoder pass raises
+        ``Input type (MPSHalfType) and weight type (torch.HalfTensor)
+        should be the same``. The helper now mirrors the stock VAE's
+        device onto the swapped tiny VAE."""
+        try:
+            import diffusers  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers not available")
+
+        original_vae = SimpleNamespace(dtype="fp16", device="mps")
+
+        class FakeTinyVae:
+            def __init__(self) -> None:
+                self.moved_to: str | None = None
+
+            def to(self, device: str) -> "FakeTinyVae":
+                self.moved_to = device
+                return self
+
+        sentinel = FakeTinyVae()
+        pipeline = SimpleNamespace(vae=original_vae)
+
+        with patch("diffusers.AutoencoderTiny") as mock_cls:
+            mock_cls.from_pretrained.return_value = sentinel
+            note = maybe_apply_preview_vae(
+                pipeline,
+                repo="stabilityai/sdxl-turbo",
+                enabled=True,
+            )
+
+        self.assertIsNotNone(note)
+        self.assertIs(pipeline.vae, sentinel)
+        self.assertEqual(sentinel.moved_to, "mps")
+
+    def test_swap_returns_skip_note_when_device_move_fails(self):
+        try:
+            import diffusers  # noqa: F401
+        except ImportError:
+            self.skipTest("diffusers not available")
+
+        original_vae = SimpleNamespace(dtype="fp16", device="cuda:0")
+
+        class ExplodingTinyVae:
+            def to(self, device: str) -> "ExplodingTinyVae":
+                raise RuntimeError("device move blew up")
+
+        exploding = ExplodingTinyVae()
+        pipeline = SimpleNamespace(vae=original_vae)
+
+        with patch("diffusers.AutoencoderTiny") as mock_cls:
+            mock_cls.from_pretrained.return_value = exploding
+            note = maybe_apply_preview_vae(
+                pipeline,
+                repo="black-forest-labs/FLUX.1-dev",
+                enabled=True,
+            )
+
+        self.assertIsNotNone(note)
+        self.assertIn("device move", note)
+        # Stock VAE stays in place when the device move fails.
+        self.assertIs(pipeline.vae, original_vae)
 
 
 if __name__ == "__main__":

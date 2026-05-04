@@ -77,7 +77,14 @@ diffusion-accel = [
 # and A2V. The engine is a subprocess wrapper (like mflux for image), so the
 # dependency is only pulled in when the user opts into the Mac-native video
 # path on Apple Silicon (FU-009).
-mlx-video = ["mlx-video"]
+#
+# IMPORTANT: install from GIT, not PyPI. PyPI's ``mlx-video==0.1.0`` is an
+# unrelated 0.1.0 utilities package (just ``load``/``normalize``/``resize``/
+# ``to_float``) — does NOT ship the LTX-2 / Wan / HunyuanVideo generation
+# entrypoints we wrap. Blaizzy's repo lives only on GitHub; pin by branch so
+# new model entries (Wan2.2-Distill, LTX-2.3, etc.) land without needing a
+# PyPI release every time.
+mlx-video = ["mlx-video @ git+https://github.com/Blaizzy/mlx-video.git"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

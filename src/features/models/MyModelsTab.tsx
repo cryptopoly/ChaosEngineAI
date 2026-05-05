@@ -465,9 +465,6 @@ export function MyModelsTab({
                           </>
                         ) : (
                           <>
-                            {!item.broken && displayFormat !== "MLX" ? (
-                              <IconActionButton icon="convert" label="Convert model" buttonStyle="primary" className="action-convert" onClick={() => onPrepareLibraryConversion(item)} />
-                            ) : null}
                             {!item.broken ? (
                               <>
                                 <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)} />

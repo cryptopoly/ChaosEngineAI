@@ -2977,6 +2977,7 @@ select.text-input {
   justify-self: stretch;
   justify-content: flex-end;
   align-items: center;
+  padding-right: 32px;
 }
 
 .icon-button {

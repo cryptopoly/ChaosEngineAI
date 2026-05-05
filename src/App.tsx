@@ -1848,6 +1848,7 @@ export default function App() {
         launchSettings={launchSettings}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
@@ -2004,6 +2005,7 @@ export default function App() {
         preview={preview}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}

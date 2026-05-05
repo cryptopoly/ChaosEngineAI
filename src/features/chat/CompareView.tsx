@@ -46,6 +46,7 @@ interface CompareViewProps {
   launchSettings: LaunchPreferences;
   availableMemoryGb: number;
   totalMemoryGb: number;
+  gpuVramTotalGb?: number | null;
   availableCacheStrategies?: SystemStats["availableCacheStrategies"];
   dflashInfo?: SystemStats["dflash"];
   turboInstalled?: boolean;
@@ -253,6 +254,7 @@ export function CompareView({
   launchSettings,
   availableMemoryGb,
   totalMemoryGb,
+  gpuVramTotalGb,
   availableCacheStrategies,
   dflashInfo,
   turboInstalled,
@@ -701,6 +703,7 @@ export function CompareView({
         preview={pickerDraftPreview}
         availableMemoryGb={availableMemoryGb}
         totalMemoryGb={totalMemoryGb}
+        gpuVramTotalGb={gpuVramTotalGb}
         availableCacheStrategies={availableCacheStrategies}
         dflashInfo={dflashInfo}
         installingPackage={installingPackage ?? null}

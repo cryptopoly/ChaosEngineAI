@@ -413,6 +413,32 @@ def _build_system_snapshot(
 
     compressed_memory_gb = _get_compressed_memory_gb()
     battery = _get_battery_info()
+
+    # Discrete GPU VRAM (CUDA cards on Windows/Linux). Apple Silicon shares
+    # unified memory with the CPU so this stays None there -- the chat /
+    # video safety estimators already treat unified memory as a single pool.
+    # The chat-side cache-fit warning needs this number because llama.cpp
+    # places the KV cache on the GPU when ngl=999, so a 60 GB cache on a
+    # 24 GB 4090 fails far worse than the system-RAM check would suggest.
+    try:
+        from backend_service.helpers.gpu import get_device_vram_total_gb
+        gpu_vram_total_gb_raw = get_device_vram_total_gb()
+    except Exception:
+        gpu_vram_total_gb_raw = None
+    if (
+        platform.system() == "Darwin"
+        and platform.machine() in ("arm64", "aarch64")
+    ):
+        # On Apple Silicon get_device_vram_total_gb returns the unified
+        # memory total (== totalMemoryGb). Reporting it as a separate
+        # "GPU VRAM" field would double-count and confuse the cache-fit
+        # message ("60 GB > 24 GB VRAM" on a 64 GB Mac). Leave it None
+        # so the consumer falls back to the unified totalMemoryGb.
+        gpu_vram_total_gb: float | None = None
+    else:
+        gpu_vram_total_gb = gpu_vram_total_gb_raw
+
+
     # Memory pressure: used + compressed + swap as a fraction of total
     pressure_numerator = used_memory_gb + compressed_memory_gb + swap_used_gb
     memory_pressure_percent = (
@@ -467,6 +493,7 @@ def _build_system_snapshot(
         "llamaCliPath": native["llamaCliPath"],
         "nativeRuntimeMessage": native["mlxMessage"],
         "totalMemoryGb": total_memory_gb,
+        "gpuVramTotalGb": gpu_vram_total_gb,
         "availableMemoryGb": available_memory_gb,
         "usedMemoryGb": used_memory_gb,
         "swapUsedGb": swap_used_gb,

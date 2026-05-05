@@ -53,6 +53,13 @@ export interface SystemStats {
   mlxAvailable: boolean;
   mlxLmAvailable: boolean;
   totalMemoryGb: number;
+  /** Discrete GPU VRAM in GB (CUDA cards on Windows / Linux). Null on
+   * Apple Silicon (unified memory is already in totalMemoryGb), and on
+   * hosts with no detected discrete GPU. The chat cache-fit warning uses
+   * this to surface "60 GB cache > 24 GB GPU VRAM" instead of comparing
+   * against system RAM only -- llama.cpp places the KV cache on GPU when
+   * full-offload is on, so the GPU is the binding constraint there. */
+  gpuVramTotalGb?: number | null;
   availableMemoryGb: number;
   usedMemoryGb: number;
   swapUsedGb: number;

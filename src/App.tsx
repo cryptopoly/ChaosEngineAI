@@ -116,13 +116,23 @@ export default function App() {
     | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
     | null
   >(null);
+  // Raw install result, kept alongside the reduced ``cudaTorchResult``
+  // shape above so the Studio's CudaTorchLogPanel can render the full
+  // per-attempt pip output (the reduced shape drops ``attempts`` to
+  // keep the in-line success/failure summary terse). One more state
+  // slot is cheaper than reshaping every existing call site.
+  const [cudaTorchRawResult, setCudaTorchRawResult] = useState<
+    import("./api").CudaTorchInstallResult | null
+  >(null);
 
   const handleInstallCudaTorch = async () => {
     if (installingCudaTorch) return;
     setInstallingCudaTorch(true);
     setCudaTorchResult(null);
+    setCudaTorchRawResult(null);
     try {
       const result = await installCudaTorch();
+      setCudaTorchRawResult(result);
       if (result.ok) {
         setCudaTorchResult({
           ok: true,
@@ -146,6 +156,9 @@ export default function App() {
         pythonVersion: null,
         noWheelForPython: false,
       });
+      // Raw result stays null on a thrown exception -- the panel
+      // suppresses itself when there's nothing to render and the
+      // top-level diagnostic banner shows the catch message.
     } finally {
       setInstallingCudaTorch(false);
     }
@@ -1448,6 +1461,7 @@ export default function App() {
         onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
         onInstallCudaTorch={() => void handleInstallCudaTorch()}
         installingCudaTorch={installingCudaTorch}
+        cudaTorchResult={cudaTorchRawResult}
         gpuBundleJob={imgState.gpuBundleJob}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
@@ -1615,6 +1629,7 @@ export default function App() {
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
         onInstallCudaTorch={() => void handleInstallCudaTorch()}
         installingCudaTorch={installingCudaTorch}
+        cudaTorchResult={cudaTorchRawResult}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}

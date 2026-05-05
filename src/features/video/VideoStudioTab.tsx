@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
 import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
-import type { DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
+import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
   TauriBackendInfo,
@@ -103,6 +104,9 @@ export interface VideoStudioTabProps {
    * without navigating away to Settings > Setup. */
   onInstallCudaTorch?: () => void;
   installingCudaTorch?: boolean;
+  /** Raw result from the most recent install attempt; drives the
+   * collapsible terminal log under the Install button. */
+  cudaTorchResult?: CudaTorchInstallResult | null;
   // LongLive (long-form causal video) surface — separate from the main
   // diffusers runtime because LongLive runs via a torchrun subprocess
   // against an isolated venv at ~/.chaosengine/longlive. Null until the
@@ -299,6 +303,7 @@ export function VideoStudioTab({
   onInstallVideoGpuRuntime,
   onInstallCudaTorch,
   installingCudaTorch,
+  cudaTorchResult,
   longLiveStatus,
   installingLongLive,
   onRefreshLongLiveStatus,
@@ -726,6 +731,12 @@ export function VideoStudioTab({
                   >
                     {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
                   </button>
+                  {/* Per-attempt pip output for the most recent install
+                    * (mirrors the panel under Image Studio's button).
+                    * Collapsed by default on success, auto-opens on
+                    * failure -- lets users see which CUDA index pip
+                    * walked and the actual resolver error. */}
+                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
                 </div>
               ) : null}
             </div>

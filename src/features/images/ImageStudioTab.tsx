@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
-import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
+import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
   ImageCacheStrategyId,
   ImageModelFamily,
@@ -105,6 +106,11 @@ export interface ImageStudioTabProps {
    * navigating away to Settings > Setup. */
   onInstallCudaTorch?: () => void;
   installingCudaTorch?: boolean;
+  /** Raw result from the most recent install attempt. Drives the
+   * collapsible terminal log under the Install button so users can
+   * inspect per-attempt pip output for debugging. ``null`` until an
+   * install has been kicked off in this session. */
+  cudaTorchResult?: CudaTorchInstallResult | null;
   // Live state of the GPU bundle install job — drives the InstallLogPanel
   // under the install button so users see per-step pip output instead of a
   // generic "failed" toast. Null when no install has been kicked off yet
@@ -186,6 +192,7 @@ export function ImageStudioTab({
   onInstallImageRuntime,
   onInstallCudaTorch,
   installingCudaTorch,
+  cudaTorchResult,
   gpuBundleJob,
   onImageDownload,
   onCancelImageDownload,
@@ -421,6 +428,13 @@ export function ImageStudioTab({
                   >
                     {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
                   </button>
+                  {/* Per-attempt pip output for the most recent install,
+                    * collapsed by default on success, auto-opened on
+                    * failure. Lets users see which CUDA index pip walked
+                    * (cu124 / cu126 / cu128 / cu121) and the actual
+                    * resolver / wheel-not-found errors when a run failed,
+                    * instead of just the one-line summary above. */}
+                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
                 </div>
               ) : null}
             </div>

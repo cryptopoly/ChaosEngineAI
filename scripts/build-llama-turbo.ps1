@@ -84,8 +84,34 @@ try {
         Write-Host "==> CUDA not detected (or disabled); building CPU-only"
     }
 
+    # Pick a CMake generator explicitly. Without -G, cmake defaults to
+    # "NMake Makefiles" on Windows, which dies with
+    # "Running 'nmake' '-?' failed" unless the user happens to be inside
+    # a Visual Studio Developer Command Prompt. The user's expected
+    # entry point is a vanilla PowerShell, so probe for a usable
+    # generator in this order:
+    #   1. $env:CHAOSENGINE_LLAMA_TURBO_GENERATOR (manual override)
+    #   2. Ninja  -- single-config, fast, but optional
+    #   3. Visual Studio 17 2022 (cmake locates VS via vswhere even
+    #      from outside a developer prompt, as long as VS 2022 Build
+    #      Tools are installed -- which the script header lists as a
+    #      prerequisite anyway).
+    if ($env:CHAOSENGINE_LLAMA_TURBO_GENERATOR) {
+        $generator = $env:CHAOSENGINE_LLAMA_TURBO_GENERATOR
+    } elseif (Get-Command ninja -ErrorAction SilentlyContinue) {
+        $generator = "Ninja"
+    } else {
+        $generator = "Visual Studio 17 2022"
+    }
+    Write-Host "==> cmake generator: $generator"
+    $configureArgs = @("-B", "build", "-G", $generator)
+    if ($generator -like "Visual Studio*") {
+        $configureArgs += @("-A", "x64")
+    }
+    $configureArgs += $cmakeFlags
+
     Write-Host "==> cmake configure"
-    cmake -B build @cmakeFlags
+    cmake @configureArgs
     Assert-LastExit "cmake configure"
 
     Write-Host "==> building llama-server + llama-cli"

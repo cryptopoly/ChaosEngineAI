@@ -403,20 +403,50 @@ export function ImageStudioTab({
             * "Device: cuda (expected)" would still light up green while
             * the user's NVIDIA GPU sits idle and generation runs on CPU
             * at 1/100th speed. */}
-          {imageRuntimeStatus.torchInstallWarning ? (
+          {/* Three states for this slot, all in ONE callout to keep
+            * the panel uncluttered (no stacked banners):
+            *   (a) install just succeeded but backend still has the
+            *       old torch in its module cache -> show "Restart
+            *       Backend to activate" with a single primary button
+            *   (b) torchInstallWarning is set (the +cpu wheel case
+            *       and friends) -> show the warning + Install CUDA
+            *       torch button + collapsible log panel
+            *   (c) neither -> render nothing (the chip row below
+            *       still announces engine / device state)
+            *
+            * State (a) takes priority because once a successful
+            * install lands, the warning is meaningless until the
+            * backend reloads -- showing both at once just confuses. */}
+          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
+            <div className="callout" style={{ marginBottom: "0.6rem" }}>
+              <strong>CUDA torch installed.</strong>{" "}
+              The running backend still has the old torch in its module cache.
+              Restart the backend to activate the new wheel
+              {cudaTorchResult.indexUrl
+                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+                : ""}
+              .
+              <div style={{ marginTop: "0.5rem" }}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onRestartServer()}
+                  disabled={busy}
+                >
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
+              </div>
+              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+            </div>
+          ) : imageRuntimeStatus.torchInstallWarning ? (
             <div className="callout error" style={{ marginBottom: "0.6rem" }}>
               <strong>GPU acceleration not active.</strong>{" "}
               {imageRuntimeStatus.torchInstallWarning}
-              {/* Inline remedy button. The warning text already tells the
-                * user "Open Settings > Setup and click Install CUDA torch"
-                * but firing the install from the warning itself saves a
-                * navigation and makes the message actionable rather than
-                * just informational. The button only renders when the
-                * "+cpu wheel on a CUDA host" code path applies (the
-                * warning text mentions "Install CUDA torch") -- if torch
-                * is missing entirely the right remedy is the larger
-                * Install GPU runtime flow, which has its own primary
-                * button further down. */}
+              {/* Inline remedy button + collapsible log. Only renders
+                * when the warning is the "+cpu wheel" case (text
+                * mentions "Install CUDA torch"); for "torch missing
+                * entirely" the larger Install GPU runtime flow below
+                * is the right remedy. */}
               {onInstallCudaTorch
                 && imageRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
                 <div style={{ marginTop: "0.5rem" }}>
@@ -428,12 +458,6 @@ export function ImageStudioTab({
                   >
                     {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
                   </button>
-                  {/* Per-attempt pip output for the most recent install,
-                    * collapsed by default on success, auto-opened on
-                    * failure. Lets users see which CUDA index pip walked
-                    * (cu124 / cu126 / cu128 / cu121) and the actual
-                    * resolver / wheel-not-found errors when a run failed,
-                    * instead of just the one-line summary above. */}
                   <CudaTorchLogPanel result={cudaTorchResult ?? null} />
                 </div>
               ) : null}

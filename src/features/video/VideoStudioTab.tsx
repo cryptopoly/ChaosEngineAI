@@ -712,14 +712,35 @@ export function VideoStudioTab({
             * ("Real engine ready" / "Device: cuda (expected)"). Render it as
             * the first visible element so users notice before queueing a
             * 5-minute "GPU" run that's actually CPU. */}
-          {videoRuntimeStatus.torchInstallWarning ? (
+          {/* Mirror of the Image Studio callout: same three-state
+            * single-banner pattern (post-install restart prompt /
+            * GPU acceleration warning / nothing). Keeps the panel
+            * uncluttered by never stacking two banners. */}
+          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
+            <div className="callout" style={{ marginBottom: "0.6rem" }}>
+              <strong>CUDA torch installed.</strong>{" "}
+              The running backend still has the old torch in its module cache.
+              Restart the backend to activate the new wheel
+              {cudaTorchResult.indexUrl
+                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+                : ""}
+              .
+              <div style={{ marginTop: "0.5rem" }}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onRestartServer()}
+                  disabled={busy}
+                >
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
+              </div>
+              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+            </div>
+          ) : videoRuntimeStatus.torchInstallWarning ? (
             <div className="callout error" style={{ marginBottom: "0.6rem" }}>
               <strong>GPU acceleration not active.</strong>{" "}
               {videoRuntimeStatus.torchInstallWarning}
-              {/* Inline remedy button -- mirrors ImageStudioTab. Only
-                * renders when the warning is the "+cpu wheel on a CUDA
-                * host" case; if torch is missing entirely the existing
-                * Install GPU runtime button below covers it. */}
               {onInstallCudaTorch
                 && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
                 <div style={{ marginTop: "0.5rem" }}>
@@ -731,11 +752,6 @@ export function VideoStudioTab({
                   >
                     {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
                   </button>
-                  {/* Per-attempt pip output for the most recent install
-                    * (mirrors the panel under Image Studio's button).
-                    * Collapsed by default on success, auto-opens on
-                    * failure -- lets users see which CUDA index pip
-                    * walked and the actual resolver error. */}
                   <CudaTorchLogPanel result={cudaTorchResult ?? null} />
                 </div>
               ) : null}

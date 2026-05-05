@@ -2033,6 +2033,16 @@ class ImageRuntimeManager:
                     missingDependencies=[],
                     loadedModelRepo=status.loadedModelRepo,
                     message=fallback_note,
+                    # Preserve the +cpu / missing-torch warning across
+                    # the demotion. Without this the Studio's "GPU
+                    # acceleration not active" banner disappears the
+                    # moment generation fails, leaving only "Install
+                    # GPU runtime" -- which is the wrong remedy when
+                    # torch IS installed (just CPU-only). Recompute
+                    # rather than copying ``status.torchInstallWarning``
+                    # so the message reflects current disk state, not
+                    # what the probe saw at preload time.
+                    torchInstallWarning=_torch_install_warning(),
                 )
                 return self._placeholder.generate(config, runtime_note=fallback_note), fallback_status.to_dict()
 

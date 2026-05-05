@@ -115,11 +115,15 @@ try {
     # CMakeCache.txt that aborts subsequent runs with "Does not match the
     # generator used previously". Detect a generator mismatch and wipe
     # build/ so the user doesn't have to clean up by hand.
+    #
+    # Note: do NOT use -SimpleMatch on the Select-String pattern -- it
+    # disables regex, which makes the leading ^ a literal character and
+    # silently misses every line. Use a regex anchor instead.
     $cachePath = "build\CMakeCache.txt"
     if (Test-Path $cachePath) {
-        $cachedGeneratorLine = Select-String -Path $cachePath -Pattern "^CMAKE_GENERATOR:INTERNAL=" -SimpleMatch -ErrorAction SilentlyContinue
+        $cachedGeneratorLine = Select-String -Path $cachePath -Pattern '^CMAKE_GENERATOR:INTERNAL=' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($cachedGeneratorLine) {
-            $cachedGenerator = ($cachedGeneratorLine.Line -split "=", 2)[1]
+            $cachedGenerator = ($cachedGeneratorLine.Line -split "=", 2)[1].Trim()
             if ($cachedGenerator -and ($cachedGenerator -ne $generator)) {
                 Write-Host "==> stale CMake cache (was '$cachedGenerator', want '$generator'); wiping build\"
                 Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue

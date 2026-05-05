@@ -263,7 +263,12 @@ export async function checkBackend(): Promise<boolean> {
     await fetchJson("/api/health", 15000, { includeAuth: false });
     return true;
   } catch {
-    return false;
+    try {
+      await fetchJson("/api/auth/session", 5000, { includeAuth: false });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -1368,9 +1373,7 @@ export async function refreshCapabilities(): Promise<Record<string, unknown>> {
  * the structured format the requested image / video model was trained
  * on. Apple Silicon path uses mlx_lm with a small instruct model
  * (default mlx-community/Qwen2.5-0.5B-Instruct-4bit, ~700 MB). Other
- * platforms get the original prompt back + a runtimeNote explaining
- * the enhancer is unavailable, and the caller should fall back to the
- * deterministic template suffix instead.
+ * platforms use the backend's deterministic template fallback.
  */
 export interface PromptEnhanceResult {
   enhanced: string;

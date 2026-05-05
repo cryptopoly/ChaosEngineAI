@@ -40,6 +40,15 @@ class ProbeTests(unittest.TestCase):
     def tearDown(self):
         self._warmup_patch.stop()
 
+    def test_detect_device_reports_broken_windows_cuda_torch(self):
+        engine = DiffusersVideoEngine()
+        fake_torch = SimpleNamespace(backends=SimpleNamespace(mps=None))
+
+        with mock.patch.object(video_runtime.platform, "system", return_value="Windows"), \
+                mock.patch.object(video_runtime, "nvidia_gpu_present", return_value=True):
+            with self.assertRaisesRegex(RuntimeError, "Install CUDA torch"):
+                engine._detect_device(fake_torch)
+
     def test_probe_flags_missing_core_deps_as_unavailable(self):
         engine = DiffusersVideoEngine()
         # Simulate a machine with no diffusers/torch installed. Three calls

@@ -5,9 +5,9 @@
  * textarea via the parent's setter and surface a 1-line note as a
  * tooltip on the button (so the user knows which model rewrote it).
  *
- * Apple Silicon path actually rewrites the prompt; other platforms
- * get a no-op + the runtimeNote ("enhancer requires mlx_lm"), and we
- * leave the original prompt in place so the user isn't blocked.
+ * Apple Silicon path uses the small LLM rewrite. Other platforms use
+ * the backend's deterministic template fallback so the button still
+ * changes short prompts without adding runtime cost.
  */
 import { useState } from "react";
 import { enhancePromptViaLLM } from "../api";
@@ -57,7 +57,7 @@ export function PromptEnhanceButton({
       className="prompt-enhance-button"
       onClick={() => void handleClick()}
       disabled={disabled}
-      title={note ?? "Rewrite the prompt via the local LLM enhancer (Apple Silicon)"}
+      title={note ?? "Enhance this prompt locally"}
     >
       {busy ? "Enhancing..." : "Enhance"}
     </button>

@@ -231,6 +231,32 @@ def _guess_video_expected_device() -> str | None:
     return "cpu"
 
 
+def _windows_cuda_unavailable_message(torch: Any) -> str | None:
+    if platform.system() != "Windows" or not nvidia_gpu_present():
+        return None
+    cuda_module = getattr(torch, "cuda", None)
+    if cuda_module is None:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: torch imports "
+            "but has no torch.cuda module. Open Settings > Setup and click "
+            "Install CUDA torch, then Restart Backend."
+        )
+    try:
+        cuda_available = bool(getattr(cuda_module, "is_available", lambda: False)())
+    except Exception as exc:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: "
+            f"torch.cuda.is_available failed ({type(exc).__name__}: {exc}). "
+            "Open Settings > Setup and click Install CUDA torch, then Restart Backend."
+        )
+    if not cuda_available:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host. Open Settings > "
+            "Setup and click Install CUDA torch, then Restart Backend."
+        )
+    return None
+
+
 @dataclass(frozen=True)
 class VideoGenerationConfig:
     """Shape consumed by ``DiffusersVideoEngine.generate``."""
@@ -2155,8 +2181,16 @@ class DiffusersVideoEngine:
                 pass
 
     def _detect_device(self, torch: Any) -> str:
-        if getattr(torch.cuda, "is_available", lambda: False)():
-            return "cuda"
+        cuda_module = getattr(torch, "cuda", None)
+        if cuda_module is not None:
+            try:
+                if getattr(cuda_module, "is_available", lambda: False)():
+                    return "cuda"
+            except Exception:
+                pass
+        cuda_error = _windows_cuda_unavailable_message(torch)
+        if cuda_error:
+            raise RuntimeError(cuda_error)
         mps_backend = getattr(getattr(torch, "backends", None), "mps", None)
         if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
             return "mps"

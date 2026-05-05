@@ -111,15 +111,36 @@ try {
     # successfully. nvcc proxies to cl.exe on Windows, so CUDA without
     # MSVC cannot compile anything. Detect the missing-toolchain state
     # up front and surface the install link the user actually needs.
+    #
+    # -all is required: VS Build Tools installs frequently report
+    # isComplete=0 (Microsoft's installer flags some optional component
+    # as missing) even when cl.exe works fine. vswhere -latest WITHOUT
+    # -all silently excludes those, and so does CMake's own internal
+    # probe -- which is why a working install can still produce
+    # "could not find any instance of Visual Studio" from cmake. Probe
+    # with -all, then verify cl.exe truly exists, then pass the install
+    # path explicitly to cmake via CMAKE_GENERATOR_INSTANCE so it
+    # doesn't repeat the same -latest filter and fail again.
+    $vsInstance = $null
     if ($generator -like "Visual Studio*") {
         $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
-        $vsInstallation = $null
+        $clCandidates = @()
         if (Test-Path $vswhere) {
-            $vsInstallation = & $vswhere -latest -products * `
-                -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-                -property installationPath 2>$null
+            $clCandidates = & $vswhere -all -prerelease -products * `
+                -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2>$null
         }
-        if (-not $vsInstallation) {
+        if ($clCandidates) {
+            # Pick the highest version dir under VC\Tools\MSVC.
+            $clExe = $clCandidates | Sort-Object -Descending | Select-Object -First 1
+            # Walk up from
+            #   <root>\VC\Tools\MSVC\<ver>\bin\Hostx64\x64\cl.exe
+            # to <root>: 8 segments to strip (x64, Hostx64, bin, <ver>,
+            # MSVC, Tools, VC, cl.exe-the-leaf-itself).
+            $vsInstance = $clExe
+            for ($i = 0; $i -lt 8; $i++) { $vsInstance = Split-Path -Parent $vsInstance }
+            Write-Host "==> Visual Studio detected at: $vsInstance"
+            Write-Host "    cl.exe: $clExe"
+        } else {
             $msg = @(
                 "",
                 "Visual Studio 2022 with the C++ workload is not installed.",
@@ -139,12 +160,16 @@ try {
             ) -join [Environment]::NewLine
             throw $msg
         }
-        Write-Host "==> Visual Studio detected at: $vsInstallation"
     }
     Write-Host "==> cmake generator: $generator"
     $configureArgs = @("-B", "build", "-G", $generator)
     if ($generator -like "Visual Studio*") {
         $configureArgs += @("-A", "x64")
+        # Pin CMake to the install we just verified, so it doesn't run
+        # its own -latest probe and reject an isComplete=0 install.
+        if ($vsInstance) {
+            $configureArgs += @("-DCMAKE_GENERATOR_INSTANCE=$vsInstance")
+        }
     }
     $configureArgs += $cmakeFlags
 

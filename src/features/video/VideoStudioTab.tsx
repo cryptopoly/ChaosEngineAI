@@ -76,6 +76,9 @@ export interface VideoStudioTabProps {
   /** FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default. */
   videoPreviewVae: boolean;
   onVideoPreviewVaeChange: (value: boolean) => void;
+  /** FU-024: opt-in FP8 layerwise casting (CUDA SM 8.9+). */
+  videoFp8LayerwiseCasting: boolean;
+  onVideoFp8LayerwiseCastingChange: (value: boolean) => void;
   /** FU-015: diffusion cache strategy id ("none" / "fbcache" / "teacache"). */
   videoCacheStrategy: VideoCacheStrategyId;
   onVideoCacheStrategyChange: (value: VideoCacheStrategyId) => void;
@@ -270,6 +273,8 @@ export function VideoStudioTab({
   onVideoCfgDecayChange,
   videoPreviewVae,
   onVideoPreviewVaeChange,
+  videoFp8LayerwiseCasting,
+  onVideoFp8LayerwiseCastingChange,
   videoCacheStrategy,
   onVideoCacheStrategyChange,
   videoCacheRelL1Thresh,
@@ -1353,6 +1358,24 @@ export function VideoStudioTab({
             <span>
               <strong>Preview VAE</strong>
               <InfoTooltip text="Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE." />
+            </span>
+          </label>
+
+          {/*
+            FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada / Hopper /
+            Blackwell). Halves transformer VRAM with negligible quality
+            drift. No-op on Apple Silicon / CPU / pre-Ada GPUs — backend
+            checks compute capability + surfaces a runtimeNote.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoFp8LayerwiseCasting}
+              onChange={(event) => onVideoFp8LayerwiseCastingChange(event.target.checked)}
+            />
+            <span>
+              <strong>FP8 layerwise (CUDA Ada+)</strong>
+              <InfoTooltip text="diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX / Qwen-Image. Backend checks GPU compute capability before applying — pre-Ada GPUs lack hardware fp8 and skip with a runtimeNote. Best stacked with the GGUF or Nunchaku quant paths for the smallest VRAM footprint." />
             </span>
           </label>
 

@@ -1401,6 +1401,8 @@ export default function App() {
         onImageCfgDecayChange={imgState.setImageCfgDecay}
         imagePreviewVae={imgState.imagePreviewVae}
         onImagePreviewVaeChange={imgState.setImagePreviewVae}
+        imageFp8LayerwiseCasting={imgState.imageFp8LayerwiseCasting}
+        onImageFp8LayerwiseCastingChange={imgState.setImageFp8LayerwiseCasting}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1573,6 +1575,8 @@ export default function App() {
         onVideoCfgDecayChange={videoState.setVideoCfgDecay}
         videoPreviewVae={videoState.videoPreviewVae}
         onVideoPreviewVaeChange={videoState.setVideoPreviewVae}
+        videoFp8LayerwiseCasting={videoState.videoFp8LayerwiseCasting}
+        onVideoFp8LayerwiseCastingChange={videoState.setVideoFp8LayerwiseCasting}
         videoCacheStrategy={videoState.videoCacheStrategy}
         onVideoCacheStrategyChange={videoState.setVideoCacheStrategy}
         videoCacheRelL1Thresh={videoState.videoCacheRelL1Thresh}

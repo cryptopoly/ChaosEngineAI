@@ -94,6 +94,9 @@ export interface ImageStudioTabProps {
   onImageCfgDecayChange: (value: boolean) => void;
   imagePreviewVae: boolean;
   onImagePreviewVaeChange: (value: boolean) => void;
+  /** FU-024: opt-in FP8 layerwise casting (CUDA SM 8.9+). */
+  imageFp8LayerwiseCasting: boolean;
+  onImageFp8LayerwiseCastingChange: (value: boolean) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -171,6 +174,8 @@ export function ImageStudioTab({
   onImageCfgDecayChange,
   imagePreviewVae,
   onImagePreviewVaeChange,
+  imageFp8LayerwiseCasting,
+  onImageFp8LayerwiseCastingChange,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
@@ -852,6 +857,27 @@ export function ImageStudioTab({
               in a fraction of the wall-time. Trades final fidelity
               for iteration speed. Off by default.
               <InfoTooltip text="Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises." />
+            </span>
+          </label>
+
+          {/*
+            FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
+            Blackwell). Halves transformer VRAM by storing fp8 weights +
+            promoting to bf16 inside the matmul. No-op on Apple Silicon /
+            CPU / pre-Ada GPUs — backend gates and returns a runtimeNote.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={imageFp8LayerwiseCasting}
+              onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
+            />
+            <span>
+              <strong>FP8 layerwise (CUDA Ada+)</strong> — store
+              transformer weights in fp8 + promote to bf16 inside the
+              matmul. Halves VRAM with negligible quality drift on
+              modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.
+              <InfoTooltip text="diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint." />
             </span>
           </label>
 

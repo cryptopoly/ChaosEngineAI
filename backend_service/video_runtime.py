@@ -30,7 +30,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from backend_service.helpers.gpu import nvidia_gpu_present
+from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
     GenerationCancelled,
@@ -201,6 +201,14 @@ class VideoRuntimeStatus:
     # via nvidia-smi. ``None`` means we couldn't detect it — the frontend
     # falls back to its MPS-strict defaults in that case.
     deviceMemoryGb: float | None = None
+    # ``torchInstallWarning`` carries a one-line warning when the installed
+    # torch wheel doesn't match the host accelerator (e.g. +cpu wheel on a
+    # CUDA host -- generation silently runs on CPU). Computed without
+    # importing torch (we read dist-info METADATA) so the probe stays free
+    # of Windows DLL-lock side effects. Frontend renders this as a loud
+    # warning chip in the Studio so users don't see "Real engine ready"
+    # next to "Device: cuda (expected)" while their NVIDIA GPU sits idle.
+    torchInstallWarning: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -906,6 +914,7 @@ class DiffusersVideoEngine:
                 missingDependencies=missing_all,
                 pythonExecutable=_resolve_video_python(),
                 expectedDevice=_guess_video_expected_device(),
+                torchInstallWarning=torch_install_warning(),
                 message=(
                     f"Video runtime needs these packages: {', '.join(missing_core)}. "
                     "Click the 'Install GPU runtime' button above to install the full bundle."

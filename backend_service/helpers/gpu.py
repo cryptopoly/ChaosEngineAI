@@ -281,6 +281,97 @@ def nvidia_gpu_present() -> bool:
     return shutil.which("nvidia-smi") is not None
 
 
+def torch_install_warning() -> str | None:
+    """Detect a torch wheel/host mismatch WITHOUT importing torch.
+
+    Three failure modes that all silently sandbag generation onto CPU:
+
+      1. NVIDIA GPU present but torch isn't installed at all -- the GPU
+         bundle never ran, so even the "Real engine ready" badge would
+         be misleading.
+      2. NVIDIA GPU present but the installed torch wheel is the +cpu
+         build -- the bundle ran but pip resolved the CPU wheel instead
+         of a CUDA one. This is the case the user keeps hitting on a
+         4090: Studio shows "Device: cuda (expected)" because nvidia-smi
+         is on PATH, but generation runs on CPU because torch is
+         literally CPU-only.
+      3. Apple Silicon host but no torch installed -- mirrors case 1.
+
+    Returns a one-line warning string when a mismatch is detected,
+    ``None`` when everything looks fine. Importing torch would lock
+    torch DLLs in the backend process and break the GPU-bundle install
+    flow on Windows, so we read the wheel's dist-info METADATA from
+    sys.path / extras instead.
+    """
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    spec = importlib.util.find_spec("torch")
+    torch_installed = spec is not None
+    torch_local_version: str | None = None  # "+cpu", "+cu124", "+cu128", ...
+    torch_version_str: str | None = None    # "2.6.0+cpu" etc.
+
+    # Read torch/version.py directly. That file is what Python executes at
+    # ``import torch`` time, so it's the only ground truth for the actual
+    # local-version tag. Don't trust dist-info names: pip can leave a stale
+    # ``torch-X.Y.Z+cu124.dist-info`` dir next to the +cpu wheel that was
+    # installed afterwards (each install of a different local-version
+    # creates its own dist-info but only ONE set of package files survives).
+    # The user we're chasing has exactly that state -- both dist-info dirs
+    # present, but ``torch/version.py`` reports ``2.6.0+cpu``.
+    if spec is not None and spec.origin:
+        try:
+            version_path = Path(spec.origin).with_name("version.py")
+            if version_path.is_file():
+                text = version_path.read_text(errors="ignore")
+                for line in text.splitlines():
+                    stripped = line.strip()
+                    if stripped.startswith("__version__"):
+                        # Lines look like:  __version__ = '2.6.0+cpu'
+                        for quote in ("'", '"'):
+                            if quote in stripped:
+                                _, _, rest = stripped.partition(quote)
+                                value, _, _ = rest.partition(quote)
+                                if value:
+                                    torch_version_str = value
+                                    break
+                        break
+                if torch_version_str and "+" in torch_version_str:
+                    torch_local_version = "+" + torch_version_str.split("+", 1)[1]
+        except OSError:
+            pass
+
+    nvidia_present = nvidia_gpu_present()
+    on_apple_silicon = (
+        platform.system() == "Darwin"
+        and platform.machine() in ("arm64", "aarch64")
+    )
+
+    # Case 2 first: bundle ran, picked the wrong wheel. Most actionable.
+    if nvidia_present and torch_installed and torch_local_version:
+        if torch_local_version.lower().startswith("+cpu"):
+            return (
+                f"torch is installed as a CPU-only wheel ({torch_version_str}) "
+                "even though an NVIDIA GPU is present. Generation will run "
+                "on CPU at a fraction of GPU speed. Open Settings > Setup "
+                "and click Install CUDA torch, then Restart Backend."
+            )
+    # Case 1: NVIDIA host but no torch at all.
+    if nvidia_present and not torch_installed:
+        return (
+            "torch is not installed but an NVIDIA GPU is present. Open "
+            "Settings > Setup and click Install GPU runtime."
+        )
+    # Case 3: Apple Silicon but no torch.
+    if on_apple_silicon and not torch_installed:
+        return (
+            "torch is not installed. Open Settings > Setup and click "
+            "Install GPU runtime to enable Apple Silicon (MPS) generation."
+        )
+    return None
+
+
 _CUDA_WHEEL_HINT = (
     "Click \"Install CUDA torch\" in this banner, or run: "
     "pip install --upgrade --force-reinstall torch "

@@ -15,7 +15,15 @@ import type {
 
 export const emptyLaunchPreferences: LaunchPreferences = {
   contextTokens: 8192,
-  maxTokens: 512,
+  // 4096 matches the backend defaults in models/__init__.py (LaunchPreferences,
+  // GenerateRequest both default to 4096). The previous 512 here meant the
+  // first chat message a user sent before opening Settings was capped at
+  // ~512 generated tokens -- enough for a couple of paragraphs but far too
+  // short for "code me a single web page" style requests, which the runtime
+  // truncated mid-output (state.py runaway guard fires at maxTokens * 6 chars,
+  // so 512 -> 3072 chars). Bumping the seed value brings the frontend in line
+  // with what the backend already expects.
+  maxTokens: 4096,
   temperature: 0.7,
   cacheBits: 0,
   fp16Layers: 4,

@@ -383,6 +383,18 @@ export function ImageStudioTab({
           ) : null}
         </div>
         <div className="callout image-callout image-runtime-callout">
+          {/* torchInstallWarning is the loudest signal -- e.g. +cpu torch
+            * wheel on a CUDA host -- so render it as a banner above the
+            * chip row. Without this, "Real local generation available" +
+            * "Device: cuda (expected)" would still light up green while
+            * the user's NVIDIA GPU sits idle and generation runs on CPU
+            * at 1/100th speed. */}
+          {imageRuntimeStatus.torchInstallWarning ? (
+            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
+              <strong>GPU acceleration not active.</strong>{" "}
+              {imageRuntimeStatus.torchInstallWarning}
+            </div>
+          ) : null}
           <div className="chip-row">
             <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {imageRuntimeStatus.realGenerationAvailable
@@ -391,6 +403,11 @@ export function ImageStudioTab({
                   ? "Runtime unavailable"
                   : "Using placeholder outputs"}
             </span>
+            {imageRuntimeStatus.torchInstallWarning ? (
+              <span className="badge danger" title={imageRuntimeStatus.torchInstallWarning}>
+                CPU fallback
+              </span>
+            ) : null}
             <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
             {/* Prefer the actual-loaded device; fall back to the
               * predicted expectedDevice computed cheaply via

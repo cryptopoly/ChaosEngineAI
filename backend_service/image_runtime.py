@@ -10,7 +10,10 @@ import time
 import gc
 import secrets
 
-from backend_service.helpers.gpu import nvidia_gpu_present as _nvidia_gpu_present
+from backend_service.helpers.gpu import (
+    nvidia_gpu_present as _nvidia_gpu_present,
+    torch_install_warning as _torch_install_warning,
+)
 from colorsys import hsv_to_rgb
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -496,6 +499,11 @@ class ImageRuntimeStatus:
     # base M2. ``None`` means detection failed; the frontend falls back
     # to MPS-strict defaults.
     deviceMemoryGb: float | None = None
+    # ``torchInstallWarning`` -- mirrors VideoRuntimeStatus. Surfaces
+    # the "torch is +cpu but you have a CUDA card" / "torch missing"
+    # mismatch that otherwise hides behind a misleadingly green
+    # "Real engine ready" + "Device: cuda (expected)" badge pair.
+    torchInstallWarning: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -770,6 +778,7 @@ class DiffusersTextToImageEngine:
                 pythonExecutable=_resolve_image_python(),
                 message=message,
                 loadedModelRepo=self._loaded_repo,
+                torchInstallWarning=_torch_install_warning(),
             )
 
         message = (
@@ -795,6 +804,7 @@ class DiffusersTextToImageEngine:
             message=message,
             loadedModelRepo=self._loaded_repo,
             deviceMemoryGb=device_memory_gb,
+            torchInstallWarning=_torch_install_warning(),
         )
 
     def generate(self, config: ImageGenerationConfig) -> list[GeneratedImage]:

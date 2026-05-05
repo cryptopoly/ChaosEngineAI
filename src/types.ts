@@ -1127,6 +1127,13 @@ export interface VideoRuntimeStatus {
    * because detection can fail (unsupported platform, nvidia-smi absent on a
    * non-CUDA Linux box, etc.); consumers treat null as "stay conservative". */
   deviceMemoryGb?: number | null;
+  /** One-line warning when the installed torch wheel doesn't match the host
+   * accelerator (e.g. +cpu wheel on a CUDA host -- generation silently
+   * falls back to CPU). Computed without importing torch by reading the
+   * dist-info METADATA. Frontend renders this as a loud red chip in the
+   * Studio so users don't see "Real engine ready" while their NVIDIA GPU
+   * sits idle. ``null`` when everything looks fine. */
+  torchInstallWarning?: string | null;
 }
 
 export interface VideoOutputArtifact {
@@ -1269,6 +1276,9 @@ export interface ImageRuntimeStatus {
    * models are flagged before a user clicks Generate on a tight machine.
    * Parallel to ``VideoRuntimeStatus.deviceMemoryGb`` — same semantics. */
   deviceMemoryGb?: number | null;
+  /** Mirror of ``VideoRuntimeStatus.torchInstallWarning`` -- one-line
+   * warning when the torch wheel doesn't match the host accelerator. */
+  torchInstallWarning?: string | null;
 }
 
 export interface ImageGenerationResponse {

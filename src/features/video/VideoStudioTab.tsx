@@ -693,11 +693,29 @@ export function VideoStudioTab({
         }
       >
         <div className="callout image-callout image-runtime-callout compact">
+          {/* torchInstallWarning is the loudest signal — when the installed
+            * torch wheel doesn't match the host accelerator (e.g. +cpu wheel
+            * on a CUDA box) generation silently runs on CPU at a fraction of
+            * speed, while every other badge below would otherwise read green
+            * ("Real engine ready" / "Device: cuda (expected)"). Render it as
+            * the first visible element so users notice before queueing a
+            * 5-minute "GPU" run that's actually CPU. */}
+          {videoRuntimeStatus.torchInstallWarning ? (
+            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
+              <strong>GPU acceleration not active.</strong>{" "}
+              {videoRuntimeStatus.torchInstallWarning}
+            </div>
+          ) : null}
           <p>{videoRuntimeStatus.message}</p>
           <div className="chip-row">
             <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
             </span>
+            {videoRuntimeStatus.torchInstallWarning ? (
+              <span className="badge danger" title={videoRuntimeStatus.torchInstallWarning}>
+                CPU fallback
+              </span>
+            ) : null}
             {gpuBundleRestartRequired ? (
               <span className="badge warning">Restart required</span>
             ) : null}

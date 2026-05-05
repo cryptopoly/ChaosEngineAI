@@ -84,6 +84,82 @@ try {
         Write-Host "==> CUDA not detected (or disabled); building CPU-only"
     }
 
+    # Helper: ensure CUDA's MSBuild integration files (.props/.targets/etc.)
+    # are copied into the VS BuildCustomizations dir. CMake's CUDA detection
+    # bails with "No CUDA toolset found" when these files are missing --
+    # which happens whenever CUDA was installed before Visual Studio, or
+    # when the CUDA installer's "Visual Studio Integration" component was
+    # unticked. Auto-elevates via UAC if the target dir isn't writable.
+    function Sync-CudaVsIntegration {
+        param(
+            [Parameter(Mandatory)] [string] $VsRoot
+        )
+        $cudaPath = $env:CUDA_PATH
+        if (-not $cudaPath -or -not (Test-Path $cudaPath)) {
+            Write-Host "==> CUDA_PATH not set; skipping VS integration sync"
+            return
+        }
+        $cudaSrc = Join-Path $cudaPath "extras\visual_studio_integration\MSBuildExtensions"
+        $vsTarget = Join-Path $VsRoot "MSBuild\Microsoft\VC\v170\BuildCustomizations"
+        if (-not (Test-Path $cudaSrc)) {
+            Write-Host "==> CUDA integration source not found at $cudaSrc; skipping sync"
+            return
+        }
+        if (-not (Test-Path $vsTarget)) {
+            Write-Host "==> VS BuildCustomizations dir not found at $vsTarget; skipping sync"
+            return
+        }
+        $sourceFiles = Get-ChildItem -Path $cudaSrc -File -ErrorAction SilentlyContinue
+        $missing = @($sourceFiles | Where-Object { -not (Test-Path (Join-Path $vsTarget $_.Name)) })
+        if (-not $missing -or $missing.Count -eq 0) {
+            Write-Host "==> CUDA VS integration already present in $vsTarget"
+            return
+        }
+        Write-Host "==> CUDA VS integration missing $($missing.Count) file(s) from $vsTarget"
+        $missing | ForEach-Object { Write-Host "    - $($_.Name)" }
+
+        # Try direct copy first; fall back to elevated copy via UAC if the
+        # target dir refuses our writes.
+        $copied = $true
+        try {
+            foreach ($file in $missing) {
+                Copy-Item -LiteralPath $file.FullName -Destination $vsTarget -Force -ErrorAction Stop
+            }
+            Write-Host "==> CUDA VS integration files copied (direct)"
+        } catch {
+            $copied = $false
+            Write-Host "==> Direct copy denied; relaunching as admin via UAC..."
+            $argList = @(
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-Command",
+                ("Copy-Item -LiteralPath '{0}\*' -Destination '{1}' -Force" -f $cudaSrc.Replace("'", "''"), $vsTarget.Replace("'", "''"))
+            )
+            try {
+                $proc = Start-Process -FilePath powershell -ArgumentList $argList -Verb RunAs -Wait -PassThru
+                if ($proc.ExitCode -eq 0) {
+                    $copied = $true
+                    Write-Host "==> CUDA VS integration files copied (elevated)"
+                } else {
+                    Write-Host "==> Elevated copy exited with code $($proc.ExitCode)"
+                }
+            } catch {
+                Write-Host "==> UAC copy failed: $_"
+            }
+        }
+        if (-not $copied) {
+            $msg = @(
+                "",
+                "Could not install CUDA's Visual Studio integration files.",
+                "Run the following in an Administrator PowerShell, then retry:",
+                "",
+                ("  Copy-Item -LiteralPath '{0}\*' -Destination '{1}' -Force" -f $cudaSrc, $vsTarget),
+                ""
+            ) -join [Environment]::NewLine
+            throw $msg
+        }
+    }
+
     # Pick a CMake generator explicitly. Without -G, cmake defaults to
     # "NMake Makefiles" on Windows, which dies with
     # "Running 'nmake' '-?' failed" unless the user happens to be inside
@@ -161,6 +237,11 @@ try {
                 Write-Host "    version: $vsInstanceVersion"
             }
             Write-Host "    cl.exe:  $clExe"
+            # CMake's CUDA detection needs CUDA's MSBuild .props/.targets
+            # files installed under VS. Sync them now if missing.
+            if ($hasCuda) {
+                Sync-CudaVsIntegration -VsRoot $vsInstance
+            }
         } else {
             $msg = @(
                 "",

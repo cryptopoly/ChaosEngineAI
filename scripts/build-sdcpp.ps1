@@ -23,6 +23,11 @@
 
 $ErrorActionPreference = "Stop"
 
+# Shared MSVC/CUDA CMake helpers (Resolve-CmakeWindowsBuildContext,
+# Sync-CudaVsIntegration, Get-CmakeWindowsConfigureArgs,
+# Invoke-CmakeStaleCacheWipe). Same logic also drives build-llama-turbo.ps1.
+. (Join-Path $PSScriptRoot "lib\windows-msvc-cuda.ps1")
+
 function Assert-LastExit {
     param([string]$Step)
     if ($LASTEXITCODE -ne 0) {
@@ -79,8 +84,27 @@ try {
         Write-Host "==> CUDA not detected (or disabled); building CPU-only"
     }
 
+    # Resolve generator + VS install (same Windows toolchain plumbing as
+    # build-llama-turbo.ps1: handles isComplete=0 installs, builds the
+    # CMAKE_GENERATOR_INSTANCE override, etc.). Throws with an install
+    # link if MSVC isn't present.
+    $buildCtx = Resolve-CmakeWindowsBuildContext `
+        -ProductLabel "stable-diffusion.cpp (sd-cli)" `
+        -GeneratorEnv "CHAOSENGINE_SDCPP_GENERATOR"
+    Write-Host "==> cmake generator: $($buildCtx.Generator)"
+
+    $cudaIntegrationJustCopied = $false
+    if ($hasCuda -and $buildCtx.VsInstance) {
+        $cudaIntegrationJustCopied = Sync-CudaVsIntegration -VsRoot $buildCtx.VsInstance
+    }
+
+    Invoke-CmakeStaleCacheWipe -Generator $buildCtx.Generator `
+        -CudaIntegrationJustCopied $cudaIntegrationJustCopied
+
+    $configureArgs = Get-CmakeWindowsConfigureArgs -Context $buildCtx -ExtraFlags $cmakeFlags
+
     Write-Host "==> cmake configure"
-    cmake -B build @cmakeFlags
+    cmake @configureArgs
     Assert-LastExit "cmake configure"
 
     Write-Host "==> building sd-cli binary"

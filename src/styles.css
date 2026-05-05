@@ -5747,6 +5747,68 @@ select.text-input {
   cursor: not-allowed;
 }
 
+/* FU-025 part 9: Wan MLX runtime installer surfaced inside
+   VideoStudioTab when a Wan-AI variant is selected on Apple Silicon. */
+.wan-runtime-installer {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0f1317;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wan-runtime-installer__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wan-runtime-installer__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wan-runtime-installer__meta strong {
+  font-size: 13px;
+}
+.wan-runtime-installer__meta small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.wan-runtime-installer__meta small.muted code {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+.wan-runtime-installer__actions {
+  flex-shrink: 0;
+}
+.wan-runtime-installer__log {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: #080a0c;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wan-runtime-installer__log-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.wan-runtime-installer__log-message {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+  font-family: ui-monospace, monospace;
+}
+
 /* Token-flow waveform (benchmark accent) */
 .live-progress__waveform {
   display: flex;

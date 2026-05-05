@@ -3,6 +3,7 @@ import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
 import type { DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
@@ -803,6 +804,14 @@ export function VideoStudioTab({
                 {installingMlxVideo ? "Installing mlx-video..." : "Install mlx-video"}
               </button>
             </div>
+          ) : null}
+          {/* FU-025 part 9 (restored UX): surface the Wan MLX runtime
+            * convert action when the user picks a Wan-AI variant on
+            * Apple Silicon. Shows a "Ready" chip if the converted MLX
+            * dir is already on disk, an "Install" button otherwise.
+            * Self-contained component — owns its own polling. */}
+          {isWanRepo && isAppleSiliconHost && !mlxVideoMissing ? (
+            <WanRuntimeInstaller repo={selectedRepo} />
           ) : null}
           {mp4EncoderMissing ? (
             <div className="image-runtime-actions">

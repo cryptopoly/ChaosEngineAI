@@ -264,10 +264,20 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         state.add_log("images", "info", f"Image generation cancelled for {variant.get('name')} by user.")
         raise HTTPException(status_code=409, detail="cancelled") from None
     except Exception as exc:
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+        )
         tb_str = _tb.format_exc()
         state.add_log("images", "error", f"Image generation FAILED for {variant.get('name')}: {type(exc).__name__}: {exc}")
-        state.add_log("images", "error", f"Traceback:\n{tb_str[-500:]}")
-        raise HTTPException(status_code=500, detail=f"Image generation failed for {variant.get('name')}: {type(exc).__name__}: {exc}") from exc
+        state.add_log("images", "error", f"Traceback:\n{tb_str[-2000:]}")
+        # Diffusers' lazy-import wrapper hides the real cause when
+        # transformers / torchao / torch versions don't agree -- same
+        # T5EncoderModel symptom that bites video generation. Run the
+        # diagnostic so the user sees the actual missing/broken module
+        # instead of "Could not import module 'T5EncoderModel'".
+        friendly = diagnose_diffusers_lazy_import_error(str(exc))
+        detail = friendly or f"Image generation failed for {variant.get('name')}: {type(exc).__name__}: {exc}"
+        raise HTTPException(status_code=500, detail=detail) from exc
     state.add_log(
         "images",
         "info",

@@ -352,19 +352,27 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
         state.add_log("video", "info", f"Video generation cancelled for {variant['name']} by user.")
         raise HTTPException(status_code=409, detail="cancelled") from None
     except RuntimeError as exc:
-        state.add_log("video", "error", f"Video generation failed for {variant['name']}: {exc}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Video generation failed for {variant['name']}: {exc}",
-        ) from exc
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+        )
+        tb_str = _tb.format_exc()
+        state.add_log(
+            "video", "error",
+            f"Video generation failed for {variant['name']}: {exc}\nTraceback:\n{tb_str[-2000:]}",
+        )
+        friendly = diagnose_diffusers_lazy_import_error(str(exc))
+        detail = friendly or f"Video generation failed for {variant['name']}: {exc}"
+        raise HTTPException(status_code=400, detail=detail) from exc
     except Exception as exc:
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+        )
         tb_str = _tb.format_exc()
         state.add_log("video", "error", f"Video generation FAILED: {type(exc).__name__}: {exc}")
-        state.add_log("video", "error", f"Traceback:\n{tb_str[-500:]}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Video generation failed for {variant['name']}: {type(exc).__name__}: {exc}",
-        ) from exc
+        state.add_log("video", "error", f"Traceback:\n{tb_str[-2000:]}")
+        friendly = diagnose_diffusers_lazy_import_error(str(exc))
+        detail = friendly or f"Video generation failed for {variant['name']}: {type(exc).__name__}: {exc}"
+        raise HTTPException(status_code=500, detail=detail) from exc
 
     state.add_log(
         "video",

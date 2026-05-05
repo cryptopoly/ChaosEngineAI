@@ -1362,10 +1362,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(done_a["dflashDraftModel"], "z-lab/Qwen3-4B-DFlash")
         self.assertEqual(done_a["dflashAcceptanceRate"], 4.5)
 
-        models_response = self.client.get("/v1/models")
-        self.assertEqual(models_response.status_code, 200)
-        models = models_response.json()["data"]
-        self.assertEqual(models[0]["id"], "google/gemma-4-E4B-it")
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_compare_stream_uses_exclusive_loading_and_clears_warm_pool(self):
         state = self.client.app.state.chaosengine
@@ -1415,10 +1412,139 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(state.runtime.clear_warm_pool_calls, 1)
+        self.assertGreaterEqual(state.runtime.clear_warm_pool_calls, 3)
         self.assertEqual(state.runtime._warm_pool, {})
         self.assertEqual(len(state.runtime.load_requests), 2)
         self.assertTrue(all(not req["keep_warm_previous"] for req in state.runtime.load_requests))
+        self.assertIsNone(state.runtime.loaded_model)
+
+    def test_compare_stream_accepts_four_model_queue(self):
+        models = []
+        for index in range(4):
+            models.append({
+                "modelRef": f"local/model-{index}",
+                "modelName": f"Model {index}",
+                "source": "library",
+                "backend": "mock",
+                "path": f"/tmp/model-{index}",
+            })
+
+        response = self.client.post(
+            "/api/chat/compare",
+            json={"prompt": "Test four-way compare", "models": models},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        events = [
+            json.loads(line[6:])
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+        done_slots = [event["model"] for event in events if event.get("done")]
+        self.assertEqual(done_slots, ["a", "b", "c", "d"])
+        self.assertEqual(len(self.client.app.state.chaosengine.runtime.load_requests), 4)
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_persists_manifest_and_html_files(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        try:
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Pacman Canvas",
+                    "prompt": "Build a tiny arcade page.",
+                    "models": [
+                        {
+                            "modelRef": "local/model-a",
+                            "modelName": "Model A",
+                            "displayLabel": "Qwen3.6-27B-GGUF",
+                            "format": "GGUF",
+                            "quantization": "Q4_K_M",
+                            "sizeGb": 16.3,
+                            "contextWindow": "128K",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-a",
+                            "launch": {
+                                "temperature": 0.7,
+                                "maxTokens": 8192,
+                                "cacheStrategy": "chaosengine",
+                                "cacheBits": 4,
+                                "fp16Layers": 0,
+                                "fusedAttention": False,
+                                "fitModelInMemory": True,
+                                "contextTokens": 262144,
+                                "speculativeDecoding": False,
+                                "treeBudget": 0,
+                            },
+                        },
+                        {
+                            "modelRef": "local/model-b",
+                            "modelName": "Model B",
+                            "displayLabel": "Gemma4-31B-GGUF",
+                            "format": "GGUF",
+                            "quantization": "Q4_K_M",
+                            "sizeGb": 18.8,
+                            "contextWindow": "128K",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-b",
+                            "launch": {
+                                "temperature": 0.7,
+                                "maxTokens": 8192,
+                                "cacheStrategy": "turboquant",
+                                "cacheBits": 3,
+                                "fp16Layers": 0,
+                                "fusedAttention": False,
+                                "fitModelInMemory": True,
+                                "contextTokens": 262144,
+                                "speculativeDecoding": False,
+                                "treeBudget": 0,
+                            },
+                        },
+                    ],
+                },
+            )
+
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            final = next(event for event in reversed(events) if event.get("challengeDone"))
+            challenge = final["challenge"]
+            folder = Path(challenge["folderPath"])
+            self.assertTrue((folder / "manifest.json").exists())
+            self.assertTrue((folder / "model-settings.txt").exists())
+            self.assertEqual(challenge["settingsFilename"], "model-settings.txt")
+            settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Pacman Canvas", settings_text)
+            self.assertIn("Qwen3.6-27B-GGUF", settings_text)
+            self.assertIn("GGUF", settings_text)
+            self.assertIn("Q4_K_M", settings_text)
+            self.assertIn("16.3 GB", settings_text)
+            self.assertIn("128K", settings_text)
+            self.assertIn("chaosengine 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("turboquant 3-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertEqual([slot["status"] for slot in challenge["slots"]], ["done", "done"])
+            for slot in challenge["slots"]:
+                self.assertTrue((folder / slot["filename"]).exists())
+                self.assertGreater(slot["fileBytes"], 0)
+
+            first_slot = challenge["slots"][0]
+            (folder / first_slot["filename"]).unlink()
+            deleted_response = self.client.get(
+                f"/api/chat/html-challenges/{challenge['id']}/files/{first_slot['slotId']}",
+            )
+            self.assertEqual(deleted_response.status_code, 410)
+        finally:
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_workspace_surfaces_tracked_runtime_process_when_system_scan_misses_it(self):
         state = self.client.app.state.chaosengine

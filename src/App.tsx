@@ -25,6 +25,7 @@ import { DashboardTab } from "./features/dashboard/DashboardTab";
 import { ServerTab } from "./features/server/ServerTab";
 import { ChatTab } from "./features/chat/ChatTab";
 import { CompareView } from "./features/chat/CompareView";
+import { HtmlChallengeTab } from "./features/chat/HtmlChallengeTab";
 import { FineTuningTab } from "./features/finetuning/FineTuningTab";
 import { PromptLibraryTab } from "./features/prompts/PromptLibraryTab";
 import { PluginsTab } from "./features/plugins/PluginsTab";
@@ -106,7 +107,6 @@ export default function App() {
   } = ws;
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-  const [compareMode, setCompareMode] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const sidebarPrefs = useSidebarPrefs();
   const gpuStatus = useGpuStatus(backendOnline);
@@ -941,6 +941,15 @@ export default function App() {
     }
   }
 
+  async function handleOpenFilePath(path: string) {
+    try {
+      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+      await tauriInvoke("plugin:opener|open_path", { path });
+    } catch {
+      setError("Could not open file. Try opening this path manually: " + path);
+    }
+  }
+
   async function handleOpenExternalUrl(url: string) {
     try {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
@@ -1736,11 +1745,47 @@ export default function App() {
         onSetError={setError}
         enableTools={chat.enableTools}
         onToggleTools={chat.setEnableTools}
-        onCompareMode={() => setCompareMode(true)}
+        onCompareMode={() => setActiveTab("chat-compare")}
         onCancelGeneration={chat.cancelGeneration}
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
+      />
+    );
+  } else if (activeTab === "chat-compare") {
+    content = (
+      <CompareView
+        modelOptions={libraryChatOptions}
+        onBack={() => setActiveTab("chat")}
+        launchSettings={launchSettings}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+        installLogs={installLogs}
+      />
+    );
+  } else if (activeTab === "html-challenge") {
+    content = (
+      <HtmlChallengeTab
+        modelOptions={libraryChatOptions}
+        launchSettings={launchSettings}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+        installLogs={installLogs}
+        fileRevealLabel={fileRevealLabel}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onOpenFilePath={(path) => void handleOpenFilePath(path)}
       />
     );
   } else if (activeTab === "server") {
@@ -1876,25 +1921,6 @@ export default function App() {
     />;
   }
 
-  const compareView = compareMode ? (
-    <div style={{ display: activeTab === "chat" ? "block" : "none", height: "100%" }}>
-      <CompareView
-        modelOptions={libraryChatOptions}
-        onBack={() => setCompareMode(false)}
-        launchSettings={launchSettings}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-      />
-    </div>
-  ) : null;
-
   return (
     <div className="app-shell">
       <Sidebar
@@ -2025,10 +2051,7 @@ export default function App() {
               tauriBackend={tauriBackend}
             />
           ) : (
-            <>
-              {compareView}
-              {(!compareMode || activeTab !== "chat") ? content : null}
-            </>
+            content
           )}
         </div>
       </main>

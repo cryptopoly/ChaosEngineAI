@@ -3548,6 +3548,131 @@ select.text-input {
   border-top: 1px solid var(--border);
 }
 
+.html-challenge-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.html-challenge-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.html-challenge-history-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(220px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.html-challenge-history-select {
+  min-width: 0;
+}
+
+.html-challenge-prompt {
+  min-height: 116px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.html-challenge-grid {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+  min-height: 460px;
+}
+
+.html-challenge-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.html-challenge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.html-challenge-meta strong {
+  color: var(--text);
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-challenge-note {
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.html-challenge-frame {
+  width: 100%;
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+
+.html-challenge-stream {
+  flex: 1;
+  min-height: 280px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(3, 7, 18, 0.5);
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.html-challenge-deleted {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 180px;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed rgba(248, 113, 113, 0.5);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(127, 29, 29, 0.12);
+}
+
+.html-challenge-deleted strong {
+  color: var(--danger);
+}
+
+.html-challenge-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.html-challenge-file-button {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+}
+
 /* Pin icon */
 .session-title-row {
   display: flex;

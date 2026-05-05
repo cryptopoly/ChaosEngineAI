@@ -113,7 +113,7 @@ try {
         $missing = @($sourceFiles | Where-Object { -not (Test-Path (Join-Path $vsTarget $_.Name)) })
         if (-not $missing -or $missing.Count -eq 0) {
             Write-Host "==> CUDA VS integration already present in $vsTarget"
-            return
+            return $false
         }
         Write-Host "==> CUDA VS integration missing $($missing.Count) file(s) from $vsTarget"
         $missing | ForEach-Object { Write-Host "    - $($_.Name)" }
@@ -129,17 +129,38 @@ try {
         } catch {
             $copied = $false
             Write-Host "==> Direct copy denied; relaunching as admin via UAC..."
-            $argList = @(
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-Command",
-                ("Copy-Item -LiteralPath '{0}\*' -Destination '{1}' -Force" -f $cudaSrc.Replace("'", "''"), $vsTarget.Replace("'", "''"))
+            # Build a per-file Copy-Item script. Cannot use a wildcard with
+            # -LiteralPath -- it treats the * as a literal character and
+            # silently copies nothing -- so iterate over the missing files
+            # by full path. We also verify each landing in the elevated
+            # session and exit non-zero if any failed, so the parent script
+            # detects partial copies.
+            $copyCommands = $missing | ForEach-Object {
+                $srcEsc = $_.FullName.Replace("'", "''")
+                $dstEsc = $vsTarget.Replace("'", "''")
+                "Copy-Item -LiteralPath '$srcEsc' -Destination '$dstEsc' -Force"
+            }
+            $verifyLine = (
+                "if (@(Get-ChildItem -LiteralPath '" + $vsTarget.Replace("'", "''") +
+                "' -Filter 'CUDA *.props' -ErrorAction SilentlyContinue).Count -eq 0) { exit 1 }"
             )
+            $script = ($copyCommands + @($verifyLine)) -join "; "
+            $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $script)
             try {
                 $proc = Start-Process -FilePath powershell -ArgumentList $argList -Verb RunAs -Wait -PassThru
                 if ($proc.ExitCode -eq 0) {
-                    $copied = $true
-                    Write-Host "==> CUDA VS integration files copied (elevated)"
+                    # Re-verify from the parent shell so a buggy elevated
+                    # script can't claim success without leaving files.
+                    $stillMissing = @($sourceFiles | Where-Object {
+                        -not (Test-Path (Join-Path $vsTarget $_.Name))
+                    })
+                    if ($stillMissing.Count -eq 0) {
+                        $copied = $true
+                        Write-Host "==> CUDA VS integration files copied (elevated)"
+                    } else {
+                        Write-Host "==> Elevated copy reported success but $($stillMissing.Count) file(s) still missing:"
+                        $stillMissing | ForEach-Object { Write-Host "    - $($_.Name)" }
+                    }
                 } else {
                     Write-Host "==> Elevated copy exited with code $($proc.ExitCode)"
                 }
@@ -148,16 +169,18 @@ try {
             }
         }
         if (-not $copied) {
+            $manualCopy = $missing | ForEach-Object {
+                "  Copy-Item -LiteralPath '$($_.FullName)' -Destination '$vsTarget' -Force"
+            }
             $msg = @(
                 "",
                 "Could not install CUDA's Visual Studio integration files.",
                 "Run the following in an Administrator PowerShell, then retry:",
-                "",
-                ("  Copy-Item -LiteralPath '{0}\*' -Destination '{1}' -Force" -f $cudaSrc, $vsTarget),
                 ""
-            ) -join [Environment]::NewLine
-            throw $msg
+            ) + $manualCopy + @("")
+            throw ($msg -join [Environment]::NewLine)
         }
+        return $true
     }
 
     # Pick a CMake generator explicitly. Without -G, cmake defaults to
@@ -239,8 +262,9 @@ try {
             Write-Host "    cl.exe:  $clExe"
             # CMake's CUDA detection needs CUDA's MSBuild .props/.targets
             # files installed under VS. Sync them now if missing.
+            $cudaIntegrationJustCopied = $false
             if ($hasCuda) {
-                Sync-CudaVsIntegration -VsRoot $vsInstance
+                $cudaIntegrationJustCopied = Sync-CudaVsIntegration -VsRoot $vsInstance
             }
         } else {
             $msg = @(
@@ -289,18 +313,32 @@ try {
     # generator used previously". Detect a generator mismatch and wipe
     # build/ so the user doesn't have to clean up by hand.
     #
+    # We also wipe build/ when CUDA's VS integration was just installed,
+    # because the previous configure cached "no CUDA toolset" results
+    # that won't re-evaluate even though the underlying state changed.
+    #
     # Note: do NOT use -SimpleMatch on the Select-String pattern -- it
     # disables regex, which makes the leading ^ a literal character and
     # silently misses every line. Use a regex anchor instead.
     $cachePath = "build\CMakeCache.txt"
     if (Test-Path $cachePath) {
+        $shouldWipe = $false
+        $wipeReason = $null
         $cachedGeneratorLine = Select-String -Path $cachePath -Pattern '^CMAKE_GENERATOR:INTERNAL=' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($cachedGeneratorLine) {
             $cachedGenerator = ($cachedGeneratorLine.Line -split "=", 2)[1].Trim()
             if ($cachedGenerator -and ($cachedGenerator -ne $generator)) {
-                Write-Host "==> stale CMake cache (was '$cachedGenerator', want '$generator'); wiping build\"
-                Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
+                $shouldWipe = $true
+                $wipeReason = "generator changed from '$cachedGenerator' to '$generator'"
             }
+        }
+        if (-not $shouldWipe -and $cudaIntegrationJustCopied) {
+            $shouldWipe = $true
+            $wipeReason = "CUDA VS integration was just installed"
+        }
+        if ($shouldWipe) {
+            Write-Host "==> wiping build\ ($wipeReason)"
+            Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
         }
     }
 

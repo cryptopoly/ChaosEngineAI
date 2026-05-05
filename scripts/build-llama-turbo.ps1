@@ -103,6 +103,44 @@ try {
     } else {
         $generator = "Visual Studio 17 2022"
     }
+
+    # Pre-flight: confirm a usable C++ toolchain is actually installed.
+    # CMake's failure message ("could not find any instance of Visual
+    # Studio") is correct but easy to misread as a script bug -- and on
+    # CUDA hosts it's especially confusing because nvcc was detected
+    # successfully. nvcc proxies to cl.exe on Windows, so CUDA without
+    # MSVC cannot compile anything. Detect the missing-toolchain state
+    # up front and surface the install link the user actually needs.
+    if ($generator -like "Visual Studio*") {
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsInstallation = $null
+        if (Test-Path $vswhere) {
+            $vsInstallation = & $vswhere -latest -products * `
+                -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+                -property installationPath 2>$null
+        }
+        if (-not $vsInstallation) {
+            $msg = @(
+                "",
+                "Visual Studio 2022 with the C++ workload is not installed.",
+                "llama-server-turbo cannot build without an MSVC toolchain --",
+                "and on CUDA hosts, nvcc itself proxies to cl.exe, so even the",
+                "CUDA path requires MSVC. Install one of:",
+                "",
+                "  * Visual Studio 2022 Community (free, full IDE):",
+                "      https://visualstudio.microsoft.com/vs/community/",
+                "  * Visual Studio Build Tools 2022 (compiler only, smaller):",
+                "      https://visualstudio.microsoft.com/visual-cpp-build-tools/",
+                "",
+                "During install, tick 'Desktop development with C++'",
+                "(or, in Build Tools, the 'C++ build tools' workload).",
+                "Re-run this script afterwards.",
+                ""
+            ) -join [Environment]::NewLine
+            throw $msg
+        }
+        Write-Host "==> Visual Studio detected at: $vsInstallation"
+    }
     Write-Host "==> cmake generator: $generator"
     $configureArgs = @("-B", "build", "-G", $generator)
     if ($generator -like "Visual Studio*") {

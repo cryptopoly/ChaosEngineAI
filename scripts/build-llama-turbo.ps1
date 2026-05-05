@@ -110,6 +110,23 @@ try {
     }
     $configureArgs += $cmakeFlags
 
+    # CMake refuses to switch generators in an existing build directory --
+    # a previous failed run that defaulted to "NMake Makefiles" leaves a
+    # CMakeCache.txt that aborts subsequent runs with "Does not match the
+    # generator used previously". Detect a generator mismatch and wipe
+    # build/ so the user doesn't have to clean up by hand.
+    $cachePath = "build\CMakeCache.txt"
+    if (Test-Path $cachePath) {
+        $cachedGeneratorLine = Select-String -Path $cachePath -Pattern "^CMAKE_GENERATOR:INTERNAL=" -SimpleMatch -ErrorAction SilentlyContinue
+        if ($cachedGeneratorLine) {
+            $cachedGenerator = ($cachedGeneratorLine.Line -split "=", 2)[1]
+            if ($cachedGenerator -and ($cachedGenerator -ne $generator)) {
+                Write-Host "==> stale CMake cache (was '$cachedGenerator', want '$generator'); wiping build\"
+                Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
     Write-Host "==> cmake configure"
     cmake @configureArgs
     Assert-LastExit "cmake configure"

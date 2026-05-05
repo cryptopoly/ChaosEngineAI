@@ -115,6 +115,11 @@ export function useImageState(
   // each step decodes in a fraction of the wall-time at the cost of
   // final image fidelity.
   const [imagePreviewVae, setImagePreviewVae] = useState(false);
+  // FU-024 FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/Blackwell).
+  // Stored as separate state so the toggle state survives Studio tab
+  // navigation. Apple Silicon dev boxes never see the gain — backend
+  // gates the apply path on device == "cuda" + capability check.
+  const [imageFp8LayerwiseCasting, setImageFp8LayerwiseCasting] = useState(false);
   const [imageRatioId, setImageRatioId] = useState<(typeof IMAGE_RATIO_PRESETS)[number]["id"]>("square");
   const [imageWidth, setImageWidth] = useState(1024);
   const [imageHeight, setImageHeight] = useState(1024);
@@ -535,6 +540,7 @@ export function useImageState(
         cacheRelL1Thresh: imageCacheRelL1Thresh,
         cfgDecay: imageCfgDecay,
         previewVae: imagePreviewVae,
+        fp8LayerwiseCasting: imageFp8LayerwiseCasting,
       });
       setImageOutputs(response.outputs);
       if (response.runtime) setImageRuntimeStatus(response.runtime);
@@ -764,6 +770,8 @@ export function useImageState(
     setImageCfgDecay,
     imagePreviewVae,
     setImagePreviewVae,
+    imageFp8LayerwiseCasting,
+    setImageFp8LayerwiseCasting,
     imageRatioId,
     imageWidth,
     setImageWidth,

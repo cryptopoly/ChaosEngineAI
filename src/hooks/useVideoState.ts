@@ -208,6 +208,10 @@ export function useVideoState(
   // Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo,
   // taecogvideox / taemochi for the others) for the run.
   const [videoPreviewVae, setVideoPreviewVae] = useState<boolean>(false);
+  // FU-024 FP8 layerwise casting on CUDA SM 8.9+. Mirrors the image-side
+  // toggle. No-op on Apple Silicon — backend gates the apply path on
+  // device == "cuda" + capability check.
+  const [videoFp8LayerwiseCasting, setVideoFp8LayerwiseCasting] = useState<boolean>(false);
   // FU-015 + TeaCache. Cross-platform diffusion cache strategy id —
   // ``"none"`` keeps the stock pipeline (default for upgrade
   // compatibility), ``"fbcache"`` is the broad recommendation,
@@ -721,6 +725,7 @@ export function useVideoState(
       cfgDecay: videoCfgDecay,
       stgScale: videoStgScale,
       previewVae: videoPreviewVae,
+      fp8LayerwiseCasting: videoFp8LayerwiseCasting,
       // FU-015: forward the cache knob. ``"none"`` collapses to null
       // so the backend skips the strategy lookup entirely.
       cacheStrategy: videoCacheStrategy === "none" ? null : videoCacheStrategy,
@@ -996,6 +1001,8 @@ export function useVideoState(
     setVideoCfgDecay,
     videoPreviewVae,
     setVideoPreviewVae,
+    videoFp8LayerwiseCasting,
+    setVideoFp8LayerwiseCasting,
     videoStgScale,
     setVideoStgScale,
     videoFastPreview,

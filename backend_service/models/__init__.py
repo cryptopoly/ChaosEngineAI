@@ -364,6 +364,18 @@ class ImageGenerationRequest(BaseModel):
     # the duration of the run. Final output goes through the fast VAE
     # so the user trades fidelity for wall-time. Default off; opt-in.
     previewVae: bool = Field(default=False)
+    # FU-023 Nunchaku / SVDQuant: 4-bit weight quantization on CUDA.
+    # Catalog variants pin ``nunchakuRepo`` (e.g.
+    # ``mit-han-lab/svdq-int4-flux.1-dev``) and optionally
+    # ``nunchakuFile``. CUDA only — runtime falls back to NF4 / int8wo /
+    # bf16 when nunchaku isn't installed or the device isn't CUDA.
+    nunchakuRepo: str | None = Field(default=None, min_length=1, max_length=200)
+    nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
+    # FU-024 FP8 layerwise casting. Halves transformer VRAM by storing
+    # weights in fp8 + promoting to bf16 inside the matmul. CUDA SM 8.9+
+    # only (Ada / Hopper / Blackwell). Family-correct fp8 dtype picked
+    # by the runtime: E5M2 for HunyuanVideo, E4M3 elsewhere.
+    fp8LayerwiseCasting: bool = Field(default=False)
 
 
 class ImageRuntimePreloadRequest(BaseModel):
@@ -446,3 +458,10 @@ class VideoGenerationRequest(BaseModel):
     # tiny VAE for the duration of the run. Default off — video users
     # typically want full fidelity.
     previewVae: bool = Field(default=False)
+    # FU-023 Nunchaku / SVDQuant — same shape as the image-side knob.
+    # When the catalog variant pins a Nunchaku snapshot, the runtime
+    # loads via the matching Nunchaku transformer subclass on CUDA.
+    nunchakuRepo: str | None = Field(default=None, min_length=1, max_length=200)
+    nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
+    # FU-024 FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
+    fp8LayerwiseCasting: bool = Field(default=False)

@@ -1173,6 +1173,9 @@ export interface VideoGenerationPayload {
    * quality knob; default off (video users typically want full
    * fidelity). */
   previewVae?: boolean;
+  /** FU-024: FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
+   * Halves transformer VRAM. No-op on Apple Silicon / CPU / pre-Ada. */
+  fp8LayerwiseCasting?: boolean;
   /** FU-015: cache strategy id ("fbcache" / "teacache" / "none"). */
   cacheStrategy?: VideoCacheStrategyId | null;
   /** Optional caching threshold override; null uses strategy default. */
@@ -1237,6 +1240,9 @@ export interface ImageGenerationPayload {
    * knob — when on, the engine swaps ``pipeline.vae`` for the
    * matching tiny VAE for the duration of the run. Default off. */
   previewVae?: boolean;
+  /** FU-024: FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
+   * Halves transformer VRAM. No-op on non-CUDA / pre-Ada GPUs. */
+  fp8LayerwiseCasting?: boolean;
 }
 
 export interface VideoGenerationCachePayload {

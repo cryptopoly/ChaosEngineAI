@@ -400,6 +400,15 @@ def _generate_image_artifacts(
             loraScale=(variant.get("loraScale") if variant.get("loraScale") is not None else None),
             defaultSteps=(variant.get("defaultSteps") if variant.get("defaultSteps") is not None else None),
             cfgOverride=(variant.get("cfgOverride") if variant.get("cfgOverride") is not None else None),
+            # FU-023: variant-pinned Nunchaku SVDQuant snapshot. Threads
+            # through to ``_ensure_pipeline`` which prefers it over
+            # NF4 / int8wo on CUDA when nunchaku is installed.
+            nunchakuRepo=(variant.get("nunchakuRepo") or None),
+            nunchakuFile=(variant.get("nunchakuFile") or None),
+            # FU-024: opt-in FP8 layerwise casting. Threaded from the
+            # request rather than the catalog so users can experiment
+            # without the catalog committing to fp8 readiness per repo.
+            fp8LayerwiseCasting=request.fp8LayerwiseCasting,
         )
     )
     created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -507,6 +516,13 @@ def _generate_video_artifact(
             distillTransformerHighNoiseFile=(variant.get("distillTransformerHighNoiseFile") or None),
             distillTransformerLowNoiseFile=(variant.get("distillTransformerLowNoiseFile") or None),
             distillTransformerPrecision=(variant.get("distillTransformerPrecision") or None),
+            # FU-023 / FU-024: catalog-pinned Nunchaku snapshot + opt-in
+            # FP8 layerwise casting (CUDA-only). Same shape as the image
+            # side so a future video-Nunchaku release lands without app
+            # plumbing churn.
+            nunchakuRepo=(variant.get("nunchakuRepo") or None),
+            nunchakuFile=(variant.get("nunchakuFile") or None),
+            fp8LayerwiseCasting=request.fp8LayerwiseCasting,
         )
     )
 

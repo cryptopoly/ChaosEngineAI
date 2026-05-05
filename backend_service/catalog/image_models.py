@@ -288,6 +288,56 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 2.4,
                 "releaseDate": "2025-02",
             },
+            # FU-023 Nunchaku SVDQuant — 4-bit precompiled INT4 weights.
+            # CUDA only (Ada/Hopper/Blackwell). ~3× over NF4 on FLUX.1-dev,
+            # quality near bf16. Variant pins the upstream MIT-Han-Lab
+            # snapshot; runtime falls back to the standard FLUX.1 Dev
+            # path when nunchaku is unavailable so MPS / CPU users see
+            # the same final image (just slower).
+            {
+                "id": "black-forest-labs/FLUX.1-dev-nunchaku-int4",
+                "familyId": "flux-dev",
+                "name": "FLUX.1 Dev · Nunchaku INT4 (CUDA)",
+                "provider": "Black Forest Labs · MIT-Han-Lab",
+                "repo": "black-forest-labs/FLUX.1-dev",
+                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-dev",
+                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-dev",
+                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
+                "styleTags": ["general", "detailed", "fast", "cuda", "int4"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.7,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Nunchaku SVDQuant INT4 — ~3× over NF4 on FLUX.1-dev, "
+                    "quality near bf16. CUDA only (RTX 4070+ / 4090 / "
+                    "Hopper / Blackwell). Falls back to bf16 / NF4 / int8wo "
+                    "automatically on Apple Silicon and CPU."
+                ),
+                "estimatedGenerationSeconds": 1.4,
+                "releaseDate": "2026-01",
+            },
+            {
+                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
+                "familyId": "flux-schnell",
+                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
+                "provider": "Black Forest Labs · MIT-Han-Lab",
+                "repo": "black-forest-labs/FLUX.1-schnell",
+                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
+                "defaultSteps": 4,
+                "cfgOverride": 0.0,
+                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
+                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
+                "styleTags": ["general", "fast", "cuda", "int4"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.7,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
+                    "4090 with quality near the bf16 baseline. CUDA only."
+                ),
+                "estimatedGenerationSeconds": 0.7,
+                "releaseDate": "2026-01",
+            },
         ],
     },
     {

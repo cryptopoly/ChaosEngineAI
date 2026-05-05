@@ -91,6 +91,21 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # kernels regardless of GPU generation. No-op on macOS / CPU / non-DiT
     # pipelines — the helper guards before invoking.
     "sageattention": "sageattention==2.2.0",
+    # FU-023 Nunchaku / SVDQuant — 4-bit weight quantization for FLUX
+    # family + Qwen-Image + SD3.5 on CUDA. ~3× over NF4 on FLUX.1-dev.
+    # CUDA only; Apple Silicon / Linux-CPU installs no-op at runtime
+    # because the Nunchaku transformer subclasses fall back to the
+    # stock diffusers transformer when the import fails. v1.2.1 is the
+    # current pin (2026-01-25) — covers FLUX dev/Schnell/Tools/Kontext/
+    # Krea, Qwen-Image + Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
+    "nunchaku": "nunchaku>=1.2.1",
+    # FU-027 NVIDIA/kvpress — KV cache compression toolkit (Apache 2.0,
+    # 26 releases as of v0.5.3 / 2026-04-09). HF transformers + multi-GPU
+    # Accelerate hookups. CUDA-side complement to TurboQuant on Apple
+    # Silicon. Hooks land separately under cache_compression/kvpress.py
+    # — installable here so the Setup tab can pre-stage the wheel before
+    # the integration code goes live.
+    "kvpress": "kvpress>=0.5.3",
     # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
     # of diffusers+MPS, which is noticeably faster and doesn't hit the
     # MPS fp16-black-image edge cases. Apple Silicon only — installer

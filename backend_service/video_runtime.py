@@ -311,6 +311,19 @@ class VideoGenerationConfig:
     # step; 0.0 disables it and saves ~33 % wall time at a mild quality
     # cost. Other runtimes ignore the value.
     stgScale: float = 1.0
+    # FU-023 Nunchaku / SVDQuant: pinned by catalog variants that ship
+    # CUDA INT4 SVDQuant snapshots. CUDA only — falls back when the
+    # nunchaku package isn't installed or device != cuda. The video-side
+    # path stays parked until upstream Nunchaku ships Wan / HunyuanVideo
+    # / LTX wrappers (FLUX + Qwen-Image only as of v1.2.1) — wiring is
+    # in place so adding a video variant becomes a catalog-row change.
+    nunchakuRepo: str | None = None
+    nunchakuFile: str | None = None
+    # FU-024 FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/Blackwell).
+    # Halves transformer VRAM by storing fp8 weights + computing in bf16
+    # inside the matmul. E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX
+    # / Qwen-Image. Default off; opt-in.
+    fp8LayerwiseCasting: bool = False
     # FU-019 distill LoRAs: when the catalog variant pins a LoRA
     # (lightx2v Wan2.1 CausVid, Wan2.2-Distill-Models, FastWan), the
     # engine fuses it into the pipeline transformer at load time so

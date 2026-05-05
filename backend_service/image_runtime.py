@@ -313,6 +313,35 @@ def _gguf_transformer_class_for_repo(repo: str) -> str | None:
     return None
 
 
+def _nunchaku_transformer_class_for_repo(repo: str) -> str | None:
+    """FU-023: map a base repo to the Nunchaku transformer subclass.
+
+    Nunchaku exports per-architecture wrappers for SVDQuant 4-bit weights:
+        FLUX family       -> NunchakuFluxTransformer2dModel
+        Qwen-Image family -> NunchakuQwenImageTransformer2DModel
+        SD3 / SD3.5       -> NunchakuSD3Transformer2DModel
+        SANA              -> NunchakuSanaTransformer2DModel
+        PixArt-Σ          -> NunchakuPixArtSigmaTransformer2DModel
+
+    Returns ``None`` for families Nunchaku hasn't shipped yet (Wan,
+    HunyuanVideo, LTX, Z-Image, ERNIE-Image) so the caller falls back
+    cleanly. v1.2.1 (2026-01-25) is the pin we ship; new families land
+    here when nunchaku adds matching subclasses.
+    """
+    lowered = repo.lower()
+    if _is_flux_repo(repo):
+        return "NunchakuFluxTransformer2dModel"
+    if "qwen-image" in lowered or "qwen/qwen-image" in lowered:
+        return "NunchakuQwenImageTransformer2DModel"
+    if "stable-diffusion-3" in lowered or "sd3" in lowered:
+        return "NunchakuSD3Transformer2DModel"
+    if "sana" in lowered:
+        return "NunchakuSanaTransformer2DModel"
+    if "pixart-sigma" in lowered:
+        return "NunchakuPixArtSigmaTransformer2DModel"
+    return None
+
+
 # FU-020: Align Your Steps (AYS) — NVIDIA's hand-optimised 10-step
 # timestep schedules for SD1.5, SDXL and SVD. At 7-10 steps the AYS
 # arrays preserve substantially more detail than DPM++ 2M Karras —
@@ -544,6 +573,22 @@ class ImageGenerationConfig:
     # than the schema defaults (24 steps, CFG 5.5).
     defaultSteps: int | None = None
     cfgOverride: float | None = None
+    # FU-023 Nunchaku / SVDQuant: 4-bit weight quantization for FLUX,
+    # Qwen-Image, SD3.5, SANA, PixArt-Σ on CUDA. ~3× over NF4 on FLUX.1-dev.
+    # ``nunchakuRepo`` pins the precompiled SVDQuant snapshot (e.g.
+    # ``mit-han-lab/svdq-int4-flux.1-dev``); ``nunchakuFile`` is optional
+    # for repos that ship multiple precision tiers. CUDA only — the helper
+    # falls back to the standard transformer when the import fails or the
+    # device isn't ``cuda``.
+    nunchakuRepo: str | None = None
+    nunchakuFile: str | None = None
+    # FU-024 FP8 layerwise casting (CUDA SM 8.9+, e.g. RTX 4090 / H100).
+    # When True the engine calls ``transformer.enable_layerwise_casting``
+    # post-load with the family-correct fp8 dtype (E4M3 for FLUX / Wan,
+    # E5M2 for HunyuanVideo). No-op on Apple Silicon, CPU, and pre-Ada
+    # GPUs — the helper guards before invoking. Defaults off so users
+    # opt-in once their hardware is confirmed.
+    fp8LayerwiseCasting: bool = False
 
 
 @dataclass(frozen=True)
@@ -772,6 +817,9 @@ class DiffusersTextToImageEngine:
                 lora_file=config.loraFile,
                 lora_scale=config.loraScale,
                 preview_vae=config.previewVae,
+                nunchaku_repo=config.nunchakuRepo,
+                nunchaku_file=config.nunchakuFile,
+                fp8_layerwise_casting=config.fp8LayerwiseCasting,
             )
             # Early-cancel check: the load phase is blocking (from_pretrained
             # is a C-extension call we can't interrupt), so if the user hit
@@ -1014,6 +1062,9 @@ class DiffusersTextToImageEngine:
         lora_file: str | None = None,
         lora_scale: float | None = None,
         preview_vae: bool = False,
+        nunchaku_repo: str | None = None,
+        nunchaku_file: str | None = None,
+        fp8_layerwise_casting: bool = False,
     ) -> Any:
         with self._lock:
             # Variant key folds LoRA identity in too — switching LoRAs
@@ -1028,6 +1079,12 @@ class DiffusersTextToImageEngine:
                 variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
             if preview_vae:
                 variant_parts.append("preview_vae")
+            if nunchaku_repo:
+                variant_parts.append(
+                    f"nunchaku={nunchaku_repo}{'/' + nunchaku_file if nunchaku_file else ''}"
+                )
+            if fp8_layerwise_casting:
+                variant_parts.append("fp8_layerwise")
             variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
@@ -1080,6 +1137,7 @@ class DiffusersTextToImageEngine:
             # on CUDA when no GGUF file was specified.
             pipeline_kwargs: dict[str, Any] = {}
             gguf_note: str | None = None
+            nunchaku_note: str | None = None
             if gguf_file:
                 IMAGE_PROGRESS.set_phase(
                     PHASE_LOADING,
@@ -1095,6 +1153,30 @@ class DiffusersTextToImageEngine:
                     pipeline_kwargs["transformer"] = quantized_transformer
                 if gguf_note:
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=gguf_note)
+            # FU-023 Nunchaku / SVDQuant — preferred path on CUDA when the
+            # variant pins a Nunchaku snapshot. Wins over NF4 / int8wo by
+            # roughly 3× on FLUX.1-dev. CUDA only; the helper falls back to
+            # the standard transformer when nunchaku isn't installed or the
+            # device is mps/cpu so the rest of the runtime keeps working.
+            if (
+                "transformer" not in pipeline_kwargs
+                and nunchaku_repo
+                and device == "cuda"
+            ):
+                IMAGE_PROGRESS.set_phase(
+                    PHASE_LOADING,
+                    message=f"Loading Nunchaku SVDQuant transformer {nunchaku_repo}",
+                )
+                quantized_transformer, nunchaku_note = self._try_load_nunchaku_transformer(
+                    repo=repo,
+                    nunchaku_repo=nunchaku_repo,
+                    nunchaku_file=nunchaku_file,
+                    torch=torch,
+                )
+                if quantized_transformer is not None:
+                    pipeline_kwargs["transformer"] = quantized_transformer
+                if nunchaku_note:
+                    IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=nunchaku_note)
             if (
                 "transformer" not in pipeline_kwargs
                 and device == "mps"
@@ -1200,6 +1282,26 @@ class DiffusersTextToImageEngine:
                     self._load_notes.append(preview_note)
             except Exception:
                 pass
+
+            # FU-024 FP8 layerwise casting (CUDA SM 8.9+ / Ada+ / Hopper+).
+            # Halves transformer VRAM by storing weights in fp8 and
+            # promoting to bf16 only inside the matmul. Diffusers exposes
+            # ``enable_layerwise_casting`` on every flow-match DiT we ship.
+            # Family-correct fp8 dtype: E4M3 for FLUX / Wan / Qwen-Image,
+            # E5M2 for HunyuanVideo (hunyuan team's recommendation in
+            # their model card). No-op outside CUDA.
+            if fp8_layerwise_casting and device == "cuda":
+                try:
+                    fp8_note = self._maybe_enable_fp8_layerwise(
+                        pipeline, repo=repo, torch=torch,
+                    )
+                    if fp8_note:
+                        self._load_notes.append(fp8_note)
+                except Exception as exc:  # noqa: BLE001 — any failure → bf16
+                    self._load_notes.append(
+                        f"FP8 layerwise casting failed ({type(exc).__name__}: "
+                        f"{exc}) — running bf16."
+                    )
 
             # FU-019: distill LoRAs (Hyper-SD FLUX, alimama FLUX.1-Turbo,
             # lightx2v Wan CausVid). Load + fuse at pipeline build time
@@ -1584,6 +1686,129 @@ class DiffusersTextToImageEngine:
         if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
             return "mps"
         return "cpu"
+
+    def _try_load_nunchaku_transformer(
+        self,
+        repo: str,
+        nunchaku_repo: str,
+        nunchaku_file: str | None,
+        torch: Any,
+    ) -> tuple[Any, str | None]:
+        """FU-023: load a Nunchaku SVDQuant transformer for FLUX / Qwen-Image
+        / SD3.5 / SANA / PixArt-Σ. CUDA only.
+
+        Nunchaku ships dedicated transformer subclasses
+        (``NunchakuFluxTransformer2dModel``, ``NunchakuQwenImageTransformer2DModel``,
+        etc.) that load precompiled INT4 SVDQuant weights and expose the
+        same forward signature as the stock diffusers transformer, so the
+        rest of ``_ensure_pipeline`` keeps working without further
+        plumbing. ~3× perf over NF4 on FLUX.1-dev.
+
+        Returns ``(transformer, note)`` matching the NF4 / GGUF helper
+        contract — ``None`` transformer means the caller should fall back.
+        """
+        if importlib.util.find_spec("nunchaku") is None:
+            return None, (
+                "Nunchaku package not installed — install it from the Setup "
+                "page to enable SVDQuant 4-bit on CUDA. Falling back to "
+                "the standard transformer."
+            )
+        cls_name = _nunchaku_transformer_class_for_repo(repo)
+        if cls_name is None:
+            return None, (
+                f"No Nunchaku transformer class registered for {repo}. "
+                "Add a mapping in image_runtime._nunchaku_transformer_class_for_repo."
+            )
+        try:
+            import nunchaku  # type: ignore
+        except ImportError as exc:
+            return None, (
+                f"Nunchaku import failed ({exc}). Install nunchaku>=1.2.1 "
+                "from the Setup page."
+            )
+        cls = getattr(nunchaku, cls_name, None)
+        if cls is None:
+            return None, (
+                f"{cls_name} not in installed nunchaku — upgrade via the "
+                "Setup page to use this Nunchaku variant."
+            )
+
+        try:
+            from huggingface_hub import snapshot_download  # type: ignore
+            local_dir = snapshot_download(
+                repo_id=nunchaku_repo,
+                local_files_only=True,
+            )
+            kwargs: dict[str, Any] = {"torch_dtype": torch.bfloat16}
+            if nunchaku_file:
+                # Some Nunchaku snapshots ship multiple precision tiers
+                # under one repo (e.g. svdq-int4 vs svdq-fp4). When the
+                # variant pins a specific filename, pass it through.
+                kwargs["filename"] = nunchaku_file
+            transformer = cls.from_pretrained(local_dir, **kwargs)
+            note = (
+                f"Nunchaku SVDQuant transformer loaded from {nunchaku_repo}"
+                + (f"/{nunchaku_file}" if nunchaku_file else "")
+                + " (CUDA INT4 — ~3× over NF4)."
+            )
+            return transformer, note
+        except Exception as exc:  # noqa: BLE001 — fall through to NF4
+            return None, (
+                f"Nunchaku load failed ({type(exc).__name__}: {exc}) — "
+                "falling back to NF4 / int8wo / bf16."
+            )
+
+    def _maybe_enable_fp8_layerwise(
+        self,
+        pipeline: Any,
+        repo: str,
+        torch: Any,
+    ) -> str | None:
+        """FU-024: call ``transformer.enable_layerwise_casting`` with the
+        family-correct fp8 dtype. Caller has already gated to CUDA. Pre-Ada
+        GPUs lack hardware fp8 support — the cast still runs but generation
+        is slower than bf16, so we additionally check the compute capability
+        (SM 8.9 = Ada Lovelace, SM 9.0 = Hopper, SM 10.0 = Blackwell).
+        Returns a runtimeNote string, or ``None`` when the path no-ops
+        cleanly.
+        """
+        try:
+            major, minor = torch.cuda.get_device_capability()
+        except Exception:
+            return "FP8 layerwise skipped: torch.cuda.get_device_capability failed."
+        if (major, minor) < (8, 9):
+            return (
+                f"FP8 layerwise skipped: SM {major}.{minor} pre-dates Ada — "
+                "hardware fp8 unavailable. Use bf16 / NF4 / Nunchaku instead."
+            )
+        transformer = getattr(pipeline, "transformer", None)
+        if transformer is None or not hasattr(transformer, "enable_layerwise_casting"):
+            return (
+                "FP8 layerwise skipped: pipeline.transformer.enable_layerwise_casting "
+                "missing — pipeline is UNet-based or the diffusers version is old."
+            )
+        # E5M2 has wider exponent range (good for activations + outliers),
+        # E4M3 has more mantissa bits (better for weights). HunyuanVideo's
+        # team published their FP8 weights as E5M2; FLUX / Wan / Qwen-Image
+        # / SD3 use E4M3.
+        repo_lower = repo.lower()
+        if "hunyuan" in repo_lower:
+            storage_dtype = torch.float8_e5m2
+            storage_label = "E5M2"
+        else:
+            storage_dtype = torch.float8_e4m3fn
+            storage_label = "E4M3"
+        try:
+            transformer.enable_layerwise_casting(
+                storage_dtype=storage_dtype,
+                compute_dtype=torch.bfloat16,
+            )
+        except Exception as exc:
+            return (
+                f"FP8 layerwise enable failed ({type(exc).__name__}: {exc}) — "
+                "running bf16."
+            )
+        return f"FP8 layerwise casting enabled ({storage_label}, compute=bf16)."
 
 
 class MfluxImageEngine:

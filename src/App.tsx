@@ -747,12 +747,29 @@ export default function App() {
     });
   }, [activeTab, benchmarkDraft.cacheBits, benchmarkDraft.fp16Layers, benchmarkDraft.contextTokens, benchmarkDraft.cacheStrategy, setPreviewControls]);
 
-  // Sync previewVariant -> previewControls.paramsB
+  // Sync previewVariant -> previewControls.paramsB + architecture
+  // estimate. Bug surfaced 2026-05-05: this effect previously only
+  // pushed paramsB and left numLayers / numHeads / numKvHeads /
+  // hiddenSize at 0, which collapsed the Native f16 cache estimate
+  // to ~0 bytes (kv_elements = num_layers * num_kv_heads * head_dim *
+  // ctx — anything * 0 = 0) and made "Fits Easily" fire on models
+  // that absolutely don't fit. Also pushed paramsB=0 cases through.
   useEffect(() => {
-    if (!previewVariant) return;
-    setPreviewControls((current) =>
-      current.paramsB === previewVariant.paramsB ? current : { ...current, paramsB: previewVariant.paramsB },
-    );
+    if (!previewVariant?.paramsB) return;
+    const paramsB = previewVariant.paramsB;
+    const arch = estimateArchFromParams(paramsB);
+    setPreviewControls((current) => {
+      if (
+        current.paramsB === paramsB
+        && current.numLayers === arch.numLayers
+        && current.numHeads === arch.numHeads
+        && current.numKvHeads === arch.numKvHeads
+        && current.hiddenSize === arch.hiddenSize
+      ) {
+        return current;
+      }
+      return { ...current, paramsB, ...arch };
+    });
   }, [previewVariant?.paramsB, setPreviewControls]);
 
   // Sync serverModelKey when options change

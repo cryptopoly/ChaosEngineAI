@@ -98,6 +98,11 @@ export interface VideoStudioTabProps {
   onRestartServer: () => void;
   onInstallVideoOutputDeps: (packages?: readonly string[]) => Promise<InstallResult>;
   onInstallVideoGpuRuntime: () => Promise<InstallResult>;
+  /** Trigger /api/setup/install-cuda-torch directly from the GPU
+   * acceleration warning banner. Lets the user fix the +cpu wheel
+   * without navigating away to Settings > Setup. */
+  onInstallCudaTorch?: () => void;
+  installingCudaTorch?: boolean;
   // LongLive (long-form causal video) surface — separate from the main
   // diffusers runtime because LongLive runs via a torchrun subprocess
   // against an isolated venv at ~/.chaosengine/longlive. Null until the
@@ -292,6 +297,8 @@ export function VideoStudioTab({
   onRestartServer,
   onInstallVideoOutputDeps,
   onInstallVideoGpuRuntime,
+  onInstallCudaTorch,
+  installingCudaTorch,
   longLiveStatus,
   installingLongLive,
   onRefreshLongLiveStatus,
@@ -704,6 +711,23 @@ export function VideoStudioTab({
             <div className="callout error" style={{ marginBottom: "0.6rem" }}>
               <strong>GPU acceleration not active.</strong>{" "}
               {videoRuntimeStatus.torchInstallWarning}
+              {/* Inline remedy button -- mirrors ImageStudioTab. Only
+                * renders when the warning is the "+cpu wheel on a CUDA
+                * host" case; if torch is missing entirely the existing
+                * Install GPU runtime button below covers it. */}
+              {onInstallCudaTorch
+                && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onInstallCudaTorch()}
+                    disabled={Boolean(installingCudaTorch) || !backendOnline}
+                  >
+                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <p>{videoRuntimeStatus.message}</p>

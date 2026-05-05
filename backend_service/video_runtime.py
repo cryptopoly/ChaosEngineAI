@@ -968,6 +968,15 @@ class DiffusersVideoEngine:
             message=message,
             loadedModelRepo=self._loaded_repo,
             deviceMemoryGb=device_memory_gb,
+            # The earlier replace_all that wired this missed the
+            # success-path return because the indentation differs from
+            # the placeholder branch above. Without it, the Studio
+            # warning chip + banner only fired on the rare path where
+            # core deps were also missing -- if torch was importable but
+            # +cpu (the actual user case), realGenerationAvailable=True
+            # and the field was never set, so the UI silently dropped
+            # the warning while every other badge read green.
+            torchInstallWarning=torch_install_warning(),
         )
 
     def preload(self, repo: str) -> VideoRuntimeStatus:

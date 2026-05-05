@@ -100,6 +100,11 @@ export interface ImageStudioTabProps {
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
+  /** Trigger /api/setup/install-cuda-torch directly from the GPU
+   * acceleration warning. Lets the user fix the +cpu wheel without
+   * navigating away to Settings > Setup. */
+  onInstallCudaTorch?: () => void;
+  installingCudaTorch?: boolean;
   // Live state of the GPU bundle install job — drives the InstallLogPanel
   // under the install button so users see per-step pip output instead of a
   // generic "failed" toast. Null when no install has been kicked off yet
@@ -179,6 +184,8 @@ export function ImageStudioTab({
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
+  onInstallCudaTorch,
+  installingCudaTorch,
   gpuBundleJob,
   onImageDownload,
   onCancelImageDownload,
@@ -393,6 +400,29 @@ export function ImageStudioTab({
             <div className="callout error" style={{ marginBottom: "0.6rem" }}>
               <strong>GPU acceleration not active.</strong>{" "}
               {imageRuntimeStatus.torchInstallWarning}
+              {/* Inline remedy button. The warning text already tells the
+                * user "Open Settings > Setup and click Install CUDA torch"
+                * but firing the install from the warning itself saves a
+                * navigation and makes the message actionable rather than
+                * just informational. The button only renders when the
+                * "+cpu wheel on a CUDA host" code path applies (the
+                * warning text mentions "Install CUDA torch") -- if torch
+                * is missing entirely the right remedy is the larger
+                * Install GPU runtime flow, which has its own primary
+                * button further down. */}
+              {onInstallCudaTorch
+                && imageRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onInstallCudaTorch()}
+                    disabled={Boolean(installingCudaTorch) || !backendOnline}
+                  >
+                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="chip-row">

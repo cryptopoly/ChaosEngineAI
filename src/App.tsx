@@ -1446,6 +1446,8 @@ export default function App() {
         onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
         onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
         onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
+        onInstallCudaTorch={() => void handleInstallCudaTorch()}
+        installingCudaTorch={installingCudaTorch}
         gpuBundleJob={imgState.gpuBundleJob}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
@@ -1611,6 +1613,8 @@ export default function App() {
         onRestartServer={() => void handleRestartServer()}
         onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
+        onInstallCudaTorch={() => void handleInstallCudaTorch()}
+        installingCudaTorch={installingCudaTorch}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}

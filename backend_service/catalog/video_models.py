@@ -809,15 +809,23 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "fast", "small"],
                 "taskSupport": ["txt2video"],
-                # 2B transformer in fp16 (~4 GB) + T5 text encoder (~5 GB) +
-                # VAE. Fits comfortably on a 12 GB card; 8 GB works with
-                # CPU-offload tricks. Smaller than Wan 2.1 1.3B because there's
-                # no UMT5-XXL — just the standard T5.
+                # 2B transformer in bf16 (~4 GB) + T5-XXL text encoder
+                # (~5 GB bf16) + VAE (~250 MB). Real-world bf16 + standard
+                # placement: ~13 GB resident peak on CUDA, ~15 GB on MPS
+                # because of allocator overhead. The runtime auto-engages
+                # enable_sequential_cpu_offload() if .to(device) OOMs, so
+                # 8-12 GB cards still work via the offload path -- the
+                # peak just shifts to ~5-7 GB at the cost of slower steps.
+                # Earlier 19 GB number was the worst-case fp32 figure and
+                # was tripping "would crash" on 24 GB 4090s, blocking a
+                # config that runs comfortably.
                 "sizeGb": 9.0,
-                "runtimeFootprintGb": 19.0,
+                "runtimeFootprintGb": 13.0,
+                "runtimeFootprintCudaGb": 13.0,
+                "runtimeFootprintMpsGb": 15.0,
                 "recommendedResolution": "720x480",
                 "defaultDurationSeconds": 6.0,
-                "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk; runtime peak is closer to 19 GB without the most aggressive offload/tiling.",
+                "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk; bf16 peak is ~13 GB on CUDA / ~15 GB on MPS. Runtime auto-engages sequential CPU offload on smaller GPUs (~5-7 GB peak, slower).",
                 "estimatedGenerationSeconds": 90.0,
                 "availableLocally": False,
                 "releaseDate": "2024-08",
@@ -832,14 +840,19 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "quality", "balanced"],
                 "taskSupport": ["txt2video"],
-                # 5B transformer (~10 GB) + T5 (~5 GB) + VAE. Lands in the
-                # same envelope as Wan 2.2 — needs 24 GB VRAM or 32 GB+
-                # unified memory.
+                # 5B transformer bf16 (~10 GB) + T5-XXL bf16 (~5 GB) +
+                # VAE (~250 MB). Real-world bf16 + standard placement on
+                # CUDA: ~18 GB resident peak; on MPS allocator overhead
+                # pushes it closer to ~22 GB. Earlier 33 GB number was the
+                # fp32 + duplicate-text-encoder worst case and was blocking
+                # 24 GB CUDA cards from a config that fits.
                 "sizeGb": 18.0,
-                "runtimeFootprintGb": 33.0,
+                "runtimeFootprintGb": 18.0,
+                "runtimeFootprintCudaGb": 18.0,
+                "runtimeFootprintMpsGb": 22.0,
                 "recommendedResolution": "720x480",
                 "defaultDurationSeconds": 6.0,
-                "note": "Quality tier. ~18 GB on disk; budget for a 32 GB-class runtime envelope unless aggressive offload is enabled.",
+                "note": "Quality tier. ~18 GB on disk; bf16 peak is ~18 GB on CUDA / ~22 GB on MPS. Sequential CPU offload kicks in automatically on smaller GPUs.",
                 "estimatedGenerationSeconds": 200.0,
                 "availableLocally": False,
                 "releaseDate": "2024-08",
@@ -859,14 +872,21 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "quality", "balanced", "refreshed"],
                 "taskSupport": ["txt2video"],
+                # Same architecture as CogVideoX-5b at higher training
+                # resolution. bf16 peak ~19 GB on CUDA / ~23 GB on MPS;
+                # the extra GB over 5B is the larger latent at 1360x768.
+                # Earlier 34 GB number was the worst case and tripped a
+                # spurious "would crash" on 24 GB CUDA cards.
                 "sizeGb": 18.5,
-                "runtimeFootprintGb": 34.0,
+                "runtimeFootprintGb": 19.0,
+                "runtimeFootprintCudaGb": 19.0,
+                "runtimeFootprintMpsGb": 23.0,
                 "recommendedResolution": "1360x768",
                 "defaultDurationSeconds": 5.0,
                 "note": (
-                    "Refreshed CogVideoX 1.5 5B weights with stronger prompt "
-                    "adherence and 1360×768 training resolution. Same "
-                    "CogVideoXPipeline class as 5B."
+                    "Refreshed CogVideoX 1.5 5B with stronger prompt "
+                    "adherence at 1360×768. bf16 peak ~19 GB on CUDA / "
+                    "~23 GB on MPS; same CogVideoXPipeline as 5B."
                 ),
                 "estimatedGenerationSeconds": 220.0,
                 "availableLocally": False,

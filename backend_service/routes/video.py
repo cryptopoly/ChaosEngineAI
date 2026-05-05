@@ -161,18 +161,37 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
     try:
         runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
-        state.add_log("video", "error", f"Failed to preload {variant['name']}: {exc}")
-        raise HTTPException(status_code=400, detail=f"Failed to load {variant['name']}: {exc}") from exc
-    except Exception as exc:
-        state.add_log(
-            "video",
-            "error",
-            f"Unexpected error preloading {variant['name']}: {type(exc).__name__}: {exc}",
+        # Diffusers' lazy-import wrapper hides the real underlying cause when
+        # transformers / torchao / torch versions don't agree -- the user
+        # sees "Could not import module 'T5EncoderModel'" with no actionable
+        # next step. Probe the suspected dep chain and rewrite the message
+        # with the actual missing/broken module + a Setup-page hint.
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
         )
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}",
-        ) from exc
+        import traceback as _tb
+        full_tb = _tb.format_exc()
+        state.add_log(
+            "video", "error",
+            f"Failed to preload {variant['name']}: {exc}\nTraceback:\n{full_tb[-2000:]}",
+        )
+        friendly = diagnose_diffusers_lazy_import_error(str(exc))
+        detail = friendly or f"Failed to load {variant['name']}: {exc}"
+        raise HTTPException(status_code=400, detail=detail) from exc
+    except Exception as exc:
+        from backend_service.helpers.video_runtime_diagnostics import (
+            diagnose_diffusers_lazy_import_error,
+        )
+        import traceback as _tb
+        full_tb = _tb.format_exc()
+        state.add_log(
+            "video", "error",
+            f"Unexpected error preloading {variant['name']}: "
+            f"{type(exc).__name__}: {exc}\nTraceback:\n{full_tb[-2000:]}",
+        )
+        friendly = diagnose_diffusers_lazy_import_error(str(exc))
+        detail = friendly or f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}"
+        raise HTTPException(status_code=500, detail=detail) from exc
 
     state.add_log("video", "info", f"Preloaded video model {variant['name']}.")
     state.add_activity("Video model loaded", variant["name"])

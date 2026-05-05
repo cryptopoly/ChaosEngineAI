@@ -667,7 +667,13 @@ describe("assessVideoGenerationSafety()", () => {
         baseModelFootprintGb: 16.4,
       });
       expect(result.suggestion).toBeNull();
-      expect(result.reason).toMatch(/model weights|text encoder/i);
+      // The reason now describes the resident footprint and the runtime's
+      // automatic CPU-offload fallback rather than the older "model weights
+      // + text encoder" framing -- the underlying signal is unchanged
+      // (model footprint exceeds budget, the user should pick a smaller
+      // model for full speed). Match on the bits the message will keep
+      // across copy edits.
+      expect(result.reason).toMatch(/resident|sequential CPU offload|smaller model/i);
     });
 
     it("flags danger for Wan 2.1 1.3B on a 16 GB M2 regardless of frame count", () => {

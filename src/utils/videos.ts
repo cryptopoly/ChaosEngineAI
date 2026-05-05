@@ -707,6 +707,15 @@ export function assessVideoGenerationSafety(opts: {
   // "try 480×320 × 17 frames" (which would also crash). We threshold at
   // the caution ratio rather than danger so we don't hand back bogus
   // suggestions in the caution band either.
+  //
+  // Backend reality: ``video_runtime.py::_ensure_pipeline`` wraps the
+  // ``pipeline.to(device)`` call in try/except (RuntimeError, MemoryError)
+  // and falls back to ``enable_sequential_cpu_offload()`` when it OOMs --
+  // peak memory drops to ~max(largest_module) + activations (~5-7 GB for
+  // CogVideoX 2B, ~8-10 GB for Wan 2.2 5B). So "model footprint > device
+  // budget" is not actually fatal on diffusers pipelines that expose the
+  // offload hook; the user just trades wall-time for memory headroom.
+  // Translate the message accordingly instead of telling them to give up.
   const safeRatioTarget = cautionRatio * 0.7; // leave a real margin after apply
   if (modelFootprintGb > cautionRatio * budgetGb) {
     const comfortBudgetGb = cautionRatio * budgetGb;
@@ -714,9 +723,9 @@ export function assessVideoGenerationSafety(opts: {
     const reason =
       riskLevel === "danger"
         ? modelFootprintGb > budgetGb
-          ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, the estimated working set is ~${fmt(budgetGb)} GB, so the model alone is already over that. Even the smallest clip would be likely to crash the backend. Try a smaller model (LTX-Video is ~2 GB) or a machine with more memory.`
-          : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder, and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). Generation is likely to crash the backend; lower the settings or choose a smaller model.`
-        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation may run slowly or fail; consider lowering settings if it becomes unstable.`;
+          ? `The model needs ~${fmt(modelFootprintGb)} GB resident at the standard placement, but ${platform} with ${fmt(totalMemoryGb)} GB total only has ~${fmt(budgetGb)} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and ${effectiveDevice === "cuda" ? "GPU" : "device"} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.`
+          : `The model needs ~${fmt(modelFootprintGb)} GB resident and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.`
+        : `The model needs ~${fmt(modelFootprintGb)} GB resident. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation should fit; lower the settings if it becomes unstable.`;
     return {
       riskLevel,
       latentTokens,

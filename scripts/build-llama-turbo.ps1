@@ -104,7 +104,7 @@ try {
         if (Test-Path $candidate) { $serverExe = $candidate; break }
     }
     if (-not $serverExe) {
-        throw "llama-server.exe not found under build\bin — check build output."
+        throw "llama-server.exe not found under build\bin -- check build output."
     }
     $cliExe = $serverExe.Replace("llama-server.exe", "llama-cli.exe")
 

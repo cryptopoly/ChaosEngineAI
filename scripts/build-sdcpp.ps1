@@ -100,7 +100,7 @@ try {
         if (Test-Path $candidate) { $sdExe = $candidate; break }
     }
     if (-not $sdExe) {
-        throw "sd-cli.exe not found under build\bin — check build output."
+        throw "sd-cli.exe not found under build\bin -- check build output."
     }
 
     if (-not (Test-Path $InstallDir)) {

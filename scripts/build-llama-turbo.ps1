@@ -122,12 +122,18 @@ try {
     # path explicitly to cmake via CMAKE_GENERATOR_INSTANCE so it
     # doesn't repeat the same -latest filter and fail again.
     $vsInstance = $null
+    $vsInstanceVersion = $null
     if ($generator -like "Visual Studio*") {
         $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
         $clCandidates = @()
+        $vsInstalls = @()
         if (Test-Path $vswhere) {
             $clCandidates = & $vswhere -all -prerelease -products * `
                 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2>$null
+            $vsInstallsJson = & $vswhere -all -prerelease -products * -format json 2>$null
+            if ($vsInstallsJson) {
+                $vsInstalls = $vsInstallsJson | ConvertFrom-Json
+            }
         }
         if ($clCandidates) {
             # Pick the highest version dir under VC\Tools\MSVC.
@@ -138,8 +144,23 @@ try {
             # MSVC, Tools, VC, cl.exe-the-leaf-itself).
             $vsInstance = $clExe
             for ($i = 0; $i -lt 8; $i++) { $vsInstance = Split-Path -Parent $vsInstance }
+            # Match the resolved root against the JSON listing to grab
+            # installationVersion. CMake's generator wants
+            # "<path>,version=<version>" when an isComplete=0 install
+            # isn't present in the Installer's known-instances registry,
+            # otherwise it bails with "instance is not known to the
+            # Visual Studio Installer".
+            $matchedInstall = $vsInstalls | Where-Object {
+                $_.installationPath.TrimEnd('\') -eq $vsInstance.TrimEnd('\')
+            } | Select-Object -First 1
+            if ($matchedInstall) {
+                $vsInstanceVersion = $matchedInstall.installationVersion
+            }
             Write-Host "==> Visual Studio detected at: $vsInstance"
-            Write-Host "    cl.exe: $clExe"
+            if ($vsInstanceVersion) {
+                Write-Host "    version: $vsInstanceVersion"
+            }
+            Write-Host "    cl.exe:  $clExe"
         } else {
             $msg = @(
                 "",
@@ -167,8 +188,16 @@ try {
         $configureArgs += @("-A", "x64")
         # Pin CMake to the install we just verified, so it doesn't run
         # its own -latest probe and reject an isComplete=0 install.
+        # Append ",version=<x>" so CMake doesn't reject the path with
+        # "instance is not known to the Visual Studio Installer" -- the
+        # Installer registry skips isComplete=0 entries.
         if ($vsInstance) {
-            $configureArgs += @("-DCMAKE_GENERATOR_INSTANCE=$vsInstance")
+            $instanceArg = if ($vsInstanceVersion) {
+                "$vsInstance,version=$vsInstanceVersion"
+            } else {
+                $vsInstance
+            }
+            $configureArgs += @("-DCMAKE_GENERATOR_INSTANCE=$instanceArg")
         }
     }
     $configureArgs += $cmakeFlags

@@ -2,6 +2,63 @@
 
 ## v0.7.4 - 2026-05-06
 
+### Chat experience (the headline)
+
+**Phase 1 — UX foundations**
+- Syntax highlighting in code blocks, in-thread search, conversation export, real cancel (mid-stream abort), reasoning-effort levels.
+- Reasoning panel: collapsible streaming preview, fixed first-paragraph gap.
+
+**Phase 2.0 — perf surface + watchdogs**
+- Prompt-processing feedback + TTFT (time-to-first-token) live indicator.
+- Prompt-eval timeout, memory gate, runaway guards (token rate floor, repetition guard), panic + thermal banners, image/video gates that block kicking off a generation when VRAM/RAM headroom is unsafe.
+
+**Phase 2.1 — refactor**
+- Decomposed monolithic `ChatTab.tsx` into `ChatSidebar` / `ChatHeader` / `ChatThread` / `ChatComposer`.
+
+**Phase 2.2 — sampler control**
+- Full sampler exposure: `top_p`, `top_k`, `min_p`, `repeat_penalty`, `seed`, `mirostat`, `reasoning_effort`.
+- JSON-schema constrained-output opt-in (`json_schema` field).
+
+**Phase 2.4 / 2.5 — message-tree workflows**
+- Conversation branching: fork from any assistant message into a sibling thread.
+- In-thread compare: render sibling variants side-by-side under the assistant bubble.
+
+**Phase 2.6 / 2.7 — context & prompts**
+- Cross-platform RAG: semantic embedding via `llama-embedding` + cosine retrieval over local docs.
+- Prompt presets + variables: fill-form before "Use in Chat" so reusable prompts can take inputs.
+
+**Phase 2.8 — structured tool output**
+- Tool call results render as table / code / markdown / image based on returned shape, not raw JSON.
+
+**Phase 2.10 — MCP client**
+- Stdio JSON-RPC transport + tool adapter so any local MCP server is callable from chat. Provenance shown per tool result.
+
+**Phase 2.11 / 2.12 — model-aware composer**
+- Typed capability declarations (vision / tools / json_schema / reasoning) surface as badges in every model picker.
+- Composer auto-gating (e.g. attach-image button hidden when active model has no vision).
+- Mid-thread model swap with one-turn override (try a different model for a single response, then revert).
+
+**Phase 2.13 — OpenAI-compatible server**
+- Full sampler chain + embeddings parity. Apps that talk to `/v1/chat/completions` no longer lose advanced sampler params on the way through.
+
+**Phase 2.14 — catalog browser**
+- VRAM-fit hints on every Discover variant card so you see at a glance what'll actually run on your machine.
+
+**Phase 3.x — substrate transparency**
+- KV strategy chip in composer: per-turn cache override (native / chaosengine / rotorquant / turboquant / triattention) without touching launch settings.
+- DDTree accepted-token overlay: substrate truth view of which speculative draft tokens were accepted.
+- Logprobs viz (advanced-mode gated): per-message confidence summary, MLX logprobs streaming passthrough.
+- Substrate routing inspector: per-turn badge above the metrics row showing which engine + binary served the response.
+- Per-turn host strip: cross-platform perf telemetry (CPU / GPU / RAM / temp).
+- Delve mode: critic-pass on assistant messages.
+- Workspace knowledge stacks: shared RAG corpus across sessions.
+- Chat-template inspection: detect Gemma + ChatML quirks, llama.cpp chat-template fix.
+
+**Vision / multimodal**
+- `--mmproj` wired for llama.cpp vision with sibling detection + `visionEnabled` flag flip.
+- `visionEnabled` flag gates image attach across all runtimes.
+- mlx-vlm torchvision dep added for Qwen2.5-VL processor build.
+
 ### Cache strategies & generation quality (FU-015 → FU-021, FU-026)
 - **First Block Cache** (cross-platform diffusion cache hook, registry id `fbcache`) backed by `diffusers.hooks.apply_first_block_cache`. Applies to image + video DiTs (FLUX, SD3.5, Wan2.1/2.2, HunyuanVideo, LTX-Video, CogVideoX, Mochi). Default threshold 0.12 (≈1.8× speedup on FLUX.1-dev with imperceptible drift). Closes the FU-007 Wan TeaCache deferral by replacing per-model vendoring with a model-agnostic hook.
 - **TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache** strategies wired against the diffusers 0.38 native `enable_cache(<Config>)` API (registry ids `taylorseer`, `magcache`, `pab`, `fastercache`). MagCache is FLUX-only without calibration UX; other DiTs raise a "calibration required" message.

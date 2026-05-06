@@ -6,6 +6,13 @@ interface PerformancePreviewProps {
   preview: PreviewMetrics;
   availableMemoryGb: number;
   totalMemoryGb: number;
+  /** Discrete GPU VRAM in GB (CUDA card on Windows / Linux). When set,
+   * the cache-fit check uses this as the binding constraint -- llama.cpp
+   * places the KV cache on GPU with full offload, so a 60 GB cache on a
+   * 24 GB 4090 fails on VRAM long before it would have failed on system
+   * RAM. Null on Apple Silicon (unified memory already in
+   * totalMemoryGb) or hosts with no detected discrete GPU. */
+  gpuVramTotalGb?: number | null;
   compact?: boolean;
   actualDiskSizeGb?: number;
 }
@@ -21,9 +28,9 @@ function getSpeedLabel(tokS: number): { label: string; className: string } | nul
   return { label: "Very fast", className: "perf-preview__speed-label--fast" };
 }
 
-export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, compact, actualDiskSizeGb }: PerformancePreviewProps) {
+export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, gpuVramTotalGb, compact, actualDiskSizeGb }: PerformancePreviewProps) {
   const diskGb = actualDiskSizeGb ?? preview.diskSizeGb;
-  const fitStatus = getCacheFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits);
+  const fitStatus = getCacheFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits, gpuVramTotalGb);
   const cacheDelta = preview.baselineCacheGb - preview.optimizedCacheGb;
   const qualityDelta = preview.qualityPercent - 100;
   const cacheMax = Math.max(preview.baselineCacheGb, totalMemoryGb * 0.6, 1);

@@ -9,3 +9,4 @@ export * from "./runtime";
 export * from "./cache";
 export * from "./keyboard";
 export * from "./discoverSort";
+export * from "./capabilities";

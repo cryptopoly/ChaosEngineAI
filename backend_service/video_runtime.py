@@ -30,7 +30,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from backend_service.helpers.gpu import nvidia_gpu_present
+from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
     GenerationCancelled,
@@ -201,6 +201,14 @@ class VideoRuntimeStatus:
     # via nvidia-smi. ``None`` means we couldn't detect it — the frontend
     # falls back to its MPS-strict defaults in that case.
     deviceMemoryGb: float | None = None
+    # ``torchInstallWarning`` carries a one-line warning when the installed
+    # torch wheel doesn't match the host accelerator (e.g. +cpu wheel on a
+    # CUDA host -- generation silently runs on CPU). Computed without
+    # importing torch (we read dist-info METADATA) so the probe stays free
+    # of Windows DLL-lock side effects. Frontend renders this as a loud
+    # warning chip in the Studio so users don't see "Real engine ready"
+    # next to "Device: cuda (expected)" while their NVIDIA GPU sits idle.
+    torchInstallWarning: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -221,6 +229,32 @@ def _guess_video_expected_device() -> str | None:
     if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
         return "mps"
     return "cpu"
+
+
+def _windows_cuda_unavailable_message(torch: Any) -> str | None:
+    if platform.system() != "Windows" or not nvidia_gpu_present():
+        return None
+    cuda_module = getattr(torch, "cuda", None)
+    if cuda_module is None:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: torch imports "
+            "but has no torch.cuda module. Open Settings > Setup and click "
+            "Install CUDA torch, then Restart Backend."
+        )
+    try:
+        cuda_available = bool(getattr(cuda_module, "is_available", lambda: False)())
+    except Exception as exc:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: "
+            f"torch.cuda.is_available failed ({type(exc).__name__}: {exc}). "
+            "Open Settings > Setup and click Install CUDA torch, then Restart Backend."
+        )
+    if not cuda_available:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host. Open Settings > "
+            "Setup and click Install CUDA torch, then Restart Backend."
+        )
+    return None
 
 
 @dataclass(frozen=True)
@@ -279,9 +313,65 @@ class VideoGenerationConfig:
     # Phase E1: opt-in template-based prompt enhancement for short prompts
     # (< 25 words). See ``_enhance_prompt`` for the per-model suffixes.
     enhancePrompt: bool = True
+    # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
+    # knob — when True the engine swaps ``pipeline.vae`` for the matching
+    # tiny VAE (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for
+    # HunyuanVideo, taecogvideox for CogVideoX, taemochi for Mochi)
+    # before the first denoise. Each step decodes in a fraction of the
+    # wall-time. Default off — video users typically want full fidelity.
+    previewVae: bool = False
+    # Phase 3 / Wan2.2-Distill 4-step: catalog-pinned distilled
+    # transformers. Wan 2.2 A14B is MoE with two transformer experts
+    # (``transformer`` = high-noise, ``transformer_2`` = low-noise).
+    # lightx2v's 4-step distillation publishes both experts as standalone
+    # safetensors files; the runtime swaps both onto the pipeline at
+    # build time so subsequent ``pipeline(...)`` calls run the distilled
+    # 4-step schedule. Mutually exclusive with LoRA loading — when the
+    # distill files are pinned, the LoRA path is skipped.
+    distillTransformerRepo: str | None = None
+    distillTransformerHighNoiseFile: str | None = None
+    distillTransformerLowNoiseFile: str | None = None
+    # ``"bf16"`` | ``"fp8_e4m3"`` | ``"int8"`` — dictates the torch dtype
+    # used at load. FP8/INT8 distill weights ship pre-quantized and need
+    # the corresponding torch dtype + a CUDA backend that exposes the
+    # native kernel. On platforms without FP8/INT8 ops the runtime falls
+    # back to bf16 dequant.
+    distillTransformerPrecision: str | None = None
     # Phase E2: CFG decay schedule. Linear ramp from initial guidance_scale
     # at step 0 to 1.0 at the last step. Default-on for flow-match pipelines.
     cfgDecay: bool = True
+    # Spatial-Temporal Guidance scale, consumed only by the mlx-video LTX-2
+    # path. 1.0 keeps the upstream-recommended perturbed forward pass per
+    # step; 0.0 disables it and saves ~33 % wall time at a mild quality
+    # cost. Other runtimes ignore the value.
+    stgScale: float = 1.0
+    # FU-023 Nunchaku / SVDQuant: pinned by catalog variants that ship
+    # CUDA INT4 SVDQuant snapshots. CUDA only — falls back when the
+    # nunchaku package isn't installed or device != cuda. The video-side
+    # path stays parked until upstream Nunchaku ships Wan / HunyuanVideo
+    # / LTX wrappers (FLUX + Qwen-Image only as of v1.2.1) — wiring is
+    # in place so adding a video variant becomes a catalog-row change.
+    nunchakuRepo: str | None = None
+    nunchakuFile: str | None = None
+    # FU-024 FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/Blackwell).
+    # Halves transformer VRAM by storing fp8 weights + computing in bf16
+    # inside the matmul. E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX
+    # / Qwen-Image. Default off; opt-in.
+    fp8LayerwiseCasting: bool = False
+    # FU-019 distill LoRAs: when the catalog variant pins a LoRA
+    # (lightx2v Wan2.1 CausVid, Wan2.2-Distill-Models, FastWan), the
+    # engine fuses it into the pipeline transformer at load time so
+    # subsequent ``pipeline(...)`` calls run with the LoRA baked in.
+    # 4-step Wan via lightx2v cuts wall-time 7-8× vs the 30-step base.
+    loraRepo: str | None = None
+    loraFile: str | None = None
+    loraScale: float | None = None
+    # Variant-declared step / CFG defaults. Used by app.py's
+    # ``_generate_video_artifact`` to substitute the schema defaults
+    # (50 steps, CFG 3.0) when the user hasn't moved the sliders —
+    # distill LoRAs run at 4 steps CFG 1.0.
+    defaultSteps: int | None = None
+    cfgOverride: float | None = None
 
 
 @dataclass(frozen=True)
@@ -322,9 +412,12 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # Community-maintained diffusers port of tencent/HunyuanVideo.
     "hunyuanvideo-community/HunyuanVideo": {"class_name": "HunyuanVideoPipeline", "task": "txt2video"},
     # CogVideoX 2B and 5B share the same diffusers pipeline class — the
-    # transformer scales but the loader is the same.
+    # transformer scales but the loader is the same. CogVideoX 1.5 5B
+    # (catalog refresh, FU-019 round) uses the same class with refreshed
+    # weights and a higher training resolution.
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    "THUDM/CogVideoX-1.5-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
 
 
@@ -393,6 +486,9 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     "genmo/mochi-1-preview": {"steps": 64, "guidance": 4.5, "scheduler": None},
     "THUDM/CogVideoX-2b": {"steps": 50, "guidance": 6.0, "scheduler": None},
     "THUDM/CogVideoX-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
+    # CogVideoX 1.5 5B inherits the 5B defaults — refreshed weights but
+    # the same step / CFG sweet spot per upstream model card.
+    "THUDM/CogVideoX-1.5-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in
@@ -805,6 +901,10 @@ class DiffusersVideoEngine:
         self._loaded_path: str | None = None
         self._loaded_variant_key: str | None = None
         self._device: str | None = None
+        # FU-019 / FU-016: notes accumulated during pipeline load (LoRA
+        # fuse, attention backend). Reset on each load; surfaced via
+        # GeneratedVideo.runtimeNote.
+        self._load_notes: list[str] = []
 
     # ---------- public API ----------
 
@@ -840,6 +940,7 @@ class DiffusersVideoEngine:
                 missingDependencies=missing_all,
                 pythonExecutable=_resolve_video_python(),
                 expectedDevice=_guess_video_expected_device(),
+                torchInstallWarning=torch_install_warning(),
                 message=(
                     f"Video runtime needs these packages: {', '.join(missing_core)}. "
                     "Click the 'Install GPU runtime' button above to install the full bundle."
@@ -893,6 +994,15 @@ class DiffusersVideoEngine:
             message=message,
             loadedModelRepo=self._loaded_repo,
             deviceMemoryGb=device_memory_gb,
+            # The earlier replace_all that wired this missed the
+            # success-path return because the indentation differs from
+            # the placeholder branch above. Without it, the Studio
+            # warning chip + banner only fired on the rare path where
+            # core deps were also missing -- if torch was importable but
+            # +cpu (the actual user case), realGenerationAvailable=True
+            # and the field was never set, so the UI silently dropped
+            # the warning while every other badge read green.
+            torchInstallWarning=torch_install_warning(),
         )
 
     def preload(self, repo: str) -> VideoRuntimeStatus:
@@ -946,6 +1056,14 @@ class DiffusersVideoEngine:
                 gguf_repo=config.ggufRepo,
                 gguf_file=config.ggufFile,
                 use_nf4=config.useNf4,
+                lora_repo=config.loraRepo,
+                lora_file=config.loraFile,
+                lora_scale=config.loraScale,
+                preview_vae=config.previewVae,
+                distill_repo=config.distillTransformerRepo,
+                distill_high_file=config.distillTransformerHighNoiseFile,
+                distill_low_file=config.distillTransformerLowNoiseFile,
+                distill_precision=config.distillTransformerPrecision,
             )
             # Early-cancel check after model load — from_pretrained is a
             # blocking C-extension call we can't interrupt. If the user hit
@@ -1039,6 +1157,13 @@ class DiffusersVideoEngine:
                 )
 
             VIDEO_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+            # FU-019 / FU-016: surface per-pipeline load notes (LoRA
+            # fuse, attention backend) on every generated mp4 so the
+            # user sees what was applied. Joined with " · " for a
+            # single-line UI presentation.
+            runtime_note = (
+                " · ".join(self._load_notes) if self._load_notes else None
+            )
             return GeneratedVideo(
                 seed=base_seed,
                 bytes=mp4_bytes,
@@ -1050,6 +1175,9 @@ class DiffusersVideoEngine:
                 width=config.width,
                 height=config.height,
                 runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                runtimeNote=runtime_note,
+                effectiveSteps=int(config.steps),
+                effectiveGuidance=float(config.guidance),
             )
         finally:
             VIDEO_PROGRESS.finish()
@@ -1229,6 +1357,11 @@ class DiffusersVideoEngine:
         # underlying call. Lets the engine plumb decay through one
         # callback factory rather than threading state through self.
         kwargs["__cfg_decay"] = bool(config.cfgDecay)
+        # FU-018 part 2: same private-kwarg plumbing for the live
+        # denoise thumbnail emit. When on, the step callback decodes
+        # the current latent's middle frame via the TAEHV/TAEW preview
+        # VAE that ``_ensure_pipeline`` swapped onto ``pipeline.vae``.
+        kwargs["__preview_vae"] = bool(config.previewVae)
         return kwargs
 
     def _make_step_callback(
@@ -1236,10 +1369,11 @@ class DiffusersVideoEngine:
         total_steps: int,
         initial_guidance: float,
         cfg_decay: bool,
+        preview_vae: bool = False,
     ) -> Any:
         """Build the per-step callback the pipeline calls during sampling.
 
-        Wires three concerns into one callback:
+        Wires four concerns into one callback:
           1. Progress reporting via ``VIDEO_PROGRESS.set_step``.
           2. Cooperative cancel — raise ``GenerationCancelled`` when the
              user hits Cancel on the modal.
@@ -1249,6 +1383,10 @@ class DiffusersVideoEngine:
              to oversaturate when CFG is held high through the whole
              schedule; decaying lets the early steps lock semantics
              (high CFG) while late steps preserve fine detail (low CFG).
+          4. FU-018 part 2 — when ``preview_vae`` is on, every Nth step
+             decode the current latent's middle frame via the swapped
+             TAEHV/TAEW preview VAE and publish a base64 PNG to
+             ``VIDEO_PROGRESS.set_thumbnail`` for the modal to render.
         """
         # Floor MUST stay strictly above 1.0 so the pipeline's
         # ``do_classifier_free_guidance`` property (``_guidance_scale > 1.0``)
@@ -1260,6 +1398,11 @@ class DiffusersVideoEngine:
         # dimension errors on LTX).
         decay_floor = 1.5
         decay_active = cfg_decay and total_steps > 1 and initial_guidance > decay_floor
+        thumb_active = bool(preview_vae)
+        # Stride keeps the polled endpoint payload small. Video
+        # latent decode is more expensive than image (5D tensor), so
+        # we cap thumbnails at ~6 per gen.
+        thumb_stride = max(1, total_steps // 6) if thumb_active else 1
 
         def _on_step_end(_pipeline: Any, step: int, _timestep: Any, callback_kwargs: dict[str, Any]):
             VIDEO_PROGRESS.set_step(step + 1, total=max(1, total_steps))
@@ -1280,6 +1423,21 @@ class DiffusersVideoEngine:
                     _pipeline.guidance_scale = float(next_scale)
                 except Exception:
                     pass
+            if thumb_active:
+                is_final = (step + 1) >= total_steps
+                if is_final or (step % thumb_stride == 0):
+                    latents = callback_kwargs.get("latents") if callback_kwargs else None
+                    try:
+                        from backend_service.helpers.preview_thumbnails import (
+                            decode_video_latent_to_b64,
+                        )
+                        b64 = decode_video_latent_to_b64(_pipeline, latents)
+                        if b64 is not None:
+                            VIDEO_PROGRESS.set_thumbnail(b64)
+                    except Exception:
+                        # Best-effort — never fail the gen on a preview
+                        # decode error.
+                        pass
             return callback_kwargs
 
         return _on_step_end
@@ -1303,7 +1461,13 @@ class DiffusersVideoEngine:
         # caller pops before passing to the pipeline. Default-on when
         # absent so existing call sites pick up the schedule.
         cfg_decay = bool(kwargs.pop("__cfg_decay", True))
-        callback = self._make_step_callback(total_steps, initial_guidance, cfg_decay)
+        # FU-018 part 2: previewVae flag plumbs through the same
+        # private-kwarg pattern. When on, ``_make_step_callback`` emits
+        # a per-step base64 thumbnail decoded via the TAESD/TAEHV swap.
+        preview_vae = bool(kwargs.pop("__preview_vae", False))
+        callback = self._make_step_callback(
+            total_steps, initial_guidance, cfg_decay, preview_vae=preview_vae,
+        )
         kwargs.setdefault("callback_on_step_end", callback)
 
         try:
@@ -1371,6 +1535,12 @@ class DiffusersVideoEngine:
         )
 
         base_kwargs = dict(kwargs)
+        # Strip private kwargs the diffusers pipeline doesn't accept —
+        # ``_invoke_pipeline`` pops these before its own pipeline call,
+        # but the refiner path bypasses that and would otherwise leak
+        # ``__cfg_decay`` / ``__preview_vae`` into ``LTXPipeline.__call__``.
+        base_kwargs.pop("__cfg_decay", None)
+        base_kwargs.pop("__preview_vae", None)
         base_kwargs["output_type"] = "latent"
         base_result = pipeline(**base_kwargs)
         latents = getattr(base_result, "frames", None)
@@ -1475,14 +1645,37 @@ class DiffusersVideoEngine:
         gguf_repo: str | None = None,
         gguf_file: str | None = None,
         use_nf4: bool = False,
+        lora_repo: str | None = None,
+        lora_file: str | None = None,
+        lora_scale: float | None = None,
+        preview_vae: bool = False,
+        distill_repo: str | None = None,
+        distill_high_file: str | None = None,
+        distill_low_file: str | None = None,
+        distill_precision: str | None = None,
     ) -> Any:
         with self._lock:
-            variant_suffix = ""
+            # Variant key folds in LoRA identity — switching LoRAs on the
+            # same base repo must rebuild the pipeline because fuse_lora
+            # mutates the transformer weights in place. ``preview_vae``
+            # joins the same key set so toggling the FU-018 preview-decode
+            # knob triggers a clean rebuild. Distilled transformers replace
+            # both expert modules outright, so they also key on the variant.
+            variant_parts = [repo]
             if gguf_file:
-                variant_suffix = f"::{gguf_file}"
+                variant_parts.append(f"gguf={gguf_file}")
             elif use_nf4:
-                variant_suffix = "::nf4"
-            variant_key = f"{repo}{variant_suffix}" if variant_suffix else repo
+                variant_parts.append("nf4")
+            if lora_repo and lora_file:
+                variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+            if preview_vae:
+                variant_parts.append("preview_vae")
+            if distill_repo and distill_high_file and distill_low_file:
+                variant_parts.append(
+                    f"distill={distill_repo}/{distill_precision or 'bf16'}/"
+                    f"{distill_high_file}/{distill_low_file}"
+                )
+            variant_key = "::".join(variant_parts)
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
@@ -1558,6 +1751,88 @@ class DiffusersVideoEngine:
 
             if hasattr(pipeline, "set_progress_bar_config"):
                 pipeline.set_progress_bar_config(disable=True)
+
+            # FU-019: clear stale load notes from the previous pipeline
+            # and apply distill LoRAs (lightx2v Wan CausVid /
+            # Wan2.2-Distill-Models / FastWan) before placement so
+            # ``pipeline.to(device)`` moves the fused transformer weights
+            # in one pass. Failure is non-fatal — the user gets a note
+            # explaining why the LoRA didn't apply.
+            self._load_notes = []
+
+            # FU-016: SageAttention CUDA backend. No-op on MPS / CPU.
+            # Must run before LoRA fuse so the LoRA's adapter modules
+            # don't trip the backend swap (set_attention_backend
+            # mutates the attention class on existing modules).
+            try:
+                from backend_service.helpers.attention_backend import (
+                    maybe_apply_sage_attention,
+                )
+                sage_note = maybe_apply_sage_attention(pipeline)
+                if sage_note:
+                    self._load_notes.append(sage_note)
+            except Exception:
+                pass
+
+            # FU-018: TAESD / TAEHV preview-decode VAE swap. No-op when
+            # toggle is off or no preview VAE is mapped for this repo.
+            # Runs before LoRA fuse so the swap settles before any
+            # transformer-side adapters touch the pipeline.
+            try:
+                from backend_service.helpers.preview_vae import (
+                    maybe_apply_preview_vae,
+                )
+                preview_note = maybe_apply_preview_vae(
+                    pipeline, repo=repo, enabled=preview_vae
+                )
+                if preview_note:
+                    self._load_notes.append(preview_note)
+            except Exception:
+                pass
+
+            # Phase 3 / Wan2.2-Distill 4-step: replace transformer +
+            # transformer_2 with the lightx2v distilled experts. Skips
+            # LoRA below — distill weights already encode the 4-step
+            # schedule and are not LoRA-shaped. Failure is non-fatal:
+            # the stock Wan transformers stay in place and the user
+            # gets a runtimeNote explaining why.
+            distill_active = bool(
+                distill_repo and distill_high_file and distill_low_file
+            )
+            if distill_active:
+                distill_note = self._swap_distill_transformers(
+                    pipeline,
+                    repo=distill_repo,
+                    high_file=distill_high_file,
+                    low_file=distill_low_file,
+                    precision=distill_precision or "bf16",
+                    torch=torch,
+                )
+                self._load_notes.append(distill_note)
+
+            if lora_repo and lora_file and not distill_active:
+                try:
+                    pipeline.load_lora_weights(
+                        lora_repo,
+                        weight_name=lora_file,
+                        local_files_only=True,
+                    )
+                    effective_scale = (
+                        float(lora_scale) if lora_scale is not None else 1.0
+                    )
+                    pipeline.fuse_lora(lora_scale=effective_scale)
+                    try:
+                        pipeline.unload_lora_weights()
+                    except Exception:
+                        pass
+                    self._load_notes.append(
+                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                    )
+                except Exception as exc:  # noqa: BLE001 — non-fatal
+                    self._load_notes.append(
+                        f"LoRA load failed ({type(exc).__name__}: {exc}). "
+                        "Pipeline continuing without LoRA."
+                    )
 
             # Memory-saving knobs. Slicing + tiling are quality-lossy and
             # Reference workflows don't enable them by default — only flip them on
@@ -1683,12 +1958,26 @@ class DiffusersVideoEngine:
                 filename=gguf_file,
                 local_files_only=True,
             )
+            # ``from_single_file`` defaults the architecture config to the
+            # transformer class's largest known variant. For Wan that is the
+            # 14 B / A14B layout (cross-attn dim 5120). The TI2V 5B uses
+            # cross-attn dim 3072, so loading its GGUF without an explicit
+            # config raises:
+            #     blocks.0.attn2.to_k.bias expected torch.Size([5120]),
+            #     but got torch.Size([3072])
+            # Pointing at the base diffusers repo's transformer subfolder
+            # makes diffusers build the model from the matching
+            # ``transformer/config.json`` before mapping in GGUF tensors,
+            # which fixes Wan 2.2 5B and stays correct for every other
+            # variant (the config dim happens to match the GGUF anyway).
             transformer = transformer_cls.from_single_file(
                 gguf_local_path,
                 quantization_config=GGUFQuantizationConfig(
                     compute_dtype=torch.bfloat16,
                 ),
                 torch_dtype=torch.bfloat16,
+                config=repo,
+                subfolder="transformer",
             )
             return transformer, f"Transformer loaded from GGUF ({gguf_file})"
         except Exception as exc:  # noqa: BLE001 — any failure → fall back
@@ -1772,6 +2061,100 @@ class DiffusersVideoEngine:
                 "falling back to the standard transformer."
             )
 
+    def _swap_distill_transformers(
+        self,
+        pipeline: Any,
+        *,
+        repo: str,
+        high_file: str,
+        low_file: str,
+        precision: str,
+        torch: Any,
+    ) -> str:
+        """Swap ``pipeline.transformer`` + ``pipeline.transformer_2`` for
+        the lightx2v 4-step distilled experts (Wan 2.2 A14B I2V).
+
+        Wan 2.2 A14B is MoE: ``transformer`` is the high-noise expert and
+        ``transformer_2`` is the low-noise expert. Distillation publishes
+        both as standalone safetensors files; the swap is the load-bearing
+        substitution that takes the pipeline from 30-step base to 4-step
+        distilled. Returns a runtimeNote describing what happened. Failure
+        is non-fatal — the stock transformers stay in place and the user
+        sees the failure in the note.
+        """
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError as exc:
+            return (
+                f"Distill swap skipped: huggingface_hub unavailable ({exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        try:
+            from diffusers import WanTransformer3DModel
+        except ImportError as exc:
+            return (
+                f"Distill swap skipped: WanTransformer3DModel unavailable "
+                f"({exc}). Pipeline continuing with stock Wan transformers."
+            )
+
+        # FP8/INT8 distill weights ship pre-quantized; they need a torch
+        # backend that exposes the matching kernels (CUDA SM 8.9+ for FP8,
+        # CUDA / Metal for INT8). On platforms without those kernels we
+        # load as bf16 and let diffusers do the dequant — quality holds
+        # but the memory savings disappear. ``bf16`` (no quantization)
+        # always loads at native precision.
+        torch_dtype = torch.bfloat16
+        if precision == "fp8_e4m3":
+            torch_dtype = getattr(torch, "float8_e4m3fn", torch.bfloat16)
+
+        try:
+            high_local = hf_hub_download(
+                repo_id=repo, filename=high_file, local_files_only=False
+            )
+            low_local = hf_hub_download(
+                repo_id=repo, filename=low_file, local_files_only=False
+            )
+        except Exception as exc:  # noqa: BLE001 — non-fatal
+            return (
+                f"Distill download failed ({type(exc).__name__}: {exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        try:
+            high_transformer = WanTransformer3DModel.from_single_file(
+                high_local, torch_dtype=torch_dtype
+            )
+            low_transformer = WanTransformer3DModel.from_single_file(
+                low_local, torch_dtype=torch_dtype
+            )
+        except Exception as exc:  # noqa: BLE001 — non-fatal
+            return (
+                f"Distill load failed ({type(exc).__name__}: {exc}). "
+                "Pipeline continuing with stock Wan transformers."
+            )
+
+        if not hasattr(pipeline, "transformer"):
+            return (
+                "Distill swap skipped: pipeline has no .transformer attribute. "
+                "This Wan distill path requires a WanPipeline-shaped object."
+            )
+
+        pipeline.transformer = high_transformer
+        if hasattr(pipeline, "transformer_2"):
+            pipeline.transformer_2 = low_transformer
+        else:
+            return (
+                f"Distill: high-noise expert applied, but pipeline lacks "
+                f"transformer_2 (low-noise expert). Verify base repo {repo} "
+                "is the A14B MoE pipeline. Quality may be degraded."
+            )
+
+        return (
+            f"Distill: swapped transformer + transformer_2 from {repo} "
+            f"(precision={precision}, 4-step schedule)."
+        )
+
     def _release_pipeline(self) -> None:
         pipeline = self._pipeline
         torch = self._torch
@@ -1799,8 +2182,16 @@ class DiffusersVideoEngine:
                 pass
 
     def _detect_device(self, torch: Any) -> str:
-        if getattr(torch.cuda, "is_available", lambda: False)():
-            return "cuda"
+        cuda_module = getattr(torch, "cuda", None)
+        if cuda_module is not None:
+            try:
+                if getattr(cuda_module, "is_available", lambda: False)():
+                    return "cuda"
+            except Exception:
+                pass
+        cuda_error = _windows_cuda_unavailable_message(torch)
+        if cuda_error:
+            raise RuntimeError(cuda_error)
         mps_backend = getattr(getattr(torch, "backends", None), "mps", None)
         if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
             return "mps"

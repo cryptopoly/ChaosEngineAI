@@ -48,6 +48,42 @@ class CreateSessionRequest(BaseModel):
     title: str | None = None
 
 
+class AddVariantRequest(BaseModel):
+    """Phase 2.5: generate a sibling variant of an assistant message.
+
+    The frontend calls this after the user picks an alternate model
+    from the assistant-message hover action. The chosen model must
+    already be the loaded runtime (call /api/models/load first if
+    needed). Backend runs a non-streaming generation using messages
+    truncated to the prior user prompt, then attaches the result as
+    a new entry on `messages[messageIndex].variants`.
+    """
+
+    messageIndex: int = Field(ge=0)
+    modelRef: str = Field(min_length=1)
+    modelName: str = Field(min_length=1)
+    canonicalRepo: str | None = None
+    source: str = "catalog"
+    path: str | None = None
+    backend: str = "auto"
+    maxTokens: int = Field(default=2048, ge=1, le=32768)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+
+
+class ForkSessionRequest(BaseModel):
+    """Phase 2.4: fork a thread at a specific assistant message.
+
+    `forkAtMessageIndex` is the 0-based index of the last message to
+    include in the fork — typically the assistant turn the user
+    wants to branch from. The fork keeps every message up to and
+    including this index, then becomes a fresh thread for divergent
+    continuation.
+    """
+
+    forkAtMessageIndex: int = Field(ge=0)
+    title: str | None = Field(default=None, max_length=200)
+
+
 class UpdateSessionRequest(BaseModel):
     title: str | None = None
     model: str | None = None
@@ -57,6 +93,7 @@ class UpdateSessionRequest(BaseModel):
     modelPath: str | None = None
     modelBackend: str | None = None
     thinkingMode: Literal["off", "auto"] | None = None
+    reasoningEffort: Literal["low", "medium", "high"] | None = None
     pinned: bool | None = None
     cacheStrategy: str | None = None
     cacheBits: int | None = None
@@ -68,6 +105,9 @@ class UpdateSessionRequest(BaseModel):
     treeBudget: int | None = None
     dflashDraftModel: str | None = None
     messages: list[dict[str, Any]] | None = None
+    # Phase 3.7: assign / unassign a session to a workspace.
+    # Pass empty string to clear; None leaves the value untouched.
+    workspaceId: str | None = None
 
 
 class GenerateRequest(BaseModel):
@@ -82,9 +122,45 @@ class GenerateRequest(BaseModel):
     path: str | None = None
     backend: str = "auto"
     thinkingMode: Literal["off", "auto"] | None = None
+    # Phase 1.12: reasoning effort hint forwarded to OpenAI-compat
+    # `reasoning_effort` chat-completion parameter on backends that respect it
+    # (recent llama-server builds + several reasoning models). Backends that
+    # ignore it remain unaffected. Null means no override.
+    reasoningEffort: Literal["low", "medium", "high"] | None = None
     systemPrompt: str | None = None
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     maxTokens: int = Field(default=4096, ge=1, le=32768)
+    # Optional per-message sampler overrides. None means "let backend default
+    # apply" (llama.cpp / mlx-lm defaults). Phase 2.2 closes the Phase 1.10
+    # deferral and exposes the full sampler chain end-to-end. Each backend
+    # forwards what it supports and silently ignores the rest:
+    #   - llama-server: all of these (native /v1/chat/completions params)
+    #   - mlx-lm: temperature, topP, topK, minP, repeatPenalty, seed
+    # DRY / XTC are intentionally deferred — DRY ships in llama-server but
+    # is sensitive to context-length growth; XTC is too new to expose
+    # broadly. Free-form GBNF grammars are skipped in favour of the safer
+    # JSON-schema response format which covers most practical use cases.
+    topP: float | None = Field(default=None, ge=0.0, le=1.0)
+    topK: int | None = Field(default=None, ge=0, le=200)
+    minP: float | None = Field(default=None, ge=0.0, le=1.0)
+    repeatPenalty: float | None = Field(default=None, ge=0.0, le=2.0)
+    # Mirostat: mode 0 = off, 1 = mirostat v1, 2 = mirostat v2. tau is the
+    # target entropy; eta the learning rate. Pass None to use llama-server
+    # defaults; pass mode=0 to explicitly disable on a model whose template
+    # leaves it on.
+    mirostatMode: Literal[0, 1, 2] | None = None
+    mirostatTau: float | None = Field(default=None, ge=0.0, le=10.0)
+    mirostatEta: float | None = Field(default=None, ge=0.0, le=1.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    # Constrained decoding: when set, llama-server enforces a JSON schema
+    # via its `response_format: {type: "json_schema", json_schema: {...}}`
+    # parameter. The shape mirrors the OpenAI structured-outputs spec.
+    jsonSchema: dict[str, Any] | None = None
+    # Phase 3.3: when set, ask llama-server to return top-k logprobs per
+    # token. Gated behind an advanced-mode setting on the frontend so the
+    # bandwidth + render cost is only paid when explicitly requested.
+    # Pass None to omit (default — no logprobs returned).
+    logprobs: int | None = Field(default=None, ge=1, le=20)
     cacheStrategy: str | None = None
     cacheBits: int | None = Field(default=None, ge=0, le=8)
     fp16Layers: int | None = Field(default=None, ge=0, le=16)
@@ -96,6 +172,16 @@ class GenerateRequest(BaseModel):
     # Agent tool-use
     enableTools: bool = False
     availableTools: list[str] | None = None  # None = all registered tools
+    # Phase 2.12: when True, the modelRef / canonicalRepo / source / etc.
+    # in this request are treated as a one-turn override — the model
+    # loads (or stays) for this turn, but the session's stored
+    # `modelRef` / `model` / `canonicalRepo` / `modelSource` /
+    # `modelPath` / `modelBackend` fields are NOT updated. The session
+    # default sticks so the next plain message goes back to the
+    # original model. Default False preserves the existing behaviour
+    # where sending with a different model permanently switches the
+    # thread.
+    oneTurnOverride: bool = False
 
 
 class RemoteProviderRequest(BaseModel):
@@ -107,6 +193,23 @@ class RemoteProviderRequest(BaseModel):
     providerType: str = "openai"
 
 
+class McpServerConfigRequest(BaseModel):
+    """Phase 2.10: one MCP server entry for the settings payload.
+
+    Maps onto `backend_service.mcp.McpServerConfig`. The shape mirrors
+    the standard mcp-clients config blob (`command`, `args`, `env`) so
+    config files copied from other MCP-aware tools work with minimal
+    edits. `id` is a short opaque key surfaced on tool provenance
+    badges.
+    """
+
+    id: str = Field(min_length=1, max_length=64)
+    command: str = Field(min_length=1, max_length=512)
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    enabled: bool = True
+
+
 class UpdateSettingsRequest(BaseModel):
     modelDirectories: list[ModelDirectoryRequest] | None = None
     preferredServerPort: int | None = Field(default=None, ge=1024, le=65535)
@@ -115,6 +218,11 @@ class UpdateSettingsRequest(BaseModel):
     autoStartServer: bool | None = None
     launchPreferences: LaunchPreferencesRequest | None = None
     remoteProviders: list[RemoteProviderRequest] | None = None
+    # Phase 2.10: list of MCP servers to spawn at startup. Each entry's
+    # `tools/list` output is merged into the agent tool registry with
+    # `provenance: mcp:<id>` tags. None = leave existing list alone;
+    # empty list = remove all configured servers.
+    mcpServers: list[McpServerConfigRequest] | None = None
     huggingFaceToken: str | None = Field(default=None, max_length=512)
     dataDirectory: str | None = Field(default=None, max_length=4096)
     # Per-modality output overrides. Empty string clears the override and
@@ -125,6 +233,10 @@ class UpdateSettingsRequest(BaseModel):
     # drive. Applied by the Tauri shell at backend spawn; requires restart
     # to take effect. Empty string clears the override.
     hfCachePath: str | None = Field(default=None, max_length=4096)
+    # Phase 3.3: when true, the chat composer adds `logprobs: 5` to
+    # every send so llama-server returns top-k per-token confidence
+    # info. Off by default.
+    advancedLogprobs: bool | None = None
 
 
 class OpenAIMessage(BaseModel):
@@ -143,6 +255,30 @@ class OpenAIChatCompletionRequest(BaseModel):
     stream: bool = False
     tools: list[dict[str, Any]] | None = None
     tool_choice: Any = None
+    # Phase 2.13: standard OpenAI sampler parameters. llama-server
+    # supports them natively; mlx-lm consumes top_p / top_k / seed and
+    # silently ignores the rest. Pass None to use the runtime default.
+    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    top_k: int | None = Field(default=None, ge=0, le=200)
+    frequency_penalty: float | None = Field(default=None, ge=-2.0, le=2.0)
+    presence_penalty: float | None = Field(default=None, ge=-2.0, le=2.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    stop: list[str] | str | None = None
+    response_format: dict[str, Any] | None = None
+
+
+class OpenAIEmbeddingsRequest(BaseModel):
+    """Phase 2.13: OpenAI-shaped embeddings input.
+
+    `input` accepts a single string or a list of strings, mirroring
+    the OpenAI spec. The `model` field is informational — we use the
+    bundled embedding GGUF regardless.
+    """
+    model: str | None = None
+    input: str | list[str]
+    encoding_format: Literal["float"] | None = "float"
+    dimensions: int | None = Field(default=None, ge=8, le=8192)
+    user: str | None = None
 
 
 class ConvertModelRequest(BaseModel):
@@ -211,6 +347,35 @@ class ImageGenerationRequest(BaseModel):
     qualityPreset: str | None = Field(default=None, max_length=32)
     draftMode: bool = Field(default=False)
     sampler: str | None = Field(default=None, max_length=32)
+    # FU-015 / FBCache: optional diffusion cache strategy id
+    # ("fbcache" | "teacache" | "native"). Default ``None`` keeps the
+    # stock pipeline. See ``cache_compression`` registry for available
+    # ids; the runtime ignores ids that don't apply to image pipelines.
+    cacheStrategy: str | None = Field(default=None, max_length=32)
+    # Threshold for caching strategies. ``None`` uses the strategy
+    # default (FBCache: 0.12, TeaCache: 0.4). Lower = stricter (more
+    # blocks recomputed, less cached, less speedup, less quality drift).
+    cacheRelL1Thresh: float | None = Field(default=None, ge=0.0, le=1.0)
+    # FU-021: CFG decay schedule for flow-match image models. Mirrors
+    # the video runtime knob. Default off; opt-in.
+    cfgDecay: bool = Field(default=False)
+    # FU-018: TAESD preview-decode VAE swap. Preview-only quality knob —
+    # toggling on swaps ``pipeline.vae`` for the matching tiny VAE for
+    # the duration of the run. Final output goes through the fast VAE
+    # so the user trades fidelity for wall-time. Default off; opt-in.
+    previewVae: bool = Field(default=False)
+    # FU-023 Nunchaku / SVDQuant: 4-bit weight quantization on CUDA.
+    # Catalog variants pin ``nunchakuRepo`` (e.g.
+    # ``mit-han-lab/svdq-int4-flux.1-dev``) and optionally
+    # ``nunchakuFile``. CUDA only — runtime falls back to NF4 / int8wo /
+    # bf16 when nunchaku isn't installed or the device isn't CUDA.
+    nunchakuRepo: str | None = Field(default=None, min_length=1, max_length=200)
+    nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
+    # FU-024 FP8 layerwise casting. Halves transformer VRAM by storing
+    # weights in fp8 + promoting to bf16 inside the matmul. CUDA SM 8.9+
+    # only (Ada / Hopper / Blackwell). Family-correct fp8 dtype picked
+    # by the runtime: E5M2 for HunyuanVideo, E4M3 elsewhere.
+    fp8LayerwiseCasting: bool = Field(default=False)
 
 
 class ImageRuntimePreloadRequest(BaseModel):
@@ -278,3 +443,25 @@ class VideoGenerationRequest(BaseModel):
     # ``guidance_scale`` linearly from the user's setting at step 0
     # to 1.0 at the final step. Default-on for flow-match pipelines.
     cfgDecay: bool = Field(default=True)
+    # Spatial-Temporal Guidance scale for the mlx-video LTX-2 path.
+    # mlx-video implements STG by running an extra "perturbed" forward
+    # pass per sampler step alongside the cond/uncond CFG passes — the
+    # perturbed branch skips final transformer blocks to reduce object
+    # breakup and chroma drift on long motion. ``1.0`` matches Blaizzy's
+    # upstream README quality recommendation; ``0.0`` disables STG and
+    # frees ~33 % wall time per step at a mild quality cost. Distilled
+    # pipelines ignore the value (they run a fixed sampler), and other
+    # video runtimes (diffusers MPS, LongLive) do not consume it.
+    stgScale: float = Field(default=1.0, ge=0.0, le=3.0)
+    # FU-018: TAESD / TAEHV preview-decode VAE swap. Preview-only quality
+    # knob — when True the engine swaps ``pipeline.vae`` for the matching
+    # tiny VAE for the duration of the run. Default off — video users
+    # typically want full fidelity.
+    previewVae: bool = Field(default=False)
+    # FU-023 Nunchaku / SVDQuant — same shape as the image-side knob.
+    # When the catalog variant pins a Nunchaku snapshot, the runtime
+    # loads via the matching Nunchaku transformer subclass on CUDA.
+    nunchakuRepo: str | None = Field(default=None, min_length=1, max_length=200)
+    nunchakuFile: str | None = Field(default=None, min_length=1, max_length=200)
+    # FU-024 FP8 layerwise casting (CUDA SM 8.9+ Ada/Hopper/Blackwell).
+    fp8LayerwiseCasting: bool = Field(default=False)

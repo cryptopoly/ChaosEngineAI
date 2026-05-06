@@ -40,6 +40,7 @@ import type {
   ImageModelVariant,
   ImageOutputArtifact,
   ImageQualityPreset,
+  ImageCacheStrategyId,
   ImageSamplerId,
   ImageRuntimeStatus,
   TabId,
@@ -95,6 +96,30 @@ export function useImageState(
   const [imageQualityPreset, setImageQualityPreset] = useState<ImageQualityPreset>("balanced");
   const [imageDraftMode, setImageDraftMode] = useState(false);
   const [imageSampler, setImageSampler] = useState<ImageSamplerId>("default");
+  // FU-015 / FBCache + TeaCache. Default ``"none"`` keeps the stock
+  // pipeline so existing users see no behavioural change after the
+  // upgrade. ``"fbcache"`` is the cross-platform recommendation
+  // (macOS / Windows / Linux); ``"teacache"`` covers FLUX-family
+  // pipelines with calibrated rescale tables.
+  const [imageCacheStrategy, setImageCacheStrategy] =
+    useState<ImageCacheStrategyId>("none");
+  // ``null`` defers to the strategy default (FBCache 0.12, TeaCache
+  // 0.4). UI exposes this only when a non-"none" strategy is picked.
+  const [imageCacheRelL1Thresh, setImageCacheRelL1Thresh] =
+    useState<number | null>(null);
+  // FU-021: opt-in CFG decay schedule for flow-match models.
+  const [imageCfgDecay, setImageCfgDecay] = useState(false);
+  // FU-018: opt-in TAESD preview-decode VAE swap. Off by default —
+  // image users typically want full fidelity. When on, the engine
+  // swaps ``pipeline.vae`` for the matching tiny VAE for the run, so
+  // each step decodes in a fraction of the wall-time at the cost of
+  // final image fidelity.
+  const [imagePreviewVae, setImagePreviewVae] = useState(false);
+  // FU-024 FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/Blackwell).
+  // Stored as separate state so the toggle state survives Studio tab
+  // navigation. Apple Silicon dev boxes never see the gain — backend
+  // gates the apply path on device == "cuda" + capability check.
+  const [imageFp8LayerwiseCasting, setImageFp8LayerwiseCasting] = useState(false);
   const [imageRatioId, setImageRatioId] = useState<(typeof IMAGE_RATIO_PRESETS)[number]["id"]>("square");
   const [imageWidth, setImageWidth] = useState(1024);
   const [imageHeight, setImageHeight] = useState(1024);
@@ -508,6 +533,14 @@ export function useImageState(
         draftMode: imageDraftMode,
         sampler: imageSampler === "default" ? null : imageSampler,
         seed,
+        // FU-015 / FU-021: forward cache + CFG-decay knobs. ``"none"``
+        // collapses to null so the backend's untouched-pipeline branch
+        // hits every existing user with default settings.
+        cacheStrategy: imageCacheStrategy === "none" ? null : imageCacheStrategy,
+        cacheRelL1Thresh: imageCacheRelL1Thresh,
+        cfgDecay: imageCfgDecay,
+        previewVae: imagePreviewVae,
+        fp8LayerwiseCasting: imageFp8LayerwiseCasting,
       });
       setImageOutputs(response.outputs);
       if (response.runtime) setImageRuntimeStatus(response.runtime);
@@ -729,6 +762,16 @@ export function useImageState(
     setImageDraftMode,
     imageSampler,
     setImageSampler,
+    imageCacheStrategy,
+    setImageCacheStrategy,
+    imageCacheRelL1Thresh,
+    setImageCacheRelL1Thresh,
+    imageCfgDecay,
+    setImageCfgDecay,
+    imagePreviewVae,
+    setImagePreviewVae,
+    imageFp8LayerwiseCasting,
+    setImageFp8LayerwiseCasting,
     imageRatioId,
     imageWidth,
     setImageWidth,

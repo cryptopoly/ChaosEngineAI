@@ -53,6 +53,9 @@ _REQUIRED_SNAPSHOT_KEYS = {
     # frontend can distinguish "generation running" from "cancel in flight"
     # without a separate poll.
     "cancelRequested",
+    # FU-018 part 2: live denoise thumbnail (base64 PNG, ``None`` when
+    # previewVae is off or the swap didn't apply).
+    "thumbnail",
 }
 
 
@@ -151,6 +154,36 @@ class ProgressTrackerTests(unittest.TestCase):
         self.tracker.begin(total_steps=10)
         self.tracker.set_step(-5, total=10)
         self.assertEqual(self.tracker.snapshot()["step"], 0)
+
+    def test_thumbnail_snapshot_defaults_to_none(self):
+        self.assertIsNone(self.tracker.snapshot()["thumbnail"])
+
+    def test_set_thumbnail_publishes_b64_string(self):
+        self.tracker.begin(total_steps=4, phase=PHASE_DIFFUSING)
+        self.tracker.set_thumbnail("iVBORw0KGgo")
+        self.assertEqual(self.tracker.snapshot()["thumbnail"], "iVBORw0KGgo")
+
+    def test_set_thumbnail_when_idle_is_noop(self):
+        # Same race-protection contract as ``set_step`` — a thumbnail
+        # decode that races with ``finish()`` must not leak into the
+        # next run's first poll.
+        self.tracker.set_thumbnail("late-emit")
+        self.assertIsNone(self.tracker.snapshot()["thumbnail"])
+
+    def test_begin_clears_stale_thumbnail_from_previous_run(self):
+        self.tracker.begin(total_steps=4, phase=PHASE_DIFFUSING)
+        self.tracker.set_thumbnail("first-run")
+        self.tracker.finish()
+        # Second run begins; first-run's thumbnail must not show up on
+        # the very first poll before any step has finished.
+        self.tracker.begin(total_steps=4, phase=PHASE_DIFFUSING)
+        self.assertIsNone(self.tracker.snapshot()["thumbnail"])
+
+    def test_finish_clears_thumbnail(self):
+        self.tracker.begin(total_steps=4, phase=PHASE_DIFFUSING)
+        self.tracker.set_thumbnail("mid-run")
+        self.tracker.finish()
+        self.assertIsNone(self.tracker.snapshot()["thumbnail"])
 
     def test_finish_clears_run_label_and_steps(self):
         self.tracker.begin(run_label="LTX · 24f", total_steps=40)

@@ -248,6 +248,9 @@ class FakeRuntime:
         images=None,
         tools=None,
         engine=None,
+        samplers=None,
+        reasoning_effort=None,
+        json_schema=None,
     ) -> GenerationResult:
         self.last_generate_kwargs = {
             "prompt": prompt,
@@ -257,6 +260,9 @@ class FakeRuntime:
             "temperature": temperature,
             "images": images,
             "tools": tools,
+            "samplers": samplers,
+            "reasoning_effort": reasoning_effort,
+            "json_schema": json_schema,
         }
         text = (
             "Cache compression shrinks KV memory so longer contexts fit, "
@@ -286,6 +292,10 @@ class FakeRuntime:
         images=None,
         tools=None,
         engine=None,
+        thinking_mode=None,
+        samplers=None,
+        reasoning_effort=None,
+        json_schema=None,
     ):
         self.last_generate_kwargs = {
             "prompt": prompt,
@@ -295,6 +305,10 @@ class FakeRuntime:
             "temperature": temperature,
             "images": images,
             "tools": tools,
+            "thinking_mode": thinking_mode,
+            "samplers": samplers,
+            "reasoning_effort": reasoning_effort,
+            "json_schema": json_schema,
         }
         text = "Streaming compare output."
         prompt_tokens = max(1, len(str(prompt).split()))
@@ -1226,6 +1240,63 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(payload["choices"][0]["message"]["role"], "assistant")
         self.assertGreater(payload["usage"]["total_tokens"], 0)
 
+    def test_openai_completion_forwards_sampler_fields(self):
+        # Phase 2.13: standard OpenAI sampler fields should reach the runtime.
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [
+                    {"role": "user", "content": "test"},
+                ],
+                "max_tokens": 32,
+                "top_p": 0.85,
+                "frequency_penalty": 0.5,
+                "presence_penalty": -0.2,
+                "seed": 1234,
+                "stop": ["END"],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "answer",
+                        "schema": {"type": "object", "properties": {"out": {"type": "string"}}},
+                    },
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        runtime_kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertEqual(runtime_kwargs["samplers"]["top_p"], 0.85)
+        self.assertEqual(runtime_kwargs["samplers"]["frequency_penalty"], 0.5)
+        self.assertEqual(runtime_kwargs["samplers"]["presence_penalty"], -0.2)
+        self.assertEqual(runtime_kwargs["samplers"]["seed"], 1234)
+        self.assertEqual(runtime_kwargs["samplers"]["stop"], ["END"])
+        self.assertIn("properties", runtime_kwargs["json_schema"])
+
+    def test_openai_completion_omits_sampler_dict_when_none_set(self):
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 32,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        runtime_kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertIsNone(runtime_kwargs["samplers"])
+        self.assertIsNone(runtime_kwargs["json_schema"])
+
+    def test_openai_embeddings_returns_503_when_no_client(self):
+        # No embedding model wired in tests → expect a clean 503 with
+        # actionable detail rather than a 500.
+        response = self.client.post(
+            "/v1/embeddings",
+            json={"input": "test", "model": "any"},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("embedding", response.json()["detail"].lower())
+
     def test_compare_stream_includes_requested_and_actual_runtime_metadata(self):
         response = self.client.post(
             "/api/chat/compare",
@@ -2103,6 +2174,34 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["revealed"], str(target.resolve()))
         popen.assert_called()
+
+    def test_cancel_chat_endpoint_sets_flag_and_reports_active(self):
+        create_response = self.client.post("/api/chat/sessions", json={"title": "Cancel test"})
+        self.assertEqual(create_response.status_code, 200)
+        session = create_response.json()["session"]
+        session_id = session["id"]
+
+        # Endpoint flips the in-memory flag and reports session was active
+        cancel_response = self.client.post(f"/api/chat/generate/{session_id}/cancel")
+        self.assertEqual(cancel_response.status_code, 200)
+        payload = cancel_response.json()
+        self.assertEqual(payload["sessionId"], session_id)
+        self.assertTrue(payload["cancelled"])
+        self.assertTrue(payload["wasActive"])
+
+        # State exposes the flag for the streaming loop to read
+        state = self.client.app.state.chaosengine
+        self.assertTrue(state.is_chat_cancel_requested(session_id))
+        state.clear_chat_cancel(session_id)
+        self.assertFalse(state.is_chat_cancel_requested(session_id))
+
+    def test_cancel_chat_endpoint_for_unknown_session_still_records_flag(self):
+        cancel_response = self.client.post("/api/chat/generate/no-such-session/cancel")
+        self.assertEqual(cancel_response.status_code, 200)
+        payload = cancel_response.json()
+        self.assertEqual(payload["sessionId"], "no-such-session")
+        self.assertTrue(payload["cancelled"])
+        self.assertFalse(payload["wasActive"])
 
 
 class VideoRepoAllowPatternsTests(unittest.TestCase):

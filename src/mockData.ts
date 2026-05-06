@@ -679,6 +679,7 @@ export const mockWorkspace: WorkspaceData = {
       fitModelInMemory: true,
       speculativeDecoding: false,
       treeBudget: 0,
+      kvBudget: 2048,
     },
   },
   chatSessions: [],

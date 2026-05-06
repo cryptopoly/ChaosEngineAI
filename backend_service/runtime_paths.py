@@ -55,11 +55,20 @@ def extras_site_package_candidates() -> list[Path]:
 
 
 def ensure_extras_on_sys_path() -> list[Path]:
-    """Prepend existing persisted runtime dirs ahead of bundled packages.
+    """Make persisted runtime dirs importable without shadowing repo-local shims.
 
-    The Tauri launcher normally does this with ``PYTHONPATH`` before Python
-    starts. Doing it again inside the backend makes direct/dev launches and
-    older launchers converge on the same package resolution.
+    The Tauri launcher normally exports ``PYTHONPATH`` before Python starts.
+    Doing it again inside the backend makes direct/dev launches and older
+    launchers converge on the same package resolution.
+
+    ``sys.path`` entries are *appended* rather than inserted near the top so
+    repo-local adapter packages (notably ``turboquant_mlx``, which acts as a
+    thin shim around the upstream ``turboquant-mlx-full`` install in extras)
+    keep import authority. Without this, prepending extras pulls in the raw
+    upstream package directly and the shim's exported helpers
+    (``_find_pip_turboquant_path``, ``make_adaptive_cache``, ``apply_patch``)
+    become unreachable, breaking both the cache-strategy adapter at runtime
+    and ``tests/test_cache_strategies.py`` during pytest collection.
     """
     existing_candidates = [path for path in extras_site_package_candidates() if path.is_dir()]
     if existing_candidates:
@@ -85,14 +94,12 @@ def ensure_extras_on_sys_path() -> list[Path]:
         for entry in sys.path
         if entry
     }
-    insert_at = 1 if sys.path else 0
     inserted: list[Path] = []
     for path in existing_candidates:
         key = os.path.normcase(os.path.abspath(path))
         if key in sys_path_keys:
             continue
-        sys.path.insert(insert_at, str(path))
-        insert_at += 1
+        sys.path.append(str(path))
         sys_path_keys.add(key)
         inserted.append(path)
     return inserted

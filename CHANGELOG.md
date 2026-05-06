@@ -1,5 +1,64 @@
 # Changelog
 
+## v0.7.4 - 2026-05-06
+
+### Cache strategies & generation quality (FU-015 → FU-021, FU-026)
+- **First Block Cache** (cross-platform diffusion cache hook, registry id `fbcache`) backed by `diffusers.hooks.apply_first_block_cache`. Applies to image + video DiTs (FLUX, SD3.5, Wan2.1/2.2, HunyuanVideo, LTX-Video, CogVideoX, Mochi). Default threshold 0.12 (≈1.8× speedup on FLUX.1-dev with imperceptible drift). Closes the FU-007 Wan TeaCache deferral by replacing per-model vendoring with a model-agnostic hook.
+- **TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache** strategies wired against the diffusers 0.38 native `enable_cache(<Config>)` API (registry ids `taylorseer`, `magcache`, `pab`, `fastercache`). MagCache is FLUX-only without calibration UX; other DiTs raise a "calibration required" message.
+- **SDXL VAE fp16 fix on MPS / CUDA** (FU-017) — probes `madebyollin/sdxl-vae-fp16-fix` via `local_files_only=True` and swaps `pipeline.vae` so SDXL on Apple Silicon stays in fp16 instead of falling back to fp32.
+- **Distill LoRA + transformer support** (FU-019) — Hyper-SD-8step + Turbo-Alpha for FLUX.1-dev, CausVid for Wan2.1 1.3B/14B, plus full distilled transformer swap (`distillTransformer*` fields) for Wan 2.2 A14B I2V × lightx2v 4-step distill (bf16 + fp8_e4m3 variants). Distill takes precedence over LoRA when both are pinned.
+- **AYS (Align Your Steps) sampler** (FU-020) for SD/SDXL — new `ays_dpmpp_2m_sd15` / `ays_dpmpp_2m_sdxl` samplers using NVIDIA's hardcoded timestep arrays. Flow-match models continue to be gated out.
+- **Image-runtime CFG decay parity** (FU-021) with the video runtime — opt-in `cfgDecay` field, linear ramp from initial guidance down to a 1.5 floor inside `callback_on_step_end`. Gated to flow-match repos.
+
+### CUDA quantization foundations (FU-023, FU-024, FU-027)
+Backend wiring landed for Windows / Linux CUDA validation; Apple Silicon dev box can't exercise these paths live.
+- **Nunchaku / SVDQuant transformer load** (FU-023) — `_try_load_nunchaku_transformer` helper preferred over NF4 / int8wo on CUDA when `nunchakuRepo` pinned + `nunchaku>=1.2.1` importable. Catalog rows for FLUX.1-dev × svdq-int4 + FLUX.1-schnell × svdq-int4.
+- **FP8 layerwise casting for non-FLUX DiTs** (FU-024) — `_maybe_enable_fp8_layerwise` helper on both image + video runtimes. Family-correct fp8 dtype (E5M2 for HunyuanVideo per upstream, E4M3 elsewhere). Compute capability gate refuses pre-Ada GPUs (SM <8.9). Studio toggle exposed in both Image + Video Studio.
+- **NVIDIA/kvpress install action** (FU-027) — `kvpress>=0.5.3` registered in `_INSTALLABLE_PIP_PACKAGES` so the Setup tab can pre-stage the wheel ahead of integration code.
+
+### MLX video runtime (FU-009 close-out, FU-025 Phases 7 → 9)
+- **mlx-video Wan one-shot convert pipeline** under `~/.chaosengine/mlx-video-wan/<slug>/` (override via `CHAOSENGINE_MLX_VIDEO_WAN_DIR`). Helper `backend_service/mlx_video_wan_convert.py` wraps the upstream `python -m mlx_video.models.wan_2.convert` subprocess with `slug_for` / `output_dir_for` / `status_for` / `list_converted` / `run_convert`.
+- **Runtime routing for `Wan-AI/Wan2.{1,2}-*`** through `mlx_video_runtime.py` — `_REPO_ENTRY_POINTS["Wan-AI/"] = "mlx_video.models.wan_2.generate"`, `_build_wan_cmd` produces the Wan-shaped CLI (`--model-dir`, `--guide-scale` string, `--scheduler`).
+- **GUI install panel under Video Discover** — `WanInstallPanel.tsx` lists every supported Wan repo with raw-size hint + converted badge / install button + live `InstallLogPanel`. Setup endpoints `POST /api/setup/install-mlx-video-wan` + status + inventory mirror the longlive install pattern.
+- **Live Wan2.1 MLX smoke validation** — 19.6s end-to-end at 480×272, 5 frames, 4 steps; surfaced + fixed a `status_for` filename gap (mlx-video upstream emits root-level `model.safetensors` + `t5_encoder.safetensors`, not the legacy `transformer*.safetensors` pattern).
+
+### Preview & enhancement UX (FU-018 parts 1+2, FU-022)
+- **TAESD / TAEHV preview VAE swap** (FU-018 part 1) — `maybe_apply_preview_vae(pipeline, repo, enabled)` maps repo → tiny VAE id (FLUX.1/2 → taef1/taef2, SD3 → taesd3, SDXL → taesdxl, Wan2.x → taew2_2, LTX-Video / LTX-2 → taeltx2_3_wide, HunyuanVideo → taehv1_5, CogVideoX → taecogvideox, Mochi → taemochi, Qwen-Image → taeqwenimage). Mirrors the stock VAE's dtype + device.
+- **Per-step thumbnails via `callback_on_step_end`** (FU-018 part 2) — decodes `callback_kwargs["latents"]` through the swapped tiny VAE, scales to ≤192 px, base64-encodes a PNG, publishes to `IMAGE_PROGRESS.set_thumbnail` / `VIDEO_PROGRESS.set_thumbnail`. Stride caps emit count at ~8 (image) / ~6 (video) per gen. Frontend renders inside `LiveProgress`. Handles standard 4D `(B, C, H, W)` and FLUX's packed 3D `(B, seq_len, 64)` shapes.
+- **MLX-native LLM prompt enhancer** (FU-022) — replaces the deterministic per-family template-suffix enhancer. Helper `backend_service/helpers/prompt_enhancer.py` wraps `mlx_lm.load` + `mlx_lm.generate` against `mlx-community/Qwen2.5-0.5B-Instruct-4bit` (~700 MB on disk, ~3s cold load + sub-second per call). Per-family system prompts (`wan` / `ltx` / `hunyuan` / `flux` / `sdxl` / `sd3` / `default`) anchor the rewrite to the DiT's training distribution. Endpoint `POST /api/prompt/enhance`. Apple Silicon only — CUDA / Linux fall back to the legacy template suffix.
+
+### Speculative decoding
+- **`dflash-mlx` pin bump** (FU-006) f825ffb → 8d8545d (v0.1.4.1 → v0.1.5.1). 0.1.5+ moved every primitive `backend_service/ddtree.py` consumed off the runtime top-level onto a per-family `target_ops` adapter. Adapter resolved once at the top of `generate_ddtree_mlx` via `resolve_target_ops(target_model)`. Gains: draft model quantization with Metal MMA kernels, branchless Metal kernels + fused draft KV projections, long-context runtime diagnostics. Live smoke validated against `mlx-community/Qwen2.5-0.5B-Instruct-4bit`.
+
+### Windows / CUDA stability
+- PowerShell ports of `build-llama-turbo` + `build-sdcpp` for Windows builds.
+- MSVC + CUDA detection helpers, CMake generator handling — accept VS Build Tools installs that report `isComplete=0`, append `version=` to `CMAKE_GENERATOR_INSTANCE` for unregistered installs, fix CUDA-integration elevated copy + invalidate stale CMake cache.
+- CUDA torch self-debugging install button with expandable per-attempt log + Restart prompt.
+- Video Studio dropping GPU warning on CUDA hosts now surfaces inline Install button.
+- T5 lazy-import diagnostic runs on generate paths (not just startup) to catch missing-dep failures before kicking off long generations.
+
+### Studio polish & chat
+- Restored pre-aec1975 card layout for Image / Video Discover + My Models, dropped the duplicate Wan panel that had been leaking through the catalog tabs.
+- KV cache chip filter harmonized with the launch-settings modal so toggle states stay consistent across surfaces.
+- Chat cache-fit warning is now VRAM-aware on CUDA hosts; raised chat default `maxTokens` to 4096; surfaced CPU torch on CUDA host with right-sized CogVideoX footprints.
+- Fixed Studio cache preview returning 0 GB on chat model selection.
+
+### Test infrastructure & runtime safety
+- **`backend_service/runtime_paths.py` — append extras to `sys.path`** instead of `insert(1, ...)`. Prepending broke repo-local adapter shims (notably `turboquant_mlx`, which wraps the upstream `turboquant-mlx-full` install in extras): the raw upstream package shadowed the shim, hiding the shim's exported helpers (`_find_pip_turboquant_path`, `make_adaptive_cache`, `apply_patch`). Surfaced as a pytest collection failure on `tests/test_cache_strategies.py`; was also a latent runtime bug after a user clicked Setup → Install turboquant-mlx-full.
+
+### Packaging
+- Bumped the application version to `0.7.4` across the npm, Python, and Tauri package metadata.
+
+## v0.7.3 - 2026-05-04
+
+- Bumped the application version 0.6.0 → 0.7.3 across the npm, Python, and Tauri package metadata. No tagged GitHub Release; superseded by v0.7.4.
+
+## v0.7.2 - 2026-05-02
+
+- Wired the STG (Spatial Temporal Guidance) slider through to the mlx-video subprocess for LTX-2 generations.
+- Added preset-row-pair styles for the Studio preset chooser.
+- Harmonized the KV cache chip filter with the launch-settings modal so toggle states stay consistent across surfaces.
+
 ## v0.6.0 - 2026-04-19
 
 - Renamed the local `compression/` package to `cache_compression/` so it no longer shadows Python 3.14's PEP 784 stdlib `compression` namespace package. Fixes a `ModuleNotFoundError: No module named 'compression._common'` surfacing on Windows with Python 3.14 when PyTorch's import chain reached into the shadowed package.

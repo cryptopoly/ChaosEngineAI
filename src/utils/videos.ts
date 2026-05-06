@@ -482,8 +482,10 @@ function runtimeFootprintForDevice(opts: {
 function nf4RuntimeFootprintForRepo(repo: string | null | undefined, runtimeFootprintGb: number): number | null {
   const normalizedRepo = (repo ?? "").toLowerCase();
   if (normalizedRepo.includes("hunyuanvideo")) return 22.0;
+  if (normalizedRepo.includes("lightricks/ltx-video")) return 8.0;
   if (!normalizedRepo.includes("wan-ai/wan")) return null;
   if (normalizedRepo.includes("wan2.1-t2v-14b")) return 18.0;
+  if (normalizedRepo.includes("wan2.2-t2v-a14b")) return 18.0;
   if (normalizedRepo.includes("wan2.2-ti2v-5b")) return 14.5;
   if (normalizedRepo.includes("wan2.1-t2v-1.3b")) return Math.min(runtimeFootprintGb, 12.5);
   return null;
@@ -576,8 +578,15 @@ export function assessVideoGenerationSafety(opts: {
   runtimeFootprintMpsGb?: number | null;
   runtimeFootprintCudaGb?: number | null;
   runtimeFootprintCpuGb?: number | null;
+  /** Diffusers-mirror repo id for the selected model. Drives the NF4
+   * footprint lookup when ``useNf4`` is true. Optional — when omitted the
+   * heuristic falls back to the bf16 / fp16 path even with the toggle on. */
   repo?: string | null;
-  useNf4?: boolean;
+  /** When true and the host is CUDA, swap the bf16 resident footprint for
+   * the model's NF4 entry. Mirrors the backend's ``useNf4`` field on
+   * ``VideoGenerationConfig``. Ignored on MPS (Apple Silicon —
+   * bitsandbytes has no Metal kernels) and CPU. */
+  useNf4?: boolean | null;
 }): VideoGenerationSafety {
   const {
     width,
@@ -685,12 +694,16 @@ export function assessVideoGenerationSafety(opts: {
     hasRuntimeFootprintOverride,
   });
 
-  // MPS has a lower danger ratio (0.8 vs CUDA 1.0) because Apple's Metal
-  // backend has historically been less tolerant of approaching the ceiling
-  // — it asserts and kills the process where CUDA would surface a catchable
-  // OOM. We want an earlier warning specifically on MPS.
-  const cautionRatio = effectiveDevice === "cuda" ? 0.7 : 0.5;
-  const dangerRatio = effectiveDevice === "cuda" ? 1.0 : 0.8;
+  // Risk thresholds expressed as a fraction of the effective memory
+  // budget (the post-OS-and-overhead ceiling, see effectiveMemoryBudgetGb).
+  // MPS still gets a slightly earlier warning than CUDA because Metal
+  // asserts at the ceiling rather than surfacing a catchable OOM, but
+  // 0.5 was far too aggressive — a 27 GB peak on a 64 GB M4 Max
+  // (budget 48 GB → 56 % of budget, 42 % of total memory) was lighting
+  // up "close to the safe limit". Aligns with the image-side
+  // ``riskRatios`` for MPS (caution 0.8, danger 0.95).
+  const cautionRatio = effectiveDevice === "cuda" ? 0.85 : 0.8;
+  const dangerRatio = effectiveDevice === "cuda" ? 1.0 : 0.95;
   const ratio = estimatedPeakGb / budgetGb;
   const exceedsDevice = estimatedPeakGb > budgetGb;
   const riskLevel: VideoGenerationRiskLevel =
@@ -726,6 +739,15 @@ export function assessVideoGenerationSafety(opts: {
   // "try 480×320 × 17 frames" (which would also crash). We threshold at
   // the caution ratio rather than danger so we don't hand back bogus
   // suggestions in the caution band either.
+  //
+  // Backend reality: ``video_runtime.py::_ensure_pipeline`` wraps the
+  // ``pipeline.to(device)`` call in try/except (RuntimeError, MemoryError)
+  // and falls back to ``enable_sequential_cpu_offload()`` when it OOMs --
+  // peak memory drops to ~max(largest_module) + activations (~5-7 GB for
+  // CogVideoX 2B, ~8-10 GB for Wan 2.2 5B). So "model footprint > device
+  // budget" is not actually fatal on diffusers pipelines that expose the
+  // offload hook; the user just trades wall-time for memory headroom.
+  // Translate the message accordingly instead of telling them to give up.
   const safeRatioTarget = cautionRatio * 0.7; // leave a real margin after apply
   if (modelFootprintGb > cautionRatio * budgetGb) {
     const comfortBudgetGb = cautionRatio * budgetGb;
@@ -733,9 +755,9 @@ export function assessVideoGenerationSafety(opts: {
     const reason =
       riskLevel === "danger"
         ? modelFootprintGb > budgetGb
-          ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, the estimated working set is ~${fmt(budgetGb)} GB, so the model alone is already over that. Even the smallest clip would be likely to crash the backend. Try a smaller model (LTX-Video is ~2 GB) or a machine with more memory.`
-          : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder, and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). Generation is likely to crash the backend; lower the settings or choose a smaller model.`
-        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its model weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation may run slowly or fail; consider lowering settings if it becomes unstable.`;
+          ? `The model needs ~${fmt(modelFootprintGb)} GB resident at the standard placement, but ${platform} with ${fmt(totalMemoryGb)} GB total only has ~${fmt(budgetGb)} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and ${effectiveDevice === "cuda" ? "GPU" : "device"} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.`
+          : `The model needs ~${fmt(modelFootprintGb)} GB resident and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.`
+        : `The model needs ~${fmt(modelFootprintGb)} GB resident. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation should fit; lower the settings if it becomes unstable.`;
     return {
       riskLevel,
       latentTokens,

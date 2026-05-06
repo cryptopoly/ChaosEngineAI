@@ -377,6 +377,25 @@ def _condense_hf_error(error: str) -> str:
 
 def _friendly_hf_download_error(repo_id: str, error: str) -> str:
     lowered = str(error).lower()
+    # The snapshot_download subprocess imports ``huggingface_hub`` which
+    # transitively imports ``yaml``. A partially-installed PyYAML in the
+    # extras dir surfaces as ``ModuleNotFoundError: No module named 'yaml...'``
+    # rather than a network or repo error. Translate it into actionable
+    # guidance (open Setup → install pyyaml) instead of a cryptic Python
+    # traceback rendered as the download status.
+    if "no module named 'yaml" in lowered or "no module named yaml" in lowered:
+        return (
+            "The backend Python is missing PyYAML, which huggingface_hub needs "
+            "to read model cards. Open Settings > Setup and click Install "
+            "pyyaml (or re-run Install GPU runtime) to repair the runtime, "
+            f"then retry the download for {repo_id}."
+        )
+    if "modulenotfounderror" in lowered and "huggingface_hub" in lowered:
+        return (
+            "The backend Python could not import huggingface_hub. Open Settings > "
+            "Setup and click Install GPU runtime to repair the runtime, then "
+            f"retry the download for {repo_id}."
+        )
     if (
         "repository not found" in lowered
         or "repo not found" in lowered

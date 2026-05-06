@@ -50,7 +50,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
             mock.patch("backend_service.inference._llama_server_supports", return_value=True),
         ):
-            command, _runtime_note, _ = engine._build_command(
+            command, _runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -72,7 +72,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
         ):
-            command, _runtime_note, _ = engine._build_command(
+            command, _runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -136,9 +136,9 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
         # 3 attempts: rotorquant (fail) → chaosengine (fail) → native (succeed)
         with (
             mock.patch.object(engine, "_build_command", side_effect=[
-                (["llama-server-turbo"], None, False),
-                (["llama-server"], None, False),
-                (["llama-server"], None, False),
+                (["llama-server-turbo"], None, False, None),
+                (["llama-server"], None, False, None),
+                (["llama-server"], None, False, None),
             ]),
             mock.patch.object(engine, "_wait_for_server", side_effect=[
                 RuntimeError("unknown architecture"),
@@ -179,8 +179,8 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
         # 2 attempts: rotorquant (fail) → chaosengine (succeed)
         with (
             mock.patch.object(engine, "_build_command", side_effect=[
-                (["llama-server-turbo"], None, False),
-                (["llama-server"], None, False),
+                (["llama-server-turbo"], None, False, None),
+                (["llama-server"], None, False, None),
             ]),
             mock.patch.object(engine, "_wait_for_server", side_effect=[
                 RuntimeError("unknown architecture"),
@@ -217,7 +217,7 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
         fake_process.poll.return_value = None
 
         with (
-            mock.patch.object(engine, "_build_command", return_value=(["llama-server-turbo"], None, False)),
+            mock.patch.object(engine, "_build_command", return_value=(["llama-server-turbo"], None, False, None)),
             mock.patch.object(engine, "_wait_for_server", return_value=None),
             mock.patch.object(engine, "_cleanup_process"),
             mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
@@ -518,7 +518,7 @@ class TurboBinaryRoutingTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
             mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
-            command, _, _ = engine._build_command(
+            command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -537,7 +537,7 @@ class TurboBinaryRoutingTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
             mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "turbo2", "turbo3", "turbo4"})),
         ):
-            command, _, _ = engine._build_command(
+            command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="rotorquant",
@@ -557,7 +557,7 @@ class TurboBinaryRoutingTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
             mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
-            command, runtime_note, _ = engine._build_command(
+            command, runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="rotorquant",
@@ -580,7 +580,7 @@ class TurboBinaryRoutingTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
             mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0", "q5_0"})),
         ):
-            command, _, _ = engine._build_command(
+            command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="chaosengine",
@@ -611,7 +611,7 @@ class TurboBinaryRoutingTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_supports", return_value=False),
             mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
-            command, _, _ = engine._build_command(
+            command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
                 runtime_target=None,
                 cache_strategy="native",
@@ -689,7 +689,7 @@ class CacheTypeValidationTests(unittest.TestCase):
             mock.patch("backend_service.inference._llama_server_cache_types",
                        return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
-            command, note, _ = engine._build_command(
+            command, note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf", runtime_target=None,
                 cache_strategy="rotorquant", cache_bits=3,
                 context_tokens=8192, fit_enabled=True, is_fallback=False,

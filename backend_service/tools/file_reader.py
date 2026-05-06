@@ -125,3 +125,44 @@ class FileReaderTool(BaseTool):
                 text += f"\n\n... ({len(lines) - max_lines} more lines truncated)"
 
         return f"Contents of {file_path}:\n\n{text}"
+
+    def execute_structured(self, **kwargs: Any) -> Any:
+        """Phase 2.8: render code files as syntax-highlighted blocks
+        and markdown / text files as rendered markdown.
+
+        The text returned to the model still includes the same
+        ``"Contents of <path>:"`` framing the legacy `execute` path
+        produces so the model's downstream reasoning is unchanged.
+        Errors fall back to a markdown render so messages like
+        ``Error: file not found: ...`` show with proper styling.
+        """
+        from backend_service.tools import StructuredToolOutput
+
+        text = self.execute(**kwargs)
+        if text.startswith("Error"):
+            return StructuredToolOutput(text=text, render_as="markdown")
+
+        raw_path = str(kwargs.get("path", "")).strip()
+        try:
+            ext = Path(os.path.expanduser(raw_path)).suffix.lower().lstrip(".")
+        except OSError:
+            ext = ""
+        # Strip the "Contents of <path>:" leader so the rendered code
+        # block holds only the file body. The leader stays in `text`
+        # for the model — it carries the citation context.
+        body = text.split("\n\n", 1)[1] if "\n\n" in text else text
+        if ext in {"md", "markdown", "rst"}:
+            return StructuredToolOutput(
+                text=text,
+                render_as="markdown",
+                data={"markdown": body, "path": raw_path},
+            )
+        return StructuredToolOutput(
+            text=text,
+            render_as="code",
+            data={
+                "code": body,
+                "language": ext or "text",
+                "path": raw_path,
+            },
+        )

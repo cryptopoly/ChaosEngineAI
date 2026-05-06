@@ -152,6 +152,18 @@ export function LiveProgress({
         />
       </div>
 
+      {realProgress?.active && realProgress.thumbnail ? (
+        <div className="live-progress__thumbnail">
+          <img
+            src={`data:image/png;base64,${realProgress.thumbnail}`}
+            alt="Live denoise preview"
+          />
+          <span className="live-progress__thumbnail-caption">
+            Live preview · TAESD decode
+          </span>
+        </div>
+      ) : null}
+
       <div className="live-progress__phases">
         {phases.map((phase, i) => {
           const state = i < activeIndex ? "done" : i === activeIndex ? "active" : "pending";

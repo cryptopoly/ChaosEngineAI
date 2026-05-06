@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  addMessageVariant,
+  cancelChatGeneration,
   checkBackend,
   createSession,
   deleteSession,
   deleteSessionDocument,
+  delveMessage,
+  forkChatSession,
   generateChatStream,
   getTauriBackendInfo,
   restartManagedBackend,
@@ -21,6 +25,7 @@ import {
   resolveChatRuntimeProfile,
 } from "../utils/chatRuntime";
 import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
+import { readKvStrategyOverride } from "../features/chat/kvStrategyOverride";
 import type {
   ChatSession,
   ChatThinkingMode,
@@ -28,9 +33,90 @@ import type {
   LoadModelActionResult,
   ModelVariant,
   TabId,
+  WarmModel,
   WorkspaceData,
 } from "../types";
 import type { ChatModelOption } from "../types/chat";
+
+/**
+ * Read the per-thread temperature override stored by ChatTab's TemperatureChip.
+ * Returns null when no override is set, in which case the launch-settings
+ * default applies. Mirrors the localStorage key produced by the chip.
+ */
+function readTemperatureOverride(sessionId: string | null | undefined): number | null {
+  if (!sessionId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`chat.tempOverride.${sessionId}`);
+    if (raw == null) return null;
+    const parsed = parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Phase 2.2: read the per-thread sampler overrides (top_p, top_k, etc.)
+ * stashed by SamplerPanel. Returns the GeneratePayload field shape so
+ * useChat can spread it into the stream payload. Empty object = no
+ * overrides; backend defaults apply.
+ */
+function readSamplerPayload(sessionId: string | null | undefined): Record<string, unknown> {
+  if (!sessionId || typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(`chat.samplers.${sessionId}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, unknown> = {};
+    for (const key of ["topP", "topK", "minP", "repeatPenalty", "seed", "mirostatTau", "mirostatEta"]) {
+      const value = (parsed as Record<string, unknown>)[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        out[key] = value;
+      }
+    }
+    const mode = (parsed as Record<string, unknown>).mirostatMode;
+    if (mode === 0 || mode === 1 || mode === 2) {
+      out.mirostatMode = mode;
+    }
+    // Phase 2.2: opt-in constrained decoding. The SamplerPanel stores
+    // the schema as raw JSON text so we can round-trip mid-type edits;
+    // parse here and only forward when the result is a valid object.
+    // Invalid JSON falls through silently — the backend will then use
+    // unconstrained decoding rather than 400-ing the request.
+    const schemaText = (parsed as Record<string, unknown>).jsonSchemaText;
+    if (typeof schemaText === "string" && schemaText.trim().length > 0) {
+      try {
+        const schema = JSON.parse(schemaText);
+        if (schema && typeof schema === "object" && !Array.isArray(schema)) {
+          out.jsonSchema = schema;
+        }
+      } catch {
+        // Mid-type / malformed — silently skip rather than block the send.
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Read the per-thread reasoning effort level (Phase 1.12). Stored alongside
+ * thinkingMode but separate so a session can independently track "Off" vs
+ * Low/Medium/High effort. Returns undefined when no level is stored, which
+ * lets the backend treat absence as "use whatever the model defaults to".
+ */
+function readReasoningEffort(sessionId: string | null | undefined): "low" | "medium" | "high" | undefined {
+  if (!sessionId || typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`chat.reasoningEffort.${sessionId}`);
+    if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
 
 export function useChat(
   workspace: WorkspaceData,
@@ -73,6 +159,17 @@ export function useChat(
   const [enableTools, setEnableTools] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Phase 2.12: one-turn model override. Survives across re-renders so
+  // the ChatComposer dropdown can pre-select; cleared in onDone after
+  // a successful turn so the next plain message goes back to the
+  // session default. Nulling pre-stream cancels also clears it.
+  const [oneTurnOverride, setOneTurnOverride] = useState<WarmModel | null>(null);
+  // Phase 2.0.5-A: stuck prompt-eval watchdog. Fires if a generation lingers
+  // in `prompt_eval` past PROMPT_EVAL_TIMEOUT_MS without producing the first
+  // token — which usually means the model wedged on a too-long context, an
+  // OOM hang, or a thermal-throttled prefill. We cancel via the existing
+  // backend cancel endpoint and surface a diagnostic error to the user.
+  const promptEvalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedChatSessions = sortSessions(workspace.chatSessions);
   const activeChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? sortedChatSessions[0];
@@ -145,7 +242,17 @@ export function useChat(
               messages: [
                 ...session.messages,
                 { role: "user" as const, text: prompt, metrics: null },
-                { role: "assistant" as const, text: "", reasoning: "", reasoningDone: true, metrics: null },
+                {
+                  role: "assistant" as const,
+                  text: "",
+                  reasoning: "",
+                  reasoningDone: true,
+                  metrics: null,
+                  // Phase 2.0: start in prompt_eval so the indicator shows
+                  // immediately on send, before backend's first SSE phase
+                  // event arrives. Cleared by onDone via the session refresh.
+                  streamPhase: "prompt_eval",
+                },
               ],
             }
           : session,
@@ -440,6 +547,71 @@ export function useChat(
       .catch(() => {});
   }
 
+  async function handleAddVariant(messageIndex: number, warm: WarmModel): Promise<void> {
+    // Phase 2.5: generate a sibling response using a different
+    // currently-loaded model. Variant is attached to the assistant
+    // message at `messageIndex`. Caller (ChatThread hover action)
+    // restricts the picker to warm models so the backend's
+    // already-loaded check passes; we still surface backend errors
+    // through the standard chat error path.
+    if (!activeChat) return;
+    if (messageIndex < 0 || messageIndex >= activeChat.messages.length) return;
+    try {
+      const updated = await addMessageVariant(activeChat.id, {
+        messageIndex,
+        modelRef: warm.ref,
+        modelName: warm.name,
+        backend: warm.engine,
+        maxTokens: launchSettings.maxTokens,
+        temperature: launchSettings.temperature,
+      });
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, updated),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Variant generation failed");
+    }
+  }
+
+  async function handleDelveMessage(messageIndex: number): Promise<void> {
+    // Phase 3.6: ask the loaded model to re-read its own answer with a
+    // reviewer's framing. Result attaches as a "Delve critique" variant
+    // on the message so the existing variant card surfaces it.
+    if (!activeChat) return;
+    if (messageIndex < 0 || messageIndex >= activeChat.messages.length) return;
+    try {
+      const updated = await delveMessage(activeChat.id, messageIndex);
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, updated),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delve failed");
+    }
+  }
+
+  async function handleForkAtMessage(index: number): Promise<void> {
+    // Phase 2.4: fork the active thread at the given message index.
+    // Backend deep-copies messages [0..index] into a new session and
+    // returns it; we swap activeChatId to land the user inside the
+    // fork so their next message diverges. Parent linkage stays on
+    // `parentSessionId` for the sidebar hint.
+    if (!activeChat) return;
+    if (index < 0 || index >= activeChat.messages.length) return;
+    try {
+      const fork = await forkChatSession(activeChat.id, index);
+      setWorkspace((current) => ({
+        ...current,
+        chatSessions: upsertSession(current.chatSessions, fork),
+      }));
+      setActiveChatId(fork.id);
+      setThreadTitleDraft(fork.title);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fork failed");
+    }
+  }
+
   async function handleRetryMessage(index: number) {
     if (!activeChat) return;
     const messages = activeChat.messages;
@@ -651,25 +823,53 @@ export function useChat(
         setChatBusySessionId(session.id);
       }
 
+      // Phase 2.12: when a warm-model override is selected for the next
+      // turn, take its identity instead of the session default. The
+      // `oneTurnOverride: true` flag tells the backend not to persist
+      // the override onto the session, so the thread reverts to its
+      // default model on the next plain message.
+      const overrideWarm = oneTurnOverride;
+      const useOverride = Boolean(overrideWarm && overrideWarm.ref !== threadModel?.modelRef);
       const streamPayload = {
         sessionId,
         title: threadTitleDraft.trim() || activeChat?.title,
         prompt: trimmed,
         images: pendingImagesSnapshot.length > 0 ? pendingImagesSnapshot : undefined,
-        modelRef: threadModel?.modelRef,
-        modelName: threadModel?.modelName,
-        canonicalRepo: threadModel?.canonicalRepo,
-        source: threadModel?.source,
-        path: threadModel?.path,
-        backend: threadModel?.backend,
+        modelRef: useOverride ? overrideWarm!.ref : threadModel?.modelRef,
+        modelName: useOverride ? overrideWarm!.name : threadModel?.modelName,
+        canonicalRepo: useOverride ? undefined : threadModel?.canonicalRepo,
+        source: useOverride ? undefined : threadModel?.source,
+        path: useOverride ? undefined : threadModel?.path,
+        backend: useOverride ? overrideWarm!.engine : threadModel?.backend,
+        oneTurnOverride: useOverride || undefined,
         thinkingMode: activeThinkingMode,
-        temperature: launchSettings.temperature,
+        reasoningEffort: activeThinkingMode === "auto" ? readReasoningEffort(sessionId) : undefined,
+        temperature: readTemperatureOverride(sessionId) ?? launchSettings.temperature,
         maxTokens: launchSettings.maxTokens,
+        // Phase 2.2: per-thread sampler overrides. Backend ignores fields
+        // it doesn't recognise so this is forward-compatible.
+        ...readSamplerPayload(sessionId),
+        // Phase 3.3: when advanced-mode logprobs is on, ask llama-server
+        // for top-5 alternatives per token. Default off.
+        ...(workspace.settings?.advancedLogprobs ? { logprobs: 5 } : {}),
         systemPrompt: systemPrompt || undefined,
-        cacheBits: activeRuntimeProfile.cacheBits,
+        // Phase 3.2: per-thread KV strategy override. Falls through to
+        // the session's runtime profile when no override is set.
+        ...(() => {
+          const kvOverride = readKvStrategyOverride(sessionId);
+          if (!kvOverride) {
+            return {
+              cacheBits: activeRuntimeProfile.cacheBits,
+              cacheStrategy: activeRuntimeProfile.cacheStrategy,
+            };
+          }
+          return {
+            cacheBits: kvOverride.bits,
+            cacheStrategy: kvOverride.strategy,
+          };
+        })(),
         fp16Layers: activeRuntimeProfile.fp16Layers,
         fusedAttention: activeRuntimeProfile.fusedAttention,
-        cacheStrategy: activeRuntimeProfile.cacheStrategy,
         fitModelInMemory: activeRuntimeProfile.fitModelInMemory,
         contextTokens: activeRuntimeProfile.contextTokens,
         speculativeDecoding: activeRuntimeProfile.speculativeDecoding,
@@ -722,6 +922,27 @@ export function useChat(
             }));
           }
         },
+        onTokenLogprobs: (entries) => {
+          // Phase 3.3: append entries to the streaming assistant
+          // message's tokenLogprobs array so the hover overlay can
+          // resolve per-token alternatives once streaming finishes.
+          if (!streamingChatId || entries.length === 0) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = {
+                  ...last,
+                  tokenLogprobs: [...(last.tokenLogprobs ?? []), ...entries],
+                };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
         onReasoningDone: () => {
           if (streamingChatId) {
             setWorkspace((current) => ({
@@ -738,7 +959,101 @@ export function useChat(
             }));
           }
         },
+        onPhase: (phase, _ttftSeconds) => {
+          if (!streamingChatId) return;
+
+          // Phase 2.0.5-A: stuck prompt-eval watchdog. Arm a timer when the
+          // backend announces prompt_eval. If the timer fires before the
+          // generating phase begins (60s), cancel the generation — the
+          // model is almost certainly hung on prefill.
+          if (phase === "prompt_eval") {
+            if (promptEvalTimeoutRef.current) {
+              clearTimeout(promptEvalTimeoutRef.current);
+            }
+            const PROMPT_EVAL_TIMEOUT_MS = 60_000;
+            promptEvalTimeoutRef.current = setTimeout(() => {
+              promptEvalTimeoutRef.current = null;
+              setError(
+                "Prompt processing exceeded 60 seconds without producing a token. " +
+                "The model may be stuck on prefill (large context, OOM, or thermal throttle). " +
+                "Cancelling — try again with a shorter prompt or a smaller model.",
+              );
+              void cancelChatGeneration(streamingChatId).catch(() => {
+                // backend may already be done; client abort below still applies
+              });
+              if (streamAbortRef.current) {
+                streamAbortRef.current.abort();
+                streamAbortRef.current = null;
+              }
+              setChatBusySessionId(null);
+            }, PROMPT_EVAL_TIMEOUT_MS);
+          } else if (phase === "generating") {
+            if (promptEvalTimeoutRef.current) {
+              clearTimeout(promptEvalTimeoutRef.current);
+              promptEvalTimeoutRef.current = null;
+            }
+          }
+
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, streamPhase: phase };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
+        onPanic: (signal) => {
+          // Phase 2.0.5-G: stash the panic signal on the streaming
+          // assistant message so ChatTab can render a non-blocking
+          // banner. Generation continues — the user decides whether
+          // to cancel.
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, panic: signal };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
+        onThermalWarning: (signal) => {
+          // Phase 2.0.5-I: stash thermal warning on the streaming
+          // assistant message. Same banner pattern as panic.
+          if (!streamingChatId) return;
+          setWorkspace((current) => ({
+            ...current,
+            chatSessions: current.chatSessions.map((s) => {
+              if (s.id !== streamingChatId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, thermalWarning: signal };
+              }
+              return { ...s, messages: msgs };
+            }),
+          }));
+        },
         onDone: (response) => {
+          // Phase 2.0.5-A: clear the prompt-eval watchdog when generation
+          // completes naturally so a stale timer can't abort a follow-up turn.
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
+          // Phase 2.12: clear the one-turn override now that this turn
+          // has finished — next plain message reverts to the session
+          // default. Preserves "one-turn" semantics.
+          setOneTurnOverride(null);
           setWorkspace((current) =>
             syncRuntime(
               { ...current, chatSessions: upsertSession(current.chatSessions, response.session) },
@@ -748,6 +1063,10 @@ export function useChat(
           setActiveChatId(response.session.id);
         },
         onError: (errMsg) => {
+          if (promptEvalTimeoutRef.current) {
+            clearTimeout(promptEvalTimeoutRef.current);
+            promptEvalTimeoutRef.current = null;
+          }
           setError(`Chat error: ${errMsg}`);
           if (streamingChatId) {
             setWorkspace((current) => ({
@@ -808,6 +1127,21 @@ export function useChat(
   }
 
   function cancelGeneration() {
+    // Phase 2.0.5-A: clear watchdog so the manual cancel path doesn't race
+    // with the timeout firing.
+    if (promptEvalTimeoutRef.current) {
+      clearTimeout(promptEvalTimeoutRef.current);
+      promptEvalTimeoutRef.current = null;
+    }
+    // First, ask the backend to flip the cancel flag for the active session
+    // so the streaming loop stops generating tokens. Then abort the local
+    // fetch so the client stops decoding remaining buffered output.
+    const activeSessionId = chatBusySessionId;
+    if (activeSessionId) {
+      void cancelChatGeneration(activeSessionId).catch(() => {
+        // Backend may already be done or unreachable; client-side abort still applies
+      });
+    }
     if (streamAbortRef.current) {
       streamAbortRef.current.abort();
       streamAbortRef.current = null;
@@ -842,11 +1176,16 @@ export function useChat(
     handleSelectThreadModel,
     handleLoadActiveThreadModel,
     handleCopyMessage,
+    handleAddVariant,
     handleDeleteMessage,
+    handleDelveMessage,
+    handleForkAtMessage,
     handleRetryMessage,
     handleChatFileDrop,
     sendMessage,
     cancelGeneration,
     deleteSessionDocument,
+    oneTurnOverride,
+    setOneTurnOverride,
   };
 }

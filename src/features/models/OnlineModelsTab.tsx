@@ -49,6 +49,41 @@ export interface OnlineModelsTabProps {
   hubFileCache: Record<string, HubFileListResponse>;
   hubFileLoading: Record<string, boolean>;
   hubFileError: Record<string, string>;
+  /** Phase 2.14: drives the per-variant fit-in-memory badge. */
+  availableMemoryGb?: number | null;
+}
+
+/**
+ * Phase 2.14: classify whether a variant fits the current host's
+ * available memory. Three buckets: comfortable / tight / over.
+ *
+ * - comfortable: estimated memory ≤ 70% of available
+ * - tight: estimated memory ≤ 100% of available
+ * - over: estimated memory > available
+ *
+ * Returns null when neither size nor estimate is known. The hint
+ * is optimistic on purpose — TurboQuant / ChaosEngine compression
+ * can reclaim ~50% of the listed estimate, so "tight" is still a
+ * usable signal rather than a hard block.
+ */
+export function memoryFitBucket(
+  variant: ModelVariant,
+  availableMemoryGb: number | null | undefined,
+): { kind: "comfortable" | "tight" | "over" | "unknown"; label: string } {
+  if (availableMemoryGb == null || availableMemoryGb <= 0) {
+    return { kind: "unknown", label: "" };
+  }
+  const estimate = variant.estimatedMemoryGb ?? variant.sizeGb;
+  if (!estimate || estimate <= 0) {
+    return { kind: "unknown", label: "" };
+  }
+  if (estimate <= availableMemoryGb * 0.7) {
+    return { kind: "comfortable", label: "Fits" };
+  }
+  if (estimate <= availableMemoryGb) {
+    return { kind: "tight", label: "Tight" };
+  }
+  return { kind: "over", label: "Too big" };
 }
 
 export function OnlineModelsTab({
@@ -80,6 +115,7 @@ export function OnlineModelsTab({
   hubFileCache,
   hubFileLoading,
   hubFileError,
+  availableMemoryGb,
 }: OnlineModelsTabProps) {
   function renderCapabilityIcons(capabilities: string[], max = 5) {
     return (
@@ -313,7 +349,27 @@ export function OnlineModelsTab({
                               <span>{variant.backend}</span>
                               <span>{number(variant.paramsB)}B</span>
                               <span>{sizeLabel(variant.sizeGb)}</span>
-                              <span>{variant.estimatedMemoryGb ? `~${number(variant.estimatedMemoryGb)}GB` : "?"}</span>
+                              <span>
+                                {variant.estimatedMemoryGb ? `~${number(variant.estimatedMemoryGb)}GB` : "?"}
+                                {(() => {
+                                  const fit = memoryFitBucket(variant, availableMemoryGb);
+                                  if (fit.kind === "unknown") return null;
+                                  return (
+                                    <span
+                                      className={`memory-fit-badge memory-fit-badge--${fit.kind}`}
+                                      title={
+                                        fit.kind === "comfortable"
+                                          ? `Fits comfortably in ${availableMemoryGb?.toFixed(1)} GB available`
+                                          : fit.kind === "tight"
+                                          ? `Fits but tight against ${availableMemoryGb?.toFixed(1)} GB available — close other apps before loading`
+                                          : `Estimated ${variant.estimatedMemoryGb?.toFixed?.(1) ?? "?"} GB exceeds ${availableMemoryGb?.toFixed(1)} GB available — try a smaller quantisation`
+                                      }
+                                    >
+                                      {fit.label}
+                                    </span>
+                                  );
+                                })()}
+                              </span>
                               <span>{variant.estimatedCompressedMemoryGb ? `~${number(variant.estimatedCompressedMemoryGb)}GB` : "?"}</span>
                               <span>{variant.contextWindow}</span>
                               <span><StatusIcon status={variantStatus.kind} label={variantStatus.label} detail={variantStatus.detail} /></span>

@@ -30,6 +30,7 @@ from backend_service.models import (
     UpdateSessionRequest,
     GenerateRequest,
     OpenAIChatCompletionRequest,
+    OpenAIEmbeddingsRequest,
     BenchmarkRunRequest,
     UpdateSettingsRequest,
 )
@@ -95,6 +96,74 @@ _CATALOG_REF_ALIASES = {
 
 def _compose_chat_system_prompt(system_prompt: str | None, thinking_mode: str | None = None) -> str:
     return (system_prompt or "").strip()
+
+
+def _build_sampler_overrides(request: Any) -> dict[str, Any]:
+    """Phase 2.2: collect the request's sampler overrides into a flat dict
+    keyed using the llama-server `/v1/chat/completions` field names.
+
+    The dict contains only fields the user actually set — `None` defaults
+    are skipped so the backend's defaults stay in force when the UI sends
+    no override. Both engines treat unknown keys as no-ops, so the output
+    is forward-compatible across llama-server / mlx-lm versions.
+    """
+    overrides: dict[str, Any] = {}
+
+    def _put(dst: str, value: Any) -> None:
+        if value is not None:
+            overrides[dst] = value
+
+    _put("top_p", getattr(request, "topP", None))
+    _put("top_k", getattr(request, "topK", None))
+    _put("min_p", getattr(request, "minP", None))
+    _put("repeat_penalty", getattr(request, "repeatPenalty", None))
+    _put("seed", getattr(request, "seed", None))
+    mirostat_mode = getattr(request, "mirostatMode", None)
+    if mirostat_mode is not None:
+        overrides["mirostat"] = mirostat_mode
+    _put("mirostat_tau", getattr(request, "mirostatTau", None))
+    _put("mirostat_eta", getattr(request, "mirostatEta", None))
+    # Phase 3.3: when the user enables logprobs on a request the
+    # frontend sends a top-k count; map it onto llama-server's
+    # `logprobs` + `top_logprobs` parameters so the response delta
+    # carries the per-token info.
+    logprobs = getattr(request, "logprobs", None)
+    if logprobs is not None and logprobs > 0:
+        overrides["logprobs"] = True
+        overrides["top_logprobs"] = int(logprobs)
+    return overrides
+
+
+def _build_history_with_reasoning(
+    messages: list[dict[str, Any]],
+    *,
+    preserve_reasoning: bool,
+) -> list[dict[str, Any]]:
+    """Project a session's stored messages into the history list passed to the
+    inference layer.
+
+    When `preserve_reasoning` is true and an assistant message has a
+    `reasoning` field captured by ThinkingTokenFilter on a previous turn,
+    the reasoning is re-emitted inside `<think>...</think>` tags ahead of
+    the visible answer. Reasoning-capable models (Qwen3, DeepSeek R1, etc.)
+    consume this naturally on follow-up turns; non-reasoning models will
+    treat it as inline text. Falsy / missing reasoning is skipped, so this
+    is safe to call unconditionally.
+    """
+    history: list[dict[str, Any]] = []
+    for message in messages:
+        role = message.get("role")
+        text = str(message.get("text") or "")
+        if (
+            preserve_reasoning
+            and role == "assistant"
+            and message.get("reasoning")
+        ):
+            reasoning_str = str(message["reasoning"]).strip()
+            if reasoning_str:
+                text = f"<think>\n{reasoning_str}\n</think>\n\n{text}"
+        history.append({"role": role, "text": text})
+    return history
 
 
 def _title_from_prompt(prompt: str | None) -> str:
@@ -227,6 +296,12 @@ class ChaosEngineState:
         self._loading_state: dict[str, Any] | None = None
         self._downloads: dict[str, dict[str, Any]] = {}
         self._download_cancel: dict[str, bool] = {}
+        # Cancellation flags for in-flight chat generations, keyed by session id.
+        # Set to True via request_cancel_chat(); the streaming loop in
+        # generate_stream() checks this flag between events and breaks early.
+        # Cleared at the start of each new generation so a stale flag from a
+        # prior turn never aborts a fresh request.
+        self._chat_cancel: dict[str, bool] = {}
         self._download_processes: dict[str, subprocess.Popen[str]] = {}
         self._download_tokens: dict[str, str] = {}
         self._bootstrap()
@@ -604,6 +679,7 @@ class ChaosEngineState:
         tok_s: float,
         response_seconds: float,
         requested_runtime: dict[str, Any] | None = None,
+        ttft_seconds: float | None = None,
     ) -> dict[str, Any]:
         metrics: dict[str, Any] = {
             "finishReason": final_chunk.finish_reason if final_chunk else "stop",
@@ -616,6 +692,29 @@ class ChaosEngineState:
         }
         if final_chunk and getattr(final_chunk, "dflash_acceptance_rate", None) is not None:
             metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
+        if ttft_seconds is not None:
+            metrics["ttftSeconds"] = ttft_seconds
+        # Phase 3.1: forward DDTree accepted-span data when present.
+        accepted_spans = getattr(final_chunk, "accepted_spans", None) if final_chunk else None
+        if accepted_spans:
+            metrics["acceptedSpans"] = accepted_spans
+        accepted_token_text = getattr(final_chunk, "accepted_token_text", None) if final_chunk else None
+        if accepted_token_text:
+            metrics["acceptedTokenText"] = accepted_token_text
+
+        # Phase 3.5: per-turn perf telemetry snapshot. Best-effort —
+        # samplers fail silently and the telemetry strip just omits the
+        # missing fields. Captured at finalisation so the values reflect
+        # the load the turn actually generated, not idle baseline.
+        try:
+            from backend_service.helpers.perf import snapshot_perf_telemetry
+            telemetry = snapshot_perf_telemetry()
+            if not telemetry.is_empty:
+                metrics["perfTelemetry"] = telemetry.to_dict()
+        except Exception:
+            # Telemetry must never block a turn from finalising.
+            pass
+
         return {
             **self._loaded_model_metrics_fields(),
             **self._result_runtime_metrics_fields(final_chunk),
@@ -1013,6 +1112,315 @@ class ChaosEngineState:
             session = self._ensure_session(title=title)
             return session
 
+    def add_message_variant(
+        self,
+        session_id: str,
+        message_index: int,
+        model_ref: str,
+        model_name: str,
+        canonical_repo: str | None,
+        source: str,
+        path: str | None,
+        backend: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> dict[str, Any]:
+        """Phase 2.5: generate a sibling variant of an assistant message.
+
+        Truncates the session's message list to the user message that
+        produced the target assistant turn (i.e. messages[0..index-1]
+        plus the user prompt at index-1), then runs a non-streaming
+        generation against the override model. The result is attached
+        to ``messages[message_index].variants`` so the frontend can
+        render it side-by-side with the original answer.
+
+        The override model must already be loaded as the current
+        runtime — callers should preload via the existing My Models
+        flow before invoking compare. Raising on misalignment keeps
+        the contract simple: variant generation never reloads the
+        runtime under the user.
+
+        Returns the updated session dict so the frontend can replace
+        its local copy in one round-trip.
+        """
+        with self._lock:
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            if session is None:
+                raise ValueError(f"Session not found: {session_id}")
+            messages = session.get("messages") or []
+            if message_index < 0 or message_index >= len(messages):
+                raise ValueError(
+                    f"message_index {message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+            target = messages[message_index]
+            if target.get("role") != "assistant":
+                raise ValueError(
+                    f"Variants can only be added to assistant messages "
+                    f"(message {message_index} role: {target.get('role')})"
+                )
+            if message_index == 0:
+                raise ValueError("Cannot add a variant to the first message — no prompt available")
+            user_msg = messages[message_index - 1]
+            if user_msg.get("role") != "user":
+                raise ValueError(
+                    f"Variant prompt must come from a user message at index "
+                    f"{message_index - 1}, got role {user_msg.get('role')}"
+                )
+            history = _build_history_with_reasoning(
+                messages[: message_index - 1],
+                preserve_reasoning=False,
+            )
+            user_prompt = str(user_msg.get("text") or "")
+
+            if self.runtime.loaded_model is None:
+                raise ValueError("Load the override model before requesting a variant")
+            loaded = self.runtime.loaded_model
+            # Sanity check the runtime is the requested model. We don't
+            # auto-reload because the user explicitly wants to compare
+            # against an already-warm choice.
+            if loaded.ref != model_ref and loaded.runtimeTarget != model_ref:
+                raise ValueError(
+                    f"Loaded runtime is {loaded.ref}, but variant requested {model_ref}. "
+                    "Load the desired model first via My Models, then retry."
+                )
+
+            started_at = time.perf_counter()
+            try:
+                result = self.runtime.generate(
+                    prompt=user_prompt,
+                    history=history,
+                    system_prompt=_compose_chat_system_prompt(None),
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except RuntimeError as exc:
+                raise ValueError(f"Variant generation failed: {exc}") from exc
+            elapsed = round(time.perf_counter() - started_at, 2)
+
+            metrics = self._stream_assistant_metrics_payload(
+                final_chunk=type("Chunk", (), {
+                    "finish_reason": result.finishReason,
+                    "prompt_tokens": result.promptTokens,
+                    "completion_tokens": result.completionTokens,
+                    "tok_s": result.tokS,
+                    "runtime_note": result.runtimeNote,
+                    "dflash_acceptance_rate": getattr(result, "dflashAcceptanceRate", None),
+                })(),
+                tok_s=result.tokS,
+                response_seconds=elapsed,
+            )
+            metrics["model"] = model_name
+            metrics["modelRef"] = model_ref
+            metrics["canonicalRepo"] = canonical_repo
+            metrics["modelSource"] = source
+            metrics["modelPath"] = path
+            metrics["backend"] = backend
+
+            variant = {
+                "modelRef": model_ref,
+                "modelName": model_name,
+                "text": result.text,
+                "metrics": metrics,
+                "generatedAt": self._time_label(),
+            }
+            target.setdefault("variants", []).append(variant)
+            session["updatedAt"] = self._time_label()
+            self._persist_sessions()
+            return session
+
+    def delve_message(
+        self,
+        session_id: str,
+        message_index: int,
+        max_tokens: int = 1024,
+        temperature: float = 0.5,
+    ) -> dict[str, Any]:
+        """Phase 3.6: re-process an assistant message with a critique system
+        prompt and attach the result as a variant.
+
+        The Delve pass asks the currently-loaded model to read the prior
+        answer with a critic's eye and surface anything wrong / missing
+        / misleading, then propose a corrected response. Attached as a
+        ``modelName: "Delve critique"`` variant so the frontend's
+        existing variant rendering surfaces it under the original turn.
+
+        Like add_message_variant, requires the model to already be
+        loaded (no auto-reload).
+        """
+        with self._lock:
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            if session is None:
+                raise ValueError(f"Session not found: {session_id}")
+            messages = session.get("messages") or []
+            if message_index < 0 or message_index >= len(messages):
+                raise ValueError(
+                    f"message_index {message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+            target = messages[message_index]
+            if target.get("role") != "assistant":
+                raise ValueError(
+                    f"Delve only works on assistant messages "
+                    f"(message {message_index} role: {target.get('role')})"
+                )
+            if message_index == 0:
+                raise ValueError("Cannot delve on the first message — no prompt available")
+            user_msg = messages[message_index - 1]
+            user_prompt = str(user_msg.get("text") or "")
+            original_answer = str(target.get("text") or "")
+
+            if self.runtime.loaded_model is None:
+                raise ValueError("Load a model before requesting a Delve pass")
+            loaded = self.runtime.loaded_model
+
+            # Build the critique-mode system prompt. We deliberately ask
+            # for both critique + improved answer in one pass so the
+            # variant card renders something the user can drop straight
+            # back into the thread if they like the result.
+            critique_system = (
+                "You are a careful reviewer. Read the prior assistant answer with a "
+                "critic's eye. First, list any factual errors, missing context, or "
+                "misleading claims under a 'Critique:' heading. Then, under a 'Revised "
+                "answer:' heading, write a corrected response that fixes the issues "
+                "you identified. Be concise."
+            )
+
+            history = _build_history_with_reasoning(
+                messages[: message_index - 1],
+                preserve_reasoning=False,
+            )
+            # Append the user prompt + original answer as context, then
+            # ask the model to delve into it.
+            history.append({"role": "user", "text": user_prompt})
+            history.append({"role": "assistant", "text": original_answer})
+            delve_prompt = (
+                "Apply the Critique / Revised answer treatment to the assistant's "
+                "previous response."
+            )
+
+            started_at = time.perf_counter()
+            try:
+                result = self.runtime.generate(
+                    prompt=delve_prompt,
+                    history=history,
+                    system_prompt=critique_system,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except RuntimeError as exc:
+                raise ValueError(f"Delve generation failed: {exc}") from exc
+            elapsed = round(time.perf_counter() - started_at, 2)
+
+            metrics = self._stream_assistant_metrics_payload(
+                final_chunk=type("Chunk", (), {
+                    "finish_reason": result.finishReason,
+                    "prompt_tokens": result.promptTokens,
+                    "completion_tokens": result.completionTokens,
+                    "tok_s": result.tokS,
+                    "runtime_note": result.runtimeNote,
+                    "dflash_acceptance_rate": getattr(result, "dflashAcceptanceRate", None),
+                })(),
+                tok_s=result.tokS,
+                response_seconds=elapsed,
+            )
+            metrics["model"] = "Delve critique"
+            metrics["modelRef"] = loaded.ref
+
+            variant = {
+                "modelRef": loaded.ref,
+                "modelName": "Delve critique",
+                "text": result.text,
+                "metrics": metrics,
+                "generatedAt": self._time_label(),
+            }
+            target.setdefault("variants", []).append(variant)
+            session["updatedAt"] = self._time_label()
+            self._persist_sessions()
+            return session
+
+    def fork_session(
+        self,
+        source_session_id: str,
+        fork_at_message_index: int,
+        title: str | None = None,
+    ) -> dict[str, Any]:
+        """Phase 2.4: branch a thread at a specific message.
+
+        Creates a new session containing a deep copy of the source's
+        messages up to (and including) `fork_at_message_index`, plus
+        the source's runtime profile (model, cache, thinking mode) so
+        the fork resumes exactly where the user diverged. The new
+        session carries `parentSessionId` and `forkedAtMessageIndex`
+        metadata so the sidebar can render a relationship hint and
+        future features (compare-vs-parent, merge) have the linkage.
+
+        Raises ``ValueError`` when the source session doesn't exist
+        or the fork index is out of range.
+        """
+        import copy
+
+        with self._lock:
+            source = next(
+                (s for s in self.chat_sessions if s.get("id") == source_session_id),
+                None,
+            )
+            if source is None:
+                raise ValueError(f"Source session not found: {source_session_id}")
+            messages = source.get("messages") or []
+            if fork_at_message_index < 0 or fork_at_message_index >= len(messages):
+                raise ValueError(
+                    f"fork_at_message_index {fork_at_message_index} out of range "
+                    f"(session has {len(messages)} messages)"
+                )
+
+            fork_title = title or f"{source.get('title', 'Chat')} (fork)"
+            new_id = f"session-{uuid.uuid4().hex[:8]}"
+            new_session: dict[str, Any] = {
+                "id": new_id,
+                "title": fork_title,
+                "updatedAt": self._time_label(),
+                "pinned": False,
+                # Carry the runtime profile so the fork resumes on the
+                # same model + cache config as the parent.
+                "model": source.get("model"),
+                "modelRef": source.get("modelRef"),
+                "canonicalRepo": source.get("canonicalRepo"),
+                "modelSource": source.get("modelSource"),
+                "modelPath": source.get("modelPath"),
+                "modelBackend": source.get("modelBackend"),
+                "thinkingMode": source.get("thinkingMode") or "off",
+                "cacheLabel": source.get("cacheLabel"),
+                "cacheStrategy": source.get("cacheStrategy"),
+                "cacheBits": source.get("cacheBits"),
+                "fp16Layers": source.get("fp16Layers"),
+                "fusedAttention": source.get("fusedAttention"),
+                "fitModelInMemory": source.get("fitModelInMemory"),
+                "contextTokens": source.get("contextTokens"),
+                "speculativeDecoding": source.get("speculativeDecoding"),
+                "dflashDraftModel": source.get("dflashDraftModel"),
+                "treeBudget": source.get("treeBudget"),
+                # Branching linkage so the UI can render the
+                # parent-child relationship and so future features
+                # (diff, merge) have the tie.
+                "parentSessionId": source_session_id,
+                "forkedAtMessageIndex": fork_at_message_index,
+                "messages": copy.deepcopy(messages[: fork_at_message_index + 1]),
+            }
+            self.chat_sessions.insert(0, new_session)
+            self.add_activity(
+                "Chat session forked",
+                f"{source.get('title', 'Chat')} → {fork_title}",
+            )
+            self._persist_sessions()
+            return new_session
+
     def update_session(self, session_id: str, request: UpdateSessionRequest) -> dict[str, Any]:
         with self._lock:
             session = self._ensure_session(session_id=session_id)
@@ -1053,6 +1461,9 @@ class ChaosEngineState:
                 session["treeBudget"] = request.treeBudget
             if "dflashDraftModel" in fields_set:
                 session["dflashDraftModel"] = request.dflashDraftModel
+            if "workspaceId" in fields_set:
+                # Phase 3.7: empty string clears the assignment.
+                session["workspaceId"] = request.workspaceId or None
             if request.messages is not None:
                 session["messages"] = request.messages
             session["updatedAt"] = self._time_label()
@@ -1938,6 +2349,124 @@ class ChaosEngineState:
             self._persist_sessions()
             return {"deleted": doc_id}
 
+    # -- Phase 3.7: workspace knowledge stack helpers --------------------
+
+    def _workspace_dir(self, workspace_id: str) -> Path:
+        from backend_service.app import WORKSPACES_DIR
+        safe_id = "".join(ch for ch in workspace_id if ch.isalnum() or ch in "-_")
+        return WORKSPACES_DIR / safe_id
+
+    def upload_workspace_document(
+        self,
+        workspace_id: str,
+        filename: str,
+        data: bytes,
+    ) -> dict[str, Any]:
+        """Phase 3.7: ingest a document into a workspace.
+
+        Mirrors `upload_document` but writes under
+        `<dataDir>/workspaces/<id>/`. The chunked text JSON sits next
+        to the original file so the RAG retriever can read both
+        session and workspace docs through the same DocumentIndex
+        helpers without bespoke logic.
+        """
+        from backend_service.app import MAX_DOC_SIZE_BYTES, DOC_ALLOWED_EXTENSIONS
+        from backend_service.helpers.workspaces import WorkspaceRegistry
+        from backend_service.app import WORKSPACES_PATH, WORKSPACES_DIR
+
+        if len(data) > MAX_DOC_SIZE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds {MAX_DOC_SIZE_BYTES // (1024*1024)}MB limit.",
+            )
+        sanitized = _sanitize_filename(filename)
+        ext = Path(sanitized).suffix.lower()
+        if ext not in DOC_ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"File type not supported: {ext}")
+
+        registry = WorkspaceRegistry(WORKSPACES_PATH, WORKSPACES_DIR)
+        workspace = registry.get(workspace_id)
+        if workspace is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        doc_id = f"doc-{uuid.uuid4().hex[:12]}"
+        workspace_dir = self._workspace_dir(workspace_id)
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        doc_path = workspace_dir / f"{doc_id}{ext}"
+        doc_path.write_bytes(data)
+        try:
+            doc_path.chmod(0o600)
+        except OSError:
+            pass
+
+        try:
+            text = _extract_text_from_file(doc_path)
+        except RuntimeError as exc:
+            doc_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        chunks = _chunk_text(text)
+        chunks_path = workspace_dir / f"{doc_id}.chunks.json"
+        chunks_path.write_text(
+            json.dumps([{"index": i, "text": c} for i, c in enumerate(chunks)], indent=2),
+            encoding="utf-8",
+        )
+
+        doc_meta = {
+            "id": doc_id,
+            "filename": doc_path.name,
+            "originalName": sanitized,
+            "sizeBytes": len(data),
+            "chunkCount": len(chunks),
+            "uploadedAt": self._time_label(),
+        }
+
+        # Persist on the workspace registry too so the doc list comes
+        # back on subsequent /api/workspaces calls without reading the
+        # filesystem again.
+        existing_docs = list(workspace.get("documents") or [])
+        existing_docs.append(doc_meta)
+        registry.update(workspace_id, title=workspace["title"])
+        # The update() call doesn't currently support documents — read
+        # the entry back, mutate, save by writing the full payload.
+        # Workaround: write directly via the registry's internal map.
+        registry._workspaces[workspace_id]["documents"] = existing_docs
+        registry._workspaces[workspace_id]["updatedAt"] = self._time_label()
+        registry.save()
+        self.add_log(
+            "chat", "info",
+            f"Document uploaded to workspace {workspace_id}: {sanitized} ({len(chunks)} chunks)",
+        )
+        return doc_meta
+
+    def delete_workspace_document(self, workspace_id: str, doc_id: str) -> dict[str, Any]:
+        """Phase 3.7: remove a document from a workspace's stack."""
+        from backend_service.helpers.workspaces import WorkspaceRegistry
+        from backend_service.app import WORKSPACES_PATH, WORKSPACES_DIR
+
+        registry = WorkspaceRegistry(WORKSPACES_PATH, WORKSPACES_DIR)
+        workspace = registry.get(workspace_id)
+        if workspace is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        docs = list(workspace.get("documents") or [])
+        target = next((d for d in docs if d.get("id") == doc_id), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        remaining = [d for d in docs if d.get("id") != doc_id]
+        registry._workspaces[workspace_id]["documents"] = remaining
+        registry._workspaces[workspace_id]["updatedAt"] = self._time_label()
+        registry.save()
+
+        workspace_dir = self._workspace_dir(workspace_id)
+        for f in workspace_dir.glob(f"{doc_id}*"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+        self.add_log("chat", "info", f"Workspace document removed: {target.get('originalName')}")
+        return {"deleted": doc_id}
+
     def delete_session(self, session_id: str) -> dict[str, Any]:
         with self._lock:
             target = next((s for s in self.chat_sessions if s.get("id") == session_id), None)
@@ -1953,26 +2482,70 @@ class ChaosEngineState:
 
         Returns (context_text, citations) where citations is a list of
         dicts with docId, docName, chunkIndex, page, preview keys.
+
+        Phase 2.6: when an llama-embedding binary + embedding GGUF are
+        both discoverable via env vars or `<dataDir>/embeddings/`,
+        retrieval uses semantic cosine similarity blended with BM25
+        (70/30) instead of TF-IDF + BM25. The embedding client is
+        resolved per-call so newly-installed models pick up without a
+        restart, and the legacy lexical path remains the fallback when
+        anything goes wrong.
         """
         from backend_service.helpers.documents import DocumentIndex
+        from backend_service.rag import resolve_embedding_client
 
+        # Phase 3.7: collect document directories from both the session
+        # and (when assigned) the session's workspace, so the RAG
+        # retriever sees the merged corpus. Workspace docs survive
+        # session deletion + are visible across every session in the
+        # workspace.
+        chunk_dirs: list[Path] = []
         session_dir = self._session_docs_dir(session_id)
-        if not session_dir.exists():
+        if session_dir.exists():
+            chunk_dirs.append(session_dir)
+
+        with self._lock:
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+        workspace_id = session.get("workspaceId") if session else None
+        if workspace_id:
+            workspace_dir = self._workspace_dir(workspace_id)
+            if workspace_dir.exists():
+                chunk_dirs.append(workspace_dir)
+
+        if not chunk_dirs:
             return "", []
 
-        # Build a temporary index from all session documents
-        index = DocumentIndex()
-        for chunk_file in session_dir.glob("*.chunks.json"):
-            try:
-                doc_chunks = json.loads(chunk_file.read_text(encoding="utf-8"))
-                doc_name = chunk_file.stem.replace(".chunks", "")
-                full_text = "\n\n".join(c.get("text", "") for c in doc_chunks)
-                if full_text.strip():
-                    index.add_document(full_text, doc_id=doc_name, doc_name=doc_name)
-            except (OSError, json.JSONDecodeError):
-                continue
+        # Embedding client discovery: env vars override path; if no
+        # CHAOSENGINE_EMBEDDING_MODEL is set we look under
+        # `<documents-parent>/embeddings/*.gguf`. Returns None when
+        # nothing is wired, in which case retrieval transparently
+        # falls back to TF-IDF + BM25.
+        from backend_service.app import DOCUMENTS_DIR
 
-        results = index.search(prompt, top_k=top_k)
+        embedding_client = resolve_embedding_client(DOCUMENTS_DIR.parent)
+
+        # Build a temporary index from all collected directories.
+        index = DocumentIndex()
+        for chunk_dir in chunk_dirs:
+            for chunk_file in chunk_dir.glob("*.chunks.json"):
+                try:
+                    doc_chunks = json.loads(chunk_file.read_text(encoding="utf-8"))
+                    doc_name = chunk_file.stem.replace(".chunks", "")
+                    full_text = "\n\n".join(c.get("text", "") for c in doc_chunks)
+                    if full_text.strip():
+                        index.add_document(
+                            full_text,
+                            doc_id=doc_name,
+                            doc_name=doc_name,
+                            embedding_client=embedding_client,
+                        )
+                except (OSError, json.JSONDecodeError):
+                    continue
+
+        results = index.search(prompt, top_k=top_k, embedding_client=embedding_client)
         if not results:
             return "", []
 
@@ -2080,15 +2653,25 @@ class ChaosEngineState:
             if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
                 self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
 
-            history = [{"role": message["role"], "text": message["text"]} for message in session["messages"]]
+            history = _build_history_with_reasoning(
+                session["messages"],
+                preserve_reasoning=(effective_thinking_mode == "auto"),
+            )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
-            session["model"] = self.runtime.loaded_model.name
-            session["modelRef"] = self.runtime.loaded_model.ref
-            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
-            session["modelSource"] = self.runtime.loaded_model.source
-            session["modelPath"] = self.runtime.loaded_model.path
-            session["modelBackend"] = self.runtime.loaded_model.backend
+            # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
+            # active runtime's model identity onto the session so the
+            # session default (the previously-loaded model) sticks for
+            # the next plain message. Other session metadata (cache
+            # strategy, context, thinking mode) still updates so the
+            # picked model's runtime profile is reflected on this turn.
+            if not getattr(request, "oneTurnOverride", False):
+                session["model"] = self.runtime.loaded_model.name
+                session["modelRef"] = self.runtime.loaded_model.ref
+                session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
+                session["modelSource"] = self.runtime.loaded_model.source
+                session["modelPath"] = self.runtime.loaded_model.path
+                session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
             session["cacheLabel"] = self._cache_label(
                 cache_strategy=str(self.runtime.loaded_model.cacheStrategy),
@@ -2161,6 +2744,12 @@ class ChaosEngineState:
                         "arguments": tc.arguments,
                         "result": tc.result,
                         "elapsed": tc.elapsed_seconds,
+                        # Phase 2.8: forward structured output hint +
+                        # data through to the frontend `ToolCallInfo`.
+                        # When `render_as` is None the frontend falls
+                        # back to the legacy collapsible-JSON view.
+                        "renderAs": tc.render_as,
+                        "data": tc.data,
                     }
                     for tc in agent_result.tool_calls
                 ]
@@ -2172,6 +2761,9 @@ class ChaosEngineState:
                     max_tokens=request.maxTokens,
                     temperature=request.temperature,
                     images=request.images,
+                    samplers=_build_sampler_overrides(request),
+                    reasoning_effort=request.reasoningEffort,
+                    json_schema=request.jsonSchema,
                 )
                 tool_call_payloads = []
         except RuntimeError as exc:
@@ -2309,15 +2901,25 @@ class ChaosEngineState:
             if effective_canonical_repo and self.runtime.loaded_model.canonicalRepo != effective_canonical_repo:
                 self.runtime.loaded_model.canonicalRepo = effective_canonical_repo
 
-            history = [{"role": m["role"], "text": m["text"]} for m in session["messages"]]
+            history = _build_history_with_reasoning(
+                session["messages"],
+                preserve_reasoning=(effective_thinking_mode == "auto"),
+            )
             session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
             session["updatedAt"] = self._time_label()
-            session["model"] = self.runtime.loaded_model.name
-            session["modelRef"] = self.runtime.loaded_model.ref
-            session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
-            session["modelSource"] = self.runtime.loaded_model.source
-            session["modelPath"] = self.runtime.loaded_model.path
-            session["modelBackend"] = self.runtime.loaded_model.backend
+            # Phase 2.12: if `oneTurnOverride` is set, skip persisting the
+            # active runtime's model identity onto the session so the
+            # session default (the previously-loaded model) sticks for
+            # the next plain message. Other session metadata (cache
+            # strategy, context, thinking mode) still updates so the
+            # picked model's runtime profile is reflected on this turn.
+            if not getattr(request, "oneTurnOverride", False):
+                session["model"] = self.runtime.loaded_model.name
+                session["modelRef"] = self.runtime.loaded_model.ref
+                session["canonicalRepo"] = self.runtime.loaded_model.canonicalRepo
+                session["modelSource"] = self.runtime.loaded_model.source
+                session["modelPath"] = self.runtime.loaded_model.path
+                session["modelBackend"] = self.runtime.loaded_model.backend
             session["thinkingMode"] = effective_thinking_mode
             session["cacheLabel"] = self._cache_label(
                 cache_strategy=str(self.runtime.loaded_model.cacheStrategy),
@@ -2343,6 +2945,27 @@ class ChaosEngineState:
             model_tag = self.runtime.loaded_model.name
             self.add_log("chat", "info", f"[{model_tag}] Streaming response...")
             self.active_requests += 1
+            # Hotfix (2026-05-01 v2): vision input has no working path
+            # on either runtime today. The MLX worker subprocess never
+            # wired images, and `_resolve_gguf_path` strips mmproj
+            # projector files so llama-server never gets `--mmproj`.
+            # Until mmproj wiring lands (Phase 2.6+ work), the
+            # `visionEnabled` flag on LoadedModelInfo stays False on
+            # every load and we strip + warn loudly here. The capability
+            # resolver also demotes vision via this same flag so the
+            # composer hides the attach button — this branch is the
+            # belt-and-braces for legacy clients that bypass the gate.
+            if request.images and not self.runtime.loaded_model.visionEnabled:
+                engine_label = self.runtime.loaded_model.engine or "current"
+                self.add_log(
+                    "chat", "warning",
+                    f"[{model_tag}] Stripped {len(request.images)} attached "
+                    f"image(s): the {engine_label} runtime has no mmproj "
+                    "vision projector wired up, so images would be silently "
+                    "dropped and the model would hallucinate. Vision support "
+                    "lands with the mmproj loader.",
+                )
+                request.images = None
             effective_system_prompt = _compose_chat_system_prompt(request.systemPrompt, effective_thinking_mode)
             doc_context, stream_rag_citations = self._retrieve_session_context(session["id"], request.prompt)
             if doc_context:
@@ -2359,12 +2982,132 @@ class ChaosEngineState:
         enable_tools = request.enableTools
         available_tools = request.availableTools
         gen_start = time.perf_counter()
+        # Reset any stale cancellation flag from a prior turn so this fresh
+        # generation isn't aborted before it starts.
+        chaosengine.clear_chat_cancel(session["id"])
+        session_id_for_cancel = session["id"]
 
         def _sse_stream():
             full_text = ""
             full_reasoning = ""
             final_chunk = None
             agent_tool_calls: list[dict[str, Any]] = []
+            cancelled = False
+            # Phase 2.0: track prompt-eval → generating phase transition so the
+            # client can render an explicit "Processing prompt..." indicator
+            # instead of a blank flashing cursor while the model is still
+            # ingesting the prompt. The OpenAI-compat streaming endpoint
+            # exposes nothing until the first decoded token, so phase here is
+            # binary (prompt_eval | generating) plus a TTFT measurement on
+            # transition.
+            phase_first_output_seen = False
+            ttft_seconds: float | None = None
+
+            # Phase 2.0.5-B: pre-flight memory gate. Refuse the generation
+            # before it starts when the host is already memory-starved, so
+            # the user gets an actionable error instead of a silent OOM /
+            # swap-thrash that wedges the laptop. The gate is conservative
+            # — it does not predict working-set size, just bails when the
+            # available-memory floor or pressure ceiling is breached.
+            try:
+                from backend_service.helpers.memory_gate import (
+                    gate_chat_generation,
+                    snapshot_memory_signals,
+                )
+
+                available_gb, pressure_percent = snapshot_memory_signals()
+                refusal = gate_chat_generation(available_gb, pressure_percent)
+                if refusal is not None:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] Memory gate refused generation: "
+                        f"{refusal['code']} (avail={available_gb:.1f} GB, "
+                        f"pressure={pressure_percent:.0f}%).",
+                    )
+                    with chaosengine._lock:
+                        # Roll back the optimistic user message we appended
+                        # earlier so the refusal looks like the request never
+                        # happened, matching the existing RuntimeError path.
+                        if (session["messages"]
+                                and session["messages"][-1].get("role") == "user"
+                                and session["messages"][-1].get("text") == request.prompt):
+                            session["messages"].pop()
+                            session["updatedAt"] = chaosengine._time_label()
+                            chaosengine._persist_sessions()
+                        chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
+                    yield f"data: {json.dumps({'error': refusal['message']})}\n\n"
+                    return
+            except Exception as exc:
+                # Gate failure must not block legitimate generations. Log and
+                # continue — better to risk a possible OOM than to refuse
+                # everything when psutil glitches.
+                chaosengine.add_log(
+                    "chat", "warning",
+                    f"[{model_tag}] Memory gate skipped due to error: {exc}",
+                )
+
+            yield f"data: {json.dumps({'phase': 'prompt_eval'})}\n\n"
+
+            # Phase 2.0.5-D: output-length runaway guard. Abort the generation
+            # if accumulated visible text exceeds the user's max_tokens budget
+            # by 1.5×, which catches decoder loops that ignore the EOS token
+            # (a known failure mode on certain quantised models). Char count
+            # is a fast proxy — average ~4 chars per token across English +
+            # markdown code, so the threshold is `max_tokens * 6` chars.
+            runaway_char_budget = max(2000, int(request.maxTokens) * 6)
+            runaway_triggered = False
+            runaway_loop_reason: str | None = None
+
+            # Phase 2.0.5-F: per-stream repetition / reasoning-loop guard for
+            # the llama.cpp path. The MLX worker has run this guard inside the
+            # subprocess for a while; the llama-server REST stream had no
+            # equivalent and a runaway model could decode tokens indefinitely
+            # against a paused UI. Same RunawayGuard module both paths use.
+            from backend_service.runaway_guard import RunawayGuard as _RunawayGuard
+
+            llama_path_guard = _RunawayGuard()
+
+            # Phase 2.0.5-C: tok/s floor monitor. After the model has
+            # produced output for a 30-second window, check the rolling
+            # decode rate. Falling below 0.3 tok/s for that long usually
+            # means thermal throttle, GPU stall, or a corrupted model
+            # state — none of which recovers on its own. Abort with a
+            # diagnostic so the user can switch model / cool down /
+            # restart the worker.
+            TOKS_FLOOR_WINDOW_S = 30.0
+            TOKS_FLOOR_MIN = 0.3
+            window_started_at: float | None = None
+            window_tokens = 0
+            stall_triggered = False
+
+            # Phase 2.0.5-G: in-stream panic monitor. While a generation
+            # is in flight, sample memory every PANIC_SAMPLE_INTERVAL_S
+            # and emit a `panic` SSE event when free RAM crosses the
+            # critical floor or pressure goes critical. The front-end
+            # renders a non-blocking banner offering Cancel / Unload
+            # warm / Continue. Generation is NOT auto-cancelled here —
+            # that's the user's call. The stricter pre-flight gate
+            # (Phase 2.0.5-B) blocks tight starts, this catches mid-
+            # flight degradation as KV cache or other activity grows.
+            PANIC_SAMPLE_INTERVAL_S = 5.0
+            PANIC_AVAILABLE_FLOOR_GB = 0.5
+            PANIC_PRESSURE_CEILING = 96.0
+            last_panic_sample_at: float | None = None
+            panic_emitted = False
+            # Phase 2.0.5-I: thermal pressure watch. `pmset -g therm` on
+            # macOS reports warning levels when CPU/GPU is throttling.
+            # We surface the first transition to "critical" via a SSE
+            # event so the user sees why decode just slowed. Linux /
+            # Windows: read returns None and this watch is a no-op.
+            thermal_warning_emitted = False
+
+            def _maybe_emit_generating_phase() -> str:
+                nonlocal phase_first_output_seen, ttft_seconds
+                if phase_first_output_seen:
+                    return ""
+                phase_first_output_seen = True
+                ttft_seconds = round(time.perf_counter() - gen_start, 3)
+                return f"data: {json.dumps({'phase': 'generating', 'ttftSeconds': ttft_seconds})}\n\n"
 
             try:
                 if enable_tools:
@@ -2378,10 +3121,23 @@ class ChaosEngineState:
                         images=request.images,
                         available_tools=available_tools,
                     ):
+                        if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
+                            cancelled = True
+                            break
                         if "token" in event:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_text += event["token"]
                             yield f"data: {json.dumps({'token': event['token']})}\n\n"
+                            if len(full_text) > runaway_char_budget:
+                                runaway_triggered = True
+                                cancelled = True
+                                break
                         elif "tool_call_start" in event:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             yield f"data: {json.dumps({'toolCallStart': event['tool_call_start']})}\n\n"
                         elif "tool_call_result" in event:
                             agent_tool_calls.append(event["tool_call_result"])
@@ -2396,15 +3152,145 @@ class ChaosEngineState:
                         max_tokens=request.maxTokens, temperature=request.temperature,
                         images=request.images,
                         thinking_mode=effective_thinking_mode,
+                        samplers=_build_sampler_overrides(request),
+                        reasoning_effort=request.reasoningEffort,
+                        json_schema=request.jsonSchema,
                     ):
+                        if chaosengine.is_chat_cancel_requested(session_id_for_cancel):
+                            cancelled = True
+                            break
                         if chunk.reasoning:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_reasoning += chunk.reasoning
                             yield f"data: {json.dumps({'reasoning': chunk.reasoning})}\n\n"
                         if chunk.reasoning_done:
                             yield f"data: {json.dumps({'reasoningDone': True})}\n\n"
                         if chunk.text:
+                            phase_event = _maybe_emit_generating_phase()
+                            if phase_event:
+                                yield phase_event
                             full_text += chunk.text
                             yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+                            # Phase 3.3: forward per-token logprobs when
+                            # the inference layer captured them.
+                            if chunk.token_logprobs:
+                                yield f"data: {json.dumps({'tokenLogprobs': chunk.token_logprobs})}\n\n"
+                            if len(full_text) > runaway_char_budget:
+                                runaway_triggered = True
+                                cancelled = True
+                                break
+                            # Phase 2.0.5-F: feed loop / repetition guard.
+                            try:
+                                llama_path_guard.feed(chunk.text)
+                            except RuntimeError as guard_exc:
+                                runaway_triggered = True
+                                runaway_loop_reason = str(guard_exc)
+                                cancelled = True
+                                break
+                            # Phase 2.0.5-C: tok/s floor sampling. Each
+                            # chunk roughly maps to one token from the
+                            # SSE stream; chunk count is a workable proxy.
+                            now = time.perf_counter()
+                            if window_started_at is None:
+                                window_started_at = now
+                                window_tokens = 0
+                            window_tokens += 1
+                            if now - window_started_at >= TOKS_FLOOR_WINDOW_S:
+                                rate = window_tokens / max(1e-6, now - window_started_at)
+                                if rate < TOKS_FLOOR_MIN:
+                                    stall_triggered = True
+                                    cancelled = True
+                                    runaway_loop_reason = (
+                                        f"Decode stalled at {rate:.2f} tok/s "
+                                        f"for {TOKS_FLOOR_WINDOW_S:.0f}s — "
+                                        "likely thermal throttle, GPU stall, "
+                                        "or worker deadlock. Aborting."
+                                    )
+                                    break
+                                window_started_at = now
+                                window_tokens = 0
+                            # Phase 2.0.5-G + I: panic + thermal monitors.
+                            # Sampled at PANIC_SAMPLE_INTERVAL_S together to
+                            # keep subprocess / psutil cost bounded. Each
+                            # emits at most once per turn.
+                            if (
+                                (not panic_emitted or not thermal_warning_emitted)
+                                and (
+                                    last_panic_sample_at is None
+                                    or now - last_panic_sample_at >= PANIC_SAMPLE_INTERVAL_S
+                                )
+                            ):
+                                last_panic_sample_at = now
+                                if not panic_emitted:
+                                    try:
+                                        from backend_service.helpers.memory_gate import (
+                                            snapshot_memory_signals as _panic_snapshot,
+                                        )
+                                        p_avail, p_pressure = _panic_snapshot()
+                                        if (
+                                            p_avail < PANIC_AVAILABLE_FLOOR_GB
+                                            or p_pressure > PANIC_PRESSURE_CEILING
+                                        ):
+                                            panic_emitted = True
+                                            chaosengine.add_log(
+                                                "chat", "warning",
+                                                f"[{model_tag}] Panic: avail="
+                                                f"{p_avail:.1f} GB, "
+                                                f"pressure={p_pressure:.0f}%.",
+                                            )
+                                            yield (
+                                                "data: "
+                                                + json.dumps({
+                                                    "panic": True,
+                                                    "availableGb": p_avail,
+                                                    "pressurePercent": p_pressure,
+                                                    "message": (
+                                                        "System memory critical mid-"
+                                                        "generation. Consider cancelling "
+                                                        "this turn or unloading warm "
+                                                        "models before retrying."
+                                                    ),
+                                                })
+                                                + "\n\n"
+                                            )
+                                    except Exception as panic_exc:
+                                        chaosengine.add_log(
+                                            "chat", "warning",
+                                            f"[{model_tag}] Panic sample skipped: {panic_exc}",
+                                        )
+                                if not thermal_warning_emitted:
+                                    try:
+                                        from backend_service.helpers.thermal import (
+                                            read_thermal_state,
+                                        )
+                                        thermal_state = read_thermal_state()
+                                        if thermal_state == "critical":
+                                            thermal_warning_emitted = True
+                                            chaosengine.add_log(
+                                                "chat", "warning",
+                                                f"[{model_tag}] Thermal warning: critical.",
+                                            )
+                                            yield (
+                                                "data: "
+                                                + json.dumps({
+                                                    "thermalWarning": True,
+                                                    "state": thermal_state,
+                                                    "message": (
+                                                        "System is thermally throttling. "
+                                                        "Decode speed will drop until the "
+                                                        "machine cools. Consider pausing "
+                                                        "and retrying after a cooldown."
+                                                    ),
+                                                })
+                                                + "\n\n"
+                                            )
+                                    except Exception as thermal_exc:
+                                        chaosengine.add_log(
+                                            "chat", "warning",
+                                            f"[{model_tag}] Thermal sample skipped: {thermal_exc}",
+                                        )
                         if chunk.done:
                             final_chunk = chunk
             except RuntimeError as exc:
@@ -2417,8 +3303,29 @@ class ChaosEngineState:
                         chaosengine._persist_sessions()
                     chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
                     chaosengine.add_log("chat", "error", f"[{model_tag}] Streaming failed: {exc}")
+                chaosengine.clear_chat_cancel(session_id_for_cancel)
                 yield f"data: {json.dumps({'error': str(exc)})}\n\n"
                 return
+            finally:
+                chaosengine.clear_chat_cancel(session_id_for_cancel)
+
+            if cancelled:
+                yield f"data: {json.dumps({'cancelled': True})}\n\n"
+                if runaway_loop_reason is not None:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] {runaway_loop_reason} "
+                        f"(after {len(full_text)} chars).",
+                    )
+                elif runaway_triggered:
+                    chaosengine.add_log(
+                        "chat", "warning",
+                        f"[{model_tag}] Output runaway guard tripped at "
+                        f"{len(full_text)} chars (budget {runaway_char_budget}); "
+                        "stream aborted to prevent decoder loop.",
+                    )
+                else:
+                    chaosengine.add_log("chat", "info", f"[{model_tag}] Generation cancelled by user.")
 
             gen_elapsed = round(time.perf_counter() - gen_start, 2)
             with chaosengine._lock:
@@ -2436,6 +3343,7 @@ class ChaosEngineState:
                     tok_s=tok_s,
                     response_seconds=gen_elapsed,
                     requested_runtime=requested_runtime,
+                    ttft_seconds=ttft_seconds,
                 )
                 if agent_tool_calls:
                     metrics["toolCalls"] = agent_tool_calls
@@ -2469,6 +3377,8 @@ class ChaosEngineState:
                         requests_served=chaosengine.requests_served,
                     ),
                 }
+                if cancelled:
+                    done_payload["cancelled"] = True
             yield f"data: {json.dumps(done_payload)}\n\n"
 
         return StreamingResponse(
@@ -2772,6 +3682,34 @@ class ChaosEngineState:
                     engine.unload_model()
                 except Exception:
                     pass
+
+    def request_cancel_chat(self, session_id: str) -> dict[str, Any]:
+        """Mark a chat generation for cancellation.
+
+        The streaming loop in generate_stream() checks this flag between
+        events and breaks early, persisting whatever output has accumulated
+        so far. Returns metadata about whether the session is currently
+        generating so the UI can decide whether to show a "stop" toast.
+        """
+        with self._lock:
+            self._chat_cancel[session_id] = True
+            session = next(
+                (s for s in self.chat_sessions if s.get("id") == session_id),
+                None,
+            )
+            return {
+                "sessionId": session_id,
+                "cancelled": True,
+                "wasActive": session is not None,
+            }
+
+    def is_chat_cancel_requested(self, session_id: str) -> bool:
+        with self._lock:
+            return bool(self._chat_cancel.get(session_id, False))
+
+    def clear_chat_cancel(self, session_id: str) -> None:
+        with self._lock:
+            self._chat_cancel.pop(session_id, None)
 
     def cancel_download(self, repo: str) -> dict[str, Any]:
         from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes
@@ -3106,6 +4044,65 @@ class ChaosEngineState:
                 })
         return {"object": "list", "data": data}
 
+    def openai_embeddings(self, request: OpenAIEmbeddingsRequest) -> dict[str, Any]:
+        """Phase 2.13: OpenAI-compatible embeddings endpoint.
+
+        Routes through the bundled GGUF embedding model (Phase 2.6).
+        Returns a 503 when no embedding client is available; returns
+        the OpenAI-shaped response shape on success so external
+        scripts can drop us in for OpenAI without code changes.
+        """
+        from backend_service.app import DOCUMENTS_DIR
+        from backend_service.rag import resolve_embedding_client
+        from backend_service.rag.embedding_client import EmbeddingClientUnavailable
+
+        client = resolve_embedding_client(DOCUMENTS_DIR.parent)
+        if client is None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "No embedding model is configured. Set CHAOSENGINE_EMBEDDING_MODEL "
+                    "or drop a *.gguf into <dataDir>/embeddings/."
+                ),
+            )
+
+        if isinstance(request.input, str):
+            inputs = [request.input]
+        else:
+            inputs = list(request.input)
+
+        if not inputs:
+            raise HTTPException(status_code=400, detail="`input` must be a non-empty string or list of strings.")
+
+        try:
+            vectors = client.embed_batch(inputs)
+        except EmbeddingClientUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        # Truncate per OpenAI's `dimensions` parameter when set. We don't
+        # re-normalise after truncation; the bundled model is already
+        # L2-normalised end-to-end, so cosine similarity stays well-defined.
+        if request.dimensions is not None:
+            vectors = [vec[: request.dimensions] for vec in vectors]
+
+        prompt_tokens = sum(max(1, len(text.split())) for text in inputs)
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "object": "embedding",
+                    "embedding": vec,
+                    "index": idx,
+                }
+                for idx, vec in enumerate(vectors)
+            ],
+            "model": request.model or "chaosengine-embed",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "total_tokens": prompt_tokens,
+            },
+        }
+
     def openai_chat_completion(self, request: OpenAIChatCompletionRequest) -> dict[str, Any] | StreamingResponse:
         if not request.messages:
             raise HTTPException(status_code=400, detail="At least one message is required.")
@@ -3185,6 +4182,39 @@ class ChaosEngineState:
             created = int(time.time())
             self.add_log("server", "info", f"[{model_tag}] Running chat completion on conversation with {msg_count} messages.")
 
+        # Phase 2.13: build a sampler dict from OpenAI-shaped fields. The
+        # runtime accepts the same llama-server key names so we map field
+        # → key here once and pass the dict to both stream + non-stream
+        # paths. None values drop out so they don't override server
+        # defaults.
+        oai_samplers: dict[str, Any] = {}
+        if request.top_p is not None:
+            oai_samplers["top_p"] = request.top_p
+        if request.top_k is not None:
+            oai_samplers["top_k"] = request.top_k
+        if request.frequency_penalty is not None:
+            oai_samplers["frequency_penalty"] = request.frequency_penalty
+        if request.presence_penalty is not None:
+            oai_samplers["presence_penalty"] = request.presence_penalty
+        if request.seed is not None:
+            oai_samplers["seed"] = request.seed
+        if request.stop is not None:
+            oai_samplers["stop"] = request.stop if isinstance(request.stop, list) else [request.stop]
+
+        # Phase 2.13: pull a JSON schema out of OpenAI's response_format
+        # envelope so the constrained-decode path lights up. Anything
+        # other than `json_schema` → no constraint (json_object would
+        # require a different code path llama-server already handles
+        # via response_format= but we don't surface that here).
+        oai_json_schema: dict[str, Any] | None = None
+        if isinstance(request.response_format, dict):
+            rf_type = request.response_format.get("type")
+            if rf_type == "json_schema":
+                schema_envelope = request.response_format.get("json_schema") or {}
+                schema_obj = schema_envelope.get("schema")
+                if isinstance(schema_obj, dict):
+                    oai_json_schema = schema_obj
+
         if request.stream:
             chaosengine = self
 
@@ -3205,6 +4235,8 @@ class ChaosEngineState:
                         images=last_user_images or None,
                         tools=request.tools,
                         engine=target_engine,
+                        samplers=oai_samplers or None,
+                        json_schema=oai_json_schema,
                     ):
                         if chunk.text:
                             token_count += 1
@@ -3280,6 +4312,8 @@ class ChaosEngineState:
                 images=last_user_images or None,
                 tools=request.tools,
                 engine=target_engine,
+                samplers=oai_samplers or None,
+                json_schema=oai_json_schema,
             )
         except RuntimeError as exc:
             with self._lock:

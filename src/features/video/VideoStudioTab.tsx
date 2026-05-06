@@ -2,14 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
-import type { DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
+import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
+import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
+import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
   TauriBackendInfo,
+  VideoCacheStrategyId,
   VideoModelFamily,
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import {
+  IMAGE_CACHE_STRATEGIES,
+  VIDEO_CACHE_STRATEGY_DEFAULT_THRESH,
+} from "../../constants";
 import {
   assessVideoGenerationSafety,
   defaultVideoVariantForFamily,
@@ -66,6 +74,22 @@ export interface VideoStudioTabProps {
   onVideoEnhancePromptChange: (value: boolean) => void;
   videoCfgDecay: boolean;
   onVideoCfgDecayChange: (value: boolean) => void;
+  /** FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default. */
+  videoPreviewVae: boolean;
+  onVideoPreviewVaeChange: (value: boolean) => void;
+  /** FU-024: opt-in FP8 layerwise casting (CUDA SM 8.9+). */
+  videoFp8LayerwiseCasting: boolean;
+  onVideoFp8LayerwiseCastingChange: (value: boolean) => void;
+  /** FU-015: diffusion cache strategy id ("none" / "fbcache" / "teacache"). */
+  videoCacheStrategy: VideoCacheStrategyId;
+  onVideoCacheStrategyChange: (value: VideoCacheStrategyId) => void;
+  /** Optional caching threshold; null defers to strategy default. */
+  videoCacheRelL1Thresh: number | null;
+  onVideoCacheRelL1ThreshChange: (value: number | null) => void;
+  videoStgScale: number;
+  onVideoStgScaleChange: (value: number) => void;
+  videoFastPreview: boolean;
+  onVideoFastPreviewChange: (value: boolean) => void;
   onActiveTabChange: (tab: TabId) => void;
   onPreloadVideoModel: (variant: VideoModelVariant) => void;
   onUnloadVideoModel: (variant?: VideoModelVariant) => void;
@@ -75,6 +99,14 @@ export interface VideoStudioTabProps {
   onRestartServer: () => void;
   onInstallVideoOutputDeps: (packages?: readonly string[]) => Promise<InstallResult>;
   onInstallVideoGpuRuntime: () => Promise<InstallResult>;
+  /** Trigger /api/setup/install-cuda-torch directly from the GPU
+   * acceleration warning banner. Lets the user fix the +cpu wheel
+   * without navigating away to Settings > Setup. */
+  onInstallCudaTorch?: () => void;
+  installingCudaTorch?: boolean;
+  /** Raw result from the most recent install attempt; drives the
+   * collapsible terminal log under the Install button. */
+  cudaTorchResult?: CudaTorchInstallResult | null;
   // LongLive (long-form causal video) surface — separate from the main
   // diffusers runtime because LongLive runs via a torchrun subprocess
   // against an isolated venv at ~/.chaosengine/longlive. Null until the
@@ -248,6 +280,18 @@ export function VideoStudioTab({
   onVideoEnhancePromptChange,
   videoCfgDecay,
   onVideoCfgDecayChange,
+  videoPreviewVae,
+  onVideoPreviewVaeChange,
+  videoFp8LayerwiseCasting,
+  onVideoFp8LayerwiseCastingChange,
+  videoCacheStrategy,
+  onVideoCacheStrategyChange,
+  videoCacheRelL1Thresh,
+  onVideoCacheRelL1ThreshChange,
+  videoStgScale,
+  onVideoStgScaleChange,
+  videoFastPreview,
+  onVideoFastPreviewChange,
   onActiveTabChange,
   onPreloadVideoModel,
   onUnloadVideoModel,
@@ -257,6 +301,9 @@ export function VideoStudioTab({
   onRestartServer,
   onInstallVideoOutputDeps,
   onInstallVideoGpuRuntime,
+  onInstallCudaTorch,
+  installingCudaTorch,
+  cudaTorchResult,
   longLiveStatus,
   installingLongLive,
   onRefreshLongLiveStatus,
@@ -286,7 +333,15 @@ export function VideoStudioTab({
   const mp4EncoderMissing = missingDependencies.some(
     (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
   );
-  const gpuBundleRestartRequired = gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart;
+  // Hide once the runtime probe confirms torch/diffusers actually loaded —
+  // the auto-restart at install completion may already have made the new
+  // packages live, in which case ``requiresRestart`` from the install job
+  // is stale. Without this check the banner stayed forever and clicking
+  // Restart Backend appeared to do nothing because the badge never cleared.
+  const gpuBundleRestartRequired =
+    gpuBundleJob?.phase === "done"
+    && gpuBundleJob.requiresRestart
+    && !videoRuntimeStatus.realGenerationAvailable;
   // Tokenizer / text-encoder packages individual pipelines need lazily —
   // tiktoken for LTX-Video, sentencepiece for Wan / HunyuanVideo / CogVideoX
   // / Mochi, plus the protobuf + ftfy support libs. We list them out as a
@@ -411,6 +466,60 @@ export function VideoStudioTab({
   const ltx2DevSibling = selectedVideoFamily?.variants.find(
     (variant) => variant.repo === selectedVideoVariant?.repo.replace(/-distilled$/i, "-dev"),
   ) ?? null;
+
+  // FU-015 / FU-007: TeaCache patches only ship for FLUX, HunyuanVideo,
+  // LTX-Video, CogVideoX, Mochi. Wan2.1 / Wan2.2 are deliberately
+  // covered by FBCache instead (the diffusers 0.36 model-agnostic
+  // hook) — the upstream ali-vilab teacache_generate.py targets the
+  // standalone Wan-Video repo signature, not the diffusers
+  // WanTransformer3DModel block layout, so a faithful TeaCache port
+  // would need calibration table access we don't have. Hide the
+  // TeaCache option for Wan repos so users don't pick it expecting a
+  // win that won't materialise (the backend would just runtimeNote
+  // "TeaCache not applied" and run the stock pipeline).
+  //
+  // The mlx-video subprocess path (LTX-2 / LTX-2.3) doesn't go
+  // through diffusers cache hooks at all — it shells out to a
+  // separate process. Hide both cache strategies there to avoid the
+  // false promise.
+  const selectedRepo = selectedVideoVariant?.repo ?? "";
+  const isWanRepo = selectedRepo.startsWith("Wan-AI/");
+  const isMlxVideoSubprocessPath =
+    !!selectedRepo && MLX_VIDEO_SUPPORTED_REPOS.has(selectedRepo);
+  const availableCacheStrategies = useMemo(() => {
+    if (isMlxVideoSubprocessPath) {
+      // Subprocess path doesn't see the diffusers transformer.
+      return IMAGE_CACHE_STRATEGIES.filter((s) => s.id === "none");
+    }
+    if (isWanRepo) {
+      // FBCache covers Wan; TeaCache patches don't.
+      return IMAGE_CACHE_STRATEGIES.filter((s) => s.id !== "teacache");
+    }
+    return IMAGE_CACHE_STRATEGIES;
+  }, [isMlxVideoSubprocessPath, isWanRepo]);
+
+  // If the user previously picked TeaCache then switched to a Wan
+  // variant (or to LTX-2 mlx-video), reset the strategy to "none"
+  // so the dropdown reflects what's actually available. Avoids
+  // submitting a stale id that the backend would have to swallow.
+  useEffect(() => {
+    const allowedIds = new Set(availableCacheStrategies.map((s) => s.id));
+    if (!allowedIds.has(videoCacheStrategy)) {
+      onVideoCacheStrategyChange("none");
+    }
+  }, [availableCacheStrategies, videoCacheStrategy, onVideoCacheStrategyChange]);
+  // Fast-preview swap target: only the variants that opt-in via the
+  // catalog's ``fastPreviewSiblingId`` field surface the toggle. Today
+  // that's LTX-2 dev → distilled; any future model family can opt in
+  // by setting the field. We look the sibling up so the toggle copy
+  // can name the actual model that would render.
+  const fastPreviewSibling =
+    selectedVideoVariant?.fastPreviewSiblingId && selectedVideoFamily
+      ? selectedVideoFamily.variants.find(
+          (variant) => variant.id === selectedVideoVariant.fastPreviewSiblingId,
+        ) ?? null
+      : null;
+  const fastPreviewActive = videoFastPreview && !!fastPreviewSibling;
   useEffect(() => {
     if (isMlxVideoVariant) onRefreshMlxVideoStatus();
   }, [isMlxVideoVariant, onRefreshMlxVideoStatus]);
@@ -611,16 +720,83 @@ export function VideoStudioTab({
           </div>
         }
       >
-        <div className="callout image-callout image-runtime-callout">
+        <div className="callout image-callout image-runtime-callout compact">
+          {/* torchInstallWarning is the loudest signal — when the installed
+            * torch wheel doesn't match the host accelerator (e.g. +cpu wheel
+            * on a CUDA box) generation silently runs on CPU at a fraction of
+            * speed, while every other badge below would otherwise read green
+            * ("Real engine ready" / "Device: cuda (expected)"). Render it as
+            * the first visible element so users notice before queueing a
+            * 5-minute "GPU" run that's actually CPU. */}
+          {/* Mirror of the Image Studio callout: same three-state
+            * single-banner pattern (post-install restart prompt /
+            * GPU acceleration warning / nothing). Keeps the panel
+            * uncluttered by never stacking two banners. */}
+          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
+            <div className="callout" style={{ marginBottom: "0.6rem" }}>
+              <strong>CUDA torch installed.</strong>{" "}
+              The running backend still has the old torch in its module cache.
+              Restart the backend to activate the new wheel
+              {cudaTorchResult.indexUrl
+                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+                : ""}
+              .
+              <div style={{ marginTop: "0.5rem" }}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onRestartServer()}
+                  disabled={busy}
+                >
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
+              </div>
+              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+            </div>
+          ) : videoRuntimeStatus.torchInstallWarning ? (
+            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
+              <strong>GPU acceleration not active.</strong>{" "}
+              {videoRuntimeStatus.torchInstallWarning}
+              {onInstallCudaTorch
+                && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onInstallCudaTorch()}
+                    disabled={Boolean(installingCudaTorch) || !backendOnline}
+                  >
+                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                  </button>
+                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <p>{videoRuntimeStatus.message}</p>
           <div className="chip-row">
             <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
             </span>
-            {gpuBundleRestartRequired ? (
+            {videoRuntimeStatus.torchInstallWarning ? (
+              <span className="badge danger" title={videoRuntimeStatus.torchInstallWarning}>
+                CPU fallback
+              </span>
+            ) : null}
+            {gpuBundleRestartRequired && !videoRuntimeStatus.realGenerationAvailable ? (
               <span className="badge warning">Restart required</span>
             ) : null}
-            <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
+            {/* The "Engine: …" muted chip is suppressed when a more
+              * specific engine badge (mlx-video accent / LongLive
+              * status) already renders below — they would otherwise
+              * report the same activeEngine string twice. We still
+              * surface it for diffusers/torch and for fallback states
+              * since nothing else announces the engine in those cases. */}
+            {isMlxVideoVariant
+              && isAppleSiliconHost
+              && mlxVideoStatus?.realGenerationAvailable ? null : (
+              <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
+            )}
             {/* Prefer the actual-loaded device; fall back to the predicted
               * expectedDevice computed via nvidia-smi + find_spec (no torch
               * import). With nothing loaded yet, this reads "Device: cuda
@@ -719,6 +895,14 @@ export function VideoStudioTab({
               </button>
             </div>
           ) : null}
+          {/* FU-025 part 9 (restored UX): surface the Wan MLX runtime
+            * convert action when the user picks a Wan-AI variant on
+            * Apple Silicon. Shows a "Ready" chip if the converted MLX
+            * dir is already on disk, an "Install" button otherwise.
+            * Self-contained component — owns its own polling. */}
+          {isWanRepo && isAppleSiliconHost && !mlxVideoMissing ? (
+            <WanRuntimeInstaller repo={selectedRepo} />
+          ) : null}
           {mp4EncoderMissing ? (
             <div className="image-runtime-actions">
               <p className="muted-text">
@@ -803,7 +987,7 @@ export function VideoStudioTab({
           ) : null}
         </div>
 
-        <div className="image-studio-grid" style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr" }}>
+        <div className="image-studio-grid video-studio-top-grid" style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr" }}>
           <label>
             Video Model
             {hasAnyInstalled ? (
@@ -878,7 +1062,14 @@ export function VideoStudioTab({
           ) : null}
 
           <label>
-            Prompt
+            <span className="prompt-label-row">
+              Prompt
+              <PromptEnhanceButton
+                prompt={videoPrompt}
+                repo={selectedVideoVariant?.repo ?? ""}
+                onEnhanced={onVideoPromptChange}
+              />
+            </span>
             <textarea
               className="text-input"
               rows={3}
@@ -913,6 +1104,31 @@ export function VideoStudioTab({
           </label>
 
           {/*
+            Fast-preview toggle. Only renders when the selected variant
+            declares a ``fastPreviewSiblingId`` (LTX-2 dev → distilled
+            today). When checked, the hook swaps the sibling id into
+            the generate payload at submit time, so the user keeps
+            their prompt + seed + resolution but renders ~6× faster.
+            Off restores the dev variant. Hidden for non-LTX models.
+          */}
+          {fastPreviewSibling ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={fastPreviewActive}
+                onChange={(event) => onVideoFastPreviewChange(event.target.checked)}
+              />
+              <span>
+                <strong>Fast preview</strong> · via{" "}
+                <span className="muted-text">{fastPreviewSibling.name}</span>
+                <InfoTooltip
+                  text={`Renders this generation through ${fastPreviewSibling.name} instead of ${selectedVideoVariant?.name ?? "the dev variant"} using the same prompt + seed. Distilled fixed-step sampler — typically 6–9× faster than the full quality dev render. Untick when you want the dev variant's full quality.`}
+                />
+              </span>
+            </label>
+          ) : null}
+
+          {/*
             Quality preset pills. Jump straight to Draft/Standard/High/Max
             rather than making users learn what frames/steps mean for each
             model. Guidance stays model-aware (set in the hook) — presets
@@ -920,7 +1136,14 @@ export function VideoStudioTab({
             survive a preset click. Pill shows "active" when current state
             matches the preset exactly (so a user who tweaks a slider sees
             the active ring drop, confirming they're off-preset).
+
+            The Quality preset and Aspect ratio pill groups sit inside a
+            ``preset-row-pair`` flex container so they share a single row
+            at typical Studio widths and wrap onto two lines on narrow
+            workspaces. The label-on-top + pills layout inside each group
+            is unchanged.
           */}
+          <div className="preset-row-pair">
           <div className="preset-row">
             <span className="preset-row-label">
               Quality preset
@@ -944,27 +1167,6 @@ export function VideoStudioTab({
               );
             })}
           </div>
-          {isLtx2DistilledVariant ? (
-            <div className="callout quiet video-model-note" role="note">
-              <p>
-                <strong>LTX-2 distilled is the fast sampler.</strong> mlx-video runs it as fixed
-                8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not
-                improve this variant. Use a dev variant for quality comparisons against the reference defaults.
-              </p>
-              {ltx2DevSibling ? (
-                <div className="button-row">
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() => onSelectedVideoModelIdChange(ltx2DevSibling.id)}
-                    disabled={videoBusy}
-                  >
-                    Switch to {ltx2DevSibling.name}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
 
           {/*
             Aspect-ratio preset pills. Fixed resolutions (not "apply ratio
@@ -997,6 +1199,29 @@ export function VideoStudioTab({
               );
             })}
           </div>
+          </div>
+
+          {isLtx2DistilledVariant ? (
+            <div className="callout quiet video-model-note" role="note">
+              <p>
+                <strong>LTX-2 distilled is the fast sampler.</strong> mlx-video runs it as fixed
+                8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not
+                improve this variant. Use a dev variant for quality comparisons against the reference defaults.
+              </p>
+              {ltx2DevSibling ? (
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => onSelectedVideoModelIdChange(ltx2DevSibling.id)}
+                    disabled={videoBusy}
+                  >
+                    Switch to {ltx2DevSibling.name}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/*
             Per-run knobs. We expose these because Wan 2.1 / LTX defaults at
@@ -1157,8 +1382,8 @@ export function VideoStudioTab({
                 onChange={(event) => onVideoUseNf4Change(event.target.checked)}
               />
               <span>
-                4-bit (NVIDIA NF4) — fits Wan 2.1 14B in &lt;24 GB VRAM via bitsandbytes.
-                CUDA only; ignored on CPU.
+                <strong>4-bit (NF4)</strong>
+                <InfoTooltip text="bitsandbytes 4-bit weight quantization for the video DiT transformer. Fits Wan 2.1 14B in <24 GB VRAM with negligible quality loss. CUDA only — bitsandbytes ships no Metal kernels, so the toggle is ignored on macOS (MPS) and CPU. Stacks with First Block Cache for additional wall-time win." />
               </span>
             </label>
           ) : null}
@@ -1171,8 +1396,8 @@ export function VideoStudioTab({
                 onChange={(event) => onVideoEnableLtxRefinerChange(event.target.checked)}
               />
               <span>
-                LTX two-stage spatial upscale — refines through
-                LTXLatentUpsamplePipeline. Frame budget +50%.
+                <strong>LTX two-stage spatial upscale</strong>
+                <InfoTooltip text="Renders the base sample at the requested resolution, then refines through Lightricks/LTX-Video-0.9.5-spatial-upscaler at 2× spatial resolution. Frame budget grows ~1.5×. Sharper micro-detail and cleaner motion edges; off by default because the wall-time hit is real." />
               </span>
             </label>
           ) : null}
@@ -1184,9 +1409,8 @@ export function VideoStudioTab({
               onChange={(event) => onVideoEnhancePromptChange(event.target.checked)}
             />
             <span>
-              Auto-enhance short prompts — appends model-tuned structural hints
-              (cinematic descriptors, lighting, camera direction) when the prompt
-              is under 25 words. Long custom prompts are sent verbatim.
+              <strong>Auto-enhance short prompts</strong>
+              <InfoTooltip text="Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard." />
             </span>
           </label>
 
@@ -1197,12 +1421,175 @@ export function VideoStudioTab({
               onChange={(event) => onVideoCfgDecayChange(event.target.checked)}
             />
             <span>
-              CFG decay — linearly drop guidance_scale from your setting (step 0)
-              to 1.0 (final step). Flow-match video models tend to oversaturate
-              when CFG stays high throughout sampling; decay lets early steps
-              lock semantics and late steps preserve fine detail.
+              <strong>CFG decay</strong>
+              <InfoTooltip text="Linearly drops guidance_scale from your slider value at step 0 toward 1.5 (the floor that keeps classifier-free guidance enabled end-to-end) at the final step. Flow-match video models (Wan, LTX, HunyuanVideo) oversaturate when CFG stays high throughout sampling; decay lets early steps lock semantics and late steps preserve fine detail. Default on for video — the runtime gates non-flow-match repos automatically." />
             </span>
           </label>
+
+          {/*
+            FU-018: TAESD/TAEHV preview-decode VAE swap. Off by
+            default — video users typically want full fidelity.
+            Backend maps the loaded repo to the matching tiny VAE
+            (taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for
+            HunyuanVideo, taecogvideox / taemochi for the others);
+            unmapped repos no-op silently.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoPreviewVae}
+              onChange={(event) => onVideoPreviewVaeChange(event.target.checked)}
+            />
+            <span>
+              <strong>Preview VAE</strong>
+              <InfoTooltip text="Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE." />
+            </span>
+          </label>
+
+          {/*
+            FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada / Hopper /
+            Blackwell). Halves transformer VRAM with negligible quality
+            drift. No-op on Apple Silicon / CPU / pre-Ada GPUs — backend
+            checks compute capability + surfaces a runtimeNote.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={videoFp8LayerwiseCasting}
+              onChange={(event) => onVideoFp8LayerwiseCastingChange(event.target.checked)}
+            />
+            <span>
+              <strong>FP8 layerwise (CUDA Ada+)</strong>
+              <InfoTooltip text="diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX / Qwen-Image. Backend checks GPU compute capability before applying — pre-Ada GPUs lack hardware fp8 and skip with a runtimeNote. Best stacked with the GGUF or Nunchaku quant paths for the smallest VRAM footprint." />
+            </span>
+          </label>
+
+          {/*
+            FU-015: diffusion cache strategy. First Block Cache works
+            on every diffusers DiT pipeline (Wan / LTX / Hunyuan /
+            Mochi / CogVideoX) regardless of platform — macOS (MPS),
+            Windows (CUDA), Linux (CUDA / CPU). Hidden when the
+            placeholder engine is active (no transformer to attach to)
+            but otherwise always available. The mlx-video LTX-2
+            subprocess path ignores the field because cache hooks
+            attach to the diffusers transformer; the backend swallows
+            the no-op silently.
+          */}
+          <div className="control-stack">
+            <span className="eyebrow">
+              Diffusion cache
+              <InfoTooltip text="Speed up generation by reusing transformer block outputs between similar timesteps. First Block Cache works on every DiT pipeline (Wan, LTX, Hunyuan, CogVideoX, Mochi) on macOS / Windows / Linux. TeaCache only applies to FLUX-family video models (Hunyuan / LTX / CogVideoX / Mochi) — hidden for Wan because the upstream patch targets a different transformer layout. The mlx-video LTX-2 subprocess path renders outside the diffusers hook system, so caching is unavailable there." />
+            </span>
+            <select
+              className="text-input"
+              value={videoCacheStrategy}
+              onChange={(event) =>
+                onVideoCacheStrategyChange(event.target.value as VideoCacheStrategyId)
+              }
+              disabled={isMlxVideoSubprocessPath}
+            >
+              {availableCacheStrategies.map((strategy) => (
+                <option key={strategy.id} value={strategy.id}>
+                  {strategy.label} · {strategy.hint}
+                </option>
+              ))}
+            </select>
+            {isMlxVideoSubprocessPath ? (
+              <span className="muted-text" style={{ fontSize: 11 }}>
+                mlx-video LTX-2 runs as a subprocess outside the diffusers
+                hook system — caching strategies are not available here.
+                Switch to a diffusers Wan / LTX / Hunyuan variant to use
+                First Block Cache.
+              </span>
+            ) : null}
+            {isWanRepo ? (
+              <span className="muted-text" style={{ fontSize: 11 }}>
+                TeaCache hidden for Wan — its calibration tables target
+                a different transformer layout. First Block Cache covers
+                Wan via the diffusers 0.36 generic hook.
+              </span>
+            ) : null}
+            {videoCacheStrategy !== "none" ? (
+              <label className="control-stack-inline">
+                <span className="muted-text">
+                  Threshold ({videoCacheRelL1Thresh ??
+                    VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy]})
+                  <InfoTooltip text="Lower = stricter (less speedup, less quality drift). Higher = more aggressive caching. Video DiTs are more sensitive to drift than image DiTs, so the default is tighter (0.08 vs 0.12)." />
+                </span>
+                <input
+                  className="text-input"
+                  type="number"
+                  min={0.01}
+                  max={0.6}
+                  step={0.01}
+                  value={
+                    videoCacheRelL1Thresh ??
+                    VIDEO_CACHE_STRATEGY_DEFAULT_THRESH[videoCacheStrategy]
+                  }
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    onVideoCacheRelL1ThreshChange(
+                      Number.isFinite(value) && value > 0 ? value : null,
+                    );
+                  }}
+                />
+              </label>
+            ) : null}
+          </div>
+
+          {/*
+            STG (Spatial-Temporal Guidance) — mlx-video LTX-2 only. Adds
+            a perturbed forward pass per sampler step (skipping the
+            final transformer blocks) that the backend mixes in to
+            reduce object breakup / chroma drift. 1.0 = upstream's
+            recommended quality default; 0.0 disables the perturbed
+            pass, freeing ~33 % wall time per step on dev pipelines.
+            Distilled pipelines run a fixed sampler that ignores the
+            value; we still expose the slider on distilled so users see
+            the cost they would pay if they switched. Hidden entirely
+            for non-LTX-2 variants since other runtimes do not consume
+            the flag.
+          */}
+          {isMlxVideoVariant ? (
+            <label>
+              <span className="inline-label-text">
+                STG scale
+                <InfoTooltip text="Spatial-Temporal Guidance. Adds an extra perturbed forward pass per sampler step on the LTX-2 dev MLX path to reduce object breakup and chroma drift. 1.0 matches upstream's recommended default; 0.0 disables for ~33% faster dev runs at a mild quality cost. Distilled pipelines run a fixed sampler and ignore the value." />
+              </span>
+              <div className="slider-number-row">
+                <input
+                  type="range"
+                  min={0}
+                  max={3}
+                  step={0.1}
+                  value={Number.isFinite(videoStgScale) ? videoStgScale : 1}
+                  onChange={(event) => onVideoStgScaleChange(Number(event.target.value))}
+                  disabled={isLtx2DistilledVariant}
+                />
+                <input
+                  className="text-input"
+                  type="number"
+                  min={0}
+                  max={3}
+                  step={0.1}
+                  value={displayNumber(videoStgScale)}
+                  onChange={(event) => {
+                    const parsed = Number(event.target.value);
+                    if (Number.isFinite(parsed)) {
+                      onVideoStgScaleChange(Math.max(0, Math.min(3, parsed)));
+                    }
+                  }}
+                  disabled={isLtx2DistilledVariant}
+                />
+              </div>
+              {isLtx2DistilledVariant ? (
+                <span className="muted-text" style={{ fontSize: 11 }}>
+                  Distilled pipelines run a fixed sampler — STG is ignored.
+                  Switch to a dev variant to use this knob.
+                </span>
+              ) : null}
+            </label>
+          ) : null}
 
           {/*
             Always-on "device capacity" line so the user sees their envelope

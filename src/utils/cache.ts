@@ -50,11 +50,22 @@ export interface CacheFitStatus {
   advice: string | null;
 }
 
+/** ``gpuVramGb`` is the binding constraint on chat KV-cache fit when an
+ * NVIDIA discrete card is present. llama.cpp puts the KV cache on the GPU
+ * with ``-ngl 999`` (the default for offload-capable models), so on a
+ * 24 GB 4090 a 60 GB f16 cache fails far before system RAM starts to
+ * matter -- it OOMs the GPU first, and CPU spillover via
+ * ``--no-kv-offload`` only buys headroom up to system RAM. The pre-VRAM
+ * version of this check looked only at ``totalGb`` (system RAM, 64 GB
+ * on the user's machine) and reported "may exceed RAM" while completely
+ * missing the much tighter VRAM ceiling. Pass null on Apple Silicon
+ * (unified memory) and on machines without a discrete GPU. */
 export function getCacheFitStatus(
   optimizedCacheGb: number,
   diskSizeGb: number,
   totalGb: number,
   bits: number,
+  gpuVramGb?: number | null,
 ): CacheFitStatus {
   // Use total system memory because loading a new chat model unloads the old
   // one. Keep a reserve for the OS and other desktop apps.
@@ -69,13 +80,40 @@ export function getCacheFitStatus(
     };
   }
 
+  // VRAM check fires BEFORE the system-RAM check when a discrete GPU is
+  // present. llama.cpp's default for GGUF on CUDA is full GPU offload
+  // including the KV cache; spillover to CPU is opt-in (--no-kv-offload),
+  // and even then it's bottlenecked by PCIe transfers per token. So if
+  // the cache won't fit in VRAM we tell the user the right thing to fix
+  // (compressed cache or lower context) rather than waiting for system
+  // RAM to also fill up.
+  const vramUsable = gpuVramGb && gpuVramGb > 0 ? gpuVramGb * 0.85 : 0;
+  if (vramUsable > 0 && optimizedCacheGb > vramUsable) {
+    const cacheGbStr = optimizedCacheGb >= 10 ? optimizedCacheGb.toFixed(0) : optimizedCacheGb.toFixed(1);
+    const vramGbStr = gpuVramGb && gpuVramGb >= 10 ? gpuVramGb.toFixed(0) : (gpuVramGb ?? 0).toFixed(1);
+    const cacheKindHint = bits <= 0
+      ? "a full native f16 KV cache"
+      : "the selected KV cache";
+    return {
+      label: "Cache won't fit GPU",
+      className: "warning",
+      advice: (
+        `${cacheKindHint} at this context is ~${cacheGbStr} GB, larger than the `
+        + `${vramGbStr} GB of GPU VRAM available. llama.cpp will spill to system RAM `
+        + "(slow PCIe transfers per token) or fail to allocate. Lower context, drop "
+        + "FP16 layers, or pick a compressed strategy (RotorQuant / TurboQuant) so "
+        + "the cache fits in VRAM."
+      ),
+    };
+  }
+
   const totalNeeded = optimizedCacheGb + diskSizeGb;
   const ratio = totalNeeded / usable;
   if (ratio < 0.7) return { label: "Fits easily", className: "success", advice: null };
   if (ratio < 0.95) return { label: "Tight fit", className: "warning", advice: null };
 
   const advice = bits <= 0
-    ? "The model can load, but a full native f16 cache at this context may exceed RAM as the thread fills. Lower context, or pick a compressed strategy."
-    : "The model can load, but the selected context cache may exceed RAM as the thread fills. Lower context or reduce FP16 layers.";
+    ? "The model can load, but a full native f16 cache at this context may exceed system RAM as the thread fills. Lower context, or pick a compressed strategy."
+    : "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers.";
   return { label: "Full context may not fit", className: "warning", advice };
 }

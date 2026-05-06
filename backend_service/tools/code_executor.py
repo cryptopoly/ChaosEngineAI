@@ -114,3 +114,24 @@ class CodeExecutorTool(BaseTool):
 
         except OSError as exc:
             return f"Error: failed to execute code: {exc}"
+
+    def execute_structured(self, **kwargs: Any) -> Any:
+        """Phase 2.8: render the executed code + its captured output
+        in a syntax-highlighted Python block. Errors fall back to
+        markdown so the user sees the failure clearly."""
+        from backend_service.tools import StructuredToolOutput
+
+        text = self.execute(**kwargs)
+        if text.startswith("Error"):
+            return StructuredToolOutput(text=text, render_as="markdown")
+        code = str(kwargs.get("code", "")).strip()
+        return StructuredToolOutput(
+            text=text,
+            render_as="code",
+            data={
+                "code": text,
+                "language": "text",
+                "sourceCode": code,
+                "sourceLanguage": "python",
+            },
+        )

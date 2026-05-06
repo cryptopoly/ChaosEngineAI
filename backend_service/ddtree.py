@@ -273,22 +273,53 @@ def generate_ddtree_mlx(
     Falls back to linear DFlash when tree_budget <= 0.
     """
     import mlx.core as mx
+    # dflash-mlx 0.1.5+ moved every primitive consumed below off the
+    # ``runtime`` module top-level onto a per-family ``target_ops``
+    # adapter (Qwen3.5/3.6 / Llama-4 / Phi-4 / DeepSeek-V3). One adapter
+    # instance carries every per-architecture entry point we need —
+    # forward+capture, embed, text_model, lm_head, make_cache,
+    # extract_context_feature. ``ContextOnlyDraftKVCache`` moved to
+    # ``dflash_mlx.model``; ``create_attention_mask`` is upstream
+    # mlx-lm. ``trim_cache_to`` was removed entirely — the replacement
+    # is a thin local helper that calls each entry's own ``.trim()`` /
+    # ``.rollback()`` / ``.crop()`` based on what the cache type
+    # exposes.
     from dflash_mlx.runtime import (
-        target_forward_with_hidden_states,
-        extract_context_feature_from_dict,
-        make_target_cache,
-        ContextOnlyDraftKVCache,
         greedy_tokens_with_mask,
         build_suppress_token_mask,
-        trim_cache_to,
+        resolve_target_ops,
     )
+    from dflash_mlx.model import ContextOnlyDraftKVCache
+    from mlx_lm.models.base import create_attention_mask
 
-    # Private helpers from dflash_mlx
-    from dflash_mlx.runtime import (
-        _target_embed_tokens,
-        _lm_head_logits,
-        _target_text_model,
-    )
+    target_ops = resolve_target_ops(target_model)
+
+    def _trim_cache_to(cache_entries: list[Any], target_len: int) -> None:
+        """Local replacement for the dropped ``dflash_mlx.runtime.trim_cache_to``.
+
+        Mirrors the trim half of ``target_ops.restore_after_acceptance``
+        — for every entry that exposes ``trim`` / ``crop`` / ``offset``,
+        roll the entry's effective length back to ``target_len``.
+        """
+        for entry in cache_entries:
+            if entry is None:
+                continue
+            if hasattr(entry, "rollback"):
+                offset = int(getattr(entry, "offset", 0) or 0)
+                if offset > target_len:
+                    entry.rollback(offset - target_len)
+            elif hasattr(entry, "trim"):
+                offset = int(getattr(entry, "offset", 0) or 0)
+                if offset > target_len:
+                    entry.trim(offset - target_len)
+            elif hasattr(entry, "offset"):
+                offset = int(getattr(entry, "offset", 0) or 0)
+                if offset > target_len:
+                    entry.offset = target_len
+            elif hasattr(entry, "crop"):
+                entry.crop(target_len)
+
+    trim_cache_to = _trim_cache_to
 
     prompt_len = len(prompt_tokens)
     prompt_array = mx.array(prompt_tokens, dtype=mx.uint32)[None]
@@ -300,7 +331,7 @@ def generate_ddtree_mlx(
     effective_budget = max(0, min(tree_budget, 64))
 
     # Caches
-    target_cache = make_target_cache(target_model, enable_speculative_linear_cache=False)
+    target_cache = target_ops.make_cache(target_model, enable_speculative_linear_cache=False)
     draft_cache = [
         ContextOnlyDraftKVCache(sink_size=0, window_size=0)
         for _ in range(len(draft_model.layers))
@@ -314,7 +345,7 @@ def generate_ddtree_mlx(
 
     # ── Prefill ──────────────────────────────────────────────
     t_start = time.perf_counter()
-    prefill_logits, prefill_hidden = target_forward_with_hidden_states(
+    prefill_logits, prefill_hidden = target_ops.forward_with_hidden_capture(
         target_model, input_ids=prompt_array, cache=target_cache,
         capture_layer_ids=capture_layer_ids,
     )
@@ -325,19 +356,24 @@ def generate_ddtree_mlx(
         mx.eval(*prefill_hidden)
 
     first_token = greedy_tokens_with_mask(prefill_logits[:, -1, :], suppress_mask).reshape(-1)
-    target_hidden = extract_context_feature_from_dict(
+    target_hidden = target_ops.extract_context_feature(
         prefill_hidden, list(draft_model.target_layer_ids),
     )
     mx.eval(first_token, target_hidden)
 
     generated_tokens: list[int] = [int(first_token.item())]
+    # Phase 3.1 follow-up: track per-token accepted-from-draft bools so
+    # the AcceptedTokenOverlay can tint draft-accepted spans for the
+    # DDTree path the same way it does for linear DFLASH. The first
+    # token is the prefill posterior (verifier-decoded), so it's False.
+    per_token_accepted: list[bool] = [False]
     start = prompt_len
     cycles = 0
     accepted_from_draft = 0
     acceptance_history: list[int] = []
 
-    embed_fn = _target_embed_tokens(target_model)
-    inner = _target_text_model(target_model)
+    embed_fn = target_ops.embed_tokens(target_model)
+    inner = target_ops.text_model(target_model)
 
     # ── Decode loop ──────────────────────────────────────────
     while len(generated_tokens) < max_new_tokens:
@@ -357,7 +393,7 @@ def generate_ddtree_mlx(
                 target_hidden=target_hidden,
                 cache=draft_cache,
             )
-            draft_logits = _lm_head_logits(target_model, draft_hidden[:, 1:, :])
+            draft_logits = target_ops.logits_from_hidden(target_model, draft_hidden[:, 1:, :])
             mx.eval(draft_logits)
         else:
             draft_logits = None
@@ -372,7 +408,7 @@ def generate_ddtree_mlx(
                 block_ids_np[1:block_len] = np.array(drafted.tolist(), dtype=np.int32)[:block_len - 1]
                 block_ids = mx.array(block_ids_np, dtype=mx.uint32)[None]
 
-            verify_logits, verify_hidden = target_forward_with_hidden_states(
+            verify_logits, verify_hidden = target_ops.forward_with_hidden_capture(
                 target_model, input_ids=block_ids[:, :block_len],
                 cache=target_cache, capture_layer_ids=capture_layer_ids,
             )
@@ -395,11 +431,19 @@ def generate_ddtree_mlx(
             committed.append(next_tok)
 
             generated_tokens.extend(committed)
+            # Per-token accepted bools: first `acceptance_len` are
+            # draft-accepted; final one is the verifier's posterior
+            # decode for the position the draft got wrong (or the
+            # natural next token when the whole draft block was
+            # accepted).
+            for _ in range(acceptance_len):
+                per_token_accepted.append(True)
+            per_token_accepted.append(False)
             accepted_from_draft += acceptance_len
             acceptance_history.append(acceptance_len)
             start += commit_count
 
-            committed_hidden = extract_context_feature_from_dict(
+            committed_hidden = target_ops.extract_context_feature(
                 verify_hidden, list(draft_model.target_layer_ids),
             )[:, :commit_count, :]
             mx.eval(committed_hidden)
@@ -439,8 +483,9 @@ def generate_ddtree_mlx(
             if 0 in capture_layer_ids:
                 captured_hidden[0] = h
 
-            # Get the cache's current prefix length for mask construction
-            from dflash_mlx.runtime import create_attention_mask
+            # Get the cache's current prefix length for mask construction.
+            # ``create_attention_mask`` lives in mlx_lm upstream (dflash-mlx
+            # 0.1.5 dropped the runtime re-export).
             causal_mask = create_attention_mask(h, target_cache[0] if target_cache else None)
 
             # Replace the tree portion of the causal mask with our tree mask
@@ -490,6 +535,12 @@ def generate_ddtree_mlx(
             committed = [tree_ids_list[idx] for idx in accepted_indices[1:]]  # skip root
             committed.append(next_tok)
             generated_tokens.extend(committed)
+            # Per-token accepted bools — same shape as the linear path:
+            # `acceptance_len` tokens came from the draft tree (True),
+            # the final next_tok is verifier-decoded (False).
+            for _ in range(acceptance_len):
+                per_token_accepted.append(True)
+            per_token_accepted.append(False)
             start += len(accepted_indices)
 
             # Compact cache: keep only accepted nodes
@@ -497,7 +548,7 @@ def generate_ddtree_mlx(
 
             # Extract hidden states for accepted nodes
             accepted_mx = mx.array(accepted_indices, dtype=mx.int32)
-            committed_hidden = extract_context_feature_from_dict(
+            committed_hidden = target_ops.extract_context_feature(
                 captured_hidden, list(draft_model.target_layer_ids),
             )
             committed_hidden = mx.take(committed_hidden, accepted_mx, axis=1)
@@ -514,6 +565,10 @@ def generate_ddtree_mlx(
                     for si, st in enumerate(generated_tokens):
                         if st in stop_set:
                             generated_tokens = generated_tokens[:si + 1]
+                            # Phase 3.1 follow-up: keep per_token_accepted
+                            # length aligned with generated_tokens after
+                            # stop-token truncation.
+                            per_token_accepted = per_token_accepted[:si + 1]
                             break
                     break
 
@@ -524,6 +579,51 @@ def generate_ddtree_mlx(
     output_tokens = len(generated_tokens)
     avg_acceptance = float(np.mean(acceptance_history)) if acceptance_history else 0.0
 
+    # Phase 3.1 follow-up: per-token text decode + run-length encode
+    # the accepted bools into character spans so the frontend overlay
+    # can tint draft-accepted ranges. Defensive try/except — token
+    # decoders sometimes fail on rare ids; we fall through to no
+    # overlay rather than crashing the turn.
+    accepted_spans: list[dict[str, Any]] = []
+    accepted_token_text: str | None = None
+    try:
+        if generated_tokens and per_token_accepted:
+            # Defensive align — slice both to the same length in case
+            # truncation paths drift.
+            limit = min(len(generated_tokens), len(per_token_accepted))
+            tokens = generated_tokens[:limit]
+            accepted = per_token_accepted[:limit]
+            per_token_text: list[str] = []
+            for tok_id in tokens:
+                try:
+                    per_token_text.append(tokenizer.decode([int(tok_id)]))
+                except Exception:
+                    per_token_text.append("")
+            accepted_token_text = "".join(per_token_text)
+            offset = 0
+            run_start = 0
+            run_kind = accepted[0] if accepted else False
+            for idx, is_accepted in enumerate(accepted):
+                tok_text = per_token_text[idx]
+                if is_accepted != run_kind:
+                    accepted_spans.append({
+                        "start": run_start,
+                        "length": offset - run_start,
+                        "accepted": run_kind,
+                    })
+                    run_start = offset
+                    run_kind = is_accepted
+                offset += len(tok_text)
+            if accepted:
+                accepted_spans.append({
+                    "start": run_start,
+                    "length": offset - run_start,
+                    "accepted": run_kind,
+                })
+    except Exception:
+        accepted_spans = []
+        accepted_token_text = None
+
     return {
         "generated_tokens": generated_tokens,
         "output_tokens": output_tokens,
@@ -532,4 +632,6 @@ def generate_ddtree_mlx(
         "accepted_from_draft": accepted_from_draft,
         "avg_acceptance_length": avg_acceptance,
         "tree_budget": effective_budget,
+        "accepted_spans": accepted_spans,
+        "accepted_token_text": accepted_token_text,
     }

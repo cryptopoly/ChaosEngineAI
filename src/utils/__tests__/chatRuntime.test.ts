@@ -14,6 +14,7 @@ const launchSettings: LaunchPreferences = {
   fitModelInMemory: true,
   speculativeDecoding: false,
   treeBudget: 0,
+  kvBudget: 2048,
 };
 
 function makeSession(overrides: Partial<ChatSession> & { id: string }): ChatSession {

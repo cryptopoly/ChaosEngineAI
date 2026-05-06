@@ -28,7 +28,7 @@ export interface ConversionTabProps {
   nativeBackends: NativeBackendStatus | undefined;
   preview: PreviewMetrics;
   workspace: {
-    system: { availableMemoryGb: number; totalMemoryGb: number };
+    system: { availableMemoryGb: number; totalMemoryGb: number; gpuVramTotalGb?: number | null };
     library: LibraryItem[];
   };
   launchCacheLabel: string;
@@ -368,6 +368,7 @@ export function ConversionTab({
               preview={preview}
               availableMemoryGb={workspace.system.availableMemoryGb}
               totalMemoryGb={workspace.system.totalMemoryGb}
+              gpuVramTotalGb={workspace.system.gpuVramTotalGb}
             />
 
             {lastConversion && !busy ? (

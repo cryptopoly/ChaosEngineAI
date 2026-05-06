@@ -170,6 +170,20 @@ class DataLocation:
         return self.data_dir / "chat-sessions.json"
 
     @property
+    def workspaces_path(self) -> Path:
+        """Phase 3.7: workspace registry. JSON list of workspaces with
+        title + descriptions; documents live under workspaces_dir."""
+        return self.data_dir / "workspaces.json"
+
+    @property
+    def workspaces_dir(self) -> Path:
+        """Phase 3.7: per-workspace document directory. Each workspace
+        gets a subdirectory containing its uploaded files; the RAG
+        retriever reads from both this dir and the active session's
+        own documents dir."""
+        return self.data_dir / "workspaces"
+
+    @property
     def documents_dir(self) -> Path:
         return self.data_dir / "documents"
 
@@ -223,6 +237,8 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # drive. Moving existing models between locations is handled by
         # the ``/api/settings/storage/move`` endpoint.
         "hfCachePath": "",
+        # Phase 3.3: advanced-mode logprobs flag. Off by default.
+        "advancedLogprobs": False,
     }
 
 
@@ -330,6 +346,8 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
     # preserve the secure default rather than silently opening the API.
     settings["requireApiAuth"] = bool(payload.get("requireApiAuth", True))
     settings["autoStartServer"] = bool(payload.get("autoStartServer", False))
+    # Phase 3.3: advanced-mode logprobs toggle.
+    settings["advancedLogprobs"] = bool(payload.get("advancedLogprobs", False))
 
     settings["launchPreferences"] = _normalize_launch_preferences(payload.get("launchPreferences"))
 

@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
+import { InfoTooltip } from "../../components/InfoTooltip";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
-import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
+import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
+  ImageCacheStrategyId,
   ImageModelFamily,
   ImageModelVariant,
   ImageOutputArtifact,
@@ -20,7 +24,15 @@ import {
   isGatedImageAccessError,
 } from "../../utils";
 import { assessImageGenerationSafety, imageVariantSizeForMemoryEstimate } from "../../utils/images";
-import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS, IMAGE_SAMPLERS, isFlowMatchingRepo } from "../../constants";
+import {
+  IMAGE_RATIO_PRESETS,
+  IMAGE_QUALITY_PRESETS,
+  IMAGE_SAMPLERS,
+  IMAGE_CACHE_STRATEGY_DEFAULT_THRESH,
+  imageCacheStrategiesForRepo,
+  isFlowMatchingRepo,
+  isUnetImageRepo,
+} from "../../constants";
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
@@ -72,9 +84,33 @@ export interface ImageStudioTabProps {
   onImageDraftModeChange: (value: boolean) => void;
   imageSampler: ImageSamplerId;
   onImageSamplerChange: (value: ImageSamplerId) => void;
+  /** FU-015: diffusion cache strategy id ("none" / "fbcache" / "teacache"). */
+  imageCacheStrategy: ImageCacheStrategyId;
+  onImageCacheStrategyChange: (value: ImageCacheStrategyId) => void;
+  /** Optional threshold override; null defers to strategy default. */
+  imageCacheRelL1Thresh: number | null;
+  onImageCacheRelL1ThreshChange: (value: number | null) => void;
+  /** FU-021: opt-in CFG decay for flow-match image models. */
+  imageCfgDecay: boolean;
+  onImageCfgDecayChange: (value: boolean) => void;
+  imagePreviewVae: boolean;
+  onImagePreviewVaeChange: (value: boolean) => void;
+  /** FU-024: opt-in FP8 layerwise casting (CUDA SM 8.9+). */
+  imageFp8LayerwiseCasting: boolean;
+  onImageFp8LayerwiseCastingChange: (value: boolean) => void;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
+  /** Trigger /api/setup/install-cuda-torch directly from the GPU
+   * acceleration warning. Lets the user fix the +cpu wheel without
+   * navigating away to Settings > Setup. */
+  onInstallCudaTorch?: () => void;
+  installingCudaTorch?: boolean;
+  /** Raw result from the most recent install attempt. Drives the
+   * collapsible terminal log under the Install button so users can
+   * inspect per-attempt pip output for debugging. ``null`` until an
+   * install has been kicked off in this session. */
+  cudaTorchResult?: CudaTorchInstallResult | null;
   // Live state of the GPU bundle install job — drives the InstallLogPanel
   // under the install button so users see per-step pip output instead of a
   // generic "failed" toast. Null when no install has been kicked off yet
@@ -141,9 +177,22 @@ export function ImageStudioTab({
   onImageDraftModeChange,
   imageSampler,
   onImageSamplerChange,
+  imageCacheStrategy,
+  onImageCacheStrategyChange,
+  imageCacheRelL1Thresh,
+  onImageCacheRelL1ThreshChange,
+  imageCfgDecay,
+  onImageCfgDecayChange,
+  imagePreviewVae,
+  onImagePreviewVaeChange,
+  imageFp8LayerwiseCasting,
+  onImageFp8LayerwiseCastingChange,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
+  onInstallCudaTorch,
+  installingCudaTorch,
+  cudaTorchResult,
   gpuBundleJob,
   onImageDownload,
   onCancelImageDownload,
@@ -269,6 +318,25 @@ export function ImageStudioTab({
     setDangerOverrideAck(false);
   }, [selectedImageVariant?.id, imageWidth, imageHeight]);
 
+  // FU-015: image cache strategy filter. Match the video-side gating —
+  // hide TeaCache for non-FLUX DiTs (calibrated forward exists for
+  // FLUX only) and hide both strategies entirely for UNet pipelines
+  // (SDXL / SD1.5 / SD2 — no .transformer attribute to attach to).
+  // Auto-reset to "none" if the user previously picked something
+  // that no longer applies after switching variants.
+  const selectedImageRepo = selectedImageVariant?.repo ?? "";
+  const isUnetVariant = isUnetImageRepo(selectedImageRepo);
+  const availableImageCacheStrategies = useMemo(
+    () => imageCacheStrategiesForRepo(selectedImageRepo),
+    [selectedImageRepo],
+  );
+  useEffect(() => {
+    const allowedIds = new Set(availableImageCacheStrategies.map((s) => s.id));
+    if (!allowedIds.has(imageCacheStrategy)) {
+      onImageCacheStrategyChange("none");
+    }
+  }, [availableImageCacheStrategies, imageCacheStrategy, onImageCacheStrategyChange]);
+
   function handleApplySafeImageSettings() {
     const suggestion = imageSafety.suggestion;
     if (!suggestion) return;
@@ -332,6 +400,72 @@ export function ImageStudioTab({
           ) : null}
         </div>
         <div className="callout image-callout image-runtime-callout">
+          {/* torchInstallWarning is the loudest signal -- e.g. +cpu torch
+            * wheel on a CUDA host -- so render it as a banner above the
+            * chip row. Without this, "Real local generation available" +
+            * "Device: cuda (expected)" would still light up green while
+            * the user's NVIDIA GPU sits idle and generation runs on CPU
+            * at 1/100th speed. */}
+          {/* Three states for this slot, all in ONE callout to keep
+            * the panel uncluttered (no stacked banners):
+            *   (a) install just succeeded but backend still has the
+            *       old torch in its module cache -> show "Restart
+            *       Backend to activate" with a single primary button
+            *   (b) torchInstallWarning is set (the +cpu wheel case
+            *       and friends) -> show the warning + Install CUDA
+            *       torch button + collapsible log panel
+            *   (c) neither -> render nothing (the chip row below
+            *       still announces engine / device state)
+            *
+            * State (a) takes priority because once a successful
+            * install lands, the warning is meaningless until the
+            * backend reloads -- showing both at once just confuses. */}
+          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
+            <div className="callout" style={{ marginBottom: "0.6rem" }}>
+              <strong>CUDA torch installed.</strong>{" "}
+              The running backend still has the old torch in its module cache.
+              Restart the backend to activate the new wheel
+              {cudaTorchResult.indexUrl
+                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+                : ""}
+              .
+              <div style={{ marginTop: "0.5rem" }}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onRestartServer()}
+                  disabled={busy}
+                >
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
+              </div>
+              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+            </div>
+          ) : imageRuntimeStatus.torchInstallWarning ? (
+            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
+              <strong>GPU acceleration not active.</strong>{" "}
+              {imageRuntimeStatus.torchInstallWarning}
+              {/* Inline remedy button + collapsible log. Only renders
+                * when the warning is the "+cpu wheel" case (text
+                * mentions "Install CUDA torch"); for "torch missing
+                * entirely" the larger Install GPU runtime flow below
+                * is the right remedy. */}
+              {onInstallCudaTorch
+                && imageRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={() => onInstallCudaTorch()}
+                    disabled={Boolean(installingCudaTorch) || !backendOnline}
+                  >
+                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                  </button>
+                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="chip-row">
             <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
               {imageRuntimeStatus.realGenerationAvailable
@@ -340,6 +474,11 @@ export function ImageStudioTab({
                   ? "Runtime unavailable"
                   : "Using placeholder outputs"}
             </span>
+            {imageRuntimeStatus.torchInstallWarning ? (
+              <span className="badge danger" title={imageRuntimeStatus.torchInstallWarning}>
+                CPU fallback
+              </span>
+            ) : null}
             <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
             {/* Prefer the actual-loaded device; fall back to the
               * predicted expectedDevice computed cheaply via
@@ -607,7 +746,14 @@ export function ImageStudioTab({
           ) : null}
 
           <label>
-            Prompt
+            <span className="prompt-label-row">
+              Prompt
+              <PromptEnhanceButton
+                prompt={imagePrompt}
+                repo={selectedImageVariant?.repo ?? ""}
+                onEnhanced={onImagePromptChange}
+              />
+            </span>
             <textarea
               className="text-input prompt-area"
               rows={5}
@@ -673,12 +819,14 @@ export function ImageStudioTab({
 
           {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
             <div className="control-stack">
-              <span className="eyebrow">Sampler</span>
+              <span className="eyebrow">
+                Sampler
+                <InfoTooltip text="Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise." />
+              </span>
               <select
                 className="text-input"
                 value={imageSampler}
                 onChange={(event) => onImageSamplerChange(event.target.value as ImageSamplerId)}
-                title="Scheduler / sampler algorithm. Hidden for FLUX, SD3 and other flow-matching models where swapping produces noise."
               >
                 {IMAGE_SAMPLERS.map((sampler) => (
                   <option key={sampler.id} value={sampler.id}>
@@ -688,6 +836,138 @@ export function ImageStudioTab({
               </select>
             </div>
           ) : null}
+
+          {/*
+            FU-015: diffusion cache strategy. Cross-platform — runs on
+            macOS (MPS), Windows (CUDA / DirectML) and Linux (CUDA / CPU)
+            because both FBCache and TeaCache attach to the diffusers
+            transformer regardless of device. Hidden for the placeholder
+            engine and for variants that lack a transformer attribute
+            (UNet-based SD1.5/SDXL fall through gracefully on the
+            backend with a runtimeNote).
+          */}
+          {selectedImageVariant && !isUnetVariant ? (
+            <div className="control-stack">
+              <span className="eyebrow">
+                Diffusion cache
+                <InfoTooltip text="Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point." />
+              </span>
+              <select
+                className="text-input"
+                value={imageCacheStrategy}
+                onChange={(event) =>
+                  onImageCacheStrategyChange(event.target.value as ImageCacheStrategyId)
+                }
+              >
+                {availableImageCacheStrategies.map((strategy) => (
+                  <option key={strategy.id} value={strategy.id}>
+                    {strategy.label} · {strategy.hint}
+                  </option>
+                ))}
+              </select>
+              {availableImageCacheStrategies.length === 2 ? (
+                <span className="muted-text" style={{ fontSize: 11 }}>
+                  TeaCache hidden — its image-side calibration only covers
+                  the FLUX family. First Block Cache works on every DiT
+                  pipeline shipped today (cross-platform).
+                </span>
+              ) : null}
+              {imageCacheStrategy !== "none" ? (
+                <label className="control-stack-inline">
+                  <span className="muted-text">
+                    Threshold ({imageCacheRelL1Thresh ??
+                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]})
+                    <InfoTooltip text="Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev." />
+                  </span>
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={0.01}
+                    max={0.6}
+                    step={0.01}
+                    value={
+                      imageCacheRelL1Thresh ??
+                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]
+                    }
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      onImageCacheRelL1ThreshChange(
+                        Number.isFinite(value) && value > 0 ? value : null,
+                      );
+                    }}
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/*
+            FU-021: opt-in CFG decay schedule. Applies only to
+            flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream)
+            where late-step high CFG drifts toward oversaturation.
+            Backend gates non-flow-match repos automatically; we hide
+            the toggle for SD1.5/SDXL so the UI matches behaviour.
+          */}
+          {selectedImageVariant && isFlowMatchingRepo(selectedImageVariant.repo) ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={imageCfgDecay}
+                onChange={(event) => onImageCfgDecayChange(event.target.checked)}
+              />
+              <span>
+                <strong>CFG decay</strong> — linearly relax guidance from your
+                slider value toward 1.5 across the schedule. Reduces
+                oversaturation on late steps without changing semantics
+                from early steps. Off by default; backend ignores this on
+                SD1.5 / SDXL.
+                <InfoTooltip text="Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use." />
+              </span>
+            </label>
+          ) : null}
+
+          {/*
+            FU-018: TAESD preview-decode VAE swap. Off by default —
+            image users typically want full fidelity. Backend maps
+            the loaded repo to the matching tiny VAE
+            (taef1/taef2/taesd3/taesdxl/taesd/taeqwenimage); unmapped
+            repos no-op silently.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={imagePreviewVae}
+              onChange={(event) => onImagePreviewVaeChange(event.target.checked)}
+            />
+            <span>
+              <strong>Preview VAE</strong> — swap the full VAE for the
+              matching tiny VAE (TAESD / TAEHV) so each step decodes
+              in a fraction of the wall-time. Trades final fidelity
+              for iteration speed. Off by default.
+              <InfoTooltip text="Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises." />
+            </span>
+          </label>
+
+          {/*
+            FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
+            Blackwell). Halves transformer VRAM by storing fp8 weights +
+            promoting to bf16 inside the matmul. No-op on Apple Silicon /
+            CPU / pre-Ada GPUs — backend gates and returns a runtimeNote.
+          */}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={imageFp8LayerwiseCasting}
+              onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
+            />
+            <span>
+              <strong>FP8 layerwise (CUDA Ada+)</strong> — store
+              transformer weights in fp8 + promote to bf16 inside the
+              matmul. Halves VRAM with negligible quality drift on
+              modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.
+              <InfoTooltip text="diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint." />
+            </span>
+          </label>
 
           <div className="field-grid image-field-grid">
             <label>

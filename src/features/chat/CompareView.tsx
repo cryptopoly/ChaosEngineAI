@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
@@ -46,6 +46,7 @@ interface CompareViewProps {
   launchSettings: LaunchPreferences;
   availableMemoryGb: number;
   totalMemoryGb: number;
+  gpuVramTotalGb?: number | null;
   availableCacheStrategies?: SystemStats["availableCacheStrategies"];
   dflashInfo?: SystemStats["dflash"];
   turboInstalled?: boolean;
@@ -253,6 +254,7 @@ export function CompareView({
   launchSettings,
   availableMemoryGb,
   totalMemoryGb,
+  gpuVramTotalGb,
   availableCacheStrategies,
   dflashInfo,
   turboInstalled,
@@ -622,7 +624,7 @@ export function CompareView({
             <p style={{ color: "#f87171" }}>{modelState.error}</p>
           ) : modelState.text ? (
             <div className="markdown-content">
-              <Markdown>{modelState.text}</Markdown>
+              <RichMarkdown>{modelState.text}</RichMarkdown>
             </div>
           ) : modelState.loading ? (
             <p className="muted-text" style={{ fontSize: 13 }}>{modelState.loadingMessage ?? "Loading model..."}</p>
@@ -701,6 +703,7 @@ export function CompareView({
         preview={pickerDraftPreview}
         availableMemoryGb={availableMemoryGb}
         totalMemoryGb={totalMemoryGb}
+        gpuVramTotalGb={gpuVramTotalGb}
         availableCacheStrategies={availableCacheStrategies}
         dflashInfo={dflashInfo}
         installingPackage={installingPackage ?? null}

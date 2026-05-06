@@ -528,22 +528,52 @@ export function RuntimeControls({
       </div>
 
       <div className="toggle-column">
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={settings.fitModelInMemory}
-            onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
-          />
-          <span>Fit in memory</span>
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={settings.fusedAttention}
-            onChange={(event) => onChange("fusedAttention", event.target.checked)}
-          />
-          <span>Fused attention</span>
-        </label>
+        <div className="check-row">
+          <label className="check-row" style={{ margin: 0 }}>
+            <input
+              type="checkbox"
+              checked={settings.fitModelInMemory}
+              onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
+            />
+            <span>Fit in memory</span>
+          </label>
+          <button
+            type="button"
+            className="cache-strategy-info-btn"
+            onClick={() => setExpandedInfo(expandedInfo === "fit-memory" ? null : "fit-memory")}
+            title="About fit in memory"
+          >
+            i
+          </button>
+        </div>
+        {expandedInfo === "fit-memory" ? (
+          <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
+            <p>Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.</p>
+          </div>
+        ) : null}
+        <div className="check-row">
+          <label className="check-row" style={{ margin: 0 }}>
+            <input
+              type="checkbox"
+              checked={settings.fusedAttention}
+              onChange={(event) => onChange("fusedAttention", event.target.checked)}
+            />
+            <span>Fused attention</span>
+          </label>
+          <button
+            type="button"
+            className="cache-strategy-info-btn"
+            onClick={() => setExpandedInfo(expandedInfo === "fused-attention" ? null : "fused-attention")}
+            title="About fused attention"
+          >
+            i
+          </button>
+        </div>
+        {expandedInfo === "fused-attention" ? (
+          <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
+            <p>Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.</p>
+          </div>
+        ) : null}
         <div className="check-row">
           <label className="check-row" style={{ margin: 0 }} title={dflashUnavailableReason ?? "DFlash speculative decoding: 3-5x faster generation with zero quality loss."}>
             <input

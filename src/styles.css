@@ -3552,6 +3552,7 @@ select.text-input {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
   height: 100%;
   min-height: 0;
   overflow: auto;
@@ -3574,9 +3575,37 @@ select.text-input {
   min-width: 0;
 }
 
+.html-challenge-layout-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.html-challenge-layout-toggle button {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.html-challenge-layout-toggle button.active {
+  background: rgba(147, 178, 255, 0.16);
+  color: var(--text);
+}
+
 .html-challenge-prompt {
   min-height: 116px;
+  max-height: 220px;
   resize: vertical;
+  overflow: auto;
+  box-sizing: border-box;
   line-height: 1.45;
 }
 
@@ -3584,7 +3613,28 @@ select.text-input {
   display: grid;
   gap: 12px;
   flex: 1;
-  min-height: 460px;
+  width: 100%;
+  align-items: stretch;
+  grid-auto-rows: minmax(560px, 1fr);
+  min-height: 560px;
+}
+
+.html-challenge-grid--stacked {
+  grid-auto-rows: minmax(720px, auto);
+  align-items: stretch;
+}
+
+.html-challenge-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.html-challenge-preview-panel {
+  flex: 1;
+  min-height: 0;
 }
 
 .html-challenge-panel-body {
@@ -3612,6 +3662,11 @@ select.text-input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.html-challenge-settings-summary {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .html-challenge-note {
@@ -3671,6 +3726,25 @@ select.text-input {
 .html-challenge-file-button {
   font-size: 0.72rem;
   padding: 4px 8px;
+}
+
+.html-challenge-icon-button {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.html-challenge-icon-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Pin icon */

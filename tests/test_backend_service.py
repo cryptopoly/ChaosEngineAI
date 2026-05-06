@@ -1536,6 +1536,17 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 self.assertTrue((folder / slot["filename"]).exists())
                 self.assertGreater(slot["fileBytes"], 0)
 
+            second_slot = challenge["slots"][1]
+            with mock.patch.object(html_challenge_routes.platform, "system", return_value="Darwin"), \
+                    mock.patch.object(html_challenge_routes.subprocess, "Popen") as popen:
+                open_response = self.client.post(
+                    "/api/chat/html-challenges/open-file",
+                    json={"path": str(folder / second_slot["filename"])},
+                )
+            self.assertEqual(open_response.status_code, 200)
+            popen.assert_called_once()
+            self.assertEqual(popen.call_args.args[0], ["open", str(folder / second_slot["filename"])])
+
             first_slot = challenge["slots"][0]
             (folder / first_slot["filename"]).unlink()
             deleted_response = self.client.get(

@@ -11,7 +11,6 @@ import {
   cloneLaunchSettings,
   compareTargetLabels,
   compareTargets,
-  gridColumns,
   summarizeLaunchSettings,
   useLaunchPreview,
   type CompareTarget,
@@ -124,6 +123,8 @@ interface HtmlChallengeStreamEvent extends Partial<GenerationMetrics> {
   totalSeconds?: number;
 }
 
+type HtmlChallengeLayoutMode = "row" | "stacked";
+
 const emptySlotState = (): ChallengeSlotState => ({
   text: "",
   reasoning: "",
@@ -150,6 +151,10 @@ function emptySlotStates(): Record<CompareTarget, ChallengeSlotState> {
     c: emptySlotState(),
     d: emptySlotState(),
   };
+}
+
+function emptyStreamAtBottom(): Record<CompareTarget, boolean> {
+  return { a: true, b: true, c: true, d: true };
 }
 
 function isTextModelOption(option: ChatModelOption) {
@@ -230,6 +235,10 @@ function formatBytes(bytes?: number) {
   return `${number(bytes / (1024 * 1024))} MB`;
 }
 
+function formatCount(value: number) {
+  return Math.round(value).toLocaleString();
+}
+
 function settingsFromManifest(settings: Partial<LaunchPreferences> | undefined, fallback: LaunchPreferences): LaunchPreferences {
   return { ...cloneLaunchSettings(fallback), ...(settings ?? {}) };
 }
@@ -247,6 +256,39 @@ function formatChallengeDate(value: string) {
 
 function challengeHistoryLabel(challenge: HtmlChallengeManifest) {
   return `${challenge.title} · ${formatChallengeDate(challenge.createdAt)}`;
+}
+
+function challengeGridColumns(count: number, layoutMode: HtmlChallengeLayoutMode) {
+  if (layoutMode === "stacked") {
+    return `repeat(${count <= 2 ? 1 : 2}, minmax(0, 1fr))`;
+  }
+  return `repeat(${Math.min(Math.max(count, 2), 4)}, minmax(0, 1fr))`;
+}
+
+function stackedLayoutLabel(count: number) {
+  return count <= 2 ? "1 x 2" : "2 x 2";
+}
+
+function OpenFileIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2h5.5A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z" />
+      <path d="M8 13h8" />
+      <path d="m13 10 3 3-3 3" />
+    </svg>
+  );
+}
+
+function BrowserIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.6 9h16.8" />
+      <path d="M3.6 15h16.8" />
+      <path d="M12 3a13.5 13.5 0 0 1 0 18" />
+      <path d="M12 3a13.5 13.5 0 0 0 0 18" />
+    </svg>
+  );
 }
 
 export function HtmlChallengeTab({
@@ -277,11 +319,19 @@ export function HtmlChallengeTab({
   const [challenges, setChallenges] = useState<HtmlChallengeManifest[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState("");
   const [loadingChallengeId, setLoadingChallengeId] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<HtmlChallengeLayoutMode>("row");
+  const [streamAtBottom, setStreamAtBottom] = useState<Record<CompareTarget, boolean>>(emptyStreamAtBottom);
   const [pickerTarget, setPickerTarget] = useState<CompareTarget | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerDraftKey, setPickerDraftKey] = useState("");
   const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
   const abortRef = useRef<AbortController | null>(null);
+  const streamRefs = useRef<Record<CompareTarget, HTMLPreElement | null>>({
+    a: null,
+    b: null,
+    c: null,
+    d: null,
+  });
 
   const textModelOptions = modelOptions.filter(isTextModelOption);
   const selectedBySlot = Object.fromEntries(
@@ -305,6 +355,13 @@ export function HtmlChallengeTab({
     };
   }, []);
 
+  useEffect(() => {
+    const handles = slots
+      .filter((slot) => streamAtBottom[slot.id])
+      .map((slot) => requestAnimationFrame(() => scrollStreamToBottom(slot.id)));
+    return () => handles.forEach((handle) => cancelAnimationFrame(handle));
+  }, [slots, slotStates, streamAtBottom]);
+
   function updateSlot(slotId: CompareTarget, patch: Partial<ChallengeSlot>) {
     setSlots((current) => current.map((slot) => slot.id === slotId ? { ...slot, ...patch } : slot));
   }
@@ -324,6 +381,20 @@ export function HtmlChallengeTab({
     setSlots((current) => current.slice(0, -1));
   }
 
+  function handleStreamScroll(target: CompareTarget) {
+    const element = streamRefs.current[target];
+    if (!element) return;
+    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+    setStreamAtBottom((current) => ({ ...current, [target]: atBottom }));
+  }
+
+  function scrollStreamToBottom(target: CompareTarget) {
+    const element = streamRefs.current[target];
+    if (!element) return;
+    element.scrollTop = element.scrollHeight;
+    setStreamAtBottom((current) => current[target] ? current : { ...current, [target]: true });
+  }
+
   function newChallenge() {
     if (busy) return;
     setTitle("");
@@ -331,6 +402,7 @@ export function HtmlChallengeTab({
     setManifest(null);
     setSelectedChallengeId("");
     setSlotStates(emptySlotStates());
+    setStreamAtBottom(emptyStreamAtBottom());
     setSlots([
       { id: "a", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
       { id: "b", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
@@ -443,6 +515,7 @@ export function HtmlChallengeTab({
       setPrompt(challenge.prompt);
       setSlots(nextSlots);
       setSlotStates(nextStates);
+      setStreamAtBottom(emptyStreamAtBottom());
       setManifest(challenge);
       setSelectedChallengeId(challenge.id);
     } finally {
@@ -536,6 +609,7 @@ export function HtmlChallengeTab({
     setBusy(true);
     setManifest(null);
     setSlotStates(emptySlotStates());
+    setStreamAtBottom(emptyStreamAtBottom());
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -647,6 +721,36 @@ export function HtmlChallengeTab({
     return "";
   }
 
+  function runtimeCacheDetail(state: ChallengeSlotState) {
+    const noteMatch = state.runtimeNote?.match(/(\d+\+\d+\s+cache)/i);
+    if (noteMatch?.[1]) return noteMatch[1].toLowerCase();
+    const labelMatch = state.metrics?.cacheLabel?.match(/(\d+\+\d+)$/);
+    return labelMatch?.[1] ? `${labelMatch[1]} cache` : "";
+  }
+
+  function compactSettingsSummary(slot: ChallengeSlot, state: ChallengeSlotState) {
+    const parts = summarizeLaunchSettings(slot.settings).split(" · ");
+    const cacheDetail = runtimeCacheDetail(state);
+    if (cacheDetail && !parts.some((part) => part.toLowerCase().includes("cache"))) {
+      parts.splice(1, 0, cacheDetail);
+    }
+    return parts.join(" · ");
+  }
+
+  function slotSubtitle(state: ChallengeSlotState) {
+    if (state.deleted) return "File deleted";
+    if (!state.done || state.error) {
+      return state.loading ? "Loading..." : state.text ? "Generating..." : "";
+    }
+    return [
+      `${number(state.tokS)} tok/s`,
+      `${number(state.responseSeconds)}s`,
+      state.loadSeconds > 0 ? `Load ${number(state.loadSeconds)}s` : null,
+      state.totalTokens > 0 ? `${formatCount(state.totalTokens)} tokens` : null,
+      state.fileBytes ? formatBytes(state.fileBytes) : null,
+    ].filter(Boolean).join(" | ");
+  }
+
   function renderFileActions(state: ChallengeSlotState) {
     const actionPath = fileActionPath(state);
     if (!state.filename && !actionPath) return null;
@@ -657,18 +761,22 @@ export function HtmlChallengeTab({
         {actionPath ? (
           <>
             <button
-              className="secondary-button html-challenge-file-button"
+              className="secondary-button html-challenge-icon-button"
               type="button"
+              aria-label={fileRevealLabel}
+              title={fileRevealLabel}
               onClick={() => onRevealPath(actionPath)}
             >
-              {fileRevealLabel}
+              <OpenFileIcon />
             </button>
             <button
-              className="secondary-button html-challenge-file-button"
+              className="secondary-button html-challenge-icon-button"
               type="button"
+              aria-label="Open in default browser"
+              title="Open in default browser"
               onClick={() => onOpenFilePath(actionPath)}
             >
-              Open in Default Browser
+              <BrowserIcon />
             </button>
           </>
         ) : null}
@@ -681,32 +789,28 @@ export function HtmlChallengeTab({
     const option = selectedBySlot[slot.id];
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
     const modelLabel = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "";
-    const modelDetail = option?.detail
-      ?? manifestSlot?.displayDetail
-      ?? [
-        manifestSlot?.format,
-        typeof manifestSlot?.sizeGb === "number" ? sizeLabel(manifestSlot.sizeGb) : null,
-      ].filter(Boolean).join(" / ");
-    const subtitle = state.deleted
-      ? "File deleted"
-      : state.done && !state.error
-      ? `${number(state.tokS)} tok/s | ${number(state.responseSeconds)}s`
-      : state.loading ? "Loading..." : state.text ? "Generating..." : manifestSlot?.status ?? "";
+    const subtitle = slotSubtitle(state) || manifestSlot?.status || "";
     const waitingLabel = index === 0 ? "Waiting..." : `Waiting for ${compareTargetLabels[slots[index - 1]?.id ?? "a"]} to finish...`;
+    const showLatestButton = !streamAtBottom[slot.id] && Boolean(state.text) && !state.html;
 
     return (
-      <Panel key={slot.id} title={compareTargetLabels[slot.id]} subtitle={subtitle}>
+      <Panel
+        title={compareTargetLabels[slot.id]}
+        subtitle={subtitle}
+        className="html-challenge-preview-panel"
+        actions={showLatestButton ? (
+          <button className="secondary-button" type="button" onClick={() => scrollStreamToBottom(slot.id)}>
+            Latest
+          </button>
+        ) : null}
+      >
         <div className="html-challenge-panel-body">
           {modelLabel ? (
             <div className="html-challenge-meta">
               <strong>{modelLabel}</strong>
-              {modelDetail ? <span>{modelDetail}</span> : null}
-              {state.loadSeconds > 0 ? <span>Load {number(state.loadSeconds)}s</span> : null}
-              {state.totalTokens > 0 ? <span>{state.totalTokens} tokens</span> : null}
-              {state.fileBytes ? <span>{formatBytes(state.fileBytes)}</span> : null}
+              <span className="html-challenge-settings-summary">{compactSettingsSummary(slot, state)}</span>
             </div>
           ) : null}
-          {state.runtimeNote ? <p className="muted-text html-challenge-note">{state.runtimeNote}</p> : null}
           <ReasoningPanel text={state.reasoning} streaming={!state.reasoningDone} />
           {state.error ? (
             <p style={{ color: "#f87171" }}>{state.error}</p>
@@ -738,7 +842,13 @@ export function HtmlChallengeTab({
               />
             </>
           ) : state.text ? (
-            <pre className="html-challenge-stream">{state.text}</pre>
+            <pre
+              ref={(element) => { streamRefs.current[slot.id] = element; }}
+              className="html-challenge-stream"
+              onScroll={() => handleStreamScroll(slot.id)}
+            >
+              {state.text}
+            </pre>
           ) : state.loading ? (
             <p className="muted-text">{state.loadingMessage ?? "Loading model..."}</p>
           ) : busy ? (
@@ -749,6 +859,15 @@ export function HtmlChallengeTab({
     );
   }
 
+  function renderChallengeCard(slot: ChallengeSlot, index: number) {
+    return (
+      <div key={slot.id} className="html-challenge-card-stack">
+        {!completedChallenge ? renderModelCard(slot) : null}
+        {renderChallengeSlot(slot, index)}
+      </div>
+    );
+  }
+
   return (
     <div className="html-challenge-layout">
       <Panel
@@ -756,6 +875,22 @@ export function HtmlChallengeTab({
         subtitle={manifest?.folderPath ?? "Create a shareable webpage comparison"}
         actions={
           <>
+            <div className="html-challenge-layout-toggle" aria-label="HTML challenge layout">
+              <button
+                className={layoutMode === "row" ? "active" : ""}
+                type="button"
+                onClick={() => setLayoutMode("row")}
+              >
+                Row
+              </button>
+              <button
+                className={layoutMode === "stacked" ? "active" : ""}
+                type="button"
+                onClick={() => setLayoutMode("stacked")}
+              >
+                {stackedLayoutLabel(slots.length)}
+              </button>
+            </div>
             {manifest?.folderPath ? (
               <button
                 className="secondary-button"
@@ -862,12 +997,11 @@ export function HtmlChallengeTab({
         </div>
       </Panel>
 
-      <div style={{ display: "grid", gridTemplateColumns: gridColumns(slots.length), gap: 12 }}>
-        {slots.map((slot) => renderModelCard(slot))}
-      </div>
-
-      <div className="html-challenge-grid" style={{ gridTemplateColumns: gridColumns(slots.length) }}>
-        {slots.map((slot, index) => renderChallengeSlot(slot, index))}
+      <div
+        className={`html-challenge-grid html-challenge-grid--${layoutMode}`}
+        style={{ gridTemplateColumns: challengeGridColumns(slots.length, layoutMode) }}
+      >
+        {slots.map((slot, index) => renderChallengeCard(slot, index))}
       </div>
 
       <ModelLaunchModal

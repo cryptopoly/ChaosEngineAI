@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import re
+import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -27,6 +29,10 @@ class HtmlChallengeRequest(BaseModel):
     prompt: str = Field(min_length=1)
     models: list[CompareModelRequest] = Field(min_length=2, max_length=4)
     systemPrompt: str | None = None
+
+
+class HtmlChallengeOpenFileRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=4096)
 
 
 router = APIRouter()
@@ -172,6 +178,29 @@ def _challenge_file_path(challenge_id: str, slot_id: str) -> Path:
     if not candidate.exists():
         raise HTTPException(status_code=410, detail=f"Challenge file for slot '{slot_id}' is missing.")
     return candidate
+
+
+def _challenge_asset_path(path: str) -> Path:
+    root = _challenge_root().resolve()
+    candidate = Path(path).expanduser().resolve()
+    if root not in candidate.parents:
+        raise HTTPException(status_code=400, detail="Path is outside the HTML Challenge folder.")
+    if not candidate.exists() or not candidate.is_file():
+        raise HTTPException(status_code=404, detail="Challenge file does not exist.")
+    return candidate
+
+
+def _open_default_app(path: Path) -> None:
+    system_name = platform.system()
+    if system_name == "Darwin":
+        command = ["open", str(path)]
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+    if system_name == "Windows":
+        os.startfile(str(path))  # type: ignore[attr-defined]
+        return
+    command = ["xdg-open", str(path)]
+    subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _extract_html_document(text: str) -> tuple[str, bool]:
@@ -344,6 +373,16 @@ def get_html_challenge_file(challenge_id: str, slot_id: str) -> HTMLResponse:
         "X-Content-Type-Options": "nosniff",
     }
     return HTMLResponse(content=html, headers=headers)
+
+
+@router.post("/api/chat/html-challenges/open-file")
+def open_html_challenge_file(body: HtmlChallengeOpenFileRequest) -> dict[str, Any]:
+    path = _challenge_asset_path(body.path)
+    try:
+        _open_default_app(path)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not open challenge file: {exc}") from exc
+    return {"opened": str(path)}
 
 
 @router.post("/api/chat/html-challenges")

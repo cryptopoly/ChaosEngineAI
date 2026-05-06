@@ -7,6 +7,7 @@ import {
   loadModel,
   getWorkspace,
   deleteModelPath,
+  openHtmlChallengeFile,
   revealModelPath,
   resolveApiToken,
   unloadModel,
@@ -941,7 +942,25 @@ export default function App() {
     }
   }
 
+  function fileUrlFromPath(path: string) {
+    if (/^(https?|file):\/\//i.test(path)) return path;
+    const normalized = path.replace(/\\/g, "/");
+    const encoded = normalized.split("/").map((part) => encodeURIComponent(part)).join("/");
+    return `${normalized.startsWith("/") ? "file://" : "file:///"}${encoded}`;
+  }
+
   async function handleOpenFilePath(path: string) {
+    if (backendOnline) {
+      try {
+        await openHtmlChallengeFile(path);
+        return;
+      } catch { /* fallback below */ }
+    }
+    try {
+      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+      await tauriInvoke("plugin:opener|open_url", { url: fileUrlFromPath(path) });
+      return;
+    } catch { /* fall through */ }
     try {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
       await tauriInvoke("plugin:opener|open_path", { path });

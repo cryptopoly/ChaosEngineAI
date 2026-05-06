@@ -32,6 +32,13 @@ class ToolCallResult:
     arguments: dict[str, Any]
     result: str
     elapsed_seconds: float
+    # Phase 2.8: optional structured output the frontend can render
+    # natively (table / code / markdown / image / chart). When None,
+    # the legacy collapsible-JSON renderer fires. The `result` text
+    # field is always populated so the language model sees something
+    # readable on the next turn regardless of UI rendering.
+    render_as: str | None = None
+    data: dict[str, Any] | None = None
 
 
 @dataclass
@@ -108,8 +115,19 @@ def _execute_tool_call(
         )
 
     start = time.perf_counter()
+    render_as: str | None = None
+    structured_data: dict[str, Any] | None = None
     try:
-        result_text = tool.execute(**arguments)
+        # Phase 2.8: try the structured entry first. Tools that
+        # haven't migrated return None and we fall back to the
+        # plain-text path below.
+        structured = tool.execute_structured(**arguments)
+        if structured is not None:
+            result_text = structured.text
+            render_as = structured.render_as
+            structured_data = structured.data
+        else:
+            result_text = tool.execute(**arguments)
     except Exception as exc:
         result_text = f"Error executing {tool_name}: {exc}"
     elapsed = round(time.perf_counter() - start, 3)
@@ -122,6 +140,8 @@ def _execute_tool_call(
         arguments=arguments,
         result=result_text,
         elapsed_seconds=elapsed,
+        render_as=render_as,
+        data=structured_data,
     )
 
 
@@ -384,6 +404,11 @@ def run_agent_loop_streaming(
                     "name": tc_result.tool_name,
                     "result": tc_result.result[:2000],  # Cap for streaming
                     "elapsed": tc_result.elapsed_seconds,
+                    # Phase 2.8: stream the structured shape so the
+                    # frontend can render it as the tool finishes
+                    # rather than waiting for the final done payload.
+                    "renderAs": tc_result.render_as,
+                    "data": tc_result.data,
                 },
             }
 

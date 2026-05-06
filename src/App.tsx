@@ -68,6 +68,7 @@ import {
   libraryItemSourceKind,
   inferHfRepoFromLocalPath,
   isChatLibraryItem,
+  resolveCapabilities,
   downloadProgressLabel,
   syncRuntime,
   settingsDraftFromWorkspace,
@@ -115,13 +116,23 @@ export default function App() {
     | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
     | null
   >(null);
+  // Raw install result, kept alongside the reduced ``cudaTorchResult``
+  // shape above so the Studio's CudaTorchLogPanel can render the full
+  // per-attempt pip output (the reduced shape drops ``attempts`` to
+  // keep the in-line success/failure summary terse). One more state
+  // slot is cheaper than reshaping every existing call site.
+  const [cudaTorchRawResult, setCudaTorchRawResult] = useState<
+    import("./api").CudaTorchInstallResult | null
+  >(null);
 
   const handleInstallCudaTorch = async () => {
     if (installingCudaTorch) return;
     setInstallingCudaTorch(true);
     setCudaTorchResult(null);
+    setCudaTorchRawResult(null);
     try {
       const result = await installCudaTorch();
+      setCudaTorchRawResult(result);
       if (result.ok) {
         setCudaTorchResult({
           ok: true,
@@ -139,14 +150,53 @@ export default function App() {
         });
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       setCudaTorchResult({
         ok: false,
-        message: err instanceof Error ? err.message : String(err),
+        message,
         pythonVersion: null,
         noWheelForPython: false,
       });
+      // Always synthesize a raw result on exception so the
+      // CudaTorchLogPanel renders the failure instead of silently
+      // hiding -- previously any network error / 5xx / timeout left
+      // the panel showing nothing and the user couldn't tell whether
+      // the install was running, finished, or never reached the
+      // backend at all. The synthesized "attempt" carries the
+      // exception text so the panel surfaces it as a [FAIL] entry.
+      setCudaTorchRawResult({
+        ok: false,
+        output: message,
+        indexUrl: null,
+        attempts: [
+          { indexUrl: "(request never returned)", ok: false, output: message },
+        ],
+        requiresRestart: false,
+        pythonExecutable: "",
+        pythonVersion: null,
+        noWheelForPython: false,
+        capabilities: {},
+      });
     } finally {
       setInstallingCudaTorch(false);
+    }
+    // Refresh runtime status after install completes (success or
+    // failure). Without this, the warning banner keeps reading the
+    // pre-install torchInstallWarning value and the user thinks the
+    // button did nothing -- the cache is bound to whatever the
+    // probe last returned. Both Studios subscribe to their own
+    // runtime probes via useImageState / useVideoState; calling
+    // their refresh handlers re-runs the probe and the banner
+    // self-clears (or self-updates with a new failure mode).
+    try {
+      await imgState.refreshImageData();
+    } catch {
+      /* refresh is best-effort */
+    }
+    try {
+      await videoState.refreshVideoData();
+    } catch {
+      /* refresh is best-effort */
     }
   };
 
@@ -348,6 +398,7 @@ export default function App() {
       const matched = findCatalogVariantForLibraryItem(workspace.featuredModels, item);
       const displayFormat = libraryItemFormat(item, matched);
       const displayQuantization = libraryItemQuantization(item, matched);
+      const canonicalRepo = matched?.repo ?? inferHfRepoFromLocalPath(item.path);
       return {
         key: `library:${item.path}`,
         label: item.name,
@@ -355,7 +406,7 @@ export default function App() {
         group: "Local library",
         model: item.name,
         modelRef: item.name,
-        canonicalRepo: matched?.repo ?? inferHfRepoFromLocalPath(item.path),
+        canonicalRepo,
         source: "library",
         path: item.path,
         backend: libraryItemBackend(item, matched),
@@ -365,6 +416,9 @@ export default function App() {
         format: displayFormat,
         quantization: displayQuantization ?? undefined,
         maxContext: item.maxContext ?? matched?.maxContext ?? null,
+        // Phase 2.11: resolve typed capabilities so the picker can show
+        // capability badges per option without re-deriving in each view.
+        capabilities: resolveCapabilities(canonicalRepo ?? item.name, matched?.capabilities ?? null),
       };
     });
 
@@ -418,6 +472,7 @@ export default function App() {
     contextTokens?: number;
     speculativeDecoding?: boolean;
     treeBudget?: number;
+    kvBudget?: number;
   }): Promise<LoadModelActionResult> {
     setError(null);
     setBusyAction(payload.busyLabel ?? "Loading model...");
@@ -445,6 +500,7 @@ export default function App() {
         contextTokens: payload.contextTokens ?? launchSettings.contextTokens,
         speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
         treeBudget: sanitizedSpeculative.treeBudget,
+        kvBudget: payload.kvBudget ?? launchSettings.kvBudget,
       };
 
       let loadSucceeded = false;
@@ -740,12 +796,29 @@ export default function App() {
     });
   }, [activeTab, benchmarkDraft.cacheBits, benchmarkDraft.fp16Layers, benchmarkDraft.contextTokens, benchmarkDraft.cacheStrategy, setPreviewControls]);
 
-  // Sync previewVariant -> previewControls.paramsB
+  // Sync previewVariant -> previewControls.paramsB + architecture
+  // estimate. Bug surfaced 2026-05-05: this effect previously only
+  // pushed paramsB and left numLayers / numHeads / numKvHeads /
+  // hiddenSize at 0, which collapsed the Native f16 cache estimate
+  // to ~0 bytes (kv_elements = num_layers * num_kv_heads * head_dim *
+  // ctx — anything * 0 = 0) and made "Fits Easily" fire on models
+  // that absolutely don't fit. Also pushed paramsB=0 cases through.
   useEffect(() => {
-    if (!previewVariant) return;
-    setPreviewControls((current) =>
-      current.paramsB === previewVariant.paramsB ? current : { ...current, paramsB: previewVariant.paramsB },
-    );
+    if (!previewVariant?.paramsB) return;
+    const paramsB = previewVariant.paramsB;
+    const arch = estimateArchFromParams(paramsB);
+    setPreviewControls((current) => {
+      if (
+        current.paramsB === paramsB
+        && current.numLayers === arch.numLayers
+        && current.numHeads === arch.numHeads
+        && current.numKvHeads === arch.numKvHeads
+        && current.hiddenSize === arch.hiddenSize
+      ) {
+        return current;
+      }
+      return { ...current, paramsB, ...arch };
+    });
   }, [previewVariant?.paramsB, setPreviewControls]);
 
   // Sync serverModelKey when options change
@@ -1275,6 +1348,7 @@ export default function App() {
         hubFileCache={hubFileCache}
         hubFileLoading={hubFileLoading}
         hubFileError={hubFileError}
+        availableMemoryGb={workspace.system.availableMemoryGb}
       />
     );
   } else if (activeTab === "my-models") {
@@ -1385,6 +1459,16 @@ export default function App() {
         onImageDraftModeChange={imgState.setImageDraftMode}
         imageSampler={imgState.imageSampler}
         onImageSamplerChange={imgState.setImageSampler}
+        imageCacheStrategy={imgState.imageCacheStrategy}
+        onImageCacheStrategyChange={imgState.setImageCacheStrategy}
+        imageCacheRelL1Thresh={imgState.imageCacheRelL1Thresh}
+        onImageCacheRelL1ThreshChange={imgState.setImageCacheRelL1Thresh}
+        imageCfgDecay={imgState.imageCfgDecay}
+        onImageCfgDecayChange={imgState.setImageCfgDecay}
+        imagePreviewVae={imgState.imagePreviewVae}
+        onImagePreviewVaeChange={imgState.setImagePreviewVae}
+        imageFp8LayerwiseCasting={imgState.imageFp8LayerwiseCasting}
+        onImageFp8LayerwiseCastingChange={imgState.setImageFp8LayerwiseCasting}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1411,6 +1495,9 @@ export default function App() {
         onPreloadImageModel={(variant) => void imgState.handlePreloadImageModel(variant)}
         onUnloadImageModel={(variant) => void imgState.handleUnloadImageModel(variant)}
         onInstallImageRuntime={() => imgState.handleInstallImageRuntime()}
+        onInstallCudaTorch={() => void handleInstallCudaTorch()}
+        installingCudaTorch={installingCudaTorch}
+        cudaTorchResult={cudaTorchRawResult}
         gpuBundleJob={imgState.gpuBundleJob}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
         onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
@@ -1555,6 +1642,18 @@ export default function App() {
         onVideoEnhancePromptChange={videoState.setVideoEnhancePrompt}
         videoCfgDecay={videoState.videoCfgDecay}
         onVideoCfgDecayChange={videoState.setVideoCfgDecay}
+        videoPreviewVae={videoState.videoPreviewVae}
+        onVideoPreviewVaeChange={videoState.setVideoPreviewVae}
+        videoFp8LayerwiseCasting={videoState.videoFp8LayerwiseCasting}
+        onVideoFp8LayerwiseCastingChange={videoState.setVideoFp8LayerwiseCasting}
+        videoCacheStrategy={videoState.videoCacheStrategy}
+        onVideoCacheStrategyChange={videoState.setVideoCacheStrategy}
+        videoCacheRelL1Thresh={videoState.videoCacheRelL1Thresh}
+        onVideoCacheRelL1ThreshChange={videoState.setVideoCacheRelL1Thresh}
+        videoStgScale={videoState.videoStgScale}
+        onVideoStgScaleChange={videoState.setVideoStgScale}
+        videoFastPreview={videoState.videoFastPreview}
+        onVideoFastPreviewChange={videoState.setVideoFastPreview}
         onActiveTabChange={setActiveTab}
         onPreloadVideoModel={(variant) => void videoState.handlePreloadVideoModel(variant)}
         onUnloadVideoModel={(variant) => void videoState.handleUnloadVideoModel(variant)}
@@ -1564,6 +1663,9 @@ export default function App() {
         onRestartServer={() => void handleRestartServer()}
         onInstallVideoOutputDeps={(packages) => videoState.handleInstallVideoOutputDeps(packages)}
         onInstallVideoGpuRuntime={() => videoState.handleInstallVideoGpuRuntime()}
+        onInstallCudaTorch={() => void handleInstallCudaTorch()}
+        installingCudaTorch={installingCudaTorch}
+        cudaTorchResult={cudaTorchRawResult}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
         onRefreshLongLiveStatus={() => void videoState.refreshLongLiveStatus()}
@@ -1637,6 +1739,8 @@ export default function App() {
         chatScrollRef={chatScrollRef}
         serverLoading={workspace.server.loading}
         loadedModelRef={workspace.runtime.loadedModel?.ref}
+        loadedModelCapabilities={workspace.runtime.loadedModel?.capabilities ?? null}
+        loadedModelEngine={workspace.runtime.loadedModel?.engine ?? null}
         engineLabel={workspace.runtime.engineLabel}
         launchSettings={launchSettings}
         warmModels={workspace.runtime.warmModels ?? []}
@@ -1660,6 +1764,9 @@ export default function App() {
         onCopyMessage={chat.handleCopyMessage}
         onRetryMessage={chat.handleRetryMessage}
         onDeleteMessage={chat.handleDeleteMessage}
+        onForkAtMessage={chat.handleForkAtMessage}
+        onAddVariant={chat.handleAddVariant}
+        onDelveMessage={chat.handleDelveMessage}
         onDetailsToggle={handleDetailsToggle}
         onSendMessage={sendMessage}
         onSetError={setError}
@@ -1667,6 +1774,9 @@ export default function App() {
         onToggleTools={chat.setEnableTools}
         onCompareMode={() => setCompareMode(true)}
         onCancelGeneration={chat.cancelGeneration}
+        oneTurnOverride={chat.oneTurnOverride}
+        onOneTurnOverrideChange={chat.setOneTurnOverride}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
       />
     );
   } else if (activeTab === "server") {
@@ -1810,6 +1920,7 @@ export default function App() {
         launchSettings={launchSettings}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
@@ -1966,6 +2077,7 @@ export default function App() {
         preview={preview}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}

@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { convertModel, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
+import { checkBackend, convertModel, generateChat, getWorkspace, loadModel, searchHubModels } from "./api";
 import { mockWorkspace } from "./mockData";
 
 const stubSession = {
@@ -34,6 +34,22 @@ describe("desktop api helpers", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
 
     await expect(getWorkspace()).rejects.toThrow("offline");
+  });
+
+  it("treats the backend as online when the session endpoint responds after health fails", async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("health failed"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ apiToken: "token" }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(checkBackend()).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "http://127.0.0.1:8876/api/auth/session",
+      expect.any(Object),
+    );
   });
 
   it("posts model load payloads to the sidecar", async () => {

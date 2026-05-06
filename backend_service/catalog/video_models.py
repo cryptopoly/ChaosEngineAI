@@ -137,7 +137,10 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
-                "estimatedGenerationSeconds": 60.0,
+                # Distilled is 8 + 3 fixed sampler passes with CFG off; STG is
+                # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
+                # lands around 90 s including model load.
+                "estimatedGenerationSeconds": 90.0,
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -156,7 +159,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Full LTX-2 dev weights — higher fidelity, longer sampling than distilled.",
-                "estimatedGenerationSeconds": 180.0,
+                # Dev runs single-stage CFG sampling; with STG=1.0 (default)
+                # that's 3 forward passes per step. ~600 s for a 4-s clip at
+                # 30 steps on M4 Max. Drops to ~400 s with STG=0.0.
+                "estimatedGenerationSeconds": 600.0,
+                # Fast-preview swap target — Studio toggle renders the
+                # distilled sibling instead so the user gets a quick draft
+                # of the same prompt + seed in ~1/6 of the time.
+                "fastPreviewSiblingId": "prince-canuma/LTX-2-distilled",
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -176,7 +186,10 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity.",
-                "estimatedGenerationSeconds": 60.0,
+                # Same fixed 8 + 3 sampler shape as LTX-2 distilled with the
+                # 2.3 weight refresh; wall time tracks the LTX-2 distilled
+                # entry within measurement noise.
+                "estimatedGenerationSeconds": 100.0,
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -196,7 +209,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable.",
-                "estimatedGenerationSeconds": 180.0,
+                # Dev pipeline + CFG + STG=1.0 = 3 forward passes per step;
+                # observed wall time on M4 Max for a 4-s / 30-step / 768×512
+                # render is ~600 s. Drops to ~400 s with STG=0.0. Old 180 s
+                # estimate predated STG and the dev pipeline-mode change.
+                "estimatedGenerationSeconds": 600.0,
+                "fastPreviewSiblingId": "prince-canuma/LTX-2.3-distilled",
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -398,6 +416,68 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
+            # FU-019 distill LoRAs. lightx2v's CausVid LoRAs collapse
+            # the 30-step base schedule to 4 steps, CFG-free. Wall-time
+            # win is ~7-8× before any caching strategy stacks on top.
+            # Keep the full-fat Wan 2.1 1.3B / 14B variants above for
+            # users who want the un-distilled quality ceiling.
+            {
+                "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers-causvid",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 1.3B · CausVid (4-step)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "loraRepo": "lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "loraFile": "wan21_t2v_1.3b_causvid_lora.safetensors",
+                "loraScale": 1.0,
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "runtime": "diffusers WanPipeline + CausVid LoRA",
+                "styleTags": ["general", "fast", "small", "lora"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 16.4,
+                "runtimeFootprintGb": 14.0,
+                "runtimeFootprintMpsGb": 23.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 4.0,
+                "note": (
+                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 1.3B. "
+                    "Runs at 4 steps, CFG-free — roughly 7-8× faster than the "
+                    "base 30-step schedule on the same hardware."
+                ),
+                "estimatedGenerationSeconds": 9.0,
+                "availableLocally": False,
+                "releaseDate": "2025-04",
+            },
+            {
+                "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers-causvid",
+                "familyId": "wan-2-1",
+                "name": "Wan 2.1 T2V 14B · CausVid (4-step)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "loraRepo": "lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "loraFile": "wan21_t2v_14b_causvid_lora.safetensors",
+                "loraScale": 1.0,
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "runtime": "diffusers WanPipeline + CausVid LoRA",
+                "styleTags": ["general", "quality", "motion", "lora"],
+                "taskSupport": ["txt2video"],
+                "sizeGb": 45.0,
+                "runtimeFootprintGb": 39.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 14B. "
+                    "Runs at 4 steps, CFG-free — quality holds close to the base "
+                    "30-step Wan 2.1 14B at a fraction of the wall time."
+                ),
+                "estimatedGenerationSeconds": 24.0,
+                "availableLocally": False,
+                "releaseDate": "2025-04",
+            },
         ],
     },
     {
@@ -557,6 +637,83 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
                 "releaseDate": "2025-07",
             },
+            # Phase 3 / Wan2.2-Distill 4-step (lightx2v): drops the A14B
+            # I2V schedule from ~30 to 4 steps with CFG-free sampling. The
+            # base repo is ``Wan-AI/Wan2.2-I2V-A14B-Diffusers`` (text
+            # encoder + VAE come from there); the runtime swaps both
+            # transformer experts (``transformer`` high-noise +
+            # ``transformer_2`` low-noise) for the lightx2v distilled
+            # safetensors. ``defaultSteps=4`` + ``cfgOverride=1.0``
+            # substitute the schema defaults so users running the
+            # default sliders pick up the distill schedule automatically.
+            {
+                "id": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-bf16",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 I2V A14B · Distill 4-step (BF16)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+                "distillTransformerPrecision": "bf16",
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.2-Distill-Models",
+                "runtime": "diffusers WanPipeline + lightx2v distill (bf16)",
+                "styleTags": ["i2v", "general", "fast", "motion", "distill"],
+                "taskSupport": ["img2video"],
+                "sizeGb": 56.0,
+                # Both BF16 distilled experts (~28 GB each) plus UMT5-XXL
+                # text encoder + VAE from base repo. MoE offload required
+                # on hosts under ~60 GB unified memory.
+                "runtimeFootprintGb": 30.0,
+                "runtimeFootprintMpsGb": 36.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v 4-step distillation of Wan 2.2 A14B I2V "
+                    "(BF16). Replaces both MoE transformer experts; runs "
+                    "at 4 steps, CFG-free. Quality holds close to the "
+                    "30-step base at ~7-8x faster wall-time."
+                ),
+                "estimatedGenerationSeconds": 40.0,
+                "availableLocally": False,
+                "releaseDate": "2026-04",
+            },
+            {
+                "id": "Wan-AI/Wan2.2-I2V-A14B-Diffusers-distill-fp8",
+                "familyId": "wan-2-2",
+                "name": "Wan 2.2 I2V A14B · Distill 4-step (FP8)",
+                "provider": "Alibaba · lightx2v",
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_scaled_fp8_e4m3_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_scaled_fp8_e4m3_lightx2v_4step.safetensors",
+                "distillTransformerPrecision": "fp8_e4m3",
+                "defaultSteps": 4,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/lightx2v/Wan2.2-Distill-Models",
+                "runtime": "diffusers WanPipeline + lightx2v distill (FP8 E4M3)",
+                "styleTags": ["i2v", "general", "fast", "motion", "distill", "fp8"],
+                "taskSupport": ["img2video"],
+                "sizeGb": 28.0,
+                # FP8 distilled experts (~14 GB each) plus UMT5-XXL.
+                # CUDA SM 8.9+ (Hopper / Ada) loads natively; older
+                # CUDA + MPS dequant to bf16 at load (~28 GB resident).
+                "runtimeFootprintGb": 18.0,
+                "runtimeFootprintMpsGb": 30.0,
+                "recommendedResolution": "832x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "lightx2v 4-step Wan 2.2 A14B I2V distill in FP8 E4M3. "
+                    "Best on CUDA SM 8.9+ (RTX 4090 / Hopper) for native "
+                    "FP8 ops; older hardware dequants to bf16 at load and "
+                    "loses the memory saving but keeps the 4-step speedup."
+                ),
+                "estimatedGenerationSeconds": 32.0,
+                "availableLocally": False,
+                "releaseDate": "2026-04",
+            },
         ],
     },
     {
@@ -652,15 +809,23 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "fast", "small"],
                 "taskSupport": ["txt2video"],
-                # 2B transformer in fp16 (~4 GB) + T5 text encoder (~5 GB) +
-                # VAE. Fits comfortably on a 12 GB card; 8 GB works with
-                # CPU-offload tricks. Smaller than Wan 2.1 1.3B because there's
-                # no UMT5-XXL — just the standard T5.
+                # 2B transformer in bf16 (~4 GB) + T5-XXL text encoder
+                # (~5 GB bf16) + VAE (~250 MB). Real-world bf16 + standard
+                # placement: ~13 GB resident peak on CUDA, ~15 GB on MPS
+                # because of allocator overhead. The runtime auto-engages
+                # enable_sequential_cpu_offload() if .to(device) OOMs, so
+                # 8-12 GB cards still work via the offload path -- the
+                # peak just shifts to ~5-7 GB at the cost of slower steps.
+                # Earlier 19 GB number was the worst-case fp32 figure and
+                # was tripping "would crash" on 24 GB 4090s, blocking a
+                # config that runs comfortably.
                 "sizeGb": 9.0,
-                "runtimeFootprintGb": 19.0,
+                "runtimeFootprintGb": 13.0,
+                "runtimeFootprintCudaGb": 13.0,
+                "runtimeFootprintMpsGb": 15.0,
                 "recommendedResolution": "720x480",
                 "defaultDurationSeconds": 6.0,
-                "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk; runtime peak is closer to 19 GB without the most aggressive offload/tiling.",
+                "note": "Smallest CogVideoX. Apache 2.0 weights, ~9 GB on disk; bf16 peak is ~13 GB on CUDA / ~15 GB on MPS. Runtime auto-engages sequential CPU offload on smaller GPUs (~5-7 GB peak, slower).",
                 "estimatedGenerationSeconds": 90.0,
                 "availableLocally": False,
                 "releaseDate": "2024-08",
@@ -675,17 +840,57 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "quality", "balanced"],
                 "taskSupport": ["txt2video"],
-                # 5B transformer (~10 GB) + T5 (~5 GB) + VAE. Lands in the
-                # same envelope as Wan 2.2 — needs 24 GB VRAM or 32 GB+
-                # unified memory.
+                # 5B transformer bf16 (~10 GB) + T5-XXL bf16 (~5 GB) +
+                # VAE (~250 MB). Real-world bf16 + standard placement on
+                # CUDA: ~18 GB resident peak; on MPS allocator overhead
+                # pushes it closer to ~22 GB. Earlier 33 GB number was the
+                # fp32 + duplicate-text-encoder worst case and was blocking
+                # 24 GB CUDA cards from a config that fits.
                 "sizeGb": 18.0,
-                "runtimeFootprintGb": 33.0,
+                "runtimeFootprintGb": 18.0,
+                "runtimeFootprintCudaGb": 18.0,
+                "runtimeFootprintMpsGb": 22.0,
                 "recommendedResolution": "720x480",
                 "defaultDurationSeconds": 6.0,
-                "note": "Quality tier. ~18 GB on disk; budget for a 32 GB-class runtime envelope unless aggressive offload is enabled.",
+                "note": "Quality tier. ~18 GB on disk; bf16 peak is ~18 GB on CUDA / ~22 GB on MPS. Sequential CPU offload kicks in automatically on smaller GPUs.",
                 "estimatedGenerationSeconds": 200.0,
                 "availableLocally": False,
                 "releaseDate": "2024-08",
+            },
+            # FU-019 catalog refresh: CogVideoX 1.5 5B. Same architecture
+            # as 5B, refreshed weights with stronger prompt adherence and
+            # higher-resolution training (1360×768). Routed via the same
+            # CogVideoXPipeline class, so PIPELINE_REGISTRY only needs the
+            # repo id added.
+            {
+                "id": "THUDM/CogVideoX-1.5-5b",
+                "familyId": "cogvideox",
+                "name": "CogVideoX 1.5 · 5B",
+                "provider": "THUDM",
+                "repo": "THUDM/CogVideoX-1.5-5b",
+                "link": "https://huggingface.co/THUDM/CogVideoX-1.5-5b",
+                "runtime": "diffusers CogVideoXPipeline",
+                "styleTags": ["general", "quality", "balanced", "refreshed"],
+                "taskSupport": ["txt2video"],
+                # Same architecture as CogVideoX-5b at higher training
+                # resolution. bf16 peak ~19 GB on CUDA / ~23 GB on MPS;
+                # the extra GB over 5B is the larger latent at 1360x768.
+                # Earlier 34 GB number was the worst case and tripped a
+                # spurious "would crash" on 24 GB CUDA cards.
+                "sizeGb": 18.5,
+                "runtimeFootprintGb": 19.0,
+                "runtimeFootprintCudaGb": 19.0,
+                "runtimeFootprintMpsGb": 23.0,
+                "recommendedResolution": "1360x768",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "Refreshed CogVideoX 1.5 5B with stronger prompt "
+                    "adherence at 1360×768. bf16 peak ~19 GB on CUDA / "
+                    "~23 GB on MPS; same CogVideoXPipeline as 5B."
+                ),
+                "estimatedGenerationSeconds": 220.0,
+                "availableLocally": False,
+                "releaseDate": "2024-11",
             },
         ],
     },

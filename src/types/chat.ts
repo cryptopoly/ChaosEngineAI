@@ -1,4 +1,4 @@
-import type { AppSettings } from "../types";
+import type { AppSettings, ModelCapabilities } from "../types";
 
 export interface ChatModelOption {
   key: string;
@@ -17,6 +17,8 @@ export interface ChatModelOption {
   format?: string;
   quantization?: string;
   maxContext?: number | null;
+  /** Phase 2.11: typed capabilities resolved from catalog tags + ref. */
+  capabilities?: ModelCapabilities | null;
 }
 
 export interface DataDirRestartPrompt {

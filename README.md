@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>The local AI model runner for serious tinkerers.</strong><br/>
-  Discover, convert, serve, chat with, benchmark, and generate images from open-weight models — all on your own machine.
+  Discover, convert, serve, chat with, benchmark, and generate images and video from open-weight models — all on your own machine.
 </p>
 
 <p align="center">
@@ -30,8 +30,8 @@
 
 ChaosEngineAI is a desktop control plane for running large language models locally. It pairs a fast Tauri + React shell with a Python backend that drives `llama.cpp`, Apple MLX, and (optionally) vLLM, so you get a single window for everything from "I want to try this Hugging Face model" to "show me tokens-per-second across three quantizations on this exact prompt."
 
-- **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images.
-- **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation.
+- **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images and video.
+- **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation, plus diffusion DiT video models (Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, Mochi) via diffusers, mlx-video on Apple Silicon, and stable-diffusion.cpp scaffolding for cross-platform.
 - **Pluggable cache compression.** Native f16 cache out of the box, with five KV cache compression strategies — [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
 - **Speculative decoding.** DFlash and DDTree accelerate generation by 3-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates.
 - **Hybrid local + remote workflows.** Scan multiple local model directories, convert Hugging Face checkpoints to MLX, or point the app at remote OpenAI-compatible providers when you want a cloud fallback.
@@ -57,6 +57,10 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🖼️ **Image Models** library showing installed image models ready for generation
 - 🖌️ **Image Studio** for prompt-based image generation with aspect ratio, quality presets, and negative prompts
 - 🏛️ **Image Gallery** to browse, filter, and reuse saved outputs — compare models and re-run with the same settings
+- 🎬 **Video Studio** for prompt-based video generation across Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, and Mochi — with model picker, runtime status overlay, live progress, and cancellable generation
+- 🍿 **Video catalog** curated set of diffusion DiT video models with one-click downloads and a separate Video Models library
+- ⚡ **TeaCache diffusion cache** transparent KV-style caching for FLUX, HunyuanVideo, LTX-Video, CogVideoX, and Mochi with per-model rescale coefficients
+- 🩺 **Diagnostics panel** in Settings — per-section error fallback, platform-aware repair actions, and a one-click reinstall for the Apple Silicon mlx-video runtime
 - 📊 **Benchmarks** with throughput, perplexity, and task-accuracy modes plus a history view for A/B comparisons
 - 📜 **Logs** streaming straight from the Python runtime
 - ⚙️ **Settings** for data directories, Hugging Face tokens, remote providers, integrations, default launch preferences, and runtime tuning
@@ -98,17 +102,19 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 ### Models, discovery & media
 
-- Curated text and image catalogs with capability filters plus direct Hugging Face inspection
+- Curated text, image, and video catalogs with capability filters plus direct Hugging Face inspection
 - Multiple local model directories, including custom paths, Ollama, LM Studio, or shared model stores
 - Download management with progress, cancel/delete, and a metadata-rich local library
 - Apple Silicon conversion from Hugging Face or local checkpoints to MLX with live progress
 - Full local image workflow: Image Discover, Image Models, Image Studio, Image Gallery, preload/unload controls, seed reuse, and saved artifact metadata
+- Full local video workflow: Video catalog, Video Models library, Video Studio with prompt enhancer, runtime probe/preload/unload, mlx-video LTX-2 subprocess engine on Apple Silicon, diffusers/MPS for Wan, and stable-diffusion.cpp scaffolding for cross-platform
 - Hugging Face token management for gated model access
 
 ### Performance, evaluation & extensibility
 
 - DFlash and DDTree speculative decoding with auto-resolved draft models and graceful fallback
-- Five cache strategies: native f16, RotorQuant, TriAttention, TurboQuant, and ChaosEngine
+- Five LLM cache strategies: native f16, RotorQuant, TriAttention, TurboQuant, and ChaosEngine
+- TeaCache diffusion cache for five DiT families (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) with `rel_l1_thresh` quality knob
 - Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
 - Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
 - LoRA adapter discovery plus fine-tuning hooks for local training workflows
@@ -314,10 +320,11 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 | **[TriAttention](https://github.com/WeianMao/triattention)** | `./.venv/bin/python3 -m pip install triattention vllm` | 1-4 | Linux + CUDA only (via vLLM) | Transparent KV cache compression integrated into vLLM's scheduler. Not supported on macOS. |
 | **[TurboQuant](https://pypi.org/project/turboquant-mlx/)** | `./.venv/bin/python3 -m pip install turboquant-mlx` | 1-4 | Apple Silicon (MLX), llama.cpp | Experimental. The current PyPI package does not yet expose the MLX adapter hooks ChaosEngineAI expects, so this option may remain disabled in the current build. |
 | **[ChaosEngine](https://github.com/cryptopoly/ChaosEngine)** | `Bundled automatically in desktop builds when vendor/ChaosEngine is present; otherwise ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine` | 2-8 | PyTorch + llama.cpp or vLLM | PCA-based decorrelation, channel truncation, and hybrid quantization. Not published on PyPI. |
+| **[TeaCache](https://github.com/ali-vilab/TeaCache)** | Built-in (vendored `teacache_forward` patches under `cache_compression/_teacache_patches/`) | n/a (rel_l1_thresh) | Diffusion DiT (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Diffusion-side cache that skips redundant forward passes between adjacent timesteps. Default `rel_l1_thresh=0.4`. |
 
 Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only, the current PyPI `turboquant-mlx` package may still leave TurboQuant disabled in the current build, and ChaosEngine can now be bundled directly into desktop builds by checking out `vendor/ChaosEngine` (or setting `CHAOSENGINE_VENDOR_PATH`) before `npm run stage:runtime`. Source/dev installs can still use the local editable install from GitHub.
 
-The system is designed so new compression methods can be added as single-file adapters in `cache_compression/` without touching any other code.
+LLM cache strategies are filtered out of the diffusion picker via the `appliesTo` domain field — TeaCache only appears on diffusion models, and the LLM-side strategies only appear in chat. The system is designed so new compression methods can be added as single-file adapters in `cache_compression/` without touching any other code.
 
 ---
 
@@ -343,9 +350,11 @@ Both modes fall back gracefully: DDTree falls back to linear DFlash on failure, 
 
 ---
 
-## Image Generation
+## Image & Video Generation
 
-ChaosEngineAI includes a full local image generation pipeline powered by Hugging Face Diffusers.
+ChaosEngineAI includes a full local image and video generation pipeline powered by Hugging Face Diffusers, [mlx-video](https://github.com/Blaizzy/mlx-video) on Apple Silicon, and a [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) engine scaffold for cross-platform builds.
+
+### Image models
 
 | Model | Provider | Speed | Resolution |
 |---|---|---|---|
@@ -354,7 +363,18 @@ ChaosEngineAI includes a full local image generation pipeline powered by Hugging
 | **Stable Diffusion 3.5 Medium** | Stability AI | ~6s | 1024x1024 |
 | **SD 3.5 Large Turbo** | Stability AI | ~2s | 1024x1024 |
 
-Discover and download models from the **Image Discover** tab, generate from prompts in **Image Studio** with aspect ratio, quality presets, negative prompts, and seed control, then browse and reuse outputs in **Image Gallery**.
+### Video models
+
+| Model | Provider | Engine | Notes |
+|---|---|---|---|
+| **Wan 2.1 T2V 1.3B / 14B** | Alibaba Wan-AI | diffusers (MPS / CUDA) | Text-to-video; 1.3B fits comfortably on a 64 GB Mac |
+| **Wan 2.2** | Alibaba Wan-AI | diffusers | T2V successor with catalog metadata fixes |
+| **Lightricks LTX-Video 2.0 / 2.3** (distilled + dev) | Lightricks | mlx-video (Apple Silicon) | Subprocess engine via `prince-canuma/LTX-2-*` repos |
+| **HunyuanVideo** | Tencent | diffusers | TeaCache rescale coefficients vendored |
+| **CogVideoX** | Zhipu | diffusers | TeaCache supported |
+| **Mochi** | Genmo | diffusers | TeaCache supported |
+
+Discover and download from the **Image Discover** and **Video** tabs, generate from prompts in **Image Studio** or **Video Studio** with aspect ratio, quality presets, negative prompts, prompt enhancer, and seed control, then browse and reuse outputs in **Image Gallery**.
 
 ---
 

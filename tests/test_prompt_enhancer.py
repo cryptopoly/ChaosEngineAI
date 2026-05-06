@@ -45,6 +45,10 @@ class FamilyForTests(unittest.TestCase):
         self.assertEqual(family_for("hunyuanvideo-community/HunyuanVideo"), "hunyuan")
         self.assertEqual(family_for("tencent/HunyuanVideo"), "hunyuan")
 
+    def test_cogvideox_maps_to_cogvideox(self):
+        self.assertEqual(family_for("THUDM/CogVideoX-2b"), "cogvideox")
+        self.assertEqual(family_for("THUDM/CogVideoX-5b"), "cogvideox")
+
     def test_flux_family(self):
         self.assertEqual(family_for("black-forest-labs/FLUX.1-dev"), "flux")
         self.assertEqual(family_for("black-forest-labs/FLUX.2-klein-4B"), "flux")
@@ -90,7 +94,7 @@ class EnhancePromptTests(unittest.TestCase):
         self.assertIsNone(result.note)
         self.assertIsNone(result.modelUsed)
 
-    def test_singleton_load_failure_returns_original_with_note(self):
+    def test_singleton_load_failure_uses_template_fallback(self):
         with patch(
             "backend_service.helpers.prompt_enhancer._SINGLETON.ensure_loaded"
         ) as mock_load:
@@ -100,9 +104,40 @@ class EnhancePromptTests(unittest.TestCase):
                 repo="black-forest-labs/FLUX.1-dev",
                 enabled=True,
             )
+        self.assertNotEqual(result.enhanced, "a fluffy cat")
+        self.assertIn("a fluffy cat", result.enhanced)
+        self.assertIn("high-quality", result.enhanced)
+        self.assertIn("mlx_lm not installed", result.note or "")
+        self.assertIsNone(result.modelUsed)
+
+    def test_template_fallback_can_be_disabled(self):
+        with patch(
+            "backend_service.helpers.prompt_enhancer._SINGLETON.ensure_loaded"
+        ) as mock_load:
+            mock_load.return_value = (False, "mlx_lm not installed.")
+            result = enhance_prompt(
+                "a fluffy cat",
+                repo="black-forest-labs/FLUX.1-dev",
+                enabled=True,
+                template_fallback=False,
+            )
         self.assertEqual(result.enhanced, "a fluffy cat")
         self.assertEqual(result.note, "mlx_lm not installed.")
         self.assertIsNone(result.modelUsed)
+
+    def test_video_repo_uses_video_template_fallback(self):
+        with patch(
+            "backend_service.helpers.prompt_enhancer._SINGLETON.ensure_loaded"
+        ) as mock_load:
+            mock_load.return_value = (False, "mlx_lm not installed.")
+            result = enhance_prompt(
+                "angry tomato eating a farmer",
+                repo="THUDM/CogVideoX-2b",
+                enabled=True,
+            )
+        self.assertIn("angry tomato eating a farmer", result.enhanced)
+        self.assertIn("cinematic", result.enhanced.lower())
+        self.assertEqual(result.family, "cogvideox")
 
     def test_happy_path_returns_rewritten_with_note(self):
         with patch(
@@ -141,6 +176,7 @@ class EnhancePromptTests(unittest.TestCase):
                 "a fluffy cat",
                 repo="black-forest-labs/FLUX.1-dev",
                 enabled=True,
+                template_fallback=False,
             )
         self.assertEqual(result.enhanced, "a fluffy cat")
         self.assertIn("crashed", (result.note or "").lower())

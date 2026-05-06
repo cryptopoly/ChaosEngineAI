@@ -7,10 +7,12 @@ Provides a unified interface for querying GPU metrics across platforms:
 """
 from __future__ import annotations
 
+import json
+import os
 import platform
 import shutil
 import subprocess
-import json
+import sys
 import threading
 from typing import Any
 
@@ -146,42 +148,103 @@ class GPUMonitor:
         return self._no_gpu_detected()
 
     def _snapshot_torch_cuda(self) -> dict[str, Any] | None:
-        """Read total + used VRAM from torch.cuda when available.
+        """Read total + used VRAM from torch.cuda via a short-lived subprocess.
 
-        Returns ``None`` if torch isn't importable, has no CUDA build, or
-        no CUDA device is currently visible (driver missing, GPU
-        passthrough disabled, etc.). The caller then falls through to
-        ``nvidia-smi``.
+        We deliberately do NOT ``import torch`` in the backend process.
+        On Windows, importing torch loads ``torch/lib/*.dll`` (asmjit,
+        cublas, cudnn, ...) into the backend's process handle table,
+        and pip's ``--target`` install of a fresh torch then fails with
+        ``[WinError 5] Access is denied`` when ``shutil.rmtree`` tries
+        to delete the locked DLLs:
 
-        Importing torch is heavy (~200ms first time) but the result is
-        cached one level up by ``get_device_vram_total_gb``, so the cost
-        is paid at most once per backend session.
+            PermissionError: [WinError 5] Access is denied:
+            '...\\extras\\cp312\\site-packages\\torch\\lib\\asmjit.dll'
+
+        The fix is to query torch in a child Python process that exits
+        as soon as it has printed the JSON — the OS releases the DLL
+        handles, and the next ``Install GPU runtime`` click can swap
+        torch in place.
+
+        Returns ``None`` if torch isn't installed, has no CUDA build,
+        no CUDA device is visible, or the subprocess errors. The caller
+        then falls through to ``nvidia-smi``.
         """
+        # Skip on macOS — Apple Silicon has no torch.cuda; ``_snapshot_macos``
+        # owns the unified-memory path.
+        if self._system == "Darwin":
+            return None
+
+        executable = self._resolve_python_executable()
+        if executable is None:
+            return None
+
+        script = (
+            "import json, sys\n"
+            "try:\n"
+            "    import torch\n"
+            "except Exception:\n"
+            "    sys.exit(0)\n"
+            "if not getattr(torch, 'cuda', None) or not torch.cuda.is_available():\n"
+            "    sys.exit(0)\n"
+            "device = torch.cuda.current_device()\n"
+            "props = torch.cuda.get_device_properties(device)\n"
+            "total = int(props.total_memory)\n"
+            "try:\n"
+            "    free, _ = torch.cuda.mem_get_info(device)\n"
+            "    used = max(0, total - int(free))\n"
+            "except Exception:\n"
+            "    used = 0\n"
+            "json.dump({'gpu_name': props.name, 'total': total, 'used': used}, sys.stdout)\n"
+        )
+
         try:
-            import torch  # type: ignore
-        except Exception:
+            result = subprocess.run(
+                [executable, "-c", script],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                **_SUBPROCESS_KWARGS,
+            )
+        except (FileNotFoundError, subprocess.SubprocessError):
+            return None
+        if result.returncode != 0:
+            return None
+        payload = (result.stdout or "").strip()
+        if not payload:
             return None
         try:
-            if not torch.cuda.is_available():
-                return None
-            device = torch.cuda.current_device()
-            props = torch.cuda.get_device_properties(device)
-            total_bytes = int(props.total_memory)
-            try:
-                free_bytes, _ = torch.cuda.mem_get_info(device)
-                used_bytes = max(0, total_bytes - int(free_bytes))
-            except Exception:
-                used_bytes = 0
-            return {
-                "gpu_name": props.name,
-                "vram_total_gb": round(total_bytes / (1024 ** 3), 2),
-                "vram_used_gb": round(used_bytes / (1024 ** 3), 2),
-                "utilization_pct": None,
-                "temperature_c": None,
-                "power_w": None,
-            }
-        except Exception:
+            data = json.loads(payload)
+            total_bytes = int(data["total"])
+            used_bytes = int(data.get("used") or 0)
+            gpu_name = str(data.get("gpu_name") or "NVIDIA GPU")
+        except (ValueError, KeyError, TypeError):
             return None
+        return {
+            "gpu_name": gpu_name,
+            "vram_total_gb": round(total_bytes / (1024 ** 3), 2),
+            "vram_used_gb": round(used_bytes / (1024 ** 3), 2),
+            "utilization_pct": None,
+            "temperature_c": None,
+            "power_w": None,
+        }
+
+    def _resolve_python_executable(self) -> str | None:
+        """Pick a Python interpreter for the torch.cuda subprocess probe.
+
+        Prefers the embedded sidecar Python (the same one pip writes the
+        GPU bundle wheels to) so ``import torch`` resolves the freshly
+        installed wheel. Falls back to the running interpreter if the
+        embed override isn't set.
+        """
+        candidates: list[str] = []
+        embed = os.environ.get("CHAOSENGINE_EMBED_PYTHON_BIN")
+        if embed:
+            candidates.append(embed)
+        candidates.append(sys.executable)
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                return candidate
+        return None
 
     def _no_gpu_detected(self) -> dict[str, Any]:
         return {
@@ -291,35 +354,24 @@ def torch_install_warning() -> str | None:
          be misleading.
       2. NVIDIA GPU present but the installed torch wheel is the +cpu
          build -- the bundle ran but pip resolved the CPU wheel instead
-         of a CUDA one. This is the case the user keeps hitting on a
-         4090: Studio shows "Device: cuda (expected)" because nvidia-smi
-         is on PATH, but generation runs on CPU because torch is
-         literally CPU-only.
+         of a CUDA one. Studio shows "Device: cuda (expected)" because
+         nvidia-smi is on PATH, but generation runs on CPU because
+         torch is literally CPU-only.
       3. Apple Silicon host but no torch installed -- mirrors case 1.
 
     Returns a one-line warning string when a mismatch is detected,
     ``None`` when everything looks fine. Importing torch would lock
     torch DLLs in the backend process and break the GPU-bundle install
-    flow on Windows, so we read the wheel's dist-info METADATA from
-    sys.path / extras instead.
+    flow on Windows, so we read ``torch/version.py`` from disk instead.
     """
     import importlib.util
-    import sys
     from pathlib import Path
 
     spec = importlib.util.find_spec("torch")
     torch_installed = spec is not None
-    torch_local_version: str | None = None  # "+cpu", "+cu124", "+cu128", ...
-    torch_version_str: str | None = None    # "2.6.0+cpu" etc.
+    torch_local_version: str | None = None
+    torch_version_str: str | None = None
 
-    # Read torch/version.py directly. That file is what Python executes at
-    # ``import torch`` time, so it's the only ground truth for the actual
-    # local-version tag. Don't trust dist-info names: pip can leave a stale
-    # ``torch-X.Y.Z+cu124.dist-info`` dir next to the +cpu wheel that was
-    # installed afterwards (each install of a different local-version
-    # creates its own dist-info but only ONE set of package files survives).
-    # The user we're chasing has exactly that state -- both dist-info dirs
-    # present, but ``torch/version.py`` reports ``2.6.0+cpu``.
     if spec is not None and spec.origin:
         try:
             version_path = Path(spec.origin).with_name("version.py")
@@ -328,7 +380,6 @@ def torch_install_warning() -> str | None:
                 for line in text.splitlines():
                     stripped = line.strip()
                     if stripped.startswith("__version__"):
-                        # Lines look like:  __version__ = '2.6.0+cpu'
                         for quote in ("'", '"'):
                             if quote in stripped:
                                 _, _, rest = stripped.partition(quote)
@@ -348,7 +399,6 @@ def torch_install_warning() -> str | None:
         and platform.machine() in ("arm64", "aarch64")
     )
 
-    # Case 2 first: bundle ran, picked the wrong wheel. Most actionable.
     if nvidia_present and torch_installed and torch_local_version:
         if torch_local_version.lower().startswith("+cpu"):
             return (
@@ -357,13 +407,11 @@ def torch_install_warning() -> str | None:
                 "on CPU at a fraction of GPU speed. Open Settings > Setup "
                 "and click Install CUDA torch, then Restart Backend."
             )
-    # Case 1: NVIDIA host but no torch at all.
     if nvidia_present and not torch_installed:
         return (
             "torch is not installed but an NVIDIA GPU is present. Open "
             "Settings > Setup and click Install GPU runtime."
         )
-    # Case 3: Apple Silicon but no torch.
     if on_apple_silicon and not torch_installed:
         return (
             "torch is not installed. Open Settings > Setup and click "
@@ -379,6 +427,96 @@ _CUDA_WHEEL_HINT = (
 )
 
 
+# Cached torch availability — see ``gpu_status_snapshot``. Cleared after a
+# successful GPU bundle install via ``reset_torch_status_cache``.
+_TORCH_STATUS_LOCK = threading.Lock()
+_TORCH_STATUS_CACHE: dict[str, dict[str, bool]] = {}
+
+
+def _probe_torch_status_subprocess() -> dict[str, bool]:
+    """Probe torch availability via a short-lived subprocess.
+
+    We must NOT ``import torch`` in the backend process. On Windows the
+    import maps ``torch/lib/*.dll`` (asmjit, cublas, cudnn, ...) into the
+    process handle table; transitively it also imports ``numpy`` which
+    maps ``numpy/linalg/_umath_linalg.cp312-win_amd64.pyd``, and pulls
+    other compiled deps like PyYAML's ``_yaml.cp312-win_amd64.pyd`` via
+    HuggingFace's config loaders. Once those handles are open, pip's
+    ``--upgrade --target extras`` install can't ``rmtree`` the existing
+    package directories — every retry fails with::
+
+        PermissionError: [WinError 5] Access is denied:
+        '...\\extras\\cp312\\site-packages\\numpy\\linalg\\_umath_linalg.cp312-win_amd64.pyd'
+
+    Spawning a child Python lets us answer "is torch importable / does it
+    see CUDA / MPS?" without poisoning the long-running backend.
+    """
+    executable = _monitor._resolve_python_executable()
+    if executable is None:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    script = (
+        "import json, sys\n"
+        "out = {'torchImported': False, 'cudaAvailable': False, 'mpsAvailable': False}\n"
+        "try:\n"
+        "    import torch\n"
+        "    out['torchImported'] = True\n"
+        "    try:\n"
+        "        out['cudaAvailable'] = bool(getattr(torch.cuda, 'is_available', lambda: False)())\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "    try:\n"
+        "        mps = getattr(torch.backends, 'mps', None)\n"
+        "        if mps is not None:\n"
+        "            out['mpsAvailable'] = bool(getattr(mps, 'is_available', lambda: False)())\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "except Exception:\n"
+        "    pass\n"
+        "json.dump(out, sys.stdout)\n"
+    )
+
+    try:
+        result = subprocess.run(
+            [executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            **_SUBPROCESS_KWARGS,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    if result.returncode != 0:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    payload = (result.stdout or "").strip()
+    if not payload:
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    try:
+        data = json.loads(payload)
+    except (ValueError, TypeError):
+        return {"torchImported": False, "cudaAvailable": False, "mpsAvailable": False}
+
+    return {
+        "torchImported": bool(data.get("torchImported")),
+        "cudaAvailable": bool(data.get("cudaAvailable")),
+        "mpsAvailable": bool(data.get("mpsAvailable")),
+    }
+
+
+def reset_torch_status_cache() -> None:
+    """Clear the cached torch status.
+
+    Called after a successful GPU bundle install so the next health probe
+    re-runs the subprocess and picks up the freshly-installed wheel rather
+    than serving the pre-install "torch not importable" snapshot.
+    """
+    with _TORCH_STATUS_LOCK:
+        _TORCH_STATUS_CACHE.clear()
+
+
 def gpu_status_snapshot() -> dict[str, Any]:
     """Unified GPU status for the frontend warning banner.
 
@@ -387,32 +525,26 @@ def gpu_status_snapshot() -> dict[str, Any]:
     when torch falls back to CPU on a machine with an NVIDIA GPU. All fields
     are optional so this can be called before torch has been imported without
     failing.
+
+    Critical: this MUST stay out-of-process. The torch availability probe
+    runs in a short-lived subprocess (see ``_probe_torch_status_subprocess``)
+    and the result is cached for the backend's lifetime — wheels on disk
+    don't change without a restart, and importing torch into this process
+    locks DLLs/PYDs that block ``/api/setup/install-gpu-bundle``.
     """
     system = platform.system()
     nvidia_present = nvidia_gpu_present()
 
-    torch_imported = False
-    cuda_available = False
-    mps_available = False
-    try:
-        import torch  # type: ignore
-    except Exception:
-        torch_module = None
-    else:
-        torch_module = torch
-        torch_imported = True
+    with _TORCH_STATUS_LOCK:
+        cached = _TORCH_STATUS_CACHE.get("value")
+    if cached is None:
+        cached = _probe_torch_status_subprocess()
+        with _TORCH_STATUS_LOCK:
+            _TORCH_STATUS_CACHE["value"] = cached
 
-    if torch_module is not None:
-        try:
-            cuda_available = bool(getattr(torch_module.cuda, "is_available", lambda: False)())
-        except Exception:
-            cuda_available = False
-        try:
-            mps_module = getattr(torch_module.backends, "mps", None)
-            if mps_module is not None:
-                mps_available = bool(getattr(mps_module, "is_available", lambda: False)())
-        except Exception:
-            mps_available = False
+    torch_imported = cached["torchImported"]
+    cuda_available = cached["cudaAvailable"]
+    mps_available = cached["mpsAvailable"]
 
     if system in ("Windows", "Linux") and nvidia_present and torch_imported and not cuda_available:
         recommendation = (

@@ -1,8 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ImageModelVariant } from "../../types";
 import { assessImageGenerationSafety, imageDiscoverMemoryEstimate } from "../images";
 import { compareDiscoverVariants } from "../discoverSort";
+
+// imageDiscoverMemoryEstimate calls assessImageGenerationSafety with
+// device=null, which falls through to inferDeviceFromHostPlatform().
+// That helper reads navigator.userAgentData.platform and returns
+// "mps" on macOS, "cuda" elsewhere. The expected values in the
+// imageDiscoverMemoryEstimate describe block below were calibrated for
+// the MPS path (FLUX text encoders, MPS runtime overhead, MPS-specific
+// runtimeFootprint overrides), so we pin the host to macOS for the
+// duration of those tests. CI runs on Linux runners where the
+// inference would otherwise return "cuda" and produce different numbers.
+function pinHostPlatformToMac(): void {
+  vi.stubGlobal("navigator", {
+    userAgentData: { platform: "macOS" },
+    platform: "MacIntel",
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+  });
+}
 
 describe("assessImageGenerationSafety()", () => {
   it("does not block standard FLUX 1024px generation on a 64 GB MPS Mac", () => {
@@ -127,6 +144,13 @@ describe("assessImageGenerationSafety()", () => {
 });
 
 describe("imageDiscoverMemoryEstimate()", () => {
+  beforeEach(() => {
+    pinHostPlatformToMac();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const baseVariant: ImageModelVariant = {
     id: "black-forest-labs/FLUX.1-schnell",
     familyId: "flux-fast",

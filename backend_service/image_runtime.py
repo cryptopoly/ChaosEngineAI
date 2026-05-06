@@ -57,7 +57,11 @@ def _snapshot_visible_label(local_root: Path) -> str:
     return ", ".join(visible_files[:6]) if visible_files else "no files"
 
 
-def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None) -> str | None:
+def validate_local_diffusers_snapshot(
+    local_root: Path,
+    repo: str | None = None,
+    ignored_weight_index_dirs: set[str] | None = None,
+) -> str | None:
     model_index_path = local_root / "model_index.json"
     if not model_index_path.exists():
         visible_label = _snapshot_visible_label(local_root)
@@ -128,6 +132,9 @@ def validate_local_diffusers_snapshot(local_root: Path, repo: str | None = None)
             if candidate.is_symlink() and not candidate.exists():
                 broken_links.append(candidate.relative_to(local_root).as_posix())
             if candidate.name.endswith(".index.json"):
+                rel_parts = candidate.relative_to(local_root).parts
+                if rel_parts and ignored_weight_index_dirs and rel_parts[0] in ignored_weight_index_dirs:
+                    continue
                 weight_index_paths.append(candidate)
     except OSError as exc:
         return (
@@ -208,6 +215,36 @@ def _guess_expected_device() -> str | None:
     if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
         return "mps"
     return "cpu"
+
+
+def _windows_cuda_unavailable_message(torch: Any) -> str | None:
+    if platform.system() != "Windows" or not _nvidia_gpu_present():
+        return None
+    cuda_module = getattr(torch, "cuda", None)
+    if cuda_module is None:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: torch imports "
+            "but has no torch.cuda module. Open Settings > Setup and click "
+            "Install CUDA torch, then Restart Backend."
+        )
+    try:
+        cuda_available = bool(getattr(cuda_module, "is_available", lambda: False)())
+    except Exception as exc:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host: "
+            f"torch.cuda.is_available failed ({type(exc).__name__}: {exc}). "
+            "Open Settings > Setup and click Install CUDA torch, then Restart Backend."
+        )
+    if not cuda_available:
+        return (
+            "CUDA torch is unavailable on this Windows NVIDIA host. Open Settings > "
+            "Setup and click Install CUDA torch, then Restart Backend."
+        )
+    return None
+
+
+def _is_cuda_torch_unavailable_error(exc: Exception) -> bool:
+    return "CUDA torch is unavailable on this Windows NVIDIA host" in str(exc)
 
 
 # FU-017: madebyollin's SDXL VAE fp16 fix. The stock SDXL VAE silently
@@ -1576,10 +1613,11 @@ class DiffusersTextToImageEngine:
             )
         try:
             from diffusers import GGUFQuantizationConfig  # type: ignore
-        except ImportError:
+        except Exception as exc:
             return None, (
-                "Installed diffusers doesn't expose GGUFQuantizationConfig. "
-                "Upgrade diffusers via the Setup page to use GGUF variants."
+                f"Installed diffusers cannot load GGUFQuantizationConfig "
+                f"({type(exc).__name__}: {exc}). Upgrade diffusers via the "
+                "Setup page to use GGUF variants."
             )
 
         # Pick the transformer class from the base repo. Most flow-matching
@@ -1690,8 +1728,16 @@ class DiffusersTextToImageEngine:
         return kwargs
 
     def _detect_device(self, torch: Any) -> str:
-        if getattr(torch.cuda, "is_available", lambda: False)():
-            return "cuda"
+        cuda_module = getattr(torch, "cuda", None)
+        if cuda_module is not None:
+            try:
+                if getattr(cuda_module, "is_available", lambda: False)():
+                    return "cuda"
+            except Exception:
+                pass
+        cuda_error = _windows_cuda_unavailable_message(torch)
+        if cuda_error:
+            raise RuntimeError(cuda_error)
         mps_backend = getattr(getattr(torch, "backends", None), "mps", None)
         if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
             return "mps"
@@ -2021,6 +2067,8 @@ class ImageRuntimeManager:
                     )
                 return images, result_status
             except Exception as exc:
+                if _is_cuda_torch_unavailable_error(exc):
+                    raise
                 fallback_note = (
                     "The diffusers runtime failed, so ChaosEngineAI fell back to the placeholder engine for this run. "
                     f"Details: {exc}"
@@ -2033,6 +2081,16 @@ class ImageRuntimeManager:
                     missingDependencies=[],
                     loadedModelRepo=status.loadedModelRepo,
                     message=fallback_note,
+                    # Preserve the +cpu / missing-torch warning across
+                    # the demotion. Without this the Studio's "GPU
+                    # acceleration not active" banner disappears the
+                    # moment generation fails, leaving only "Install
+                    # GPU runtime" -- which is the wrong remedy when
+                    # torch IS installed (just CPU-only). Recompute
+                    # rather than copying ``status.torchInstallWarning``
+                    # so the message reflects current disk state, not
+                    # what the probe saw at preload time.
+                    torchInstallWarning=_torch_install_warning(),
                 )
                 return self._placeholder.generate(config, runtime_note=fallback_note), fallback_status.to_dict()
 

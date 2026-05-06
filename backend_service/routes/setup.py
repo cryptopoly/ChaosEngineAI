@@ -15,6 +15,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend_service.runtime_paths import extras_site_packages
+
 router = APIRouter()
 
 _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
@@ -49,6 +51,13 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "sentencepiece": "sentencepiece",
     "protobuf": "protobuf",
     "ftfy": "ftfy",
+    # huggingface_hub imports PyYAML at module load. A partially-extracted
+    # wheel in the user-local extras dir ships error.py / __init__.py that
+    # don't agree on submodule layout, surfacing as
+    # ``ModuleNotFoundError: No module named 'yaml.error'`` when the download
+    # subprocess imports snapshot_download. Exposing pyyaml as an installable
+    # package lets users repair this without reinstalling the whole bundle.
+    "pyyaml": "pyyaml",
     # Core image / video runtime packages. Installed together via the
     # one-click button in Image Studio / Video Studio when the probe
     # reports the real engine as unavailable. Each is also individually
@@ -445,18 +454,33 @@ def _find_installed_torch_version(extras_dir: Path) -> str | None:
     return None
 
 
+def _is_cuda_torch_version(torch_version: str | None) -> bool:
+    """Return True for PyTorch wheels with a CUDA local-version tag."""
+    return bool(torch_version and "+cu" in torch_version.lower())
+
+
 def _write_torch_constraint(extras_dir: Path, torch_version: str) -> Path:
     """Pin torch in a constraints.txt so follow-up installs can't swap it.
 
     Without this pin, ``pip install diffusers --target extras/`` could let
     pip's resolver pull a newer torch from default PyPI (which ships only
     the CPU wheel) — silently replacing the CUDA wheel we just installed.
-    With the pin, pip is forced to respect the exact version (including
-    the ``+cu124`` local segment), and will error out if some package
-    requires a strictly newer torch rather than swapping it for CPU.
+
+    The local-version segment (``+cu124``, ``+cpu``, ...) is stripped from
+    the pin: ``torch==2.6.0`` matches the installed ``2.6.0+cu124`` per
+    PEP 440 (a public-only specifier ignores local segments on candidates),
+    but ``torch==2.6.0+cu124`` is unsatisfiable from default PyPI — no
+    ``+cu124`` wheel exists there, so follow-up installs (accelerate,
+    bitsandbytes, ...) bail with::
+
+        ResolutionImpossible: ... accelerate depends on torch>=2.0.0 ...
+        The user requested (constraint) torch==2.6.0+cu124
+
+    even though the installed CUDA wheel obviously satisfies ``>=2.0.0``.
     """
+    base_version = torch_version.split("+", 1)[0]
     path = extras_dir / ".chaosengine-torch-constraints.txt"
-    path.write_text(f"torch=={torch_version}\n", encoding="utf-8")
+    path.write_text(f"torch=={base_version}\n", encoding="utf-8")
     return path
 
 
@@ -629,6 +653,14 @@ _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     ("transformers", "transformers>=4.44.0"),
     ("safetensors", "safetensors>=0.4.5"),
     ("pillow", "pillow>=10.4.0"),
+    # huggingface_hub depends on pyyaml at import time. When pip --target
+    # picks up a partial wheel cache for PyYAML on Windows, the snapshot_download
+    # subprocess dies with ``ModuleNotFoundError: No module named 'yaml.error'``
+    # which then surfaces as the per-row download error in Image / Video
+    # Discover. Installing pyyaml explicitly (instead of relying on transitive
+    # resolution) gives pip a clean install of the wheel into extras and
+    # prevents that mode from happening on first launch.
+    ("pyyaml", "pyyaml>=6.0"),
     ("huggingface-hub", "huggingface-hub>=0.26.0"),
     ("imageio", "imageio"),
     ("imageio-ffmpeg", "imageio-ffmpeg"),
@@ -740,18 +772,7 @@ def _extras_site_packages() -> Path | None:
     for dev / tests) we fall back to a predictable default that uses the
     *current* interpreter's tag.
     """
-    env_path = os.environ.get("CHAOSENGINE_EXTRAS_SITE_PACKAGES")
-    if env_path:
-        return Path(env_path)
-    home = Path.home()
-    if sys.platform == "win32":
-        base = Path(os.environ.get("LOCALAPPDATA") or home / "AppData" / "Local")
-    elif sys.platform == "darwin":
-        base = home / "Library" / "Application Support"
-    else:
-        base = Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share")
-    tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
-    return base / "ChaosEngineAI" / "extras" / tag / "site-packages"
+    return extras_site_packages()
 
 
 def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:
@@ -810,19 +831,46 @@ def _run_pip_install(
     Uses ``--upgrade`` so re-installs pick up newer versions and
     ``--target`` so we never touch the bundled site-packages (avoids the
     classic Windows WinError 5 from overwriting a loaded .pyd).
+
+    Two defensive flags + an env tweak prevent the "CUDA torch silently
+    swapped for CPU torch" failure mode that shipped in v0.7.2:
+
+      * ``--upgrade-strategy=only-if-needed`` keeps pip from eagerly
+        upgrading transitive deps. Without it, ``pip install accelerate
+        --upgrade`` would consider torch a candidate for upgrade and pull
+        the latest matching wheel from default PyPI — which is the CPU
+        wheel, clobbering the CUDA wheel installed in step 1.
+
+      * ``PYTHONPATH=<extras>`` on the pip child env lets pip's resolver
+        see packages already installed in the extras tree. With ``--target``
+        alone, pip only checks the bundled venv site-packages for "already
+        installed" — and since the venv is empty (we install everything to
+        extras), pip thinks torch is missing and resolves it fresh from
+        PyPI. With extras on PYTHONPATH, pip reads the dist-info we just
+        wrote and skips the reinstall.
     """
     cmd = [
         python, "-m", "pip", "install",
         "--disable-pip-version-check",
         "--upgrade",
+        "--upgrade-strategy", "only-if-needed",
         "--target", str(target),
         *extra_flags,
     ]
     if index_url:
         cmd.extend(["--index-url", index_url])
     cmd.append(spec)
+
+    # Pip reads dist-info from sys.path to detect already-installed
+    # packages. ``--target`` writes there but doesn't add it to sys.path,
+    # so we splice extras onto PYTHONPATH for the child process. Pip
+    # never imports the package code itself (just reads METADATA), so this
+    # is safe even for native-wheel deps like torch / numpy.
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(target) + os.pathsep + env.get("PYTHONPATH", "")
+
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=1800)
     except subprocess.TimeoutExpired:
         return False, f"pip install {spec} timed out after 30 minutes"
     except OSError as exc:
@@ -898,7 +946,8 @@ def _install_torch_walking_indexes(
     for index_url in _CUDA_TORCH_INDEXES:
         state.message = f"Downloading torch from {index_url}"
         ok, output = _run_pip_install(
-            python, "torch>=2.4.0", extras_dir, index_url, ["--no-deps"],
+            python, "torch>=2.4.0", extras_dir, index_url,
+            ["--force-reinstall", "--no-deps"],
         )
         state.attempts.append({"indexUrl": index_url, "ok": ok, "output": output[-2000:]})
         if not ok and _looks_like_dll_lock(output):
@@ -974,6 +1023,18 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         if purged:
             state.message = f"Cleaned up {len(purged)} broken stub(s) from prior run"
 
+        if not is_apple_silicon:
+            purged_torch = _purge_stale_torch_from_extras(extras_dir)
+            if purged_torch:
+                state.attempts.append({
+                    "phase": "torch-cleanup",
+                    "ok": True,
+                    "output": (
+                        "Removed stale torch/CUDA runtime entries before reinstall: "
+                        + ", ".join(purged_torch[:16])
+                    ),
+                })
+
         state.phase = "downloading"
         state.package_total = len(_GPU_BUNDLE_PACKAGES)
 
@@ -998,7 +1059,10 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
             state.percent = 0.0
             ok, index_url = _install_torch_walking_indexes(python, extras_dir, state)
         if not ok:
-            torch_attempts = [a for a in state.attempts if a.get("phase") != "deps"]
+            torch_attempts = [
+                a for a in state.attempts
+                if a.get("indexUrl") and a.get("phase") != "deps"
+            ]
             state.no_wheel_for_python = _all_attempts_lack_wheel(torch_attempts)
             if state.no_wheel_for_python:
                 raise RuntimeError(
@@ -1075,6 +1139,40 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
                     f"retry it individually after the bundle finishes)"
                 )
 
+        # Repair pass: pip --target ignores already-installed packages in
+        # the target dir for resolver purposes (it only checks the user's
+        # main site-packages), so transitive torch deps from accelerate /
+        # bitsandbytes can pull the CPU torch wheel from default PyPI and
+        # clobber the CUDA wheel installed in step 1. The PYTHONPATH and
+        # constraint defenses in _run_pip_install close most of that gap,
+        # but a defence-in-depth re-install here guarantees the CUDA wheel
+        # is the one that survives even if pip's resolver decides to
+        # upgrade torch despite the constraint.
+        #
+        # The pass is a no-op if torch in extras still has a CUDA local
+        # version segment (``+cu124`` / ``+cu126`` / ...). It kicks in
+        # when the CUDA wheel was clobbered by a bare or ``+cpu`` wheel.
+        if not is_apple_silicon and index_url:
+            current_torch = _find_installed_torch_version(extras_dir)
+            if current_torch and not _is_cuda_torch_version(current_torch):
+                state.message = "Repairing CUDA torch wheel (clobbered by transitive deps)"
+                repair_note = (
+                    f"Torch was downgraded to {current_torch} (not a CUDA wheel) - "
+                    "a follow-up install pulled CPU torch from default PyPI. "
+                    f"Reinstalling from {index_url} to restore CUDA support.\n\n"
+                )
+                repair_ok, repair_output = _run_pip_install(
+                    python, "torch>=2.4.0", extras_dir, index_url,
+                    ["--no-deps", "--force-reinstall"],
+                )
+                state.attempts.append({
+                    "phase": "torch-repair",
+                    "ok": repair_ok,
+                    "output": (repair_note + repair_output)[-2000:],
+                })
+                if not repair_ok:
+                    non_fatal_failures.append("torch-repair")
+
         state.phase = "verifying"
         state.percent = 95.0
         state.package_current = None
@@ -1103,8 +1201,17 @@ def _gpu_bundle_job_worker(python: str, extras_dir: Path) -> None:
         except Exception:
             pass
         try:
-            from backend_service.helpers.gpu import reset_vram_total_cache
+            from backend_service.helpers.gpu import (
+                reset_torch_status_cache,
+                reset_vram_total_cache,
+            )
             reset_vram_total_cache()
+            # The /api/system/gpu-status endpoint caches its torch probe per
+            # process to avoid spawning a child Python on every poll. The
+            # cached "torch not importable" answer from before this install
+            # is now stale — flush it so the next frontend poll re-probes
+            # and the banner updates without a backend restart.
+            reset_torch_status_cache()
         except Exception:
             pass
 

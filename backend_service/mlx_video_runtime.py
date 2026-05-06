@@ -259,6 +259,10 @@ def _download_hf_file(repo_id: str, filename: str, *, local_files_only: bool) ->
     )
 
 
+def _cmd_path(path: Path) -> str:
+    return path.as_posix()
+
+
 def _resolve_ltx2_spatial_upscaler(
     repo: str,
     *,
@@ -577,7 +581,7 @@ class MlxVideoEngine:
             "--cfg-scale",
             str(config.guidance),
             "--output-path",
-            str(output_path),
+            _cmd_path(output_path),
         ]
         if config.negativePrompt:
             cmd.extend(["--negative-prompt", config.negativePrompt])
@@ -589,7 +593,7 @@ class MlxVideoEngine:
                 allow_download=True,
             )
             if spatial_upscaler is not None:
-                cmd.extend(["--spatial-upscaler", str(spatial_upscaler)])
+                cmd.extend(["--spatial-upscaler", _cmd_path(spatial_upscaler)])
         # STG (Spatial-Temporal Guidance) is mlx-video's built-in quality
         # lever — perturbs final transformer blocks during sampling to
         # reduce object breakup / chroma drift. Value comes from

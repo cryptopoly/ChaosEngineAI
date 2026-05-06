@@ -3,12 +3,12 @@ name: Build Desktop App
 # Tests run on every push and PR (quick feedback), but the expensive
 # 3-platform desktop build matrix only runs on manual trigger —
 # `workflow_dispatch` from the Actions tab or `gh workflow run`.
-# Pushes to main no longer kick off a full cross-platform build.
+# Pushes to main / staging no longer kick off a full cross-platform build.
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 env:

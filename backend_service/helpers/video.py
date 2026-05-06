@@ -215,9 +215,18 @@ def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     repo = str(variant.get("repo") or "")
     if not repo:
         return "Video model variant is missing its base repo id."
-    repo_error = _video_download_validation_error(repo)
+    is_gguf_variant = bool(str(variant.get("ggufFile") or "").strip())
+    repo_error = (
+        _video_gguf_base_validation_error(repo)
+        if is_gguf_variant
+        else _video_download_validation_error(repo)
+    )
     if repo_error:
         return repo_error
+    if not is_gguf_variant:
+        weight_error = _video_full_precision_weights_validation_error(variant)
+        if weight_error:
+            return weight_error
     text_error = _video_variant_mlx_text_components_validation_error(variant)
     if text_error:
         return text_error
@@ -373,6 +382,30 @@ _VIDEO_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "LICENSE*",
 ]
 
+# GGUF video variants load a quantized transformer from a separate repo, but
+# still need the base pipeline metadata, schedulers, tokenizers, text encoders,
+# and VAE from the diffusers repo. Keep transformer downloads to configs only
+# so picking a Q4/Q6/Q8 row does not also pull the full BF16 transformer.
+_VIDEO_GGUF_BASE_ALLOW_PATTERNS: list[str] = [
+    "model_index.json",
+    "scheduler/**",
+    "text_encoder/**",
+    "text_encoder_2/**",
+    "text_encoder_3/**",
+    "tokenizer/**",
+    "tokenizer_2/**",
+    "tokenizer_3/**",
+    "transformer/config.json",
+    "transformer_2/config.json",
+    "unet/config.json",
+    "vae/**",
+    "feature_extractor/**",
+    "image_encoder/**",
+    "safety_checker/**",
+    "*.md",
+    "LICENSE*",
+]
+
 _VIDEO_MLX_ALLOW_PATTERNS: list[str] = [
     "text_encoder/**",
     "tokenizer/**",
@@ -410,6 +443,10 @@ def _video_repo_allow_patterns(repo_id: str) -> list[str] | None:
     return list(_VIDEO_DIFFUSERS_ALLOW_PATTERNS)
 
 
+def _video_gguf_base_allow_patterns() -> list[str]:
+    return list(_VIDEO_GGUF_BASE_ALLOW_PATTERNS)
+
+
 def _video_download_validation_error(repo_id: str) -> str | None:
     if not _is_video_repo(repo_id):
         return None
@@ -425,6 +462,85 @@ def _video_download_validation_error(repo_id: str) -> str | None:
     if _is_mlx_video_routed_repo(repo_id):
         return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
+
+
+_VIDEO_GGUF_BASE_IGNORED_WEIGHT_INDEX_DIRS: set[str] = {"transformer", "transformer_2"}
+_VIDEO_FULL_WEIGHT_COMPONENTS: tuple[str, ...] = ("transformer", "transformer_2", "unet")
+_VIDEO_WEIGHT_FILE_SUFFIXES: tuple[str, ...] = (
+    ".safetensors",
+    ".bin",
+    ".ckpt",
+    ".pt",
+    ".pth",
+    ".gguf",
+)
+
+
+def _video_gguf_base_validation_error(repo_id: str) -> str | None:
+    if not _is_video_repo(repo_id):
+        return None
+    snapshot_dir = _hf_repo_snapshot_dir(repo_id)
+    if snapshot_dir is None:
+        return (
+            f"Download did not produce a local snapshot for {repo_id}. "
+            "Retry the download and make sure the backend can access Hugging Face."
+        )
+    if _is_mlx_video_routed_repo(repo_id):
+        return _validate_mlx_video_snapshot(snapshot_dir, repo_id)
+    return validate_local_diffusers_snapshot(
+        snapshot_dir,
+        repo_id,
+        ignored_weight_index_dirs=_VIDEO_GGUF_BASE_IGNORED_WEIGHT_INDEX_DIRS,
+    )
+
+
+def _video_full_precision_weights_validation_error(variant: dict[str, Any]) -> str | None:
+    repo_id = str(variant.get("repo") or "")
+    if not repo_id or _is_mlx_video_routed_repo(repo_id):
+        return None
+    snapshot_dir = _hf_repo_snapshot_dir(repo_id)
+    if snapshot_dir is None:
+        return None
+    root = Path(snapshot_dir)
+    try:
+        pipeline_index = json.loads((root / "model_index.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(pipeline_index, dict):
+        return None
+
+    missing: list[str] = []
+    for component_name in _VIDEO_FULL_WEIGHT_COMPONENTS:
+        descriptor = pipeline_index.get(component_name)
+        if not isinstance(descriptor, (list, tuple)) or len(descriptor) < 2:
+            continue
+        if descriptor[0] is None or descriptor[1] is None:
+            continue
+        component_dir = root / component_name
+        if not component_dir.is_dir() or not _video_component_has_weight_reference(component_dir):
+            missing.append(component_name)
+    if not missing:
+        return None
+    return (
+        "The local snapshot is incomplete for the full-precision video model "
+        f"(missing weights for: {', '.join(missing)}). Download the full model "
+        "or choose a GGUF variant."
+    )
+
+
+def _video_component_has_weight_reference(component_dir: Path) -> bool:
+    try:
+        for candidate in component_dir.rglob("*"):
+            if not candidate.is_file() and not candidate.is_symlink():
+                continue
+            name = candidate.name.lower()
+            if name.endswith(".index.json"):
+                return True
+            if candidate.suffix.lower() in _VIDEO_WEIGHT_FILE_SUFFIXES:
+                return True
+    except OSError:
+        return False
+    return False
 
 
 def _is_mlx_video_routed_repo(repo_id: str) -> bool:

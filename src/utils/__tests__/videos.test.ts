@@ -8,6 +8,7 @@ import {
   videoDiscoverMemoryEstimate,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
+  videoDownloadStatusForVariant,
   videoRuntimeErrorStatus,
 } from "../videos";
 import type { VideoModelFamily, VideoModelVariant } from "../../types";
@@ -98,6 +99,33 @@ describe("video delete target helpers", () => {
     const repo = videoDeleteRepoForVariant(variant);
     expect(repo).toBe("city96/LTX-Video-gguf");
     expect(videoDeleteLabelForRepo(variant, repo)).toBe("Delete shared GGUF download");
+  });
+});
+
+describe("videoDownloadStatusForVariant()", () => {
+  it("uses an exact variant status instead of shared repo status", () => {
+    const q4 = makeVideoVariant({
+      id: "wan-q4",
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      ggufRepo: "QuantStack/Wan2.2-TI2V-5B-GGUF",
+      ggufFile: "Wan2.2-TI2V-5B-Q4_K_M.gguf",
+    });
+    const q6 = makeVideoVariant({
+      id: "wan-q6",
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      ggufRepo: "QuantStack/Wan2.2-TI2V-5B-GGUF",
+      ggufFile: "Wan2.2-TI2V-5B-Q6_K.gguf",
+    });
+    const status = {
+      repo: "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+      state: "downloading",
+    };
+
+    expect(videoDownloadStatusForVariant({ [q4.id]: status }, q4)).toBe(status);
+    expect(videoDownloadStatusForVariant({
+      "Wan-AI/Wan2.2-TI2V-5B-Diffusers": status,
+      "QuantStack/Wan2.2-TI2V-5B-GGUF": status,
+    }, q6)).toBeUndefined();
   });
 });
 
@@ -377,11 +405,10 @@ describe("assessVideoGenerationSafety()", () => {
       expect(cuda.estimatedPeakGb).toBeLessThanOrEqual(mps.estimatedPeakGb);
     });
 
-    it("still flags danger when the peak genuinely exceeds CUDA VRAM", () => {
+    it("flags caution when an attention-only CUDA estimate gets close to VRAM", () => {
       // A 4090 with 24 GB can't really handle 832×480 × 96 frames without
-      // model offload (~20 GB attention peak vs 16.8 GB effective budget)
-      // so the heuristic correctly stays at danger here. This test locks
-      // that behaviour so we don't accidentally tune CUDA to be too loose.
+      // model offload (~20 GB attention peak vs 22.8 GB effective budget)
+      // so the heuristic warns without hard-blocking.
       const result = assessVideoGenerationSafety({
         width: 832,
         height: 480,
@@ -389,7 +416,7 @@ describe("assessVideoGenerationSafety()", () => {
         device: "cuda:0",
         deviceMemoryGb: 24,
       });
-      expect(result.riskLevel).toBe("danger");
+      expect(result.riskLevel).toBe("caution");
     });
 
     it("A100-class (40 GB) clears the observed-crash config", () => {
@@ -746,7 +773,7 @@ describe("assessVideoGenerationSafety()", () => {
 
     it("flags danger for Wan 2.1 14B on a 24 GB RTX 4090", () => {
       // 45 GB catalog size × 1.05 CUDA factor ≈ 47 GB resident. A 4090's
-      // 16.8 GB effective VRAM can't hold the weights at all without
+      // 22.8 GB effective VRAM can't hold the weights at all without
       // aggressive offload, so the heuristic correctly short-circuits
       // regardless of resolution / frames.
       const result = assessVideoGenerationSafety({

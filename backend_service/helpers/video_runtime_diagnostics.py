@@ -134,7 +134,28 @@ def diagnose_diffusers_lazy_import_error(error_text: str) -> str | None:
     paragraph that names the real broken dep and points the user at the
     Setup page action that fixes it.
     """
-    if not error_text or not _DIFFUSERS_LAZY_IMPORT_PATTERN.search(error_text):
+    if not error_text:
+        return None
+
+    # ``module 'torch' has no attribute 'cuda'`` shows up when the install
+    # left torch importable but partially gutted -- typically a CPU wheel
+    # whose torch.cuda submodule failed to lazy-import because the C
+    # extension never finished loading. Or the user clicked Install CUDA
+    # torch, the request reached the backend, _purge_stale_torch_from_extras
+    # ran, the pip swap then failed, and torch on disk is now half a wheel.
+    # Either way the recovery is the same: re-run Install CUDA torch and
+    # restart the backend so the cached torch module is replaced.
+    lowered = error_text.lower()
+    if "module 'torch' has no attribute" in lowered or "torch has no attribute 'cuda'" in lowered:
+        return (
+            "The backend Python's torch is partially broken -- torch imports "
+            "but its CUDA submodule is missing or failed to load (often a "
+            "half-installed wheel left over from an interrupted Install CUDA "
+            "torch run). Re-run Install CUDA torch from this banner, then "
+            "click Restart Backend so the cached broken torch is replaced."
+        )
+
+    if not _DIFFUSERS_LAZY_IMPORT_PATTERN.search(error_text):
         return None
 
     torch_info = _probe_torch_device()

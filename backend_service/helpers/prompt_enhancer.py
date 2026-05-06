@@ -20,8 +20,8 @@ over the 1B Llama variant the original FU-022 plan named because:
 The helper caches the loaded model in a process-level singleton —
 first call pays the load cost, subsequent calls reuse it. Failure
 modes (model not cached, mlx_lm missing, generation crash) all return
-the original prompt + a runtimeNote so the caller can decide whether
-to show the user that enhancement was skipped.
+the deterministic template fallback + a runtimeNote when enabled, so
+non-Apple hosts still get useful short-prompt enhancement.
 """
 
 from __future__ import annotations
@@ -98,6 +98,8 @@ _FAMILY_MAP: list[tuple[str, str]] = [
     ("prince-canuma/LTX", "ltx"),
     ("hunyuanvideo-community/", "hunyuan"),
     ("tencent/HunyuanVideo", "hunyuan"),
+    ("THUDM/CogVideoX", "cogvideox"),
+    ("genmo/mochi", "mochi"),
     ("black-forest-labs/FLUX", "flux"),
     ("fal/FLUX", "flux"),
     ("stabilityai/stable-diffusion-3", "sd3"),
@@ -110,6 +112,25 @@ _FAMILY_MAP: list[tuple[str, str]] = [
 # Default enhancer model. Override via ``CHAOSENGINE_ENHANCER_MODEL``
 # env var when a different small instruct model is preferred.
 _DEFAULT_ENHANCER_MODEL = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+_PROMPT_ENHANCE_MIN_WORDS = 25
+
+_IMAGE_TEMPLATE_SUFFIXES: dict[str, str] = {
+    "flux": (
+        ", detailed composition, balanced lighting, crisp subject focus, "
+        "high-quality visual detail."
+    ),
+    "sdxl": (
+        ", detailed composition, balanced lighting, sharp focus, high quality."
+    ),
+    "sd3": (
+        ", detailed scene description, balanced lighting, strong composition, "
+        "high-quality visual detail."
+    ),
+    "default": (
+        ", detailed setting, balanced lighting, clear composition, high-quality "
+        "visual detail."
+    ),
+}
 
 
 def family_for(repo: str) -> str:
@@ -229,6 +250,47 @@ class _EnhancerSingleton:
             )
 
 
+def _template_fallback(prompt: str, *, repo: str, family: str, reason: str | None) -> EnhancementResult:
+    cleaned = prompt.strip()
+    if not cleaned:
+        return EnhancementResult(
+            enhanced=cleaned, note=None, modelUsed=None, family=family,
+        )
+
+    enhanced = cleaned
+    applied = False
+    try:
+        from backend_service.video_runtime import _enhance_prompt as _enhance_video_prompt
+
+        enhanced, video_note = _enhance_video_prompt(repo, cleaned)
+        applied = bool(video_note and enhanced != cleaned)
+    except Exception:
+        enhanced = cleaned
+        applied = False
+
+    if not applied:
+        suffix = _IMAGE_TEMPLATE_SUFFIXES.get(family)
+        if suffix and len(cleaned.split()) < _PROMPT_ENHANCE_MIN_WORDS and suffix.strip() not in cleaned:
+            enhanced = cleaned.rstrip(",.!? ") + suffix
+            applied = True
+
+    if applied:
+        reason_text = reason or "local LLM enhancer unavailable"
+        return EnhancementResult(
+            enhanced=enhanced,
+            note=f"Applied template prompt enhancement because {reason_text}",
+            modelUsed=None,
+            family=family,
+        )
+
+    return EnhancementResult(
+        enhanced=cleaned,
+        note=reason or "Prompt enhancer unavailable.",
+        modelUsed=None,
+        family=family,
+    )
+
+
 _SINGLETON = _EnhancerSingleton()
 
 
@@ -245,14 +307,15 @@ def enhance_prompt(
     enabled: bool = True,
     model_id: str = _DEFAULT_ENHANCER_MODEL,
     max_tokens: int = 256,
+    template_fallback: bool = True,
 ) -> EnhancementResult:
     """Synchronous entry point for the FastAPI route + the runtime
     callbacks.
 
-    Returns the original prompt + a note when the enhancer can't run
-    (disabled, non-Apple, mlx_lm missing, model not cached, generation
-    crashes). The caller falls back to the deterministic template
-    suffix in that case so the user still gets a usable prompt.
+    Returns a template-enhanced prompt + a note when the LLM path can't
+    run (non-Apple, mlx_lm missing, model not cached, generation
+    crashes). ``template_fallback=False`` preserves the older no-op
+    fallback for tests and callers that need exact input retention.
     """
     cleaned = (prompt or "").strip()
     family = family_for(repo)
@@ -264,6 +327,8 @@ def enhance_prompt(
 
     loaded, reason = _SINGLETON.ensure_loaded(model_id)
     if not loaded:
+        if template_fallback:
+            return _template_fallback(cleaned, repo=repo, family=family, reason=reason)
         return EnhancementResult(
             enhanced=cleaned,
             note=reason or "Prompt enhancer unavailable.",
@@ -276,6 +341,13 @@ def enhance_prompt(
         raw = _SINGLETON.generate(system_prompt, cleaned, max_tokens=max_tokens)
     except Exception as exc:
         LOG.exception("Prompt enhancer generation failed")
+        if template_fallback:
+            return _template_fallback(
+                cleaned,
+                repo=repo,
+                family=family,
+                reason=f"local LLM enhancer crashed ({type(exc).__name__}: {exc})",
+            )
         return EnhancementResult(
             enhanced=cleaned,
             note=(

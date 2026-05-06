@@ -333,7 +333,15 @@ export function VideoStudioTab({
   const mp4EncoderMissing = missingDependencies.some(
     (dep) => dep === "imageio" || dep === "imageio-ffmpeg",
   );
-  const gpuBundleRestartRequired = gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart;
+  // Hide once the runtime probe confirms torch/diffusers actually loaded —
+  // the auto-restart at install completion may already have made the new
+  // packages live, in which case ``requiresRestart`` from the install job
+  // is stale. Without this check the banner stayed forever and clicking
+  // Restart Backend appeared to do nothing because the badge never cleared.
+  const gpuBundleRestartRequired =
+    gpuBundleJob?.phase === "done"
+    && gpuBundleJob.requiresRestart
+    && !videoRuntimeStatus.realGenerationAvailable;
   // Tokenizer / text-encoder packages individual pipelines need lazily —
   // tiktoken for LTX-Video, sentencepiece for Wan / HunyuanVideo / CogVideoX
   // / Mochi, plus the protobuf + ftfy support libs. We list them out as a
@@ -375,7 +383,10 @@ export function VideoStudioTab({
     if (installingGpuRuntime) return;
     setInstallingGpuRuntime(true);
     try {
-      await onInstallVideoGpuRuntime();
+      const result = await onInstallVideoGpuRuntime();
+      if (result.ok && result.output.toLowerCase().includes("restart")) {
+        onRestartServer();
+      }
     } finally {
       setInstallingGpuRuntime(false);
     }
@@ -598,6 +609,8 @@ export function VideoStudioTab({
         runtimeFootprintMpsGb: selectedVideoVariant?.runtimeFootprintMpsGb,
         runtimeFootprintCudaGb: selectedVideoVariant?.runtimeFootprintCudaGb,
         runtimeFootprintCpuGb: selectedVideoVariant?.runtimeFootprintCpuGb,
+        repo: selectedVideoVariant?.repo,
+        useNf4: videoUseNf4 && !selectedVideoVariant?.ggufFile,
       }),
     [
       videoWidth,
@@ -610,6 +623,9 @@ export function VideoStudioTab({
       selectedVideoVariant?.runtimeFootprintMpsGb,
       selectedVideoVariant?.runtimeFootprintCudaGb,
       selectedVideoVariant?.runtimeFootprintCpuGb,
+      selectedVideoVariant?.repo,
+      selectedVideoVariant?.ggufFile,
+      videoUseNf4,
     ],
   );
 
@@ -622,7 +638,7 @@ export function VideoStudioTab({
   // destructive-operation confirmations elsewhere in the app.
   if (generateDisabledReason === null && generationSafety.riskLevel === "danger" && !dangerOverrideAck) {
     generateDisabledReason =
-      "This configuration is likely to crash the backend. Tick \"Generate anyway\" below after reviewing the warning, or lower resolution/frames/model.";
+      "This configuration is likely to crash the backend. Tick \"Allow high-risk generation\" below after reviewing the warning, or lower resolution/frames/model.";
   }
   const generateTitle = generateDisabledReason ?? "Start generating this clip.";
   const generationDisabled = generateDisabledReason !== null;
@@ -712,14 +728,35 @@ export function VideoStudioTab({
             * ("Real engine ready" / "Device: cuda (expected)"). Render it as
             * the first visible element so users notice before queueing a
             * 5-minute "GPU" run that's actually CPU. */}
-          {videoRuntimeStatus.torchInstallWarning ? (
+          {/* Mirror of the Image Studio callout: same three-state
+            * single-banner pattern (post-install restart prompt /
+            * GPU acceleration warning / nothing). Keeps the panel
+            * uncluttered by never stacking two banners. */}
+          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
+            <div className="callout" style={{ marginBottom: "0.6rem" }}>
+              <strong>CUDA torch installed.</strong>{" "}
+              The running backend still has the old torch in its module cache.
+              Restart the backend to activate the new wheel
+              {cudaTorchResult.indexUrl
+                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
+                : ""}
+              .
+              <div style={{ marginTop: "0.5rem" }}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => onRestartServer()}
+                  disabled={busy}
+                >
+                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                </button>
+              </div>
+              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
+            </div>
+          ) : videoRuntimeStatus.torchInstallWarning ? (
             <div className="callout error" style={{ marginBottom: "0.6rem" }}>
               <strong>GPU acceleration not active.</strong>{" "}
               {videoRuntimeStatus.torchInstallWarning}
-              {/* Inline remedy button -- mirrors ImageStudioTab. Only
-                * renders when the warning is the "+cpu wheel on a CUDA
-                * host" case; if torch is missing entirely the existing
-                * Install GPU runtime button below covers it. */}
               {onInstallCudaTorch
                 && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
                 <div style={{ marginTop: "0.5rem" }}>
@@ -731,11 +768,6 @@ export function VideoStudioTab({
                   >
                     {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
                   </button>
-                  {/* Per-attempt pip output for the most recent install
-                    * (mirrors the panel under Image Studio's button).
-                    * Collapsed by default on success, auto-opens on
-                    * failure -- lets users see which CUDA index pip
-                    * walked and the actual resolver error. */}
                   <CudaTorchLogPanel result={cudaTorchResult ?? null} />
                 </div>
               ) : null}
@@ -751,7 +783,7 @@ export function VideoStudioTab({
                 CPU fallback
               </span>
             ) : null}
-            {gpuBundleRestartRequired ? (
+            {gpuBundleRestartRequired && !videoRuntimeStatus.realGenerationAvailable ? (
               <span className="badge warning">Restart required</span>
             ) : null}
             {/* The "Engine: …" muted chip is suppressed when a more
@@ -902,7 +934,7 @@ export function VideoStudioTab({
               >
                 {installingOutputDeps
                   ? "Installing..."
-                  : `Install ${missingTokenizerDeps.join(" + ")}`}
+                  : `Install tokenizers (${missingTokenizerDeps.length})`}
               </button>
             </div>
           ) : null}
@@ -1648,7 +1680,7 @@ export function VideoStudioTab({
                     onChange={(event) => setDangerOverrideAck(event.target.checked)}
                   />
                   <span>
-                    Generate anyway — I accept that the backend may crash and my machine may need to be
+                    Allow high-risk generation — I accept that the backend may crash and my machine may need to be
                     restarted.
                   </span>
                 </label>

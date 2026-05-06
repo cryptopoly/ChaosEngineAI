@@ -41,6 +41,15 @@ export function videoDownloadStatusForVariant<T extends { state: string }>(
   downloads: Record<string, T>,
   variant: VideoModelVariant,
 ): T | undefined {
+  const exactVariantStatus = downloads[variant.id];
+  if (exactVariantStatus) return exactVariantStatus;
+  return undefined;
+}
+
+export function sharedVideoDownloadStatusForVariant<T extends { state: string }>(
+  downloads: Record<string, T>,
+  variant: VideoModelVariant,
+): T | undefined {
   const statuses = videoDownloadRepos(variant)
     .map((repo) => downloads[repo])
     .filter((status): status is T => Boolean(status));
@@ -398,10 +407,10 @@ function bytesPerElementForDevice(device: "mps" | "cuda" | "cpu"): number {
 /** Effective share of total device memory available to attention. The OS,
  * model weights, VAE, text encoder, and diffusers overhead all compete — in
  * practice only ~50% of unified memory on MPS is realistically free for the
- * attention peak. CUDA is more predictable (no OS paging of VRAM) so ~70%
- * is a safer assumption there. */
+ * attention peak. CUDA has a dedicated pool, so we reserve only a small
+ * driver/runtime carveout rather than treating 30% of VRAM as unavailable. */
 function effectiveMemoryBudgetGb(totalGb: number, device: "mps" | "cuda" | "cpu"): number {
-  if (device === "cuda") return totalGb * 0.7;
+  if (device === "cuda") return totalGb * 0.95;
   // Apple Silicon's Metal ``recommendedMaxWorkingSetSize`` is ~75% of
   // unified memory by default — that's the actual ceiling. Earlier
   // values (0.5, then 0.65) were leaving real headroom unused; Wan 2.2
@@ -470,6 +479,49 @@ function runtimeFootprintForDevice(opts: {
   return positiveRuntimeFootprint(opts.runtimeFootprintCpuGb) ?? positiveRuntimeFootprint(opts.runtimeFootprintGb);
 }
 
+function nf4RuntimeFootprintForRepo(repo: string | null | undefined, runtimeFootprintGb: number): number | null {
+  const normalizedRepo = (repo ?? "").toLowerCase();
+  if (normalizedRepo.includes("hunyuanvideo")) return 22.0;
+  if (normalizedRepo.includes("lightricks/ltx-video")) return 8.0;
+  if (!normalizedRepo.includes("wan-ai/wan")) return null;
+  if (normalizedRepo.includes("wan2.1-t2v-14b")) return 18.0;
+  if (normalizedRepo.includes("wan2.2-t2v-a14b")) return 18.0;
+  if (normalizedRepo.includes("wan2.2-ti2v-5b")) return 14.5;
+  if (normalizedRepo.includes("wan2.1-t2v-1.3b")) return Math.min(runtimeFootprintGb, 12.5);
+  return null;
+}
+
+/** When the catalog supplies a CUDA runtime override and we layer the
+ * resolution-driven attention term on top, we use 60% of the raw
+ * ``attentionPeakGb`` instead of 100%. The raw figure assumes a dense
+ * fp16 8-head slab (see ``EFFECTIVE_HEAD_SLAB_MULTIPLIER``); CUDA
+ * pipelines with override metadata in practice run with attention
+ * slicing / fp8 KV / sequence-parallel kernels that cut the resident
+ * peak by roughly that factor. Without the discount the HunyuanVideo
+ * 1280×720 × 33 frames NF4 case crosses the danger ratio even though
+ * the real run fits inside 24 GB on a 4090. */
+const CUDA_OVERRIDE_ATTENTION_DISCOUNT = 0.6;
+
+function estimateVideoRequestPeakGb(opts: {
+  modelFootprintGb: number;
+  attentionPeakGb: number;
+  device: VideoEffectiveDevice;
+  hasRuntimeFootprintOverride: boolean;
+}): number {
+  const { modelFootprintGb, attentionPeakGb, device, hasRuntimeFootprintOverride } = opts;
+  if (device === "cuda" && hasRuntimeFootprintOverride && modelFootprintGb > 0) {
+    // Catalog CUDA runtime footprints are phase peaks for pipelines with
+    // offload / sequential text-encoder handling. Adding the full attention
+    // estimate on top double-counts separate phases: Wan 2.2 5B peaks near
+    // 22 GB while text encoding, then drops before denoising. The 0.55×
+    // resident factor models the offloaded weights at denoise time;
+    // ``CUDA_OVERRIDE_ATTENTION_DISCOUNT`` accounts for attention slicing.
+    const slicedAttention = attentionPeakGb * CUDA_OVERRIDE_ATTENTION_DISCOUNT;
+    return Math.max(modelFootprintGb, modelFootprintGb * 0.55 + slicedAttention);
+  }
+  return modelFootprintGb + attentionPeakGb;
+}
+
 /**
  * Estimate whether a video generation request is in danger of detonating
  * the inference device. The estimate combines two memory terms:
@@ -508,26 +560,6 @@ function runtimeFootprintForDevice(opts: {
  * - LTX-Video (baseFootprint 2 GB) at 768×512 × 41 frames on 32 GB:
  *   stays "safe" — small model, proven to run on consumer Macs.
  */
-// FU-019 / NF4 footprint table. Mirrors backend
-// ``_BNB_NF4_VIDEO_TRANSFORMER_CLASSES`` in video_runtime.py — when the user
-// flips the NF4 toggle on a CUDA host with bitsandbytes installed, the
-// resident peak drops because the DiT transformer goes from bf16 (large) to
-// 4-bit. The exact savings differ per model because NF4 only quantizes the
-// transformer; the text encoder + VAE stay in their original dtype.
-//
-// Keys are the diffusers-mirror repo ids. Values are the resident peak in
-// GB once NF4 is applied, derived from the same upstream model-card numbers
-// the catalog quotes for the bf16 path. CUDA-only — MPS / CPU ignore the
-// flag and fall back to the un-quantized footprint.
-const NF4_VIDEO_RESIDENT_GB: Record<string, number> = {
-  "Wan-AI/Wan2.1-T2V-1.3B-Diffusers": 12.0,
-  "Wan-AI/Wan2.1-T2V-14B-Diffusers": 18.0,
-  "Wan-AI/Wan2.2-T2V-A14B-Diffusers": 18.0,
-  "Wan-AI/Wan2.2-TI2V-5B-Diffusers": 14.5,
-  "hunyuanvideo-community/HunyuanVideo": 22.0,
-  "Lightricks/LTX-Video": 8.0,
-};
-
 export function assessVideoGenerationSafety(opts: {
   width: number;
   height: number;
@@ -551,9 +583,9 @@ export function assessVideoGenerationSafety(opts: {
    * heuristic falls back to the bf16 / fp16 path even with the toggle on. */
   repo?: string | null;
   /** When true and the host is CUDA, swap the bf16 resident footprint for
-   * the model's NF4 entry from ``NF4_VIDEO_RESIDENT_GB``. Mirrors the
-   * backend's ``useNf4`` field on ``VideoGenerationConfig``. Ignored on
-   * MPS (Apple Silicon — bitsandbytes has no Metal kernels) and CPU. */
+   * the model's NF4 entry. Mirrors the backend's ``useNf4`` field on
+   * ``VideoGenerationConfig``. Ignored on MPS (Apple Silicon —
+   * bitsandbytes has no Metal kernels) and CPU. */
   useNf4?: boolean | null;
 }): VideoGenerationSafety {
   const {
@@ -610,29 +642,24 @@ export function assessVideoGenerationSafety(opts: {
       : 0;
   // Prefer explicit runtime footprint when the catalog supplies one — it
   // already reflects resident peak. Otherwise estimate from disk size.
-  const runtimeOverrideGb = runtimeFootprintForDevice({
+  let runtimeOverrideGb = runtimeFootprintForDevice({
     device: effectiveDevice,
     runtimeFootprintGb,
     runtimeFootprintMpsGb,
     runtimeFootprintCudaGb,
     runtimeFootprintCpuGb,
   });
-  // FU-019: NF4 footprint override — only applies on CUDA. On Apple
-  // Silicon (MPS) and CPU, bitsandbytes has no kernels so the toggle is
-  // a no-op; the user keeps the un-quantized footprint estimate.
-  const nf4OverrideGb =
-    useNf4
-    && effectiveDevice === "cuda"
-    && repo
-    && repo in NF4_VIDEO_RESIDENT_GB
-      ? NF4_VIDEO_RESIDENT_GB[repo]
-      : null;
+  if (effectiveDevice === "cuda" && useNf4 && runtimeOverrideGb != null) {
+    const nf4RuntimeFootprintGb = nf4RuntimeFootprintForRepo(repo, runtimeOverrideGb);
+    if (nf4RuntimeFootprintGb != null) {
+      runtimeOverrideGb = Math.min(runtimeOverrideGb, nf4RuntimeFootprintGb);
+    }
+  }
+  const hasRuntimeFootprintOverride = runtimeOverrideGb != null;
   const modelFootprintGb =
-    nf4OverrideGb != null
-      ? nf4OverrideGb
-      : runtimeOverrideGb != null
-        ? runtimeOverrideGb
-        : estimateResidentModelGb(baseFootprint, effectiveDevice);
+    runtimeOverrideGb == null
+      ? estimateResidentModelGb(baseFootprint, effectiveDevice)
+      : runtimeOverrideGb;
 
   if (
     !Number.isFinite(width)
@@ -660,7 +687,12 @@ export function assessVideoGenerationSafety(opts: {
     Math.ceil(width / 16) * Math.ceil(height / 16) * Math.ceil(numFrames / 4);
   const attentionPeakGb =
     estimatePeakAttentionBytes(latentTokens, effectiveDevice) / 1024 ** 3;
-  const estimatedPeakGb = modelFootprintGb + attentionPeakGb;
+  const estimatedPeakGb = estimateVideoRequestPeakGb({
+    modelFootprintGb,
+    attentionPeakGb,
+    device: effectiveDevice,
+    hasRuntimeFootprintOverride,
+  });
 
   // Risk thresholds expressed as a fraction of the effective memory
   // budget (the post-OS-and-overhead ceiling, see effectiveMemoryBudgetGb).
@@ -755,9 +787,12 @@ export function assessVideoGenerationSafety(opts: {
       Math.ceil(suggestedWidth / 16)
       * Math.ceil(suggestedHeight / 16)
       * Math.ceil(suggestedFrames / 4);
-    const peakGb =
-      modelFootprintGb
-      + estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3;
+    const peakGb = estimateVideoRequestPeakGb({
+      modelFootprintGb,
+      attentionPeakGb: estimatePeakAttentionBytes(tokens, effectiveDevice) / 1024 ** 3,
+      device: effectiveDevice,
+      hasRuntimeFootprintOverride,
+    });
     if (peakGb / budgetGb < safeRatioTarget) break;
     if (suggestedFrames > 17) {
       suggestedFrames = Math.max(17, Math.floor(suggestedFrames * 0.6));

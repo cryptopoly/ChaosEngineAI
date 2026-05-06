@@ -151,17 +151,53 @@ export default function App() {
         });
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       setCudaTorchResult({
         ok: false,
-        message: err instanceof Error ? err.message : String(err),
+        message,
         pythonVersion: null,
         noWheelForPython: false,
       });
-      // Raw result stays null on a thrown exception -- the panel
-      // suppresses itself when there's nothing to render and the
-      // top-level diagnostic banner shows the catch message.
+      // Always synthesize a raw result on exception so the
+      // CudaTorchLogPanel renders the failure instead of silently
+      // hiding -- previously any network error / 5xx / timeout left
+      // the panel showing nothing and the user couldn't tell whether
+      // the install was running, finished, or never reached the
+      // backend at all. The synthesized "attempt" carries the
+      // exception text so the panel surfaces it as a [FAIL] entry.
+      setCudaTorchRawResult({
+        ok: false,
+        output: message,
+        indexUrl: null,
+        attempts: [
+          { indexUrl: "(request never returned)", ok: false, output: message },
+        ],
+        requiresRestart: false,
+        pythonExecutable: "",
+        pythonVersion: null,
+        noWheelForPython: false,
+        capabilities: {},
+      });
     } finally {
       setInstallingCudaTorch(false);
+    }
+    // Refresh runtime status after install completes (success or
+    // failure). Without this, the warning banner keeps reading the
+    // pre-install torchInstallWarning value and the user thinks the
+    // button did nothing -- the cache is bound to whatever the
+    // probe last returned. Both Studios subscribe to their own
+    // runtime probes via useImageState / useVideoState; calling
+    // their refresh handlers re-runs the probe and the banner
+    // self-clears (or self-updates with a new failure mode).
+    try {
+      await imgState.refreshImageData();
+    } catch {
+      /* refresh is best-effort */
+    }
+    try {
+      await videoState.refreshVideoData();
+    } catch {
+      /* refresh is best-effort */
     }
   };
 

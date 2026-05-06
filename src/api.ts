@@ -263,12 +263,7 @@ export async function checkBackend(): Promise<boolean> {
     await fetchJson("/api/health", 15000, { includeAuth: false });
     return true;
   } catch {
-    try {
-      await fetchJson("/api/auth/session", 5000, { includeAuth: false });
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
@@ -460,69 +455,6 @@ export async function createSession(title?: string): Promise<ChatSession> {
   return result.session;
 }
 
-/**
- * Phase 2.5: generate a sibling variant for an assistant message
- * using a different (currently-loaded) model. Returns the updated
- * session payload with `messages[messageIndex].variants` populated.
- */
-export async function addMessageVariant(
-  sessionId: string,
-  payload: {
-    messageIndex: number;
-    modelRef: string;
-    modelName: string;
-    canonicalRepo?: string | null;
-    source?: string;
-    path?: string;
-    backend?: string;
-    maxTokens?: number;
-    temperature?: number;
-  },
-): Promise<ChatSession> {
-  const result = await postJson<CreateSessionResponse>(
-    `/api/chat/sessions/${encodeURIComponent(sessionId)}/variants`,
-    payload,
-    300000,
-  );
-  return result.session;
-}
-
-/**
- * Phase 3.6: ask the loaded model to re-read an assistant message
- * with a critic's framing and produce a Critique / Revised answer
- * pair. Result attaches as a "Delve critique" variant on the
- * message so the frontend's existing variant card surfaces it.
- */
-export async function delveMessage(
-  sessionId: string,
-  messageIndex: number,
-): Promise<ChatSession> {
-  const result = await postJson<CreateSessionResponse>(
-    `/api/chat/sessions/${encodeURIComponent(sessionId)}/delve/${messageIndex}`,
-    {},
-    300000,
-  );
-  return result.session;
-}
-
-/**
- * Phase 2.4: fork an existing thread at a specific message index.
- * Returns the new session, which the caller swaps active to so the
- * user can continue divergently. Parent linkage is preserved on
- * `parentSessionId` + `forkedAtMessageIndex`.
- */
-export async function forkChatSession(
-  sourceSessionId: string,
-  forkAtMessageIndex: number,
-  title?: string,
-): Promise<ChatSession> {
-  const result = await postJson<CreateSessionResponse>(
-    `/api/chat/sessions/${encodeURIComponent(sourceSessionId)}/fork`,
-    { forkAtMessageIndex, title },
-  );
-  return result.session;
-}
-
 export async function updateSession(sessionId: string, payload: UpdateSessionPayload): Promise<ChatSession> {
   const result = await patchJson<CreateSessionResponse>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, payload);
   return result.session;
@@ -532,58 +464,12 @@ export async function generateChat(payload: GeneratePayload): Promise<GenerateRe
   return await postJson<GenerateResponse>("/api/chat/generate", payload, 300000);
 }
 
-export type ChatStreamPhase = "prompt_eval" | "generating";
-
 export interface StreamCallbacks {
   onToken: (token: string) => void;
   onReasoning?: (reasoning: string) => void;
   onReasoningDone?: () => void;
-  onCancelled?: () => void;
-  /**
-   * Phase transition signal (Phase 2.0). Backend emits `prompt_eval`
-   * immediately when generation begins, then `generating` (with a
-   * `ttftSeconds` measurement) the moment the model produces its first
-   * token or reasoning fragment. Use this to render an explicit
-   * "Processing prompt..." indicator instead of a blank flashing cursor.
-   */
-  onPhase?: (phase: ChatStreamPhase, ttftSeconds?: number) => void;
-  /**
-   * Phase 2.0.5-G: mid-stream panic signal. Backend emits at most once
-   * per turn when memory crosses critical floors (free < 0.5 GB OR
-   * pressure > 96%). Stream continues; user decides whether to cancel.
-   */
-  onPanic?: (signal: { message: string; availableGb?: number; pressurePercent?: number }) => void;
-  /**
-   * Phase 2.0.5-I: mid-stream thermal warning. Backend emits when host
-   * is actively thermally throttling. Stream continues.
-   */
-  onThermalWarning?: (signal: { state: "moderate" | "critical"; message: string }) => void;
-  /**
-   * Phase 3.3: per-token logprob batches. The backend forwards
-   * llama-server's `logprobs.content` shape verbatim — each entry has
-   * the chosen token + top-k alternatives. Only fires when the request
-   * had `logprobs: N` set.
-   */
-  onTokenLogprobs?: (entries: Array<{
-    token: string | null;
-    logprob: number | null;
-    alternatives: Array<{ token: string | null; logprob: number | null }>;
-  }>) => void;
   onDone: (response: GenerateResponse) => void;
   onError: (error: string) => void;
-}
-
-/**
- * Ask the backend to cancel an in-flight chat generation. The streaming loop
- * checks this flag between events and stops within ~one tick, persisting
- * whatever output has accumulated. Safe to call when no generation is active.
- */
-export async function cancelChatGeneration(sessionId: string): Promise<{ sessionId: string; cancelled: boolean; wasActive: boolean }> {
-  return await postJson<{ sessionId: string; cancelled: boolean; wasActive: boolean }>(
-    `/api/chat/generate/${encodeURIComponent(sessionId)}/cancel`,
-    {},
-    10000,
-  );
 }
 
 export async function generateChatStream(
@@ -655,30 +541,6 @@ export async function generateChatStream(
           }
           if (event.reasoningDone) {
             callbacks.onReasoningDone?.();
-          }
-          if (event.cancelled) {
-            callbacks.onCancelled?.();
-          }
-          if (event.phase === "prompt_eval" || event.phase === "generating") {
-            const ttft = typeof event.ttftSeconds === "number" ? event.ttftSeconds : undefined;
-            callbacks.onPhase?.(event.phase, ttft);
-          }
-          if (event.panic === true && typeof event.message === "string") {
-            callbacks.onPanic?.({
-              message: event.message,
-              availableGb: typeof event.availableGb === "number" ? event.availableGb : undefined,
-              pressurePercent: typeof event.pressurePercent === "number" ? event.pressurePercent : undefined,
-            });
-          }
-          if (event.thermalWarning === true && typeof event.message === "string"
-              && (event.state === "moderate" || event.state === "critical")) {
-            callbacks.onThermalWarning?.({
-              state: event.state,
-              message: event.message,
-            });
-          }
-          if (Array.isArray(event.tokenLogprobs) && event.tokenLogprobs.length > 0) {
-            callbacks.onTokenLogprobs?.(event.tokenLogprobs);
           }
           if (event.done) {
             callbacks.onDone({
@@ -1087,102 +949,6 @@ export async function getLongLiveInstallStatus(): Promise<LongLiveJobState> {
   return await fetchJson<LongLiveJobState>("/api/setup/install-longlive/status", 10000);
 }
 
-// --- mlx-video Wan install (FU-025) -------------------------------
-//
-// Apple-Silicon only. Same pattern as LongLive: kick off a background
-// job (download raw HF weights → run mlx_video.models.wan_2.convert →
-// verify), poll status, render attempts via InstallLogPanel. The
-// shared LongLive panel variant works as-is — we just supply the
-// matching state shape.
-
-export interface WanInstallAttempt {
-  phase?: string;
-  package?: string;
-  /** Always undefined for Wan; carried for the shared InstallLogPanel union. */
-  indexUrl?: string;
-  ok: boolean;
-  output: string;
-}
-
-export interface WanInstallJobState {
-  id: string;
-  phase: "idle" | "preflight" | "downloading" | "converting" | "verifying" | "done" | "error";
-  message: string;
-  repo: string | null;
-  packageCurrent: string | null;
-  packageIndex: number;
-  packageTotal: number;
-  percent: number;
-  outputDir: string | null;
-  error: string | null;
-  startedAt: number;
-  finishedAt: number;
-  attempts: WanInstallAttempt[];
-  done: boolean;
-}
-
-export interface WanConvertStatusFields {
-  repo: string;
-  converted: boolean;
-  outputDir: string;
-  hasTransformer: boolean;
-  hasMoeExperts: boolean;
-  hasVae: boolean;
-  hasTextEncoder: boolean;
-  note: string | null;
-}
-
-export interface WanInventoryItem {
-  repo: string;
-  approxRawSizeGb: number | null;
-  converted: boolean;
-  status: WanConvertStatusFields;
-}
-
-export interface WanInventory {
-  items: WanInventoryItem[];
-  convertRoot: string;
-  rawRoot: string;
-}
-
-export async function startWanInstall(
-  repo: string,
-  options: {
-    dtype?: "bfloat16" | "float16" | "float32";
-    quantize?: boolean;
-    bits?: 4 | 8;
-    groupSize?: 32 | 64 | 128;
-    cleanupRaw?: boolean;
-  } = {},
-): Promise<WanInstallJobState> {
-  return await postJson<WanInstallJobState>(
-    "/api/setup/install-mlx-video-wan",
-    {
-      repo,
-      dtype: options.dtype ?? "bfloat16",
-      quantize: options.quantize ?? false,
-      bits: options.bits ?? 4,
-      groupSize: options.groupSize ?? 64,
-      cleanupRaw: options.cleanupRaw ?? false,
-    },
-    15000,
-  );
-}
-
-export async function getWanInstallStatus(): Promise<WanInstallJobState> {
-  return await fetchJson<WanInstallJobState>(
-    "/api/setup/install-mlx-video-wan/status",
-    10000,
-  );
-}
-
-export async function getWanInventory(): Promise<WanInventory> {
-  return await fetchJson<WanInventory>(
-    "/api/setup/mlx-video-wan/inventory",
-    10000,
-  );
-}
-
 // --- Diagnostics ---------------------------------------------------
 //
 // Surfaced in Settings → Diagnostics. The snapshot is a structured dump
@@ -1366,39 +1132,6 @@ export async function getModelMoveStatus(): Promise<ModelMoveJobState> {
 export async function refreshCapabilities(): Promise<Record<string, unknown>> {
   const result = await postJson<{ capabilities: Record<string, unknown> }>("/api/setup/refresh-capabilities");
   return result.capabilities;
-}
-
-/**
- * FU-022: LLM-based prompt enhancer. Rewrites a short user prompt into
- * the structured format the requested image / video model was trained
- * on. Apple Silicon path uses mlx_lm with a small instruct model
- * (default mlx-community/Qwen2.5-0.5B-Instruct-4bit, ~700 MB). Other
- * platforms use the backend's deterministic template fallback.
- */
-export interface PromptEnhanceResult {
-  enhanced: string;
-  note: string | null;
-  modelUsed: string | null;
-  family: string;
-}
-
-export async function enhancePromptViaLLM(payload: {
-  prompt: string;
-  repo: string;
-  modelId?: string;
-  maxTokens?: number;
-}): Promise<PromptEnhanceResult> {
-  // Long timeout: the first call materialises the model (~2-3s on
-  // M-series cold cache), subsequent calls are sub-second. 30s is
-  // enough headroom for first-call without waiting forever if the
-  // model fails to load.
-  const body = {
-    prompt: payload.prompt,
-    repo: payload.repo,
-    modelId: payload.modelId ?? null,
-    maxTokens: payload.maxTokens ?? 256,
-  };
-  return await postJson<PromptEnhanceResult>("/api/prompt/enhance", body, 30000);
 }
 
 export async function stopManagedBackend(): Promise<TauriBackendInfo | null> {

@@ -71,13 +71,6 @@ class ProgressTracker:
         # Optional run-shape metadata so the UI can render labels like
         # "Diffusing 3 images" without a separate request.
         self._run_label: str | None = None
-        # FU-018 part 2: live denoise thumbnail. Base64-encoded PNG bytes
-        # the runtime publishes from inside ``callback_on_step_end`` after
-        # decoding the current latents via TAESD/TAEHV. ``None`` when
-        # previewVae is off or the swap didn't apply. Cleared at
-        # ``begin()`` / ``finish()`` so a stale thumbnail from the previous
-        # run never leaks into the next one's first poll.
-        self._thumbnail: str | None = None
         # Cooperative cancel signal — the UI's Cancel button sets this via
         # /api/{images,video}/cancel; the pipeline's step-end callback reads
         # it and raises to abort the run. ``Event`` (not a plain bool)
@@ -104,7 +97,6 @@ class ProgressTracker:
             self._started_at = now
             self._updated_at = now
             self._run_label = run_label
-            self._thumbnail = None
             # Clear any cancel flag from a previous run — otherwise a user
             # who cancelled yesterday's gen would have today's first click
             # abort before it started.
@@ -139,18 +131,6 @@ class ProgressTracker:
                 self._total_steps = max(0, int(total))
             self._updated_at = time.time()
 
-    def set_thumbnail(self, thumbnail_b64: str | None) -> None:
-        """Publish a base64-encoded PNG of the current denoised state for
-        the UI to render. Called from ``callback_on_step_end`` after the
-        runtime decodes ``callback_kwargs["latents"]`` via the swapped-in
-        TAESD/TAEHV preview VAE. Pass ``None`` to clear the slot mid-run
-        (e.g. after a decode failure)."""
-        with self._lock:
-            if not self._active:
-                return
-            self._thumbnail = thumbnail_b64
-            self._updated_at = time.time()
-
     def finish(self, *, message: str = "") -> None:
         with self._lock:
             self._active = False
@@ -160,7 +140,6 @@ class ProgressTracker:
             self._total_steps = 0
             self._updated_at = time.time()
             self._run_label = None
-            self._thumbnail = None
             # Leave ``_cancel_event`` alone — the route handler needs to be
             # able to check whether the just-finished run was cancelled so
             # it can return the right status. ``begin()`` clears it for the
@@ -203,7 +182,6 @@ class ProgressTracker:
                 "elapsedSeconds": round(elapsed, 3),
                 "runLabel": self._run_label,
                 "cancelRequested": self._cancel_event.is_set(),
-                "thumbnail": self._thumbnail,
             }
 
 

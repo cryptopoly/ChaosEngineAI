@@ -115,7 +115,6 @@ interface RuntimeControlsProps {
   preview: PreviewMetrics;
   availableMemoryGb: number;
   totalMemoryGb: number;
-  gpuVramTotalGb?: number | null;
   compact?: boolean;
   showTemperature?: boolean;
   showPreview?: boolean;
@@ -214,7 +213,6 @@ export function RuntimeControls({
   preview,
   availableMemoryGb,
   totalMemoryGb,
-  gpuVramTotalGb,
   compact,
   showTemperature = true,
   showPreview = true,
@@ -641,7 +639,6 @@ export function RuntimeControls({
           preview={preview}
           availableMemoryGb={availableMemoryGb}
           totalMemoryGb={totalMemoryGb}
-          gpuVramTotalGb={gpuVramTotalGb}
           actualDiskSizeGb={diskSizeGb}
           compact={compact}
         />

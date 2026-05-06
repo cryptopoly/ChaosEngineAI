@@ -16,7 +16,6 @@ export interface LaunchModalProps {
   preview: PreviewMetrics;
   availableMemoryGb: number;
   totalMemoryGb: number;
-  gpuVramTotalGb?: number | null;
   availableCacheStrategies: SystemStats["availableCacheStrategies"] | undefined;
   dflashInfo?: SystemStats["dflash"];
   installingPackage: string | null;
@@ -38,7 +37,6 @@ export function LaunchModal({
   preview,
   availableMemoryGb,
   totalMemoryGb,
-  gpuVramTotalGb,
   availableCacheStrategies,
   dflashInfo,
   installingPackage,
@@ -77,7 +75,6 @@ export function LaunchModal({
       preview={preview}
       availableMemoryGb={availableMemoryGb}
       totalMemoryGb={totalMemoryGb}
-      gpuVramTotalGb={gpuVramTotalGb}
       availableCacheStrategies={availableCacheStrategies}
       dflashInfo={dflashInfo}
       installingPackage={installingPackage}

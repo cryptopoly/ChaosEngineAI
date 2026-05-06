@@ -30,17 +30,8 @@ if (-not (Test-Path .venv)) {
     Assert-LastExit "python -m venv"
 }
 
-# Use `python -m pip` rather than the bare `pip.exe` shim. On Windows,
-# pip.exe refuses to upgrade itself ("To modify pip, please run the
-# following command: <python> -m pip install --upgrade pip") because
-# it can't overwrite its own running .exe. Invoking pip as a python
-# module lets python hold the file handle and replace pip cleanly.
-# Same trick keeps subsequent pip calls consistent across pip
-# versions.
-$VenvPython = ".\.venv\Scripts\python.exe"
-
 Write-Host "==> Installing Python dependencies..."
-& $VenvPython -m pip install --upgrade pip -q
+.\.venv\Scripts\pip install --upgrade pip -q
 Assert-LastExit "pip install --upgrade pip"
 
 # vendor/ChaosEngine declares `license = "Apache-2.0"` per PEP 639. Setuptools
@@ -54,7 +45,7 @@ Assert-LastExit "pip install --upgrade pip"
 # dependency-warning heuristic surfaces that as a loud yellow warning on
 # every invocation after setuptools 82 is installed. 77..81 covers PEP 639
 # while staying inside torch's supported range.
-& $VenvPython -m pip install --upgrade "setuptools>=77,<82" wheel -q
+.\.venv\Scripts\pip install --upgrade "setuptools>=77,<82" wheel -q
 Assert-LastExit "pip install --upgrade setuptools wheel"
 
 # Chat-only bundle: no torch, no diffusers, no CUDA DLLs. The installer
@@ -66,12 +57,12 @@ Assert-LastExit "pip install --upgrade setuptools wheel"
 #
 # To include the GPU stack in the installer anyway (e.g. for air-gapped
 # deployments that can't download at runtime), set CHAOSENGINE_BUNDLE_GPU=1.
-& $VenvPython -m pip install -q -e ".[desktop]"
+.\.venv\Scripts\pip install -q -e ".[desktop]"
 Assert-LastExit "pip install -e .[desktop]"
 
 if ($env:CHAOSENGINE_BUNDLE_GPU -eq "1") {
     Write-Host "==> CHAOSENGINE_BUNDLE_GPU=1 -- also bundling [images] extras"
-    & $VenvPython -m pip install -q -e ".[desktop,images]"
+    .\.venv\Scripts\pip install -q -e ".[desktop,images]"
     Assert-LastExit "pip install -e .[desktop,images]"
 }
 

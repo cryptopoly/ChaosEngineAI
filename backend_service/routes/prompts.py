@@ -45,10 +45,6 @@ class PromptTemplateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     category: str = Field(default="General", max_length=80)
     fewShotExamples: list[dict[str, Any]] = Field(default_factory=list)
-    # Phase 2.7: optional variable declarations + preset samplers + preset model
-    variables: list[dict[str, Any]] = Field(default_factory=list)
-    presetSamplers: dict[str, Any] | None = None
-    presetModelRef: str | None = Field(default=None, max_length=200)
 
 
 # ---------------------------------------------------------------------------
@@ -98,57 +94,3 @@ async def delete_prompt(template_id: str, request: Request) -> dict[str, Any]:
     if not lib.delete(template_id):
         raise HTTPException(status_code=404, detail="Template not found")
     return {"deleted": True, "id": template_id}
-
-
-# ---------------------------------------------------------------------------
-# FU-022: LLM-based prompt enhancer
-# ---------------------------------------------------------------------------
-
-
-class PromptEnhanceRequest(BaseModel):
-    """Body for ``POST /api/prompt/enhance``. ``repo`` selects the
-    family-specific system prompt; ``modelId`` overrides the default
-    enhancer model (Apple Silicon dev machines all default to
-    ``mlx-community/Qwen2.5-0.5B-Instruct-4bit``)."""
-
-    prompt: str = Field(min_length=1, max_length=4000)
-    repo: str = Field(min_length=1, max_length=200)
-    modelId: str | None = None
-    maxTokens: int = Field(default=256, ge=32, le=1024)
-
-
-class PromptEnhanceResponse(BaseModel):
-    enhanced: str
-    note: str | None
-    modelUsed: str | None
-    family: str
-
-
-@router.post("/prompt/enhance")
-async def enhance_prompt(payload: PromptEnhanceRequest) -> PromptEnhanceResponse:
-    """Rewrite a short prompt into the structured format the requested
-    image / video model expects. Apple Silicon path uses ``mlx_lm`` —
-    other platforms get a graceful no-op + runtimeNote in the response.
-
-    Synchronous because the model is small (~700 MB / 0.5B params,
-    sub-second after a warm cache); first call pays the load cost.
-    """
-    from backend_service.helpers.prompt_enhancer import (
-        enhance_prompt as _enhance,
-        _DEFAULT_ENHANCER_MODEL,
-    )
-
-    model_id = payload.modelId or _DEFAULT_ENHANCER_MODEL
-    result = _enhance(
-        payload.prompt,
-        repo=payload.repo,
-        enabled=True,
-        model_id=model_id,
-        max_tokens=payload.maxTokens,
-    )
-    return PromptEnhanceResponse(
-        enhanced=result.enhanced,
-        note=result.note,
-        modelUsed=result.modelUsed,
-        family=result.family,
-    )

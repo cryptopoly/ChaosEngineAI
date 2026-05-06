@@ -80,7 +80,6 @@ import {
 } from "../utils";
 import type {
   TabId,
-  VideoCacheStrategyId,
   VideoGenerationPayload,
   VideoModelFamily,
   VideoModelVariant,
@@ -202,41 +201,6 @@ export function useVideoState(
   // preserve fine detail. Default-on; opt-out for users who prefer
   // constant CFG (matches the diffusers pipeline default behaviour).
   const [videoCfgDecay, setVideoCfgDecay] = useState<boolean>(true);
-  // FU-018: TAESD/TAEHV preview-decode VAE swap. Off by default —
-  // video users typically want full fidelity. When on, the engine
-  // swaps ``pipeline.vae`` for the matching tiny VAE (taew2_2 for
-  // Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo,
-  // taecogvideox / taemochi for the others) for the run.
-  const [videoPreviewVae, setVideoPreviewVae] = useState<boolean>(false);
-  // FU-024 FP8 layerwise casting on CUDA SM 8.9+. Mirrors the image-side
-  // toggle. No-op on Apple Silicon — backend gates the apply path on
-  // device == "cuda" + capability check.
-  const [videoFp8LayerwiseCasting, setVideoFp8LayerwiseCasting] = useState<boolean>(false);
-  // FU-015 + TeaCache. Cross-platform diffusion cache strategy id —
-  // ``"none"`` keeps the stock pipeline (default for upgrade
-  // compatibility), ``"fbcache"`` is the broad recommendation,
-  // ``"teacache"`` covers FLUX/LTX/Hunyuan/CogVideoX/Mochi via
-  // calibrated rescale tables. Hidden for the mlx-video subprocess
-  // path (LTX-2) since strategies attach to diffusers pipelines only.
-  const [videoCacheStrategy, setVideoCacheStrategy] =
-    useState<VideoCacheStrategyId>("none");
-  // ``null`` defers to the strategy default (FBCache 0.08 for video,
-  // TeaCache 0.4). Threshold slider only surfaces when a non-"none"
-  // strategy is selected.
-  const [videoCacheRelL1Thresh, setVideoCacheRelL1Thresh] =
-    useState<number | null>(null);
-  // STG (Spatial-Temporal Guidance) scale — only consumed by the
-  // mlx-video LTX-2 path. 1.0 keeps the upstream-recommended perturbed
-  // forward pass per step; 0.0 disables it for ~33 % faster dev runs at
-  // a mild quality cost. Distilled pipelines and non-LTX runtimes
-  // ignore the value, so the slider is hidden for those variants.
-  const [videoStgScale, setVideoStgScale] = useState<number>(1.0);
-  // Fast preview — when on for a variant that exposes
-  // ``fastPreviewSiblingId``, the generate request swaps the sibling id
-  // in (typically dev → distilled) so the user gets a quick draft of
-  // the same prompt/seed without picking the model manually. The toggle
-  // is hidden for variants without a sibling mapping.
-  const [videoFastPreview, setVideoFastPreview] = useState<boolean>(false);
   const [videoRuntimeStatus, setVideoRuntimeStatus] = useState<VideoRuntimeStatus>({
     activeEngine: "placeholder",
     realGenerationAvailable: false,
@@ -737,19 +701,8 @@ export function useVideoState(
       ? Math.max(256, Math.min(2048, Math.round(videoHeight)))
       : 480;
 
-    // Fast-preview swap: if the user toggled Fast preview on a variant
-    // that declares a ``fastPreviewSiblingId`` (typically the LTX-2 dev
-    // → distilled pair), submit the sibling id while keeping every
-    // other knob intact. The artifact card still attributes the result
-    // to whatever the backend reports rendered, so the user can see
-    // "distilled" surfaced even though they picked dev.
-    const fastPreviewTarget =
-      videoFastPreview && selectedVideoVariant.fastPreviewSiblingId
-        ? selectedVideoVariant.fastPreviewSiblingId
-        : selectedVideoVariant.id;
-
     const payload: VideoGenerationPayload = {
-      modelId: fastPreviewTarget,
+      modelId: selectedVideoVariant.id,
       prompt: trimmedPrompt,
       negativePrompt: videoNegativePrompt.trim() || undefined,
       width: safeWidth,
@@ -763,13 +716,6 @@ export function useVideoState(
       enableLtxRefiner: videoEnableLtxRefiner,
       enhancePrompt: videoEnhancePrompt,
       cfgDecay: videoCfgDecay,
-      stgScale: videoStgScale,
-      previewVae: videoPreviewVae,
-      fp8LayerwiseCasting: videoFp8LayerwiseCasting,
-      // FU-015: forward the cache knob. ``"none"`` collapses to null
-      // so the backend skips the strategy lookup entirely.
-      cacheStrategy: videoCacheStrategy === "none" ? null : videoCacheStrategy,
-      cacheRelL1Thresh: videoCacheRelL1Thresh,
     };
 
     // The pipeline is "loaded" when the runtime reports the same repo as
@@ -1034,19 +980,7 @@ export function useVideoState(
     videoEnhancePrompt,
     setVideoEnhancePrompt,
     videoCfgDecay,
-    videoCacheStrategy,
-    setVideoCacheStrategy,
-    videoCacheRelL1Thresh,
-    setVideoCacheRelL1Thresh,
     setVideoCfgDecay,
-    videoPreviewVae,
-    setVideoPreviewVae,
-    videoFp8LayerwiseCasting,
-    setVideoFp8LayerwiseCasting,
-    videoStgScale,
-    setVideoStgScale,
-    videoFastPreview,
-    setVideoFastPreview,
     videoRuntimeStatus,
     setVideoRuntimeStatus,
     videoBusyLabel,

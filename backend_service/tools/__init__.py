@@ -8,27 +8,7 @@ through the registry, and injects results back into the conversation.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any
-
-
-# Phase 2.8: rich tool output payload.
-#
-# `text` is what the language model sees on the next turn (preserves
-# the existing contract — the agent loop feeds tool results back as
-# message content). `render_as` + `data` are an optional UI hint the
-# frontend's `ToolCallCard` reads to render a table / code block /
-# markdown / image / chart instead of dumping raw JSON. Tools that
-# don't override `execute_structured` continue to return plain text
-# and the UI falls back to the existing collapsible-JSON view.
-RenderAsLiteral = str  # "table" | "code" | "markdown" | "image" | "chart" | "json"
-
-
-@dataclass
-class StructuredToolOutput:
-    text: str
-    render_as: RenderAsLiteral = "json"
-    data: dict[str, Any] | None = None
 
 
 class BaseTool(ABC):
@@ -52,26 +32,6 @@ class BaseTool(ABC):
     def execute(self, **kwargs: Any) -> str:
         """Run the tool with the given arguments and return a text result."""
 
-    def execute_structured(self, **kwargs: Any) -> StructuredToolOutput | None:
-        """Phase 2.8: optional rich-output entry point.
-
-        Tools that want the UI to render a table / code block / markdown
-        instead of a JSON dump override this to return a
-        `StructuredToolOutput`. The agent loop calls this first; when
-        it returns None (the default), the loop falls back to
-        `execute(...)` and treats the result as plain text. Built-in
-        tools that haven't been migrated yet keep working unchanged.
-        """
-        return None
-
-    @property
-    def provenance(self) -> str:
-        """Phase 2.10: where this tool came from. Built-ins return
-        ``"builtin"``; MCP-adapted tools override to ``"mcp:<server>"``.
-        Surfaced via /api/tools so the UI can render a source badge.
-        """
-        return "builtin"
-
     def openai_schema(self) -> dict[str, Any]:
         """Return the OpenAI function-calling representation of this tool."""
         return {
@@ -89,17 +49,9 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: dict[str, BaseTool] = {}
-        # Phase 2.10: keep MCP-sourced tools in a parallel set so we
-        # can refresh them (re-spawn server, swap configs) without
-        # disturbing the built-in registrations.
-        self._mcp_tool_names: set[str] = set()
 
     def register(self, tool: BaseTool) -> None:
         self._tools[tool.name] = tool
-
-    def unregister(self, name: str) -> None:
-        self._tools.pop(name, None)
-        self._mcp_tool_names.discard(name)
 
     def get(self, name: str) -> BaseTool | None:
         return self._tools.get(name)
@@ -128,20 +80,6 @@ class ToolRegistry:
         for cls in tool_classes:
             instance = cls()
             self.register(instance)
-
-    def replace_mcp_tools(self, tools: list[BaseTool]) -> None:
-        """Phase 2.10: swap the registry's MCP-sourced tools.
-
-        Drops every previously-registered MCP tool and registers the
-        provided list. Built-in tools are untouched. Called whenever
-        the user updates `mcpServers` in settings or the app starts up.
-        """
-        for stale in list(self._mcp_tool_names):
-            self._tools.pop(stale, None)
-        self._mcp_tool_names.clear()
-        for tool in tools:
-            self.register(tool)
-            self._mcp_tool_names.add(tool.name)
 
 
 # Module-level singleton

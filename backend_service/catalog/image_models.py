@@ -83,34 +83,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 2.4,
                 "releaseDate": "2024-10",
             },
-            {
-                # FU-008 image subset: sd.cpp engine routes via the
-                # ``sd`` binary built by ``./scripts/build-sdcpp.sh``.
-                # Cross-platform — Metal on Apple Silicon, CUDA on
-                # Linux/Windows. Pairs the city96 GGUF transformer with
-                # the binary's text-encoder + VAE handling so the user
-                # avoids the diffusers Python overhead entirely.
-                "id": "black-forest-labs/FLUX.1-schnell-sdcpp-q4km",
-                "familyId": "flux-fast",
-                "name": "FLUX.1 Schnell · sd.cpp Q4_K_M",
-                "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-schnell",
-                "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-schnell-gguf",
-                "ggufFile": "flux1-schnell-Q4_K_M.gguf",
-                "link": "https://github.com/leejet/stable-diffusion.cpp",
-                "runtime": "stable-diffusion.cpp (subprocess)",
-                "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 6.8,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
-                ),
-                "estimatedGenerationSeconds": 4.5,
-                "releaseDate": "2026-05",
-            },
         ],
     },
     {
@@ -194,28 +166,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-09",
             },
             {
-                "id": "black-forest-labs/FLUX.1-dev-sdcpp-q4km",
-                "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · sd.cpp Q4_K_M",
-                "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-dev",
-                "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-dev-gguf",
-                "ggufFile": "flux1-dev-Q4_K_M.gguf",
-                "link": "https://github.com/leejet/stable-diffusion.cpp",
-                "runtime": "stable-diffusion.cpp (subprocess)",
-                "styleTags": ["general", "detailed", "gguf", "cross-platform"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 7.2,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
-                ),
-                "estimatedGenerationSeconds": 6.0,
-                "releaseDate": "2026-05",
-            },
-            {
                 "id": "black-forest-labs/FLUX.1-dev-mflux",
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · mflux (MLX)",
@@ -231,112 +181,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Apple Silicon only — native MLX runtime, 2-3x faster than diffusers+MPS.",
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2024-10",
-            },
-            # FU-019 distill LoRAs. Drop FLUX.1-dev from 25-step base
-            # quality to 8-step quality. Stacks cleanly with NF4
-            # (CUDA) / int8wo (MPS) / GGUF — the LoRA is loaded onto
-            # the already-quantized transformer at fuse time. CFG and
-            # step counts come from the LoRA author's recommended
-            # workflow.
-            {
-                "id": "black-forest-labs/FLUX.1-dev-hyper-sd-8step",
-                "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · Hyper-SD 8-step",
-                "provider": "Black Forest Labs · ByteDance",
-                "repo": "black-forest-labs/FLUX.1-dev",
-                "loraRepo": "ByteDance/Hyper-SD",
-                "loraFile": "Hyper-FLUX.1-dev-8steps-lora.safetensors",
-                "loraScale": 0.125,
-                "defaultSteps": 8,
-                "cfgOverride": 3.5,
-                "link": "https://huggingface.co/ByteDance/Hyper-SD",
-                "runtime": "diffusers + Hyper-SD LoRA",
-                "styleTags": ["general", "detailed", "fast", "lora"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 23.8,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "8-step Hyper-SD distillation LoRA fused into FLUX.1 Dev. "
-                    "Matches base FLUX.1 Dev 25-step quality at ≈3× speed. "
-                    "Stacks with NF4/int8wo/GGUF."
-                ),
-                "estimatedGenerationSeconds": 2.4,
-                "releaseDate": "2024-10",
-            },
-            {
-                "id": "black-forest-labs/FLUX.1-dev-turbo-alpha",
-                "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · Turbo Alpha",
-                "provider": "Black Forest Labs · alimama-creative",
-                "repo": "black-forest-labs/FLUX.1-dev",
-                "loraRepo": "alimama-creative/FLUX.1-Turbo-Alpha",
-                "loraFile": "diffusion_pytorch_model.safetensors",
-                "loraScale": 1.0,
-                "defaultSteps": 8,
-                "cfgOverride": 3.5,
-                "link": "https://huggingface.co/alimama-creative/FLUX.1-Turbo-Alpha",
-                "runtime": "diffusers + FLUX.1-Turbo-Alpha LoRA",
-                "styleTags": ["general", "detailed", "fast", "lora"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 23.8,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "alimama's 8-step Turbo Alpha LoRA fused into FLUX.1 Dev. "
-                    "Same wall-time win as Hyper-SD with slightly different "
-                    "stylistic bias — try both and pick by output."
-                ),
-                "estimatedGenerationSeconds": 2.4,
-                "releaseDate": "2025-02",
-            },
-            # FU-023 Nunchaku SVDQuant — 4-bit precompiled INT4 weights.
-            # CUDA only (Ada/Hopper/Blackwell). ~3× over NF4 on FLUX.1-dev,
-            # quality near bf16. Variant pins the upstream MIT-Han-Lab
-            # snapshot; runtime falls back to the standard FLUX.1 Dev
-            # path when nunchaku is unavailable so MPS / CPU users see
-            # the same final image (just slower).
-            {
-                "id": "black-forest-labs/FLUX.1-dev-nunchaku-int4",
-                "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · Nunchaku INT4 (CUDA)",
-                "provider": "Black Forest Labs · MIT-Han-Lab",
-                "repo": "black-forest-labs/FLUX.1-dev",
-                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-dev",
-                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-dev",
-                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
-                "styleTags": ["general", "detailed", "fast", "cuda", "int4"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Nunchaku SVDQuant INT4 — ~3× over NF4 on FLUX.1-dev, "
-                    "quality near bf16. CUDA only (RTX 4070+ / 4090 / "
-                    "Hopper / Blackwell). Falls back to bf16 / NF4 / int8wo "
-                    "automatically on Apple Silicon and CPU."
-                ),
-                "estimatedGenerationSeconds": 1.4,
-                "releaseDate": "2026-01",
-            },
-            {
-                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
-                "familyId": "flux-schnell",
-                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
-                "provider": "Black Forest Labs · MIT-Han-Lab",
-                "repo": "black-forest-labs/FLUX.1-schnell",
-                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
-                "defaultSteps": 4,
-                "cfgOverride": 0.0,
-                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
-                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
-                "styleTags": ["general", "fast", "cuda", "int4"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
-                    "4090 with quality near the bf16 baseline. CUDA only."
-                ),
-                "estimatedGenerationSeconds": 0.7,
-                "releaseDate": "2026-01",
             },
         ],
     },
@@ -521,57 +365,6 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "releaseDate": "2026-02",
     },
     {
-        # Apache 2.0 4B FLUX.2 — fixed 4-step inference, ~13 GB VRAM.
-        # Smallest FLUX.2 lane; first one suitable for catalog ship without
-        # gating. Pipeline class is ``Flux2KleinPipeline`` (new in diffusers
-        # 0.38+); existing PIPELINE_REGISTRY routing for FLUX.2 family
-        # covers the dispatch.
-        "repo": "black-forest-labs/FLUX.2-klein-4B",
-        "name": "FLUX.2 Klein 4B",
-        "provider": "Black Forest Labs",
-        "styleTags": ["general", "flux", "fast", "small"],
-        "taskSupport": ["txt2img", "img2img"],
-        "sizeGb": 14.5,
-        "runtimeFootprintGb": 13.0,
-        "runtimeFootprintMpsGb": 16.0,
-        "runtimeFootprintCpuGb": 22.0,
-        "coreWeightsGb": 14.5,
-        "repoSizeGb": 14.6,
-        "recommendedResolution": "1024x1024",
-        "note": (
-            "Apache 2.0 4B FLUX.2 — fixed 4-step inference, sub-second "
-            "images on RTX 3090/4070+. Smaller and shippable cousin of "
-            "the 9B Klein variant."
-        ),
-        "gated": False,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-        "releaseDate": "2026-01",
-    },
-    {
-        "repo": "fal/FLUX.2-dev-Turbo",
-        "name": "FLUX.2 Dev · Turbo",
-        "provider": "Black Forest Labs · fal",
-        "styleTags": ["general", "fast", "flux"],
-        "taskSupport": ["txt2img", "img2img"],
-        "sizeGb": 49.5,
-        "runtimeFootprintGb": 50.0,
-        "runtimeFootprintMpsGb": 60.0,
-        "runtimeFootprintCpuGb": 70.0,
-        "coreWeightsGb": 49.5,
-        "repoSizeGb": 49.6,
-        "recommendedResolution": "1024x1024",
-        "note": (
-            "fal's Turbo distillation of FLUX.2 Dev — 8-step Turbo Alpha "
-            "matches the base 25-step quality. Tracked for catalog refresh "
-            "(FU-019 catalog round)."
-        ),
-        "gated": False,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-        "releaseDate": "2025-12",
-    },
-    {
         "repo": "Tongyi-MAI/Z-Image-Turbo",
         "name": "Z-Image-Turbo",
         "provider": "Tongyi-MAI",
@@ -642,33 +435,6 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-08",
-    },
-    {
-        # Dec 2025 refresh of Qwen-Image. Same QwenImagePipeline architecture
-        # (9-shard transformer, Qwen2.5-VL text encoder) and Apache 2.0
-        # license as the base Qwen-Image entry above; weights tuned for
-        # stronger prompt adherence on multi-element scenes and CJK glyph
-        # rendering. Uses Qwen's YYMM dated-release convention (cf.
-        # Qwen-Image-Edit-2511 / -2509).
-        "repo": "Qwen/Qwen-Image-2512",
-        "name": "Qwen-Image (Dec 2025)",
-        "provider": "Qwen",
-        "styleTags": ["general", "detailed", "qwenimage", "refreshed"],
-        "taskSupport": ["txt2img"],
-        "sizeGb": 57.7,
-        "runtimeFootprintGb": 58.0,
-        "runtimeFootprintMpsGb": 72.0,
-        "runtimeFootprintCpuGb": 72.0,
-        "recommendedResolution": "1024x1024",
-        "note": (
-            "December 2025 Qwen-Image refresh with stronger prompt "
-            "adherence and improved CJK rendering. Apache 2.0; same "
-            "QwenImagePipeline as base Qwen-Image."
-        ),
-        "gated": False,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-        "releaseDate": "2025-12",
     },
     {
         "repo": "Qwen/Qwen-Image-Edit",

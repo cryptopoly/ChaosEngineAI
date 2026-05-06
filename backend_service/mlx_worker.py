@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import base64
-import binascii
 import importlib.util
 import io
 import json
 import os
 import re
 import sys
-import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -18,8 +15,6 @@ from backend_service.reasoning_split import (
     RAW_REASONING_HEADING_RE,
     ThinkingTokenFilter,
     ThinkingStreamResult,
-    reasoning_delimiters_for,
-    strip_harmony_boilerplate,
     strip_thinking_tokens as _strip_thinking_tokens,
 )
 
@@ -86,105 +81,104 @@ def _sanitize_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:
     return sanitized
 
 _TRANSCRIPT_ROLE_LINE_RE = re.compile(r"^\s*(SYSTEM|USER|ASSISTANT):\s*(.*)$", re.IGNORECASE)
-
-# Phase 2.0.5-F: RunawayGuard now lives in `backend_service.runaway_guard`
-# so the llama.cpp stream loop in `state.py` can use the same detector. Re-
-# export the symbol here so existing callers / tests keep working without
-# import-path churn.
-from backend_service.runaway_guard import RunawayGuard  # noqa: E402,F401
+_RAW_THINKING_HEADING_RE = RAW_REASONING_HEADING_RE
 
 
-def _extract_top_logprobs(
-    response: Any,
-    tokenizer: Any,
-    top_k: int,
-) -> list[dict[str, Any]] | None:
-    """Phase 3.3 follow-up: extract top-k logprob entries from an
-    mlx-lm GenerationResponse for the just-emitted token.
+_REASONING_LINE_RE = re.compile(
+    r"^\s*(?:"
+    r"wait,|okay[,.]|actually[,.]|let me|i (?:need to|should|will|must|can)"
+    r"|so (?:i |the )|hmm|looking|check(?:ing)?|(?:re)?evaluat"
+    r"|draft(?:ing)?|refin(?:ing|e)|final (?:check|answer|decision|polish)"
+    r")",
+    re.IGNORECASE,
+)
 
-    Returns a list with a single entry shaped like the OpenAI
-    `logprobs.content[]` payload — token + logprob + alternatives —
-    so the frontend overlay treats MLX and llama-server output
-    identically. Returns None on any failure (missing logprobs,
-    unsupported tensor shape, etc.) — logprobs are diagnostic, not
-    correctness-critical.
+
+class RunawayGuard:
+    """Detect and abort runaway generation loops in streamed output.
+
+    Catches three failure modes:
+    1. Repeated identical lines (e.g. "Wait, I will write 'Qwen3.5'." x100)
+    2. Near-duplicate reasoning loops (lines starting with "Wait," / "Okay," etc.)
+    3. Raw thinking-heading dumps (e.g. "Thinking Process:" at generation start)
+
+    Raises ``RuntimeError`` when a runaway is detected.
     """
-    if top_k <= 0:
-        return None
-    logprobs = getattr(response, "logprobs", None)
-    chosen_token_id = getattr(response, "token", None)
-    if logprobs is None or chosen_token_id is None:
-        return None
-    try:
-        import numpy as np  # noqa: WPS433 — keep import lazy
 
-        arr = np.array(logprobs, dtype=np.float32)
-        if arr.ndim != 1 or arr.size == 0:
-            return None
-        # argpartition gets top-k unsorted; sort just the slice.
-        k = min(int(top_k), int(arr.size))
-        if k >= int(arr.size):
-            top_idx = np.argsort(-arr)
+    def __init__(
+        self,
+        *,
+        min_line_length: int = 30,
+        max_repeats: int = 4,
+        max_reasoning_lines: int = 20,
+    ) -> None:
+        self._min_line_length = min_line_length
+        self._max_repeats = max_repeats
+        self._max_reasoning_lines = max_reasoning_lines
+        self._buffer = ""
+        self._last_line: str | None = None
+        self._repeat_count = 0
+        self._reasoning_streak = 0
+        self._total_chars = 0
+        self._thinking_heading_seen = False
+
+    def feed(self, text: str) -> None:
+        """Feed a chunk of streamed text. Raises on detected runaway."""
+        self._total_chars += len(text)
+        self._buffer += text
+
+        # Check for raw thinking heading at the start of generation
+        if not self._thinking_heading_seen and self._total_chars < 200:
+            if _RAW_THINKING_HEADING_RE.search(self._buffer):
+                self._thinking_heading_seen = True
+
+        # Check for repeated / reasoning lines
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            self._check_line(line)
+
+    def flush(self) -> None:
+        if self._buffer:
+            self._check_line(self._buffer)
+            self._buffer = ""
+
+    @property
+    def saw_thinking_heading(self) -> bool:
+        return self._thinking_heading_seen
+
+    def _check_line(self, line: str) -> None:
+        normalized = " ".join(line.strip().lower().split())
+        if len(normalized) < self._min_line_length:
+            # Short lines still decay the reasoning streak so alternating
+            # "Wait, ..." / "31536000 seconds." patterns get caught.
+            self._reasoning_streak = max(0, self._reasoning_streak - 1)
+            return
+
+        # Exact-match repetition
+        if normalized == self._last_line:
+            self._repeat_count += 1
         else:
-            partial = np.argpartition(-arr, k - 1)[:k]
-            top_idx = partial[np.argsort(-arr[partial])]
-        alternatives: list[dict[str, Any]] = []
-        for token_id in top_idx[:k].tolist():
-            try:
-                token_text = tokenizer.decode([int(token_id)])
-            except Exception:
-                token_text = ""
-            alternatives.append({
-                "token": token_text,
-                "logprob": float(arr[token_id]),
-            })
-        try:
-            chosen_text = tokenizer.decode([int(chosen_token_id)])
-        except Exception:
-            chosen_text = ""
-        chosen_logprob: float | None
-        try:
-            chosen_logprob = float(arr[int(chosen_token_id)])
-        except Exception:
-            chosen_logprob = None
-        return [{
-            "token": chosen_text,
-            "logprob": chosen_logprob,
-            "alternatives": alternatives,
-        }]
-    except Exception:
-        return None
+            self._last_line = normalized
+            self._repeat_count = 1
 
+        if self._repeat_count >= self._max_repeats:
+            raise RuntimeError(
+                "Stopped runaway generation: model is repeating itself."
+            )
 
-def _build_mlx_sampler(request: dict[str, Any]) -> Any:
-    """Phase 2.2: build an mlx-lm sampler with whichever Phase 2.2 sampler
-    overrides the installed `make_sampler` actually supports.
+        # Near-duplicate reasoning loop detection
+        # Lines like "Wait, I should...", "Okay, I'll...", "Actually, looking..."
+        # Non-reasoning lines decay the streak by 1 instead of resetting,
+        # so alternating "Wait, ..." / "31536000 seconds." still trips the guard.
+        if _REASONING_LINE_RE.match(normalized):
+            self._reasoning_streak += 2
+        else:
+            self._reasoning_streak = max(0, self._reasoning_streak - 1)
 
-    `mlx_lm.sample_utils.make_sampler` has gained kwargs across versions
-    (top_p, top_k, min_p, ...). Call sites used to pass `temp` only — we
-    now collect the request's `samplers` block and forward whatever
-    survives a signature filter, so newer mlx-lm builds get the full
-    sampler chain while older builds fall back gracefully.
-    """
-    import inspect
-
-    from mlx_lm.sample_utils import make_sampler
-
-    kwargs: dict[str, Any] = {"temp": float(request.get("temperature") or 0.0)}
-    samplers = request.get("samplers") or {}
-    if isinstance(samplers, dict):
-        for src in ("top_p", "top_k", "min_p"):
-            value = samplers.get(src)
-            if value is not None:
-                kwargs[src] = value
-
-    try:
-        sig = inspect.signature(make_sampler)
-        allowed = set(sig.parameters.keys())
-        filtered = {k: v for k, v in kwargs.items() if k in allowed}
-    except (TypeError, ValueError):
-        filtered = {"temp": kwargs["temp"]}
-    return make_sampler(**filtered)
+        if self._reasoning_streak >= self._max_reasoning_lines:
+            raise RuntimeError(
+                "Stopped runaway generation: model is stuck in a reasoning loop."
+            )
 
 
 def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
@@ -323,19 +317,7 @@ def _build_prompt_text(
     history: list[dict[str, Any]],
     prompt: str,
     system_prompt: str | None,
-    model_ref: str | None = None,
 ) -> tuple[str, str | None]:
-    # Phase 3.8: detect chat-template quirks at render time and apply
-    # the matching auto-fix. Today: Gemma family rejects the system role
-    # entirely, so we fold the system prompt into the first user message
-    # before handing off to apply_chat_template. The report's
-    # `to_runtime_note()` surfaces the fix to the UI's substrate badge.
-    from backend_service.helpers.chat_template import (
-        fold_system_into_first_user,
-        inspect_chat_template,
-        is_gemma_family,
-    )
-
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -347,25 +329,19 @@ def _build_prompt_text(
     messages.append({"role": "user", "content": prompt})
     messages = _sanitize_messages(messages)
 
-    template_note: str | None = None
-    if is_gemma_family(model_ref):
-        messages = fold_system_into_first_user(messages)
-        report = inspect_chat_template(getattr(tokenizer, "chat_template", None), model_ref)
-        template_note = report.to_runtime_note()
-
     apply_template = getattr(tokenizer, "apply_chat_template", None)
     if callable(apply_template):
         try:
             rendered = apply_template(messages, tokenize=False, add_generation_prompt=True)
             if isinstance(rendered, str):
-                return rendered, template_note
+                return rendered, None
         except TypeError:
             try:
                 rendered = apply_template(messages, add_generation_prompt=True)
                 if isinstance(rendered, str):
-                    return rendered, template_note
+                    return rendered, None
                 if isinstance(rendered, list):
-                    return tokenizer.decode(rendered), template_note
+                    return tokenizer.decode(rendered), None
             except Exception as exc:  # pragma: no cover - exercised via fallback path below
                 reason = str(exc).strip() or exc.__class__.__name__
                 return (
@@ -520,15 +496,6 @@ class WorkerState:
     def __init__(self) -> None:
         self.model = None
         self.tokenizer = None
-        # Multimodal (vision-language) state. ``processor`` is the HF
-        # AutoProcessor returned by mlx_vlm.load (image preprocessor +
-        # tokenizer). ``is_multimodal`` flips the generate path to
-        # ``_generate_multimodal`` / ``_stream_generate_multimodal``
-        # which decode the chat ``images`` field into temp files and
-        # call ``mlx_vlm.generate`` / ``stream_generate``. Stays
-        # ``None`` / ``False`` for plain text-only mlx-lm models.
-        self.processor = None
-        self.is_multimodal = False
         self.config: dict[str, Any] | None = None
         self.cache_strategy = "native"
         self.cache_bits = 0
@@ -541,17 +508,6 @@ class WorkerState:
         self.tree_budget = 0
         self._ddtree_draft = None     # DFlashDraftModel for DDTree
         self._ddtree_target = None    # target model loaded via dflash_mlx for DDTree
-        # FU-002: TriAttention MLX kv_budget. Number of KV positions kept
-        # per layer; older positions get scored + evicted by the
-        # apply_triattention_mlx compressor. ~2048 is the upstream default
-        # and matches the spike result on Qwen2.5-0.5B (2.6x speedup,
-        # identical output).
-        self.kv_budget = 2048
-        # Bug 2 / Gemma 4 channel-token leak: track the currently loaded
-        # model ref so the reasoning split layer can pick model-specific
-        # delimiters via ``reasoning_delimiters_for``. Default
-        # (``<think>...</think>``) still applies when ``None``.
-        self._loaded_model_ref: str | None = None
 
     def handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
         op = request.get("op")
@@ -580,10 +536,6 @@ class WorkerState:
         requested_cache_bits = int(request.get("cacheBits", 0))
         requested_fp16_layers = int(request.get("fp16Layers", 0))
         requested_fused_attention = bool(request.get("fusedAttention", False))
-        # FU-002: kv_budget for the TriAttention MLX compressor. Ignored
-        # when cache_strategy != "triattention". Falls back to 2048 (the
-        # upstream default validated by scripts/spike_triattention_mlx.py).
-        self.kv_budget = max(64, int(request.get("kvBudget", 2048)))
         self.context_tokens = int(request.get("contextTokens", 8192))
         self.speculative_decoding = bool(request.get("speculativeDecoding", False))
         dflash_draft_model = request.get("dflashDraftModel")
@@ -704,51 +656,10 @@ class WorkerState:
 
         heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
         heartbeat_thread.start()
-
-        # Multimodal branch: vision-capable repos (Gemma 4, Qwen2.5-VL,
-        # LLaVA family) load via mlx_vlm.load → ``(model, processor)``.
-        # The processor wraps the HF tokenizer so downstream code that
-        # reads ``self.tokenizer`` keeps working. When the multimodal
-        # extra isn't installed, fall back to mlx_lm.load with a
-        # runtimeNote so the user gets a clear "install mlx-vlm" hint.
-        from backend_service.helpers.chat_template import is_multimodal_family
-        multimodal_note: str | None = None
-        use_multimodal = is_multimodal_family(target)
         try:
             # Reject quantisation formats that MLX cannot dequantize.
             _reject_unsupported_quant(local_path)
-            if use_multimodal:
-                try:
-                    from mlx_vlm import load as mlx_vlm_load  # type: ignore[import-untyped]
-                except ImportError as exc:
-                    multimodal_note = (
-                        f"Vision model {target!r} requires mlx-vlm but the "
-                        f"package isn't installed ({exc}). Falling back to "
-                        "mlx_lm text-only load — image inputs will be ignored."
-                    )
-                    use_multimodal = False
-
-            if use_multimodal:
-                self.model, self.processor = mlx_vlm_load(local_path)
-                self.tokenizer = getattr(self.processor, "tokenizer", None)
-                # mlx_vlm.load doesn't return a config dict — read it from
-                # the snapshot directly so prompt-formatter + chat-template
-                # paths can still introspect (e.g. ``num_attention_heads``
-                # for cache estimation).
-                config_path = Path(local_path) / "config.json"
-                if config_path.exists():
-                    try:
-                        self.config = json.loads(config_path.read_text())
-                    except Exception:
-                        self.config = {}
-                else:
-                    self.config = {}
-                self.is_multimodal = True
-            else:
-                self.model, self.tokenizer, self.config = load(local_path, return_config=True)
-                self.processor = None
-                self.is_multimodal = False
-            self._loaded_model_ref = target
+            self.model, self.tokenizer, self.config = load(local_path, return_config=True)
         finally:
             load_done.set()
             heartbeat_thread.join(timeout=0.5)
@@ -820,9 +731,6 @@ class WorkerState:
     def unload_model(self) -> dict[str, Any]:
         self.model = None
         self.tokenizer = None
-        self.processor = None
-        self.is_multimodal = False
-        self._loaded_model_ref = None
         self._dflash_generator = None
         self._dflash_target = None
         self._ddtree_draft = None
@@ -874,14 +782,6 @@ class WorkerState:
             self.fp16_layers = 0
             return None
 
-        # FU-002: TriAttention MLX path. Doesn't make a prompt_cache
-        # object — instead applies the compressor in-place to the loaded
-        # model so subsequent ``mlx_lm.generate`` calls run against the
-        # wrapped attention. Falls back to native on any failure (model
-        # missing, triattention unavailable, apply raises).
-        if self.cache_strategy == "triattention":
-            return self._apply_triattention_mlx_compressor()
-
         preview_cache, note = self._make_cache()
         if preview_cache is not None:
             preview_cache = None
@@ -894,43 +794,6 @@ class WorkerState:
             self.fp16_layers = 0
 
         return note
-
-    def _apply_triattention_mlx_compressor(self) -> str | None:
-        """Apply ``apply_triattention_mlx`` to the loaded model in-place.
-
-        Returns a runtimeNote describing what happened. On any failure
-        the worker falls back to the native cache so generation keeps
-        working without TriAttention.
-        """
-        if self.model is None:
-            self.cache_strategy = "native"
-            self.cache_bits = 0
-            self.fp16_layers = 0
-            return "TriAttention requested but no model is loaded; using native cache."
-        try:
-            from cache_compression import registry
-        except Exception as exc:
-            self.cache_strategy = "native"
-            return f"TriAttention failed to import strategy registry ({exc}); using native cache."
-        strategy = registry.get("triattention")
-        if strategy is None or not strategy.is_available():
-            self.cache_strategy = "native"
-            return (
-                "TriAttention is not available in this runtime "
-                "(install ``triattention`` + ``mlx_lm``); using native cache."
-            )
-        try:
-            apply_compressor = getattr(strategy, "apply_mlx_compressor", None)
-            if apply_compressor is None:
-                raise AttributeError("strategy.apply_mlx_compressor missing")
-            apply_compressor(self.model, kv_budget=self.kv_budget)
-        except Exception as exc:
-            self.cache_strategy = "native"
-            return (
-                f"TriAttention apply_mlx_compressor raised "
-                f"({type(exc).__name__}: {exc}); using native cache."
-            )
-        return f"TriAttention MLX compressor applied (kv_budget={self.kv_budget})."
 
     def _runtime_fields(
         self,
@@ -1003,15 +866,6 @@ class WorkerState:
         # followed by a final ``{"event": "summary", ...}`` payload whose shape
         # matches what the old ``generate_dflash_once`` helper returned.
         summary: dict[str, Any] = {}
-        # Phase 3.1: per-token accepted-from-draft tracking. Tokens that
-        # share `cycles_completed` with the previous token are commits
-        # from the same DDTree cycle — the first is verifier-decoded,
-        # the rest are draft-accepted. Build a parallel list of
-        # (token_text, accepted: bool) so the UI can tint accepted runs.
-        per_token_accepted: list[bool] = []
-        per_token_text: list[str] = []
-        prev_cycle: int = -1
-        prev_gen_count: int = 0
         for event in stream_dflash_generate(
             target_model=self._dflash_target or self.model,
             tokenizer=self.tokenizer,
@@ -1024,29 +878,6 @@ class WorkerState:
         ):
             if event.get("event") == "summary":
                 summary = dict(event)
-                continue
-            if event.get("event") != "token":
-                continue
-            cycle = int(event.get("cycles_completed") or 0)
-            gen_count = int(event.get("generated_tokens") or 0)
-            token_id = event.get("token_id")
-            if token_id is None:
-                continue
-            # First token of a new cycle (cycle increments) is
-            # verifier-decoded; subsequent tokens within the same
-            # cycle are draft-accepted. Cycle 0 (the initial seed
-            # token) is also verifier-decoded.
-            if gen_count <= prev_gen_count:
-                # Defensive — skip duplicates / out-of-order events.
-                continue
-            accepted = cycle == prev_cycle and prev_cycle > 0
-            per_token_accepted.append(accepted)
-            try:
-                per_token_text.append(self.tokenizer.decode([int(token_id)]))
-            except Exception:
-                per_token_text.append("")
-            prev_cycle = cycle
-            prev_gen_count = gen_count
 
         gen_tokens = [int(token_id) for token_id in summary.get("generated_token_ids", [])]
         text = self.tokenizer.decode(gen_tokens).strip() if gen_tokens else ""
@@ -1054,15 +885,10 @@ class WorkerState:
         # is enabled. XML <think> tags are always processed regardless.
         thinking_mode = request.get("thinkingMode") or "off"
         if text:
-            _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-            think_filter = ThinkingTokenFilter(
-                detect_raw_reasoning=(thinking_mode != "off"),
-                open_tag=_open_tag,
-                close_tag=_close_tag,
-            )
+            think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
             result = think_filter.feed(text)
             flushed = think_filter.flush()
-            text = strip_harmony_boilerplate(f"{result.text}{flushed.text}".strip())
+            text = f"{result.text}{flushed.text}".strip()
         if not text:
             text = "Generation completed without decoded text."
 
@@ -1090,31 +916,6 @@ class WorkerState:
             ),
         )
 
-        # Phase 3.1: build run-length-encoded accepted spans from the
-        # per-token accepted bools. Each span has start (char offset
-        # into the rendered text), length (chars), and accepted (bool).
-        accepted_spans: list[dict[str, Any]] = []
-        if per_token_accepted and per_token_text:
-            offset = 0
-            run_start = 0
-            run_kind = per_token_accepted[0]
-            for idx, accepted in enumerate(per_token_accepted):
-                tok_text = per_token_text[idx] if idx < len(per_token_text) else ""
-                if accepted != run_kind:
-                    accepted_spans.append({
-                        "start": run_start,
-                        "length": offset - run_start,
-                        "accepted": run_kind,
-                    })
-                    run_start = offset
-                    run_kind = accepted
-                offset += len(tok_text)
-            accepted_spans.append({
-                "start": run_start,
-                "length": offset - run_start,
-                "accepted": run_kind,
-            })
-
         return {
             "text": text,
             "finishReason": "stop",
@@ -1126,8 +927,6 @@ class WorkerState:
             "peakMemoryGb": round(float(summary.get("peak_memory_gb") or 0.0), 3),
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate is not None else None,
-            "acceptedSpans": accepted_spans,
-            "acceptedTokenText": "".join(per_token_text) if per_token_text else None,
             **self._runtime_fields(prompt_cache=None, speculative_decoding=True, tree_budget=0),
         }
 
@@ -1169,15 +968,10 @@ class WorkerState:
         # is enabled. XML <think> tags are always processed regardless.
         thinking_mode = request.get("thinkingMode") or "off"
         if text:
-            _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-            think_filter = ThinkingTokenFilter(
-                detect_raw_reasoning=(thinking_mode != "off"),
-                open_tag=_open_tag,
-                close_tag=_close_tag,
-            )
+            think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
             filter_result = think_filter.feed(text)
             flushed = think_filter.flush()
-            text = strip_harmony_boilerplate(f"{filter_result.text}{flushed.text}".strip())
+            text = f"{filter_result.text}{flushed.text}".strip()
         if not text:
             text = "Generation completed without decoded text."
 
@@ -1203,12 +997,6 @@ class WorkerState:
             "peakMemoryGb": 0.0,
             "runtimeNote": runtime_note,
             "dflashAcceptanceRate": round(float(acceptance_rate), 2) if acceptance_rate else None,
-            # Phase 3.1 follow-up: DDTree path now ships accepted-span
-            # data alongside the linear DFLASH path so the frontend
-            # AcceptedTokenOverlay tints draft-accepted ranges for
-            # both speculative-decode strategies.
-            "acceptedSpans": result.get("accepted_spans") or [],
-            "acceptedTokenText": result.get("accepted_token_text"),
             **self._runtime_fields(
                 prompt_cache=None,
                 speculative_decoding=True,
@@ -1219,15 +1007,6 @@ class WorkerState:
     def generate(self, request: dict[str, Any]) -> dict[str, Any]:
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("No MLX model is loaded.")
-
-        # Multimodal short-circuit: vision-capable models loaded via
-        # mlx_vlm always route through the multimodal generate path,
-        # whether or not the request carries an ``images`` field
-        # (mlx_vlm.generate accepts ``image=None`` for text-only turns).
-        # DFlash speculative decoding doesn't apply on the VLM branch
-        # because the draft-model registry doesn't ship multimodal drafts.
-        if self.is_multimodal:
-            return self._generate_multimodal(request)
 
         # Use DDTree if tree budget is set and components are loaded
         if self.speculative_decoding and self.tree_budget > 0 and self._ddtree_draft is not None:
@@ -1266,7 +1045,7 @@ class WorkerState:
             prompt=str(request.get("prompt") or ""),
             system_prompt=system_prompt,
         )
-        sampler = _build_mlx_sampler(request)
+        sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
         runtime_fields = self._runtime_fields(prompt_cache=prompt_cache)
@@ -1338,15 +1117,10 @@ class WorkerState:
         raw_text = "".join(text_parts).strip()
         # Respect thinkingMode: only strip raw reasoning when thinking is on.
         thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
-        )
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
         filter_result = think_filter.feed(raw_text)
         flushed = think_filter.flush()
-        text = strip_harmony_boilerplate(f"{filter_result.text}{flushed.text}".strip())
+        text = f"{filter_result.text}{flushed.text}".strip()
         if transcript_fallback:
             text, transcript_trimmed = _trim_transcript_continuation(text)
             if transcript_trimmed:
@@ -1370,283 +1144,10 @@ class WorkerState:
             **runtime_fields,
         }
 
-    # ------------------------------------------------------------------
-    # Multimodal (vision-language) generation via mlx-vlm
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _decode_images_to_paths(
-        images_b64: list[str], temp_dir: str
-    ) -> list[str]:
-        """Decode base64-encoded images into ``temp_dir`` and return paths.
-
-        The chat payload sends each image as a raw base64 string (no
-        data-URL prefix — that's stripped client-side in
-        ``ChatComposer.tsx``). mlx-vlm's ``image=`` kwarg accepts a list
-        of file paths, so we materialise each blob to a temp file with
-        a deterministic suffix.
-        """
-        paths: list[str] = []
-        for index, blob in enumerate(images_b64 or []):
-            if not blob:
-                continue
-            try:
-                raw = base64.b64decode(blob, validate=False)
-            except (binascii.Error, ValueError):
-                # Skip malformed entries rather than aborting the whole
-                # generation — the model will still answer using text.
-                continue
-            path = Path(temp_dir) / f"img_{index:03d}.png"
-            path.write_bytes(raw)
-            paths.append(str(path))
-        return paths
-
-    def _format_multimodal_prompt(
-        self,
-        request: dict[str, Any],
-        num_images: int,
-    ) -> str:
-        """Render the chat history into a single prompt string the
-        VLM tokenizer expects, accounting for ``num_images`` image
-        placeholders. Falls back to the plain-text prompt builder when
-        the processor doesn't expose ``apply_chat_template`` or the
-        helper raises (some VLMs ship templates that reject our
-        history shape).
-        """
-        history = list(request.get("history") or [])
-        prompt = str(request.get("prompt") or "")
-        system_prompt = request.get("systemPrompt")
-        messages: list[dict[str, str]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": str(system_prompt)})
-        for message in history:
-            role = message.get("role")
-            if role not in {"system", "user", "assistant"}:
-                continue
-            messages.append(
-                {"role": role, "content": _normalize_message_content(message.get("text", ""))}
-            )
-        messages.append({"role": "user", "content": prompt})
-        messages = _sanitize_messages(messages)
-
-        try:
-            from mlx_vlm.prompt_utils import apply_chat_template  # type: ignore[import-untyped]
-        except ImportError:
-            return _fallback_chat_prompt(messages)
-
-        try:
-            rendered = apply_chat_template(
-                self.processor,
-                self.config or {},
-                messages,
-                add_generation_prompt=True,
-                num_images=num_images,
-            )
-        except Exception:
-            return _fallback_chat_prompt(messages)
-
-        if isinstance(rendered, str):
-            return rendered
-        if isinstance(rendered, list):
-            tokenizer = self.tokenizer
-            decoder = getattr(tokenizer, "decode", None) if tokenizer is not None else None
-            if callable(decoder):
-                try:
-                    return decoder(rendered)
-                except Exception:
-                    pass
-        return _fallback_chat_prompt(messages)
-
-    def _vlm_generate_kwargs(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Sampling kwargs accepted by ``mlx_vlm.generate`` /
-        ``stream_generate``. The VLM API takes ``temperature`` and
-        ``top_p`` directly (no separate sampler factory like mlx-lm),
-        so we forward only the knobs that map cleanly. Missing fields
-        fall back to the underlying mlx-vlm defaults.
-        """
-        kwargs: dict[str, Any] = {
-            "max_tokens": int(request.get("maxTokens") or 256),
-        }
-        temperature = request.get("temperature")
-        if temperature is not None:
-            try:
-                kwargs["temperature"] = float(temperature)
-            except (TypeError, ValueError):
-                pass
-        top_p = request.get("topP")
-        if top_p is not None:
-            try:
-                kwargs["top_p"] = float(top_p)
-            except (TypeError, ValueError):
-                pass
-        return kwargs
-
-    def _generate_multimodal(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Synchronous mlx-vlm generation. Decodes any attached images,
-        runs ``mlx_vlm.generate``, applies the thinking-token filter,
-        and returns the same response shape as ``_generate_standard``.
-        """
-        try:
-            from mlx_vlm import generate as vlm_generate  # type: ignore[import-untyped]
-        except ImportError as exc:
-            raise RuntimeError(
-                f"mlx-vlm is not installed but a multimodal model is loaded: {exc}. "
-                "Install via ``pip install mlx-vlm``."
-            ) from exc
-
-        images_b64 = list(request.get("images") or [])
-        kwargs = self._vlm_generate_kwargs(request)
-
-        with tempfile.TemporaryDirectory(prefix="chaosengine-mm-") as tmpdir:
-            image_paths = self._decode_images_to_paths(images_b64, tmpdir)
-            prompt_text = self._format_multimodal_prompt(request, num_images=len(image_paths))
-            if image_paths:
-                result = vlm_generate(
-                    self.model, self.processor, prompt_text,
-                    image=image_paths, **kwargs,
-                )
-            else:
-                result = vlm_generate(
-                    self.model, self.processor, prompt_text, **kwargs,
-                )
-
-        raw_text = getattr(result, "text", None) or str(result)
-        thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
-        )
-        filter_result = think_filter.feed(raw_text)
-        flushed = think_filter.flush()
-        text = strip_harmony_boilerplate(f"{filter_result.text}{flushed.text}".strip())
-        if not text:
-            text = "Generation completed without decoded text."
-
-        runtime_note = (
-            f"Multimodal generation via mlx-vlm "
-            f"({len(image_paths)} image{'s' if len(image_paths) != 1 else ''})."
-        )
-
-        return {
-            "text": text,
-            "finishReason": getattr(result, "finish_reason", None) or "stop",
-            "promptTokens": int(getattr(result, "prompt_tokens", 0) or 0),
-            "completionTokens": int(getattr(result, "generation_tokens", 0) or 0),
-            "totalTokens": int(
-                (getattr(result, "prompt_tokens", 0) or 0)
-                + (getattr(result, "generation_tokens", 0) or 0)
-            ),
-            "tokS": round(float(getattr(result, "generation_tps", 0.0) or 0.0), 1),
-            "promptTokS": round(float(getattr(result, "prompt_tps", 0.0) or 0.0), 1),
-            "peakMemoryGb": round(float(getattr(result, "peak_memory", 0.0) or 0.0), 3),
-            "runtimeNote": runtime_note,
-            "cacheStrategy": "native",
-            "cacheBits": 0,
-            "fp16Layers": 0,
-            "fusedAttention": False,
-            "speculativeDecoding": False,
-        }
-
-    def _stream_generate_multimodal(self, request: dict[str, Any]) -> None:
-        """Streaming mlx-vlm generation. Emits chunks via the standard
-        ``_emit`` protocol used by the text-only path so the caller
-        sees the same shape regardless of which engine produced the run.
-        """
-        try:
-            from mlx_vlm import stream_generate as vlm_stream  # type: ignore[import-untyped]
-        except ImportError as exc:
-            _emit({"error": (
-                f"mlx-vlm is not installed but a multimodal model is loaded: {exc}. "
-                "Install via ``pip install mlx-vlm``."
-            )})
-            return
-
-        images_b64 = list(request.get("images") or [])
-        kwargs = self._vlm_generate_kwargs(request)
-        thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
-        )
-
-        text_parts: list[str] = []
-        completion_tokens = 0
-        last_chunk: Any = None
-
-        with tempfile.TemporaryDirectory(prefix="chaosengine-mm-") as tmpdir:
-            image_paths = self._decode_images_to_paths(images_b64, tmpdir)
-            prompt_text = self._format_multimodal_prompt(request, num_images=len(image_paths))
-            if image_paths:
-                stream = vlm_stream(
-                    self.model, self.processor, prompt_text,
-                    image=image_paths, **kwargs,
-                )
-            else:
-                stream = vlm_stream(
-                    self.model, self.processor, prompt_text, **kwargs,
-                )
-
-            for chunk in stream:
-                last_chunk = chunk
-                chunk_text = chunk if isinstance(chunk, str) else (
-                    getattr(chunk, "text", None) or ""
-                )
-                if not chunk_text:
-                    continue
-                text_parts.append(chunk_text)
-                completion_tokens += 1
-                filtered = think_filter.feed(chunk_text)
-                if filtered.text:
-                    _emit({"ok": True, "chunk": {"text": filtered.text}})
-
-        flushed = think_filter.flush()
-        if flushed.text:
-            _emit({"ok": True, "chunk": {"text": flushed.text}})
-
-        runtime_note = (
-            f"Multimodal stream via mlx-vlm "
-            f"({len(image_paths)} image{'s' if len(image_paths) != 1 else ''})."
-        )
-        _emit({
-            "ok": True,
-            "done": True,
-            "result": {
-                "finishReason": getattr(last_chunk, "finish_reason", None) or "stop",
-                "promptTokens": int(getattr(last_chunk, "prompt_tokens", 0) or 0),
-                "completionTokens": int(
-                    getattr(last_chunk, "generation_tokens", 0) or completion_tokens
-                ),
-                "totalTokens": int(
-                    (getattr(last_chunk, "prompt_tokens", 0) or 0)
-                    + (getattr(last_chunk, "generation_tokens", 0) or completion_tokens)
-                ),
-                "tokS": round(float(getattr(last_chunk, "generation_tps", 0.0) or 0.0), 1),
-                "promptTokS": round(float(getattr(last_chunk, "prompt_tps", 0.0) or 0.0), 1),
-                "peakMemoryGb": round(float(getattr(last_chunk, "peak_memory", 0.0) or 0.0), 3),
-                "runtimeNote": runtime_note,
-                "cacheStrategy": "native",
-                "cacheBits": 0,
-                "fp16Layers": 0,
-                "fusedAttention": False,
-                "speculativeDecoding": False,
-            },
-        })
-
 
     def stream_generate(self, request: dict[str, Any]) -> None:
         if self.model is None or self.tokenizer is None:
             raise RuntimeError("No MLX model is loaded.")
-
-        # Multimodal short-circuit (see ``generate`` for context). The
-        # streaming variant emits chunks via ``_emit`` so the caller
-        # protocol matches the text-only path exactly.
-        if self.is_multimodal:
-            self._stream_generate_multimodal(request)
-            return
 
         speculative_stream_fallback_note = None
         # DFLASH/DDTree don't support token-level streaming natively, so
@@ -1732,7 +1233,7 @@ class WorkerState:
             prompt=str(request.get("prompt") or ""),
             system_prompt=system_prompt,
         )
-        sampler = _build_mlx_sampler(request)
+        sampler = make_sampler(temp=float(request.get("temperature") or 0.0))
         prompt_cache, runtime_note = self._make_cache()
         runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
         runtime_note = _merge_runtime_notes(runtime_note, speculative_stream_fallback_note)
@@ -1740,20 +1241,11 @@ class WorkerState:
         transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
         thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
-        )
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
         transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
         transcript_trimmed = False
         runaway_guard = RunawayGuard()
         runaway_stopped = False
-        # Phase 3.3 follow-up: when the request opted into logprobs,
-        # extract top-k per token via the helper and forward inline
-        # with each text chunk.
-        logprobs_top_k = int(request.get("logprobs") or 0)
 
         try:
             last_response = None
@@ -1784,12 +1276,7 @@ class WorkerState:
                         if transcript_filter.stopped:
                             transcript_trimmed = True
                     if visible_text:
-                        chunk_payload: dict[str, Any] = {"text": visible_text}
-                        if logprobs_top_k > 0:
-                            entries = _extract_top_logprobs(response, self.tokenizer, logprobs_top_k)
-                            if entries:
-                                chunk_payload["tokenLogprobs"] = entries
-                        _emit({"ok": True, "chunk": chunk_payload})
+                        _emit({"ok": True, "chunk": {"text": visible_text}})
                     if transcript_filter is not None and transcript_filter.stopped:
                         last_response = response
                         break
@@ -1819,12 +1306,7 @@ class WorkerState:
                     )
                 )
                 runtime_fields = self._runtime_fields(prompt_cache=None)
-                _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-                think_filter = ThinkingTokenFilter(
-                    detect_raw_reasoning=(thinking_mode != "off"),
-                    open_tag=_open_tag,
-                    close_tag=_close_tag,
-                )
+                think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode != "off"))
                 transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
                 transcript_trimmed = False
                 runaway_guard = RunawayGuard()

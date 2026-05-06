@@ -18,7 +18,6 @@ export interface BenchmarkRunTabProps {
     system: {
       availableMemoryGb: number;
       totalMemoryGb: number;
-      gpuVramTotalGb?: number | null;
       availableCacheStrategies: SystemStats["availableCacheStrategies"];
       llamaServerTurboPath?: string | null;
       dflash?: SystemStats["dflash"];
@@ -224,7 +223,6 @@ export function BenchmarkRunTab({
               preview={preview}
               availableMemoryGb={workspace.system.availableMemoryGb}
               totalMemoryGb={workspace.system.totalMemoryGb}
-              gpuVramTotalGb={workspace.system.gpuVramTotalGb}
               availableCacheStrategies={workspace.system.availableCacheStrategies}
               dflashInfo={workspace.system.dflash}
               selectedBackend={benchmarkOption?.backend}
@@ -258,7 +256,6 @@ export function BenchmarkRunTab({
               preview={preview}
               availableMemoryGb={workspace.system.availableMemoryGb}
               totalMemoryGb={workspace.system.totalMemoryGb}
-              gpuVramTotalGb={workspace.system.gpuVramTotalGb}
             />
 
             {latestRun ? (
@@ -465,12 +462,10 @@ export function BenchmarkRunTab({
           fitModelInMemory: benchmarkDraft.fitModelInMemory,
           speculativeDecoding: benchmarkDraft.speculativeDecoding,
           treeBudget: benchmarkDraft.treeBudget,
-          kvBudget: benchmarkDraft.kvBudget,
         }}
         preview={preview}
         availableMemoryGb={workspace.system.availableMemoryGb}
         totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         installingPackage={installingPackage}

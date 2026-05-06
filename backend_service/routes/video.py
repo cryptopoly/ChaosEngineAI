@@ -163,37 +163,18 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
     try:
         runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
-        # Diffusers' lazy-import wrapper hides the real underlying cause when
-        # transformers / torchao / torch versions don't agree -- the user
-        # sees "Could not import module 'T5EncoderModel'" with no actionable
-        # next step. Probe the suspected dep chain and rewrite the message
-        # with the actual missing/broken module + a Setup-page hint.
-        from backend_service.helpers.video_runtime_diagnostics import (
-            diagnose_diffusers_lazy_import_error,
-        )
-        import traceback as _tb
-        full_tb = _tb.format_exc()
-        state.add_log(
-            "video", "error",
-            f"Failed to preload {variant['name']}: {exc}\nTraceback:\n{full_tb[-2000:]}",
-        )
-        friendly = diagnose_diffusers_lazy_import_error(str(exc))
-        detail = friendly or f"Failed to load {variant['name']}: {exc}"
-        raise HTTPException(status_code=400, detail=detail) from exc
+        state.add_log("video", "error", f"Failed to preload {variant['name']}: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to load {variant['name']}: {exc}") from exc
     except Exception as exc:
-        from backend_service.helpers.video_runtime_diagnostics import (
-            diagnose_diffusers_lazy_import_error,
-        )
-        import traceback as _tb
-        full_tb = _tb.format_exc()
         state.add_log(
-            "video", "error",
-            f"Unexpected error preloading {variant['name']}: "
-            f"{type(exc).__name__}: {exc}\nTraceback:\n{full_tb[-2000:]}",
+            "video",
+            "error",
+            f"Unexpected error preloading {variant['name']}: {type(exc).__name__}: {exc}",
         )
-        friendly = diagnose_diffusers_lazy_import_error(str(exc))
-        detail = friendly or f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}"
-        raise HTTPException(status_code=500, detail=detail) from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}",
+        ) from exc
 
     state.add_log("video", "info", f"Preloaded video model {variant['name']}.")
     state.add_activity("Video model loaded", variant["name"])
@@ -316,29 +297,6 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
-    # Phase 2.0.5-H: pre-flight memory gate. Video gen has the highest
-    # working set of the three flows — a hung diffusion loop on a memory-
-    # starved Apple Silicon machine can swap-thrash the host for minutes.
-    # Refuse early when the floor is breached; gate exceptions never block.
-    try:
-        from backend_service.helpers.memory_gate import (
-            gate_video_generation,
-            snapshot_memory_signals,
-        )
-
-        available_gb, pressure_percent = snapshot_memory_signals()
-        refusal = gate_video_generation(available_gb, pressure_percent)
-        if refusal is not None:
-            state.add_log(
-                "video", "warning",
-                f"Memory gate refused video gen: {refusal['code']} "
-                f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
-            )
-            raise HTTPException(status_code=503, detail=refusal["message"])
-    except HTTPException:
-        raise
-    except Exception as gate_exc:
-        state.add_log("video", "warning", f"Memory gate skipped: {gate_exc}")
 
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
@@ -354,27 +312,19 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
         state.add_log("video", "info", f"Video generation cancelled for {variant['name']} by user.")
         raise HTTPException(status_code=409, detail="cancelled") from None
     except RuntimeError as exc:
-        from backend_service.helpers.video_runtime_diagnostics import (
-            diagnose_diffusers_lazy_import_error,
-        )
-        tb_str = _tb.format_exc()
-        state.add_log(
-            "video", "error",
-            f"Video generation failed for {variant['name']}: {exc}\nTraceback:\n{tb_str[-2000:]}",
-        )
-        friendly = diagnose_diffusers_lazy_import_error(str(exc))
-        detail = friendly or f"Video generation failed for {variant['name']}: {exc}"
-        raise HTTPException(status_code=400, detail=detail) from exc
+        state.add_log("video", "error", f"Video generation failed for {variant['name']}: {exc}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Video generation failed for {variant['name']}: {exc}",
+        ) from exc
     except Exception as exc:
-        from backend_service.helpers.video_runtime_diagnostics import (
-            diagnose_diffusers_lazy_import_error,
-        )
         tb_str = _tb.format_exc()
         state.add_log("video", "error", f"Video generation FAILED: {type(exc).__name__}: {exc}")
-        state.add_log("video", "error", f"Traceback:\n{tb_str[-2000:]}")
-        friendly = diagnose_diffusers_lazy_import_error(str(exc))
-        detail = friendly or f"Video generation failed for {variant['name']}: {type(exc).__name__}: {exc}"
-        raise HTTPException(status_code=500, detail=detail) from exc
+        state.add_log("video", "error", f"Traceback:\n{tb_str[-500:]}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Video generation failed for {variant['name']}: {type(exc).__name__}: {exc}",
+        ) from exc
 
     state.add_log(
         "video",

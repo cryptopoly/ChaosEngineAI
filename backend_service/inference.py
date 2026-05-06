@@ -32,106 +32,6 @@ DEFAULT_MLX_TIMEOUT_SECONDS = 120.0
 MLX_LOAD_TIMEOUT_SECONDS = 1800.0
 DEFAULT_LLAMA_TIMEOUT_SECONDS = 120.0
 CAPABILITY_CACHE_TTL_SECONDS = 10.0
-
-
-# Phase 2.2: keys forwarded as-is from `samplers` into the llama-server
-# /v1/chat/completions payload. Anything not in this set is silently
-# ignored so the frontend can blindly send the union of supported knobs
-# without breaking older llama-server builds that don't recognise some.
-_LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
-    "top_p",
-    "top_k",
-    "min_p",
-    "repeat_penalty",
-    "seed",
-    "mirostat",
-    "mirostat_tau",
-    "mirostat_eta",
-    # Phase 2.13: OpenAI-spec penalty fields. llama-server accepts these
-    # natively under the same names. mlx-lm doesn't pass them through
-    # but `_apply_sampler_kwargs` only adds them to the llama path
-    # payload, so the worker subprocess is unaffected.
-    "frequency_penalty",
-    "presence_penalty",
-    "stop",
-    # Phase 3.3: per-token confidence info. llama-server returns
-    # top-k alternatives with their logprobs in each delta when
-    # `logprobs: true` + `top_logprobs: N` are set.
-    "logprobs",
-    "top_logprobs",
-)
-
-
-def _apply_llama_chat_template_fixes(
-    messages: list[dict[str, Any]],
-    loaded_model: Any,
-) -> tuple[list[dict[str, Any]], str | None]:
-    """Phase 3.8 follow-up: apply known chat-template auto-fixes before
-    sending the message list to llama-server.
-
-    The llama.cpp server applies the chat template internally based on
-    GGUF metadata, so we can't observe template Jinja directly. But we
-    know certain families (Gemma) reject the system role entirely;
-    folding the system message into the first user message client-side
-    avoids the template error.
-
-    Returns ``(new_messages, runtime_note)``. The note is None when no
-    fix was applied; when set it's a single line suitable for the
-    GenerationResult.runtimeNote channel so the substrate badge can
-    show "auto-fixed: Gemma family — fold system into first user".
-    """
-    if not loaded_model or not messages:
-        return messages, None
-
-    from backend_service.helpers.chat_template import (
-        fold_system_into_first_user,
-        is_gemma_family,
-    )
-
-    model_ref = getattr(loaded_model, "ref", None)
-    canonical = getattr(loaded_model, "canonicalRepo", None)
-    target = canonical or model_ref
-
-    if is_gemma_family(target):
-        new_messages = fold_system_into_first_user(messages)
-        if len(new_messages) != len(messages):
-            return new_messages, "Chat template auto-fixed: Gemma family — fold system into first user message"
-        return new_messages, None
-
-    return messages, None
-
-
-def _apply_sampler_kwargs(
-    payload: dict[str, Any],
-    *,
-    samplers: dict[str, Any] | None,
-    reasoning_effort: str | None,
-    json_schema: dict[str, Any] | None,
-) -> None:
-    """Merge Phase 2.2 sampler overrides into a chat-completions payload.
-
-    Mutates `payload` in place. Skips keys whose value is None so an
-    explicit "use the default" from a UI that always sends every field
-    doesn't override server-side defaults. Json-schema is wrapped in
-    the OpenAI structured-outputs `response_format` envelope.
-    """
-    if samplers:
-        for key in _LLAMA_SAMPLER_KEYS:
-            value = samplers.get(key)
-            if value is None:
-                continue
-            payload[key] = value
-    if reasoning_effort:
-        payload["reasoning_effort"] = reasoning_effort
-    if json_schema:
-        payload["response_format"] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "response",
-                "schema": json_schema,
-                "strict": True,
-            },
-        }
 _LLAMA_HELP_CACHE: dict[str, str] = {}
 _LLAMA_HELP_LOCK = RLock()
 
@@ -467,75 +367,6 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
             if model_files:
                 return str(model_files[0])
     return None
-
-
-def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
-    """Locate the mmproj projector sibling for a vision-capable GGUF.
-
-    Vision support in llama.cpp is gated by the `--mmproj` flag; the
-    projector lives as a separate `*mmproj*.gguf` file alongside the
-    main weights. HF repos for vision-capable models usually ship both
-    in the same snapshot (e.g. `gemma-3-27b-it-qat-4bit/` contains
-    `model.gguf` and `mmproj.gguf`). This helper scans the same
-    directory tree the main GGUF was found in and returns the largest
-    matching projector file, or None when no projector is present (the
-    model is text-only, or the user only downloaded the main weights).
-    """
-    if not model_gguf_path:
-        return None
-    main_path = Path(model_gguf_path)
-    if not main_path.exists():
-        return None
-
-    # Search the parent directory + its immediate sibling directories
-    # (covers the HF snapshot layout where projectors might live in a
-    # `projectors/` peer to the `weights/` folder). We deliberately do
-    # NOT recurse via `rglob` past one level — on macOS test rigs the
-    # parent's parent is sometimes a system-cache root that raises
-    # `OSError: Result too large` mid-scandir. Bounded depth keeps the
-    # resolver predictable across hosts.
-    candidates: list[Path] = []
-    parent = main_path.parent
-    if parent.is_dir():
-        for entry in parent.iterdir():
-            if entry.is_file() and entry.suffix.lower() == ".gguf" and "mmproj" in entry.name.lower():
-                candidates.append(entry)
-            elif entry.is_dir():
-                try:
-                    for child in entry.iterdir():
-                        if (
-                            child.is_file()
-                            and child.suffix.lower() == ".gguf"
-                            and "mmproj" in child.name.lower()
-                        ):
-                            candidates.append(child)
-                except OSError:
-                    continue
-    grandparent = parent.parent
-    if grandparent.is_dir() and grandparent != parent:
-        try:
-            for entry in grandparent.iterdir():
-                if not entry.is_dir() or entry == parent:
-                    continue
-                try:
-                    for child in entry.iterdir():
-                        if (
-                            child.is_file()
-                            and child.suffix.lower() == ".gguf"
-                            and "mmproj" in child.name.lower()
-                            and child not in candidates
-                        ):
-                            candidates.append(child)
-                except OSError:
-                    continue
-        except OSError:
-            pass
-
-    valid = [p for p in candidates if p.is_file() and p != main_path]
-    if not valid:
-        return None
-    valid.sort(key=lambda f: f.stat().st_size, reverse=True)
-    return str(valid[0])
 
 
 def _is_local_target(candidate: str | None) -> bool:
@@ -893,30 +724,8 @@ class LoadedModelInfo:
     speculativeDecoding: bool = False
     dflashDraftModel: str | None = None
     treeBudget: int = 0
-    # Hotfix (2026-05-01 v2): the runtime currently has no mmproj path
-    # wired for either backend — `_resolve_gguf_path` strips mmproj
-    # files, and the MLX worker has never carried images. Until those
-    # paths land (Phase 2.6+ work), `visionEnabled` stays False on every
-    # load and the capability resolver demotes the typed `supportsVision`
-    # flag accordingly. The catalog `tags` keep "vision" so the UI can
-    # still surface "this model supports vision once mmproj loads".
-    visionEnabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        # Phase 2.11: include resolved capabilities so the frontend can
-        # gate composer affordances (vision, tools, reasoning, etc.)
-        # without a separate fetch. Resolved lazily — adding a field on
-        # the dataclass would force a migration in every load path.
-        # The active engine is passed so capability flags get demoted
-        # for runtime gaps (e.g. MLX worker doesn't carry images).
-        from backend_service.catalog.capabilities import resolve_capabilities
-
-        capabilities = resolve_capabilities(
-            self.ref,
-            self.canonicalRepo,
-            engine=self.engine,
-            vision_enabled=self.visionEnabled,
-        ).to_dict()
         return {
             "ref": self.ref,
             "name": self.name,
@@ -937,8 +746,6 @@ class LoadedModelInfo:
             "speculativeDecoding": self.speculativeDecoding,
             "dflashDraftModel": self.dflashDraftModel,
             "treeBudget": self.treeBudget,
-            "visionEnabled": self.visionEnabled,
-            "capabilities": capabilities,
         }
 
 
@@ -992,16 +799,6 @@ class StreamChunk:
     speculative_decoding: bool | None = None
     tree_budget: int | None = None
     done: bool = False
-    # Phase 3.3: per-token logprobs. When set, contains the chosen
-    # token's logprob plus the top-k alternatives. Only populated
-    # when the request had `logprobs: N` set.
-    token_logprobs: list[dict[str, Any]] | None = None
-    # Phase 3.1: DDTree accepted-span overlay data. `accepted_spans`
-    # is a run-length-encoded list of {start, length, accepted} over
-    # the per-token rendered text in `accepted_token_text`. Only
-    # populated when DFLASH speculative decoding ran.
-    accepted_spans: list[dict[str, Any]] | None = None
-    accepted_token_text: str | None = None
 
 
 class BaseInferenceEngine:
@@ -1057,9 +854,6 @@ class BaseInferenceEngine:
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         raise NotImplementedError
 
@@ -1095,9 +889,6 @@ class BaseInferenceEngine:
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         result = self.generate(
             prompt=prompt,
@@ -1105,11 +896,6 @@ class BaseInferenceEngine:
             system_prompt=system_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
-            images=images,
-            tools=tools,
-            samplers=samplers,
-            reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
         )
         yield StreamChunk(text=result.text)
         yield StreamChunk(
@@ -1206,8 +992,7 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
         return urllib.request.urlopen(req, timeout=120.0)
 
     def generate(self, *, prompt, history, system_prompt, max_tokens, temperature,
-                 images=None, tools=None,
-                 samplers=None, reasoning_effort=None, json_schema=None) -> GenerationResult:
+                 images=None, tools=None) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("Remote model not configured.")
         started = time.perf_counter()
@@ -1690,9 +1475,6 @@ class MLXWorkerEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -1717,15 +1499,6 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["images"] = images
         if tools:
             payload["tools"] = tools
-        # Phase 2.2: forward whatever sampler subset mlx-lm supports.
-        # Worker side reads these out of the payload and ignores keys it
-        # doesn't recognise, so this is forward-compatible.
-        if samplers:
-            payload["samplers"] = samplers
-        if reasoning_effort:
-            payload["reasoningEffort"] = reasoning_effort
-        if json_schema:
-            payload["jsonSchema"] = json_schema
         result = self.worker.request(payload)
         elapsed = max(time.perf_counter() - started_at, 1e-6)
         return GenerationResult(
@@ -1760,9 +1533,6 @@ class MLXWorkerEngine(BaseInferenceEngine):
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -1787,17 +1557,6 @@ class MLXWorkerEngine(BaseInferenceEngine):
             payload["images"] = images
         if tools:
             payload["tools"] = tools
-        # Phase 2.2: forward sampler / reasoning / schema overrides. The
-        # MLX worker reads these from the payload and applies what it
-        # supports (top_p, top_k, min_p, repeat_penalty, seed via
-        # mlx-lm); reasoning_effort + json_schema are accepted for
-        # forward-compat with future mlx-lm releases.
-        if samplers:
-            payload["samplers"] = samplers
-        if reasoning_effort:
-            payload["reasoningEffort"] = reasoning_effort
-        if json_schema:
-            payload["jsonSchema"] = json_schema
         try:
             request_iter = self.worker.stream_request(payload)
         except RuntimeError as exc:
@@ -1817,17 +1576,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
                     if chunk.get("reasoningDone"):
                         yield StreamChunk(reasoning_done=True)
                     if chunk.get("text"):
-                        token_logprobs = chunk.get("tokenLogprobs")
-                        yield StreamChunk(
-                            text=chunk["text"],
-                            token_logprobs=token_logprobs if token_logprobs else None,
-                        )
-                    elif chunk.get("tokenLogprobs"):
-                        # Phase 3.3 follow-up: forward logprobs even when
-                        # the chunk has no text (e.g. emitted alongside
-                        # reasoning) so the frontend overlay still gets
-                        # a complete trace.
-                        yield StreamChunk(token_logprobs=chunk["tokenLogprobs"])
+                        yield StreamChunk(text=chunk["text"])
                 if response.get("done"):
                     result = response.get("result") or {}
                     yield StreamChunk(
@@ -1848,10 +1597,6 @@ class MLXWorkerEngine(BaseInferenceEngine):
                             else None
                         ),
                         tree_budget=int(result.get("treeBudget")) if result.get("treeBudget") is not None else None,
-                        # Phase 3.1: forward accepted-span data when DDTree
-                        # populated it. Llama path leaves these as None.
-                        accepted_spans=result.get("acceptedSpans"),
-                        accepted_token_text=result.get("acceptedTokenText"),
                     )
         except RuntimeError as exc:
             if "No MLX model is loaded" in str(exc):
@@ -2074,20 +1819,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             raise RuntimeError("GGUF loading requires a local model path or a Hugging Face GGUF repository.")
 
-        # Vision wiring: if a sibling mmproj file is present, pass it
-        # via `--mmproj` so llama-server enables image input. Capture
-        # the path so the caller can flip `LoadedModelInfo.visionEnabled`
-        # to True; the capability resolver reads that flag to enable
-        # the composer's image-attach button. Older llama-server builds
-        # without `--mmproj` skip the flag silently — verify support
-        # via the help-text gate to avoid startup failure on those.
-        mmproj_path: str | None = None
-        if resolved_gguf and _llama_server_supports(binary, "--mmproj"):
-            mmproj_path = _resolve_mmproj_path(resolved_gguf)
-            if mmproj_path:
-                command.extend(["--mmproj", mmproj_path])
-
-        return command, runtime_note, fell_back_to_native, mmproj_path
+        return command, runtime_note, fell_back_to_native
 
     def _wait_for_server(self) -> None:
         deadline = time.time() + DEFAULT_LLAMA_TIMEOUT_SECONDS
@@ -2168,10 +1900,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             attempts.append(("native", False, True))
         last_error: str | None = None
 
-        attempt_mmproj_path: str | None = None
         for strategy_id, fit_enabled, is_fallback in attempts:
             strategy = _strategy_registry.get(strategy_id) or _strategy_registry.default()
-            command, attempt_note, prevalidation_fallback, attempt_mmproj_path = self._build_command(
+            command, attempt_note, prevalidation_fallback = self._build_command(
                 path=path,
                 runtime_target=runtime_target,
                 cache_strategy=strategy_id,
@@ -2251,7 +1982,6 @@ class LlamaCppEngine(BaseInferenceEngine):
             path=path,
             runtimeTarget=runtime_target or path,
             runtimeNote=runtime_note,
-            visionEnabled=attempt_mmproj_path is not None,
         )
         return self.loaded_model
 
@@ -2269,9 +1999,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -2296,11 +2023,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             messages.append({"role": "user", "content": prompt})
 
-        # Phase 3.8 follow-up: apply known chat-template auto-fixes
-        # before the messages reach llama-server (e.g. Gemma family
-        # rejects the system role outright).
-        messages, template_fix_note = _apply_llama_chat_template_fixes(messages, self.loaded_model)
-
         started_at = time.perf_counter()
         payload: dict[str, Any] = {
             "model": self.loaded_model.ref,
@@ -2311,12 +2033,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         }
         if tools:
             payload["tools"] = tools
-        _apply_sampler_kwargs(
-            payload,
-            samplers=samplers,
-            reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
-        )
         try:
             response = _http_json(
                 self._server_url("/v1/chat/completions"),
@@ -2346,11 +2062,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             totalTokens=total_tokens,
             tokS=round(completion_tokens / elapsed, 1) if completion_tokens else 0.0,
             responseSeconds=round(elapsed, 2),
-            runtimeNote=(
-                _append_runtime_note(self.loaded_model.runtimeNote, template_fix_note)
-                if template_fix_note
-                else self.loaded_model.runtimeNote
-            ),
+            runtimeNote=self.loaded_model.runtimeNote,
         )
 
     def stream_generate(
@@ -2364,9 +2076,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         thinking_mode: str | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("No model is loaded.")
@@ -2390,11 +2099,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             messages.append({"role": "user", "content": prompt})
 
-        # Phase 3.8 follow-up: chat-template auto-fix on the streaming
-        # path matches the non-stream behaviour. The note is forwarded
-        # via the final StreamChunk's runtime_note.
-        messages, template_fix_note = _apply_llama_chat_template_fixes(messages, self.loaded_model)
-
         payload: dict[str, Any] = {
             "model": self.loaded_model.ref,
             "messages": messages,
@@ -2404,12 +2108,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         }
         if tools:
             payload["tools"] = tools
-        _apply_sampler_kwargs(
-            payload,
-            samplers=samplers,
-            reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
-        )
         url = self._server_url("/v1/chat/completions")
         data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
@@ -2428,8 +2126,6 @@ class LlamaCppEngine(BaseInferenceEngine):
         stream_start = time.perf_counter()
         first_token_time: float | None = None
         runtime_note = self.loaded_model.runtimeNote
-        if template_fix_note:
-            runtime_note = _append_runtime_note(runtime_note, template_fix_note)
         think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
         try:
@@ -2447,28 +2143,6 @@ class LlamaCppEngine(BaseInferenceEngine):
                 choice = (chunk.get("choices") or [{}])[0]
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
-                # Phase 3.3: extract per-token logprobs when llama-server
-                # returns them. The `logprobs.content` field is a list of
-                # token entries with top_logprobs alternatives.
-                logprob_entries: list[dict[str, Any]] | None = None
-                logprobs_payload = choice.get("logprobs") or {}
-                if isinstance(logprobs_payload, dict):
-                    raw_entries = logprobs_payload.get("content")
-                    if isinstance(raw_entries, list) and raw_entries:
-                        logprob_entries = []
-                        for entry in raw_entries:
-                            if not isinstance(entry, dict):
-                                continue
-                            top = entry.get("top_logprobs") or []
-                            logprob_entries.append({
-                                "token": entry.get("token"),
-                                "logprob": entry.get("logprob"),
-                                "alternatives": [
-                                    {"token": alt.get("token"), "logprob": alt.get("logprob")}
-                                    for alt in top
-                                    if isinstance(alt, dict)
-                                ],
-                            })
                 if content:
                     split = think_filter.feed(str(content))
                     if split.reasoning:
@@ -2480,7 +2154,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                         if first_token_time is None:
                             first_token_time = time.perf_counter()
                         completion_tokens += 1
-                        yield StreamChunk(text=split.text, token_logprobs=logprob_entries)
+                        yield StreamChunk(text=split.text)
                 fr = choice.get("finish_reason")
                 if fr:
                     finish_reason = fr
@@ -3236,9 +2910,6 @@ class RuntimeController:
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         engine: BaseInferenceEngine | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("Load a model before sending prompts.")
@@ -3252,9 +2923,6 @@ class RuntimeController:
             temperature=temperature,
             images=images,
             tools=tools,
-            samplers=samplers,
-            reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
         )
         if result.runtimeNote is None:
             result.runtimeNote = self.runtime_note
@@ -3272,9 +2940,6 @@ class RuntimeController:
         tools: list[dict[str, Any]] | None = None,
         engine: BaseInferenceEngine | None = None,
         thinking_mode: str | None = None,
-        samplers: dict[str, Any] | None = None,
-        reasoning_effort: str | None = None,
-        json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         if self.loaded_model is None:
             raise RuntimeError("Load a model before sending prompts.")
@@ -3289,9 +2954,6 @@ class RuntimeController:
             images=images,
             tools=tools,
             thinking_mode=thinking_mode,
-            samplers=samplers,
-            reasoning_effort=reasoning_effort,
-            json_schema=json_schema,
         )
 
     def extract_gguf_metadata(self, path: str) -> dict[str, Any]:

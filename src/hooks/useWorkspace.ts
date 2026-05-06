@@ -63,16 +63,27 @@ export function useWorkspace() {
     }
   }
 
-  function applyWorkspacePayload(payload: WorkspaceData) {
+  async function refreshWorkspace(preferredChatId?: string) {
+    const online = await checkBackend();
+    setBackendOnline(online);
+    if (!online) {
+      return { online, payload: null, preferredChatId };
+    }
+    const payload = await getWorkspace();
+    // Merge chat sessions rather than replacing wholesale — this prevents
+    // in-flight streaming messages from vanishing when a background poll
+    // returns stale session data from the backend.
     setWorkspace((current) => {
       const currentSessionMap = new Map(current.chatSessions.map((s) => [s.id, s]));
       const mergedSessions = payload.chatSessions.map((backendSession) => {
         const local = currentSessionMap.get(backendSession.id);
+        // Keep the local version if it has MORE messages (streaming in progress)
         if (local && local.messages.length > backendSession.messages.length) {
           return local;
         }
         return backendSession;
       });
+      // Also keep any local-only sessions (created offline, not yet on backend)
       const backendIds = new Set(payload.chatSessions.map((s) => s.id));
       for (const local of current.chatSessions) {
         if (!backendIds.has(local.id)) {
@@ -81,27 +92,6 @@ export function useWorkspace() {
       }
       return { ...payload, chatSessions: mergedSessions };
     });
-  }
-
-  async function refreshWorkspace(preferredChatId?: string) {
-    const online = await checkBackend();
-    if (!online) {
-      try {
-        const payload = await getWorkspace();
-        setBackendOnline(true);
-        applyWorkspacePayload(payload);
-        return { online: true, payload, preferredChatId };
-      } catch {
-        setBackendOnline(false);
-        return { online: false, payload: null, preferredChatId };
-      }
-    }
-    setBackendOnline(true);
-    const payload = await getWorkspace();
-    // Merge chat sessions rather than replacing wholesale — this prevents
-    // in-flight streaming messages from vanishing when a background poll
-    // returns stale session data from the backend.
-    applyWorkspacePayload(payload);
     return { online, payload, preferredChatId };
   }
 
@@ -144,13 +134,13 @@ export function useWorkspace() {
         attempt++;
         if (cancelled) return;
         try {
-          const [healthOnline, payload, runtimeInfo] = await Promise.all([
+          const [online, payload, runtimeInfo] = await Promise.all([
             checkBackend(),
             getWorkspace(),
             getTauriBackendInfo(),
           ]);
           if (cancelled) return;
-          setBackendOnline(healthOnline || Boolean(payload));
+          setBackendOnline(online);
           setTauriBackend(runtimeInfo);
           setWorkspace(payload);
           setLoading(false);

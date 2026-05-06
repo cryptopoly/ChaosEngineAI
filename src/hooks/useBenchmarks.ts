@@ -27,7 +27,6 @@ export function useBenchmarks(
     fitModelInMemory: emptyWorkspace.settings.launchPreferences.fitModelInMemory,
     speculativeDecoding: emptyWorkspace.settings.launchPreferences.speculativeDecoding,
     treeBudget: emptyWorkspace.settings.launchPreferences.treeBudget,
-    kvBudget: emptyWorkspace.settings.launchPreferences.kvBudget,
     contextTokens: emptyWorkspace.settings.launchPreferences.contextTokens,
     maxTokens: 4096,
     temperature: 0.2,

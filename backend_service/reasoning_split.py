@@ -9,100 +9,6 @@ _THINK_CLOSE = "</think>"
 _THINK_TAIL_GUARD = len(_THINK_OPEN) - 1
 _STARTUP_BUFFER_LIMIT = 500
 
-# Per-model-family overrides for reasoning delimiters. Keyed by canonical
-# repo or family prefix (case-insensitive prefix match). Models that do not
-# match any entry use the default `<think>...</think>` tags. Add new entries
-# here when adopting models that emit a non-standard reasoning marker.
-# Values are (open_tag, close_tag) pairs.
-_REASONING_DELIMITER_REGISTRY: dict[str, tuple[str, str]] = {
-    # Gemma 4 emits ASYMMETRIC channel markers (verified against the
-    # mlx-community/gemma-4-26b-a4b-it-5bit tokenizer):
-    #   <|channel>thought ...reasoning... <channel|>
-    #   ...final answer text...
-    # Note: open tag is ``<|channel>`` (open + pipe + name + close,
-    # NO second pipe before the close angle), close tag is
-    # ``<channel|>`` (mirror — pipe goes BEFORE the closing angle).
-    # This is NOT the OpenAI Harmony ``<|channel|>...<|message|>``
-    # symmetric format despite looking similar at a glance.
-    "google/gemma-4": ("<|channel>thought", "<channel|>"),
-    "mlx-community/gemma-4": ("<|channel>thought", "<channel|>"),
-    "lmstudio-community/gemma-4": ("<|channel>thought", "<channel|>"),
-    # gpt-oss + OpenAI Harmony format ships SYMMETRIC delimiters
-    # (<|channel|>thought ... <|message|>...content...<|end|>). Stays
-    # at the original tags so swaps between gpt-oss and Gemma 4 work.
-    "openai/gpt-oss": ("<|channel|>thought", "<|end|>"),
-    "mlx-community/gpt-oss": ("<|channel|>thought", "<|end|>"),
-}
-
-
-# Channel-format boilerplate. Stripped as a final pass after the
-# ThinkingTokenFilter to remove leftover channel/turn/message markers.
-# Covers BOTH formats:
-#
-# * **Gemma 4 asymmetric** — ``<|NAME>`` opens, ``<NAME|>`` closes.
-#   Open variants: ``<|channel>``, ``<|turn>``, ``<|tool>``,
-#   ``<|tool_call>``, ``<|tool_response>``, ``<|image>``, ``<|audio>``.
-#   Close variants: same set with the pipe migrated before the angle.
-#   Open tags optionally carry a sub-name suffix (``thought`` /
-#   ``final`` / ``analysis`` / ``commentary``).
-#
-# * **OpenAI Harmony symmetric** (gpt-oss) — ``<|NAME|>`` for both
-#   open and close, plus ``<|start|>``/``<|message|>``/``<|end|>``/
-#   ``<|return|>`` boilerplate around the channel content.
-_HARMONY_BOILERPLATE_RE = re.compile(
-    r"(?:"
-    # Gemma 4 open: <|channel>, <|turn>, etc. + optional sub-name suffix.
-    r"<\|(?:channel|turn|tool_call|tool_response|tool|image|audio|message|start|end|return)>"
-    r"(?:[a-z]+)?"
-    r"|"
-    # Gemma 4 close: <channel|>, <turn|>, etc.
-    r"<(?:channel|turn|tool_call|tool_response|tool|image|audio|message|start|end|return)\|>"
-    r"|"
-    # OpenAI Harmony symmetric: <|start|>, <|channel|>, <|message|>, <|end|>, <|return|>
-    r"<\|(?:start|channel|message|end|return)\|>"
-    r"(?:assistant|final|analysis|commentary|thought)?"
-    r")",
-    re.IGNORECASE,
-)
-
-
-def strip_harmony_boilerplate(text: str) -> str:
-    """Remove OpenAI Harmony channel-format markers from a model's output.
-
-    The Harmony format wraps multi-channel responses with
-    ``<|start|>``, ``<|channel|>NAME``, ``<|message|>``, ``<|end|>``
-    delimiters. After ``ThinkingTokenFilter`` extracts the ``thought``
-    channel into the reasoning sidecar, this helper sweeps the residual
-    boilerplate out of the user-visible text. Idempotent on text that
-    contains no Harmony markers (e.g. plain ``<think>`` output from
-    Qwen3 / DeepSeek R1).
-    """
-    if not text:
-        return text
-    cleaned = _HARMONY_BOILERPLATE_RE.sub("", text)
-    # Collapse runs of blank lines that the boilerplate removal can leave
-    # behind — keeps the rendered chat tidy without blowing away
-    # intentional paragraph breaks.
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip()
-
-
-def reasoning_delimiters_for(model_ref: str | None) -> tuple[str, str]:
-    """Resolve the reasoning open/close tag pair for a given model reference.
-
-    Looks up `model_ref` against `_REASONING_DELIMITER_REGISTRY` using a
-    case-insensitive prefix match (so `Qwen/Qwen3-8B-Instruct` matches a
-    registry key of `qwen/qwen3`). Returns the default `<think>`/`</think>`
-    pair when no match is found.
-    """
-    if not model_ref:
-        return (_THINK_OPEN, _THINK_CLOSE)
-    lower = model_ref.lower()
-    for key, tags in _REASONING_DELIMITER_REGISTRY.items():
-        if lower.startswith(key.lower()):
-            return tags
-    return (_THINK_OPEN, _THINK_CLOSE)
-
 _RAW_REASONING_LABELS = (
     "thinking process",
     "chain of thought",
@@ -290,29 +196,7 @@ class ThinkingTokenFilter:
         XML ``<think>`` tags are always processed regardless.
     """
 
-    def __init__(
-        self,
-        *,
-        detect_raw_reasoning: bool = True,
-        open_tag: str = _THINK_OPEN,
-        close_tag: str = _THINK_CLOSE,
-        max_reasoning_chars: int | None = 32_000,
-    ) -> None:
-        # `open_tag` / `close_tag` let downstream callers override the XML
-        # delimiters per model family — see `reasoning_delimiters_for()`.
-        # Defaults match the `<think>...</think>` convention used by Qwen3,
-        # DeepSeek R1, GPT-OSS, and most other reasoning models.
-        #
-        # Phase 2.0.5-E: `max_reasoning_chars` caps the size of a single
-        # reasoning block. When the cap is hit while still inside the open
-        # tag, the filter force-closes the block, emits `reasoning_done`,
-        # and routes any further bytes to `text` so the assistant turn
-        # finalises instead of streaming reasoning forever. Defaults to
-        # 32,000 chars (~8000 tokens). Pass `None` to disable.
-        if not open_tag or not close_tag:
-            raise ValueError("ThinkingTokenFilter requires non-empty open/close tags.")
-        if max_reasoning_chars is not None and max_reasoning_chars <= 0:
-            raise ValueError("max_reasoning_chars must be positive or None.")
+    def __init__(self, *, detect_raw_reasoning: bool = True) -> None:
         self._inside_xml_think = False
         self._inside_raw_think = False
         self._startup_done = False
@@ -320,12 +204,6 @@ class ThinkingTokenFilter:
         self._pending_raw_final = ""
         self._total_fed = 0
         self._detect_raw = detect_raw_reasoning
-        self._open_tag = open_tag
-        self._close_tag = close_tag
-        self._tail_guard = max(0, len(open_tag) - 1)
-        self._max_reasoning_chars = max_reasoning_chars
-        self._reasoning_emitted = 0
-        self._reasoning_capped = False
 
     def feed(self, text: str) -> ThinkingStreamResult:
         self._buffer += text
@@ -334,10 +212,10 @@ class ThinkingTokenFilter:
 
         while True:
             if not self._startup_done and not self._inside_xml_think and not self._inside_raw_think:
-                think_idx = _find_tag(self._buffer, self._open_tag)
+                think_idx = _find_tag(self._buffer, _THINK_OPEN)
                 if think_idx != -1:
                     output.text += self._buffer[:think_idx]
-                    self._buffer = self._buffer[think_idx + len(self._open_tag):]
+                    self._buffer = self._buffer[think_idx + len(_THINK_OPEN):]
                     self._inside_xml_think = True
                     self._startup_done = True
                     continue
@@ -378,53 +256,27 @@ class ThinkingTokenFilter:
                 break
 
             if self._inside_xml_think:
-                end_idx = _find_tag(self._buffer, self._close_tag)
+                end_idx = _find_tag(self._buffer, _THINK_CLOSE)
                 if end_idx == -1:
-                    # Phase 2.0.5-E: reasoning budget cap. If the model is
-                    # rambling past `max_reasoning_chars` without ever
-                    # emitting a close tag, force the close so the
-                    # assistant turn can finalise. Surplus bytes route to
-                    # text from this point on.
-                    if (
-                        self._max_reasoning_chars is not None
-                        and self._reasoning_emitted + len(self._buffer) >= self._max_reasoning_chars
-                    ):
-                        slice_end = max(0, self._max_reasoning_chars - self._reasoning_emitted)
-                        output.reasoning += self._buffer[:slice_end]
-                        self._reasoning_emitted += slice_end
-                        leftover = self._buffer[slice_end:]
-                        self._buffer = leftover
-                        self._inside_xml_think = False
-                        self._reasoning_capped = True
-                        output.reasoning_done = True
-                        # Continue the loop so the leftover bytes get
-                        # routed through the post-think text/tail logic.
-                        continue
                     output.reasoning += self._buffer
-                    self._reasoning_emitted += len(self._buffer)
                     self._buffer = ""
                     break
                 output.reasoning += self._buffer[:end_idx]
-                self._reasoning_emitted += end_idx
-                self._buffer = self._buffer[end_idx + len(self._close_tag):]
+                self._buffer = self._buffer[end_idx + len(_THINK_CLOSE):]
                 self._inside_xml_think = False
                 output.reasoning_done = True
                 continue
 
-            start_idx = _find_tag(self._buffer, self._open_tag)
+            start_idx = _find_tag(self._buffer, _THINK_OPEN)
             if start_idx != -1:
                 output.text += self._buffer[:start_idx]
-                self._buffer = self._buffer[start_idx + len(self._open_tag):]
+                self._buffer = self._buffer[start_idx + len(_THINK_OPEN):]
                 self._inside_xml_think = True
                 continue
 
-            if len(self._buffer) > self._tail_guard:
-                if self._tail_guard == 0:
-                    output.text += self._buffer
-                    self._buffer = ""
-                else:
-                    output.text += self._buffer[:-self._tail_guard]
-                    self._buffer = self._buffer[-self._tail_guard:]
+            if len(self._buffer) > _THINK_TAIL_GUARD:
+                output.text += self._buffer[:-_THINK_TAIL_GUARD]
+                self._buffer = self._buffer[-_THINK_TAIL_GUARD:]
             break
 
         return output

@@ -3577,12 +3577,83 @@ select.text-input {
 
 .html-challenge-history-row {
   display: grid;
-  grid-template-columns: auto auto minmax(220px, 1fr) auto;
+  grid-template-columns: auto minmax(220px, 1fr);
   gap: 8px;
   align-items: center;
 }
 
 .html-challenge-history-select {
+  min-width: 0;
+}
+
+.html-challenge-history-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.html-challenge-history-input {
+  width: 100%;
+}
+
+.html-challenge-history-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: var(--shadow-lg);
+}
+
+.html-challenge-history-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.html-challenge-history-option:hover,
+.html-challenge-history-option.active {
+  background: rgba(147, 178, 255, 0.14);
+}
+
+.html-challenge-history-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-challenge-history-option small {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.html-challenge-history-empty {
+  margin: 0;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.html-challenge-thinking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 

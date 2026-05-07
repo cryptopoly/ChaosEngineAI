@@ -9,6 +9,12 @@ import { emptyWorkspace } from "../defaults";
 import { settingsDraftFromWorkspace } from "../utils";
 import type { TauriBackendInfo, WorkspaceData } from "../types";
 
+function shouldKeepLocalOnlySession(session: WorkspaceData["chatSessions"][number]) {
+  if (session.id.startsWith("draft-")) return true;
+  if (session.messages.length > 0) return true;
+  return Boolean(session.documents && session.documents.length > 0);
+}
+
 export function useWorkspace() {
   const [workspace, setWorkspace] = useState<WorkspaceData>(emptyWorkspace);
   const [loading, setLoading] = useState(true);
@@ -75,7 +81,7 @@ export function useWorkspace() {
       });
       const backendIds = new Set(payload.chatSessions.map((s) => s.id));
       for (const local of current.chatSessions) {
-        if (!backendIds.has(local.id)) {
+        if (!backendIds.has(local.id) && shouldKeepLocalOnlySession(local)) {
           mergedSessions.push(local);
         }
       }

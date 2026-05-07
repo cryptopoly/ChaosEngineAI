@@ -29,11 +29,15 @@ class HtmlChallengeRequest(BaseModel):
     prompt: str = Field(min_length=1)
     models: list[CompareModelRequest] = Field(min_length=2, max_length=4)
     systemPrompt: str | None = None
+    thinkingMode: str | None = Field(default="off", pattern="^(off|auto)$")
+    reasoningEffort: str | None = Field(default=None, pattern="^(low|medium|high)$")
 
 
 class HtmlChallengeRetryRequest(BaseModel):
     model: CompareModelRequest
     systemPrompt: str | None = None
+    thinkingMode: str | None = Field(default=None, pattern="^(off|auto)$")
+    reasoningEffort: str | None = Field(default=None, pattern="^(low|medium|high)$")
 
 
 class HtmlChallengeOpenFileRequest(BaseModel):
@@ -89,6 +93,14 @@ def _format_size_gb(value: Any) -> str:
     if not isinstance(value, (int, float)) or value <= 0:
         return ""
     return f"{value:.1f} GB"
+
+
+def _thinking_summary(thinking_mode: Any, reasoning_effort: Any = None) -> str:
+    if thinking_mode != "auto":
+        return "Thinking off"
+    if reasoning_effort in {"low", "medium", "high"}:
+        return f"Thinking {str(reasoning_effort)}"
+    return "Thinking auto"
 
 
 def _launch_summary(settings: dict[str, Any] | None) -> str:
@@ -147,6 +159,10 @@ def _write_model_settings(folder: Path, manifest: dict[str, Any]) -> None:
         launch = _launch_summary(slot.get("settings"))
         if launch:
             lines.append(launch)
+        lines.append(_thinking_summary(
+            manifest.get("thinkingMode") or "off",
+            manifest.get("reasoningEffort"),
+        ))
 
     settings_path = folder / str(manifest.get("settingsFilename") or "model-settings.txt")
     tmp = settings_path.with_suffix(".tmp")
@@ -247,13 +263,19 @@ def _extract_html_document(text: str) -> tuple[str, bool]:
     return stripped, valid
 
 
-def _html_system_prompt(extra: str | None) -> str:
+def _html_system_prompt(extra: str | None, thinking_mode: str | None = None) -> str:
     base = (
         "You are participating in an HTML Challenge. Return only a complete, "
         "standalone HTML document for the user's prompt. Include all CSS and "
         "JavaScript inline in that single document. Do not use Markdown fences, "
         "do not explain the code, and do not reference external network assets."
     )
+    if thinking_mode != "auto":
+        base = (
+            "Do not think step by step. Do not output hidden reasoning, planning, "
+            "analysis notes, or <think> tags. "
+            + base
+        )
     cleaned = (extra or "").strip()
     return f"{cleaned}\n\n{base}" if cleaned else base
 
@@ -413,6 +435,8 @@ def _stream_html_challenge_slot(
     model: CompareModelRequest,
     prompt: str,
     system_prompt: str | None,
+    thinking_mode: str | None,
+    reasoning_effort: str | None,
 ) -> Any:
     model_label = model.modelName or model.modelRef
     requested_runtime = _requested_runtime_payload(state, model.launch)
@@ -455,9 +479,11 @@ def _stream_html_challenge_slot(
         for chunk in state.runtime.stream_generate(
             prompt=prompt,
             history=[],
-            system_prompt=_html_system_prompt(system_prompt),
+            system_prompt=_html_system_prompt(system_prompt, thinking_mode),
             max_tokens=model.launch.maxTokens,
             temperature=model.launch.temperature,
+            thinking_mode=thinking_mode,
+            reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
         ):
             if chunk.reasoning:
                 yield _sse_event({"model": slot_id, "reasoning": chunk.reasoning})
@@ -581,8 +607,17 @@ def retry_html_challenge_slot(
     if _find_manifest_slot(manifest, slot_id) is None:
         raise HTTPException(status_code=404, detail=f"Challenge slot '{slot_id}' was not found.")
     prompt = str(manifest.get("prompt") or "").strip()
+    thinking_mode = body.thinkingMode if body.thinkingMode is not None else str(manifest.get("thinkingMode") or "off")
+    reasoning_effort = (
+        body.reasoningEffort
+        if body.reasoningEffort is not None
+        else manifest.get("reasoningEffort")
+    )
     if not prompt:
         raise HTTPException(status_code=422, detail="Challenge prompt is missing.")
+    if body.thinkingMode is not None:
+        manifest["thinkingMode"] = thinking_mode
+        manifest["reasoningEffort"] = reasoning_effort if thinking_mode == "auto" else None
 
     _update_manifest_slot(
         folder,
@@ -611,6 +646,8 @@ def retry_html_challenge_slot(
             model=body.model,
             prompt=prompt,
             system_prompt=body.systemPrompt if body.systemPrompt is not None else manifest.get("systemPrompt"),
+            thinking_mode=thinking_mode,
+            reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
         )
         yield _sse_event({"challengeDone": True, "challenge": manifest})
 
@@ -636,6 +673,8 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
         "title": body.title.strip(),
         "prompt": body.prompt,
         "systemPrompt": body.systemPrompt or "",
+        "thinkingMode": body.thinkingMode or "off",
+        "reasoningEffort": body.reasoningEffort if body.thinkingMode == "auto" else None,
         "createdAt": created_at,
         "updatedAt": created_at,
         "folderPath": str(folder),
@@ -668,6 +707,8 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
                 model=model,
                 prompt=body.prompt,
                 system_prompt=body.systemPrompt,
+                thinking_mode=body.thinkingMode or "off",
+                reasoning_effort=body.reasoningEffort if body.thinkingMode == "auto" else None,
             )
             if not loaded:
                 yield _sse_event({"challengeDone": True, "challenge": manifest})

@@ -32,6 +32,16 @@ def _seed_benchmark_runs() -> list[dict[str, Any]]:
     return []
 
 
+def _session_has_persistable_content(session: dict[str, Any]) -> bool:
+    messages = session.get("messages")
+    if isinstance(messages, list) and len(messages) > 0:
+        return True
+    documents = session.get("documents")
+    if isinstance(documents, list) and len(documents) > 0:
+        return True
+    return False
+
+
 def _load_benchmark_runs(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -79,6 +89,7 @@ def _load_chat_sessions(path: Path) -> list[dict[str, Any]]:
         and s.get("id")
         and s.get("title")
         and s.get("id") not in LEGACY_SEEDED_CHAT_IDS
+        and _session_has_persistable_content(s)
     ]
     return valid[:MAX_CHAT_SESSIONS]
 
@@ -86,7 +97,12 @@ def _load_chat_sessions(path: Path) -> list[dict[str, Any]]:
 def _save_chat_sessions(sessions: list[dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(sessions[:MAX_CHAT_SESSIONS], indent=2, default=str), encoding="utf-8")
+    persistable_sessions = [
+        session
+        for session in sessions
+        if isinstance(session, dict) and _session_has_persistable_content(session)
+    ]
+    tmp.write_text(json.dumps(persistable_sessions[:MAX_CHAT_SESSIONS], indent=2, default=str), encoding="utf-8")
     try:
         tmp.chmod(0o600)
     except OSError:

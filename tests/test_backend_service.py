@@ -826,7 +826,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                         "updatedAt": "2026-04-13 12:00:00",
                         "model": "Gemma",
                         "cacheLabel": "Native f16",
-                        "messages": [],
+                        "messages": [{"role": "user", "text": "Real prompt"}],
                     },
                 ]
             ),
@@ -858,6 +858,54 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual([session["id"] for session in state.chat_sessions], ["session-real"])
         self.assertEqual([run["id"] for run in state.benchmark_runs], ["bench-real"])
+
+    def test_empty_chat_sessions_are_not_loaded_or_saved(self):
+        self.chat_sessions_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "session-empty",
+                        "title": "New chat",
+                        "updatedAt": "2026-04-13 12:00:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [],
+                    },
+                    {
+                        "id": "session-docs",
+                        "title": "Document context",
+                        "updatedAt": "2026-04-13 12:01:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [],
+                        "documents": [{"id": "doc-1", "originalName": "notes.md"}],
+                    },
+                    {
+                        "id": "session-message",
+                        "title": "Real chat",
+                        "updatedAt": "2026-04-13 12:02:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [{"role": "user", "text": "Hello"}],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        self.assertEqual([session["id"] for session in state.chat_sessions], ["session-docs", "session-message"])
+        state.create_session(title="Transient blank")
+        state._persist_sessions()
+        saved = json.loads(self.chat_sessions_path.read_text(encoding="utf-8"))
+        self.assertEqual([session["id"] for session in saved], ["session-docs", "session-message"])
 
     def test_duplicate_auto_generated_session_titles_are_normalized_on_load(self):
         self.chat_sessions_path.write_text(
@@ -900,12 +948,12 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(
             [session["title"] for session in state.chat_sessions],
-            ["Explain how cache compression", "Explain how cache compression (2)"],
+            ["Explain how cache compression helps long", "Explain how cache compression helps long (2)"],
         )
         saved = json.loads(self.chat_sessions_path.read_text(encoding="utf-8"))
         self.assertEqual(
             [session["title"] for session in saved],
-            ["Explain how cache compression", "Explain how cache compression (2)"],
+            ["Explain how cache compression helps long", "Explain how cache compression helps long (2)"],
         )
 
     def test_model_load_and_chat_generation(self):
@@ -1072,8 +1120,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(first.json()["session"]["title"], "Explain how cache compression")
-        self.assertEqual(second.json()["session"]["title"], "Explain how cache compression (2)")
+        self.assertEqual(first.json()["session"]["title"], "Explain how cache compression helps long")
+        self.assertEqual(second.json()["session"]["title"], "Explain how cache compression helps long (2)")
 
     def test_model_download_delete_clears_tracked_attempt(self):
         repo = "org/stuck-model"
@@ -1531,10 +1579,13 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIn("128K", settings_text)
             self.assertIn("chaosengine 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
             self.assertIn("turboquant 3-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("Thinking off", settings_text)
             self.assertEqual([slot["status"] for slot in challenge["slots"]], ["done", "done"])
             for slot in challenge["slots"]:
                 self.assertTrue((folder / slot["filename"]).exists())
                 self.assertGreater(slot["fileBytes"], 0)
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "off")
+            self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
             second_slot = challenge["slots"][1]
             with mock.patch.object(html_challenge_routes.platform, "system", return_value="Darwin"), \
@@ -1557,7 +1608,9 @@ class ChaosEngineBackendTests(unittest.TestCase):
                         "source": "library",
                         "backend": "mock",
                         "path": "/tmp/model-retry",
-                    }
+                    },
+                    "thinkingMode": "auto",
+                    "reasoningEffort": "high",
                 },
             )
             self.assertEqual(retry_response.status_code, 200)
@@ -1575,6 +1628,9 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertTrue((folder / first_slot["filename"]).exists())
             settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
             self.assertIn("Retry Model", settings_text)
+            self.assertIn("Thinking high", settings_text)
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "auto")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"], "high")
 
             (folder / first_slot["filename"]).unlink()
             deleted_response = self.client.get(

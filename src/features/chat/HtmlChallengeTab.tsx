@@ -96,6 +96,8 @@ interface HtmlChallengeManifest {
   id: string;
   title: string;
   prompt: string;
+  thinkingMode?: HtmlChallengeThinkingMode | null;
+  reasoningEffort?: HtmlChallengeReasoningEffort | null;
   createdAt: string;
   updatedAt: string;
   folderPath: string;
@@ -128,6 +130,8 @@ interface HtmlChallengeStreamEvent extends Partial<GenerationMetrics> {
 }
 
 type HtmlChallengeLayoutMode = "row" | "stacked";
+type HtmlChallengeThinkingMode = "off" | "auto";
+type HtmlChallengeReasoningEffort = "low" | "medium" | "high";
 
 const htmlChallengePreviewKeyBridge = `
 <script>
@@ -307,6 +311,25 @@ function challengeHistoryLabel(challenge: HtmlChallengeManifest) {
   return `${challenge.title} · ${formatChallengeDate(challenge.createdAt)}`;
 }
 
+function fuzzyIncludes(value: string, query: string) {
+  const haystack = value.toLowerCase();
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  if (haystack.includes(needle)) return true;
+
+  let cursor = 0;
+  for (const char of needle) {
+    cursor = haystack.indexOf(char, cursor);
+    if (cursor < 0) return false;
+    cursor += 1;
+  }
+  return true;
+}
+
+function reasoningLabel(mode: HtmlChallengeThinkingMode, effort: HtmlChallengeReasoningEffort) {
+  return mode === "off" ? "Thinking off" : `Thinking ${effort}`;
+}
+
 function challengeGridColumns(count: number, layoutMode: HtmlChallengeLayoutMode) {
   if (layoutMode === "stacked") {
     return `repeat(${count <= 2 ? 1 : 2}, minmax(0, 1fr))`;
@@ -367,8 +390,12 @@ export function HtmlChallengeTab({
   const [manifest, setManifest] = useState<HtmlChallengeManifest | null>(null);
   const [challenges, setChallenges] = useState<HtmlChallengeManifest[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [loadingChallengeId, setLoadingChallengeId] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<HtmlChallengeLayoutMode>("row");
+  const [thinkingMode, setThinkingMode] = useState<HtmlChallengeThinkingMode>("off");
+  const [reasoningEffort, setReasoningEffort] = useState<HtmlChallengeReasoningEffort>("medium");
   const [streamAtBottom, setStreamAtBottom] = useState<Record<CompareTarget, boolean>>(emptyStreamAtBottom);
   const [pickerTarget, setPickerTarget] = useState<CompareTarget | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
@@ -402,6 +429,13 @@ export function HtmlChallengeTab({
     manifest?.slots.length
       && manifest.slots.every((slot) => slot.status === "done" || slot.status === "error"),
   );
+  const selectedChallenge = challenges.find((challenge) => challenge.id === selectedChallengeId) ?? null;
+  const filteredChallenges = challenges.filter((challenge) =>
+    fuzzyIncludes(challengeHistoryLabel(challenge), historySearch),
+  );
+  const historyInputValue = historyOpen || historySearch
+    ? historySearch
+    : selectedChallenge ? challengeHistoryLabel(selectedChallenge) : "";
 
   useEffect(() => {
     void refreshChallengeHistory();
@@ -551,8 +585,12 @@ export function HtmlChallengeTab({
     if (busy) return;
     setTitle("");
     setPrompt("");
+    setThinkingMode("off");
+    setReasoningEffort("medium");
     setManifest(null);
     setSelectedChallengeId("");
+    setHistorySearch("");
+    setHistoryOpen(false);
     setSlotStates(emptySlotStates());
     setStreamAtBottom(emptyStreamAtBottom());
     setSlots([
@@ -665,22 +703,22 @@ export function HtmlChallengeTab({
 
       setTitle(challenge.title);
       setPrompt(challenge.prompt);
+      setThinkingMode(challenge.thinkingMode === "auto" ? "auto" : "off");
+      setReasoningEffort(
+        challenge.reasoningEffort === "low" || challenge.reasoningEffort === "high"
+          ? challenge.reasoningEffort
+          : "medium",
+      );
       setSlots(nextSlots);
       setSlotStates(nextStates);
       setStreamAtBottom(emptyStreamAtBottom());
       setManifest(challenge);
       setSelectedChallengeId(challenge.id);
+      setHistorySearch("");
+      setHistoryOpen(false);
     } finally {
       setLoadingChallengeId(null);
     }
-  }
-
-  function cycleChallenge(direction: -1 | 1) {
-    if (busy || loadingChallengeId || challenges.length < 2) return;
-    const selectedIndex = challenges.findIndex((challenge) => challenge.id === selectedChallengeId);
-    const currentIndex = selectedIndex >= 0 ? selectedIndex : direction > 0 ? -1 : 0;
-    const nextIndex = (currentIndex + direction + challenges.length) % challenges.length;
-    void loadChallenge(challenges[nextIndex].id);
   }
 
   function openPicker(target: CompareTarget) {
@@ -781,6 +819,8 @@ export function HtmlChallengeTab({
         body: JSON.stringify({
           title: title.trim(),
           prompt: prompt.trim(),
+          thinkingMode,
+          reasoningEffort: thinkingMode === "auto" ? reasoningEffort : undefined,
           models: slots.map((slot) => buildComparePayload(selectedBySlot[slot.id]!, slot.settings)),
         }),
         signal: controller.signal,
@@ -834,7 +874,11 @@ export function HtmlChallengeTab({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelPayload }),
+          body: JSON.stringify({
+            model: modelPayload,
+            thinkingMode,
+            reasoningEffort: thinkingMode === "auto" ? reasoningEffort : undefined,
+          }),
           signal: controller.signal,
         },
       );
@@ -934,6 +978,7 @@ export function HtmlChallengeTab({
     if (cacheDetail && !parts.some((part) => part.toLowerCase().includes("cache"))) {
       parts.splice(1, 0, cacheDetail);
     }
+    parts.push(reasoningLabel(thinkingMode, reasoningEffort));
     return parts.join(" · ");
   }
 
@@ -1166,41 +1211,52 @@ export function HtmlChallengeTab({
               >
                 New Challenge
               </button>
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={busy || Boolean(loadingChallengeId) || challenges.length < 2}
-                onClick={() => cycleChallenge(1)}
-              >
-                Previous
-              </button>
-              <select
-                className="text-input html-challenge-history-select"
-                value={selectedChallengeId}
-                disabled={busy || Boolean(loadingChallengeId)}
-                onChange={(event) => {
-                  if (event.target.value) {
-                    void loadChallenge(event.target.value);
-                    return;
-                  }
-                  newChallenge();
-                }}
-              >
-                <option value="">Previous challenges...</option>
-                {challenges.map((challenge) => (
-                  <option key={challenge.id} value={challenge.id}>
-                    {challengeHistoryLabel(challenge)}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={busy || Boolean(loadingChallengeId) || challenges.length < 2}
-                onClick={() => cycleChallenge(-1)}
-              >
-                Next
-              </button>
+              <div className="html-challenge-history-combobox">
+                <input
+                  className="text-input html-challenge-history-input"
+                  type="search"
+                  value={historyInputValue}
+                  placeholder="Search previous challenges..."
+                  disabled={busy || Boolean(loadingChallengeId)}
+                  onFocus={() => {
+                    setHistoryOpen(true);
+                    setHistorySearch("");
+                  }}
+                  onChange={(event) => {
+                    setHistorySearch(event.target.value);
+                    setHistoryOpen(true);
+                  }}
+                  onBlur={() => {
+                    window.setTimeout(() => {
+                      setHistoryOpen(false);
+                      setHistorySearch("");
+                    }, 120);
+                  }}
+                />
+                {historyOpen && !busy && !loadingChallengeId ? (
+                  <div className="html-challenge-history-menu" role="listbox">
+                    {filteredChallenges.map((challenge) => (
+                      <button
+                        key={challenge.id}
+                        type="button"
+                        role="option"
+                        aria-selected={challenge.id === selectedChallengeId}
+                        className={`html-challenge-history-option${challenge.id === selectedChallengeId ? " active" : ""}`}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          void loadChallenge(challenge.id);
+                        }}
+                      >
+                        <span>{challenge.title}</span>
+                        <small>{formatChallengeDate(challenge.createdAt)}</small>
+                      </button>
+                    ))}
+                    {filteredChallenges.length === 0 ? (
+                      <p className="html-challenge-history-empty">No matching challenges.</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <input
@@ -1218,6 +1274,35 @@ export function HtmlChallengeTab({
             placeholder="Prompt all selected models with the same webpage challenge..."
             disabled={busy}
           />
+          <div className="html-challenge-thinking-row">
+            <span className="composer-mode-label">Thinking</span>
+            <div className="thread-mode-toggle composer-thinking-toggle" role="group" aria-label="HTML Challenge thinking mode">
+              <button
+                type="button"
+                className={`thread-mode-button${thinkingMode === "off" ? " thread-mode-button--active" : ""}`}
+                disabled={busy}
+                onClick={() => setThinkingMode("off")}
+                title="Ask the model for direct output and suppress reasoning capture"
+              >
+                Off
+              </button>
+              {(["low", "medium", "high"] as HtmlChallengeReasoningEffort[]).map((effort) => (
+                <button
+                  key={effort}
+                  type="button"
+                  className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === effort ? " thread-mode-button--active" : ""}`}
+                  disabled={busy}
+                  onClick={() => {
+                    setThinkingMode("auto");
+                    setReasoningEffort(effort);
+                  }}
+                  title={`${effort[0].toUpperCase()}${effort.slice(1)} reasoning effort`}
+                >
+                  {effort === "medium" ? "Med" : effort[0].toUpperCase() + effort.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             {busy ? (
               <button className="secondary-button" type="button" onClick={cancelChallenge}>Cancel</button>
@@ -1228,7 +1313,7 @@ export function HtmlChallengeTab({
                 onClick={() => void runChallenge()}
                 disabled={!title.trim() || !prompt.trim() || !allSelected}
               >
-                Run Challenge
+                {manifest ? "Run New Challenge" : "Run Challenge"}
               </button>
             )}
           </div>

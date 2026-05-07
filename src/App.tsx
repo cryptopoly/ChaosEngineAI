@@ -80,6 +80,7 @@ import {
   detectBitsPerWeight,
   compareOptionalNumber,
   serverOriginFromBase,
+  isUnsavedEmptySession,
 } from "./utils";
 import {
   useWorkspace,
@@ -1176,32 +1177,23 @@ export default function App() {
   }
 
   async function handleStartThreadWithVariant(variant: ModelVariant) {
-    if (!backendOnline) {
-      const localSession: ChatSession = {
-        id: `local-${Date.now()}`,
-        title: "New chat",
-        pinned: false,
-        messages: [],
-        ...threadPatchFromVariant(variant),
-      };
-      setWorkspace((current) => ({ ...current, chatSessions: [...current.chatSessions, localSession] }));
-      setActiveChatId(localSession.id);
-      setThreadTitleDraft(localSession.title);
-      setActiveTab("chat");
-      return;
-    }
-    try {
-      const { createSession } = await import("./api");
-      const { upsertSession } = await import("./utils");
-      const session = await createSession("New chat");
-      const updated = await updateSession(session.id, threadPatchFromVariant(variant));
-      setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, updated) }));
-      setActiveChatId(updated.id);
-      setThreadTitleDraft(updated.title);
-      setActiveTab("chat");
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to start a new thread.");
-    }
+    const localSession: ChatSession = {
+      id: `draft-${Date.now()}`,
+      title: "New chat",
+      pinned: false,
+      messages: [],
+      ...threadPatchFromVariant(variant),
+    };
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: [
+        localSession,
+        ...current.chatSessions.filter((session) => !isUnsavedEmptySession(session)),
+      ],
+    }));
+    setActiveChatId(localSession.id);
+    setThreadTitleDraft(localSession.title);
+    setActiveTab("chat");
   }
 
   function openModelSelector(action: "chat" | "server" | "thread", preselectedKey?: string) {

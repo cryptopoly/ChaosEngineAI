@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sessionPreview, sortSessions, titleFromPrompt, uniqueSessionTitle, upsertSession } from "../chat";
+import { isUnsavedEmptySession, sessionPreview, sortSessions, titleFromPrompt, uniqueSessionTitle, upsertSession } from "../chat";
 import type { ChatSession } from "../../types";
 
 function makeSession(overrides: Partial<ChatSession> & { id: string }): ChatSession {
@@ -60,20 +60,29 @@ describe("sortSessions()", () => {
 });
 
 describe("titleFromPrompt()", () => {
-  it("takes the first four words of a prompt", () => {
-    expect(titleFromPrompt("Tell me about the weather today")).toBe("Tell me about the");
+  it("builds a concise title from the useful prompt text", () => {
+    expect(titleFromPrompt("Tell me about the weather today")).toBe("Weather today");
   });
 
-  it("returns full text if fewer than four words", () => {
+  it("returns full text if fewer than the title word limit", () => {
     expect(titleFromPrompt("Hello world")).toBe("Hello world");
   });
 
   it("trims leading/trailing whitespace", () => {
-    expect(titleFromPrompt("  spaced out  ")).toBe("spaced out");
+    expect(titleFromPrompt("  spaced out  ")).toBe("Spaced out");
   });
 
   it("collapses multiple spaces between words", () => {
-    expect(titleFromPrompt("a   b   c   d   e")).toBe("a b c d");
+    expect(titleFromPrompt("a   b   c   d   e")).toBe("A b c d e");
+  });
+
+  it("strips polite request wrappers", () => {
+    expect(titleFromPrompt("Please create a single-page dashboard for memory stats.")).toBe(
+      "Create a single-page dashboard for memory",
+    );
+    expect(titleFromPrompt("Can we make it so that empty chats are not saved please?")).toBe(
+      "Empty chats are not saved",
+    );
   });
 
   it("returns 'New chat' for empty/whitespace-only input", () => {
@@ -83,12 +92,23 @@ describe("titleFromPrompt()", () => {
 
   it("adds a numeric suffix when the generated title already exists", () => {
     const sessions = [
-      makeSession({ id: "a", title: "Explain how cache compression" }),
-      makeSession({ id: "b", title: "Explain how cache compression (2)" }),
+      makeSession({ id: "a", title: "Explain how cache compression helps long" }),
+      makeSession({ id: "b", title: "Explain how cache compression helps long (2)" }),
     ];
     expect(titleFromPrompt("Explain how cache compression helps long contexts.", sessions)).toBe(
-      "Explain how cache compression (3)",
+      "Explain how cache compression helps long (3)",
     );
+  });
+});
+
+describe("isUnsavedEmptySession()", () => {
+  it("only treats empty draft sessions as unsaved", () => {
+    expect(isUnsavedEmptySession(makeSession({ id: "draft-1" }))).toBe(true);
+    expect(isUnsavedEmptySession(makeSession({ id: "session-1" }))).toBe(false);
+    expect(isUnsavedEmptySession(makeSession({
+      id: "draft-2",
+      messages: [{ role: "user", text: "hi" } as any],
+    }))).toBe(false);
   });
 });
 

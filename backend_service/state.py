@@ -166,9 +166,67 @@ def _build_history_with_reasoning(
     return history
 
 
-def _title_from_prompt(prompt: str | None) -> str:
+_TITLE_LEADING_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"^(?:please\s+)+",
+        r"^(?:can|could|would|will)\s+you\s+",
+        r"^(?:can|could|would|will)\s+we\s+",
+        r"^i\s+(?:need|want|would\s+like)\s+(?:you\s+to\s+)?",
+        r"^help\s+me\s+",
+        r"^make\s+it\s+so\s+that\s+",
+        r"^tell\s+me\s+(?:about\s+)?(?:the\s+)?",
+        r"^show\s+me\s+(?:how\s+to\s+)?",
+        r"^give\s+me\s+",
+    )
+]
+
+
+def _legacy_title_from_prompt(prompt: str | None) -> str:
     words = str(prompt or "").strip().split()
     return " ".join(words[:4]) or "New chat"
+
+
+def _clean_prompt_for_title(prompt: str | None) -> str:
+    text = str(prompt or "")
+    text = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = re.sub(r"https?://\S+", " ", text)
+    text = re.sub(r"^[\s#>*\-\d.)]+", "", text.strip())
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+
+    first_sentence = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+    candidate = first_sentence.strip(" \t\n\r\"'`*_~:;,.!?()[]{}")
+    for _ in range(4):
+        previous = candidate
+        for pattern in _TITLE_LEADING_PATTERNS:
+            candidate = pattern.sub("", candidate).strip()
+        candidate = re.sub(r"\s+please$", "", candidate, flags=re.IGNORECASE).strip()
+        if candidate == previous:
+            break
+    return candidate.strip(" \t\n\r\"'`*_~:;,.!?()[]{}")
+
+
+def _title_from_prompt(prompt: str | None) -> str:
+    candidate = _clean_prompt_for_title(prompt)
+    if not candidate:
+        return "New chat"
+
+    words = re.findall(r"[A-Za-z0-9][A-Za-z0-9+'’._/#-]*", candidate)
+    if not words:
+        return "New chat"
+
+    title = " ".join(words[:6]).strip()
+    if len(title) > 64:
+        title = title[:64].rsplit(" ", 1)[0] or title[:64]
+    title = title.strip(" \t\n\r\"'`*_~:;,.!?()[]{}")
+    if not title:
+        return "New chat"
+    if title.islower():
+        title = title[:1].upper() + title[1:]
+    return title
 
 
 def _title_variant_pattern(base_title: str) -> re.Pattern[str]:
@@ -1070,11 +1128,17 @@ class ChaosEngineState:
                 None,
             )
             base_title = _title_from_prompt(first_user_message)
+            legacy_base_title = _legacy_title_from_prompt(first_user_message)
             if base_title == "New chat":
                 continue
 
             current_title = str(session.get("title") or "").strip()
-            if not _title_variant_pattern(base_title).match(current_title):
+            matches_current_title = _title_variant_pattern(base_title).match(current_title)
+            matches_legacy_title = (
+                legacy_base_title != base_title
+                and _title_variant_pattern(legacy_base_title).match(current_title)
+            )
+            if not matches_current_title and not matches_legacy_title:
                 continue
 
             seen_counts[base_title] = seen_counts.get(base_title, 0) + 1

@@ -1547,7 +1547,35 @@ class ChaosEngineBackendTests(unittest.TestCase):
             popen.assert_called_once()
             self.assertEqual(popen.call_args.args[0], ["open", str(folder / second_slot["filename"])])
 
-            first_slot = challenge["slots"][0]
+            retry_response = self.client.post(
+                f"/api/chat/html-challenges/{challenge['id']}/slots/a/retry",
+                json={
+                    "model": {
+                        "modelRef": "local/model-retry",
+                        "modelName": "Retry Model",
+                        "displayLabel": "Retry Model",
+                        "source": "library",
+                        "backend": "mock",
+                        "path": "/tmp/model-retry",
+                    }
+                },
+            )
+            self.assertEqual(retry_response.status_code, 200)
+            retry_events = [
+                json.loads(line[6:])
+                for line in retry_response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            retry_final = next(event for event in reversed(retry_events) if event.get("challengeDone"))
+            challenge = retry_final["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            self.assertEqual(first_slot["status"], "done")
+            self.assertEqual(first_slot["modelRef"], "local/model-retry")
+            self.assertEqual(first_slot["displayLabel"], "Retry Model")
+            self.assertTrue((folder / first_slot["filename"]).exists())
+            settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Retry Model", settings_text)
+
             (folder / first_slot["filename"]).unlink()
             deleted_response = self.client.get(
                 f"/api/chat/html-challenges/{challenge['id']}/files/{first_slot['slotId']}",

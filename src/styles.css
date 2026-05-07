@@ -3657,6 +3657,13 @@ select.text-input {
   overflow: hidden;
 }
 
+.html-challenge-panel-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .html-challenge-meta {
   display: flex;
   flex-wrap: wrap;
@@ -3688,10 +3695,23 @@ select.text-input {
 .html-challenge-frame {
   width: 100%;
   flex: 1;
-  min-height: 320px;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: white;
+}
+
+.html-challenge-frame-shell {
+  display: flex;
+  flex: 1;
+  min-height: 320px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.html-challenge-frame-shell:focus,
+.html-challenge-frame-shell:focus-within {
+  box-shadow: 0 0 0 2px rgba(147, 178, 255, 0.4);
 }
 
 .html-challenge-stream {
@@ -3725,6 +3745,23 @@ select.text-input {
 
 .html-challenge-deleted strong {
   color: var(--danger);
+}
+
+.html-challenge-empty-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.html-challenge-empty-result strong {
+  color: var(--text);
 }
 
 .html-challenge-file-row {

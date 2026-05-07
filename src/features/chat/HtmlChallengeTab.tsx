@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
@@ -76,6 +76,10 @@ interface HtmlChallengeManifestSlot {
   quantization?: string | null;
   sizeGb?: number | null;
   contextWindow?: string | null;
+  canonicalRepo?: string | null;
+  source?: string | null;
+  backend?: string | null;
+  path?: string | null;
   settings?: Partial<LaunchPreferences>;
   filename?: string;
   filePath?: string;
@@ -125,6 +129,50 @@ interface HtmlChallengeStreamEvent extends Partial<GenerationMetrics> {
 
 type HtmlChallengeLayoutMode = "row" | "stacked";
 
+const htmlChallengePreviewKeyBridge = `
+<script>
+(function () {
+  window.addEventListener("message", function (event) {
+    var data = event.data;
+    if (!data || data.__htmlChallengePreviewKey !== true) return;
+    var init = {
+      key: data.key,
+      code: data.code,
+      keyCode: data.keyCode,
+      which: data.which,
+      bubbles: true,
+      cancelable: true,
+      repeat: Boolean(data.repeat),
+      altKey: Boolean(data.altKey),
+      ctrlKey: Boolean(data.ctrlKey),
+      metaKey: Boolean(data.metaKey),
+      shiftKey: Boolean(data.shiftKey)
+    };
+    var targets = [window, document, document.activeElement || document.body, document.body];
+    targets.forEach(function (target) {
+      if (!target || typeof target.dispatchEvent !== "function") return;
+      try {
+        target.dispatchEvent(new KeyboardEvent(data.type || "keydown", init));
+      } catch (_) {}
+    });
+  });
+})();
+</script>`;
+
+const htmlChallengeGameKeys = new Set([
+  " ",
+  "enter",
+  "spacebar",
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+  "w",
+  "a",
+  "s",
+  "d",
+]);
+
 const emptySlotState = (): ChallengeSlotState => ({
   text: "",
   reasoning: "",
@@ -170,10 +218,11 @@ function isTextModelOption(option: ChatModelOption) {
 
 function previewSrcDoc(html: string) {
   const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">`;
+  const injection = `${csp}${htmlChallengePreviewKeyBridge}`;
   if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head([^>]*)>/i, `<head$1>${csp}`);
+    return html.replace(/<head([^>]*)>/i, `<head$1>${injection}`);
   }
-  return `${csp}${html}`;
+  return `${injection}${html}`;
 }
 
 function mergeMetrics(current: GenerationMetrics | null, event: HtmlChallengeStreamEvent): GenerationMetrics | null {
@@ -332,6 +381,12 @@ export function HtmlChallengeTab({
     c: null,
     d: null,
   });
+  const frameRefs = useRef<Record<CompareTarget, HTMLIFrameElement | null>>({
+    a: null,
+    b: null,
+    c: null,
+    d: null,
+  });
 
   const textModelOptions = modelOptions.filter(isTextModelOption);
   const selectedBySlot = Object.fromEntries(
@@ -393,6 +448,103 @@ export function HtmlChallengeTab({
     if (!element) return;
     element.scrollTop = element.scrollHeight;
     setStreamAtBottom((current) => current[target] ? current : { ...current, [target]: true });
+  }
+
+  function modelKeyFromManifestSlot(slot: HtmlChallengeManifestSlot) {
+    const ref = slot.modelRef;
+    const path = slot.path ?? "";
+    const canonicalRepo = slot.canonicalRepo ?? "";
+    return textModelOptions.find((option) => (
+      option.key === ref
+      || option.modelRef === ref
+      || (path && option.path === path)
+      || (canonicalRepo && option.canonicalRepo === canonicalRepo)
+    ))?.key ?? "";
+  }
+
+  async function consumeChallengeStream(response: Response) {
+    const reader = response.body?.getReader();
+    if (!reader) return "";
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalChallengeId = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const event = JSON.parse(line.slice(6)) as HtmlChallengeStreamEvent;
+          if (event.challenge?.id) finalChallengeId = event.challenge.id;
+          applyStreamEvent(event);
+        } catch {
+          // Ignore malformed chunks.
+        }
+      }
+    }
+    return finalChallengeId;
+  }
+
+  function buildRetryModelPayload(slot: ChallengeSlot, manifestSlot?: HtmlChallengeManifestSlot) {
+    const option = selectedBySlot[slot.id];
+    if (option) return buildComparePayload(option, slot.settings);
+    if (!manifestSlot?.modelRef) return null;
+    return {
+      modelRef: manifestSlot.modelRef,
+      modelName: manifestSlot.modelName,
+      displayLabel: manifestSlot.displayLabel ?? manifestSlot.modelName ?? manifestSlot.modelRef,
+      displayDetail: manifestSlot.displayDetail ?? "",
+      format: manifestSlot.format ?? undefined,
+      quantization: manifestSlot.quantization ?? undefined,
+      sizeGb: manifestSlot.sizeGb ?? undefined,
+      contextWindow: manifestSlot.contextWindow ?? undefined,
+      canonicalRepo: manifestSlot.canonicalRepo ?? undefined,
+      source: manifestSlot.source || "catalog",
+      backend: manifestSlot.backend || "auto",
+      path: manifestSlot.path ?? undefined,
+      launch: slot.settings,
+    } satisfies ReturnType<typeof buildComparePayload>;
+  }
+
+  function isRetryableState(state: ChallengeSlotState) {
+    return Boolean(state.error || (state.done && (!state.html || state.validHtmlDocument === false)));
+  }
+
+  function focusPreviewFrame(target: CompareTarget) {
+    const frame = frameRefs.current[target];
+    if (!frame) return;
+    frame.focus();
+    try {
+      frame.contentWindow?.focus();
+    } catch {
+      // Sandboxed frames can reject focus in some WebView builds.
+    }
+  }
+
+  function forwardPreviewKey(target: CompareTarget, event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const frame = frameRefs.current[target];
+    if (!frame?.contentWindow) return;
+    const key = event.key.toLowerCase();
+    if (htmlChallengeGameKeys.has(key)) {
+      event.preventDefault();
+    }
+    frame.contentWindow.postMessage({
+      __htmlChallengePreviewKey: true,
+      type: event.type,
+      key: event.key,
+      code: event.code,
+      keyCode: event.keyCode,
+      which: event.which,
+      repeat: event.repeat,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    }, "*");
   }
 
   function newChallenge() {
@@ -481,7 +633,7 @@ export function HtmlChallengeTab({
       const nextSlots = manifestSlots.length >= 2
         ? manifestSlots.map((slot) => ({
           id: slot.slotId,
-          modelKey: "",
+          modelKey: modelKeyFromManifestSlot(slot),
           settings: settingsFromManifest(slot.settings, launchSettings),
         }))
         : [
@@ -554,7 +706,7 @@ export function HtmlChallengeTab({
       const prev = current[target];
       let next = prev;
       if (event.loading) {
-        next = { ...next, loading: true, loadingMessage: event.message };
+        next = { ...next, loading: true, loadingMessage: event.message, error: undefined, deleted: false };
       }
       if (event.loaded) {
         next = {
@@ -598,7 +750,15 @@ export function HtmlChallengeTab({
         };
       }
       if (event.error) {
-        next = { ...next, error: event.error, done: true, loading: false, reasoningDone: true };
+        next = {
+          ...next,
+          error: event.error,
+          done: true,
+          loading: false,
+          deleted: false,
+          reasoningDone: true,
+          html: "",
+        };
       }
       return { ...current, [target]: next };
     });
@@ -635,27 +795,7 @@ export function HtmlChallengeTab({
         setBusy(false);
         return;
       }
-      const reader = response.body?.getReader();
-      if (!reader) return;
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const event = JSON.parse(line.slice(6)) as HtmlChallengeStreamEvent;
-            if (event.challenge?.id) finalChallengeId = event.challenge.id;
-            applyStreamEvent(event);
-          } catch {
-            // Ignore malformed chunks.
-          }
-        }
-      }
+      finalChallengeId = await consumeChallengeStream(response);
       await refreshChallengeHistory(finalChallengeId || undefined);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -663,6 +803,66 @@ export function HtmlChallengeTab({
       setSlotStates((current) => ({
         ...current,
         [firstSlot]: { ...current[firstSlot], error: String(err), done: true },
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function retryChallengeSlot(slot: ChallengeSlot) {
+    const challengeId = manifest?.id;
+    const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
+    const modelPayload = buildRetryModelPayload(slot, manifestSlot);
+    if (busy || !challengeId || !modelPayload) return;
+
+    setBusy(true);
+    setStreamAtBottom((current) => ({ ...current, [slot.id]: true }));
+    setSlotStates((current) => ({
+      ...current,
+      [slot.id]: {
+        ...emptySlotState(),
+        loading: true,
+        loadingMessage: "Queued retry...",
+      },
+    }));
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const response = await apiFetch(
+        `/api/chat/html-challenges/${encodeURIComponent(challengeId)}/slots/${encodeURIComponent(slot.id)}/retry`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: modelPayload }),
+          signal: controller.signal,
+        },
+      );
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        setSlotStates((current) => ({
+          ...current,
+          [slot.id]: {
+            ...current[slot.id],
+            error: detail?.detail ?? "Retry failed",
+            done: true,
+            loading: false,
+          },
+        }));
+        return;
+      }
+      const finalChallengeId = await consumeChallengeStream(response);
+      await refreshChallengeHistory(finalChallengeId || challengeId);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setSlotStates((current) => ({
+        ...current,
+        [slot.id]: {
+          ...current[slot.id],
+          error: String(err),
+          done: true,
+          loading: false,
+        },
       }));
     } finally {
       setBusy(false);
@@ -792,17 +992,39 @@ export function HtmlChallengeTab({
     const subtitle = slotSubtitle(state) || manifestSlot?.status || "";
     const waitingLabel = index === 0 ? "Waiting..." : `Waiting for ${compareTargetLabels[slots[index - 1]?.id ?? "a"]} to finish...`;
     const showLatestButton = !streamAtBottom[slot.id] && Boolean(state.text) && !state.html;
+    const retryable = isRetryableState(state);
+    const retryPayload = retryable ? buildRetryModelPayload(slot, manifestSlot) : null;
+    const panelActions = showLatestButton || retryable ? (
+      <div className="html-challenge-panel-actions">
+        {showLatestButton ? (
+          <button className="secondary-button" type="button" onClick={() => scrollStreamToBottom(slot.id)}>
+            Latest
+          </button>
+        ) : null}
+        {retryable ? (
+          <>
+            <button className="secondary-button" type="button" disabled={busy} onClick={() => openPicker(slot.id)}>
+              Change Model
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={busy || !manifest?.id || !retryPayload}
+              onClick={() => void retryChallengeSlot(slot)}
+            >
+              Retry
+            </button>
+          </>
+        ) : null}
+      </div>
+    ) : null;
 
     return (
       <Panel
         title={compareTargetLabels[slot.id]}
         subtitle={subtitle}
         className="html-challenge-preview-panel"
-        actions={showLatestButton ? (
-          <button className="secondary-button" type="button" onClick={() => scrollStreamToBottom(slot.id)}>
-            Latest
-          </button>
-        ) : null}
+        actions={panelActions}
       >
         <div className="html-challenge-panel-body">
           {modelLabel ? (
@@ -831,15 +1053,31 @@ export function HtmlChallengeTab({
                 ) : null}
               </div>
             </div>
+          ) : state.done && !state.html ? (
+            <div className="html-challenge-empty-result">
+              <strong>No HTML output</strong>
+              <span>This model finished without a renderable HTML page.</span>
+            </div>
           ) : state.html ? (
             <>
               {renderFileActions(state)}
-              <iframe
-                className="html-challenge-frame"
-                title={`${compareTargetLabels[slot.id]} HTML preview`}
-                srcDoc={previewSrcDoc(state.html)}
-                sandbox="allow-scripts"
-              />
+              <div
+                className="html-challenge-frame-shell"
+                tabIndex={0}
+                onMouseDownCapture={() => focusPreviewFrame(slot.id)}
+                onKeyDown={(event) => forwardPreviewKey(slot.id, event)}
+                onKeyUp={(event) => forwardPreviewKey(slot.id, event)}
+              >
+                <iframe
+                  ref={(element) => { frameRefs.current[slot.id] = element; }}
+                  className="html-challenge-frame"
+                  title={`${compareTargetLabels[slot.id]} HTML preview`}
+                  srcDoc={previewSrcDoc(state.html)}
+                  sandbox="allow-scripts"
+                  tabIndex={0}
+                  onFocus={() => focusPreviewFrame(slot.id)}
+                />
+              </div>
             </>
           ) : state.text ? (
             <pre

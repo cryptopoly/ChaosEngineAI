@@ -31,11 +31,20 @@ class HtmlChallengeRequest(BaseModel):
     systemPrompt: str | None = None
 
 
+class HtmlChallengeRetryRequest(BaseModel):
+    model: CompareModelRequest
+    systemPrompt: str | None = None
+
+
 class HtmlChallengeOpenFileRequest(BaseModel):
     path: str = Field(min_length=1, max_length=4096)
 
 
 router = APIRouter()
+
+
+def _sse_event(data: dict[str, Any]) -> str:
+    return f"data: {json.dumps(data)}\n\n"
 
 
 def _utc_label() -> str:
@@ -166,9 +175,25 @@ def _read_manifest(challenge_id: str) -> dict[str, Any]:
     return payload
 
 
+def _find_manifest_slot(manifest: dict[str, Any], slot_id: str) -> dict[str, Any] | None:
+    return next(
+        (item for item in manifest.get("slots", []) if isinstance(item, dict) and item.get("slotId") == slot_id),
+        None,
+    )
+
+
+def _update_manifest_slot(folder: Path, manifest: dict[str, Any], slot_id: str, patch: dict[str, Any]) -> None:
+    slot = _find_manifest_slot(manifest, slot_id)
+    if slot is None:
+        raise HTTPException(status_code=404, detail=f"Challenge slot '{slot_id}' was not found.")
+    slot.update(patch)
+    manifest["updatedAt"] = _utc_label()
+    _write_manifest(folder, manifest)
+
+
 def _challenge_file_path(challenge_id: str, slot_id: str) -> Path:
     manifest = _read_manifest(challenge_id)
-    slot = next((item for item in manifest.get("slots", []) if item.get("slotId") == slot_id), None)
+    slot = _find_manifest_slot(manifest, slot_id)
     if not isinstance(slot, dict) or not slot.get("filename"):
         raise HTTPException(status_code=404, detail=f"Challenge slot '{slot_id}' has no saved file.")
     folder = _challenge_dir(challenge_id).resolve()
@@ -259,6 +284,40 @@ def _model_display_payload(model: CompareModelRequest) -> dict[str, Any]:
     }
 
 
+def _slot_label(slot_id: str) -> str:
+    return f"Model {slot_id.upper()}"
+
+
+def _slot_manifest_payload(slot_id: str, model: CompareModelRequest, status: str = "queued") -> dict[str, Any]:
+    return {
+        "slotId": slot_id,
+        "label": _slot_label(slot_id),
+        "status": status,
+        "modelRef": model.modelRef,
+        "modelName": model.modelName or model.modelRef,
+        **_model_display_payload(model),
+        "canonicalRepo": model.canonicalRepo,
+        "source": model.source,
+        "backend": model.backend,
+        "path": model.path,
+        "settings": _settings_payload(model.launch),
+    }
+
+
+def _clear_slot_result_payload() -> dict[str, Any]:
+    return {
+        "filename": None,
+        "filePath": None,
+        "fileBytes": None,
+        "validHtmlDocument": None,
+        "responseSeconds": 0,
+        "loadSeconds": 0,
+        "totalSeconds": 0,
+        "error": None,
+        "metrics": None,
+    }
+
+
 def _requested_runtime_payload(state: Any, launch: Any) -> dict[str, Any]:
     return state._requested_runtime_metrics_fields(
         cache_strategy=launch.cacheStrategy,
@@ -345,6 +404,126 @@ def _unload_active_model(state: Any) -> None:
         )
 
 
+def _stream_html_challenge_slot(
+    *,
+    state: Any,
+    manifest: dict[str, Any],
+    folder: Path,
+    slot_id: str,
+    model: CompareModelRequest,
+    prompt: str,
+    system_prompt: str | None,
+) -> Any:
+    model_label = model.modelName or model.modelRef
+    requested_runtime = _requested_runtime_payload(state, model.launch)
+    _update_manifest_slot(
+        folder,
+        manifest,
+        slot_id,
+        {"status": "loading", "error": None, "filename": None, "filePath": None, "fileBytes": None},
+    )
+    yield _sse_event({
+        "model": slot_id,
+        "loading": True,
+        "message": f"Loading {model_label}...",
+        "challenge": manifest,
+    })
+
+    load_start = time.perf_counter()
+    try:
+        _load_model(state, model)
+        load_seconds = round(time.perf_counter() - load_start, 2)
+        _update_manifest_slot(folder, manifest, slot_id, {"status": "running", "loadSeconds": load_seconds})
+        yield _sse_event({
+            "model": slot_id,
+            "loaded": True,
+            "loadSeconds": load_seconds,
+            **_loaded_model_metrics(state),
+            **requested_runtime,
+        })
+    except Exception as exc:
+        _unload_active_model(state)
+        state.runtime.clear_warm_pool()
+        _update_manifest_slot(folder, manifest, slot_id, {"status": "error", "error": str(exc)})
+        yield _sse_event({"model": slot_id, "error": str(exc), "challenge": manifest})
+        return False
+
+    full_text = ""
+    final_chunk = None
+    gen_start = time.perf_counter()
+    try:
+        for chunk in state.runtime.stream_generate(
+            prompt=prompt,
+            history=[],
+            system_prompt=_html_system_prompt(system_prompt),
+            max_tokens=model.launch.maxTokens,
+            temperature=model.launch.temperature,
+        ):
+            if chunk.reasoning:
+                yield _sse_event({"model": slot_id, "reasoning": chunk.reasoning})
+            if chunk.reasoning_done:
+                yield _sse_event({"model": slot_id, "reasoningDone": True})
+            if chunk.text:
+                full_text += chunk.text
+                yield _sse_event({"model": slot_id, "token": chunk.text})
+            if chunk.done:
+                final_chunk = chunk
+    except Exception as exc:
+        _update_manifest_slot(
+            folder,
+            manifest,
+            slot_id,
+            {"status": "error", "error": str(exc), "loadSeconds": load_seconds},
+        )
+        yield _sse_event({"model": slot_id, "error": str(exc), "challenge": manifest})
+    else:
+        elapsed = round(time.perf_counter() - gen_start, 2)
+        html, valid_html = _extract_html_document(full_text)
+        model_slug = _slugify(model_label, f"model-{slot_id}")
+        filename = f"{slot_id}-{model_slug}.html"
+        html_path = folder / filename
+        html_path.write_text(html, encoding="utf-8")
+        file_bytes = html_path.stat().st_size
+        metrics = _done_runtime_payload(
+            state,
+            final_chunk=final_chunk,
+            elapsed_seconds=elapsed,
+            requested_runtime=requested_runtime,
+        )
+        slot_patch = {
+            "status": "done",
+            "filename": filename,
+            "filePath": str(html_path),
+            "fileBytes": file_bytes,
+            "validHtmlDocument": valid_html,
+            "metrics": metrics,
+            "responseSeconds": elapsed,
+            "loadSeconds": load_seconds,
+            "totalSeconds": round(load_seconds + elapsed, 2),
+            "error": None,
+        }
+        _update_manifest_slot(folder, manifest, slot_id, slot_patch)
+        yield _sse_event({
+            "model": slot_id,
+            "done": True,
+            "text": full_text,
+            "html": html,
+            "filename": filename,
+            "filePath": str(html_path),
+            "fileBytes": file_bytes,
+            "validHtmlDocument": valid_html,
+            "loadSeconds": load_seconds,
+            "totalSeconds": round(load_seconds + elapsed, 2),
+            "challenge": manifest,
+            **metrics,
+        })
+    finally:
+        _unload_active_model(state)
+        state.runtime.clear_warm_pool()
+
+    return True
+
+
 @router.get("/api/chat/html-challenges")
 def list_html_challenges() -> dict[str, Any]:
     challenges: list[dict[str, Any]] = []
@@ -385,6 +564,63 @@ def open_html_challenge_file(body: HtmlChallengeOpenFileRequest) -> dict[str, An
     return {"opened": str(path)}
 
 
+@router.post("/api/chat/html-challenges/{challenge_id}/slots/{slot_id}/retry")
+def retry_html_challenge_slot(
+    challenge_id: str,
+    slot_id: str,
+    request: Request,
+    body: HtmlChallengeRetryRequest,
+) -> StreamingResponse:
+    slot_id = slot_id.lower()
+    if slot_id not in COMPARE_SLOT_IDS:
+        raise HTTPException(status_code=400, detail="Invalid challenge slot.")
+
+    state = request.app.state.chaosengine
+    folder = _challenge_dir(challenge_id)
+    manifest = _read_manifest(challenge_id)
+    if _find_manifest_slot(manifest, slot_id) is None:
+        raise HTTPException(status_code=404, detail=f"Challenge slot '{slot_id}' was not found.")
+    prompt = str(manifest.get("prompt") or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=422, detail="Challenge prompt is missing.")
+
+    _update_manifest_slot(
+        folder,
+        manifest,
+        slot_id,
+        {
+            **_slot_manifest_payload(slot_id, body.model, status="queued"),
+            **_clear_slot_result_payload(),
+        },
+    )
+
+    def _sse_stream():
+        cleared_warm_models = state.runtime.clear_warm_pool()
+        if cleared_warm_models:
+            state.add_log(
+                "runtime",
+                "info",
+                f"HTML Challenge cleared {cleared_warm_models} warm model(s) before exclusive loading.",
+            )
+        yield _sse_event({"challengeStarted": True, "challenge": manifest})
+        yield from _stream_html_challenge_slot(
+            state=state,
+            manifest=manifest,
+            folder=folder,
+            slot_id=slot_id,
+            model=body.model,
+            prompt=prompt,
+            system_prompt=body.systemPrompt if body.systemPrompt is not None else manifest.get("systemPrompt"),
+        )
+        yield _sse_event({"challengeDone": True, "challenge": manifest})
+
+    return StreamingResponse(
+        _sse_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/api/chat/html-challenges")
 def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> StreamingResponse:
     state = request.app.state.chaosengine
@@ -406,34 +642,11 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
         "settingsFilename": "model-settings.txt",
         "settingsPath": str(folder / "model-settings.txt"),
         "slots": [
-            {
-                "slotId": COMPARE_SLOT_IDS[index],
-                "label": f"Model {COMPARE_SLOT_IDS[index].upper()}",
-                "status": "queued",
-                "modelRef": model.modelRef,
-                "modelName": model.modelName or model.modelRef,
-                **_model_display_payload(model),
-                "canonicalRepo": model.canonicalRepo,
-                "source": model.source,
-                "backend": model.backend,
-                "path": model.path,
-                "settings": _settings_payload(model.launch),
-            }
+            _slot_manifest_payload(COMPARE_SLOT_IDS[index], model)
             for index, model in enumerate(models)
         ],
     }
     _write_manifest(folder, manifest)
-
-    def _sse_event(data: dict[str, Any]) -> str:
-        return f"data: {json.dumps(data)}\n\n"
-
-    def _update_slot(slot_id: str, patch: dict[str, Any]) -> None:
-        for slot in manifest["slots"]:
-            if slot["slotId"] == slot_id:
-                slot.update(patch)
-                break
-        manifest["updatedAt"] = _utc_label()
-        _write_manifest(folder, manifest)
 
     def _sse_stream():
         cleared_warm_models = state.runtime.clear_warm_pool()
@@ -447,100 +660,18 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
 
         for index, model in enumerate(models):
             slot_id = COMPARE_SLOT_IDS[index]
-            model_label = model.modelName or model.modelRef
-            requested_runtime = _requested_runtime_payload(state, model.launch)
-            _update_slot(slot_id, {"status": "loading"})
-            yield _sse_event({
-                "model": slot_id,
-                "loading": True,
-                "message": f"Loading {model_label}...",
-                "challenge": manifest,
-            })
-
-            load_start = time.perf_counter()
-            try:
-                _load_model(state, model)
-                load_seconds = round(time.perf_counter() - load_start, 2)
-                _update_slot(slot_id, {"status": "running", "loadSeconds": load_seconds})
-                yield _sse_event({
-                    "model": slot_id,
-                    "loaded": True,
-                    "loadSeconds": load_seconds,
-                    **_loaded_model_metrics(state),
-                    **requested_runtime,
-                })
-            except Exception as exc:
-                _update_slot(slot_id, {"status": "error", "error": str(exc)})
-                yield _sse_event({"model": slot_id, "error": str(exc), "challenge": manifest})
+            loaded = yield from _stream_html_challenge_slot(
+                state=state,
+                manifest=manifest,
+                folder=folder,
+                slot_id=slot_id,
+                model=model,
+                prompt=body.prompt,
+                system_prompt=body.systemPrompt,
+            )
+            if not loaded:
                 yield _sse_event({"challengeDone": True, "challenge": manifest})
                 return
-
-            full_text = ""
-            final_chunk = None
-            gen_start = time.perf_counter()
-            try:
-                for chunk in state.runtime.stream_generate(
-                    prompt=body.prompt,
-                    history=[],
-                    system_prompt=_html_system_prompt(body.systemPrompt),
-                    max_tokens=model.launch.maxTokens,
-                    temperature=model.launch.temperature,
-                ):
-                    if chunk.reasoning:
-                        yield _sse_event({"model": slot_id, "reasoning": chunk.reasoning})
-                    if chunk.reasoning_done:
-                        yield _sse_event({"model": slot_id, "reasoningDone": True})
-                    if chunk.text:
-                        full_text += chunk.text
-                        yield _sse_event({"model": slot_id, "token": chunk.text})
-                    if chunk.done:
-                        final_chunk = chunk
-            except Exception as exc:
-                _update_slot(slot_id, {"status": "error", "error": str(exc)})
-                yield _sse_event({"model": slot_id, "error": str(exc), "challenge": manifest})
-            else:
-                elapsed = round(time.perf_counter() - gen_start, 2)
-                html, valid_html = _extract_html_document(full_text)
-                model_slug = _slugify(model_label, f"model-{index + 1}")
-                filename = f"{slot_id}-{model_slug}.html"
-                html_path = folder / filename
-                html_path.write_text(html, encoding="utf-8")
-                file_bytes = html_path.stat().st_size
-                metrics = _done_runtime_payload(
-                    state,
-                    final_chunk=final_chunk,
-                    elapsed_seconds=elapsed,
-                    requested_runtime=requested_runtime,
-                )
-                slot_patch = {
-                    "status": "done",
-                    "filename": filename,
-                    "filePath": str(html_path),
-                    "fileBytes": file_bytes,
-                    "validHtmlDocument": valid_html,
-                    "metrics": metrics,
-                    "responseSeconds": elapsed,
-                    "loadSeconds": load_seconds,
-                    "totalSeconds": round(load_seconds + elapsed, 2),
-                }
-                _update_slot(slot_id, slot_patch)
-                yield _sse_event({
-                    "model": slot_id,
-                    "done": True,
-                    "text": full_text,
-                    "html": html,
-                    "filename": filename,
-                    "filePath": str(html_path),
-                    "fileBytes": file_bytes,
-                    "validHtmlDocument": valid_html,
-                    "loadSeconds": load_seconds,
-                    "totalSeconds": round(load_seconds + elapsed, 2),
-                    "challenge": manifest,
-                    **metrics,
-                })
-            finally:
-                _unload_active_model(state)
-                state.runtime.clear_warm_pool()
 
         yield _sse_event({"challengeDone": True, "challenge": manifest})
 

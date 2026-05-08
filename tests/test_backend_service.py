@@ -83,6 +83,8 @@ class FakeRuntime:
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None
+        self.stream_text_override: str | None = None
+        self.stream_finish_reason = "stop"
         self.load_requests: list[dict[str, object]] = []
         self.profile_updates: list[dict[str, object]] = []
         self._warm_pool = {}
@@ -310,13 +312,20 @@ class FakeRuntime:
             "reasoning_effort": reasoning_effort,
             "json_schema": json_schema,
         }
-        text = "Streaming compare output."
+        text = self.stream_text_override
+        if text is None:
+            text = (
+                "<!doctype html><html><head><title>HTML Challenge</title></head>"
+                "<body><main><h1>HTML Challenge</h1></main></body></html>"
+                if "HTML Challenge" in str(system_prompt)
+                else "Streaming compare output."
+            )
         prompt_tokens = max(1, len(str(prompt).split()))
         completion_tokens = max(1, len(text.split()))
         yield StreamChunk(text=text)
         yield StreamChunk(
             done=True,
-            finish_reason="stop",
+            finish_reason=self.stream_finish_reason,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=prompt_tokens + completion_tokens,
@@ -1503,7 +1512,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             response = self.client.post(
                 "/api/chat/html-challenges",
                 json={
-                    "title": "Pacman Canvas",
+                    "title": "Pacman Canvas Qwen3.6-27B-GGUF vs Gemma4-31B-GGUF",
                     "prompt": "Build a tiny arcade page.",
                     "models": [
                         {
@@ -1567,6 +1576,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             final = next(event for event in reversed(events) if event.get("challengeDone"))
             challenge = final["challenge"]
             folder = Path(challenge["folderPath"])
+            self.assertEqual(challenge["title"], "Pacman Canvas")
             self.assertTrue((folder / "manifest.json").exists())
             self.assertTrue((folder / "model-settings.txt").exists())
             self.assertEqual(challenge["settingsFilename"], "model-settings.txt")
@@ -1584,6 +1594,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
             for slot in challenge["slots"]:
                 self.assertTrue((folder / slot["filename"]).exists())
                 self.assertGreater(slot["fileBytes"], 0)
+                self.assertTrue(slot["validHtmlDocument"])
+                self.assertEqual(slot["htmlValidation"]["status"], "valid")
             self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "off")
             self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
@@ -1622,10 +1634,12 @@ class ChaosEngineBackendTests(unittest.TestCase):
             retry_final = next(event for event in reversed(retry_events) if event.get("challengeDone"))
             challenge = retry_final["challenge"]
             first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            self.assertEqual(len(self.client.app.state.chaosengine.runtime.load_requests), 3)
             self.assertEqual(first_slot["status"], "done")
             self.assertEqual(first_slot["modelRef"], "local/model-retry")
             self.assertEqual(first_slot["displayLabel"], "Retry Model")
             self.assertTrue((folder / first_slot["filename"]).exists())
+            self.assertEqual(first_slot["htmlValidation"]["status"], "valid")
             settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
             self.assertIn("Retry Model", settings_text)
             self.assertIn("Thinking high", settings_text)
@@ -1637,7 +1651,163 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 f"/api/chat/html-challenges/{challenge['id']}/files/{first_slot['slotId']}",
             )
             self.assertEqual(deleted_response.status_code, 410)
+
+            delete_response = self.client.delete(f"/api/chat/html-challenges/{challenge['id']}")
+            self.assertEqual(delete_response.status_code, 200)
+            self.assertFalse(folder.exists())
+            missing_response = self.client.get(f"/api/chat/html-challenges/{challenge['id']}")
+            self.assertEqual(missing_response.status_code, 404)
         finally:
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_validation_flags_common_failures(self):
+        from backend_service.routes.html_challenges import _extract_html_document, _validate_html_document
+
+        html, _ = _extract_html_document("Streaming compare output.")
+        validation = _validate_html_document("Streaming compare output.", html)
+        self.assertEqual(validation["status"], "no-html")
+
+        partial = "<!doctype html><html><body><canvas>"
+        html, _ = _extract_html_document(partial)
+        validation = _validate_html_document(partial, html)
+        self.assertEqual(validation["status"], "partial")
+        self.assertIn("Missing </html> closing tag.", validation["issues"])
+
+        complete = "<!doctype html><html><body><h1>Done</h1></body></html>"
+        validation = _validate_html_document(
+            complete,
+            complete,
+            SimpleNamespace(finish_reason="length"),
+        )
+        self.assertEqual(validation["status"], "partial")
+        self.assertIn("Generation stopped at the token limit.", validation["issues"])
+
+    def test_html_challenge_accepts_per_model_thinking_settings(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        try:
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Thinking split",
+                    "prompt": "Build a tiny page.",
+                    "models": [
+                        {
+                            "modelRef": "local/model-a",
+                            "modelName": "Model A",
+                            "displayLabel": "Model A",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-a",
+                            "thinkingMode": "off",
+                        },
+                        {
+                            "modelRef": "local/model-b",
+                            "modelName": "Model B",
+                            "displayLabel": "Model B",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-b",
+                            "thinkingMode": "auto",
+                            "reasoningEffort": "low",
+                        },
+                    ],
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            challenge = next(event for event in reversed(events) if event.get("challengeDone"))["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            second_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "b")
+            self.assertEqual(first_slot["thinkingMode"], "off")
+            self.assertIsNone(first_slot["reasoningEffort"])
+            self.assertEqual(second_slot["thinkingMode"], "auto")
+            self.assertEqual(second_slot["reasoningEffort"], "low")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "auto")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"], "low")
+            settings_text = (Path(challenge["folderPath"]) / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Thinking off", settings_text)
+            self.assertIn("Thinking low", settings_text)
+        finally:
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_repair_includes_partial_file(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        runtime = self.client.app.state.chaosengine.runtime
+        model_a = {
+            "modelRef": "local/model-a",
+            "modelName": "Model A",
+            "displayLabel": "Model A",
+            "source": "library",
+            "backend": "mock",
+            "path": "/tmp/model-a",
+        }
+        model_b = {
+            "modelRef": "local/model-b",
+            "modelName": "Model B",
+            "displayLabel": "Model B",
+            "source": "library",
+            "backend": "mock",
+            "path": "/tmp/model-b",
+        }
+        try:
+            runtime.stream_text_override = "<!doctype html><html><body><h1>Pacman"
+            runtime.stream_finish_reason = "length"
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Partial Pacman",
+                    "prompt": "Build a Pacman page.",
+                    "models": [model_a, model_b],
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            challenge = next(event for event in reversed(events) if event.get("challengeDone"))["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            self.assertEqual(first_slot["htmlValidation"]["status"], "partial")
+
+            runtime.stream_text_override = "<!doctype html><html><body><h1>Pacman fixed</h1></body></html>"
+            runtime.stream_finish_reason = "stop"
+            repair_response = self.client.post(
+                f"/api/chat/html-challenges/{challenge['id']}/slots/a/repair",
+                json={
+                    "mode": "repair",
+                    "model": model_a,
+                },
+            )
+            self.assertEqual(repair_response.status_code, 200)
+            prompt = runtime.last_generate_kwargs["prompt"]
+            self.assertIn("Partial HTML file", prompt)
+            self.assertIn("<h1>Pacman", prompt)
+            repair_events = [
+                json.loads(line[6:])
+                for line in repair_response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            repaired = next(event for event in reversed(repair_events) if event.get("challengeDone"))["challenge"]
+            repaired_slot = next(slot for slot in repaired["slots"] if slot["slotId"] == "a")
+            self.assertEqual(repaired_slot["htmlValidation"]["status"], "valid")
+        finally:
+            runtime.stream_text_override = None
+            runtime.stream_finish_reason = "stop"
             html_challenge_routes._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 

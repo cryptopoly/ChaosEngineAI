@@ -755,6 +755,11 @@ strong {
   color: var(--warning);
 }
 
+.badge.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .badge.muted {
   color: var(--muted);
 }
@@ -3573,11 +3578,17 @@ select.text-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: visible;
+}
+
+.html-challenge-setup-panel {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .html-challenge-history-row {
-  display: grid;
-  grid-template-columns: auto minmax(220px, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
@@ -3588,7 +3599,9 @@ select.text-input {
 
 .html-challenge-history-combobox {
   position: relative;
+  flex: 0 1 560px;
   min-width: 0;
+  max-width: min(560px, 100%);
 }
 
 .html-challenge-history-input {
@@ -3657,6 +3670,18 @@ select.text-input {
   min-width: 0;
 }
 
+.html-challenge-slot-thinking-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.html-challenge-slot-thinking-row .thread-mode-toggle {
+  flex-wrap: wrap;
+}
+
 .html-challenge-layout-toggle {
   display: inline-flex;
   align-items: center;
@@ -3684,7 +3709,7 @@ select.text-input {
 
 .html-challenge-prompt {
   min-height: 116px;
-  max-height: 220px;
+  max-height: 320px;
   resize: vertical;
   overflow: auto;
   box-sizing: border-box;
@@ -3694,16 +3719,21 @@ select.text-input {
 .html-challenge-grid {
   display: grid;
   gap: 12px;
-  flex: 1;
+  flex: 0 0 auto;
   width: 100%;
-  align-items: stretch;
-  grid-auto-rows: minmax(560px, 1fr);
-  min-height: 560px;
+  align-items: start;
+  grid-auto-rows: auto;
+  min-height: 0;
 }
 
 .html-challenge-grid--stacked {
-  grid-auto-rows: minmax(720px, auto);
-  align-items: stretch;
+  grid-auto-rows: auto;
+  align-items: start;
+}
+
+.html-challenge-grid--expanded {
+  grid-auto-rows: auto;
+  min-height: 0;
 }
 
 .html-challenge-card-stack {
@@ -3715,7 +3745,11 @@ select.text-input {
 }
 
 .html-challenge-preview-panel {
-  flex: 1;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.html-challenge-preview-panel--expanded {
   min-height: 0;
 }
 
@@ -3726,6 +3760,17 @@ select.text-input {
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+.html-challenge-reasoning.reasoning-panel--open {
+  flex: 0 0 auto;
+}
+
+.html-challenge-reasoning.reasoning-panel--open .reasoning-panel__body {
+  max-height: clamp(180px, 28vh, 360px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 
 .html-challenge-panel-actions {
@@ -3764,20 +3809,38 @@ select.text-input {
 }
 
 .html-challenge-frame {
+  display: block;
   width: 100%;
-  flex: 1;
+  height: 100%;
   min-height: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   background: white;
 }
 
 .html-challenge-frame-shell {
   display: flex;
-  flex: 1;
-  min-height: 320px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
   border-radius: 8px;
   outline: none;
+  background: #000;
+}
+
+.html-challenge-frame-shell--expanded {
+  min-height: 0;
+}
+
+.html-challenge-frame-stage {
+  flex: 0 0 auto;
+  transform-origin: center center;
+  background: #fff;
 }
 
 .html-challenge-frame-shell:focus,
@@ -6428,6 +6491,39 @@ select.text-input {
   align-items: stretch;
 }
 
+.video-gallery-expanded {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.video-gallery-actions {
+  align-items: center;
+}
+
+.video-gallery-autoplay-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--muted-strong);
+  font-size: 0.84rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.video-gallery-autoplay-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .image-family-card,
 .image-library-card,
 .image-output-card {
@@ -6929,6 +7025,40 @@ select.text-input {
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.video-output-preview {
+  aspect-ratio: auto;
+  object-fit: contain;
+  max-height: min(62vh, 720px);
+  background: #000;
+}
+
+.video-output-card--expanded {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  align-items: start;
+  min-height: calc(100vh - 190px);
+  padding-top: 56px;
+}
+
+.video-output-card--expanded .video-output-preview {
+  max-height: calc(100vh - 250px);
+  min-height: min(560px, 62vh);
+}
+
+.video-gallery-collapse-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+}
+
+@media (max-width: 1100px) {
+  .video-output-card--expanded {
+    display: flex;
+  }
 }
 
 .image-output-card-body {

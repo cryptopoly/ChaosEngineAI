@@ -1007,6 +1007,10 @@ export default function App() {
   }
 
   async function handleOpenExternalUrl(url: string) {
+    if (/^(\/|[A-Za-z]:[\\/])/.test(url)) {
+      await handleOpenFilePath(url);
+      return;
+    }
     try {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
       await tauriInvoke("plugin:opener|open_url", { url });

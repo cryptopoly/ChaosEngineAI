@@ -4,6 +4,7 @@ import { RichMarkdown } from "./RichMarkdown";
 interface ReasoningPanelProps {
   text?: string | null;
   streaming?: boolean;
+  className?: string;
 }
 
 /**
@@ -34,7 +35,7 @@ export function tidyReasoningForDisplay(text: string): string {
   return trimmed.replace(/^([^\n]+)\n{2,}/, "$1\n");
 }
 
-export function ReasoningPanel({ text, streaming = false }: ReasoningPanelProps) {
+export function ReasoningPanel({ text, streaming = false, className }: ReasoningPanelProps) {
   const rawContent = text?.trim() ?? "";
   const content = tidyReasoningForDisplay(rawContent);
   // Default to *collapsed* during streaming so the user sees a compact
@@ -81,8 +82,15 @@ export function ReasoningPanel({ text, streaming = false }: ReasoningPanelProps)
   // committing the whole panel to display.
   const preview = !open && streaming ? lastLines(content, 2) : null;
 
+  const panelClassName = [
+    "reasoning-panel",
+    open ? "reasoning-panel--open" : null,
+    streaming ? "reasoning-panel--streaming" : null,
+    className,
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className={`reasoning-panel${open ? " reasoning-panel--open" : ""}${streaming ? " reasoning-panel--streaming" : ""}`}>
+    <div className={panelClassName}>
       <button
         type="button"
         className="reasoning-panel__toggle"

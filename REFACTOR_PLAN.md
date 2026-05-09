@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (49 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (57 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -34,11 +34,12 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
+| `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 20,879 | **12,843** | **-8,036 LOC** |
+| **Mega-file shrink total** | 22,257 | **13,073** | **-9,184 LOC** |
 
-Tests posture across all 49 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 57 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -160,7 +161,20 @@ mlx_worker.py: 2,115 → 1,927 LOC. WorkerState class (1500 LOC) is the next tar
 
 **2a. `api.ts` 1,430 → src/api/{chat,image,video,models,setup,admin}.ts.** **DONE** (Phase 2-1 through 2-6, commits `dea6a54` → `68fed4f`). 6 commits, 4,453 LOC across 6 domain modules. Live-binding circular re-exports preserve call sites.
 
-**2b. `types.ts` 1,378 → src/types/{chat,image,video,models,setup,shared}.ts.** Stub barrel + 3 sub-files exist already with per-domain UI types (ChatModelOption, ImageGalleryRuntimeFilter, VideoDiscoverTaskFilter); main types.ts content needs careful migration since most types reference each other. Defer to dedicated session.
+**2b. `types.ts` 1,378 → src/types/ package with 11 domain files.** **DONE** (Phase 2b-1 through 2b-7, commits `2d91fa6` → `d4ab359`):
+- `types/system.ts` — TabId, SidebarGroupId, SidebarMode, SystemStats, Recommendation (2b-1).
+- `types/hub.ts` — HubModel, HubFile, HubFileListResponse (2b-1).
+- `types/progress.ts` — GenerationProgressSnapshot (2b-1).
+- `types/models.ts` — ModelLaunchMode, ModelVariant, ModelFamily, LibraryItem, ModelDirectorySetting, LaunchPreferences (2b-2).
+- `types/server.ts` — runtime / server-status / capability cluster (2b-3).
+- `types/settings.ts` — AppSettings, RemoteProvider, install logs, UpdateSettingsPayload (2b-4).
+- `types/chat.ts` — extended with full chat domain: ToolCallInfo, ChatMessage, ChatSession, GeneratePayload, SamplerOverrides, etc. (2b-5).
+- `types/image.ts` — extended with ImageModelVariant, ImageGenerationPayload, ImageRuntimeStatus, etc. (2b-6).
+- `types/video.ts` — extended with VideoModelVariant, VideoGenerationPayload, VideoRuntimeStatus, etc. (2b-6).
+- `types/benchmarks.ts` — PerfTelemetry, GenerationMetrics, BenchmarkResult, BenchmarkRunPayload (2b-7).
+- `types/observability.ts` — LogEntry, ActivityItem, PreviewMetrics (2b-7).
+
+src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every existing import path; barrel ``src/types/index.ts`` aggregates the 11 sub-files. Remaining 230 LOC: ``WorkspaceData`` (dashboard aggregator), ``LoadModelPayload``, ``ConvertModelPayload``, ``ConversionResult``, ``ConvertModelResponse``, ``TauriBackendInfo`` — small payloads that don't justify their own file yet.
 
 **2c. Mega-hooks → 3-way splits each.**
 - `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput`

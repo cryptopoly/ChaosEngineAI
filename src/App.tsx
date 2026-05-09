@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   checkBackend,
   convertModel,
@@ -7,6 +7,7 @@ import {
   loadModel,
   getWorkspace,
   deleteModelPath,
+  openHtmlChallengeFile,
   revealModelPath,
   resolveApiToken,
   unloadModel,
@@ -25,6 +26,7 @@ import { DashboardTab } from "./features/dashboard/DashboardTab";
 import { ServerTab } from "./features/server/ServerTab";
 import { ChatTab } from "./features/chat/ChatTab";
 import { CompareView } from "./features/chat/CompareView";
+import { HtmlChallengeTab } from "./features/chat/HtmlChallengeTab";
 import { FineTuningTab } from "./features/finetuning/FineTuningTab";
 import { PromptLibraryTab } from "./features/prompts/PromptLibraryTab";
 import { PluginsTab } from "./features/plugins/PluginsTab";
@@ -78,6 +80,7 @@ import {
   detectBitsPerWeight,
   compareOptionalNumber,
   serverOriginFromBase,
+  isUnsavedEmptySession,
 } from "./utils";
 import {
   useWorkspace,
@@ -88,6 +91,7 @@ import {
   useBenchmarks,
   useSettings,
   useSidebarPrefs,
+  useUiScale,
   useGpuStatus,
 } from "./hooks";
 
@@ -106,9 +110,9 @@ export default function App() {
   } = ws;
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-  const [compareMode, setCompareMode] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const sidebarPrefs = useSidebarPrefs();
+  const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
   const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
   const [cudaTorchResult, setCudaTorchResult] = useState<
@@ -977,7 +981,38 @@ export default function App() {
     }
   }
 
+  function fileUrlFromPath(path: string) {
+    if (/^(https?|file):\/\//i.test(path)) return path;
+    const normalized = path.replace(/\\/g, "/");
+    const encoded = normalized.split("/").map((part) => encodeURIComponent(part)).join("/");
+    return `${normalized.startsWith("/") ? "file://" : "file:///"}${encoded}`;
+  }
+
+  async function handleOpenFilePath(path: string) {
+    if (backendOnline) {
+      try {
+        await openHtmlChallengeFile(path);
+        return;
+      } catch { /* fallback below */ }
+    }
+    try {
+      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+      await tauriInvoke("plugin:opener|open_url", { url: fileUrlFromPath(path) });
+      return;
+    } catch { /* fall through */ }
+    try {
+      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+      await tauriInvoke("plugin:opener|open_path", { path });
+    } catch {
+      setError("Could not open file. Try opening this path manually: " + path);
+    }
+  }
+
   async function handleOpenExternalUrl(url: string) {
+    if (/^(\/|[A-Za-z]:[\\/])/.test(url)) {
+      await handleOpenFilePath(url);
+      return;
+    }
     try {
       const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
       await tauriInvoke("plugin:opener|open_url", { url });
@@ -1148,32 +1183,23 @@ export default function App() {
   }
 
   async function handleStartThreadWithVariant(variant: ModelVariant) {
-    if (!backendOnline) {
-      const localSession: ChatSession = {
-        id: `local-${Date.now()}`,
-        title: "New chat",
-        pinned: false,
-        messages: [],
-        ...threadPatchFromVariant(variant),
-      };
-      setWorkspace((current) => ({ ...current, chatSessions: [...current.chatSessions, localSession] }));
-      setActiveChatId(localSession.id);
-      setThreadTitleDraft(localSession.title);
-      setActiveTab("chat");
-      return;
-    }
-    try {
-      const { createSession } = await import("./api");
-      const { upsertSession } = await import("./utils");
-      const session = await createSession("New chat");
-      const updated = await updateSession(session.id, threadPatchFromVariant(variant));
-      setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, updated) }));
-      setActiveChatId(updated.id);
-      setThreadTitleDraft(updated.title);
-      setActiveTab("chat");
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to start a new thread.");
-    }
+    const localSession: ChatSession = {
+      id: `draft-${Date.now()}`,
+      title: "New chat",
+      pinned: false,
+      messages: [],
+      ...threadPatchFromVariant(variant),
+    };
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: [
+        localSession,
+        ...current.chatSessions.filter((session) => !isUnsavedEmptySession(session)),
+      ],
+    }));
+    setActiveChatId(localSession.id);
+    setThreadTitleDraft(localSession.title);
+    setActiveTab("chat");
   }
 
   function openModelSelector(action: "chat" | "server" | "thread", preselectedKey?: string) {
@@ -1772,11 +1798,47 @@ export default function App() {
         onSetError={setError}
         enableTools={chat.enableTools}
         onToggleTools={chat.setEnableTools}
-        onCompareMode={() => setCompareMode(true)}
+        onCompareMode={() => setActiveTab("chat-compare")}
         onCancelGeneration={chat.cancelGeneration}
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
+      />
+    );
+  } else if (activeTab === "chat-compare") {
+    content = (
+      <CompareView
+        modelOptions={libraryChatOptions}
+        onBack={() => setActiveTab("chat")}
+        launchSettings={launchSettings}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+        installLogs={installLogs}
+      />
+    );
+  } else if (activeTab === "html-challenge") {
+    content = (
+      <HtmlChallengeTab
+        modelOptions={libraryChatOptions}
+        launchSettings={launchSettings}
+        availableMemoryGb={workspace.system.availableMemoryGb}
+        totalMemoryGb={workspace.system.totalMemoryGb}
+        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+        availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+        installLogs={installLogs}
+        fileRevealLabel={fileRevealLabel}
+        onRevealPath={(path) => void handleRevealPath(path)}
+        onOpenFilePath={(path) => void handleOpenFilePath(path)}
       />
     );
   } else if (activeTab === "server") {
@@ -1906,33 +1968,19 @@ export default function App() {
       apiToken={apiToken}
       sidebarMode={sidebarPrefs.mode}
       onSidebarModeChange={sidebarPrefs.setMode}
+      uiScale={uiScalePrefs.uiScale}
+      onUiScaleChange={uiScalePrefs.setUiScale}
       backendOnline={backendOnline}
       onRestartServer={() => void handleRestartServer()}
       busyAction={busyAction}
     />;
   }
 
-  const compareView = compareMode ? (
-    <div style={{ display: activeTab === "chat" ? "block" : "none", height: "100%" }}>
-      <CompareView
-        modelOptions={libraryChatOptions}
-        onBack={() => setCompareMode(false)}
-        launchSettings={launchSettings}
-        availableMemoryGb={workspace.system.availableMemoryGb}
-        totalMemoryGb={workspace.system.totalMemoryGb}
-        gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-        availableCacheStrategies={workspace.system.availableCacheStrategies}
-        dflashInfo={workspace.system.dflash}
-        turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
-        onInstallPackage={handleInstallPackage}
-        installingPackage={installingPackage}
-        installLogs={installLogs}
-      />
-    </div>
-  ) : null;
-
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={{ "--ui-scale": uiScalePrefs.uiScale } as CSSProperties}
+    >
       <Sidebar
         activeTab={activeTab}
         onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
@@ -2061,10 +2109,7 @@ export default function App() {
               tauriBackend={tauriBackend}
             />
           ) : (
-            <>
-              {compareView}
-              {(!compareMode || activeTab !== "chat") ? content : null}
-            </>
+            content
           )}
         </div>
       </main>

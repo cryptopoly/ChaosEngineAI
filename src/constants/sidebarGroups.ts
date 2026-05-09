@@ -8,7 +8,7 @@ export interface SidebarGroup {
 }
 
 export const sidebarGroups: SidebarGroup[] = [
-  { id: "models", label: "Models", caption: "Language models", defaultChild: "my-models" },
+  { id: "chat", label: "Chat", caption: "Chat, compare, and language models", defaultChild: "chat" },
   { id: "images", label: "Images", caption: "Image generation", defaultChild: "image-models" },
   { id: "video", label: "Video", caption: "Video generation", defaultChild: "video-models" },
   { id: "benchmarks", label: "Benchmarks", caption: "Performance tests", defaultChild: "benchmarks" },

@@ -1,7 +1,8 @@
 """Multi-model comparison endpoint.
 
-Sends the same prompt to two models sequentially and returns SSE events
-tagged by model so the frontend can render a side-by-side comparison view.
+Sends the same prompt to two to four models sequentially and returns SSE
+events tagged by slot so the frontend can render a side-by-side comparison
+view without keeping prior models resident in warm memory.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ import json
 import time
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -31,6 +32,12 @@ class CompareLaunchSettings(BaseModel):
 class CompareModelRequest(BaseModel):
     modelRef: str = Field(min_length=1)
     modelName: str | None = None
+    displayLabel: str | None = None
+    displayDetail: str | None = None
+    format: str | None = None
+    quantization: str | None = None
+    sizeGb: float | None = None
+    contextWindow: str | None = None
     canonicalRepo: str | None = None
     source: str = "catalog"
     backend: str = "auto"
@@ -40,26 +47,38 @@ class CompareModelRequest(BaseModel):
 
 class CompareRequest(BaseModel):
     prompt: str = Field(min_length=1)
-    modelA: CompareModelRequest
-    modelB: CompareModelRequest
+    models: list[CompareModelRequest] | None = None
+    # Backwards-compatible shape for older clients/tests. New clients should
+    # send ``models`` so the queue can contain 2-4 slots.
+    modelA: CompareModelRequest | None = None
+    modelB: CompareModelRequest | None = None
     systemPrompt: str | None = None
 
 
 router = APIRouter()
+COMPARE_SLOT_IDS = ("a", "b", "c", "d")
+
+
+def resolve_compare_models(body: Any) -> list[CompareModelRequest]:
+    models = list(body.models or [])
+    if not models and body.modelA is not None and body.modelB is not None:
+        models = [body.modelA, body.modelB]
+    if len(models) < 2 or len(models) > 4:
+        raise HTTPException(status_code=422, detail="Compare requires between 2 and 4 models.")
+    return models
 
 
 @router.post("/api/chat/compare")
 def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
     """Generate responses from two models side-by-side.
 
-    Returns an SSE stream with events tagged by model (``"a"`` or ``"b"``):
+    Returns an SSE stream with events tagged by model slot (``"a"``-``"d"``):
     - ``{"model": "a", "token": "..."}`` — text token from model A
-    - ``{"model": "b", "token": "..."}`` — text token from model B
     - ``{"model": "a", "done": true, "text": "...", "tokS": ...}`` — model A finished
-    - ``{"model": "b", "done": true, "text": "...", "tokS": ...}`` — model B finished
-    - ``{"allDone": true}`` — both models finished
+    - ``{"allDone": true}`` — all queued models finished
     """
     state = request.app.state.chaosengine
+    compare_models = resolve_compare_models(body)
 
     def _sse_event(data: dict[str, Any]) -> str:
         return f"data: {json.dumps(data)}\n\n"
@@ -161,6 +180,82 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
         )
         state.load_model(req, keep_warm_previous=False)
 
+    def _unload_active_model():
+        try:
+            state.unload_model()
+        except Exception as exc:
+            state.add_log(
+                "runtime",
+                "warning",
+                f"Compare could not unload active model after slot: {type(exc).__name__}: {exc}",
+            )
+
+    def _run_slot(slot_id: str, model: CompareModelRequest):
+        requested_runtime = _requested_runtime_payload(model.launch)
+        model_label = model.modelName or model.modelRef
+        yield _sse_event({
+            "model": slot_id,
+            "loading": True,
+            "message": f"Loading {model_label}...",
+        })
+
+        load_start = time.perf_counter()
+        try:
+            _load_model(model)
+            load_seconds = round(time.perf_counter() - load_start, 2)
+            yield _sse_event({
+                "model": slot_id,
+                "loaded": True,
+                "loadSeconds": load_seconds,
+                **_applied_runtime_payload(requested_runtime),
+            })
+        except Exception as exc:
+            yield _sse_event({"model": slot_id, "error": str(exc)})
+            return
+
+        full_text = ""
+        final_chunk = None
+        gen_start = time.perf_counter()
+        try:
+            for chunk in state.runtime.stream_generate(
+                prompt=body.prompt,
+                history=[],
+                system_prompt=body.systemPrompt,
+                max_tokens=model.launch.maxTokens,
+                temperature=model.launch.temperature,
+            ):
+                if chunk.reasoning:
+                    yield _sse_event({"model": slot_id, "reasoning": chunk.reasoning})
+                if chunk.reasoning_done:
+                    yield _sse_event({"model": slot_id, "reasoningDone": True})
+                if chunk.text:
+                    full_text += chunk.text
+                    yield _sse_event({"model": slot_id, "token": chunk.text})
+                if chunk.done:
+                    final_chunk = chunk
+                    elapsed = round(time.perf_counter() - gen_start, 2)
+                    yield _sse_event({
+                        "model": slot_id,
+                        "done": True,
+                        "text": full_text,
+                        "loadSeconds": load_seconds,
+                        "totalSeconds": round(load_seconds + elapsed, 2),
+                        **_done_runtime_payload(
+                            final_chunk=chunk,
+                            elapsed_seconds=elapsed,
+                            requested_runtime=requested_runtime,
+                        ),
+                    })
+        except Exception as exc:
+            yield _sse_event({"model": slot_id, "error": str(exc)})
+        finally:
+            if final_chunk is None:
+                # Even failed/aborted slots should not leave a heavyweight
+                # model resident before the next comparison slot starts.
+                pass
+            _unload_active_model()
+            state.runtime.clear_warm_pool()
+
     def _sse_stream():
         cleared_warm_models = state.runtime.clear_warm_pool()
         if cleared_warm_models:
@@ -170,91 +265,9 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
                 f"Compare cleared {cleared_warm_models} warm model(s) before exclusive loading.",
             )
 
-        # --- Model A ---
-        yield _sse_event({"model": "a", "loading": True, "message": f"Loading {body.modelA.modelName or body.modelA.modelRef}..."})
-        try:
-            _load_model(body.modelA)
-            requested_runtime_a = _requested_runtime_payload(body.modelA.launch)
-            yield _sse_event({"model": "a", "loaded": True, **_applied_runtime_payload(requested_runtime_a)})
-        except Exception as exc:
-            yield _sse_event({"model": "a", "error": str(exc)})
-            yield _sse_event({"allDone": True})
-            return
-
-        full_text_a = ""
-        gen_start_a = time.perf_counter()
-        try:
-            for chunk in state.runtime.stream_generate(
-                prompt=body.prompt,
-                history=[],
-                system_prompt=body.systemPrompt,
-                max_tokens=body.modelA.launch.maxTokens,
-                temperature=body.modelA.launch.temperature,
-            ):
-                if chunk.reasoning:
-                    yield _sse_event({"model": "a", "reasoning": chunk.reasoning})
-                if chunk.reasoning_done:
-                    yield _sse_event({"model": "a", "reasoningDone": True})
-                if chunk.text:
-                    full_text_a += chunk.text
-                    yield _sse_event({"model": "a", "token": chunk.text})
-                if chunk.done:
-                    elapsed_a = round(time.perf_counter() - gen_start_a, 2)
-                    yield _sse_event({
-                        "model": "a",
-                        "done": True,
-                        "text": full_text_a,
-                        **_done_runtime_payload(
-                            final_chunk=chunk,
-                            elapsed_seconds=elapsed_a,
-                            requested_runtime=requested_runtime_a,
-                        ),
-                    })
-        except Exception as exc:
-            yield _sse_event({"model": "a", "error": str(exc)})
-
-        # --- Model B ---
-        yield _sse_event({"model": "b", "loading": True, "message": f"Loading {body.modelB.modelName or body.modelB.modelRef}..."})
-        try:
-            _load_model(body.modelB)
-            requested_runtime_b = _requested_runtime_payload(body.modelB.launch)
-            yield _sse_event({"model": "b", "loaded": True, **_applied_runtime_payload(requested_runtime_b)})
-        except Exception as exc:
-            yield _sse_event({"model": "b", "error": str(exc)})
-            yield _sse_event({"allDone": True})
-            return
-
-        full_text_b = ""
-        gen_start_b = time.perf_counter()
-        try:
-            for chunk in state.runtime.stream_generate(
-                prompt=body.prompt,
-                history=[],
-                system_prompt=body.systemPrompt,
-                max_tokens=body.modelB.launch.maxTokens,
-                temperature=body.modelB.launch.temperature,
-            ):
-                if chunk.reasoning:
-                    yield _sse_event({"model": "b", "reasoning": chunk.reasoning})
-                if chunk.reasoning_done:
-                    yield _sse_event({"model": "b", "reasoningDone": True})
-                if chunk.text:
-                    full_text_b += chunk.text
-                    yield _sse_event({"model": "b", "token": chunk.text})
-                if chunk.done:
-                    elapsed_b = round(time.perf_counter() - gen_start_b, 2)
-                    yield _sse_event({
-                        "model": "b",
-                        "done": True,
-                        "text": full_text_b,
-                        **_done_runtime_payload(
-                            final_chunk=chunk,
-                            elapsed_seconds=elapsed_b,
-                            requested_runtime=requested_runtime_b,
-                        ),
-                    })
-        except Exception as exc:
-            yield _sse_event({"model": "b", "error": str(exc)})
+        for index, model in enumerate(compare_models):
+            slot_id = COMPARE_SLOT_IDS[index]
+            yield from _run_slot(slot_id, model)
 
         yield _sse_event({"allDone": True})
 

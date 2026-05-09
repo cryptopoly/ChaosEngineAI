@@ -30,6 +30,7 @@
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 10px;
+  --ui-scale: 0.9;
 }
 
 * {
@@ -88,9 +89,15 @@ strong {
 .app-shell {
   display: grid;
   grid-template-columns: clamp(208px, 18vw, 240px) minmax(0, 1fr);
-  height: 100vh;
-  max-height: 100vh;
+  /* `zoom` scales the element's layout box and paint together. To still
+     fill the viewport at scale<1, the layout box must be oversized by
+     1/scale so that scale * 1/scale = 100vw/100vh visually. Supported in
+     WebKit / Chromium / Firefox 126+. */
+  width: calc(100vw / var(--ui-scale, 1));
+  height: calc(100vh / var(--ui-scale, 1));
+  max-height: none;
   overflow: hidden;
+  zoom: var(--ui-scale);
 }
 
 .sidebar {
@@ -338,7 +345,7 @@ strong {
   flex-direction: column;
   gap: var(--app-gap);
   min-height: 0;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -753,6 +760,11 @@ strong {
 .badge.warning {
   border-color: var(--warning);
   color: var(--warning);
+}
+
+.badge.danger {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .badge.muted {
@@ -3559,6 +3571,601 @@ select.text-input {
   border-top: 1px solid var(--border);
 }
 
+.html-challenge-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  /* Layout itself doesn't scroll — preview panels expand to fill the
+     viewport bottom. The setup panel + each card's stream stay scrollable
+     within their own bounds. */
+  overflow: hidden;
+}
+
+.html-challenge-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: visible;
+}
+
+.html-challenge-setup-panel {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.html-challenge-setup-panel--compact {
+  /* Header was dropped — page-level "HTML Challenge" + Open Folder button
+     already cover that ground. Tighten padding so the prompt area sits
+     close to the top. */
+  padding: 10px var(--panel-padding);
+  gap: 10px;
+}
+
+.html-challenge-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.html-challenge-setup-actions .html-challenge-history-row {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.html-challenge-setup-actions-spacer {
+  flex: 1 1 auto;
+}
+
+.html-challenge-history-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.html-challenge-history-row > .secondary-button {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.html-challenge-history-select {
+  min-width: 0;
+}
+
+.html-challenge-history-combobox {
+  position: relative;
+  flex: 1 1 720px;
+  min-width: 420px;
+  max-width: 960px;
+}
+
+.html-challenge-history-input {
+  width: 100%;
+}
+
+.html-challenge-history-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: var(--shadow-lg);
+}
+
+.html-challenge-history-option {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+}
+
+.html-challenge-history-option:hover,
+.html-challenge-history-option.active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.html-challenge-history-option-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.html-challenge-history-option-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-challenge-history-option-main small {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.html-challenge-history-option-delete {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.html-challenge-history-option:hover .html-challenge-history-option-delete,
+.html-challenge-history-option:focus-within .html-challenge-history-option-delete {
+  opacity: 0.7;
+}
+
+.html-challenge-history-option-delete:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.16);
+  color: #fda4af;
+}
+
+.html-challenge-history-option-delete:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.html-challenge-history-empty {
+  margin: 0;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.html-challenge-thinking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.html-challenge-slot-thinking-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.html-challenge-slot-thinking-row .thread-mode-toggle {
+  flex-wrap: wrap;
+}
+
+/* Compact slot card: name + badges share one row, badges shrink-truncate
+   when the model name eats most of the width. */
+.model-selected-card--compact {
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.html-challenge-slot-headline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.html-challenge-slot-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-challenge-slot-badges {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.html-challenge-generation-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.checkbox-label input {
+  accent-color: var(--accent);
+}
+
+.html-challenge-slot-sampler-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.html-challenge-slot-sampler-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Standard control footprint shared by the Thinking dropdown, Temp input,
+   and Seed input. Same width, same height, same font — predictable
+   alignment across the row regardless of value length. */
+.html-challenge-slot-sampler-row .text-input {
+  width: 110px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.html-challenge-slot-sampler-row .html-challenge-seed-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.html-challenge-slot-sampler-row .html-challenge-seed-field-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.html-challenge-slot-sampler-row .secondary-button {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.html-challenge-layout-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.html-challenge-layout-toggle button {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.html-challenge-layout-toggle button.active {
+  background: rgba(147, 178, 255, 0.16);
+  color: var(--text);
+}
+
+.html-challenge-prompt {
+  min-height: 116px;
+  max-height: 320px;
+  resize: vertical;
+  overflow: auto;
+  box-sizing: border-box;
+  line-height: 1.45;
+}
+
+.html-challenge-grid {
+  display: grid;
+  gap: 12px;
+  /* Grow to fill remaining viewport height below the setup panel so
+     each preview frame can stretch to the bottom of the screen. */
+  flex: 1 1 auto;
+  width: 100%;
+  align-items: stretch;
+  grid-auto-rows: 1fr;
+  min-height: 0;
+  min-width: 0;
+}
+
+.html-challenge-grid--stacked {
+  grid-auto-rows: auto;
+  align-items: start;
+}
+
+.html-challenge-grid--expanded {
+  grid-auto-rows: auto;
+  min-height: 0;
+}
+
+.html-challenge-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.html-challenge-preview-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.html-challenge-preview-panel--expanded {
+  min-height: 0;
+}
+
+.html-challenge-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.html-challenge-reasoning.reasoning-panel--open {
+  flex: 0 0 auto;
+}
+
+.html-challenge-reasoning.reasoning-panel--open .reasoning-panel__body {
+  max-height: clamp(180px, 28vh, 360px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.html-challenge-panel-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.html-challenge-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.html-challenge-meta strong {
+  color: var(--text);
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-challenge-settings-summary {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.html-challenge-note {
+  font-size: 0.72rem;
+  margin: 0;
+}
+
+.html-challenge-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  /* Transparent so the frame-shell colour shows through on regions the
+     model HTML doesn't paint (fixed-width content, short pages, etc.). */
+  background: transparent;
+}
+
+.html-challenge-frame-shell {
+  display: block;
+  /* Grow to consume the panel-body's remaining height so the rendered
+     preview reaches the bottom of the viewport. No fixed aspect-ratio. */
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  /* Neutral mid-tone matching the app's panel background — overridden
+     dynamically when the iframe reports its computed body bg colour. */
+  background: #0e1117;
+  /* Cancel the app-shell `zoom: var(--ui-scale)` so the iframe renders at
+     native pixels. Without this, fractional UI scales (e.g. 0.9) leave
+     sub-pixel gaps between iframe edge and shell border, exposing the
+     iframe document's default canvas as a thin white strip. Nested zoom
+     is multiplicative, so the child zoom cancels the parent. */
+  zoom: calc(1 / var(--ui-scale, 1));
+}
+
+.html-challenge-frame-shell--expanded {
+  min-height: 0;
+}
+
+.html-challenge-frame-shell:focus,
+.html-challenge-frame-shell:focus-within {
+  box-shadow: 0 0 0 2px rgba(147, 178, 255, 0.4);
+}
+
+.html-challenge-stream {
+  flex: 0 0 auto;
+  /* Fixed-ish height so the streaming token feed scrolls inside its own
+     box instead of expanding the panel. Auto-scroll-to-bottom kicks in
+     when the user is already near the tail; scrolling up pauses tracking
+     so previous content stays put for reading. */
+  height: clamp(280px, 38vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(3, 7, 18, 0.5);
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.html-challenge-stream code {
+  font-family: inherit;
+}
+
+.html-challenge-code-view {
+  min-height: 360px;
+  aspect-ratio: 16 / 9;
+}
+
+.html-challenge-preview-panel--expanded .html-challenge-code-view {
+  min-height: clamp(520px, 70vh, 900px);
+}
+
+.html-code-comment {
+  color: #64748b;
+}
+
+.html-code-doctype {
+  color: #a78bfa;
+}
+
+.html-code-punct {
+  color: #94a3b8;
+}
+
+.html-code-tag,
+.html-code-tag-name {
+  color: #60a5fa;
+}
+
+.html-code-attr {
+  color: #fbbf24;
+}
+
+.html-code-string {
+  color: #86efac;
+}
+
+.html-challenge-deleted {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 180px;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed rgba(248, 113, 113, 0.5);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(127, 29, 29, 0.12);
+}
+
+.html-challenge-deleted strong {
+  color: var(--danger);
+}
+
+.html-challenge-empty-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.html-challenge-empty-result strong {
+  color: var(--text);
+}
+
+.html-challenge-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.html-challenge-file-button {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+}
+
+.html-challenge-icon-button {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.html-challenge-icon-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Pin icon */
 .session-title-row {
   display: flex;
@@ -6121,6 +6728,39 @@ select.text-input {
   align-items: stretch;
 }
 
+.video-gallery-expanded {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.video-gallery-actions {
+  align-items: center;
+}
+
+.video-gallery-autoplay-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--muted-strong);
+  font-size: 0.84rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.video-gallery-autoplay-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .image-family-card,
 .image-library-card,
 .image-output-card {
@@ -6622,6 +7262,40 @@ select.text-input {
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.video-output-preview {
+  aspect-ratio: auto;
+  object-fit: contain;
+  max-height: min(62vh, 720px);
+  background: #000;
+}
+
+.video-output-card--expanded {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  align-items: start;
+  min-height: calc(100vh - 190px);
+  padding-top: 56px;
+}
+
+.video-output-card--expanded .video-output-preview {
+  max-height: calc(100vh - 250px);
+  min-height: min(560px, 62vh);
+}
+
+.video-gallery-collapse-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+}
+
+@media (max-width: 1100px) {
+  .video-output-card--expanded {
+    display: flex;
+  }
 }
 
 .image-output-card-body {

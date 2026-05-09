@@ -12,6 +12,8 @@ export type TabId =
   | "video-gallery"
   | "conversion"
   | "chat"
+  | "chat-compare"
+  | "html-challenge"
   | "server"
   | "benchmarks"
   | "benchmark-history"
@@ -22,6 +24,7 @@ export type TabId =
   | "settings";
 
 export type SidebarGroupId =
+  | "chat"
   | "models"
   | "images"
   | "video"

@@ -10,9 +10,11 @@ export interface TabConfig {
 
 export const tabs: TabConfig[] = [
   { id: "dashboard", label: "Dashboard", caption: "System overview" },
-  { id: "chat", label: "Chat", caption: "Local AI chat" },
-  { id: "my-models", label: "My Models", caption: "Models on this machine", group: "models", shortLabel: "My Models" },
-  { id: "online-models", label: "Discover", caption: "Browse and download AI models", group: "models", shortLabel: "Discover" },
+  { id: "chat", label: "Chat", caption: "Local AI chat", group: "chat", shortLabel: "Chat" },
+  { id: "chat-compare", label: "Compare", caption: "Compare language models side by side", group: "chat", shortLabel: "Compare" },
+  { id: "html-challenge", label: "HTML Challenge", caption: "Generate shareable webpage comparisons", group: "chat", shortLabel: "HTML Challenge" },
+  { id: "my-models", label: "My Models", caption: "Models on this machine", group: "chat", shortLabel: "My Models" },
+  { id: "online-models", label: "Discover", caption: "Browse and download AI models", group: "chat", shortLabel: "Discover" },
   { id: "image-models", label: "Image Models", caption: "Installed image generators", group: "images", shortLabel: "My Models" },
   { id: "image-discover", label: "Image Discover", caption: "Browse image models", group: "images", shortLabel: "Discover" },
   { id: "image-studio", label: "Image Studio", caption: "Prompt, generate, and iterate", group: "images", shortLabel: "Studio" },

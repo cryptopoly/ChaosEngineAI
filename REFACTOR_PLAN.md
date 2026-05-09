@@ -22,20 +22,20 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (34 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (39 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
-| `state/__init__.py` | 4,418 | 4,273 | -145 |
+| `state/__init__.py` | 4,418 | 4,089 | -329 |
 | `inference/__init__.py` | 3,574 | 1,521 | -2,053 |
 | `image_runtime/__init__.py` | 2,097 | 1,366 | -731 |
-| `video_runtime/__init__.py` | 2,378 | 2,216 | -162 |
+| `video_runtime/__init__.py` | 2,378 | 1,669 | -709 |
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
-| **Mega-file shrink total** | 17,012 | **10,748** | **-6,264 LOC** |
+| **Mega-file shrink total** | 17,012 | **10,017** | **-6,995 LOC** |
 
-Tests posture across all 34 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 39 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -78,11 +78,12 @@ Each phase = 1 PR. Tests green at each boundary. No big-bang merge.
 
 **1a. `state.py` 4,418 → facade + 5 modules.**
 
-**PARTIAL** (Phase 1a-1, 1a-2; commits `8a26a48`, `879eede`):
+**PARTIAL** (Phase 1a-1, 1a-2, 1a-3; commits `8a26a48`, `879eede`, `2060142`):
 - `state/logs.py` — LogManager (log + activity ring buffers + subscribers)
 - `state/metrics.py` — cache labels + profile change reasons + metrics payloads (11 pure functions)
+- `state/_helpers.py` — module-level helpers: `_compose_chat_system_prompt`, `_build_sampler_overrides`, `_build_history_with_reasoning`, title-generation utilities, `_read_text_tail`, `_spawn_snapshot_download`, `_normalize_remote_provider_api_base`, `_CATALOG_REF_ALIASES` (1a-3).
 
-state/__init__.py: 4418 → 4273 (-145). Sessions, model_manager, benchmark, settings_state extractions deferred — biggest remaining is the 2k LOC of session/chat methods.
+state/__init__.py: 4418 → 4089 (-329). Sessions, model_manager, benchmark, settings_state extractions deferred — biggest remaining is the 2k LOC of session/chat methods.
 
 ```
 backend_service/state/
@@ -111,11 +112,14 @@ inference/__init__.py: 3574 → 1521 (-2053). RuntimeController (~1050 LOC) is t
 
 **1c. `video_runtime.py` + `image_runtime.py` → runtimes/{image,video}/.**
 
-**PARTIAL** (Phase 1c-1 through 1c-6, commits `b5ea526` → `af06a1d`):
-- `image_runtime/` package landed: types + repos + snapshot + device + placeholder_engine + mflux_engine extracted (image/__init__.py: 2097 → 1366).
-- `video_runtime/` package landed: types extracted (video/__init__.py: 2378 → 2216).
+**PARTIAL** (Phase 1c-1 through 1c-9, commits `b5ea526` → `1d16315`):
+- `image_runtime/` package: types + repos + snapshot + device + placeholder_engine + mflux_engine extracted (image/__init__.py: 2097 → 1366).
+- `video_runtime/` package: types + device + repos + defaults extracted (video/__init__.py: 2378 → 1669):
+  - `video_runtime/device.py` — probe helpers (`_resolve_video_seed`, `_resolve_video_python`, `_detect_device_memory_gb`, `_guess_video_expected_device`, `_windows_cuda_unavailable_message`)
+  - `video_runtime/repos.py` — `PIPELINE_REGISTRY`, GGUF/NF4 transformer class lookups, per-model defaults table, prompt-enhancement suffixes + `_enhance_prompt`
+  - `video_runtime/defaults.py` — memory footprint estimator, slicing gate, scheduler classes, Wan frame alignment, `_resolve_video_defaults`, frame interpolation, dep tuples + `_find_missing`
 
-**Remaining**: extract `DiffusersTextToImageEngine` (1112 LOC inside image/__init__) + `DiffusersVideoEngine` (1335 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
+**Remaining**: extract `DiffusersTextToImageEngine` (~1112 LOC inside image/__init__) + `DiffusersVideoEngine` (~1239 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
 
 **1d. `routes/setup.py` 1,932 → setup/ package with 6 focused submodules.** **DONE** (Phase 1d-1 through 1d-3c, commits `6181c1b` → `afc70f3`):
 - `setup/longlive.py` + `setup/wan_install.py` — LongLive + Wan background installers (1d-1).

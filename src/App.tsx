@@ -6,8 +6,6 @@ import {
   loadModel,
   getWorkspace,
   deleteModelPath,
-  openHtmlChallengeFile,
-  revealModelPath,
   resolveApiToken,
   unloadModel,
   updateSession,
@@ -93,6 +91,7 @@ import {
   useUiScale,
   useGpuStatus,
   useCudaTorchInstall,
+  useFileActions,
 } from "./hooks";
 
 export default function App() {
@@ -903,62 +902,7 @@ export default function App() {
     });
   }
 
-  async function handleRevealPath(path: string) {
-    try {
-      if (backendOnline) { await revealModelPath(path); return; }
-    } catch { /* fallback below */ }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      const parentDir = path.replace(/\/[^/]+$/, "");
-      await tauriInvoke("plugin:opener|open_path", { path: parentDir });
-    } catch {
-      setError("Could not open file location. Try navigating manually to: " + path);
-    }
-  }
-
-  function fileUrlFromPath(path: string) {
-    if (/^(https?|file):\/\//i.test(path)) return path;
-    const normalized = path.replace(/\\/g, "/");
-    const encoded = normalized.split("/").map((part) => encodeURIComponent(part)).join("/");
-    return `${normalized.startsWith("/") ? "file://" : "file:///"}${encoded}`;
-  }
-
-  async function handleOpenFilePath(path: string) {
-    if (backendOnline) {
-      try {
-        await openHtmlChallengeFile(path);
-        return;
-      } catch { /* fallback below */ }
-    }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_url", { url: fileUrlFromPath(path) });
-      return;
-    } catch { /* fall through */ }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_path", { path });
-    } catch {
-      setError("Could not open file. Try opening this path manually: " + path);
-    }
-  }
-
-  async function handleOpenExternalUrl(url: string) {
-    if (/^(\/|[A-Za-z]:[\\/])/.test(url)) {
-      await handleOpenFilePath(url);
-      return;
-    }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_url", { url });
-      return;
-    } catch { /* fall through */ }
-    try {
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (opened) return;
-    } catch { /* fall through */ }
-    setError(`Could not open link. Try opening this URL manually: ${url}`);
-  }
+  const { handleRevealPath, handleOpenFilePath, handleOpenExternalUrl } = useFileActions(backendOnline, setError);
 
   async function handleDeleteModel(item: LibraryItem) {
     const confirmed = window.confirm(

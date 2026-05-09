@@ -10,3 +10,4 @@ export { useSidebarPrefs } from "./useSidebarPrefs";
 export { useUiScale, type UiScale } from "./useUiScale";
 export { useGpuStatus } from "./useGpuStatus";
 export { useCudaTorchInstall } from "./useCudaTorchInstall";
+export { useFileActions } from "./useFileActions";

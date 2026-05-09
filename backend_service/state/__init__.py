@@ -20,6 +20,7 @@ from starlette.responses import StreamingResponse
 
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
+from backend_service.state.logs import LogManager, _time_label
 
 if TYPE_CHECKING:
     from backend_service.image_runtime import ImageRuntimeManager
@@ -346,9 +347,7 @@ class ChaosEngineState:
         if self._normalize_auto_generated_session_titles():
             self._persist_sessions()
         self.benchmark_runs = _load_benchmark_runs(self._benchmarks_path)
-        self.logs: deque[dict[str, Any]] = deque(maxlen=120)
-        self._log_subscribers: list = []
-        self.activity: deque[dict[str, Any]] = deque(maxlen=60)
+        self._log_manager = LogManager()
         self.requests_served = 0
         self.active_requests = 0
         self._loading_state: dict[str, Any] | None = None
@@ -581,47 +580,27 @@ class ChaosEngineState:
 
     @staticmethod
     def _time_label() -> str:
-        return time.strftime("%Y-%m-%d %H:%M:%S")
+        return _time_label()
 
-    @staticmethod
-    def _relative_label() -> str:
-        return time.strftime("%H:%M")
+    @property
+    def logs(self) -> deque[dict[str, Any]]:
+        return self._log_manager.logs
+
+    @property
+    def activity(self) -> deque[dict[str, Any]]:
+        return self._log_manager.activity
 
     def add_log(self, source: str, level: str, message: str) -> None:
-        import queue as _queue_mod
-        entry = {
-            "ts": self._time_label(),
-            "source": source,
-            "level": level,
-            "message": message,
-        }
-        self.logs.appendleft(entry)
-        for q in self._log_subscribers:
-            try:
-                q.put_nowait(entry)
-            except _queue_mod.Full:
-                pass
+        self._log_manager.add_log(source, level, message)
 
     def subscribe_logs(self):
-        import queue as _queue_mod
-        q = _queue_mod.Queue(maxsize=200)
-        self._log_subscribers.append(q)
-        return q
+        return self._log_manager.subscribe()
 
     def unsubscribe_logs(self, q) -> None:
-        try:
-            self._log_subscribers.remove(q)
-        except ValueError:
-            pass
+        self._log_manager.unsubscribe(q)
 
     def add_activity(self, title: str, detail: str) -> None:
-        self.activity.appendleft(
-            {
-                "time": "Now",
-                "title": title,
-                "detail": detail,
-            }
-        )
+        self._log_manager.add_activity(title, detail)
 
     def _cache_strategy_label(self, bits: int, fp16_layers: int) -> str:
         if bits and bits < 16:

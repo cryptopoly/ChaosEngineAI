@@ -9,12 +9,23 @@ import urllib.parse
 import urllib.request
 from hashlib import sha256
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.discovery import _path_size_bytes
+from backend_service.helpers.hf_cache_paths import (
+    _hf_hub_cache_root,
+    _hf_repo_cache_dir,
+    _hf_repo_downloaded_bytes,
+    _hf_repo_snapshot_dir,
+)
+from backend_service.helpers.hf_format import (
+    _format_hf_updated_label,
+    _format_release_label,
+    _hf_number_label,
+    _parse_iso_datetime,
+)
 
 
 _HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+/[a-zA-Z0-9_.\-]+$")
@@ -435,116 +446,6 @@ def _friendly_hf_download_error(repo_id: str, error: str) -> str:
     return condensed or f"Download failed for {repo_id}."
 
 
-def _parse_iso_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed
-
-
-def _format_hf_updated_label(value: str | None) -> str | None:
-    parsed = _parse_iso_datetime(value)
-    if parsed is None:
-        return None
-    now = datetime.now(timezone.utc)
-    month_label = parsed.strftime("%b")
-    if parsed.year == now.year:
-        return f"Updated {month_label} {parsed.day}"
-    return f"Updated {month_label} {parsed.day}, {parsed.year}"
-
-
-def _format_release_label(value: str | None) -> str | None:
-    """Format a release date / HF ``createdAt`` into a short human label.
-
-    Accepts either a full ISO datetime (``2024-08-01T12:34:56Z`` — HF API)
-    or a year-month shorthand (``2024-08`` — curated catalog entries) and
-    returns ``"Released Aug 2024"``. Falls back to None when the input
-    can't be parsed.
-    """
-    if not value:
-        return None
-    parsed = _parse_iso_datetime(value)
-    if parsed is None:
-        # Try ``YYYY-MM`` or ``YYYY-MM-DD`` shorthand used in curated catalog
-        # entries — ``_parse_iso_datetime`` only handles the full datetime form.
-        text = str(value).strip()
-        for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
-            try:
-                parsed = datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
-                break
-            except ValueError:
-                continue
-        if parsed is None:
-            return None
-    return f"Released {parsed.strftime('%b')} {parsed.year}"
-
-
-def _hf_number_label(value: int, noun: str) -> str:
-    return f"{value:,} {noun}"
-
-
-def _hf_hub_cache_root() -> Path:
-    explicit = os.environ.get("HUGGINGFACE_HUB_CACHE") or os.environ.get("HF_HUB_CACHE")
-    if explicit:
-        return Path(os.path.expanduser(explicit)).expanduser()
-    hf_home = os.environ.get("HF_HOME")
-    if hf_home:
-        return Path(os.path.expanduser(hf_home)).expanduser() / "hub"
-    # Use huggingface_hub's own cache constant when available -- it handles
-    # platform differences (Windows uses LOCALAPPDATA or userprofile).
-    try:
-        from huggingface_hub import constants as _hf_constants
-        return Path(_hf_constants.HF_HUB_CACHE)
-    except Exception:
-        pass
-    return Path.home() / ".cache" / "huggingface" / "hub"
-
-
-def _hf_repo_cache_dir(repo_id: str) -> Path:
-    return _hf_hub_cache_root() / f"models--{repo_id.replace('/', '--')}"
-
-
-def _hf_repo_downloaded_bytes(repo_id: str) -> int:
-    cache_dir = _hf_repo_cache_dir(repo_id)
-    try:
-        if not cache_dir.exists():
-            return 0
-    except OSError:
-        return 0
-    try:
-        return _path_size_bytes(cache_dir)
-    except OSError:
-        return 0
-
-
-def _hf_repo_snapshot_dir(repo_id: str) -> Path | None:
-    cache_dir = _hf_repo_cache_dir(repo_id)
-    snapshots_dir = cache_dir / "snapshots"
-    ref_path = cache_dir / "refs" / "main"
-    try:
-        if ref_path.exists():
-            revision = ref_path.read_text(encoding="utf-8").strip()
-            if revision:
-                candidate = snapshots_dir / revision
-                if candidate.exists():
-                    return candidate
-    except OSError:
-        pass
-
-    try:
-        snapshots = sorted(
-            [candidate for candidate in snapshots_dir.iterdir() if candidate.is_dir()],
-            key=lambda candidate: candidate.stat().st_mtime,
-            reverse=True,
-        )
-    except OSError:
-        return None
-    return snapshots[0] if snapshots else None
 
 
 def _known_repo_size_gb(repo_id: str) -> float | None:

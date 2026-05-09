@@ -29,6 +29,12 @@ from backend_service.progress import (
     PHASE_LOADING,
     PHASE_SAVING,
 )
+from backend_service.image_runtime.device import (
+    _guess_expected_device,
+    _is_cuda_torch_unavailable_error,
+    _resolve_image_python as _resolve_image_python_impl,
+    _windows_cuda_unavailable_message,
+)
 from backend_service.image_runtime.repos import (
     _AYS_TIMESTEPS,
     _SAMPLER_REGISTRY,
@@ -41,6 +47,11 @@ from backend_service.image_runtime.repos import (
     _locate_sdxl_vae_fix_snapshot,
     _nunchaku_transformer_class_for_repo,
 )
+from backend_service.image_runtime.snapshot import (
+    _snapshot_retry_guidance,
+    _snapshot_visible_label,
+    validate_local_diffusers_snapshot,
+)
 from backend_service.image_runtime.types import (
     GeneratedImage,
     ImageGenerationConfig,
@@ -48,220 +59,23 @@ from backend_service.image_runtime.types import (
 )
 
 
+def _resolve_image_python() -> str:
+    """Wrapper preserving the no-arg signature of the original helper."""
+    return _resolve_image_python_impl(WORKSPACE_ROOT)
+
+
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 MAX_IMAGE_SEED = 2147483647
 
 
-def _snapshot_retry_guidance(repo: str | None = None) -> str:
-    guidance = "Re-download the model and keep ChaosEngineAI open until the download completes."
-    if repo:
-        guidance += (
-            f" If this model is gated, accept access on https://huggingface.co/{repo} if prompted, "
-            "add HF_TOKEN in Settings, then retry."
-        )
-    return guidance
 
 
-def _snapshot_visible_label(local_root: Path) -> str:
-    try:
-        visible_files = sorted(
-            candidate.name
-            for candidate in local_root.iterdir()
-            if not candidate.name.startswith(".")
-        )
-    except OSError:
-        visible_files = []
-    return ", ".join(visible_files[:6]) if visible_files else "no files"
 
 
-def validate_local_diffusers_snapshot(
-    local_root: Path,
-    repo: str | None = None,
-    ignored_weight_index_dirs: set[str] | None = None,
-) -> str | None:
-    model_index_path = local_root / "model_index.json"
-    if not model_index_path.exists():
-        visible_label = _snapshot_visible_label(local_root)
-        return (
-            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
-            f"(missing model_index.json; found {visible_label}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    # Verify each component listed in model_index.json actually has its folder
-    # on disk with a recognisable config file. Diffusers will otherwise raise a
-    # cryptic "no file named config.json found in directory <snapshot_root>"
-    # error from inside ``from_pretrained`` that points at the snapshot root,
-    # which is hard to action without knowing which subfolder is missing.
-    # This typically happens when a download started before allow_patterns was
-    # applied — HF queues the legacy root-level safetensors first and the user
-    # tries to load before the per-component folders finish landing.
-    try:
-        pipeline_index = json.loads(model_index_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return (
-            "The local snapshot's model_index.json could not be read "
-            f"({exc}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    missing_components: list[str] = []
-    if isinstance(pipeline_index, dict):
-        # Any of these names being present in a subfolder is enough to call it
-        # a real component directory — diffusers picks the right one based on
-        # the class type at load time.
-        component_config_names = (
-            "config.json",
-            "scheduler_config.json",
-            "tokenizer_config.json",
-            "preprocessor_config.json",
-        )
-        for component_name, descriptor in pipeline_index.items():
-            if component_name.startswith("_"):
-                continue  # ``_class_name`` / ``_diffusers_version`` metadata
-            if not isinstance(descriptor, (list, tuple)) or len(descriptor) < 2:
-                continue
-            # Pipelines list ``[null, null]`` for optional components that the
-            # checkpoint deliberately omits (e.g. safety_checker on community
-            # models). Skip those — they aren't expected on disk.
-            if descriptor[0] is None or descriptor[1] is None:
-                continue
-            component_dir = local_root / component_name
-            if not component_dir.is_dir():
-                missing_components.append(component_name)
-                continue
-            if not any((component_dir / name).exists() for name in component_config_names):
-                missing_components.append(component_name)
-
-    if missing_components:
-        label = ", ".join(missing_components[:4])
-        if len(missing_components) > 4:
-            label += f" (+{len(missing_components) - 4} more)"
-        return (
-            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
-            f"(missing components: {label}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    broken_links: list[str] = []
-    weight_index_paths: list[Path] = []
-    try:
-        for candidate in local_root.rglob("*"):
-            if candidate.is_dir():
-                continue
-            if candidate.is_symlink() and not candidate.exists():
-                broken_links.append(candidate.relative_to(local_root).as_posix())
-            if candidate.name.endswith(".index.json"):
-                rel_parts = candidate.relative_to(local_root).parts
-                if rel_parts and ignored_weight_index_dirs and rel_parts[0] in ignored_weight_index_dirs:
-                    continue
-                weight_index_paths.append(candidate)
-    except OSError as exc:
-        return (
-            "The local snapshot could not be inspected before loading "
-            f"({exc}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    if broken_links:
-        label = ", ".join(broken_links[:3])
-        if len(broken_links) > 3:
-            label += f" (+{len(broken_links) - 3} more)"
-        return (
-            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
-            f"(missing local files: {label}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    missing_shards: list[str] = []
-    for index_path in weight_index_paths:
-        try:
-            payload = json.loads(index_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            rel_path = index_path.relative_to(local_root).as_posix()
-            return (
-                "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
-                f"(could not read {rel_path}: {exc}). {_snapshot_retry_guidance(repo)}"
-            )
-        weight_map = payload.get("weight_map")
-        if not isinstance(weight_map, dict):
-            continue
-        shard_names = sorted({value for value in weight_map.values() if isinstance(value, str) and value})
-        for shard_name in shard_names:
-            shard_path = index_path.parent / shard_name
-            if shard_path.exists():
-                continue
-            missing_shards.append(shard_path.relative_to(local_root).as_posix())
-
-    if missing_shards:
-        label = ", ".join(missing_shards[:3])
-        if len(missing_shards) > 3:
-            label += f" (+{len(missing_shards) - 3} more)"
-        return (
-            "The local snapshot is incomplete and cannot be opened as a diffusers pipeline "
-            f"(missing weight shards: {label}). {_snapshot_retry_guidance(repo)}"
-        )
-
-    return None
 
 
-def _resolve_image_python() -> str:
-    override = os.getenv("CHAOSENGINE_MLX_PYTHON")
-    if override:
-        return override
-    candidate = WORKSPACE_ROOT / ".venv" / "bin" / "python"
-    if candidate.exists():
-        return str(candidate)
-    return os.getenv("PYTHON", "python3")
 
 
-def _guess_expected_device() -> str | None:
-    """Best-effort prediction of what device diffusers will bind to on
-    the next Generate click, computed WITHOUT importing torch.
-
-    Importing torch here would lock torch/lib/*.dll in the backend
-    process and block /api/setup/install-gpu-bundle on Windows (same
-    trap we hit before). find_spec + nvidia_gpu_present are free.
-    Returns ``None`` when torch isn't installed — caller surfaces
-    the probe's ``missingDependencies`` list instead.
-
-    Predicted device is provisional; the actual device used at
-    generate time is what ``_detect_device`` decides once torch is
-    imported. Mismatch is rare (driver missing, torch was CPU-only)
-    and gets corrected in ``device`` once a model is loaded.
-    """
-    if importlib.util.find_spec("torch") is None:
-        return None
-    if _nvidia_gpu_present():
-        return "cuda"
-    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
-        return "mps"
-    return "cpu"
-
-
-def _windows_cuda_unavailable_message(torch: Any) -> str | None:
-    if platform.system() != "Windows" or not _nvidia_gpu_present():
-        return None
-    cuda_module = getattr(torch, "cuda", None)
-    if cuda_module is None:
-        return (
-            "CUDA torch is unavailable on this Windows NVIDIA host: torch imports "
-            "but has no torch.cuda module. Open Settings > Setup and click "
-            "Install CUDA torch, then Restart Backend."
-        )
-    try:
-        cuda_available = bool(getattr(cuda_module, "is_available", lambda: False)())
-    except Exception as exc:
-        return (
-            "CUDA torch is unavailable on this Windows NVIDIA host: "
-            f"torch.cuda.is_available failed ({type(exc).__name__}: {exc}). "
-            "Open Settings > Setup and click Install CUDA torch, then Restart Backend."
-        )
-    if not cuda_available:
-        return (
-            "CUDA torch is unavailable on this Windows NVIDIA host. Open Settings > "
-            "Setup and click Install CUDA torch, then Restart Backend."
-        )
-    return None
-
-
-def _is_cuda_torch_unavailable_error(exc: Exception) -> bool:
-    return "CUDA torch is unavailable on this Windows NVIDIA host" in str(exc)
 
 
 

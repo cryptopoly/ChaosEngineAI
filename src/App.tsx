@@ -51,12 +51,12 @@ import type {
   TabId,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { tabs, CAPABILITY_META } from "./constants";
+import { tabs } from "./constants";
+import { CapabilityStrip } from "./components/CapabilityStrip";
 import {
   number,
   sizeLabel,
   flattenVariants,
-  capabilityMeta,
   firstDirectVariant,
   findVariantById,
   findVariantForReference,
@@ -1318,22 +1318,6 @@ export default function App() {
     } catch { /* Not running in Tauri */ }
   }
 
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span className="capability-icon" key={capability} title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}>
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   // ── Tab content ────────────────────────────────────────────
   let content = <DashboardTab
@@ -2197,7 +2181,7 @@ export default function App() {
               </div>
               <div className="modal-body detail-modal-body">
                 <p className="discover-summary">{family.summary}</p>
-                {renderCapabilityIcons(family.capabilities, 12)}
+                <CapabilityStrip capabilities={family.capabilities} max={12} />
                 <div className="detail-variants">
                   <span className="eyebrow">Variants ({family.variants.length})</span>
                   {family.variants.map((variant) => {

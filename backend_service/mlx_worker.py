@@ -187,6 +187,33 @@ def _build_mlx_sampler(request: dict[str, Any]) -> Any:
     return make_sampler(**filtered)
 
 
+def _sampler_seed(request: dict[str, Any]) -> int | None:
+    samplers = request.get("samplers") or {}
+    if not isinstance(samplers, dict):
+        return None
+    value = samplers.get("seed")
+    if value is None:
+        return None
+    try:
+        seed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return seed if seed >= 0 else None
+
+
+def _apply_mlx_seed(request: dict[str, Any]) -> None:
+    seed = _sampler_seed(request)
+    if seed is None:
+        return
+    try:
+        import mlx.core as mx
+        seed_fn = getattr(getattr(mx, "random", None), "seed", None)
+        if callable(seed_fn):
+            seed_fn(seed)
+    except Exception:
+        pass
+
+
 def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
     """Format tool schemas into a system prompt block for open-source models.
 
@@ -1229,6 +1256,11 @@ class WorkerState:
         if self.is_multimodal:
             return self._generate_multimodal(request)
 
+        # Apply caller-supplied seed before any sampler runs — speculative
+        # paths sample inside their own helpers, so seed must be set
+        # up-front and not just in ``_generate_standard``.
+        _apply_mlx_seed(request)
+
         # Use DDTree if tree budget is set and components are loaded
         if self.speculative_decoding and self.tree_budget > 0 and self._ddtree_draft is not None:
             try:
@@ -1474,6 +1506,9 @@ class WorkerState:
             except (TypeError, ValueError):
                 pass
         top_p = request.get("topP")
+        samplers = request.get("samplers") or {}
+        if top_p is None and isinstance(samplers, dict):
+            top_p = samplers.get("top_p")
         if top_p is not None:
             try:
                 kwargs["top_p"] = float(top_p)
@@ -1495,6 +1530,7 @@ class WorkerState:
             ) from exc
 
         images_b64 = list(request.get("images") or [])
+        _apply_mlx_seed(request)
         kwargs = self._vlm_generate_kwargs(request)
 
         with tempfile.TemporaryDirectory(prefix="chaosengine-mm-") as tmpdir:
@@ -1564,6 +1600,7 @@ class WorkerState:
             return
 
         images_b64 = list(request.get("images") or [])
+        _apply_mlx_seed(request)
         kwargs = self._vlm_generate_kwargs(request)
         thinking_mode = request.get("thinkingMode") or "off"
         _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
@@ -1647,6 +1684,12 @@ class WorkerState:
         if self.is_multimodal:
             self._stream_generate_multimodal(request)
             return
+
+        # Apply caller-supplied seed before any sampler runs — speculative
+        # paths (DDTree / DFLASH) sample inside their own helpers, so the
+        # seed must be set up-front, not just before the standard mlx-lm
+        # path below.
+        _apply_mlx_seed(request)
 
         speculative_stream_fallback_note = None
         # DFLASH/DDTree don't support token-level streaming natively, so

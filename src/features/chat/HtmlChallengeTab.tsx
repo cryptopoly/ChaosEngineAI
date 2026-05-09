@@ -39,6 +39,7 @@ interface ChallengeSlot {
   settings: LaunchPreferences;
   thinkingMode: HtmlChallengeThinkingMode;
   reasoningEffort: HtmlChallengeReasoningEffort;
+  seed: number | null;
 }
 
 type HtmlValidationStatus = "valid" | "partial" | "script-error" | "blank-render" | "no-html";
@@ -97,6 +98,7 @@ interface HtmlChallengeManifestSlot {
   settings?: Partial<LaunchPreferences>;
   thinkingMode?: HtmlChallengeThinkingMode | null;
   reasoningEffort?: HtmlChallengeReasoningEffort | null;
+  seed?: number | null;
   filename?: string;
   filePath?: string;
   fileBytes?: number;
@@ -153,10 +155,169 @@ type HtmlChallengeReasoningEffort = "low" | "medium" | "high";
 type HtmlChallengeModelPayload = ReturnType<typeof buildComparePayload> & {
   thinkingMode: HtmlChallengeThinkingMode;
   reasoningEffort?: HtmlChallengeReasoningEffort;
+  seed?: number | null;
 };
 
-const HTML_PREVIEW_VIRTUAL_WIDTH = 1280;
-const HTML_PREVIEW_VIRTUAL_HEIGHT = 720;
+
+// Sandboxed iframes (sandbox="allow-scripts" without allow-same-origin) run
+// in an opaque origin, so any access to localStorage / sessionStorage / cookies
+// throws SecurityError and aborts the page's init script. Many LLM-generated
+// pages use localStorage for high-scores or settings, which silently kills the
+// rest of the script (event listeners never get attached). Install in-memory
+// stubs as the very first thing in the document so model code finds working
+// APIs and never throws.
+const htmlChallengePreviewStorageShim = `
+<script>
+(function () {
+  function makeStorage() {
+    var data = {};
+    return {
+      getItem: function (key) { return Object.prototype.hasOwnProperty.call(data, String(key)) ? data[String(key)] : null; },
+      setItem: function (key, value) { data[String(key)] = String(value); },
+      removeItem: function (key) { delete data[String(key)]; },
+      clear: function () { data = {}; },
+      key: function (index) { var keys = Object.keys(data); return index >= 0 && index < keys.length ? keys[index] : null; },
+      get length() { return Object.keys(data).length; }
+    };
+  }
+  function safeDefine(name) {
+    try {
+      var current = window[name];
+      // If access already throws, descriptor lookup fails silently. Always
+      // define our own to be safe.
+      void current;
+    } catch (_) { /* fall through to define */ }
+    try {
+      Object.defineProperty(window, name, {
+        configurable: true,
+        get: function () { return store; }
+      });
+      var store = makeStorage();
+    } catch (_) {
+      try { window[name] = makeStorage(); } catch (__) {}
+    }
+  }
+  safeDefine("localStorage");
+  safeDefine("sessionStorage");
+})();
+</script>`;
+
+// Minimal preview-frame styling. Uses :where() (zero specificity) so any
+// rule the model writes wins. Goal: when the model sets a page background,
+// it covers the iframe; when it doesn't, the iframe falls through to the
+// frame-shell's neutral colour rather than showing browser-default white.
+// Scrollbar styles use the model-overridable `:where()` form too so the
+// page can swap them out, but default to a transparent track that matches
+// the frame chrome instead of opaque WebKit white.
+const htmlChallengePreviewBaseStyle = `
+<style id="chaosengine-preview-base">
+  :where(html, body) { margin: 0; padding: 0; background: transparent; }
+  :where(body) { min-height: 100vh; }
+  :where(html) {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+  :where(*::-webkit-scrollbar) { width: 8px; height: 8px; }
+  :where(*::-webkit-scrollbar-track) { background: transparent; }
+  :where(*::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+  }
+  :where(*::-webkit-scrollbar-thumb:hover) { background: rgba(255, 255, 255, 0.32); }
+</style>`;
+
+// After the page loads, measure its natural extent and zoom-to-fit the
+// iframe viewport. Mirrors how a desktop browser would let you "reset
+// zoom" on a page that's larger than the window — content shrinks to fit
+// while preserving aspect ratio, no scrollbars, no clipping.
+//
+// Skipped when:
+//   * The page already fits within ~5% of the viewport (avoids futile
+//     fractional zooms that smear text).
+//   * Scaling would invert (page smaller than viewport — leave at 1x so
+//     fonts stay crisp).
+const htmlChallengePreviewFitScript = `
+<script>
+(function () {
+  var lastZoom = 1;
+  // Walk visible descendants to find the true rendered bounds. Pages that
+  // use \`body { overflow: hidden }\` with an oversized canvas/svg inside
+  // report \`scrollWidth\` == viewport even though content extends past
+  // the viewport — relying on scrollWidth alone leaves them cropped.
+  function measureContentBounds() {
+    var maxRight = 0;
+    var maxBottom = 0;
+    var TAG_SKIP = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEMPLATE: 1, LINK: 1, META: 1, HEAD: 1 };
+    function walk(node, depth) {
+      if (!node || node.nodeType !== 1) return;
+      if (TAG_SKIP[node.tagName]) return;
+      try {
+        var style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden") return;
+        var rect = node.getBoundingClientRect();
+        if (rect.right > maxRight) maxRight = rect.right;
+        if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+      } catch (_) {}
+      // Cap traversal depth to keep cost bounded on huge DOMs.
+      if (depth > 6) return;
+      for (var i = 0; i < node.children.length; i += 1) {
+        walk(node.children[i], depth + 1);
+      }
+    }
+    walk(document.body, 0);
+    return { width: maxRight, height: maxBottom };
+  }
+  function fit() {
+    if (!document.documentElement || !document.body) return;
+    document.documentElement.style.zoom = "";
+    var bounds = measureContentBounds();
+    var contentWidth = Math.max(
+      bounds.width,
+      document.documentElement.scrollWidth,
+      document.body.scrollWidth,
+      document.body.offsetWidth
+    );
+    var contentHeight = Math.max(
+      bounds.height,
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight,
+      document.body.offsetHeight
+    );
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    if (contentWidth <= 0 || contentHeight <= 0 || vw <= 0 || vh <= 0) return;
+    var scale = Math.min(vw / contentWidth, vh / contentHeight);
+    if (!isFinite(scale) || scale <= 0) return;
+    // Clamp range. Don't shrink more than 4x (illegible) or grow more than 2x.
+    if (scale < 0.25) scale = 0.25;
+    if (scale > 2) scale = 2;
+    if (Math.abs(scale - 1) < 0.04) {
+      document.documentElement.style.zoom = "";
+      lastZoom = 1;
+      return;
+    }
+    if (Math.abs(scale - lastZoom) < 0.01) return;
+    document.documentElement.style.zoom = String(scale);
+    lastZoom = scale;
+  }
+  function schedule() {
+    window.requestAnimationFrame(function () { window.requestAnimationFrame(fit); });
+  }
+  window.addEventListener("load", function () {
+    schedule();
+    window.setTimeout(schedule, 200);
+    window.setTimeout(schedule, 800);
+  });
+  window.addEventListener("resize", schedule);
+  if (typeof ResizeObserver !== "undefined") {
+    try {
+      var ro = new ResizeObserver(schedule);
+      ro.observe(document.documentElement);
+      ro.observe(document.body);
+    } catch (_) {}
+  }
+})();
+</script>`;
 
 const htmlChallengePreviewKeyBridge = `
 <script>
@@ -346,11 +507,49 @@ function htmlChallengePreviewValidationBridge(slotId: CompareTarget) {
     post("valid-runtime", "");
   }
 
+  // Detect the page's actual background colour and report it to the parent
+  // so the frame-shell margin matches the content. Walks body -> html ->
+  // body's largest top-level child until we find a non-transparent colour.
+  function isOpaqueColor(color) {
+    if (!color) return false;
+    if (color === "transparent") return false;
+    var match = /rgba?\(([^)]+)\)/i.exec(color);
+    if (!match) return color !== "transparent";
+    var parts = match[1].split(",").map(function (part) { return parseFloat(part.trim()); });
+    if (parts.length < 4) return true;
+    return parts[3] > 0.05;
+  }
+  function detectBackground() {
+    if (!document.body || !document.documentElement) return;
+    var bodyBg = window.getComputedStyle(document.body).backgroundColor;
+    var htmlBg = window.getComputedStyle(document.documentElement).backgroundColor;
+    var color = isOpaqueColor(bodyBg) ? bodyBg : (isOpaqueColor(htmlBg) ? htmlBg : "");
+    if (!color) {
+      // Fall back to the largest visible top-level child's bg.
+      var children = Array.prototype.slice.call(document.body.children || []);
+      for (var i = 0; i < children.length; i += 1) {
+        var rect = children[i].getBoundingClientRect();
+        if (rect.width < 200 || rect.height < 200) continue;
+        var bg = window.getComputedStyle(children[i]).backgroundColor;
+        if (isOpaqueColor(bg)) { color = bg; break; }
+      }
+    }
+    if (!color) return;
+    window.parent.postMessage({
+      __htmlChallengePreviewBackground: true,
+      slotId: slotId,
+      color: color
+    }, "*");
+  }
+
   window.addEventListener("load", function () {
     window.setTimeout(scan, 300);
     window.setTimeout(scan, 1200);
+    window.setTimeout(detectBackground, 350);
+    window.setTimeout(detectBackground, 1300);
   });
   window.setTimeout(scan, 1600);
+  window.setTimeout(detectBackground, 1700);
 })();
 </script>`;
 }
@@ -401,6 +600,24 @@ function emptyStreamAtBottom(): Record<CompareTarget, boolean> {
   return { a: true, b: true, c: true, d: true };
 }
 
+function emptyCodeViews(): Record<CompareTarget, boolean> {
+  return { a: false, b: false, c: false, d: false };
+}
+
+function emptyPreviewBackgrounds(): Record<CompareTarget, string | null> {
+  return { a: null, b: null, c: null, d: null };
+}
+
+function randomChallengeSeed() {
+  // Backend pydantic field accepts [0, 2147483647], so Math.random() * 2147483648
+  // covers the full int32 range when rounded down.
+  return Math.floor(Math.random() * 2147483648);
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function defaultChallengeSlot(
   id: CompareTarget,
   launchSettings: LaunchPreferences,
@@ -413,6 +630,7 @@ function defaultChallengeSlot(
     settings: cloneLaunchSettings(launchSettings),
     thinkingMode,
     reasoningEffort,
+    seed: randomChallengeSeed(),
   };
 }
 
@@ -429,11 +647,56 @@ function isTextModelOption(option: ChatModelOption) {
 
 function previewSrcDoc(html: string, slotId: CompareTarget) {
   const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">`;
-  const injection = `${csp}${htmlChallengePreviewKeyBridge}${htmlChallengePreviewValidationBridge(slotId)}`;
+  // Storage shim must come BEFORE any model script so the very first access
+  // to localStorage hits the stub instead of the throwing native binding.
+  const injection = `${csp}${htmlChallengePreviewStorageShim}${htmlChallengePreviewBaseStyle}${htmlChallengePreviewKeyBridge}${htmlChallengePreviewValidationBridge(slotId)}${htmlChallengePreviewFitScript}`;
   if (/<head[^>]*>/i.test(html)) {
     return html.replace(/<head([^>]*)>/i, `<head$1>${injection}`);
   }
   return `${injection}${html}`;
+}
+
+function escapeHtmlCode(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function highlightHtmlTag(token: string) {
+  if (token.startsWith("&lt;!--")) {
+    return `<span class="html-code-comment">${token}</span>`;
+  }
+  if (/^&lt;!doctype/i.test(token)) {
+    return `<span class="html-code-doctype">${token}</span>`;
+  }
+  const match = token.match(/^(&lt;\/?)([A-Za-z][A-Za-z0-9:-]*)([\s\S]*?)(&gt;)$/);
+  if (!match) return `<span class="html-code-tag">${token}</span>`;
+  const [, open, name, attrs, close] = match;
+  const highlightedAttrs = attrs.replace(
+    /(\s+)([A-Za-z_:][A-Za-z0-9_.:-]*)(=)(&quot;.*?&quot;|&#39;.*?&#39;|[^\s&]+)?/g,
+    (_attr, space, attrName, equals, attrValue = "") => (
+      `${space}<span class="html-code-attr">${attrName}</span>`
+      + `<span class="html-code-punct">${equals}</span>`
+      + (attrValue ? `<span class="html-code-string">${attrValue}</span>` : "")
+    ),
+  );
+  return (
+    `<span class="html-code-punct">${open}</span>`
+    + `<span class="html-code-tag-name">${name}</span>`
+    + highlightedAttrs
+    + `<span class="html-code-punct">${close}</span>`
+  );
+}
+
+function highlightHtmlCode(value: string) {
+  const escaped = escapeHtmlCode(value);
+  return escaped.replace(
+    /(&lt;!--[\s\S]*?--&gt;|&lt;!doctype[\s\S]*?&gt;|&lt;\/?[A-Za-z][\s\S]*?&gt;)/gi,
+    (token) => highlightHtmlTag(token),
+  );
 }
 
 function mergeMetrics(current: GenerationMetrics | null, event: HtmlChallengeStreamEvent): GenerationMetrics | null {
@@ -723,14 +986,12 @@ export function HtmlChallengeTab({
   const [loadingChallengeId, setLoadingChallengeId] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<HtmlChallengeLayoutMode>("row");
   const [expandedHtmlSlot, setExpandedHtmlSlot] = useState<CompareTarget | null>(null);
-  const [frameShellSizes, setFrameShellSizes] = useState<Record<CompareTarget, { width: number; height: number }>>({
-    a: { width: 0, height: 0 },
-    b: { width: 0, height: 0 },
-    c: { width: 0, height: 0 },
-    d: { width: 0, height: 0 },
-  });
+  const [codeViewSlots, setCodeViewSlots] = useState<Record<CompareTarget, boolean>>(emptyCodeViews);
   const [streamAtBottom, setStreamAtBottom] = useState<Record<CompareTarget, boolean>>(emptyStreamAtBottom);
   const [pickerTarget, setPickerTarget] = useState<CompareTarget | null>(null);
+  // When true, confirming the picker re-runs the slot's challenge with the
+  // newly chosen model so manifest filename + metadata stay consistent.
+  const [pickerAutoRetry, setPickerAutoRetry] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerDraftKey, setPickerDraftKey] = useState("");
   const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
@@ -754,8 +1015,6 @@ export function HtmlChallengeTab({
     d: null,
   });
   const activePreviewSlotRef = useRef<CompareTarget | null>(null);
-  const frameShellObserverRef = useRef<ResizeObserver | null>(null);
-  const frameShellTargetsRef = useRef<Map<Element, CompareTarget>>(new Map());
 
   const textModelOptions = modelOptions.filter(isTextModelOption);
   const selectedBySlot = Object.fromEntries(
@@ -791,42 +1050,6 @@ export function HtmlChallengeTab({
     void refreshChallengeHistory();
     return () => {
       abortRef.current?.abort();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver((entries) => {
-      setFrameShellSizes((current) => {
-        let next = current;
-        for (const entry of entries) {
-          const target = frameShellTargetsRef.current.get(entry.target);
-          if (!target) continue;
-          const width = Math.round(entry.contentRect.width);
-          const height = Math.round(entry.contentRect.height);
-          if (
-            Math.abs((current[target]?.width ?? 0) - width) <= 1
-            && Math.abs((current[target]?.height ?? 0) - height) <= 1
-          ) {
-            continue;
-          }
-          if (next === current) next = { ...current };
-          next[target] = { width, height };
-        }
-        return next;
-      });
-    });
-    frameShellObserverRef.current = observer;
-    for (const target of compareTargets) {
-      const element = frameShellRefs.current[target];
-      if (!element) continue;
-      frameShellTargetsRef.current.set(element, target);
-      observer.observe(element);
-    }
-    return () => {
-      observer.disconnect();
-      frameShellTargetsRef.current.clear();
-      frameShellObserverRef.current = null;
     };
   }, []);
 
@@ -884,6 +1107,29 @@ export function HtmlChallengeTab({
     window.addEventListener("message", handlePreviewValidation);
     return () => window.removeEventListener("message", handlePreviewValidation);
   }, [manifest?.id]);
+
+  // Per-slot computed background colour reported by the iframe so the frame
+  // shell margin matches the page theme (no white margin on dark pages, no
+  // dark margin on light pages).
+  const [previewBackgrounds, setPreviewBackgrounds] = useState<Record<CompareTarget, string | null>>(
+    emptyPreviewBackgrounds,
+  );
+  useEffect(() => {
+    function handlePreviewBackground(event: MessageEvent) {
+      const data = event.data as {
+        __htmlChallengePreviewBackground?: boolean;
+        slotId?: unknown;
+        color?: unknown;
+      } | null;
+      if (!data?.__htmlChallengePreviewBackground) return;
+      if (!isCompareTarget(data.slotId) || typeof data.color !== "string") return;
+      const target = data.slotId;
+      const color = data.color;
+      setPreviewBackgrounds((current) => current[target] === color ? current : { ...current, [target]: color });
+    }
+    window.addEventListener("message", handlePreviewBackground);
+    return () => window.removeEventListener("message", handlePreviewBackground);
+  }, []);
 
   useEffect(() => {
     const handles = slots
@@ -946,32 +1192,7 @@ export function HtmlChallengeTab({
   }
 
   function attachFrameShell(target: CompareTarget, element: HTMLDivElement | null) {
-    const observer = frameShellObserverRef.current;
-    const previous = frameShellRefs.current[target];
-    if (previous && observer) {
-      observer.unobserve(previous);
-      frameShellTargetsRef.current.delete(previous);
-    }
     frameShellRefs.current[target] = element;
-    if (element && observer) {
-      frameShellTargetsRef.current.set(element, target);
-      observer.observe(element);
-    }
-  }
-
-  function htmlPreviewGeometry(target: CompareTarget) {
-    const size = frameShellSizes[target];
-    const scale = size.width > 0 && size.height > 0
-      ? Math.min(2, Math.max(0.12, Math.min(
-        size.width / HTML_PREVIEW_VIRTUAL_WIDTH,
-        size.height / HTML_PREVIEW_VIRTUAL_HEIGHT,
-      )))
-      : 1;
-    return {
-      scale,
-      width: HTML_PREVIEW_VIRTUAL_WIDTH,
-      height: HTML_PREVIEW_VIRTUAL_HEIGHT,
-    };
   }
 
   function modelKeyFromManifestSlot(slot: HtmlChallengeManifestSlot) {
@@ -1018,6 +1239,7 @@ export function HtmlChallengeTab({
       ...payload,
       thinkingMode: slot.thinkingMode,
       reasoningEffort: slot.thinkingMode === "auto" ? slot.reasoningEffort : undefined,
+      seed: slot.seed,
     });
     if (option) return withThinking(buildComparePayload(option, slot.settings));
     if (!manifestSlot?.modelRef) return null;
@@ -1118,6 +1340,8 @@ export function HtmlChallengeTab({
     setSelectedChallengeId("");
     setHistorySearch("");
     setHistoryOpen(false);
+    setCodeViewSlots(emptyCodeViews());
+    setPreviewBackgrounds(emptyPreviewBackgrounds());
     setSlotStates(emptySlotStates());
     setStreamAtBottom(emptyStreamAtBottom());
     setSlots([
@@ -1133,11 +1357,14 @@ export function HtmlChallengeTab({
     setSelectedChallengeId("");
     setHistorySearch("");
     setHistoryOpen(false);
+    setCodeViewSlots(emptyCodeViews());
+    setPreviewBackgrounds(emptyPreviewBackgrounds());
     setSlotStates(emptySlotStates());
     setStreamAtBottom(emptyStreamAtBottom());
     setSlots((current) => current.map((slot) => ({
       ...slot,
       settings: cloneLaunchSettings(slot.settings),
+      seed: slot.seed ?? randomChallengeSeed(),
     })));
   }
 
@@ -1175,13 +1402,13 @@ export function HtmlChallengeTab({
       return fallback;
   }
 
-  async function deleteSelectedChallenge() {
-    const challengeId = manifest?.id || selectedChallengeId;
+  async function deleteChallengeById(challengeId: string, label?: string) {
     if (busy || !challengeId) return;
-    const label = manifest
-      ? displayChallengeTitle(manifest)
-      : selectedChallenge ? displayChallengeTitle(selectedChallenge) : "this challenge";
-    const confirmed = window.confirm(`Delete "${label}" and its saved HTML files?`);
+    const display = label
+      || (manifest?.id === challengeId ? displayChallengeTitle(manifest) : "")
+      || (selectedChallenge?.id === challengeId ? displayChallengeTitle(selectedChallenge) : "")
+      || (challenges.find((c) => c.id === challengeId) ? displayChallengeTitle(challenges.find((c) => c.id === challengeId)!) : "this challenge");
+    const confirmed = window.confirm(`Move "${display}" to the .trash folder? You can restore it from disk if needed.`);
     if (!confirmed) return;
     const response = await apiFetch(`/api/chat/html-challenges/${encodeURIComponent(challengeId)}`, {
       method: "DELETE",
@@ -1269,6 +1496,7 @@ export function HtmlChallengeTab({
           settings: settingsFromManifest(slot.settings, launchSettings),
           thinkingMode: normalizeThinkingMode(slot.thinkingMode ?? challenge.thinkingMode),
           reasoningEffort: normalizeReasoningEffort(slot.reasoningEffort ?? challenge.reasoningEffort),
+          seed: typeof slot.seed === "number" ? slot.seed : null,
         }))
         : [
           defaultChallengeSlot("a", launchSettings),
@@ -1304,6 +1532,8 @@ export function HtmlChallengeTab({
       setStreamAtBottom(emptyStreamAtBottom());
       setManifest(challenge);
       setExpandedHtmlSlot(null);
+      setCodeViewSlots(emptyCodeViews());
+    setPreviewBackgrounds(emptyPreviewBackgrounds());
       setSelectedChallengeId(challenge.id);
       setHistorySearch("");
       setHistoryOpen(false);
@@ -1317,6 +1547,19 @@ export function HtmlChallengeTab({
     setPickerSearch("");
     setPickerDraftKey(slot?.modelKey ?? "");
     setPickerDraftSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
+    setPickerAutoRetry(false);
+    setPickerTarget(target);
+  }
+
+  // Used after a challenge has run (manifest exists). Confirming the picker
+  // automatically re-runs that slot so filename + metadata + rendered HTML
+  // all reflect the newly-chosen model — no orphan files or stale labels.
+  function openPickerForChangeModel(target: CompareTarget) {
+    const slot = slots.find((item) => item.id === target);
+    setPickerSearch("");
+    setPickerDraftKey(slot?.modelKey ?? "");
+    setPickerDraftSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
+    setPickerAutoRetry(true);
     setPickerTarget(target);
   }
 
@@ -1403,6 +1646,8 @@ export function HtmlChallengeTab({
     setManifest(null);
     setSlotStates(emptySlotStates());
     setStreamAtBottom(emptyStreamAtBottom());
+    setCodeViewSlots(emptyCodeViews());
+    setPreviewBackgrounds(emptyPreviewBackgrounds());
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -1442,10 +1687,10 @@ export function HtmlChallengeTab({
     }
   }
 
-  async function retryChallengeSlot(slot: ChallengeSlot) {
+  async function retryChallengeSlot(slot: ChallengeSlot, overridePayload?: HtmlChallengeModelPayload) {
     const challengeId = manifest?.id;
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
-    const modelPayload = buildRetryModelPayload(slot, manifestSlot);
+    const modelPayload = overridePayload ?? buildRetryModelPayload(slot, manifestSlot);
     if (busy || !challengeId || !modelPayload) return;
 
     setBusy(true);
@@ -1583,6 +1828,21 @@ export function HtmlChallengeTab({
     });
   }
 
+  function updateSlotTemperature(slotId: CompareTarget, value: number) {
+    updateSlot(slotId, {
+      settings: {
+        ...(slots.find((slot) => slot.id === slotId)?.settings ?? cloneLaunchSettings(launchSettings)),
+        temperature: clampNumber(value, 0, 2),
+      },
+    });
+  }
+
+  function updateSlotSeed(slotId: CompareTarget, value: number | null) {
+    updateSlot(slotId, {
+      seed: value == null ? null : Math.round(clampNumber(value, 0, 2147483647)),
+    });
+  }
+
   function renderModelCard(slot: ChallengeSlot) {
     const option = selectedBySlot[slot.id];
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
@@ -1593,45 +1853,90 @@ export function HtmlChallengeTab({
       ? option.sizeGb
       : typeof manifestSlot?.sizeGb === "number" ? manifestSlot.sizeGb : null;
     const contextWindow = option?.contextWindow ?? manifestSlot?.contextWindow ?? "";
+    const thinkingValue = slot.thinkingMode === "auto" ? slot.reasoningEffort : "off";
     return (
       <div key={slot.id}>
         <span className="eyebrow">{compareTargetLabels[slot.id]}</span>
-        <div className="model-selected-card" style={{ minHeight: 104 }}>
+        <div className="model-selected-card model-selected-card--compact">
           <div className="model-selected-info">
-            <strong>{label}</strong>
-            <div className="model-selected-meta">
-              {format ? <span className="badge muted">{format}</span> : null}
-              {quantization ? <span className="badge muted">{quantization}</span> : null}
-              {sizeGb ? <span className="badge muted">{sizeLabel(sizeGb)}</span> : null}
-              {contextWindow ? <span className="badge muted">{contextWindow}</span> : null}
+            <div className="html-challenge-slot-headline">
+              <strong className="html-challenge-slot-name" title={label}>{label}</strong>
+              <div className="model-selected-meta html-challenge-slot-badges">
+                {format ? <span className="badge muted">{format}</span> : null}
+                {quantization ? <span className="badge muted">{quantization}</span> : null}
+                {sizeGb ? <span className="badge muted">{sizeLabel(sizeGb)}</span> : null}
+                {contextWindow ? <span className="badge muted">{contextWindow}</span> : null}
+              </div>
             </div>
             <small className="muted-text">{summarizeLaunchSettings(slot.settings)}</small>
             {!completedChallenge ? (
-              <div className="html-challenge-slot-thinking-row">
-                <span className="composer-mode-label">Thinking</span>
-                <div className="thread-mode-toggle composer-thinking-toggle" role="group" aria-label={`${compareTargetLabels[slot.id]} thinking mode`}>
-                  <button
-                    type="button"
-                    className={`thread-mode-button${slot.thinkingMode === "off" ? " thread-mode-button--active" : ""}`}
+              <div className="html-challenge-slot-sampler-row">
+                <label>
+                  <span>Thinking</span>
+                  <select
+                    className="text-input"
+                    value={thinkingValue}
                     disabled={busy}
-                    onClick={() => updateSlotThinking(slot.id, "off")}
-                    title="Ask this model for direct output and suppress reasoning capture"
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (next === "off") updateSlotThinking(slot.id, "off");
+                      else updateSlotThinking(slot.id, "auto", next as HtmlChallengeReasoningEffort);
+                    }}
                   >
-                    Off
-                  </button>
-                  {(["low", "medium", "high"] as HtmlChallengeReasoningEffort[]).map((effort) => (
-                    <button
-                      key={effort}
-                      type="button"
-                      className={`thread-mode-button${slot.thinkingMode === "auto" && slot.reasoningEffort === effort ? " thread-mode-button--active" : ""}`}
+                    <option value="off">Off</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Med</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Temp</span>
+                  <input
+                    className="text-input"
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    value={slot.settings.temperature}
+                    disabled={busy}
+                    onChange={(event) => {
+                      const parsed = parseFloat(event.target.value);
+                      if (Number.isFinite(parsed)) updateSlotTemperature(slot.id, parsed);
+                    }}
+                  />
+                </label>
+                <label className="html-challenge-seed-field">
+                  <span>Seed</span>
+                  <div className="html-challenge-seed-field-controls">
+                    <input
+                      className="text-input"
+                      type="number"
+                      min={0}
+                      max={2147483647}
+                      step={1}
+                      placeholder="random"
+                      value={slot.seed ?? ""}
                       disabled={busy}
-                      onClick={() => updateSlotThinking(slot.id, "auto", effort)}
-                      title={`${effort[0].toUpperCase()}${effort.slice(1)} reasoning effort for this model`}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        if (!raw) {
+                          updateSlotSeed(slot.id, null);
+                          return;
+                        }
+                        const parsed = parseInt(raw, 10);
+                        if (Number.isFinite(parsed)) updateSlotSeed(slot.id, parsed);
+                      }}
+                    />
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => updateSlotSeed(slot.id, randomChallengeSeed())}
                     >
-                      {effort === "medium" ? "Med" : effort[0].toUpperCase() + effort.slice(1)}
+                      Randomize
                     </button>
-                  ))}
-                </div>
+                  </div>
+                </label>
               </div>
             ) : null}
           </div>
@@ -1658,6 +1963,10 @@ export function HtmlChallengeTab({
     return "";
   }
 
+  function toggleCodeView(slotId: CompareTarget) {
+    setCodeViewSlots((current) => ({ ...current, [slotId]: !current[slotId] }));
+  }
+
   function runtimeCacheDetail(state: ChallengeSlotState) {
     const noteMatch = state.runtimeNote?.match(/(\d+\+\d+\s+cache)/i);
     if (noteMatch?.[1]) return noteMatch[1].toLowerCase();
@@ -1672,6 +1981,7 @@ export function HtmlChallengeTab({
       parts.splice(1, 0, cacheDetail);
     }
     parts.push(reasoningLabel(slot.thinkingMode, slot.reasoningEffort));
+    if (slot.seed != null) parts.push(`seed ${slot.seed}`);
     return parts.join(" · ");
   }
 
@@ -1728,6 +2038,8 @@ export function HtmlChallengeTab({
     const validationBadge = renderValidationBadge(state);
     const validation = htmlValidationForState(state);
     const canExpand = Boolean(state.html && validation?.status !== "no-html");
+    const canViewCode = Boolean(state.html && validation?.status !== "no-html");
+    const isCodeView = codeViewSlots[slot.id];
     if (!state.filename && !actionPath && !validationBadge && !canExpand) return null;
     const isExpanded = expandedHtmlSlot === slot.id;
     return (
@@ -1767,6 +2079,15 @@ export function HtmlChallengeTab({
             {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
           </button>
         ) : null}
+        {canViewCode ? (
+          <button
+            className="secondary-button html-challenge-code-toggle"
+            type="button"
+            onClick={() => toggleCodeView(slot.id)}
+          >
+            {isCodeView ? "View Render" : "View HTML Code"}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -1783,9 +2104,13 @@ export function HtmlChallengeTab({
     const retryable = isRetryableState(state);
     const repairable = isRepairableState(state);
     const retryPayload = retryable ? buildRetryModelPayload(slot, manifestSlot) : null;
-    const previewGeometry = htmlPreviewGeometry(slot.id);
     const isExpanded = expandedHtmlSlot === slot.id;
-    const panelActions = isExpanded || showLatestButton || retryable ? (
+    // Show Change Model on every manifested slot (any status) so a wrongly
+    // picked or retried-into-the-wrong-model slot can be swapped without
+    // first having to fail / repair. Confirming the picker auto-retries to
+    // keep filename + manifest + rendered HTML consistent.
+    const canChangeModel = Boolean(manifest && manifestSlot);
+    const panelActions = isExpanded || showLatestButton || retryable || canChangeModel ? (
       <div className="html-challenge-panel-actions">
         {isExpanded ? (
           <button className="secondary-button" type="button" onClick={() => setExpandedHtmlSlot(null)}>
@@ -1797,11 +2122,13 @@ export function HtmlChallengeTab({
             Latest
           </button>
         ) : null}
+        {canChangeModel ? (
+          <button className="secondary-button" type="button" disabled={busy} onClick={() => openPickerForChangeModel(slot.id)}>
+            Change Model
+          </button>
+        ) : null}
         {retryable ? (
           <>
-            <button className="secondary-button" type="button" disabled={busy} onClick={() => openPicker(slot.id)}>
-              Change Model
-            </button>
             {repairable ? (
               <>
                 <button
@@ -1888,24 +2215,26 @@ export function HtmlChallengeTab({
           ) : state.html ? (
             <>
               {renderFileActions(slot, state)}
-              <div
-                ref={(element) => attachFrameShell(slot.id, element)}
-                className={`html-challenge-frame-shell${expandedHtmlSlot === slot.id ? " html-challenge-frame-shell--expanded" : ""}`}
-                tabIndex={0}
-                onPointerEnter={() => markPreviewActive(slot.id)}
-                onPointerDownCapture={() => markPreviewActive(slot.id)}
-                onMouseDownCapture={() => focusPreviewFrame(slot.id)}
-                onKeyDown={(event) => forwardPreviewKey(slot.id, event)}
-                onKeyUp={(event) => forwardPreviewKey(slot.id, event)}
-              >
+              {codeViewSlots[slot.id] ? (
+                <pre className="html-challenge-stream html-challenge-code-view">
+                  <code dangerouslySetInnerHTML={{ __html: highlightHtmlCode(state.html) }} />
+                </pre>
+              ) : (
                 <div
-                  className="html-challenge-frame-stage"
-                  style={{
-                    width: previewGeometry.width,
-                    height: previewGeometry.height,
-                    transform: `scale(${previewGeometry.scale})`,
-                  }}
+                  ref={(element) => attachFrameShell(slot.id, element)}
+                  className={`html-challenge-frame-shell${expandedHtmlSlot === slot.id ? " html-challenge-frame-shell--expanded" : ""}`}
+                  style={previewBackgrounds[slot.id] ? { background: previewBackgrounds[slot.id] as string } : undefined}
+                  tabIndex={0}
+                  onPointerEnter={() => markPreviewActive(slot.id)}
+                  onPointerDownCapture={() => markPreviewActive(slot.id)}
+                  onMouseDownCapture={() => focusPreviewFrame(slot.id)}
+                  onKeyDown={(event) => forwardPreviewKey(slot.id, event)}
+                  onKeyUp={(event) => forwardPreviewKey(slot.id, event)}
                 >
+                  {/* Iframe fills the shell directly so the page sees the
+                      actual rendered pixel size as its viewport — the same
+                      way a desktop browser hands its window to a page on
+                      resize. No fixed 1280x720 stage, no transform scaling. */}
                   <iframe
                     ref={(element) => { frameRefs.current[slot.id] = element; }}
                     className="html-challenge-frame"
@@ -1914,10 +2243,19 @@ export function HtmlChallengeTab({
                     sandbox="allow-scripts"
                     scrolling="yes"
                     tabIndex={0}
+                    /* `allowTransparency` is a legacy WebKit attribute that
+                       lets the iframe's default document canvas show the
+                       frame's CSS background instead of opaque white. Pair
+                       it with `:where(html, body) { background: transparent }`
+                       inside the doc and `background: transparent` on the
+                       iframe element so the frame-shell colour shows through
+                       any region the model HTML doesn't paint. */
+                    // @ts-expect-error legacy attribute, still honored by WebKit
+                    allowtransparency="true"
                     onFocus={() => markPreviewActive(slot.id)}
                   />
                 </div>
-              </div>
+              )}
             </>
           ) : state.text ? (
             <pre
@@ -1925,7 +2263,7 @@ export function HtmlChallengeTab({
               className="html-challenge-stream"
               onScroll={() => handleStreamScroll(slot.id)}
             >
-              {state.text}
+              <code dangerouslySetInnerHTML={{ __html: highlightHtmlCode(state.text) }} />
             </pre>
           ) : state.loading ? (
             <p className="muted-text">{state.loadingMessage ?? "Loading model..."}</p>
@@ -1966,55 +2304,8 @@ export function HtmlChallengeTab({
   return (
     <div className="html-challenge-layout">
       {!expandedHtmlSlot ? (
-        <Panel
-          title="HTML Challenge"
-          subtitle={manifest?.folderPath ?? "Create a shareable webpage comparison"}
-          className="html-challenge-setup-panel"
-          actions={
-            <>
-              <div className="html-challenge-layout-toggle" aria-label="HTML challenge layout">
-                <button
-                  className={layoutMode === "row" ? "active" : ""}
-                  type="button"
-                  onClick={() => setLayoutMode("row")}
-                >
-                  Row
-                </button>
-                <button
-                  className={layoutMode === "stacked" ? "active" : ""}
-                  type="button"
-                  onClick={() => setLayoutMode("stacked")}
-                >
-                  {stackedLayoutLabel(slots.length)}
-                </button>
-              </div>
-              {manifest?.folderPath ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => onRevealPath(manifest.folderPath)}
-                >
-                  Open Folder
-                </button>
-              ) : null}
-              {manifest?.settingsPath ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => onOpenFilePath(manifest.settingsPath!)}
-                >
-                  Open Settings
-                </button>
-              ) : null}
-              {!completedChallenge ? (
-                <button className="secondary-button" type="button" onClick={addSlot} disabled={busy || slots.length >= 4}>
-                  Add model
-                </button>
-              ) : null}
-            </>
-          }
-        >
-          <div className="html-challenge-controls">
+        <section className="panel html-challenge-setup-panel html-challenge-setup-panel--compact">
+          <div className="html-challenge-setup-actions">
             {challenges.length > 0 ? (
               <div className="html-challenge-history-row">
                 <button
@@ -2050,20 +2341,38 @@ export function HtmlChallengeTab({
                   {historyOpen && !busy && !loadingChallengeId ? (
                     <div className="html-challenge-history-menu" role="listbox">
                       {filteredChallenges.map((challenge) => (
-                        <button
+                        <div
                           key={challenge.id}
-                          type="button"
                           role="option"
                           aria-selected={challenge.id === selectedChallengeId}
                           className={`html-challenge-history-option${challenge.id === selectedChallengeId ? " active" : ""}`}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                            void loadChallenge(challenge.id);
-                          }}
                         >
-                          <span>{displayChallengeTitle(challenge)}</span>
-                          <small>{formatChallengeDate(challenge.createdAt)}</small>
-                        </button>
+                          <button
+                            type="button"
+                            className="html-challenge-history-option-main"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              void loadChallenge(challenge.id);
+                            }}
+                          >
+                            <span>{displayChallengeTitle(challenge)}</span>
+                            <small>{formatChallengeDate(challenge.createdAt)}</small>
+                          </button>
+                          <button
+                            type="button"
+                            className="html-challenge-history-option-delete"
+                            aria-label={`Move "${displayChallengeTitle(challenge)}" to trash`}
+                            title="Move to trash"
+                            disabled={busy}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void deleteChallengeById(challenge.id, displayChallengeTitle(challenge));
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
                       ))}
                       {filteredChallenges.length === 0 ? (
                         <p className="html-challenge-history-empty">No matching challenges.</p>
@@ -2071,18 +2380,70 @@ export function HtmlChallengeTab({
                     </div>
                   ) : null}
                 </div>
-                {selectedChallengeId ? (
-                  <button
-                    className="secondary-button danger-button"
-                    type="button"
-                    disabled={busy || Boolean(loadingChallengeId)}
-                    onClick={() => void deleteSelectedChallenge()}
-                  >
-                    Delete Challenge
-                  </button>
-                ) : null}
               </div>
             ) : null}
+            <div className="html-challenge-setup-actions-spacer" />
+            <div className="html-challenge-layout-toggle" aria-label="HTML challenge layout">
+              <button
+                className={layoutMode === "row" ? "active" : ""}
+                type="button"
+                onClick={() => setLayoutMode("row")}
+              >
+                Row
+              </button>
+              <button
+                className={layoutMode === "stacked" ? "active" : ""}
+                type="button"
+                onClick={() => setLayoutMode("stacked")}
+              >
+                {stackedLayoutLabel(slots.length)}
+              </button>
+            </div>
+            {manifest?.folderPath ? (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => onRevealPath(manifest.folderPath)}
+              >
+                Open Folder
+              </button>
+            ) : null}
+            {manifest?.settingsPath ? (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => onOpenFilePath(manifest.settingsPath!)}
+              >
+                Open Settings
+              </button>
+            ) : null}
+            {!completedChallenge ? (
+              <button className="secondary-button" type="button" onClick={addSlot} disabled={busy || slots.length >= 4}>
+                Add model
+              </button>
+            ) : null}
+            {busy ? (
+              <button className="secondary-button" type="button" onClick={cancelChallenge}>Cancel</button>
+            ) : completedValidChallenge ? (
+              <button
+                className="primary-button"
+                type="button"
+                onClick={usePromptInNewChallenge}
+              >
+                Use Prompt in New Challenge
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void runChallenge()}
+                disabled={!title.trim() || !prompt.trim() || !allSelected}
+              >
+                {manifest ? "Run New Challenge" : "Run Challenge"}
+              </button>
+            )}
+          </div>
+          <div className="html-challenge-controls">
             <input
               className="text-input"
               type="text"
@@ -2098,30 +2459,8 @@ export function HtmlChallengeTab({
               placeholder="Prompt all selected models with the same webpage challenge..."
               disabled={busy}
             />
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              {busy ? (
-                <button className="secondary-button" type="button" onClick={cancelChallenge}>Cancel</button>
-              ) : completedValidChallenge ? (
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={usePromptInNewChallenge}
-                >
-                  Use Prompt in New Challenge
-                </button>
-              ) : (
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={() => void runChallenge()}
-                  disabled={!title.trim() || !prompt.trim() || !allSelected}
-                >
-                  {manifest ? "Run New Challenge" : "Run Challenge"}
-                </button>
-              )}
-            </div>
           </div>
-        </Panel>
+        </section>
       ) : null}
 
       <div
@@ -2156,16 +2495,37 @@ export function HtmlChallengeTab({
         }}
         onConfirm={(selectedKey) => {
           if (pickerTarget) {
-            updateSlot(pickerTarget, {
+            const target = pickerTarget;
+            const newSettings = cloneLaunchSettings(pickerDraftSettings);
+            const slot = slots.find((item) => item.id === target);
+            updateSlot(target, {
               modelKey: selectedKey,
-              settings: cloneLaunchSettings(pickerDraftSettings),
+              settings: newSettings,
             });
+            if (pickerAutoRetry && slot && manifest?.id) {
+              const option = textModelOptions.find((item) => item.key === selectedKey);
+              if (option) {
+                const payload: HtmlChallengeModelPayload = {
+                  ...buildComparePayload(option, newSettings),
+                  thinkingMode: slot.thinkingMode,
+                  reasoningEffort: slot.thinkingMode === "auto" ? slot.reasoningEffort : undefined,
+                  seed: slot.seed,
+                };
+                // Run after state flush so the slot's modelKey reflects the
+                // newly chosen option in any subsequent UI reads.
+                window.setTimeout(() => {
+                  void retryChallengeSlot({ ...slot, modelKey: selectedKey, settings: newSettings }, payload);
+                }, 0);
+              }
+            }
           }
           setPickerSearch("");
+          setPickerAutoRetry(false);
           setPickerTarget(null);
         }}
         onClose={() => {
           setPickerSearch("");
+          setPickerAutoRetry(false);
           setPickerTarget(null);
         }}
         onInstallPackage={installPackage}

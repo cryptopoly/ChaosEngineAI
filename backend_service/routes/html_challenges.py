@@ -28,6 +28,7 @@ from backend_service.routes.compare import (
 class HtmlChallengeModelRequest(CompareModelRequest):
     thinkingMode: str | None = Field(default=None, pattern="^(off|auto)$")
     reasoningEffort: str | None = Field(default=None, pattern="^(low|medium|high)$")
+    seed: int | None = Field(default=None, ge=0, le=2147483647)
 
 
 class HtmlChallengeRequest(BaseModel):
@@ -187,6 +188,27 @@ def _model_thinking_payload(
     }
 
 
+def _model_sampler_payload(model: Any, *, manifest_slot: dict[str, Any] | None = None) -> dict[str, Any]:
+    manifest_slot = manifest_slot or {}
+    seed = getattr(model, "seed", None)
+    if seed is None and isinstance(manifest_slot.get("seed"), int):
+        seed = manifest_slot.get("seed")
+    return {"seed": seed if isinstance(seed, int) else None}
+
+
+def _sampler_overrides(model: Any, *, manifest_slot: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    payload = _model_sampler_payload(model, manifest_slot=manifest_slot)
+    if payload["seed"] is None:
+        return None
+    return {"seed": payload["seed"]}
+
+
+def _sampler_summary(slot: dict[str, Any]) -> list[str]:
+    if isinstance(slot.get("seed"), int):
+        return [f"Seed {slot['seed']}"]
+    return []
+
+
 def _launch_summary(settings: dict[str, Any] | None) -> str:
     if not isinstance(settings, dict):
         return ""
@@ -247,6 +269,7 @@ def _write_model_settings(folder: Path, manifest: dict[str, Any]) -> None:
             slot.get("thinkingMode") or manifest.get("thinkingMode") or "off",
             slot.get("reasoningEffort") or manifest.get("reasoningEffort"),
         ))
+        lines.extend(_sampler_summary(slot))
 
     settings_path = folder / str(manifest.get("settingsFilename") or "model-settings.txt")
     tmp = settings_path.with_suffix(".tmp")
@@ -540,6 +563,7 @@ def _slot_manifest_payload(
         "backend": model.backend,
         "path": model.path,
         "settings": _settings_payload(model.launch),
+        **_model_sampler_payload(model),
         **_model_thinking_payload(
             model,
             default_thinking_mode=default_thinking_mode,
@@ -660,6 +684,7 @@ def _stream_html_challenge_slot(
     system_prompt: str | None,
     thinking_mode: str | None,
     reasoning_effort: str | None,
+    sampler_overrides: dict[str, Any] | None = None,
 ) -> Any:
     model_label = model.modelName or model.modelRef
     requested_runtime = _requested_runtime_payload(state, model.launch)
@@ -715,6 +740,7 @@ def _stream_html_challenge_slot(
             temperature=model.launch.temperature,
             thinking_mode=thinking_mode,
             reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
+            samplers=sampler_overrides,
         ):
             if chunk.reasoning:
                 yield _sse_event({"model": slot_id, "reasoning": chunk.reasoning})
@@ -743,6 +769,20 @@ def _stream_html_challenge_slot(
         html_path = folder / filename
         html_path.write_text(html, encoding="utf-8")
         file_bytes = html_path.stat().st_size
+        # Drop the previous slot file when a model swap means the new
+        # filename differs (e.g. user changed model on a completed slot).
+        # Without this the folder accumulates orphan HTML files keyed to
+        # old model names while only the new file is referenced.
+        previous_slot = _find_manifest_slot(manifest, slot_id) or {}
+        previous_filename = str(previous_slot.get("filename") or "")
+        if previous_filename and previous_filename != filename:
+            previous_path = folder / previous_filename
+            try:
+                if previous_path.exists() and previous_path.resolve().parent == folder.resolve():
+                    previous_path.unlink()
+            except OSError:
+                # Stale file is harmless — only swallow filesystem errors.
+                pass
         metrics = _done_runtime_payload(
             state,
             final_chunk=final_chunk,
@@ -812,11 +852,24 @@ def delete_html_challenge(challenge_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"HTML challenge '{challenge_id}' not found.")
     if not (folder / "manifest.json").exists():
         raise HTTPException(status_code=404, detail=f"HTML challenge '{challenge_id}' not found.")
+    # Soft-delete: move the challenge folder into a sibling `.trash/` so the
+    # user can restore it manually from disk if they regret the click. No
+    # native-OS-trash dependency required; works the same on macOS / Linux /
+    # Windows. Append a timestamp suffix when the trash already holds an
+    # entry with the same id (e.g. user re-created and re-deleted).
+    trash_root = _challenge_root() / ".trash"
+    trash_root.mkdir(parents=True, exist_ok=True)
+    target_name = challenge_id
+    target = trash_root / target_name
+    if target.exists():
+        suffix = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        target_name = f"{challenge_id}-{suffix}"
+        target = trash_root / target_name
     try:
-        shutil.rmtree(folder)
+        os.replace(str(folder), str(target))
     except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Could not delete HTML challenge: {exc}") from exc
-    return {"deleted": challenge_id}
+        raise HTTPException(status_code=500, detail=f"Could not move HTML challenge to trash: {exc}") from exc
+    return {"deleted": challenge_id, "trashedAs": str(target)}
 
 
 @router.get("/api/chat/html-challenges/{challenge_id}/files/{slot_id}")
@@ -879,6 +932,8 @@ def retry_html_challenge_slot(
     )
     thinking_mode = slot_payload["thinkingMode"]
     reasoning_effort = slot_payload.get("reasoningEffort")
+    sampler_overrides = _sampler_overrides(body.model, manifest_slot=manifest_slot)
+    slot_payload.update(_model_sampler_payload(body.model, manifest_slot=manifest_slot))
 
     _update_manifest_slot(
         folder,
@@ -909,6 +964,7 @@ def retry_html_challenge_slot(
             system_prompt=body.systemPrompt if body.systemPrompt is not None else manifest.get("systemPrompt"),
             thinking_mode=thinking_mode,
             reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
+            sampler_overrides=sampler_overrides,
         )
         yield _sse_event({"challengeDone": True, "challenge": manifest})
 
@@ -962,6 +1018,8 @@ def repair_html_challenge_slot(
     )
     thinking_mode = slot_payload["thinkingMode"]
     reasoning_effort = slot_payload.get("reasoningEffort")
+    sampler_overrides = _sampler_overrides(body.model, manifest_slot=manifest_slot)
+    slot_payload.update(_model_sampler_payload(body.model, manifest_slot=manifest_slot))
 
     _update_manifest_slot(
         folder,
@@ -993,6 +1051,7 @@ def repair_html_challenge_slot(
             system_prompt=body.systemPrompt if body.systemPrompt is not None else manifest.get("systemPrompt"),
             thinking_mode=thinking_mode,
             reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
+            sampler_overrides=sampler_overrides,
         )
         yield _sse_event({"challengeDone": True, "challenge": manifest})
 
@@ -1098,6 +1157,7 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
                 manifest_slot.get("reasoningEffort"),
                 body.reasoningEffort,
             )
+            sampler_overrides = _sampler_overrides(model, manifest_slot=manifest_slot)
             loaded = yield from _stream_html_challenge_slot(
                 state=state,
                 manifest=manifest,
@@ -1108,6 +1168,7 @@ def run_html_challenge(request: Request, body: HtmlChallengeRequest) -> Streamin
                 system_prompt=body.systemPrompt,
                 thinking_mode=thinking_mode,
                 reasoning_effort=reasoning_effort if thinking_mode == "auto" else None,
+                sampler_overrides=sampler_overrides,
             )
             if not loaded:
                 yield _sse_event({"challengeDone": True, "challenge": manifest})

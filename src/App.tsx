@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   checkBackend,
   convertModel,
@@ -91,6 +91,7 @@ import {
   useBenchmarks,
   useSettings,
   useSidebarPrefs,
+  useUiScale,
   useGpuStatus,
 } from "./hooks";
 
@@ -111,6 +112,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [apiToken, setApiToken] = useState<string | null>(null);
   const sidebarPrefs = useSidebarPrefs();
+  const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
   const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
   const [cudaTorchResult, setCudaTorchResult] = useState<
@@ -1966,6 +1968,8 @@ export default function App() {
       apiToken={apiToken}
       sidebarMode={sidebarPrefs.mode}
       onSidebarModeChange={sidebarPrefs.setMode}
+      uiScale={uiScalePrefs.uiScale}
+      onUiScaleChange={uiScalePrefs.setUiScale}
       backendOnline={backendOnline}
       onRestartServer={() => void handleRestartServer()}
       busyAction={busyAction}
@@ -1973,7 +1977,10 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      style={{ "--ui-scale": uiScalePrefs.uiScale } as CSSProperties}
+    >
       <Sidebar
         activeTab={activeTab}
         onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}

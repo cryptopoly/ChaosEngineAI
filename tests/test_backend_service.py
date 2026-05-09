@@ -1704,6 +1704,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                             "backend": "mock",
                             "path": "/tmp/model-a",
                             "thinkingMode": "off",
+                            "seed": 123,
                         },
                         {
                             "modelRef": "local/model-b",
@@ -1714,6 +1715,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                             "path": "/tmp/model-b",
                             "thinkingMode": "auto",
                             "reasoningEffort": "low",
+                            "seed": 456,
                         },
                     ],
                 },
@@ -1729,13 +1731,20 @@ class ChaosEngineBackendTests(unittest.TestCase):
             second_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "b")
             self.assertEqual(first_slot["thinkingMode"], "off")
             self.assertIsNone(first_slot["reasoningEffort"])
+            self.assertEqual(first_slot["seed"], 123)
             self.assertEqual(second_slot["thinkingMode"], "auto")
             self.assertEqual(second_slot["reasoningEffort"], "low")
+            self.assertEqual(second_slot["seed"], 456)
             self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "auto")
             self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"], "low")
+            self.assertEqual(
+                self.client.app.state.chaosengine.runtime.last_generate_kwargs["samplers"],
+                {"seed": 456},
+            )
             settings_text = (Path(challenge["folderPath"]) / "model-settings.txt").read_text(encoding="utf-8")
             self.assertIn("Thinking off", settings_text)
             self.assertIn("Thinking low", settings_text)
+            self.assertIn("Seed 123", settings_text)
         finally:
             html_challenge_routes._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
@@ -1810,6 +1819,20 @@ class ChaosEngineBackendTests(unittest.TestCase):
             runtime.stream_finish_reason = "stop"
             html_challenge_routes._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_mlx_vlm_kwargs_read_sampler_top_p(self):
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        kwargs = worker._vlm_generate_kwargs({
+            "maxTokens": 512,
+            "temperature": 0.8,
+            "samplers": {"top_p": 0.42},
+        })
+
+        self.assertEqual(kwargs["max_tokens"], 512)
+        self.assertEqual(kwargs["temperature"], 0.8)
+        self.assertEqual(kwargs["top_p"], 0.42)
 
     def test_workspace_surfaces_tracked_runtime_process_when_system_scan_misses_it(self):
         state = self.client.app.state.chaosengine

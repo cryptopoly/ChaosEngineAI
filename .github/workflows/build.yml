@@ -34,11 +34,11 @@ jobs:
           - os: windows-latest
             shell: bash
             venv-activate: source .venv/Scripts/activate
-            # Phase 0: Windows runs but failures don't block PRs. Flips to
-            # required in Phase 4 of the v0.8.0 refactor (REFACTOR_PLAN.md)
-            # once the cross-OS parity work lands (PowerShell update scripts,
-            # path-handling sweep, binary resolution probes).
-            advisory: true
+            # Promoted from advisory to required in v0.8.0 Phase 4-5 once
+            # the cross-OS parity scripts (PowerShell update-* ports,
+            # cross-platform pre-build-check.mjs) shipped. Windows
+            # failures now block PRs the same way macOS / Ubuntu do.
+            advisory: false
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.advisory }}
     steps:

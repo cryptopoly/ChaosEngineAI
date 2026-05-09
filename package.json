@@ -11,6 +11,7 @@
     "stage:runtime:release": "node ./scripts/stage-runtime.mjs --mode=release",
     "test": "vitest run",
     "preview": "vite preview",
+    "pre-build-check": "node ./scripts/pre-build-check.mjs",
     "tauri:dev": "npm run stage:runtime && tauri dev",
     "tauri:build": "tauri build"
   },

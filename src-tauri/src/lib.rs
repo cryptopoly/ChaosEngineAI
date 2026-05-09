@@ -35,6 +35,13 @@ use probe::{
     request_backend_shutdown, wait_for_port,
 };
 
+// Managed-backend lease persistence — see lease.rs.
+mod lease;
+use lease::{
+    cleanup_stale_managed_backend, clear_managed_backend_lease,
+    write_managed_backend_lease, ManagedBackendLease,
+};
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct BackendRuntimeInfo {
@@ -104,12 +111,6 @@ struct EmbeddedRuntime {
     python_version: Option<String>,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ManagedBackendLease {
-    pid: u32,
-    port: u16,
-}
 
 
 #[derive(Default)]
@@ -1215,64 +1216,6 @@ fn read_log_tail(path: &Path) -> String {
     lines.join("\n")
 }
 
-
-
-fn managed_backend_lease_path(app: &AppHandle) -> Option<PathBuf> {
-    app.path().app_data_dir().ok().map(|path| path.join("managed-backend.json"))
-}
-
-fn write_managed_backend_lease(app: &AppHandle, lease: &ManagedBackendLease) {
-    let Some(path) = managed_backend_lease_path(app) else {
-        return;
-    };
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    if let Ok(payload) = serde_json::to_vec(lease) {
-        let _ = fs::write(path, payload);
-    }
-}
-
-fn read_managed_backend_lease(app: &AppHandle) -> Option<ManagedBackendLease> {
-    let path = managed_backend_lease_path(app)?;
-    let payload = fs::read(path).ok()?;
-    serde_json::from_slice(&payload).ok()
-}
-
-fn clear_managed_backend_lease(app: &AppHandle) {
-    if let Some(path) = managed_backend_lease_path(app) {
-        let _ = fs::remove_file(path);
-    }
-}
-
-fn cleanup_stale_managed_backend(app: &AppHandle) {
-    let Some(lease) = read_managed_backend_lease(app) else {
-        return;
-    };
-
-    // Only shut down the process on the leased port if it is actually a
-    // ChaosEngineAI backend (probe_chaosengine_backend verifies /api/health
-    // returns {"status": "ok"}).  This prevents killing unrelated services
-    // that happen to reuse the same port number.
-    if let Some(probe) = probe_chaosengine_backend(lease.port) {
-        // Extra safety: if we know the workspace root, only shut down if it
-        // matches — another ChaosEngineAI instance on a different workspace
-        // should be left alone.
-        let dominated = probe.workspace_root.is_none()
-            || app
-                .path()
-                .app_data_dir()
-                .ok()
-                .and_then(|dir| dir.parent().map(|p| p.to_path_buf()))
-                .is_none();
-        if dominated {
-            let api_token = fetch_backend_api_token(lease.port);
-            let _ = request_backend_shutdown(lease.port, api_token.as_deref());
-        }
-    }
-
-    clear_managed_backend_lease(app);
-}
 
 // Orphan-process cleanup at app launch — see orphans.rs.
 mod orphans;

@@ -34,6 +34,13 @@ from backend_service.helpers.image_artifacts import (
     _save_image_artifact,
     _stable_image_hash,
 )
+from backend_service.helpers.image_validation import (
+    _friendly_image_download_error,
+    _image_download_validation_error,
+    _image_repo_runtime_ready,
+    _image_variant_available_locally,
+    _is_image_repo,
+)
 from backend_service.helpers.platform_filter import (
     filter_mlx_only_families,
     is_apple_silicon,
@@ -673,76 +680,6 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
     latest = candidates[:limit]
     _LATEST_IMAGE_MODELS_CACHE = (now, token_cache_key, latest)
     return latest
-
-
-def _is_image_repo(repo_id: str) -> bool:
-    return any(
-        str(variant.get("repo") or "") == repo_id
-        for family in IMAGE_MODEL_FAMILIES
-        for variant in family["variants"]
-    )
-
-
-def _image_repo_runtime_ready(repo_id: str) -> bool:
-    snapshot_dir = _hf_repo_snapshot_dir(repo_id)
-    if snapshot_dir is None:
-        return False
-    return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
-
-
-def _image_variant_available_locally(variant: dict[str, Any], library: list[dict[str, Any]]) -> bool:
-    repo = str(variant.get("repo") or "")
-    if repo and _image_repo_runtime_ready(repo):
-        return True
-
-    candidates = {
-        str(variant.get("repo") or "").lower(),
-        str(variant.get("name") or "").lower(),
-        str(variant.get("id") or "").lower(),
-    }
-    compact_candidates = {candidate.split("/")[-1] for candidate in candidates if candidate}
-    for item in library:
-        name = str(item.get("name") or "").lower()
-        if not (
-            name in candidates
-            or any(candidate and candidate in name for candidate in candidates)
-            or any(candidate and candidate in name for candidate in compact_candidates)
-        ):
-            continue
-        item_path = Path(str(item.get("path") or "")).expanduser()
-        for directory in _candidate_model_dirs(item_path):
-            if validate_local_diffusers_snapshot(directory) is None:
-                return True
-    return False
-
-
-def _image_download_validation_error(repo_id: str) -> str | None:
-    if not _is_image_repo(repo_id):
-        return None
-    snapshot_dir = _hf_repo_snapshot_dir(repo_id)
-    if snapshot_dir is None:
-        return (
-            f"Download did not produce a local snapshot for {repo_id}. "
-            "Retry the download and make sure the backend can access Hugging Face."
-        )
-    return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
-
-
-def _friendly_image_download_error(repo_id: str, error: str) -> str:
-    if not _is_image_repo(repo_id):
-        return error
-    lowered = error.lower()
-    if (
-        "cannot access gated repo" in lowered
-        or "gated repo" in lowered
-        or "authorized list" in lowered
-        or ("access to model" in lowered and "restricted" in lowered)
-    ):
-        return (
-            f"{repo_id} is gated on Hugging Face. Your account or token is not approved for this model yet. "
-            f"Open https://huggingface.co/{repo_id}, request or accept access, add a read-enabled HF_TOKEN in Settings, then retry."
-        )
-    return error
 
 
 def _image_download_repo_ids() -> set[str]:

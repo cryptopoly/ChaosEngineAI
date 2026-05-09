@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.7.6 - 2026-05-08
+
+### HTML Challenge — side-by-side HTML generation comparison
+
+- New chat sub-tab dedicated to side-by-side comparison of LLMs producing HTML. Configure 2 → 4 model slots, each with its own model selection, full launch settings, thinking mode (`off` / `auto`), reasoning effort (`low` / `medium` / `high`), and seed. Issue a single prompt; every slot streams its HTML response in parallel with a sandboxed live preview underneath the raw text.
+- **HTML validation** runs per slot — `valid` / `partial` / `script-error` / `blank-render` / `no-html`. Validation status is fed back from the iframe sandbox so script crashes and blank renders surface immediately.
+- **Persistent history** — every challenge run is saved with title + prompt + per-slot manifests (model, settings, thinking mode, reasoning effort, seed, validation status, output path). Re-open from the history view, delete, or open / reveal individual slot HTML files on disk.
+- **Retry + repair flows** — re-run a single failed slot, ask the model to `continue` from the partial response, or kick off a `repair` pass that asks the same model to fix its own broken HTML.
+- Endpoints: `POST /api/chat/html-challenges` (kick off run, SSE-streamed), `GET /api/chat/html-challenges` (history list), `GET /api/chat/html-challenges/{id}`, `DELETE /api/chat/html-challenges/{id}`, `GET /api/chat/html-challenges/{id}/files/{slot}` (raw HTML), `POST /api/chat/html-challenges/{id}/slots/{slot}/retry`, `POST /api/chat/html-challenges/{id}/slots/{slot}/repair`, `PATCH /api/chat/html-challenges/{id}/slots/{slot}/validation`, `POST /api/chat/html-challenges/open-file`.
+
+### UI scale
+
+- Segmented UI scale control in Settings → Display: 75% / 100% / 125% / 150%. Applies app-wide via a `useUiScale` hook so the entire workspace re-flows around the chosen density. Persisted across launches.
+
+### Chat polish
+
+- **Retry failed generation** — failed assistant messages now expose a Retry button; one click re-issues the previous turn against the active runtime profile without re-typing.
+- Chat draft state harden — drafts persist per thread across tab switches.
+- Reasoning panel: smaller fixes around streaming preview height + collapse animation.
+- Runtime controls panel: tighter spacing + clearer cache strategy / DFlash gating.
+
+### Compare view refactor
+
+- `CompareView` modularized so the two-up Compare mode and the new HTML Challenge multi-slot view share `buildComparePayload` / `cloneLaunchSettings` / `compareTargetLabels` / `useLaunchPreview` instead of duplicating the slot configuration logic.
+
+### Gallery flows
+
+- Image + Video Gallery: filter / sort / re-run flow tightened. Video gallery now mirrors image-gallery's metadata layout + reveal-on-disk + clone-settings actions.
+
+### Packaging
+
+- Bumped the application version to `0.7.6` across the npm, Python, and Tauri package metadata. v0.7.5 was used internally for the HTML Challenge feature branch; superseded directly by 0.7.6.
+
+## v0.7.5 - 2026-05-07
+
+- Internal version bump on the `feature/html-challenge` branch during development. No tagged GitHub Release; superseded by v0.7.6.
+
 ## v0.7.4 - 2026-05-06
 
 ### Chat experience (the headline)

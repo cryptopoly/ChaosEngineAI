@@ -32,7 +32,7 @@ import type {
   VideoOutputArtifact,
   VideoRuntimeStatus,
   WorkspaceData,
-} from "./types";
+} from "../types";
 
 const DEFAULT_API_BASE = (import.meta.env.VITE_CHAOSENGINE_API_BASE as string | undefined) ?? "http://127.0.0.1:8876";
 const CONFIGURED_API_TOKEN = ((import.meta.env.VITE_CHAOSENGINE_API_TOKEN as string | undefined) ?? "").trim() || null;

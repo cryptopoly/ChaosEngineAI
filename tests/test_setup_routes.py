@@ -750,8 +750,8 @@ class SetupRouteTests(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_turbo_update_check_not_installed(self):
-        with mock.patch("backend_service.routes.setup._TURBO_VERSION_FILE", Path("/nonexistent")):
-            with mock.patch("backend_service.routes.setup._CHAOSENGINE_BIN_DIR", Path("/nonexistent")):
+        with mock.patch("backend_service.routes.setup.turbo._TURBO_VERSION_FILE", Path("/nonexistent")):
+            with mock.patch("backend_service.routes.setup.turbo._CHAOSENGINE_BIN_DIR", Path("/nonexistent")):
                 resp = self.client.get("/api/setup/turbo-update-check")
         body = resp.json()
         self.assertFalse(body["installed"])
@@ -769,9 +769,9 @@ class SetupRouteTests(unittest.TestCase):
 
         try:
             with (
-                mock.patch("backend_service.routes.setup._TURBO_VERSION_FILE", version_path),
-                mock.patch("backend_service.routes.setup._CHAOSENGINE_BIN_DIR", bin_dir),
-                mock.patch("backend_service.routes.setup._fetch_turbo_remote_head", return_value="abc123def456"),
+                mock.patch("backend_service.routes.setup.turbo._TURBO_VERSION_FILE", version_path),
+                mock.patch("backend_service.routes.setup.turbo._CHAOSENGINE_BIN_DIR", bin_dir),
+                mock.patch("backend_service.routes.setup.turbo._fetch_turbo_remote_head", return_value="abc123def456"),
             ):
                 resp = self.client.get("/api/setup/turbo-update-check")
             body = resp.json()
@@ -793,9 +793,9 @@ class SetupRouteTests(unittest.TestCase):
 
         try:
             with (
-                mock.patch("backend_service.routes.setup._TURBO_VERSION_FILE", version_path),
-                mock.patch("backend_service.routes.setup._CHAOSENGINE_BIN_DIR", bin_dir),
-                mock.patch("backend_service.routes.setup._fetch_turbo_remote_head", return_value="newcommithash2"),
+                mock.patch("backend_service.routes.setup.turbo._TURBO_VERSION_FILE", version_path),
+                mock.patch("backend_service.routes.setup.turbo._CHAOSENGINE_BIN_DIR", bin_dir),
+                mock.patch("backend_service.routes.setup.turbo._fetch_turbo_remote_head", return_value="newcommithash2"),
             ):
                 resp = self.client.get("/api/setup/turbo-update-check")
             body = resp.json()

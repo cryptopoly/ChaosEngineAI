@@ -1506,8 +1506,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         try:
             response = self.client.post(
                 "/api/chat/html-challenges",
@@ -1600,8 +1600,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
             second_slot = challenge["slots"][1]
-            with mock.patch.object(html_challenge_routes.platform, "system", return_value="Darwin"), \
-                    mock.patch.object(html_challenge_routes.subprocess, "Popen") as popen:
+            with mock.patch.object(html_challenge_routes._helpers.platform, "system", return_value="Darwin"), \
+                    mock.patch.object(html_challenge_routes._helpers.subprocess, "Popen") as popen:
                 open_response = self.client.post(
                     "/api/chat/html-challenges/open-file",
                     json={"path": str(folder / second_slot["filename"])},
@@ -1658,7 +1658,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             missing_response = self.client.get(f"/api/chat/html-challenges/{challenge['id']}")
             self.assertEqual(missing_response.status_code, 404)
         finally:
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_html_challenge_validation_flags_common_failures(self):
@@ -1687,8 +1687,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         try:
             response = self.client.post(
                 "/api/chat/html-challenges",
@@ -1746,15 +1746,15 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIn("Thinking low", settings_text)
             self.assertIn("Seed 123", settings_text)
         finally:
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_html_challenge_repair_includes_partial_file(self):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         runtime = self.client.app.state.chaosengine.runtime
         model_a = {
             "modelRef": "local/model-a",
@@ -1817,7 +1817,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         finally:
             runtime.stream_text_override = None
             runtime.stream_finish_reason = "stop"
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_mlx_vlm_kwargs_read_sampler_top_p(self):

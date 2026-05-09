@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (20 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (34 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -30,11 +30,12 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `inference/__init__.py` | 3,574 | 1,521 | -2,053 |
 | `image_runtime/__init__.py` | 2,097 | 1,366 | -731 |
 | `video_runtime/__init__.py` | 2,378 | 2,216 | -162 |
-| `routes/setup/__init__.py` | 1,932 | 1,441 | -491 |
+| `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
+| `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
-| **Mega-file shrink total** | 15,829 | **11,376** | **-4,453 LOC** |
+| **Mega-file shrink total** | 17,012 | **10,748** | **-6,264 LOC** |
 
-Tests posture across all 20 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 34 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -116,7 +117,18 @@ inference/__init__.py: 3574 → 1521 (-2053). RuntimeController (~1050 LOC) is t
 
 **Remaining**: extract `DiffusersTextToImageEngine` (1112 LOC inside image/__init__) + `DiffusersVideoEngine` (1335 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
 
-**1d. `routes/setup.py` 1,932 → setup/{longlive,wan_install}.py + main __init__.** **PARTIAL** (commit `6181c1b`). LongLive + Wan installers extracted. GPU bundle install (~700 LOC) still in main `__init__.py` because its helpers (`_extras_site_packages`, `_cleanup_mlx_video_shadow_metadata`, `_run_pip_install`) are shared with the regular pip-install path. Full split deferred — needs to first move shared helpers into a `setup/_install_helpers.py` module.
+**1d. `routes/setup.py` 1,932 → setup/ package with 6 focused submodules.** **DONE** (Phase 1d-1 through 1d-3c, commits `6181c1b` → `afc70f3`):
+- `setup/longlive.py` + `setup/wan_install.py` — LongLive + Wan background installers (1d-1).
+- `setup/turbo.py` — llama-server-turbo update-check (1d-2).
+- `setup/_install_helpers.py` — shared pip-install primitives (`_run_pip_install`, `_extras_site_packages`, `_cleanup_mlx_video_shadow_metadata`, torch wheel walk + purge utilities) (1d-3a).
+- `setup/cuda_torch.py` — CUDA torch recovery installer that walks the cu124 → nightly cu128 download indexes (1d-3b).
+- `setup/gpu_bundle.py` — one-click "Install GPU support" flow (torch + diffusers + transformers + video runtime deps) with background-job worker (1d-3c).
+
+setup/__init__.py: 1,932 → 353 LOC (~82% reduction). Setup is now a clean package; the only synchronous endpoints left in `__init__` are `install-package` / `install-system-package` / `refresh-capabilities` plus the install-package catalogues + the manual-install message map.
+
+**1d-4. `routes/html_challenges.py` 1,183 → html_challenges/ package.** **DONE** (commit `f31653c`). Two-way split:
+- `html_challenges/__init__.py` — Pydantic request models, `router`, 9 endpoints (list / get / delete / file / open-file / retry / repair / validation / run).
+- `html_challenges/_helpers.py` — 45 underscore helpers (manifest I/O, HTML extraction + validation, payload shaping, `_stream_html_challenge_slot`).
 
 **1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.**
 

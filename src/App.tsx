@@ -3,7 +3,6 @@ import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
-  installCudaTorch,
   loadModel,
   getWorkspace,
   deleteModelPath,
@@ -93,6 +92,7 @@ import {
   useSidebarPrefs,
   useUiScale,
   useGpuStatus,
+  useCudaTorchInstall,
 } from "./hooks";
 
 export default function App() {
@@ -114,99 +114,34 @@ export default function App() {
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
-  const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
-  const [cudaTorchResult, setCudaTorchResult] = useState<
-    | { ok: true; indexUrl: string | null; pythonVersion: string | null }
-    | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
-    | null
-  >(null);
-  // Raw install result, kept alongside the reduced ``cudaTorchResult``
-  // shape above so the Studio's CudaTorchLogPanel can render the full
-  // per-attempt pip output (the reduced shape drops ``attempts`` to
-  // keep the in-line success/failure summary terse). One more state
-  // slot is cheaper than reshaping every existing call site.
-  const [cudaTorchRawResult, setCudaTorchRawResult] = useState<
-    import("./api").CudaTorchInstallResult | null
-  >(null);
-
-  const handleInstallCudaTorch = async () => {
-    if (installingCudaTorch) return;
-    setInstallingCudaTorch(true);
-    setCudaTorchResult(null);
-    setCudaTorchRawResult(null);
-    try {
-      const result = await installCudaTorch();
-      setCudaTorchRawResult(result);
-      if (result.ok) {
-        setCudaTorchResult({
-          ok: true,
-          indexUrl: result.indexUrl,
-          pythonVersion: result.pythonVersion,
-        });
-      } else {
-        const last = result.attempts[result.attempts.length - 1];
-        const tail = (last?.output ?? result.output ?? "").split("\n").slice(-3).join("\n");
-        setCudaTorchResult({
-          ok: false,
-          message: tail || "pip install failed — see backend logs for details.",
-          pythonVersion: result.pythonVersion,
-          noWheelForPython: result.noWheelForPython,
-        });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setCudaTorchResult({
-        ok: false,
-        message,
-        pythonVersion: null,
-        noWheelForPython: false,
-      });
-      // Always synthesize a raw result on exception so the
-      // CudaTorchLogPanel renders the failure instead of silently
-      // hiding -- previously any network error / 5xx / timeout left
-      // the panel showing nothing and the user couldn't tell whether
-      // the install was running, finished, or never reached the
-      // backend at all. The synthesized "attempt" carries the
-      // exception text so the panel surfaces it as a [FAIL] entry.
-      setCudaTorchRawResult({
-        ok: false,
-        output: message,
-        indexUrl: null,
-        attempts: [
-          { indexUrl: "(request never returned)", ok: false, output: message },
-        ],
-        requiresRestart: false,
-        pythonExecutable: "",
-        pythonVersion: null,
-        noWheelForPython: false,
-        capabilities: {},
-      });
-    } finally {
-      setInstallingCudaTorch(false);
-    }
-    // Refresh runtime status after install completes (success or
-    // failure). Without this, the warning banner keeps reading the
-    // pre-install torchInstallWarning value and the user thinks the
-    // button did nothing -- the cache is bound to whatever the
-    // probe last returned. Both Studios subscribe to their own
-    // runtime probes via useImageState / useVideoState; calling
-    // their refresh handlers re-runs the probe and the banner
-    // self-clears (or self-updates with a new failure mode).
-    try {
-      await imgState.refreshImageData();
-    } catch {
-      /* refresh is best-effort */
-    }
-    try {
-      await videoState.refreshVideoData();
-    } catch {
-      /* refresh is best-effort */
-    }
-  };
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
+
+  const {
+    installingCudaTorch,
+    cudaTorchResult,
+    cudaTorchRawResult,
+    handleInstallCudaTorch,
+  } = useCudaTorchInstall({
+    onAfterInstall: async () => {
+      // Both Studios subscribe to their own runtime probes via
+      // useImageState / useVideoState; re-running them refreshes the
+      // ``torchInstallWarning`` banner so it self-clears (or updates
+      // with a new failure mode) without a backend restart.
+      try {
+        await imgState.refreshImageData();
+      } catch {
+        /* refresh is best-effort */
+      }
+      try {
+        await videoState.refreshVideoData();
+      } catch {
+        /* refresh is best-effort */
+      }
+    },
+  });
   const settings = useSettings(
     workspace, setWorkspace,
     backendOnline, setBackendOnline,

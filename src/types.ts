@@ -1,113 +1,11 @@
-export type TabId =
-  | "dashboard"
-  | "online-models"
-  | "my-models"
-  | "image-discover"
-  | "image-models"
-  | "image-studio"
-  | "image-gallery"
-  | "video-models"
-  | "video-discover"
-  | "video-studio"
-  | "video-gallery"
-  | "conversion"
-  | "chat"
-  | "chat-compare"
-  | "html-challenge"
-  | "server"
-  | "benchmarks"
-  | "benchmark-history"
-  | "finetuning"
-  | "prompt-library"
-  | "plugins"
-  | "logs"
-  | "settings";
-
-export type SidebarGroupId =
-  | "chat"
-  | "models"
-  | "images"
-  | "video"
-  | "benchmarks"
-  | "tools";
-
-export type SidebarMode = "collapsible" | "tabs";
-
-export interface SystemStats {
-  platform: string;
-  arch: string;
-  hardwareSummary: string;
-  backendLabel: string;
-  appVersion: string;
-  availableCacheStrategies: Array<{
-    id: string;
-    name: string;
-    available: boolean;
-    bitRange: number[] | null;
-    defaultBits: number | null;
-    supportsFp16Layers: boolean;
-    availabilityBadge?: string | null;
-    availabilityTone?: string | null;
-    availabilityReason?: string | null;
-    requiredLlamaBinary?: string | null;
-    appliesTo?: string[];
-  }>;
-  llamaServerTurboPath?: string | null;
-  mlxAvailable: boolean;
-  mlxLmAvailable: boolean;
-  totalMemoryGb: number;
-  /** Discrete GPU VRAM in GB (CUDA cards on Windows / Linux). Null on
-   * Apple Silicon (unified memory is already in totalMemoryGb), and on
-   * hosts with no detected discrete GPU. The chat cache-fit warning uses
-   * this to surface "60 GB cache > 24 GB GPU VRAM" instead of comparing
-   * against system RAM only -- llama.cpp places the KV cache on GPU when
-   * full-offload is on, so the GPU is the binding constraint there. */
-  gpuVramTotalGb?: number | null;
-  availableMemoryGb: number;
-  usedMemoryGb: number;
-  swapUsedGb: number;
-  cpuUtilizationPercent: number;
-  gpuUtilizationPercent: number | null;
-  spareHeadroomGb: number;
-  dflash?: {
-    available: boolean;
-    mlxAvailable: boolean;
-    vllmAvailable: boolean;
-    ddtreeAvailable?: boolean;
-    supportedModels: string[];
-  };
-  runningLlmProcesses: Array<{
-    pid: number;
-    name: string;
-    owner?: string;
-    modelName?: string | null;
-    modelStatus?: "active" | "warm" | null;
-    kind?: "mlx_worker" | "llama_server" | "backend" | "other";
-    memoryGb: number;
-    cpuPercent: number;
-  }>;
-  compressedMemoryGb?: number;
-  memoryPressurePercent?: number;
-  swapTotalGb?: number;
-  diskFreeGb?: number;
-  diskUsedGb?: number;
-  diskTotalGb?: number;
-  diskPath?: string;
-  battery?: {
-    percent: number;
-    powerSource: "AC" | "Battery";
-    charging: boolean;
-  } | null;
-  uptimeMinutes: number;
-}
-
-export interface Recommendation {
-  title: string;
-  detail: string;
-  targetModel: string;
-  cacheLabel: string;
-  headroomPercent: number;
-}
+import type { SystemStats, Recommendation } from "./types/system";
+export type {
+  TabId,
+  SidebarGroupId,
+  SidebarMode,
+  SystemStats,
+  Recommendation,
+} from "./types/system";
 
 export type ModelLaunchMode = "direct" | "convert";
 
@@ -1297,71 +1195,9 @@ export interface ImageGenerationResponse {
   runtime?: ImageRuntimeStatus;
 }
 
-/**
- * Live snapshot of the in-flight image / video generation as published by the
- * backend ProgressTracker. ``active=false`` means nothing is running (or the
- * runtime hasn't published a phase yet) and the UI should fall back to its
- * client-side estimates.
- */
-export interface GenerationProgressSnapshot {
-  kind: "image" | "video";
-  active: boolean;
-  phase: "idle" | "loading" | "encoding" | "diffusing" | "decoding" | "saving";
-  message: string;
-  step: number;
-  totalSteps: number;
-  startedAt: number;
-  updatedAt: number;
-  elapsedSeconds: number;
-  runLabel: string | null;
-  // FU-018 part 2: live denoise thumbnail. Base64-encoded PNG the runtime
-  // emits from inside callback_on_step_end after decoding the current
-  // latent through the swapped TAESD/TAEHV preview VAE. ``null`` when
-  // previewVae is off, when the swap didn't apply, or before the first
-  // decoded step. Capped at 192 px on the long edge backend-side.
-  thumbnail?: string | null;
-  cancelRequested?: boolean;
-}
+export type { GenerationProgressSnapshot } from "./types/progress";
 
-export interface HubModel {
-  id: string;
-  repo: string;
-  name: string;
-  provider: string;
-  link: string;
-  format: string;
-  tags: string[];
-  downloads: number;
-  likes: number;
-  downloadsLabel: string;
-  likesLabel: string;
-  lastModified?: string | null;
-  updatedLabel?: string | null;
-  createdAt?: string | null;
-  releaseLabel?: string | null;
-  availableLocally: boolean;
-  launchMode: string;
-  backend: string;
-}
-
-export interface HubFile {
-  path: string;
-  sizeBytes: number;
-  sizeGb: number;
-  kind: "weight" | "vision_projector" | "config" | "tokenizer" | "readme" | "template" | "other";
-}
-
-export interface HubFileListResponse {
-  repo: string;
-  files: HubFile[];
-  totalSizeBytes: number;
-  totalSizeGb: number;
-  license: string | null;
-  tags: string[];
-  pipelineTag: string | null;
-  lastModified: string | null;
-  warning?: string | null;
-}
+export type { HubModel, HubFile, HubFileListResponse } from "./types/hub";
 
 export interface UpdateSettingsPayload {
   modelDirectories?: ModelDirectorySetting[];

@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (57 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (62 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -33,13 +33,14 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `mlx_worker.py` | 2,115 | 1,927 | -188 |
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
+| `helpers/discovery.py` | 806 | 429 | -377 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
 | `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 22,257 | **13,073** | **-9,184 LOC** |
+| **Mega-file shrink total** | 23,063 | **13,502** | **-9,561 LOC** |
 
-Tests posture across all 57 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 62 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -142,13 +143,17 @@ setup/__init__.py: 1,932 → 353 LOC (~82% reduction). Setup is now a clean pack
 - `html_challenges/__init__.py` — Pydantic request models, `router`, 9 endpoints (list / get / delete / file / open-file / retry / repair / validation / run).
 - `html_challenges/_helpers.py` — 45 underscore helpers (manifest I/O, HTML extraction + validation, payload shaping, `_stream_html_challenge_slot`).
 
-**1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.** **PARTIAL** (Phase 1e-1 through 1e-4, commits `9b61377` → `d163eb1`):
+**1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.** **MOSTLY DONE** (Phase 1e-1 through 1e-8, commits `9b61377` → `dcc2380`):
 - `helpers/image_artifacts.py` — daily-folder gallery layout, JSON sidecars, SVG placeholder renderer (Phase 1e-1).
 - `helpers/image_validation.py` — repo predicates + friendly download-error translation for HF gated repos (Phase 1e-2).
 - `helpers/video_artifacts.py` — mirror of image_artifacts for the video gallery (Phase 1e-3).
 - `helpers/mlx_video_validation.py` — mlx-video LTX-2 / LTX-2.3 component-folder probe (Phase 1e-4).
+- `helpers/quantization.py` — pure label parsers (NVFP4/NVINT4 rejection, regex bit-width inference, dtype walk) (Phase 1e-5).
+- `helpers/model_classifier.py` — keyword tables + ``_looks_like_{draft,video,image}_model`` heuristics (Phase 1e-6).
+- `helpers/snapshot_integrity.py` — sharded safetensors + GGUF directory probes + ``_list_weight_files`` picker inventory (Phase 1e-7).
+- `helpers/model_family_payload.py` — catalog → dashboard payload renderer + Reveal-in-Finder cross-platform shell-out (Phase 1e-8).
 
-helpers/images.py: 983 → 751 LOC. helpers/video.py: 769 → 565 LOC. Re-exports preserve every existing import path.
+helpers/images.py: 983 → 751 LOC. helpers/video.py: 769 → 565 LOC. helpers/discovery.py: 806 → 429 LOC. Re-exports preserve every existing import path.
 
 **1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1, commit `b27ebab`).
 - `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt`. Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.

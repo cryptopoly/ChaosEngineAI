@@ -371,18 +371,18 @@ class SetupRouteTests(unittest.TestCase):
         extras_dir = Path(self.tempdir.name) / "extras"
         extras_dir.mkdir(parents=True, exist_ok=True)
         return (
-            mock.patch("backend_service.routes.setup._site_packages_for", return_value=None),
-            mock.patch("backend_service.routes.setup._purge_broken_distributions", return_value=[]),
-            mock.patch("backend_service.routes.setup._extras_site_packages", return_value=extras_dir),
+            mock.patch("backend_service.routes.setup.cuda_torch._site_packages_for", return_value=None),
+            mock.patch("backend_service.routes.setup.cuda_torch._purge_broken_distributions", return_value=[]),
+            mock.patch("backend_service.routes.setup.cuda_torch._extras_site_packages", return_value=extras_dir),
         )
 
     def test_install_cuda_torch_stops_at_first_success(self):
         """First working index wins — we must not keep trying after success."""
         sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
         with sp_patch, purge_patch, extras_patch, mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.12.5"
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as mock_run:
                 mock_run.return_value = mock.Mock(
                     returncode=0, stdout="Successfully installed torch-2.5.0+cu124", stderr=""
                 )
@@ -413,9 +413,9 @@ class SetupRouteTests(unittest.TestCase):
         """
         sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
         with sp_patch, purge_patch, extras_patch, mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.12.5"
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as mock_run:
                 mock_run.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
                 resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
@@ -450,15 +450,15 @@ class SetupRouteTests(unittest.TestCase):
         (extras_dir / "torchvision" / "__init__.py").write_text("# keep me")
 
         with mock.patch(
-            "backend_service.routes.setup._site_packages_for", return_value=None,
+            "backend_service.routes.setup.cuda_torch._site_packages_for", return_value=None,
         ), mock.patch(
-            "backend_service.routes.setup._purge_broken_distributions", return_value=[],
+            "backend_service.routes.setup.cuda_torch._purge_broken_distributions", return_value=[],
         ), mock.patch(
-            "backend_service.routes.setup._extras_site_packages", return_value=extras_dir,
+            "backend_service.routes.setup.cuda_torch._extras_site_packages", return_value=extras_dir,
         ), mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.12.5",
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.12.5",
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as mock_run:
                 mock_run.return_value = mock.Mock(returncode=0, stdout="ok", stderr="")
                 resp = self.client.post("/api/setup/install-cuda-torch", json={})
 
@@ -481,9 +481,9 @@ class SetupRouteTests(unittest.TestCase):
         ]
         sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
         with sp_patch, purge_patch, extras_patch, mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.13.1"
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.13.1"
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=call_results):
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", side_effect=call_results):
                 resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
         self.assertTrue(body["ok"])
@@ -498,9 +498,9 @@ class SetupRouteTests(unittest.TestCase):
         fail = mock.Mock(returncode=1, stdout="", stderr="ERROR: Install failed, disk full")
         sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
         with sp_patch, purge_patch, extras_patch, mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.12.5"
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=fail):
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", return_value=fail):
                 resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
         self.assertFalse(body["ok"])
@@ -526,9 +526,9 @@ class SetupRouteTests(unittest.TestCase):
         )
         sp_patch, purge_patch, extras_patch = self._patch_cuda_helpers()
         with sp_patch, purge_patch, extras_patch, mock.patch(
-            "backend_service.routes.setup._read_python_version", return_value="3.14.0"
+            "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.14.0"
         ):
-            with mock.patch("backend_service.routes.setup.subprocess.run", return_value=no_wheel):
+            with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", return_value=no_wheel):
                 resp = self.client.post("/api/setup/install-cuda-torch", json={})
         body = resp.json()
         self.assertFalse(body["ok"])
@@ -553,13 +553,13 @@ class SetupRouteTests(unittest.TestCase):
             extras_dir.mkdir(parents=True, exist_ok=True)
 
             with mock.patch(
-                "backend_service.routes.setup._site_packages_for", return_value=tmp_path,
+                "backend_service.routes.setup.cuda_torch._site_packages_for", return_value=tmp_path,
             ), mock.patch(
-                "backend_service.routes.setup._extras_site_packages", return_value=extras_dir,
+                "backend_service.routes.setup.cuda_torch._extras_site_packages", return_value=extras_dir,
             ), mock.patch(
-                "backend_service.routes.setup._read_python_version", return_value="3.12.5"
+                "backend_service.routes.setup.cuda_torch._read_python_version", return_value="3.12.5"
             ):
-                with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run") as mock_run:
                     mock_run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
                     resp = self.client.post("/api/setup/install-cuda-torch", json={})
 

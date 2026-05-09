@@ -48,7 +48,7 @@ class LlamaCppCommandTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=True),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
         ):
             command, _runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -70,7 +70,7 @@ class LlamaCppCommandTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
         ):
             command, _runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -515,8 +515,8 @@ class TurboBinaryRoutingTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
             command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -534,8 +534,8 @@ class TurboBinaryRoutingTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "turbo2", "turbo3", "turbo4"})),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "turbo2", "turbo3", "turbo4"})),
         ):
             command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -554,8 +554,8 @@ class TurboBinaryRoutingTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
             command, runtime_note, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -577,8 +577,8 @@ class TurboBinaryRoutingTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0", "q5_0"})),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0", "q5_0"})),
         ):
             command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -608,8 +608,8 @@ class TurboBinaryRoutingTests(unittest.TestCase):
 
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types", return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
             command, _, _, _mmproj = engine._build_command(
                 path="/tmp/model.gguf",
@@ -635,7 +635,7 @@ class CacheTypeValidationTests(unittest.TestCase):
         )
         _CACHE_TYPE_CACHE.pop("/test/binary", None)
 
-        with mock.patch("backend_service.inference._llama_server_help_text", return_value=help_text):
+        with mock.patch("backend_service.inference.llama_cpp_engine._llama_server_help_text", return_value=help_text):
             types = _llama_server_cache_types("/test/binary")
 
         self.assertIn("q8_0", types)
@@ -662,7 +662,7 @@ class CacheTypeValidationTests(unittest.TestCase):
         )
         _CACHE_TYPE_CACHE.pop("/test/turbo", None)
 
-        with mock.patch("backend_service.inference._llama_server_help_text", return_value=turbo_help):
+        with mock.patch("backend_service.inference.llama_cpp_engine._llama_server_help_text", return_value=turbo_help):
             types = _llama_server_cache_types("/test/turbo")
 
         self.assertIn("turbo3", types)
@@ -685,8 +685,8 @@ class CacheTypeValidationTests(unittest.TestCase):
         # Standard binary doesn't know about turbo3
         with (
             mock.patch("backend_service.inference._find_open_port", return_value=9999),
-            mock.patch("backend_service.inference._llama_server_supports", return_value=False),
-            mock.patch("backend_service.inference._llama_server_cache_types",
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=False),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_cache_types",
                        return_value=frozenset({"f16", "q8_0", "q4_0"})),
         ):
             command, note, _, _mmproj = engine._build_command(

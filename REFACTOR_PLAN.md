@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (75 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (77 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -34,7 +34,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `helpers/discovery.py` | 806 | 429 | -377 |
-| `src/App.tsx` | 2,334 | 2,197 | -137 |
+| `src/App.tsx` | 2,334 | 2,170 | -164 |
 | `src/features/chat/HtmlChallengeTab.tsx` | 2,535 | 2,047 | -488 |
 | `src/features/video/VideoStudioTab.tsx` | 1,796 | 1,712 | -84 |
 | `src/hooks/useChat.ts` | 1,203 | 1,131 | -72 |
@@ -44,9 +44,9 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 33,004 | **22,461** | **-10,543 LOC** |
+| **Mega-file shrink total** | 33,004 | **22,434** | **-10,570 LOC** |
 
-Tests posture across all 75 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 77 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 

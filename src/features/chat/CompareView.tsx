@@ -21,7 +21,21 @@ import {
   runtimeOutcomeWarning,
 } from "./runtimeDetails";
 
-type CompareTarget = "a" | "b";
+export const compareTargets = ["a", "b", "c", "d"] as const;
+export type CompareTarget = typeof compareTargets[number];
+
+export const compareTargetLabels: Record<CompareTarget, string> = {
+  a: "Model A",
+  b: "Model B",
+  c: "Model C",
+  d: "Model D",
+};
+
+interface CompareSlot {
+  id: CompareTarget;
+  modelKey: string;
+  settings: LaunchPreferences;
+}
 
 interface CompareModelState {
   text: string;
@@ -36,6 +50,8 @@ interface CompareModelState {
   promptTokens: number;
   completionTokens: number;
   responseSeconds: number;
+  loadSeconds: number;
+  totalSeconds: number;
   metrics: GenerationMetrics | null;
   error?: string;
 }
@@ -68,6 +84,8 @@ interface CompareStreamEvent extends Partial<GenerationMetrics> {
   allDone?: boolean;
   reasoning?: string;
   reasoningDone?: boolean;
+  loadSeconds?: number;
+  totalSeconds?: number;
 }
 
 const emptyModelState = (): CompareModelState => ({
@@ -80,8 +98,23 @@ const emptyModelState = (): CompareModelState => ({
   promptTokens: 0,
   completionTokens: 0,
   responseSeconds: 0,
+  loadSeconds: 0,
+  totalSeconds: 0,
   metrics: null,
 });
+
+function emptyModelStates(): Record<CompareTarget, CompareModelState> {
+  return {
+    a: emptyModelState(),
+    b: emptyModelState(),
+    c: emptyModelState(),
+    d: emptyModelState(),
+  };
+}
+
+function emptyAtBottom(): Record<CompareTarget, boolean> {
+  return { a: true, b: true, c: true, d: true };
+}
 
 const compareMetricKeys = [
   "finishReason",
@@ -145,7 +178,7 @@ function mergeCompareMetrics(
   return hasPatch ? next as unknown as GenerationMetrics : current;
 }
 
-function cloneLaunchSettings(settings: LaunchPreferences): LaunchPreferences {
+export function cloneLaunchSettings(settings: LaunchPreferences): LaunchPreferences {
   return { ...settings };
 }
 
@@ -154,7 +187,7 @@ function formatTokenSetting(value: number) {
   return String(value);
 }
 
-function summarizeLaunchSettings(settings: LaunchPreferences) {
+export function summarizeLaunchSettings(settings: LaunchPreferences) {
   const cacheLabel = settings.cacheStrategy === "native"
     ? "Native f16"
     : `${settings.cacheStrategy} ${settings.cacheBits}-bit`;
@@ -182,7 +215,7 @@ function estimatePreviewShape(option: ChatModelOption | null) {
   return { paramsB, ...estimateArchFromParams(paramsB) };
 }
 
-function useLaunchPreview(option: ChatModelOption | null, settings: LaunchPreferences) {
+export function useLaunchPreview(option: ChatModelOption | null, settings: LaunchPreferences) {
   const [preview, setPreview] = useState<PreviewMetrics>(emptyPreview);
 
   useEffect(() => {
@@ -236,16 +269,26 @@ function useLaunchPreview(option: ChatModelOption | null, settings: LaunchPrefer
   return preview;
 }
 
-function buildComparePayload(option: ChatModelOption, settings: LaunchPreferences) {
+export function buildComparePayload(option: ChatModelOption, settings: LaunchPreferences) {
   return {
     modelRef: option.modelRef,
     modelName: option.model,
+    displayLabel: option.label,
+    displayDetail: option.detail,
+    format: option.format ?? undefined,
+    quantization: option.quantization ?? undefined,
+    sizeGb: option.sizeGb ?? undefined,
+    contextWindow: option.contextWindow ?? undefined,
     canonicalRepo: option.canonicalRepo ?? undefined,
     source: option.source,
     path: option.path ?? undefined,
     backend: option.backend,
     launch: settings,
   };
+}
+
+export function gridColumns(count: number) {
+  return `repeat(${Math.min(Math.max(count, 2), 4)}, minmax(220px, 1fr))`;
 }
 
 export function CompareView({
@@ -262,23 +305,25 @@ export function CompareView({
   installingPackage,
   installLogs,
 }: CompareViewProps) {
-  const [modelKeyA, setModelKeyA] = useState("");
-  const [modelKeyB, setModelKeyB] = useState("");
-  const [settingsA, setSettingsA] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
-  const [settingsB, setSettingsB] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
+  const [slots, setSlots] = useState<CompareSlot[]>(() => [
+    { id: "a", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
+    { id: "b", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
+  ]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
-  const [modelA, setModelA] = useState<CompareModelState>(emptyModelState());
-  const [modelB, setModelB] = useState<CompareModelState>(emptyModelState());
+  const [modelStates, setModelStates] = useState<Record<CompareTarget, CompareModelState>>(emptyModelStates);
   const [pickerTarget, setPickerTarget] = useState<CompareTarget | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerDraftKey, setPickerDraftKey] = useState("");
   const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
+  const [resultAtBottom, setResultAtBottom] = useState<Record<CompareTarget, boolean>>(emptyAtBottom);
   const abortRef = useRef<AbortController | null>(null);
-  const resultScrollRefA = useRef<HTMLDivElement | null>(null);
-  const resultScrollRefB = useRef<HTMLDivElement | null>(null);
-  const [resultAAtBottom, setResultAAtBottom] = useState(true);
-  const [resultBAtBottom, setResultBAtBottom] = useState(true);
+  const resultRefs = useRef<Record<CompareTarget, HTMLDivElement | null>>({
+    a: null,
+    b: null,
+    c: null,
+    d: null,
+  });
 
   const textModelOptions = modelOptions.filter((option) => {
     const backend = (option.backend ?? "").toLowerCase();
@@ -291,75 +336,124 @@ export function CompareView({
       && !label.includes("sana");
   });
 
-  const selectedA = textModelOptions.find((option) => option.key === modelKeyA) ?? null;
-  const selectedB = textModelOptions.find((option) => option.key === modelKeyB) ?? null;
-  const sameModel = selectedA != null && selectedB != null && selectedA.key === selectedB.key;
+  const selectedBySlot = Object.fromEntries(
+    slots.map((slot) => [slot.id, textModelOptions.find((option) => option.key === slot.modelKey) ?? null]),
+  ) as Record<CompareTarget, ChatModelOption | null>;
   const pickerDraftOption =
     textModelOptions.find((option) => option.key === pickerDraftKey)
     ?? (pickerTarget ? textModelOptions[0] ?? null : null);
   const pickerDraftPreview = useLaunchPreview(pickerDraftOption, pickerDraftSettings);
   const installPackage = onInstallPackage ?? (() => {});
+  const allSelected = slots.every((slot) => selectedBySlot[slot.id] != null);
+  const duplicateSelected = (() => {
+    const keys = slots.map((slot) => slot.modelKey).filter(Boolean);
+    return new Set(keys).size < keys.length;
+  })();
+
+  useEffect(() => {
+    const handles = slots
+      .filter((slot) => resultAtBottom[slot.id])
+      .map((slot) => requestAnimationFrame(() => scrollResultToBottom(slot.id)));
+    return () => handles.forEach((handle) => cancelAnimationFrame(handle));
+    // modelStates changes on each streamed token; that is intentional so
+    // panels auto-scroll only while their latest-content lock is active.
+  }, [slots, modelStates, resultAtBottom]);
+
+  function updateSlot(slotId: CompareTarget, patch: Partial<CompareSlot>) {
+    setSlots((current) => current.map((slot) => slot.id === slotId ? { ...slot, ...patch } : slot));
+  }
+
+  function addSlot() {
+    if (busy || slots.length >= 4) return;
+    const nextId = compareTargets[slots.length];
+    if (!nextId) return;
+    setSlots((current) => [
+      ...current,
+      { id: nextId, modelKey: "", settings: cloneLaunchSettings(launchSettings) },
+    ]);
+  }
+
+  function removeLastSlot() {
+    if (busy || slots.length <= 2) return;
+    setSlots((current) => current.slice(0, -1));
+  }
 
   function handleResultScroll(target: CompareTarget) {
-    const element = target === "a" ? resultScrollRefA.current : resultScrollRefB.current;
+    const element = resultRefs.current[target];
     if (!element) return;
     const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
-    if (target === "a") {
-      setResultAAtBottom(atBottom);
-      return;
-    }
-    setResultBAtBottom(atBottom);
+    setResultAtBottom((current) => ({ ...current, [target]: atBottom }));
   }
 
   function scrollResultToBottom(target: CompareTarget) {
-    const element = target === "a" ? resultScrollRefA.current : resultScrollRefB.current;
+    const element = resultRefs.current[target];
     if (!element) return;
     element.scrollTop = element.scrollHeight;
-    if (target === "a") {
-      setResultAAtBottom(true);
-      return;
-    }
-    setResultBAtBottom(true);
+    setResultAtBottom((current) => current[target] ? current : { ...current, [target]: true });
   }
 
-  useEffect(() => {
-    if (!resultAAtBottom) return;
-    const handle = requestAnimationFrame(() => scrollResultToBottom("a"));
-    return () => cancelAnimationFrame(handle);
-  }, [
-    resultAAtBottom,
-    modelA.text.length,
-    modelA.reasoning.length,
-    modelA.loading,
-    modelA.done,
-    modelA.runtimeNote,
-    modelA.appliedSummary,
-    modelA.error,
-  ]);
-
-  useEffect(() => {
-    if (!resultBAtBottom) return;
-    const handle = requestAnimationFrame(() => scrollResultToBottom("b"));
-    return () => cancelAnimationFrame(handle);
-  }, [
-    resultBAtBottom,
-    modelB.text.length,
-    modelB.reasoning.length,
-    modelB.loading,
-    modelB.done,
-    modelB.runtimeNote,
-    modelB.appliedSummary,
-    modelB.error,
-  ]);
+  function applyStreamEvent(event: CompareStreamEvent) {
+    if (event.allDone) {
+      setBusy(false);
+      return;
+    }
+    const target = event.model;
+    if (!target) return;
+    setModelStates((current) => {
+      const prev = current[target];
+      let next: CompareModelState = prev;
+      if (event.reasoning) {
+        next = { ...next, reasoning: next.reasoning + event.reasoning, reasoningDone: false };
+      }
+      if (event.reasoningDone) {
+        next = { ...next, reasoningDone: true };
+      }
+      if (event.loading) {
+        next = { ...next, loading: true, loadingMessage: event.message };
+      }
+      if (event.loaded) {
+        next = {
+          ...next,
+          loading: false,
+          loadSeconds: event.loadSeconds ?? next.loadSeconds,
+          appliedSummary: event.appliedSummary ?? next.appliedSummary,
+          runtimeNote: event.runtimeNote ?? next.runtimeNote,
+          metrics: mergeCompareMetrics(next.metrics, event),
+        };
+      }
+      if (event.token) {
+        next = { ...next, loading: false, text: next.text + event.token };
+      }
+      if (event.done) {
+        next = {
+          ...next,
+          done: true,
+          loading: false,
+          reasoningDone: true,
+          tokS: event.tokS ?? 0,
+          promptTokens: event.promptTokens ?? 0,
+          completionTokens: event.completionTokens ?? 0,
+          responseSeconds: event.responseSeconds ?? 0,
+          loadSeconds: event.loadSeconds ?? next.loadSeconds,
+          totalSeconds: event.totalSeconds ?? next.totalSeconds,
+          appliedSummary: event.appliedSummary ?? next.appliedSummary,
+          runtimeNote: event.runtimeNote ?? next.runtimeNote,
+          metrics: mergeCompareMetrics(next.metrics, event),
+        };
+      }
+      if (event.error) {
+        next = { ...next, error: event.error, done: true, loading: false, reasoningDone: true };
+      }
+      return { ...current, [target]: next };
+    });
+  }
 
   async function handleCompare() {
-    if (!prompt.trim() || !selectedA || !selectedB) return;
+    if (!prompt.trim() || !allSelected) return;
 
     setBusy(true);
-    setResultAAtBottom(true);
-    setResultBAtBottom(true);
-    setModelA(emptyModelState());
-    setModelB(emptyModelState());
+    setResultAtBottom(emptyAtBottom());
+    setModelStates(emptyModelStates());
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -370,15 +464,18 @@ export function CompareView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          modelA: buildComparePayload(selectedA, settingsA),
-          modelB: buildComparePayload(selectedB, settingsB),
+          models: slots.map((slot) => buildComparePayload(selectedBySlot[slot.id]!, slot.settings)),
         }),
         signal: controller.signal,
       });
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        setModelA((prev) => ({ ...prev, error: err?.detail ?? "Request failed" }));
+        const firstSlot = slots[0]?.id ?? "a";
+        setModelStates((current) => ({
+          ...current,
+          [firstSlot]: { ...current[firstSlot], error: err?.detail ?? "Request failed" },
+        }));
         setBusy(false);
         return;
       }
@@ -400,99 +497,7 @@ export function CompareView({
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const event = JSON.parse(line.slice(6)) as CompareStreamEvent;
-            if (event.model === "a") {
-              if (event.reasoning) {
-                setModelA((prev) => ({
-                  ...prev,
-                  reasoning: prev.reasoning + event.reasoning,
-                  reasoningDone: false,
-                }));
-              }
-              if (event.reasoningDone) {
-                setModelA((prev) => ({ ...prev, reasoningDone: true }));
-              }
-              if (event.loading) {
-                setModelA((prev) => ({ ...prev, loading: true, loadingMessage: event.message }));
-              }
-              if (event.loaded) {
-                setModelA((prev) => ({
-                  ...prev,
-                  loading: false,
-                  appliedSummary: event.appliedSummary ?? prev.appliedSummary,
-                  runtimeNote: event.runtimeNote ?? prev.runtimeNote,
-                  metrics: mergeCompareMetrics(prev.metrics, event),
-                }));
-              }
-              if (event.token) {
-                setModelA((prev) => ({ ...prev, loading: false, text: prev.text + event.token }));
-              }
-              if (event.done) {
-                setModelA((prev) => ({
-                  ...prev,
-                  done: true,
-                  loading: false,
-                  reasoningDone: true,
-                  tokS: event.tokS ?? 0,
-                  promptTokens: event.promptTokens ?? 0,
-                  completionTokens: event.completionTokens ?? 0,
-                  responseSeconds: event.responseSeconds ?? 0,
-                  appliedSummary: event.appliedSummary ?? prev.appliedSummary,
-                  runtimeNote: event.runtimeNote ?? prev.runtimeNote,
-                  metrics: mergeCompareMetrics(prev.metrics, event),
-                }));
-              }
-              if (event.error) {
-                setModelA((prev) => ({ ...prev, error: event.error, done: true, loading: false, reasoningDone: true }));
-              }
-            } else if (event.model === "b") {
-              if (event.reasoning) {
-                setModelB((prev) => ({
-                  ...prev,
-                  reasoning: prev.reasoning + event.reasoning,
-                  reasoningDone: false,
-                }));
-              }
-              if (event.reasoningDone) {
-                setModelB((prev) => ({ ...prev, reasoningDone: true }));
-              }
-              if (event.loading) {
-                setModelB((prev) => ({ ...prev, loading: true, loadingMessage: event.message }));
-              }
-              if (event.loaded) {
-                setModelB((prev) => ({
-                  ...prev,
-                  loading: false,
-                  appliedSummary: event.appliedSummary ?? prev.appliedSummary,
-                  runtimeNote: event.runtimeNote ?? prev.runtimeNote,
-                  metrics: mergeCompareMetrics(prev.metrics, event),
-                }));
-              }
-              if (event.token) {
-                setModelB((prev) => ({ ...prev, loading: false, text: prev.text + event.token }));
-              }
-              if (event.done) {
-                setModelB((prev) => ({
-                  ...prev,
-                  done: true,
-                  loading: false,
-                  reasoningDone: true,
-                  tokS: event.tokS ?? 0,
-                  promptTokens: event.promptTokens ?? 0,
-                  completionTokens: event.completionTokens ?? 0,
-                  responseSeconds: event.responseSeconds ?? 0,
-                  appliedSummary: event.appliedSummary ?? prev.appliedSummary,
-                  runtimeNote: event.runtimeNote ?? prev.runtimeNote,
-                  metrics: mergeCompareMetrics(prev.metrics, event),
-                }));
-              }
-              if (event.error) {
-                setModelB((prev) => ({ ...prev, error: event.error, done: true, loading: false, reasoningDone: true }));
-              }
-            }
-            if (event.allDone) {
-              setBusy(false);
-            }
+            applyStreamEvent(JSON.parse(line.slice(6)) as CompareStreamEvent);
           } catch {
             // Skip malformed chunks.
           }
@@ -500,7 +505,11 @@ export function CompareView({
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      setModelA((prev) => ({ ...prev, error: String(err) }));
+      const firstSlot = slots[0]?.id ?? "a";
+      setModelStates((current) => ({
+        ...current,
+        [firstSlot]: { ...current[firstSlot], error: String(err) },
+      }));
     } finally {
       setBusy(false);
     }
@@ -512,17 +521,19 @@ export function CompareView({
   }
 
   function openPicker(target: CompareTarget) {
+    const slot = slots.find((item) => item.id === target);
     setPickerSearch("");
-    setPickerDraftKey(target === "a" ? modelKeyA : modelKeyB);
-    setPickerDraftSettings(cloneLaunchSettings(target === "a" ? settingsA : settingsB));
+    setPickerDraftKey(slot?.modelKey ?? "");
+    setPickerDraftSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
     setPickerTarget(target);
   }
 
-  function renderModelCard(label: string, option: ChatModelOption | null, settings: LaunchPreferences, target: CompareTarget) {
+  function renderModelCard(slot: CompareSlot) {
+    const option = selectedBySlot[slot.id];
     return (
-      <div>
-        <span className="eyebrow">{label}</span>
-        <div className="model-selected-card" style={{ minHeight: 92 }}>
+      <div key={slot.id}>
+        <span className="eyebrow">{compareTargetLabels[slot.id]}</span>
+        <div className="model-selected-card" style={{ minHeight: 104 }}>
           <div className="model-selected-info">
             <strong>{option?.label ?? "Select a model"}</strong>
             <div className="model-selected-meta">
@@ -531,30 +542,39 @@ export function CompareView({
               {option?.sizeGb ? <span className="badge muted">{sizeLabel(option.sizeGb)}</span> : null}
               {option?.contextWindow ? <span className="badge muted">{option.contextWindow}</span> : null}
             </div>
-            <small className="muted-text">{summarizeLaunchSettings(settings)}</small>
+            <small className="muted-text">{summarizeLaunchSettings(slot.settings)}</small>
           </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => openPicker(target)}
-            disabled={busy}
-          >
-            {option ? "Change" : "Select"}
-          </button>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            {slots.length > 2 && slot.id === slots[slots.length - 1]?.id ? (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={removeLastSlot}
+                disabled={busy}
+                title={`Remove ${compareTargetLabels[slot.id]}`}
+              >
+                Remove
+              </button>
+            ) : null}
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => openPicker(slot.id)}
+              disabled={busy}
+            >
+              {option ? "Change" : "Select"}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  function renderResultPanel(
-    title: string,
-    option: ChatModelOption | null,
-    settings: LaunchPreferences,
-    modelState: CompareModelState,
-    target: CompareTarget,
-    atBottom: boolean,
-    waitingLabel: string,
-  ) {
+  function renderResultPanel(slot: CompareSlot, index: number) {
+    const option = selectedBySlot[slot.id];
+    const settings = slot.settings;
+    const modelState = modelStates[slot.id];
+    const atBottom = resultAtBottom[slot.id];
     const metrics = modelState.metrics;
     const actualSpeculativeMode = metrics ? resolvedSpeculativeMode(metrics) : null;
     const requestedSpecMode = metrics ? requestedSpeculativeMode(metrics) : null;
@@ -578,30 +598,37 @@ export function CompareView({
       || modelState.loading
       || modelState.done
     );
+    const subtitle = modelState.done
+      ? `${number(modelState.tokS)} tok/s | ${number(modelState.responseSeconds)}s`
+      : modelState.loading ? "Loading..." : modelState.text ? "Generating..." : "";
+    const waitingLabel = index === 0 ? "Waiting..." : `Waiting for ${compareTargetLabels[slots[index - 1]?.id ?? "a"]} to finish...`;
 
     return (
       <Panel
-        title={title}
-        subtitle={
-          modelState.done
-            ? `${number(modelState.tokS)} tok/s | ${number(modelState.responseSeconds)}s`
-            : modelState.loading ? "Loading..." : modelState.text ? "Generating..." : ""
-        }
+        key={slot.id}
+        title={compareTargetLabels[slot.id]}
+        subtitle={subtitle}
         actions={showLatestButton ? (
-          <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(target)}>
+          <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(slot.id)}>
             Latest
           </button>
         ) : null}
       >
         <div
-          ref={target === "a" ? resultScrollRefA : resultScrollRefB}
-          onScroll={() => handleResultScroll(target)}
+          ref={(element) => { resultRefs.current[slot.id] = element; }}
+          onScroll={() => handleResultScroll(slot.id)}
           style={{ overflow: "auto", flex: 1, padding: 8 }}
         >
           {option ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{option.label} · {option.detail}</p> : null}
           {option ? (
             <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
               {modelState.appliedSummary ?? summarizeLaunchSettings(settings)}
+            </p>
+          ) : null}
+          {modelState.loadSeconds > 0 ? (
+            <p className="muted-text" style={{ fontSize: 11, margin: "0 0 8px" }}>
+              Load {number(modelState.loadSeconds)}s
+              {modelState.totalSeconds > 0 ? ` · Total ${number(modelState.totalSeconds)}s` : ""}
             </p>
           ) : null}
           {runtimeWarning ? (
@@ -638,26 +665,31 @@ export function CompareView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 12, overflowY: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", flexWrap: "wrap" }}>
         <button className="secondary-button" type="button" onClick={onBack} style={{ fontSize: 12 }}>
           Back to Chat
         </button>
         <h3 style={{ margin: 0, fontSize: 16, color: "#c8d0da" }}>Compare Models</h3>
         <small style={{ color: "#7a8594", fontSize: 11 }}>
-          Models run sequentially, so each side keeps its own runtime profile.
+          Queue 2-4 models. Each slot loads exclusively, runs, and unloads before the next slot starts.
         </small>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {renderModelCard("Model A", selectedA, settingsA, "a")}
-        {renderModelCard("Model B", selectedB, settingsB, "b")}
+      <div style={{ display: "grid", gridTemplateColumns: gridColumns(slots.length), gap: 12 }}>
+        {slots.map((slot) => renderModelCard(slot))}
       </div>
 
-      {sameModel ? (
-        <p style={{ fontSize: 11, color: "#7a8594", margin: 0, padding: "0 4px" }}>
-          Same model selected for both. Useful for A/B testing two runtime profiles on the same prompt.
-        </p>
-      ) : null}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", minHeight: 28 }}>
+        <button className="secondary-button" type="button" onClick={addSlot} disabled={busy || slots.length >= 4}>
+          Add model
+        </button>
+        <span className="muted-text" style={{ fontSize: 11 }}>{slots.length}/4 queued</span>
+        {duplicateSelected ? (
+          <span className="muted-text" style={{ fontSize: 11 }}>
+            Same model selected in multiple slots; useful for runtime-profile A/B tests.
+          </span>
+        ) : null}
+      </div>
 
       <div style={{ display: "flex", gap: 8 }}>
         <input
@@ -679,22 +711,21 @@ export function CompareView({
             className="primary-button"
             type="button"
             onClick={() => void handleCompare()}
-            disabled={!prompt.trim() || !selectedA || !selectedB}
+            disabled={!prompt.trim() || !allSelected}
           >
             Compare
           </button>
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, flex: 1, overflow: "hidden" }}>
-        {renderResultPanel("Model A", selectedA, settingsA, modelA, "a", resultAAtBottom, "Waiting...")}
-        {renderResultPanel("Model B", selectedB, settingsB, modelB, "b", resultBAtBottom, "Waiting for Model A to finish...")}
+      <div style={{ display: "grid", gridTemplateColumns: gridColumns(slots.length), gap: 12, flex: 1, minHeight: 420, overflow: "hidden" }}>
+        {slots.map((slot, index) => renderResultPanel(slot, index))}
       </div>
 
       <ModelLaunchModal
         open={pickerTarget != null}
-        title={pickerTarget === "a" ? "Select Model A" : "Select Model B"}
-        confirmLabel={pickerTarget === "a" ? "Use for Model A" : "Use for Model B"}
+        title={pickerTarget ? `Select ${compareTargetLabels[pickerTarget]}` : "Select Model"}
+        confirmLabel={pickerTarget ? `Use for ${compareTargetLabels[pickerTarget]}` : "Use model"}
         selectedKey={pickerDraftKey}
         collapseOnOpen={Boolean(pickerDraftKey)}
         search={pickerSearch}
@@ -715,13 +746,11 @@ export function CompareView({
           setPickerDraftSettings((current) => ({ ...current, [key]: value }));
         }}
         onConfirm={(selectedKey) => {
-          if (pickerTarget === "a") {
-            setModelKeyA(selectedKey);
-            setSettingsA(cloneLaunchSettings(pickerDraftSettings));
-          }
-          if (pickerTarget === "b") {
-            setModelKeyB(selectedKey);
-            setSettingsB(cloneLaunchSettings(pickerDraftSettings));
+          if (pickerTarget) {
+            updateSlot(pickerTarget, {
+              modelKey: selectedKey,
+              settings: cloneLaunchSettings(pickerDraftSettings),
+            });
           }
           setPickerSearch("");
           setPickerTarget(null);

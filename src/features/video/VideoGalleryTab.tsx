@@ -21,6 +21,17 @@ export function VideoGalleryTab({
   onRevealPath,
   onDeleteVideoArtifact,
 }: VideoGalleryTabProps) {
+  const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
+  const [autoPlayVideos, setAutoPlayVideos] = useState(true);
+  const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
+  const displayedArtifacts = expandedArtifact ? [expandedArtifact] : videoOutputs;
+
+  useEffect(() => {
+    if (expandedArtifactId && !videoOutputs.some((artifact) => artifact.artifactId === expandedArtifactId)) {
+      setExpandedArtifactId(null);
+    }
+  }, [expandedArtifactId, videoOutputs]);
+
   return (
     <div className="content-grid image-page-grid">
       <Panel
@@ -32,12 +43,20 @@ export function VideoGalleryTab({
         }
         className="span-2"
         actions={
-          <div className="button-row">
+          <div className="button-row video-gallery-actions">
+            <label className="video-gallery-autoplay-toggle">
+              <input
+                type="checkbox"
+                checked={autoPlayVideos}
+                onChange={(event) => setAutoPlayVideos(event.target.checked)}
+              />
+              <span>Auto-Play</span>
+            </label>
             <button className="secondary-button" type="button" onClick={() => onOpenVideoStudio()}>
               Open Studio
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
-              Installed
+              Installed Models
             </button>
           </div>
         }
@@ -55,12 +74,17 @@ export function VideoGalleryTab({
             </div>
           </div>
         ) : (
-          <div className="image-gallery-grid">
-            {videoOutputs.map((artifact) => (
+          <div className={expandedArtifact ? "video-gallery-expanded" : "image-gallery-grid"}>
+            {displayedArtifacts.map((artifact) => (
               <VideoOutputCard
                 key={artifact.artifactId}
                 artifact={artifact}
                 videoBusy={videoBusy}
+                expanded={expandedArtifactId === artifact.artifactId}
+                autoPlay={autoPlayVideos}
+                onToggleExpanded={(artifactId) => {
+                  setExpandedArtifactId((current) => (current === artifactId ? null : artifactId));
+                }}
                 onRevealPath={onRevealPath}
                 onDelete={onDeleteVideoArtifact}
               />
@@ -75,6 +99,9 @@ export function VideoGalleryTab({
 interface VideoOutputCardProps {
   artifact: VideoOutputArtifact;
   videoBusy: boolean;
+  expanded: boolean;
+  autoPlay: boolean;
+  onToggleExpanded: (artifactId: string) => void;
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
 }
@@ -86,10 +113,19 @@ interface VideoOutputCardProps {
  * send it. Fetching as a blob + createObjectURL sidesteps that cleanly and
  * still lets the browser seek / buffer normally.
  */
-function VideoOutputCard({ artifact, videoBusy, onRevealPath, onDelete }: VideoOutputCardProps) {
+function VideoOutputCard({
+  artifact,
+  videoBusy,
+  expanded,
+  autoPlay,
+  onToggleExpanded,
+  onRevealPath,
+  onDelete,
+}: VideoOutputCardProps) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const activeUrlRef = useRef<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,21 +153,55 @@ function VideoOutputCard({ artifact, videoBusy, onRevealPath, onDelete }: VideoO
     };
   }, [artifact.artifactId]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+    if (!autoPlay) {
+      video.pause();
+      return;
+    }
+    video.muted = true;
+    void video.play().catch(() => {
+      // Browser autoplay rules can still refuse playback in edge cases.
+    });
+  }, [autoPlay, videoUrl]);
+
   const clipSeconds = artifact.clipDurationSeconds || artifact.numFrames / Math.max(1, artifact.fps);
+  const previewAspect = artifact.width > 0 && artifact.height > 0 ? `${artifact.width} / ${artifact.height}` : undefined;
   return (
-    <article className="image-output-card">
+    <article className={`image-output-card video-output-card${expanded ? " video-output-card--expanded" : ""}`}>
+      {expanded ? (
+        <button
+          className="secondary-button video-gallery-collapse-button"
+          type="button"
+          onClick={() => onToggleExpanded(artifact.artifactId)}
+        >
+          Collapse
+        </button>
+      ) : null}
       {videoUrl ? (
         <video
-          className="image-output-preview"
+          ref={videoRef}
+          className="image-output-preview video-output-preview"
           src={videoUrl}
           controls
           loop
           muted
           playsInline
+          autoPlay={autoPlay}
           preload="metadata"
+          style={previewAspect ? { aspectRatio: previewAspect } : undefined}
         />
       ) : (
-        <div className="image-output-preview" style={{ display: "grid", placeItems: "center", minHeight: 160 }}>
+        <div
+          className="image-output-preview video-output-preview"
+          style={{
+            aspectRatio: previewAspect,
+            display: "grid",
+            placeItems: "center",
+            minHeight: 160,
+          }}
+        >
           <span className="muted-text">{loadError ?? "Loading clip..."}</span>
         </div>
       )}
@@ -160,6 +230,15 @@ function VideoOutputCard({ artifact, videoBusy, onRevealPath, onDelete }: VideoO
           <span>{number(artifact.durationSeconds)}s render</span>
         </div>
         <div className="button-row">
+          {!expanded ? (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => onToggleExpanded(artifact.artifactId)}
+            >
+              Expand
+            </button>
+          ) : null}
           {artifact.videoPath ? (
             <button
               className="secondary-button"

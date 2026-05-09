@@ -83,6 +83,8 @@ class FakeRuntime:
         self.loaded_model = None
         self.runtime_note = None
         self.last_generate_kwargs = None
+        self.stream_text_override: str | None = None
+        self.stream_finish_reason = "stop"
         self.load_requests: list[dict[str, object]] = []
         self.profile_updates: list[dict[str, object]] = []
         self._warm_pool = {}
@@ -310,13 +312,20 @@ class FakeRuntime:
             "reasoning_effort": reasoning_effort,
             "json_schema": json_schema,
         }
-        text = "Streaming compare output."
+        text = self.stream_text_override
+        if text is None:
+            text = (
+                "<!doctype html><html><head><title>HTML Challenge</title></head>"
+                "<body><main><h1>HTML Challenge</h1></main></body></html>"
+                if "HTML Challenge" in str(system_prompt)
+                else "Streaming compare output."
+            )
         prompt_tokens = max(1, len(str(prompt).split()))
         completion_tokens = max(1, len(text.split()))
         yield StreamChunk(text=text)
         yield StreamChunk(
             done=True,
-            finish_reason="stop",
+            finish_reason=self.stream_finish_reason,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=prompt_tokens + completion_tokens,
@@ -826,7 +835,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                         "updatedAt": "2026-04-13 12:00:00",
                         "model": "Gemma",
                         "cacheLabel": "Native f16",
-                        "messages": [],
+                        "messages": [{"role": "user", "text": "Real prompt"}],
                     },
                 ]
             ),
@@ -858,6 +867,54 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual([session["id"] for session in state.chat_sessions], ["session-real"])
         self.assertEqual([run["id"] for run in state.benchmark_runs], ["bench-real"])
+
+    def test_empty_chat_sessions_are_not_loaded_or_saved(self):
+        self.chat_sessions_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "session-empty",
+                        "title": "New chat",
+                        "updatedAt": "2026-04-13 12:00:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [],
+                    },
+                    {
+                        "id": "session-docs",
+                        "title": "Document context",
+                        "updatedAt": "2026-04-13 12:01:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [],
+                        "documents": [{"id": "doc-1", "originalName": "notes.md"}],
+                    },
+                    {
+                        "id": "session-message",
+                        "title": "Real chat",
+                        "updatedAt": "2026-04-13 12:02:00",
+                        "model": "Gemma",
+                        "cacheLabel": "Native f16",
+                        "messages": [{"role": "user", "text": "Hello"}],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=fake_library,
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        self.assertEqual([session["id"] for session in state.chat_sessions], ["session-docs", "session-message"])
+        state.create_session(title="Transient blank")
+        state._persist_sessions()
+        saved = json.loads(self.chat_sessions_path.read_text(encoding="utf-8"))
+        self.assertEqual([session["id"] for session in saved], ["session-docs", "session-message"])
 
     def test_duplicate_auto_generated_session_titles_are_normalized_on_load(self):
         self.chat_sessions_path.write_text(
@@ -900,12 +957,12 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(
             [session["title"] for session in state.chat_sessions],
-            ["Explain how cache compression", "Explain how cache compression (2)"],
+            ["Explain how cache compression helps long", "Explain how cache compression helps long (2)"],
         )
         saved = json.loads(self.chat_sessions_path.read_text(encoding="utf-8"))
         self.assertEqual(
             [session["title"] for session in saved],
-            ["Explain how cache compression", "Explain how cache compression (2)"],
+            ["Explain how cache compression helps long", "Explain how cache compression helps long (2)"],
         )
 
     def test_model_load_and_chat_generation(self):
@@ -1072,8 +1129,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
-        self.assertEqual(first.json()["session"]["title"], "Explain how cache compression")
-        self.assertEqual(second.json()["session"]["title"], "Explain how cache compression (2)")
+        self.assertEqual(first.json()["session"]["title"], "Explain how cache compression helps long")
+        self.assertEqual(second.json()["session"]["title"], "Explain how cache compression helps long (2)")
 
     def test_model_download_delete_clears_tracked_attempt(self):
         repo = "org/stuck-model"
@@ -1362,10 +1419,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(done_a["dflashDraftModel"], "z-lab/Qwen3-4B-DFlash")
         self.assertEqual(done_a["dflashAcceptanceRate"], 4.5)
 
-        models_response = self.client.get("/v1/models")
-        self.assertEqual(models_response.status_code, 200)
-        models = models_response.json()["data"]
-        self.assertEqual(models[0]["id"], "google/gemma-4-E4B-it")
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_compare_stream_uses_exclusive_loading_and_clears_warm_pool(self):
         state = self.client.app.state.chaosengine
@@ -1415,10 +1469,370 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(state.runtime.clear_warm_pool_calls, 1)
+        self.assertGreaterEqual(state.runtime.clear_warm_pool_calls, 3)
         self.assertEqual(state.runtime._warm_pool, {})
         self.assertEqual(len(state.runtime.load_requests), 2)
         self.assertTrue(all(not req["keep_warm_previous"] for req in state.runtime.load_requests))
+        self.assertIsNone(state.runtime.loaded_model)
+
+    def test_compare_stream_accepts_four_model_queue(self):
+        models = []
+        for index in range(4):
+            models.append({
+                "modelRef": f"local/model-{index}",
+                "modelName": f"Model {index}",
+                "source": "library",
+                "backend": "mock",
+                "path": f"/tmp/model-{index}",
+            })
+
+        response = self.client.post(
+            "/api/chat/compare",
+            json={"prompt": "Test four-way compare", "models": models},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        events = [
+            json.loads(line[6:])
+            for line in response.text.splitlines()
+            if line.startswith("data: ")
+        ]
+        done_slots = [event["model"] for event in events if event.get("done")]
+        self.assertEqual(done_slots, ["a", "b", "c", "d"])
+        self.assertEqual(len(self.client.app.state.chaosengine.runtime.load_requests), 4)
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_persists_manifest_and_html_files(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        try:
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Pacman Canvas Qwen3.6-27B-GGUF vs Gemma4-31B-GGUF",
+                    "prompt": "Build a tiny arcade page.",
+                    "models": [
+                        {
+                            "modelRef": "local/model-a",
+                            "modelName": "Model A",
+                            "displayLabel": "Qwen3.6-27B-GGUF",
+                            "format": "GGUF",
+                            "quantization": "Q4_K_M",
+                            "sizeGb": 16.3,
+                            "contextWindow": "128K",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-a",
+                            "launch": {
+                                "temperature": 0.7,
+                                "maxTokens": 8192,
+                                "cacheStrategy": "chaosengine",
+                                "cacheBits": 4,
+                                "fp16Layers": 0,
+                                "fusedAttention": False,
+                                "fitModelInMemory": True,
+                                "contextTokens": 262144,
+                                "speculativeDecoding": False,
+                                "treeBudget": 0,
+                            },
+                        },
+                        {
+                            "modelRef": "local/model-b",
+                            "modelName": "Model B",
+                            "displayLabel": "Gemma4-31B-GGUF",
+                            "format": "GGUF",
+                            "quantization": "Q4_K_M",
+                            "sizeGb": 18.8,
+                            "contextWindow": "128K",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-b",
+                            "launch": {
+                                "temperature": 0.7,
+                                "maxTokens": 8192,
+                                "cacheStrategy": "turboquant",
+                                "cacheBits": 3,
+                                "fp16Layers": 0,
+                                "fusedAttention": False,
+                                "fitModelInMemory": True,
+                                "contextTokens": 262144,
+                                "speculativeDecoding": False,
+                                "treeBudget": 0,
+                            },
+                        },
+                    ],
+                },
+            )
+
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            final = next(event for event in reversed(events) if event.get("challengeDone"))
+            challenge = final["challenge"]
+            folder = Path(challenge["folderPath"])
+            self.assertEqual(challenge["title"], "Pacman Canvas")
+            self.assertTrue((folder / "manifest.json").exists())
+            self.assertTrue((folder / "model-settings.txt").exists())
+            self.assertEqual(challenge["settingsFilename"], "model-settings.txt")
+            settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Pacman Canvas", settings_text)
+            self.assertIn("Qwen3.6-27B-GGUF", settings_text)
+            self.assertIn("GGUF", settings_text)
+            self.assertIn("Q4_K_M", settings_text)
+            self.assertIn("16.3 GB", settings_text)
+            self.assertIn("128K", settings_text)
+            self.assertIn("chaosengine 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("turboquant 3-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("Thinking off", settings_text)
+            self.assertEqual([slot["status"] for slot in challenge["slots"]], ["done", "done"])
+            for slot in challenge["slots"]:
+                self.assertTrue((folder / slot["filename"]).exists())
+                self.assertGreater(slot["fileBytes"], 0)
+                self.assertTrue(slot["validHtmlDocument"])
+                self.assertEqual(slot["htmlValidation"]["status"], "valid")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "off")
+            self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
+
+            second_slot = challenge["slots"][1]
+            with mock.patch.object(html_challenge_routes.platform, "system", return_value="Darwin"), \
+                    mock.patch.object(html_challenge_routes.subprocess, "Popen") as popen:
+                open_response = self.client.post(
+                    "/api/chat/html-challenges/open-file",
+                    json={"path": str(folder / second_slot["filename"])},
+                )
+            self.assertEqual(open_response.status_code, 200)
+            popen.assert_called_once()
+            self.assertEqual(popen.call_args.args[0], ["open", str(folder / second_slot["filename"])])
+
+            retry_response = self.client.post(
+                f"/api/chat/html-challenges/{challenge['id']}/slots/a/retry",
+                json={
+                    "model": {
+                        "modelRef": "local/model-retry",
+                        "modelName": "Retry Model",
+                        "displayLabel": "Retry Model",
+                        "source": "library",
+                        "backend": "mock",
+                        "path": "/tmp/model-retry",
+                    },
+                    "thinkingMode": "auto",
+                    "reasoningEffort": "high",
+                },
+            )
+            self.assertEqual(retry_response.status_code, 200)
+            retry_events = [
+                json.loads(line[6:])
+                for line in retry_response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            retry_final = next(event for event in reversed(retry_events) if event.get("challengeDone"))
+            challenge = retry_final["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            self.assertEqual(len(self.client.app.state.chaosengine.runtime.load_requests), 3)
+            self.assertEqual(first_slot["status"], "done")
+            self.assertEqual(first_slot["modelRef"], "local/model-retry")
+            self.assertEqual(first_slot["displayLabel"], "Retry Model")
+            self.assertTrue((folder / first_slot["filename"]).exists())
+            self.assertEqual(first_slot["htmlValidation"]["status"], "valid")
+            settings_text = (folder / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Retry Model", settings_text)
+            self.assertIn("Thinking high", settings_text)
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "auto")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"], "high")
+
+            (folder / first_slot["filename"]).unlink()
+            deleted_response = self.client.get(
+                f"/api/chat/html-challenges/{challenge['id']}/files/{first_slot['slotId']}",
+            )
+            self.assertEqual(deleted_response.status_code, 410)
+
+            delete_response = self.client.delete(f"/api/chat/html-challenges/{challenge['id']}")
+            self.assertEqual(delete_response.status_code, 200)
+            self.assertFalse(folder.exists())
+            missing_response = self.client.get(f"/api/chat/html-challenges/{challenge['id']}")
+            self.assertEqual(missing_response.status_code, 404)
+        finally:
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_validation_flags_common_failures(self):
+        from backend_service.routes.html_challenges import _extract_html_document, _validate_html_document
+
+        html, _ = _extract_html_document("Streaming compare output.")
+        validation = _validate_html_document("Streaming compare output.", html)
+        self.assertEqual(validation["status"], "no-html")
+
+        partial = "<!doctype html><html><body><canvas>"
+        html, _ = _extract_html_document(partial)
+        validation = _validate_html_document(partial, html)
+        self.assertEqual(validation["status"], "partial")
+        self.assertIn("Missing </html> closing tag.", validation["issues"])
+
+        complete = "<!doctype html><html><body><h1>Done</h1></body></html>"
+        validation = _validate_html_document(
+            complete,
+            complete,
+            SimpleNamespace(finish_reason="length"),
+        )
+        self.assertEqual(validation["status"], "partial")
+        self.assertIn("Generation stopped at the token limit.", validation["issues"])
+
+    def test_html_challenge_accepts_per_model_thinking_settings(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        try:
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Thinking split",
+                    "prompt": "Build a tiny page.",
+                    "models": [
+                        {
+                            "modelRef": "local/model-a",
+                            "modelName": "Model A",
+                            "displayLabel": "Model A",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-a",
+                            "thinkingMode": "off",
+                            "seed": 123,
+                        },
+                        {
+                            "modelRef": "local/model-b",
+                            "modelName": "Model B",
+                            "displayLabel": "Model B",
+                            "source": "library",
+                            "backend": "mock",
+                            "path": "/tmp/model-b",
+                            "thinkingMode": "auto",
+                            "reasoningEffort": "low",
+                            "seed": 456,
+                        },
+                    ],
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            challenge = next(event for event in reversed(events) if event.get("challengeDone"))["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            second_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "b")
+            self.assertEqual(first_slot["thinkingMode"], "off")
+            self.assertIsNone(first_slot["reasoningEffort"])
+            self.assertEqual(first_slot["seed"], 123)
+            self.assertEqual(second_slot["thinkingMode"], "auto")
+            self.assertEqual(second_slot["reasoningEffort"], "low")
+            self.assertEqual(second_slot["seed"], 456)
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "auto")
+            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"], "low")
+            self.assertEqual(
+                self.client.app.state.chaosengine.runtime.last_generate_kwargs["samplers"],
+                {"seed": 456},
+            )
+            settings_text = (Path(challenge["folderPath"]) / "model-settings.txt").read_text(encoding="utf-8")
+            self.assertIn("Thinking off", settings_text)
+            self.assertIn("Thinking low", settings_text)
+            self.assertIn("Seed 123", settings_text)
+        finally:
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_html_challenge_repair_includes_partial_file(self):
+        from backend_service.routes import html_challenges as html_challenge_routes
+
+        root = Path(self.tempdir.name) / "html-challenges"
+        original_root = html_challenge_routes._challenge_root
+        html_challenge_routes._challenge_root = lambda: root
+        runtime = self.client.app.state.chaosengine.runtime
+        model_a = {
+            "modelRef": "local/model-a",
+            "modelName": "Model A",
+            "displayLabel": "Model A",
+            "source": "library",
+            "backend": "mock",
+            "path": "/tmp/model-a",
+        }
+        model_b = {
+            "modelRef": "local/model-b",
+            "modelName": "Model B",
+            "displayLabel": "Model B",
+            "source": "library",
+            "backend": "mock",
+            "path": "/tmp/model-b",
+        }
+        try:
+            runtime.stream_text_override = "<!doctype html><html><body><h1>Pacman"
+            runtime.stream_finish_reason = "length"
+            response = self.client.post(
+                "/api/chat/html-challenges",
+                json={
+                    "title": "Partial Pacman",
+                    "prompt": "Build a Pacman page.",
+                    "models": [model_a, model_b],
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            events = [
+                json.loads(line[6:])
+                for line in response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            challenge = next(event for event in reversed(events) if event.get("challengeDone"))["challenge"]
+            first_slot = next(slot for slot in challenge["slots"] if slot["slotId"] == "a")
+            self.assertEqual(first_slot["htmlValidation"]["status"], "partial")
+
+            runtime.stream_text_override = "<!doctype html><html><body><h1>Pacman fixed</h1></body></html>"
+            runtime.stream_finish_reason = "stop"
+            repair_response = self.client.post(
+                f"/api/chat/html-challenges/{challenge['id']}/slots/a/repair",
+                json={
+                    "mode": "repair",
+                    "model": model_a,
+                },
+            )
+            self.assertEqual(repair_response.status_code, 200)
+            prompt = runtime.last_generate_kwargs["prompt"]
+            self.assertIn("Partial HTML file", prompt)
+            self.assertIn("<h1>Pacman", prompt)
+            repair_events = [
+                json.loads(line[6:])
+                for line in repair_response.text.splitlines()
+                if line.startswith("data: ")
+            ]
+            repaired = next(event for event in reversed(repair_events) if event.get("challengeDone"))["challenge"]
+            repaired_slot = next(slot for slot in repaired["slots"] if slot["slotId"] == "a")
+            self.assertEqual(repaired_slot["htmlValidation"]["status"], "valid")
+        finally:
+            runtime.stream_text_override = None
+            runtime.stream_finish_reason = "stop"
+            html_challenge_routes._challenge_root = original_root
+        self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
+
+    def test_mlx_vlm_kwargs_read_sampler_top_p(self):
+        from backend_service.mlx_worker import WorkerState
+
+        worker = WorkerState()
+        kwargs = worker._vlm_generate_kwargs({
+            "maxTokens": 512,
+            "temperature": 0.8,
+            "samplers": {"top_p": 0.42},
+        })
+
+        self.assertEqual(kwargs["max_tokens"], 512)
+        self.assertEqual(kwargs["temperature"], 0.8)
+        self.assertEqual(kwargs["top_p"], 0.42)
 
     def test_workspace_surfaces_tracked_runtime_process_when_system_scan_misses_it(self):
         state = self.client.app.state.chaosengine

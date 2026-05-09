@@ -86,7 +86,7 @@ export function ImageGalleryTab({
               Studio
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
-              Installed
+              Installed Models
             </button>
           </div>
         }

@@ -4,6 +4,7 @@ import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
+import type { UiScale } from "../../hooks";
 
 export interface SettingsTabProps {
   settingsDraft: SettingsDraft;
@@ -28,6 +29,8 @@ export interface SettingsTabProps {
   apiToken: string | null;
   sidebarMode: SidebarMode;
   onSidebarModeChange: (mode: SidebarMode) => void;
+  uiScale: UiScale;
+  onUiScaleChange: (scale: UiScale) => void;
   // Diagnostics subtab needs the same online/restart wiring the rest of
   // the app uses — backendOnline gates the Refresh button, onRestartServer
   // triggers the Tauri restart command after a Re-extract runtime action.
@@ -83,6 +86,8 @@ export function SettingsTab({
   apiToken,
   sidebarMode,
   onSidebarModeChange,
+  uiScale,
+  onUiScaleChange,
   backendOnline,
   onRestartServer,
   busyAction,
@@ -137,6 +142,23 @@ export function SettingsTab({
             <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
             destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
             to their last-used tab, with a sub-tab bar above the content.
+          </p>
+          <div className="segmented" role="radiogroup" aria-label="UI scale">
+            {([0.85, 0.9, 0.95, 1] as UiScale[]).map((scale) => (
+              <button
+                key={scale}
+                type="button"
+                role="radio"
+                aria-checked={uiScale === scale}
+                className={uiScale === scale ? "segment active" : "segment"}
+                onClick={() => onUiScaleChange(scale)}
+              >
+                {Math.round(scale * 100)}%
+              </button>
+            ))}
+          </div>
+          <p className="help-text">
+            UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.
           </p>
         </div>
       </Panel>

@@ -15,6 +15,7 @@ import {
   updateSession,
 } from "../api";
 import {
+  isUnsavedEmptySession,
   upsertSession,
   sortSessions,
   titleFromPrompt,
@@ -171,13 +172,27 @@ export function useChat(
   // backend cancel endpoint and surface a diagnostic error to the user.
   const promptEvalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sortedChatSessions = sortSessions(workspace.chatSessions);
+  const sortedChatSessions = sortSessions(workspace.chatSessions).filter((session) => !isUnsavedEmptySession(session));
   const activeChat = workspace.chatSessions.find((session) => session.id === activeChatId) ?? sortedChatSessions[0];
   const activeThinkingMode: ChatThinkingMode = activeChat?.thinkingMode === "auto" ? "auto" : "off";
   const activeRuntimeProfile = resolveChatRuntimeProfile(activeChat, launchSettings);
   const activeRuntimeProfileMatchesLaunchSettings = (() => {
     return loadedModelMatchesRuntimeProfile(workspace.runtime.loadedModel, activeRuntimeProfile);
   })();
+
+  function discardUnsavedEmptyDrafts(exceptId?: string) {
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: current.chatSessions.filter(
+        (session) => session.id === exceptId || !isUnsavedEmptySession(session),
+      ),
+    }));
+  }
+
+  function handleSetActiveChatId(nextId: string) {
+    setActiveChatId(nextId);
+    discardUnsavedEmptyDrafts(nextId || undefined);
+  }
 
   // Chat session validity
   useEffect(() => {
@@ -309,6 +324,9 @@ export function useChat(
   }
 
   async function persistSessionChanges(sessionId: string, patch: Partial<ChatSession>) {
+    const currentSession = workspace.chatSessions.find((session) => session.id === sessionId);
+    const skipBackendPersist = currentSession ? isUnsavedEmptySession(currentSession) : sessionId.startsWith("draft-");
+
     setWorkspace((current) => ({
       ...current,
       chatSessions: current.chatSessions.map((session) =>
@@ -316,7 +334,7 @@ export function useChat(
       ),
     }));
 
-    if (!backendOnline) return;
+    if (!backendOnline || skipBackendPersist) return;
 
     try {
       const session = await updateSession(sessionId, {
@@ -350,46 +368,40 @@ export function useChat(
 
   async function handleCreateSession() {
     const fallbackModel = sessionModelPayload(activeChat);
-    if (!backendOnline) {
-      const loaded = workspace.runtime.loadedModel;
-      const localSession: ChatSession = {
-        id: `local-${Date.now()}`,
-        title: "New chat",
-        updatedAt: new Date().toLocaleString(),
-        pinned: false,
-        model: fallbackModel?.modelName ?? "Choose a model",
-        modelRef: fallbackModel?.modelRef ?? null,
-        canonicalRepo: fallbackModel?.canonicalRepo ?? null,
-        modelSource: fallbackModel?.source ?? "catalog",
-        modelPath: fallbackModel?.path ?? null,
-        modelBackend: fallbackModel?.backend ?? "auto",
-        thinkingMode: activeThinkingMode,
-        cacheLabel: loaded ? loadedModelCacheLabel : launchCacheLabel,
-        cacheStrategy: loaded?.cacheStrategy ?? launchSettings.cacheStrategy,
-        cacheBits: loaded?.cacheBits ?? launchSettings.cacheBits,
-        fp16Layers: loaded?.fp16Layers ?? launchSettings.fp16Layers,
-        fusedAttention: loaded?.fusedAttention ?? launchSettings.fusedAttention,
-        fitModelInMemory: loaded?.fitModelInMemory ?? launchSettings.fitModelInMemory,
-        contextTokens: loaded?.contextTokens ?? launchSettings.contextTokens,
-        speculativeDecoding: loaded?.speculativeDecoding ?? launchSettings.speculativeDecoding,
-        dflashDraftModel: loaded?.dflashDraftModel ?? null,
-        treeBudget: loaded?.treeBudget ?? launchSettings.treeBudget,
-        messages: [],
-      };
-      setWorkspace((current) => ({ ...current, chatSessions: [localSession, ...current.chatSessions] }));
-      setActiveChatId(localSession.id);
-      setThreadTitleDraft(localSession.title);
-      return;
-    }
-
-    try {
-      const session = await createSession("New chat");
-      setWorkspace((current) => ({ ...current, chatSessions: upsertSession(current.chatSessions, session) }));
-      setActiveChatId(session.id);
-      setThreadTitleDraft(session.title);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to create session.");
-    }
+    const loaded = workspace.runtime.loadedModel;
+    const localSession: ChatSession = {
+      id: `draft-${Date.now()}`,
+      title: "New chat",
+      updatedAt: new Date().toLocaleString(),
+      pinned: false,
+      model: fallbackModel?.modelName ?? "Choose a model",
+      modelRef: fallbackModel?.modelRef ?? null,
+      canonicalRepo: fallbackModel?.canonicalRepo ?? null,
+      modelSource: fallbackModel?.source ?? "catalog",
+      modelPath: fallbackModel?.path ?? null,
+      modelBackend: fallbackModel?.backend ?? "auto",
+      thinkingMode: activeThinkingMode,
+      cacheLabel: loaded ? loadedModelCacheLabel : launchCacheLabel,
+      cacheStrategy: loaded?.cacheStrategy ?? launchSettings.cacheStrategy,
+      cacheBits: loaded?.cacheBits ?? launchSettings.cacheBits,
+      fp16Layers: loaded?.fp16Layers ?? launchSettings.fp16Layers,
+      fusedAttention: loaded?.fusedAttention ?? launchSettings.fusedAttention,
+      fitModelInMemory: loaded?.fitModelInMemory ?? launchSettings.fitModelInMemory,
+      contextTokens: loaded?.contextTokens ?? launchSettings.contextTokens,
+      speculativeDecoding: loaded?.speculativeDecoding ?? launchSettings.speculativeDecoding,
+      dflashDraftModel: loaded?.dflashDraftModel ?? null,
+      treeBudget: loaded?.treeBudget ?? launchSettings.treeBudget,
+      messages: [],
+    };
+    setWorkspace((current) => ({
+      ...current,
+      chatSessions: [
+        localSession,
+        ...current.chatSessions.filter((session) => !isUnsavedEmptySession(session)),
+      ],
+    }));
+    setActiveChatId(localSession.id);
+    setThreadTitleDraft(localSession.title);
   }
 
   async function ensureBackendAvailable(preferredChatId?: string): Promise<{
@@ -1151,7 +1163,7 @@ export function useChat(
 
   return {
     activeChatId,
-    setActiveChatId,
+    setActiveChatId: handleSetActiveChatId,
     threadTitleDraft,
     setThreadTitleDraft,
     draftMessage,

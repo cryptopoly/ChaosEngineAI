@@ -133,6 +133,7 @@ import type { ComponentType } from "react";
 import type { SidebarGroupId, TabId } from "../../types";
 
 export const groupIcon: Record<SidebarGroupId, ComponentType<IconProps>> = {
+  chat: ChatIcon,
   models: ModelsIcon,
   images: ImagesIcon,
   video: VideoIcon,
@@ -142,7 +143,6 @@ export const groupIcon: Record<SidebarGroupId, ComponentType<IconProps>> = {
 
 export const standaloneTabIcon: Partial<Record<TabId, ComponentType<IconProps>>> = {
   dashboard: DashboardIcon,
-  chat: ChatIcon,
   server: ServerIcon,
   logs: LogsIcon,
   settings: SettingsIcon,

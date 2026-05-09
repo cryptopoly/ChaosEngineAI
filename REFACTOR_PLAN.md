@@ -22,6 +22,20 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
+## Progress through 2026-05-09 (20 commits on `feature/refactor-n-audit`)
+
+| File | Original | Now | Δ |
+|---|---|---|---|
+| `state/__init__.py` | 4,418 | 4,273 | -145 |
+| `inference/__init__.py` | 3,574 | 1,521 | -2,053 |
+| `image_runtime/__init__.py` | 2,097 | 1,366 | -731 |
+| `video_runtime/__init__.py` | 2,378 | 2,216 | -162 |
+| `routes/setup/__init__.py` | 1,932 | 1,441 | -491 |
+| `src/api/index.ts` | 1,430 | 559 | -871 |
+| **Mega-file shrink total** | 15,829 | **11,376** | **-4,453 LOC** |
+
+Tests posture across all 20 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+
 ## Mega-file inventory
 
 ### Python (>1,800 LOC)
@@ -62,34 +76,47 @@ Each phase = 1 PR. Tests green at each boundary. No big-bang merge.
 ### Phase 1 — Python backend split
 
 **1a. `state.py` 4,418 → facade + 5 modules.**
+
+**PARTIAL** (Phase 1a-1, 1a-2; commits `8a26a48`, `879eede`):
+- `state/logs.py` — LogManager (log + activity ring buffers + subscribers)
+- `state/metrics.py` — cache labels + profile change reasons + metrics payloads (11 pure functions)
+
+state/__init__.py: 4418 → 4273 (-145). Sessions, model_manager, benchmark, settings_state extractions deferred — biggest remaining is the 2k LOC of session/chat methods.
+
 ```
 backend_service/state/
   __init__.py          # ChaosEngineState facade — public API unchanged
-  session_manager.py   # chat sessions, history
-  model_manager.py     # model load/unload/discovery state
-  inference_orchestrator.py
-  benchmark_state.py
-  settings_state.py
+  logs.py              # LogManager + ring buffers          [done]
+  metrics.py           # cache labels + profile metrics     [done]
+  session_manager.py   # chat sessions, history             [pending]
+  model_manager.py     # model load/unload/discovery state  [pending]
+  inference_orchestrator.py                                 [pending]
+  benchmark_state.py                                        [pending]
+  settings_state.py                                         [pending]
 ```
 
 **1b. `inference.py` 3,574 → engines/ subpackage.**
-```
-backend_service/inference/
-  __init__.py
-  controller.py        # RuntimeController
-  engines/
-    base.py
-    llama_cpp.py
-    mlx_worker.py
-    vllm.py
-  jsonrpc.py
-```
+
+**MOSTLY DONE** (Phase 1b-1 through 1b-5; commits `cb1aed3` → `25ecbdf`):
+- `inference/_constants.py` — 5 timeout / workspace constants
+- `inference/_utils.py` — 9 shared helpers (_now_label, _normalize_message_content, _read_text_tail, _append_runtime_note, _http_json, _find_open_port, _resolve_gguf_path, _is_local_target, _looks_like_gguf)
+- `inference/base.py` — 4 dataclasses + RepeatedLineGuard + BaseInferenceEngine
+- `inference/jsonrpc.py` — JsonRpcProcess subprocess bridge
+- `inference/simple_engines.py` — RemoteOpenAIEngine + MockInferenceEngine
+- `inference/mlx_engine.py` — MLXWorkerEngine
+- `inference/llama_cpp_engine.py` — LlamaCppEngine + 8 llama-specific helpers + 4 constants
+
+inference/__init__.py: 3574 → 1521 (-2053). RuntimeController (~1050 LOC) is the only big class still inline; deferred — its helper graph is the most cross-cutting in the package.
 
 **1c. `video_runtime.py` + `image_runtime.py` → runtimes/{image,video}/.**
 
-Extract shared pipeline-loader logic (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) into `runtimes/common/` — currently duplicated.
+**PARTIAL** (Phase 1c-1 through 1c-6, commits `b5ea526` → `af06a1d`):
+- `image_runtime/` package landed: types + repos + snapshot + device + placeholder_engine + mflux_engine extracted (image/__init__.py: 2097 → 1366).
+- `video_runtime/` package landed: types extracted (video/__init__.py: 2378 → 2216).
 
-**1d. `routes/setup.py` 1,932 → setup/{detect,install_pip,install_brew,install_runtimes,status}.py.**
+**Remaining**: extract `DiffusersTextToImageEngine` (1112 LOC inside image/__init__) + `DiffusersVideoEngine` (1335 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
+
+**1d. `routes/setup.py` 1,932 → setup/{longlive,wan_install}.py + main __init__.** **PARTIAL** (commit `6181c1b`). LongLive + Wan installers extracted. GPU bundle install (~700 LOC) still in main `__init__.py` because its helpers (`_extras_site_packages`, `_cleanup_mlx_video_shadow_metadata`, `_run_pip_install`) are shared with the regular pip-install path. Full split deferred — needs to first move shared helpers into a `setup/_install_helpers.py` module.
 
 **1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.**
 
@@ -97,9 +124,9 @@ Extract shared pipeline-loader logic (LoRA fuse, distill swap, nunchaku, fp8, pr
 
 ### Phase 2 — Frontend split
 
-**2a. `api.ts` 1,430 → src/api/{chat,image,video,models,setup,server,shared}.ts.**
+**2a. `api.ts` 1,430 → src/api/{chat,image,video,models,setup,admin}.ts.** **DONE** (Phase 2-1 through 2-6, commits `dea6a54` → `68fed4f`). 6 commits, 4,453 LOC across 6 domain modules. Live-binding circular re-exports preserve call sites.
 
-**2b. `types.ts` 1,378 → src/types/{chat,image,video,models,setup,shared}.ts.**
+**2b. `types.ts` 1,378 → src/types/{chat,image,video,models,setup,shared}.ts.** Stub barrel + 3 sub-files exist already with per-domain UI types (ChatModelOption, ImageGalleryRuntimeFilter, VideoDiscoverTaskFilter); main types.ts content needs careful migration since most types reference each other. Defer to dedicated session.
 
 **2c. Mega-hooks → 3-way splits each.**
 - `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput`

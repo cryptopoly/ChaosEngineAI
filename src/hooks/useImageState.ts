@@ -57,23 +57,7 @@ import { compareDiscoverVariants } from "../utils";
 
 // Human-friendly label for the GPU bundle install progress. Picks the most
 // actionable sentence from the job state so the "Installing..." text in
-// ImageStudioTab / VideoStudioTab shows what's actually happening right now
-// (downloading torch vs. resolving deps vs. verifying CUDA), not a generic
-// spinner with no context.
-function formatGpuBundleLabel(job: GpuBundleJobState): string {
-  const phase = job.phase;
-  if (phase === "preflight") return job.message || "Preparing GPU bundle install...";
-  if (phase === "downloading") {
-    const total = job.packageTotal || 1;
-    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
-    const current = job.packageCurrent || job.message || "package";
-    return `Installing GPU bundle: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
-  }
-  if (phase === "verifying") return "Verifying CUDA availability...";
-  if (phase === "done") return job.message || "GPU bundle installed.";
-  if (phase === "error") return job.error || job.message || "GPU bundle install failed.";
-  return job.message || "Working...";
-}
+import { formatGpuBundleLabel } from "./installLabels";
 
 export function useImageState(
   backendOnline: boolean,

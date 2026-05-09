@@ -161,11 +161,11 @@ Add explicit `#[cfg(target_os = "linux")]` where Linux currently rides on `#[cfg
 
 ### Phase 4 — Cross-OS parity
 
-1. PowerShell ports: `update-llama-turbo.ps1`, `update-sdcpp.ps1`.
-2. `pre-build-check.sh` → port to Node (`pre-build-check.mjs`) — single script across all 3 OSes.
-3. De-dupe `build-X.sh` + `update-X.sh` overlap → unified `manage-X.sh build|update|status`.
-4. Rename `update-llama-cpp.sh` → `check-llama-cpp.sh` (info-only, name lied).
-5. CI matrix flips Windows/Linux from advisory to required.
+1. PowerShell ports: `update-llama-turbo.ps1`, `update-sdcpp.ps1`. **DONE** (commit `861de0a`). Both delegate to their `build-*.ps1` siblings after a version-file fast-exit so MSVC/CUDA toolchain plumbing stays in one place.
+2. `pre-build-check.sh` → port to Node (`pre-build-check.mjs`) — single script across all 3 OSes. Deferred — substantial port (7 checks: pytest, vitest, tsc, NOTICES grep, Python cache-strategy probe, upstream git ls-remote, binary file existence).
+3. ~~De-dupe `build-X.sh` + `update-X.sh` overlap → unified `manage-X.sh build|update|status`.~~ **DROPPED** — build scripts handle clone-or-fetch; update scripts add the version-file fast-exit. Two narrow scripts read clearer than one with a subcommand router.
+4. ~~Rename `update-llama-cpp.sh` → `check-llama-cpp.sh` (info-only, name lied).~~ **DROPPED** — original audit was wrong: the script does rebuild llama-server (cmake configure + build).
+5. CI matrix flips Windows/Linux from advisory to required. Deferred until pre-build-check.mjs ships so the same gate runs on both OSes.
 
 ### Phase 5 — Performance pass
 

@@ -208,15 +208,15 @@ export async function fetchJson<T>(
   }
 }
 
-async function postJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
+export async function postJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
   return await sendJson<T>("POST", path, body, timeoutMs);
 }
 
-async function patchJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
+export async function patchJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
   return await sendJson<T>("PATCH", path, body, timeoutMs);
 }
 
-async function deleteJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
+export async function deleteJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
   return await sendJson<T>("DELETE", path, body, timeoutMs);
 }
 
@@ -316,33 +316,9 @@ export async function searchHubModels(query: string): Promise<HubModel[]> {
   return result.results ?? [];
 }
 
-export async function getImageCatalog(): Promise<ImageCatalogResponse> {
-  return await fetchJson<ImageCatalogResponse>("/api/images/catalog", 25000);
-}
 
-export async function getImageOutputs(): Promise<ImageOutputArtifact[]> {
-  const result = await fetchJson<{ outputs: ImageOutputArtifact[] }>("/api/images/outputs");
-  return result.outputs;
-}
 
-export async function getImageRuntime(): Promise<ImageRuntimeStatus> {
-  const result = await fetchJson<{ runtime: ImageRuntimeStatus }>("/api/images/runtime");
-  return result.runtime;
-}
 
-/**
- * Polled by ImageGenerationModal while the bar is visible to override the
- * client-side phase estimates with the runtime's actual phase / step count.
- * Short timeout — if the backend is busy with the generation it can still
- * answer this lightweight read in well under a second.
- */
-export async function getImageGenerationProgress(): Promise<GenerationProgressSnapshot> {
-  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>(
-    "/api/images/progress",
-    5000,
-  );
-  return result.progress;
-}
 
 export async function getVideoCatalog(): Promise<VideoCatalogResponse> {
   return await fetchJson<VideoCatalogResponse>("/api/video/catalog", 25000);
@@ -783,38 +759,11 @@ export async function deleteModelDownload(repo: string): Promise<DeleteDownloadR
   return result.result;
 }
 
-export async function downloadImageModel(repo: string): Promise<DownloadStatus> {
-  const result = await postJson<{ download: DownloadStatus }>("/api/images/download", { repo });
-  return result.download;
-}
 
-export async function getImageDownloadStatus(): Promise<DownloadStatus[]> {
-  const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/images/download/status");
-  return result.downloads;
-}
 
-export async function cancelImageDownload(repo: string): Promise<DownloadStatus> {
-  const result = await postJson<{ download: DownloadStatus }>("/api/images/download/cancel", { repo });
-  return result.download;
-}
 
-export async function deleteImageDownload(repo: string): Promise<DeleteDownloadResult> {
-  const result = await postJson<{ result: DeleteDownloadResult }>("/api/images/download/delete", { repo });
-  return result.result;
-}
 
-export async function preloadImageModel(modelId: string): Promise<ImageRuntimeStatus> {
-  const result = await postJson<{ runtime: ImageRuntimeStatus }>("/api/images/preload", { modelId }, null);
-  return result.runtime;
-}
 
-export async function unloadImageModel(modelId?: string): Promise<ImageRuntimeStatus> {
-  const result = await postJson<{ runtime: ImageRuntimeStatus }>(
-    "/api/images/unload",
-    modelId ? { modelId } : undefined,
-  );
-  return result.runtime;
-}
 
 export async function downloadVideoModel(repo: string, modelId?: string): Promise<DownloadStatus> {
   const result = await postJson<{ download: DownloadStatus }>("/api/video/download", { repo, modelId });
@@ -894,19 +843,8 @@ export async function fetchVideoOutputBlobUrl(artifactId: string): Promise<strin
   return URL.createObjectURL(blob);
 }
 
-export async function generateImage(payload: ImageGenerationPayload): Promise<ImageGenerationResponse> {
-  return await postJson<ImageGenerationResponse>("/api/images/generate", payload, null);
-}
 
-export async function cancelImageGeneration(): Promise<{ cancelled: boolean }> {
-  return await postJson<{ cancelled: boolean }>("/api/images/cancel", {}, 10000);
-}
 
-export async function deleteImageOutput(artifactId: string): Promise<{ deleted: string; outputs: ImageOutputArtifact[] }> {
-  return await deleteJson<{ deleted: string; outputs: ImageOutputArtifact[] }>(
-    `/api/images/outputs/${encodeURIComponent(artifactId)}`,
-  );
-}
 
 export async function convertModel(payload: ConvertModelPayload): Promise<ConvertModelResponse> {
   // No client-side timeout — conversion can legitimately take 10+ min for
@@ -1428,3 +1366,23 @@ export async function restartManagedBackend(): Promise<TauriBackendInfo | null> 
   apiTokenPromise = Promise.resolve(info?.apiToken ?? null);
   return info;
 }
+
+// ---------------------------------------------------------------------------
+// Domain re-exports — extracted in v0.8.0 Phase 2 to keep this facade thin.
+// ---------------------------------------------------------------------------
+
+export {
+  cancelImageDownload,
+  cancelImageGeneration,
+  deleteImageDownload,
+  deleteImageOutput,
+  downloadImageModel,
+  generateImage,
+  getImageCatalog,
+  getImageDownloadStatus,
+  getImageGenerationProgress,
+  getImageOutputs,
+  getImageRuntime,
+  preloadImageModel,
+  unloadImageModel,
+} from "./image";

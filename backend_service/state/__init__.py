@@ -20,6 +20,7 @@ from starlette.responses import StreamingResponse
 
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
+from backend_service.state import metrics as _metrics
 from backend_service.state.logs import LogManager, _time_label
 
 if TYPE_CHECKING:
@@ -602,49 +603,22 @@ class ChaosEngineState:
     def add_activity(self, title: str, detail: str) -> None:
         self._log_manager.add_activity(title, detail)
 
+    # Cache + profile + metrics helpers — pure delegations to ``state.metrics``.
+    # The methods stay on the class so internal call sites that go through
+    # ``self._cache_label(...)`` etc. don't need to be touched.
+
     def _cache_strategy_label(self, bits: int, fp16_layers: int) -> str:
-        if bits and bits < 16:
-            return f"Native {bits}-bit {fp16_layers}+{fp16_layers}"
-        return "Native f16 cache"
+        return _metrics.native_cache_strategy_label(bits, fp16_layers)
 
     @staticmethod
     def _native_cache_label() -> str:
-        return "Native f16 cache"
+        return _metrics.native_cache_strategy_label(0, 0)
 
     def _cache_label(self, *, cache_strategy: str, bits: int, fp16_layers: int) -> str:
-        from cache_compression import registry as cache_registry
-
-        strategy = cache_registry.get(cache_strategy)
-        if strategy is not None:
-            return strategy.label(bits, fp16_layers)
-        return self._cache_strategy_label(bits, fp16_layers)
+        return _metrics.cache_label(cache_strategy=cache_strategy, bits=bits, fp16_layers=fp16_layers)
 
     def _loaded_model_metrics_fields(self) -> dict[str, Any]:
-        loaded = self.runtime.loaded_model
-        return {
-            "model": loaded.name if loaded else None,
-            "modelRef": loaded.ref if loaded else None,
-            "canonicalRepo": loaded.canonicalRepo if loaded else None,
-            "backend": loaded.backend if loaded else None,
-            "engineLabel": self.runtime.engine.engine_label,
-            "cacheLabel": self._cache_label(
-                cache_strategy=str(loaded.cacheStrategy) if loaded else "native",
-                bits=int(loaded.cacheBits) if loaded else 0,
-                fp16_layers=int(loaded.fp16Layers) if loaded else 0,
-            ),
-            "cacheStrategy": loaded.cacheStrategy if loaded else None,
-            "cacheBits": loaded.cacheBits if loaded else None,
-            "fp16Layers": loaded.fp16Layers if loaded else None,
-            "fusedAttention": loaded.fusedAttention if loaded else None,
-            "fitModelInMemory": loaded.fitModelInMemory if loaded else None,
-            "speculativeDecoding": loaded.speculativeDecoding if loaded else None,
-            "dflashDraftModel": loaded.dflashDraftModel if loaded else None,
-            "modelSource": loaded.source if loaded else None,
-            "modelPath": loaded.path if loaded else None,
-            "contextTokens": loaded.contextTokens if loaded else None,
-            "treeBudget": loaded.treeBudget if loaded else 0,
-            "generatedAt": self._time_label(),
-        }
+        return _metrics.loaded_model_metrics_fields(self.runtime)
 
     def _requested_runtime_metrics_fields(
         self,
@@ -656,45 +630,17 @@ class ChaosEngineState:
         speculative_decoding: bool,
         tree_budget: int,
     ) -> dict[str, Any]:
-        return {
-            "requestedCacheLabel": self._cache_label(
-                cache_strategy=cache_strategy,
-                bits=cache_bits,
-                fp16_layers=fp16_layers,
-            ),
-            "requestedCacheStrategy": cache_strategy,
-            "requestedCacheBits": cache_bits,
-            "requestedFp16Layers": fp16_layers,
-            "requestedFitModelInMemory": fit_model_in_memory,
-            "requestedSpeculativeDecoding": speculative_decoding,
-            "requestedTreeBudget": tree_budget,
-        }
+        return _metrics.requested_runtime_metrics_fields(
+            cache_strategy=cache_strategy,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fit_model_in_memory=fit_model_in_memory,
+            speculative_decoding=speculative_decoding,
+            tree_budget=tree_budget,
+        )
 
     def _result_runtime_metrics_fields(self, result: Any | None) -> dict[str, Any]:
-        if result is None:
-            return {}
-        metrics: dict[str, Any] = {}
-        cache_strategy = getattr(result, "cache_strategy", None)
-        if cache_strategy is not None:
-            cache_bits = int(getattr(result, "cache_bits", 0) or 0)
-            fp16_layers = int(getattr(result, "fp16_layers", 0) or 0)
-            metrics.update({
-                "cacheLabel": self._cache_label(
-                    cache_strategy=str(cache_strategy),
-                    bits=cache_bits,
-                    fp16_layers=fp16_layers,
-                ),
-                "cacheStrategy": str(cache_strategy),
-                "cacheBits": cache_bits,
-                "fp16Layers": fp16_layers,
-            })
-        speculative_decoding = getattr(result, "speculative_decoding", None)
-        if speculative_decoding is not None:
-            metrics["speculativeDecoding"] = bool(speculative_decoding)
-            metrics["treeBudget"] = int(getattr(result, "tree_budget", 0) or 0)
-            if not speculative_decoding:
-                metrics["dflashDraftModel"] = None
-        return metrics
+        return _metrics.result_runtime_metrics_fields(result)
 
     def _assistant_metrics_payload(
         self,
@@ -702,12 +648,7 @@ class ChaosEngineState:
         *,
         requested_runtime: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
-            **self._loaded_model_metrics_fields(),
-            **self._result_runtime_metrics_fields(result),
-            **result.to_metrics(),
-            **(requested_runtime or {}),
-        }
+        return _metrics.assistant_metrics_payload(self.runtime, result, requested_runtime=requested_runtime)
 
     def _stream_assistant_metrics_payload(
         self,
@@ -718,46 +659,14 @@ class ChaosEngineState:
         requested_runtime: dict[str, Any] | None = None,
         ttft_seconds: float | None = None,
     ) -> dict[str, Any]:
-        metrics: dict[str, Any] = {
-            "finishReason": final_chunk.finish_reason if final_chunk else "stop",
-            "promptTokens": final_chunk.prompt_tokens if final_chunk else 0,
-            "completionTokens": final_chunk.completion_tokens if final_chunk else 0,
-            "totalTokens": (final_chunk.prompt_tokens + final_chunk.completion_tokens) if final_chunk else 0,
-            "tokS": tok_s,
-            "responseSeconds": response_seconds,
-            "runtimeNote": final_chunk.runtime_note if final_chunk else None,
-        }
-        if final_chunk and getattr(final_chunk, "dflash_acceptance_rate", None) is not None:
-            metrics["dflashAcceptanceRate"] = final_chunk.dflash_acceptance_rate
-        if ttft_seconds is not None:
-            metrics["ttftSeconds"] = ttft_seconds
-        # Phase 3.1: forward DDTree accepted-span data when present.
-        accepted_spans = getattr(final_chunk, "accepted_spans", None) if final_chunk else None
-        if accepted_spans:
-            metrics["acceptedSpans"] = accepted_spans
-        accepted_token_text = getattr(final_chunk, "accepted_token_text", None) if final_chunk else None
-        if accepted_token_text:
-            metrics["acceptedTokenText"] = accepted_token_text
-
-        # Phase 3.5: per-turn perf telemetry snapshot. Best-effort —
-        # samplers fail silently and the telemetry strip just omits the
-        # missing fields. Captured at finalisation so the values reflect
-        # the load the turn actually generated, not idle baseline.
-        try:
-            from backend_service.helpers.perf import snapshot_perf_telemetry
-            telemetry = snapshot_perf_telemetry()
-            if not telemetry.is_empty:
-                metrics["perfTelemetry"] = telemetry.to_dict()
-        except Exception:
-            # Telemetry must never block a turn from finalising.
-            pass
-
-        return {
-            **self._loaded_model_metrics_fields(),
-            **self._result_runtime_metrics_fields(final_chunk),
-            **metrics,
-            **(requested_runtime or {}),
-        }
+        return _metrics.stream_assistant_metrics_payload(
+            self.runtime,
+            final_chunk=final_chunk,
+            tok_s=tok_s,
+            response_seconds=response_seconds,
+            requested_runtime=requested_runtime,
+            ttft_seconds=ttft_seconds,
+        )
 
     def _should_reload_for_profile(
         self,
@@ -772,26 +681,17 @@ class ChaosEngineState:
         speculative_decoding: bool,
         tree_budget: int,
     ) -> bool:
-        if model_ref and (
-            self.runtime.loaded_model is None
-            or model_ref not in {self.runtime.loaded_model.ref, self.runtime.loaded_model.runtimeTarget}
-        ):
-            return True
-
-        if self.runtime.loaded_model is None:
-            return True
-
-        return bool(
-            self._runtime_profile_change_reasons(
-                cache_bits=cache_bits,
-                fp16_layers=fp16_layers,
-                fused_attention=fused_attention,
-                cache_strategy=cache_strategy,
-                fit_model_in_memory=fit_model_in_memory,
-                context_tokens=context_tokens,
-                speculative_decoding=speculative_decoding,
-                tree_budget=tree_budget,
-            )
+        return _metrics.should_reload_for_profile(
+            self.runtime,
+            model_ref=model_ref,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fused_attention=fused_attention,
+            cache_strategy=cache_strategy,
+            fit_model_in_memory=fit_model_in_memory,
+            context_tokens=context_tokens,
+            speculative_decoding=speculative_decoding,
+            tree_budget=tree_budget,
         )
 
     def _cache_profile_change_reasons(
@@ -802,22 +702,13 @@ class ChaosEngineState:
         fused_attention: bool,
         cache_strategy: str,
     ) -> list[str]:
-        loaded_model = self.runtime.loaded_model
-        if loaded_model is None:
-            return []
-
-        changes: list[str] = []
-        if loaded_model.cacheStrategy != cache_strategy:
-            changes.append(f"cache strategy {loaded_model.cacheStrategy} -> {cache_strategy}")
-        if loaded_model.cacheBits != cache_bits:
-            changes.append(f"cache bits {loaded_model.cacheBits} -> {cache_bits}")
-        if loaded_model.fp16Layers != fp16_layers:
-            changes.append(f"fp16 layers {loaded_model.fp16Layers} -> {fp16_layers}")
-        if loaded_model.fusedAttention != fused_attention:
-            changes.append(
-                f"fused attention {'on' if loaded_model.fusedAttention else 'off'} -> {'on' if fused_attention else 'off'}"
-            )
-        return changes
+        return _metrics.cache_profile_change_reasons(
+            self.runtime.loaded_model,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fused_attention=fused_attention,
+            cache_strategy=cache_strategy,
+        )
 
     def _runtime_profile_change_reasons(
         self,
@@ -831,32 +722,17 @@ class ChaosEngineState:
         speculative_decoding: bool,
         tree_budget: int,
     ) -> list[str]:
-        loaded_model = self.runtime.loaded_model
-        if loaded_model is None:
-            return []
-
-        changes: list[str] = []
-        if loaded_model.contextTokens != context_tokens:
-            changes.append(f"context {loaded_model.contextTokens} -> {context_tokens}")
-        changes.extend(
-            self._cache_profile_change_reasons(
-                cache_bits=cache_bits,
-                fp16_layers=fp16_layers,
-                fused_attention=fused_attention,
-                cache_strategy=cache_strategy,
-            )
+        return _metrics.runtime_profile_change_reasons(
+            self.runtime.loaded_model,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fused_attention=fused_attention,
+            cache_strategy=cache_strategy,
+            fit_model_in_memory=fit_model_in_memory,
+            context_tokens=context_tokens,
+            speculative_decoding=speculative_decoding,
+            tree_budget=tree_budget,
         )
-        if loaded_model.fitModelInMemory != fit_model_in_memory:
-            changes.append(
-                f"fit-in-memory {'on' if loaded_model.fitModelInMemory else 'off'} -> {'on' if fit_model_in_memory else 'off'}"
-            )
-        if bool(loaded_model.speculativeDecoding) != speculative_decoding:
-            changes.append(
-                f"speculative decoding {'on' if loaded_model.speculativeDecoding else 'off'} -> {'on' if speculative_decoding else 'off'}"
-            )
-        if int(loaded_model.treeBudget or 0) != int(tree_budget):
-            changes.append(f"tree budget {loaded_model.treeBudget or 0} -> {tree_budget}")
-        return changes
 
     def _append_benchmark_run(self, run: dict[str, Any]) -> None:
         from backend_service.app import _save_benchmark_runs

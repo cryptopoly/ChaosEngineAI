@@ -295,26 +295,8 @@ export async function updateSettings(payload: UpdateSettingsPayload): Promise<Se
   return await patchJson<SettingsUpdateResponse>("/api/settings", payload);
 }
 
-export interface SearchResults {
-  families: ModelFamily[];
-  hubModels: HubModel[];
-}
 
-export async function searchModels(query: string): Promise<SearchResults> {
-  const result = await fetchJson<{ results: ModelFamily[]; hubResults?: HubModel[] }>(
-    `/api/models/search?q=${encodeURIComponent(query)}`,
-    60000,
-  );
-  return { families: result.results, hubModels: result.hubResults ?? [] };
-}
 
-export async function searchHubModels(query: string): Promise<HubModel[]> {
-  const result = await fetchJson<{ results: HubModel[] }>(
-    `/api/models/hub-search?q=${encodeURIComponent(query)}`,
-    60000,
-  );
-  return result.results ?? [];
-}
 
 
 
@@ -376,57 +358,6 @@ export async function getCachePreview(options: {
   }
 }
 
-export async function loadModel(payload: LoadModelPayload): Promise<RuntimeStatus> {
-  // NO client-side timeout on model loads — the backend has its own
-  // MLX_LOAD_TIMEOUT_SECONDS=1800 ceiling. We never want the frontend to
-  // give up ahead of the backend and leave the user staring at a false
-  // "timed out" while the worker is still happily loading weights.
-  const result = await postJson<{ runtime: RuntimeStatus }>("/api/models/load", payload, null);
-  return result.runtime;
-}
-
-export async function unloadModel(ref?: string): Promise<RuntimeStatus> {
-  const result = await postJson<{ runtime: RuntimeStatus }>(
-    "/api/models/unload",
-    ref ? { ref } : undefined,
-  );
-  return result.runtime;
-}
-
-
-export interface DownloadStatus {
-  repo: string;
-  state: "downloading" | "completed" | "failed" | "cancelled";
-  progress: number;
-  downloadedGb: number;
-  totalGb: number | null;
-  error: string | null;
-}
-
-export interface DeleteDownloadResult {
-  repo: string;
-  state: "deleted" | "not_found";
-}
-
-export async function downloadModel(repo: string): Promise<DownloadStatus> {
-  const result = await postJson<{ download: DownloadStatus }>("/api/models/download", { repo });
-  return result.download;
-}
-
-export async function getDownloadStatus(): Promise<DownloadStatus[]> {
-  const result = await fetchJson<{ downloads: DownloadStatus[] }>("/api/models/download/status");
-  return result.downloads;
-}
-
-export async function cancelDownload(repo: string): Promise<DownloadStatus> {
-  const result = await postJson<{ download: DownloadStatus }>("/api/models/download/cancel", { repo });
-  return result.download;
-}
-
-export async function deleteModelDownload(repo: string): Promise<DeleteDownloadResult> {
-  const result = await postJson<{ result: DeleteDownloadResult }>("/api/models/download/delete", { repo });
-  return result.result;
-}
 
 
 
@@ -448,37 +379,22 @@ export async function deleteModelDownload(repo: string): Promise<DeleteDownloadR
 
 
 
-export async function convertModel(payload: ConvertModelPayload): Promise<ConvertModelResponse> {
-  // No client-side timeout — conversion can legitimately take 10+ min for
-  // large models on a cold cache. Backend has its own 3600s subprocess cap.
-  return await postJson<ConvertModelResponse>("/api/models/convert", payload, null);
-}
 
-export async function runBenchmark(payload: BenchmarkRunPayload): Promise<BenchmarkRunResponse> {
-  // No client-side timeout — a benchmark on a cold 70B model legitimately
-  // takes >120s (cold load + prompt processing + N-token generation +
-  // measurement). The backend has its own per-phase ceilings.
-  return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null);
-}
 
-export async function revealModelPath(path: string): Promise<void> {
-  await postJson<{ revealed: string }>("/api/models/reveal", { path });
-}
+
+
+
+
+
+
+
+
 
 export async function openHtmlChallengeFile(path: string): Promise<void> {
   await postJson<{ opened: string }>("/api/chat/html-challenges/open-file", { path });
 }
 
-export async function deleteModelPath(path: string): Promise<{ deleted: string; library: LibraryItem[] }> {
-  return await postJson<{ deleted: string; library: LibraryItem[] }>(
-    "/api/models/delete",
-    { path },
-  );
-}
 
-export async function listHubFiles(repo: string): Promise<HubFileListResponse> {
-  return await fetchJson<HubFileListResponse>(`/api/models/hub-files?repo=${encodeURIComponent(repo)}`, 15000);
-}
 
 export async function shutdownServer(): Promise<void> {
   await postJson<{ status: string }>("/api/server/shutdown");
@@ -620,3 +536,24 @@ export type {
   SessionDocument,
   StreamCallbacks,
 } from "./chat";
+
+export {
+  cancelDownload,
+  convertModel,
+  deleteModelDownload,
+  deleteModelPath,
+  downloadModel,
+  getDownloadStatus,
+  listHubFiles,
+  loadModel,
+  revealModelPath,
+  runBenchmark,
+  searchHubModels,
+  searchModels,
+  unloadModel,
+} from "./models";
+export type {
+  DeleteDownloadResult,
+  DownloadStatus,
+  SearchResults,
+} from "./models";

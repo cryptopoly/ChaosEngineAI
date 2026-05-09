@@ -15,6 +15,14 @@ from backend_service.helpers.formatting import (
     _detect_model_max_context,
     _main_gguf_file,
 )
+from backend_service.helpers.model_classifier import (
+    _DRAFT_MODEL_KEYWORDS,
+    _IMAGE_MODEL_KEYWORDS,
+    _VIDEO_MODEL_KEYWORDS,
+    _looks_like_draft_model,
+    _looks_like_image_model,
+    _looks_like_video_model,
+)
 from backend_service.helpers.quantization import (
     _UNSUPPORTED_MLX_QUANT_ALGOS,
     _dtype_quantization_label,
@@ -270,80 +278,6 @@ def _detect_model_quantization(path: Path, fmt: str, *, name_hint: str = "") -> 
     if dtype_label:
         return dtype_label
     return _quantization_label_from_text(text_hint)
-
-
-_IMAGE_MODEL_KEYWORDS = (
-    "stable-diffusion", "sdxl", "flux.", "flux1", "flux-",
-    "dall-e", "imagen", "kandinsky", "wuerstchen",
-    "diffusion-pipe", "qwen-image", "qwen/qwen-image",
-    "sana_sprint", "sana-sprint", "sana sprint", "sana_1600m", "sana-1600m",
-)
-
-
-_DRAFT_MODEL_KEYWORDS = (
-    "-dflash", "/dflash", "-draft", "-eagle",
-)
-
-
-# Video diffusion pipelines. Keep keywords specific enough that they don't
-# collide with chat LLMs or image diffusion checkpoints — e.g. "hunyuanvideo"
-# not "hunyuan" (which would catch the Hunyuan image model), "wan2" not "wan"
-# (too generic), "mochi-1" not "mochi". New video families added to
-# ``backend_service/catalog/video_models.py`` should also get a keyword here.
-_VIDEO_MODEL_KEYWORDS = (
-    "hunyuanvideo",
-    "wan-ai/",
-    "wan2.",
-    "wan2-",
-    "-t2v-",
-    "-i2v-",
-    "-v2v-",
-    "mochi-1",
-    "cogvideo",
-    "ltx-video",
-    "ltx-2",
-    "zeroscope",
-    "animatediff",
-)
-
-
-def _looks_like_draft_model(name: str) -> bool:
-    """Return True if this looks like a speculative decoding draft model.
-
-    Draft models (DFlash, EAGLE, etc.) are companion checkpoints, not
-    standalone LLMs.  They should not appear in the model picker.
-    """
-    lower = name.lower()
-    return any(kw in lower for kw in _DRAFT_MODEL_KEYWORDS)
-
-
-def _looks_like_video_model(name: str) -> bool:
-    """Return True if this looks like a video diffusion pipeline.
-
-    Video models (LTX-Video, Wan, HunyuanVideo, Mochi, CogVideo, …) are
-    Diffusers pipelines with much larger VRAM footprints than LLMs and
-    their own dedicated Studio/Discover UI under the Video section. They
-    should be excluded from the chat-oriented My Models list.
-
-    Detection is keyword-only here because video Diffusers pipelines share
-    the ``model_index.json`` marker with image pipelines — we can't use that
-    to discriminate. When a partial HF cache download hasn't yet produced
-    ``model_index.json``, the name-based match is what keeps them out of
-    the LLM list.
-    """
-    lower = name.lower()
-    return any(kw in lower for kw in _VIDEO_MODEL_KEYWORDS)
-
-
-def _looks_like_image_model(path: Path, name: str) -> bool:
-    """Return True if this looks like a diffusion / image generation model."""
-    lower_name = name.lower()
-    if any(kw in lower_name for kw in _IMAGE_MODEL_KEYWORDS):
-        return True
-    # Diffusers models have model_index.json
-    if (path / "model_index.json").exists():
-        return True
-    return False
 
 
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:

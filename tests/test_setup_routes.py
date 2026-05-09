@@ -632,7 +632,7 @@ class SetupRouteTests(unittest.TestCase):
             _install_torch_walking_indexes,
         )
 
-        with mock.patch("backend_service.routes.setup._run_pip_install") as run_pip:
+        with mock.patch("backend_service.routes.setup.gpu_bundle._run_pip_install") as run_pip:
             run_pip.return_value = (True, "Successfully installed torch")
             ok, index_url = _install_torch_walking_indexes(
                 "python", Path("/tmp/extras"), _GpuBundleJobState(),
@@ -842,7 +842,7 @@ class InstallGpuBundleTests(unittest.TestCase):
         # state from a previous case.
         import backend_service.routes.setup as setup_module
         self._setup_module = setup_module
-        setup_module._GPU_BUNDLE_JOB = setup_module._GpuBundleJobState()
+        setup_module.gpu_bundle._GPU_BUNDLE_JOB = setup_module._GpuBundleJobState()
 
     def tearDown(self):
         self._env_patch.stop()
@@ -874,12 +874,12 @@ class InstallGpuBundleTests(unittest.TestCase):
 
         # Mock _verify_cuda so we don't try to actually spawn a subprocess
         # that imports torch.
-        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=fake_run), \
-             mock.patch("backend_service.routes.setup._verify_cuda", return_value=(True, "cuda_available=true")), \
-             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"), \
-             mock.patch("backend_service.routes.setup.platform.system", return_value="Linux"), \
-             mock.patch("backend_service.routes.setup.platform.machine", return_value="x86_64"):
+        with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", side_effect=fake_run), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._verify_cuda", return_value=(True, "cuda_available=true")), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.13.1"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.system", return_value="Linux"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.machine", return_value="x86_64"):
             start_resp = self.client.post("/api/setup/install-gpu-bundle", json={})
             self.assertEqual(start_resp.status_code, 200)
             # Wait for the background thread to finish. The worker is daemon=True
@@ -909,28 +909,28 @@ class InstallGpuBundleTests(unittest.TestCase):
             return True, f"Successfully installed {spec}"
 
         with mock.patch(
-            "backend_service.routes.setup._install_torch_walking_indexes",
+            "backend_service.routes.setup.gpu_bundle._install_torch_walking_indexes",
             return_value=(True, index_url),
         ), mock.patch(
-            "backend_service.routes.setup._find_installed_torch_version",
+            "backend_service.routes.setup.gpu_bundle._find_installed_torch_version",
             side_effect=["2.6.0+cu124", "2.6.0+cpu"],
         ), mock.patch(
-            "backend_service.routes.setup._run_pip_install",
+            "backend_service.routes.setup.gpu_bundle._run_pip_install",
             side_effect=fake_pip,
         ), mock.patch(
-            "backend_service.routes.setup._verify_cuda",
+            "backend_service.routes.setup.gpu_bundle._verify_cuda",
             return_value=(True, "cuda_available=true"),
         ), mock.patch(
-            "backend_service.routes.setup._free_bytes",
+            "backend_service.routes.setup.gpu_bundle._free_bytes",
             return_value=100_000_000_000,
         ), mock.patch(
-            "backend_service.routes.setup._read_python_version",
+            "backend_service.routes.setup.gpu_bundle._read_python_version",
             return_value="3.13.1",
         ), mock.patch(
-            "backend_service.routes.setup.platform.system",
+            "backend_service.routes.setup.gpu_bundle.platform.system",
             return_value="Linux",
         ), mock.patch(
-            "backend_service.routes.setup.platform.machine",
+            "backend_service.routes.setup.gpu_bundle.platform.machine",
             return_value="x86_64",
         ):
             self.client.post("/api/setup/install-gpu-bundle", json={})
@@ -954,8 +954,8 @@ class InstallGpuBundleTests(unittest.TestCase):
 
     def test_start_install_fails_when_disk_space_low(self):
         """A preflight check stops the install before any pip calls."""
-        with mock.patch("backend_service.routes.setup._free_bytes", return_value=1_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+        with mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=1_000_000), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.13.1"):
             self.client.post("/api/setup/install-gpu-bundle", json={})
             import time as _time
             deadline = _time.time() + 3.0
@@ -979,12 +979,12 @@ class InstallGpuBundleTests(unittest.TestCase):
                        "ERROR: No matching distribution found for torch",
             )
 
-        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=no_wheel_run), \
-             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._purge_stale_torch_from_extras", return_value=["torch"]), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.14.0"), \
-             mock.patch("backend_service.routes.setup.platform.system", return_value="Linux"), \
-             mock.patch("backend_service.routes.setup.platform.machine", return_value="x86_64"):
+        with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", side_effect=no_wheel_run), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._purge_stale_torch_from_extras", return_value=["torch"]), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.14.0"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.system", return_value="Linux"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.machine", return_value="x86_64"):
             self.client.post("/api/setup/install-gpu-bundle", json={})
             import time as _time
             deadline = _time.time() + 5.0
@@ -1012,11 +1012,11 @@ class InstallGpuBundleTests(unittest.TestCase):
                 pip_calls.append(joined)
             return mock.Mock(returncode=0, stdout="Successfully installed", stderr="")
 
-        with mock.patch("backend_service.routes.setup.subprocess.run", side_effect=fake_run), \
-             mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"), \
-             mock.patch("backend_service.routes.setup.platform.system", return_value="Darwin"), \
-             mock.patch("backend_service.routes.setup.platform.machine", return_value="arm64"):
+        with mock.patch("backend_service.routes.setup._install_helpers.subprocess.run", side_effect=fake_run), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.13.1"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.system", return_value="Darwin"), \
+             mock.patch("backend_service.routes.setup.gpu_bundle.platform.machine", return_value="arm64"):
             self.client.post("/api/setup/install-gpu-bundle", json={})
             import time as _time
             deadline = _time.time() + 5.0
@@ -1039,13 +1039,13 @@ class InstallGpuBundleTests(unittest.TestCase):
         """Don't spawn two installers in parallel — UI gets whichever started first."""
         # Prime the job state as if an install is already running.
         import backend_service.routes.setup as setup_module
-        setup_module._GPU_BUNDLE_JOB.phase = "downloading"
-        setup_module._GPU_BUNDLE_JOB.id = "existing-job-id"
-        setup_module._GPU_BUNDLE_JOB.done = False
-        setup_module._GPU_BUNDLE_JOB.package_current = "torch"
+        setup_module.gpu_bundle._GPU_BUNDLE_JOB.phase = "downloading"
+        setup_module.gpu_bundle._GPU_BUNDLE_JOB.id = "existing-job-id"
+        setup_module.gpu_bundle._GPU_BUNDLE_JOB.done = False
+        setup_module.gpu_bundle._GPU_BUNDLE_JOB.package_current = "torch"
 
-        with mock.patch("backend_service.routes.setup._free_bytes", return_value=100_000_000_000), \
-             mock.patch("backend_service.routes.setup._read_python_version", return_value="3.13.1"):
+        with mock.patch("backend_service.routes.setup.gpu_bundle._free_bytes", return_value=100_000_000_000), \
+             mock.patch("backend_service.routes.setup.gpu_bundle._read_python_version", return_value="3.13.1"):
             resp = self.client.post("/api/setup/install-gpu-bundle", json={})
         body = resp.json()
         self.assertEqual(body["id"], "existing-job-id")

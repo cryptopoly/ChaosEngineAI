@@ -207,6 +207,31 @@ def _all_attempts_lack_wheel(attempts: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:
+    """Remove stale PyPI ``mlx-video`` dist-info folders from ``--target``.
+
+    Blaizzy's generator package and the unrelated PyPI preprocessing package
+    share the normalized project name ``mlx-video``. pip's ``--target`` mode
+    can leave both ``mlx_video-*.dist-info`` folders behind after a forced git
+    reinstall, which makes version/provenance checks ambiguous even when the
+    importable package directory was correctly overwritten.
+    """
+    removed: list[str] = []
+    if not extras_dir.exists():
+        return removed
+    for dist_info in extras_dir.glob("mlx_video-*.dist-info"):
+        metadata_path = dist_info / "METADATA"
+        try:
+            metadata = metadata_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            metadata = ""
+        if "github.com/Blaizzy/mlx-video" in metadata:
+            continue
+        shutil.rmtree(dist_info, ignore_errors=True)
+        removed.append(dist_info.name)
+    return removed
+
+
 def _extras_site_packages() -> Path | None:
     """Resolve the user-persistent extras site-packages dir.
 

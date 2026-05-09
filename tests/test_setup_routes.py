@@ -1076,9 +1076,12 @@ class InstallLongLiveTests(unittest.TestCase):
 
         # Reset the module-global job state — pytest runs all tests in a
         # single process so leftover state from a previous case bleeds in.
-        import backend_service.routes.setup as setup_module
-        self._setup_module = setup_module
-        setup_module._LONGLIVE_JOB = setup_module._LongLiveJobState()
+        # The LongLive singleton lives in the focused submodule after the
+        # v0.8.0 setup-route split; mutate the attribute there directly so
+        # the start_install_longlive endpoint sees a clean job each time.
+        from backend_service.routes.setup import longlive as longlive_module
+        self._longlive_module = longlive_module
+        longlive_module._LONGLIVE_JOB = longlive_module._LongLiveJobState()
 
         # Force resolve_install to a temp path so we don't probe the real
         # ~/.chaosengine/longlive directory during tests.
@@ -1162,11 +1165,11 @@ class InstallLongLiveTests(unittest.TestCase):
 
     def test_second_start_while_running_returns_existing_job(self):
         """Don't spawn two installers in parallel."""
-        import backend_service.routes.setup as setup_module
-        setup_module._LONGLIVE_JOB.phase = "downloading"
-        setup_module._LONGLIVE_JOB.id = "existing-longlive-id"
-        setup_module._LONGLIVE_JOB.done = False
-        setup_module._LONGLIVE_JOB.package_current = "pip-requirements"
+        from backend_service.routes.setup import longlive as longlive_module
+        longlive_module._LONGLIVE_JOB.phase = "downloading"
+        longlive_module._LONGLIVE_JOB.id = "existing-longlive-id"
+        longlive_module._LONGLIVE_JOB.done = False
+        longlive_module._LONGLIVE_JOB.package_current = "pip-requirements"
 
         resp = self.client.post("/api/setup/install-longlive", json={})
         body = resp.json()

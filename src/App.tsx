@@ -91,6 +91,7 @@ import {
   useUiScale,
   useGpuStatus,
   useCudaTorchInstall,
+  useDetailsWindowResize,
   useFileActions,
 } from "./hooks";
 
@@ -1167,35 +1168,7 @@ export default function App() {
     void navigator.clipboard.writeText(text);
   }
 
-  // Window resize for details panels
-  const originalWindowSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const [openDetailsCount, setOpenDetailsCount] = useState(0);
-  async function handleDetailsToggle(opened: boolean) {
-    try {
-      const { isTauri } = await import("@tauri-apps/api/core");
-      if (!isTauri()) return;
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const win = getCurrentWindow();
-      setOpenDetailsCount((prev) => {
-        const next = opened ? prev + 1 : Math.max(0, prev - 1);
-        void (async () => {
-          if (next > 0 && prev === 0) {
-            const size = await win.innerSize();
-            originalWindowSizeRef.current = { width: size.width, height: size.height };
-            await win.setSize(new (await import("@tauri-apps/api/window")).LogicalSize(
-              Math.min(1800, Math.round(size.width * 1.15)),
-              Math.min(1100, Math.round(size.height * 1.1)),
-            ));
-          } else if (next === 0 && prev > 0 && originalWindowSizeRef.current) {
-            const { LogicalSize } = await import("@tauri-apps/api/window");
-            await win.setSize(new LogicalSize(originalWindowSizeRef.current.width, originalWindowSizeRef.current.height));
-            originalWindowSizeRef.current = null;
-          }
-        })();
-        return next;
-      });
-    } catch { /* Not running in Tauri */ }
-  }
+  const { handleDetailsToggle } = useDetailsWindowResize();
 
 
   // ── Tab content ────────────────────────────────────────────

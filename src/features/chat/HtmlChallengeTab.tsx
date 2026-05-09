@@ -16,12 +16,16 @@ import {
   type CompareTarget,
 } from "./CompareView";
 import {
-  htmlChallengePreviewBaseStyle,
-  htmlChallengePreviewFitScript,
-  htmlChallengePreviewKeyBridge,
-  htmlChallengePreviewStorageShim,
-  htmlChallengePreviewValidationBridge,
-} from "./htmlChallengePreviewAssets";
+  BrowserIcon,
+  CollapseIcon,
+  ExpandIcon,
+  OpenFileIcon,
+} from "./htmlChallengeIcons";
+import {
+  escapeHtmlCode,
+  highlightHtmlCode,
+  previewSrcDoc,
+} from "./htmlChallengeMarkup";
 
 interface HtmlChallengeTabProps {
   modelOptions: ChatModelOption[];
@@ -258,60 +262,6 @@ function isTextModelOption(option: ChatModelOption) {
     && !label.includes("sana");
 }
 
-function previewSrcDoc(html: string, slotId: CompareTarget) {
-  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">`;
-  // Storage shim must come BEFORE any model script so the very first access
-  // to localStorage hits the stub instead of the throwing native binding.
-  const injection = `${csp}${htmlChallengePreviewStorageShim}${htmlChallengePreviewBaseStyle}${htmlChallengePreviewKeyBridge}${htmlChallengePreviewValidationBridge(slotId)}${htmlChallengePreviewFitScript}`;
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head([^>]*)>/i, `<head$1>${injection}`);
-  }
-  return `${injection}${html}`;
-}
-
-function escapeHtmlCode(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function highlightHtmlTag(token: string) {
-  if (token.startsWith("&lt;!--")) {
-    return `<span class="html-code-comment">${token}</span>`;
-  }
-  if (/^&lt;!doctype/i.test(token)) {
-    return `<span class="html-code-doctype">${token}</span>`;
-  }
-  const match = token.match(/^(&lt;\/?)([A-Za-z][A-Za-z0-9:-]*)([\s\S]*?)(&gt;)$/);
-  if (!match) return `<span class="html-code-tag">${token}</span>`;
-  const [, open, name, attrs, close] = match;
-  const highlightedAttrs = attrs.replace(
-    /(\s+)([A-Za-z_:][A-Za-z0-9_.:-]*)(=)(&quot;.*?&quot;|&#39;.*?&#39;|[^\s&]+)?/g,
-    (_attr, space, attrName, equals, attrValue = "") => (
-      `${space}<span class="html-code-attr">${attrName}</span>`
-      + `<span class="html-code-punct">${equals}</span>`
-      + (attrValue ? `<span class="html-code-string">${attrValue}</span>` : "")
-    ),
-  );
-  return (
-    `<span class="html-code-punct">${open}</span>`
-    + `<span class="html-code-tag-name">${name}</span>`
-    + highlightedAttrs
-    + `<span class="html-code-punct">${close}</span>`
-  );
-}
-
-function highlightHtmlCode(value: string) {
-  const escaped = escapeHtmlCode(value);
-  return escaped.replace(
-    /(&lt;!--[\s\S]*?--&gt;|&lt;!doctype[\s\S]*?&gt;|&lt;\/?[A-Za-z][\s\S]*?&gt;)/gi,
-    (token) => highlightHtmlTag(token),
-  );
-}
-
 function mergeMetrics(current: GenerationMetrics | null, event: HtmlChallengeStreamEvent): GenerationMetrics | null {
   const keys: Array<keyof GenerationMetrics> = [
     "finishReason",
@@ -515,57 +465,6 @@ function stackedLayoutLabel(count: number) {
   return count <= 2 ? "1 x 2" : "2 x 2";
 }
 
-function OpenFileIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2h5.5A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z" />
-      <path d="M8 13h8" />
-      <path d="m13 10 3 3-3 3" />
-    </svg>
-  );
-}
-
-function BrowserIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3.6 9h16.8" />
-      <path d="M3.6 15h16.8" />
-      <path d="M12 3a13.5 13.5 0 0 1 0 18" />
-      <path d="M12 3a13.5 13.5 0 0 0 0 18" />
-    </svg>
-  );
-}
-
-function ExpandIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M8 3H3v5" />
-      <path d="M3 3l7 7" />
-      <path d="M16 3h5v5" />
-      <path d="M21 3l-7 7" />
-      <path d="M8 21H3v-5" />
-      <path d="M3 21l7-7" />
-      <path d="M16 21h5v-5" />
-      <path d="M21 21l-7-7" />
-    </svg>
-  );
-}
-
-function CollapseIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M10 3v7H3" />
-      <path d="M3 10l7-7" />
-      <path d="M14 3v7h7" />
-      <path d="M21 10l-7-7" />
-      <path d="M10 21v-7H3" />
-      <path d="M3 14l7 7" />
-      <path d="M14 21v-7h7" />
-      <path d="M21 14l-7 7" />
-    </svg>
-  );
-}
 
 export function HtmlChallengeTab({
   modelOptions,

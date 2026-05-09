@@ -4,8 +4,6 @@ use std::{
     ffi::OsString,
     fs,
     fs::OpenOptions,
-    io::{Read, Write},
-    net::TcpStream,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::Mutex,
@@ -28,6 +26,13 @@ mod settings;
 use settings::{
     saved_allow_remote_connections, saved_backend_port, saved_hf_cache_path,
     select_backend_port, selected_bind_host,
+};
+
+// HTTP probe + lifecycle helpers — see probe.rs.
+mod probe;
+use probe::{
+    fetch_backend_api_token, port_responding, probe_chaosengine_backend,
+    request_backend_shutdown, wait_for_port,
 };
 
 #[derive(Clone, Serialize)]
@@ -106,11 +111,6 @@ struct ManagedBackendLease {
     port: u16,
 }
 
-#[derive(Default)]
-struct ExistingBackendProbe {
-    workspace_root: Option<String>,
-    python_executable: Option<String>,
-}
 
 #[derive(Default)]
 struct ManagedBackend {
@@ -470,7 +470,7 @@ impl BackendManager {
             log_path = log_candidate;
         }
 
-        let started = wait_for_port(port, BACKEND_START_TIMEOUT);
+        let started = wait_for_port(port, BACKEND_START_TIMEOUT, BACKEND_POLL_INTERVAL);
 
         let mut inner = self.inner.lock().expect("backend lock poisoned");
         inner.info.started = started;
@@ -1216,89 +1216,6 @@ fn read_log_tail(path: &Path) -> String {
 }
 
 
-fn port_responding(port: u16) -> bool {
-    TcpStream::connect(("127.0.0.1", port)).is_ok()
-}
-
-fn wait_for_port(port: u16, timeout: Duration) -> bool {
-    let deadline = Instant::now() + timeout;
-    // Phase 1: wait for TCP port to accept connections (fast check).
-    while Instant::now() < deadline {
-        if port_responding(port) {
-            break;
-        }
-        thread::sleep(BACKEND_POLL_INTERVAL);
-    }
-    // Phase 2: wait for /api/health to return {"status": "ok"}.
-    // The port may be open (uvicorn bound) before FastAPI is ready to serve.
-    while Instant::now() < deadline {
-        if probe_chaosengine_backend(port).is_some() {
-            return true;
-        }
-        thread::sleep(BACKEND_POLL_INTERVAL);
-    }
-    false
-}
-
-fn backend_http_json(
-    method: &str,
-    port: u16,
-    path: &str,
-    api_token: Option<&str>,
-) -> Option<serde_json::Value> {
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
-    let _ = stream.set_write_timeout(Some(Duration::from_millis(1200)));
-    let auth_header = api_token
-        .filter(|token| !token.is_empty())
-        .map(|token| format!("Authorization: Bearer {token}\r\n"))
-        .unwrap_or_default();
-    let request = format!(
-        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\nAccept: application/json\r\n{auth_header}Content-Length: 0\r\n\r\n"
-    );
-    stream.write_all(request.as_bytes()).ok()?;
-    let mut response = String::new();
-    stream.read_to_string(&mut response).ok()?;
-    let (_, body) = response.split_once("\r\n\r\n")?;
-    serde_json::from_str(body).ok()
-}
-
-fn probe_chaosengine_backend(port: u16) -> Option<ExistingBackendProbe> {
-    let payload = backend_http_json("GET", port, "/api/health", None)?;
-    if payload.get("status").and_then(|value| value.as_str()) != Some("ok") {
-        return None;
-    }
-    Some(ExistingBackendProbe {
-        workspace_root: payload
-            .get("workspaceRoot")
-            .and_then(|value| value.as_str())
-            .map(|value| value.to_string()),
-        python_executable: payload
-            .get("nativeBackends")
-            .and_then(|value| value.get("pythonExecutable"))
-            .and_then(|value| value.as_str())
-            .map(|value| value.to_string()),
-    })
-}
-
-fn fetch_backend_api_token(port: u16) -> Option<String> {
-    backend_http_json("GET", port, "/api/auth/session", None)?
-        .get("apiToken")
-        .and_then(|value| value.as_str())
-        .map(|value| value.to_string())
-}
-
-fn request_backend_shutdown(port: u16, api_token: Option<&str>) -> bool {
-    let _ = backend_http_json("POST", port, "/api/server/shutdown", api_token);
-    let deadline = Instant::now() + Duration::from_secs(3);
-    while Instant::now() < deadline {
-        if !port_responding(port) {
-            return true;
-        }
-        thread::sleep(Duration::from_millis(150));
-    }
-    !port_responding(port)
-}
 
 fn managed_backend_lease_path(app: &AppHandle) -> Option<PathBuf> {
     app.path().app_data_dir().ok().map(|path| path.join("managed-backend.json"))

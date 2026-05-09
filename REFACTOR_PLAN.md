@@ -22,20 +22,21 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (39 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (44 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
 | `state/__init__.py` | 4,418 | 4,089 | -329 |
-| `inference/__init__.py` | 3,574 | 1,521 | -2,053 |
+| `inference/__init__.py` | 3,574 | 1,180 | -2,394 |
 | `image_runtime/__init__.py` | 2,097 | 1,366 | -731 |
-| `video_runtime/__init__.py` | 2,378 | 1,669 | -709 |
+| `video_runtime/__init__.py` | 2,378 | 1,593 | -785 |
+| `mlx_worker.py` | 2,115 | 1,927 | -188 |
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
-| **Mega-file shrink total** | 17,012 | **10,017** | **-6,995 LOC** |
+| **Mega-file shrink total** | 19,127 | **11,527** | **-7,600 LOC** |
 
-Tests posture across all 39 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 44 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -99,7 +100,7 @@ backend_service/state/
 
 **1b. `inference.py` 3,574 → engines/ subpackage.**
 
-**MOSTLY DONE** (Phase 1b-1 through 1b-5; commits `cb1aed3` → `25ecbdf`):
+**MOSTLY DONE** (Phase 1b-1 through 1b-7; commits `cb1aed3` → `9221451`):
 - `inference/_constants.py` — 5 timeout / workspace constants
 - `inference/_utils.py` — 9 shared helpers (_now_label, _normalize_message_content, _read_text_tail, _append_runtime_note, _http_json, _find_open_port, _resolve_gguf_path, _is_local_target, _looks_like_gguf)
 - `inference/base.py` — 4 dataclasses + RepeatedLineGuard + BaseInferenceEngine
@@ -107,17 +108,21 @@ backend_service/state/
 - `inference/simple_engines.py` — RemoteOpenAIEngine + MockInferenceEngine
 - `inference/mlx_engine.py` — MLXWorkerEngine
 - `inference/llama_cpp_engine.py` — LlamaCppEngine + 8 llama-specific helpers + 4 constants
+- `inference/binaries.py` — `_json_subprocess` + llama-server / llama-cli / MLX-python resolvers (1b-6)
+- `inference/capabilities.py` — `_capability_cache` + `_initial_backend_capabilities` + `_probe_native_backends` + `get_backend_capabilities` (1b-6)
+- `inference/conversion.py` — mlx-lm supported-arch probe + `_peek_hf_model_type` + `_nearest_supported_arch` + `_default_conversion_output` + `_bytes_to_gb` + `_path_size_bytes` (1b-7)
 
-inference/__init__.py: 3574 → 1521 (-2053). RuntimeController (~1050 LOC) is the only big class still inline; deferred — its helper graph is the most cross-cutting in the package.
+inference/__init__.py: 3574 → 1180 (-2394). RuntimeController (~1050 LOC) is the only big class still inline; deferred — its helper graph is the most cross-cutting in the package.
 
 **1c. `video_runtime.py` + `image_runtime.py` → runtimes/{image,video}/.**
 
-**PARTIAL** (Phase 1c-1 through 1c-9, commits `b5ea526` → `1d16315`):
+**PARTIAL** (Phase 1c-1 through 1c-10, commits `b5ea526` → `f17a602`):
 - `image_runtime/` package: types + repos + snapshot + device + placeholder_engine + mflux_engine extracted (image/__init__.py: 2097 → 1366).
-- `video_runtime/` package: types + device + repos + defaults extracted (video/__init__.py: 2378 → 1669):
+- `video_runtime/` package: types + device + repos + defaults + warmup extracted (video/__init__.py: 2378 → 1593):
   - `video_runtime/device.py` — probe helpers (`_resolve_video_seed`, `_resolve_video_python`, `_detect_device_memory_gb`, `_guess_video_expected_device`, `_windows_cuda_unavailable_message`)
   - `video_runtime/repos.py` — `PIPELINE_REGISTRY`, GGUF/NF4 transformer class lookups, per-model defaults table, prompt-enhancement suffixes + `_enhance_prompt`
   - `video_runtime/defaults.py` — memory footprint estimator, slicing gate, scheduler classes, Wan frame alignment, `_resolve_video_defaults`, frame interpolation, dep tuples + `_find_missing`
+  - `video_runtime/warmup.py` — torch + dep prewarm singleton + `start_torch_warmup` / `torch_warmup_status`
 
 **Remaining**: extract `DiffusersTextToImageEngine` (~1112 LOC inside image/__init__) + `DiffusersVideoEngine` (~1239 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
 
@@ -135,6 +140,11 @@ setup/__init__.py: 1,932 → 353 LOC (~82% reduction). Setup is now a clean pack
 - `html_challenges/_helpers.py` — 45 underscore helpers (manifest I/O, HTML extraction + validation, payload shaping, `_stream_html_challenge_slot`).
 
 **1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.**
+
+**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1, commit `b27ebab`).
+- `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt`. Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.
+
+mlx_worker.py: 2,115 → 1,927 LOC. WorkerState class (1500 LOC) is the next target — too large for a single-session extract because of MLX-internal tight coupling.
 
 **Verify each step:** `pytest`, live smoke gens (text + image + video), `python -c "from backend_service.app import build_app; build_app()"` clean import.
 

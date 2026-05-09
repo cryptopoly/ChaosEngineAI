@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-09 (62 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-09 (66 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -34,13 +34,15 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `helpers/discovery.py` | 806 | 429 | -377 |
+| `src/App.tsx` | 2,334 | 2,253 | -81 |
+| `src/hooks/useChat.ts` | 1,203 | 1,131 | -72 |
 | `src/api/index.ts` | 1,430 | 559 | -871 |
 | `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 23,063 | **13,502** | **-9,561 LOC** |
+| **Mega-file shrink total** | 26,600 | **16,886** | **-9,714 LOC** |
 
-Tests posture across all 62 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 66 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -181,15 +183,20 @@ mlx_worker.py: 2,115 → 1,927 LOC. WorkerState class (1500 LOC) is the next tar
 
 src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every existing import path; barrel ``src/types/index.ts`` aggregates the 11 sub-files. Remaining 230 LOC: ``WorkspaceData`` (dashboard aggregator), ``LoadModelPayload``, ``ConvertModelPayload``, ``ConversionResult``, ``ConvertModelResponse``, ``TauriBackendInfo`` — small payloads that don't justify their own file yet.
 
-**2c. Mega-hooks → 3-way splits each.**
-- `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput`
-- `useVideoState` → `useVideoConfig` + `useVideoGeneration` + `useVideoLibrary`
-- `useImageState` → analogous
+**2c. Mega-hooks + god components splits.** **PARTIAL** (Phase 2c-1 through 2c-3, commits `ce55f4b` → `3a3c532`):
+- `features/chat/temperatureOverride.ts` + `features/chat/reasoningEffort.ts` — per-session localStorage helpers extracted from `useChat.ts`. Plus `readSamplerPayload` collapsed to a one-liner via existing `samplerOverrides.ts` helpers (Phase 2c-1).
+- `components/CapabilityStrip.tsx` — de-duped 3 identical inline ``renderCapabilityIcons`` implementations (App + MyModelsTab + OnlineModelsTab) into a single shared component (Phase 2c-2).
+- `hooks/useCudaTorchInstall.ts` — extracted CUDA torch install flow (3 state slots + handler) from App.tsx; accepts an ``onAfterInstall`` callback so App keeps firing the imgState/videoState refresh probes that clear the warning banner (Phase 2c-3).
 
-**2d. God components.**
-- `App.tsx` 2,334 → composition root only; route tree + global keybinds + theme provider extracted
+useChat.ts: 1,203 → 1,131 LOC. App.tsx: 2,334 → 2,253 LOC.
+
+**Remaining 2c/d targets:**
+- `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput` (still ~1,131 LOC)
+- `useVideoState` 1,211 → `useVideoConfig` + `useVideoGeneration` + `useVideoLibrary`
+- `useImageState` 862 → analogous
+- `App.tsx` 2,253 → composition root only
 - `HtmlChallengeTab.tsx` 2,535 → `ChallengeRunner` + `ChallengeEditor` + `ChallengePreview` + `ChallengeLibrary`
-- `VideoStudioTab.tsx` 1,796, `ImageStudioTab.tsx` 1,178 → shared `<StudioControls>` + `<StudioPreview>` + `<StudioLibrary>` shell
+- `VideoStudioTab.tsx` 1,796 + `ImageStudioTab.tsx` 1,178 → shared `<StudioControls>` + `<StudioPreview>` + `<StudioLibrary>` shell
 
 **2e. Inline single-use hooks** — `useGpuStatus`, `useSidebarPrefs`, `useUiScale` collapse into `App.tsx`.
 

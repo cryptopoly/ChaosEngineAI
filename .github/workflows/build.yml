@@ -18,7 +18,29 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: bash
+            venv-activate: source .venv/bin/activate
+            advisory: false
+          - os: macos-latest
+            shell: bash
+            venv-activate: source .venv/bin/activate
+            advisory: false
+          - os: windows-latest
+            shell: bash
+            venv-activate: source .venv/Scripts/activate
+            # Phase 0: Windows runs but failures don't block PRs. Flips to
+            # required in Phase 4 of the v0.8.0 refactor (REFACTOR_PLAN.md)
+            # once the cross-OS parity work lands (PowerShell update scripts,
+            # path-handling sweep, binary resolution probes).
+            advisory: true
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.advisory }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -27,13 +49,25 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux system deps for Tauri
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npm test
-      - name: Python tests
+      - run: npm test -- --run --coverage
+      - name: cargo check
+        run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
+      - name: Python venv + install
+        shell: ${{ matrix.shell }}
         run: |
           python -m venv .venv
-          source .venv/bin/activate
+          ${{ matrix.venv-activate }}
+          pip install --upgrade pip
           # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
           # tests/test_video_runtime.py needs because probe() does a real
           # ``import torch`` after the mocked _find_missing returns. Without
@@ -41,7 +75,30 @@ jobs:
           # imported cleanly" and every ``realGenerationAvailable == True``
           # assertion fails.
           pip install -e ".[desktop,dev,images]"
-          python -m pytest tests/ -v --tb=short
+      - name: Python tests with coverage
+        shell: ${{ matrix.shell }}
+        run: |
+          ${{ matrix.venv-activate }}
+          python -m pytest tests/ -v --tb=short \
+            --cov=backend_service --cov=cache_compression --cov=dflash \
+            --cov-report=term --cov-report=json:coverage.json
+      - name: Coverage gate vs baseline
+        # Linux is the canonical baseline runner; macOS/Windows numbers
+        # may differ slightly because some platform-gated branches only
+        # execute on one OS (e.g. mlx imports on macOS only).
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          python - <<'PY'
+          import json, sys
+          d = json.load(open('coverage.json'))
+          pct = d['totals']['percent_covered']
+          floor = 60.0
+          print(f"line coverage: {pct:.2f}% (floor {floor:.1f}%)")
+          if pct + 0.01 < floor:
+              sys.exit(f"coverage regression: {pct:.2f}% < {floor:.1f}%")
+          PY
 
   build:
     # Only run the expensive desktop bundle matrix on manual dispatch.

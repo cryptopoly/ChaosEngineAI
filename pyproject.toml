@@ -17,6 +17,7 @@ chaosengine-api = "backend_service.app:main"
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-cov",
 ]
 mlx-lm = [
     "mlx>=0.22.0",

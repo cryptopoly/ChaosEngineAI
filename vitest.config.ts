@@ -5,6 +5,15 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: [
+      "node_modules/**",
+      "dist/**",
+      "src-tauri/**",
+      "vendor/**",
+      ".venv/**",
+      ".claude/worktrees/**",
+    ],
   },
   resolve: {
     alias: {

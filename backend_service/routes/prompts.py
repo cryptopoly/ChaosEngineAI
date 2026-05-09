@@ -21,7 +21,7 @@ def _get_library(request: Request) -> PromptLibrary:
     if _library is not None:
         return _library
 
-    state = request.app.state.engine
+    state = request.app.state.chaosengine
     data_dir_str = state.settings.get("dataDirectory", "")
     if data_dir_str:
         data_dir = Path(data_dir_str).expanduser()

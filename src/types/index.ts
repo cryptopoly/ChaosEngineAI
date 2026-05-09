@@ -5,5 +5,6 @@ export * from "./image";
 export * from "./models";
 export * from "./progress";
 export * from "./server";
+export * from "./settings";
 export * from "./system";
 export * from "./video";

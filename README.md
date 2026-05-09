@@ -50,20 +50,29 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 💾 **My Models** library with format, size, context, and modified-date sorting
 - 🔁 **Conversion** pipeline that turns Hugging Face checkpoints into MLX (Apple Silicon)
 - 🚀 **Server** mode exposing an OpenAI-compatible REST API for your other tools
-- 💬 **Chat** with the loaded model, including document attachments with inline citations, image inputs for vision-capable models, tool calls, and collapsible reasoning traces
+- 💬 **Chat** with the loaded model, including document attachments with inline citations, image inputs for vision-capable models, tool calls, collapsible reasoning traces, conversation branching, in-thread compare, mid-thread model swap, and retry on failed turns
 - ⚖️ **Compare mode** to stream the same prompt through two models side-by-side with separate runtime settings and metrics
-- 🗂️ **Prompt Library** with built-in starter templates plus searchable tags, categories, CRUD, and one-click apply-to-chat
+- 🧪 **HTML Challenge** — side-by-side HTML generation across 2-4 models with per-slot thinking mode, reasoning effort, and seed; sandboxed live previews, automated HTML validation, persistent history, retry + repair flows
+- 🧰 **Sampler controls** in the composer — `top_p`, `top_k`, `min_p`, `repeat_penalty`, `seed`, `mirostat`, `reasoning_effort`, JSON-schema constrained output
+- 🧷 **MCP client** — stdio JSON-RPC tool adapter so any local MCP server is callable from chat
+- 📚 **Workspace knowledge stacks** — shared RAG corpus across sessions via `llama-embedding` + cosine retrieval
+- 🗂️ **Prompt Library** with built-in starter templates plus searchable tags, categories, CRUD, fill-form variables, and one-click apply-to-chat
 - 🎨 **Image Discover** curated catalog of Stable Diffusion models with one-click download from Hugging Face
 - 🖼️ **Image Models** library showing installed image models ready for generation
 - 🖌️ **Image Studio** for prompt-based image generation with aspect ratio, quality presets, and negative prompts
 - 🏛️ **Image Gallery** to browse, filter, and reuse saved outputs — compare models and re-run with the same settings
 - 🎬 **Video Studio** for prompt-based video generation across Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, and Mochi — with model picker, runtime status overlay, live progress, and cancellable generation
 - 🍿 **Video catalog** curated set of diffusion DiT video models with one-click downloads and a separate Video Models library
-- ⚡ **TeaCache diffusion cache** transparent KV-style caching for FLUX, HunyuanVideo, LTX-Video, CogVideoX, and Mochi with per-model rescale coefficients
+- ⚡ **First Block Cache + TaylorSeer / MagCache / PyramidAttentionBroadcast / FasterCache** cross-platform diffusion cache hooks (≈1.8× FLUX.1-dev with imperceptible drift), plus TeaCache for FLUX / HunyuanVideo / LTX-Video / CogVideoX / Mochi
+- 🖼️ **Live denoise thumbnails** in Image + Video Studio via TAESD/TAEHV preview VAE swap — see what's being generated in real time, not just a progress bar
+- ✨ **MLX prompt enhancer** (Apple Silicon) — local Qwen2.5-0.5B rewrites your prompt into the active DiT's training distribution per family (FLUX / Wan / LTX / HunyuanVideo / SDXL / SD3)
+- 🧬 **Distill LoRA + transformer support** — Hyper-SD-8step / Turbo-Alpha for FLUX.1-dev, CausVid for Wan 2.1, lightx2v 4-step distill for Wan 2.2 A14B I2V (bf16 + fp8_e4m3)
+- 🎯 **Wan 2.1 / 2.2 mlx-video runtime** end-to-end on Apple Silicon — one-shot convert pipeline, GUI install panel, runtime routing for all `Wan-AI/Wan2.{1,2}-*` repos
 - 🩺 **Diagnostics panel** in Settings — per-section error fallback, platform-aware repair actions, and a one-click reinstall for the Apple Silicon mlx-video runtime
 - 📊 **Benchmarks** with throughput, perplexity, and task-accuracy modes plus a history view for A/B comparisons
 - 📜 **Logs** streaming straight from the Python runtime
 - ⚙️ **Settings** for data directories, Hugging Face tokens, remote providers, integrations, default launch preferences, and runtime tuning
+- 🔍 **UI scale** — segmented 75% / 100% / 125% / 150% control in Settings → Display, applied app-wide via `useUiScale`
 - ☁️ **Remote providers** for OpenAI-compatible APIs, with keys stored locally and masked in the UI
 - 📁 **Model directories** for custom stores, Ollama, LM Studio, or shared model paths
 - 🧠 **Warm pool** keeps recently-used models hot so subsequent loads are instant
@@ -93,12 +102,23 @@ ChaosEngineAI is a desktop control plane for running large language models local
 ### Chat, prompting & agent workflows
 
 - Multi-thread chat with pinned sessions, persistent history, inline thread renaming, and per-thread runtime memory
+- Conversation branching — fork from any assistant message into a sibling thread
+- In-thread compare — render sibling variants side-by-side under the assistant bubble
+- Mid-thread model swap with one-turn override (try a different model for a single response, then revert)
+- Retry failed assistant turns with one click, against the active runtime profile
 - Document uploads with chunked retrieval, inline citations, and per-session document management
-- Image attachments for vision-capable models
+- Workspace knowledge stacks: shared RAG corpus across sessions via `llama-embedding` + cosine retrieval
+- Image attachments for vision-capable models, with composer auto-gating from typed capability declarations
 - Optional thinking mode with collapsible reasoning traces and cleanup of raw reasoning tokens
-- Tool-augmented conversations with `web_search`, `calculator`, `code_executor`, and `file_reader`
+- Logprobs visualization (advanced-mode gated): per-message confidence summary, MLX logprobs streaming passthrough
+- Substrate routing inspector + per-turn host strip surface engine, binary, CPU / GPU / RAM / temperature alongside tok/s and TTFT
+- KV strategy chip in composer for per-turn cache override (native / chaosengine / rotorquant / turboquant / triattention) without touching launch settings
+- Delve mode — critic-pass on assistant messages
+- Tool-augmented conversations with `web_search`, `calculator`, `code_executor`, `file_reader`, plus stdio MCP client (JSON-RPC) so any local MCP server is callable from chat. Tool results render as table / code / markdown / image based on the returned shape.
 - Side-by-side compare mode that streams the same prompt through two models with independent runtime settings and metrics
-- Prompt Library with five built-in starter templates, search, tagging, categories, CRUD, and one-click apply-to-chat
+- HTML Challenge — 2-4 model slots, each with own thinking mode + reasoning effort + seed, all answering the same prompt with sandboxed live HTML previews, automated `valid` / `partial` / `script-error` / `blank-render` / `no-html` validation, persistent history, plus retry + repair flows
+- OpenAI-compatible local server with full sampler-chain + embeddings parity (`top_p`, `top_k`, `min_p`, `repeat_penalty`, `seed`, `mirostat`, `reasoning_effort`, `json_schema`)
+- Prompt Library with built-in starter templates, search, tagging, categories, CRUD, fill-form variables, and one-click apply-to-chat
 
 ### Models, discovery & media
 
@@ -183,6 +203,12 @@ All your generated images in one place. Search by prompt, model, or runtime; fil
 ![Chat](./Screenshots/12.%20Chat_v2.png)
 
 A focused chat surface with multi-thread sessions in the left rail, pinned threads, document and image attachments, inline citations, tool-call cards, collapsible reasoning traces, and inline thread renaming. Threads persist across launches, remember the model/runtime profile that produced them, and can be reloaded directly from the thread toolbar.
+
+### HTML Challenge — *Side-by-side HTML generation*
+
+Pick 2 → 4 models, configure each slot's thinking mode (`off` / `auto`), reasoning effort (`low` / `medium` / `high`), and seed independently, then issue one prompt. Every slot streams its HTML response in parallel with a sandboxed live preview underneath the raw text — so you see what each model actually rendered, not just what it wrote.
+
+Built-in HTML validation runs per slot (`valid` / `partial` / `script-error` / `blank-render` / `no-html`) and is fed back from the iframe sandbox so script crashes and blank renders surface immediately. Every run is saved to a persistent history with title + prompt + per-slot manifests; re-open earlier runs, delete, or open / reveal individual slot HTML files on disk. Failed slots support retry and a `continue` / `repair` flow that asks the same model to either resume from the partial response or fix its own broken HTML.
 
 ### Server — *OpenAI-compatible local API*
 ![Server](./Screenshots/11.%20Server_v2.png)

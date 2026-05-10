@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import binascii
 import importlib.util
-import io
 import json
 import os
 import re
@@ -75,62 +74,16 @@ def _reject_unsupported_quant(model_path: str) -> None:
 from backend_service.runaway_guard import RunawayGuard  # noqa: E402,F401
 
 
-# Dedicated JSON sink for the protocol channel. When the worker runs as a
-# subprocess (the ``serve`` / ``probe`` / ``gguf-metadata`` entrypoints),
-# ``_install_stdio_redirect`` replaces this with a private file object
-# pointing at the original stdout FD, then redirects FD 1 to stderr at the
-# OS level. That way ``mlx-lm``'s print-to-stdout warnings (e.g. the
-# "Generating with a model that requires 48128 MB which is close to the
-# maximum recommended size of 53084 MB" chatter on large models) land on
-# stderr instead of corrupting the JSON stream the parent reads.
-#
-# Default value keeps in-process tests working: they patch ``_emit``
-# directly and never go through ``main()``.
-_JSON_OUT: io.TextIOBase = sys.stdout  # type: ignore[assignment]
-
-
-def _install_stdio_redirect() -> None:
-    """Split the JSON protocol channel from warning chatter.
-
-    The JSON protocol uses stdout (file descriptor 1). ``mlx-lm`` and some
-    diffusers/torch paths print warnings and progress to stdout as well —
-    without isolation, a single ``[WARNING] Generating with a model that
-    requires ...`` line crashes the caller's ``json.loads`` and the user
-    sees "MLX worker returned invalid JSON".
-
-    Duplicate the original stdout FD into a fresh file object reserved for
-    protocol output, then point FD 1 at stderr so anything writing through
-    the normal stdout path (Python ``print()``, C-extension writes, tqdm
-    auto-detecting stdout) lands on stderr instead. Finally rebind
-    ``sys.stdout`` to ``sys.stderr`` so libraries that cached a reference
-    at import time follow along.
-    """
-    global _JSON_OUT
-    json_fd = os.dup(1)
-    os.dup2(2, 1)
-    _JSON_OUT = os.fdopen(json_fd, "w", encoding="utf-8", buffering=1)
-    sys.stdout = sys.stderr
-
-
-def _emit(payload: dict[str, Any]) -> None:
-    _JSON_OUT.write(json.dumps(payload) + "\n")
-    _JSON_OUT.flush()
-
-
-def emit_progress(phase: str, percent: float | None, message: str | None = None) -> None:
-    try:
-        _emit(
-            {
-                "ok": True,
-                "progress": {
-                    "phase": phase,
-                    "percent": percent,
-                    "message": message,
-                },
-            }
-        )
-    except Exception:
-        pass
+# Phase 1f-3: JSON IPC channel + stdio redirect now live in
+# ``backend_service.mlx_worker_io``. Re-export so existing
+# ``from backend_service.mlx_worker import _emit`` test patches keep
+# intercepting the worker's calls (the worker reads ``_emit`` through its
+# own re-exported name, not the originating module).
+from backend_service.mlx_worker_io import (  # noqa: E402,F401
+    _emit,
+    _install_stdio_redirect,
+    emit_progress,
+)
 
 
 def probe() -> int:

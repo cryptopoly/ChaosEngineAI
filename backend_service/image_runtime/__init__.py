@@ -61,6 +61,8 @@ from backend_service.image_runtime.repos import (
 from backend_service.image_runtime.transformer_loaders import (
     detect_device,
     maybe_enable_fp8_layerwise,
+    preferred_execution_device,
+    preferred_torch_dtype,
     should_use_model_cpu_offload,
     try_load_gguf_transformer,
     try_load_int8wo_flux_transformer,
@@ -823,38 +825,10 @@ class DiffusersTextToImageEngine:
         device: str,
         sdxl_vae_fix_available: bool = False,
     ) -> Any:
-        if device == "cuda":
-            # FLUX was trained and validated in bfloat16. Loading it as
-            # float16 produces slightly off saturations and occasional
-            # NaN-propagation on long prompts — not catastrophic, but the
-            # official Black Forest recipe is bfloat16 and we should match
-            # it so output quality is on-spec.
-            if _is_flux_repo(repo):
-                return torch.bfloat16
-            return torch.float16
-        if device == "mps":
-            lowered_repo = repo.lower()
-            # SDXL / Stable Diffusion on MPS can silently decode to black
-            # images in fp16 due to the stock SDXL VAE overflowing the
-            # fp16 sigmoid. FU-017: when madebyollin/sdxl-vae-fp16-fix is
-            # cached locally we swap that VAE in and stay on fp16 (≈2×
-            # faster than fp32). Without the fix snapshot we keep the
-            # safe fp32 fallback so users still get correct images.
-            if any(token in lowered_repo for token in ("stable-diffusion", "sdxl", "sd_xl")):
-                if sdxl_vae_fix_available and _is_sdxl_repo(repo):
-                    return torch.float16
-                return torch.float32
-            return torch.float16
-        return torch.float32
+        return preferred_torch_dtype(torch, repo, device, sdxl_vae_fix_available)
 
     def _preferred_execution_device(self, repo: str, detected_device: str) -> str:
-        lowered_repo = repo.lower()
-        # Qwen-Image's official quick start uses CUDA+bfloat16, otherwise CPU+float32.
-        # On Apple MPS, users report black outputs with the naive fp16 path, so prefer
-        # the safer CPU execution path instead of silently returning placeholder frames.
-        if detected_device == "mps" and "qwen-image" in lowered_repo:
-            return "cpu"
-        return detected_device
+        return preferred_execution_device(repo, detected_device)
 
     def _try_load_nf4_flux_transformer(
         self, local_path: str, torch: Any,

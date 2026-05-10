@@ -30,6 +30,7 @@ from backend_service.image_runtime.device import _windows_cuda_unavailable_messa
 from backend_service.image_runtime.repos import (
     _gguf_transformer_class_for_repo,
     _is_flux_repo,
+    _is_sdxl_repo,
     _nunchaku_transformer_class_for_repo,
 )
 
@@ -365,3 +366,43 @@ def detect_device(torch: Any) -> str:
     if mps_backend is not None and getattr(mps_backend, "is_available", lambda: False)():
         return "mps"
     return "cpu"
+
+
+def preferred_torch_dtype(
+    torch: Any,
+    repo: str,
+    device: str,
+    sdxl_vae_fix_available: bool = False,
+) -> Any:
+    """Pick the best dtype for a (repo, device) combination.
+
+    CUDA: bfloat16 for FLUX (matches the upstream Black Forest recipe);
+    fp16 elsewhere. MPS: stock SDXL needs fp32 to avoid the
+    sigmoid-overflow black-image bug, but FU-017's
+    ``madebyollin/sdxl-vae-fp16-fix`` snapshot lets us stay on fp16
+    when cached. CPU: fp32 for all repos.
+    """
+    if device == "cuda":
+        if _is_flux_repo(repo):
+            return torch.bfloat16
+        return torch.float16
+    if device == "mps":
+        lowered_repo = repo.lower()
+        if any(token in lowered_repo for token in ("stable-diffusion", "sdxl", "sd_xl")):
+            if sdxl_vae_fix_available and _is_sdxl_repo(repo):
+                return torch.float16
+            return torch.float32
+        return torch.float16
+    return torch.float32
+
+
+def preferred_execution_device(repo: str, detected_device: str) -> str:
+    """Override the device probe for repos where the auto-detected
+    device is known to mis-render. Today: Qwen-Image on MPS produces
+    black outputs in fp16, so we route to CPU instead of silently
+    returning placeholder frames.
+    """
+    lowered_repo = repo.lower()
+    if detected_device == "mps" and "qwen-image" in lowered_repo:
+        return "cpu"
+    return detected_device

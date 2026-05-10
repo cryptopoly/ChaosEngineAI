@@ -181,16 +181,17 @@ Documents:
 
 Mega-file shrink across helpers/: images.py 983 → 751, video.py 769 → 565, discovery.py 806 → 429, huggingface.py 703 → 525, system.py 559 → 252, documents.py 586 → 478. Re-exports preserve every existing import path; 7 helpers files (gpu, settings, prompts, formatting, persistence, etc.) left untouched as already-focused.
 
-**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1 through 1f-7, commits `b27ebab` → `6eef8f5`).
+**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **MOSTLY DONE** (Phase 1f-1 through 1f-9, commits `b27ebab` → `77588b6`).
 - `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt` (1f-1). Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.
 - `mlx_worker_prompt.py` — `TranscriptLoopFilter` + `_build_prompt_text` + Gemma fold-system + plain-chat fallback + `_should_retry_cache_failure` + `_merge_runtime_notes` (1f-2).
 - `mlx_worker_io.py` — JSON IPC channel: `_JSON_OUT`, `_install_stdio_redirect`, `_emit`, `emit_progress` (1f-3).
 - `mlx_worker_diagnostics.py` — `_UNSUPPORTED_QUANT_ALGOS` + `_reject_unsupported_quant` model-config probe + `probe()` runtime-capability subcommand + `gguf_metadata()` GGUF-file subcommand (1f-4).
-- `mlx_worker_multimodal.py` — `decode_images_to_paths`, `format_multimodal_prompt`, `vlm_generate_kwargs` (mlx-vlm helpers; WorkerState methods now thin-wrap) (1f-5).
+- `mlx_worker_multimodal.py` — `decode_images_to_paths`, `format_multimodal_prompt`, `vlm_generate_kwargs`, `generate_multimodal`, `stream_generate_multimodal` (mlx-vlm helpers + sync/streaming generation entrypoints; WorkerState methods now thin-wrap) (1f-5, 1f-8).
 - `mlx_worker_cache.py` — `runtime_fields` + `make_mlx_cache` (pure cache profile helpers; class methods now thin-wrap) (1f-6).
 - `mlx_worker_eval.py` — `eval_perplexity` + `eval_task_accuracy` (eval entrypoints; class methods now thin-wrap) (1f-7).
+- `mlx_worker_loader.py` — `resolve_local_snapshot` HF snapshot-download front half of `load_model` with ProgressTqdm + gated/404/auth → user-readable `RuntimeError` translation (1f-9).
 
-mlx_worker.py: 2,115 → 1,441 LOC (-674, -32%). WorkerState class still has the heavy lifting (load_model, generate, stream_generate, _generate_dflash, _generate_ddtree, _generate_standard, _generate_multimodal, _stream_generate_multimodal, _apply_cache_profile, _apply_triattention_mlx_compressor) — those mutate too many instance fields to extract atomically without an interim `WorkerContext` dataclass.
+mlx_worker.py: 2,115 → 1,227 LOC (-888, -42%). The remaining WorkerState methods (load_model heartbeat half + load tail, generate / stream_generate, _generate_dflash, _generate_ddtree, _generate_standard, _apply_cache_profile, _apply_triattention_mlx_compressor) all mutate enough instance state — model + tokenizer + processor + config + dflash bundle + ddtree handles + cache profile + speculative_decoding + tree_budget + loaded_model_ref — that further extraction needs a `WorkerContext` dataclass to bundle the context cleanly. Deferred to a v0.8.1 follow-up.
 
 **Verify each step:** `pytest`, live smoke gens (text + image + video), `python -c "from backend_service.app import build_app; build_app()"` clean import.
 

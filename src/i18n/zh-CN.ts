@@ -22,6 +22,7 @@ const zhCN: Record<string, string> = {
   "group.benchmarks.caption": "性能测试",
   "group.tools": "工具",
   "group.tools.caption": "转换、微调、提示词、插件",
+  "subtabBar.ariaLabel": "{{group}} 子标签",
 
   // ── Tabs ─────────────────────────────────────────────────────
   "tab.dashboard": "仪表盘",

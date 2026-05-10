@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import type { SidebarGroupId, SidebarMode, TabId } from "../types";
 import type { TabConfig } from "../constants";
 import { sidebarGroups, tabs as allTabs } from "../constants";
+import { TAB_I18N_KEY, GROUP_I18N_KEY } from "../constants/i18nMap";
 import { ChevronIcon, groupIcon, standaloneTabIcon } from "./icons/SidebarIcons";
+import { useI18n } from "../hooks/useI18n";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -79,6 +81,7 @@ export function Sidebar({
   lastChildByGroup,
   onRememberLastChild,
 }: SidebarProps) {
+  const { t } = useI18n();
   const visibleTabs = useMemo(
     () =>
       allTabs.filter((tab) => {
@@ -112,7 +115,7 @@ export function Sidebar({
           <h1>ChaosEngineAI</h1>
         </div>
         <span className="brand-kicker">
-          Local AI model runner
+          {t("sidebar.brand.tagline")}
           {appVersion ? ` · v${appVersion}` : ""}
         </span>
       </div>
@@ -131,8 +134,8 @@ export function Sidebar({
               >
                 {Icon ? <Icon className="nav-icon" /> : null}
                 <span className="nav-label">
-                  <strong>{item.tab.label}</strong>
-                  <span>{item.tab.caption}</span>
+                  <strong>{t(TAB_I18N_KEY[item.tab.id] ?? item.tab.label)}</strong>
+                  <span>{t(TAB_I18N_KEY[item.tab.id] + ".caption", item.tab.caption)}</span>
                 </span>
               </button>
             );
@@ -152,7 +155,7 @@ export function Sidebar({
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
                 <span className="nav-label">
-                  <strong>{item.label}</strong>
+                  <strong>{t(GROUP_I18N_KEY[item.id] ?? item.label)}</strong>
                   <span>{item.children.length} tabs</span>
                 </span>
               </button>
@@ -173,7 +176,7 @@ export function Sidebar({
                 onClick={() => onToggleGroupCollapsed(item.id)}
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
-                <span className="nav-group-label">{item.label}</span>
+                <span className="nav-group-label">{t(GROUP_I18N_KEY[item.id] ?? item.label)}</span>
                 <ChevronIcon open={isOpen} className="nav-group-chevron" />
               </button>
               {isOpen ? (
@@ -188,7 +191,7 @@ export function Sidebar({
                         onClick={() => handleTabClick(child)}
                       >
                         <span className="nav-child-dot" aria-hidden />
-                        <span className="nav-child-label">{child.shortLabel ?? child.label}</span>
+                        <span className="nav-child-label">{t(TAB_I18N_KEY[child.id] + ".shortLabel", child.shortLabel ?? child.label)}</span>
                       </button>
                     );
                   })}
@@ -201,10 +204,10 @@ export function Sidebar({
 
       <div className="sidebar-footer">
         <span className={`badge ${backendOnline ? "success" : "warning"}`}>
-          {backendOnline ? "Backend online" : "Offline"}
+          {t(backendOnline ? "sidebar.backend.online" : "sidebar.backend.offline")}
         </span>
         <p>{engineLabel}</p>
-        <small>{loadedModelName ?? "No model loaded"}</small>
+        <small>{t("sidebar.model.loaded", loadedModelName ?? "No model loaded")}</small>
       </div>
     </aside>
   );

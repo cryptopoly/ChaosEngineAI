@@ -18,6 +18,13 @@ import {
   deleteImageDownloadById,
   startImageDownload,
 } from "../features/image/downloadActions";
+import {
+  applyQualityPreset,
+  applyRatioPreset,
+  openGallery,
+  openStudio,
+  resetGalleryFilters,
+} from "../features/image/studioPresets";
 
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
@@ -373,39 +380,29 @@ export function useImageState(
   }
 
   function applyImageRatioPreset(presetId: (typeof IMAGE_RATIO_PRESETS)[number]["id"]) {
-    const preset = IMAGE_RATIO_PRESETS.find((item) => item.id === presetId);
-    if (!preset) return;
-    setImageRatioId(presetId);
-    setImageWidth(preset.width);
-    setImageHeight(preset.height);
+    applyRatioPreset(presetId, { setImageRatioId, setImageWidth, setImageHeight });
   }
 
   function applyImageQuality(presetId: ImageQualityPreset) {
-    const preset = IMAGE_QUALITY_PRESETS.find((item) => item.id === presetId);
-    if (!preset) return;
-    setImageQualityPreset(presetId);
-    setImageSteps(preset.steps);
-    setImageGuidance(preset.guidance);
+    applyQualityPreset(presetId, { setImageQualityPreset, setImageSteps, setImageGuidance });
   }
 
   function openImageStudio(modelId?: string) {
-    if (modelId) setSelectedImageModelId(modelId);
-    setActiveTab("image-studio");
-    setError(null);
+    openStudio(modelId, { setSelectedImageModelId, setActiveTab, setError });
   }
 
   function openImageGallery(modelId?: string) {
-    if (modelId) setImageGalleryModelFilter(modelId);
-    setActiveTab("image-gallery");
-    setError(null);
+    openGallery(modelId, { setImageGalleryModelFilter, setActiveTab, setError });
   }
 
   function resetImageGalleryFilters() {
-    setImageGallerySearchInput("");
-    setImageGalleryModelFilter("all");
-    setImageGalleryRuntimeFilter("all");
-    setImageGalleryOrientationFilter("all");
-    setImageGallerySort("newest");
+    resetGalleryFilters({
+      setImageGallerySearchInput,
+      setImageGalleryModelFilter,
+      setImageGalleryRuntimeFilter,
+      setImageGalleryOrientationFilter,
+      setImageGallerySort,
+    });
   }
 
   function hydrateImageFormFromArtifact(artifact: ImageOutputArtifact, randomizeSeed = false) {

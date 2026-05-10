@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-10 (87 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-10 (89 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -34,6 +34,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `routes/setup/__init__.py` | 1,932 | 353 | -1,579 |
 | `routes/html_challenges/__init__.py` | 1,183 | 460 | -723 |
 | `helpers/huggingface.py` | 703 | 525 | -178 |
+| `helpers/gpu.py` | 568 | 355 | -213 |
 | `helpers/discovery.py` | 806 | 429 | -377 |
 | `helpers/system.py` | 559 | 252 | -307 |
 | `helpers/documents.py` | 586 | 478 | -108 |
@@ -47,9 +48,9 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 34,852 | **23,319** | **-11,533 LOC** |
+| **Mega-file shrink total** | 35,420 | **23,674** | **-11,746 LOC** |
 
-Tests posture across all 87 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 89 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 

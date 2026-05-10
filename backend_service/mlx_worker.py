@@ -42,6 +42,10 @@ from backend_service.mlx_worker_multimodal import (
     format_multimodal_prompt,
     vlm_generate_kwargs,
 )
+from backend_service.mlx_worker_cache import (
+    make_mlx_cache,
+    runtime_fields,
+)
 
 # Phase 1f-4: model + runtime introspection helpers now live in
 # ``backend_service.mlx_worker_diagnostics``. Re-export so existing imports
@@ -497,42 +501,23 @@ class WorkerState:
         speculative_decoding: bool = False,
         tree_budget: int = 0,
     ) -> dict[str, Any]:
-        cache_strategy = self.cache_strategy
-        cache_bits = self.cache_bits
-        fp16_layers = self.fp16_layers
-        if prompt_cache is None or cache_strategy == "native":
-            cache_strategy = "native"
-            cache_bits = 0
-            fp16_layers = 0
-        actual_speculative = bool(speculative_decoding)
-        return {
-            "cacheStrategy": cache_strategy,
-            "cacheBits": int(cache_bits),
-            "fp16Layers": int(fp16_layers),
-            "speculativeDecoding": actual_speculative,
-            "treeBudget": int(tree_budget or 0) if actual_speculative else 0,
-        }
+        return runtime_fields(
+            cache_strategy=self.cache_strategy,
+            cache_bits=self.cache_bits,
+            fp16_layers=self.fp16_layers,
+            prompt_cache=prompt_cache,
+            speculative_decoding=speculative_decoding,
+            tree_budget=tree_budget,
+        )
 
     def _make_cache(self) -> tuple[Any | None, str | None]:
-        """Build the prompt cache for the active strategy. Returns (cache, note)."""
-        from cache_compression import registry
-        strategy = registry.get(self.cache_strategy)
-        if strategy is None or self.cache_strategy == "native":
-            return None, None
-        try:
-            cache = strategy.make_mlx_cache(
-                len(getattr(self.model, "layers", [])),
-                bits=self.cache_bits,
-                fp16_layers=self.fp16_layers,
-                fused=self.fused_attention,
-                model=self.model,
-            )
-            return cache, None
-        except (ValueError, NotImplementedError) as exc:
-            return None, (
-                f"Cache strategy '{strategy.name}' is unavailable for this MLX architecture, "
-                f"so generation fell back to native f16 cache. ({exc})"
-            )
+        return make_mlx_cache(
+            model=self.model,
+            cache_strategy=self.cache_strategy,
+            cache_bits=self.cache_bits,
+            fp16_layers=self.fp16_layers,
+            fused_attention=self.fused_attention,
+        )
 
     def _generate_dflash(self, request: dict[str, Any]) -> dict[str, Any]:
         """Generate using DFLASH speculative decoding."""

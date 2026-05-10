@@ -89,17 +89,22 @@ CACHE_CHECK=$(.venv/bin/python -c "
 from cache_compression import registry
 registry.discover()
 valid = {'f32','f16','bf16','q8_0','q4_0','q4_1','iq4_nl','q5_0','q5_1'}
-ce = registry.get('chaosengine')
-for bits in (2,3,4,5,6,8):
-    flags = ce.llama_cpp_cache_flags(bits)
+nat = registry.get('native')
+for bits in (0,):
+    flags = nat.llama_cpp_cache_flags(bits)
     for i, f in enumerate(flags):
         if f.startswith('--cache-type-') and i+1 < len(flags):
             if flags[i+1] not in valid:
-                print(f'INVALID: ChaosEngine {bits}-bit emits {flags[i+1]}')
-rq = registry.get('rotorquant')
+                print(f'INVALID: Native emits {flags[i+1]}')
 tq = registry.get('turboquant')
-if rq.required_llama_binary() != 'turbo': print('INVALID: RotorQuant not routing to turbo')
 if tq.required_llama_binary() != 'turbo': print('INVALID: TurboQuant not routing to turbo')
+# FU-030 (2026-05-10): legacy ids must coerce to turboquant via the
+# alias map. Assert the wiring works in CI rather than at runtime.
+for legacy_id in ('rotorquant', 'chaosengine'):
+    if registry.resolve_legacy_id(legacy_id) != 'turboquant':
+        print(f'INVALID: legacy id {legacy_id} did not coerce to turboquant')
+    if registry.get(legacy_id) is None:
+        print(f'INVALID: legacy id {legacy_id} did not resolve via registry.get')
 print('OK')
 " 2>&1)
 if echo "$CACHE_CHECK" | grep -q "INVALID"; then

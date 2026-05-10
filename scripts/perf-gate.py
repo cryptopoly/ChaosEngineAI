@@ -53,16 +53,31 @@ DEFAULT_TOLERANCE = 0.05  # 5%
 
 
 def _read_metric(payload: dict, key: str) -> float | None:
-    """Read a dot-path metric from the JSON payload. Returns None when missing."""
-    cursor: object = payload
-    for part in key.split("."):
-        if not isinstance(cursor, dict):
+    """Read a metric from the perf-baseline.py JSON payload.
+
+    Keys are dotted: ``<label>.<metric>`` (e.g. ``text.tokens_per_second``)
+    where ``<label>`` matches an entry's ``label`` inside the
+    ``results`` array and ``<metric>`` is a numeric field on that entry.
+    Returns ``None`` when the entry is absent, skipped, errored, or the
+    field isn't numeric.
+    """
+    if "." not in key:
+        return None
+    label, metric = key.split(".", 1)
+    results = payload.get("results")
+    if not isinstance(results, list):
+        return None
+    for entry in results:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("label") != label:
+            continue
+        if not entry.get("ok"):
             return None
-        cursor = cursor.get(part)
-        if cursor is None:
-            return None
-    if isinstance(cursor, (int, float)):
-        return float(cursor)
+        value = entry.get(metric)
+        if isinstance(value, (int, float)):
+            return float(value)
+        return None
     return None
 
 

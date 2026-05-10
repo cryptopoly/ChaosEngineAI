@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
     env,
-    ffi::OsString,
     fs,
     fs::OpenOptions,
     path::{Path, PathBuf},
@@ -34,6 +33,10 @@ use binaries::{
     find_in_path, resolve_candidate, resolve_llama_cli, resolve_llama_server,
     resolve_llama_server_turbo, resolve_sd_cpp,
 };
+
+// Env-var + path-list helpers for sidecar spawn — see env_setup.rs.
+mod env_setup;
+use env_setup::{apply_library_path, join_paths, prepend_env_paths};
 
 // HTTP probe + lifecycle helpers — see probe.rs.
 mod probe;
@@ -773,30 +776,6 @@ fn resolve_cert_bundle(runtime: &EmbeddedRuntime) -> Option<PathBuf> {
         .iter()
         .map(|base| base.join("certifi").join("cacert.pem"))
         .find(|path| path.exists())
-}
-
-fn apply_library_path(command: &mut Command, variable: &str, entries: &[PathBuf]) {
-    if let Some(value) = prepend_env_paths(variable, entries) {
-        command.env(variable, value);
-    }
-}
-
-fn join_paths(entries: &[PathBuf]) -> Option<OsString> {
-    if entries.is_empty() {
-        return None;
-    }
-    env::join_paths(entries).ok()
-}
-
-fn prepend_env_paths(variable: &str, entries: &[PathBuf]) -> Option<OsString> {
-    if entries.is_empty() {
-        return env::var_os(variable);
-    }
-    let mut combined = entries.to_vec();
-    if let Some(existing) = env::var_os(variable) {
-        combined.extend(env::split_paths(&existing));
-    }
-    env::join_paths(combined).ok()
 }
 
 fn source_workspace_root() -> PathBuf {

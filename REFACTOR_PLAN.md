@@ -93,12 +93,15 @@ Each phase = 1 PR. Tests green at each boundary. No big-bang merge.
 
 **1a. `state.py` 4,418 → facade + 5 modules.**
 
-**PARTIAL** (Phase 1a-1, 1a-2, 1a-3; commits `8a26a48`, `879eede`, `2060142`):
+**PARTIAL** (Phase 1a-1 through 1a-6; commits `8a26a48` → `753cd9a`):
 - `state/logs.py` — LogManager (log + activity ring buffers + subscribers)
 - `state/metrics.py` — cache labels + profile change reasons + metrics payloads (11 pure functions)
 - `state/_helpers.py` — module-level helpers: `_compose_chat_system_prompt`, `_build_sampler_overrides`, `_build_history_with_reasoning`, title-generation utilities, `_read_text_tail`, `_spawn_snapshot_download`, `_normalize_remote_provider_api_base`, `_CATALOG_REF_ALIASES` (1a-3).
+- `state/documents.py` (1a-4) — 8 helpers: `session_docs_dir` / `workspace_docs_dir` (filesystem-safe path resolvers), `list_session_documents`, `upload_session_document` (bytes → file + chunked .json sidecar), `delete_session_document`, `upload_workspace_document` (Phase 3.7 variant), `delete_workspace_document`, `retrieve_session_context` (RAG retriever merging session + workspace corpora through DocumentIndex).
+- `state/benchmarks.py` (1a-5) — `run_benchmark` orchestration across perplexity / task-accuracy / throughput modes + `append_benchmark_run` rolling-window persistence.
+- `state/openai_compat.py` (1a-6) — `openai_models` + `openai_embeddings` + `openai_chat_completion` (`/v1/*` endpoints; auto-load + sampler + response_format mapping + streaming branch).
 
-state/__init__.py: 4418 → 4089 (-329). Sessions, model_manager, benchmark, settings_state extractions deferred — biggest remaining is the 2k LOC of session/chat methods.
+state/__init__.py: 4418 → 3315 LOC (-1103, -25%). Class methods that moved out are now 1-3 line thin wrappers preserving the public surface. Remaining big clusters: session management (~1500 LOC, 13 methods), download lifecycle (~400 LOC, 5 methods), generate/generate_stream (~830 LOC), workspace + server_status renderers (~250 LOC).
 
 ```
 backend_service/state/

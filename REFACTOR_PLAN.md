@@ -130,15 +130,17 @@ inference/__init__.py: 3574 → 1180 (-2394). RuntimeController (~1050 LOC) is t
 
 **1c. `video_runtime.py` + `image_runtime.py` → runtimes/{image,video}/.**
 
-**PARTIAL** (Phase 1c-1 through 1c-10, commits `b5ea526` → `f17a602`):
-- `image_runtime/` package: types + repos + snapshot + device + placeholder_engine + mflux_engine extracted (image/__init__.py: 2097 → 1366).
-- `video_runtime/` package: types + device + repos + defaults + warmup extracted (video/__init__.py: 2378 → 1593):
+**PARTIAL** (Phase 1c-1 through 1c-12, commits `b5ea526` → `c0a097c`):
+- `image_runtime/` package: types + repos + snapshot + device + placeholder_engine + mflux_engine + transformer_loaders extracted (image/__init__.py: 2097 → 1069):
+  - `image_runtime/transformer_loaders.py` (1c-11) — eight stateless quantised-transformer / device-probe helpers: `try_load_nf4_flux_transformer` (bitsandbytes NF4, CUDA), `try_load_int8wo_flux_transformer` (TorchAO int8wo, MPS), `try_load_gguf_transformer` (single-file `.gguf`, cross-platform), `try_load_nunchaku_transformer` (FU-023 SVDQuant int4, CUDA), `maybe_enable_fp8_layerwise` (FU-024 layerwise casting, SM ≥ 8.9), `should_use_model_cpu_offload` (FLUX-on-CUDA whole-component swap), `detect_device` (CUDA → MPS → CPU probe).
+- `video_runtime/` package: types + device + repos + defaults + warmup + transformer_loaders extracted (video/__init__.py: 2378 → 1357):
   - `video_runtime/device.py` — probe helpers (`_resolve_video_seed`, `_resolve_video_python`, `_detect_device_memory_gb`, `_guess_video_expected_device`, `_windows_cuda_unavailable_message`)
   - `video_runtime/repos.py` — `PIPELINE_REGISTRY`, GGUF/NF4 transformer class lookups, per-model defaults table, prompt-enhancement suffixes + `_enhance_prompt`
   - `video_runtime/defaults.py` — memory footprint estimator, slicing gate, scheduler classes, Wan frame alignment, `_resolve_video_defaults`, frame interpolation, dep tuples + `_find_missing`
   - `video_runtime/warmup.py` — torch + dep prewarm singleton + `start_torch_warmup` / `torch_warmup_status`
+  - `video_runtime/transformer_loaders.py` (1c-12) — five stateless helpers: `try_load_gguf_transformer`, `try_load_bnb_nf4_transformer` (CUDA), `swap_distill_transformers` (FU-019 lightx2v 4-step Wan 2.2 A14B distill), `detect_device`, `preferred_torch_dtype` (bf16/fp16/fp32 picker with M1-MPS bf16 capability probe + env opt-out).
 
-**Remaining**: extract `DiffusersTextToImageEngine` (~1112 LOC inside image/__init__) + `DiffusersVideoEngine` (~1239 LOC inside video/__init__). Both classes use the same pipeline-loader pattern (LoRA fuse, distill swap, nunchaku, fp8, preview-VAE) — extract into `runtimes/common/` after both engines move out of their respective __init__.py files.
+**Remaining**: `_ensure_pipeline` is the orchestrator that calls the loaders + the LoRA fuse / preview-VAE / distill swap / SDXL VAE swap / fp8 layerwise / scheduler swap path. Heavy state mutation (self._pipeline / self._loaded_repo / variant key / runtime notes). Same shape on the video side. Extract into `runtimes/common/_pipeline_loader.py` post-v0.8.0 once both engines are stable.
 
 **1d. `routes/setup.py` 1,932 → setup/ package with 6 focused submodules.** **DONE** (Phase 1d-1 through 1d-3c, commits `6181c1b` → `afc70f3`):
 - `setup/longlive.py` + `setup/wan_install.py` — LongLive + Wan background installers (1d-1).

@@ -18,6 +18,7 @@ from starlette.responses import StreamingResponse
 
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
+from backend_service.state import benchmarks as _benchmarks
 from backend_service.state import documents as _docs
 from backend_service.state import metrics as _metrics
 from backend_service.state._helpers import (
@@ -550,9 +551,7 @@ class ChaosEngineState:
         )
 
     def _append_benchmark_run(self, run: dict[str, Any]) -> None:
-        from backend_service.app import _save_benchmark_runs
-        self.benchmark_runs = [run, *[item for item in self.benchmark_runs if item["id"] != run["id"]]][:MAX_BENCHMARK_RUNS]
-        _save_benchmark_runs(self.benchmark_runs, self._benchmarks_path)
+        _benchmarks.append_benchmark_run(self, run)
 
     def _find_catalog_entry(self, model_ref: str) -> dict[str, Any] | None:
         canonical_ref = _CATALOG_REF_ALIASES.get(model_ref, model_ref)
@@ -1422,210 +1421,7 @@ class ChaosEngineState:
         }
 
     def run_benchmark(self, request: BenchmarkRunRequest) -> dict[str, Any]:
-        from backend_service.app import compute_cache_preview
-
-        with self._lock:
-            default_variant = _default_chat_variant()
-            effective_model_ref = (
-                request.modelRef
-                or (self.runtime.loaded_model.ref if self.runtime.loaded_model is not None else None)
-                or default_variant["id"]
-            )
-            catalog_entry = self._find_catalog_entry(effective_model_ref)
-            library_entry = self._find_library_entry(request.path, effective_model_ref)
-            model_name = request.modelName
-            if model_name is None and library_entry is not None:
-                model_name = str(library_entry.get("name") or "")
-            if model_name is None and catalog_entry is not None:
-                model_name = str(catalog_entry.get("name") or "")
-            if model_name is None:
-                model_name = str(effective_model_ref or default_variant["name"])
-
-            if library_entry is not None and library_entry.get("broken"):
-                reason = library_entry.get("brokenReason") or "incomplete or corrupt"
-                raise RuntimeError(
-                    f"Cannot benchmark '{library_entry.get('name') or effective_model_ref}': {reason}."
-                )
-            effective_source = request.source or ("library" if library_entry is not None else "catalog")
-            effective_path = request.path if request.path is not None else (library_entry.get("path") if library_entry is not None else None)
-            effective_backend = request.backend or (
-                "llama.cpp"
-                if (library_entry and library_entry.get("format") == "GGUF") or (catalog_entry and catalog_entry.get("format") == "GGUF")
-                else "mlx"
-            )
-
-        load_seconds = 0.0
-        effective_cache_strategy = "native" if request.speculativeDecoding else request.cacheStrategy
-        effective_cache_bits = 0 if request.speculativeDecoding else request.cacheBits
-        effective_fp16_layers = 0 if request.speculativeDecoding else request.fp16Layers
-
-        if self._should_reload_for_profile(
-            model_ref=effective_model_ref,
-            cache_bits=effective_cache_bits,
-            fp16_layers=effective_fp16_layers,
-            fused_attention=request.fusedAttention,
-            cache_strategy=effective_cache_strategy,
-            fit_model_in_memory=request.fitModelInMemory,
-            context_tokens=request.contextTokens,
-            speculative_decoding=request.speculativeDecoding,
-            tree_budget=0,
-        ):
-            load_started = time.perf_counter()
-            self.load_model(
-                LoadModelRequest(
-                    modelRef=str(effective_model_ref),
-                    modelName=model_name,
-                    canonicalRepo=self._resolve_canonical_repo(
-                        model_ref=str(effective_model_ref),
-                        path=effective_path,
-                        canonical_repo=None,
-                    ),
-                    source=effective_source,
-                    backend=effective_backend,
-                    path=effective_path,
-                    cacheStrategy=request.cacheStrategy,
-                    cacheBits=request.cacheBits,
-                    fp16Layers=request.fp16Layers,
-                    fusedAttention=request.fusedAttention,
-                    fitModelInMemory=request.fitModelInMemory,
-                    contextTokens=request.contextTokens,
-                    speculativeDecoding=request.speculativeDecoding,
-                )
-            )
-            load_seconds = round(time.perf_counter() - load_started, 2)
-
-        with self._lock:
-            params_b = float(catalog_entry.get("paramsB")) if catalog_entry and catalog_entry.get("paramsB") is not None else 7.0
-            preview = compute_cache_preview(
-                bits=request.cacheBits if request.cacheBits else 4,
-                fp16_layers=request.fp16Layers,
-                context_tokens=request.contextTokens,
-                params_b=params_b,
-                system_stats=self._system_snapshot(),
-            )
-            use_compressed = request.cacheBits > 0
-            cache_gb = preview["optimizedCacheGb"] if use_compressed else preview["baselineCacheGb"]
-            baseline_cache_gb = preview["baselineCacheGb"]
-            compression = round(baseline_cache_gb / cache_gb, 1) if use_compressed and cache_gb else 1.0
-            quality = int(round(preview["qualityPercent"])) if use_compressed else 100
-            cache_label = self._cache_label(
-                cache_strategy=request.cacheStrategy,
-                bits=request.cacheBits,
-                fp16_layers=request.fp16Layers,
-            )
-
-        base_run: dict[str, Any] = {
-            "id": f"bench-{uuid.uuid4().hex[:8]}",
-            "mode": request.mode,
-            "model": model_name,
-            "modelRef": effective_model_ref,
-            "backend": self.runtime.loaded_model.backend if self.runtime.loaded_model else effective_backend,
-            "engineLabel": self.runtime.engine.engine_label,
-            "source": effective_source,
-            "measuredAt": self._time_label(),
-            "bits": request.cacheBits if request.cacheBits > 0 else 16,
-            "fp16Layers": request.fp16Layers,
-            "cacheStrategy": request.cacheStrategy,
-            "cacheLabel": cache_label,
-            "cacheGb": cache_gb,
-            "baselineCacheGb": baseline_cache_gb,
-            "compression": compression,
-            "contextTokens": request.contextTokens,
-            "maxTokens": request.maxTokens,
-            "loadSeconds": load_seconds,
-        }
-
-        if request.mode == "perplexity":
-            eval_result = self.runtime.engine.eval_perplexity(
-                dataset=request.perplexityDataset,
-                num_samples=request.perplexityNumSamples,
-                seq_length=request.perplexitySeqLength,
-                batch_size=request.perplexityBatchSize,
-            )
-            run = {
-                **base_run,
-                "label": request.label or f"{model_name} / Perplexity / {request.perplexityDataset}",
-                "perplexity": eval_result["perplexity"],
-                "perplexityStdError": eval_result["standardError"],
-                "perplexityDataset": eval_result["dataset"],
-                "perplexityNumSamples": eval_result["numSamples"],
-                "evalTokensPerSecond": eval_result["evalTokensPerSecond"],
-                "evalSeconds": eval_result["evalSeconds"],
-                "quality": quality,
-                "tokS": eval_result["evalTokensPerSecond"],
-                "responseSeconds": eval_result["evalSeconds"],
-                "totalSeconds": round(load_seconds + eval_result["evalSeconds"], 2),
-                "promptTokens": 0,
-                "completionTokens": 0,
-                "totalTokens": 0,
-                "notes": f"Perplexity: {eval_result['perplexity']:.2f} \u00b1 {eval_result['standardError']:.2f} on {eval_result['dataset']} ({eval_result['numSamples']} samples)",
-            }
-        elif request.mode == "task_accuracy":
-            eval_result = self.runtime.engine.eval_task_accuracy(
-                task_name=request.taskName,
-                limit=request.taskLimit,
-                num_shots=request.taskNumShots,
-            )
-            accuracy_pct = round(eval_result["accuracy"] * 100, 1)
-            run = {
-                **base_run,
-                "label": request.label or f"{model_name} / {request.taskName.upper()} / {eval_result['correct']}/{eval_result['total']}",
-                "taskName": eval_result["taskName"],
-                "taskAccuracy": eval_result["accuracy"],
-                "taskCorrect": eval_result["correct"],
-                "taskTotal": eval_result["total"],
-                "taskNumShots": eval_result["numShots"],
-                "evalSeconds": eval_result["evalSeconds"],
-                "quality": quality,
-                "tokS": 0,
-                "responseSeconds": eval_result["evalSeconds"],
-                "totalSeconds": round(load_seconds + eval_result["evalSeconds"], 2),
-                "promptTokens": 0,
-                "completionTokens": 0,
-                "totalTokens": 0,
-                "notes": f"{request.taskName.upper()}: {accuracy_pct}% ({eval_result['correct']}/{eval_result['total']}) {eval_result['numShots']}-shot",
-            }
-        else:
-            prompt = request.prompt or (
-                "Summarize the practical trade-offs of this runtime profile for a local desktop user in six short bullets."
-            )
-            result = self.runtime.generate(
-                prompt=prompt,
-                history=[],
-                system_prompt="Return a concise but complete answer so ChaosEngineAI can benchmark response speed consistently.",
-                max_tokens=request.maxTokens,
-                temperature=request.temperature,
-            )
-            run = {
-                **base_run,
-                "label": request.label
-                or _benchmark_label(
-                    model_name,
-                    cache_strategy=request.cacheStrategy,
-                    bits=request.cacheBits,
-                    fp16_layers=request.fp16Layers,
-                    context_tokens=request.contextTokens,
-                ),
-                "tokS": round(result.tokS, 1),
-                "quality": quality,
-                "responseSeconds": round(result.responseSeconds, 2),
-                "totalSeconds": round(load_seconds + result.responseSeconds, 2),
-                "promptTokens": result.promptTokens,
-                "completionTokens": result.completionTokens,
-                "totalTokens": result.totalTokens,
-                "notes": result.runtimeNote,
-            }
-
-        with self._lock:
-            self._append_benchmark_run(run)
-            mode_label = {"perplexity": "Perplexity", "task_accuracy": "Task accuracy"}.get(request.mode, "Throughput")
-            self.add_log("benchmark", "info", f"{mode_label} benchmark completed for {model_name}: {run.get('notes', '')}")
-            self.add_activity("Benchmark completed", run["label"])
-            return {
-                "result": run,
-                "benchmarks": self.benchmark_runs,
-                "runtime": self.runtime.status(active_requests=self.active_requests, requests_served=self.requests_served),
-            }
+        return _benchmarks.run_benchmark(self, request)
 
     def load_model(
         self,

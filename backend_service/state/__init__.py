@@ -18,6 +18,7 @@ from starlette.responses import StreamingResponse
 
 from backend_service.catalog import CATALOG
 from backend_service.inference import RuntimeController
+from backend_service.state import documents as _docs
 from backend_service.state import metrics as _metrics
 from backend_service.state._helpers import (
     _CATALOG_REF_ALIASES,
@@ -1993,101 +1994,21 @@ class ChaosEngineState:
             }
 
     def _session_docs_dir(self, session_id: str) -> Path:
-        from backend_service.app import DOCUMENTS_DIR
-        safe_id = re.sub(r"[^\w\-]", "_", session_id)
-        return DOCUMENTS_DIR / safe_id
+        return _docs.session_docs_dir(self, session_id)
 
     def list_documents(self, session_id: str) -> list[dict[str, Any]]:
-        with self._lock:
-            session = self._ensure_session(session_id)
-            return list(session.get("documents", []))
+        return _docs.list_session_documents(self, session_id)
 
     def upload_document(self, session_id: str, original_name: str, raw_bytes: bytes) -> dict[str, Any]:
-        from backend_service.app import MAX_DOC_SIZE_BYTES, MAX_SESSION_DOCS_BYTES, DOC_ALLOWED_EXTENSIONS
-
-        if len(raw_bytes) > MAX_DOC_SIZE_BYTES:
-            raise HTTPException(status_code=413, detail=f"File exceeds {MAX_DOC_SIZE_BYTES // (1024*1024)}MB limit.")
-        sanitized = _sanitize_filename(original_name)
-        ext = Path(sanitized).suffix.lower()
-        if ext not in DOC_ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=400, detail=f"File type not supported: {ext}")
-
-        with self._lock:
-            session = self._ensure_session(session_id)
-            existing = session.get("documents") or []
-            current_total = sum(d.get("sizeBytes", 0) for d in existing)
-            if current_total + len(raw_bytes) > MAX_SESSION_DOCS_BYTES:
-                raise HTTPException(status_code=413, detail="Session document quota exceeded (200MB).")
-
-            doc_id = f"doc-{uuid.uuid4().hex[:12]}"
-            session_dir = self._session_docs_dir(session_id)
-            session_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                session_dir.chmod(0o700)
-            except OSError:
-                pass
-
-            doc_path = session_dir / f"{doc_id}{ext}"
-            doc_path.write_bytes(raw_bytes)
-            try:
-                doc_path.chmod(0o600)
-            except OSError:
-                pass
-
-        try:
-            text = _extract_text_from_file(doc_path)
-        except RuntimeError as exc:
-            doc_path.unlink(missing_ok=True)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        chunks = _chunk_text(text)
-        chunks_path = session_dir / f"{doc_id}.chunks.json"
-        chunks_path.write_text(
-            json.dumps([{"index": i, "text": c} for i, c in enumerate(chunks)], indent=2),
-            encoding="utf-8",
-        )
-
-        with self._lock:
-            session = self._ensure_session(session_id)
-            doc_meta = {
-                "id": doc_id,
-                "filename": doc_path.name,
-                "originalName": sanitized,
-                "sizeBytes": len(raw_bytes),
-                "chunkCount": len(chunks),
-                "uploadedAt": self._time_label(),
-            }
-            session.setdefault("documents", []).append(doc_meta)
-            session["updatedAt"] = self._time_label()
-            self.add_log("chat", "info", f"Document uploaded to session {session_id}: {sanitized} ({len(chunks)} chunks)")
-            self._persist_sessions()
-            return doc_meta
+        return _docs.upload_session_document(self, session_id, original_name, raw_bytes)
 
     def delete_document(self, session_id: str, doc_id: str) -> dict[str, Any]:
-        with self._lock:
-            session = self._ensure_session(session_id)
-            docs = session.get("documents") or []
-            target = next((d for d in docs if d.get("id") == doc_id), None)
-            if not target:
-                raise HTTPException(status_code=404, detail="Document not found.")
-            session["documents"] = [d for d in docs if d.get("id") != doc_id]
-            session["updatedAt"] = self._time_label()
-            session_dir = self._session_docs_dir(session_id)
-            for f in session_dir.glob(f"{doc_id}*"):
-                try:
-                    f.unlink()
-                except OSError:
-                    pass
-            self.add_log("chat", "info", f"Document removed: {target.get('originalName')}")
-            self._persist_sessions()
-            return {"deleted": doc_id}
+        return _docs.delete_session_document(self, session_id, doc_id)
 
     # -- Phase 3.7: workspace knowledge stack helpers --------------------
 
     def _workspace_dir(self, workspace_id: str) -> Path:
-        from backend_service.app import WORKSPACES_DIR
-        safe_id = "".join(ch for ch in workspace_id if ch.isalnum() or ch in "-_")
-        return WORKSPACES_DIR / safe_id
+        return _docs.workspace_docs_dir(self, workspace_id)
 
     def upload_workspace_document(
         self,
@@ -2095,110 +2016,10 @@ class ChaosEngineState:
         filename: str,
         data: bytes,
     ) -> dict[str, Any]:
-        """Phase 3.7: ingest a document into a workspace.
-
-        Mirrors `upload_document` but writes under
-        `<dataDir>/workspaces/<id>/`. The chunked text JSON sits next
-        to the original file so the RAG retriever can read both
-        session and workspace docs through the same DocumentIndex
-        helpers without bespoke logic.
-        """
-        from backend_service.app import MAX_DOC_SIZE_BYTES, DOC_ALLOWED_EXTENSIONS
-        from backend_service.helpers.workspaces import WorkspaceRegistry
-        from backend_service.app import WORKSPACES_PATH, WORKSPACES_DIR
-
-        if len(data) > MAX_DOC_SIZE_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File exceeds {MAX_DOC_SIZE_BYTES // (1024*1024)}MB limit.",
-            )
-        sanitized = _sanitize_filename(filename)
-        ext = Path(sanitized).suffix.lower()
-        if ext not in DOC_ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=400, detail=f"File type not supported: {ext}")
-
-        registry = WorkspaceRegistry(WORKSPACES_PATH, WORKSPACES_DIR)
-        workspace = registry.get(workspace_id)
-        if workspace is None:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-
-        doc_id = f"doc-{uuid.uuid4().hex[:12]}"
-        workspace_dir = self._workspace_dir(workspace_id)
-        workspace_dir.mkdir(parents=True, exist_ok=True)
-        doc_path = workspace_dir / f"{doc_id}{ext}"
-        doc_path.write_bytes(data)
-        try:
-            doc_path.chmod(0o600)
-        except OSError:
-            pass
-
-        try:
-            text = _extract_text_from_file(doc_path)
-        except RuntimeError as exc:
-            doc_path.unlink(missing_ok=True)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        chunks = _chunk_text(text)
-        chunks_path = workspace_dir / f"{doc_id}.chunks.json"
-        chunks_path.write_text(
-            json.dumps([{"index": i, "text": c} for i, c in enumerate(chunks)], indent=2),
-            encoding="utf-8",
-        )
-
-        doc_meta = {
-            "id": doc_id,
-            "filename": doc_path.name,
-            "originalName": sanitized,
-            "sizeBytes": len(data),
-            "chunkCount": len(chunks),
-            "uploadedAt": self._time_label(),
-        }
-
-        # Persist on the workspace registry too so the doc list comes
-        # back on subsequent /api/workspaces calls without reading the
-        # filesystem again.
-        existing_docs = list(workspace.get("documents") or [])
-        existing_docs.append(doc_meta)
-        registry.update(workspace_id, title=workspace["title"])
-        # The update() call doesn't currently support documents — read
-        # the entry back, mutate, save by writing the full payload.
-        # Workaround: write directly via the registry's internal map.
-        registry._workspaces[workspace_id]["documents"] = existing_docs
-        registry._workspaces[workspace_id]["updatedAt"] = self._time_label()
-        registry.save()
-        self.add_log(
-            "chat", "info",
-            f"Document uploaded to workspace {workspace_id}: {sanitized} ({len(chunks)} chunks)",
-        )
-        return doc_meta
+        return _docs.upload_workspace_document(self, workspace_id, filename, data)
 
     def delete_workspace_document(self, workspace_id: str, doc_id: str) -> dict[str, Any]:
-        """Phase 3.7: remove a document from a workspace's stack."""
-        from backend_service.helpers.workspaces import WorkspaceRegistry
-        from backend_service.app import WORKSPACES_PATH, WORKSPACES_DIR
-
-        registry = WorkspaceRegistry(WORKSPACES_PATH, WORKSPACES_DIR)
-        workspace = registry.get(workspace_id)
-        if workspace is None:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-
-        docs = list(workspace.get("documents") or [])
-        target = next((d for d in docs if d.get("id") == doc_id), None)
-        if not target:
-            raise HTTPException(status_code=404, detail="Document not found.")
-        remaining = [d for d in docs if d.get("id") != doc_id]
-        registry._workspaces[workspace_id]["documents"] = remaining
-        registry._workspaces[workspace_id]["updatedAt"] = self._time_label()
-        registry.save()
-
-        workspace_dir = self._workspace_dir(workspace_id)
-        for f in workspace_dir.glob(f"{doc_id}*"):
-            try:
-                f.unlink()
-            except OSError:
-                pass
-        self.add_log("chat", "info", f"Workspace document removed: {target.get('originalName')}")
-        return {"deleted": doc_id}
+        return _docs.delete_workspace_document(self, workspace_id, doc_id)
 
     def delete_session(self, session_id: str) -> dict[str, Any]:
         with self._lock:
@@ -2211,80 +2032,7 @@ class ChaosEngineState:
             return {"deleted": session_id}
 
     def _retrieve_session_context(self, session_id: str, prompt: str, top_k: int = 5) -> tuple[str, list[dict[str, Any]]]:
-        """Retrieve relevant document chunks for a prompt.
-
-        Returns (context_text, citations) where citations is a list of
-        dicts with docId, docName, chunkIndex, page, preview keys.
-
-        Phase 2.6: when an llama-embedding binary + embedding GGUF are
-        both discoverable via env vars or `<dataDir>/embeddings/`,
-        retrieval uses semantic cosine similarity blended with BM25
-        (70/30) instead of TF-IDF + BM25. The embedding client is
-        resolved per-call so newly-installed models pick up without a
-        restart, and the legacy lexical path remains the fallback when
-        anything goes wrong.
-        """
-        from backend_service.helpers.documents import DocumentIndex
-        from backend_service.rag import resolve_embedding_client
-
-        # Phase 3.7: collect document directories from both the session
-        # and (when assigned) the session's workspace, so the RAG
-        # retriever sees the merged corpus. Workspace docs survive
-        # session deletion + are visible across every session in the
-        # workspace.
-        chunk_dirs: list[Path] = []
-        session_dir = self._session_docs_dir(session_id)
-        if session_dir.exists():
-            chunk_dirs.append(session_dir)
-
-        with self._lock:
-            session = next(
-                (s for s in self.chat_sessions if s.get("id") == session_id),
-                None,
-            )
-        workspace_id = session.get("workspaceId") if session else None
-        if workspace_id:
-            workspace_dir = self._workspace_dir(workspace_id)
-            if workspace_dir.exists():
-                chunk_dirs.append(workspace_dir)
-
-        if not chunk_dirs:
-            return "", []
-
-        # Embedding client discovery: env vars override path; if no
-        # CHAOSENGINE_EMBEDDING_MODEL is set we look under
-        # `<documents-parent>/embeddings/*.gguf`. Returns None when
-        # nothing is wired, in which case retrieval transparently
-        # falls back to TF-IDF + BM25.
-        from backend_service.app import DOCUMENTS_DIR
-
-        embedding_client = resolve_embedding_client(DOCUMENTS_DIR.parent)
-
-        # Build a temporary index from all collected directories.
-        index = DocumentIndex()
-        for chunk_dir in chunk_dirs:
-            for chunk_file in chunk_dir.glob("*.chunks.json"):
-                try:
-                    doc_chunks = json.loads(chunk_file.read_text(encoding="utf-8"))
-                    doc_name = chunk_file.stem.replace(".chunks", "")
-                    full_text = "\n\n".join(c.get("text", "") for c in doc_chunks)
-                    if full_text.strip():
-                        index.add_document(
-                            full_text,
-                            doc_id=doc_name,
-                            doc_name=doc_name,
-                            embedding_client=embedding_client,
-                        )
-                except (OSError, json.JSONDecodeError):
-                    continue
-
-        results = index.search(prompt, top_k=top_k, embedding_client=embedding_client)
-        if not results:
-            return "", []
-
-        context = "\n\n---\n\n".join(r["text"] for r in results)
-        citations = [r["citation"] for r in results]
-        return context, citations
+        return _docs.retrieve_session_context(self, session_id, prompt, top_k)
 
     def generate(self, request: GenerateRequest) -> dict[str, Any]:
         with self._lock:

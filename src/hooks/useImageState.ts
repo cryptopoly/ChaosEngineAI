@@ -1,10 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import {
-  cancelImageDownload,
   cancelImageGeneration,
-  deleteImageDownload,
   deleteImageOutput,
-  downloadImageModel,
   generateImage,
   getGpuBundleStatus,
   getImageCatalog,
@@ -16,6 +13,11 @@ import {
   unloadImageModel,
 } from "../api";
 import type { DownloadStatus, GpuBundleJobState, InstallResult } from "../api";
+import {
+  cancelImageDownloadById,
+  deleteImageDownloadById,
+  startImageDownload,
+} from "../features/image/downloadActions";
 
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
@@ -31,8 +33,6 @@ import {
   imageArtifactTimestamp,
   imageRuntimeErrorStatus,
   buildDownloadStatusMap,
-  pendingDownloadStatus,
-  failedDownloadStatus,
   isTransientNetworkError,
 } from "../utils";
 import type {
@@ -360,36 +360,16 @@ export function useImageState(
     }
   }
 
-  async function handleImageDownload(repo: string) {
-    try {
-      setActiveImageDownloads((prev) => ({ ...prev, [repo]: pendingDownloadStatus(repo, prev[repo]) }));
-      const download = await downloadImageModel(repo);
-      setActiveImageDownloads((prev) => ({ ...prev, [repo]: download }));
-      void refreshImageData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Image download failed");
-      setActiveImageDownloads((prev) => ({ ...prev, [repo]: failedDownloadStatus(repo, String(err)) }));
-    }
+  function handleImageDownload(repo: string): Promise<void> {
+    return startImageDownload(repo, { setActiveImageDownloads, setError, refreshImageData });
   }
 
-  async function handleCancelImageDownload(repo: string) {
-    try {
-      const download = await cancelImageDownload(repo);
-      setActiveImageDownloads((prev) => ({ ...prev, [repo]: download }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not pause image download");
-    }
+  function handleCancelImageDownload(repo: string): Promise<void> {
+    return cancelImageDownloadById(repo, { setActiveImageDownloads, setError });
   }
 
-  async function handleDeleteImageDownload(repo: string) {
-    try {
-      await deleteImageDownload(repo);
-      const statuses = await getImageDownloadStatus();
-      setActiveImageDownloads(buildDownloadStatusMap(statuses));
-      await refreshImageData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete image download");
-    }
+  function handleDeleteImageDownload(repo: string): Promise<void> {
+    return deleteImageDownloadById(repo, { setActiveImageDownloads, setError, refreshImageData });
   }
 
   function applyImageRatioPreset(presetId: (typeof IMAGE_RATIO_PRESETS)[number]["id"]) {

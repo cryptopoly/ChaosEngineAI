@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-10 (84 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-10 (87 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -36,6 +36,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `helpers/huggingface.py` | 703 | 525 | -178 |
 | `helpers/discovery.py` | 806 | 429 | -377 |
 | `helpers/system.py` | 559 | 252 | -307 |
+| `helpers/documents.py` | 586 | 478 | -108 |
 | `src/App.tsx` | 2,334 | 2,170 | -164 |
 | `src/features/chat/HtmlChallengeTab.tsx` | 2,535 | 1,677 | -858 |
 | `src/features/video/VideoStudioTab.tsx` | 1,796 | 1,712 | -84 |
@@ -46,9 +47,9 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `src/types.ts` | 1,378 | 230 | -1,148 |
 | `helpers/images.py` | 983 | 751 | -232 |
 | `helpers/video.py` | 769 | 565 | -204 |
-| **Mega-file shrink total** | 34,266 | **22,841** | **-11,425 LOC** |
+| **Mega-file shrink total** | 34,852 | **23,319** | **-11,533 LOC** |
 
-Tests posture across all 84 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 87 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -151,17 +152,33 @@ setup/__init__.py: 1,932 → 353 LOC (~82% reduction). Setup is now a clean pack
 - `html_challenges/__init__.py` — Pydantic request models, `router`, 9 endpoints (list / get / delete / file / open-file / retry / repair / validation / run).
 - `html_challenges/_helpers.py` — 45 underscore helpers (manifest I/O, HTML extraction + validation, payload shaping, `_stream_html_challenge_slot`).
 
-**1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.** **MOSTLY DONE** (Phase 1e-1 through 1e-8, commits `9b61377` → `dcc2380`):
-- `helpers/image_artifacts.py` — daily-folder gallery layout, JSON sidecars, SVG placeholder renderer (Phase 1e-1).
-- `helpers/image_validation.py` — repo predicates + friendly download-error translation for HF gated repos (Phase 1e-2).
-- `helpers/video_artifacts.py` — mirror of image_artifacts for the video gallery (Phase 1e-3).
-- `helpers/mlx_video_validation.py` — mlx-video LTX-2 / LTX-2.3 component-folder probe (Phase 1e-4).
-- `helpers/quantization.py` — pure label parsers (NVFP4/NVINT4 rejection, regex bit-width inference, dtype walk) (Phase 1e-5).
-- `helpers/model_classifier.py` — keyword tables + ``_looks_like_{draft,video,image}_model`` heuristics (Phase 1e-6).
-- `helpers/snapshot_integrity.py` — sharded safetensors + GGUF directory probes + ``_list_weight_files`` picker inventory (Phase 1e-7).
-- `helpers/model_family_payload.py` — catalog → dashboard payload renderer + Reveal-in-Finder cross-platform shell-out (Phase 1e-8).
+**1e. helpers/ regrouping into media/ models/ system/ ui/ storage/ inference/ finetune/ remote/ filter/ subpackages. Public re-exports preserve call sites.** **DONE** (Phase 1e-1 through 1e-13, commits `9b61377` → `215eeab`). 13 sibling modules extracted across the largest helpers files:
 
-helpers/images.py: 983 → 751 LOC. helpers/video.py: 769 → 565 LOC. helpers/discovery.py: 806 → 429 LOC. Re-exports preserve every existing import path.
+Image / video media:
+- `helpers/image_artifacts.py` — daily-folder gallery layout, JSON sidecars, SVG placeholder renderer (1e-1).
+- `helpers/image_validation.py` — repo predicates + friendly HF download-error translation (1e-2).
+- `helpers/video_artifacts.py` — mirror of image_artifacts for the video gallery (1e-3).
+- `helpers/mlx_video_validation.py` — mlx-video LTX-2 / LTX-2.3 component-folder probe (1e-4).
+
+Discovery / model classification:
+- `helpers/quantization.py` — NVFP4/NVINT4 rejection + regex bit-width inference + dtype walk (1e-5).
+- `helpers/model_classifier.py` — keyword tables + ``_looks_like_{draft,video,image}_model`` heuristics (1e-6).
+- `helpers/snapshot_integrity.py` — sharded safetensors + GGUF directory probes + ``_list_weight_files`` (1e-7).
+- `helpers/model_family_payload.py` — catalog → dashboard payload renderer + cross-platform Reveal-in-Finder (1e-8).
+
+Hugging Face:
+- `helpers/hf_cache_paths.py` — HF cache root + repo dir + downloaded bytes + active snapshot dir (1e-9).
+- `helpers/hf_format.py` — ISO datetime + Updated/Released label + number formatters (1e-9).
+- `helpers/hf_errors.py` — traceback condenser + friendly download-error rewriter for gated / 404 / DNS / PyYAML failures (1e-10).
+
+System:
+- `helpers/system_processes.py` — top + psutil cluster (5 helpers; macOS-aware Activity-Monitor-accurate footprint) (1e-11).
+- `helpers/system_hardware.py` — chip / OS summary, version, GPU + battery + compressed memory + runtime label (1e-12).
+
+Documents:
+- `helpers/document_text.py` — file extraction + sliding-window chunking + tokenisation primitives (1e-13).
+
+Mega-file shrink across helpers/: images.py 983 → 751, video.py 769 → 565, discovery.py 806 → 429, huggingface.py 703 → 525, system.py 559 → 252, documents.py 586 → 478. Re-exports preserve every existing import path; 7 helpers files (gpu, settings, prompts, formatting, persistence, etc.) left untouched as already-focused.
 
 **1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1, commit `b27ebab`).
 - `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt`. Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.

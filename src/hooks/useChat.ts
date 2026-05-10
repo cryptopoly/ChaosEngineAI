@@ -27,6 +27,12 @@ import {
 } from "../utils/chatRuntime";
 import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
 import { readKvStrategyOverride } from "../features/chat/kvStrategyOverride";
+import {
+  appendOptimisticTurn,
+  mergeSessionMetadata,
+  replaceOptimisticAssistant,
+  rollbackOptimisticTurn,
+} from "../features/chat/optimisticTurns";
 import { readReasoningEffort } from "../features/chat/reasoningEffort";
 import { readSamplerOverrides, samplerPayload } from "../features/chat/samplerOverrides";
 import { readTemperatureOverride } from "../features/chat/temperatureOverride";
@@ -169,86 +175,16 @@ export function useChat(
     return null;
   }
 
-  function mergeSessionMetadata(session: ChatSession, patch: Partial<ChatSession>): ChatSession {
-    return { ...session, ...patch };
+  function appendOptimisticTurnLocal(sessionId: string, prompt: string) {
+    appendOptimisticTurn(setWorkspace, sessionId, prompt);
   }
 
-  function appendOptimisticTurn(sessionId: string, prompt: string) {
-    const updatedAt = new Date().toLocaleString();
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              updatedAt,
-              messages: [
-                ...session.messages,
-                { role: "user" as const, text: prompt, metrics: null },
-                {
-                  role: "assistant" as const,
-                  text: "",
-                  reasoning: "",
-                  reasoningDone: true,
-                  metrics: null,
-                  // Phase 2.0: start in prompt_eval so the indicator shows
-                  // immediately on send, before backend's first SSE phase
-                  // event arrives. Cleared by onDone via the session refresh.
-                  streamPhase: "prompt_eval",
-                },
-              ],
-            }
-          : session,
-      ),
-    }));
+  function replaceOptimisticAssistantLocal(sessionId: string, prompt: string, text: string) {
+    replaceOptimisticAssistant(setWorkspace, sessionId, prompt, text);
   }
 
-  function replaceOptimisticAssistant(sessionId: string, prompt: string, text: string) {
-    const updatedAt = new Date().toLocaleString();
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) => {
-        if (session.id !== sessionId) return session;
-        const messages = [...session.messages];
-        const last = messages[messages.length - 1];
-        const previous = messages[messages.length - 2];
-        if (
-          last?.role === "assistant" &&
-          !last.text &&
-          !last.metrics &&
-          previous?.role === "user" &&
-          previous.text === prompt
-        ) {
-          messages[messages.length - 1] = { ...last, text };
-        } else {
-          messages.push({ role: "user", text: prompt, metrics: null });
-          messages.push({ role: "assistant", text, metrics: null });
-        }
-        return { ...session, updatedAt, messages };
-      }),
-    }));
-  }
-
-  function rollbackOptimisticTurn(sessionId: string, prompt: string) {
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) => {
-        if (session.id !== sessionId) return session;
-        const messages = [...session.messages];
-        const last = messages[messages.length - 1];
-        const previous = messages[messages.length - 2];
-        if (
-          last?.role === "assistant" &&
-          !last.text &&
-          !last.metrics &&
-          previous?.role === "user" &&
-          previous.text === prompt
-        ) {
-          return { ...session, messages: messages.slice(0, -2) };
-        }
-        return session;
-      }),
-    }));
+  function rollbackOptimisticTurnLocal(sessionId: string, prompt: string) {
+    rollbackOptimisticTurn(setWorkspace, sessionId, prompt);
   }
 
   async function persistSessionChanges(sessionId: string, patch: Partial<ChatSession>) {
@@ -656,7 +592,7 @@ export function useChat(
     setError(null);
 
     if (optimisticTurnAdded && sendingSessionId) {
-      appendOptimisticTurn(sendingSessionId, trimmed);
+      appendOptimisticTurnLocal(sendingSessionId, trimmed);
     }
 
     const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
@@ -669,7 +605,7 @@ export function useChat(
         setError(`API service restart failed: ${startupError}`);
       }
       if (optimisticTurnAdded && sendingSessionId) {
-        replaceOptimisticAssistant(sendingSessionId, trimmed, offlineMessage);
+        replaceOptimisticAssistantLocal(sendingSessionId, trimmed, offlineMessage);
         setActiveChatId(sendingSessionId);
       } else {
         const fallbackSession = activeChat ?? {
@@ -819,7 +755,7 @@ export function useChat(
 
       const streamingChatId = sessionId ?? sendingSessionId;
       if (streamingChatId && (!optimisticTurnAdded || streamingChatId !== sendingSessionId)) {
-        appendOptimisticTurn(streamingChatId, trimmed);
+        appendOptimisticTurnLocal(streamingChatId, trimmed);
       }
 
       const streamAbort = new AbortController();
@@ -1028,7 +964,7 @@ export function useChat(
       // Aborted by user — not a real error
       if (actionError instanceof DOMException && actionError.name === "AbortError") {
         if (!streamStarted && sendingSessionId && optimisticTurnAdded) {
-          rollbackOptimisticTurn(sendingSessionId, trimmed);
+          rollbackOptimisticTurnLocal(sendingSessionId, trimmed);
         }
         setChatBusySessionId(null);
         streamAbortRef.current = null;
@@ -1036,7 +972,7 @@ export function useChat(
       }
       if (!streamStarted) {
         if (sendingSessionId && optimisticTurnAdded) {
-          rollbackOptimisticTurn(sendingSessionId, trimmed);
+          rollbackOptimisticTurnLocal(sendingSessionId, trimmed);
         }
         restoreComposer();
       }

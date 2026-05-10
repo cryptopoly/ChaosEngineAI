@@ -1,18 +1,13 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../../api";
-import { ModelLaunchModal } from "../../components/ModelLaunchModal";
-import { Panel } from "../../components/Panel";
-import { ReasoningPanel } from "../../components/ReasoningPanel";
-import type { GenerationMetrics, LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
+import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
-import { number, sizeLabel } from "../../utils";
 import {
   buildComparePayload,
   cloneLaunchSettings,
   compareTargetLabels,
   compareTargets,
   summarizeLaunchSettings,
-  useLaunchPreview,
   type CompareTarget,
 } from "./CompareView";
 import {
@@ -20,54 +15,60 @@ import {
   type ChallengeSlotState,
   type HtmlChallengeLayoutMode,
   type HtmlChallengeManifest,
-  type HtmlChallengeManifestSlot,
-  type HtmlChallengeReasoningEffort,
   type HtmlChallengeStreamEvent,
+  type HtmlChallengeReasoningEffort,
   type HtmlChallengeThinkingMode,
   type HtmlValidation,
-  type HtmlValidationStatus,
   challengeGridColumns,
-  challengeHistoryLabel,
   clampNumber,
   defaultChallengeSlot,
+  type HtmlChallengeManifestSlot,
   displayChallengeTitle,
   emptyCodeViews,
   emptyPreviewBackgrounds,
   emptySlotState,
   emptySlotStates,
   emptyStreamAtBottom,
-  formatBytes,
-  formatChallengeDate,
-  formatCount,
-  fuzzyIncludes,
-  htmlChallengeGameKeys,
   htmlValidationForState,
   htmlValidationLabels,
   isCompareTarget,
   isHtmlValidationStatus,
   isTextModelOption,
   mergeMetrics,
-  modelTitleFragments,
   normalizeReasoningEffort,
   normalizeThinkingMode,
   randomChallengeSeed,
-  reasoningLabel,
   settingsFromManifest,
   stackedLayoutLabel,
-  validationBadgeClass,
   validationMessage,
 } from "./htmlChallengeHelpers";
 import {
-  BrowserIcon,
-  CollapseIcon,
-  ExpandIcon,
-  OpenFileIcon,
-} from "./htmlChallengeIcons";
+  type HtmlChallengeModelPayload,
+  applySlotStreamEvent,
+  buildRetryModelPayload,
+  compactSettingsSummary,
+  isEditableKeyboardTarget,
+  isPreviewGameKey,
+  isRepairableState,
+  isRetryableState,
+  modelKeyFromManifestSlot,
+  slotBusyMessage,
+  slotSubtitle,
+  stateFromManifestSlot,
+} from "./html_challenge/htmlChallengeTabHelpers";
 import {
-  escapeHtmlCode,
-  highlightHtmlCode,
-  previewSrcDoc,
-} from "./htmlChallengeMarkup";
+  deleteChallenge,
+  fetchChallenge,
+  fetchChallengeFile,
+  fetchChallengeList,
+  patchSlotValidation,
+  readResponseDetail,
+} from "./html_challenge/challengeApi";
+import { ChallengeHistoryCombobox } from "./html_challenge/ChallengeHistoryCombobox";
+import { ChallengeModelCard } from "./html_challenge/ChallengeModelCard";
+import { ChallengePickerModal } from "./html_challenge/ChallengePickerModal";
+import { ChallengeSetupPanel } from "./html_challenge/ChallengeSetupPanel";
+import { ChallengeSlotPanel } from "./html_challenge/ChallengeSlotPanel";
 
 interface HtmlChallengeTabProps {
   modelOptions: ChatModelOption[];
@@ -85,16 +86,6 @@ interface HtmlChallengeTabProps {
   onRevealPath: (path: string) => void;
   onOpenFilePath: (path: string) => void;
 }
-
-type HtmlChallengeModelPayload = ReturnType<typeof buildComparePayload> & {
-  thinkingMode: HtmlChallengeThinkingMode;
-  reasoningEffort?: HtmlChallengeReasoningEffort;
-  seed?: number | null;
-};
-
-
-
-
 
 export function HtmlChallengeTab({
   modelOptions,
@@ -134,9 +125,8 @@ export function HtmlChallengeTab({
   // When true, confirming the picker re-runs the slot's challenge with the
   // newly chosen model so manifest filename + metadata stay consistent.
   const [pickerAutoRetry, setPickerAutoRetry] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState("");
-  const [pickerDraftKey, setPickerDraftKey] = useState("");
-  const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
+  const [pickerInitialKey, setPickerInitialKey] = useState("");
+  const [pickerInitialSettings, setPickerInitialSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
   const abortRef = useRef<AbortController | null>(null);
   const streamRefs = useRef<Record<CompareTarget, HTMLPreElement | null>>({
     a: null,
@@ -163,10 +153,6 @@ export function HtmlChallengeTab({
     slots.map((slot) => [slot.id, textModelOptions.find((option) => option.key === slot.modelKey) ?? null]),
   ) as Record<CompareTarget, ChatModelOption | null>;
   const allSelected = slots.every((slot) => selectedBySlot[slot.id] != null);
-  const pickerDraftOption =
-    textModelOptions.find((option) => option.key === pickerDraftKey)
-    ?? (pickerTarget ? textModelOptions[0] ?? null : null);
-  const pickerDraftPreview: PreviewMetrics = useLaunchPreview(pickerDraftOption, pickerDraftSettings);
   const installPackage = onInstallPackage ?? (() => {});
   const completedChallenge = Boolean(
     manifest?.slots.length
@@ -181,12 +167,6 @@ export function HtmlChallengeTab({
   const visibleSlots = expandedHtmlSlot
     ? slots.filter((slot) => slot.id === expandedHtmlSlot)
     : slots;
-  const filteredChallenges = challenges.filter((challenge) =>
-    fuzzyIncludes(challengeHistoryLabel(challenge), historySearch),
-  );
-  const historyInputValue = historyOpen || historySearch
-    ? historySearch
-    : selectedChallenge ? challengeHistoryLabel(selectedChallenge) : "";
 
   useEffect(() => {
     void refreshChallengeHistory();
@@ -333,20 +313,16 @@ export function HtmlChallengeTab({
     setStreamAtBottom((current) => current[target] ? current : { ...current, [target]: true });
   }
 
-  function attachFrameShell(target: CompareTarget, element: HTMLDivElement | null) {
-    frameShellRefs.current[target] = element;
+  function attachStream(target: CompareTarget, element: HTMLPreElement | null) {
+    streamRefs.current[target] = element;
   }
 
-  function modelKeyFromManifestSlot(slot: HtmlChallengeManifestSlot) {
-    const ref = slot.modelRef;
-    const path = slot.path ?? "";
-    const canonicalRepo = slot.canonicalRepo ?? "";
-    return textModelOptions.find((option) => (
-      option.key === ref
-      || option.modelRef === ref
-      || (path && option.path === path)
-      || (canonicalRepo && option.canonicalRepo === canonicalRepo)
-    ))?.key ?? "";
+  function attachFrame(target: CompareTarget, element: HTMLIFrameElement | null) {
+    frameRefs.current[target] = element;
+  }
+
+  function attachFrameShell(target: CompareTarget, element: HTMLDivElement | null) {
+    frameShellRefs.current[target] = element;
   }
 
   async function consumeChallengeStream(response: Response) {
@@ -375,47 +351,8 @@ export function HtmlChallengeTab({
     return finalChallengeId;
   }
 
-  function buildRetryModelPayload(slot: ChallengeSlot, manifestSlot?: HtmlChallengeManifestSlot) {
-    const option = selectedBySlot[slot.id];
-    const withThinking = (payload: ReturnType<typeof buildComparePayload>): HtmlChallengeModelPayload => ({
-      ...payload,
-      thinkingMode: slot.thinkingMode,
-      reasoningEffort: slot.thinkingMode === "auto" ? slot.reasoningEffort : undefined,
-      seed: slot.seed,
-    });
-    if (option) return withThinking(buildComparePayload(option, slot.settings));
-    if (!manifestSlot?.modelRef) return null;
-    return withThinking({
-      modelRef: manifestSlot.modelRef,
-      modelName: manifestSlot.modelName,
-      displayLabel: manifestSlot.displayLabel ?? manifestSlot.modelName ?? manifestSlot.modelRef,
-      displayDetail: manifestSlot.displayDetail ?? "",
-      format: manifestSlot.format ?? undefined,
-      quantization: manifestSlot.quantization ?? undefined,
-      sizeGb: manifestSlot.sizeGb ?? undefined,
-      contextWindow: manifestSlot.contextWindow ?? undefined,
-      canonicalRepo: manifestSlot.canonicalRepo ?? undefined,
-      source: manifestSlot.source || "catalog",
-      backend: manifestSlot.backend || "auto",
-      path: manifestSlot.path ?? undefined,
-      launch: slot.settings,
-    });
-  }
-
-  function isRetryableState(state: ChallengeSlotState) {
-    const validation = htmlValidationForState(state);
-    return Boolean(state.error || (state.done && validation?.status !== "valid"));
-  }
-
-  function isRepairableState(state: ChallengeSlotState) {
-    const validation = htmlValidationForState(state);
-    return Boolean(
-      state.done
-      && !state.error
-      && validation
-      && validation.status !== "valid"
-      && (state.html || state.filename),
-    );
+  function retryPayloadForSlot(slot: ChallengeSlot, manifestSlot?: HtmlChallengeManifestSlot) {
+    return buildRetryModelPayload(slot, selectedBySlot[slot.id], manifestSlot);
   }
 
   function markPreviewActive(target: CompareTarget) {
@@ -432,17 +369,6 @@ export function HtmlChallengeTab({
     } catch {
       // Sandboxed frames can reject focus in some WebView builds.
     }
-  }
-
-  function isPreviewGameKey(event: Pick<KeyboardEvent, "key" | "code">) {
-    return htmlChallengeGameKeys.has(event.key.toLowerCase()) || event.code.toLowerCase() === "space";
-  }
-
-  function isEditableKeyboardTarget(target: EventTarget | null) {
-    if (!(target instanceof HTMLElement)) return false;
-    if (target.isContentEditable) return true;
-    const tag = target.tagName.toLowerCase();
-    return tag === "input" || tag === "textarea" || tag === "select";
   }
 
   function sendPreviewKey(target: CompareTarget, event: KeyboardEvent | ReactKeyboardEvent<HTMLElement>) {
@@ -511,37 +437,15 @@ export function HtmlChallengeTab({
   }
 
   async function refreshChallengeHistory(selectId?: string) {
-    try {
-      const response = await apiFetch("/api/chat/html-challenges");
-      if (!response.ok) return [];
-      const payload = await response.json() as { challenges?: HtmlChallengeManifest[] };
-      const nextChallenges = payload.challenges ?? [];
-      setChallenges(nextChallenges);
-      setSelectedChallengeId((current) => {
-        if (selectId) return selectId;
-        return current && nextChallenges.some((challenge) => challenge.id === current)
-          ? current
-          : "";
-      });
-      return nextChallenges;
-    } catch {
-      return [];
-    }
-  }
-
-  async function readResponseDetail(response: Response, fallback: string) {
-    try {
-      const payload = await response.json();
-      if (payload?.detail) return String(payload.detail);
-    } catch {
-      try {
-        const text = await response.text();
-        if (text.trim()) return text.trim();
-      } catch {
-        // Ignore unreadable error bodies.
-      }
-    }
-      return fallback;
+    const nextChallenges = await fetchChallengeList();
+    setChallenges(nextChallenges);
+    setSelectedChallengeId((current) => {
+      if (selectId) return selectId;
+      return current && nextChallenges.some((challenge) => challenge.id === current)
+        ? current
+        : "";
+    });
+    return nextChallenges;
   }
 
   async function deleteChallengeById(challengeId: string, label?: string) {
@@ -552,15 +456,12 @@ export function HtmlChallengeTab({
       || (challenges.find((c) => c.id === challengeId) ? displayChallengeTitle(challenges.find((c) => c.id === challengeId)!) : "this challenge");
     const confirmed = window.confirm(`Move "${display}" to the .trash folder? You can restore it from disk if needed.`);
     if (!confirmed) return;
-    const response = await apiFetch(`/api/chat/html-challenges/${encodeURIComponent(challengeId)}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      const message = await readResponseDetail(response, "Delete challenge failed.");
+    const result = await deleteChallenge(challengeId);
+    if (!result.ok) {
       const firstSlot = slots[0]?.id ?? "a";
       setSlotStates((current) => ({
         ...current,
-        [firstSlot]: { ...current[firstSlot], error: message, done: true },
+        [firstSlot]: { ...current[firstSlot], error: result.error ?? "Delete challenge failed.", done: true },
       }));
       return;
     }
@@ -571,61 +472,15 @@ export function HtmlChallengeTab({
   }
 
   async function persistSlotValidation(challengeId: string, target: CompareTarget, validation: HtmlValidation) {
-    try {
-      const response = await apiFetch(
-        `/api/chat/html-challenges/${encodeURIComponent(challengeId)}/slots/${encodeURIComponent(target)}/validation`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: validation.status,
-            message: validationMessage(validation),
-            issues: validation.issues ?? [],
-            source: validation.source ?? "runtime",
-          }),
-        },
-      );
-      if (!response.ok) return;
-      const payload = await response.json() as { challenge?: HtmlChallengeManifest };
-      if (payload.challenge) {
-        setManifest(payload.challenge);
-      }
-    } catch {
-      // Runtime preview validation is best-effort; the local card already shows it.
-    }
-  }
-
-  function stateFromManifestSlot(slot: HtmlChallengeManifestSlot): ChallengeSlotState {
-    const metrics = slot.metrics ?? null;
-    return {
-      ...emptySlotState(),
-      done: slot.status === "done" || Boolean(slot.filename) || Boolean(slot.error),
-      error: slot.error,
-      filename: slot.filename,
-      filePath: slot.filePath,
-      fileBytes: slot.fileBytes,
-      validHtmlDocument: slot.validHtmlDocument,
-      htmlValidation: slot.htmlValidation,
-      tokS: metrics?.tokS ?? 0,
-      promptTokens: metrics?.promptTokens ?? 0,
-      completionTokens: metrics?.completionTokens ?? 0,
-      totalTokens: metrics?.totalTokens ?? 0,
-      responseSeconds: slot.responseSeconds ?? metrics?.responseSeconds ?? 0,
-      loadSeconds: slot.loadSeconds ?? 0,
-      totalSeconds: slot.totalSeconds ?? 0,
-      runtimeNote: metrics?.runtimeNote ?? null,
-      metrics,
-    };
+    const updated = await patchSlotValidation(challengeId, target, validation);
+    if (updated) setManifest(updated);
   }
 
   async function loadChallenge(challengeId: string) {
     if (busy || !challengeId) return;
     setLoadingChallengeId(challengeId);
     try {
-      const response = await apiFetch(`/api/chat/html-challenges/${encodeURIComponent(challengeId)}`);
-      if (!response.ok) return;
-      const payload = await response.json() as { challenge?: HtmlChallengeManifest };
-      const challenge = payload.challenge;
+      const challenge = await fetchChallenge(challengeId);
       if (!challenge) return;
 
       const manifestSlots = challenge.slots
@@ -634,7 +489,7 @@ export function HtmlChallengeTab({
       const nextSlots = manifestSlots.length >= 2
         ? manifestSlots.map((slot) => ({
           id: slot.slotId,
-          modelKey: modelKeyFromManifestSlot(slot),
+          modelKey: modelKeyFromManifestSlot(slot, textModelOptions),
           settings: settingsFromManifest(slot.settings, launchSettings),
           thinkingMode: normalizeThinkingMode(slot.thinkingMode ?? challenge.thinkingMode),
           reasoningEffort: normalizeReasoningEffort(slot.reasoningEffort ?? challenge.reasoningEffort),
@@ -649,19 +504,15 @@ export function HtmlChallengeTab({
       for (const slot of manifestSlots) {
         const nextState = stateFromManifestSlot(slot);
         if (slot.filename) {
-          const fileResponse = await apiFetch(
-            `/api/chat/html-challenges/${encodeURIComponent(challenge.id)}/files/${encodeURIComponent(slot.slotId)}`,
-          );
-          if (fileResponse.ok) {
-            nextState.html = await fileResponse.text();
-            nextState.done = true;
+          const fileResult = await fetchChallengeFile(challenge.id, slot.slotId);
+          nextState.done = true;
+          if (fileResult.status === "ok") {
+            nextState.html = fileResult.html ?? "";
             nextState.deleted = false;
-          } else if (fileResponse.status === 404 || fileResponse.status === 410) {
-            nextState.done = true;
+          } else if (fileResult.status === "deleted") {
             nextState.deleted = true;
           } else {
-            nextState.done = true;
-            nextState.error = await readResponseDetail(fileResponse, "Could not load saved HTML.");
+            nextState.error = fileResult.error;
           }
         }
         nextStates[slot.slotId] = nextState;
@@ -675,7 +526,7 @@ export function HtmlChallengeTab({
       setManifest(challenge);
       setExpandedHtmlSlot(null);
       setCodeViewSlots(emptyCodeViews());
-    setPreviewBackgrounds(emptyPreviewBackgrounds());
+      setPreviewBackgrounds(emptyPreviewBackgrounds());
       setSelectedChallengeId(challenge.id);
       setHistorySearch("");
       setHistoryOpen(false);
@@ -686,9 +537,8 @@ export function HtmlChallengeTab({
 
   function openPicker(target: CompareTarget) {
     const slot = slots.find((item) => item.id === target);
-    setPickerSearch("");
-    setPickerDraftKey(slot?.modelKey ?? "");
-    setPickerDraftSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
+    setPickerInitialKey(slot?.modelKey ?? "");
+    setPickerInitialSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
     setPickerAutoRetry(false);
     setPickerTarget(target);
   }
@@ -698,9 +548,8 @@ export function HtmlChallengeTab({
   // all reflect the newly-chosen model — no orphan files or stale labels.
   function openPickerForChangeModel(target: CompareTarget) {
     const slot = slots.find((item) => item.id === target);
-    setPickerSearch("");
-    setPickerDraftKey(slot?.modelKey ?? "");
-    setPickerDraftSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
+    setPickerInitialKey(slot?.modelKey ?? "");
+    setPickerInitialSettings(cloneLaunchSettings(slot?.settings ?? launchSettings));
     setPickerAutoRetry(true);
     setPickerTarget(target);
   }
@@ -801,7 +650,7 @@ export function HtmlChallengeTab({
         body: JSON.stringify({
           title: title.trim(),
           prompt: prompt.trim(),
-          models: slots.map((slot) => buildRetryModelPayload(slot)!),
+          models: slots.map((slot) => retryPayloadForSlot(slot)!),
         }),
         signal: controller.signal,
       });
@@ -832,7 +681,7 @@ export function HtmlChallengeTab({
   async function retryChallengeSlot(slot: ChallengeSlot, overridePayload?: HtmlChallengeModelPayload) {
     const challengeId = manifest?.id;
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
-    const modelPayload = overridePayload ?? buildRetryModelPayload(slot, manifestSlot);
+    const modelPayload = overridePayload ?? retryPayloadForSlot(slot, manifestSlot);
     if (busy || !challengeId || !modelPayload) return;
 
     setBusy(true);
@@ -894,7 +743,7 @@ export function HtmlChallengeTab({
   async function repairChallengeSlot(slot: ChallengeSlot, mode: "continue" | "repair") {
     const challengeId = manifest?.id;
     const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
-    const modelPayload = buildRetryModelPayload(slot, manifestSlot);
+    const modelPayload = retryPayloadForSlot(slot, manifestSlot);
     if (busy || !challengeId || !modelPayload) return;
 
     setBusy(true);
@@ -985,436 +834,8 @@ export function HtmlChallengeTab({
     });
   }
 
-  function renderModelCard(slot: ChallengeSlot) {
-    const option = selectedBySlot[slot.id];
-    const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
-    const label = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "Select a model";
-    const format = option?.format ?? manifestSlot?.format ?? "";
-    const quantization = option?.quantization ?? manifestSlot?.quantization ?? "";
-    const sizeGb = typeof option?.sizeGb === "number"
-      ? option.sizeGb
-      : typeof manifestSlot?.sizeGb === "number" ? manifestSlot.sizeGb : null;
-    const contextWindow = option?.contextWindow ?? manifestSlot?.contextWindow ?? "";
-    const thinkingValue = slot.thinkingMode === "auto" ? slot.reasoningEffort : "off";
-    return (
-      <div key={slot.id}>
-        <span className="eyebrow">{compareTargetLabels[slot.id]}</span>
-        <div className="model-selected-card model-selected-card--compact">
-          <div className="model-selected-info">
-            <div className="html-challenge-slot-headline">
-              <strong className="html-challenge-slot-name" title={label}>{label}</strong>
-              <div className="model-selected-meta html-challenge-slot-badges">
-                {format ? <span className="badge muted">{format}</span> : null}
-                {quantization ? <span className="badge muted">{quantization}</span> : null}
-                {sizeGb ? <span className="badge muted">{sizeLabel(sizeGb)}</span> : null}
-                {contextWindow ? <span className="badge muted">{contextWindow}</span> : null}
-              </div>
-            </div>
-            <small className="muted-text">{summarizeLaunchSettings(slot.settings)}</small>
-            {!completedChallenge ? (
-              <div className="html-challenge-slot-sampler-row">
-                <label>
-                  <span>Thinking</span>
-                  <select
-                    className="text-input"
-                    value={thinkingValue}
-                    disabled={busy}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      if (next === "off") updateSlotThinking(slot.id, "off");
-                      else updateSlotThinking(slot.id, "auto", next as HtmlChallengeReasoningEffort);
-                    }}
-                  >
-                    <option value="off">Off</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Med</option>
-                    <option value="high">High</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Temp</span>
-                  <input
-                    className="text-input"
-                    type="number"
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    value={slot.settings.temperature}
-                    disabled={busy}
-                    onChange={(event) => {
-                      const parsed = parseFloat(event.target.value);
-                      if (Number.isFinite(parsed)) updateSlotTemperature(slot.id, parsed);
-                    }}
-                  />
-                </label>
-                <label className="html-challenge-seed-field">
-                  <span>Seed</span>
-                  <div className="html-challenge-seed-field-controls">
-                    <input
-                      className="text-input"
-                      type="number"
-                      min={0}
-                      max={2147483647}
-                      step={1}
-                      placeholder="random"
-                      value={slot.seed ?? ""}
-                      disabled={busy}
-                      onChange={(event) => {
-                        const raw = event.target.value;
-                        if (!raw) {
-                          updateSlotSeed(slot.id, null);
-                          return;
-                        }
-                        const parsed = parseInt(raw, 10);
-                        if (Number.isFinite(parsed)) updateSlotSeed(slot.id, parsed);
-                      }}
-                    />
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => updateSlotSeed(slot.id, randomChallengeSeed())}
-                    >
-                      Randomize
-                    </button>
-                  </div>
-                </label>
-              </div>
-            ) : null}
-          </div>
-          {!completedChallenge ? (
-            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              {slots.length > 2 && slot.id === slots[slots.length - 1]?.id ? (
-                <button className="secondary-button" type="button" disabled={busy} onClick={removeLastSlot}>
-                  Remove
-                </button>
-              ) : null}
-              <button className="secondary-button" type="button" disabled={busy} onClick={() => openPicker(slot.id)}>
-                {option || manifestSlot ? "Change" : "Select"}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  function fileActionPath(state: ChallengeSlotState) {
-    if (state.filePath) return state.filePath;
-    if (manifest?.folderPath && state.filename) return `${manifest.folderPath}/${state.filename}`;
-    return "";
-  }
-
   function toggleCodeView(slotId: CompareTarget) {
     setCodeViewSlots((current) => ({ ...current, [slotId]: !current[slotId] }));
-  }
-
-  function runtimeCacheDetail(state: ChallengeSlotState) {
-    const noteMatch = state.runtimeNote?.match(/(\d+\+\d+\s+cache)/i);
-    if (noteMatch?.[1]) return noteMatch[1].toLowerCase();
-    const labelMatch = state.metrics?.cacheLabel?.match(/(\d+\+\d+)$/);
-    return labelMatch?.[1] ? `${labelMatch[1]} cache` : "";
-  }
-
-  function compactSettingsSummary(slot: ChallengeSlot, state: ChallengeSlotState) {
-    const parts = summarizeLaunchSettings(slot.settings).split(" · ");
-    const cacheDetail = runtimeCacheDetail(state);
-    if (cacheDetail && !parts.some((part) => part.toLowerCase().includes("cache"))) {
-      parts.splice(1, 0, cacheDetail);
-    }
-    parts.push(reasoningLabel(slot.thinkingMode, slot.reasoningEffort));
-    if (slot.seed != null) parts.push(`seed ${slot.seed}`);
-    return parts.join(" · ");
-  }
-
-  function slotSubtitle(state: ChallengeSlotState) {
-    if (state.deleted) return "File deleted";
-    if (!state.done || state.error) {
-      return state.loading ? "Loading..." : state.text ? "Generating..." : "";
-    }
-    return [
-      `${number(state.tokS)} tok/s`,
-      `${number(state.responseSeconds)}s`,
-      state.loadSeconds > 0 ? `Load ${number(state.loadSeconds)}s` : null,
-      state.totalTokens > 0 ? `${formatCount(state.totalTokens)} tokens` : null,
-      state.fileBytes ? formatBytes(state.fileBytes) : null,
-    ].filter(Boolean).join(" | ");
-  }
-
-  function slotBusyMessage(slot: ChallengeSlot, index: number, manifestSlot?: HtmlChallengeManifestSlot) {
-    const state = slotStates[slot.id];
-    if (state.loadingMessage) return state.loadingMessage;
-    if (manifestSlot?.status === "loading") return "Loading model...";
-    if (manifestSlot?.status === "running") return "Generating...";
-
-    const previousPending = slots.slice(0, index).find((previousSlot) => {
-      const previousState = slotStates[previousSlot.id];
-      const previousManifestSlot = manifest?.slots.find((item) => item.slotId === previousSlot.id);
-      if (previousState.done || previousState.deleted || previousState.error) return false;
-      if (previousState.loading || previousState.text) return true;
-      return previousManifestSlot?.status === "loading"
-        || previousManifestSlot?.status === "running"
-        || previousManifestSlot?.status === "queued";
-    });
-    if (previousPending) return `Waiting for ${compareTargetLabels[previousPending.id]} to finish...`;
-    return index === 0 ? "Waiting..." : "Waiting to start...";
-  }
-
-  function renderValidationBadge(state: ChallengeSlotState) {
-    const validation = htmlValidationForState(state);
-    if (!validation) return null;
-    const status = validation.status;
-    const message = validationMessage(validation);
-    return (
-      <span
-        className={`badge ${validationBadgeClass(status)}`}
-        title={message || validation.label || htmlValidationLabels[status]}
-      >
-        {validation.label || htmlValidationLabels[status]}
-      </span>
-    );
-  }
-
-  function renderFileActions(slot: ChallengeSlot, state: ChallengeSlotState) {
-    const actionPath = fileActionPath(state);
-    const validationBadge = renderValidationBadge(state);
-    const validation = htmlValidationForState(state);
-    const canExpand = Boolean(state.html && validation?.status !== "no-html");
-    const canViewCode = Boolean(state.html && validation?.status !== "no-html");
-    const isCodeView = codeViewSlots[slot.id];
-    if (!state.filename && !actionPath && !validationBadge && !canExpand) return null;
-    const isExpanded = expandedHtmlSlot === slot.id;
-    return (
-      <div className="html-challenge-file-row">
-        {state.filename ? <span className="badge success">{state.filename}</span> : null}
-        {validationBadge}
-        {actionPath ? (
-          <>
-            <button
-              className="secondary-button html-challenge-icon-button"
-              type="button"
-              aria-label={fileRevealLabel}
-              title={fileRevealLabel}
-              onClick={() => onRevealPath(actionPath)}
-            >
-              <OpenFileIcon />
-            </button>
-            <button
-              className="secondary-button html-challenge-icon-button"
-              type="button"
-              aria-label="Open in default browser"
-              title="Open in default browser"
-              onClick={() => onOpenFilePath(actionPath)}
-            >
-              <BrowserIcon />
-            </button>
-          </>
-        ) : null}
-        {canExpand ? (
-          <button
-            className="secondary-button html-challenge-icon-button"
-            type="button"
-            aria-label={isExpanded ? "Collapse preview" : "Expand preview"}
-            title={isExpanded ? "Collapse preview" : "Expand preview"}
-            onClick={() => setExpandedHtmlSlot((current) => current === slot.id ? null : slot.id)}
-          >
-            {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
-          </button>
-        ) : null}
-        {canViewCode ? (
-          <button
-            className="secondary-button html-challenge-code-toggle"
-            type="button"
-            onClick={() => toggleCodeView(slot.id)}
-          >
-            {isCodeView ? "View Render" : "View HTML Code"}
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  function renderChallengeSlot(slot: ChallengeSlot, index: number) {
-    const state = slotStates[slot.id];
-    const option = selectedBySlot[slot.id];
-    const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
-    const modelLabel = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "";
-    const subtitle = slotSubtitle(state) || manifestSlot?.status || "";
-    const waitingLabel = slotBusyMessage(slot, index, manifestSlot);
-    const showLatestButton = !streamAtBottom[slot.id] && Boolean(state.text) && !state.html;
-    const validation = htmlValidationForState(state);
-    const retryable = isRetryableState(state);
-    const repairable = isRepairableState(state);
-    const retryPayload = retryable ? buildRetryModelPayload(slot, manifestSlot) : null;
-    const isExpanded = expandedHtmlSlot === slot.id;
-    // Show Change Model on every manifested slot (any status) so a wrongly
-    // picked or retried-into-the-wrong-model slot can be swapped without
-    // first having to fail / repair. Confirming the picker auto-retries to
-    // keep filename + manifest + rendered HTML consistent.
-    const canChangeModel = Boolean(manifest && manifestSlot);
-    const panelActions = isExpanded || showLatestButton || retryable || canChangeModel ? (
-      <div className="html-challenge-panel-actions">
-        {isExpanded ? (
-          <button className="secondary-button" type="button" onClick={() => setExpandedHtmlSlot(null)}>
-            Collapse
-          </button>
-        ) : null}
-        {showLatestButton ? (
-          <button className="secondary-button" type="button" onClick={() => scrollStreamToBottom(slot.id)}>
-            Latest
-          </button>
-        ) : null}
-        {canChangeModel ? (
-          <button className="secondary-button" type="button" disabled={busy} onClick={() => openPickerForChangeModel(slot.id)}>
-            Change Model
-          </button>
-        ) : null}
-        {retryable ? (
-          <>
-            {repairable ? (
-              <>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  disabled={busy || !manifest?.id || !retryPayload}
-                  onClick={() => void repairChallengeSlot(slot, "continue")}
-                >
-                  Continue HTML
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  disabled={busy || !manifest?.id || !retryPayload}
-                  onClick={() => void repairChallengeSlot(slot, "repair")}
-                >
-                  Repair HTML
-                </button>
-              </>
-            ) : null}
-            <button
-              className="secondary-button"
-              type="button"
-              disabled={busy || !manifest?.id || !retryPayload}
-              onClick={() => void retryChallengeSlot(slot)}
-            >
-              Retry
-            </button>
-          </>
-        ) : null}
-      </div>
-    ) : null;
-
-    return (
-      <Panel
-        title={compareTargetLabels[slot.id]}
-        subtitle={subtitle}
-        className={`html-challenge-preview-panel${isExpanded ? " html-challenge-preview-panel--expanded" : ""}`}
-        actions={panelActions}
-      >
-        <div className="html-challenge-panel-body">
-          {modelLabel ? (
-            <div className="html-challenge-meta">
-              <strong>{modelLabel}</strong>
-              <span className="html-challenge-settings-summary">{compactSettingsSummary(slot, state)}</span>
-            </div>
-          ) : null}
-          <ReasoningPanel
-            className="html-challenge-reasoning"
-            text={state.reasoning}
-            streaming={!state.reasoningDone}
-          />
-          {state.error ? (
-            <p style={{ color: "#f87171" }}>{state.error}</p>
-          ) : state.deleted ? (
-            <div className="html-challenge-deleted">
-              <strong>File deleted</strong>
-              <span>{state.filename ?? "The saved HTML file"} is no longer in this challenge folder.</span>
-              <div className="html-challenge-file-row">
-                {state.filename ? <span className="badge warning">{state.filename}</span> : null}
-                {manifest?.folderPath ? (
-                  <button
-                    className="secondary-button html-challenge-file-button"
-                    type="button"
-                    onClick={() => onRevealPath(manifest.folderPath)}
-                  >
-                    Open Folder
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : state.done && !state.html ? (
-            <div className="html-challenge-empty-result">
-              <strong>No HTML output</strong>
-              <span>{validationMessage(validation) || "This model finished without a renderable HTML page."}</span>
-              {renderFileActions(slot, state)}
-            </div>
-          ) : state.html && validation?.status === "no-html" ? (
-            <div className="html-challenge-empty-result">
-              <strong>No HTML output</strong>
-              <span>{validationMessage(validation) || "The saved output did not contain a standalone HTML document."}</span>
-              {renderFileActions(slot, state)}
-            </div>
-          ) : state.html ? (
-            <>
-              {renderFileActions(slot, state)}
-              {codeViewSlots[slot.id] ? (
-                <pre className="html-challenge-stream html-challenge-code-view">
-                  <code dangerouslySetInnerHTML={{ __html: highlightHtmlCode(state.html) }} />
-                </pre>
-              ) : (
-                <div
-                  ref={(element) => attachFrameShell(slot.id, element)}
-                  className={`html-challenge-frame-shell${expandedHtmlSlot === slot.id ? " html-challenge-frame-shell--expanded" : ""}`}
-                  style={previewBackgrounds[slot.id] ? { background: previewBackgrounds[slot.id] as string } : undefined}
-                  tabIndex={0}
-                  onPointerEnter={() => markPreviewActive(slot.id)}
-                  onPointerDownCapture={() => markPreviewActive(slot.id)}
-                  onMouseDownCapture={() => focusPreviewFrame(slot.id)}
-                  onKeyDown={(event) => forwardPreviewKey(slot.id, event)}
-                  onKeyUp={(event) => forwardPreviewKey(slot.id, event)}
-                >
-                  {/* Iframe fills the shell directly so the page sees the
-                      actual rendered pixel size as its viewport — the same
-                      way a desktop browser hands its window to a page on
-                      resize. No fixed 1280x720 stage, no transform scaling. */}
-                  <iframe
-                    ref={(element) => { frameRefs.current[slot.id] = element; }}
-                    className="html-challenge-frame"
-                    title={`${compareTargetLabels[slot.id]} HTML preview`}
-                    srcDoc={previewSrcDoc(state.html, slot.id)}
-                    sandbox="allow-scripts"
-                    scrolling="yes"
-                    tabIndex={0}
-                    /* `allowTransparency` is a legacy WebKit attribute that
-                       lets the iframe's default document canvas show the
-                       frame's CSS background instead of opaque white. Pair
-                       it with `:where(html, body) { background: transparent }`
-                       inside the doc and `background: transparent` on the
-                       iframe element so the frame-shell colour shows through
-                       any region the model HTML doesn't paint. */
-                    // @ts-expect-error legacy attribute, still honored by WebKit
-                    allowtransparency="true"
-                    onFocus={() => markPreviewActive(slot.id)}
-                  />
-                </div>
-              )}
-            </>
-          ) : state.text ? (
-            <pre
-              ref={(element) => { streamRefs.current[slot.id] = element; }}
-              className="html-challenge-stream"
-              onScroll={() => handleStreamScroll(slot.id)}
-            >
-              <code dangerouslySetInnerHTML={{ __html: highlightHtmlCode(state.text) }} />
-            </pre>
-          ) : state.loading ? (
-            <p className="muted-text">{state.loadingMessage ?? "Loading model..."}</p>
-          ) : busy ? (
-            <p className="muted-text">{waitingLabel}</p>
-          ) : null}
-        </div>
-      </Panel>
-    );
   }
 
   function shouldRenderChallengeSlot(slot: ChallengeSlot) {
@@ -1435,10 +856,80 @@ export function HtmlChallengeTab({
   }
 
   function renderChallengeCard(slot: ChallengeSlot, index: number) {
+    const state = slotStates[slot.id];
+    const option = selectedBySlot[slot.id];
+    const manifestSlot = manifest?.slots.find((item) => item.slotId === slot.id);
+    const modelLabel = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "";
+    const subtitle = slotSubtitle(state) || manifestSlot?.status || "";
+    const waitingLabel = slotBusyMessage(slot, index, manifestSlot, slots, slotStates, manifest?.slots, compareTargetLabels);
+    const showLatestButton = !streamAtBottom[slot.id] && Boolean(state.text) && !state.html;
+    const retryable = isRetryableState(state);
+    const repairable = isRepairableState(state);
+    const retryPayload = retryable ? retryPayloadForSlot(slot, manifestSlot) : null;
+    const isExpanded = expandedHtmlSlot === slot.id;
+    // Show Change Model on every manifested slot (any status) so a wrongly
+    // picked or retried-into-the-wrong-model slot can be swapped without
+    // first having to fail / repair. Confirming the picker auto-retries to
+    // keep filename + manifest + rendered HTML consistent.
+    const canChangeModel = Boolean(manifest && manifestSlot);
+    const settingsSummary = compactSettingsSummary(slot, state, summarizeLaunchSettings);
+
     return (
       <div key={slot.id} className="html-challenge-card-stack">
-        {!busy && !completedChallenge ? renderModelCard(slot) : null}
-        {shouldRenderChallengeSlot(slot) ? renderChallengeSlot(slot, index) : null}
+        {!busy && !completedChallenge ? (
+          <ChallengeModelCard
+            slot={slot}
+            option={option}
+            manifestSlot={manifestSlot}
+            busy={busy}
+            completedChallenge={completedChallenge}
+            isLastSlot={slot.id === slots[slots.length - 1]?.id}
+            canRemove={slots.length > 2}
+            summary={summarizeLaunchSettings(slot.settings)}
+            onUpdateThinking={updateSlotThinking}
+            onUpdateTemperature={updateSlotTemperature}
+            onUpdateSeed={updateSlotSeed}
+            onRemoveLastSlot={removeLastSlot}
+            onOpenPicker={openPicker}
+          />
+        ) : null}
+        {shouldRenderChallengeSlot(slot) ? (
+          <ChallengeSlotPanel
+            slot={slot}
+            state={state}
+            manifest={manifest}
+            manifestSlot={manifestSlot}
+            modelLabel={modelLabel}
+            subtitle={subtitle}
+            waitingLabel={waitingLabel}
+            busy={busy}
+            isExpanded={isExpanded}
+            showLatestButton={showLatestButton}
+            retryable={retryable}
+            repairable={repairable}
+            hasRetryPayload={Boolean(retryPayload)}
+            canChangeModel={canChangeModel}
+            isCodeView={codeViewSlots[slot.id]}
+            previewBackground={previewBackgrounds[slot.id]}
+            fileRevealLabel={fileRevealLabel}
+            settingsSummary={settingsSummary}
+            onSetExpanded={setExpandedHtmlSlot}
+            onScrollStreamToBottom={scrollStreamToBottom}
+            onToggleCodeView={toggleCodeView}
+            onChangeModel={openPickerForChangeModel}
+            onRetrySlot={() => void retryChallengeSlot(slot)}
+            onRepairSlot={(mode) => void repairChallengeSlot(slot, mode)}
+            onRevealPath={onRevealPath}
+            onOpenFilePath={onOpenFilePath}
+            onAttachStream={attachStream}
+            onAttachFrame={attachFrame}
+            onAttachFrameShell={attachFrameShell}
+            onStreamScroll={handleStreamScroll}
+            onMarkPreviewActive={markPreviewActive}
+            onFocusPreviewFrame={focusPreviewFrame}
+            onForwardPreviewKey={forwardPreviewKey}
+          />
+        ) : null}
       </div>
     );
   }
@@ -1458,70 +949,18 @@ export function HtmlChallengeTab({
                 >
                   New Challenge
                 </button>
-                <div className="html-challenge-history-combobox">
-                  <input
-                    className="text-input html-challenge-history-input"
-                    type="search"
-                    value={historyInputValue}
-                    placeholder="Search previous challenges..."
-                    disabled={busy || Boolean(loadingChallengeId)}
-                    onFocus={() => {
-                      setHistoryOpen(true);
-                      setHistorySearch("");
-                    }}
-                    onChange={(event) => {
-                      setHistorySearch(event.target.value);
-                      setHistoryOpen(true);
-                    }}
-                    onBlur={() => {
-                      window.setTimeout(() => {
-                        setHistoryOpen(false);
-                        setHistorySearch("");
-                      }, 120);
-                    }}
-                  />
-                  {historyOpen && !busy && !loadingChallengeId ? (
-                    <div className="html-challenge-history-menu" role="listbox">
-                      {filteredChallenges.map((challenge) => (
-                        <div
-                          key={challenge.id}
-                          role="option"
-                          aria-selected={challenge.id === selectedChallengeId}
-                          className={`html-challenge-history-option${challenge.id === selectedChallengeId ? " active" : ""}`}
-                        >
-                          <button
-                            type="button"
-                            className="html-challenge-history-option-main"
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              void loadChallenge(challenge.id);
-                            }}
-                          >
-                            <span>{displayChallengeTitle(challenge)}</span>
-                            <small>{formatChallengeDate(challenge.createdAt)}</small>
-                          </button>
-                          <button
-                            type="button"
-                            className="html-challenge-history-option-delete"
-                            aria-label={`Move "${displayChallengeTitle(challenge)}" to trash`}
-                            title="Move to trash"
-                            disabled={busy}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              void deleteChallengeById(challenge.id, displayChallengeTitle(challenge));
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      {filteredChallenges.length === 0 ? (
-                        <p className="html-challenge-history-empty">No matching challenges.</p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
+                <ChallengeHistoryCombobox
+                  challenges={challenges}
+                  selectedChallengeId={selectedChallengeId}
+                  historySearch={historySearch}
+                  historyOpen={historyOpen}
+                  busy={busy}
+                  loadingChallengeId={loadingChallengeId}
+                  onHistorySearchChange={setHistorySearch}
+                  onHistoryOpenChange={setHistoryOpen}
+                  onLoadChallenge={(id) => void loadChallenge(id)}
+                  onDeleteChallenge={(id, label) => void deleteChallengeById(id, label)}
+                />
               </div>
             ) : null}
             <div className="html-challenge-setup-actions-spacer" />
@@ -1612,16 +1051,11 @@ export function HtmlChallengeTab({
         {visibleSlots.map((slot, index) => renderChallengeCard(slot, index))}
       </div>
 
-      <ModelLaunchModal
-        open={pickerTarget != null}
-        title={pickerTarget ? `Select ${compareTargetLabels[pickerTarget]}` : "Select Model"}
-        confirmLabel={pickerTarget ? `Use for ${compareTargetLabels[pickerTarget]}` : "Use model"}
-        selectedKey={pickerDraftKey}
-        collapseOnOpen={Boolean(pickerDraftKey)}
-        search={pickerSearch}
-        options={textModelOptions}
-        settings={pickerDraftSettings}
-        preview={pickerDraftPreview}
+      <ChallengePickerModal
+        target={pickerTarget}
+        initialKey={pickerInitialKey}
+        initialSettings={pickerInitialSettings}
+        textModelOptions={textModelOptions}
         availableMemoryGb={availableMemoryGb}
         totalMemoryGb={totalMemoryGb}
         gpuVramTotalGb={gpuVramTotalGb}
@@ -1630,15 +1064,9 @@ export function HtmlChallengeTab({
         installingPackage={installingPackage ?? null}
         installLogs={installLogs}
         turboInstalled={turboInstalled}
-        onSelectedKeyChange={setPickerDraftKey}
-        onSearchChange={setPickerSearch}
-        onSettingChange={(key, value) => {
-          setPickerDraftSettings((current) => ({ ...current, [key]: value }));
-        }}
-        onConfirm={(selectedKey) => {
+        onConfirm={(selectedKey, newSettings) => {
           if (pickerTarget) {
             const target = pickerTarget;
-            const newSettings = cloneLaunchSettings(pickerDraftSettings);
             const slot = slots.find((item) => item.id === target);
             updateSlot(target, {
               modelKey: selectedKey,
@@ -1661,12 +1089,10 @@ export function HtmlChallengeTab({
               }
             }
           }
-          setPickerSearch("");
           setPickerAutoRetry(false);
           setPickerTarget(null);
         }}
         onClose={() => {
-          setPickerSearch("");
           setPickerAutoRetry(false);
           setPickerTarget(null);
         }}

@@ -58,6 +58,11 @@ from backend_service.image_runtime.repos import (
     _locate_sdxl_vae_fix_snapshot,
     _nunchaku_transformer_class_for_repo,  # noqa: F401 — re-exported for tests
 )
+from backend_service.image_runtime.pipeline_helpers import (
+    build_pipeline_kwargs,
+    diffuse_message,
+    format_run_label,
+)
 from backend_service.image_runtime.transformer_loaders import (
     detect_device,
     maybe_enable_fp8_layerwise,
@@ -454,12 +459,10 @@ class DiffusersTextToImageEngine:
             IMAGE_PROGRESS.finish()
 
     def _diffuse_message(self, config: ImageGenerationConfig) -> str:
-        if config.batchSize > 1:
-            return f"Diffusing {config.batchSize} images"
-        return "Diffusing image"
+        return diffuse_message(config)
 
     def _format_run_label(self, config: ImageGenerationConfig) -> str:
-        return f"{config.modelName} · {config.width}x{config.height}"
+        return format_run_label(config)
 
     def preload(self, repo: str) -> ImageRuntimeStatus:
         self._ensure_pipeline(repo)
@@ -853,37 +856,7 @@ class DiffusersTextToImageEngine:
         return should_use_model_cpu_offload(repo, device)
 
     def _build_pipeline_kwargs(self, config: ImageGenerationConfig, generator: Any) -> dict[str, Any]:
-        kwargs: dict[str, Any] = {
-            "prompt": config.prompt,
-            "width": config.width,
-            "height": config.height,
-            "num_inference_steps": config.steps,
-            "guidance_scale": config.guidance,
-            "num_images_per_prompt": config.batchSize,
-            "generator": generator,
-        }
-        # FU-020: when the user picked an AYS sampler,
-        # ``_apply_scheduler`` stashed the precomputed timestep array on
-        # the pipeline. Diffusers accepts ``timesteps=`` as an explicit
-        # override; when present it takes precedence over
-        # ``num_inference_steps`` so we drop the latter to avoid the
-        # "got both" warning.
-        pipeline = self._pipeline
-        if pipeline is not None:
-            ays_timesteps = getattr(pipeline, "_chaosengine_ays_timesteps", None)
-            if ays_timesteps:
-                kwargs["timesteps"] = list(ays_timesteps)
-                kwargs.pop("num_inference_steps", None)
-        lowered_repo = config.repo.lower()
-        if "qwen-image" in lowered_repo:
-            kwargs.pop("guidance_scale", None)
-            kwargs["true_cfg_scale"] = config.guidance
-            # Qwen-Image expects a negative prompt value, even if it is intentionally blank.
-            kwargs["negative_prompt"] = config.negativePrompt if config.negativePrompt else " "
-            return kwargs
-        if config.negativePrompt.strip():
-            kwargs["negative_prompt"] = config.negativePrompt
-        return kwargs
+        return build_pipeline_kwargs(config, generator, self._pipeline)
 
     def _detect_device(self, torch: Any) -> str:
         return detect_device(torch)

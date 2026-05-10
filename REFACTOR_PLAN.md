@@ -154,7 +154,12 @@ inference/__init__.py: 3574 → 1180 (-2394). RuntimeController (~1050 LOC) is t
   - `video_runtime/warmup.py` — torch + dep prewarm singleton + `start_torch_warmup` / `torch_warmup_status`
   - `video_runtime/transformer_loaders.py` (1c-12) — five stateless helpers: `try_load_gguf_transformer`, `try_load_bnb_nf4_transformer` (CUDA), `swap_distill_transformers` (FU-019 lightx2v 4-step Wan 2.2 A14B distill), `detect_device`, `preferred_torch_dtype` (bf16/fp16/fp32 picker with M1-MPS bf16 capability probe + env opt-out).
 
-**Remaining**: `_ensure_pipeline` is the orchestrator that calls the loaders + the LoRA fuse / preview-VAE / distill swap / SDXL VAE swap / fp8 layerwise / scheduler swap path. Heavy state mutation (self._pipeline / self._loaded_repo / variant key / runtime notes). Same shape on the video side. Extract into `runtimes/common/_pipeline_loader.py` post-v0.8.0 once both engines are stable.
+**Phase 1c-13 through 1c-16** (commits `a27865c` → `e32bc61`): pulled the remaining stateless helpers out of both engines:
+- `image_runtime/transformer_loaders.py` gained `preferred_torch_dtype` + `preferred_execution_device` (1c-13).
+- `video_runtime/pipeline_helpers.py` (new) — 7 helpers: `make_step_callback`, `invoke_pipeline`, `encode_frames_to_mp4`, `pipeline_class_for_repo`, `finalize_config`, `swap_scheduler`, `build_pipeline_kwargs` (1c-14, 1c-15).
+- `image_runtime/pipeline_helpers.py` (new) — 3 helpers: `diffuse_message`, `format_run_label`, `build_pipeline_kwargs` (1c-16).
+
+image_runtime/__init__.py: 1043 → 992 LOC. video_runtime/__init__.py: 1357 → 1018 LOC. The remaining `_ensure_pipeline` orchestrator stays inline because it mutates ~10 instance fields (self._pipeline / self._loaded_repo / variant key / runtime notes / self._torch / self._device / self._loaded_path / etc.) — a clean extract requires a `PipelineState` dataclass that bundles the mutation surface, which is a v0.8.1 follow-up.
 
 **1d. `routes/setup.py` 1,932 → setup/ package with 6 focused submodules.** **DONE** (Phase 1d-1 through 1d-3c, commits `6181c1b` → `afc70f3`):
 - `setup/longlive.py` + `setup/wan_install.py` — LongLive + Wan background installers (1d-1).
@@ -242,13 +247,11 @@ src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every exis
 
 useChat.ts: 1,203 → 1,067 LOC. useImageState.ts: 846 → 809 LOC. useVideoState.ts: 1,126 → 899 LOC. HtmlChallengeTab.tsx: 1,677 → 1,103 LOC. App.tsx: 2,334 → 2,081 LOC.
 
-**Remaining 2c/d targets:**
-- `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput` (still ~1,131 LOC)
-- `useVideoState` 1,211 → `useVideoConfig` + `useVideoGeneration` + `useVideoLibrary`
-- `useImageState` 862 → analogous
-- `App.tsx` 2,253 → composition root only
-- `HtmlChallengeTab.tsx` 2,535 → `ChallengeRunner` + `ChallengeEditor` + `ChallengePreview` + `ChallengeLibrary`
-- `VideoStudioTab.tsx` 1,796 + `ImageStudioTab.tsx` 1,178 → shared `<StudioControls>` + `<StudioPreview>` + `<StudioLibrary>` shell
+**Phase 2d-2 (commits `43df856`, `697ab66`)** — Studio tab decomposition:
+- `features/video/VideoStudioRuntimeBanner.tsx` (Phase 2d-2a) — extracts the ~265 LOC dense runtime status callout (CUDA torch banner, chip row, conditional install actions for LongLive / mlx-video / mp4 encoder / missing tokenizer deps / GPU bundle bundle).
+- `features/images/ImageStudioRuntimeBanner.tsx` (Phase 2d-2b) — extracts the ~205 LOC image runtime callout (CUDA torch banner, chip row, model preload/unload control row, GPU runtime install).
+
+VideoStudioTab.tsx: 1,712 → 1,479 LOC. ImageStudioTab.tsx: 1,178 → 992 LOC.
 
 **2e. Inline single-use hooks** — `useGpuStatus`, `useSidebarPrefs`, `useUiScale` collapse into `App.tsx`.
 

@@ -100,8 +100,10 @@ Each phase = 1 PR. Tests green at each boundary. No big-bang merge.
 - `state/documents.py` (1a-4) — 8 helpers: `session_docs_dir` / `workspace_docs_dir` (filesystem-safe path resolvers), `list_session_documents`, `upload_session_document` (bytes → file + chunked .json sidecar), `delete_session_document`, `upload_workspace_document` (Phase 3.7 variant), `delete_workspace_document`, `retrieve_session_context` (RAG retriever merging session + workspace corpora through DocumentIndex).
 - `state/benchmarks.py` (1a-5) — `run_benchmark` orchestration across perplexity / task-accuracy / throughput modes + `append_benchmark_run` rolling-window persistence.
 - `state/openai_compat.py` (1a-6) — `openai_models` + `openai_embeddings` + `openai_chat_completion` (`/v1/*` endpoints; auto-load + sampler + response_format mapping + streaming branch).
+- `state/payloads.py` (1a-7) — `workspace` (`/api/workspace` aggregate composing system snapshot + library + recommendation + featured models + runtime status + benchmarks + logs/activity + cache-preview math, with the heavy per-process annotation pass that joins `runningLlmProcesses` against the runtime's active + warm engines) + `server_status` (`/api/server/status` with loading-stage breakdown).
+- `state/settings_state.py` (1a-8) — `settings_payload` (user-visible settings shape with masked API keys / HF token, per-directory model counts, resolved output dirs) + `update_settings` (full settings patch: model dir normalisation, output-path validation, data-dir migration, remote-provider key preservation, library cache refresh).
 
-state/__init__.py: 4418 → 3315 LOC (-1103, -25%). Class methods that moved out are now 1-3 line thin wrappers preserving the public surface. Remaining big clusters: session management (~1500 LOC, 13 methods), download lifecycle (~400 LOC, 5 methods), generate/generate_stream (~830 LOC), workspace + server_status renderers (~250 LOC).
+state/__init__.py: 4418 → 2873 LOC (-1545, -35%). Class methods that moved out are now 1-3 line thin wrappers preserving the public surface. Remaining big clusters: session management (~1500 LOC, 13 methods), download lifecycle (~400 LOC, 5 methods), generate/generate_stream (~830 LOC), load_model/unload_model (~330 LOC).
 
 ```
 backend_service/state/

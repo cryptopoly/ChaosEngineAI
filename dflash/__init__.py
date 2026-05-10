@@ -38,15 +38,27 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "Qwen/Qwen3.5-14B": "z-lab/Qwen3.5-14B-DFlash",
     "Qwen/Qwen3.5-27B": "z-lab/Qwen3.5-27B-DFlash",
     "Qwen/Qwen3.5-35B-A3B": "z-lab/Qwen3.5-35B-A3B-DFlash",
+    # 2026-05-10: z-lab published a 122B-A10B drafter for the largest
+    # Qwen3.5 MoE checkpoint. Same naming pattern as the smaller A3B.
+    "Qwen/Qwen3.5-122B-A10B": "z-lab/Qwen3.5-122B-A10B-DFlash",
     # ----- Qwen3.6 family -----
     "Qwen/Qwen3.6-35B-A3B": "z-lab/Qwen3.6-35B-A3B-DFlash",
+    # ----- Gemma 4 family (added 2026-05-10) -----
+    # dflash-mlx 0.1.5 commit 05cc456 added the Gemma4 backend; z-lab
+    # ships matched draft checkpoints for both flagship variants.
+    "google/gemma-4-31B-it": "z-lab/gemma-4-31B-it-DFlash",
+    "google/gemma-4-26B-A4B-it": "z-lab/gemma-4-26B-A4B-it-DFlash",
     # ----- LLaMA family -----
     "meta-llama/Llama-3.1-8B-Instruct": "z-lab/Llama-3.1-8B-Instruct-DFlash",
     # ----- gpt-oss family -----
     "gpt-oss/gpt-oss-20B": "z-lab/gpt-oss-20B-DFlash",
     "gpt-oss/gpt-oss-120B": "z-lab/gpt-oss-120B-DFlash",
+    # ----- MiniMax family (preview drafts, added 2026-05-10) -----
+    "MiniMaxAI/MiniMax-M2.5": "z-lab/MiniMax-M2.5-DFlash",
+    "MiniMaxAI/MiniMax-M2.7": "z-lab/MiniMax-M2.7-DFlash",
     # ----- Kimi -----
     "moonshotai/Kimi-K2.5": "z-lab/Kimi-K2.5-DFlash",
+    "moonshotai/Kimi-K2.6": "z-lab/Kimi-K2.6-DFlash",
 }
 
 # Additional aliases that map community / MLX repos to the same drafts.
@@ -65,6 +77,24 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3.6-35B-A3B-bf16": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-4bit": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-8bit": "Qwen/Qwen3.6-35B-A3B",
+    # ----- Qwen3.5-122B-A10B (added 2026-05-10) -----
+    "mlx-community/Qwen3.5-122B-A10B-bf16": "Qwen/Qwen3.5-122B-A10B",
+    "mlx-community/Qwen3.5-122B-A10B-4bit": "Qwen/Qwen3.5-122B-A10B",
+    "mlx-community/Qwen3.5-122B-A10B-8bit": "Qwen/Qwen3.5-122B-A10B",
+    # ----- Gemma 4 (added 2026-05-10) -----
+    "mlx-community/gemma-4-31B-it-bf16": "google/gemma-4-31B-it",
+    "mlx-community/gemma-4-31B-it-4bit": "google/gemma-4-31B-it",
+    "mlx-community/gemma-4-31B-it-8bit": "google/gemma-4-31B-it",
+    "mlx-community/gemma-4-26B-A4B-it-bf16": "google/gemma-4-26B-A4B-it",
+    "mlx-community/gemma-4-26B-A4B-it-4bit": "google/gemma-4-26B-A4B-it",
+    "mlx-community/gemma-4-26B-A4B-it-8bit": "google/gemma-4-26B-A4B-it",
+    # ----- MiniMax (added 2026-05-10) -----
+    "mlx-community/MiniMax-M2.5-bf16": "MiniMaxAI/MiniMax-M2.5",
+    "mlx-community/MiniMax-M2.5-4bit": "MiniMaxAI/MiniMax-M2.5",
+    "mlx-community/MiniMax-M2.5-8bit": "MiniMaxAI/MiniMax-M2.5",
+    "mlx-community/MiniMax-M2.7-bf16": "MiniMaxAI/MiniMax-M2.7",
+    "mlx-community/MiniMax-M2.7-4bit": "MiniMaxAI/MiniMax-M2.7",
+    "mlx-community/MiniMax-M2.7-8bit": "MiniMaxAI/MiniMax-M2.7",
     # ----- LLaMA 3.1 -----
     "mlx-community/Meta-Llama-3.1-8B-Instruct-bf16": "meta-llama/Llama-3.1-8B-Instruct",
     "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit": "meta-llama/Llama-3.1-8B-Instruct",
@@ -80,6 +110,9 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Kimi-K2.5-bf16": "moonshotai/Kimi-K2.5",
     "mlx-community/Kimi-K2.5-4bit": "moonshotai/Kimi-K2.5",
     "mlx-community/Kimi-K2.5-8bit": "moonshotai/Kimi-K2.5",
+    "mlx-community/Kimi-K2.6-bf16": "moonshotai/Kimi-K2.6",
+    "mlx-community/Kimi-K2.6-4bit": "moonshotai/Kimi-K2.6",
+    "mlx-community/Kimi-K2.6-8bit": "moonshotai/Kimi-K2.6",
 }
 
 # Suffixes stripped during fuzzy matching (order matters — longest first).

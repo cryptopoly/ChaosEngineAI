@@ -133,16 +133,22 @@ else
   warn "llama-server-turbo — not installed (run scripts/build-llama-turbo.sh)"
 fi
 
-# ChaosEngine submodule
-if [[ -d "vendor/ChaosEngine/.git" ]]; then
-  CE_BEHIND=$(git -C vendor/ChaosEngine rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
-  if [[ "$CE_BEHIND" == "0" ]]; then
-    pass "vendor/ChaosEngine — up to date"
-  elif [[ "$CE_BEHIND" == "?" ]]; then
-    warn "vendor/ChaosEngine — could not check (fetch first)"
-  else
-    warn "vendor/ChaosEngine — $CE_BEHIND commits behind upstream"
-  fi
+# FU-030 dropped vendor/ChaosEngine; the staleness probe that lived
+# here used to walk vendor/ChaosEngine/.git and warn on commits behind
+# upstream. Removed alongside the vendored package.
+
+# FU-033: dflash-mlx pin sync between pyproject.toml and stage-runtime.mjs.
+# Mirrors the assert in scripts/pre-build-check.mjs — see that file for
+# the full rationale (the two pins drifted in May 2026 and shipped an
+# old binary in release builds).
+PYPROJECT_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' pyproject.toml | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+STAGE_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' scripts/stage-runtime.mjs | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" ]]; then
+  warn "dflash-mlx pin sync — could not extract commit hashes from both files"
+elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
+  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12}. Sync both to the same commit."
+else
+  pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
 fi
 echo
 

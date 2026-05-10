@@ -290,7 +290,7 @@ function stageOptionalRuntimePackages(pythonBinary) {
   //   matching distribution.
   const optionalPackages = [
     {
-      pipName: "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
+      pipName: "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
       importName: "dflash_mlx",
       platforms: ["darwin"],
     },

@@ -5,11 +5,10 @@ import {
   deleteSessionDocument,
   loadModel,
   getWorkspace,
-  deleteModelPath,
   resolveApiToken,
-  unloadModel,
   updateSession,
 } from "./api";
+import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
@@ -870,16 +869,13 @@ export default function App() {
   }
 
   async function handleUnloadModel(ref?: string) {
-    setBusyAction("Unloading model...");
-    try {
-      const runtime = await unloadModel(ref);
-      setWorkspace((current) => syncRuntime(current, runtime));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to unload model.");
-    } finally {
-      setBusyAction(null);
-    }
+    return performUnloadModel(ref, {
+      setBusyAction,
+      setError,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   async function handleUnloadWarmModel(ref: string) {
@@ -906,20 +902,13 @@ export default function App() {
   const { handleRevealPath, handleOpenFilePath, handleOpenExternalUrl } = useFileActions(backendOnline, setError);
 
   async function handleDeleteModel(item: LibraryItem) {
-    const confirmed = window.confirm(
-      `Delete "${item.name}"?\n\nThis will permanently remove the files at:\n${item.path}\n\nThis action cannot be undone.`,
-    );
-    if (!confirmed) return;
-    setBusyAction("Deleting model...");
-    try {
-      const result = await deleteModelPath(item.path);
-      setWorkspace((current) => ({ ...current, library: result.library }));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to delete model.");
-    } finally {
-      setBusyAction(null);
-    }
+    return performDeleteModel(item, {
+      setBusyAction,
+      setError,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   function prepareCatalogConversion(model: ModelVariant) {

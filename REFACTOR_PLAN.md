@@ -216,12 +216,13 @@ mlx_worker.py: 2,115 → 1,227 LOC (-888, -42%). The remaining WorkerState metho
 
 src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every existing import path; barrel ``src/types/index.ts`` aggregates the 11 sub-files. Remaining 230 LOC: ``WorkspaceData`` (dashboard aggregator), ``LoadModelPayload``, ``ConvertModelPayload``, ``ConversionResult``, ``ConvertModelResponse``, ``TauriBackendInfo`` — small payloads that don't justify their own file yet.
 
-**2c. Mega-hooks + god components splits.** **PARTIAL** (Phase 2c-1 through 2c-3, commits `ce55f4b` → `3a3c532`):
+**2c. Mega-hooks + god components splits.** **PARTIAL** (Phase 2c-1 through 2c-4, commits `ce55f4b` → `50ce5dd`):
 - `features/chat/temperatureOverride.ts` + `features/chat/reasoningEffort.ts` — per-session localStorage helpers extracted from `useChat.ts`. Plus `readSamplerPayload` collapsed to a one-liner via existing `samplerOverrides.ts` helpers (Phase 2c-1).
 - `components/CapabilityStrip.tsx` — de-duped 3 identical inline ``renderCapabilityIcons`` implementations (App + MyModelsTab + OnlineModelsTab) into a single shared component (Phase 2c-2).
 - `hooks/useCudaTorchInstall.ts` — extracted CUDA torch install flow (3 state slots + handler) from App.tsx; accepts an ``onAfterInstall`` callback so App keeps firing the imgState/videoState refresh probes that clear the warning banner (Phase 2c-3).
+- `features/chat/optimisticTurns.ts` (Phase 2c-4) — four pure state helpers pulled out of useChat: `appendOptimisticTurn` (push user + empty-assistant pair in `prompt_eval` phase), `replaceOptimisticAssistant` (fill the empty turn after stream completes; falls back to appending fresh pair if the optimistic turn was already swept), `rollbackOptimisticTurn` (drop the empty pair on stream error), `mergeSessionMetadata` (shallow patch). Hook keeps 3-line local wrappers that close over setWorkspace.
 
-useChat.ts: 1,203 → 1,131 LOC. App.tsx: 2,334 → 2,253 LOC.
+useChat.ts: 1,203 → 1,067 LOC. App.tsx: 2,334 → 2,253 LOC.
 
 **Remaining 2c/d targets:**
 - `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput` (still ~1,131 LOC)

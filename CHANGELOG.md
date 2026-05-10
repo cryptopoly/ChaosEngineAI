@@ -23,17 +23,20 @@ Python processes; `/api/server/status` reported one model.
 **Backend (`backend_service/`)** — major shrinks across the four
 biggest modules:
 
-- `state/__init__.py`: 4,418 → 2,873 LOC (-35%) via
-  `state/{logs,metrics,_helpers,documents,benchmarks,openai_compat,payloads,settings_state}.py`.
+- `state/__init__.py`: 4,418 → 860 LOC (-81%) via
+  `state/{logs,metrics,_helpers,documents,benchmarks,openai_compat,
+  payloads,settings_state,sessions,downloads,generation,lifecycle}.py`.
   Class methods that moved out are 1-3 line thin wrappers; tests that
-  patch `_describe_process` etc. retarget to the new module path; no
-  external import path changes.
-- `inference/__init__.py`: 3,574 → 1,180 LOC (-67%) via the existing
+  patch `_describe_process` / `_spawn_snapshot_download` /
+  `threading.Thread` / `subprocess.Popen` retarget to the new module
+  paths; no external import path changes. The facade is essentially
+  just construction, validation, and wiring now.
+- `inference/__init__.py`: 3,574 → 97 LOC (-97%) via the existing
   `engines/` subpackage (RemoteOpenAIEngine + MockInferenceEngine +
   MLXWorkerEngine + LlamaCppEngine + binaries + capabilities +
-  conversion). Only `RuntimeController` (~1,050 LOC) stays inline — its
-  helper graph is the most cross-cutting in the package and a clean
-  extract requires an interim `WorkerContext` dataclass.
+  conversion) plus `controller.py` (the full ~1,050 LOC
+  RuntimeController class). The package's `__init__` is now just the
+  public re-export surface.
 - `mlx_worker.py`: 2,115 → 1,227 LOC (-42%) via
   `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader}.py`.
   WorkerState methods that moved out are thin wrappers; the JSON IPC

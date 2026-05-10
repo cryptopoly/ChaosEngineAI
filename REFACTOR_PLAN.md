@@ -255,15 +255,23 @@ useChat.ts: 1,203 → 1,067 LOC. useImageState.ts: 846 → 809 LOC. useVideoStat
 
 ### Phase 3 — Rust shell split
 
+**PARTIAL** (Phase 3-1, commit `c244618`):
+- `src-tauri/src/binaries.rs` — `resolve_llama_server`, `resolve_llama_server_turbo`, `resolve_llama_cli`, `resolve_sd_cpp`, `resolve_candidate`, `find_in_path`. Each honours an env-var override first, falls back to `~/.chaosengine/bin/<name>` for managed installs, then walks `PATH` (with `.exe` suffix on Windows).
+
+lib.rs: 1335 → 1249 LOC. Pre-existing `settings.rs` / `probe.rs` / `lease.rs` / `orphans.rs` / `windows_job.rs` modules unchanged.
+
 ```
 src-tauri/src/
   lib.rs                # public API + state init only
-  runtime/{extraction,manifest}.rs
-  binaries/{resolution,path_search}.rs
-  env/{apply,python}.rs
-  backend/{manager,lifecycle,signals}.rs
-  ipc.rs
-  settings.rs
+  binaries.rs           [done]
+  settings.rs           [done]
+  probe.rs              [done]
+  lease.rs              [done]
+  orphans.rs            [done]
+  windows_job.rs        [done]
+  runtime/{extraction,manifest}.rs   [pending — embedded runtime extraction is the big one]
+  env/{apply,python}.rs              [pending]
+  backend/{manager,lifecycle}.rs     [pending — BackendManager impl]
 ```
 
 Add explicit `#[cfg(target_os = "linux")]` where Linux currently rides on `#[cfg(unix)]` but should diverge from macOS.

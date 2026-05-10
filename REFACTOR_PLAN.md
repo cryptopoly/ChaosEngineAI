@@ -243,7 +243,7 @@ Add explicit `#[cfg(target_os = "linux")]` where Linux currently rides on `#[cfg
 
 **Verify:** `cargo check --all-targets`, `cargo clippy -- -D warnings`, `cargo test`, `npm run tauri dev` boots.
 
-### Phase 4 — Cross-OS parity
+### Phase 4 — Cross-OS parity **DONE**
 
 1. PowerShell ports: `update-llama-turbo.ps1`, `update-sdcpp.ps1`. **DONE** (commit `861de0a`). Both delegate to their `build-*.ps1` siblings after a version-file fast-exit so MSVC/CUDA toolchain plumbing stays in one place.
 2. `pre-build-check.sh` → port to Node (`pre-build-check.mjs`) — single script across all 3 OSes. **DONE** (Phase 4-2). 7 checks ported (pytest, vitest, tsc, NOTICES grep, Python cache-strategy probe, upstream git ls-remote, binary file existence). Wired as `npm run pre-build-check`. Live smoke against the dev machine: 8 PASS / 0 FAIL / 1 WARN (turbo update available, expected).

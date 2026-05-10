@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "chaosengine-ai"
-version = "0.7.6"
+version = "0.8.0"
 description = "Local AI model runner with pluggable cache/compression strategies"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -17,6 +17,7 @@ chaosengine-api = "backend_service.app:main"
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-cov",
 ]
 mlx-lm = [
     "mlx>=0.22.0",

@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
-import { InstallLogPanel } from "../../components/InstallLogPanel";
-import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
-import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
+import { VideoStudioRuntimeBanner } from "./VideoStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult, LongLiveJobState } from "../../api";
 import type {
   TabId,
@@ -27,6 +25,18 @@ import {
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
 } from "../../utils";
+import {
+  ASPECT_RATIOS,
+  KNOWN_INSTALLABLE_VIDEO_DEPS,
+  MLX_VIDEO_SUPPORTED_REPOS,
+  QUALITY_PRESETS,
+  type VideoAspectRatio,
+  type VideoQualityPreset,
+  displayNumber,
+  isLtx2DistilledRepo,
+  onNumericBlur,
+  onNumericChange,
+} from "./videoStudioConstants";
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
@@ -137,102 +147,6 @@ export interface VideoStudioTabProps {
 // lazily — surfaced by the runtime probe via missingDependencies. Mirrors
 // _VIDEO_MODEL_DEPS in backend_service/video_runtime.py so the Studio knows
 // which "missing dep" chips it can offer a one-click install for.
-const KNOWN_INSTALLABLE_VIDEO_DEPS: ReadonlySet<string> = new Set([
-  "imageio",
-  "imageio-ffmpeg",
-  "tiktoken",
-  "sentencepiece",
-  "protobuf",
-  "ftfy",
-]);
-
-// Repos the mlx-video Apple Silicon engine supports natively. Mirrors
-// _SUPPORTED_REPOS in backend_service/mlx_video_runtime.py — kept here
-// so the Studio can decide when to surface the mlx-video chip without
-// an extra capabilities round-trip. See FU-009 in CLAUDE.md.
-//
-// Today: LTX-2 prince-canuma pre-converted MLX repos only. Wan2.1/2.2
-// require an explicit ``mlx_video.models.wan_2.convert`` step on raw HF
-// weights (no pre-converted MLX repo today) — until that conversion is
-// bundled, Wan paths use diffusers MPS.
-const MLX_VIDEO_SUPPORTED_REPOS: ReadonlySet<string> = new Set([
-  "prince-canuma/LTX-2-distilled",
-  "prince-canuma/LTX-2-dev",
-  "prince-canuma/LTX-2.3-distilled",
-  "prince-canuma/LTX-2.3-dev",
-]);
-
-function isLtx2DistilledRepo(repo: string | null | undefined): boolean {
-  return !!repo && repo.toLowerCase().startsWith("prince-canuma/ltx-2") && repo.toLowerCase().endsWith("-distilled");
-}
-
-// Quality presets: common starting points for the denoising step count.
-// Frames are deliberately not part of the preset — frame count controls
-// clip LENGTH, not image quality, and bundling it into "Draft/High/Max"
-// confused users into thinking shorter clips were lower quality. Guidance
-// is also omitted because the parent hook sets it per-model (LTX wants 3,
-// Hunyuan wants 6, others 5) and presets shouldn't overwrite that.
-type VideoQualityPreset = "draft" | "standard" | "high" | "max";
-const QUALITY_PRESETS: Record<
-  VideoQualityPreset,
-  { label: string; sub: string; steps: number }
-> = {
-  draft: { label: "Draft", sub: "20 steps", steps: 20 },
-  standard: { label: "Standard", sub: "30 steps", steps: 30 },
-  high: { label: "High", sub: "40 steps", steps: 40 },
-  max: { label: "Max", sub: "50 steps", steps: 50 },
-};
-
-// Aspect-ratio presets. Concrete resolutions rather than "apply ratio to
-// current base" so clicking a pill has zero surprises. Values chosen to
-// be safe across LTX / Wan / HunyuanVideo — they're all divisible by 8
-// (diffusers requirement) and under the largest-tested resolutions the
-// families ship with.
-type VideoAspectRatio = "1:1" | "4:3" | "16:9" | "9:16" | "21:9";
-const ASPECT_RATIOS: Record<
-  VideoAspectRatio,
-  { width: number; height: number }
-> = {
-  "1:1": { width: 512, height: 512 },
-  "4:3": { width: 640, height: 480 },
-  "16:9": { width: 768, height: 432 },
-  "9:16": { width: 432, height: 768 },
-  "21:9": { width: 1024, height: 440 },
-};
-
-// Numeric input handling that tolerates transient empty states during editing.
-// The naive pattern ``onChange={e => setValue(Number(e.target.value) || fallback)}``
-// treats an empty string as ``0`` and snaps back to the fallback — which means
-// the user can never delete the last digit of a value (they see the default
-// reappear). Instead we carry ``NaN`` as "user is mid-edit / field is empty",
-// render it as "" in the input, and on blur snap to the fallback if still
-// invalid. ``handleVideoGenerate`` + ``clampNumFrames`` defend against any
-// ``NaN`` that slips through to the payload.
-function onNumericChange(
-  event: React.ChangeEvent<HTMLInputElement>,
-  setter: (value: number) => void,
-): void {
-  const raw = event.target.value;
-  if (raw === "") {
-    setter(Number.NaN);
-    return;
-  }
-  const parsed = Number(raw);
-  if (Number.isFinite(parsed)) setter(parsed);
-}
-
-function onNumericBlur(
-  current: number,
-  setter: (value: number) => void,
-  fallback: number,
-  minimum: number = 1,
-): void {
-  if (!Number.isFinite(current) || current < minimum) setter(fallback);
-}
-
-function displayNumber(value: number): number | string {
-  return Number.isFinite(value) ? value : "";
-}
 
 export function VideoStudioTab({
   videoCatalog,
@@ -720,272 +634,41 @@ export function VideoStudioTab({
           </div>
         }
       >
-        <div className="callout image-callout image-runtime-callout compact">
-          {/* torchInstallWarning is the loudest signal — when the installed
-            * torch wheel doesn't match the host accelerator (e.g. +cpu wheel
-            * on a CUDA box) generation silently runs on CPU at a fraction of
-            * speed, while every other badge below would otherwise read green
-            * ("Real engine ready" / "Device: cuda (expected)"). Render it as
-            * the first visible element so users notice before queueing a
-            * 5-minute "GPU" run that's actually CPU. */}
-          {/* Mirror of the Image Studio callout: same three-state
-            * single-banner pattern (post-install restart prompt /
-            * GPU acceleration warning / nothing). Keeps the panel
-            * uncluttered by never stacking two banners. */}
-          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
-            <div className="callout" style={{ marginBottom: "0.6rem" }}>
-              <strong>CUDA torch installed.</strong>{" "}
-              The running backend still has the old torch in its module cache.
-              Restart the backend to activate the new wheel
-              {cudaTorchResult.indexUrl
-                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
-                : ""}
-              .
-              <div style={{ marginTop: "0.5rem" }}>
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={() => onRestartServer()}
-                  disabled={busy}
-                >
-                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                </button>
-              </div>
-              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
-            </div>
-          ) : videoRuntimeStatus.torchInstallWarning ? (
-            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
-              <strong>GPU acceleration not active.</strong>{" "}
-              {videoRuntimeStatus.torchInstallWarning}
-              {onInstallCudaTorch
-                && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => onInstallCudaTorch()}
-                    disabled={Boolean(installingCudaTorch) || !backendOnline}
-                  >
-                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
-                  </button>
-                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <p>{videoRuntimeStatus.message}</p>
-          <div className="chip-row">
-            <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
-              {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
-            </span>
-            {videoRuntimeStatus.torchInstallWarning ? (
-              <span className="badge danger" title={videoRuntimeStatus.torchInstallWarning}>
-                CPU fallback
-              </span>
-            ) : null}
-            {gpuBundleRestartRequired && !videoRuntimeStatus.realGenerationAvailable ? (
-              <span className="badge warning">Restart required</span>
-            ) : null}
-            {/* The "Engine: …" muted chip is suppressed when a more
-              * specific engine badge (mlx-video accent / LongLive
-              * status) already renders below — they would otherwise
-              * report the same activeEngine string twice. We still
-              * surface it for diffusers/torch and for fallback states
-              * since nothing else announces the engine in those cases. */}
-            {isMlxVideoVariant
-              && isAppleSiliconHost
-              && mlxVideoStatus?.realGenerationAvailable ? null : (
-              <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
-            )}
-            {/* Prefer the actual-loaded device; fall back to the predicted
-              * expectedDevice computed via nvidia-smi + find_spec (no torch
-              * import). With nothing loaded yet, this reads "Device: cuda
-              * (expected)" so users can confirm GPU will be used before
-              * generate. Mirrors the image studio chip. */}
-            {(() => {
-              const resolved =
-                videoRuntimeStatus.device
-                ?? (videoRuntimeStatus.expectedDevice
-                  ? `${videoRuntimeStatus.expectedDevice} (expected)`
-                  : null);
-              return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
-            })()}
-            {loadedVideoVariant ? (
-              <span className="badge accent">Loaded: {loadedVideoVariant.name}</span>
-            ) : null}
-            {mp4EncoderMissing ? (
-              <span className="badge warning">mp4 encoder missing</span>
-            ) : null}
-            {missingTokenizerDeps.map((dependency) => (
-              <span key={dependency} className="badge warning">{dependency} missing</span>
-            ))}
-            {otherMissingDependencies.slice(0, 4).map((dependency) => (
-              <span key={dependency} className="badge subtle">{dependency}</span>
-            ))}
-            {isLongLiveVariant && longLiveStatus ? (
-              <span
-                className={`badge ${
-                  longLiveStatus.realGenerationAvailable ? "success" : "warning"
-                }`}
-              >
-                {longLiveStatus.realGenerationAvailable
-                  ? "LongLive ready"
-                  : "LongLive not installed"}
-              </span>
-            ) : null}
-            {/* mlx-video chip — Apple Silicon only. Four states:
-              * missing (warning), scaffold-installed (subtle), ready
-              * (success), or active=true when an LTX-2 variant is
-              * loaded and routing through mlx-video. Hidden off-platform. */}
-            {mlxVideoMissing ? (
-              <span className="badge warning">mlx-video not installed</span>
-            ) : null}
-            {mlxVideoInstalledScaffold ? (
-              <span className="badge subtle">mlx-video scaffold</span>
-            ) : null}
-            {isAppleSiliconHost
-              && mlxVideoStatus?.realGenerationAvailable
-              && !isMlxVideoVariant ? (
-              <span className="badge success">mlx-video ready</span>
-            ) : null}
-            {isAppleSiliconHost
-              && mlxVideoStatus?.realGenerationAvailable
-              && isMlxVideoVariant ? (
-              <span className="badge accent">Engine: mlx-video</span>
-            ) : null}
-          </div>
-          {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
-            <div className="image-runtime-actions">
-              <p className="muted-text">
-                {longLiveStatus.message} LongLive runs in an isolated venv at
-                {" "}<code>~/.chaosengine/longlive</code> so its CUDA-specific deps don't
-                clash with the main runtime. Install can take 10–20 minutes — pip
-                deps, optional flash-attn build, then ~8 GB of HF weights.
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void onInstallLongLive()}
-                disabled={installingLongLive || !backendOnline}
-              >
-                {installingLongLive ? "Installing LongLive..." : "Install LongLive"}
-              </button>
-              <InstallLogPanel job={longLiveJob} variant="longlive" />
-            </div>
-          ) : null}
-          {/* mlx-video install — Apple Silicon only, surfaces when the
-            * probe reports the package missing. Once installed the chip
-            * flips to the scaffold state and the button hides; the
-            * generate path itself lands with FU-009. */}
-          {mlxVideoMissing ? (
-            <div className="image-runtime-actions">
-              <p className="muted-text">
-                {mlxVideoStatus?.message ?? "mlx-video not installed."} Adds
-                native MLX video generation for Wan2.1 / Wan2.2 / LTX-2 on
-                Apple Silicon — faster than diffusers+MPS once the
-                generation path lands.
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void onInstallMlxVideo()}
-                disabled={installingMlxVideo || !backendOnline}
-              >
-                {installingMlxVideo ? "Installing mlx-video..." : "Install mlx-video"}
-              </button>
-            </div>
-          ) : null}
-          {/* FU-025 part 9 (restored UX): surface the Wan MLX runtime
-            * convert action when the user picks a Wan-AI variant on
-            * Apple Silicon. Shows a "Ready" chip if the converted MLX
-            * dir is already on disk, an "Install" button otherwise.
-            * Self-contained component — owns its own polling. */}
-          {isWanRepo && isAppleSiliconHost && !mlxVideoMissing ? (
-            <WanRuntimeInstaller repo={selectedRepo} />
-          ) : null}
-          {mp4EncoderMissing ? (
-            <div className="image-runtime-actions">
-              <p className="muted-text">
-                Video generation needs imageio + imageio-ffmpeg to write mp4 files. Install them
-                into the backend environment now?
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void handleInstallOutputDeps()}
-                disabled={installingOutputDeps || !backendOnline}
-              >
-                {installingOutputDeps ? "Installing..." : "Install mp4 encoder"}
-              </button>
-            </div>
-          ) : null}
-          {missingTokenizerDeps.length > 0 ? (
-            <div className="image-runtime-actions">
-              <p className="muted-text">
-                Some video models load tokenizer / text-encoder packages on demand. The
-                following are missing and would block generation: <strong>{missingTokenizerDeps.join(", ")}</strong>.
-                Install them now to avoid a mid-generate error.
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void handleInstallTokenizerDeps()}
-                disabled={installingOutputDeps || !backendOnline}
-              >
-                {installingOutputDeps
-                  ? "Installing..."
-                  : `Install tokenizers (${missingTokenizerDeps.length})`}
-              </button>
-            </div>
-          ) : null}
-          {gpuBundleRestartRequired ? (
-            <>
-              <div className="image-runtime-actions">
-                <p className="muted-text">
-                  GPU runtime installed to{" "}
-                  <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
-                  still has its old import cache — click Restart Backend to activate the
-                  new runtime, then video generation will use it.
-                </p>
-                <div className="button-row">
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => onRestartServer()}
-                    disabled={busy}
-                  >
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
-                  </button>
-                </div>
-              </div>
-              <InstallLogPanel job={gpuBundleJob} />
-            </>
-          ) : !videoRuntimeStatus.realGenerationAvailable ? (
-            <>
-              <div className="image-runtime-actions">
-                <p className="muted-text">
-                  Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers,
-                  ~2.5 GB). Install it once — it writes to a persistent user-local directory so
-                  subsequent app updates don't re-download it.
-                </p>
-                <div className="button-row">
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => void handleInstallGpuRuntime()}
-                    disabled={installingGpuRuntime || !backendOnline}
-                  >
-                    {installingGpuRuntime ? "Installing GPU runtime..." : "Install GPU runtime"}
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                  </button>
-                </div>
-              </div>
-              <InstallLogPanel job={gpuBundleJob} />
-            </>
-          ) : null}
-        </div>
+        <VideoStudioRuntimeBanner
+          videoRuntimeStatus={videoRuntimeStatus}
+          loadedVideoVariant={loadedVideoVariant}
+          busy={busy}
+          busyAction={busyAction}
+          backendOnline={backendOnline}
+          onRestartServer={onRestartServer}
+          onInstallCudaTorch={onInstallCudaTorch}
+          installingCudaTorch={installingCudaTorch}
+          cudaTorchResult={cudaTorchResult}
+          gpuBundleRestartRequired={gpuBundleRestartRequired}
+          isMlxVideoVariant={isMlxVideoVariant}
+          isAppleSiliconHost={isAppleSiliconHost}
+          isLongLiveVariant={isLongLiveVariant}
+          isWanRepo={isWanRepo}
+          selectedRepo={selectedRepo}
+          mp4EncoderMissing={mp4EncoderMissing}
+          mlxVideoMissing={mlxVideoMissing}
+          mlxVideoInstalledScaffold={mlxVideoInstalledScaffold}
+          missingTokenizerDeps={missingTokenizerDeps}
+          otherMissingDependencies={otherMissingDependencies}
+          longLiveStatus={longLiveStatus}
+          longLiveJob={longLiveJob}
+          installingLongLive={installingLongLive}
+          onInstallLongLive={() => void onInstallLongLive()}
+          mlxVideoStatus={mlxVideoStatus}
+          installingMlxVideo={installingMlxVideo}
+          onInstallMlxVideo={() => void onInstallMlxVideo()}
+          installingOutputDeps={installingOutputDeps}
+          installingGpuRuntime={installingGpuRuntime}
+          gpuBundleJob={gpuBundleJob}
+          onInstallOutputDeps={() => void handleInstallOutputDeps()}
+          onInstallTokenizerDeps={() => void handleInstallTokenizerDeps()}
+          onInstallGpuRuntime={() => void handleInstallGpuRuntime()}
+        />
 
         <div className="image-studio-grid video-studio-top-grid" style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr" }}>
           <label>

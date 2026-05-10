@@ -17,8 +17,8 @@ class TopMemoryParsingTests(unittest.TestCase):
             returncode=0,
             stdout="PID  MEM\n404  1377M\n",
         )
-        with mock.patch("backend_service.helpers.system.platform.system", return_value="Darwin"):
-            with mock.patch("backend_service.helpers.system.subprocess.run", return_value=completed):
+        with mock.patch("backend_service.helpers.system_processes.platform.system", return_value="Darwin"):
+            with mock.patch("backend_service.helpers.system_processes.subprocess.run", return_value=completed):
                 self.assertAlmostEqual(_get_top_memory_for_pid(404), 1377 / 1024, places=4)
 
 

@@ -62,8 +62,8 @@ class DiffusersTextToImageEngineTests(unittest.TestCase):
         engine = DiffusersTextToImageEngine()
         fake_torch = SimpleNamespace(backends=SimpleNamespace(mps=None))
 
-        with mock.patch("backend_service.image_runtime.platform.system", return_value="Windows"), \
-                mock.patch("backend_service.image_runtime._nvidia_gpu_present", return_value=True):
+        with mock.patch("backend_service.image_runtime.device.platform.system", return_value="Windows"), \
+                mock.patch("backend_service.image_runtime.device._nvidia_gpu_present", return_value=True):
             with self.assertRaisesRegex(RuntimeError, "Install CUDA torch"):
                 engine._detect_device(fake_torch)
 

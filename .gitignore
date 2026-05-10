@@ -16,3 +16,6 @@ src-tauri/gen/
 .env.local
 .claude
 AGENTS.md
+.coverage
+coverage.json
+coverage/

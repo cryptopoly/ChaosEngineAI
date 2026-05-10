@@ -10,7 +10,6 @@ import type {
 import {
   number,
   sizeLabel,
-  capabilityMeta,
   parseContextK,
   compareOptionalNumber,
   inferHfRepoFromLocalPath,
@@ -19,6 +18,7 @@ import {
   formatReleaseLabel,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
+import { CapabilityStrip } from "../../components/CapabilityStrip";
 import { candidateKeys } from "../../components/runtimeSupport";
 
 export interface LibraryRow {
@@ -147,26 +147,6 @@ export function MyModelsTab({
     };
   }
 
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span
-              className="capability-icon"
-              key={capability}
-              title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}
-            >
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   function renderCapabilityFilterBar(
     active: string | null,
@@ -419,7 +399,7 @@ export function MyModelsTab({
                             <span className="badge muted" title={downloadSizeTooltip(downloadState)}>Active download</span>
                           ) : null}
                         </div>
-                        {matchedVariant ? renderCapabilityIcons(matchedVariant.capabilities, 5) : null}
+                        {matchedVariant ? <CapabilityStrip capabilities={matchedVariant.capabilities} max={5} /> : null}
                         {hasDownloadOverlay && downloadState ? (
                           <span className="library-download-tag">
                             <small className={`library-download-reason${isDownloadFailed ? " error" : ""}`}>

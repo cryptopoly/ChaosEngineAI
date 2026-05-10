@@ -49,7 +49,7 @@ class StartFineTuneRequest(BaseModel):
 @router.get("/adapters")
 async def get_adapters(request: Request) -> dict[str, Any]:
     """List available LoRA adapters found on disk."""
-    state = request.app.state.engine
+    state = request.app.state.chaosengine
     data_dir = Path(state.settings.get("dataDirectory", "")).expanduser()
     if not data_dir.is_dir():
         # Fall back to home Models dir

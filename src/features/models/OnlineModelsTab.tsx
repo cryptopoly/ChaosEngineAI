@@ -12,13 +12,13 @@ import type {
 import {
   number,
   sizeLabel,
-  capabilityMeta,
   findLibraryItemForVariant,
   downloadProgressLabel,
   formatReleaseLabel,
   handleActionKeyDown,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
+import { CapabilityStrip } from "../../components/CapabilityStrip";
 
 export interface OnlineModelsTabProps {
   searchResults: ModelFamily[];
@@ -117,26 +117,6 @@ export function OnlineModelsTab({
   hubFileError,
   availableMemoryGb,
 }: OnlineModelsTabProps) {
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span
-              className="capability-icon"
-              key={capability}
-              title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}
-            >
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   function renderCapabilityFilterBar(
     active: string | null,
@@ -279,7 +259,7 @@ export function OnlineModelsTab({
                     </div>
                     <p>{family.headline}</p>
                     <div className="discover-card-meta">
-                      {renderCapabilityIcons(family.capabilities, 8)}
+                      <CapabilityStrip capabilities={family.capabilities} max={8} />
                       <small>{family.variants.length} variants</small>
                       <small>{family.updatedLabel}</small>
                     </div>
@@ -343,7 +323,7 @@ export function OnlineModelsTab({
                             >
                               <div className="discover-variant-name">
                                 <strong>{variant.name}</strong>
-                                {renderCapabilityIcons(variant.capabilities, 4)}
+                                <CapabilityStrip capabilities={variant.capabilities} max={4} />
                               </div>
                               <span>{variant.format} / {variant.quantization}</span>
                               <span>{variant.backend}</span>

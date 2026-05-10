@@ -40,7 +40,9 @@ ChaosEngineAI is a desktop AI inference app built with:
 | `src/` | React frontend (components, hooks, utils, types) |
 | `src-tauri/src/lib.rs` | Tauri bridge — runtime extraction, binary resolution, sidecar bootstrap |
 | `backend_service/` | Python FastAPI backend |
-| `backend_service/inference.py` | Core inference engine — model loading, binary routing, generation |
+| `backend_service/inference/` | Core inference engine package — `controller.py` (RuntimeController), `engines/`, `binaries.py`, `capabilities.py`, `conversion.py`, `jsonrpc.py` |
+| `backend_service/state/` | App state package — `__init__.py` (ChaosEngineState facade), `documents.py`, `benchmarks.py`, `openai_compat.py`, `payloads.py`, `settings_state.py`, `sessions.py`, `downloads.py`, `metrics.py`, `logs.py` |
+| `backend_service/mlx_worker*.py` | MLX subprocess worker — `mlx_worker.py` orchestrator + `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader}.py` siblings |
 | `backend_service/routes/` | API endpoints (14 route modules) |
 | `backend_service/helpers/` | System stats, settings, persistence, cache estimation |
 | `cache_compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention). Renamed from `compression/` so it doesn't shadow Python 3.14's stdlib `compression` namespace package. |
@@ -55,7 +57,7 @@ The app supports two llama-server binaries:
 - **`llama-server`** (standard, Homebrew) — for native and ChaosEngine cache strategies
 - **`llama-server-turbo`** (TurboQuant fork) — for RotorQuant and TurboQuant strategies, installed to `~/.chaosengine/bin/`
 
-Each `CacheStrategy` declares `required_llama_binary()` → `"standard"` or `"turbo"`. The `LlamaCppEngine._select_llama_binary()` method in `inference.py` routes to the correct binary. Cache types are pre-validated against the binary's `--help` output before startup.
+Each `CacheStrategy` declares `required_llama_binary()` → `"standard"` or `"turbo"`. The `LlamaCppEngine._select_llama_binary()` method in `inference/llama_cpp_engine.py` routes to the correct binary. Cache types are pre-validated against the binary's `--help` output before startup.
 
 ---
 
@@ -160,6 +162,94 @@ no longer relevant.
 - New API endpoints need at least a shape/contract test
 
 ---
+
+## Code Quality Guidelines
+
+These rules came out of the v0.7.6 → v0.8.0 refactor + audit. Apply them
+to every PR that touches a backend module > 500 LOC, a hook > 400 LOC,
+or any file that mutates worker subprocess / file-system / network
+state. Skip on trivial typo fixes, doc-only edits, and one-line bug
+patches.
+
+### Performance
+
+- **Lazy-import heavy deps.** `torch`, `diffusers`, `mlx`, `mlx_lm`,
+  `mlx_vlm`, `transformers`, `nunchaku`, `bitsandbytes`, `huggingface_hub`,
+  `gguf` are all multi-second imports. Put them inside the function that
+  needs them, not at module top, unless the file is *only* loaded when
+  inference is about to run. Backend startup target: `python -X importtime
+  backend_service.app` < 2 s.
+- **Process isolation for memory hogs.** Models > 1 GB stay in subprocess
+  workers (MLX worker, sd-cli, longlive engine). Never load them in the
+  FastAPI parent — a stuck pipeline takes the whole backend down with it.
+- **Always release before reload.** Before swapping models, call the
+  engine's `unload_model()` (or equivalent) so the OS reclaims the RAM
+  before the next snapshot is mapped in. Two 47 GB workers = a 96 GB RAM
+  exhaustion bug, not a feature.
+- **No re-render thunder in React.** New object literals in `useMemo` /
+  `useState` initialisers without a stable dep array are silent
+  performance killers. Run the React Profiler on any tab > 200 LOC of
+  state before shipping.
+- **Profile before optimizing.** Don't rewrite a hot path on intuition —
+  capture a number first (`scripts/perf-baseline.py`, the React Profiler,
+  `python -X importtime`), then validate the win against
+  `PERF_BASELINE.md`'s ±5 % gate.
+
+### Security
+
+- **Treat user-controlled paths as hostile.** Anything that comes from a
+  request body, a settings file, an env var, or a Hub catalog entry
+  must go through `pathlib.Path` + `.resolve()` + a parent-prefix check
+  before being passed to `open()` / `subprocess.run` / `shutil.copy`.
+  Never `os.path.join` a user string into a system path.
+- **List-form subprocess only.** `subprocess.run([bin, *args])` — never
+  the shell-string form. No `shell=True`. Quote nothing — let `subprocess`
+  do the escaping.
+- **No secrets in source.** No HF tokens, no API keys, no bearer tokens,
+  no signed URLs in `*.py`, `*.ts`, `*.rs`, `*.toml`, or `*.md`. Use the
+  Settings store + `keyring` / Tauri secure storage for runtime secrets.
+  CI builds get keys from GitHub secrets, not commits.
+- **Validate at the boundary, trust internally.** Pydantic models on the
+  FastAPI request edge + `serde` on the Tauri IPC edge + Zod on the
+  frontend fetch wrapper. Once the value is past the boundary, internal
+  helpers don't need defensive `if not isinstance(...)` re-checks — the
+  type system carries the guarantee.
+- **GGUF / safetensors are user data.** They can be malicious archives
+  on a snapshot a user pasted in. Always load with `local_files_only=True`
+  when probing, and surface gated/404 errors as user-readable messages,
+  not raw `HfHubHTTPError` traces.
+
+### Modularisation
+
+- **File-size soft caps.** Backend modules > 600 LOC, hooks > 400 LOC,
+  components > 500 LOC, Rust modules > 800 LOC are a refactor signal —
+  not an automatic block, but a prompt for the next change to extract
+  before adding. The v0.8.0 pattern is: pull a coherent subset into a
+  sibling module taking dependencies as kwargs, leave thin wrappers in
+  the original site, re-export so test mock paths and existing imports
+  don't break.
+- **Single-purpose modules.** A file's docstring should fit in one
+  paragraph. If you can't summarise what it does without "and also …",
+  split it. Bundle by *responsibility*, not by *type* (don't dump every
+  helper into `helpers.py`).
+- **Re-exports preserve call sites.** When extracting from a module that
+  has external callers, re-export the moved symbol from the original
+  module path. Tests that patch `module._private` keep patching, imports
+  in other packages keep working, and the diff stays surgical.
+- **No premature abstraction.** Three similar lines is fine. Don't create
+  a `BaseEngine` / `Strategy` / `Plugin` interface for two callers — wait
+  until there are five. Half-finished abstractions cost more than copies.
+- **Cross-platform from the first line.** `pathlib.Path` (Python),
+  `PathBuf` (Rust), `path.posix` vs `path.win32` (Node). Never hardcode
+  `/tmp`, `~/.cache`, or `\\` — use the platform-aware primitive.
+
+### When to refactor vs ship
+
+- Bug fix → ship the surgical patch, leave the surrounding module alone.
+- Feature add → if the target file is already over the soft cap, do an
+  extract pass before adding. Otherwise add inline.
+- Refactor pass → bundle multiple extracts in a single PR with a clear
+  phase number (see `REFACTOR_PLAN.md` for the v0.8.0 template).
 
 ## Development Patterns
 

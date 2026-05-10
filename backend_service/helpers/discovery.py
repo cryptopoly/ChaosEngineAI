@@ -15,9 +15,35 @@ from backend_service.helpers.formatting import (
     _detect_model_max_context,
     _main_gguf_file,
 )
+from backend_service.helpers.model_classifier import (
+    _DRAFT_MODEL_KEYWORDS,
+    _IMAGE_MODEL_KEYWORDS,
+    _VIDEO_MODEL_KEYWORDS,
+    _looks_like_draft_model,
+    _looks_like_image_model,
+    _looks_like_video_model,
+)
+from backend_service.helpers.model_family_payload import (
+    _estimate_runtime_memory_gb,
+    _model_family_payloads,
+    _reveal_path_in_file_manager,
+    _variant_available_locally,
+)
+from backend_service.helpers.quantization import (
+    _UNSUPPORTED_MLX_QUANT_ALGOS,
+    _dtype_quantization_label,
+    _mlx_quantization_bits,
+    _quantization_algo_label,
+    _quantization_label_from_text,
+    _unsupported_mlx_quantization_reason,
+)
 from backend_service.helpers.settings import _normalize_slug
-
-_UNSUPPORTED_MLX_QUANT_ALGOS = {"NVFP4", "NVINT4"}
+from backend_service.helpers.snapshot_integrity import (
+    _SHARDED_WEIGHT_RE,
+    _incomplete_gguf_directory_reason,
+    _incomplete_sharded_weight_reason,
+    _list_weight_files,
+)
 
 
 def _path_size_bytes(path: Path, *, seen: set[tuple[int, int]] | None = None) -> int:
@@ -154,149 +180,6 @@ def _model_has_files(path: Path, pattern: str) -> bool:
         return False
 
 
-_SHARDED_WEIGHT_RE = re.compile(
-    r"(?P<prefix>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.(?P<suffix>safetensors|bin)$",
-    re.IGNORECASE,
-)
-
-
-def _incomplete_sharded_weight_reason(path: Path) -> str | None:
-    try:
-        files = [entry.name for entry in path.iterdir() if entry.is_file()]
-    except OSError:
-        return None
-
-    shard_groups: dict[tuple[str, str], dict[str, Any]] = {}
-    for filename in files:
-        match = _SHARDED_WEIGHT_RE.match(filename)
-        if not match:
-            continue
-        key = (match.group("prefix"), match.group("suffix").lower())
-        expected_total = int(match.group("total"))
-        shard_index = int(match.group("index"))
-        group = shard_groups.setdefault(key, {"expected_total": expected_total, "present": set()})
-        group["expected_total"] = max(int(group["expected_total"]), expected_total)
-        group["present"].add(shard_index)
-
-    for (_prefix, suffix), group in shard_groups.items():
-        expected_total = int(group["expected_total"])
-        present = set(group["present"])
-        if expected_total <= 1:
-            continue
-        missing = [index for index in range(1, expected_total + 1) if index not in present]
-        if missing:
-            sample = ", ".join(f"{index:05d}" for index in missing[:3])
-            more = f" (+{len(missing) - 3} more)" if len(missing) > 3 else ""
-            return (
-                f"Incomplete sharded {suffix} checkpoint: found {len(present)} of {expected_total} shard files. "
-                f"Missing shards include {sample}{more}."
-            )
-    return None
-
-
-def _incomplete_gguf_directory_reason(path: Path) -> str | None:
-    try:
-        gguf_files = [entry for entry in path.rglob("*.gguf") if entry.is_file()]
-        part_files = [entry for entry in path.rglob("*.gguf.part") if entry.is_file()]
-    except OSError:
-        return None
-
-    main_files = [entry for entry in gguf_files if "mmproj" not in entry.name.lower()]
-    if main_files:
-        return None
-    if part_files:
-        sample = ", ".join(entry.name for entry in part_files[:2])
-        more = f" (+{len(part_files) - 2} more)" if len(part_files) > 2 else ""
-        return (
-            f"GGUF download is incomplete: main model weights are still downloading "
-            f"({sample}{more})."
-        )
-    if gguf_files:
-        return "GGUF directory only contains a vision projector (mmproj) and no main model weights."
-    return None
-
-
-def _quantization_label_from_text(text: str) -> str | None:
-    lowered = text.lower()
-    match = re.search(r"\b(q\d(?:_[a-z0-9]+)*)\b", lowered)
-    if match:
-        return match.group(1).upper()
-    match = re.search(r"\b(\d+)[-_ ]?bit\b", lowered)
-    if match:
-        return f"{int(match.group(1))}-bit"
-    if "bf16" in lowered or "bfloat16" in lowered:
-        return "BF16"
-    if "fp16" in lowered or "float16" in lowered:
-        return "FP16"
-    if "fp8" in lowered or "float8" in lowered:
-        return "FP8"
-    if "fp32" in lowered or "float32" in lowered:
-        return "FP32"
-    return None
-
-
-def _mlx_quantization_bits(config: dict[str, Any] | None) -> int | None:
-    if not isinstance(config, dict):
-        return None
-    if _unsupported_mlx_quantization_reason(config):
-        return None
-    for key in ("quantization", "quantization_config"):
-        payload = config.get(key)
-        if isinstance(payload, dict):
-            bits = payload.get("bits")
-            if isinstance(bits, (int, float)) and bits > 0:
-                try:
-                    return int(bits)
-                except (TypeError, ValueError):
-                    return None
-    return None
-
-
-def _quantization_algo_label(config: dict[str, Any] | None) -> str | None:
-    if not isinstance(config, dict):
-        return None
-    payload = config.get("quantization_config")
-    if not isinstance(payload, dict):
-        return None
-    algo = payload.get("quant_algo")
-    if isinstance(algo, str) and algo.strip():
-        return algo.strip().upper()
-    return None
-
-
-def _unsupported_mlx_quantization_reason(config: dict[str, Any] | None) -> str | None:
-    algo = _quantization_algo_label(config)
-    if not algo or algo not in _UNSUPPORTED_MLX_QUANT_ALGOS:
-        return None
-    method = ""
-    if isinstance(config, dict):
-        payload = config.get("quantization_config")
-        if isinstance(payload, dict):
-            raw_method = payload.get("quant_method")
-            if isinstance(raw_method, str) and raw_method.strip():
-                method = raw_method.strip()
-    method_label = f" (via {method})" if method else ""
-    return (
-        f"This model uses {algo} quantisation{method_label}, which is not supported by the MLX runtime. "
-        f"It needs a CUDA/NVIDIA runtime such as vLLM with modelopt support, or a different build such as GGUF or MLX."
-    )
-
-
-def _dtype_quantization_label(config: dict[str, Any] | None) -> str | None:
-    if not isinstance(config, dict):
-        return None
-    candidates: list[Any] = [config.get("torch_dtype"), config.get("dtype")]
-    for nested_key in ("text_config", "llm_config"):
-        nested = config.get(nested_key)
-        if isinstance(nested, dict):
-            candidates.extend([nested.get("torch_dtype"), nested.get("dtype")])
-    for value in candidates:
-        if not value:
-            continue
-        label = _quantization_label_from_text(str(value))
-        if label:
-            return label
-    return None
 
 
 def _detect_storage_format(path: Path, *, name_hint: str = "") -> str:
@@ -349,80 +232,6 @@ def _detect_model_quantization(path: Path, fmt: str, *, name_hint: str = "") -> 
     return _quantization_label_from_text(text_hint)
 
 
-_IMAGE_MODEL_KEYWORDS = (
-    "stable-diffusion", "sdxl", "flux.", "flux1", "flux-",
-    "dall-e", "imagen", "kandinsky", "wuerstchen",
-    "diffusion-pipe", "qwen-image", "qwen/qwen-image",
-    "sana_sprint", "sana-sprint", "sana sprint", "sana_1600m", "sana-1600m",
-)
-
-
-_DRAFT_MODEL_KEYWORDS = (
-    "-dflash", "/dflash", "-draft", "-eagle",
-)
-
-
-# Video diffusion pipelines. Keep keywords specific enough that they don't
-# collide with chat LLMs or image diffusion checkpoints — e.g. "hunyuanvideo"
-# not "hunyuan" (which would catch the Hunyuan image model), "wan2" not "wan"
-# (too generic), "mochi-1" not "mochi". New video families added to
-# ``backend_service/catalog/video_models.py`` should also get a keyword here.
-_VIDEO_MODEL_KEYWORDS = (
-    "hunyuanvideo",
-    "wan-ai/",
-    "wan2.",
-    "wan2-",
-    "-t2v-",
-    "-i2v-",
-    "-v2v-",
-    "mochi-1",
-    "cogvideo",
-    "ltx-video",
-    "ltx-2",
-    "zeroscope",
-    "animatediff",
-)
-
-
-def _looks_like_draft_model(name: str) -> bool:
-    """Return True if this looks like a speculative decoding draft model.
-
-    Draft models (DFlash, EAGLE, etc.) are companion checkpoints, not
-    standalone LLMs.  They should not appear in the model picker.
-    """
-    lower = name.lower()
-    return any(kw in lower for kw in _DRAFT_MODEL_KEYWORDS)
-
-
-def _looks_like_video_model(name: str) -> bool:
-    """Return True if this looks like a video diffusion pipeline.
-
-    Video models (LTX-Video, Wan, HunyuanVideo, Mochi, CogVideo, …) are
-    Diffusers pipelines with much larger VRAM footprints than LLMs and
-    their own dedicated Studio/Discover UI under the Video section. They
-    should be excluded from the chat-oriented My Models list.
-
-    Detection is keyword-only here because video Diffusers pipelines share
-    the ``model_index.json`` marker with image pipelines — we can't use that
-    to discriminate. When a partial HF cache download hasn't yet produced
-    ``model_index.json``, the name-based match is what keeps them out of
-    the LLM list.
-    """
-    lower = name.lower()
-    return any(kw in lower for kw in _VIDEO_MODEL_KEYWORDS)
-
-
-def _looks_like_image_model(path: Path, name: str) -> bool:
-    """Return True if this looks like a diffusion / image generation model."""
-    lower_name = name.lower()
-    if any(kw in lower_name for kw in _IMAGE_MODEL_KEYWORDS):
-        return True
-    # Diffusers models have model_index.json
-    if (path / "model_index.json").exists():
-        return True
-    return False
-
-
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     source_kind = "HF cache" if path.name.startswith("models--") else "Directory"
     name = path.name.replace("models--", "").replace("--", "/") if source_kind == "HF cache" else path.name
@@ -434,118 +243,6 @@ def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     if (path / "config.json").exists() or (path / "tokenizer.json").exists():
         return (name, _detect_storage_format(path, name_hint=name), source_kind)
     return None
-
-
-def _list_weight_files(raw_path: str) -> dict[str, Any]:
-    """Inspect a model path and list its weight files.
-
-    Used by the frontend picker to let users choose a specific .gguf when a
-    directory contains multiple weights. Mirrors ``_resolve_gguf_path`` logic
-    for GGUF directories.
-    """
-    target = Path(os.path.expanduser(raw_path or "")).expanduser()
-    if not target.exists():
-        return {
-            "path": str(target),
-            "format": "unknown",
-            "files": [],
-            "broken": True,
-            "brokenReason": "Path does not exist",
-        }
-
-    def _gb(p: Path) -> float:
-        try:
-            return round(p.stat().st_size / (1024 ** 3), 2)
-        except OSError:
-            return 0.0
-
-    # Single file
-    if target.is_file():
-        suffix = target.suffix.lower()
-        if suffix == ".gguf":
-            fmt = "GGUF"
-        elif suffix == ".safetensors":
-            fmt = "Transformers"
-        else:
-            fmt = "unknown"
-        return {
-            "path": str(target),
-            "format": fmt,
-            "files": [
-                {
-                    "name": target.name,
-                    "path": str(target),
-                    "sizeGb": _gb(target),
-                    "role": "main",
-                }
-            ],
-            "broken": False,
-            "brokenReason": None,
-        }
-
-    # Directory
-    ggufs = sorted(target.rglob("*.gguf"), key=lambda f: f.stat().st_size, reverse=True)
-    gguf_partials = sorted(target.rglob("*.gguf.part"))
-    if ggufs or gguf_partials:
-        broken_reason = _incomplete_gguf_directory_reason(target)
-        files = []
-        for f in ggufs:
-            is_mmproj = "mmproj" in f.name.lower()
-            files.append(
-                {
-                    "name": f.name,
-                    "path": str(f),
-                    "sizeGb": _gb(f),
-                    "role": "mmproj" if is_mmproj else "main",
-                }
-            )
-        for f in gguf_partials:
-            files.append(
-                {
-                    "name": f.name,
-                    "path": str(f),
-                    "sizeGb": _gb(f),
-                    "role": "partial",
-                }
-            )
-        return {
-            "path": str(target),
-            "format": "GGUF",
-            "files": files,
-            "broken": broken_reason is not None,
-            "brokenReason": broken_reason,
-        }
-
-    safetensors = sorted(target.glob("*.safetensors"))
-    if safetensors:
-        shard_reason = _incomplete_sharded_weight_reason(target)
-        files = [
-            {
-                "name": f.name,
-                "path": str(f),
-                "sizeGb": _gb(f),
-                "role": "main",
-            }
-            for f in safetensors
-        ]
-        has_mlx = any(f.name == "model.safetensors" for f in safetensors) or (target / "model.safetensors").exists()
-        fmt = "MLX" if has_mlx and not (target / "model.safetensors.index.json").exists() else "Transformers"
-        return {
-            "path": str(target),
-            "format": fmt,
-            "files": files,
-            "broken": shard_reason is not None,
-            "brokenReason": shard_reason,
-        }
-
-    # No weights found
-    return {
-        "path": str(target),
-        "format": "unknown",
-        "files": [],
-        "broken": True,
-        "brokenReason": "No .gguf or .safetensors weights found",
-    }
 
 
 def _detect_broken_library_item(child: Path, file_format: str, source_kind: str | None = None) -> tuple[bool, str | None]:
@@ -728,79 +425,3 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 continue
 
     return items
-
-
-def _reveal_path_in_file_manager(path: Path) -> None:
-    resolved = path.expanduser().resolve()
-    if not resolved.exists():
-        raise FileNotFoundError(f"{resolved} does not exist.")
-
-    system_name = platform.system()
-    if system_name == "Darwin":
-        command = ["open", "-R", str(resolved)]
-    elif system_name == "Windows":
-        if resolved.is_file():
-            command = ["explorer", f"/select,{resolved}"]
-        else:
-            command = ["explorer", str(resolved)]
-    else:
-        command = ["xdg-open", str(resolved.parent if resolved.is_file() else resolved)]
-
-    subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-
-def _estimate_runtime_memory_gb(params_b: float, quantization: str) -> float:
-    lowered = quantization.lower()
-    if "q4" in lowered or "4-bit" in lowered:
-        quant_factor = 0.72
-    elif "fp8" in lowered or "8" in lowered:
-        quant_factor = 0.82
-    else:
-        quant_factor = 1.0
-    return round(max(1.2, params_b * quant_factor + 1.6), 1)
-
-
-def _variant_available_locally(variant: dict[str, Any], library: list[dict[str, Any]]) -> bool:
-    candidates = {
-        str(variant.get("repo") or "").lower(),
-        str(variant.get("name") or "").lower(),
-        str(variant.get("id") or "").lower(),
-    }
-    compact_candidates = {candidate.split("/")[-1] for candidate in candidates if candidate}
-    for item in library:
-        name = str(item.get("name") or "").lower()
-        if name in candidates or any(candidate and candidate in name for candidate in candidates):
-            return True
-        if any(candidate and candidate in name for candidate in compact_candidates):
-            return True
-    return False
-
-
-def _model_family_payloads(system_stats: dict[str, Any], library: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    from backend_service.catalog import MODEL_FAMILIES
-    from backend_service.helpers.formatting import _parse_context_label
-
-    payloads: list[dict[str, Any]] = []
-    for family in MODEL_FAMILIES:
-        variants: list[dict[str, Any]] = []
-        for variant in family["variants"]:
-            runtime_memory = _estimate_runtime_memory_gb(variant["paramsB"], variant["quantization"])
-            variants.append(
-                {
-                    **variant,
-                    "familyId": family["id"],
-                    "estimatedMemoryGb": runtime_memory,
-                    "estimatedCompressedMemoryGb": round(max(1.0, runtime_memory * 0.68), 1),
-                    "availableLocally": _variant_available_locally(variant, library),
-                    "maxContext": _parse_context_label(variant.get("contextWindow")),
-                }
-            )
-
-        payloads.append(
-            {
-                **family,
-                "variants": variants,
-            }
-        )
-
-    return payloads

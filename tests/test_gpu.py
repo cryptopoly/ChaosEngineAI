@@ -180,7 +180,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
 
     def test_snapshot_has_expected_shape(self):
         with patch(
-            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            "backend_service.helpers.torch_status._probe_torch_status_subprocess",
             return_value={"torchImported": False, "cudaAvailable": False, "mpsAvailable": False},
         ):
             snapshot = gpu_status_snapshot()
@@ -201,7 +201,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
     @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
     @patch(
-        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        "backend_service.helpers.torch_status._probe_torch_status_subprocess",
         return_value={"torchImported": True, "cudaAvailable": False, "mpsAvailable": False},
     )
     def test_recommendation_when_nvidia_present_but_cuda_unavailable(self, _probe, _nv, _plat):
@@ -221,7 +221,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
     @patch("backend_service.helpers.gpu.platform.system", return_value="Windows")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=True)
     @patch(
-        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        "backend_service.helpers.torch_status._probe_torch_status_subprocess",
         return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
     )
     def test_no_warning_when_cuda_available(self, _probe, _nv, _plat):
@@ -233,7 +233,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
     @patch("backend_service.helpers.gpu.platform.system", return_value="Darwin")
     @patch("backend_service.helpers.gpu.nvidia_gpu_present", return_value=False)
     @patch(
-        "backend_service.helpers.gpu._probe_torch_status_subprocess",
+        "backend_service.helpers.torch_status._probe_torch_status_subprocess",
         return_value={"torchImported": True, "cudaAvailable": False, "mpsAvailable": True},
     )
     def test_no_warning_on_macos_even_with_cpu_torch(self, _probe, _nv, _plat):
@@ -255,7 +255,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
         # asserts the *absence* of an in-process import attempt).
         had_torch = "torch" in sys.modules
         with patch(
-            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            "backend_service.helpers.torch_status._probe_torch_status_subprocess",
             return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
         ):
             gpu_status_snapshot()
@@ -272,7 +272,7 @@ class GpuStatusSnapshotTests(unittest.TestCase):
         a fresh Python boot each time.
         """
         with patch(
-            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            "backend_service.helpers.torch_status._probe_torch_status_subprocess",
             return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
         ) as mock_probe:
             gpu_status_snapshot()
@@ -284,14 +284,14 @@ class GpuStatusSnapshotTests(unittest.TestCase):
         """After a successful install, the install worker must reset the
         cache so the stale "torch not importable" answer doesn't survive."""
         with patch(
-            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            "backend_service.helpers.torch_status._probe_torch_status_subprocess",
             return_value={"torchImported": False, "cudaAvailable": False, "mpsAvailable": False},
         ) as mock_probe:
             first = gpu_status_snapshot()
             self.assertFalse(first["torchImported"])
         reset_torch_status_cache()
         with patch(
-            "backend_service.helpers.gpu._probe_torch_status_subprocess",
+            "backend_service.helpers.torch_status._probe_torch_status_subprocess",
             return_value={"torchImported": True, "cudaAvailable": True, "mpsAvailable": False},
         ) as mock_probe:
             second = gpu_status_snapshot()

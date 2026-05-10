@@ -87,6 +87,22 @@ components:
 - App.tsx: extracted CUDA torch install hook + capability strip
   shared component.
 
+**Rust shell (`src-tauri/src/`)** — full Phase 3 split:
+
+- `binaries.rs` — bundled binary path resolvers (`resolve_llama_server` /
+  `resolve_llama_server_turbo` / `resolve_llama_cli` / `resolve_sd_cpp` +
+  `resolve_candidate` / `find_in_path` utilities).
+- `env_setup.rs` — env-var + path-list helpers (`apply_library_path`,
+  `join_paths`, `prepend_env_paths`).
+- `runtime.rs` — `EmbeddedRuntimeManifest` + `EmbeddedRuntime` structs +
+  20 helpers covering manifest fingerprint, tar extraction, extras-dir
+  ABI namespacing, env application.
+- `backend.rs` — `impl BackendManager` (~400 LOC) bootstrap → spawn →
+  wait_for_port → probe sequence.
+
+lib.rs: 1,335 → 302 LOC (-77%). Just public API surface (Tauri commands,
+run() entry, struct decls) remains.
+
 **Performance gate.** `scripts/perf-gate.py` compares a
 `scripts/perf-baseline.py` JSON run against the captured floors in
 `PERF_BASELINE.md`; default ±5% tolerance, configurable. Initial

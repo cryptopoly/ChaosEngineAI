@@ -238,8 +238,9 @@ src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every exis
 - `features/image/downloadActions.ts` + `features/image/studioPresets.ts` + `features/image/galleryActions.ts` (Phase 2c-5, commits `2135f1d` → `30761b5`) — 12 handlers pulled out of useImageState across three cohesive sibling modules. Each helper takes a typed deps object; hook keeps one-line wrappers that close over the live setters. Mutual dependencies (e.g. `varyImageSeed` calling `hydrateFormFromArtifact` + `submitImageGeneration`) injected as callback deps so the modules stay decoupled.
 - `features/video/downloadActions.ts` + `features/video/modelLifecycle.ts` + `features/video/installActions.ts` (Phase 2c-6) — 11 handlers + 2 pure helpers pulled out of useVideoState. Each handler takes its dependencies as kwargs. Hook keeps thin wrappers.
 - `features/chat/html_challenge/` package (Phase 2c-7) — 5 child components (`ChallengeSetupPanel`, `ChallengeSlotPanel`, `ChallengeModelCard`, `ChallengePickerModal`, `ChallengeHistoryCombobox`) + 2 helper modules (`challengeApi.ts` fetch wrappers, `htmlChallengeTabHelpers.ts` pure derived-value helpers + slot-state reducers) pulled out of HtmlChallengeTab. Composition root keeps streaming/abort/run-retry-repair orchestration only.
+- `features/app/` package (Phase 2c-8 through 2c-10) — `modelActions.ts` (performUnloadModel + performDeleteModel), `variantPayloads.ts` (loadPayloadFromVariant + threadPatchFromVariant pure helpers), `conversionActions.ts` (4-handler conversion flow). App.tsx keeps thin wrappers that close over the live setters.
 
-useChat.ts: 1,203 → 1,067 LOC. useImageState.ts: 846 → 809 LOC. useVideoState.ts: 1,126 → 899 LOC. HtmlChallengeTab.tsx: 1,677 → 1,103 LOC. App.tsx: 2,334 → 2,253 LOC.
+useChat.ts: 1,203 → 1,067 LOC. useImageState.ts: 846 → 809 LOC. useVideoState.ts: 1,126 → 899 LOC. HtmlChallengeTab.tsx: 1,677 → 1,103 LOC. App.tsx: 2,334 → 2,081 LOC.
 
 **Remaining 2c/d targets:**
 - `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput` (still ~1,131 LOC)
@@ -253,26 +254,15 @@ useChat.ts: 1,203 → 1,067 LOC. useImageState.ts: 846 → 809 LOC. useVideoStat
 
 **Verify:** `npm test`, `npx tsc --noEmit`, dev server boots, click-through 5 main tabs.
 
-### Phase 3 — Rust shell split
+### Phase 3 — Rust shell split **DONE**
 
-**PARTIAL** (Phase 3-1, commit `c244618`):
-- `src-tauri/src/binaries.rs` — `resolve_llama_server`, `resolve_llama_server_turbo`, `resolve_llama_cli`, `resolve_sd_cpp`, `resolve_candidate`, `find_in_path`. Each honours an env-var override first, falls back to `~/.chaosengine/bin/<name>` for managed installs, then walks `PATH` (with `.exe` suffix on Windows).
+(Phase 3-1 through 3-4, commits `c244618` → `34c4fa5`):
+- `src-tauri/src/binaries.rs` (3-1) — `resolve_llama_server`, `resolve_llama_server_turbo`, `resolve_llama_cli`, `resolve_sd_cpp`, `resolve_candidate`, `find_in_path`. Each honours an env-var override first, falls back to `~/.chaosengine/bin/<name>` for managed installs, then walks `PATH` (with `.exe` suffix on Windows).
+- `src-tauri/src/env_setup.rs` (3-2) — `apply_library_path`, `join_paths`, `prepend_env_paths`. Pure utilities used by `runtime::apply_embedded_runtime_env` to thread the embedded Python runtime's `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` / `PATH` / `PYTHONPATH` onto the sidecar Command before spawn.
+- `src-tauri/src/runtime.rs` (3-3) — `EmbeddedRuntimeManifest` + `EmbeddedRuntime` structs + 20 helper fns covering manifest fingerprint, tar extraction, extras-dir ABI namespacing, and command env application. The full bundled-tar extraction flow lives in one module now.
+- `src-tauri/src/backend.rs` (3-4) — full `impl BackendManager` block (~400 LOC) covering bootstrap → spawn → wait_for_port → probe sequence for the bundled Python backend. Drives `runtime::*`, `settings::*`, `lease::*`, `probe::*`, `orphans::cleanup_orphaned_backends`. Methods promoted to `pub(crate)` so the lib.rs Tauri command stubs can call them across the module boundary.
 
-lib.rs: 1335 → 1249 LOC. Pre-existing `settings.rs` / `probe.rs` / `lease.rs` / `orphans.rs` / `windows_job.rs` modules unchanged.
-
-```
-src-tauri/src/
-  lib.rs                # public API + state init only
-  binaries.rs           [done]
-  settings.rs           [done]
-  probe.rs              [done]
-  lease.rs              [done]
-  orphans.rs            [done]
-  windows_job.rs        [done]
-  runtime/{extraction,manifest}.rs   [pending — embedded runtime extraction is the big one]
-  env/{apply,python}.rs              [pending]
-  backend/{manager,lifecycle}.rs     [pending — BackendManager impl]
-```
+lib.rs: 1335 → 302 LOC (-1033, -77%). Just the public API surface (Tauri commands, run() entry, struct decls + a few small log helpers) remains.
 
 Add explicit `#[cfg(target_os = "linux")]` where Linux currently rides on `#[cfg(unix)]` but should diverge from macOS.
 

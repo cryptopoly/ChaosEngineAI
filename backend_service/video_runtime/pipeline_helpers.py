@@ -1,12 +1,19 @@
 """Stateless pipeline helpers for ``DiffusersVideoEngine``.
 
-Four helpers lifted out of ``video_runtime/__init__.py``:
+Seven helpers lifted out of ``video_runtime/__init__.py``:
 
+* ``finalize_config`` — apply per-model defaults + frame alignment +
+  scheduler resolution + Phase E1 prompt enhancement + Phase E2 CFG
+  decay note. Returns a frozen config + per-run notes.
+* ``swap_scheduler`` — replace the pipeline's scheduler class with the
+  one named in ``_SCHEDULER_CLASSES``.
+* ``build_pipeline_kwargs`` — build the dict of kwargs the diffusers
+  pipeline accepts. Per-pipeline shaping (LTX-Video frame_rate +
+  decode params, HunyuanVideo negative-prompt rejection).
 * ``make_step_callback`` — build the per-step callback the diffusers
   pipeline calls during sampling. Wires four concerns into one
-  callback: progress reporting (``VIDEO_PROGRESS.set_step``),
-  cooperative cancel (``GenerationCancelled``), Phase E2 CFG decay,
-  and FU-018 part 2 preview VAE thumbnails.
+  callback: progress reporting, cooperative cancel, Phase E2 CFG
+  decay, and FU-018 part 2 preview VAE thumbnails.
 * ``invoke_pipeline`` — run a diffusers video pipeline and return
   the first batch's frames; handles older-diffusers fallback for
   ``callback_on_step_end`` and ``negative_prompt`` rejection paths.
@@ -23,11 +30,186 @@ from __future__ import annotations
 
 import importlib
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from backend_service.progress import GenerationCancelled, VIDEO_PROGRESS
-from backend_service.video_runtime.repos import PIPELINE_REGISTRY
+from backend_service.video_runtime.defaults import (
+    _SCHEDULER_CLASSES,
+    _align_wan_num_frames,
+    _resolve_video_defaults,
+)
+from backend_service.video_runtime.repos import (
+    PIPELINE_REGISTRY,
+    _LTX_DEFAULT_NEGATIVE_PROMPT,
+    _enhance_prompt,
+)
+from backend_service.video_runtime.types import VideoGenerationConfig
+
+
+def finalize_config(
+    config: VideoGenerationConfig,
+) -> tuple[VideoGenerationConfig, list[str]]:
+    """Apply per-model defaults + frame alignment + scheduler resolution.
+
+    Centralised so VIDEO_PROGRESS, the cache strategy hook, and the
+    pipeline invocation all see the same resolved values. Returns a
+    new (frozen) config + a list of human-readable notes the caller
+    publishes to the run log.
+    """
+    notes: list[str] = []
+    resolved = _resolve_video_defaults(config.repo, config.steps, config.guidance)
+    steps = int(resolved["steps"])
+    guidance = float(resolved["guidance"])
+    if resolved.get("substituted"):
+        notes.append(
+            f"Substituting model-tuned defaults for {config.modelName}: "
+            f"steps {config.steps} → {steps}, CFG {config.guidance} → {guidance}."
+        )
+
+    aligned_frames, frame_note = _align_wan_num_frames(config.repo, config.numFrames)
+    if frame_note:
+        notes.append(frame_note)
+
+    # Scheduler: explicit request > model default > leave alone.
+    requested_scheduler = (config.scheduler or "").strip().lower() or None
+    if requested_scheduler == "auto":
+        requested_scheduler = None
+    scheduler = requested_scheduler or resolved.get("scheduler")
+    if scheduler and scheduler not in _SCHEDULER_CLASSES:
+        notes.append(
+            f"Unknown scheduler {scheduler!r} — keeping the pipeline default."
+        )
+        scheduler = None
+
+    # LTX-Video: surface the auto-tuned decode params + frame_rate
+    # conditioning so the user sees why output quality matches the
+    # Lightricks reference even though we didn't expose new sliders.
+    if config.repo == "Lightricks/LTX-Video":
+        notes.append(
+            f"LTX-Video auto-tuned to Lightricks reference defaults: "
+            f"frame_rate={int(config.fps)} (model conditioning), "
+            f"decode_timestep=0.05, decode_noise_scale=0.025, "
+            f"guidance_rescale=0.7."
+        )
+
+    # Phase E1 — auto-enhance short prompts. Default-on; opt-out via
+    # config.enhancePrompt=False. Only fires below the word-count
+    # threshold so a long custom prompt is never modified.
+    enhanced_prompt = config.prompt
+    if config.enhancePrompt:
+        enhanced_prompt, enhance_note = _enhance_prompt(config.repo, config.prompt)
+        if enhance_note:
+            notes.append(enhance_note)
+
+    # Phase E2 — CFG decay note. Only surfaces when decay actually
+    # has somewhere to ramp (initial CFG > 1.5 — the floor that
+    # keeps classifier-free guidance enabled throughout the loop).
+    _CFG_DECAY_FLOOR = 1.5
+    if config.cfgDecay and guidance > _CFG_DECAY_FLOOR and steps > 1:
+        notes.append(
+            f"CFG decay enabled: linearly ramping guidance_scale from "
+            f"{guidance:.2f} (step 0) to {_CFG_DECAY_FLOOR} (final step) — "
+            f"flow-match video models oversaturate when CFG stays high "
+            f"throughout sampling. Floor stays above 1.0 so classifier-"
+            f"free guidance keeps running 2-batch end-to-end."
+        )
+
+    return (
+        replace(
+            config,
+            prompt=enhanced_prompt,
+            steps=steps,
+            guidance=guidance,
+            numFrames=aligned_frames,
+            scheduler=scheduler,
+        ),
+        notes,
+    )
+
+
+def swap_scheduler(pipeline: Any, scheduler_id: str | None) -> str | None:
+    """Replace the pipeline's scheduler with the requested class.
+
+    Returns a status message (non-None) iff the swap actually happened
+    or failed in a user-relevant way. ``None`` means "no swap requested
+    or pipeline already on this scheduler" — silent path.
+    """
+    if not scheduler_id:
+        return None
+    cls_name = _SCHEDULER_CLASSES.get(scheduler_id)
+    if cls_name is None:
+        return None
+    current_cls = type(getattr(pipeline, "scheduler", None)).__name__
+    if current_cls == cls_name:
+        return None
+    try:
+        diffusers = importlib.import_module("diffusers")
+    except Exception:
+        return "Scheduler swap skipped: diffusers import failed."
+    scheduler_cls = getattr(diffusers, cls_name, None)
+    if scheduler_cls is None:
+        return (
+            f"Scheduler {scheduler_id!r} ({cls_name}) not available in the "
+            "installed diffusers — keeping the pipeline default."
+        )
+    try:
+        pipeline.scheduler = scheduler_cls.from_config(pipeline.scheduler.config)
+    except Exception as exc:  # noqa: BLE001
+        return f"Scheduler swap to {scheduler_id!r} failed: {exc}"
+    return f"Scheduler swapped to {scheduler_id} ({cls_name})."
+
+
+def build_pipeline_kwargs(
+    config: VideoGenerationConfig,
+    generator: Any,
+    pipeline: Any,
+) -> dict[str, Any]:
+    """Per-model kwarg shaping.
+
+    Most diffusers video pipelines accept the same shape, but there are
+    small variations — e.g. HunyuanVideoPipeline does not accept a
+    ``negative_prompt`` argument in its canonical signature.
+    """
+    kwargs: dict[str, Any] = {
+        "prompt": config.prompt,
+        "width": config.width,
+        "height": config.height,
+        "num_frames": config.numFrames,
+        "num_inference_steps": config.steps,
+        "guidance_scale": config.guidance,
+        "generator": generator,
+        # Force PIL output so ``encode_frames_to_mp4`` always receives
+        # ``list[PIL.Image]``. WanPipeline defaults to ``"np"``, which
+        # returns a 5D numpy array (B, F, H, W, C). Our frame
+        # post-processing assumes the diffusers PIL convention; a raw
+        # numpy tensor leaks through and ``PIL.Image.fromarray`` then
+        # raises "Image must have 1, 2, 3 or 4 channels" because it
+        # reads the first non-batch dim as height. LTXPipeline
+        # already defaults to "pil"; setting it explicitly here is
+        # a no-op for LTX and the fix for Wan / Hunyuan / Mochi /
+        # CogVideoX (all default to "np").
+        "output_type": "pil",
+    }
+    lowered_repo = config.repo.lower()
+    if "hunyuanvideo" not in lowered_repo and config.negativePrompt.strip():
+        kwargs["negative_prompt"] = config.negativePrompt
+
+    # LTX-Video kwargs parity with Lightricks' reference defaults.
+    pipeline_cls = type(pipeline).__name__ if pipeline is not None else ""
+    if pipeline_cls == "LTXPipeline":
+        kwargs["frame_rate"] = int(config.fps)
+        kwargs["decode_timestep"] = 0.05
+        kwargs["decode_noise_scale"] = 0.025
+        kwargs["guidance_rescale"] = 0.7
+        if not kwargs.get("negative_prompt"):
+            kwargs["negative_prompt"] = _LTX_DEFAULT_NEGATIVE_PROMPT
+    # Private kwargs consumed by ``invoke_pipeline`` — pop'd before
+    # passing to the diffusers pipeline.
+    kwargs["__cfg_decay"] = bool(config.cfgDecay)
+    kwargs["__preview_vae"] = bool(config.previewVae)
+    return kwargs
 
 
 def make_step_callback(

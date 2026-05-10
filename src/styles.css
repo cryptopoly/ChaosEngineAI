@@ -8169,6 +8169,23 @@ select.text-input {
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
+/* Wrapper that joins SubstrateRoutingBadge + ChatPerfStrip into a single
+   wrap-row so engine/cache/runtime-note chips flow inline with the perf
+   chips instead of breaking onto their own line (FU-035). The two child
+   strips use ``display: contents`` below so their inner chips become
+   direct flex children of this wrapper. */
+.message-runtime-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+
+.message-runtime-strip > .substrate-routing,
+.message-runtime-strip > .chat-perf-strip {
+  display: contents;
+}
+
 /* Substrate routing inspector badge (Phase 3.4) */
 .substrate-routing {
   display: flex;

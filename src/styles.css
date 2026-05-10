@@ -4043,12 +4043,17 @@ select.text-input {
 }
 
 .html-challenge-stream {
-  flex: 0 0 auto;
-  /* Fixed-ish height so the streaming token feed scrolls inside its own
-     box instead of expanding the panel. Auto-scroll-to-bottom kicks in
-     when the user is already near the tail; scrolling up pauses tracking
-     so previous content stays put for reading. */
-  height: clamp(280px, 38vh, 520px);
+  /* FU-036 (2026-05-10): grow to fill the model panel instead of the
+     previous fixed ``height: clamp(280px, 38vh, 520px)``. The parent
+     ``.html-challenge-panel-body`` is a column flex container; using
+     ``flex: 1 1 auto; min-height: 280px`` lets the streaming code box
+     consume the same vertical space the rendered iframe would, so the
+     panel no longer shows a tall band of empty area below the stream
+     while a model is generating. ``min-height: 280px`` keeps the box
+     usable on short viewports where the surrounding panel cannot
+     contribute much height. */
+  flex: 1 1 auto;
+  min-height: 280px;
   overflow: auto;
   overscroll-behavior: contain;
   margin: 0;

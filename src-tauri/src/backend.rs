@@ -13,6 +13,8 @@ use std::env;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -30,8 +32,8 @@ use crate::lease::{
 };
 use crate::orphans::cleanup_orphaned_backends;
 use crate::probe::{
-    fetch_backend_api_token, port_responding, probe_chaosengine_backend,
-    request_backend_shutdown, wait_for_port,
+    fetch_backend_api_token, port_responding, probe_chaosengine_backend, request_backend_shutdown,
+    wait_for_port,
 };
 use crate::runtime::{
     apply_embedded_runtime_env, chaosengine_extras_site_packages_for_python,
@@ -40,12 +42,15 @@ use crate::runtime::{
     source_workspace_root,
 };
 use crate::settings::{
-    saved_allow_remote_connections, saved_backend_port, saved_hf_cache_path,
-    select_backend_port, selected_bind_host,
+    saved_allow_remote_connections, saved_backend_port, saved_hf_cache_path, select_backend_port,
+    selected_bind_host,
 };
-use crate::{BackendManager, BackendRuntimeInfo, BACKEND_POLL_INTERVAL, BACKEND_START_TIMEOUT,
-    DEFAULT_BACKEND_PORT, open_log_file, read_log_tail};
-
+#[cfg(windows)]
+use crate::windows_job;
+use crate::{
+    open_log_file, read_log_tail, BackendManager, BackendRuntimeInfo, BACKEND_POLL_INTERVAL,
+    BACKEND_START_TIMEOUT, DEFAULT_BACKEND_PORT,
+};
 
 impl BackendManager {
     pub(crate) fn bootstrap(&self, app: &AppHandle) {
@@ -82,7 +87,8 @@ impl BackendManager {
                 inner.info.launcher_mode = "attached".to_string();
                 return;
             }
-            let (selected_port, port_warning) = select_backend_port(preferred_port, allow_remote_connections);
+            let (selected_port, port_warning) =
+                select_backend_port(preferred_port, allow_remote_connections);
             inner.info.port = selected_port;
             inner.info.api_base = format!("http://127.0.0.1:{}", inner.info.port);
             inner.info.startup_error = port_warning;
@@ -94,8 +100,9 @@ impl BackendManager {
                 match resolve_workspace_root(app) {
                     Some(path) => path,
                     None => {
-                        inner.info.startup_error =
-                            Some("Could not locate the ChaosEngineAI backend workspace.".to_string());
+                        inner.info.startup_error = Some(
+                            "Could not locate the ChaosEngineAI backend workspace.".to_string(),
+                        );
                         return;
                     }
                 }
@@ -108,8 +115,9 @@ impl BackendManager {
                     Some(path) => path,
                     None => {
                         inner.info.workspace_root = Some(workspace_root.display().to_string());
-                        inner.info.startup_error =
-                            Some("Could not find a Python runtime for the backend sidecar.".to_string());
+                        inner.info.startup_error = Some(
+                            "Could not find a Python runtime for the backend sidecar.".to_string(),
+                        );
                         return;
                     }
                 }
@@ -172,7 +180,10 @@ impl BackendManager {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
                 }
                 if let Some(llama_server_turbo) = runtime.llama_server_turbo.as_ref() {
-                    command.env("CHAOSENGINE_LLAMA_SERVER_TURBO", llama_server_turbo.as_os_str());
+                    command.env(
+                        "CHAOSENGINE_LLAMA_SERVER_TURBO",
+                        llama_server_turbo.as_os_str(),
+                    );
                 }
                 if let Some(llama_cli) = runtime.llama_cli.as_ref() {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
@@ -195,9 +206,11 @@ impl BackendManager {
                 // apply_embedded_runtime_env already does this for the
                 // embedded path; this is the matching source-workspace
                 // branch. No-op if extras doesn't exist yet.
-                if let Some(extras) =
-                    chaosengine_extras_site_packages_for_python(&python_executable, python_version_hint)
-                        .filter(|p| p.is_dir())
+                if let Some(extras) = chaosengine_extras_site_packages_for_python(
+                    &python_executable,
+                    python_version_hint,
+                )
+                .filter(|p| p.is_dir())
                 {
                     if let Some(python_path) = join_paths(&[extras]) {
                         command.env("PYTHONPATH", python_path);
@@ -207,7 +220,10 @@ impl BackendManager {
                     command.env("CHAOSENGINE_LLAMA_SERVER", llama_server.as_os_str());
                 }
                 if let Some(llama_server_turbo) = resolve_llama_server_turbo(&workspace_root) {
-                    command.env("CHAOSENGINE_LLAMA_SERVER_TURBO", llama_server_turbo.as_os_str());
+                    command.env(
+                        "CHAOSENGINE_LLAMA_SERVER_TURBO",
+                        llama_server_turbo.as_os_str(),
+                    );
                 }
                 if let Some(llama_cli) = resolve_llama_cli(&workspace_root) {
                     command.env("CHAOSENGINE_LLAMA_CLI", llama_cli.as_os_str());
@@ -287,7 +303,8 @@ impl BackendManager {
                 Err(error) => {
                     clear_managed_backend_lease(app);
                     inner.info.process_running = false;
-                    inner.info.startup_error = Some(format!("Failed to start the backend sidecar: {error}"));
+                    inner.info.startup_error =
+                        Some(format!("Failed to start the backend sidecar: {error}"));
                     return;
                 }
             }
@@ -343,8 +360,9 @@ impl BackendManager {
                 Err(error) => {
                     inner.info.process_running = false;
                     inner.info.started = false;
-                    inner.info.startup_error =
-                        Some(format!("Could not inspect the backend sidecar process: {error}"));
+                    inner.info.startup_error = Some(format!(
+                        "Could not inspect the backend sidecar process: {error}"
+                    ));
                 }
             }
         } else {
@@ -356,7 +374,8 @@ impl BackendManager {
                     inner.info.api_token = fetch_backend_api_token(inner.info.port);
                 }
                 if !responding {
-                    inner.info.startup_error = Some("The attached backend is no longer reachable.".to_string());
+                    inner.info.startup_error =
+                        Some("The attached backend is no longer reachable.".to_string());
                 }
             } else {
                 inner.info.process_running = false;
@@ -368,11 +387,12 @@ impl BackendManager {
 
     pub(crate) fn shutdown(&self) {
         let mut inner = self.inner.lock().expect("backend lock poisoned");
-        let attached_backend = if inner.child.is_none() && inner.info.managed_by_tauri && inner.info.started {
-            Some((inner.info.port, inner.info.api_token.clone()))
-        } else {
-            None
-        };
+        let attached_backend =
+            if inner.child.is_none() && inner.info.managed_by_tauri && inner.info.started {
+                Some((inner.info.port, inner.info.api_token.clone()))
+            } else {
+                None
+            };
         inner.info.process_running = false;
         inner.info.started = false;
         inner.info.startup_error = None;

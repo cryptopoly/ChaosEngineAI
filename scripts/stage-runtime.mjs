@@ -371,20 +371,37 @@ function ensureSetuptoolsForPep639(pythonBinary) {
 function resolveChaosEngineVendor() {
   const override = process.env.CHAOSENGINE_VENDOR_PATH;
   if (override) {
+    const overridePath = resolveExistingPath(override, "ChaosEngine vendor path");
+    if (!isInstallablePythonProject(overridePath)) {
+      console.warn(
+        `[stage-runtime] warning: skipping ChaosEngine vendor override at ${overridePath} because it has neither pyproject.toml nor setup.py`,
+      );
+      return null;
+    }
     return {
-      path: resolveExistingPath(override, "ChaosEngine vendor path"),
+      path: overridePath,
       source: "env-override",
     };
   }
 
   const vendoredPath = path.join(workspaceRoot, "vendor", "ChaosEngine");
-  if (!fs.existsSync(vendoredPath)) {
+  if (!isInstallablePythonProject(vendoredPath)) {
     return null;
   }
   return {
     path: fs.realpathSync(vendoredPath),
     source: "vendor/ChaosEngine",
   };
+}
+
+function isInstallablePythonProject(projectPath) {
+  if (!fs.existsSync(projectPath)) {
+    return false;
+  }
+  return (
+    fs.existsSync(path.join(projectPath, "pyproject.toml")) ||
+    fs.existsSync(path.join(projectPath, "setup.py"))
+  );
 }
 
 function stageOptionalRuntimePackages(pythonBinary) {

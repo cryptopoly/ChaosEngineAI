@@ -4,7 +4,6 @@ import json
 import os
 import re
 import sys
-import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -40,6 +39,8 @@ from backend_service.mlx_worker_request import (
 from backend_service.mlx_worker_multimodal import (
     decode_images_to_paths,
     format_multimodal_prompt,
+    generate_multimodal,
+    stream_generate_multimodal,
     vlm_generate_kwargs,
 )
 from backend_service.mlx_worker_cache import (
@@ -946,161 +947,24 @@ class WorkerState:
         return vlm_generate_kwargs(request)
 
     def _generate_multimodal(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Synchronous mlx-vlm generation. Decodes any attached images,
-        runs ``mlx_vlm.generate``, applies the thinking-token filter,
-        and returns the same response shape as ``_generate_standard``.
-        """
-        try:
-            from mlx_vlm import generate as vlm_generate  # type: ignore[import-untyped]
-        except ImportError as exc:
-            raise RuntimeError(
-                f"mlx-vlm is not installed but a multimodal model is loaded: {exc}. "
-                "Install via ``pip install mlx-vlm``."
-            ) from exc
-
-        images_b64 = list(request.get("images") or [])
-        _apply_mlx_seed(request)
-        kwargs = self._vlm_generate_kwargs(request)
-
-        with tempfile.TemporaryDirectory(prefix="chaosengine-mm-") as tmpdir:
-            image_paths = self._decode_images_to_paths(images_b64, tmpdir)
-            prompt_text = self._format_multimodal_prompt(request, num_images=len(image_paths))
-            if image_paths:
-                result = vlm_generate(
-                    self.model, self.processor, prompt_text,
-                    image=image_paths, **kwargs,
-                )
-            else:
-                result = vlm_generate(
-                    self.model, self.processor, prompt_text, **kwargs,
-                )
-
-        raw_text = getattr(result, "text", None) or str(result)
-        thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
+        return generate_multimodal(
+            model=self.model,
+            processor=self.processor,
+            tokenizer=self.tokenizer,
+            config=self.config,
+            loaded_model_ref=self._loaded_model_ref,
+            request=request,
         )
-        filter_result = think_filter.feed(raw_text)
-        flushed = think_filter.flush()
-        text = strip_harmony_boilerplate(f"{filter_result.text}{flushed.text}".strip())
-        if not text:
-            text = "Generation completed without decoded text."
-
-        runtime_note = (
-            f"Multimodal generation via mlx-vlm "
-            f"({len(image_paths)} image{'s' if len(image_paths) != 1 else ''})."
-        )
-
-        return {
-            "text": text,
-            "finishReason": getattr(result, "finish_reason", None) or "stop",
-            "promptTokens": int(getattr(result, "prompt_tokens", 0) or 0),
-            "completionTokens": int(getattr(result, "generation_tokens", 0) or 0),
-            "totalTokens": int(
-                (getattr(result, "prompt_tokens", 0) or 0)
-                + (getattr(result, "generation_tokens", 0) or 0)
-            ),
-            "tokS": round(float(getattr(result, "generation_tps", 0.0) or 0.0), 1),
-            "promptTokS": round(float(getattr(result, "prompt_tps", 0.0) or 0.0), 1),
-            "peakMemoryGb": round(float(getattr(result, "peak_memory", 0.0) or 0.0), 3),
-            "runtimeNote": runtime_note,
-            "cacheStrategy": "native",
-            "cacheBits": 0,
-            "fp16Layers": 0,
-            "fusedAttention": False,
-            "speculativeDecoding": False,
-        }
 
     def _stream_generate_multimodal(self, request: dict[str, Any]) -> None:
-        """Streaming mlx-vlm generation. Emits chunks via the standard
-        ``_emit`` protocol used by the text-only path so the caller
-        sees the same shape regardless of which engine produced the run.
-        """
-        try:
-            from mlx_vlm import stream_generate as vlm_stream  # type: ignore[import-untyped]
-        except ImportError as exc:
-            _emit({"error": (
-                f"mlx-vlm is not installed but a multimodal model is loaded: {exc}. "
-                "Install via ``pip install mlx-vlm``."
-            )})
-            return
-
-        images_b64 = list(request.get("images") or [])
-        _apply_mlx_seed(request)
-        kwargs = self._vlm_generate_kwargs(request)
-        thinking_mode = request.get("thinkingMode") or "off"
-        _open_tag, _close_tag = reasoning_delimiters_for(self._loaded_model_ref)
-        think_filter = ThinkingTokenFilter(
-            detect_raw_reasoning=(thinking_mode != "off"),
-            open_tag=_open_tag,
-            close_tag=_close_tag,
+        stream_generate_multimodal(
+            model=self.model,
+            processor=self.processor,
+            tokenizer=self.tokenizer,
+            config=self.config,
+            loaded_model_ref=self._loaded_model_ref,
+            request=request,
         )
-
-        text_parts: list[str] = []
-        completion_tokens = 0
-        last_chunk: Any = None
-
-        with tempfile.TemporaryDirectory(prefix="chaosengine-mm-") as tmpdir:
-            image_paths = self._decode_images_to_paths(images_b64, tmpdir)
-            prompt_text = self._format_multimodal_prompt(request, num_images=len(image_paths))
-            if image_paths:
-                stream = vlm_stream(
-                    self.model, self.processor, prompt_text,
-                    image=image_paths, **kwargs,
-                )
-            else:
-                stream = vlm_stream(
-                    self.model, self.processor, prompt_text, **kwargs,
-                )
-
-            for chunk in stream:
-                last_chunk = chunk
-                chunk_text = chunk if isinstance(chunk, str) else (
-                    getattr(chunk, "text", None) or ""
-                )
-                if not chunk_text:
-                    continue
-                text_parts.append(chunk_text)
-                completion_tokens += 1
-                filtered = think_filter.feed(chunk_text)
-                if filtered.text:
-                    _emit({"ok": True, "chunk": {"text": filtered.text}})
-
-        flushed = think_filter.flush()
-        if flushed.text:
-            _emit({"ok": True, "chunk": {"text": flushed.text}})
-
-        runtime_note = (
-            f"Multimodal stream via mlx-vlm "
-            f"({len(image_paths)} image{'s' if len(image_paths) != 1 else ''})."
-        )
-        _emit({
-            "ok": True,
-            "done": True,
-            "result": {
-                "finishReason": getattr(last_chunk, "finish_reason", None) or "stop",
-                "promptTokens": int(getattr(last_chunk, "prompt_tokens", 0) or 0),
-                "completionTokens": int(
-                    getattr(last_chunk, "generation_tokens", 0) or completion_tokens
-                ),
-                "totalTokens": int(
-                    (getattr(last_chunk, "prompt_tokens", 0) or 0)
-                    + (getattr(last_chunk, "generation_tokens", 0) or completion_tokens)
-                ),
-                "tokS": round(float(getattr(last_chunk, "generation_tps", 0.0) or 0.0), 1),
-                "promptTokS": round(float(getattr(last_chunk, "prompt_tps", 0.0) or 0.0), 1),
-                "peakMemoryGb": round(float(getattr(last_chunk, "peak_memory", 0.0) or 0.0), 3),
-                "runtimeNote": runtime_note,
-                "cacheStrategy": "native",
-                "cacheBits": 0,
-                "fp16Layers": 0,
-                "fusedAttention": False,
-                "speculativeDecoding": False,
-            },
-        })
 
 
     def stream_generate(self, request: dict[str, Any]) -> None:

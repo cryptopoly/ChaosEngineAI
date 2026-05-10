@@ -51,6 +51,7 @@ from backend_service.mlx_worker_eval import (
     eval_perplexity,
     eval_task_accuracy,
 )
+from backend_service.mlx_worker_loader import resolve_local_snapshot
 
 # Phase 1f-4: model + runtime introspection helpers now live in
 # ``backend_service.mlx_worker_diagnostics``. Re-export so existing imports
@@ -162,90 +163,11 @@ class WorkerState:
 
         emit_progress("resolving", 5.0, f"Resolving model target: {target}")
 
-        # Pre-resolve the snapshot so we can stream download progress. Skip if
-        # `target` is already a local path, and fall back to letting mlx_lm.load
-        # handle non-HF targets on any failure.
-        local_path = target
-        is_local = False
-        try:
-            candidate = Path(target).expanduser()
-            if target.startswith("/") or target.startswith("~") or candidate.exists():
-                is_local = True
-                local_path = str(candidate)
-        except Exception:
-            is_local = False
-
-        if not is_local:
-            try:
-                from huggingface_hub import snapshot_download  # type: ignore
-                from huggingface_hub.utils import (  # type: ignore
-                    GatedRepoError,
-                    RepositoryNotFoundError,
-                    HfHubHTTPError,
-                )
-                from tqdm import tqdm  # type: ignore
-            except ImportError:
-                # huggingface_hub / tqdm not installed — let mlx_lm.load
-                # handle resolution itself. Matches pre-progress behaviour.
-                local_path = target
-            else:
-                class ProgressTqdm(tqdm):  # type: ignore[misc]
-                    def update(self, n: int = 1):  # type: ignore[override]
-                        result = super().update(n)
-                        try:
-                            total = float(self.total or 0)
-                            done = float(self.n or 0)
-                            if total > 0:
-                                frac = max(0.0, min(1.0, done / total))
-                                pct = 20.0 + frac * 40.0  # 20% -> 60%
-                                done_mb = int(done // (1024 * 1024))
-                                total_mb = int(total // (1024 * 1024))
-                                emit_progress(
-                                    "downloading",
-                                    pct,
-                                    f"{done_mb} / {total_mb} MB",
-                                )
-                            else:
-                                emit_progress("downloading", 20.0, "Fetching weights")
-                        except Exception:
-                            pass
-                        return result
-
-                emit_progress("downloading", 20.0, "Fetching weights from Hugging Face")
-                try:
-                    # Use max_workers=1 to avoid multiprocessing semaphore
-                    # leaks on macOS that crash the worker subprocess.
-                    local_path = snapshot_download(
-                        repo_id=target,
-                        tqdm_class=ProgressTqdm,
-                        max_workers=1,
-                    )
-                except GatedRepoError as exc:
-                    raise RuntimeError(
-                        f"This model is gated on Hugging Face. Accept the licence "
-                        f"at https://huggingface.co/{target} and set HF_TOKEN in "
-                        f"Settings, then retry."
-                    ) from exc
-                except RepositoryNotFoundError as exc:
-                    raise RuntimeError(
-                        f"Hugging Face repository not found: {target}"
-                    ) from exc
-                except HfHubHTTPError as exc:
-                    status = getattr(getattr(exc, "response", None), "status_code", None)
-                    if status in (401, 403):
-                        raise RuntimeError(
-                            f"Hugging Face refused access to {target} (HTTP {status}). "
-                            f"Set HF_TOKEN in Settings and make sure you have accepted "
-                            f"the licence at https://huggingface.co/{target}."
-                        ) from exc
-                    raise RuntimeError(
-                        f"Hugging Face download failed for {target}: {exc}"
-                    ) from exc
-                except OSError as exc:
-                    # Network / filesystem failures — bubble up the detail.
-                    raise RuntimeError(
-                        f"Could not download {target} from Hugging Face: {exc}"
-                    ) from exc
+        # Pre-resolve the snapshot so we can stream download progress. The
+        # helper hands a local path back, downloading from HF when needed
+        # and translating gated/404/auth errors into user-readable
+        # RuntimeError messages.
+        local_path = resolve_local_snapshot(target)
 
         # Start a heartbeat that ticks the UI every 2s while mlx_lm.load
         # blocks. mlx_lm doesn't expose a progress callback, so large models

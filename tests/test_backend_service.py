@@ -712,7 +712,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual([model["repo"] for model in direct_results], ["Qwen/Qwen3.6-35B-A3B"])
         self.assertEqual([model["repo"] for model in short_results], ["Qwen/Qwen3.6-35B-A3B"])
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=74.9)
     def test_model_download_preflight_sets_live_size_before_starting(
@@ -733,7 +733,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         thread_cls.assert_called_once()
         fake_thread.start.assert_called_once()
 
-    @mock.patch("backend_service.state._spawn_snapshot_download")
+    @mock.patch("backend_service.state.downloads._spawn_snapshot_download")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=66.99)
     def test_model_download_disables_hf_xet_for_snapshot_download(
@@ -766,7 +766,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             def join(self, timeout=None):
                 return None
 
-        with mock.patch("backend_service.state.threading.Thread", side_effect=ImmediateThread):
+        with mock.patch("backend_service.state.downloads.threading.Thread", side_effect=ImmediateThread):
             payload = state.start_download("Qwen/Qwen3.6-35B-A3B")
 
         self.assertEqual(payload["state"], "completed")
@@ -776,7 +776,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(env["HF_HUB_DISABLE_PROGRESS_BARS"], "1")
         self.assertEqual(env["PYTHONUNBUFFERED"], "1")
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch(
         "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
@@ -796,7 +796,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIn("not found on Hugging Face", payload["error"])
         thread_cls.assert_not_called()
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch(
         "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
@@ -2024,7 +2024,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
     def test_snapshot_download_process_redirects_progress_output_to_log_file(self):
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download("org/model", {"PYTHONUNBUFFERED": "1"}, handle)
 
         kwargs = popen.call_args.kwargs
@@ -2035,7 +2035,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
     def test_snapshot_download_passes_empty_allowlist_for_standard_repos(self):
         """Non-video repos should not receive an allowlist arg (empty string)."""
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download("org/model", {}, handle)
 
         args = popen.call_args.args[0]
@@ -2048,7 +2048,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         """A supplied allowlist arrives at the subprocess as JSON."""
         patterns = ["model_index.json", "transformer/**"]
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download(
                     "org/video-model", {}, handle, allow_patterns=patterns,
                 )

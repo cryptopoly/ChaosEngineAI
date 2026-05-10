@@ -221,8 +221,9 @@ src/types.ts: 1,378 → 230 LOC (~83% reduction). Re-exports preserve every exis
 - `components/CapabilityStrip.tsx` — de-duped 3 identical inline ``renderCapabilityIcons`` implementations (App + MyModelsTab + OnlineModelsTab) into a single shared component (Phase 2c-2).
 - `hooks/useCudaTorchInstall.ts` — extracted CUDA torch install flow (3 state slots + handler) from App.tsx; accepts an ``onAfterInstall`` callback so App keeps firing the imgState/videoState refresh probes that clear the warning banner (Phase 2c-3).
 - `features/chat/optimisticTurns.ts` (Phase 2c-4) — four pure state helpers pulled out of useChat: `appendOptimisticTurn` (push user + empty-assistant pair in `prompt_eval` phase), `replaceOptimisticAssistant` (fill the empty turn after stream completes; falls back to appending fresh pair if the optimistic turn was already swept), `rollbackOptimisticTurn` (drop the empty pair on stream error), `mergeSessionMetadata` (shallow patch). Hook keeps 3-line local wrappers that close over setWorkspace.
+- `features/video/downloadActions.ts` + `features/video/modelLifecycle.ts` + `features/video/installActions.ts` (Phase 2c-6) — 11 handlers + 2 pure helpers pulled out of useVideoState. Each handler takes its dependencies as kwargs. Hook keeps thin wrappers.
 
-useChat.ts: 1,203 → 1,067 LOC. App.tsx: 2,334 → 2,253 LOC.
+useChat.ts: 1,203 → 1,067 LOC. useVideoState.ts: 1,126 → 899 LOC. App.tsx: 2,334 → 2,253 LOC.
 
 **Remaining 2c/d targets:**
 - `useChat` → `useChatStreaming` + `useChatHistory` + `useChatInput` (still ~1,131 LOC)

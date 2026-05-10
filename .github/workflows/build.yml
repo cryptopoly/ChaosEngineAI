@@ -63,10 +63,14 @@ jobs:
       - name: cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
       - name: Python venv + install
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           python -m venv .venv
-          ${{ matrix.venv-activate }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           pip install --upgrade pip
           # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
           # tests/test_video_runtime.py needs because probe() does a real
@@ -76,9 +80,13 @@ jobs:
           # assertion fails.
           pip install -e ".[desktop,dev,images]"
       - name: Python tests with coverage
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
-          ${{ matrix.venv-activate }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           python -m pytest tests/ -v --tb=short \
             --cov=backend_service --cov=cache_compression --cov=dflash \
             --cov-report=term --cov-report=json:coverage.json

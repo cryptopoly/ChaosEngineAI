@@ -70,23 +70,40 @@ class JsonRpcProcess:
         if self.process is None:
             return
 
+        # Capture + null the reference up-front so a TimeoutExpired below
+        # cannot leave us with a half-closed engine pointing at a dying
+        # PID. The MLX HTML-challenge dual-load bug came from exactly that
+        # path: ``wait(timeout=5)`` raised on a 47 GB unmap, the exception
+        # propagated to the swallow-all blocks in the route, ``self.process``
+        # never got nulled, and the next load spawned a second worker
+        # while the first was still resident. Mirrors the pattern in
+        # ``LlamaCppEngine._cleanup_process``.
+        process = self.process
+        self.process = None
+
         try:
-            if self.process.stdin is not None and self.process.poll() is None:
-                self.process.stdin.close()
+            if process.stdin is not None and process.poll() is None:
+                process.stdin.close()
         except OSError:
             pass
 
-        if self.process.poll() is None:
+        if process.poll() is None:
             if force:
-                self.process.kill()
+                process.kill()
             else:
-                self.process.terminate()
+                process.terminate()
             try:
-                self.process.wait(timeout=5)
+                process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=5)
-        self.process = None
+                process.kill()
+                # Don't block the request thread on a 47 GB vm_map teardown.
+                # SIGKILL is uninterruptible — the kernel reaps when it's
+                # done. ``prune_stale_backend_children`` mops up any zombie
+                # on the next ``/api/server/status`` poll.
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    pass
 
     def is_alive(self) -> bool:
         """Return True if the worker process is running."""

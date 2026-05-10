@@ -1864,7 +1864,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         with mock.patch(
-            "backend_service.state._describe_process",
+            "backend_service.state.payloads._describe_process",
             return_value={
                 "pid": 4242,
                 "name": "python",
@@ -1922,7 +1922,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         with mock.patch(
-            "backend_service.state._describe_process",
+            "backend_service.state.payloads._describe_process",
             return_value={
                 "pid": 4242,
                 "name": "python",

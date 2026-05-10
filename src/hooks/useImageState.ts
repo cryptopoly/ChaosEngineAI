@@ -1,7 +1,6 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import {
   cancelImageGeneration,
-  deleteImageOutput,
   generateImage,
   getGpuBundleStatus,
   getImageCatalog,
@@ -25,6 +24,12 @@ import {
   openStudio,
   resetGalleryFilters,
 } from "../features/image/studioPresets";
+import {
+  deleteArtifact,
+  hydrateFormFromArtifact,
+  useSameImageSettings,
+  varyImageSeed,
+} from "../features/image/galleryActions";
 
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
@@ -406,25 +411,21 @@ export function useImageState(
   }
 
   function hydrateImageFormFromArtifact(artifact: ImageOutputArtifact, randomizeSeed = false) {
-    setSelectedImageModelId(artifact.modelId);
-    setImagePrompt(artifact.prompt);
-    setImageNegativePrompt(artifact.negativePrompt ?? "");
-    setImageWidth(artifact.width);
-    setImageHeight(artifact.height);
-    setImageSteps(artifact.steps);
-    setImageGuidance(artifact.guidance);
-    setImageBatchSize(1);
-    const ratioPreset = IMAGE_RATIO_PRESETS.find(
-      (preset) => preset.width === artifact.width && preset.height === artifact.height,
-    );
-    if (ratioPreset) setImageRatioId(ratioPreset.id);
-    const qualityPreset = IMAGE_QUALITY_PRESETS.find(
-      (preset) => preset.steps === artifact.steps && preset.guidance === artifact.guidance,
-    );
-    if (qualityPreset) setImageQualityPreset(qualityPreset.id);
-    setImageUseRandomSeed(randomizeSeed);
-    setImageSeedInput(randomizeSeed ? "" : String(artifact.seed));
-    openImageStudio(artifact.modelId);
+    hydrateFormFromArtifact(artifact, randomizeSeed, {
+      setSelectedImageModelId,
+      setImagePrompt,
+      setImageNegativePrompt,
+      setImageWidth,
+      setImageHeight,
+      setImageSteps,
+      setImageGuidance,
+      setImageBatchSize,
+      setImageRatioId,
+      setImageQualityPreset,
+      setImageUseRandomSeed,
+      setImageSeedInput,
+      openImageStudio,
+    });
   }
 
   async function submitImageGeneration(overrides?: {
@@ -655,47 +656,32 @@ export function useImageState(
     }
   }
 
-  async function handleDeleteImageArtifact(artifactId: string) {
-    try {
-      const response = await deleteImageOutput(artifactId);
-      setImageOutputs(response.outputs);
-      const nextArtifacts = imageGenerationArtifacts.filter((artifact) => artifact.artifactId !== artifactId);
-      setImageGenerationArtifacts(nextArtifacts);
-      setSelectedImageGenerationArtifactId((current) => {
-        if (current && nextArtifacts.some((artifact) => artifact.artifactId === current)) return current;
-        return nextArtifacts[0]?.artifactId ?? null;
-      });
-      if (showImageGenerationModal && nextArtifacts.length === 0 && !imageBusy) {
-        setShowImageGenerationModal(false);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete image output.");
-    }
-  }
-
-  async function handleVaryImageSeed(artifact: ImageOutputArtifact) {
-    const matchedQualityPreset =
-      IMAGE_QUALITY_PRESETS.find(
-        (preset) => preset.steps === artifact.steps && preset.guidance === artifact.guidance,
-      )?.id ?? imageQualityPreset;
-    hydrateImageFormFromArtifact(artifact, true);
-    await submitImageGeneration({
-      modelId: artifact.modelId,
-      prompt: artifact.prompt,
-      negativePrompt: artifact.negativePrompt ?? "",
-      width: artifact.width,
-      height: artifact.height,
-      steps: artifact.steps,
-      guidance: artifact.guidance,
-      batchSize: 1,
-      qualityPreset: matchedQualityPreset,
-      seed: Math.floor(Math.random() * 2147483647),
+  function handleDeleteImageArtifact(artifactId: string): Promise<void> {
+    return deleteArtifact(artifactId, {
+      imageGenerationArtifacts,
+      showImageGenerationModal,
+      imageBusy,
+      setImageOutputs,
+      setImageGenerationArtifacts,
+      setSelectedImageGenerationArtifactId,
+      setShowImageGenerationModal,
+      setError,
     });
   }
 
-  function handleUseSameImageSettings(artifact: ImageOutputArtifact, closeModal = false) {
-    hydrateImageFormFromArtifact(artifact);
-    if (closeModal) setShowImageGenerationModal(false);
+  function handleVaryImageSeed(artifact: ImageOutputArtifact): Promise<void> {
+    return varyImageSeed(artifact, {
+      imageQualityPreset,
+      hydrateFormFromArtifact: hydrateImageFormFromArtifact,
+      submitImageGeneration,
+    });
+  }
+
+  function handleUseSameImageSettings(artifact: ImageOutputArtifact, closeModal = false): void {
+    useSameImageSettings(artifact, closeModal, {
+      hydrateFormFromArtifact: hydrateImageFormFromArtifact,
+      setShowImageGenerationModal,
+    });
   }
 
   return {

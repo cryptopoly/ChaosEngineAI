@@ -202,7 +202,7 @@ Documents:
 
 Mega-file shrink across helpers/: images.py 983 → 751, video.py 769 → 565, discovery.py 806 → 429, huggingface.py 703 → 525, system.py 559 → 252, documents.py 586 → 478. Re-exports preserve every existing import path; 7 helpers files (gpu, settings, prompts, formatting, persistence, etc.) left untouched as already-focused.
 
-**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **MOSTLY DONE** (Phase 1f-1 through 1f-9, commits `b27ebab` → `77588b6`).
+**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **DONE** (Phase 1f-1 through 1f-13, commits `b27ebab` → `a2a5d13`). mlx_worker.py: 2,115 → 318 LOC (-85%). Phases 1f-10/11/12 added `mlx_worker_lifecycle.py` (load_model + unload_model + update_profile + cache profile helpers), `mlx_worker_speculative.py` (DFLASH + DDTree generation), `mlx_worker_generate.py` (plain text + streaming generation paths) — all taking `state: WorkerState` as the first arg. Public surface unchanged.
 - `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt` (1f-1). Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.
 - `mlx_worker_prompt.py` — `TranscriptLoopFilter` + `_build_prompt_text` + Gemma fold-system + plain-chat fallback + `_should_retry_cache_failure` + `_merge_runtime_notes` (1f-2).
 - `mlx_worker_io.py` — JSON IPC channel: `_JSON_OUT`, `_install_stdio_redirect`, `_emit`, `emit_progress` (1f-3).

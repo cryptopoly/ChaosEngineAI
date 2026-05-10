@@ -37,13 +37,14 @@ biggest modules:
   conversion) plus `controller.py` (the full ~1,050 LOC
   RuntimeController class). The package's `__init__` is now just the
   public re-export surface.
-- `mlx_worker.py`: 2,115 → 1,227 LOC (-42%) via
-  `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader}.py`.
-  WorkerState methods that moved out are thin wrappers; the JSON IPC
-  channel + the Hugging Face snapshot-download front half + the
-  perplexity / task-accuracy eval entrypoints + the multimodal
-  generation paths + the cache profile helpers all sit in their own
-  cohesive modules now.
+- `mlx_worker.py`: 2,115 → 318 LOC (-85%) via
+  `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader,
+  lifecycle,speculative,generate}.py`. WorkerState methods are 1-3 line
+  wrappers; load_model + unload_model + update_profile + cache profile
+  helpers + DFLASH + DDTree speculative generation + plain text /
+  streaming generation paths + JSON IPC channel + HF snapshot download
+  + perplexity / task-accuracy eval + multimodal paths all sit in
+  their own cohesive modules now.
 - `image_runtime/__init__.py`: 2,097 → 992 LOC (-53%) and
   `video_runtime/__init__.py`: 2,378 → 1,018 LOC (-57%) via
   `transformer_loaders.py` + `pipeline_helpers.py` per package +

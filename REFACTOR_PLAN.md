@@ -181,10 +181,16 @@ Documents:
 
 Mega-file shrink across helpers/: images.py 983 → 751, video.py 769 → 565, discovery.py 806 → 429, huggingface.py 703 → 525, system.py 559 → 252, documents.py 586 → 478. Re-exports preserve every existing import path; 7 helpers files (gpu, settings, prompts, formatting, persistence, etc.) left untouched as already-focused.
 
-**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1, commit `b27ebab`).
-- `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt`. Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.
+**1f. `mlx_worker.py` 2,115 → request helpers + worker.** **PARTIAL** (Phase 1f-1 through 1f-7, commits `b27ebab` → `6eef8f5`).
+- `mlx_worker_request.py` — `_normalize_message_content`, `_sanitize_messages`, `_extract_top_logprobs`, `_build_mlx_sampler`, `_sampler_seed`, `_apply_mlx_seed`, `_format_tools_for_prompt` (1f-1). Re-exported from `mlx_worker` so `vllm_engine`'s direct import keeps working.
+- `mlx_worker_prompt.py` — `TranscriptLoopFilter` + `_build_prompt_text` + Gemma fold-system + plain-chat fallback + `_should_retry_cache_failure` + `_merge_runtime_notes` (1f-2).
+- `mlx_worker_io.py` — JSON IPC channel: `_JSON_OUT`, `_install_stdio_redirect`, `_emit`, `emit_progress` (1f-3).
+- `mlx_worker_diagnostics.py` — `_UNSUPPORTED_QUANT_ALGOS` + `_reject_unsupported_quant` model-config probe + `probe()` runtime-capability subcommand + `gguf_metadata()` GGUF-file subcommand (1f-4).
+- `mlx_worker_multimodal.py` — `decode_images_to_paths`, `format_multimodal_prompt`, `vlm_generate_kwargs` (mlx-vlm helpers; WorkerState methods now thin-wrap) (1f-5).
+- `mlx_worker_cache.py` — `runtime_fields` + `make_mlx_cache` (pure cache profile helpers; class methods now thin-wrap) (1f-6).
+- `mlx_worker_eval.py` — `eval_perplexity` + `eval_task_accuracy` (eval entrypoints; class methods now thin-wrap) (1f-7).
 
-mlx_worker.py: 2,115 → 1,927 LOC. WorkerState class (1500 LOC) is the next target — too large for a single-session extract because of MLX-internal tight coupling.
+mlx_worker.py: 2,115 → 1,441 LOC (-674, -32%). WorkerState class still has the heavy lifting (load_model, generate, stream_generate, _generate_dflash, _generate_ddtree, _generate_standard, _generate_multimodal, _stream_generate_multimodal, _apply_cache_profile, _apply_triattention_mlx_compressor) — those mutate too many instance fields to extract atomically without an interim `WorkerContext` dataclass.
 
 **Verify each step:** `pytest`, live smoke gens (text + image + video), `python -c "from backend_service.app import build_app; build_app()"` clean import.
 
@@ -258,8 +264,20 @@ Reads JSON output from ``perf-baseline.py`` and validates each metric
 against the captured floor (default ±5% tolerance, configurable).
 Initial floor: ``text.tokens_per_second ≥ 297 tok/s`` (Qwen2.5-0.5B
 4-bit MLX on Apple Silicon, captured 2026-05-09). Image + video
-floors stay TBD until real captures land. CI workflow integration is
-the next step (Phase 5-2).
+floors stay TBD until real captures land.
+
+Phase 5-2 (commit `b5d9308`): ``.github/workflows/perf-gate.yml`` ships
+a dedicated CI workflow that runs ``perf-baseline.py`` on
+``macos-latest`` with HF cache restore and pipes the JSON into
+``scripts/perf-gate.py``. Trigger surface is manual + label-driven —
+``workflow_dispatch`` (Actions tab "Run workflow") or adding the
+``perf-gate`` label to a PR. We don't bolt this onto every push because
+the cheapest gen (text) needs ~700 MB of cached MLX weights, and the
+image/video gens pull multi-GB diffusers checkpoints. The workflow
+upload-artifacts the captured baseline JSON for 30 days. The
+comparator's ``_read_metric`` was also rewritten to navigate the actual
+``{"results": [{"label": ..., ...}]}`` shape ``perf-baseline.py``
+emits — the original draft assumed a label-keyed nested dict.
 
 Profile-driven only:
 1. **Backend startup:** `python -X importtime backend_service.app`. Target import < 2s. Lazy-import torch/diffusers/mlx until first model load.

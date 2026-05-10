@@ -40,7 +40,9 @@ ChaosEngineAI is a desktop AI inference app built with:
 | `src/` | React frontend (components, hooks, utils, types) |
 | `src-tauri/src/lib.rs` | Tauri bridge — runtime extraction, binary resolution, sidecar bootstrap |
 | `backend_service/` | Python FastAPI backend |
-| `backend_service/inference.py` | Core inference engine — model loading, binary routing, generation |
+| `backend_service/inference/` | Core inference engine package — `controller.py` (RuntimeController), `engines/`, `binaries.py`, `capabilities.py`, `conversion.py`, `jsonrpc.py` |
+| `backend_service/state/` | App state package — `__init__.py` (ChaosEngineState facade), `documents.py`, `benchmarks.py`, `openai_compat.py`, `payloads.py`, `settings_state.py`, `sessions.py`, `downloads.py`, `metrics.py`, `logs.py` |
+| `backend_service/mlx_worker*.py` | MLX subprocess worker — `mlx_worker.py` orchestrator + `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader}.py` siblings |
 | `backend_service/routes/` | API endpoints (14 route modules) |
 | `backend_service/helpers/` | System stats, settings, persistence, cache estimation |
 | `cache_compression/` | Cache strategy registry + adapters (native, rotorquant, turboquant, chaosengine, triattention). Renamed from `compression/` so it doesn't shadow Python 3.14's stdlib `compression` namespace package. |
@@ -55,7 +57,7 @@ The app supports two llama-server binaries:
 - **`llama-server`** (standard, Homebrew) — for native and ChaosEngine cache strategies
 - **`llama-server-turbo`** (TurboQuant fork) — for RotorQuant and TurboQuant strategies, installed to `~/.chaosengine/bin/`
 
-Each `CacheStrategy` declares `required_llama_binary()` → `"standard"` or `"turbo"`. The `LlamaCppEngine._select_llama_binary()` method in `inference.py` routes to the correct binary. Cache types are pre-validated against the binary's `--help` output before startup.
+Each `CacheStrategy` declares `required_llama_binary()` → `"standard"` or `"turbo"`. The `LlamaCppEngine._select_llama_binary()` method in `inference/llama_cpp_engine.py` routes to the correct binary. Cache types are pre-validated against the binary's `--help` output before startup.
 
 ---
 

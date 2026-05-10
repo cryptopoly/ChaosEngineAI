@@ -22,7 +22,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | Untested route modules | 18 of 21 | manual cross-ref |
 | Untested feature tabs | 40 of 42 | manual cross-ref |
 
-## Progress through 2026-05-10 (89 commits on `feature/refactor-n-audit`)
+## Progress through 2026-05-10 (91 commits on `feature/refactor-n-audit`)
 
 | File | Original | Now | Δ |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Branch: `feature/refactor-n-audit` (off v0.7.6).
 | `helpers/video.py` | 769 | 565 | -204 |
 | **Mega-file shrink total** | 35,420 | **23,674** | **-11,746 LOC** |
 
-Tests posture across all 89 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
+Tests posture across all 91 commits: **1,302 Python pass + 1 skip / 340 TS pass / tsc clean**. Zero regressions; coverage gate (60% Python) holds on every phase.
 
 ## Mega-file inventory
 
@@ -251,7 +251,15 @@ Add explicit `#[cfg(target_os = "linux")]` where Linux currently rides on `#[cfg
 4. ~~Rename `update-llama-cpp.sh` → `check-llama-cpp.sh` (info-only, name lied).~~ **DROPPED** — original audit was wrong: the script does rebuild llama-server (cmake configure + build).
 5. CI matrix flips Windows/Linux from advisory to required. **DONE** (Phase 4-5, paired with 4-2). `windows-latest` job in `.github/workflows/build.yml` now has `advisory: false` so a Windows-specific regression blocks the PR the same way a macOS / Ubuntu failure does. Linux was already required.
 
-### Phase 5 — Performance pass
+### Phase 5 — Performance pass **STARTED**
+
+Phase 5-1 (commit `81a81b7`): ``scripts/perf-gate.py`` comparator added.
+Reads JSON output from ``perf-baseline.py`` and validates each metric
+against the captured floor (default ±5% tolerance, configurable).
+Initial floor: ``text.tokens_per_second ≥ 297 tok/s`` (Qwen2.5-0.5B
+4-bit MLX on Apple Silicon, captured 2026-05-09). Image + video
+floors stay TBD until real captures land. CI workflow integration is
+the next step (Phase 5-2).
 
 Profile-driven only:
 1. **Backend startup:** `python -X importtime backend_service.app`. Target import < 2s. Lazy-import torch/diffusers/mlx until first model load.

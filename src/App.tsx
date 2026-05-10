@@ -9,6 +9,7 @@ import {
   updateSession,
 } from "./api";
 import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
+import { threadPatchFromVariant } from "./features/app/variantPayloads";
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
@@ -983,71 +984,18 @@ export default function App() {
     }
   }
 
-  function loadPayloadFromVariant(variant: ModelVariant, nextTab?: TabId) {
-    const localItem = findLibraryItemForVariant(chatLibrary, variant);
-    if (localItem) {
-      return {
-        modelRef: localItem.name,
-        modelName: localItem.name,
-        canonicalRepo: variant.repo,
-        source: "library",
-        backend: libraryItemBackend(localItem),
-        path: localItem.path,
-        nextTab,
-      };
-    }
-    return {
-      modelRef: variant.id,
-      modelName: variant.name,
-      canonicalRepo: variant.repo,
-      source: "catalog",
-      backend: variant.backend,
-      nextTab,
-    };
-  }
-
-  function threadPatchFromVariant(variant: ModelVariant): Pick<
-    ChatSession,
-    "model" | "modelRef" | "canonicalRepo" | "modelSource" | "modelPath" | "modelBackend" | "cacheLabel" | "updatedAt"
-    | "cacheStrategy" | "cacheBits" | "fp16Layers" | "fusedAttention" | "fitModelInMemory"
-    | "contextTokens" | "speculativeDecoding" | "dflashDraftModel" | "treeBudget"
-  > {
-    const localItem = findLibraryItemForVariant(chatLibrary, variant);
-    const modelRef = localItem?.name ?? variant.id;
-    const modelName = localItem?.name ?? variant.name;
-    const modelBackend = localItem ? libraryItemBackend(localItem, variant) : variant.backend;
-    const sanitizedSpeculative = sanitizeSpeculativeForModel({
-      backend: modelBackend,
-      modelRef,
-      canonicalRepo: variant.repo,
-      modelName,
-      speculativeDecoding: launchSettings.speculativeDecoding,
-      treeBudget: launchSettings.treeBudget,
+  function threadPatchFromVariantLocal(variant: ModelVariant) {
+    return threadPatchFromVariant(variant, {
+      chatLibrary,
+      launchSettings,
+      launchCacheLabel,
+      sanitizeSpeculativeForModel,
     });
-    return {
-      model: modelName,
-      modelRef,
-      canonicalRepo: variant.repo,
-      modelSource: localItem ? "library" : "catalog",
-      modelPath: localItem?.path ?? null,
-      modelBackend,
-      cacheLabel: launchCacheLabel,
-      cacheStrategy: launchSettings.cacheStrategy,
-      cacheBits: launchSettings.cacheBits,
-      fp16Layers: launchSettings.fp16Layers,
-      fusedAttention: launchSettings.fusedAttention,
-      fitModelInMemory: launchSettings.fitModelInMemory,
-      contextTokens: launchSettings.contextTokens,
-      speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
-      dflashDraftModel: null,
-      treeBudget: sanitizedSpeculative.treeBudget,
-      updatedAt: new Date().toLocaleString(),
-    };
   }
 
   async function handleApplyVariantToActiveThread(variant: ModelVariant) {
     if (!activeChat) return;
-    await persistSessionChanges(activeChat.id, threadPatchFromVariant(variant));
+    await persistSessionChanges(activeChat.id, threadPatchFromVariantLocal(variant));
     setActiveTab("chat");
   }
 
@@ -1057,7 +1005,7 @@ export default function App() {
       title: "New chat",
       pinned: false,
       messages: [],
-      ...threadPatchFromVariant(variant),
+      ...threadPatchFromVariantLocal(variant),
     };
     setWorkspace((current) => ({
       ...current,

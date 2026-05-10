@@ -1,5 +1,110 @@
 # Changelog
 
+## v0.8.0 - 2026-05-10
+
+### Refactor + audit
+
+Multi-week pass through the largest backend / frontend modules to land
+the v0.8.0 modularisation goal. Zero feature regressions — 1,302 Python
+tests + 340 TypeScript tests pass before and after every commit; all
+type checks (mypy, tsc) clean.
+
+**Bundled MLX worker memory leak fix.** `JsonRpcProcess.close()` now
+captures and nulls `self.process` up-front + wraps the post-kill
+`wait()` in `try/except TimeoutExpired` with a 1 s ceiling, mirroring
+`LlamaCppEngine._cleanup_process`. Without the fix, force-killing a
+worker that held ~47 GB of MLX weights routinely raised
+`TimeoutExpired` on the macOS vm_map teardown, the exception was
+swallowed by the route layer's broad `except Exception: pass`,
+`self.process` was never nulled, and the next load spawned a second
+worker alongside the dying one — Activity Monitor showed two ~47 GB
+Python processes; `/api/server/status` reported one model.
+
+**Backend (`backend_service/`)** — major shrinks across the four
+biggest modules:
+
+- `state/__init__.py`: 4,418 → 2,873 LOC (-35%) via
+  `state/{logs,metrics,_helpers,documents,benchmarks,openai_compat,payloads,settings_state}.py`.
+  Class methods that moved out are 1-3 line thin wrappers; tests that
+  patch `_describe_process` etc. retarget to the new module path; no
+  external import path changes.
+- `inference/__init__.py`: 3,574 → 1,180 LOC (-67%) via the existing
+  `engines/` subpackage (RemoteOpenAIEngine + MockInferenceEngine +
+  MLXWorkerEngine + LlamaCppEngine + binaries + capabilities +
+  conversion). Only `RuntimeController` (~1,050 LOC) stays inline — its
+  helper graph is the most cross-cutting in the package and a clean
+  extract requires an interim `WorkerContext` dataclass.
+- `mlx_worker.py`: 2,115 → 1,227 LOC (-42%) via
+  `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader}.py`.
+  WorkerState methods that moved out are thin wrappers; the JSON IPC
+  channel + the Hugging Face snapshot-download front half + the
+  perplexity / task-accuracy eval entrypoints + the multimodal
+  generation paths + the cache profile helpers all sit in their own
+  cohesive modules now.
+- `image_runtime/__init__.py`: 2,097 → 1,069 LOC (-49%) and
+  `video_runtime/__init__.py`: 2,378 → 1,357 LOC (-43%) via
+  `transformer_loaders.py` per package + the existing
+  `{types,repos,snapshot,device,placeholder_engine,mflux_engine,defaults,warmup}`
+  modules. Quantised transformer loaders (NF4, int8wo, GGUF, Nunchaku
+  SVDQuant, BitsAndBytes NF4, lightx2v Wan distill swap) + FP8
+  layerwise casting + device probes all moved out.
+- `routes/setup/`: 1,932 → 353 LOC (-82%) via
+  `setup/{longlive,wan_install,turbo,_install_helpers,cuda_torch,gpu_bundle}.py`.
+- `routes/html_challenges/`: 1,183 → 2-file package
+  (`__init__.py` + `_helpers.py`).
+- `helpers/`: 14 sibling modules pulled out of the original
+  helpers files (image_artifacts, image_validation, video_artifacts,
+  mlx_video_validation, quantization, model_classifier,
+  snapshot_integrity, model_family_payload, hf_cache_paths, hf_format,
+  hf_errors, system_processes, system_hardware, document_text,
+  torch_status). Cumulative shrink: images 983→751, video 769→565,
+  discovery 806→429, huggingface 703→525, system 559→252,
+  documents 586→478.
+
+**Frontend (`src/`)** — same pattern applied to the largest hooks +
+components:
+
+- `api.ts`: 1,430 → 6 domain modules (chat, image, video, models,
+  setup, admin). Live-binding circular re-exports preserve every
+  existing import path.
+- `types.ts`: 1,378 → 230 LOC (-83%) via 11-file `types/` package.
+- `useChat.ts`: 1,203 → 1,067 LOC. `optimisticTurns` (the
+  push/replace/rollback state machine) + per-session localStorage
+  helpers (temperature, reasoning effort) moved to `features/chat/`.
+- `useImageState.ts`: 846 → 809 LOC via
+  `features/image/{downloadActions,studioPresets,galleryActions}.ts`.
+- `useVideoState.ts`: 1,126 → 899 LOC (-20%) via
+  `features/video/{downloadActions,modelLifecycle,installActions}.ts`.
+- `HtmlChallengeTab.tsx`: 1,677 → 1,103 LOC via the
+  `features/chat/html_challenge/` package — 5 child components
+  (ChallengeSetupPanel, ChallengeSlotPanel, ChallengeModelCard,
+  ChallengePickerModal, ChallengeHistoryCombobox) + 2 helper modules
+  (challengeApi.ts fetch wrappers, htmlChallengeTabHelpers.ts pure
+  derived-value helpers + slot-state reducers).
+- App.tsx: extracted CUDA torch install hook + capability strip
+  shared component.
+
+**Performance gate.** `scripts/perf-gate.py` compares a
+`scripts/perf-baseline.py` JSON run against the captured floors in
+`PERF_BASELINE.md`; default ±5% tolerance, configurable. Initial
+floor: `text.tokens_per_second ≥ 297 tok/s` (Qwen2.5-0.5B 4-bit MLX,
+Apple Silicon, 2026-05-09). New `.github/workflows/perf-gate.yml` runs
+the comparator on `macos-latest` with HF cache restore — triggered via
+the Actions "Run workflow" button or by labeling a PR with
+`perf-gate`. We deliberately don't bolt this onto every push because
+the cheapest gen needs ~700 MB of cached weights.
+
+**Cross-OS parity.** PowerShell ports of the existing bash update
+scripts; cross-platform `pre-build-check.mjs`; Windows promoted from
+advisory to required in the CI test matrix.
+
+**CLAUDE.md** extended with a Code Quality Guidelines section
+(performance / security / modularisation) capturing the patterns this
+refactor codified — file-size soft caps (backend 600 LOC, hooks 400,
+components 500, Rust 800), unload-before-reload, list-form
+subprocess-only, hostile-path validation, lazy imports, no premature
+abstraction.
+
 ## v0.7.6 - 2026-05-08
 
 ### HTML Challenge — side-by-side HTML generation comparison

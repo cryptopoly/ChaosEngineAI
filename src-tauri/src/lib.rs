@@ -28,6 +28,13 @@ use settings::{
     select_backend_port, selected_bind_host,
 };
 
+// Bundled binary path resolvers — see binaries.rs.
+mod binaries;
+use binaries::{
+    find_in_path, resolve_candidate, resolve_llama_cli, resolve_llama_server,
+    resolve_llama_server_turbo, resolve_sd_cpp,
+};
+
 // HTTP probe + lifecycle helpers — see probe.rs.
 mod probe;
 use probe::{
@@ -95,7 +102,6 @@ struct EmbeddedRuntimeManifest {
     python_version: Option<String>,
 }
 
-
 #[derive(Clone)]
 struct EmbeddedRuntime {
     backend_root: PathBuf,
@@ -110,8 +116,6 @@ struct EmbeddedRuntime {
     sd_cpp: Option<PathBuf>,
     python_version: Option<String>,
 }
-
-
 
 #[derive(Default)]
 struct ManagedBackend {
@@ -1114,93 +1118,6 @@ fn resolve_python_executable(workspace_root: &Path) -> Option<PathBuf> {
     find_in_path(&["python3", "python"])
 }
 
-fn resolve_llama_server(_workspace_root: &Path) -> Option<PathBuf> {
-    if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_SERVER") {
-        if let Some(path) = resolve_candidate(value) {
-            return Some(path);
-        }
-    }
-
-    find_in_path(&["llama-server"])
-}
-
-fn resolve_llama_server_turbo(_workspace_root: &Path) -> Option<PathBuf> {
-    if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_SERVER_TURBO") {
-        if let Some(path) = resolve_candidate(value) {
-            return Some(path);
-        }
-    }
-
-    // Check ~/.chaosengine/bin/ first (ChaosEngineAI-managed installs),
-    // then fall back to PATH.
-    if let Ok(home) = env::var("HOME") {
-        let managed = PathBuf::from(home).join(".chaosengine").join("bin").join("llama-server-turbo");
-        if managed.exists() {
-            return Some(managed);
-        }
-    }
-
-    find_in_path(&["llama-server-turbo"])
-}
-
-fn resolve_llama_cli(_workspace_root: &Path) -> Option<PathBuf> {
-    if let Some(value) = env::var_os("CHAOSENGINE_LLAMA_CLI") {
-        if let Some(path) = resolve_candidate(value) {
-            return Some(path);
-        }
-    }
-
-    find_in_path(&["llama-cli"])
-}
-
-fn resolve_sd_cpp(_workspace_root: &Path) -> Option<PathBuf> {
-    if let Some(value) = env::var_os("CHAOSENGINE_SDCPP_BIN") {
-        if let Some(path) = resolve_candidate(value) {
-            return Some(path);
-        }
-    }
-
-    if let Ok(home) = env::var("HOME") {
-        let managed = PathBuf::from(home).join(".chaosengine").join("bin").join("sd");
-        if managed.exists() {
-            return Some(managed);
-        }
-    }
-
-    find_in_path(&["sd"])
-}
-
-fn resolve_candidate(value: impl Into<PathBuf>) -> Option<PathBuf> {
-    let candidate = value.into();
-    if candidate.exists() {
-        return Some(candidate);
-    }
-    if candidate.components().count() == 1 {
-        return find_in_path(&[candidate.to_string_lossy().as_ref()]);
-    }
-    None
-}
-
-fn find_in_path(names: &[&str]) -> Option<PathBuf> {
-    let path_var = env::var_os("PATH")?;
-    for directory in env::split_paths(&path_var) {
-        for name in names {
-            let candidate = directory.join(name);
-            if candidate.exists() {
-                return Some(candidate);
-            }
-            #[cfg(windows)]
-            {
-                let exe_candidate = directory.join(format!("{name}.exe"));
-                if exe_candidate.exists() {
-                    return Some(exe_candidate);
-                }
-            }
-        }
-    }
-    None
-}
-
 fn open_log_file(path: &Path) -> Option<std::fs::File> {
     OpenOptions::new()
         .create(true)
@@ -1216,17 +1133,14 @@ fn read_log_tail(path: &Path) -> String {
     lines.join("\n")
 }
 
-
 // Orphan-process cleanup at app launch — see orphans.rs.
 mod orphans;
 use orphans::cleanup_orphaned_backends;
-
 
 // Windows-only Job Object orphan prevention.
 // See windows_job.rs for the full explanation + safety notes.
 #[cfg(windows)]
 mod windows_job;
-
 
 #[cfg(unix)]
 static SIGNAL_RECEIVED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);

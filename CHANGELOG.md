@@ -44,13 +44,16 @@ biggest modules:
   perplexity / task-accuracy eval entrypoints + the multimodal
   generation paths + the cache profile helpers all sit in their own
   cohesive modules now.
-- `image_runtime/__init__.py`: 2,097 → 1,069 LOC (-49%) and
-  `video_runtime/__init__.py`: 2,378 → 1,357 LOC (-43%) via
-  `transformer_loaders.py` per package + the existing
-  `{types,repos,snapshot,device,placeholder_engine,mflux_engine,defaults,warmup}`
-  modules. Quantised transformer loaders (NF4, int8wo, GGUF, Nunchaku
-  SVDQuant, BitsAndBytes NF4, lightx2v Wan distill swap) + FP8
-  layerwise casting + device probes all moved out.
+- `image_runtime/__init__.py`: 2,097 → 992 LOC (-53%) and
+  `video_runtime/__init__.py`: 2,378 → 1,018 LOC (-57%) via
+  `transformer_loaders.py` + `pipeline_helpers.py` per package +
+  the existing `{types,repos,snapshot,device,placeholder_engine,
+  mflux_engine,defaults,warmup}` modules. Quantised transformer
+  loaders (NF4, int8wo, GGUF, Nunchaku SVDQuant, BitsAndBytes NF4,
+  lightx2v Wan distill swap) + FP8 layerwise casting + device
+  probes + dtype pickers + per-step pipeline callbacks +
+  finalize_config / swap_scheduler / build_pipeline_kwargs +
+  encode_frames_to_mp4 all moved out.
 - `routes/setup/`: 1,932 → 353 LOC (-82%) via
   `setup/{longlive,wan_install,turbo,_install_helpers,cuda_torch,gpu_bundle}.py`.
 - `routes/html_challenges/`: 1,183 → 2-file package
@@ -84,8 +87,21 @@ components:
   ChallengePickerModal, ChallengeHistoryCombobox) + 2 helper modules
   (challengeApi.ts fetch wrappers, htmlChallengeTabHelpers.ts pure
   derived-value helpers + slot-state reducers).
-- App.tsx: extracted CUDA torch install hook + capability strip
-  shared component.
+- `VideoStudioTab.tsx`: 1,712 → 1,479 LOC via
+  `VideoStudioRuntimeBanner.tsx` (~265 LOC of dense runtime status
+  callout, chip row, and conditional install action panels for
+  LongLive / mlx-video / mp4 encoder / missing tokenizer deps / GPU
+  bundle).
+- `ImageStudioTab.tsx`: 1,178 → 992 LOC via
+  `ImageStudioRuntimeBanner.tsx` (~205 LOC of CUDA torch banner,
+  chip row, model preload/unload control row, GPU runtime install
+  action stack).
+- App.tsx: 2,334 → 2,081 LOC via `features/app/` package
+  (`modelActions.ts` for unload/delete handlers,
+  `variantPayloads.ts` for pure variant → load/thread payload
+  helpers, `conversionActions.ts` for the model conversion flow).
+  CUDA torch install hook + capability strip shared component
+  also pulled out.
 
 **Rust shell (`src-tauri/src/`)** — full Phase 3 split:
 

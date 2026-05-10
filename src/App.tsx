@@ -8,6 +8,12 @@ import {
   resolveApiToken,
   updateSession,
 } from "./api";
+import {
+  performConvertModel,
+  pickConversionOutputDir,
+  prepareCatalogConversion as prepareCatalogConversionAction,
+  prepareLibraryConversion as prepareLibraryConversionAction,
+} from "./features/app/conversionActions";
 import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
 import { threadPatchFromVariant } from "./features/app/variantPayloads";
 import { LaunchModal } from "./components/LaunchModal";
@@ -913,75 +919,43 @@ export default function App() {
   }
 
   function prepareCatalogConversion(model: ModelVariant) {
-    const matchingItem = findLibraryItemForVariant(convertibleLibrary, model);
-    if (matchingItem) { prepareLibraryConversion(matchingItem); return; }
-    setActiveTab("conversion");
-    setLastConversion(null);
+    return prepareCatalogConversionAction(model, {
+      convertibleLibrary,
+      setConversionDraft,
+      setLastConversion,
+      setActiveTab,
+    });
   }
 
   function prepareLibraryConversion(item: LibraryItem, resolvedPath?: string) {
-    const isGguf = libraryItemFormat(item).toUpperCase() === "GGUF";
-    setConversionDraft({
-      modelRef: item.name,
-      path: resolvedPath ?? item.path,
-      hfRepo: isGguf ? "" : item.name,
-      outputPath: "",
-      quantize: true,
-      qBits: 4,
-      qGroupSize: 64,
-      dtype: "float16",
+    return prepareLibraryConversionAction(item, resolvedPath, {
+      setConversionDraft,
+      setLastConversion,
+      setActiveTab,
     });
-    setLastConversion(null);
-    setActiveTab("conversion");
   }
 
   async function handleConvertModel() {
-    const modelRef = conversionDraft.modelRef.trim();
-    const path = conversionDraft.path.trim();
-    const hfRepo = conversionDraft.hfRepo.trim();
-    const outputPath = conversionDraft.outputPath.trim();
-    if (!modelRef && !path) { setError("Enter a model reference or a local path before starting conversion."); return; }
-    setBusyAction("Converting model...");
-    setConversionStartedAt(Date.now());
-    setConversionError(null);
-    setShowConversionModal(true);
-    try {
-      const response = await convertModel({
-        modelRef: modelRef || undefined,
-        path: path || undefined,
-        hfRepo: hfRepo || undefined,
-        outputPath: outputPath || undefined,
-        quantize: conversionDraft.quantize,
-        qBits: conversionDraft.qBits,
-        qGroupSize: conversionDraft.qGroupSize,
-        dtype: conversionDraft.dtype,
-      });
-      setLastConversion(response.conversion);
-      setWorkspace((current) => syncRuntime({ ...current, library: response.library }, response.runtime));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      const message = actionError instanceof Error ? actionError.message : "Failed to convert model.";
-      setError(message);
-      setConversionError(message);
-    } finally {
-      setBusyAction(null);
-      setConversionStartedAt(null);
-    }
+    return performConvertModel({
+      conversionDraft,
+      setError,
+      setBusyAction,
+      setConversionStartedAt,
+      setConversionError,
+      setShowConversionModal,
+      setLastConversion,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   async function handlePickConversionOutputDir() {
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      const picked = await tauriInvoke<string | null>("pick_directory");
-      if (picked) {
-        const suggested = conversionSource?.name
-          ? `${picked.replace(/\/$/, "")}/${conversionSource.name.replace(/[^\w.-]/g, "-")}-mlx`
-          : picked;
-        updateConversionDraft("outputPath", suggested);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open the directory picker.");
-    }
+    return pickConversionOutputDir({
+      conversionSource,
+      setError,
+      updateConversionDraft,
+    });
   }
 
   function threadPatchFromVariantLocal(variant: ModelVariant) {

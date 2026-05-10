@@ -102,8 +102,12 @@ Each phase = 1 PR. Tests green at each boundary. No big-bang merge.
 - `state/openai_compat.py` (1a-6) — `openai_models` + `openai_embeddings` + `openai_chat_completion` (`/v1/*` endpoints; auto-load + sampler + response_format mapping + streaming branch).
 - `state/payloads.py` (1a-7) — `workspace` (`/api/workspace` aggregate composing system snapshot + library + recommendation + featured models + runtime status + benchmarks + logs/activity + cache-preview math, with the heavy per-process annotation pass that joins `runningLlmProcesses` against the runtime's active + warm engines) + `server_status` (`/api/server/status` with loading-stage breakdown).
 - `state/settings_state.py` (1a-8) — `settings_payload` (user-visible settings shape with masked API keys / HF token, per-directory model counts, resolved output dirs) + `update_settings` (full settings patch: model dir normalisation, output-path validation, data-dir migration, remote-provider key preservation, library cache refresh).
+- `state/sessions.py` (1a-9) — 13 helpers covering the chat session lifecycle: `default_session_model`, `promote_session`, `persist_sessions`, `unique_session_title`, `auto_session_title`, `normalize_auto_generated_session_titles`, `ensure_session`, `create_session`, `add_message_variant` (Phase 2.5 sibling variants), `delve_message` (Phase 3.6 critique pass), `fork_session` (Phase 2.4 thread branching with parentSessionId linkage), `update_session`, `delete_session`.
+- `state/downloads.py` (1a-10) — full HF download flow: `start_download` (preflight + ProgressTqdm + background snapshot_download worker) + `download_status`, `cancel_download`, `delete_download`, `loaded_model_matches_repo_cache`, `unload_repo_from_runtimes`. Inner `_download_worker` thread closes over (state, repo, allow_patterns, download_token, validation_error_fn).
+- `state/generation.py` (1a-11) — `generate` (synchronous chat completion with profile cascade + RAG + agent loop dispatch, ~258 LOC) + `generate_stream` (SSE streaming with five guards: memory pre-flight, output-length runaway, repetition / loop, tok/s floor, in-stream panic + thermal — ~576 LOC).
+- `state/lifecycle.py` (1a-12) — `load_model` (catalog + library validation, in-place profile apply vs full reload decision, warm pool eviction, runtime.load_model dispatch with progress callback), `unload_model`, `convert_model`, `reveal_model_path`, `delete_model_path`.
 
-state/__init__.py: 4418 → 2873 LOC (-1545, -35%). Class methods that moved out are now 1-3 line thin wrappers preserving the public surface. Remaining big clusters: session management (~1500 LOC, 13 methods), download lifecycle (~400 LOC, 5 methods), generate/generate_stream (~830 LOC), load_model/unload_model (~330 LOC).
+state/__init__.py: 4418 → 860 LOC (-3558, -81%). Class methods that moved out are now 1-3 line thin wrappers preserving the public surface. The facade is essentially just construction, validation, and wiring now.
 
 ```
 backend_service/state/
@@ -119,7 +123,12 @@ backend_service/state/
 
 **1b. `inference.py` 3,574 → engines/ subpackage.**
 
-**MOSTLY DONE** (Phase 1b-1 through 1b-7; commits `cb1aed3` → `9221451`):
+**DONE** (Phase 1b-1 through 1b-8; commits `cb1aed3` → `f308d9b`).
+RuntimeController extracted to `inference/controller.py` (~1050 LOC,
+re-exported from the package). `inference/__init__.py` is now 97 LOC
+of public re-exports only.
+
+Earlier phases:
 - `inference/_constants.py` — 5 timeout / workspace constants
 - `inference/_utils.py` — 9 shared helpers (_now_label, _normalize_message_content, _read_text_tail, _append_runtime_note, _http_json, _find_open_port, _resolve_gguf_path, _is_local_target, _looks_like_gguf)
 - `inference/base.py` — 4 dataclasses + RepeatedLineGuard + BaseInferenceEngine

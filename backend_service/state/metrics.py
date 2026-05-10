@@ -3,7 +3,7 @@
 Two responsibilities:
 
 1. **Cache labels** — turn ``(strategy_id, bits, fp16_layers)`` into the
-   human-readable string the UI shows ("Native f16 cache", "RotorQuant
+   human-readable string the UI shows ("Native f16 cache", "TurboQ
    3-bit 4+4", etc.). Cache strategies registered in
    ``cache_compression.registry`` get their label from the strategy
    itself; everything else falls back to the native naming.

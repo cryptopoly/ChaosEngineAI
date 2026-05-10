@@ -1529,7 +1529,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                             "launch": {
                                 "temperature": 0.7,
                                 "maxTokens": 8192,
-                                "cacheStrategy": "chaosengine",
+                                "cacheStrategy": "turboquant",
                                 "cacheBits": 4,
                                 "fp16Layers": 0,
                                 "fusedAttention": False,
@@ -1587,7 +1587,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIn("Q4_K_M", settings_text)
             self.assertIn("16.3 GB", settings_text)
             self.assertIn("128K", settings_text)
-            self.assertIn("chaosengine 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("turboquant 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
             self.assertIn("turboquant 3-bit · 256K ctx · 8K max · temp 0.7", settings_text)
             self.assertIn("Thinking off", settings_text)
             self.assertEqual([slot["status"] for slot in challenge["slots"]], ["done", "done"])
@@ -2006,7 +2006,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                     "canonicalRepo": "google/gemma-4-E4B-it",
                     "source": "catalog",
                     "backend": "mlx",
-                    "cacheStrategy": "rotorquant",
+                    "cacheStrategy": "turboquant",
                     "cacheBits": 4,
                     "fp16Layers": 2,
                     "fusedAttention": True,
@@ -2017,7 +2017,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         load_model_spy.assert_not_called()
         self.assertEqual(len(state.runtime.profile_updates), 1)
-        self.assertEqual(state.runtime.loaded_model.cacheStrategy, "rotorquant")
+        self.assertEqual(state.runtime.loaded_model.cacheStrategy, "turboquant")
         self.assertEqual(state.runtime.loaded_model.cacheBits, 4)
         self.assertEqual(state.runtime.loaded_model.fp16Layers, 2)
         self.assertTrue(state.runtime.loaded_model.fusedAttention)
@@ -2067,20 +2067,22 @@ class ChaosEngineBackendTests(unittest.TestCase):
             context_tokens=8192,
             params_b=7.0,
             system_stats=fake_system_snapshot(),
-            strategy="rotorquant",
+            strategy="turboquant",
         )
         self.assertLess(preview["optimizedCacheGb"], preview["baselineCacheGb"])
         self.assertGreater(preview["compressionRatio"], 1.0)
 
-    def test_manual_cache_backend_install_returns_helpful_error(self):
-        for package_name in ("chaosengine", "chaos-engine"):
-            response = self.client.post(
-                "/api/setup/install-package",
-                json={"package": package_name},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertIn("not published on PyPI", response.json()["detail"])
-            self.assertIn("pip install -e /path/to/ChaosEngine", response.json()["detail"])
+    def test_unknown_package_install_returns_helpful_error(self):
+        """FU-030: ``chaosengine`` was a manual install candidate; the strategy
+        is gone now. Installing an unknown package must surface the standard
+        "not in allowed install list" 400 instead of the old ChaosEngine
+        clone-and-install message."""
+        response = self.client.post(
+            "/api/setup/install-package",
+            json={"package": "not-a-real-package"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("not in the allowed install list", response.json()["detail"])
 
     def test_convert_endpoint_returns_conversion_payload(self):
         state = ChaosEngineState(

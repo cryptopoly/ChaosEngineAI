@@ -1141,7 +1141,6 @@ export default function App() {
         strategyCompat={{
           turboInstalled: !!workspace.system.llamaServerTurboPath,
           turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
-          chaosengineAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "chaosengine" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}

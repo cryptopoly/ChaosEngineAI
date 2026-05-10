@@ -95,12 +95,12 @@
     "prompt": "What is the capital of France? Answer in one sentence."
   },
   {
-    "_label": "Qwen3.5-9B GGUF — RotorQuant 4-bit",
+    "_label": "Qwen3.5-9B GGUF — TurboQuant 4-bit",
     "modelRef": "lmstudio-community/Qwen3.5-9B-GGUF",
     "modelName": "Qwen3.5-9B-GGUF",
     "path": "/Users/dan/.cache/huggingface/hub/models--lmstudio-community--Qwen3.5-9B-GGUF",
     "backend": "gguf",
-    "cacheStrategy": "rotorquant",
+    "cacheStrategy": "turboquant",
     "cacheBits": 4,
     "fp16Layers": 4,
     "contextTokens": 4096,

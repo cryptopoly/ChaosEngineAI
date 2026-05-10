@@ -144,10 +144,14 @@ class SetupRouteTests(unittest.TestCase):
         resp = self.client.post("/api/setup/install-package", json={"package": "evil-package"})
         self.assertEqual(resp.status_code, 400)
 
-    def test_install_pip_returns_manual_message_for_chaosengine(self):
+    def test_install_pip_unknown_legacy_package_falls_through_to_400(self):
+        """FU-030: ``chaosengine`` was previously a manual install candidate
+        with a clone-and-install message. The strategy is gone now; the
+        package should fall through to the standard "not in allowed
+        install list" 400 like any other unknown id."""
         resp = self.client.post("/api/setup/install-package", json={"package": "chaosengine"})
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("not published on PyPI", resp.json()["detail"])
+        self.assertIn("not in the allowed install list", resp.json()["detail"])
 
     def test_install_pip_accepts_whitelisted_package(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:

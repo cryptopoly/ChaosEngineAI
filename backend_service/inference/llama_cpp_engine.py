@@ -609,21 +609,15 @@ class LlamaCppEngine(BaseInferenceEngine):
         from cache_compression import registry as _strategy_registry
         failed_strategy_name: str | None = None
 
-        # Try the requested strategy first.  If it fails, try ChaosEngine
-        # (which uses standard cache types on the standard llama-server),
-        # then finally native f16.  This ensures the user gets the best
-        # available compression even when the turbo binary can't load a
-        # particular model architecture.
+        # Try the requested strategy first. If it fails, fall back to
+        # native f16 directly. The previous chain inserted a ChaosEngine
+        # intermediate step; ChaosEngine was dropped in FU-030 because
+        # its llama.cpp path only emitted standard q-type flags (q4_0 etc.)
+        # which are already a subset of what native + the ggml cache types
+        # cover. The two-level chain is shorter to reason about and the
+        # behaviour at the boundary is unchanged for users.
+        cache_strategy = _strategy_registry.resolve_legacy_id(cache_strategy)
         attempts: list[tuple[str, bool, bool]] = [(cache_strategy, fit_model_in_memory, False)]
-        if cache_strategy not in ("native", "chaosengine"):
-            # Always include ChaosEngine as an intermediate fallback.  Its
-            # llama.cpp path only emits standard cache-type flags (q4_0 etc.)
-            # and runs on the standard binary — it does NOT require the
-            # chaos_engine Python package to be installed.  Gating on
-            # is_available() would skip this fallback on CI / dev machines
-            # that don't have the package, breaking the 3-level chain.
-            if _strategy_registry.get("chaosengine") is not None:
-                attempts.append(("chaosengine", False, True))
         if cache_strategy != "native":
             attempts.append(("native", False, True))
         last_error: str | None = None

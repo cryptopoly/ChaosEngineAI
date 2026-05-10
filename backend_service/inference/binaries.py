@@ -93,8 +93,8 @@ def _resolve_llama_server() -> str | None:
 def _resolve_llama_server_turbo() -> str | None:
     """Resolve the TurboQuant fork of llama-server (``llama-server-turbo``).
 
-    This fork supports all standard cache types **plus** iso/planar/turbo
-    cache types required by RotorQuant and TurboQuant strategies.
+    This fork supports all standard cache types **plus** turbo2/3/4
+    cache types required by the TurboQuant strategy.
     """
     override = os.getenv("CHAOSENGINE_LLAMA_SERVER_TURBO")
     if override:

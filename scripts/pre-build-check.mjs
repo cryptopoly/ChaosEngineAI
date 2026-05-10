@@ -165,7 +165,6 @@ console.log("[4/7] Licence notices...");
       "llama-cpp-turboquant",
       "dflash-mlx",
       "turboquant",
-      "chaosengine",
     ];
     const missing = required.filter((dep) => !content.includes(dep.toLowerCase()));
     if (missing.length === 0) {
@@ -186,19 +185,25 @@ console.log("[5/7] Cache strategy validation...");
 from cache_compression import registry
 registry.discover()
 valid = {'f32','f16','bf16','q8_0','q4_0','q4_1','iq4_nl','q5_0','q5_1'}
-ce = registry.get('chaosengine')
-for bits in (2,3,4,5,6,8):
-    flags = ce.llama_cpp_cache_flags(bits)
+nat = registry.get('native')
+for bits in (0,):
+    flags = nat.llama_cpp_cache_flags(bits)
     for i, f in enumerate(flags):
         if f.startswith('--cache-type-') and i+1 < len(flags):
             if flags[i+1] not in valid:
-                print(f'INVALID: ChaosEngine {bits}-bit emits {flags[i+1]}')
-rq = registry.get('rotorquant')
+                print(f'INVALID: Native emits {flags[i+1]}')
 tq = registry.get('turboquant')
-if rq.required_llama_binary() != 'turbo':
-    print('INVALID: RotorQuant not routing to turbo')
 if tq.required_llama_binary() != 'turbo':
     print('INVALID: TurboQuant not routing to turbo')
+# FU-030 (2026-05-10): rotorquant + chaosengine were dropped. Their ids
+# must coerce to turboquant via the legacy alias map; assert that here so
+# regressions surface in CI rather than at runtime.
+for legacy_id in ('rotorquant', 'chaosengine'):
+    coerced = registry.resolve_legacy_id(legacy_id)
+    if coerced != 'turboquant':
+        print(f'INVALID: legacy id {legacy_id} did not coerce to turboquant (got {coerced})')
+    if registry.get(legacy_id) is None:
+        print(f'INVALID: legacy id {legacy_id} did not resolve via registry.get')
 print('OK')
 `.trim();
   const result = capture(venvPython(), ["-c", probe]);

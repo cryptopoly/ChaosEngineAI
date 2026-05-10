@@ -68,7 +68,6 @@ function main() {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
   }
 
-  const chaosEngineBundle = stageVendoredChaosEngine(pythonInfo.executable);
   const bundledOptionalPackages = stageOptionalRuntimePackages(pythonInfo.executable);
   validateBundledProjectImports(pythonInfo.executable);
   const llamaWarnings = stageLlamaBinaries();
@@ -94,7 +93,7 @@ function main() {
     // the backend probe reports the engine as unavailable. See FU-008.
     sdCpp: fs.existsSync(path.join(binDest, binaryName("sd"))) ? `bin/${binaryName("sd")}` : null,
     pythonVersion: pythonInfo.versionTag,
-    bundledCacheStrategies: chaosEngineBundle ? ["chaosengine"] : [],
+    bundledCacheStrategies: [],
     bundledOptionalPackages: bundledOptionalPackages,
     warnings: llamaWarnings,
   };
@@ -260,7 +259,7 @@ function validateBundledProjectImports(pythonBinary) {
     env,
   }).trim();
   const ids = JSON.parse(payload);
-  const expected = ["native", "rotorquant", "triattention", "turboquant", "chaosengine"];
+  const expected = ["native", "triattention", "turboquant"];
   const missing = expected.filter((id) => !ids.includes(id));
   if (missing.length === 0) {
     return;
@@ -275,122 +274,10 @@ function validateBundledProjectImports(pythonBinary) {
   console.warn(`[stage-runtime] warning: ${message}`);
 }
 
-function stageVendoredChaosEngine(pythonBinary) {
-  const vendor = resolveChaosEngineVendor();
-  if (!vendor) {
-    return null;
-  }
-
-  // vendor/ChaosEngine/pyproject.toml declares `license = "Apache-2.0"` per
-  // PEP 639. Setuptools < 77 rejects the string form with:
-  //   "project.license must be valid exactly by one definition (2 matches found)"
-  // Since we pass --no-build-isolation, pip uses whatever setuptools the build
-  // venv has — and fresh Windows venvs sometimes ship 65.x. Upgrade in place
-  // before the vendor install so the build works without requiring the user
-  // to run build.ps1 first (e.g. `npm run tauri:dev`).
-  ensureSetuptoolsForPep639(pythonBinary);
-
-  console.log(`[stage-runtime] bundling ChaosEngine (${vendor.source})`);
-  try {
-    execFileSync(
-      pythonBinary,
-      [
-        "-m",
-        "pip",
-        "install",
-        "--disable-pip-version-check",
-        "--no-deps",
-        "--no-compile",
-        "--no-build-isolation",
-        "--upgrade",
-        "--target",
-        sitePackagesDest,
-        vendor.path,
-      ],
-      {
-        cwd: workspaceRoot,
-        stdio: "inherit",
-      },
-    );
-    return vendor;
-  } catch (err) {
-    if (strict) {
-      throw err;
-    }
-    console.warn(
-      `[stage-runtime] warning: could not bundle ChaosEngine vendor package (${err.message.split("\n")[0]}). ` +
-      `The ChaosEngine cache strategy will fall back to the system-installed package if available.`,
-    );
-    return null;
-  }
-}
-
-function ensureSetuptoolsForPep639(pythonBinary) {
-  // Bound: >=77 for PEP 639 license strings, <82 because modern torch
-  // wheels declare ``setuptools<82`` and pip's resolver surfaces a loud
-  // "requires setuptools<82" warning on every subsequent invocation once
-  // 82.x is installed.
-  const checkScript = [
-    "import sys",
-    "try:",
-    "    from importlib.metadata import version",
-    "    v = version('setuptools')",
-    "except Exception:",
-    "    sys.exit(2)",
-    "parts = [int(p) for p in v.split('.')[:2] if p.isdigit()]",
-    "if not parts:",
-    "    sys.exit(1)",
-    "major = parts[0]",
-    "sys.exit(0 if 77 <= major < 82 else 1)",
-  ].join("\n");
-
-  let ok = false;
-  try {
-    execFileSync(pythonBinary, ["-c", checkScript], { stdio: "ignore" });
-    ok = true;
-  } catch {
-    ok = false;
-  }
-  if (ok) return;
-
-  console.log(`[stage-runtime] pinning setuptools to >=77,<82 for PEP 639 licenses + torch compatibility`);
-  try {
-    execFileSync(
-      pythonBinary,
-      ["-m", "pip", "install", "--disable-pip-version-check", "--upgrade", "setuptools>=77,<82", "wheel"],
-      { cwd: workspaceRoot, stdio: "inherit" },
-    );
-  } catch (err) {
-    console.warn(
-      `[stage-runtime] warning: could not pin setuptools (${err.message.split("\n")[0]}). ` +
-      `Vendor install may fail and pip may warn about torch incompatibility.`,
-    );
-  }
-}
-
-function resolveChaosEngineVendor() {
-  const override = process.env.CHAOSENGINE_VENDOR_PATH;
-  if (override) {
-    return {
-      path: resolveExistingPath(override, "ChaosEngine vendor path"),
-      source: "env-override",
-    };
-  }
-
-  const vendoredPath = path.join(workspaceRoot, "vendor", "ChaosEngine");
-  if (!fs.existsSync(vendoredPath)) {
-    return null;
-  }
-  return {
-    path: fs.realpathSync(vendoredPath),
-    source: "vendor/ChaosEngine",
-  };
-}
-
 function stageOptionalRuntimePackages(pythonBinary) {
   // Pre-install optional runtime packages into the staged site-packages
-  // so that DFlash, TurboQuant, and RotorQuant work out of the box for
-  // new users without requiring manual pip installs via the Setup page.
+  // so that DFlash and TurboQuant work out of the box for new users
+  // without requiring manual pip installs via the Setup page.
   //
   // Each entry: { pipName, importName, platforms? }
   // - pipName: passed verbatim to ``pip install`` (may be a PyPI name or

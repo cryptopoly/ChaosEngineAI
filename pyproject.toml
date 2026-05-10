@@ -40,7 +40,6 @@ mlx-vlm = [
 ]
 triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git", "vllm>=0.8.0"]
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git", "mlx-lm>=0.22.0"]
-rotorquant = ["turboquant>=0.2.0"]
 turboquant = ["turboquant-mlx-full>=0.3.0"]
 vllm = ["vllm>=0.8.0"]
 dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@8d8545d791383008b5e2b1e738c38a7a73ba484e"]

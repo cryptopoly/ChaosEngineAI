@@ -140,6 +140,26 @@ class CacheStrategy(ABC):
 
 
 # ======================================================================
+# Legacy aliases
+# ======================================================================
+
+# FU-030 (2026-05-10): ``chaosengine`` and ``rotorquant`` strategy slots were
+# dropped after upstream landscape review. ChaosEngine (1-commit upstream,
+# eclipsed by NVIDIA's KVTC at ICLR 2026) and RotorQuant (shipped as a
+# misleading alias for TurboQuant — same ``--cache-type-k turbo{N}`` flags +
+# same Python module marker) added zero value over TurboQuant.
+#
+# Persisted user configs that still reference these ids are silently coerced
+# to ``turboquant`` (their effective behaviour anyway). Old values flow
+# through the public ``registry.get()`` and ``registry.resolve_legacy_id()``
+# entry points so callers do not need to special-case them.
+_LEGACY_STRATEGY_ALIASES: dict[str, str] = {
+    "chaosengine": "turboquant",
+    "rotorquant": "turboquant",
+}
+
+
+# ======================================================================
 # Registry
 # ======================================================================
 
@@ -154,9 +174,18 @@ class CacheStrategyRegistry:
     def register(self, strategy: CacheStrategy) -> None:
         self._strategies[strategy.strategy_id] = strategy
 
+    def resolve_legacy_id(self, strategy_id: str) -> str:
+        """Return canonical id for a possibly-legacy strategy id.
+
+        Pure string mapping — does not touch the registry, safe to call
+        before discovery. Unknown ids pass through unchanged.
+        """
+        return _LEGACY_STRATEGY_ALIASES.get(strategy_id, strategy_id)
+
     def get(self, strategy_id: str) -> CacheStrategy | None:
         self._ensure_discovered()
-        return self._strategies.get(strategy_id)
+        canonical = self.resolve_legacy_id(strategy_id)
+        return self._strategies.get(canonical)
 
     def default(self) -> CacheStrategy:
         self._ensure_discovered()
@@ -210,16 +239,6 @@ class CacheStrategyRegistry:
                 "required_llama_binary": "standard",
             },
             {
-                "id": "rotorquant",
-                "name": "RotorQuant",
-                "module": "cache_compression.rotorquant",
-                "class_name": "RotorQuantStrategy",
-                "bit_range": (3, 4),
-                "default_bits": 3,
-                "supports_fp16_layers": True,
-                "required_llama_binary": "turbo",
-            },
-            {
                 "id": "triattention",
                 "name": "TriAttention",
                 "module": "cache_compression.triattention",
@@ -238,16 +257,6 @@ class CacheStrategyRegistry:
                 "default_bits": 3,
                 "supports_fp16_layers": True,
                 "required_llama_binary": "turbo",
-            },
-            {
-                "id": "chaosengine",
-                "name": "ChaosEngine",
-                "module": "cache_compression.chaosengine",
-                "class_name": "ChaosEngineStrategy",
-                "bit_range": (2, 8),
-                "default_bits": 4,
-                "supports_fp16_layers": True,
-                "required_llama_binary": "standard",
             },
             {
                 # Diffusion-pipeline cache — applies to image/video DiTs,

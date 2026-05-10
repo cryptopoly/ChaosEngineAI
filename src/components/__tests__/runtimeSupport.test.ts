@@ -132,8 +132,18 @@ describe("sanitizeSpeculativeSelection()", () => {
 });
 
 describe("strategy compatibility helpers", () => {
-  it("flags RotorQuant as incompatible with MLX", () => {
-    expect(isStrategyCompatible("rotorquant", "mlx")).toBe(false);
-    expect(strategyIncompatReason("rotorquant", "mlx")).toContain("llama.cpp or vLLM");
+  it("flags TriAttention as incompatible with MLX", () => {
+    expect(isStrategyCompatible("triattention", "mlx")).toBe(false);
+    expect(strategyIncompatReason("triattention", "mlx")).toContain("vLLM");
+  });
+
+  it("FU-030: legacy chaosengine + rotorquant ids coerce to turboquant", () => {
+    // Persisted user configs that still reference the dropped ids must
+    // route through ``canonicalStrategyId`` so frontend filters treat
+    // them as turboquant. Mirrors backend ``registry.resolve_legacy_id``.
+    expect(isStrategyCompatible("chaosengine", "mlx")).toBe(true);
+    expect(isStrategyCompatible("rotorquant", "mlx")).toBe(true);
+    expect(strategyIncompatReason("chaosengine", "mlx")).toBeNull();
+    expect(strategyIncompatReason("rotorquant", "mlx")).toBeNull();
   });
 });

@@ -1,0 +1,84 @@
+{
+  "title": "設定",
+  "subtitle": "依硬體安裝執行階段元件",
+  "sections": {
+    "core": "核心執行階段",
+    "speculative": "推測解碼",
+    "caching": "快取策略",
+    "diffusion": "擴散執行階段",
+    "tools": "可選工具"
+  },
+  "actions": {
+    "install": "安裝",
+    "uninstall": "解除安裝",
+    "update": "更新",
+    "viewLog": "檢視記錄",
+    "showInFinder": "在 Finder 中顯示"
+  },
+  "states": {
+    "installed": "已安裝",
+    "available": "可用",
+    "installing": "安裝中…",
+    "uninstalling": "解除安裝中…",
+    "checking": "檢查中…",
+    "unavailable": "此平台無法使用",
+    "needsRestart": "需要重新啟動"
+  },
+  "messages": {
+    "diskSpaceWarning": "將下載約 {size}。",
+    "requiresNetwork": "需要網路連線。",
+    "platformOnly": "此元件僅在 {platform} 上可用。",
+    "succeeded": "安裝成功。",
+    "failed": "安裝失敗:{reason}"
+  },
+  "installLog": {
+    "finalStatus": "最終狀態:",
+    "statusNoun": {
+      "longlive": "LongLive 安裝",
+      "gpuBundle": "安裝"
+    },
+    "status": {
+      "failed": "{noun}失敗 — 查看記錄",
+      "complete": "{noun}完成 — 查看記錄",
+      "starting": "{noun}啟動中…",
+      "verifyingCuda": "正在驗證 CUDA…",
+      "inProgress": "{noun}進行中"
+    },
+    "meta": {
+      "target": "目標：{dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA 索引：{url}",
+      "cudaVerified": "CUDA 已驗證",
+      "cudaVerificationFailed": "CUDA 驗證失敗",
+      "noWheelForPython": "此 Python 沒有可用的 CUDA wheel",
+      "restartBackend": "重新啟動後端以啟用"
+    },
+    "step": {
+      "waiting": "（等待中）",
+      "final": "最終：{done}/{total} 個套件 · {percent}%",
+      "current": "步驟 {done}/{total}：{current} · {percent}%"
+    },
+    "terminal": {
+      "working": "執行中…",
+      "noOutput": "（未擷取到輸出）"
+    },
+    "attempt": {
+      "verifyCuda": "驗證 torch.cuda.is_available()",
+      "torchDeps": "torch 相依套件（來自 {url}）",
+      "torchCleanup": "清理過期的 torch 檔案",
+      "torchRepair": "修復 CUDA torch wheel",
+      "constraint": "固定 torch 版本",
+      "torchFromIndex": "torch（來自 {url}）",
+      "pipInstall": "pip install {pkg}",
+      "step": "步驟"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "安裝完成 — 查看記錄{index}",
+    "installFailed": "{count, plural, =0 {安裝失敗 — 查看記錄} other {安裝失敗 — 查看記錄(# 次嘗試)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan MLX 執行階段",
+    "ready": "就緒"
+  }
+}

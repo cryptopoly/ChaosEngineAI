@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "影像工作室",
+    "subtitle": "選擇模型,提示,並迭代已儲存的輸出",
+    "savedOutputsLabel": "已儲存的輸出",
+    "promptPanelTitle": "提示詞",
+    "promptPanelSubtitle": "選擇模型,設定寬高比與品質,然後生成至本地圖庫。",
+    "recentOutputsTitle": "最近的輸出",
+    "prompt": "提示詞",
+    "negativePrompt": "反向提示詞",
+    "enhancePrompt": "增強",
+    "width": "寬度",
+    "height": "高度",
+    "steps": "步數",
+    "guidance": "引導",
+    "guidanceScale": "引導比例",
+    "seed": "種子",
+    "seedRandom": "隨機",
+    "sampler": "取樣器",
+    "scheduler": "排程器",
+    "batchSize": "批次大小",
+    "generate": "生成影像",
+    "generating": "正在生成影像…",
+    "queued": "已排入佇列",
+    "decoding": "解碼中…",
+    "saveImage": "儲存影像",
+    "copyImage": "複製影像",
+    "openFolder": "在資料夾中顯示",
+    "modelLabel": "模型",
+    "noModelsOption": "未安裝模型 — 從 探索 中下載",
+    "aspectRatio": "長寬比",
+    "qualityPreset": "品質預設",
+    "previewLabel": "預覽",
+    "draftOn": "512px · 開",
+    "draftOff": "草稿 @ 512px",
+    "diffusionCache": "擴散快取",
+    "modal": {
+      "cancelling": "取消中...",
+      "generating": "正在生成影像",
+      "cancelled": "影像生成已取消",
+      "failed": "影像生成失敗",
+      "imagesReady": "影像已就緒",
+      "imageReady": "影像已就緒"
+    }
+  },
+  "video": {
+    "title": "影片工作室",
+    "prompt": "提示詞",
+    "negativePrompt": "反向提示詞",
+    "duration": "長度",
+    "framesPerSecond": "幀率",
+    "frames": "幀數",
+    "resolution": "解析度",
+    "generate": "生成影片",
+    "generating": "正在生成影片…",
+    "encoding": "編碼中…",
+    "saveVideo": "儲存影片",
+    "modelLabel": "影片模型",
+    "qualityPreset": "品質預設",
+    "aspectRatio": "長寬比",
+    "modal": {
+      "cancelling": "取消中...",
+      "generating": "正在生成影片",
+      "cancelled": "影片生成已取消",
+      "failed": "影片生成失敗",
+      "ready": "影片已就緒"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "第 {current} 步 / 共 {total} 步",
+    "estimatedRemaining": "預計剩餘約 {seconds} 秒"
+  },
+  "advanced": {
+    "title": "進階",
+    "show": "顯示進階設定",
+    "hide": "隱藏進階設定"
+  },
+  "enhance": {
+    "label": "增強",
+    "busy": "增強中...",
+    "tooltip": "在本地增強此提示詞",
+    "error": "增強器錯誤:{message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "正在將模型載入記憶體..."
+  }
+}

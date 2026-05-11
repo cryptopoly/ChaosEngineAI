@@ -1,0 +1,48 @@
+{
+  "title": "Diagnostics",
+  "subtitle": "Inspect runtime state, GPU health, and logs",
+  "subtitleSnapshot": "System snapshot for troubleshooting. Copy-paste the markdown to share with support when something misbehaves.",
+  "sections": {
+    "snapshot": "System snapshot",
+    "gpu": "GPU",
+    "memory": "Memory",
+    "runtime": "Runtime",
+    "binaries": "Binaries",
+    "extras": "Extras",
+    "logs": "Logs",
+    "locales": "Locales"
+  },
+  "fields": {
+    "platform": "Platform",
+    "architecture": "Architecture",
+    "kernel": "Kernel",
+    "appVersion": "App version",
+    "tauriVersion": "Tauri version",
+    "pythonVersion": "Python version",
+    "totalRAM": "Total RAM",
+    "availableRAM": "Available RAM",
+    "totalVRAM": "Total VRAM",
+    "freeVRAM": "Free VRAM",
+    "diskFree": "Disk free"
+  },
+  "logs": {
+    "tail": "Tail",
+    "follow": "Follow",
+    "pauseFollow": "Pause follow",
+    "clear": "Clear",
+    "download": "Download log",
+    "lines": "{count, plural, one {# line} other {# lines}}",
+    "filterPlaceholder": "Filter…"
+  },
+  "actions": {
+    "copySnapshot": "Copy snapshot",
+    "downloadSnapshot": "Download snapshot",
+    "openLogFolder": "Open log folder"
+  },
+  "logsTab": {
+    "title": "Logs",
+    "subtitle": "Searchable view over the sidecar, runtime, and server channels.",
+    "filterPlaceholder": "Filter logs",
+    "emptyFiltered": "No log lines match the current filter."
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Saisir un message… (Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne, / pour les commandes)",
+    "placeholderNoModel": "Chargez d'abord un modèle — choisissez-en un dans Mes modèles ou Découvrir, puis cliquez sur Discussion.",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "clear": "Effacer",
+    "sendDisabledTooltip": "Chargez d'abord un modèle pour envoyer des messages"
+  },
+  "thinkingMode": {
+    "label": "Réflexion",
+    "tooltip": "Choisissez le degré de raisonnement du modèle avant de répondre. Désactivé = réponses directes ; Faible / Moyen / Élevé = profondeur de raisonnement croissante pour les modèles capables.",
+    "off": "Désactivé",
+    "offTooltip": "Pas de raisonnement — le modèle répond directement",
+    "low": "Faible",
+    "lowTooltip": "Raisonnement bref",
+    "medium": "Moy.",
+    "mediumTooltip": "Profondeur de raisonnement par défaut",
+    "high": "Élevé",
+    "highTooltip": "Raisonnement étendu"
+  },
+  "tools": {
+    "toggleLabel": "Outils",
+    "toggleOn": "Outils ACTIVÉS",
+    "enableTooltip": "Activer les outils d'agent",
+    "enabledTooltip": "Outils activés (recherche web, code, calculatrice, lecteur de fichiers)"
+  },
+  "newSession": "Nouvelle session",
+  "newSessionTitle": "Discussion sans titre",
+  "deleteSession": "Supprimer la session",
+  "deleteSessionConfirm": "Supprimer cette discussion ? Cette action est irréversible.",
+  "renameSession": "Renommer la session",
+  "exportSession": "Exporter la session",
+  "promptPlaceholder": "Envoyer un message…",
+  "promptPlaceholderImage": "Décrivez une image ou déposez-en une pour en discuter…",
+  "stopGeneration": "Arrêter la génération",
+  "regenerateResponse": "Régénérer la réponse",
+  "branchHere": "Brancher depuis ce tour",
+  "copyMessage": "Copier le message",
+  "copyAsMarkdown": "Copier en Markdown",
+  "tokensUsed": "{count, plural, one {# jeton} other {# jetons}}",
+  "thinking": "Réflexion…",
+  "toolCall": {
+    "label": "Appel d'outil",
+    "running": "Exécution de l'outil : {tool}",
+    "succeeded": "Outil réussi : {tool}",
+    "failed": "Échec de l'outil : {tool}",
+    "noArguments": "(aucun argument)",
+    "input": "Entrée",
+    "result": "Résultat"
+  },
+  "attachments": {
+    "image": "Joindre une image",
+    "document": "Joindre un document",
+    "code": "Joindre du code",
+    "removeAttachment": "Retirer la pièce jointe"
+  },
+  "modelPicker": {
+    "label": "Modèle",
+    "noneSelected": "Aucun modèle chargé",
+    "loadModel": "Charger un modèle"
+  },
+  "header": {
+    "expandChatList": "Déplier la liste des discussions",
+    "chatsLabel": "Discussions",
+    "threadName": "Nom du fil",
+    "selectModel": "Sélectionner le modèle",
+    "exportThread": "Exporter ce fil",
+    "export": "Exporter",
+    "modelCapabilities": "Capacités du modèle",
+    "ready": "Prêt",
+    "loadChatModel": "Charger le modèle de cette discussion",
+    "loading": "Chargement...",
+    "loadModel": "Charger le modèle"
+  },
+  "sidebar": {
+    "title": "Discussions",
+    "newThread": "Nouveau fil",
+    "compare": "Comparer",
+    "compareTooltip": "Comparer deux modèles côte à côte",
+    "collapseChatList": "Replier la liste des discussions",
+    "searchThreadsPlaceholder": "Rechercher des fils...",
+    "searchThreadsAriaLabel": "Rechercher des fils",
+    "clearSearch": "Effacer la recherche"
+  },
+  "swapMenu": {
+    "clearOverride": "Effacer la surcharge",
+    "dialogAriaLabel": "Choisir un modèle pour le prochain tour",
+    "sendNextVia": "Envoyer le suivant via",
+    "oneTurnNote": "La surcharge ne s'applique que pour un seul tour.",
+    "noWarmModels": "Pas d'autres modèles chauds disponibles. Chargez un deuxième modèle depuis Mes modèles pour activer les permutations rapides."
+  },
+  "activeThread": {
+    "title": "Fil actif",
+    "subtitle": "Les métadonnées de réponse sont repliées par défaut, mais disponibles à chaque tour de l'agent."
+  },
+  "compare": {
+    "latest": "Derniers"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Température : {value} (depuis les paramètres de lancement)",
+    "overrideTooltip": "Surcharge de température : {value} (par défaut {defaultValue_})",
+    "dialogAriaLabel": "Surcharge de température",
+    "overrideLabel": "Surcharger la température",
+    "reset": "Réinitialiser",
+    "hint": "Plus bas = ciblé. Plus haut = créatif. Par défaut {value} depuis les paramètres de lancement."
+  },
+  "thread": {
+    "copyMessageTooltip": "Copier le message",
+    "retryTooltip": "Réessayer la réponse",
+    "forkTooltip": "Brancher depuis ici (crée un nouveau fil)",
+    "delveTooltip": "Approfondir — relire avec un œil critique et proposer une réponse révisée",
+    "deleteMessageTooltip": "Supprimer le message",
+    "loadExactSettingsTooltip": "Charger le modèle exact et les paramètres d'exécution utilisés pour cette réponse"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Titre du défi",
+    "promptPlaceholder": "Inviter tous les modèles sélectionnés avec le même défi de page web...",
+    "openBrowser": "Ouvrir dans le navigateur par défaut",
+    "historyPlaceholder": "Rechercher les défis précédents...",
+    "moveToTrash": "Mettre à la corbeille",
+    "moveToTrashAria": "Mettre « {title} » à la corbeille",
+    "noMatching": "Aucun défi correspondant."
+  },
+  "samplerPanel": {
+    "label": "Échantillonneurs",
+    "openTooltip": "Ouvrir le panneau des échantillonneurs",
+    "activeTooltip": "{count, plural, one {# surcharge d'échantillonneur active} other {# surcharges d'échantillonneur actives}}",
+    "dialogAriaLabel": "Surcharges d'échantillonneur",
+    "headerTitle": "Surcharges d'échantillonneur",
+    "resetAll": "Tout réinitialiser",
+    "resetAllTooltip": "Tout réinitialiser aux valeurs par défaut du backend"
+  },
+  "kvChip": {
+    "clearOverride": "Effacer la surcharge KV",
+    "revertTooltip": "Revenir aux paramètres de la session",
+    "dialogAriaLabel": "Stratégie de cache KV",
+    "headingTitle": "Cache KV pour le prochain tour",
+    "reloadNote": "Le basculement recharge le runtime si nécessaire."
+  },
+  "citations": {
+    "sourcesLabel": "Sources :",
+    "pageInfo": "(page {page})",
+    "chunkLabel": "Fragment {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds} s)",
+    "loadingWithElapsed": "Chargement de {name}... {seconds}s écoulées"
+  },
+  "promptPhase": {
+    "processingPrompt": "Traitement de l'invite",
+    "generating": "Génération"
+  }
+}

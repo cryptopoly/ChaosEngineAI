@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Escribir un mensaje… (Enter para enviar, Shift+Enter para nueva línea, / para comandos)",
+    "placeholderNoModel": "Carga primero un modelo — elige uno desde Mis modelos o Descubrir, y pulsa CHAT.",
+    "send": "Enviar",
+    "stop": "Detener",
+    "clear": "Limpiar",
+    "sendDisabledTooltip": "Carga primero un modelo para enviar mensajes"
+  },
+  "thinkingMode": {
+    "label": "Razonamiento",
+    "tooltip": "Elige cuánto razona el modelo antes de responder. Apagado = respuestas directas; Bajo / Medio / Alto = profundidad de razonamiento creciente para modelos capaces.",
+    "off": "Apagado",
+    "offTooltip": "Sin razonamiento — el modelo responde directamente",
+    "low": "Bajo",
+    "lowTooltip": "Razonamiento breve",
+    "medium": "Med",
+    "mediumTooltip": "Profundidad de razonamiento por defecto",
+    "high": "Alto",
+    "highTooltip": "Razonamiento extendido"
+  },
+  "tools": {
+    "toggleLabel": "Herramientas",
+    "toggleOn": "Herramientas ON",
+    "enableTooltip": "Activar herramientas de agente",
+    "enabledTooltip": "Herramientas activadas (búsqueda web, código, calculadora, lector de archivos)"
+  },
+  "newSession": "Nueva sesión",
+  "newSessionTitle": "Chat sin título",
+  "deleteSession": "Eliminar sesión",
+  "deleteSessionConfirm": "¿Eliminar este chat? Esta acción no se puede deshacer.",
+  "renameSession": "Renombrar sesión",
+  "exportSession": "Exportar sesión",
+  "promptPlaceholder": "Enviar un mensaje…",
+  "promptPlaceholderImage": "Describe una imagen o suelta una para conversar sobre ella…",
+  "stopGeneration": "Detener generación",
+  "regenerateResponse": "Regenerar respuesta",
+  "branchHere": "Ramificar desde aquí",
+  "copyMessage": "Copiar mensaje",
+  "copyAsMarkdown": "Copiar como Markdown",
+  "tokensUsed": "{count, plural, one {# token} other {# tokens}}",
+  "thinking": "Pensando…",
+  "toolCall": {
+    "label": "Llamada de herramienta",
+    "running": "Ejecutando herramienta: {tool}",
+    "succeeded": "Herramienta exitosa: {tool}",
+    "failed": "Herramienta fallida: {tool}",
+    "noArguments": "(sin argumentos)",
+    "input": "Entrada",
+    "result": "Resultado"
+  },
+  "attachments": {
+    "image": "Adjuntar imagen",
+    "document": "Adjuntar documento",
+    "code": "Adjuntar código",
+    "removeAttachment": "Quitar adjunto"
+  },
+  "modelPicker": {
+    "label": "Modelo",
+    "noneSelected": "Ningún modelo cargado",
+    "loadModel": "Cargar modelo"
+  },
+  "header": {
+    "expandChatList": "Expandir la lista de chats",
+    "chatsLabel": "Chats",
+    "threadName": "Nombre del hilo",
+    "selectModel": "Seleccionar modelo",
+    "exportThread": "Exportar este hilo",
+    "export": "Exportar",
+    "modelCapabilities": "Capacidades del modelo",
+    "ready": "Listo",
+    "loadChatModel": "Cargar el modelo de este chat",
+    "loading": "Cargando...",
+    "loadModel": "Cargar modelo"
+  },
+  "sidebar": {
+    "title": "Chats",
+    "newThread": "Nuevo hilo",
+    "compare": "Comparar",
+    "compareTooltip": "Comparar dos modelos lado a lado",
+    "collapseChatList": "Contraer la lista de chats",
+    "searchThreadsPlaceholder": "Buscar hilos...",
+    "searchThreadsAriaLabel": "Buscar hilos",
+    "clearSearch": "Limpiar búsqueda"
+  },
+  "swapMenu": {
+    "clearOverride": "Limpiar anulación",
+    "dialogAriaLabel": "Elige un modelo para el siguiente turno",
+    "sendNextVia": "Enviar siguiente vía",
+    "oneTurnNote": "La anulación solo se aplica para un turno.",
+    "noWarmModels": "No hay otros modelos calientes disponibles. Carga un segundo modelo desde Mis modelos para habilitar cambios rápidos."
+  },
+  "activeThread": {
+    "title": "Hilo activo",
+    "subtitle": "Los metadatos de respuesta están contraídos por defecto, pero disponibles por cada turno del agente."
+  },
+  "compare": {
+    "latest": "Más reciente"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Temperatura: {value} (desde la configuración de lanzamiento)",
+    "overrideTooltip": "Anulación de temperatura: {value} (predeterminado {defaultValue_})",
+    "dialogAriaLabel": "Anulación de temperatura",
+    "overrideLabel": "Anular temperatura",
+    "reset": "Restablecer",
+    "hint": "Más bajo = enfocado. Más alto = creativo. Predeterminado {value} desde la configuración de lanzamiento."
+  },
+  "thread": {
+    "copyMessageTooltip": "Copiar mensaje",
+    "retryTooltip": "Reintentar respuesta",
+    "forkTooltip": "Bifurcar desde aquí (crea un nuevo hilo)",
+    "delveTooltip": "Profundizar — releer con ojo crítico y proponer una respuesta revisada",
+    "deleteMessageTooltip": "Eliminar mensaje",
+    "loadExactSettingsTooltip": "Cargar el modelo exacto y la configuración de ejecución usados para esta respuesta"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Título del reto",
+    "promptPlaceholder": "Promptear a todos los modelos seleccionados con el mismo reto de página web...",
+    "openBrowser": "Abrir en el navegador predeterminado",
+    "historyPlaceholder": "Buscar retos anteriores...",
+    "moveToTrash": "Mover a la papelera",
+    "moveToTrashAria": "Mover «{title}» a la papelera",
+    "noMatching": "Sin retos coincidentes."
+  },
+  "samplerPanel": {
+    "label": "Samplers",
+    "openTooltip": "Abrir el panel de samplers",
+    "activeTooltip": "{count, plural, one {# anulación de sampler activa} other {# anulaciones de sampler activas}}",
+    "dialogAriaLabel": "Anulaciones de sampler",
+    "headerTitle": "Anulaciones de sampler",
+    "resetAll": "Restablecer todo",
+    "resetAllTooltip": "Restablecer todo a los valores por defecto del backend"
+  },
+  "kvChip": {
+    "clearOverride": "Limpiar anulación KV",
+    "revertTooltip": "Volver al valor por defecto de la sesión",
+    "dialogAriaLabel": "Estrategia de caché KV",
+    "headingTitle": "Caché KV para el siguiente turno",
+    "reloadNote": "Al cambiar se recarga el runtime si es necesario."
+  },
+  "citations": {
+    "sourcesLabel": "Fuentes:",
+    "pageInfo": "(página {page})",
+    "chunkLabel": "Fragmento {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}s)",
+    "loadingWithElapsed": "Cargando {name}... {seconds}s transcurridos"
+  },
+  "promptPhase": {
+    "processingPrompt": "Procesando indicación",
+    "generating": "Generando"
+  }
+}

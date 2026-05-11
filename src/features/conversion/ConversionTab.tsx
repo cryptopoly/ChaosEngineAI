@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { PerformancePreview } from "../../components/PerformancePreview";
 import { LiveProgress, type LiveProgressPhase } from "../../components/LiveProgress";
@@ -76,6 +77,7 @@ export function ConversionTab({
   onPrepareLibraryConversion,
   onRevealPath,
 }: ConversionTabProps) {
+  const { t } = useTranslation("common");
   const beforeSize = conversionSource?.sizeGb ?? lastConversion?.sourceSizeGb ?? null;
   const estimatedContext = lastConversion?.contextWindow ?? conversionVariant?.contextWindow ?? "Varies";
 
@@ -143,8 +145,10 @@ export function ConversionTab({
   return (
     <div className="content-grid">
       <Panel
-        title="MLX Conversion"
-        subtitle="Prepare a local source, compare before and after stats, then convert into an MLX-ready output."
+        title={t("panels.mlxConversion", { defaultValue: "MLX Conversion" })}
+        subtitle={t("panels.mlxConversionSubtitle", {
+          defaultValue: "Prepare a local source, compare before and after stats, then convert into an MLX-ready output.",
+        })}
         className="span-2"
         actions={
           <span className={`badge ${conversionReady ? "success" : "warning"}`}>
@@ -402,7 +406,7 @@ export function ConversionTab({
 
       <ModelPicker
         open={showConversionPicker}
-        title="Select Source Model"
+        title={t("panels.selectSourceModel", { defaultValue: "Select Source Model" })}
         library={workspace.library}
         filter={(item) => libraryItemFormat(item) !== "MLX"}
         selectedPath={conversionDraft.path || null}
@@ -427,17 +431,17 @@ export function ConversionTab({
             <div className="modal-body">
               {busyAction === "Converting model..." && conversionStartedAt ? (
                 <LiveProgress
-                  title="Converting model"
+                  title={t("conversionTab.progress.title", { defaultValue: "Converting model" })}
                   subtitle={conversionSource?.name ?? conversionDraft.modelRef ?? undefined}
                   startedAt={conversionStartedAt}
                   accent="convert"
                   phases={[
-                    { id: "resolve", label: "Resolving source", estimatedSeconds: 3 },
-                    { id: "download", label: "Fetching weights", estimatedSeconds: 60 },
-                    { id: "load", label: "Loading into MLX", estimatedSeconds: 15 },
-                    { id: "quantize", label: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}`, estimatedSeconds: 45 },
-                    { id: "shard", label: "Sharding & writing safetensors", estimatedSeconds: 10 },
-                    { id: "verify", label: "Verifying output", estimatedSeconds: 5 },
+                    { id: "resolve", label: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }), estimatedSeconds: 3 },
+                    { id: "download", label: t("conversionTab.progress.phases.download", { defaultValue: "Fetching weights" }), estimatedSeconds: 60 },
+                    { id: "load", label: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }), estimatedSeconds: 15 },
+                    { id: "quantize", label: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}` }), estimatedSeconds: 45 },
+                    { id: "shard", label: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }), estimatedSeconds: 10 },
+                    { id: "verify", label: t("conversionTab.progress.phases.verify", { defaultValue: "Verifying output" }), estimatedSeconds: 5 },
                   ] as LiveProgressPhase[]}
                 />
               ) : conversionError ? (

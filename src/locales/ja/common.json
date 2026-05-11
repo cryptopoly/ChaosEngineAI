@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "ChaosEngineAI",
+    "tagline": "ローカル AI モデルランナー",
+    "workspace": "ワークスペース"
+  },
+  "tabs": {
+    "dashboard": "ダッシュボード",
+    "chat": "チャット",
+    "chatCompare": "比較",
+    "htmlChallenge": "HTML チャレンジ",
+    "myModels": "マイモデル",
+    "onlineModels": "ディスカバー",
+    "imageModels": "画像モデル",
+    "imageDiscover": "画像ディスカバー",
+    "imageStudio": "画像スタジオ",
+    "imageGallery": "画像ギャラリー",
+    "videoModels": "動画モデル",
+    "videoDiscover": "動画ディスカバー",
+    "videoStudio": "動画スタジオ",
+    "videoGallery": "動画ギャラリー",
+    "server": "サーバー",
+    "benchmarks": "ベンチマーク",
+    "benchmarkHistory": "履歴",
+    "conversion": "変換",
+    "fineTuning": "ファインチューニング",
+    "promptLibrary": "プロンプト",
+    "plugins": "プラグイン",
+    "logs": "ログ",
+    "settings": "設定",
+    "library": "ライブラリ",
+    "image": "画像スタジオ",
+    "video": "動画スタジオ",
+    "setup": "セットアップ",
+    "diagnostics": "診断"
+  },
+  "tabCaptions": {
+    "dashboard": "システム概要",
+    "chat": "ローカル AI チャット",
+    "chatCompare": "言語モデルを並べて比較",
+    "htmlChallenge": "共有可能な Web ページ比較を生成",
+    "myModels": "このマシン上のモデル",
+    "onlineModels": "AI モデルを検索しダウンロード",
+    "imageModels": "インストール済みの画像生成器",
+    "imageDiscover": "画像モデルを検索",
+    "imageStudio": "プロンプト、生成、反復",
+    "imageGallery": "保存された出力とフィルター",
+    "videoModels": "インストール済みの動画生成器",
+    "videoDiscover": "動画モデルを検索",
+    "videoStudio": "プロンプト、生成、反復",
+    "videoGallery": "保存された出力とフィルター",
+    "server": "OpenAI 互換のローカル API",
+    "benchmarks": "新しいベンチマークを実行",
+    "benchmarkHistory": "保存された実行を比較",
+    "conversion": "モデルを MLX 形式に変換",
+    "fineTuning": "LoRA アダプターとトレーニング",
+    "promptLibrary": "再利用可能なプロンプトテンプレート",
+    "plugins": "拡張機能とプラグインシステム",
+    "logs": "ランタイムイベント",
+    "settings": "ディレクトリとデフォルト"
+  },
+  "tabShortLabels": {
+    "chat": "チャット",
+    "chatCompare": "比較",
+    "htmlChallenge": "HTML チャレンジ",
+    "myModels": "マイモデル",
+    "onlineModels": "ディスカバー",
+    "imageModels": "マイモデル",
+    "imageDiscover": "ディスカバー",
+    "imageStudio": "スタジオ",
+    "imageGallery": "ギャラリー",
+    "videoModels": "マイモデル",
+    "videoDiscover": "ディスカバー",
+    "videoStudio": "スタジオ",
+    "videoGallery": "ギャラリー",
+    "benchmarks": "実行",
+    "benchmarkHistory": "履歴",
+    "conversion": "変換",
+    "fineTuning": "ファインチューニング",
+    "promptLibrary": "プロンプト",
+    "plugins": "プラグイン"
+  },
+  "tabGroups": {
+    "chat": "チャット",
+    "models": "モデル",
+    "images": "画像",
+    "video": "動画",
+    "benchmarks": "ベンチマーク",
+    "tools": "ツール"
+  },
+  "tabsCount": "{count, plural, other {# 個のタブ}}",
+  "sidebar": {
+    "backendOnline": "バックエンドオンライン",
+    "backendOffline": "オフライン",
+    "noModelLoaded": "モデルが読み込まれていません",
+    "groupTabsAriaLabel": "{group} タブ"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "スラッシュコマンド"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "confirm": "確認",
+    "delete": "削除",
+    "edit": "編集",
+    "copy": "コピー",
+    "paste": "貼り付け",
+    "retry": "再試行",
+    "refresh": "更新",
+    "open": "開く",
+    "install": "インストール",
+    "uninstall": "アンインストール",
+    "update": "アップデート",
+    "start": "開始",
+    "stop": "停止",
+    "restart": "再起動",
+    "download": "ダウンロード",
+    "upload": "アップロード",
+    "send": "送信",
+    "generate": "生成",
+    "load": "読み込み",
+    "unload": "アンロード",
+    "next": "次へ",
+    "back": "戻る",
+    "done": "完了",
+    "tryAgain": "再試行",
+    "copyDetails": "詳細をコピー",
+    "switchTo": "{target} に切り替え",
+    "keepEnglish": "英語のまま"
+  },
+  "status": {
+    "loading": "読み込み中…",
+    "loaded": "読み込み済み",
+    "unloading": "アンロード中…",
+    "ready": "準備完了",
+    "busy": "処理中",
+    "error": "エラー",
+    "warning": "警告",
+    "success": "成功",
+    "pending": "保留中",
+    "running": "実行中",
+    "stopped": "停止済み",
+    "installed": "インストール済み",
+    "notInstalled": "未インストール"
+  },
+  "empty": {
+    "noResults": "結果なし",
+    "noModels": "モデルが見つかりません",
+    "noSessions": "セッションがありません",
+    "noLogs": "ログがありません"
+  },
+  "units": {
+    "tokensPerSec": "{value} tok/s",
+    "bytesGB": "{value} GB",
+    "bytesMB": "{value} MB",
+    "bytesKB": "{value} KB",
+    "seconds": "{value, plural, other {# 秒}}",
+    "minutes": "{value, plural, other {# 分}}",
+    "hours": "{value, plural, other {# 時間}}"
+  },
+  "localeBanner": {
+    "detected": "{endonym} を検出しました。",
+    "prompt": "アプリを {endonym} に切り替えますか?設定 → 言語 でいつでも変更できます。",
+    "switch": "{endonym} に切り替え",
+    "keep": "英語のまま"
+  },
+  "panels": {
+    "mlxConversion": "MLX 変換",
+    "mlxConversionSubtitle": "ローカルソースを準備し、変換前後の統計を比較してから、MLX 対応の出力に変換します。",
+    "selectSourceModel": "ソースモデルを選択",
+    "discoverModels": "モデルをディスカバー",
+    "runBenchmark": "ベンチマークを実行",
+    "runBenchmarkSubtitle": "一貫したベンチマーク実行を開始し、このプロファイルのパフォーマンスを確認します。",
+    "selectBenchmarkModel": "ベンチマークモデルを選択",
+    "benchmarkHistory": "ベンチマーク履歴",
+    "loraAdapters": "LoRA アダプター",
+    "loraAdaptersFound": "{count, plural, other {# 個のアダプターが見つかりました}}",
+    "templates": "テンプレート",
+    "editTemplate": "テンプレートを編集",
+    "newTemplate": "新規テンプレート",
+    "selectTemplate": "テンプレートを選択",
+    "pluginSystem": "プラグインシステム",
+    "pluginsRegistered": "{count, plural, other {# 個のプラグインが登録されています}}",
+    "externalPlugins": "外部プラグイン",
+    "installFromDirectory": "ディレクトリからインストール",
+    "noModelsMatchFilters": "現在のフィルターに一致するモデルはありません",
+    "savedOutputs": "保存された出力",
+    "installedImageModels": "インストール済みの画像モデル",
+    "installedVideoModels": "インストール済みの動画モデル",
+    "plannedEngines": "計画中のエンジン",
+    "plannedEnginesSubtitle": "初回リリースに向けて評価中の候補",
+    "modelStorage": "モデルストレージ",
+    "modelStorageSubtitle": "Hugging Face のモデルダウンロードを別のドライブにリダイレクトします。システムドライブが 14-100 GB の画像・動画チェックポイントで埋まりつつあるときに便利です。"
+  },
+  "launchModal": {
+    "title": "モデルを選択",
+    "startChat": "チャットを開始",
+    "loadForChat": "チャット用に読み込む",
+    "loadForServer": "サーバー用に読み込む"
+  },
+  "serverTab": {
+    "orphans": {
+      "title": "孤立したバックエンドワーカーをクリーンアップしました",
+      "dismiss": "閉じる",
+      "dismissAria": "孤立ワーカーの通知を閉じる",
+      "body": "{count, plural, other {ChaosEngineAI は以前の読み込みやクラッシュで残された追跡されていないワーカー # 個を最近検出して終了しました。}}"
+    }
+  },
+  "conversionTab": {
+    "progress": {
+      "title": "モデルを変換中",
+      "phases": {
+        "resolve": "ソースを解決中",
+        "download": "重みを取得中",
+        "load": "MLX に読み込み中",
+        "quantize": "{bits} ビット g{group} に量子化中",
+        "shard": "シャーディングと safetensors の書き込み",
+        "verify": "出力を検証中"
+      }
+    }
+  },
+  "benchmarkTab": {
+    "progress": {
+      "title": "ベンチマーク実行中",
+      "phases": {
+        "load": "モデルをメモリに読み込み中",
+        "warm": "KV キャッシュをウォームアップ中",
+        "prompt": "プロンプトを処理中",
+        "generate": "{tokens} トークンを生成中",
+        "measure": "統計を測定中"
+      }
+    }
+  }
+}

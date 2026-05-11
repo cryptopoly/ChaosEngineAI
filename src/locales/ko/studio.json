@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "이미지 스튜디오",
+    "subtitle": "모델을 선택하고 프롬프트하고 저장된 출력을 반복하세요",
+    "savedOutputsLabel": "저장된 출력",
+    "promptPanelTitle": "프롬프트",
+    "promptPanelSubtitle": "모델을 선택하고 종횡비와 품질을 설정한 다음 로컬 갤러리로 생성합니다.",
+    "recentOutputsTitle": "최근 출력",
+    "prompt": "프롬프트",
+    "negativePrompt": "네거티브 프롬프트",
+    "enhancePrompt": "향상",
+    "width": "너비",
+    "height": "높이",
+    "steps": "단계",
+    "guidance": "가이던스",
+    "guidanceScale": "가이던스 스케일",
+    "seed": "시드",
+    "seedRandom": "랜덤",
+    "sampler": "샘플러",
+    "scheduler": "스케줄러",
+    "batchSize": "배치 크기",
+    "generate": "이미지 생성",
+    "generating": "이미지 생성 중…",
+    "queued": "대기 중",
+    "decoding": "디코딩 중…",
+    "saveImage": "이미지 저장",
+    "copyImage": "이미지 복사",
+    "openFolder": "폴더에서 표시",
+    "modelLabel": "모델",
+    "noModelsOption": "설치된 모델 없음 — 둘러보기에서 다운로드하세요",
+    "aspectRatio": "종횡비",
+    "qualityPreset": "품질 프리셋",
+    "previewLabel": "미리보기",
+    "draftOn": "512px · 켜짐",
+    "draftOff": "초안 @ 512px",
+    "diffusionCache": "디퓨전 캐시",
+    "modal": {
+      "cancelling": "취소 중...",
+      "generating": "이미지 생성 중",
+      "cancelled": "이미지 생성 취소됨",
+      "failed": "이미지 생성 실패",
+      "imagesReady": "이미지 준비됨",
+      "imageReady": "이미지 준비됨"
+    }
+  },
+  "video": {
+    "title": "비디오 스튜디오",
+    "prompt": "프롬프트",
+    "negativePrompt": "네거티브 프롬프트",
+    "duration": "재생 시간",
+    "framesPerSecond": "초당 프레임",
+    "frames": "프레임",
+    "resolution": "해상도",
+    "generate": "비디오 생성",
+    "generating": "비디오 생성 중…",
+    "encoding": "인코딩 중…",
+    "saveVideo": "비디오 저장",
+    "modelLabel": "비디오 모델",
+    "qualityPreset": "품질 프리셋",
+    "aspectRatio": "종횡비",
+    "modal": {
+      "cancelling": "취소 중...",
+      "generating": "비디오 생성 중",
+      "cancelled": "비디오 생성 취소됨",
+      "failed": "비디오 생성 실패",
+      "ready": "비디오 준비됨"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "{total}단계 중 {current}단계",
+    "estimatedRemaining": "약 {seconds}초 남음"
+  },
+  "advanced": {
+    "title": "고급",
+    "show": "고급 설정 표시",
+    "hide": "고급 설정 숨기기"
+  },
+  "enhance": {
+    "label": "향상",
+    "busy": "향상 중...",
+    "tooltip": "이 프롬프트를 로컬에서 향상",
+    "error": "향상기 오류: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "모델을 메모리에 로드 중..."
+  }
+}

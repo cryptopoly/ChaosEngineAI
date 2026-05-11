@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple 芯片原生推理引擎" },
+    "llamaCpp": { "name": "llama.cpp", "description": "通过 llama-server 进行 GGUF 推理" },
+    "vllm": { "name": "vLLM", "description": "CUDA 推理引擎" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "原生",
+      "description": "内置缓存类型(f16、q8_0、q4_0 等)。兼容性最高。"
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard 旋转 KV 量化。2–4 倍压缩,质量损失极小。"
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "长上下文稀疏注意力压缩器。支持 Apple 芯片和 CUDA。"
+    },
+    "fbcache": {
+      "name": "首块缓存",
+      "description": "仅扩散模型缓存挂钩。DiT 管线上约 1.8 倍加速。"
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "仅扩散模型的泰勒展开缓存。激进加速,适用于 FLUX / SD3。"
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "仅扩散模型的幅度缓存。未校准时仅支持 FLUX。"
+    },
+    "pab": {
+      "name": "金字塔注意力广播",
+      "description": "仅扩散模型,跨时间步的注意力复用。"
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "仅扩散模型,条件 / 无条件复用缓存。"
+    }
+  },
+  "controls": {
+    "engine": "引擎",
+    "cacheStrategy": "缓存策略",
+    "cacheStrategyLockedNote": "(推测解码期间锁定为原生)",
+    "cacheType": "缓存类型",
+    "speculativeDecoding": "推测解码",
+    "draftModel": "草稿模型",
+    "contextSize": "上下文大小",
+    "gpuLayers": "GPU 层数",
+    "threads": "线程数",
+    "fitInMemory": "适配内存"
+  },
+  "notes": {
+    "binaryRequired": "需要 {binary}。",
+    "platformRequired": "需要 {platform}。",
+    "engineIncompatible": "与 {engine} 不兼容。",
+    "unknownEngine": "未知引擎。"
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "首个标记:{ms} 毫秒",
+    "vramUsed": "显存:{used} / {total}"
+  }
+}

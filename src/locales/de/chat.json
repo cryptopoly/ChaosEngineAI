@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Nachricht eingeben… (Enter zum Senden, Shift+Enter für neue Zeile, / für Befehle)",
+    "placeholderNoModel": "Erst ein Modell laden — eines aus Meine Modelle oder Entdecken auswählen, dann CHAT drücken.",
+    "send": "Senden",
+    "stop": "Stoppen",
+    "clear": "Leeren",
+    "sendDisabledTooltip": "Erst ein Modell laden, um Nachrichten zu senden"
+  },
+  "thinkingMode": {
+    "label": "Denken",
+    "tooltip": "Festlegen, wie viel Argumentation das Modell vor der Antwort durchführt. Aus = direkte Antworten; Niedrig / Mittel / Hoch = zunehmende Argumentationstiefe für fähige Modelle.",
+    "off": "Aus",
+    "offTooltip": "Keine Argumentation — Modell antwortet direkt",
+    "low": "Niedrig",
+    "lowTooltip": "Kurze Argumentation",
+    "medium": "Mittel",
+    "mediumTooltip": "Standard-Argumentationstiefe",
+    "high": "Hoch",
+    "highTooltip": "Erweiterte Argumentation"
+  },
+  "tools": {
+    "toggleLabel": "Werkzeuge",
+    "toggleOn": "Werkzeuge AN",
+    "enableTooltip": "Agent-Werkzeuge aktivieren",
+    "enabledTooltip": "Werkzeuge aktiviert (Web-Suche, Code, Taschenrechner, Datei-Reader)"
+  },
+  "newSession": "Neue Sitzung",
+  "newSessionTitle": "Unbenannter Chat",
+  "deleteSession": "Sitzung löschen",
+  "deleteSessionConfirm": "Diesen Chat löschen? Dies kann nicht rückgängig gemacht werden.",
+  "renameSession": "Sitzung umbenennen",
+  "exportSession": "Sitzung exportieren",
+  "promptPlaceholder": "Nachricht senden…",
+  "promptPlaceholderImage": "Beschreibe ein Bild oder ziehe eines hinein, um darüber zu sprechen…",
+  "stopGeneration": "Generierung stoppen",
+  "regenerateResponse": "Antwort neu generieren",
+  "branchHere": "Von hier aus verzweigen",
+  "copyMessage": "Nachricht kopieren",
+  "copyAsMarkdown": "Als Markdown kopieren",
+  "tokensUsed": "{count, plural, one {# Token} other {# Tokens}}",
+  "thinking": "Denkt nach…",
+  "toolCall": {
+    "label": "Tool-Aufruf",
+    "running": "Tool wird ausgeführt: {tool}",
+    "succeeded": "Tool erfolgreich: {tool}",
+    "failed": "Tool fehlgeschlagen: {tool}",
+    "noArguments": "(keine Argumente)",
+    "input": "Eingabe",
+    "result": "Ergebnis"
+  },
+  "attachments": {
+    "image": "Bild anhängen",
+    "document": "Dokument anhängen",
+    "code": "Code anhängen",
+    "removeAttachment": "Anhang entfernen"
+  },
+  "modelPicker": {
+    "label": "Modell",
+    "noneSelected": "Kein Modell geladen",
+    "loadModel": "Modell laden"
+  },
+  "header": {
+    "expandChatList": "Chat-Liste ausklappen",
+    "chatsLabel": "Chats",
+    "threadName": "Thread-Name",
+    "selectModel": "Modell auswählen",
+    "exportThread": "Diesen Thread exportieren",
+    "export": "Exportieren",
+    "modelCapabilities": "Modellfähigkeiten",
+    "ready": "Bereit",
+    "loadChatModel": "Modell dieses Chats laden",
+    "loading": "Lädt...",
+    "loadModel": "Modell laden"
+  },
+  "sidebar": {
+    "title": "Chats",
+    "newThread": "Neuer Thread",
+    "compare": "Vergleich",
+    "compareTooltip": "Zwei Modelle nebeneinander vergleichen",
+    "collapseChatList": "Chat-Liste einklappen",
+    "searchThreadsPlaceholder": "Threads suchen...",
+    "searchThreadsAriaLabel": "Threads suchen",
+    "clearSearch": "Suche zurücksetzen"
+  },
+  "swapMenu": {
+    "clearOverride": "Override löschen",
+    "dialogAriaLabel": "Modell für die nächste Runde auswählen",
+    "sendNextVia": "Nächste senden über",
+    "oneTurnNote": "Override gilt nur für eine Runde.",
+    "noWarmModels": "Keine weiteren warmen Modelle verfügbar. Lade ein zweites Modell aus Meine Modelle, um Quick-Swaps zu aktivieren."
+  },
+  "activeThread": {
+    "title": "Aktiver Thread",
+    "subtitle": "Antwort-Metadaten sind standardmäßig eingeklappt, aber pro Agentenrunde verfügbar."
+  },
+  "compare": {
+    "latest": "Neueste"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Temperatur: {value} (aus Starteinstellungen)",
+    "overrideTooltip": "Temperatur-Override: {value} (Standard {defaultValue_})",
+    "dialogAriaLabel": "Temperatur-Override",
+    "overrideLabel": "Temperatur überschreiben",
+    "reset": "Zurücksetzen",
+    "hint": "Niedriger = fokussiert. Höher = kreativ. Standard {value} aus Starteinstellungen."
+  },
+  "thread": {
+    "copyMessageTooltip": "Nachricht kopieren",
+    "retryTooltip": "Antwort wiederholen",
+    "forkTooltip": "Hier verzweigen (erstellt neuen Thread)",
+    "delveTooltip": "Vertiefen — mit kritischem Blick erneut lesen und eine überarbeitete Antwort vorschlagen",
+    "deleteMessageTooltip": "Nachricht löschen",
+    "loadExactSettingsTooltip": "Genau das Modell und die Laufzeit-Einstellungen dieser Antwort laden"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Challenge-Titel",
+    "promptPlaceholder": "Allen ausgewählten Modellen denselben Webseiten-Challenge-Prompt geben...",
+    "openBrowser": "Im Standard-Browser öffnen",
+    "historyPlaceholder": "Frühere Challenges suchen...",
+    "moveToTrash": "In den Papierkorb",
+    "moveToTrashAria": "„{title}“ in den Papierkorb",
+    "noMatching": "Keine passenden Challenges."
+  },
+  "samplerPanel": {
+    "label": "Sampler",
+    "openTooltip": "Sampler-Panel öffnen",
+    "activeTooltip": "{count, plural, one {# Sampler-Override aktiv} other {# Sampler-Overrides aktiv}}",
+    "dialogAriaLabel": "Sampler-Overrides",
+    "headerTitle": "Sampler-Overrides",
+    "resetAll": "Alle zurücksetzen",
+    "resetAllTooltip": "Alle auf Backend-Standards zurücksetzen"
+  },
+  "kvChip": {
+    "clearOverride": "KV-Override entfernen",
+    "revertTooltip": "Auf Sitzungs-Standard zurücksetzen",
+    "dialogAriaLabel": "KV-Cache-Strategie",
+    "headingTitle": "KV-Cache für nächste Runde",
+    "reloadNote": "Beim Wechsel wird die Laufzeit bei Bedarf neu geladen."
+  },
+  "citations": {
+    "sourcesLabel": "Quellen:",
+    "pageInfo": "(Seite {page})",
+    "chunkLabel": "Abschnitt {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}s)",
+    "loadingWithElapsed": "Lädt {name}... {seconds}s vergangen"
+  },
+  "promptPhase": {
+    "processingPrompt": "Prompt wird verarbeitet",
+    "generating": "Generiert"
+  }
+}

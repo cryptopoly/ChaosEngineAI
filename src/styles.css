@@ -1,6 +1,19 @@
 :root {
   color-scheme: dark;
-  font-family: "SF Pro Text", Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* FU-042: Latin baseline.  Locale-specific CJK stacks override below
+     via `html[lang="..."]` matchers — picking system-native fonts that
+     ship on each platform (Apple Silicon, Windows, Linux Noto). */
+  --font-latin: "SF Pro Text", Inter, "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-cjk-sc: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Source Han Sans SC", "Noto Sans CJK SC";
+  --font-cjk-tc: "PingFang TC", "Microsoft JhengHei",
+    "Source Han Sans TC", "Noto Sans CJK TC";
+  --font-cjk-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+    Meiryo, "Source Han Sans", "Noto Sans CJK JP";
+  --font-cjk-kr: "Apple SD Gothic Neo", "Malgun Gothic",
+    "Source Han Sans KR", "Noto Sans CJK KR";
+  font-family: var(--font-latin);
   background: #0f1215;
   color: #f4f6f8;
   font-size: 14px;
@@ -8990,4 +9003,80 @@ select.text-input {
   color: var(--muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ----------------------------------------------------------------------
+ * FU-042 — locale-specific font stacks + first-launch banner styles.
+ *
+ * Each `html[lang="…"]` rule overrides the Latin baseline with the
+ * platform-native CJK font that ships on macOS / Windows / Linux Noto.
+ * No web-font download — every face is in the system already, so
+ * shipped builds stay binary-clean.
+ * -------------------------------------------------------------------- */
+
+html[lang="zh-CN"] body,
+html[lang="zh-CN"] input,
+html[lang="zh-CN"] textarea,
+html[lang="zh-CN"] button,
+html[lang="zh-CN"] select {
+  font-family: var(--font-latin), var(--font-cjk-sc);
+}
+
+html[lang="zh-TW"] body,
+html[lang="zh-TW"] input,
+html[lang="zh-TW"] textarea,
+html[lang="zh-TW"] button,
+html[lang="zh-TW"] select {
+  font-family: var(--font-latin), var(--font-cjk-tc);
+}
+
+html[lang="ja"] body,
+html[lang="ja"] input,
+html[lang="ja"] textarea,
+html[lang="ja"] button,
+html[lang="ja"] select {
+  font-family: var(--font-latin), var(--font-cjk-jp);
+}
+
+html[lang="ko"] body,
+html[lang="ko"] input,
+html[lang="ko"] textarea,
+html[lang="ko"] button,
+html[lang="ko"] select {
+  font-family: var(--font-latin), var(--font-cjk-kr);
+}
+
+/* FirstLaunchLocaleBanner — pinned to the top of the viewport. */
+.locale-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #1a2230, #141a23);
+  border-bottom: 1px solid #232c38;
+  color: #f4f6f8;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.locale-banner__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.locale-banner__copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.locale-banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }

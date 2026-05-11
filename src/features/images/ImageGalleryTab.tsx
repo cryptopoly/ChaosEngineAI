@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import type {
@@ -72,10 +73,11 @@ export function ImageGalleryTab({
   onRevealPath,
   onDeleteImageArtifact,
 }: ImageGalleryTabProps) {
+  const { t } = useTranslation("common");
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Image Gallery"
+        title={t("tabs.imageGallery")}
         subtitle={imageOutputs.length > 0
           ? `${filteredImageOutputs.length} of ${imageOutputs.length} saved outputs`
           : "Saved generations, filters, and quick reuse actions"}
@@ -187,7 +189,7 @@ export function ImageGalleryTab({
       </Panel>
 
       <Panel
-        title="Saved Outputs"
+        title={t("panels.savedOutputs", { defaultValue: "Saved Outputs" })}
         subtitle={filteredImageOutputs.length > 0
           ? `${filteredImageOutputs.length} image${filteredImageOutputs.length === 1 ? "" : "s"} ready to browse`
           : imageOutputs.length > 0

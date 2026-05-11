@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "ChaosEngineAI",
+    "tagline": "로컬 AI 모델 실행기",
+    "workspace": "워크스페이스"
+  },
+  "tabs": {
+    "dashboard": "대시보드",
+    "chat": "채팅",
+    "chatCompare": "비교",
+    "htmlChallenge": "HTML 챌린지",
+    "myModels": "내 모델",
+    "onlineModels": "둘러보기",
+    "imageModels": "이미지 모델",
+    "imageDiscover": "이미지 둘러보기",
+    "imageStudio": "이미지 스튜디오",
+    "imageGallery": "이미지 갤러리",
+    "videoModels": "비디오 모델",
+    "videoDiscover": "비디오 둘러보기",
+    "videoStudio": "비디오 스튜디오",
+    "videoGallery": "비디오 갤러리",
+    "server": "서버",
+    "benchmarks": "벤치마크",
+    "benchmarkHistory": "기록",
+    "conversion": "변환",
+    "fineTuning": "파인 튜닝",
+    "promptLibrary": "프롬프트",
+    "plugins": "플러그인",
+    "logs": "로그",
+    "settings": "환경설정",
+    "library": "라이브러리",
+    "image": "이미지 스튜디오",
+    "video": "비디오 스튜디오",
+    "setup": "설정",
+    "diagnostics": "진단"
+  },
+  "tabCaptions": {
+    "dashboard": "시스템 개요",
+    "chat": "로컬 AI 채팅",
+    "chatCompare": "언어 모델을 나란히 비교",
+    "htmlChallenge": "공유 가능한 웹페이지 비교 생성",
+    "myModels": "이 머신의 모델",
+    "onlineModels": "AI 모델 찾아보기 및 다운로드",
+    "imageModels": "설치된 이미지 생성기",
+    "imageDiscover": "이미지 모델 찾아보기",
+    "imageStudio": "프롬프트, 생성, 반복",
+    "imageGallery": "저장된 출력 및 필터",
+    "videoModels": "설치된 비디오 생성기",
+    "videoDiscover": "비디오 모델 찾아보기",
+    "videoStudio": "프롬프트, 생성, 반복",
+    "videoGallery": "저장된 출력 및 필터",
+    "server": "OpenAI 호환 로컬 API",
+    "benchmarks": "새 벤치마크 실행",
+    "benchmarkHistory": "저장된 실행 비교",
+    "conversion": "모델을 MLX 형식으로 변환",
+    "fineTuning": "LoRA 어댑터 및 학습",
+    "promptLibrary": "재사용 가능한 프롬프트 템플릿",
+    "plugins": "확장 및 플러그인 시스템",
+    "logs": "런타임 이벤트",
+    "settings": "디렉터리 및 기본값"
+  },
+  "tabShortLabels": {
+    "chat": "채팅",
+    "chatCompare": "비교",
+    "htmlChallenge": "HTML 챌린지",
+    "myModels": "내 모델",
+    "onlineModels": "둘러보기",
+    "imageModels": "내 모델",
+    "imageDiscover": "둘러보기",
+    "imageStudio": "스튜디오",
+    "imageGallery": "갤러리",
+    "videoModels": "내 모델",
+    "videoDiscover": "둘러보기",
+    "videoStudio": "스튜디오",
+    "videoGallery": "갤러리",
+    "benchmarks": "실행",
+    "benchmarkHistory": "기록",
+    "conversion": "변환",
+    "fineTuning": "파인 튜닝",
+    "promptLibrary": "프롬프트",
+    "plugins": "플러그인"
+  },
+  "tabGroups": {
+    "chat": "채팅",
+    "models": "모델",
+    "images": "이미지",
+    "video": "비디오",
+    "benchmarks": "벤치마크",
+    "tools": "도구"
+  },
+  "tabsCount": "{count, plural, other {탭 #개}}",
+  "sidebar": {
+    "backendOnline": "백엔드 온라인",
+    "backendOffline": "오프라인",
+    "noModelLoaded": "로드된 모델 없음",
+    "groupTabsAriaLabel": "{group} 탭"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "슬래시 명령"
+  },
+  "actions": {
+    "save": "저장",
+    "cancel": "취소",
+    "close": "닫기",
+    "confirm": "확인",
+    "delete": "삭제",
+    "edit": "편집",
+    "copy": "복사",
+    "paste": "붙여넣기",
+    "retry": "재시도",
+    "refresh": "새로고침",
+    "open": "열기",
+    "install": "설치",
+    "uninstall": "제거",
+    "update": "업데이트",
+    "start": "시작",
+    "stop": "중지",
+    "restart": "재시작",
+    "download": "다운로드",
+    "upload": "업로드",
+    "send": "보내기",
+    "generate": "생성",
+    "load": "불러오기",
+    "unload": "언로드",
+    "next": "다음",
+    "back": "뒤로",
+    "done": "완료",
+    "tryAgain": "다시 시도",
+    "copyDetails": "세부 정보 복사",
+    "switchTo": "{target}(으)로 전환",
+    "keepEnglish": "영어 유지"
+  },
+  "status": {
+    "loading": "로딩 중…",
+    "loaded": "로드됨",
+    "unloading": "언로드 중…",
+    "ready": "준비됨",
+    "busy": "사용 중",
+    "error": "오류",
+    "warning": "경고",
+    "success": "성공",
+    "pending": "대기 중",
+    "running": "실행 중",
+    "stopped": "중지됨",
+    "installed": "설치됨",
+    "notInstalled": "설치되지 않음"
+  },
+  "empty": {
+    "noResults": "결과 없음",
+    "noModels": "모델을 찾을 수 없음",
+    "noSessions": "세션 없음",
+    "noLogs": "사용 가능한 로그 없음"
+  },
+  "units": {
+    "tokensPerSec": "{value} tok/s",
+    "bytesGB": "{value} GB",
+    "bytesMB": "{value} MB",
+    "bytesKB": "{value} KB",
+    "seconds": "{value, plural, other {# 초}}",
+    "minutes": "{value, plural, other {# 분}}",
+    "hours": "{value, plural, other {# 시간}}"
+  },
+  "localeBanner": {
+    "detected": "{endonym}이(가) 감지되었습니다.",
+    "prompt": "앱을 {endonym}(으)로 전환하시겠습니까? 환경설정 → 언어에서 언제든지 변경할 수 있습니다.",
+    "switch": "{endonym}(으)로 전환",
+    "keep": "영어 유지"
+  },
+  "panels": {
+    "mlxConversion": "MLX 변환",
+    "mlxConversionSubtitle": "로컬 소스를 준비하고 전후 통계를 비교한 다음 MLX 준비 출력으로 변환합니다.",
+    "selectSourceModel": "소스 모델 선택",
+    "discoverModels": "모델 둘러보기",
+    "runBenchmark": "벤치마크 실행",
+    "runBenchmarkSubtitle": "일관된 벤치마크 실행을 시작하고 이 프로필의 성능을 확인하세요.",
+    "selectBenchmarkModel": "벤치마크 모델 선택",
+    "benchmarkHistory": "벤치마크 기록",
+    "loraAdapters": "LoRA 어댑터",
+    "loraAdaptersFound": "{count, plural, other {어댑터 #개 발견}}",
+    "templates": "템플릿",
+    "editTemplate": "템플릿 편집",
+    "newTemplate": "새 템플릿",
+    "selectTemplate": "템플릿 선택",
+    "pluginSystem": "플러그인 시스템",
+    "pluginsRegistered": "{count, plural, other {플러그인 #개 등록됨}}",
+    "externalPlugins": "외부 플러그인",
+    "installFromDirectory": "디렉터리에서 설치",
+    "noModelsMatchFilters": "현재 필터와 일치하는 모델이 없습니다",
+    "savedOutputs": "저장된 출력",
+    "installedImageModels": "설치된 이미지 모델",
+    "installedVideoModels": "설치된 비디오 모델",
+    "plannedEngines": "계획된 엔진",
+    "plannedEnginesSubtitle": "첫 릴리스를 위해 평가 중인 후보",
+    "modelStorage": "모델 저장소",
+    "modelStorageSubtitle": "Hugging Face 모델 다운로드를 다른 드라이브로 리디렉션합니다. 시스템 드라이브가 14-100 GB 의 이미지 및 비디오 체크포인트로 가득 차고 있을 때 유용합니다."
+  },
+  "launchModal": {
+    "title": "모델 선택",
+    "startChat": "채팅 시작",
+    "loadForChat": "채팅용으로 로드",
+    "loadForServer": "서버용으로 로드"
+  },
+  "serverTab": {
+    "orphans": {
+      "title": "분리된 백엔드 워커가 정리되었습니다",
+      "dismiss": "닫기",
+      "dismissAria": "분리 워커 알림 닫기",
+      "body": "{count, plural, other {ChaosEngineAI가 이전 로드 또는 충돌로 남겨진 추적되지 않은 워커 # 개를 최근에 발견하고 종료했습니다.}}"
+    }
+  },
+  "conversionTab": {
+    "progress": {
+      "title": "모델 변환 중",
+      "phases": {
+        "resolve": "소스 확인 중",
+        "download": "가중치 가져오는 중",
+        "load": "MLX에 로드 중",
+        "quantize": "{bits}비트 g{group}로 양자화 중",
+        "shard": "샤딩 및 safetensors 작성",
+        "verify": "출력 검증 중"
+      }
+    }
+  },
+  "benchmarkTab": {
+    "progress": {
+      "title": "벤치마크 실행 중",
+      "phases": {
+        "load": "모델을 메모리에 로드 중",
+        "warm": "KV 캐시 워밍업 중",
+        "prompt": "프롬프트 처리 중",
+        "generate": "{tokens} 토큰 생성 중",
+        "measure": "통계 측정 중"
+      }
+    }
+  }
+}

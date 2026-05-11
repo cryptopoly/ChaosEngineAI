@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
@@ -149,6 +150,7 @@ export function VideoModelsTab({
   onOpenExternalUrl,
   onRevealPath,
 }: VideoModelsTabProps) {
+  const { t } = useTranslation("common");
   const [searchInput, setSearchInput] = useState("");
   const [taskFilter, setTaskFilter] = useState<"all" | VideoModelVariant["taskSupport"][number]>("all");
   const [statusFilter, setStatusFilter] = useState<InstalledVideoStatusFilter>("all");
@@ -226,7 +228,7 @@ export function VideoModelsTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Installed Video Models"
+        title={t("panels.installedVideoModels", { defaultValue: "Installed Video Models" })}
         subtitle={installedVideoVariants.length > 0
           ? `${rows.length} of ${installedVideoVariants.length} model${installedVideoVariants.length !== 1 ? "s" : ""} with local data`
           : "No video models detected locally yet"}

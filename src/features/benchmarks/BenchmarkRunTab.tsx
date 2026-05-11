@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { PerformancePreview } from "../../components/PerformancePreview";
 import { LiveProgress, type LiveProgressPhase } from "../../components/LiveProgress";
@@ -77,6 +78,7 @@ export function BenchmarkRunTab({
   onActiveTabChange,
   onInstallPackage,
 }: BenchmarkRunTabProps) {
+  const { t } = useTranslation("common");
   const [benchmarkPickerSearch, setBenchmarkPickerSearch] = useState("");
   const latestRun = workspace.benchmarks[0] ?? null;
   const fastestRun = [...workspace.benchmarks].sort((left, right) => right.tokS - left.tokS)[0] ?? null;
@@ -90,8 +92,10 @@ export function BenchmarkRunTab({
   return (
     <div className="content-grid">
       <Panel
-        title="Run Benchmark"
-        subtitle="Launch a consistent benchmark run and see how this profile performs."
+        title={t("panels.runBenchmark", { defaultValue: "Run Benchmark" })}
+        subtitle={t("panels.runBenchmarkSubtitle", {
+          defaultValue: "Launch a consistent benchmark run and see how this profile performs.",
+        })}
         className="span-2 benchmark-run-page-panel"
       >
         <div className="benchmark-run-page">
@@ -350,16 +354,16 @@ export function BenchmarkRunTab({
             <div className="modal-body">
               {busyAction === "Running benchmark..." && benchmarkStartedAt ? (
                 <LiveProgress
-                  title="Running benchmark"
+                  title={t("benchmarkTab.progress.title", { defaultValue: "Running benchmark" })}
                   subtitle={benchmarkOption?.model ?? undefined}
                   startedAt={benchmarkStartedAt}
                   accent="benchmark"
                   phases={[
-                    { id: "load", label: "Loading model into memory", estimatedSeconds: 12 },
-                    { id: "warm", label: "Warming up KV cache", estimatedSeconds: 4 },
-                    { id: "prompt", label: "Processing prompt", estimatedSeconds: 3 },
-                    { id: "generate", label: `Generating ${benchmarkDraft.maxTokens} tokens`, estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
-                    { id: "measure", label: "Measuring stats", estimatedSeconds: 2 },
+                    { id: "load", label: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }), estimatedSeconds: 12 },
+                    { id: "warm", label: t("benchmarkTab.progress.phases.warm", { defaultValue: "Warming up KV cache" }), estimatedSeconds: 4 },
+                    { id: "prompt", label: t("benchmarkTab.progress.phases.prompt", { defaultValue: "Processing prompt" }), estimatedSeconds: 3 },
+                    { id: "generate", label: t("benchmarkTab.progress.phases.generate", { tokens: benchmarkDraft.maxTokens, defaultValue: `Generating ${benchmarkDraft.maxTokens} tokens` }), estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
+                    { id: "measure", label: t("benchmarkTab.progress.phases.measure", { defaultValue: "Measuring stats" }), estimatedSeconds: 2 },
                   ] as LiveProgressPhase[]}
                 />
               ) : benchmarkError ? (
@@ -448,7 +452,7 @@ export function BenchmarkRunTab({
       ) : null}
       <ModelLaunchModal
         open={showBenchmarkPicker}
-        title="Select Benchmark Model"
+        title={t("panels.selectBenchmarkModel", { defaultValue: "Select Benchmark Model" })}
         confirmLabel="Select"
         selectedKey={benchmarkOption?.key ?? threadModelOptions[0]?.key ?? ""}
         collapseOnOpen={Boolean(benchmarkOption?.key)}

@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from backend_service.i18n import localized_detail
+
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
     _all_attempts_lack_wheel,
@@ -178,9 +180,18 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
         if manual_message is not None:
             raise HTTPException(
                 status_code=400,
-                detail=manual_message.format(python=state.runtime.capabilities.pythonExecutable),
+                detail=localized_detail(
+                    request,
+                    manual_message.format(python=state.runtime.capabilities.pythonExecutable),
+                ),
             )
-        raise HTTPException(status_code=400, detail=f"Package '{body.package}' is not in the allowed install list.")
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(
+                request,
+                f"Package '{body.package}' is not in the allowed install list.",
+            ),
+        )
 
     python = state.runtime.capabilities.pythonExecutable
     # Persist installs to the user-writable extras dir (mirrors GPU bundle).
@@ -245,7 +256,13 @@ def install_system_package(request: Request, body: InstallPackageRequest) -> dic
     python_executable = state.runtime.capabilities.pythonExecutable
     cmd_template = _installable_system_packages(python_executable).get(body.package)
     if cmd_template is None:
-        raise HTTPException(status_code=400, detail=f"System package '{body.package}' is not in the allowed install list.")
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(
+                request,
+                f"System package '{body.package}' is not in the allowed install list.",
+            ),
+        )
 
     state.add_log("server", "info", f"Installing system package: {' '.join(cmd_template)}")
     try:

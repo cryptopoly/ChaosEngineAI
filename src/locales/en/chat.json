@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
+    "placeholderNoModel": "Load a model first — pick one from My Models or Discover, then hit CHAT.",
+    "send": "Send",
+    "stop": "Stop",
+    "clear": "Clear",
+    "sendDisabledTooltip": "Load a model first to send messages"
+  },
+  "thinkingMode": {
+    "label": "Thinking",
+    "tooltip": "Choose how much reasoning the model performs before answering. Off = direct answers; Low / Medium / High = increasing reasoning depth for capable models.",
+    "off": "Off",
+    "offTooltip": "No reasoning — model answers directly",
+    "low": "Low",
+    "lowTooltip": "Brief reasoning",
+    "medium": "Med",
+    "mediumTooltip": "Default reasoning depth",
+    "high": "High",
+    "highTooltip": "Extended reasoning"
+  },
+  "tools": {
+    "toggleLabel": "Tools",
+    "toggleOn": "Tools ON",
+    "enableTooltip": "Enable agent tools",
+    "enabledTooltip": "Tools enabled (web search, code, calculator, file reader)"
+  },
+  "newSession": "New session",
+  "newSessionTitle": "Untitled chat",
+  "deleteSession": "Delete session",
+  "deleteSessionConfirm": "Delete this chat? This cannot be undone.",
+  "renameSession": "Rename session",
+  "exportSession": "Export session",
+  "promptPlaceholder": "Send a message…",
+  "promptPlaceholderImage": "Describe an image, or drop one in to discuss…",
+  "stopGeneration": "Stop generation",
+  "regenerateResponse": "Regenerate response",
+  "branchHere": "Branch from this turn",
+  "copyMessage": "Copy message",
+  "copyAsMarkdown": "Copy as Markdown",
+  "tokensUsed": "{count, plural, one {# token} other {# tokens}}",
+  "thinking": "Thinking…",
+  "toolCall": {
+    "label": "Tool call",
+    "running": "Running tool: {tool}",
+    "succeeded": "Tool succeeded: {tool}",
+    "failed": "Tool failed: {tool}",
+    "noArguments": "(no arguments)",
+    "input": "Input",
+    "result": "Result"
+  },
+  "attachments": {
+    "image": "Attach image",
+    "document": "Attach document",
+    "code": "Attach code",
+    "removeAttachment": "Remove attachment"
+  },
+  "modelPicker": {
+    "label": "Model",
+    "noneSelected": "No model loaded",
+    "loadModel": "Load model"
+  },
+  "header": {
+    "expandChatList": "Expand chat list",
+    "chatsLabel": "Chats",
+    "threadName": "Thread name",
+    "selectModel": "Select Model",
+    "exportThread": "Export this thread",
+    "export": "Export",
+    "modelCapabilities": "Model capabilities",
+    "ready": "Ready",
+    "loadChatModel": "Load this chat's model",
+    "loading": "Loading...",
+    "loadModel": "Load model"
+  },
+  "sidebar": {
+    "title": "Chats",
+    "newThread": "New thread",
+    "compare": "Compare",
+    "compareTooltip": "Compare two models side-by-side",
+    "collapseChatList": "Collapse chat list",
+    "searchThreadsPlaceholder": "Search threads...",
+    "searchThreadsAriaLabel": "Search threads",
+    "clearSearch": "Clear search"
+  },
+  "swapMenu": {
+    "clearOverride": "Clear override",
+    "dialogAriaLabel": "Pick a model for the next turn",
+    "sendNextVia": "Send next via",
+    "oneTurnNote": "Override applies for one turn only.",
+    "noWarmModels": "No other warm models available. Load a second model from My Models to enable quick swaps."
+  },
+  "activeThread": {
+    "title": "Active Thread",
+    "subtitle": "Response metadata is collapsed by default, but available per agent turn."
+  },
+  "compare": {
+    "latest": "Latest"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Temperature: {value} (from launch settings)",
+    "overrideTooltip": "Temperature override: {value} (default {defaultValue_})",
+    "dialogAriaLabel": "Temperature override",
+    "overrideLabel": "Override temperature",
+    "reset": "Reset",
+    "hint": "Lower = focused. Higher = creative. Default {value} from launch settings."
+  },
+  "thread": {
+    "copyMessageTooltip": "Copy message",
+    "retryTooltip": "Retry response",
+    "forkTooltip": "Fork from here (creates a new thread)",
+    "delveTooltip": "Delve — re-read with a critic's eye and propose a revised answer",
+    "deleteMessageTooltip": "Delete message",
+    "loadExactSettingsTooltip": "Load the exact model and runtime settings used for this response"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Challenge title",
+    "promptPlaceholder": "Prompt all selected models with the same webpage challenge...",
+    "openBrowser": "Open in default browser",
+    "historyPlaceholder": "Search previous challenges...",
+    "moveToTrash": "Move to trash",
+    "moveToTrashAria": "Move \"{title}\" to trash",
+    "noMatching": "No matching challenges."
+  },
+  "samplerPanel": {
+    "label": "Samplers",
+    "openTooltip": "Open sampler panel",
+    "activeTooltip": "{count, plural, one {# sampler override active} other {# sampler overrides active}}",
+    "dialogAriaLabel": "Sampler overrides",
+    "headerTitle": "Sampler overrides",
+    "resetAll": "Reset all",
+    "resetAllTooltip": "Reset all to backend defaults"
+  },
+  "kvChip": {
+    "clearOverride": "Clear KV override",
+    "revertTooltip": "Revert to session default",
+    "dialogAriaLabel": "KV cache strategy",
+    "headingTitle": "KV cache for next turn",
+    "reloadNote": "Switching reloads the runtime if needed."
+  },
+  "citations": {
+    "sourcesLabel": "Sources:",
+    "pageInfo": "(page {page})",
+    "chunkLabel": "Chunk {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}s)",
+    "loadingWithElapsed": "Loading {name}... {seconds}s elapsed"
+  },
+  "promptPhase": {
+    "processingPrompt": "Processing prompt",
+    "generating": "Generating"
+  }
+}

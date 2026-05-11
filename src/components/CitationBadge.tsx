@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { CitationInfo } from "../types";
 
 interface CitationBadgeProps {
@@ -6,13 +7,14 @@ interface CitationBadgeProps {
 }
 
 export function CitationBadge({ citations }: CitationBadgeProps) {
+  const { t } = useTranslation("chat");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   if (!citations.length) return null;
 
   return (
     <div style={{ margin: "6px 0 2px", display: "flex", flexWrap: "wrap", gap: 4, alignItems: "flex-start" }}>
-      <span style={{ color: "#5a6574", fontSize: 11, lineHeight: "22px" }}>Sources:</span>
+      <span style={{ color: "#5a6574", fontSize: 11, lineHeight: "22px" }}>{t("citations.sourcesLabel", { defaultValue: "Sources:" })}</span>
       {citations.map((c, i) => (
         <span key={`${c.docId}-${c.chunkIndex}`} style={{ position: "relative" }}>
           <button
@@ -55,7 +57,9 @@ export function CitationBadge({ citations }: CitationBadgeProps) {
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: 4, color: "#8fb4ff" }}>
-                {c.docName} {c.page != null ? `(page ${c.page})` : ""} - Chunk {c.chunkIndex + 1}
+                {c.docName} {c.page != null
+                  ? t("citations.pageInfo", { page: c.page, defaultValue: `(page ${c.page})` })
+                  : ""} - {t("citations.chunkLabel", { index: c.chunkIndex + 1, defaultValue: `Chunk ${c.chunkIndex + 1}` })}
               </div>
               <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, color: "#9ea8b4" }}>
                 {c.preview}

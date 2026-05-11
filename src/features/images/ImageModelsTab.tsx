@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
@@ -126,6 +127,7 @@ export function ImageModelsTab({
   onOpenExternalUrl,
   onRevealPath,
 }: ImageModelsTabProps) {
+  const { t } = useTranslation("common");
   const [searchInput, setSearchInput] = useState("");
   const [taskFilter, setTaskFilter] = useState<"all" | ImageModelVariant["taskSupport"][number]>("all");
   const [statusFilter, setStatusFilter] = useState<InstalledImageStatusFilter>("all");
@@ -201,7 +203,7 @@ export function ImageModelsTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Installed Image Models"
+        title={t("panels.installedImageModels", { defaultValue: "Installed Image Models" })}
         subtitle={installedImageVariants.length > 0
           ? `${rows.length} of ${installedImageVariants.length} model${installedImageVariants.length !== 1 ? "s" : ""} with local data`
           : "No image models detected locally yet"}

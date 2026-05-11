@@ -81,6 +81,13 @@ export function syncStoppedBackend(current: WorkspaceData, runtimeInfo: TauriBac
 }
 
 export function settingsDraftFromWorkspace(settings: AppSettings): SettingsDraft {
+  // FU-042: ``"system"`` is the sentinel for "auto-detect at runtime"
+  // — we hand it through unchanged so the dropdown defaults to it for
+  // fresh installs.  Unknown explicit locales fall back to ``"en"`` in
+  // the i18n layer; the draft itself preserves whatever the user picked.
+  const clockRaw = settings?.clockFormat;
+  const clockFormat: SettingsDraft["clockFormat"] =
+    clockRaw === "12h" || clockRaw === "24h" || clockRaw === "system" ? clockRaw : "system";
   return {
     modelDirectories: settings?.modelDirectories ?? [],
     preferredServerPort: settings?.preferredServerPort ?? 8876,
@@ -94,5 +101,7 @@ export function settingsDraftFromWorkspace(settings: AppSettings): SettingsDraft
     dataDirectory: settings?.dataDirectory ?? "",
     imageOutputsDirectory: settings?.imageOutputsDirectory ?? "",
     videoOutputsDirectory: settings?.videoOutputsDirectory ?? "",
+    locale: settings?.locale ?? "system",
+    clockFormat,
   };
 }

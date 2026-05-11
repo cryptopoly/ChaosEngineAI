@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { WarmModel } from "../../types";
 
 /**
@@ -29,6 +30,7 @@ export function MidThreadSwapMenu({
   onSelect,
   disabled,
 }: MidThreadSwapMenuProps) {
+  const { t } = useTranslation("chat");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -76,8 +78,8 @@ export function MidThreadSwapMenu({
             className="swap-menu__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear override"
-            title="Clear override"
+            aria-label={t("swapMenu.clearOverride", { defaultValue: "Clear override" })}
+            title={t("swapMenu.clearOverride", { defaultValue: "Clear override" })}
             onClick={(e) => {
               e.stopPropagation();
               onSelect(null);
@@ -94,14 +96,20 @@ export function MidThreadSwapMenu({
         ) : null}
       </button>
       {open ? (
-        <div className="swap-menu__popover" role="dialog" aria-label="Pick a model for the next turn">
+        <div
+          className="swap-menu__popover"
+          role="dialog"
+          aria-label={t("swapMenu.dialogAriaLabel", { defaultValue: "Pick a model for the next turn" })}
+        >
           <div className="swap-menu__heading">
-            <strong>Send next via</strong>
-            <small>Override applies for one turn only.</small>
+            <strong>{t("swapMenu.sendNextVia", { defaultValue: "Send next via" })}</strong>
+            <small>{t("swapMenu.oneTurnNote", { defaultValue: "Override applies for one turn only." })}</small>
           </div>
           {candidates.length === 0 ? (
             <p className="muted-text" style={{ margin: "8px 0", fontSize: 11 }}>
-              No other warm models available. Load a second model from My Models to enable quick swaps.
+              {t("swapMenu.noWarmModels", {
+                defaultValue: "No other warm models available. Load a second model from My Models to enable quick swaps.",
+              })}
             </p>
           ) : (
             candidates.map((warm) => (

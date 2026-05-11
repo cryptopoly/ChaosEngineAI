@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
@@ -16,6 +17,7 @@ interface FineTuningTabProps {
 }
 
 export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
+  const { t } = useTranslation("common");
   const [adapters, setAdapters] = useState<Adapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [trainingStatus, setTrainingStatus] = useState<string | null>(null);
@@ -39,7 +41,13 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Panel title="LoRA Adapters" subtitle={`${adapters.length} adapter${adapters.length !== 1 ? "s" : ""} found`}>
+      <Panel
+        title={t("panels.loraAdapters", { defaultValue: "LoRA Adapters" })}
+        subtitle={t("panels.loraAdaptersFound", {
+          count: adapters.length,
+          defaultValue: "{{count}} adapters found",
+        })}
+      >
         {loading ? (
           <p className="muted-text">Loading adapters...</p>
         ) : adapters.length === 0 ? (
@@ -72,7 +80,10 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
         )}
       </Panel>
 
-      <Panel title="Fine-Tuning" subtitle={trainingStatus ?? "Ready"}>
+      <Panel
+        title={t("tabs.fineTuning")}
+        subtitle={trainingStatus ?? t("status.ready")}
+      >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 12 }}>
             Fine-tune models with QLoRA on Apple Silicon (MLX) or via llama.cpp.

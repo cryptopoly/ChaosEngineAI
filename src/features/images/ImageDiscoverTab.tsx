@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
@@ -167,6 +168,7 @@ export function ImageDiscoverTab({
   onOpenExternalUrl,
   onRevealPath,
 }: ImageDiscoverTabProps) {
+  const { t } = useTranslation("common");
   const [statusFilter, setStatusFilter] = useState<MediaStatusFilter>("all");
   const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir(imageDiscoverSort));
   const filteredResults = useMemo(
@@ -228,7 +230,7 @@ export function ImageDiscoverTab({
   return (
     <div className="image-discover-stack">
       <Panel
-        title="Image Discover"
+        title={t("tabs.imageDiscover")}
         subtitle={`${filteredResults.length} of ${combinedImageDiscoverResults.length} models / live Hugging Face metadata`}
       >
         <div className="image-hero">
@@ -361,7 +363,11 @@ export function ImageDiscoverTab({
       </Panel>
 
       {filteredResults.length === 0 ? (
-        <Panel title="Image Models" subtitle="No models match the current filters" className="image-discover-section-panel">
+        <Panel
+          title={t("tabs.imageModels")}
+          subtitle={t("panels.noModelsMatchFilters", { defaultValue: "No models match the current filters" })}
+          className="image-discover-section-panel"
+        >
           <div className="empty-state image-empty-state">
             <p>Try broadening the filters or search terms.</p>
           </div>

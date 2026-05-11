@@ -108,3 +108,79 @@ hosts. See FU-009 in CLAUDE.md.
   to ChaosEngineAI's MLX runtime. The draft model bundle is reused from
   DFlash. No upstream code is bundled verbatim; this is a re-implementation
   of the published algorithm.
+
+## Internationalization (FU-042)
+
+### i18next (frontend i18n framework)
+
+- **Upstream:** <https://github.com/i18next/i18next>
+- **Licence:** MIT
+- **Usage:** Core i18n runtime loaded at frontend boot
+  (`src/i18n/index.ts`). Powers namespace bundles + locale switching
+  for all React surfaces.
+
+### react-i18next
+
+- **Upstream:** <https://github.com/i18next/react-i18next>
+- **Licence:** MIT
+- **Usage:** React bindings (`useTranslation` hook, `<Trans>` component)
+  consumed throughout `src/components/` and `src/features/`.
+
+### i18next-icu
+
+- **Upstream:** <https://github.com/i18next/i18next-icu>
+- **Licence:** MIT
+- **Usage:** ICU MessageFormat backend for plural / select rules.
+  Required for correct Slavic 4-form plurals (`ru`), Polish 4-form
+  plurals (`pl`), and the zero/two/few categories needed for Arabic
+  (FU-046 RTL phase).
+
+### i18next-browser-languagedetector
+
+- **Upstream:** <https://github.com/i18next/i18next-browser-languageDetector>
+- **Licence:** MIT
+- **Usage:** Reads `navigator.language` + `navigator.languages` for the
+  initial locale negotiation when no OS / Tauri locale is available
+  (browser dev mode). In packaged builds the Tauri `tauri-plugin-os`
+  locale takes priority and this is a fallback only.
+
+### intl-messageformat
+
+- **Upstream:** <https://github.com/formatjs/formatjs>
+- **Licence:** BSD-3-Clause
+- **Usage:** Transitive dep of `i18next-icu` for the ICU parser. Listed
+  explicitly so its licence is acknowledged.
+
+### Babel (Python message catalogs)
+
+- **Upstream:** <https://github.com/python-babel/babel>
+- **Licence:** BSD-3-Clause
+- **Usage:** Backend gettext-style translation catalogs under
+  `backend_service/locales/{lang}/LC_MESSAGES/messages.{po,mo}`. The
+  `pybabel extract / update / compile` toolchain drives the workflow.
+  Lazy-imported per CLAUDE.md performance guidelines so it doesn't
+  cost startup on workers (mlx_worker, vllm, ddtree) that never read
+  translations.
+
+### rust-i18n
+
+- **Upstream:** <https://github.com/longbridgeapp/rust-i18n>
+- **Licence:** MIT
+- **Usage:** Compile-time message catalog macro for the Tauri shell
+  (`src-tauri/locales/*.yml`). Powers localized native menu / tray /
+  updater dialog strings via `t!("menu.file")`.
+
+### fluent-bundle
+
+- **Upstream:** <https://github.com/projectfluent/fluent-rs>
+- **Licence:** Apache-2.0
+- **Usage:** Runtime ICU-equivalent for plural / select / select-ordinal
+  in Rust. Complements `rust-i18n` for dynamic strings (e.g. updater
+  progress with plural categories) that need runtime composition.
+
+### unic-langid
+
+- **Upstream:** <https://github.com/zbraniecki/unic-locale>
+- **Licence:** MIT / Apache-2.0 dual
+- **Usage:** BCP-47 language tag parsing for `fluent-bundle`. Listed
+  explicitly as a transitive dep with permissive licensing.

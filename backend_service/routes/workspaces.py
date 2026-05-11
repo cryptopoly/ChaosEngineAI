@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.workspaces import WorkspaceRegistry
 
 router = APIRouter(prefix="/api/workspaces", tags=["workspaces"])
@@ -60,7 +61,10 @@ def update_workspace(
     registry = _get_registry(request)
     updated = registry.update(workspace_id, title=body.title, description=body.description)
     if updated is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, "Workspace not found"),
+        )
     return {"workspace": updated}
 
 
@@ -68,7 +72,10 @@ def update_workspace(
 def delete_workspace(request: Request, workspace_id: str) -> dict[str, Any]:
     registry = _get_registry(request)
     if not registry.delete(workspace_id):
-        raise HTTPException(status_code=404, detail="Workspace not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, "Workspace not found"),
+        )
     return {"deleted": True, "id": workspace_id}
 
 
@@ -81,7 +88,10 @@ async def upload_workspace_document(
     registry = _get_registry(request)
     workspace = registry.get(workspace_id)
     if workspace is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, "Workspace not found"),
+        )
     state = request.app.state.chaosengine
     raw = await file.read()
     return {
@@ -101,6 +111,9 @@ def delete_workspace_document(
 ) -> dict[str, Any]:
     registry = _get_registry(request)
     if registry.get(workspace_id) is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, "Workspace not found"),
+        )
     state = request.app.state.chaosengine
     return state.delete_workspace_document(workspace_id, doc_id)

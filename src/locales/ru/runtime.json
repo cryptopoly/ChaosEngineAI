@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Нативный движок вывода для Apple Silicon" },
+    "llamaCpp": { "name": "llama.cpp", "description": "GGUF-инференс через llama-server" },
+    "vllm": { "name": "vLLM", "description": "CUDA-движок вывода" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Нативный",
+      "description": "Встроенные типы кэша (f16, q8_0, q4_0 и т.д.). Максимальная совместимость."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "KV-квантование с поворотом Адамара. Сжатие 2–4× с минимальной потерей качества."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Sparse-attention компрессор для длинного контекста. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Кэш-хук только для диффузии. Ускорение ~1,8× на DiT-конвейерах."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Кэш на основе разложения Тейлора. Агрессивное ускорение, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Кэш на основе амплитуд. Без калибровки только для FLUX."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Только для диффузии, повторное использование attention между шагами."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Только для диффузии, кэш условного/безусловного повторного использования."
+    }
+  },
+  "controls": {
+    "engine": "Движок",
+    "cacheStrategy": "Стратегия кэша",
+    "cacheStrategyLockedNote": "(заблокировано на Native во время спекулятивного декодирования)",
+    "cacheType": "Тип кэша",
+    "speculativeDecoding": "Спекулятивное декодирование",
+    "draftModel": "Черновая модель",
+    "contextSize": "Размер контекста",
+    "gpuLayers": "Слои GPU",
+    "threads": "Потоки",
+    "fitInMemory": "Вместить в память"
+  },
+  "notes": {
+    "binaryRequired": "Требуется {binary}.",
+    "platformRequired": "Требуется {platform}.",
+    "engineIncompatible": "Несовместимо с {engine}.",
+    "unknownEngine": "Неизвестный движок."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "Первый токен: {ms} мс",
+    "vramUsed": "VRAM: {used} / {total}"
+  }
+}

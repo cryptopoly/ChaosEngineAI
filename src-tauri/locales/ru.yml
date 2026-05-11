@@ -1,0 +1,43 @@
+menu:
+  file: "Файл"
+  edit: "Правка"
+  view: "Вид"
+  window: "Окно"
+  help: "Справка"
+  quit: "Выйти из ChaosEngineAI"
+  preferences: "Настройки…"
+  about: "О ChaosEngineAI"
+  checkForUpdates: "Проверить обновления…"
+  reload: "Перезагрузить"
+  toggleDevTools: "Переключить инструменты разработчика"
+  toggleFullScreen: "Переключить полноэкранный режим"
+  minimize: "Свернуть"
+  zoom: "Масштаб"
+  bringAllToFront: "Все окна на передний план"
+  hideOthers: "Скрыть остальные"
+  showAll: "Показать все"
+  hide: "Скрыть ChaosEngineAI"
+
+tray:
+  show: "Показать ChaosEngineAI"
+  hide: "Скрыть ChaosEngineAI"
+  quit: "Выйти"
+  status:
+    idle: "Простаивает"
+    loading: "Загрузка модели…"
+    busy: "Генерация…"
+
+updater:
+  available: "Доступна новая версия ChaosEngineAI."
+  download: "Скачать"
+  later: "Позже"
+  installing: "Установка обновления…"
+  restartRequired: "Перезапустите, чтобы применить обновление."
+
+dialog:
+  ok: "ОК"
+  cancel: "Отмена"
+  save: "Сохранить"
+  open: "Открыть"
+  yes: "Да"
+  no: "Нет"

@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "Image Studio",
+    "subtitle": "Choose a model, prompt it, and iterate on saved outputs",
+    "savedOutputsLabel": "saved outputs",
+    "promptPanelTitle": "Prompt",
+    "promptPanelSubtitle": "Choose a model, set the aspect ratio and quality, then generate into the local gallery.",
+    "recentOutputsTitle": "Recent Outputs",
+    "prompt": "Prompt",
+    "negativePrompt": "Negative prompt",
+    "enhancePrompt": "Enhance",
+    "width": "Width",
+    "height": "Height",
+    "steps": "Steps",
+    "guidance": "Guidance",
+    "guidanceScale": "Guidance scale",
+    "seed": "Seed",
+    "seedRandom": "Random",
+    "sampler": "Sampler",
+    "scheduler": "Scheduler",
+    "batchSize": "Batch size",
+    "generate": "Generate image",
+    "generating": "Generating image…",
+    "queued": "Queued",
+    "decoding": "Decoding…",
+    "saveImage": "Save image",
+    "copyImage": "Copy image",
+    "openFolder": "Show in folder",
+    "modelLabel": "Model",
+    "noModelsOption": "No models installed — download one from Discover",
+    "aspectRatio": "Aspect Ratio",
+    "qualityPreset": "Quality Preset",
+    "previewLabel": "Preview",
+    "draftOn": "512px · on",
+    "draftOff": "Draft @ 512px",
+    "diffusionCache": "Diffusion cache",
+    "modal": {
+      "cancelling": "Cancelling...",
+      "generating": "Generating image",
+      "cancelled": "Image generation cancelled",
+      "failed": "Image generation failed",
+      "imagesReady": "Images ready",
+      "imageReady": "Image ready"
+    }
+  },
+  "video": {
+    "title": "Video Studio",
+    "prompt": "Prompt",
+    "negativePrompt": "Negative prompt",
+    "duration": "Duration",
+    "framesPerSecond": "Frames per second",
+    "frames": "Frames",
+    "resolution": "Resolution",
+    "generate": "Generate video",
+    "generating": "Generating video…",
+    "encoding": "Encoding…",
+    "saveVideo": "Save video",
+    "modelLabel": "Video Model",
+    "qualityPreset": "Quality preset",
+    "aspectRatio": "Aspect ratio",
+    "modal": {
+      "cancelling": "Cancelling...",
+      "generating": "Generating video",
+      "cancelled": "Video generation cancelled",
+      "failed": "Video generation failed",
+      "ready": "Video ready"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Step {current} of {total}",
+    "estimatedRemaining": "~{seconds} s remaining"
+  },
+  "advanced": {
+    "title": "Advanced",
+    "show": "Show advanced settings",
+    "hide": "Hide advanced settings"
+  },
+  "enhance": {
+    "label": "Enhance",
+    "busy": "Enhancing...",
+    "tooltip": "Enhance this prompt locally",
+    "error": "Enhancer error: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Loading model into memory..."
+  }
+}

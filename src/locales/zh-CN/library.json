@@ -1,0 +1,40 @@
+{
+  "title": "模型库",
+  "search": "搜索模型…",
+  "filter": {
+    "all": "全部",
+    "text": "文本",
+    "image": "图像",
+    "video": "视频",
+    "vision": "视觉",
+    "audio": "音频",
+    "installed": "已安装",
+    "uninstalled": "未安装",
+    "favourites": "收藏"
+  },
+  "card": {
+    "size": "大小",
+    "quantization": "量化",
+    "context": "上下文",
+    "capabilities": "能力",
+    "license": "许可证",
+    "author": "作者",
+    "lastUpdated": "最后更新"
+  },
+  "download": {
+    "start": "下载",
+    "inProgress": "下载中…",
+    "paused": "已暂停",
+    "resumed": "已恢复",
+    "cancelled": "已取消",
+    "complete": "已完成",
+    "totalSize": "共 {size}",
+    "downloaded": "已下载 {downloaded} / 共 {total}"
+  },
+  "details": {
+    "loadModel": "加载模型",
+    "unloadModel": "卸载模型",
+    "viewOnHF": "在 Hugging Face 查看",
+    "deleteFromDisk": "从磁盘删除"
+  }
+}

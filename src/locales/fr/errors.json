@@ -1,0 +1,33 @@
+{
+  "generic": "Une erreur est survenue.",
+  "network": "Erreur réseau. Vérifiez votre connexion.",
+  "timeout": "Délai d'attente dépassé.",
+  "notFound": "Introuvable.",
+  "permissionDenied": "Autorisation refusée.",
+  "diskFull": "Espace disque insuffisant.",
+  "outOfMemory": "Mémoire insuffisante.",
+  "modelLoadFailed": "Échec du chargement du modèle : {reason}",
+  "modelNotFound": "Modèle introuvable : {repo}",
+  "engineNotInstalled": "Moteur non installé : {engine}. Installez-le depuis l'onglet Configuration.",
+  "binaryMissing": "Binaire requis manquant : {binary}",
+  "downloadFailed": "Échec du téléchargement : {reason}",
+  "downloadCancelled": "Téléchargement annulé.",
+  "huggingFaceGated": "Ce modèle est restreint. Acceptez sa licence sur Hugging Face et réessayez.",
+  "huggingFaceAuthRequired": "Authentification requise. Définissez un jeton Hugging Face dans les Préférences.",
+  "incompatibleHardware": "Votre matériel ne répond pas aux exigences de ce modèle.",
+  "platformOnly": "Cette fonctionnalité nécessite {platform}.",
+  "unsupportedFormat": "Format de fichier non pris en charge : {format}",
+  "validationFailed": "Échec de la validation : {reason}",
+  "sessionCorrupt": "Les données de session sont corrompues et n'ont pas pu être chargées.",
+  "boundaryFallback": "Une erreur est survenue dans cet onglet.",
+  "boundaryHint": "Réessayez, changez d'onglet ou copiez les détails de l'erreur pour le diagnostic.",
+  "boundary": {
+    "scopeCrashed": "{scope} a planté",
+    "tryAgain": "Réessayer",
+    "copyDetails": "Copier les détails",
+    "stackTrace": "Trace de la pile",
+    "noJsStack": "(aucune pile JS capturée)",
+    "componentStack": "Pile des composants",
+    "hint": "Les erreurs frontend apparaissent aussi dans la console webview (en builds release, clic droit → Inspecter l'élément, ou lancez l'app avec npm run dev). Les journaux backend sont visibles dans l'onglet Diagnostic."
+  }
+}

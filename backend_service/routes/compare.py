@@ -15,6 +15,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend_service.i18n import localized_detail
+
 
 class CompareLaunchSettings(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -59,12 +61,18 @@ router = APIRouter()
 COMPARE_SLOT_IDS = ("a", "b", "c", "d")
 
 
-def resolve_compare_models(body: Any) -> list[CompareModelRequest]:
+def resolve_compare_models(body: Any, request: Request | None = None) -> list[CompareModelRequest]:
     models = list(body.models or [])
     if not models and body.modelA is not None and body.modelB is not None:
         models = [body.modelA, body.modelB]
     if len(models) < 2 or len(models) > 4:
-        raise HTTPException(status_code=422, detail="Compare requires between 2 and 4 models.")
+        message = "Compare requires between 2 and 4 models."
+        if request is not None:
+            raise HTTPException(
+                status_code=422,
+                detail=localized_detail(request, message),
+            )
+        raise HTTPException(status_code=422, detail=message)
     return models
 
 
@@ -78,7 +86,7 @@ def compare_models(request: Request, body: CompareRequest) -> StreamingResponse:
     - ``{"allDone": true}`` — all queued models finished
     """
     state = request.app.state.chaosengine
-    compare_models = resolve_compare_models(body)
+    compare_models = resolve_compare_models(body, request)
 
     def _sse_event(data: dict[str, Any]) -> str:
         return f"data: {json.dumps(data)}\n\n"

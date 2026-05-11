@@ -1,0 +1,33 @@
+{
+  "generic": "Algo salió mal.",
+  "network": "Error de red. Comprueba tu conexión.",
+  "timeout": "Tiempo de espera de la solicitud agotado.",
+  "notFound": "No encontrado.",
+  "permissionDenied": "Permiso denegado.",
+  "diskFull": "Espacio en disco insuficiente.",
+  "outOfMemory": "Memoria insuficiente.",
+  "modelLoadFailed": "Error al cargar el modelo: {reason}",
+  "modelNotFound": "Modelo no encontrado: {repo}",
+  "engineNotInstalled": "Motor no instalado: {engine}. Instálalo desde la pestaña Configuración.",
+  "binaryMissing": "Falta el binario requerido: {binary}",
+  "downloadFailed": "Descarga fallida: {reason}",
+  "downloadCancelled": "Descarga cancelada.",
+  "huggingFaceGated": "Este modelo está restringido. Acepta su licencia en Hugging Face e inténtalo de nuevo.",
+  "huggingFaceAuthRequired": "Autenticación requerida. Configura un token de Hugging Face en Preferencias.",
+  "incompatibleHardware": "Tu hardware no cumple los requisitos de este modelo.",
+  "platformOnly": "Esta función requiere {platform}.",
+  "unsupportedFormat": "Formato de archivo no admitido: {format}",
+  "validationFailed": "Validación fallida: {reason}",
+  "sessionCorrupt": "Los datos de la sesión están dañados y no se pudieron cargar.",
+  "boundaryFallback": "Ha ocurrido un error en esta pestaña.",
+  "boundaryHint": "Reintenta, cambia de pestaña o copia los detalles del error para diagnóstico.",
+  "boundary": {
+    "scopeCrashed": "{scope} se bloqueó",
+    "tryAgain": "Reintentar",
+    "copyDetails": "Copiar detalles",
+    "stackTrace": "Trazado de pila",
+    "noJsStack": "(no se capturó la pila JS)",
+    "componentStack": "Pila de componentes",
+    "hint": "Los errores del frontend también aparecen en la consola del webview (en builds de release, clic derecho → Inspeccionar elemento, o ejecuta la app con npm run dev). Los registros del backend están visibles en la pestaña Diagnóstico."
+  }
+}

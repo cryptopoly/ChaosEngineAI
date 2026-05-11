@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
@@ -203,6 +204,7 @@ export function ImageStudioTab({
   onRevealPath,
   onDeleteImageArtifact,
 }: ImageStudioTabProps) {
+  const { t } = useTranslation("studio");
   const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
   // Per-configuration acknowledgement that unlocks Generate when the image
   // safety heuristic flags a danger-level run. Image OOMs on MPS are less
@@ -361,10 +363,10 @@ export function ImageStudioTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Image Studio"
+        title={t("image.title")}
         subtitle={selectedImageVariant
-          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtime} / ${imageOutputs.length} saved outputs`
-          : "Choose a model, prompt it, and iterate on saved outputs"}
+          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtime} / ${imageOutputs.length} ${t("image.savedOutputsLabel", { defaultValue: "saved outputs" })}`
+          : t("image.subtitle", { defaultValue: "Choose a model, prompt it, and iterate on saved outputs" })}
         className="span-2"
         actions={
           <div className="button-row">
@@ -422,8 +424,10 @@ export function ImageStudioTab({
       </Panel>
 
       <Panel
-        title="Prompt"
-        subtitle="Choose a model, set the aspect ratio and quality, then generate into the local gallery."
+        title={t("image.promptPanelTitle", { defaultValue: "Prompt" })}
+        subtitle={t("image.promptPanelSubtitle", {
+          defaultValue: "Choose a model, set the aspect ratio and quality, then generate into the local gallery.",
+        })}
         className="image-studio-form-panel"
         actions={
           <button
@@ -433,13 +437,15 @@ export function ImageStudioTab({
             disabled={imageGenerateDisabled}
             title={imageGenerateTitle}
           >
-            {imageBusy ? "Generating..." : "Generate"}
+            {imageBusy
+              ? t("image.generating", { defaultValue: "Generating..." })
+              : t("image.generate", { defaultValue: "Generate" })}
           </button>
         }
       >
         <div className="image-form-stack">
           <label>
-            Model
+            {t("image.modelLabel", { defaultValue: "Model" })}
             <select
               className="text-input"
               value={hasInstalledImageModels ? selectedImageModelId : ""}
@@ -457,7 +463,7 @@ export function ImageStudioTab({
                   </optgroup>
                 ))
               ) : (
-                <option value="">No models installed — download one from Discover</option>
+                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Discover" })}</option>
               )}
             </select>
           </label>
@@ -578,7 +584,7 @@ export function ImageStudioTab({
           </label>
 
           <label>
-            Negative prompt
+            {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
             <textarea
               className="text-input prompt-area prompt-area--secondary"
               rows={3}
@@ -589,7 +595,7 @@ export function ImageStudioTab({
           </label>
 
           <div className="control-stack">
-            <span className="eyebrow">Aspect Ratio</span>
+            <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
             <div className="image-pill-row">
               {IMAGE_RATIO_PRESETS.map((preset) => (
                 <button
@@ -606,7 +612,7 @@ export function ImageStudioTab({
           </div>
 
           <div className="control-stack">
-            <span className="eyebrow">Quality Preset</span>
+            <span className="eyebrow">{t("image.qualityPreset", { defaultValue: "Quality Preset" })}</span>
             <div className="image-pill-row">
               {IMAGE_QUALITY_PRESETS.map((preset) => (
                 <button
@@ -625,8 +631,10 @@ export function ImageStudioTab({
                 onClick={() => onImageDraftModeChange(!imageDraftMode)}
                 title="Force a 512px long-edge render for fast prompt iteration. Output saves at the draft size — disable for a full-resolution final pass."
               >
-                <strong>Preview</strong>
-                <span>{imageDraftMode ? "512px · on" : "Draft @ 512px"}</span>
+                <strong>{t("image.previewLabel", { defaultValue: "Preview" })}</strong>
+                <span>{imageDraftMode
+                  ? t("image.draftOn", { defaultValue: "512px · on" })
+                  : t("image.draftOff", { defaultValue: "Draft @ 512px" })}</span>
               </button>
             </div>
           </div>
@@ -634,7 +642,7 @@ export function ImageStudioTab({
           {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
             <div className="control-stack">
               <span className="eyebrow">
-                Sampler
+                {t("image.sampler", { defaultValue: "Sampler" })}
                 <InfoTooltip text="Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise." />
               </span>
               <select
@@ -663,7 +671,7 @@ export function ImageStudioTab({
           {selectedImageVariant && !isUnetVariant ? (
             <div className="control-stack">
               <span className="eyebrow">
-                Diffusion cache
+                {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
                 <InfoTooltip text="Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point." />
               </span>
               <select
@@ -949,7 +957,7 @@ export function ImageStudioTab({
       </Panel>
 
       <Panel
-        title="Recent Outputs"
+        title={t("image.recentOutputsTitle", { defaultValue: "Recent Outputs" })}
         subtitle={imageOutputs.length > 0 ? `${recentImageOutputs.length} newest of ${imageOutputs.length} saved generations` : "Generated images will appear here"}
         className="image-gallery-panel"
         actions={

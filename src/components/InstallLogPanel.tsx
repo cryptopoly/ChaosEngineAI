@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { GpuBundleJobState, LongLiveJobState } from "../api";
 
 // The panel renders either kind of install job — GPU bundle or LongLive.
@@ -38,6 +40,7 @@ interface InstallLogPanelProps {
 // leave it visible and watch the install tail like a ``tail -f``.
 
 export function InstallLogPanel({ job, variant = "gpu-bundle" }: InstallLogPanelProps) {
+  const { t } = useTranslation("setup");
   const scrollRef = useRef<HTMLPreElement | null>(null);
 
   // Auto-scroll to the newest output whenever attempts grow. We don't
@@ -56,21 +59,21 @@ export function InstallLogPanel({ job, variant = "gpu-bundle" }: InstallLogPanel
   if (!hasOutput) return null;
 
   const openByDefault = job.phase === "error" || Boolean(job.error);
-  const stepLabel = formatStepCounter(job);
-  const statusLabel = formatStatusLabel(job, variant);
+  const stepLabel = formatStepCounter(job, t);
+  const statusLabel = formatStatusLabel(job, variant, t);
 
   return (
     <details className="install-log-panel" open={openByDefault}>
       <summary className="install-log-summary">{statusLabel}</summary>
       <div className="install-log-body">
-        <InstallLogMeta job={job} />
+        <InstallLogMeta job={job} t={t} />
         <div className="install-log-step-line">{stepLabel}</div>
         <pre ref={scrollRef} className="install-log-terminal">
-          {renderTerminal(job)}
+          {renderTerminal(job, t)}
         </pre>
         {job.message && (job.phase === "done" || job.phase === "error") ? (
           <div className="install-log-final">
-            <strong>Final status:</strong> {job.message}
+            <strong>{t("installLog.finalStatus", { defaultValue: "Final status:" })}</strong> {job.message}
           </div>
         ) : null}
       </div>
@@ -78,36 +81,38 @@ export function InstallLogPanel({ job, variant = "gpu-bundle" }: InstallLogPanel
   );
 }
 
-function InstallLogMeta({ job }: { job: InstallJobState }) {
+function InstallLogMeta({ job, t }: { job: InstallJobState; t: TFunction }) {
   // Line of context shown above the terminal. The target dir is
   // load-bearing: if the install appears to "succeed" but the app
   // still shows CPU, it's almost always because the backend wasn't
   // restarted (PYTHONPATH on the running process is fixed at spawn).
   const fragments: string[] = [];
-  if (job.targetDir) fragments.push(`Target: ${job.targetDir}`);
+  if (job.targetDir) fragments.push(t("installLog.meta.target", { dir: job.targetDir, defaultValue: `Target: ${job.targetDir}` }));
   // GPU-bundle-only fields. Reading via a typed-narrowed alias keeps
   // both job shapes flowing through this component without runtime
   // ``in`` checks per field.
   const meta = job as InstallJobState & InstallJobMetaFields;
-  if (meta.pythonVersion) fragments.push(`Python ${meta.pythonVersion}`);
-  if (meta.indexUrlUsed) fragments.push(`CUDA index: ${meta.indexUrlUsed}`);
-  if (meta.cudaVerified === true) fragments.push("CUDA verified");
-  if (meta.cudaVerified === false && job.phase === "done") fragments.push("CUDA verification failed");
-  if (meta.noWheelForPython) fragments.push("No CUDA wheel for this Python");
+  if (meta.pythonVersion) fragments.push(t("installLog.meta.python", { version: meta.pythonVersion, defaultValue: `Python ${meta.pythonVersion}` }));
+  if (meta.indexUrlUsed) fragments.push(t("installLog.meta.cudaIndex", { url: meta.indexUrlUsed, defaultValue: `CUDA index: ${meta.indexUrlUsed}` }));
+  if (meta.cudaVerified === true) fragments.push(t("installLog.meta.cudaVerified", { defaultValue: "CUDA verified" }));
+  if (meta.cudaVerified === false && job.phase === "done") fragments.push(t("installLog.meta.cudaVerificationFailed", { defaultValue: "CUDA verification failed" }));
+  if (meta.noWheelForPython) fragments.push(t("installLog.meta.noWheelForPython", { defaultValue: "No CUDA wheel for this Python" }));
   if (fragments.length === 0) return null;
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive"): string {
-  const noun = variant === "longlive" ? "LongLive install" : "Install";
-  if (job.phase === "error" || job.error) return `${noun} failed — see log`;
-  if (job.phase === "done") return `${noun} complete — see log`;
-  if (job.phase === "preflight") return `${noun} starting…`;
-  if (job.phase === "verifying") return "Verifying CUDA…";
-  return `${noun} in progress`;
+function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive", t: TFunction): string {
+  const noun = variant === "longlive"
+    ? t("installLog.statusNoun.longlive", { defaultValue: "LongLive install" })
+    : t("installLog.statusNoun.gpuBundle", { defaultValue: "Install" });
+  if (job.phase === "error" || job.error) return t("installLog.status.failed", { noun, defaultValue: `${noun} failed — see log` });
+  if (job.phase === "done") return t("installLog.status.complete", { noun, defaultValue: `${noun} complete — see log` });
+  if (job.phase === "preflight") return t("installLog.status.starting", { noun, defaultValue: `${noun} starting…` });
+  if (job.phase === "verifying") return t("installLog.status.verifyingCuda", { defaultValue: "Verifying CUDA…" });
+  return t("installLog.status.inProgress", { noun, defaultValue: `${noun} in progress` });
 }
 
-function formatStepCounter(job: InstallJobState): string {
+function formatStepCounter(job: InstallJobState, t: TFunction): string {
   // Packages-complete counter. The backend tracks packages via
   // packageIndex / packageTotal; torch also has a two-pass install
   // (CUDA-index walk for the wheel + dep-pass for transitive deps)
@@ -135,22 +140,22 @@ function formatStepCounter(job: InstallJobState): string {
   }
   const done = packagesDone.size > 0 ? packagesDone.size : phaseStepsDone;
   const total = Math.max(job.packageTotal || 0, done, 1);
-  const current = job.packageCurrent ?? "(waiting)";
+  const current = job.packageCurrent ?? t("installLog.step.waiting", { defaultValue: "(waiting)" });
   const percent = Math.max(0, Math.min(100, Math.round(job.percent)));
   if (job.phase === "error" || job.phase === "done") {
-    return `Final: ${done}/${total} packages · ${percent}%`;
+    return t("installLog.step.final", { done, total, percent, defaultValue: `Final: ${done}/${total} packages · ${percent}%` });
   }
-  return `Step ${done}/${total}: ${current} · ${percent}%`;
+  return t("installLog.step.current", { done, total, current, percent, defaultValue: `Step ${done}/${total}: ${current} · ${percent}%` });
 }
 
-function renderTerminal(job: InstallJobState): string {
+function renderTerminal(job: InstallJobState, t: TFunction): string {
   // One big string of per-attempt sections, each prefixed with a
   // status marker so you can scan down the left edge for failures.
   // pip's own output is indented two spaces — keeps our marker visible.
   const lines: string[] = [];
   for (const attempt of job.attempts) {
     const marker = attempt.ok ? "[ OK ]" : "[FAIL]";
-    lines.push(`${marker} ${attemptLabel(attempt)}`);
+    lines.push(`${marker} ${attemptLabel(attempt, t)}`);
     if (attempt.output) {
       const body = filterPipNoise(attempt.output);
       if (body) {
@@ -162,27 +167,27 @@ function renderTerminal(job: InstallJobState): string {
     lines.push(""); // blank line between attempts for legibility
   }
   if (job.phase !== "done" && job.phase !== "error") {
-    const spinner = job.message || "working…";
+    const spinner = job.message || t("installLog.terminal.working", { defaultValue: "working…" });
     lines.push(`[....] ${spinner}`);
   }
   return lines.join("\n");
 }
 
-function attemptLabel(attempt: InstallJobState["attempts"][number]): string {
+function attemptLabel(attempt: InstallJobState["attempts"][number], t: TFunction): string {
   // Attempts from the worker come in four shapes:
   //   - torch CUDA swap: { indexUrl, ok, output }
   //   - torch deps pass: { indexUrl, phase: "deps", ok, output }
   //   - per-package pip: { package, ok, output }
   //   - cuda verify:     { phase: "verify", ok, output }
-  if (attempt.phase === "verify") return "Verify torch.cuda.is_available()";
-  if (attempt.phase === "deps" && attempt.indexUrl) return `torch deps (from ${attempt.indexUrl})`;
-  if (attempt.phase === "torch-cleanup") return "Clean stale torch files";
-  if (attempt.phase === "torch-repair") return "Repair CUDA torch wheel";
-  if (attempt.phase === "constraint") return "Pin torch version";
-  if (attempt.indexUrl) return `torch (from ${attempt.indexUrl})`;
-  if (attempt.package) return `pip install ${attempt.package}`;
+  if (attempt.phase === "verify") return t("installLog.attempt.verifyCuda", { defaultValue: "Verify torch.cuda.is_available()" });
+  if (attempt.phase === "deps" && attempt.indexUrl) return t("installLog.attempt.torchDeps", { url: attempt.indexUrl, defaultValue: `torch deps (from ${attempt.indexUrl})` });
+  if (attempt.phase === "torch-cleanup") return t("installLog.attempt.torchCleanup", { defaultValue: "Clean stale torch files" });
+  if (attempt.phase === "torch-repair") return t("installLog.attempt.torchRepair", { defaultValue: "Repair CUDA torch wheel" });
+  if (attempt.phase === "constraint") return t("installLog.attempt.constraint", { defaultValue: "Pin torch version" });
+  if (attempt.indexUrl) return t("installLog.attempt.torchFromIndex", { url: attempt.indexUrl, defaultValue: `torch (from ${attempt.indexUrl})` });
+  if (attempt.package) return t("installLog.attempt.pipInstall", { pkg: attempt.package, defaultValue: `pip install ${attempt.package}` });
   if (attempt.phase) return attempt.phase;
-  return "step";
+  return t("installLog.attempt.step", { defaultValue: "step" });
 }
 
 // Regexes that identify pip's dep-resolver warnings. These fire when

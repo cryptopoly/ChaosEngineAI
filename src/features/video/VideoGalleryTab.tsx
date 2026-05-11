@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { fetchVideoOutputBlobUrl } from "../../api";
 import type { TabId, VideoOutputArtifact } from "../../types";
@@ -21,6 +22,7 @@ export function VideoGalleryTab({
   onRevealPath,
   onDeleteVideoArtifact,
 }: VideoGalleryTabProps) {
+  const { t } = useTranslation("common");
   const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
@@ -35,7 +37,7 @@ export function VideoGalleryTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Video Gallery"
+        title={t("tabs.videoGallery")}
         subtitle={
           videoOutputs.length > 0
             ? `${videoOutputs.length} saved clip${videoOutputs.length === 1 ? "" : "s"}`

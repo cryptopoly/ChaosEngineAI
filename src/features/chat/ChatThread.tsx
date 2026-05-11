@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CitationBadge } from "../../components/CitationBadge";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { PromptPhaseIndicator } from "../../components/PromptPhaseIndicator";
@@ -94,6 +95,7 @@ export function ChatThread({
   onCancelGeneration,
   onLoadModel,
 }: ChatThreadProps) {
+  const { t } = useTranslation("chat");
   return (
     <div
       className="message-list message-scroll"
@@ -134,7 +136,7 @@ export function ChatThread({
                     <button
                       type="button"
                       className="message-action-btn"
-                      title="Copy message"
+                      title={t("thread.copyMessageTooltip", { defaultValue: "Copy message" })}
                       onClick={() => onCopyMessage(message.text)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -146,7 +148,7 @@ export function ChatThread({
                       <button
                         type="button"
                         className="message-action-btn"
-                        title="Retry response"
+                        title={t("thread.retryTooltip", { defaultValue: "Retry response" })}
                         onClick={() => void onRetryMessage(index)}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -160,7 +162,7 @@ export function ChatThread({
                       <button
                         type="button"
                         className="message-action-btn"
-                        title="Fork from here (creates a new thread)"
+                        title={t("thread.forkTooltip", { defaultValue: "Fork from here (creates a new thread)" })}
                         onClick={() => void onForkAtMessage(index)}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -183,7 +185,7 @@ export function ChatThread({
                       <button
                         type="button"
                         className="message-action-btn"
-                        title="Delve — re-read with a critic's eye and propose a revised answer"
+                        title={t("thread.delveTooltip", { defaultValue: "Delve — re-read with a critic's eye and propose a revised answer" })}
                         onClick={() => void onDelveMessage(index)}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -197,7 +199,7 @@ export function ChatThread({
                     <button
                       type="button"
                       className="message-action-btn message-action-delete"
-                      title="Delete message"
+                      title={t("thread.deleteMessageTooltip", { defaultValue: "Delete message" })}
                       onClick={() => onDeleteMessage(index)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -407,7 +409,7 @@ export function ChatThread({
                     className="secondary-button message-reload-settings"
                     type="button"
                     disabled={busy}
-                    title="Load the exact model and runtime settings used for this response"
+                    title={t("thread.loadExactSettingsTooltip", { defaultValue: "Load the exact model and runtime settings used for this response" })}
                     onClick={() => {
                       const ref = message.metrics!.modelRef ?? activeChat?.modelRef;
                       if (!ref) return;

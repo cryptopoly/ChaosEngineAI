@@ -1,0 +1,63 @@
+{
+  "liveStats": {
+    "title": "Statistiques système en direct",
+    "subtitle": "Rafraîchies depuis le sidecar Python afin que le shell de bureau puisse formuler des recommandations d'ajustement.",
+    "runtimeEngine": "Moteur d'exécution",
+    "noModelLoaded": "Aucun modèle chargé",
+    "inferenceActivity": "Activité d'inférence",
+    "activeCount": "{count} actifs",
+    "totalServed": "{count} servis au total",
+    "warmPool": "Pool chaud",
+    "warmModelCount": "{count, plural, one {# modèle} other {# modèles}}",
+    "noWarmModels": "Aucun modèle chaud",
+    "modelDisk": "Disque des modèles",
+    "diskFree": "{value} Go libres",
+    "diskTotal": "{value} Go au total",
+    "spareHeadroom": "Marge disponible",
+    "spareHeadroomValue": "{value} Go",
+    "workingHeadroom": "{value}% de marge de travail",
+    "memoryInUse": "Mémoire utilisée",
+    "memoryUsedLabel": "{used} Go / {total} Go",
+    "memoryPressure": "Pression mémoire",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} Go compressés",
+    "swapUsage": "Utilisation du swap",
+    "swapLabel": "{used} Go",
+    "swapLabelWithTotal": "{used} Go / {total} Go",
+    "cpuLoad": "Charge CPU",
+    "cpuLabel": "{value}%",
+    "headroomFor": "Marge pour {target}",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "Alimentation",
+      "charging": "En charge",
+      "acPower": "Secteur",
+      "onBattery": "Sur batterie",
+      "lowNotice": "Débranché — l'inférence peut ralentir sous pression thermique"
+    },
+    "processes": {
+      "name": "Processus",
+      "owner": "Propriétaire",
+      "memory": "Mémoire",
+      "cpu": "CPU",
+      "active": "ACTIF",
+      "warm": "CHAUD",
+      "system": "Système",
+      "empty": "Aucun processus LLM local actif détecté.",
+      "memoryGb": "{value} Go",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "Adéquation matérielle",
+    "subtitle": "Conseils relatifs au profil cible recommandé pour cette machine.",
+    "recommendedTarget": "Cible recommandée",
+    "currentRuntime": "Environnement d'exécution actuel",
+    "modelLoadedVia": "{model} chargé via {engine}.",
+    "noModelHint": "Aucun modèle chargé pour l'instant. Choisissez un modèle de thread dans Discussion ou parcourez une famille plus récente dans Découvrir."
+  },
+  "activityFeed": {
+    "title": "Flux d'activité",
+    "subtitle": "Événements opérationnels qui doivent rester visibles sans plonger dans les journaux."
+  }
+}

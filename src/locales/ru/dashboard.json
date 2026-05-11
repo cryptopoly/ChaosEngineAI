@@ -1,0 +1,63 @@
+{
+  "liveStats": {
+    "title": "Живая статистика системы",
+    "subtitle": "Обновляется из Python-сайдкара, чтобы оболочка рабочего стола могла давать рекомендации по соответствию.",
+    "runtimeEngine": "Движок среды выполнения",
+    "noModelLoaded": "Модель не загружена",
+    "inferenceActivity": "Активность вывода",
+    "activeCount": "{count} активных",
+    "totalServed": "Всего обслужено: {count}",
+    "warmPool": "Тёплый пул",
+    "warmModelCount": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}}",
+    "noWarmModels": "Нет тёплых моделей",
+    "modelDisk": "Диск моделей",
+    "diskFree": "Свободно {value} ГБ",
+    "diskTotal": "Всего {value} ГБ",
+    "spareHeadroom": "Запас",
+    "spareHeadroomValue": "{value} ГБ",
+    "workingHeadroom": "{value}% рабочего запаса",
+    "memoryInUse": "Используется памяти",
+    "memoryUsedLabel": "{used} ГБ / {total} ГБ",
+    "memoryPressure": "Давление памяти",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} ГБ сжато",
+    "swapUsage": "Использование подкачки",
+    "swapLabel": "{used} ГБ",
+    "swapLabelWithTotal": "{used} ГБ / {total} ГБ",
+    "cpuLoad": "Загрузка ЦП",
+    "cpuLabel": "{value}%",
+    "headroomFor": "Запас для {target}",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "Питание",
+      "charging": "Заряжается",
+      "acPower": "От сети",
+      "onBattery": "От батареи",
+      "lowNotice": "Отключено от сети — вывод может замедлиться при тепловом давлении"
+    },
+    "processes": {
+      "name": "Процесс",
+      "owner": "Владелец",
+      "memory": "Память",
+      "cpu": "ЦП",
+      "active": "АКТИВНО",
+      "warm": "ТЁПЛЫЙ",
+      "system": "Система",
+      "empty": "Активные локальные LLM-процессы не обнаружены.",
+      "memoryGb": "{value} ГБ",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "Соответствие оборудования",
+    "subtitle": "Руководство относительно рекомендуемого целевого профиля для этой машины.",
+    "recommendedTarget": "Рекомендуемая цель",
+    "currentRuntime": "Текущая среда выполнения",
+    "modelLoadedVia": "{model} загружена через {engine}.",
+    "noModelHint": "Модель пока не загружена. Выберите модель потока в Чате или просмотрите более новое семейство в Обзоре."
+  },
+  "activityFeed": {
+    "title": "Лента активности",
+    "subtitle": "Операционные события, которые должны быть видны без копания в журналах."
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "title": "Bibliothèque",
+  "search": "Rechercher des modèles…",
+  "filter": {
+    "all": "Tous",
+    "text": "Texte",
+    "image": "Image",
+    "video": "Vidéo",
+    "vision": "Vision",
+    "audio": "Audio",
+    "installed": "Installé",
+    "uninstalled": "Non installé",
+    "favourites": "Favoris"
+  },
+  "card": {
+    "size": "Taille",
+    "quantization": "Quantification",
+    "context": "Contexte",
+    "capabilities": "Fonctionnalités",
+    "license": "Licence",
+    "author": "Auteur",
+    "lastUpdated": "Dernière mise à jour"
+  },
+  "download": {
+    "start": "Télécharger",
+    "inProgress": "Téléchargement…",
+    "paused": "En pause",
+    "resumed": "Repris",
+    "cancelled": "Annulé",
+    "complete": "Terminé",
+    "totalSize": "{size} au total",
+    "downloaded": "{downloaded} sur {total}"
+  },
+  "details": {
+    "loadModel": "Charger le modèle",
+    "unloadModel": "Décharger le modèle",
+    "viewOnHF": "Voir sur Hugging Face",
+    "deleteFromDisk": "Supprimer du disque"
+  }
+}

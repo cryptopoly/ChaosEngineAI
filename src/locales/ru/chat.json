@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Введите сообщение… (Enter — отправить, Shift+Enter — новая строка, / — команды)",
+    "placeholderNoModel": "Сначала загрузите модель — выберите её в «Мои модели» или «Обзор», затем нажмите «Чат».",
+    "send": "Отправить",
+    "stop": "Стоп",
+    "clear": "Очистить",
+    "sendDisabledTooltip": "Сначала загрузите модель, чтобы отправлять сообщения"
+  },
+  "thinkingMode": {
+    "label": "Размышление",
+    "tooltip": "Выберите, сколько модель размышляет перед ответом. Выкл = прямые ответы; Низк / Сред / Выс = постепенно растущая глубина размышления для подходящих моделей.",
+    "off": "Выкл",
+    "offTooltip": "Без размышления — модель отвечает напрямую",
+    "low": "Низк",
+    "lowTooltip": "Краткое размышление",
+    "medium": "Сред",
+    "mediumTooltip": "Стандартная глубина размышления",
+    "high": "Выс",
+    "highTooltip": "Расширенное размышление"
+  },
+  "tools": {
+    "toggleLabel": "Инструменты",
+    "toggleOn": "Инструменты ВКЛ",
+    "enableTooltip": "Включить инструменты агента",
+    "enabledTooltip": "Инструменты включены (веб-поиск, код, калькулятор, чтение файлов)"
+  },
+  "newSession": "Новая сессия",
+  "newSessionTitle": "Безымянный чат",
+  "deleteSession": "Удалить сессию",
+  "deleteSessionConfirm": "Удалить этот чат? Действие нельзя отменить.",
+  "renameSession": "Переименовать сессию",
+  "exportSession": "Экспортировать сессию",
+  "promptPlaceholder": "Отправить сообщение…",
+  "promptPlaceholderImage": "Опишите изображение или перетащите его сюда для обсуждения…",
+  "stopGeneration": "Остановить генерацию",
+  "regenerateResponse": "Перегенерировать ответ",
+  "branchHere": "Создать ветку отсюда",
+  "copyMessage": "Копировать сообщение",
+  "copyAsMarkdown": "Копировать как Markdown",
+  "tokensUsed": "{count, plural, one {# токен} few {# токена} many {# токенов} other {# токена}}",
+  "thinking": "Размышляет…",
+  "toolCall": {
+    "label": "Вызов инструмента",
+    "running": "Выполняется инструмент: {tool}",
+    "succeeded": "Инструмент выполнен: {tool}",
+    "failed": "Инструмент не удался: {tool}",
+    "noArguments": "(без аргументов)",
+    "input": "Вход",
+    "result": "Результат"
+  },
+  "attachments": {
+    "image": "Прикрепить изображение",
+    "document": "Прикрепить документ",
+    "code": "Прикрепить код",
+    "removeAttachment": "Удалить вложение"
+  },
+  "modelPicker": {
+    "label": "Модель",
+    "noneSelected": "Модель не загружена",
+    "loadModel": "Загрузить модель"
+  },
+  "header": {
+    "expandChatList": "Развернуть список чатов",
+    "chatsLabel": "Чаты",
+    "threadName": "Название потока",
+    "selectModel": "Выбрать модель",
+    "exportThread": "Экспортировать этот поток",
+    "export": "Экспорт",
+    "modelCapabilities": "Возможности модели",
+    "ready": "Готово",
+    "loadChatModel": "Загрузить модель этого чата",
+    "loading": "Загрузка...",
+    "loadModel": "Загрузить модель"
+  },
+  "sidebar": {
+    "title": "Чаты",
+    "newThread": "Новый поток",
+    "compare": "Сравнение",
+    "compareTooltip": "Сравнить две модели бок о бок",
+    "collapseChatList": "Свернуть список чатов",
+    "searchThreadsPlaceholder": "Поиск потоков...",
+    "searchThreadsAriaLabel": "Поиск потоков",
+    "clearSearch": "Очистить поиск"
+  },
+  "swapMenu": {
+    "clearOverride": "Сбросить переопределение",
+    "dialogAriaLabel": "Выберите модель для следующего хода",
+    "sendNextVia": "Отправить следующее через",
+    "oneTurnNote": "Переопределение действует только для одного хода.",
+    "noWarmModels": "Нет других тёплых моделей. Загрузите вторую модель из «Мои модели», чтобы включить быстрое переключение."
+  },
+  "activeThread": {
+    "title": "Активный поток",
+    "subtitle": "Метаданные ответа свёрнуты по умолчанию, но доступны для каждого хода агента."
+  },
+  "compare": {
+    "latest": "Последние"
+  },
+  "tempChip": {
+    "label": "Темп {value}",
+    "tooltip": "Температура: {value} (из настроек запуска)",
+    "overrideTooltip": "Переопределение температуры: {value} (по умолчанию {defaultValue_})",
+    "dialogAriaLabel": "Переопределение температуры",
+    "overrideLabel": "Переопределить температуру",
+    "reset": "Сбросить",
+    "hint": "Ниже = сфокусировано. Выше = креативно. По умолчанию {value} из настроек запуска."
+  },
+  "thread": {
+    "copyMessageTooltip": "Копировать сообщение",
+    "retryTooltip": "Повторить ответ",
+    "forkTooltip": "Создать ветку отсюда (новый поток)",
+    "delveTooltip": "Глубже — перечитать критическим взглядом и предложить переработанный ответ",
+    "deleteMessageTooltip": "Удалить сообщение",
+    "loadExactSettingsTooltip": "Загрузить точную модель и настройки среды выполнения, использованные для этого ответа"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Название челленджа",
+    "promptPlaceholder": "Запросить у всех выбранных моделей один и тот же веб-челлендж...",
+    "openBrowser": "Открыть в браузере по умолчанию",
+    "historyPlaceholder": "Поиск предыдущих челленджей...",
+    "moveToTrash": "В корзину",
+    "moveToTrashAria": "Переместить «{title}» в корзину",
+    "noMatching": "Подходящих челленджей нет."
+  },
+  "samplerPanel": {
+    "label": "Сэмплеры",
+    "openTooltip": "Открыть панель сэмплеров",
+    "activeTooltip": "{count, plural, one {# переопределение сэмплера активно} few {# переопределения сэмплера активны} many {# переопределений сэмплера активны} other {# переопределений сэмплера активны}}",
+    "dialogAriaLabel": "Переопределения сэмплеров",
+    "headerTitle": "Переопределения сэмплеров",
+    "resetAll": "Сбросить всё",
+    "resetAllTooltip": "Сбросить всё к значениям бэкенда по умолчанию"
+  },
+  "kvChip": {
+    "clearOverride": "Сбросить переопределение KV",
+    "revertTooltip": "Вернуться к настройке сессии",
+    "dialogAriaLabel": "Стратегия KV-кэша",
+    "headingTitle": "KV-кэш для следующего хода",
+    "reloadNote": "При переключении среда выполнения будет перезагружена при необходимости."
+  },
+  "citations": {
+    "sourcesLabel": "Источники:",
+    "pageInfo": "(стр. {page})",
+    "chunkLabel": "Фрагмент {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}с)",
+    "loadingWithElapsed": "Загрузка {name}... прошло {seconds}с"
+  },
+  "promptPhase": {
+    "processingPrompt": "Обработка запроса",
+    "generating": "Генерация"
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
@@ -58,6 +59,7 @@ interface PromptLibraryTabProps {
 }
 
 export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibraryTabProps) {
+  const { t } = useTranslation("common");
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,7 +222,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 12, height: "100%" }}>
       {/* Left: Template list */}
       <Panel
-        title="Templates"
+        title={t("panels.templates", { defaultValue: "Templates" })}
         subtitle={`${filtered.length} templates`}
         actions={
           <button className="secondary-button" type="button" onClick={() => { setSelectedId(null); startEdit(null); }} style={{ fontSize: 11 }}>
@@ -255,7 +257,16 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
       </Panel>
 
       {/* Right: Detail/Editor */}
-      <Panel title={editMode ? (selectedId ? "Edit Template" : "New Template") : (selected?.name ?? "Select a template")} subtitle="">
+      <Panel
+        title={
+          editMode
+            ? selectedId
+              ? t("panels.editTemplate", { defaultValue: "Edit Template" })
+              : t("panels.newTemplate", { defaultValue: "New Template" })
+            : selected?.name ?? t("panels.selectTemplate", { defaultValue: "Select a template" })
+        }
+        subtitle=""
+      >
         {editMode ? (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>

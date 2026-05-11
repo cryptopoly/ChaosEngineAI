@@ -138,7 +138,25 @@ export async function readErrorDetail(response: Response, fallback: string): Pro
   let detail = fallback;
   try {
     const errorBody = await response.json();
-    if (errorBody?.detail) {
+    // FU-042: prefer the ``localized`` field from the FastAPI
+    // ``localized_detail(...)`` envelope when present.  Envelope shape:
+    // ``{detail: {message, localized, locale, errorKey?}}``.  When the
+    // backend route hasn't been migrated yet, ``detail`` is still a
+    // plain string and the legacy branch below handles it.
+    if (
+      errorBody?.detail
+      && typeof errorBody.detail === "object"
+      && !Array.isArray(errorBody.detail)
+    ) {
+      const env = errorBody.detail as Record<string, unknown>;
+      if (typeof env.localized === "string" && env.localized) {
+        detail = env.localized;
+      } else if (typeof env.message === "string" && env.message) {
+        detail = env.message;
+      } else {
+        detail = JSON.stringify(errorBody.detail);
+      }
+    } else if (errorBody?.detail) {
       detail = typeof errorBody.detail === "string" ? errorBody.detail : JSON.stringify(errorBody.detail);
     } else if (errorBody?.error) {
       detail = typeof errorBody.error === "string" ? errorBody.error : JSON.stringify(errorBody.error);

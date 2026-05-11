@@ -1,0 +1,40 @@
+{
+  "title": "ライブラリ",
+  "search": "モデルを検索…",
+  "filter": {
+    "all": "すべて",
+    "text": "テキスト",
+    "image": "画像",
+    "video": "動画",
+    "vision": "視覚",
+    "audio": "音声",
+    "installed": "インストール済み",
+    "uninstalled": "未インストール",
+    "favourites": "お気に入り"
+  },
+  "card": {
+    "size": "サイズ",
+    "quantization": "量子化",
+    "context": "コンテキスト",
+    "capabilities": "機能",
+    "license": "ライセンス",
+    "author": "作者",
+    "lastUpdated": "最終更新"
+  },
+  "download": {
+    "start": "ダウンロード",
+    "inProgress": "ダウンロード中…",
+    "paused": "一時停止",
+    "resumed": "再開",
+    "cancelled": "キャンセル済み",
+    "complete": "完了",
+    "totalSize": "合計 {size}",
+    "downloaded": "{downloaded} / {total}"
+  },
+  "details": {
+    "loadModel": "モデルを読み込む",
+    "unloadModel": "モデルをアンロード",
+    "viewOnHF": "Hugging Face で表示",
+    "deleteFromDisk": "ディスクから削除"
+  }
+}

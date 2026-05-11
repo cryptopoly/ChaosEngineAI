@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple Silicon 네이티브 추론 엔진" },
+    "llamaCpp": { "name": "llama.cpp", "description": "llama-server를 통한 GGUF 추론" },
+    "vllm": { "name": "vLLM", "description": "CUDA 추론 엔진" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "네이티브",
+      "description": "내장 캐시 유형 (f16, q8_0, q4_0 등). 최대 호환성."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard 회전 KV 양자화. 품질 손실을 최소화하면서 2–4배 압축."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "긴 컨텍스트용 희소 어텐션 압축기. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "디퓨전 전용 캐시 훅. DiT 파이프라인에서 약 1.8배 가속."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "디퓨전 전용 테일러 전개 캐시. FLUX/SD3에서 적극적인 가속."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "디퓨전 전용 크기 기반 캐시. 보정 없이는 FLUX만 지원."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "디퓨전 전용, 타임스텝 간 어텐션 재사용."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "디퓨전 전용 조건부/비조건부 재사용 캐시."
+    }
+  },
+  "controls": {
+    "engine": "엔진",
+    "cacheStrategy": "캐시 전략",
+    "cacheStrategyLockedNote": "(추측 디코딩 중에는 네이티브로 고정됨)",
+    "cacheType": "캐시 유형",
+    "speculativeDecoding": "추측 디코딩",
+    "draftModel": "드래프트 모델",
+    "contextSize": "컨텍스트 크기",
+    "gpuLayers": "GPU 레이어",
+    "threads": "스레드",
+    "fitInMemory": "메모리에 맞추기"
+  },
+  "notes": {
+    "binaryRequired": "{binary}가 필요합니다.",
+    "platformRequired": "{platform}이 필요합니다.",
+    "engineIncompatible": "{engine}과(와) 호환되지 않습니다.",
+    "unknownEngine": "알 수 없는 엔진."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "첫 토큰: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  }
+}

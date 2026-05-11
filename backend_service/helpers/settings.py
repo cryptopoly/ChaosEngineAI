@@ -239,6 +239,17 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         "hfCachePath": "",
         # Phase 3.3: advanced-mode logprobs flag. Off by default.
         "advancedLogprobs": False,
+        # FU-042: persisted UI locale.  ``"system"`` (default) means
+        # "auto-detect from OS / browser at runtime"; explicit BCP-47
+        # tags (``"en"``, ``"zh-CN"``, ``"ja"`` ...) override.  When
+        # the value isn't one of the shipping locales the frontend
+        # falls back to ``"en"`` and the backend ``Accept-Language``
+        # negotiation kicks in.
+        "locale": "system",
+        # FU-042: 12h vs 24h clock override.  ``"system"`` honours the
+        # locale's CLDR default (12h for en-US, 24h elsewhere) per the
+        # FU-042 plan §Q10; explicit ``"12h"`` / ``"24h"`` overrides.
+        "clockFormat": "system",
     }
 
 
@@ -362,6 +373,22 @@ def _load_settings(path: Path, default_port: int, data_dir: Path) -> dict[str, A
         raw = payload.get(key)
         if isinstance(raw, str):
             settings[key] = raw.strip()
+
+    # FU-042: locale + clockFormat overrides.  Accept any non-empty string
+    # — the i18n middleware (``backend_service/i18n.py``) and the React
+    # frontend both normalise unknown tags down to ``"en"`` so an
+    # arbitrary value never crashes anything; this keeps the storage
+    # layer forward-compatible with locales we add later (FU-046 long
+    # tail) without a schema bump.
+    locale_raw = payload.get("locale")
+    if isinstance(locale_raw, str):
+        cleaned = locale_raw.strip() or "system"
+        settings["locale"] = cleaned
+    clock_raw = payload.get("clockFormat")
+    if isinstance(clock_raw, str):
+        cleaned = clock_raw.strip().lower()
+        if cleaned in {"system", "12h", "24h"}:
+            settings["clockFormat"] = cleaned
 
     return settings
 

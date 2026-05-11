@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SystemStats } from "../types";
 import type { KvStrategyOverride } from "../features/chat/kvStrategyOverride";
 import { filterTextStrategies } from "./kvStrategyFilter";
@@ -52,6 +53,7 @@ export function KvStrategyChip({
   onChange,
   disabled,
 }: KvStrategyChipProps) {
+  const { t } = useTranslation("chat");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -103,8 +105,8 @@ export function KvStrategyChip({
             className="kv-chip__clear"
             role="button"
             tabIndex={0}
-            aria-label="Clear KV override"
-            title="Revert to session default"
+            aria-label={t("kvChip.clearOverride", { defaultValue: "Clear KV override" })}
+            title={t("kvChip.revertTooltip", { defaultValue: "Revert to session default" })}
             onClick={(e) => {
               e.stopPropagation();
               onChange(null);
@@ -121,10 +123,10 @@ export function KvStrategyChip({
         ) : null}
       </button>
       {open ? (
-        <div className="kv-chip__popover" role="dialog" aria-label="KV cache strategy">
+        <div className="kv-chip__popover" role="dialog" aria-label={t("kvChip.dialogAriaLabel", { defaultValue: "KV cache strategy" })}>
           <div className="kv-chip__heading">
-            <strong>KV cache for next turn</strong>
-            <small>Switching reloads the runtime if needed.</small>
+            <strong>{t("kvChip.headingTitle", { defaultValue: "KV cache for next turn" })}</strong>
+            <small>{t("kvChip.reloadNote", { defaultValue: "Switching reloads the runtime if needed." })}</small>
           </div>
           {filteredStrategies.map((strategy) => {
             const isActive = strategy.id === effectiveStrategy;

@@ -1,0 +1,48 @@
+{
+  "title": "Diagnóstico",
+  "subtitle": "Inspecionar estado do runtime, saúde da GPU e logs",
+  "subtitleSnapshot": "Snapshot do sistema para resolução de problemas. Copie o markdown para compartilhar com o suporte quando algo der errado.",
+  "sections": {
+    "snapshot": "Snapshot do sistema",
+    "gpu": "GPU",
+    "memory": "Memória",
+    "runtime": "Runtime",
+    "binaries": "Binários",
+    "extras": "Extras",
+    "logs": "Logs",
+    "locales": "Idiomas"
+  },
+  "fields": {
+    "platform": "Plataforma",
+    "architecture": "Arquitetura",
+    "kernel": "Kernel",
+    "appVersion": "Versão do app",
+    "tauriVersion": "Versão do Tauri",
+    "pythonVersion": "Versão do Python",
+    "totalRAM": "RAM total",
+    "availableRAM": "RAM disponível",
+    "totalVRAM": "VRAM total",
+    "freeVRAM": "VRAM livre",
+    "diskFree": "Espaço livre em disco"
+  },
+  "logs": {
+    "tail": "Cauda",
+    "follow": "Seguir",
+    "pauseFollow": "Pausar acompanhamento",
+    "clear": "Limpar",
+    "download": "Baixar log",
+    "lines": "{count, plural, one {# linha} other {# linhas}}",
+    "filterPlaceholder": "Filtrar…"
+  },
+  "actions": {
+    "copySnapshot": "Copiar snapshot",
+    "downloadSnapshot": "Baixar snapshot",
+    "openLogFolder": "Abrir pasta de logs"
+  },
+  "logsTab": {
+    "title": "Logs",
+    "subtitle": "Visualização pesquisável sobre canais sidecar, runtime e servidor.",
+    "filterPlaceholder": "Filtrar logs",
+    "emptyFiltered": "Nenhuma linha de log corresponde ao filtro atual."
+  }
+}

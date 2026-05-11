@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { LiveProgress, type LiveProgressPhase } from "./LiveProgress";
 import { fetchVideoOutputBlobUrl } from "../api";
 import { useGenerationProgress } from "../hooks/useGenerationProgress";
@@ -58,6 +59,7 @@ export function VideoGenerationModal({
   onDeleteArtifact,
   onCancelGeneration,
 }: VideoGenerationModalProps) {
+  const { t } = useTranslation("studio");
   // Hook ordering rule: invoke even when hidden so React's render order
   // stays consistent across mounts/unmounts.
   const realProgress = useGenerationProgress("video", videoBusy && Boolean(videoGenerationStartedAt));
@@ -150,13 +152,13 @@ export function VideoGenerationModal({
           <h3>
             {videoBusy
               ? videoGenerationCancelling
-                ? "Cancelling..."
-                : "Generating video"
+                ? t("video.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("video.modal.generating", { defaultValue: "Generating video" })
               : videoGenerationCancelled
-                ? "Video generation cancelled"
+                ? t("video.modal.cancelled", { defaultValue: "Video generation cancelled" })
                 : videoGenerationError
-                  ? "Video generation failed"
-                  : "Video ready"}
+                  ? t("video.modal.failed", { defaultValue: "Video generation failed" })
+                  : t("video.modal.ready", { defaultValue: "Video ready" })}
           </h3>
           {!videoBusy && !videoGenerationError && !videoGenerationCancelled && artifact ? (
             <p>
@@ -167,7 +169,9 @@ export function VideoGenerationModal({
         <div className="modal-body">
           {videoBusy && videoGenerationStartedAt ? (
             <LiveProgress
-              title={videoGenerationCancelling ? "Cancelling..." : "Generating video"}
+              title={videoGenerationCancelling
+                ? t("video.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("video.modal.generating", { defaultValue: "Generating video" })}
               subtitle={runInfo?.modelName ?? selectedVideoVariant?.name ?? undefined}
               startedAt={videoGenerationStartedAt}
               accent="image"
@@ -183,7 +187,7 @@ export function VideoGenerationModal({
             </div>
           ) : videoGenerationError ? (
             <div className="callout error">
-              <h3>Video generation failed</h3>
+              <h3>{t("video.modal.failed", { defaultValue: "Video generation failed" })}</h3>
               <p>{videoGenerationError}</p>
               <p className="muted-text">
                 Adjust the prompt, resolution, or frame count, then try again. The gallery keeps any earlier successful clips.

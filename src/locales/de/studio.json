@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "Bildstudio",
+    "subtitle": "Modell auswählen, prompten und auf gespeicherten Ausgaben aufbauen",
+    "savedOutputsLabel": "gespeicherte Ausgaben",
+    "promptPanelTitle": "Prompt",
+    "promptPanelSubtitle": "Modell auswählen, Seitenverhältnis und Qualität einstellen, dann in die lokale Galerie generieren.",
+    "recentOutputsTitle": "Aktuelle Ausgaben",
+    "prompt": "Prompt",
+    "negativePrompt": "Negativer Prompt",
+    "enhancePrompt": "Verbessern",
+    "width": "Breite",
+    "height": "Höhe",
+    "steps": "Schritte",
+    "guidance": "Guidance",
+    "guidanceScale": "Guidance-Skala",
+    "seed": "Seed",
+    "seedRandom": "Zufällig",
+    "sampler": "Sampler",
+    "scheduler": "Scheduler",
+    "batchSize": "Batch-Größe",
+    "generate": "Bild generieren",
+    "generating": "Bild wird generiert…",
+    "queued": "In Warteschlange",
+    "decoding": "Decodiert…",
+    "saveImage": "Bild speichern",
+    "copyImage": "Bild kopieren",
+    "openFolder": "Im Ordner anzeigen",
+    "modelLabel": "Modell",
+    "noModelsOption": "Keine Modelle installiert — eines aus „Entdecken“ herunterladen",
+    "aspectRatio": "Seitenverhältnis",
+    "qualityPreset": "Qualitäts-Preset",
+    "previewLabel": "Vorschau",
+    "draftOn": "512px · an",
+    "draftOff": "Entwurf @ 512px",
+    "diffusionCache": "Diffusions-Cache",
+    "modal": {
+      "cancelling": "Wird abgebrochen...",
+      "generating": "Bild wird generiert",
+      "cancelled": "Bildgenerierung abgebrochen",
+      "failed": "Bildgenerierung fehlgeschlagen",
+      "imagesReady": "Bilder bereit",
+      "imageReady": "Bild bereit"
+    }
+  },
+  "video": {
+    "title": "Videostudio",
+    "prompt": "Prompt",
+    "negativePrompt": "Negativer Prompt",
+    "duration": "Dauer",
+    "framesPerSecond": "Bildrate",
+    "frames": "Bilder",
+    "resolution": "Auflösung",
+    "generate": "Video generieren",
+    "generating": "Video wird generiert…",
+    "encoding": "Codiert…",
+    "saveVideo": "Video speichern",
+    "modelLabel": "Videomodell",
+    "qualityPreset": "Qualitäts-Preset",
+    "aspectRatio": "Seitenverhältnis",
+    "modal": {
+      "cancelling": "Wird abgebrochen...",
+      "generating": "Video wird generiert",
+      "cancelled": "Videogenerierung abgebrochen",
+      "failed": "Videogenerierung fehlgeschlagen",
+      "ready": "Video bereit"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Schritt {current} von {total}",
+    "estimatedRemaining": "Noch ca. {seconds} s"
+  },
+  "advanced": {
+    "title": "Erweitert",
+    "show": "Erweiterte Einstellungen anzeigen",
+    "hide": "Erweiterte Einstellungen ausblenden"
+  },
+  "enhance": {
+    "label": "Verbessern",
+    "busy": "Wird verbessert...",
+    "tooltip": "Diesen Prompt lokal verbessern",
+    "error": "Enhancer-Fehler: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Modell wird in den Speicher geladen..."
+  }
+}

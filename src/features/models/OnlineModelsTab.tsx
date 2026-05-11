@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { ModelStatusKind } from "../../components/ModelActionIcons";
@@ -117,6 +118,7 @@ export function OnlineModelsTab({
   hubFileError,
   availableMemoryGb,
 }: OnlineModelsTabProps) {
+  const { t } = useTranslation("common");
 
   function renderCapabilityFilterBar(
     active: string | null,
@@ -628,7 +630,7 @@ export function OnlineModelsTab({
   return (
     <div className="content-grid discover-page">
       <Panel
-        title="Discover Models"
+        title={t("panels.discoverModels", { defaultValue: "Discover Models" })}
         subtitle={`${searchResults.length} model families / ${localVariantCount} downloaded locally`}
         className="span-2 discover-panel"
         actions={

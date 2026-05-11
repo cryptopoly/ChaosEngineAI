@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple シリコンネイティブ推論エンジン" },
+    "llamaCpp": { "name": "llama.cpp", "description": "llama-server による GGUF 推論" },
+    "vllm": { "name": "vLLM", "description": "CUDA 推論エンジン" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "ネイティブ",
+      "description": "組み込みキャッシュタイプ (f16、q8_0、q4_0 など)。最大限の互換性。"
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "アダマール回転による KV 量子化。品質低下を最小限に抑え 2–4 倍圧縮。"
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "長コンテキスト向けのスパースアテンション圧縮機。Apple シリコン + CUDA。"
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "拡散モデル専用キャッシュフック。DiT パイプラインで約 1.8 倍高速化。"
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "拡散モデル専用のテイラー展開キャッシュ。FLUX / SD3 で積極的に高速化。"
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "拡散モデル専用の振幅ベースキャッシュ。キャリブレーションなしでは FLUX のみ。"
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "拡散モデル専用、タイムステップ間でのアテンション再利用。"
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "拡散モデル専用、条件付き / 無条件再利用キャッシュ。"
+    }
+  },
+  "controls": {
+    "engine": "エンジン",
+    "cacheStrategy": "キャッシュ戦略",
+    "cacheStrategyLockedNote": "(投機的デコーディング中はネイティブにロック)",
+    "cacheType": "キャッシュタイプ",
+    "speculativeDecoding": "投機的デコーディング",
+    "draftModel": "ドラフトモデル",
+    "contextSize": "コンテキストサイズ",
+    "gpuLayers": "GPU レイヤー",
+    "threads": "スレッド",
+    "fitInMemory": "メモリに収める"
+  },
+  "notes": {
+    "binaryRequired": "{binary} が必要です。",
+    "platformRequired": "{platform} が必要です。",
+    "engineIncompatible": "{engine} と互換性がありません。",
+    "unknownEngine": "不明なエンジン。"
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "最初のトークン:{ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  }
+}

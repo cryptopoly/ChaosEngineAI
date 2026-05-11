@@ -1,0 +1,40 @@
+{
+  "title": "模型庫",
+  "search": "搜尋模型…",
+  "filter": {
+    "all": "全部",
+    "text": "文字",
+    "image": "影像",
+    "video": "影片",
+    "vision": "視覺",
+    "audio": "音訊",
+    "installed": "已安裝",
+    "uninstalled": "未安裝",
+    "favourites": "我的最愛"
+  },
+  "card": {
+    "size": "大小",
+    "quantization": "量化",
+    "context": "上下文",
+    "capabilities": "能力",
+    "license": "授權",
+    "author": "作者",
+    "lastUpdated": "最後更新"
+  },
+  "download": {
+    "start": "下載",
+    "inProgress": "下載中…",
+    "paused": "已暫停",
+    "resumed": "已恢復",
+    "cancelled": "已取消",
+    "complete": "已完成",
+    "totalSize": "共 {size}",
+    "downloaded": "已下載 {downloaded} / 共 {total}"
+  },
+  "details": {
+    "loadModel": "載入模型",
+    "unloadModel": "卸載模型",
+    "viewOnHF": "在 Hugging Face 檢視",
+    "deleteFromDisk": "從磁碟刪除"
+  }
+}

@@ -7,6 +7,7 @@
  * ownership; this is just the chrome around it.
  */
 
+import { useTranslation } from "react-i18next";
 import {
   type HtmlChallengeLayoutMode,
   type HtmlChallengeManifest,
@@ -75,6 +76,7 @@ export function ChallengeSetupPanel({
   onRevealPath,
   onOpenFilePath,
 }: ChallengeSetupPanelProps) {
+  const { t } = useTranslation("chat");
   return (
     <section className="panel html-challenge-setup-panel html-challenge-setup-panel--compact">
       <div className="html-challenge-setup-actions">
@@ -169,14 +171,14 @@ export function ChallengeSetupPanel({
           type="text"
           value={title}
           onChange={(event) => onTitleChange(event.target.value)}
-          placeholder="Challenge title"
+          placeholder={t("htmlChallenge.titlePlaceholder", { defaultValue: "Challenge title" })}
           disabled={busy}
         />
         <textarea
           className="text-input html-challenge-prompt"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
-          placeholder="Prompt all selected models with the same webpage challenge..."
+          placeholder={t("htmlChallenge.promptPlaceholder", { defaultValue: "Prompt all selected models with the same webpage challenge..." })}
           disabled={busy}
         />
       </div>

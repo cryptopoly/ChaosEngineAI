@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
@@ -89,6 +90,7 @@ export function ServerTab({
   onShowRemoteTestChange,
   onTestModelIdChange,
 }: ServerTabProps) {
+  const { t } = useTranslation("common");
   const serverLogRef = useRef<HTMLDivElement>(null);
   const [serverLogAtBottom, setServerLogAtBottom] = useState(true);
   const [orphansDismissed, setOrphansDismissed] = useState(false);
@@ -137,8 +139,8 @@ export function ServerTab({
   return (
     <div className="content-grid">
       <Panel
-        title="Server"
-        subtitle="OpenAI-compatible local API"
+        title={t("tabs.server")}
+        subtitle={t("tabCaptions.server")}
         className="span-2"
       >
         <div className="server-layout">
@@ -226,20 +228,22 @@ export function ServerTab({
             {recentOrphanedWorkers.length > 0 && !orphansDismissed ? (
               <div className="callout warning server-warning-callout">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <strong>Orphaned backend workers were cleaned up</strong>
+                  <strong>{t("serverTab.orphans.title", { defaultValue: "Orphaned backend workers were cleaned up" })}</strong>
                   <button
                     type="button"
                     className="callout-dismiss-btn"
                     onClick={() => setOrphansDismissed(true)}
-                    title="Dismiss"
-                    aria-label="Dismiss orphan worker notification"
+                    title={t("serverTab.orphans.dismiss", { defaultValue: "Dismiss" })}
+                    aria-label={t("serverTab.orphans.dismissAria", { defaultValue: "Dismiss orphan worker notification" })}
                   >
                     &times;
                   </button>
                 </div>
                 <p>
-                  ChaosEngineAI recently found and terminated {recentOrphanedWorkers.length} untracked worker
-                  {recentOrphanedWorkers.length === 1 ? "" : "s"} left behind by an older load or crash.
+                  {t("serverTab.orphans.body", {
+                    count: recentOrphanedWorkers.length,
+                    defaultValue: "{count, plural, one {ChaosEngineAI recently found and terminated # untracked worker left behind by an older load or crash.} other {ChaosEngineAI recently found and terminated # untracked workers left behind by an older load or crash.}}",
+                  })}
                 </p>
                 <p className="mono-text muted-text">
                   {recentOrphanedWorkers

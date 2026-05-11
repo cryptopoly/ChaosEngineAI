@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "Студия изображений",
+    "subtitle": "Выберите модель, задайте промпт и итерируйте по сохранённым выводам",
+    "savedOutputsLabel": "сохранённых выводов",
+    "promptPanelTitle": "Промпт",
+    "promptPanelSubtitle": "Выберите модель, задайте соотношение сторон и качество, затем сгенерируйте в локальную галерею.",
+    "recentOutputsTitle": "Недавние выводы",
+    "prompt": "Промпт",
+    "negativePrompt": "Негативный промпт",
+    "enhancePrompt": "Улучшить",
+    "width": "Ширина",
+    "height": "Высота",
+    "steps": "Шаги",
+    "guidance": "Guidance",
+    "guidanceScale": "Шкала guidance",
+    "seed": "Сид",
+    "seedRandom": "Случайный",
+    "sampler": "Сэмплер",
+    "scheduler": "Шедулер",
+    "batchSize": "Размер батча",
+    "generate": "Сгенерировать изображение",
+    "generating": "Генерация изображения…",
+    "queued": "В очереди",
+    "decoding": "Декодирование…",
+    "saveImage": "Сохранить изображение",
+    "copyImage": "Копировать изображение",
+    "openFolder": "Показать в папке",
+    "modelLabel": "Модель",
+    "noModelsOption": "Модели не установлены — загрузите из Обзор",
+    "aspectRatio": "Соотношение сторон",
+    "qualityPreset": "Пресет качества",
+    "previewLabel": "Предпросмотр",
+    "draftOn": "512px · вкл",
+    "draftOff": "Черновик @ 512px",
+    "diffusionCache": "Кэш диффузии",
+    "modal": {
+      "cancelling": "Отмена...",
+      "generating": "Генерация изображения",
+      "cancelled": "Генерация изображения отменена",
+      "failed": "Генерация изображения не удалась",
+      "imagesReady": "Изображения готовы",
+      "imageReady": "Изображение готово"
+    }
+  },
+  "video": {
+    "title": "Студия видео",
+    "prompt": "Промпт",
+    "negativePrompt": "Негативный промпт",
+    "duration": "Длительность",
+    "framesPerSecond": "Кадров в секунду",
+    "frames": "Кадры",
+    "resolution": "Разрешение",
+    "generate": "Сгенерировать видео",
+    "generating": "Генерация видео…",
+    "encoding": "Кодирование…",
+    "saveVideo": "Сохранить видео",
+    "modelLabel": "Модель видео",
+    "qualityPreset": "Пресет качества",
+    "aspectRatio": "Соотношение сторон",
+    "modal": {
+      "cancelling": "Отмена...",
+      "generating": "Генерация видео",
+      "cancelled": "Генерация видео отменена",
+      "failed": "Генерация видео не удалась",
+      "ready": "Видео готово"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Шаг {current} из {total}",
+    "estimatedRemaining": "Осталось ~{seconds} с"
+  },
+  "advanced": {
+    "title": "Дополнительно",
+    "show": "Показать дополнительные настройки",
+    "hide": "Скрыть дополнительные настройки"
+  },
+  "enhance": {
+    "label": "Улучшить",
+    "busy": "Улучшение...",
+    "tooltip": "Улучшить этот промпт локально",
+    "error": "Ошибка улучшителя: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Загрузка модели в память..."
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "generic": "問題が発生しました。",
+  "network": "ネットワークエラー。接続を確認してください。",
+  "timeout": "リクエストがタイムアウトしました。",
+  "notFound": "見つかりません。",
+  "permissionDenied": "権限が拒否されました。",
+  "diskFull": "ディスク容量が不足しています。",
+  "outOfMemory": "メモリ不足です。",
+  "modelLoadFailed": "モデルの読み込みに失敗しました:{reason}",
+  "modelNotFound": "モデルが見つかりません:{repo}",
+  "engineNotInstalled": "エンジンがインストールされていません:{engine}。セットアップタブからインストールしてください。",
+  "binaryMissing": "必要なバイナリがありません:{binary}",
+  "downloadFailed": "ダウンロードに失敗しました:{reason}",
+  "downloadCancelled": "ダウンロードがキャンセルされました。",
+  "huggingFaceGated": "このモデルは制限されています。Hugging Face でライセンスに同意して再試行してください。",
+  "huggingFaceAuthRequired": "認証が必要です。設定で Hugging Face トークンを設定してください。",
+  "incompatibleHardware": "お使いのハードウェアはこのモデルの要件を満たしていません。",
+  "platformOnly": "この機能には {platform} が必要です。",
+  "unsupportedFormat": "サポートされていないファイル形式:{format}",
+  "validationFailed": "検証に失敗しました:{reason}",
+  "sessionCorrupt": "セッションデータが破損しており、読み込めませんでした。",
+  "boundaryFallback": "このタブで問題が発生しました。",
+  "boundaryHint": "再試行するか、タブを切り替えるか、診断用にエラー詳細をコピーしてください。",
+  "boundary": {
+    "scopeCrashed": "{scope} がクラッシュしました",
+    "tryAgain": "再試行",
+    "copyDetails": "詳細をコピー",
+    "stackTrace": "スタックトレース",
+    "noJsStack": "(JS スタックは取得できませんでした)",
+    "componentStack": "コンポーネントスタック",
+    "hint": "フロントエンドのエラーは webview コンソールにも表示されます(リリースビルドでは右クリック → 要素を検査、または npm run dev でアプリを実行)。バックエンドのログは 診断 タブで確認できます。"
+  }
+}

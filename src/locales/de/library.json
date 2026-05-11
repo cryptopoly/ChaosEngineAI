@@ -1,0 +1,40 @@
+{
+  "title": "Bibliothek",
+  "search": "Modelle suchen…",
+  "filter": {
+    "all": "Alle",
+    "text": "Text",
+    "image": "Bild",
+    "video": "Video",
+    "vision": "Vision",
+    "audio": "Audio",
+    "installed": "Installiert",
+    "uninstalled": "Nicht installiert",
+    "favourites": "Favoriten"
+  },
+  "card": {
+    "size": "Größe",
+    "quantization": "Quantisierung",
+    "context": "Kontext",
+    "capabilities": "Funktionen",
+    "license": "Lizenz",
+    "author": "Autor",
+    "lastUpdated": "Zuletzt aktualisiert"
+  },
+  "download": {
+    "start": "Herunterladen",
+    "inProgress": "Wird heruntergeladen…",
+    "paused": "Pausiert",
+    "resumed": "Fortgesetzt",
+    "cancelled": "Abgebrochen",
+    "complete": "Abgeschlossen",
+    "totalSize": "{size} gesamt",
+    "downloaded": "{downloaded} von {total}"
+  },
+  "details": {
+    "loadModel": "Modell laden",
+    "unloadModel": "Modell entladen",
+    "viewOnHF": "Auf Hugging Face anzeigen",
+    "deleteFromDisk": "Von der Festplatte löschen"
+  }
+}

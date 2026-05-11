@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
@@ -229,6 +230,7 @@ export function VideoStudioTab({
   onInstallMlxVideo,
   gpuBundleJob,
 }: VideoStudioTabProps) {
+  const { t } = useTranslation("studio");
   const [installingOutputDeps, setInstallingOutputDeps] = useState(false);
   const [installingGpuRuntime, setInstallingGpuRuntime] = useState(false);
   // Opt-in acknowledgement that unlocks Generate when the safety heuristic
@@ -620,7 +622,7 @@ export function VideoStudioTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Video Studio"
+        title={t("video.title")}
         subtitle={selectedVideoVariant?.name ?? "Choose a video model to get started"}
         className="span-2"
         actions={
@@ -672,7 +674,7 @@ export function VideoStudioTab({
 
         <div className="image-studio-grid video-studio-top-grid" style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr" }}>
           <label>
-            Video Model
+            {t("video.modelLabel", { defaultValue: "Video Model" })}
             {hasAnyInstalled ? (
               <select
                 className="text-input"
@@ -774,7 +776,7 @@ export function VideoStudioTab({
 
           <label>
             <span className="inline-label-text">
-              Negative prompt
+              {t("video.negativePrompt", { defaultValue: "Negative prompt" })}
               <InfoTooltip text="Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts." />
             </span>
             <input
@@ -829,7 +831,7 @@ export function VideoStudioTab({
           <div className="preset-row-pair">
           <div className="preset-row">
             <span className="preset-row-label">
-              Quality preset
+              {t("video.qualityPreset", { defaultValue: "Quality preset" })}
               <InfoTooltip text="Sets the denoising step count. More steps = sharper frames + longer generation time. Frame count (clip length) and guidance stay as set — presets don't touch them." />
             </span>
             {(Object.keys(QUALITY_PRESETS) as VideoQualityPreset[]).map((key) => {
@@ -859,7 +861,7 @@ export function VideoStudioTab({
           */}
           <div className="preset-row">
             <span className="preset-row-label">
-              Aspect ratio
+              {t("video.aspectRatio", { defaultValue: "Aspect ratio" })}
               <InfoTooltip text="Sets Width and Height to a common video shape. All presets are safe on every supported model (≤1024 on the long edge, divisible by 8). Edit Width/Height below for finer control." />
             </span>
             {(Object.keys(ASPECT_RATIOS) as VideoAspectRatio[]).map((key) => {

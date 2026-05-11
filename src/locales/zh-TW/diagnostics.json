@@ -1,0 +1,48 @@
+{
+  "title": "診斷",
+  "subtitle": "檢視執行階段狀態、GPU 健康狀況與記錄",
+  "subtitleSnapshot": "用於故障排查的系統快照。出現問題時,請複製 markdown 與支援團隊分享。",
+  "sections": {
+    "snapshot": "系統快照",
+    "gpu": "GPU",
+    "memory": "記憶體",
+    "runtime": "執行階段",
+    "binaries": "二進位檔案",
+    "extras": "額外項目",
+    "logs": "記錄",
+    "locales": "語言"
+  },
+  "fields": {
+    "platform": "平台",
+    "architecture": "架構",
+    "kernel": "核心",
+    "appVersion": "應用程式版本",
+    "tauriVersion": "Tauri 版本",
+    "pythonVersion": "Python 版本",
+    "totalRAM": "總記憶體",
+    "availableRAM": "可用記憶體",
+    "totalVRAM": "總顯示記憶體",
+    "freeVRAM": "可用顯示記憶體",
+    "diskFree": "磁碟可用空間"
+  },
+  "logs": {
+    "tail": "末端",
+    "follow": "跟隨",
+    "pauseFollow": "暫停跟隨",
+    "clear": "清除",
+    "download": "下載記錄",
+    "lines": "{count, plural, other {# 行}}",
+    "filterPlaceholder": "篩選…"
+  },
+  "actions": {
+    "copySnapshot": "複製快照",
+    "downloadSnapshot": "下載快照",
+    "openLogFolder": "開啟記錄資料夾"
+  },
+  "logsTab": {
+    "title": "記錄",
+    "subtitle": "對 sidecar、執行階段與伺服器通道的可搜尋檢視。",
+    "filterPlaceholder": "篩選記錄",
+    "emptyFiltered": "沒有記錄行符合目前的篩選條件。"
+  }
+}

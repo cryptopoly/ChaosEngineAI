@@ -1,0 +1,48 @@
+{
+  "title": "诊断",
+  "subtitle": "查看运行时状态、GPU 健康状况和日志",
+  "subtitleSnapshot": "用于故障排查的系统快照。出现问题时,请复制 markdown 与支持团队分享。",
+  "sections": {
+    "snapshot": "系统快照",
+    "gpu": "GPU",
+    "memory": "内存",
+    "runtime": "运行时",
+    "binaries": "二进制文件",
+    "extras": "附加项",
+    "logs": "日志",
+    "locales": "语言"
+  },
+  "fields": {
+    "platform": "平台",
+    "architecture": "架构",
+    "kernel": "内核",
+    "appVersion": "应用版本",
+    "tauriVersion": "Tauri 版本",
+    "pythonVersion": "Python 版本",
+    "totalRAM": "总内存",
+    "availableRAM": "可用内存",
+    "totalVRAM": "总显存",
+    "freeVRAM": "可用显存",
+    "diskFree": "磁盘可用空间"
+  },
+  "logs": {
+    "tail": "尾部",
+    "follow": "跟随",
+    "pauseFollow": "暂停跟随",
+    "clear": "清除",
+    "download": "下载日志",
+    "lines": "{count, plural, other {# 行}}",
+    "filterPlaceholder": "筛选…"
+  },
+  "actions": {
+    "copySnapshot": "复制快照",
+    "downloadSnapshot": "下载快照",
+    "openLogFolder": "打开日志文件夹"
+  },
+  "logsTab": {
+    "title": "日志",
+    "subtitle": "对 sidecar、运行时和服务器通道的可搜索视图。",
+    "filterPlaceholder": "筛选日志",
+    "emptyFiltered": "没有日志行匹配当前筛选条件。"
+  }
+}

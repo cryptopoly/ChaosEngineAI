@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import {
   checkBackend,
   convertModel,
@@ -7,7 +8,9 @@ import {
   getWorkspace,
   resolveApiToken,
   updateSession,
+  updateSettings as updateSettingsApi,
 } from "./api";
+import { FirstLaunchLocaleBanner } from "./components/FirstLaunchLocaleBanner";
 import {
   performConvertModel,
   pickConversionOutputDir,
@@ -103,6 +106,11 @@ import {
 } from "./hooks";
 
 export default function App() {
+  // FU-042: i18n hook — used for the workspace header tab label /
+  // caption resolution and the first-launch locale banner.  Other
+  // tab-level surfaces use their own ``useTranslation`` call to keep
+  // this top-level component's dependency surface tight.
+  const { t: tCommon } = useTranslation("common");
   // ── Workspace (core state) ─────────────────────────────────
   const ws = useWorkspace();
   const {
@@ -1728,6 +1736,17 @@ export default function App() {
       className="app-shell"
       style={{ "--ui-scale": uiScalePrefs.uiScale } as CSSProperties}
     >
+      <FirstLaunchLocaleBanner
+        persistedLocale={workspace.settings?.locale}
+        onPersistLocale={(locale) => {
+          // Fire-and-forget — we don't await because the banner already
+          // mutates the live i18n state via ``changeLocale`` and sets the
+          // localStorage dismissal flag.  This PATCH only ensures the
+          // choice survives a cold restart; a network failure here is
+          // self-healing (the banner just re-appears next launch).
+          void updateSettingsApi({ locale });
+        }}
+      />
       <Sidebar
         activeTab={activeTab}
         onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
@@ -1747,9 +1766,21 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <div>
-            <span className="eyebrow">Workspace</span>
-            <h2>{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
-            <p>{tabs.find((tab) => tab.id === activeTab)?.caption}</p>
+            <span className="eyebrow">{tCommon("app.workspace", { defaultValue: "Workspace" })}</span>
+            <h2>
+              {(() => {
+                const tab = tabs.find((entry) => entry.id === activeTab);
+                if (!tab) return null;
+                return tCommon(tab.labelKey, { defaultValue: tab.label });
+              })()}
+            </h2>
+            <p>
+              {(() => {
+                const tab = tabs.find((entry) => entry.id === activeTab);
+                if (!tab) return null;
+                return tCommon(tab.captionKey, { defaultValue: tab.caption });
+              })()}
+            </p>
           </div>
           <div className="header-badges">
             <span className="badge muted">{workspace.system.platform}</span>

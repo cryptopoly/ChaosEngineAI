@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "Estúdio de imagem",
+    "subtitle": "Escolha um modelo, faça o prompt e itere sobre as saídas salvas",
+    "savedOutputsLabel": "saídas salvas",
+    "promptPanelTitle": "Prompt",
+    "promptPanelSubtitle": "Escolha um modelo, defina a proporção e a qualidade, depois gere para a galeria local.",
+    "recentOutputsTitle": "Saídas recentes",
+    "prompt": "Prompt",
+    "negativePrompt": "Prompt negativo",
+    "enhancePrompt": "Aprimorar",
+    "width": "Largura",
+    "height": "Altura",
+    "steps": "Passos",
+    "guidance": "Guidance",
+    "guidanceScale": "Escala de guidance",
+    "seed": "Seed",
+    "seedRandom": "Aleatório",
+    "sampler": "Sampler",
+    "scheduler": "Scheduler",
+    "batchSize": "Tamanho do lote",
+    "generate": "Gerar imagem",
+    "generating": "Gerando imagem…",
+    "queued": "Na fila",
+    "decoding": "Decodificando…",
+    "saveImage": "Salvar imagem",
+    "copyImage": "Copiar imagem",
+    "openFolder": "Mostrar na pasta",
+    "modelLabel": "Modelo",
+    "noModelsOption": "Nenhum modelo instalado — baixe um em Descobrir",
+    "aspectRatio": "Proporção",
+    "qualityPreset": "Predefinição de qualidade",
+    "previewLabel": "Pré-visualização",
+    "draftOn": "512px · ligado",
+    "draftOff": "Rascunho @ 512px",
+    "diffusionCache": "Cache de difusão",
+    "modal": {
+      "cancelling": "Cancelando...",
+      "generating": "Gerando imagem",
+      "cancelled": "Geração de imagem cancelada",
+      "failed": "Falha na geração de imagem",
+      "imagesReady": "Imagens prontas",
+      "imageReady": "Imagem pronta"
+    }
+  },
+  "video": {
+    "title": "Estúdio de vídeo",
+    "prompt": "Prompt",
+    "negativePrompt": "Prompt negativo",
+    "duration": "Duração",
+    "framesPerSecond": "Quadros por segundo",
+    "frames": "Quadros",
+    "resolution": "Resolução",
+    "generate": "Gerar vídeo",
+    "generating": "Gerando vídeo…",
+    "encoding": "Codificando…",
+    "saveVideo": "Salvar vídeo",
+    "modelLabel": "Modelo de vídeo",
+    "qualityPreset": "Predefinição de qualidade",
+    "aspectRatio": "Proporção",
+    "modal": {
+      "cancelling": "Cancelando...",
+      "generating": "Gerando vídeo",
+      "cancelled": "Geração de vídeo cancelada",
+      "failed": "Falha na geração de vídeo",
+      "ready": "Vídeo pronto"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Passo {current} de {total}",
+    "estimatedRemaining": "~{seconds} s restantes"
+  },
+  "advanced": {
+    "title": "Avançado",
+    "show": "Mostrar configurações avançadas",
+    "hide": "Ocultar configurações avançadas"
+  },
+  "enhance": {
+    "label": "Aprimorar",
+    "busy": "Aprimorando...",
+    "tooltip": "Aprimorar este prompt localmente",
+    "error": "Erro do aprimorador: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Carregando modelo na memória..."
+  }
+}

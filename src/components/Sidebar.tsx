@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { SidebarGroupId, SidebarMode, TabId } from "../types";
 import type { TabConfig } from "../constants";
 import { sidebarGroups, tabs as allTabs } from "../constants";
@@ -79,6 +80,7 @@ export function Sidebar({
   lastChildByGroup,
   onRememberLastChild,
 }: SidebarProps) {
+  const { t } = useTranslation("common");
   const visibleTabs = useMemo(
     () =>
       allTabs.filter((tab) => {
@@ -90,6 +92,17 @@ export function Sidebar({
 
   const items = useMemo(() => buildItems(visibleTabs), [visibleTabs]);
   const activeGroup = visibleTabs.find((t) => t.id === activeTab)?.group;
+  // FU-042: resolve tab labels / captions through i18next at render
+  // time with the English literal as ``defaultValue`` so the source
+  // stays usable when a translation hasn't been authored yet.
+  const tabLabel = (tab: TabConfig) => t(tab.labelKey, { defaultValue: tab.label });
+  const tabCaption = (tab: TabConfig) => t(tab.captionKey, { defaultValue: tab.caption });
+  const tabShortLabel = (tab: TabConfig) =>
+    tab.shortLabelKey
+      ? t(tab.shortLabelKey, { defaultValue: tab.shortLabel ?? tab.label })
+      : tab.shortLabel ?? tab.label;
+  const groupLabel = (id: SidebarGroupId, fallback: string) =>
+    t(`tabGroups.${id}`, { defaultValue: fallback });
 
   function handleTabClick(tab: TabConfig) {
     if (tab.group) onRememberLastChild(tab.group, tab.id);
@@ -108,11 +121,11 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="brand-block">
         <div className="brand-title-row">
-          <img src="/logo.svg" alt="ChaosEngineAI" className="brand-logo" />
-          <h1>ChaosEngineAI</h1>
+          <img src="/logo.svg" alt={t("app.name", { defaultValue: "ChaosEngineAI" })} className="brand-logo" />
+          <h1>{t("app.name", { defaultValue: "ChaosEngineAI" })}</h1>
         </div>
         <span className="brand-kicker">
-          Local AI model runner
+          {t("app.tagline", { defaultValue: "Local AI model runner" })}
           {appVersion ? ` · v${appVersion}` : ""}
         </span>
       </div>
@@ -131,8 +144,8 @@ export function Sidebar({
               >
                 {Icon ? <Icon className="nav-icon" /> : null}
                 <span className="nav-label">
-                  <strong>{item.tab.label}</strong>
-                  <span>{item.tab.caption}</span>
+                  <strong>{tabLabel(item.tab)}</strong>
+                  <span>{tabCaption(item.tab)}</span>
                 </span>
               </button>
             );
@@ -140,6 +153,7 @@ export function Sidebar({
 
           const GroupIcon = groupIcon[item.id];
           const hasActiveChild = activeGroup === item.id;
+          const localizedGroupLabel = groupLabel(item.id, item.label);
 
           // Tabs mode: group header is a single nav button that navigates to defaultChild / lastChild
           if (mode === "tabs") {
@@ -152,8 +166,13 @@ export function Sidebar({
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
                 <span className="nav-label">
-                  <strong>{item.label}</strong>
-                  <span>{item.children.length} tabs</span>
+                  <strong>{localizedGroupLabel}</strong>
+                  <span>
+                    {t("tabsCount", {
+                      count: item.children.length,
+                      defaultValue: "{{count}} tabs",
+                    })}
+                  </span>
                 </span>
               </button>
             );
@@ -173,7 +192,7 @@ export function Sidebar({
                 onClick={() => onToggleGroupCollapsed(item.id)}
               >
                 {GroupIcon ? <GroupIcon className="nav-icon" /> : null}
-                <span className="nav-group-label">{item.label}</span>
+                <span className="nav-group-label">{localizedGroupLabel}</span>
                 <ChevronIcon open={isOpen} className="nav-group-chevron" />
               </button>
               {isOpen ? (
@@ -188,7 +207,7 @@ export function Sidebar({
                         onClick={() => handleTabClick(child)}
                       >
                         <span className="nav-child-dot" aria-hidden />
-                        <span className="nav-child-label">{child.shortLabel ?? child.label}</span>
+                        <span className="nav-child-label">{tabShortLabel(child)}</span>
                       </button>
                     );
                   })}
@@ -201,10 +220,14 @@ export function Sidebar({
 
       <div className="sidebar-footer">
         <span className={`badge ${backendOnline ? "success" : "warning"}`}>
-          {backendOnline ? "Backend online" : "Offline"}
+          {backendOnline
+            ? t("sidebar.backendOnline", { defaultValue: "Backend online" })
+            : t("sidebar.backendOffline", { defaultValue: "Offline" })}
         </span>
         <p>{engineLabel}</p>
-        <small>{loadedModelName ?? "No model loaded"}</small>
+        <small>
+          {loadedModelName ?? t("sidebar.noModelLoaded", { defaultValue: "No model loaded" })}
+        </small>
       </div>
     </aside>
   );

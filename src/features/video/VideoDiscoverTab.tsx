@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { Panel } from "../../components/Panel";
@@ -189,6 +190,7 @@ export function VideoDiscoverTab({
   onRefreshLongLiveStatus,
   onInstallLongLive,
 }: VideoDiscoverTabProps) {
+  const { t } = useTranslation("common");
   const hasLongLiveVariant = combinedVideoDiscoverResults.some((variant) =>
     isLongLiveRepo(variant.repo),
   );
@@ -266,7 +268,7 @@ export function VideoDiscoverTab({
   return (
     <div className="image-discover-stack">
       <Panel
-        title="Video Discover"
+        title={t("tabs.videoDiscover")}
         subtitle={`${filteredResults.length} of ${combinedVideoDiscoverResults.length} video models / live Hugging Face metadata`}
       >
         <div className="image-hero">
@@ -381,7 +383,11 @@ export function VideoDiscoverTab({
       </Panel>
 
       {filteredResults.length === 0 ? (
-        <Panel title="Video Models" subtitle="No models match the current filters" className="image-discover-section-panel">
+        <Panel
+          title={t("tabs.videoModels")}
+          subtitle={t("panels.noModelsMatchFilters", { defaultValue: "No models match the current filters" })}
+          className="image-discover-section-panel"
+        >
           <div className="empty-state image-empty-state">
             <p>Try broadening the filters or search terms.</p>
           </div>

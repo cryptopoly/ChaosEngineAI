@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "ChaosEngineAI",
+    "tagline": "Local AI model runner",
+    "workspace": "Workspace"
+  },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "chatCompare": "Compare",
+    "htmlChallenge": "HTML Challenge",
+    "myModels": "My Models",
+    "onlineModels": "Discover",
+    "imageModels": "Image Models",
+    "imageDiscover": "Image Discover",
+    "imageStudio": "Image Studio",
+    "imageGallery": "Image Gallery",
+    "videoModels": "Video Models",
+    "videoDiscover": "Video Discover",
+    "videoStudio": "Video Studio",
+    "videoGallery": "Video Gallery",
+    "server": "Server",
+    "benchmarks": "Benchmarks",
+    "benchmarkHistory": "History",
+    "conversion": "Conversion",
+    "fineTuning": "Fine-Tuning",
+    "promptLibrary": "Prompts",
+    "plugins": "Plugins",
+    "logs": "Logs",
+    "settings": "Settings",
+    "library": "Library",
+    "image": "Image Studio",
+    "video": "Video Studio",
+    "setup": "Setup",
+    "diagnostics": "Diagnostics"
+  },
+  "tabCaptions": {
+    "dashboard": "System overview",
+    "chat": "Local AI chat",
+    "chatCompare": "Compare language models side by side",
+    "htmlChallenge": "Generate shareable webpage comparisons",
+    "myModels": "Models on this machine",
+    "onlineModels": "Browse and download AI models",
+    "imageModels": "Installed image generators",
+    "imageDiscover": "Browse image models",
+    "imageStudio": "Prompt, generate, and iterate",
+    "imageGallery": "Saved outputs and filters",
+    "videoModels": "Installed video generators",
+    "videoDiscover": "Browse video models",
+    "videoStudio": "Prompt, generate, and iterate",
+    "videoGallery": "Saved outputs and filters",
+    "server": "OpenAI-compatible local API",
+    "benchmarks": "Run a new benchmark",
+    "benchmarkHistory": "Compare saved runs",
+    "conversion": "Convert models to MLX format",
+    "fineTuning": "LoRA adapters and training",
+    "promptLibrary": "Reusable prompt templates",
+    "plugins": "Extensions and plugin system",
+    "logs": "Runtime events",
+    "settings": "Directories and defaults"
+  },
+  "tabShortLabels": {
+    "chat": "Chat",
+    "chatCompare": "Compare",
+    "htmlChallenge": "HTML Challenge",
+    "myModels": "My Models",
+    "onlineModels": "Discover",
+    "imageModels": "My Models",
+    "imageDiscover": "Discover",
+    "imageStudio": "Studio",
+    "imageGallery": "Gallery",
+    "videoModels": "My Models",
+    "videoDiscover": "Discover",
+    "videoStudio": "Studio",
+    "videoGallery": "Gallery",
+    "benchmarks": "Run",
+    "benchmarkHistory": "History",
+    "conversion": "Conversion",
+    "fineTuning": "Fine-Tuning",
+    "promptLibrary": "Prompts",
+    "plugins": "Plugins"
+  },
+  "tabGroups": {
+    "chat": "Chat",
+    "models": "Models",
+    "images": "Images",
+    "video": "Video",
+    "benchmarks": "Benchmarks",
+    "tools": "Tools"
+  },
+  "tabsCount": "{count, plural, one {# tab} other {# tabs}}",
+  "sidebar": {
+    "backendOnline": "Backend online",
+    "backendOffline": "Offline",
+    "noModelLoaded": "No model loaded",
+    "groupTabsAriaLabel": "{group} tabs"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Slash commands"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copy": "Copy",
+    "paste": "Paste",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "open": "Open",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "update": "Update",
+    "start": "Start",
+    "stop": "Stop",
+    "restart": "Restart",
+    "download": "Download",
+    "upload": "Upload",
+    "send": "Send",
+    "generate": "Generate",
+    "load": "Load",
+    "unload": "Unload",
+    "next": "Next",
+    "back": "Back",
+    "done": "Done",
+    "tryAgain": "Try again",
+    "copyDetails": "Copy details",
+    "switchTo": "Switch to {target}",
+    "keepEnglish": "Keep English"
+  },
+  "status": {
+    "loading": "Loading…",
+    "loaded": "Loaded",
+    "unloading": "Unloading…",
+    "ready": "Ready",
+    "busy": "Busy",
+    "error": "Error",
+    "warning": "Warning",
+    "success": "Success",
+    "pending": "Pending",
+    "running": "Running",
+    "stopped": "Stopped",
+    "installed": "Installed",
+    "notInstalled": "Not installed"
+  },
+  "empty": {
+    "noResults": "No results",
+    "noModels": "No models found",
+    "noSessions": "No sessions yet",
+    "noLogs": "No logs available"
+  },
+  "units": {
+    "tokensPerSec": "{value} tok/s",
+    "bytesGB": "{value} GB",
+    "bytesMB": "{value} MB",
+    "bytesKB": "{value} KB",
+    "seconds": "{value, plural, one {# second} other {# seconds}}",
+    "minutes": "{value, plural, one {# minute} other {# minutes}}",
+    "hours": "{value, plural, one {# hour} other {# hours}}"
+  },
+  "localeBanner": {
+    "detected": "Detected {endonym}.",
+    "prompt": "Switch the app to {endonym}? You can change this any time in Settings → Language.",
+    "switch": "Switch to {endonym}",
+    "keep": "Keep English"
+  },
+  "panels": {
+    "mlxConversion": "MLX Conversion",
+    "mlxConversionSubtitle": "Prepare a local source, compare before and after stats, then convert into an MLX-ready output.",
+    "selectSourceModel": "Select Source Model",
+    "discoverModels": "Discover Models",
+    "runBenchmark": "Run Benchmark",
+    "runBenchmarkSubtitle": "Launch a consistent benchmark run and see how this profile performs.",
+    "selectBenchmarkModel": "Select Benchmark Model",
+    "benchmarkHistory": "Benchmark History",
+    "loraAdapters": "LoRA Adapters",
+    "loraAdaptersFound": "{count, plural, one {# adapter found} other {# adapters found}}",
+    "templates": "Templates",
+    "editTemplate": "Edit Template",
+    "newTemplate": "New Template",
+    "selectTemplate": "Select a template",
+    "pluginSystem": "Plugin System",
+    "pluginsRegistered": "{count, plural, one {# plugin registered} other {# plugins registered}}",
+    "externalPlugins": "External Plugins",
+    "installFromDirectory": "Install from directory",
+    "noModelsMatchFilters": "No models match the current filters",
+    "savedOutputs": "Saved Outputs",
+    "installedImageModels": "Installed Image Models",
+    "installedVideoModels": "Installed Video Models",
+    "plannedEngines": "Planned engines",
+    "plannedEnginesSubtitle": "Candidates we're evaluating for the first release",
+    "modelStorage": "Model Storage",
+    "modelStorageSubtitle": "Redirect Hugging Face model downloads to a different drive. Useful when your system drive is filling up with 14-100 GB image and video checkpoints."
+  },
+  "launchModal": {
+    "title": "Select Model",
+    "startChat": "Start Chat",
+    "loadForChat": "Load for Chat",
+    "loadForServer": "Load for Server"
+  },
+  "serverTab": {
+    "orphans": {
+      "title": "Orphaned backend workers were cleaned up",
+      "dismiss": "Dismiss",
+      "dismissAria": "Dismiss orphan worker notification",
+      "body": "{count, plural, one {ChaosEngineAI recently found and terminated # untracked worker left behind by an older load or crash.} other {ChaosEngineAI recently found and terminated # untracked workers left behind by an older load or crash.}}"
+    }
+  },
+  "conversionTab": {
+    "progress": {
+      "title": "Converting model",
+      "phases": {
+        "resolve": "Resolving source",
+        "download": "Fetching weights",
+        "load": "Loading into MLX",
+        "quantize": "Quantizing to {bits}-bit g{group}",
+        "shard": "Sharding & writing safetensors",
+        "verify": "Verifying output"
+      }
+    }
+  },
+  "benchmarkTab": {
+    "progress": {
+      "title": "Running benchmark",
+      "phases": {
+        "load": "Loading model into memory",
+        "warm": "Warming up KV cache",
+        "prompt": "Processing prompt",
+        "generate": "Generating {tokens} tokens",
+        "measure": "Measuring stats"
+      }
+    }
+  }
+}

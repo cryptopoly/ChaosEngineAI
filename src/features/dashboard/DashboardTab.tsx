@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { ProgressRow } from "../../components/ProgressRow";
 import { StatCard } from "../../components/StatCard";
@@ -14,6 +15,7 @@ export interface DashboardTabProps {
 }
 
 export function DashboardTab({ system, recommendation, runtime, activity, backendOnline }: DashboardTabProps) {
+  const { t } = useTranslation("dashboard");
   const warmModels = runtime.warmModels ?? [];
   const activeReq = runtime.activeRequests ?? 0;
   const servedReq = runtime.requestsServed ?? 0;
@@ -27,77 +29,98 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
   return (
     <div className="content-grid">
       <Panel
-        title="Live System Stats"
-        subtitle="Refreshed from the Python sidecar so the desktop shell can make fit recommendations."
+        title={t("liveStats.title")}
+        subtitle={t("liveStats.subtitle")}
         className="span-2"
       >
         <div className="stat-grid">
           <StatCard
-            label="Runtime engine"
+            label={t("liveStats.runtimeEngine")}
             value={runtime.engineLabel}
-            hint={runtime.loadedModel ? runtime.loadedModel.name : "No model loaded"}
+            hint={runtime.loadedModel ? runtime.loadedModel.name : t("liveStats.noModelLoaded")}
           />
           <StatCard
-            label="Inference activity"
-            value={`${activeReq} active`}
-            hint={`${servedReq} total served`}
+            label={t("liveStats.inferenceActivity")}
+            value={t("liveStats.activeCount", { count: activeReq })}
+            hint={t("liveStats.totalServed", { count: servedReq })}
           />
           <StatCard
-            label="Warm pool"
-            value={`${warmModels.length} model${warmModels.length === 1 ? "" : "s"}`}
-            hint={warmModels.length > 0 ? warmModels.map((w) => w.name).join(" · ") : "No warm models"}
+            label={t("liveStats.warmPool")}
+            value={t("liveStats.warmModelCount", { count: warmModels.length })}
+            hint={warmModels.length > 0 ? warmModels.map((w) => w.name).join(" · ") : t("liveStats.noWarmModels")}
           />
           {diskFree !== undefined && diskTotal ? (
             <StatCard
-              label="Model disk"
-              value={`${number(diskFree, 2)} GB free`}
-              hint={`${number(diskTotal, 2)} GB total`}
+              label={t("liveStats.modelDisk")}
+              value={t("liveStats.diskFree", { value: number(diskFree, 2) })}
+              hint={t("liveStats.diskTotal", { value: number(diskTotal, 2) })}
             />
           ) : (
             <StatCard
-              label="Spare headroom"
-              value={`${number(system.spareHeadroomGb, 2)} GB`}
-              hint={`${number(recommendation.headroomPercent, 0)}% working headroom`}
+              label={t("liveStats.spareHeadroom")}
+              value={t("liveStats.spareHeadroomValue", { value: number(system.spareHeadroomGb, 2) })}
+              hint={t("liveStats.workingHeadroom", { value: number(recommendation.headroomPercent, 0) })}
             />
           )}
         </div>
         <div className="panel-grid">
           <div className="stack">
             <ProgressRow
-              label="Memory in use"
+              label={t("liveStats.memoryInUse")}
               value={system.usedMemoryGb}
               max={system.totalMemoryGb}
-              valueLabel={`${number(system.usedMemoryGb, 2)} GB / ${number(system.totalMemoryGb, 2)} GB`}
+              valueLabel={t("liveStats.memoryUsedLabel", {
+                used: number(system.usedMemoryGb, 2),
+                total: number(system.totalMemoryGb, 2),
+              })}
             />
             <ProgressRow
-              label="Memory pressure"
+              label={t("liveStats.memoryPressure")}
               value={memPressure}
-              valueLabel={`${number(memPressure, 0)}%${compressedGb > 0 ? ` · ${number(compressedGb, 2)} GB compressed` : ""}`}
+              valueLabel={
+                compressedGb > 0
+                  ? t("liveStats.memoryPressureCompressed", {
+                      value: number(memPressure, 0),
+                      compressed: number(compressedGb, 2),
+                    })
+                  : t("liveStats.memoryPressureLabel", { value: number(memPressure, 0) })
+              }
             />
             {swapGb > 0.01 ? (
               <ProgressRow
-                label="Swap usage"
+                label={t("liveStats.swapUsage")}
                 value={swapGb}
                 max={Math.max(system.swapTotalGb ?? swapGb, swapGb, 0.01)}
-                valueLabel={`${number(swapGb, 2)} GB${system.swapTotalGb ? ` / ${number(system.swapTotalGb, 2)} GB` : ""}`}
+                valueLabel={
+                  system.swapTotalGb
+                    ? t("liveStats.swapLabelWithTotal", {
+                        used: number(swapGb, 2),
+                        total: number(system.swapTotalGb, 2),
+                      })
+                    : t("liveStats.swapLabel", { used: number(swapGb, 2) })
+                }
               />
             ) : null}
             <ProgressRow
-              label="CPU load"
+              label={t("liveStats.cpuLoad")}
               value={system.cpuUtilizationPercent}
-              valueLabel={`${number(system.cpuUtilizationPercent, 0)}%`}
+              valueLabel={t("liveStats.cpuLabel", { value: number(system.cpuUtilizationPercent, 0) })}
             />
             <ProgressRow
-              label={`Headroom for ${recommendation.targetModel}`}
+              label={t("liveStats.headroomFor", { target: recommendation.targetModel })}
               value={recommendation.headroomPercent}
-              valueLabel={`${recommendation.headroomPercent}%`}
+              valueLabel={t("liveStats.headroomLabel", { value: recommendation.headroomPercent })}
             />
             {battery ? (
               <div className={`battery-card${battery.powerSource === "Battery" && battery.percent < 20 ? " battery-card--low" : ""}`}>
                 <div className="battery-card-header">
-                  <span className="eyebrow">Power</span>
+                  <span className="eyebrow">{t("liveStats.battery.eyebrow")}</span>
                   <span className={`badge ${battery.powerSource === "AC" ? "success" : battery.percent < 20 ? "warning" : "muted"}`}>
-                    {battery.powerSource === "AC" ? (battery.charging ? "Charging" : "AC Power") : "On Battery"}
+                    {battery.powerSource === "AC"
+                      ? battery.charging
+                        ? t("liveStats.battery.charging")
+                        : t("liveStats.battery.acPower")
+                      : t("liveStats.battery.onBattery")}
                   </span>
                 </div>
                 <div className="battery-card-bar">
@@ -109,7 +132,7 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
                 <div className="battery-card-footer">
                   <strong>{battery.percent}%</strong>
                   {battery.powerSource === "Battery" ? (
-                    <small>Unplugged — inference may throttle on thermal pressure</small>
+                    <small>{t("liveStats.battery.lowNotice")}</small>
                   ) : null}
                 </div>
               </div>
@@ -117,10 +140,10 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
           </div>
           <div className="data-table compact-table">
             <div className="table-row table-head">
-              <span>Process</span>
-              <span>Owner</span>
-              <span>Memory</span>
-              <span>CPU</span>
+              <span>{t("liveStats.processes.name")}</span>
+              <span>{t("liveStats.processes.owner")}</span>
+              <span>{t("liveStats.processes.memory")}</span>
+              <span>{t("liveStats.processes.cpu")}</span>
             </div>
             <div className="data-table-body">
               {system.runningLlmProcesses.length ? (
@@ -131,20 +154,26 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
                         <strong>{process.name}</strong>
                         {process.modelStatus ? (
                           <span className={`badge ${process.modelStatus === "active" ? "success" : "muted"} process-status-badge`}>
-                            {process.modelStatus === "active" ? "ACTIVE" : "WARM"}
+                            {process.modelStatus === "active"
+                              ? t("liveStats.processes.active")
+                              : t("liveStats.processes.warm")}
                           </span>
                         ) : null}
                       </div>
                       {process.modelName ? <small className="process-model-name">{process.modelName}</small> : null}
                     </div>
-                    <span><span className={`badge ${process.owner === "ChaosEngineAI" ? "accent" : "muted"}`}>{process.owner ?? "System"}</span></span>
-                    <span>{number(process.memoryGb, 2)} GB</span>
-                    <span>{number(process.cpuPercent, 0)}%</span>
+                    <span>
+                      <span className={`badge ${process.owner === "ChaosEngineAI" ? "accent" : "muted"}`}>
+                        {process.owner ?? t("liveStats.processes.system")}
+                      </span>
+                    </span>
+                    <span>{t("liveStats.processes.memoryGb", { value: number(process.memoryGb, 2) })}</span>
+                    <span>{t("liveStats.processes.cpuPercent", { value: number(process.cpuPercent, 0) })}</span>
                   </div>
                 ))
               ) : (
                 <div className="empty-state small-empty">
-                  <p>No active local LLM processes were detected.</p>
+                  <p>{t("liveStats.processes.empty")}</p>
                 </div>
               )}
             </div>
@@ -154,28 +183,31 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
 
       <GPUCard backendOnline={backendOnline} visible={true} />
 
-      <Panel title="Hardware Fit" subtitle="Guidance relative to the recommended target profile for this machine.">
+      <Panel title={t("hardwareFit.title")} subtitle={t("hardwareFit.subtitle")}>
         <div className="callout">
-          <span className="badge accent">Recommended target</span>
+          <span className="badge accent">{t("hardwareFit.recommendedTarget")}</span>
           <h3>{recommendation.title}</h3>
           <p>{recommendation.detail}</p>
         </div>
         <ProgressRow
-          label={`Headroom for ${recommendation.targetModel}`}
+          label={t("liveStats.headroomFor", { target: recommendation.targetModel })}
           value={recommendation.headroomPercent}
-          valueLabel={`${recommendation.headroomPercent}%`}
+          valueLabel={t("liveStats.headroomLabel", { value: recommendation.headroomPercent })}
         />
         <div className="callout quiet">
-          <h3>Current runtime</h3>
+          <h3>{t("hardwareFit.currentRuntime")}</h3>
           <p>
             {runtime.loadedModel
-              ? `${runtime.loadedModel.name} loaded via ${runtime.engineLabel}.`
-              : "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Online Models."}
+              ? t("hardwareFit.modelLoadedVia", {
+                  model: runtime.loadedModel.name,
+                  engine: runtime.engineLabel,
+                })
+              : t("hardwareFit.noModelHint")}
           </p>
         </div>
       </Panel>
 
-      <Panel title="Activity Feed" subtitle="Operational events that should stay visible without digging into logs.">
+      <Panel title={t("activityFeed.title")} subtitle={t("activityFeed.subtitle")}>
         <div className="list scrollable-list">
           {activity.map((item, idx) => (
             <div className="list-row" key={`${idx}-${item.title}`}>

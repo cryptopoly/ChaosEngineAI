@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { DownloadStatus } from "../../api";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
@@ -97,6 +98,7 @@ export function MyModelsTab({
   onLibrarySortKeyChange,
   onLibrarySortDirChange,
 }: MyModelsTabProps) {
+  const { t } = useTranslation("common");
   function toggleLibrarySort(key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") {
     if (librarySortKey === key) {
       onLibrarySortDirChange(librarySortDir === "asc" ? "desc" : "asc");
@@ -268,7 +270,7 @@ export function MyModelsTab({
   return (
     <div className="content-grid">
       <Panel
-        title="My Models"
+        title={t("tabs.myModels")}
         subtitle={`${filteredLibraryRows.length} models / ${sizeLabel(libraryTotalSizeGb)} on disk / ${enabledDirectoryCount} directories`}
         className="span-2"
         actions={

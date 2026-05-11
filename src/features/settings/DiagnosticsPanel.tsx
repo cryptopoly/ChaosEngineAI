@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
@@ -27,6 +28,7 @@ export interface DiagnosticsPanelProps {
 }
 
 export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }: DiagnosticsPanelProps) {
+  const { t } = useTranslation("diagnostics");
   const [snapshot, setSnapshot] = useState<DiagnosticsSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,8 +172,10 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
 
   return (
     <Panel
-      title="Diagnostics"
-      subtitle="System snapshot for troubleshooting. Copy-paste the markdown to share with support when something misbehaves."
+      title={t("title", { defaultValue: "Diagnostics" })}
+      subtitle={t("subtitleSnapshot", {
+        defaultValue: "System snapshot for troubleshooting. Copy-paste the markdown to share with support when something misbehaves.",
+      })}
       actions={
         <div className="button-row">
           <button

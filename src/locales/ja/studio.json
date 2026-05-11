@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "画像スタジオ",
+    "subtitle": "モデルを選択し、プロンプトを入力し、保存された出力を反復",
+    "savedOutputsLabel": "保存された出力",
+    "promptPanelTitle": "プロンプト",
+    "promptPanelSubtitle": "モデルを選択し、アスペクト比と品質を設定して、ローカルギャラリーに生成します。",
+    "recentOutputsTitle": "最近の出力",
+    "prompt": "プロンプト",
+    "negativePrompt": "ネガティブプロンプト",
+    "enhancePrompt": "強化",
+    "width": "幅",
+    "height": "高さ",
+    "steps": "ステップ",
+    "guidance": "ガイダンス",
+    "guidanceScale": "ガイダンススケール",
+    "seed": "シード",
+    "seedRandom": "ランダム",
+    "sampler": "サンプラー",
+    "scheduler": "スケジューラー",
+    "batchSize": "バッチサイズ",
+    "generate": "画像を生成",
+    "generating": "画像を生成中…",
+    "queued": "待機中",
+    "decoding": "デコード中…",
+    "saveImage": "画像を保存",
+    "copyImage": "画像をコピー",
+    "openFolder": "フォルダーで表示",
+    "modelLabel": "モデル",
+    "noModelsOption": "インストール済みモデルなし — ディスカバーからダウンロード",
+    "aspectRatio": "アスペクト比",
+    "qualityPreset": "品質プリセット",
+    "previewLabel": "プレビュー",
+    "draftOn": "512px · オン",
+    "draftOff": "ドラフト @ 512px",
+    "diffusionCache": "拡散キャッシュ",
+    "modal": {
+      "cancelling": "キャンセル中...",
+      "generating": "画像を生成中",
+      "cancelled": "画像生成がキャンセルされました",
+      "failed": "画像生成に失敗しました",
+      "imagesReady": "画像の準備ができました",
+      "imageReady": "画像の準備ができました"
+    }
+  },
+  "video": {
+    "title": "動画スタジオ",
+    "prompt": "プロンプト",
+    "negativePrompt": "ネガティブプロンプト",
+    "duration": "長さ",
+    "framesPerSecond": "フレームレート",
+    "frames": "フレーム数",
+    "resolution": "解像度",
+    "generate": "動画を生成",
+    "generating": "動画を生成中…",
+    "encoding": "エンコード中…",
+    "saveVideo": "動画を保存",
+    "modelLabel": "動画モデル",
+    "qualityPreset": "品質プリセット",
+    "aspectRatio": "アスペクト比",
+    "modal": {
+      "cancelling": "キャンセル中...",
+      "generating": "動画を生成中",
+      "cancelled": "動画生成がキャンセルされました",
+      "failed": "動画生成に失敗しました",
+      "ready": "動画の準備ができました"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "ステップ {current} / {total}",
+    "estimatedRemaining": "残り約 {seconds} 秒"
+  },
+  "advanced": {
+    "title": "詳細",
+    "show": "詳細設定を表示",
+    "hide": "詳細設定を非表示"
+  },
+  "enhance": {
+    "label": "強化",
+    "busy": "強化中...",
+    "tooltip": "このプロンプトをローカルで強化",
+    "error": "エンハンサーエラー:{message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "モデルをメモリに読み込み中..."
+  }
+}

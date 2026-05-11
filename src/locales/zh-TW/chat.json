@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "輸入訊息…(Enter 傳送,Shift+Enter 換行,/ 輸入命令)",
+    "placeholderNoModel": "請先載入模型 — 從 我的模型 或 探索 選擇一個,然後點擊 對話。",
+    "send": "傳送",
+    "stop": "停止",
+    "clear": "清除",
+    "sendDisabledTooltip": "請先載入模型再傳送訊息"
+  },
+  "thinkingMode": {
+    "label": "思考",
+    "tooltip": "選擇模型回答前進行多少推理。關閉 = 直接回答;低 / 中 / 高 = 對相容模型逐步增加推理深度。",
+    "off": "關閉",
+    "offTooltip": "無推理 — 模型直接回答",
+    "low": "低",
+    "lowTooltip": "簡短推理",
+    "medium": "中",
+    "mediumTooltip": "預設推理深度",
+    "high": "高",
+    "highTooltip": "擴展推理"
+  },
+  "tools": {
+    "toggleLabel": "工具",
+    "toggleOn": "工具 開啟",
+    "enableTooltip": "啟用代理工具",
+    "enabledTooltip": "工具已啟用(網頁搜尋、程式碼、計算機、檔案讀取)"
+  },
+  "newSession": "新增工作階段",
+  "newSessionTitle": "未命名對話",
+  "deleteSession": "刪除工作階段",
+  "deleteSessionConfirm": "刪除此對話?此操作無法復原。",
+  "renameSession": "重新命名工作階段",
+  "exportSession": "匯出工作階段",
+  "promptPlaceholder": "傳送訊息…",
+  "promptPlaceholderImage": "描述影像,或拖入一張以討論…",
+  "stopGeneration": "停止生成",
+  "regenerateResponse": "重新生成回覆",
+  "branchHere": "從此處分支",
+  "copyMessage": "複製訊息",
+  "copyAsMarkdown": "複製為 Markdown",
+  "tokensUsed": "{count, plural, other {# 個標記}}",
+  "thinking": "思考中…",
+  "toolCall": {
+    "label": "工具呼叫",
+    "running": "執行工具:{tool}",
+    "succeeded": "工具成功:{tool}",
+    "failed": "工具失敗:{tool}",
+    "noArguments": "(無參數)",
+    "input": "輸入",
+    "result": "結果"
+  },
+  "attachments": {
+    "image": "附加影像",
+    "document": "附加文件",
+    "code": "附加程式碼",
+    "removeAttachment": "移除附件"
+  },
+  "modelPicker": {
+    "label": "模型",
+    "noneSelected": "未載入模型",
+    "loadModel": "載入模型"
+  },
+  "header": {
+    "expandChatList": "展開對話清單",
+    "chatsLabel": "對話",
+    "threadName": "執行緒名稱",
+    "selectModel": "選擇模型",
+    "exportThread": "匯出此執行緒",
+    "export": "匯出",
+    "modelCapabilities": "模型能力",
+    "ready": "就緒",
+    "loadChatModel": "載入此對話的模型",
+    "loading": "載入中...",
+    "loadModel": "載入模型"
+  },
+  "sidebar": {
+    "title": "對話",
+    "newThread": "新執行緒",
+    "compare": "比較",
+    "compareTooltip": "並排比較兩個模型",
+    "collapseChatList": "摺疊對話清單",
+    "searchThreadsPlaceholder": "搜尋執行緒...",
+    "searchThreadsAriaLabel": "搜尋執行緒",
+    "clearSearch": "清除搜尋"
+  },
+  "swapMenu": {
+    "clearOverride": "清除覆寫",
+    "dialogAriaLabel": "為下一輪選擇模型",
+    "sendNextVia": "下一則透過",
+    "oneTurnNote": "覆寫僅適用於一輪。",
+    "noWarmModels": "沒有其他熱模型。從 我的模型 載入第二個模型以啟用快速切換。"
+  },
+  "activeThread": {
+    "title": "活動執行緒",
+    "subtitle": "回應中繼資料預設摺疊,但可在每個代理回合中檢視。"
+  },
+  "compare": {
+    "latest": "最新"
+  },
+  "tempChip": {
+    "label": "溫度 {value}",
+    "tooltip": "溫度:{value}(來自啟動設定)",
+    "overrideTooltip": "溫度覆寫:{value}(預設 {defaultValue_})",
+    "dialogAriaLabel": "溫度覆寫",
+    "overrideLabel": "覆寫溫度",
+    "reset": "重設",
+    "hint": "較低 = 聚焦。較高 = 富有創造性。來自啟動設定的預設值 {value}。"
+  },
+  "thread": {
+    "copyMessageTooltip": "複製訊息",
+    "retryTooltip": "重試回應",
+    "forkTooltip": "從此處分支(建立新執行緒)",
+    "delveTooltip": "深入 — 以批評的眼光重讀並提出修訂後的回答",
+    "deleteMessageTooltip": "刪除訊息",
+    "loadExactSettingsTooltip": "載入此回應使用的確切模型和執行階段設定"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "挑戰標題",
+    "promptPlaceholder": "用同一個網頁挑戰向所有選取的模型發起提示...",
+    "openBrowser": "在預設瀏覽器中開啟",
+    "historyPlaceholder": "搜尋過去的挑戰...",
+    "moveToTrash": "移至垃圾桶",
+    "moveToTrashAria": "將 \"{title}\" 移至垃圾桶",
+    "noMatching": "沒有相符的挑戰。"
+  },
+  "samplerPanel": {
+    "label": "取樣器",
+    "openTooltip": "開啟取樣器面板",
+    "activeTooltip": "{count, plural, other {# 個取樣器覆寫已啟用}}",
+    "dialogAriaLabel": "取樣器覆寫",
+    "headerTitle": "取樣器覆寫",
+    "resetAll": "全部重設",
+    "resetAllTooltip": "全部重設為後端預設值"
+  },
+  "kvChip": {
+    "clearOverride": "清除 KV 覆寫",
+    "revertTooltip": "恢復至工作階段預設值",
+    "dialogAriaLabel": "KV 快取策略",
+    "headingTitle": "下一輪的 KV 快取",
+    "reloadNote": "切換將在需要時重新載入執行階段。"
+  },
+  "citations": {
+    "sourcesLabel": "來源：",
+    "pageInfo": "（第 {page} 頁）",
+    "chunkLabel": "片段 {index}"
+  },
+  "modelLoading": {
+    "elapsed": "（{seconds} 秒）",
+    "loadingWithElapsed": "正在載入 {name}... 已過 {seconds} 秒"
+  },
+  "promptPhase": {
+    "processingPrompt": "正在處理提示詞",
+    "generating": "正在生成"
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
@@ -230,6 +231,7 @@ export function RuntimeControls({
   turboInstalled,
   turboUpdateAvailable,
 }: RuntimeControlsProps) {
+  const { t } = useTranslation("runtime");
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
   const clampedContext = Math.max(contextMin, Math.min(settings.contextTokens, effectiveMaxContext));
@@ -360,7 +362,7 @@ export function RuntimeControls({
 
   return (
     <>
-      <span className="eyebrow">Cache strategy {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> (locked to Native during speculative decoding)</small> : null}</span>
+      <span className="eyebrow">{t("controls.cacheStrategy")} {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> {t("controls.cacheStrategyLockedNote", { defaultValue: "(locked to Native during speculative decoding)" })}</small> : null}</span>
       <div className="cache-strategy-cards">
         {strategies.map((strategy) => {
           const info = STRATEGY_INFO[strategy.id];
@@ -489,7 +491,7 @@ export function RuntimeControls({
       <div className="slider-grid">
         {selectedStrategy?.bitRange != null ? (
           <SliderField
-            label="Cache bits"
+            label={t("controls.cacheType", { defaultValue: "Cache bits" })}
             value={settings.cacheBits}
             min={selectedStrategy.bitRange[0]} max={selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1]} step={1}
             ticks={selectedStrategy.bitRange.map((v) => ({ value: v, label: String(v) }))}
@@ -549,7 +551,7 @@ export function RuntimeControls({
               checked={settings.fitModelInMemory}
               onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
             />
-            <span>Fit in memory</span>
+            <span>{t("controls.fitInMemory", { defaultValue: "Fit in memory" })}</span>
           </label>
           <button
             type="button"

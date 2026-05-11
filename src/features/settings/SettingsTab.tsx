@@ -1,6 +1,7 @@
 import { useState, type SetStateAction } from "react";
 import { Panel } from "../../components/Panel";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
+import { LanguagePanel } from "./LanguagePanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
@@ -162,6 +163,11 @@ export function SettingsTab({
           </p>
         </div>
       </Panel>
+      <LanguagePanel
+        settingsDraft={settingsDraft}
+        onSettingsDraftChange={onSettingsDraftChange}
+        onCopyText={onCopyText}
+      />
     </div>
   );
 

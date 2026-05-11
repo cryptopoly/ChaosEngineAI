@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple Silicon native inference engine" },
+    "llamaCpp": { "name": "llama.cpp", "description": "GGUF inference via llama-server" },
+    "vllm": { "name": "vLLM", "description": "CUDA inference engine" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Native",
+      "description": "Built-in cache types (f16, q8_0, q4_0, etc.). Maximum compatibility."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard-rotation KV quantization. 2–4× compression with minimal quality loss."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Sparse attention compressor for long context. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Diffusion-only cache hook. ~1.8× speedup on DiT pipelines."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Diffusion-only Taylor-expansion cache. Aggressive speedup, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Diffusion-only magnitude-based cache. FLUX only without calibration."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Diffusion-only attention reuse across timesteps."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Diffusion-only conditional/unconditional reuse cache."
+    }
+  },
+  "controls": {
+    "engine": "Engine",
+    "cacheStrategy": "Cache strategy",
+    "cacheStrategyLockedNote": "(locked to Native during speculative decoding)",
+    "cacheType": "Cache type",
+    "speculativeDecoding": "Speculative decoding",
+    "draftModel": "Draft model",
+    "contextSize": "Context size",
+    "gpuLayers": "GPU layers",
+    "threads": "Threads",
+    "fitInMemory": "Fit in memory"
+  },
+  "notes": {
+    "binaryRequired": "Requires {binary}.",
+    "platformRequired": "Requires {platform}.",
+    "engineIncompatible": "Not compatible with {engine}.",
+    "unknownEngine": "Unknown engine."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "First token: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  }
+}

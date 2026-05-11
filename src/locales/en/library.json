@@ -1,0 +1,40 @@
+{
+  "title": "Library",
+  "search": "Search models…",
+  "filter": {
+    "all": "All",
+    "text": "Text",
+    "image": "Image",
+    "video": "Video",
+    "vision": "Vision",
+    "audio": "Audio",
+    "installed": "Installed",
+    "uninstalled": "Not installed",
+    "favourites": "Favourites"
+  },
+  "card": {
+    "size": "Size",
+    "quantization": "Quantization",
+    "context": "Context",
+    "capabilities": "Capabilities",
+    "license": "License",
+    "author": "Author",
+    "lastUpdated": "Last updated"
+  },
+  "download": {
+    "start": "Download",
+    "inProgress": "Downloading…",
+    "paused": "Paused",
+    "resumed": "Resumed",
+    "cancelled": "Cancelled",
+    "complete": "Complete",
+    "totalSize": "{size} total",
+    "downloaded": "{downloaded} of {total}"
+  },
+  "details": {
+    "loadModel": "Load model",
+    "unloadModel": "Unload model",
+    "viewOnHF": "View on Hugging Face",
+    "deleteFromDisk": "Delete from disk"
+  }
+}

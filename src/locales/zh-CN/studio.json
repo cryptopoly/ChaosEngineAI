@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "图像工作室",
+    "subtitle": "选择模型,提示,并迭代保存的输出",
+    "savedOutputsLabel": "已保存的输出",
+    "promptPanelTitle": "提示词",
+    "promptPanelSubtitle": "选择模型,设置宽高比和质量,然后生成到本地图库。",
+    "recentOutputsTitle": "最近的输出",
+    "prompt": "提示词",
+    "negativePrompt": "反向提示词",
+    "enhancePrompt": "增强",
+    "width": "宽度",
+    "height": "高度",
+    "steps": "步数",
+    "guidance": "引导",
+    "guidanceScale": "引导比例",
+    "seed": "种子",
+    "seedRandom": "随机",
+    "sampler": "采样器",
+    "scheduler": "调度器",
+    "batchSize": "批大小",
+    "generate": "生成图像",
+    "generating": "正在生成图像…",
+    "queued": "已排队",
+    "decoding": "解码中…",
+    "saveImage": "保存图像",
+    "copyImage": "复制图像",
+    "openFolder": "在文件夹中显示",
+    "modelLabel": "模型",
+    "noModelsOption": "未安装模型 — 从 发现 中下载",
+    "aspectRatio": "纵横比",
+    "qualityPreset": "质量预设",
+    "previewLabel": "预览",
+    "draftOn": "512px · 开",
+    "draftOff": "草稿 @ 512px",
+    "diffusionCache": "扩散缓存",
+    "modal": {
+      "cancelling": "取消中...",
+      "generating": "正在生成图像",
+      "cancelled": "图像生成已取消",
+      "failed": "图像生成失败",
+      "imagesReady": "图像已就绪",
+      "imageReady": "图像已就绪"
+    }
+  },
+  "video": {
+    "title": "视频工作室",
+    "prompt": "提示词",
+    "negativePrompt": "反向提示词",
+    "duration": "时长",
+    "framesPerSecond": "帧率",
+    "frames": "帧数",
+    "resolution": "分辨率",
+    "generate": "生成视频",
+    "generating": "正在生成视频…",
+    "encoding": "编码中…",
+    "saveVideo": "保存视频",
+    "modelLabel": "视频模型",
+    "qualityPreset": "质量预设",
+    "aspectRatio": "纵横比",
+    "modal": {
+      "cancelling": "取消中...",
+      "generating": "正在生成视频",
+      "cancelled": "视频生成已取消",
+      "failed": "视频生成失败",
+      "ready": "视频已就绪"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "第 {current} 步 / 共 {total} 步",
+    "estimatedRemaining": "预计剩余约 {seconds} 秒"
+  },
+  "advanced": {
+    "title": "高级",
+    "show": "显示高级设置",
+    "hide": "隐藏高级设置"
+  },
+  "enhance": {
+    "label": "增强",
+    "busy": "增强中...",
+    "tooltip": "在本地增强此提示词",
+    "error": "增强器错误:{message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "正在将模型加载到内存中..."
+  }
+}

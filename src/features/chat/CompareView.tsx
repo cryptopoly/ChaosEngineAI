@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
@@ -305,6 +306,7 @@ export function CompareView({
   installingPackage,
   installLogs,
 }: CompareViewProps) {
+  const { t } = useTranslation("chat");
   const [slots, setSlots] = useState<CompareSlot[]>(() => [
     { id: "a", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
     { id: "b", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
@@ -610,7 +612,7 @@ export function CompareView({
         subtitle={subtitle}
         actions={showLatestButton ? (
           <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(slot.id)}>
-            Latest
+            {t("compare.latest", { defaultValue: "Latest" })}
           </button>
         ) : null}
       >

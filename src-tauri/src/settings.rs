@@ -25,6 +25,13 @@ pub struct SavedDesktopSettings {
     // so we can set HF_HOME on the backend child BEFORE huggingface_hub
     // is first imported — setting it post-import is a no-op.
     pub hf_cache_path: Option<String>,
+    // FU-042 i18n: persisted UI locale.  Read on backend startup so we
+    // can flip `rust_i18n::set_locale(...)` BEFORE the Tauri menu /
+    // tray / updater dialogs are built — otherwise the first paint
+    // shows English chrome even on a `ja` / `zh-CN` machine.  The
+    // sentinel `"system"` means "auto-detect at runtime via
+    // tauri-plugin-os".
+    pub locale: Option<String>,
     // `auto_start_server` was previously read here to gate Python sidecar
     // bootstrap. The sidecar now always starts (it's required for /api/*),
     // and that toggle only controls the inference engine inside the backend.
@@ -53,6 +60,22 @@ pub fn saved_allow_remote_connections() -> Option<bool> {
     let payload = fs::read_to_string(path).ok()?;
     let settings: SavedDesktopSettings = serde_json::from_str(&payload).ok()?;
     settings.allow_remote_connections
+}
+
+/// FU-042: read the user-persisted UI locale from `settings.json`.
+/// Returns `None` when the file is missing, the `locale` key is absent,
+/// or the value is the sentinel `"system"` (= auto-detect at runtime).
+/// The Tauri shell uses this to seed `rust_i18n::set_locale(...)` before
+/// any native menu is built.
+pub fn saved_locale() -> Option<String> {
+    let path = settings_path()?;
+    let payload = fs::read_to_string(path).ok()?;
+    let settings: SavedDesktopSettings = serde_json::from_str(&payload).ok()?;
+    let raw = settings.locale?.trim().to_string();
+    if raw.is_empty() || raw.eq_ignore_ascii_case("system") {
+        return None;
+    }
+    Some(raw)
 }
 
 // Read the user-configured HuggingFace cache path from settings.json.

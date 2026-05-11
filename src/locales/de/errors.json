@@ -1,0 +1,33 @@
+{
+  "generic": "Etwas ist schiefgelaufen.",
+  "network": "Netzwerkfehler. Verbindung prüfen.",
+  "timeout": "Anfrage-Timeout.",
+  "notFound": "Nicht gefunden.",
+  "permissionDenied": "Zugriff verweigert.",
+  "diskFull": "Nicht genug Speicherplatz.",
+  "outOfMemory": "Speicher voll.",
+  "modelLoadFailed": "Modell konnte nicht geladen werden: {reason}",
+  "modelNotFound": "Modell nicht gefunden: {repo}",
+  "engineNotInstalled": "Engine nicht installiert: {engine}. Installation über den Einrichtungs-Tab.",
+  "binaryMissing": "Erforderliche Binärdatei fehlt: {binary}",
+  "downloadFailed": "Download fehlgeschlagen: {reason}",
+  "downloadCancelled": "Download abgebrochen.",
+  "huggingFaceGated": "Dieses Modell ist eingeschränkt. Bitte die Lizenz auf Hugging Face akzeptieren und erneut versuchen.",
+  "huggingFaceAuthRequired": "Authentifizierung erforderlich. Hugging-Face-Token in den Einstellungen festlegen.",
+  "incompatibleHardware": "Ihre Hardware erfüllt die Anforderungen dieses Modells nicht.",
+  "platformOnly": "Diese Funktion erfordert {platform}.",
+  "unsupportedFormat": "Nicht unterstütztes Dateiformat: {format}",
+  "validationFailed": "Validierung fehlgeschlagen: {reason}",
+  "sessionCorrupt": "Sitzungsdaten sind beschädigt und konnten nicht geladen werden.",
+  "boundaryFallback": "In diesem Tab ist ein Fehler aufgetreten.",
+  "boundaryHint": "Erneut versuchen, den Tab wechseln oder die Fehlerdetails für Diagnosen kopieren.",
+  "boundary": {
+    "scopeCrashed": "{scope} ist abgestürzt",
+    "tryAgain": "Erneut versuchen",
+    "copyDetails": "Details kopieren",
+    "stackTrace": "Stack-Trace",
+    "noJsStack": "(kein JS-Stack erfasst)",
+    "componentStack": "Komponenten-Stack",
+    "hint": "Frontend-Fehler erscheinen auch in der Webview-Konsole (in Release-Builds Rechtsklick → Element untersuchen, oder die App mit npm run dev starten). Backend-Logs sind im Diagnose-Tab sichtbar."
+  }
+}

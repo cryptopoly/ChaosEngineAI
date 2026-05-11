@@ -1,0 +1,33 @@
+{
+  "generic": "문제가 발생했습니다.",
+  "network": "네트워크 오류. 연결을 확인하세요.",
+  "timeout": "요청 시간 초과.",
+  "notFound": "찾을 수 없음.",
+  "permissionDenied": "권한이 거부되었습니다.",
+  "diskFull": "디스크 공간이 부족합니다.",
+  "outOfMemory": "메모리 부족.",
+  "modelLoadFailed": "모델을 로드하지 못했습니다: {reason}",
+  "modelNotFound": "모델을 찾을 수 없습니다: {repo}",
+  "engineNotInstalled": "엔진이 설치되지 않았습니다: {engine}. 설정 탭에서 설치하세요.",
+  "binaryMissing": "필수 바이너리 누락: {binary}",
+  "downloadFailed": "다운로드 실패: {reason}",
+  "downloadCancelled": "다운로드가 취소되었습니다.",
+  "huggingFaceGated": "이 모델은 제한되어 있습니다. Hugging Face에서 라이선스에 동의한 후 다시 시도하세요.",
+  "huggingFaceAuthRequired": "인증이 필요합니다. 환경설정에서 Hugging Face 토큰을 설정하세요.",
+  "incompatibleHardware": "하드웨어가 이 모델의 요구 사항을 충족하지 않습니다.",
+  "platformOnly": "이 기능은 {platform}이 필요합니다.",
+  "unsupportedFormat": "지원되지 않는 파일 형식: {format}",
+  "validationFailed": "유효성 검사 실패: {reason}",
+  "sessionCorrupt": "세션 데이터가 손상되어 로드할 수 없습니다.",
+  "boundaryFallback": "이 탭에서 문제가 발생했습니다.",
+  "boundaryHint": "다시 시도하거나, 탭을 전환하거나, 진단을 위해 오류 세부 정보를 복사하세요.",
+  "boundary": {
+    "scopeCrashed": "{scope}에서 충돌이 발생했습니다",
+    "tryAgain": "다시 시도",
+    "copyDetails": "세부 정보 복사",
+    "stackTrace": "스택 추적",
+    "noJsStack": "(JS 스택이 캡처되지 않음)",
+    "componentStack": "컴포넌트 스택",
+    "hint": "프론트엔드 오류는 webview 콘솔에도 나타납니다 (릴리스 빌드에서 우클릭 → 요소 검사하기, 또는 npm run dev로 앱 실행). 백엔드 로그는 진단 탭에서 확인할 수 있습니다."
+  }
+}

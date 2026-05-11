@@ -6,6 +6,7 @@
  * reset them when entering a new challenge or loading from history.
  */
 
+import { useTranslation } from "react-i18next";
 import {
   type HtmlChallengeManifest,
   challengeHistoryLabel,
@@ -39,6 +40,7 @@ export function ChallengeHistoryCombobox({
   onLoadChallenge,
   onDeleteChallenge,
 }: ChallengeHistoryComboboxProps) {
+  const { t } = useTranslation("chat");
   const selectedChallenge = challenges.find((challenge) => challenge.id === selectedChallengeId) ?? null;
   const historyInputValue = historyOpen || historySearch
     ? historySearch
@@ -53,7 +55,7 @@ export function ChallengeHistoryCombobox({
         className="text-input html-challenge-history-input"
         type="search"
         value={historyInputValue}
-        placeholder="Search previous challenges..."
+        placeholder={t("htmlChallenge.historyPlaceholder", { defaultValue: "Search previous challenges..." })}
         disabled={busy || Boolean(loadingChallengeId)}
         onFocus={() => {
           onHistoryOpenChange(true);
@@ -93,8 +95,8 @@ export function ChallengeHistoryCombobox({
               <button
                 type="button"
                 className="html-challenge-history-option-delete"
-                aria-label={`Move "${displayChallengeTitle(challenge)}" to trash`}
-                title="Move to trash"
+                aria-label={t("htmlChallenge.moveToTrashAria", { title: displayChallengeTitle(challenge), defaultValue: `Move "${displayChallengeTitle(challenge)}" to trash` })}
+                title={t("htmlChallenge.moveToTrash", { defaultValue: "Move to trash" })}
                 disabled={busy}
                 onMouseDown={(event) => {
                   event.preventDefault();
@@ -107,7 +109,7 @@ export function ChallengeHistoryCombobox({
             </div>
           ))}
           {filteredChallenges.length === 0 ? (
-            <p className="html-challenge-history-empty">No matching challenges.</p>
+            <p className="html-challenge-history-empty">{t("htmlChallenge.noMatching", { defaultValue: "No matching challenges." })}</p>
           ) : null}
         </div>
       ) : null}

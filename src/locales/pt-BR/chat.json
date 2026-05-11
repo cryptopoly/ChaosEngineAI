@@ -1,0 +1,155 @@
+{
+  "composer": {
+    "placeholderReady": "Digite uma mensagem… (Enter para enviar, Shift+Enter para nova linha, / para comandos)",
+    "placeholderNoModel": "Carregue um modelo primeiro — escolha um em Meus modelos ou Descobrir e clique em CHAT.",
+    "send": "Enviar",
+    "stop": "Parar",
+    "clear": "Limpar",
+    "sendDisabledTooltip": "Carregue um modelo primeiro para enviar mensagens"
+  },
+  "thinkingMode": {
+    "label": "Raciocínio",
+    "tooltip": "Escolha quanto o modelo raciocina antes de responder. Desligado = respostas diretas; Baixo / Médio / Alto = profundidade de raciocínio crescente para modelos capazes.",
+    "off": "Desligado",
+    "offTooltip": "Sem raciocínio — o modelo responde diretamente",
+    "low": "Baixo",
+    "lowTooltip": "Raciocínio breve",
+    "medium": "Médio",
+    "mediumTooltip": "Profundidade de raciocínio padrão",
+    "high": "Alto",
+    "highTooltip": "Raciocínio estendido"
+  },
+  "tools": {
+    "toggleLabel": "Ferramentas",
+    "toggleOn": "Ferramentas ON",
+    "enableTooltip": "Ativar ferramentas de agente",
+    "enabledTooltip": "Ferramentas ativadas (busca web, código, calculadora, leitor de arquivos)"
+  },
+  "newSession": "Nova sessão",
+  "newSessionTitle": "Chat sem título",
+  "deleteSession": "Excluir sessão",
+  "deleteSessionConfirm": "Excluir este chat? Esta ação não pode ser desfeita.",
+  "renameSession": "Renomear sessão",
+  "exportSession": "Exportar sessão",
+  "promptPlaceholder": "Enviar uma mensagem…",
+  "promptPlaceholderImage": "Descreva uma imagem ou solte uma para conversar sobre ela…",
+  "stopGeneration": "Parar geração",
+  "regenerateResponse": "Regenerar resposta",
+  "branchHere": "Criar ramo a partir daqui",
+  "copyMessage": "Copiar mensagem",
+  "copyAsMarkdown": "Copiar como Markdown",
+  "tokensUsed": "{count, plural, one {# token} other {# tokens}}",
+  "thinking": "Pensando…",
+  "toolCall": {
+    "label": "Chamada de ferramenta",
+    "running": "Executando ferramenta: {tool}",
+    "succeeded": "Ferramenta bem-sucedida: {tool}",
+    "failed": "Ferramenta falhou: {tool}",
+    "noArguments": "(sem argumentos)",
+    "input": "Entrada",
+    "result": "Resultado"
+  },
+  "attachments": {
+    "image": "Anexar imagem",
+    "document": "Anexar documento",
+    "code": "Anexar código",
+    "removeAttachment": "Remover anexo"
+  },
+  "modelPicker": {
+    "label": "Modelo",
+    "noneSelected": "Nenhum modelo carregado",
+    "loadModel": "Carregar modelo"
+  },
+  "header": {
+    "expandChatList": "Expandir a lista de chats",
+    "chatsLabel": "Chats",
+    "threadName": "Nome da thread",
+    "selectModel": "Selecionar modelo",
+    "exportThread": "Exportar esta thread",
+    "export": "Exportar",
+    "modelCapabilities": "Capacidades do modelo",
+    "ready": "Pronto",
+    "loadChatModel": "Carregar o modelo deste chat",
+    "loading": "Carregando...",
+    "loadModel": "Carregar modelo"
+  },
+  "sidebar": {
+    "title": "Chats",
+    "newThread": "Nova thread",
+    "compare": "Comparar",
+    "compareTooltip": "Comparar dois modelos lado a lado",
+    "collapseChatList": "Recolher a lista de chats",
+    "searchThreadsPlaceholder": "Pesquisar threads...",
+    "searchThreadsAriaLabel": "Pesquisar threads",
+    "clearSearch": "Limpar pesquisa"
+  },
+  "swapMenu": {
+    "clearOverride": "Limpar substituição",
+    "dialogAriaLabel": "Escolha um modelo para o próximo turno",
+    "sendNextVia": "Enviar próximo via",
+    "oneTurnNote": "A substituição se aplica apenas para um turno.",
+    "noWarmModels": "Nenhum outro modelo quente disponível. Carregue um segundo modelo em Meus modelos para habilitar trocas rápidas."
+  },
+  "activeThread": {
+    "title": "Thread ativa",
+    "subtitle": "Metadados de resposta são recolhidos por padrão, mas disponíveis por turno do agente."
+  },
+  "compare": {
+    "latest": "Mais recente"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Temperatura: {value} (das configurações de inicialização)",
+    "overrideTooltip": "Substituição de temperatura: {value} (padrão {defaultValue_})",
+    "dialogAriaLabel": "Substituição de temperatura",
+    "overrideLabel": "Substituir temperatura",
+    "reset": "Redefinir",
+    "hint": "Menor = focado. Maior = criativo. Padrão {value} das configurações de inicialização."
+  },
+  "thread": {
+    "copyMessageTooltip": "Copiar mensagem",
+    "retryTooltip": "Tentar resposta novamente",
+    "forkTooltip": "Ramificar daqui (cria uma nova thread)",
+    "delveTooltip": "Aprofundar — reler com olhar crítico e propor uma resposta revisada",
+    "deleteMessageTooltip": "Excluir mensagem",
+    "loadExactSettingsTooltip": "Carregar o modelo exato e configurações de runtime usados para esta resposta"
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Título do desafio",
+    "promptPlaceholder": "Promptar todos os modelos selecionados com o mesmo desafio de página web...",
+    "openBrowser": "Abrir no navegador padrão",
+    "historyPlaceholder": "Pesquisar desafios anteriores...",
+    "moveToTrash": "Mover para a lixeira",
+    "moveToTrashAria": "Mover \"{title}\" para a lixeira",
+    "noMatching": "Sem desafios correspondentes."
+  },
+  "samplerPanel": {
+    "label": "Samplers",
+    "openTooltip": "Abrir painel de samplers",
+    "activeTooltip": "{count, plural, one {# substituição de sampler ativa} other {# substituições de sampler ativas}}",
+    "dialogAriaLabel": "Substituições de sampler",
+    "headerTitle": "Substituições de sampler",
+    "resetAll": "Redefinir tudo",
+    "resetAllTooltip": "Redefinir tudo para os padrões do backend"
+  },
+  "kvChip": {
+    "clearOverride": "Limpar substituição KV",
+    "revertTooltip": "Reverter ao padrão da sessão",
+    "dialogAriaLabel": "Estratégia de cache KV",
+    "headingTitle": "Cache KV para o próximo turno",
+    "reloadNote": "A troca recarrega o runtime se necessário."
+  },
+  "citations": {
+    "sourcesLabel": "Fontes:",
+    "pageInfo": "(página {page})",
+    "chunkLabel": "Trecho {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}s)",
+    "loadingWithElapsed": "Carregando {name}... {seconds}s decorridos"
+  },
+  "promptPhase": {
+    "processingPrompt": "Processando prompt",
+    "generating": "Gerando"
+  }
+}

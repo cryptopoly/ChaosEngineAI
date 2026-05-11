@@ -14,6 +14,7 @@
  * a clean error string that we surface inline.
  */
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getWanInstallStatus,
   getWanInventory,
@@ -46,6 +47,7 @@ export interface WanRuntimeInstallerProps {
 }
 
 export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
+  const { t } = useTranslation("setup");
   const [item, setItem] = useState<WanInventoryItem | null>(null);
   const [job, setJob] = useState<WanInstallJobState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
     <div className="wan-runtime-installer">
       <div className="wan-runtime-installer__row">
         <div className="wan-runtime-installer__meta">
-          <strong>Wan MLX runtime</strong>
+          <strong>{t("wanRuntime.title", { defaultValue: "Wan MLX runtime" })}</strong>
           <small>
             {item.converted
               ? `Converted · routes via mlx-video native`
@@ -155,7 +157,7 @@ export function WanRuntimeInstaller({ repo }: WanRuntimeInstallerProps) {
         </div>
         <div className="wan-runtime-installer__actions">
           {item.converted ? (
-            <span className="badge accent">Ready</span>
+            <span className="badge accent">{t("wanRuntime.ready", { defaultValue: "Ready" })}</span>
           ) : (
             <button
               className="secondary-button"

@@ -1,0 +1,87 @@
+{
+  "image": {
+    "title": "Studio image",
+    "subtitle": "Choisissez un modèle, formulez l'invite et itérez sur les sorties enregistrées",
+    "savedOutputsLabel": "sorties enregistrées",
+    "promptPanelTitle": "Invite",
+    "promptPanelSubtitle": "Choisissez un modèle, définissez le format et la qualité, puis générez dans la galerie locale.",
+    "recentOutputsTitle": "Sorties récentes",
+    "prompt": "Invite",
+    "negativePrompt": "Invite négative",
+    "enhancePrompt": "Améliorer",
+    "width": "Largeur",
+    "height": "Hauteur",
+    "steps": "Étapes",
+    "guidance": "Guidance",
+    "guidanceScale": "Échelle de guidance",
+    "seed": "Graine",
+    "seedRandom": "Aléatoire",
+    "sampler": "Échantillonneur",
+    "scheduler": "Ordonnanceur",
+    "batchSize": "Taille du lot",
+    "generate": "Générer l'image",
+    "generating": "Génération de l'image…",
+    "queued": "En file d'attente",
+    "decoding": "Décodage…",
+    "saveImage": "Enregistrer l'image",
+    "copyImage": "Copier l'image",
+    "openFolder": "Afficher dans le dossier",
+    "modelLabel": "Modèle",
+    "noModelsOption": "Aucun modèle installé — téléchargez-en un depuis Découvrir",
+    "aspectRatio": "Format",
+    "qualityPreset": "Préréglage de qualité",
+    "previewLabel": "Aperçu",
+    "draftOn": "512px · activé",
+    "draftOff": "Brouillon @ 512px",
+    "diffusionCache": "Cache de diffusion",
+    "modal": {
+      "cancelling": "Annulation...",
+      "generating": "Génération de l'image",
+      "cancelled": "Génération d'image annulée",
+      "failed": "Échec de la génération d'image",
+      "imagesReady": "Images prêtes",
+      "imageReady": "Image prête"
+    }
+  },
+  "video": {
+    "title": "Studio vidéo",
+    "prompt": "Invite",
+    "negativePrompt": "Invite négative",
+    "duration": "Durée",
+    "framesPerSecond": "Images par seconde",
+    "frames": "Images",
+    "resolution": "Résolution",
+    "generate": "Générer la vidéo",
+    "generating": "Génération de la vidéo…",
+    "encoding": "Encodage…",
+    "saveVideo": "Enregistrer la vidéo",
+    "modelLabel": "Modèle vidéo",
+    "qualityPreset": "Préréglage de qualité",
+    "aspectRatio": "Format",
+    "modal": {
+      "cancelling": "Annulation...",
+      "generating": "Génération de la vidéo",
+      "cancelled": "Génération vidéo annulée",
+      "failed": "Échec de la génération vidéo",
+      "ready": "Vidéo prête"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Étape {current} sur {total}",
+    "estimatedRemaining": "Environ {seconds} s restantes"
+  },
+  "advanced": {
+    "title": "Avancé",
+    "show": "Afficher les paramètres avancés",
+    "hide": "Masquer les paramètres avancés"
+  },
+  "enhance": {
+    "label": "Améliorer",
+    "busy": "Amélioration...",
+    "tooltip": "Améliorer cette invite localement",
+    "error": "Erreur de l'enhancer : {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Chargement du modèle en mémoire..."
+  }
+}

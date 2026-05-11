@@ -1,0 +1,40 @@
+{
+  "title": "Библиотека",
+  "search": "Поиск моделей…",
+  "filter": {
+    "all": "Все",
+    "text": "Текст",
+    "image": "Изображение",
+    "video": "Видео",
+    "vision": "Зрение",
+    "audio": "Аудио",
+    "installed": "Установлено",
+    "uninstalled": "Не установлено",
+    "favourites": "Избранное"
+  },
+  "card": {
+    "size": "Размер",
+    "quantization": "Квантование",
+    "context": "Контекст",
+    "capabilities": "Возможности",
+    "license": "Лицензия",
+    "author": "Автор",
+    "lastUpdated": "Последнее обновление"
+  },
+  "download": {
+    "start": "Скачать",
+    "inProgress": "Скачивание…",
+    "paused": "Приостановлено",
+    "resumed": "Возобновлено",
+    "cancelled": "Отменено",
+    "complete": "Завершено",
+    "totalSize": "Всего {size}",
+    "downloaded": "{downloaded} из {total}"
+  },
+  "details": {
+    "loadModel": "Загрузить модель",
+    "unloadModel": "Выгрузить модель",
+    "viewOnHF": "Открыть на Hugging Face",
+    "deleteFromDisk": "Удалить с диска"
+  }
+}

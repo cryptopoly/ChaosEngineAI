@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkScatter } from "../../components/BenchmarkScatter";
@@ -27,6 +28,7 @@ export function BenchmarkHistoryTab({
   onSelectedBenchmarkIdChange,
   onCompareBenchmarkIdChange,
 }: BenchmarkHistoryTabProps) {
+  const { t } = useTranslation("common");
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
   const filteredBenchmarks = benchmarkModelFilter
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
@@ -93,7 +95,7 @@ export function BenchmarkHistoryTab({
   return (
     <div className="content-grid">
       <Panel
-        title="Benchmark History"
+        title={t("panels.benchmarkHistory", { defaultValue: "Benchmark History" })}
         subtitle={`${filteredBenchmarks.length} run${filteredBenchmarks.length !== 1 ? "s" : ""}${benchmarkModelFilter ? ` for ${benchmarkModelFilter}` : ""}`}
         className="span-2 benchmark-history-page-panel"
         actions={

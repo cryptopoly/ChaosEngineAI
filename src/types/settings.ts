@@ -53,6 +53,20 @@ export interface AppSettings {
    * info. Off by default — bandwidth + render cost is non-trivial.
    */
   advancedLogprobs?: boolean;
+  /**
+   * FU-042 — persisted UI locale.  `"system"` (default) auto-detects
+   * from the OS + browser at runtime; explicit BCP-47 tags
+   * (`"en"`, `"zh-CN"`, `"ja"`, ...) override.  Unknown tags fall
+   * back to `"en"` at render time, so the storage layer can hold
+   * forward-compatible values for locales we add later.
+   */
+  locale?: "system" | string;
+  /**
+   * FU-042 — clock format override.  `"system"` honours the locale's
+   * CLDR default (12h for `en-US`, 24h elsewhere); `"12h"` / `"24h"`
+   * forces.
+   */
+  clockFormat?: "system" | "12h" | "24h";
 }
 
 export interface SettingsUpdateResponse {
@@ -78,4 +92,6 @@ export interface UpdateSettingsPayload {
   dataDirectory?: string | null;
   imageOutputsDirectory?: string | null;
   videoOutputsDirectory?: string | null;
+  locale?: string | null;
+  clockFormat?: "system" | "12h" | "24h" | null;
 }

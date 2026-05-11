@@ -1,0 +1,55 @@
+# FU-042 — English Tauri shell strings (source of truth).
+#
+# Loaded at compile time by `rust_i18n::i18n!("locales", fallback = "en")`
+# in `src-tauri/src/i18n.rs`.  Keys are namespaced by surface — `menu.*`
+# for the application menu, `tray.*` for the system tray, `updater.*`
+# for the auto-updater dialog text, `dialog.*` for native file/save
+# dialog buttons.
+#
+# Keep keys short.  Translations live in sibling YAML files: `zh-CN.yml`,
+# `ja.yml`, etc.  Missing keys silently fall back to this file at
+# runtime.
+
+menu:
+  file: "File"
+  edit: "Edit"
+  view: "View"
+  window: "Window"
+  help: "Help"
+  quit: "Quit ChaosEngineAI"
+  preferences: "Preferences…"
+  about: "About ChaosEngineAI"
+  checkForUpdates: "Check for Updates…"
+  reload: "Reload"
+  toggleDevTools: "Toggle DevTools"
+  toggleFullScreen: "Toggle Full Screen"
+  minimize: "Minimize"
+  zoom: "Zoom"
+  bringAllToFront: "Bring All to Front"
+  hideOthers: "Hide Others"
+  showAll: "Show All"
+  hide: "Hide ChaosEngineAI"
+
+tray:
+  show: "Show ChaosEngineAI"
+  hide: "Hide ChaosEngineAI"
+  quit: "Quit"
+  status:
+    idle: "Idle"
+    loading: "Loading model…"
+    busy: "Generating…"
+
+updater:
+  available: "A new version of ChaosEngineAI is available."
+  download: "Download"
+  later: "Later"
+  installing: "Installing update…"
+  restartRequired: "Restart to apply the update."
+
+dialog:
+  ok: "OK"
+  cancel: "Cancel"
+  save: "Save"
+  open: "Open"
+  yes: "Yes"
+  no: "No"

@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "ChaosEngineAI",
+    "tagline": "Lokaler KI-Modell-Runner",
+    "workspace": "Arbeitsbereich"
+  },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "chat": "Chat",
+    "chatCompare": "Vergleich",
+    "htmlChallenge": "HTML-Challenge",
+    "myModels": "Meine Modelle",
+    "onlineModels": "Entdecken",
+    "imageModels": "Bildmodelle",
+    "imageDiscover": "Bilder entdecken",
+    "imageStudio": "Bildstudio",
+    "imageGallery": "Bildgalerie",
+    "videoModels": "Videomodelle",
+    "videoDiscover": "Videos entdecken",
+    "videoStudio": "Videostudio",
+    "videoGallery": "Videogalerie",
+    "server": "Server",
+    "benchmarks": "Benchmarks",
+    "benchmarkHistory": "Verlauf",
+    "conversion": "Konvertierung",
+    "fineTuning": "Fine-Tuning",
+    "promptLibrary": "Prompts",
+    "plugins": "Plugins",
+    "logs": "Logs",
+    "settings": "Einstellungen",
+    "library": "Bibliothek",
+    "image": "Bildstudio",
+    "video": "Videostudio",
+    "setup": "Einrichtung",
+    "diagnostics": "Diagnose"
+  },
+  "tabCaptions": {
+    "dashboard": "Systemübersicht",
+    "chat": "Lokaler KI-Chat",
+    "chatCompare": "Sprachmodelle nebeneinander vergleichen",
+    "htmlChallenge": "Teilbare Webseiten-Vergleiche erstellen",
+    "myModels": "Modelle auf diesem Rechner",
+    "onlineModels": "KI-Modelle durchsuchen und herunterladen",
+    "imageModels": "Installierte Bildgeneratoren",
+    "imageDiscover": "Bildmodelle durchsuchen",
+    "imageStudio": "Prompten, generieren und iterieren",
+    "imageGallery": "Gespeicherte Ausgaben und Filter",
+    "videoModels": "Installierte Videogeneratoren",
+    "videoDiscover": "Videomodelle durchsuchen",
+    "videoStudio": "Prompten, generieren und iterieren",
+    "videoGallery": "Gespeicherte Ausgaben und Filter",
+    "server": "OpenAI-kompatible lokale API",
+    "benchmarks": "Neuen Benchmark ausführen",
+    "benchmarkHistory": "Gespeicherte Läufe vergleichen",
+    "conversion": "Modelle in MLX-Format konvertieren",
+    "fineTuning": "LoRA-Adapter und Training",
+    "promptLibrary": "Wiederverwendbare Prompt-Vorlagen",
+    "plugins": "Erweiterungen und Plugin-System",
+    "logs": "Laufzeitereignisse",
+    "settings": "Verzeichnisse und Standardwerte"
+  },
+  "tabShortLabels": {
+    "chat": "Chat",
+    "chatCompare": "Vergleich",
+    "htmlChallenge": "HTML-Challenge",
+    "myModels": "Meine Modelle",
+    "onlineModels": "Entdecken",
+    "imageModels": "Meine Modelle",
+    "imageDiscover": "Entdecken",
+    "imageStudio": "Studio",
+    "imageGallery": "Galerie",
+    "videoModels": "Meine Modelle",
+    "videoDiscover": "Entdecken",
+    "videoStudio": "Studio",
+    "videoGallery": "Galerie",
+    "benchmarks": "Ausführen",
+    "benchmarkHistory": "Verlauf",
+    "conversion": "Konvertierung",
+    "fineTuning": "Fine-Tuning",
+    "promptLibrary": "Prompts",
+    "plugins": "Plugins"
+  },
+  "tabGroups": {
+    "chat": "Chat",
+    "models": "Modelle",
+    "images": "Bilder",
+    "video": "Video",
+    "benchmarks": "Benchmarks",
+    "tools": "Werkzeuge"
+  },
+  "tabsCount": "{count, plural, one {# Tab} other {# Tabs}}",
+  "sidebar": {
+    "backendOnline": "Backend online",
+    "backendOffline": "Offline",
+    "noModelLoaded": "Kein Modell geladen",
+    "groupTabsAriaLabel": "{group}-Tabs"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Slash-Befehle"
+  },
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "retry": "Erneut versuchen",
+    "refresh": "Aktualisieren",
+    "open": "Öffnen",
+    "install": "Installieren",
+    "uninstall": "Deinstallieren",
+    "update": "Aktualisieren",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "restart": "Neu starten",
+    "download": "Herunterladen",
+    "upload": "Hochladen",
+    "send": "Senden",
+    "generate": "Generieren",
+    "load": "Laden",
+    "unload": "Entladen",
+    "next": "Weiter",
+    "back": "Zurück",
+    "done": "Fertig",
+    "tryAgain": "Erneut versuchen",
+    "copyDetails": "Details kopieren",
+    "switchTo": "Zu {target} wechseln",
+    "keepEnglish": "Englisch beibehalten"
+  },
+  "status": {
+    "loading": "Lädt…",
+    "loaded": "Geladen",
+    "unloading": "Entlädt…",
+    "ready": "Bereit",
+    "busy": "Beschäftigt",
+    "error": "Fehler",
+    "warning": "Warnung",
+    "success": "Erfolg",
+    "pending": "Ausstehend",
+    "running": "Läuft",
+    "stopped": "Gestoppt",
+    "installed": "Installiert",
+    "notInstalled": "Nicht installiert"
+  },
+  "empty": {
+    "noResults": "Keine Ergebnisse",
+    "noModels": "Keine Modelle gefunden",
+    "noSessions": "Noch keine Sitzungen",
+    "noLogs": "Keine Logs verfügbar"
+  },
+  "units": {
+    "tokensPerSec": "{value} tok/s",
+    "bytesGB": "{value} GB",
+    "bytesMB": "{value} MB",
+    "bytesKB": "{value} KB",
+    "seconds": "{value, plural, one {# Sekunde} other {# Sekunden}}",
+    "minutes": "{value, plural, one {# Minute} other {# Minuten}}",
+    "hours": "{value, plural, one {# Stunde} other {# Stunden}}"
+  },
+  "localeBanner": {
+    "detected": "{endonym} erkannt.",
+    "prompt": "App auf {endonym} umstellen? Sie können dies jederzeit unter Einstellungen → Sprache ändern.",
+    "switch": "Zu {endonym} wechseln",
+    "keep": "Englisch beibehalten"
+  },
+  "panels": {
+    "mlxConversion": "MLX-Konvertierung",
+    "mlxConversionSubtitle": "Lokale Quelle vorbereiten, Statistiken vor- und nachher vergleichen, dann in eine MLX-fertige Ausgabe konvertieren.",
+    "selectSourceModel": "Quellmodell auswählen",
+    "discoverModels": "Modelle entdecken",
+    "runBenchmark": "Benchmark ausführen",
+    "runBenchmarkSubtitle": "Konsistenten Benchmark-Lauf starten und sehen, wie dieses Profil abschneidet.",
+    "selectBenchmarkModel": "Benchmark-Modell auswählen",
+    "benchmarkHistory": "Benchmark-Verlauf",
+    "loraAdapters": "LoRA-Adapter",
+    "loraAdaptersFound": "{count, plural, one {# Adapter gefunden} other {# Adapter gefunden}}",
+    "templates": "Vorlagen",
+    "editTemplate": "Vorlage bearbeiten",
+    "newTemplate": "Neue Vorlage",
+    "selectTemplate": "Vorlage auswählen",
+    "pluginSystem": "Plugin-System",
+    "pluginsRegistered": "{count, plural, one {# Plugin registriert} other {# Plugins registriert}}",
+    "externalPlugins": "Externe Plugins",
+    "installFromDirectory": "Aus Verzeichnis installieren",
+    "noModelsMatchFilters": "Keine Modelle entsprechen den aktuellen Filtern",
+    "savedOutputs": "Gespeicherte Ausgaben",
+    "installedImageModels": "Installierte Bildmodelle",
+    "installedVideoModels": "Installierte Videomodelle",
+    "plannedEngines": "Geplante Engines",
+    "plannedEnginesSubtitle": "Kandidaten, die wir für die erste Version evaluieren",
+    "modelStorage": "Modell-Speicher",
+    "modelStorageSubtitle": "Hugging-Face-Modell-Downloads auf ein anderes Laufwerk umleiten. Nützlich, wenn das Systemlaufwerk mit 14-100 GB Bild- und Video-Checkpoints volläuft."
+  },
+  "launchModal": {
+    "title": "Modell auswählen",
+    "startChat": "Chat starten",
+    "loadForChat": "Für Chat laden",
+    "loadForServer": "Für Server laden"
+  },
+  "serverTab": {
+    "orphans": {
+      "title": "Verwaiste Backend-Worker wurden bereinigt",
+      "dismiss": "Schließen",
+      "dismissAria": "Hinweis zu verwaistem Worker schließen",
+      "body": "{count, plural, one {ChaosEngineAI hat kürzlich # nicht verfolgten Worker gefunden und beendet, der von einem älteren Ladevorgang oder Absturz zurückgelassen wurde.} other {ChaosEngineAI hat kürzlich # nicht verfolgte Worker gefunden und beendet, die von einem älteren Ladevorgang oder Absturz zurückgelassen wurden.}}"
+    }
+  },
+  "conversionTab": {
+    "progress": {
+      "title": "Modell wird konvertiert",
+      "phases": {
+        "resolve": "Quelle wird aufgelöst",
+        "download": "Gewichte werden heruntergeladen",
+        "load": "In MLX laden",
+        "quantize": "Quantisierung auf {bits}-Bit g{group}",
+        "shard": "Aufteilen & Schreiben der safetensors",
+        "verify": "Ausgabe wird verifiziert"
+      }
+    }
+  },
+  "benchmarkTab": {
+    "progress": {
+      "title": "Benchmark läuft",
+      "phases": {
+        "load": "Modell wird in den Speicher geladen",
+        "warm": "KV-Cache wird aufgewärmt",
+        "prompt": "Prompt wird verarbeitet",
+        "generate": "{tokens} Tokens werden generiert",
+        "measure": "Statistiken werden gemessen"
+      }
+    }
+  }
+}

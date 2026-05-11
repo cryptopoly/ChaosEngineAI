@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple 晶片原生推論引擎" },
+    "llamaCpp": { "name": "llama.cpp", "description": "透過 llama-server 進行 GGUF 推論" },
+    "vllm": { "name": "vLLM", "description": "CUDA 推論引擎" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "原生",
+      "description": "內建快取類型 (f16、q8_0、q4_0 等)。相容性最高。"
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard 旋轉 KV 量化。2–4 倍壓縮,品質損失極小。"
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "長上下文稀疏注意力壓縮器。支援 Apple 晶片與 CUDA。"
+    },
+    "fbcache": {
+      "name": "首區塊快取",
+      "description": "僅擴散模型快取掛鉤。DiT 管線上約 1.8 倍加速。"
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "僅擴散模型的泰勒展開快取。FLUX / SD3 上積極加速。"
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "僅擴散模型的振幅快取。未校準時僅支援 FLUX。"
+    },
+    "pab": {
+      "name": "金字塔注意力廣播",
+      "description": "僅擴散模型,跨時間步的注意力重複使用。"
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "僅擴散模型,條件 / 無條件重複使用快取。"
+    }
+  },
+  "controls": {
+    "engine": "引擎",
+    "cacheStrategy": "快取策略",
+    "cacheStrategyLockedNote": "(推測解碼期間鎖定為原生)",
+    "cacheType": "快取類型",
+    "speculativeDecoding": "推測解碼",
+    "draftModel": "草稿模型",
+    "contextSize": "上下文大小",
+    "gpuLayers": "GPU 層數",
+    "threads": "執行緒數",
+    "fitInMemory": "適配記憶體"
+  },
+  "notes": {
+    "binaryRequired": "需要 {binary}。",
+    "platformRequired": "需要 {platform}。",
+    "engineIncompatible": "與 {engine} 不相容。",
+    "unknownEngine": "未知引擎。"
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "首個標記:{ms} 毫秒",
+    "vramUsed": "顯示記憶體:{used} / {total}"
+  }
+}

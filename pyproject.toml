@@ -51,6 +51,14 @@ desktop = [
     "psutil>=5.9.0",
     "python-multipart>=0.0.9",
     "uvicorn>=0.30.0",
+    # FU-042 i18n: Babel powers gettext-style message catalogs
+    # (``backend_service/locales/{lang}/LC_MESSAGES/messages.po``) for
+    # localized user-facing error messages + runtimeNotes mirrored from
+    # backend → frontend. BSD-3, lazy-imported per CLAUDE.md guideline
+    # (only the ``backend_service.i18n`` middleware imports it, after
+    # FastAPI app startup, so it doesn't cost startup time on engines
+    # that never read translations — e.g. mlx_worker subprocesses).
+    "babel>=2.16.0",
 ]
 images = [
     "accelerate>=0.34.0",

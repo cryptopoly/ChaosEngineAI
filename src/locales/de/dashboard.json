@@ -1,0 +1,63 @@
+{
+  "liveStats": {
+    "title": "Live-Systemstatistik",
+    "subtitle": "Aktualisiert vom Python-Sidecar, damit die Desktop-Shell Fit-Empfehlungen geben kann.",
+    "runtimeEngine": "Laufzeit-Engine",
+    "noModelLoaded": "Kein Modell geladen",
+    "inferenceActivity": "Inferenz-Aktivität",
+    "activeCount": "{count} aktiv",
+    "totalServed": "{count} insgesamt bedient",
+    "warmPool": "Warm-Pool",
+    "warmModelCount": "{count, plural, one {# Modell} other {# Modelle}}",
+    "noWarmModels": "Keine warmen Modelle",
+    "modelDisk": "Modell-Festplatte",
+    "diskFree": "{value} GB frei",
+    "diskTotal": "{value} GB gesamt",
+    "spareHeadroom": "Reserve",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% Arbeitsreserve",
+    "memoryInUse": "Speicher in Verwendung",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "Speicherdruck",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} GB komprimiert",
+    "swapUsage": "Swap-Nutzung",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU-Last",
+    "cpuLabel": "{value}%",
+    "headroomFor": "Reserve für {target}",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "Strom",
+      "charging": "Lädt",
+      "acPower": "Netzstrom",
+      "onBattery": "Im Akkubetrieb",
+      "lowNotice": "Nicht angeschlossen — Inferenz kann bei thermischem Druck drosseln"
+    },
+    "processes": {
+      "name": "Prozess",
+      "owner": "Besitzer",
+      "memory": "Speicher",
+      "cpu": "CPU",
+      "active": "AKTIV",
+      "warm": "WARM",
+      "system": "System",
+      "empty": "Keine aktiven lokalen LLM-Prozesse erkannt.",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "Hardware-Eignung",
+    "subtitle": "Hinweise relativ zum empfohlenen Zielprofil für diese Maschine.",
+    "recommendedTarget": "Empfohlenes Ziel",
+    "currentRuntime": "Aktuelle Laufzeit",
+    "modelLoadedVia": "{model} geladen über {engine}.",
+    "noModelHint": "Noch kein Modell geladen. Wähle ein Thread-Modell im Chat oder durchsuche eine neuere Familie in Online-Modelle."
+  },
+  "activityFeed": {
+    "title": "Aktivitäten",
+    "subtitle": "Betriebsereignisse, die sichtbar bleiben sollten, ohne Logs durchsuchen zu müssen."
+  }
+}

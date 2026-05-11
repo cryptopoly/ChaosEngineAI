@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
@@ -34,6 +35,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function PluginsTab({ backendOnline }: PluginsTabProps) {
+  const { t } = useTranslation("common");
   const [plugins, setPlugins] = useState<Record<string, PluginInfo[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -70,7 +72,17 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Panel title="Plugin System" subtitle={loading ? "Loading..." : `${totalCount} plugins registered`}>
+      <Panel
+        title={t("panels.pluginSystem", { defaultValue: "Plugin System" })}
+        subtitle={
+          loading
+            ? t("status.loading")
+            : t("panels.pluginsRegistered", {
+                count: totalCount,
+                defaultValue: "{{count}} plugins registered",
+              })
+        }
+      >
         {loading ? (
           <p className="muted-text" style={{ padding: 16 }}>Discovering plugins...</p>
         ) : totalCount === 0 ? (
@@ -132,7 +144,10 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
         )}
       </Panel>
 
-      <Panel title="External Plugins" subtitle="Install from directory">
+      <Panel
+        title={t("panels.externalPlugins", { defaultValue: "External Plugins" })}
+        subtitle={t("panels.installFromDirectory", { defaultValue: "Install from directory" })}
+      >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 8 }}>
             Place plugin directories with a manifest.json in:

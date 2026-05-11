@@ -1,0 +1,236 @@
+{
+  "app": {
+    "name": "ChaosEngineAI",
+    "tagline": "Локальный AI-модельный движок",
+    "workspace": "Рабочая область"
+  },
+  "tabs": {
+    "dashboard": "Панель",
+    "chat": "Чат",
+    "chatCompare": "Сравнение",
+    "htmlChallenge": "HTML-челлендж",
+    "myModels": "Мои модели",
+    "onlineModels": "Обзор",
+    "imageModels": "Модели изображений",
+    "imageDiscover": "Обзор изображений",
+    "imageStudio": "Студия изображений",
+    "imageGallery": "Галерея изображений",
+    "videoModels": "Модели видео",
+    "videoDiscover": "Обзор видео",
+    "videoStudio": "Студия видео",
+    "videoGallery": "Галерея видео",
+    "server": "Сервер",
+    "benchmarks": "Бенчмарки",
+    "benchmarkHistory": "История",
+    "conversion": "Конвертация",
+    "fineTuning": "Дообучение",
+    "promptLibrary": "Промпты",
+    "plugins": "Плагины",
+    "logs": "Журналы",
+    "settings": "Настройки",
+    "library": "Библиотека",
+    "image": "Студия изображений",
+    "video": "Студия видео",
+    "setup": "Установка",
+    "diagnostics": "Диагностика"
+  },
+  "tabCaptions": {
+    "dashboard": "Обзор системы",
+    "chat": "Локальный AI-чат",
+    "chatCompare": "Сравнение языковых моделей бок о бок",
+    "htmlChallenge": "Создание делимых сравнений веб-страниц",
+    "myModels": "Модели на этой машине",
+    "onlineModels": "Просмотр и загрузка AI-моделей",
+    "imageModels": "Установленные генераторы изображений",
+    "imageDiscover": "Просмотр моделей изображений",
+    "imageStudio": "Промптить, генерировать, итерировать",
+    "imageGallery": "Сохранённые вывоы и фильтры",
+    "videoModels": "Установленные генераторы видео",
+    "videoDiscover": "Просмотр моделей видео",
+    "videoStudio": "Промптить, генерировать, итерировать",
+    "videoGallery": "Сохранённые видео и фильтры",
+    "server": "Локальный API, совместимый с OpenAI",
+    "benchmarks": "Запустить новый бенчмарк",
+    "benchmarkHistory": "Сравнить сохранённые запуски",
+    "conversion": "Конвертировать модели в формат MLX",
+    "fineTuning": "LoRA-адаптеры и обучение",
+    "promptLibrary": "Многоразовые шаблоны промптов",
+    "plugins": "Расширения и плагины",
+    "logs": "События среды выполнения",
+    "settings": "Каталоги и значения по умолчанию"
+  },
+  "tabShortLabels": {
+    "chat": "Чат",
+    "chatCompare": "Сравнение",
+    "htmlChallenge": "HTML-челлендж",
+    "myModels": "Мои модели",
+    "onlineModels": "Обзор",
+    "imageModels": "Мои модели",
+    "imageDiscover": "Обзор",
+    "imageStudio": "Студия",
+    "imageGallery": "Галерея",
+    "videoModels": "Мои модели",
+    "videoDiscover": "Обзор",
+    "videoStudio": "Студия",
+    "videoGallery": "Галерея",
+    "benchmarks": "Запуск",
+    "benchmarkHistory": "История",
+    "conversion": "Конвертация",
+    "fineTuning": "Дообучение",
+    "promptLibrary": "Промпты",
+    "plugins": "Плагины"
+  },
+  "tabGroups": {
+    "chat": "Чат",
+    "models": "Модели",
+    "images": "Изображения",
+    "video": "Видео",
+    "benchmarks": "Бенчмарки",
+    "tools": "Инструменты"
+  },
+  "tabsCount": "{count, plural, one {# вкладка} few {# вкладки} many {# вкладок} other {# вкладки}}",
+  "sidebar": {
+    "backendOnline": "Бэкенд онлайн",
+    "backendOffline": "Офлайн",
+    "noModelLoaded": "Модель не загружена",
+    "groupTabsAriaLabel": "Вкладки {group}"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Слэш-команды"
+  },
+  "actions": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "confirm": "Подтвердить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "copy": "Копировать",
+    "paste": "Вставить",
+    "retry": "Повторить",
+    "refresh": "Обновить",
+    "open": "Открыть",
+    "install": "Установить",
+    "uninstall": "Удалить",
+    "update": "Обновить",
+    "start": "Запустить",
+    "stop": "Остановить",
+    "restart": "Перезапустить",
+    "download": "Скачать",
+    "upload": "Загрузить",
+    "send": "Отправить",
+    "generate": "Сгенерировать",
+    "load": "Загрузить",
+    "unload": "Выгрузить",
+    "next": "Далее",
+    "back": "Назад",
+    "done": "Готово",
+    "tryAgain": "Повторить",
+    "copyDetails": "Копировать детали",
+    "switchTo": "Переключиться на {target}",
+    "keepEnglish": "Оставить английский"
+  },
+  "status": {
+    "loading": "Загрузка…",
+    "loaded": "Загружено",
+    "unloading": "Выгрузка…",
+    "ready": "Готово",
+    "busy": "Занято",
+    "error": "Ошибка",
+    "warning": "Предупреждение",
+    "success": "Успех",
+    "pending": "Ожидание",
+    "running": "Выполняется",
+    "stopped": "Остановлено",
+    "installed": "Установлено",
+    "notInstalled": "Не установлено"
+  },
+  "empty": {
+    "noResults": "Нет результатов",
+    "noModels": "Модели не найдены",
+    "noSessions": "Сессий пока нет",
+    "noLogs": "Журналы недоступны"
+  },
+  "units": {
+    "tokensPerSec": "{value} tok/s",
+    "bytesGB": "{value} ГБ",
+    "bytesMB": "{value} МБ",
+    "bytesKB": "{value} КБ",
+    "seconds": "{value, plural, one {# секунда} few {# секунды} many {# секунд} other {# секунды}}",
+    "minutes": "{value, plural, one {# минута} few {# минуты} many {# минут} other {# минуты}}",
+    "hours": "{value, plural, one {# час} few {# часа} many {# часов} other {# часа}}"
+  },
+  "localeBanner": {
+    "detected": "Обнаружен язык: {endonym}.",
+    "prompt": "Переключить приложение на {endonym}? Вы можете изменить это в любой момент в Настройки → Язык.",
+    "switch": "Переключиться на {endonym}",
+    "keep": "Оставить английский"
+  },
+  "panels": {
+    "mlxConversion": "Конвертация MLX",
+    "mlxConversionSubtitle": "Подготовьте локальный источник, сравните статистику до и после, затем конвертируйте в готовый MLX-выход.",
+    "selectSourceModel": "Выбрать исходную модель",
+    "discoverModels": "Обзор моделей",
+    "runBenchmark": "Запустить бенчмарк",
+    "runBenchmarkSubtitle": "Запустите согласованный бенчмарк и узнайте, как ведёт себя этот профиль.",
+    "selectBenchmarkModel": "Выбрать модель для бенчмарка",
+    "benchmarkHistory": "История бенчмарков",
+    "loraAdapters": "LoRA-адаптеры",
+    "loraAdaptersFound": "{count, plural, one {Найден # адаптер} few {Найдено # адаптера} many {Найдено # адаптеров} other {Найдено # адаптера}}",
+    "templates": "Шаблоны",
+    "editTemplate": "Редактировать шаблон",
+    "newTemplate": "Новый шаблон",
+    "selectTemplate": "Выберите шаблон",
+    "pluginSystem": "Система плагинов",
+    "pluginsRegistered": "{count, plural, one {Зарегистрирован # плагин} few {Зарегистрировано # плагина} many {Зарегистрировано # плагинов} other {Зарегистрировано # плагина}}",
+    "externalPlugins": "Внешние плагины",
+    "installFromDirectory": "Установить из каталога",
+    "noModelsMatchFilters": "Ни одна модель не соответствует текущим фильтрам",
+    "savedOutputs": "Сохранённые выводы",
+    "installedImageModels": "Установленные модели изображений",
+    "installedVideoModels": "Установленные модели видео",
+    "plannedEngines": "Запланированные движки",
+    "plannedEnginesSubtitle": "Кандидаты, которые мы оцениваем для первого выпуска",
+    "modelStorage": "Хранилище моделей",
+    "modelStorageSubtitle": "Перенаправьте загрузки моделей Hugging Face на другой диск. Полезно, когда системный диск заполняется 14-100 ГБ контрольных точек изображений и видео."
+  },
+  "launchModal": {
+    "title": "Выбрать модель",
+    "startChat": "Начать чат",
+    "loadForChat": "Загрузить для чата",
+    "loadForServer": "Загрузить для сервера"
+  },
+  "serverTab": {
+    "orphans": {
+      "title": "Осиротевшие воркеры бэкенда были очищены",
+      "dismiss": "Закрыть",
+      "dismissAria": "Закрыть уведомление об осиротевшем воркере",
+      "body": "{count, plural, one {ChaosEngineAI недавно обнаружил и завершил # неотслеживаемый воркер, оставшийся после прежней загрузки или сбоя.} few {ChaosEngineAI недавно обнаружил и завершил # неотслеживаемых воркера, оставшихся после прежней загрузки или сбоя.} many {ChaosEngineAI недавно обнаружил и завершил # неотслеживаемых воркеров, оставшихся после прежней загрузки или сбоя.} other {ChaosEngineAI недавно обнаружил и завершил # неотслеживаемых воркеров, оставшихся после прежней загрузки или сбоя.}}"
+    }
+  },
+  "conversionTab": {
+    "progress": {
+      "title": "Конвертация модели",
+      "phases": {
+        "resolve": "Определение источника",
+        "download": "Загрузка весов",
+        "load": "Загрузка в MLX",
+        "quantize": "Квантизация в {bits} бит g{group}",
+        "shard": "Шардирование и запись safetensors",
+        "verify": "Проверка вывода"
+      }
+    }
+  },
+  "benchmarkTab": {
+    "progress": {
+      "title": "Запуск бенчмарка",
+      "phases": {
+        "load": "Загрузка модели в память",
+        "warm": "Прогрев KV-кэша",
+        "prompt": "Обработка запроса",
+        "generate": "Генерация {tokens} токенов",
+        "measure": "Измерение статистики"
+      }
+    }
+  }
+}

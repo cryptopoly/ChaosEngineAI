@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, WarmModel } from "../../types";
 import { filterSessions } from "./sessionSearch";
@@ -35,27 +36,34 @@ export function ChatSidebar({
   onCompareMode,
   onToggleCollapsed,
 }: ChatSidebarProps) {
+  const { t } = useTranslation("chat");
   const filteredChatSessions = filterSessions(sortedChatSessions, searchQuery);
 
   return (
     <Panel
-      title="Chats"
+      title={t("sidebar.title", { defaultValue: "Chats" })}
       subtitle=""
       className="chat-column"
       actions={
         <>
           <button className="secondary-button" type="button" onClick={() => void onCreateSession()}>
-            New thread
+            {t("sidebar.newThread", { defaultValue: "New thread" })}
           </button>
-          <button className="secondary-button" type="button" onClick={onCompareMode} title="Compare two models side-by-side" style={{ fontSize: 11 }}>
-            Compare
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onCompareMode}
+            title={t("sidebar.compareTooltip", { defaultValue: "Compare two models side-by-side" })}
+            style={{ fontSize: 11 }}
+          >
+            {t("sidebar.compare", { defaultValue: "Compare" })}
           </button>
           <button
             className="secondary-button sidebar-collapse-toggle"
             type="button"
             onClick={onToggleCollapsed}
-            title="Collapse chat list"
-            aria-label="Collapse chat list"
+            title={t("sidebar.collapseChatList", { defaultValue: "Collapse chat list" })}
+            aria-label={t("sidebar.collapseChatList", { defaultValue: "Collapse chat list" })}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="15 18 9 12 15 6" />
@@ -69,18 +77,18 @@ export function ChatSidebar({
           <input
             type="search"
             className="text-input session-search__input"
-            placeholder="Search threads..."
+            placeholder={t("sidebar.searchThreadsPlaceholder", { defaultValue: "Search threads..." })}
             value={searchQuery}
             onChange={(event) => onSearchQueryChange(event.target.value)}
-            aria-label="Search threads"
+            aria-label={t("sidebar.searchThreadsAriaLabel", { defaultValue: "Search threads" })}
           />
           {searchQuery ? (
             <button
               type="button"
               className="session-search__clear"
               onClick={() => onSearchQueryChange("")}
-              aria-label="Clear search"
-              title="Clear search"
+              aria-label={t("sidebar.clearSearch", { defaultValue: "Clear search" })}
+              title={t("sidebar.clearSearch", { defaultValue: "Clear search" })}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <line x1="18" y1="6" x2="6" y2="18" />

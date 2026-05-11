@@ -1,0 +1,40 @@
+{
+  "title": "라이브러리",
+  "search": "모델 검색…",
+  "filter": {
+    "all": "전체",
+    "text": "텍스트",
+    "image": "이미지",
+    "video": "비디오",
+    "vision": "비전",
+    "audio": "오디오",
+    "installed": "설치됨",
+    "uninstalled": "설치되지 않음",
+    "favourites": "즐겨찾기"
+  },
+  "card": {
+    "size": "크기",
+    "quantization": "양자화",
+    "context": "컨텍스트",
+    "capabilities": "기능",
+    "license": "라이선스",
+    "author": "작성자",
+    "lastUpdated": "마지막 업데이트"
+  },
+  "download": {
+    "start": "다운로드",
+    "inProgress": "다운로드 중…",
+    "paused": "일시 중지됨",
+    "resumed": "재개됨",
+    "cancelled": "취소됨",
+    "complete": "완료",
+    "totalSize": "총 {size}",
+    "downloaded": "{total} 중 {downloaded}"
+  },
+  "details": {
+    "loadModel": "모델 로드",
+    "unloadModel": "모델 언로드",
+    "viewOnHF": "Hugging Face에서 보기",
+    "deleteFromDisk": "디스크에서 삭제"
+  }
+}

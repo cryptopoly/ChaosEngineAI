@@ -1,0 +1,65 @@
+{
+  "engines": {
+    "mlx": { "name": "MLX", "description": "Apple-Silicon-native Inferenz-Engine" },
+    "llamaCpp": { "name": "llama.cpp", "description": "GGUF-Inferenz über llama-server" },
+    "vllm": { "name": "vLLM", "description": "CUDA-Inferenz-Engine" }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Nativ",
+      "description": "Integrierte Cache-Typen (f16, q8_0, q4_0 usw.). Maximale Kompatibilität."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard-Rotation KV-Quantisierung. 2–4× Kompression bei minimalem Qualitätsverlust."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Sparse-Attention-Kompressor für langen Kontext. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Diffusions-Cache-Hook. ~1,8× Beschleunigung in DiT-Pipelines."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Diffusions-Taylor-Reihen-Cache. Aggressive Beschleunigung, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Diffusions-Magnitude-Cache. Ohne Kalibrierung nur FLUX."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Diffusions-Attention-Wiederverwendung über Zeitschritte."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Diffusions-Cache für bedingte/unbedingte Wiederverwendung."
+    }
+  },
+  "controls": {
+    "engine": "Engine",
+    "cacheStrategy": "Cache-Strategie",
+    "cacheStrategyLockedNote": "(während spekulativer Decodierung auf Nativ gesperrt)",
+    "cacheType": "Cache-Typ",
+    "speculativeDecoding": "Spekulative Decodierung",
+    "draftModel": "Draft-Modell",
+    "contextSize": "Kontextgröße",
+    "gpuLayers": "GPU-Schichten",
+    "threads": "Threads",
+    "fitInMemory": "In Speicher passen"
+  },
+  "notes": {
+    "binaryRequired": "Erfordert {binary}.",
+    "platformRequired": "Erfordert {platform}.",
+    "engineIncompatible": "Nicht kompatibel mit {engine}.",
+    "unknownEngine": "Unbekannte Engine."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "Erstes Token: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  }
+}

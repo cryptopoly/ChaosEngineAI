@@ -1,5 +1,6 @@
 import type { Ref } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, SystemStats, WarmModel } from "../../types";
 import { readKvStrategyOverride, writeKvStrategyOverride, type KvStrategyOverride } from "./kvStrategyOverride";
@@ -170,6 +171,7 @@ export function ChatTab({
   onOneTurnOverrideChange,
   availableCacheStrategies,
 }: ChatTabProps) {
+  const { t } = useTranslation("chat");
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
       ? busyAction
@@ -386,7 +388,13 @@ export function ChatTab({
           onToggleCollapsed={toggleSidebar}
         />
       ) : null}
-      <Panel title="Active Thread" subtitle="Response metadata is collapsed by default, but available per agent turn." className="chat-thread">
+      <Panel
+        title={t("activeThread.title", { defaultValue: "Active Thread" })}
+        subtitle={t("activeThread.subtitle", {
+          defaultValue: "Response metadata is collapsed by default, but available per agent turn.",
+        })}
+        className="chat-thread"
+      >
         <ChatHeader
           activeChat={activeChat}
           threadTitleDraft={threadTitleDraft}

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.finetuning import (
     list_adapters,
     prepare_dataset,
@@ -75,7 +76,7 @@ async def start_finetuning(
     if _training_state["status"] == "training":
         raise HTTPException(
             status_code=409,
-            detail="A training run is already in progress.",
+            detail=localized_detail(request, "A training run is already in progress."),
         )
 
     import uuid

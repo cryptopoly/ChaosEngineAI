@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from backend_service.agent import (
     _parse_tool_calls_from_response,
     _execute_tool_call,
+    _strip_tool_call_xml,
     run_agent_loop,
     AgentResult,
     ToolCallResult,
@@ -153,6 +154,107 @@ class ExecuteToolCallTests(unittest.TestCase):
         }
         result = _execute_tool_call(tc, self.registry)
         self.assertEqual(result.arguments, {"text": "hi"})
+
+
+# FU-040: real-world ``<tool_call>`` shapes emitted by Qwen3-Coder-Next
+# in a single chat session — the parser must catch (1) and (2) and
+# reject (3) without aborting on a malformed payload.
+class ToolCallParserTests(unittest.TestCase):
+    def test_closed_tag_canonical_hermes(self):
+        text = '<tool_call>{"name": "calculator", "arguments": {"expr": "1+1"}}</tool_call>'
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["function"]["name"], "calculator")
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"expr": "1+1"})
+
+    def test_open_only_no_close_tag(self):
+        """Coder-Next emitted this shape — previous regex missed it."""
+        text = '<tool_call>{"name": "web_search", "arguments": {"query": "ICLR 2026", "max_results": 5}}'
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["function"]["name"], "web_search")
+        self.assertEqual(
+            json.loads(calls[0]["function"]["arguments"]),
+            {"query": "ICLR 2026", "max_results": 5},
+        )
+
+    def test_array_payload_rejected_silently(self):
+        """Model hallucinated a JSON array of pseudo-results inside
+        ``<tool_call>``. No ``name`` to dispatch from — must not raise,
+        must not return a call."""
+        text = '<tool_call>[{"url": "https://example.com"}, {"url": "https://other.com"}]'
+        self.assertIsNone(_parse_tool_calls_from_response(text))
+
+    def test_array_then_valid_call_picks_up_valid(self):
+        """Garbage array followed by a real call: array dropped, real
+        call parsed."""
+        text = (
+            '<tool_call>[{"url": "https://bogus.com"}]\n'
+            '<tool_call>{"name": "calculator", "arguments": {}}'
+        )
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["function"]["name"], "calculator")
+
+    def test_no_tool_call_marker_returns_none(self):
+        self.assertIsNone(_parse_tool_calls_from_response("just a regular reply"))
+
+    def test_empty_text_returns_none(self):
+        self.assertIsNone(_parse_tool_calls_from_response(""))
+
+    def test_arguments_string_is_re_parsed(self):
+        """OpenAI emits ``arguments`` as a string blob; we re-parse so
+        downstream consumers see a dict."""
+        text = '<tool_call>{"name": "calculator", "arguments": "{\\"expr\\":\\"2*3\\"}"}</tool_call>'
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"expr": "2*3"})
+
+
+class StripToolCallXmlTests(unittest.TestCase):
+    def test_strip_closed_block_removes_entire_xml(self):
+        text = (
+            "Sure, let me check.\n"
+            '<tool_call>{"name": "calc", "arguments": {}}</tool_call>\n'
+            "Done."
+        )
+        cleaned = _strip_tool_call_xml(text)
+        self.assertNotIn("<tool_call>", cleaned)
+        self.assertNotIn("</tool_call>", cleaned)
+        self.assertIn("Sure, let me check.", cleaned)
+        self.assertIn("Done.", cleaned)
+
+    def test_strip_open_only_block(self):
+        text = 'Looking up... <tool_call>{"name": "web_search", "arguments": {"query": "x"}}'
+        cleaned = _strip_tool_call_xml(text)
+        self.assertNotIn("<tool_call>", cleaned)
+        self.assertIn("Looking up", cleaned)
+
+    def test_strip_collapses_excess_blank_lines(self):
+        text = (
+            "Before.\n\n"
+            '<tool_call>{"name": "x", "arguments": {}}</tool_call>\n\n'
+            "After."
+        )
+        cleaned = _strip_tool_call_xml(text)
+        self.assertNotIn("\n\n\n", cleaned)
+
+    def test_strip_no_tool_call_returns_input_unchanged(self):
+        text = "Just a normal reply with no calls."
+        self.assertEqual(_strip_tool_call_xml(text), text)
+
+    def test_strip_empty_returns_empty(self):
+        self.assertEqual(_strip_tool_call_xml(""), "")
+
+    def test_strip_preserves_natural_language_around_call(self):
+        """The narrative before / after the call must survive."""
+        text = (
+            'Let me think.\n'
+            '<tool_call>{"name": "calc", "arguments": {"expr": "1+2"}}</tool_call>\n'
+            'The result follows.'
+        )
+        cleaned = _strip_tool_call_xml(text)
+        self.assertIn("Let me think.", cleaned)
+        self.assertIn("The result follows.", cleaned)
 
 
 class RunAgentLoopTests(unittest.TestCase):

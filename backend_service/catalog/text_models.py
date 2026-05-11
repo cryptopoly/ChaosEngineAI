@@ -103,7 +103,16 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Agents", "Long context"],
-        "capabilities": ["reasoning", "coding", "tool-use", "vision"],
+        # FU-040 (2026-05-10): dropped ``vision`` from the family-level
+        # capabilities. Qwen3.6-27B (dense, Coder-Next branding) and
+        # Qwen3.6-35B-A3B (MoE) are both text-only — vision lives on a
+        # separate ``Qwen3.6-27B-VL`` variant we do not yet ship. The
+        # stale tag was promoting ``supportsVision: true`` for every
+        # community quant variant, which made ``ChatComposer`` render
+        # the "Attach image" affordance for a model that has no vision
+        # encoder. Add it back here only when an actual VL variant
+        # lands in the catalog.
+        "capabilities": ["reasoning", "coding", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.6-27B",
         "variants": [
             {
@@ -115,8 +124,9 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 54.0,
                 "format": "Transformers",
                 "quantization": "BF16",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
-                "note": "Dense 27B Qwen3.6 release with vision and agentic coding tuning. Apache 2.0.",
+                # FU-040: text-only dense variant (Coder-Next branding).
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": "Dense 27B Qwen3.6 release with agentic coding tuning. Apache 2.0.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
                 "backend": "mlx",
@@ -131,7 +141,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 28.0,
                 "format": "Transformers",
                 "quantization": "FP8",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                # FU-040: text-only dense variant.
+                "capabilities": ["reasoning", "coding", "tool-use"],
                 "note": "FP8 quantization of the 27B dense release for ~30 GB VRAM systems.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
@@ -163,7 +174,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 15.5,
                 "format": "MLX",
                 "quantization": "4-bit",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                # FU-040: text-only dense variant.
+                "capabilities": ["reasoning", "coding", "tool-use"],
                 "note": "Community MLX 4-bit conversion for Apple Silicon — fastest local launch path.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -239,7 +251,10 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Long context"],
-        "capabilities": ["reasoning", "coding", "tool-use", "vision"],
+        # FU-040: Qwen3.5 dense + MoE variants are text-only. The
+        # ``vision`` tag at family-level was promoting false positives
+        # in ``supportsVision`` for every community quant variant.
+        "capabilities": ["reasoning", "coding", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.5-9B",
         "variants": [
             {

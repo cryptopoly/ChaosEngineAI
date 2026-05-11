@@ -112,6 +112,48 @@ class ExecuteToolCallTests(unittest.TestCase):
         # Should still produce a result (the raw args get wrapped)
         self.assertIsNotNone(result.result)
 
+    # FU-039: Coder-Next emitted ``arguments: null`` for tool calls
+    # with no parameters. The previous code set ``arguments = None``,
+    # which then crashed the frontend's ToolCallCard at
+    # ``Object.entries(null)`` and bricked the Chat tab. Pin both
+    # ``None`` and empty-string + missing-key paths so the contract
+    # ``arguments is always a dict`` is enforced at the source.
+
+    def test_null_arguments_coerces_to_empty_dict(self):
+        tc = {
+            "id": "call_null",
+            "function": {"name": "echo", "arguments": None},
+        }
+        result = _execute_tool_call(tc, self.registry)
+        self.assertEqual(result.arguments, {})
+
+    def test_empty_string_arguments_coerces_to_empty_dict(self):
+        tc = {
+            "id": "call_empty",
+            "function": {"name": "echo", "arguments": ""},
+        }
+        result = _execute_tool_call(tc, self.registry)
+        self.assertEqual(result.arguments, {})
+
+    def test_missing_arguments_key_defaults_to_empty_dict(self):
+        tc = {
+            "id": "call_missing",
+            "function": {"name": "echo"},
+        }
+        result = _execute_tool_call(tc, self.registry)
+        # Default ``"{}"`` parses to ``{}``.
+        self.assertEqual(result.arguments, {})
+
+    def test_dict_arguments_passthrough(self):
+        """Models that emit a parsed dict (some OpenAI-format clients)
+        should not be re-stringified through ``json.loads``."""
+        tc = {
+            "id": "call_dict",
+            "function": {"name": "echo", "arguments": {"text": "hi"}},
+        }
+        result = _execute_tool_call(tc, self.registry)
+        self.assertEqual(result.arguments, {"text": "hi"})
+
 
 class RunAgentLoopTests(unittest.TestCase):
     def _make_generate_fn(self, responses):

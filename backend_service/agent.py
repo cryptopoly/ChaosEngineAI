@@ -99,8 +99,27 @@ def _execute_tool_call(
     tool_name = func.get("name", "unknown")
     raw_args = func.get("arguments", "{}")
 
+    # FU-039 (2026-05-10): coerce ``arguments`` to a dict at the source.
+    # Models occasionally emit ``{"arguments": null}`` (Coder-Next does
+    # this when the tool call has no parameters) or send a non-string,
+    # non-dict shape we don't recognise. Both routes used to set
+    # ``arguments = None``, which then landed in ``ToolCallResult``,
+    # serialised into the persisted session, and crashed the frontend's
+    # ``ToolCallCard`` at ``Object.entries(null)`` on every subsequent
+    # render. Result: a single bad tool turn permanently bricked the
+    # Chat tab. Defaulting to ``{}`` keeps the contract consumers
+    # already assume — and means the frontend boundary (also added in
+    # FU-039) only fires for genuinely corrupt records, not the common
+    # "no args" path.
     try:
-        arguments = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+        if raw_args is None:
+            arguments = {}
+        elif isinstance(raw_args, str):
+            arguments = json.loads(raw_args) if raw_args.strip() else {}
+        elif isinstance(raw_args, dict):
+            arguments = raw_args
+        else:
+            arguments = {"raw": raw_args}
     except json.JSONDecodeError:
         arguments = {"raw": raw_args}
 

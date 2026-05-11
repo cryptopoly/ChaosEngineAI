@@ -113,12 +113,32 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const icon = TOOL_ICONS[toolCall.name] ?? "tool";
-  const argSummary = Object.entries(toolCall.arguments)
-    .map(([k, v]) => {
-      const str = typeof v === "string" ? v : JSON.stringify(v);
-      return `${k}: ${str.length > 60 ? str.slice(0, 60) + "..." : str}`;
-    })
-    .join(", ");
+  // FU-039 (2026-05-10): defensive guards on every shape field that
+  // ``Object.entries`` / ``string.slice`` / ``JSON.stringify`` would
+  // throw on. Root cause was a Coder-Next + Tools turn whose backend
+  // ``tool_calls[]`` shape arrived with ``arguments: null`` (the
+  // upstream model emitted no parseable JSON arguments and the agent
+  // loop forwarded ``None`` rather than ``{}``). Once that null
+  // landed in the persisted session, every re-render of the affected
+  // turn re-crashed the Chat tab — the user could not even read past
+  // history until the session was nuked from localStorage. Default to
+  // an empty record so the card renders an ``args: (none)`` summary
+  // instead of blanking the tab. The agent-side fix to never emit
+  // null is the right long-term answer (FU-040 follow-up), but this
+  // boundary keeps the UI usable for old records too.
+  const safeArgs: Record<string, unknown> =
+    toolCall.arguments && typeof toolCall.arguments === "object"
+      ? (toolCall.arguments as Record<string, unknown>)
+      : {};
+  const argEntries = Object.entries(safeArgs);
+  const argSummary = argEntries.length === 0
+    ? "(no arguments)"
+    : argEntries
+        .map(([k, v]) => {
+          const str = typeof v === "string" ? v : JSON.stringify(v);
+          return `${k}: ${str.length > 60 ? str.slice(0, 60) + "..." : str}`;
+        })
+        .join(", ");
 
   return (
     <div

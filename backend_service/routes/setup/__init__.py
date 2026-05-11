@@ -323,6 +323,7 @@ from backend_service.routes.setup.cuda_torch import router as _cuda_torch_router
 from backend_service.routes.setup.gpu_bundle import (
     _GPU_BUNDLE_JOB,
     _GpuBundleJobState,
+    _free_bytes,
     _install_torch_walking_indexes,
     _looks_like_dll_lock,
 )

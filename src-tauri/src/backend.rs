@@ -157,6 +157,25 @@ impl BackendManager {
                 command.env("CHAOSENGINE_EXTRAS_SITE_PACKAGES", extras.as_os_str());
             }
 
+            // FU-038 (2026-05-10): silence the macOS MallocStackLogging
+            // banner spam that floods the backend log file. The macOS
+            // hardened runtime (which we ship under
+            // ``bundle.macOS.hardenedRuntime: true``) sometimes inherits
+            // a ``MallocStackLogging`` style flag from the Tauri parent
+            // process, and every Python subprocess prints
+            // ``Python(PID) MallocStackLogging: can't turn off malloc stack
+            // logging because it was not enabled.`` at startup. Three
+            // lines per spawn, hundreds per minute when polling system
+            // metrics — drowns out the actual INFO / ERROR lines the
+            // Diagnostics tab is meant to surface. ``env_remove`` drops
+            // the variable from the child's environment entirely (setting
+            // it to "0" still counts as "set" to the malloc allocator,
+            // which is what triggers the warning in the first place).
+            // Pure stderr noise; no behaviour change.
+            command.env_remove("MallocStackLogging");
+            command.env_remove("MallocStackLoggingNoCompact");
+            command.env_remove("MallocScribble");
+
             // Inject HF_HOME when the user has configured a non-default
             // HuggingFace cache location (typically because the system
             // drive is full). This MUST be set before the backend process

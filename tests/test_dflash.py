@@ -149,6 +149,24 @@ class DraftModelLookupTests(unittest.TestCase):
             "z-lab/Kimi-K2.6-DFlash",
         )
 
+    def test_qwen36_27b_canonical_alias_resolves_to_coder_next(self):
+        """Qwen3-Coder-Next ships under the canonical repo
+        ``mlx-community/Qwen3.6-27B-4bit`` (rebrand, same checkpoint),
+        and ``resolve_dflash_target_ref`` prefers the canonical repo.
+        The alias must route to the existing Coder-Next drafter so the
+        runtimeNote stops saying DFLASH is unavailable for users running
+        ``lmstudio-community/Qwen3-Coder-Next-MLX-4bit``."""
+        for variant in (
+            "mlx-community/Qwen3.6-27B-4bit",
+            "mlx-community/Qwen3.6-27B-bf16",
+            "mlx-community/Qwen3.6-27B-8bit",
+        ):
+            self.assertEqual(
+                get_draft_model(variant),
+                "z-lab/Qwen3-Coder-Next-DFlash",
+                f"Coder-Next alias mismatch for {variant}",
+            )
+
 
 class ModelResolutionTests(unittest.TestCase):
     def test_resolve_dflash_target_prefers_canonical_repo(self):

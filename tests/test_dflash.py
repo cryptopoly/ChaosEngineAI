@@ -149,23 +149,27 @@ class DraftModelLookupTests(unittest.TestCase):
             "z-lab/Kimi-K2.6-DFlash",
         )
 
-    def test_qwen36_27b_canonical_alias_resolves_to_coder_next(self):
-        """Qwen3-Coder-Next ships under the canonical repo
-        ``mlx-community/Qwen3.6-27B-4bit`` (rebrand, same checkpoint),
-        and ``resolve_dflash_target_ref`` prefers the canonical repo.
-        The alias must route to the existing Coder-Next drafter so the
-        runtimeNote stops saying DFLASH is unavailable for users running
-        ``lmstudio-community/Qwen3-Coder-Next-MLX-4bit``."""
-        for variant in (
-            "mlx-community/Qwen3.6-27B-4bit",
-            "mlx-community/Qwen3.6-27B-bf16",
-            "mlx-community/Qwen3.6-27B-8bit",
-        ):
-            self.assertEqual(
-                get_draft_model(variant),
-                "z-lab/Qwen3-Coder-Next-DFlash",
-                f"Coder-Next alias mismatch for {variant}",
-            )
+    def test_coder_next_mlx_4bit_alias_resolves(self):
+        """FU-041: ``lmstudio-community/Qwen3-Coder-Next-MLX-4bit`` is
+        the Qwen3-Next MoE coder (qwen3_next architecture, 512 experts,
+        hidden_size=2048). Confirmed by inspecting the local config.json
+        — it is NOT the same checkpoint as ``mlx-community/Qwen3.6-27B-4bit``
+        (which is the dense Qwen3.6-27B). The alias routes to the
+        Coder-Next drafter; the dense 27B-4bit has no drafter."""
+        self.assertEqual(
+            get_draft_model("lmstudio-community/Qwen3-Coder-Next-MLX-4bit"),
+            "z-lab/Qwen3-Coder-Next-DFlash",
+        )
+
+    def test_qwen36_27b_4bit_is_dense_not_coder_next(self):
+        """Regression test for the FU-038 bug we reverted in FU-041:
+        ``mlx-community/Qwen3.6-27B-4bit`` is the DENSE 27B Coder
+        (qwen3 architecture, hidden_size=5120). It must NOT alias to
+        the Qwen3-Next MoE drafter."""
+        self.assertNotEqual(
+            get_draft_model("mlx-community/Qwen3.6-27B-4bit"),
+            "z-lab/Qwen3-Coder-Next-DFlash",
+        )
 
 
 class ModelResolutionTests(unittest.TestCase):

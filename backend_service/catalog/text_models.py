@@ -526,6 +526,37 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "launchMode": "convert",
                 "backend": "mlx",
             },
+            # FU-041 (2026-05-10): community MLX 4-bit conversion of the
+            # Qwen3-Next architecture (qwen3_next, sparse MoE w/ 512
+            # experts, ~3B active per token, hidden_size=2048). Without
+            # this variant the library matcher in src/utils/library.ts
+            # fuzzy-matched a local ``Qwen3-Coder-Next-MLX-4bit`` install
+            # to the unrelated ``mlx-community/Qwen3.6-27B-4bit`` (dense
+            # 27B Coder, completely different arch — hidden_size=5120,
+            # no MoE), which then surfaced the wrong canonicalRepo into
+            # the runtime snapshot, picked up the wrong capability set,
+            # and routed DFlash lookups to the wrong drafter. Adding the
+            # variant explicitly lets the matcher score 80+ on an exact
+            # repo-path substring hit instead of falling back to the
+            # closest-quant-and-format match.
+            {
+                "id": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                "name": "Qwen3 Coder Next MLX 4-bit",
+                "repo": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                "link": "https://huggingface.co/lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                # 80B total params, ~3B active per token; the on-disk
+                # 4-bit conversion fits ~45 GB.
+                "paramsB": 80.0,
+                "sizeGb": 45.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["coding", "agents", "tool-use", "reasoning", "thinking"],
+                "note": "Community MLX 4-bit conversion of the Qwen3-Next MoE coder for Apple Silicon — fastest local launch path.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-04",
+            },
         ],
         "readme": [
             "Qwen3 Coder Next is purpose-built for software engineering with function calling and agentic workflows.",

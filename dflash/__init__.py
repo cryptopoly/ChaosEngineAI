@@ -70,17 +70,19 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3-8B-4bit": "Qwen/Qwen3-8B",
     "mlx-community/Qwen3-8B-8bit": "Qwen/Qwen3-8B",
     "lmstudio-community/Qwen3-Coder-Next-MLX-4bit": "Qwen/Qwen3-Coder-Next",
-    # 2026-05-10: Qwen3-Coder-Next was rebranded ``Qwen3.6-27B`` upstream
-    # but the HF metadata for the lmstudio-community MLX conversion
-    # still reports ``mlx-community/Qwen3.6-27B-4bit`` as the canonical
-    # repo. Without this alias, ``model_resolution.resolve_dflash_target_ref``
-    # picks up the canonical name and DRAFT_MODEL_MAP misses, so the
-    # diagnostics snapshot reports
-    # *DFLASH unavailable for 'mlx-community/Qwen3.6-27B-4bit'* even
-    # when dflash-mlx is installed and the user IS running Coder-Next.
-    "mlx-community/Qwen3.6-27B-4bit": "Qwen/Qwen3-Coder-Next",
-    "mlx-community/Qwen3.6-27B-bf16": "Qwen/Qwen3-Coder-Next",
-    "mlx-community/Qwen3.6-27B-8bit": "Qwen/Qwen3-Coder-Next",
+    # FU-041 (2026-05-10): canonicalRepo for the lmstudio-community
+    # Coder-Next MLX 4-bit ships as the same repo path (no rename), so
+    # alias both the exact community ref AND the bf16 / 8bit siblings
+    # for completeness. The earlier FU-038 mappings that pointed
+    # ``mlx-community/Qwen3.6-27B-4bit`` at Coder-Next were wrong — that
+    # repo is the dense Qwen3.6-27B (text-only Coder, ``qwen3``
+    # architecture, hidden_size=5120), not the Qwen3-Next MoE coder
+    # (``qwen3_next`` architecture, 512 experts, hidden_size=2048).
+    # Inspecting the local config.json under ~/AI_Models/
+    # lmstudio-community/Qwen3-Coder-Next-MLX-4bit confirms the latter.
+    # Coder-Next uses ``z-lab/Qwen3-Coder-Next-DFlash``; the dense
+    # 27B-4bit has no drafter today and stays unaliased.
+    "lmstudio-community/Qwen3-Coder-Next-MLX-4bit-Instruct": "Qwen/Qwen3-Coder-Next",
     "mlx-community/Qwen3.5-4B-bf16": "Qwen/Qwen3.5-4B",
     "mlx-community/Qwen3.5-7B-bf16": "Qwen/Qwen3.5-7B",
     "mlx-community/Qwen3.5-14B-bf16": "Qwen/Qwen3.5-14B",

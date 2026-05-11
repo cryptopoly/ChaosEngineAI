@@ -2240,6 +2240,89 @@ select.text-input {
   border: 1px solid var(--border);
 }
 
+/* FU-037: per-tab ErrorBoundary fallback. Shown when a React render
+   error tears down a tab's tree; the wrapper keeps the rest of the
+   workspace usable while exposing the error inline with a copy /
+   reset surface. */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(224, 154, 154, 0.45);
+  background: rgba(224, 154, 154, 0.06);
+  color: var(--text);
+  max-width: 920px;
+  margin: 32px auto;
+}
+
+.error-boundary__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-boundary__head strong {
+  color: var(--danger);
+  font-size: 1.05rem;
+}
+
+.error-boundary__sub {
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.error-boundary__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.error-boundary__details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+}
+
+.error-boundary__details > summary {
+  cursor: pointer;
+  color: var(--muted-strong);
+  font-size: 0.82rem;
+}
+
+.error-boundary__stack {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.error-boundary__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.error-boundary__hint code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .success-banner {
   background: rgba(143, 207, 159, 0.08);
   border-color: rgba(143, 207, 159, 0.45);

@@ -103,7 +103,16 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Agents", "Long context"],
-        "capabilities": ["reasoning", "coding", "tool-use", "vision"],
+        # FU-040 (2026-05-10): dropped ``vision`` from the family-level
+        # capabilities. Qwen3.6-27B (dense, Coder-Next branding) and
+        # Qwen3.6-35B-A3B (MoE) are both text-only — vision lives on a
+        # separate ``Qwen3.6-27B-VL`` variant we do not yet ship. The
+        # stale tag was promoting ``supportsVision: true`` for every
+        # community quant variant, which made ``ChatComposer`` render
+        # the "Attach image" affordance for a model that has no vision
+        # encoder. Add it back here only when an actual VL variant
+        # lands in the catalog.
+        "capabilities": ["reasoning", "coding", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.6-27B",
         "variants": [
             {
@@ -115,8 +124,9 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 54.0,
                 "format": "Transformers",
                 "quantization": "BF16",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
-                "note": "Dense 27B Qwen3.6 release with vision and agentic coding tuning. Apache 2.0.",
+                # FU-040: text-only dense variant (Coder-Next branding).
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": "Dense 27B Qwen3.6 release with agentic coding tuning. Apache 2.0.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
                 "backend": "mlx",
@@ -131,7 +141,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 28.0,
                 "format": "Transformers",
                 "quantization": "FP8",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                # FU-040: text-only dense variant.
+                "capabilities": ["reasoning", "coding", "tool-use"],
                 "note": "FP8 quantization of the 27B dense release for ~30 GB VRAM systems.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
@@ -163,7 +174,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 15.5,
                 "format": "MLX",
                 "quantization": "4-bit",
-                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                # FU-040: text-only dense variant.
+                "capabilities": ["reasoning", "coding", "tool-use"],
                 "note": "Community MLX 4-bit conversion for Apple Silicon — fastest local launch path.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -239,7 +251,10 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Long context"],
-        "capabilities": ["reasoning", "coding", "tool-use", "vision"],
+        # FU-040: Qwen3.5 dense + MoE variants are text-only. The
+        # ``vision`` tag at family-level was promoting false positives
+        # in ``supportsVision`` for every community quant variant.
+        "capabilities": ["reasoning", "coding", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.5-9B",
         "variants": [
             {
@@ -510,6 +525,37 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "contextWindow": "256K",
                 "launchMode": "convert",
                 "backend": "mlx",
+            },
+            # FU-041 (2026-05-10): community MLX 4-bit conversion of the
+            # Qwen3-Next architecture (qwen3_next, sparse MoE w/ 512
+            # experts, ~3B active per token, hidden_size=2048). Without
+            # this variant the library matcher in src/utils/library.ts
+            # fuzzy-matched a local ``Qwen3-Coder-Next-MLX-4bit`` install
+            # to the unrelated ``mlx-community/Qwen3.6-27B-4bit`` (dense
+            # 27B Coder, completely different arch — hidden_size=5120,
+            # no MoE), which then surfaced the wrong canonicalRepo into
+            # the runtime snapshot, picked up the wrong capability set,
+            # and routed DFlash lookups to the wrong drafter. Adding the
+            # variant explicitly lets the matcher score 80+ on an exact
+            # repo-path substring hit instead of falling back to the
+            # closest-quant-and-format match.
+            {
+                "id": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                "name": "Qwen3 Coder Next MLX 4-bit",
+                "repo": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                "link": "https://huggingface.co/lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                # 80B total params, ~3B active per token; the on-disk
+                # 4-bit conversion fits ~45 GB.
+                "paramsB": 80.0,
+                "sizeGb": 45.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["coding", "agents", "tool-use", "reasoning", "thinking"],
+                "note": "Community MLX 4-bit conversion of the Qwen3-Next MoE coder for Apple Silicon — fastest local launch path.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-04",
             },
         ],
         "readme": [

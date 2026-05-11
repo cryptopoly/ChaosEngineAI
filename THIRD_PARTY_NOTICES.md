@@ -24,8 +24,8 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 - **Copyright:** Copyright (c) 2023-2026 The ggml authors
 - **Binary:** `llama-server-turbo`, `llama-cli-turbo`
 - **Usage:** Adds turbo2/3/4 KV cache quantisation types used by the
-  RotorQuant and TurboQuant cache strategies. Actively maintained fork
-  with support for recent model architectures (Gemma 4, etc.).
+  TurboQuant cache strategy. Actively maintained fork with support for
+  recent model architectures (Gemma 4, etc.).
 
 > **MIT licence notice (applies to both llama.cpp and the TurboQuant fork):**
 >
@@ -46,18 +46,6 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 
 ---
 
-## Vendored Packages
-
-### ChaosEngine (PCA-based KV cache compression)
-
-- **Repository:** <https://github.com/cryptopoly/ChaosEngine>
-- **Licence:** Apache 2.0
-- **Submodule:** `vendor/ChaosEngine`
-- **Usage:** Desktop builds may bundle this into the runtime via
-  `npm run stage:runtime`.
-
----
-
 ## Optional Third-Party Cache Strategies
 
 ChaosEngineAI supports optional cache/compression strategy backends.
@@ -66,8 +54,7 @@ If installed by the user, each is subject to its own licence:
 | Strategy | Package | Repository | Licence |
 |----------|---------|-----------|---------|
 | TriAttention | `triattention` | <https://github.com/WeianMao/triattention> | See upstream |
-| RotorQuant (marker) | `turboquant` | <https://github.com/back2matching/turboquant> | Apache 2.0 |
-| TurboQuant MLX | `turboquant-mlx` | <https://github.com/sharpner/turboquant-mlx> | MIT |
+| TurboQuant MLX | `turboquant-mlx-full` | <https://github.com/arozanov/turboquant-mlx> | MIT |
 | MegaKernel | — | <https://github.com/Luce-Org/luce-megakernel> | See upstream |
 | TeaCache (diffusion) | vendored patches | <https://github.com/ali-vilab/TeaCache> | Apache 2.0 |
 

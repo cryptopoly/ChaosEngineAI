@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from cache_compression import CacheStrategyRegistry
 from cache_compression.native import NativeStrategy
-from cache_compression.rotorquant import RotorQuantStrategy
 from cache_compression.triattention import TriAttentionStrategy
 from cache_compression.turboquant import TurboQuantStrategy
 from turboquant_mlx import _find_pip_turboquant_path
@@ -29,37 +28,38 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         self.assertEqual(default.strategy_id, "native")
 
     def test_external_strategies_registered(self):
-        for strategy_id in ("triattention", "rotorquant"):
+        for strategy_id in ("triattention", "turboquant"):
             strategy = self.registry.get(strategy_id)
             self.assertIsNotNone(strategy, f"Strategy '{strategy_id}' not found in registry")
 
-    def test_available_returns_all_strategies(self):
+    def test_available_returns_active_strategies(self):
         available = self.registry.available()
         ids = [s["id"] for s in available]
         self.assertIn("native", ids)
-        self.assertIn("rotorquant", ids)
         self.assertIn("triattention", ids)
         self.assertIn("turboquant", ids)
-        self.assertIn("chaosengine", ids)
+        # FU-030: dropped strategies must NOT appear in the available output.
+        self.assertNotIn("rotorquant", ids)
+        self.assertNotIn("chaosengine", ids)
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_discover_keeps_placeholder_when_optional_adapter_import_fails(self):
         real_import_module = importlib.import_module
 
         def fake_import(name, package=None):
-            if name == "cache_compression.rotorquant":
-                raise RuntimeError("broken rotorquant import")
+            if name == "cache_compression.triattention":
+                raise RuntimeError("broken triattention import")
             return real_import_module(name, package)
 
         registry = CacheStrategyRegistry()
         with patch("cache_compression.importlib.import_module", side_effect=fake_import):
             registry.discover()
 
-        rotor = registry.get("rotorquant")
-        self.assertIsNotNone(rotor)
-        self.assertFalse(rotor.is_available())
-        self.assertIn("could not be loaded", rotor.availability_reason())
-        self.assertIn("broken rotorquant import", rotor.availability_reason())
+        tri = registry.get("triattention")
+        self.assertIsNotNone(tri)
+        self.assertFalse(tri.is_available())
+        self.assertIn("could not be loaded", tri.availability_reason())
+        self.assertIn("broken triattention import", tri.availability_reason())
 
     def test_native_cache_flags(self):
         native = self.registry.get("native")
@@ -114,58 +114,33 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         self.assertLess(optimised, baseline)
 
     # ------------------------------------------------------------------
-    # RotorQuant
+    # FU-030: legacy alias coercion (chaosengine + rotorquant)
     # ------------------------------------------------------------------
 
-    def test_rotorquant_bit_range(self):
-        rq = self.registry.get("rotorquant")
-        self.assertEqual(rq.supported_bit_range(), (3, 4))
+    def test_legacy_chaosengine_coerces_to_turboquant(self):
+        """Persisted configs with ``chaosengine`` must resolve to TurboQuant."""
+        coerced = self.registry.resolve_legacy_id("chaosengine")
+        self.assertEqual(coerced, "turboquant")
 
-    def test_rotorquant_llama_flags(self):
-        rq = self.registry.get("rotorquant")
-        flags = rq.llama_cpp_cache_flags(3)
-        self.assertEqual(flags, ["--cache-type-k", "turbo3", "--cache-type-v", "turbo3"])
-        flags4 = rq.llama_cpp_cache_flags(4)
-        self.assertEqual(flags4, ["--cache-type-k", "turbo4", "--cache-type-v", "turbo4"])
+    def test_legacy_rotorquant_coerces_to_turboquant(self):
+        """Persisted configs with ``rotorquant`` must resolve to TurboQuant."""
+        coerced = self.registry.resolve_legacy_id("rotorquant")
+        self.assertEqual(coerced, "turboquant")
 
-    def test_rotorquant_mlx_raises_helpful_message(self):
-        rq = self.registry.get("rotorquant")
-        with self.assertRaises(NotImplementedError) as ctx:
-            rq.make_mlx_cache(32, 3, 4, False, None)
-        self.assertIn("PyTorch/CUDA", str(ctx.exception))
-        self.assertIn("llama.cpp", str(ctx.exception))
+    def test_unknown_id_passes_through_resolver(self):
+        self.assertEqual(self.registry.resolve_legacy_id("does-not-exist"), "does-not-exist")
 
-    def test_rotorquant_estimate_compresses(self):
-        rq = self.registry.get("rotorquant")
-        baseline, optimised = rq.estimate_cache_bytes(
-            num_layers=32, num_heads=32, hidden_size=4096,
-            context_tokens=8192, bits=3, fp16_layers=4,
-        )
-        self.assertLess(optimised, baseline)
+    def test_get_resolves_legacy_chaosengine_to_turboquant_strategy(self):
+        legacy = self.registry.get("chaosengine")
+        canonical = self.registry.get("turboquant")
+        self.assertIsNotNone(legacy)
+        self.assertIs(legacy, canonical)
 
-    def test_rotorquant_label(self):
-        rq = self.registry.get("rotorquant")
-        self.assertEqual(rq.label(3, 4), "Rotor 3-bit 4+4")
-
-    def test_rotorquant_bits_clamped(self):
-        rq = self.registry.get("rotorquant")
-        # Bits below 2 should clamp to 2
-        flags = rq.llama_cpp_cache_flags(1)
-        self.assertEqual(flags, ["--cache-type-k", "turbo2", "--cache-type-v", "turbo2"])
-        # Bits above 4 should clamp to 4
-        flags = rq.llama_cpp_cache_flags(8)
-        self.assertEqual(flags, ["--cache-type-k", "turbo4", "--cache-type-v", "turbo4"])
-
-    def test_rotorquant_is_available_with_current_turboquant_exports(self):
-        rq = RotorQuantStrategy()
-        module = SimpleNamespace(TurboQuantMSE=object(), TurboQuantCache=object())
-        with patch("cache_compression.rotorquant._load_turboquant_module", return_value=module):
-            self.assertTrue(rq.is_available())
-
-    def test_rotorquant_is_unavailable_without_supported_marker(self):
-        rq = RotorQuantStrategy()
-        with patch("cache_compression.rotorquant._load_turboquant_module", return_value=object()):
-            self.assertFalse(rq.is_available())
+    def test_get_resolves_legacy_rotorquant_to_turboquant_strategy(self):
+        legacy = self.registry.get("rotorquant")
+        canonical = self.registry.get("turboquant")
+        self.assertIsNotNone(legacy)
+        self.assertIs(legacy, canonical)
 
     # ------------------------------------------------------------------
     # TurboQuant
@@ -215,35 +190,6 @@ class CacheStrategyRegistryTests(unittest.TestCase):
                 self.assertEqual(_find_pip_turboquant_path(), str(package.resolve()))
 
     # ------------------------------------------------------------------
-    # ChaosEngine — cache type validation
-    # ------------------------------------------------------------------
-
-    def test_chaosengine_cache_flags_use_standard_types(self):
-        """ChaosEngine must only emit cache types that standard llama-server
-        accepts: f32, f16, bf16, q8_0, q4_0, q4_1, iq4_nl, q5_0, q5_1."""
-        ce = self.registry.get("chaosengine")
-        valid_types = {"f32", "f16", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"}
-        for bits in (2, 3, 4, 5, 6, 8):
-            flags = ce.llama_cpp_cache_flags(bits)
-            for i, flag in enumerate(flags):
-                if flag.startswith("--cache-type-") and i + 1 < len(flags):
-                    cache_type = flags[i + 1]
-                    self.assertIn(
-                        cache_type, valid_types,
-                        f"ChaosEngine {bits}-bit emits '{cache_type}' which is not a valid standard llama-server cache type",
-                    )
-
-    def test_chaosengine_8bit_maps_to_q8_0(self):
-        ce = self.registry.get("chaosengine")
-        flags = ce.llama_cpp_cache_flags(8)
-        self.assertEqual(flags, ["--cache-type-k", "q8_0", "--cache-type-v", "q8_0"])
-
-    def test_chaosengine_4bit_maps_to_q4_0(self):
-        ce = self.registry.get("chaosengine")
-        flags = ce.llama_cpp_cache_flags(4)
-        self.assertEqual(flags, ["--cache-type-k", "q4_0", "--cache-type-v", "q4_0"])
-
-    # ------------------------------------------------------------------
     # required_llama_binary() metadata
     # ------------------------------------------------------------------
 
@@ -251,17 +197,9 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         native = self.registry.get("native")
         self.assertEqual(native.required_llama_binary(), "standard")
 
-    def test_rotorquant_requires_turbo_binary(self):
-        rq = self.registry.get("rotorquant")
-        self.assertEqual(rq.required_llama_binary(), "turbo")
-
     def test_turboquant_requires_turbo_binary(self):
         tq = self.registry.get("turboquant")
         self.assertEqual(tq.required_llama_binary(), "turbo")
-
-    def test_chaosengine_requires_standard_binary(self):
-        ce = self.registry.get("chaosengine")
-        self.assertEqual(ce.required_llama_binary(), "standard")
 
     def test_available_json_includes_required_llama_binary(self):
         available = self.registry.available()
@@ -275,7 +213,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         real_import_module = importlib.import_module
 
         def fake_import(name, package=None):
-            if name == "cache_compression.rotorquant":
+            if name == "cache_compression.turboquant":
                 raise RuntimeError("broken")
             return real_import_module(name, package)
 
@@ -283,8 +221,8 @@ class CacheStrategyRegistryTests(unittest.TestCase):
         with patch("cache_compression.importlib.import_module", side_effect=fake_import):
             registry.discover()
 
-        rotor = registry.get("rotorquant")
-        self.assertEqual(rotor.required_llama_binary(), "turbo")
+        tq = registry.get("turboquant")
+        self.assertEqual(tq.required_llama_binary(), "turbo")
 
 
 class FirstBlockCacheStrategyTests(unittest.TestCase):

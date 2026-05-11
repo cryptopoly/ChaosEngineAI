@@ -35,7 +35,6 @@ export interface LibraryRow {
 interface StrategyCompatInfo {
   turboInstalled: boolean;
   turboquantMlxAvailable: boolean;
-  chaosengineAvailable: boolean;
   dflashSupportedModels: string[];
 }
 
@@ -238,10 +237,6 @@ export function MyModelsTab({
       }
       case "turboquant":
         return (isGGUF && !!strategyCompat?.turboInstalled) || (isMLX && !!strategyCompat?.turboquantMlxAvailable);
-      case "rotorquant":
-        return isGGUF && !!strategyCompat?.turboInstalled;
-      case "chaosengine":
-        return isGGUF && !!strategyCompat?.chaosengineAvailable;
       default:
         return true;
     }
@@ -250,8 +245,6 @@ export function MyModelsTab({
   const STRATEGY_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
-    { id: "rotorquant", label: "RotorQuant", color: "#34d399" },
-    { id: "chaosengine", label: "ChaosEngine", color: "#f59e0b" },
   ];
 
   const allLibraryCaps = filteredLibraryRows.flatMap(({ matchedVariant }) => matchedVariant?.capabilities ?? []);

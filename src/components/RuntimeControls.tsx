@@ -373,6 +373,20 @@ export function RuntimeControls({
           const runtimeAvailable = isStrategyRuntimeAvailable(strategy);
           const isDisabled = !runtimeAvailable || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
 
+          // FU-034 (2026-05-10): hide cards the user has no in-app path to
+          // recover. ``isIncompat`` is a hard engine mismatch (e.g.
+          // TriAttention selected on MLX) — there's no install button that
+          // fixes that, so showing a disabled card with an "N/A" badge just
+          // teaches the user the wrong thing. Same logic for the turbo
+          // binary on GGUF: the only fix is ``scripts/build-llama-turbo.sh``
+          // outside the app. Strategies whose backing pip package isn't
+          // installed STAY visible because the modal renders an "Install"
+          // button that gets the user to ready in one click. ``native``
+          // always survives (the f16 fallback every engine speaks).
+          if (strategy.id !== "native" && (isIncompat || turboMissing)) {
+            return null;
+          }
+
           return (
             <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
               <div className="cache-strategy-card-header">
@@ -574,8 +588,19 @@ export function RuntimeControls({
             <p>Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.</p>
           </div>
         ) : null}
+        {/* FU-034 (2026-05-10): hide the DFlash toggle entirely when the
+            selected model has no draft in DRAFT_MODEL_MAP, or when the
+            engine is GGUF (DFlash requires MLX/vLLM). Both cases give
+            the user no in-app path to recover, so a disabled checkbox
+            with an "N/A" badge added confusion without value. The
+            "DFlash package not installed but model would be supported"
+            case stays visible — the install button gets the user to
+            ready in one click. ``canInstallDflashForModel`` is True
+            whenever the model is in the draft map AND the runtime gap
+            is the missing pip package. */}
+        {dflashAvailable || canInstallDflashForModel ? (
         <div className="check-row">
-          <label className="check-row" style={{ margin: 0 }} title={dflashUnavailableReason ?? "DFlash speculative decoding: 3-5x faster generation with zero quality loss."}>
+          <label className="check-row" style={{ margin: 0 }} title="DFlash speculative decoding: 3-5x faster generation with zero quality loss.">
             <input
               type="checkbox"
               checked={settings.speculativeDecoding && dflashAvailable}
@@ -602,13 +627,6 @@ export function RuntimeControls({
               {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
             </button>
           ) : null}
-          {dflashUnavailableReason ? (
-            <span
-              className="cache-strategy-badge cache-strategy-badge--warning"
-              style={{ marginLeft: 4, fontSize: "0.7em" }}
-              title={dflashUnavailableReason}
-            >N/A</span>
-          ) : null}
           <button
             type="button"
             className="cache-strategy-info-btn"
@@ -618,7 +636,8 @@ export function RuntimeControls({
             i
           </button>
         </div>
-        {expandedInfo === "dflash" ? (
+        ) : null}
+        {expandedInfo === "dflash" && (dflashAvailable || canInstallDflashForModel) ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
             <p>DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.</p>
             <div className="cache-strategy-meta">
@@ -640,7 +659,10 @@ export function RuntimeControls({
             {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
                 <span className="cache-strategy-meta-label">Install:</span>
-                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"</code>
+                {/* Pin string mirrors pyproject.toml + scripts/stage-runtime.mjs.
+                    Update all three together when bumping (FU-033 pin-sync probe
+                    catches drift between the latter two). */}
+                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"</code>
               </div>
             ) : null}
           </div>

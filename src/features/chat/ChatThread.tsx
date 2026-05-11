@@ -286,10 +286,10 @@ export function ChatThread({
                 </div>
               ) : null}
               {message.role === "assistant" && message.metrics ? (
-                <SubstrateRoutingBadge metrics={message.metrics} />
-              ) : null}
-              {message.role === "assistant" && message.metrics ? (
-                <ChatPerfStrip metrics={message.metrics} />
+                <div className="message-runtime-strip">
+                  <SubstrateRoutingBadge metrics={message.metrics} />
+                  <ChatPerfStrip metrics={message.metrics} />
+                </div>
               ) : null}
               {message.role === "assistant" && message.tokenLogprobs?.length ? (
                 <LogprobSummary entries={message.tokenLogprobs} />

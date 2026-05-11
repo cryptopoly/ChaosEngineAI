@@ -468,17 +468,15 @@ export function useSettings(
 
   async function handleInstallPackage(strategyId: string) {
     // Strategies that need the turbo binary (llama-server-turbo) for GGUF.
-    const needsTurboBinary = strategyId === "rotorquant" || strategyId === "turboquant";
+    const needsTurboBinary = strategyId === "turboquant";
 
     const pipPackageMap: Record<string, string> = {
-      rotorquant: "turboquant",
       turboquant: "turboquant-mlx",
       triattention: "triattention",
       "dflash-mlx": "dflash-mlx",
       dflash: "dflash",
     };
     const pipCommandMap: Record<string, string> = {
-      rotorquant: "./.venv/bin/python3 -m pip install turboquant",
       turboquant: "./.venv/bin/python3 -m pip install turboquant-mlx-full",
       triattention: "./.venv/bin/python3 -m pip install 'triattention @ git+https://github.com/WeianMao/triattention.git'",
       "dflash-mlx": "./.venv/bin/python3 -m pip install 'dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd'",
@@ -487,19 +485,11 @@ export function useSettings(
     const pipName = pipPackageMap[strategyId];
     if (!pipName) {
       beginInstallLog(strategyId);
-      if (strategyId === "chaosengine") {
-        const message = "ChaosEngine is not on PyPI. Desktop builds can bundle a vendored vendor/ChaosEngine checkout during npm run stage:runtime. For source/dev installs, clone https://github.com/cryptopoly/ChaosEngine and install it into the backend runtime with ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine, then restart ChaosEngineAI.";
-        addInstallLogStep(strategyId, "manual", "Manual install required", "./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine");
-        finishInstallLogStep(strategyId, "manual", "failed", message);
-        finishInstallLog(strategyId, "failed");
-        setError(message);
-      } else {
-        const message = `No installer is configured for ${strategyId}.`;
-        addInstallLogStep(strategyId, "manual", "No installer configured", strategyId);
-        finishInstallLogStep(strategyId, "manual", "failed", message);
-        finishInstallLog(strategyId, "failed");
-        setError(message);
-      }
+      const message = `No installer is configured for ${strategyId}.`;
+      addInstallLogStep(strategyId, "manual", "No installer configured", strategyId);
+      finishInstallLogStep(strategyId, "manual", "failed", message);
+      finishInstallLog(strategyId, "failed");
+      setError(message);
       return;
     }
     beginInstallLog(strategyId);

@@ -39,7 +39,7 @@ describe("kvStrategyOverride storage", () => {
   });
 
   it("clears storage when given null", () => {
-    writeKvStrategyOverride("s1", { strategy: "chaosengine", bits: 8 });
+    writeKvStrategyOverride("s1", { strategy: "triattention", bits: 3 });
     writeKvStrategyOverride("s1", null);
     expect(readKvStrategyOverride("s1")).toBeNull();
     expect(window.localStorage.getItem("chat.kvStrategy.s1")).toBeNull();
@@ -61,9 +61,9 @@ describe("kvStrategyOverride storage", () => {
   });
 
   it("scopes overrides per session", () => {
-    writeKvStrategyOverride("s1", { strategy: "chaosengine", bits: 8 });
+    writeKvStrategyOverride("s1", { strategy: "triattention", bits: 3 });
     writeKvStrategyOverride("s2", { strategy: "turboquant", bits: 4 });
-    expect(readKvStrategyOverride("s1")).toEqual({ strategy: "chaosengine", bits: 8 });
+    expect(readKvStrategyOverride("s1")).toEqual({ strategy: "triattention", bits: 3 });
     expect(readKvStrategyOverride("s2")).toEqual({ strategy: "turboquant", bits: 4 });
   });
 });

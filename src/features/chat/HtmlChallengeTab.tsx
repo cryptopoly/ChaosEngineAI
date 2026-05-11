@@ -147,6 +147,13 @@ export function HtmlChallengeTab({
     d: null,
   });
   const activePreviewSlotRef = useRef<CompareTarget | null>(null);
+  // FU-036: timestamp of the most recent programmatic scroll-to-bottom for
+  // each slot. ``handleStreamScroll`` ignores scroll events fired in the
+  // immediate window after one (the browser fires ``scroll`` for both
+  // user wheel input AND ``element.scrollTop = …`` writes; without the
+  // guard the post-write event re-flips ``streamAtBottom`` to true even
+  // when the user just scrolled away).
+  const lastProgrammaticScrollRef = useRef<Record<string, number>>({});
 
   const textModelOptions = modelOptions.filter(isTextModelOption);
   const selectedBySlot = Object.fromEntries(
@@ -254,9 +261,30 @@ export function HtmlChallengeTab({
   }, []);
 
   useEffect(() => {
+    // FU-036 (2026-05-10): re-measure scroll position inside the rAF
+    // before yanking back to bottom. ``setStreamAtBottom`` from the
+    // ``onScroll`` handler is async, so a streaming chunk that arrives
+    // a few ms after the user wheel-scrolls would otherwise see the
+    // stale ``streamAtBottom[slot.id] === true`` from the previous
+    // render and snap the box back down — felt as a jerk that fought
+    // the user's scroll. Re-measuring against the live DOM closes the
+    // race; if the user has moved away in the gap, we drop tracking
+    // for that slot instead of stomping their scroll position.
     const handles = slots
       .filter((slot) => streamAtBottom[slot.id])
-      .map((slot) => requestAnimationFrame(() => scrollStreamToBottom(slot.id)));
+      .map((slot) => requestAnimationFrame(() => {
+        const element = streamRefs.current[slot.id];
+        if (!element) return;
+        const stillNearBottom =
+          element.scrollHeight - element.scrollTop - element.clientHeight < 32;
+        if (stillNearBottom) {
+          scrollStreamToBottom(slot.id);
+        } else {
+          setStreamAtBottom((current) => current[slot.id]
+            ? { ...current, [slot.id]: false }
+            : current);
+        }
+      }));
     return () => handles.forEach((handle) => cancelAnimationFrame(handle));
   }, [slots, slotStates, streamAtBottom]);
 
@@ -300,6 +328,13 @@ export function HtmlChallengeTab({
   }
 
   function handleStreamScroll(target: CompareTarget) {
+    // Ignore the scroll event the browser fires immediately after our
+    // own ``element.scrollTop = …`` write. Without this guard, the
+    // post-write event re-flipped ``streamAtBottom`` true and the next
+    // chunk would yank the box back even when the user had since
+    // scrolled away.
+    const lastProgrammatic = lastProgrammaticScrollRef.current[target] ?? 0;
+    if (performance.now() - lastProgrammatic < 80) return;
     const element = streamRefs.current[target];
     if (!element) return;
     const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
@@ -309,6 +344,7 @@ export function HtmlChallengeTab({
   function scrollStreamToBottom(target: CompareTarget) {
     const element = streamRefs.current[target];
     if (!element) return;
+    lastProgrammaticScrollRef.current[target] = performance.now();
     element.scrollTop = element.scrollHeight;
     setStreamAtBottom((current) => current[target] ? current : { ...current, [target]: true });
   }

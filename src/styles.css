@@ -2240,6 +2240,89 @@ select.text-input {
   border: 1px solid var(--border);
 }
 
+/* FU-037: per-tab ErrorBoundary fallback. Shown when a React render
+   error tears down a tab's tree; the wrapper keeps the rest of the
+   workspace usable while exposing the error inline with a copy /
+   reset surface. */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(224, 154, 154, 0.45);
+  background: rgba(224, 154, 154, 0.06);
+  color: var(--text);
+  max-width: 920px;
+  margin: 32px auto;
+}
+
+.error-boundary__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-boundary__head strong {
+  color: var(--danger);
+  font-size: 1.05rem;
+}
+
+.error-boundary__sub {
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.error-boundary__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.error-boundary__details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+}
+
+.error-boundary__details > summary {
+  cursor: pointer;
+  color: var(--muted-strong);
+  font-size: 0.82rem;
+}
+
+.error-boundary__stack {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.error-boundary__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.error-boundary__hint code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .success-banner {
   background: rgba(143, 207, 159, 0.08);
   border-color: rgba(143, 207, 159, 0.45);
@@ -4043,12 +4126,17 @@ select.text-input {
 }
 
 .html-challenge-stream {
-  flex: 0 0 auto;
-  /* Fixed-ish height so the streaming token feed scrolls inside its own
-     box instead of expanding the panel. Auto-scroll-to-bottom kicks in
-     when the user is already near the tail; scrolling up pauses tracking
-     so previous content stays put for reading. */
-  height: clamp(280px, 38vh, 520px);
+  /* FU-036 (2026-05-10): grow to fill the model panel instead of the
+     previous fixed ``height: clamp(280px, 38vh, 520px)``. The parent
+     ``.html-challenge-panel-body`` is a column flex container; using
+     ``flex: 1 1 auto; min-height: 280px`` lets the streaming code box
+     consume the same vertical space the rendered iframe would, so the
+     panel no longer shows a tall band of empty area below the stream
+     while a model is generating. ``min-height: 280px`` keeps the box
+     usable on short viewports where the surrounding panel cannot
+     contribute much height. */
+  flex: 1 1 auto;
+  min-height: 280px;
   overflow: auto;
   overscroll-behavior: contain;
   margin: 0;
@@ -8167,6 +8255,23 @@ select.text-input {
   background: rgba(239, 68, 68, 0.16);
   color: #fca5a5;
   border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* Wrapper that joins SubstrateRoutingBadge + ChatPerfStrip into a single
+   wrap-row so engine/cache/runtime-note chips flow inline with the perf
+   chips instead of breaking onto their own line (FU-035). The two child
+   strips use ``display: contents`` below so their inner chips become
+   direct flex children of this wrapper. */
+.message-runtime-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+
+.message-runtime-strip > .substrate-routing,
+.message-runtime-strip > .chat-perf-strip {
+  display: contents;
 }
 
 /* Substrate routing inspector badge (Phase 3.4) */

@@ -3,17 +3,30 @@ import type { SystemStats } from "../types";
 const COMMUNITY_PREFIXES = ["mlx-community/", "lmstudio-community/", "thebloke/", "bartowski/"];
 const QUANT_SUFFIXES = /[-_](?:bf16|fp16|f16|\d+bit|q\d(?:_[a-z0-9]+)*|gguf|mlx|instruct)$/i;
 
+// FU-030 (2026-05-10): chaosengine + rotorquant slots dropped. Persisted
+// session configs that still reference them coerce to ``turboquant`` via
+// the backend's ``registry.resolve_legacy_id`` map; the same coercion is
+// mirrored here so frontend filters work correctly when older session
+// snapshots are rehydrated. Update both sides if the alias map changes.
+export const LEGACY_STRATEGY_ALIASES: Record<string, string> = {
+  chaosengine: "turboquant",
+  rotorquant: "turboquant",
+};
+
+export function canonicalStrategyId(strategyId: string): string {
+  return LEGACY_STRATEGY_ALIASES[strategyId] ?? strategyId;
+}
+
 export const STRATEGY_ENGINE_SUPPORT: Record<string, string[]> = {
   native: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
   triattention: ["vllm"],
-  rotorquant: ["gguf", "llama.cpp", "vllm"],
   turboquant: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
-  chaosengine: ["gguf", "llama.cpp", "vllm"],
 };
 
 export function isStrategyCompatible(strategyId: string, backend: string | null | undefined): boolean {
   if (!backend || backend === "auto") return true;
-  const supported = STRATEGY_ENGINE_SUPPORT[strategyId];
+  const canonical = canonicalStrategyId(strategyId);
+  const supported = STRATEGY_ENGINE_SUPPORT[canonical];
   if (!supported) return true;
   return supported.some((candidate) => backend.includes(candidate));
 }
@@ -21,9 +34,8 @@ export function isStrategyCompatible(strategyId: string, backend: string | null 
 export function strategyIncompatReason(strategyId: string, backend: string | null | undefined): string | null {
   if (!backend || backend === "auto" || isStrategyCompatible(strategyId, backend)) return null;
   const engineLabel = backend.includes("gguf") || backend.includes("llama") ? "llama.cpp" : backend;
-  if (strategyId === "triattention") return "TriAttention requires the vLLM backend (Linux + CUDA).";
-  if (strategyId === "rotorquant") return `RotorQuant requires llama.cpp or vLLM, not ${engineLabel}.`;
-  if (strategyId === "chaosengine") return `ChaosEngine requires llama.cpp or vLLM, not ${engineLabel}.`;
+  const canonical = canonicalStrategyId(strategyId);
+  if (canonical === "triattention") return "TriAttention requires the vLLM backend (Linux + CUDA).";
   return `Not compatible with the ${engineLabel} backend.`;
 }
 

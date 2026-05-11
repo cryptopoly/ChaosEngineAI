@@ -38,12 +38,11 @@ mlx-vlm = [
     "mlx-vlm>=0.4.0",
     "torchvision>=0.20",
 ]
-triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git", "vllm>=0.8.0"]
-triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git", "mlx-lm>=0.22.0"]
-rotorquant = ["turboquant>=0.2.0"]
+triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "vllm>=0.8.0"]
+triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "mlx-lm>=0.22.0"]
 turboquant = ["turboquant-mlx-full>=0.3.0"]
 vllm = ["vllm>=0.8.0"]
-dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@8d8545d791383008b5e2b1e738c38a7a73ba484e"]
+dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"]
 dflash = ["dflash>=0.1.0"]
 desktop = [
     "fastapi>=0.115.0",

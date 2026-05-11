@@ -17,7 +17,6 @@ def _estimate_baseline_tok_s(system_stats: dict[str, Any]) -> float:
 def _strategy_speed_map(strategy: str) -> dict[int, float]:
     """Speed ratio maps by strategy and bit count (fraction of baseline FP16 speed)."""
     maps: dict[str, dict[int, float]] = {
-        "rotorquant":   {1: 0.42, 2: 0.50, 3: 0.57, 4: 0.65},
         "triattention": {1: 0.48, 2: 0.56, 3: 0.63, 4: 0.70},
         "turboquant":   {1: 0.44, 2: 0.52, 3: 0.60, 4: 0.67},
     }
@@ -27,7 +26,6 @@ def _strategy_speed_map(strategy: str) -> dict[int, float]:
 def _strategy_quality_base(strategy: str) -> dict[int, float]:
     """Base quality percentage by strategy and bit count (before fp16_layers bonus)."""
     maps: dict[str, dict[int, float]] = {
-        "rotorquant":   {1: 88.0, 2: 91.0, 3: 93.5, 4: 96.0},
         "triattention": {1: 89.5, 2: 92.0, 3: 94.5, 4: 97.0},
         "turboquant":   {1: 87.5, 2: 90.5, 3: 93.0, 4: 95.5},
     }

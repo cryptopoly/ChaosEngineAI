@@ -142,22 +142,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
 }
 
-_MANUAL_INSTALL_MESSAGES: dict[str, str] = {
-    "chaosengine": (
-        "ChaosEngine is not published on PyPI. Clone "
-        "https://github.com/cryptopoly/ChaosEngine and install it into the "
-        "backend runtime with: {python} -m pip install -e /path/to/ChaosEngine. "
-        "Desktop release builds can also bundle a vendored vendor/ChaosEngine "
-        "checkout automatically during npm run stage:runtime."
-    ),
-    "chaos-engine": (
-        "ChaosEngine is not published on PyPI. Clone "
-        "https://github.com/cryptopoly/ChaosEngine and install it into the "
-        "backend runtime with: {python} -m pip install -e /path/to/ChaosEngine. "
-        "Desktop release builds can also bundle a vendored vendor/ChaosEngine "
-        "checkout automatically during npm run stage:runtime."
-    ),
-}
+_MANUAL_INSTALL_MESSAGES: dict[str, str] = {}
 
 def _workspace_root() -> Path:
     from backend_service.app import WORKSPACE_ROOT
@@ -338,6 +323,7 @@ from backend_service.routes.setup.cuda_torch import router as _cuda_torch_router
 from backend_service.routes.setup.gpu_bundle import (
     _GPU_BUNDLE_JOB,
     _GpuBundleJobState,
+    _free_bytes,
     _install_torch_walking_indexes,
     _looks_like_dll_lock,
 )

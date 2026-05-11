@@ -86,11 +86,39 @@ function buildChips(metrics: GenerationMetrics): Chip[] {
       key: "note",
       label: metrics.runtimeNote.length > 48 ? `${metrics.runtimeNote.slice(0, 45)}…` : metrics.runtimeNote,
       title: metrics.runtimeNote,
-      tone: "warn",
+      // Default tone for benign info ("Using python with MLX 0.31.x and
+      // mlx-lm 0.31.y."); warn only when the note flags an actual fault
+      // — DFLASH unavailable, cache strategy fell back, MTP head missing,
+      // etc. Operators ignore the orange chip if every turn surfaces it,
+      // which defeats its purpose for the rare real warnings.
+      tone: runtimeNoteIsWarning(metrics.runtimeNote) ? "warn" : "default",
     });
   }
 
   return chips;
+}
+
+/**
+ * Decide whether a runtime note describes a problem the user should
+ * notice. The boring "which library versions ran" prefix is always
+ * present and not actionable; the warn tone should fire only when a
+ * substantive issue appears later in the same string.
+ */
+export function runtimeNoteIsWarning(note: string): boolean {
+  const lowered = note.toLowerCase();
+  const warningTokens = [
+    "unavailable",
+    "fell back",
+    "fall back",
+    "fallback",
+    "failed",
+    "error",
+    " not applied",
+    " not supported",
+    "warning",
+    "cannot ",
+  ];
+  return warningTokens.some((token) => lowered.includes(token));
 }
 
 export function SubstrateRoutingBadge({ metrics }: SubstrateRoutingBadgeProps) {

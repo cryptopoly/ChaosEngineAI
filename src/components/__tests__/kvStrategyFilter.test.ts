@@ -18,14 +18,12 @@ function makeStrategy(overrides: Partial<Strategy>): Strategy {
 }
 
 const NATIVE = makeStrategy({ id: "native", name: "Native f16" });
-const ROTORQUANT = makeStrategy({ id: "rotorquant", name: "RotorQuant", requiredLlamaBinary: "turbo" });
 const TURBOQUANT = makeStrategy({ id: "turboquant", name: "TurboQuant", requiredLlamaBinary: "turbo" });
-const CHAOSENGINE = makeStrategy({ id: "chaosengine", name: "ChaosEngine" });
 const TRIATTENTION = makeStrategy({ id: "triattention", name: "TriAttention" });
 const TEACACHE = makeStrategy({ id: "teacache", name: "TeaCache", appliesTo: ["image", "video"] });
 const FBCACHE = makeStrategy({ id: "fbcache", name: "First Block Cache", appliesTo: ["image", "video"] });
 
-const ALL = [NATIVE, ROTORQUANT, TURBOQUANT, CHAOSENGINE, TRIATTENTION, TEACACHE, FBCACHE];
+const ALL = [NATIVE, TURBOQUANT, TRIATTENTION, TEACACHE, FBCACHE];
 
 describe("filterTextStrategies", () => {
   it("returns empty for null input", () => {
@@ -39,7 +37,6 @@ describe("filterTextStrategies", () => {
   });
 
   it("MLX engine: only native + turboquant (matches launch-settings modal)", () => {
-    // RotorQuant + ChaosEngine require llama.cpp / vLLM substrate;
     // TriAttention requires vLLM. STRATEGY_ENGINE_SUPPORT in
     // runtimeSupport.ts is the single source of truth; the chip
     // mirrors the modal verdict so users don't see options the
@@ -48,26 +45,24 @@ describe("filterTextStrategies", () => {
     expect(out.sort()).toEqual(["native", "turboquant"]);
   });
 
-  it("llama.cpp engine: native + rotorquant + turboquant + chaosengine", () => {
+  it("llama.cpp engine: native + turboquant", () => {
     const out = filterTextStrategies(ALL, "llama.cpp").map((s) => s.id);
-    expect(out.sort()).toEqual(["chaosengine", "native", "rotorquant", "turboquant"]);
+    expect(out.sort()).toEqual(["native", "turboquant"]);
   });
 
   it("gguf substring matches the llama.cpp set (engine label can be 'gguf')", () => {
     const out = filterTextStrategies(ALL, "gguf").map((s) => s.id);
-    expect(out.sort()).toEqual(["chaosengine", "native", "rotorquant", "turboquant"]);
+    expect(out.sort()).toEqual(["native", "turboquant"]);
   });
 
-  it("vllm engine: full set including triattention (matches modal)", () => {
-    // ``STRATEGY_ENGINE_SUPPORT`` lists rotorquant / chaosengine /
-    // turboquant as vLLM-compatible alongside triattention, so the
-    // chip mirrors the modal and shows them all. Diffusion-only
-    // strategies (TeaCache / FBCache) stay out via layer 1.
+  it("vllm engine: native + turboquant + triattention", () => {
+    // FU-030: chaosengine + rotorquant slots dropped. The remaining
+    // text strategies on vLLM are native + turboquant + triattention.
+    // Diffusion-only strategies (TeaCache / FBCache) stay out via
+    // layer 1.
     const out = filterTextStrategies(ALL, "vllm").map((s) => s.id);
     expect(out.sort()).toEqual([
-      "chaosengine",
       "native",
-      "rotorquant",
       "triattention",
       "turboquant",
     ]);

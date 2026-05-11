@@ -19,13 +19,13 @@
     "prompt": "What is the capital of France? Answer in one sentence."
   },
   {
-    "_label": "Test 2: RotorQuant via turbo binary (GGUF)",
+    "_label": "Test 2: TriAttention via standard binary (GGUF)",
     "modelRef": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
     "modelName": "Nemotron-4B-GGUF",
     "path": "/Users/dan/.cache/huggingface/hub/models--nvidia--NVIDIA-Nemotron-3-Nano-4B-GGUF",
     "backend": "gguf",
-    "cacheStrategy": "rotorquant",
-    "cacheBits": 4,
+    "cacheStrategy": "triattention",
+    "cacheBits": 3,
     "fp16Layers": 4,
     "contextTokens": 4096,
     "maxTokens": 256,
@@ -38,7 +38,8 @@
     "prompt": "Explain what a neural network is in two sentences."
   },
   {
-    "_label": "Test 3: ChaosEngine via standard binary (GGUF)",
+    "_label": "Test 3: FU-030 legacy id coercion (chaosengine -> turboquant)",
+    "_note": "Persisted user configs that still reference the dropped chaosengine id must run as TurboQuant via registry.resolve_legacy_id without throwing.",
     "modelRef": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
     "modelName": "Nemotron-4B-GGUF",
     "path": "/Users/dan/.cache/huggingface/hub/models--nvidia--NVIDIA-Nemotron-3-Nano-4B-GGUF",

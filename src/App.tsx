@@ -26,6 +26,7 @@ import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { DashboardTab } from "./features/dashboard/DashboardTab";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ServerTab } from "./features/server/ServerTab";
 import { ChatTab } from "./features/chat/ChatTab";
 import { CompareView } from "./features/chat/CompareView";
@@ -1141,7 +1142,6 @@ export default function App() {
         strategyCompat={{
           turboInstalled: !!workspace.system.llamaServerTurboPath,
           turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
-          chaosengineAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "chaosengine" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}
@@ -1856,7 +1856,13 @@ export default function App() {
               tauriBackend={tauriBackend}
             />
           ) : (
-            content
+            // FU-037: per-tab ErrorBoundary so an uncaught render error
+            // in one tab no longer blanks the whole workspace. ``key``
+            // is the active tab id so switching tabs unmounts the
+            // boundary and gives the user a clean recovery path.
+            <ErrorBoundary key={activeTab} scope={tabs.find((tab) => tab.id === activeTab)?.label ?? activeTab}>
+              {content}
+            </ErrorBoundary>
           )}
         </div>
       </main>

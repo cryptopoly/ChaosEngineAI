@@ -89,17 +89,22 @@ CACHE_CHECK=$(.venv/bin/python -c "
 from cache_compression import registry
 registry.discover()
 valid = {'f32','f16','bf16','q8_0','q4_0','q4_1','iq4_nl','q5_0','q5_1'}
-ce = registry.get('chaosengine')
-for bits in (2,3,4,5,6,8):
-    flags = ce.llama_cpp_cache_flags(bits)
+nat = registry.get('native')
+for bits in (0,):
+    flags = nat.llama_cpp_cache_flags(bits)
     for i, f in enumerate(flags):
         if f.startswith('--cache-type-') and i+1 < len(flags):
             if flags[i+1] not in valid:
-                print(f'INVALID: ChaosEngine {bits}-bit emits {flags[i+1]}')
-rq = registry.get('rotorquant')
+                print(f'INVALID: Native emits {flags[i+1]}')
 tq = registry.get('turboquant')
-if rq.required_llama_binary() != 'turbo': print('INVALID: RotorQuant not routing to turbo')
 if tq.required_llama_binary() != 'turbo': print('INVALID: TurboQuant not routing to turbo')
+# FU-030 (2026-05-10): legacy ids must coerce to turboquant via the
+# alias map. Assert the wiring works in CI rather than at runtime.
+for legacy_id in ('rotorquant', 'chaosengine'):
+    if registry.resolve_legacy_id(legacy_id) != 'turboquant':
+        print(f'INVALID: legacy id {legacy_id} did not coerce to turboquant')
+    if registry.get(legacy_id) is None:
+        print(f'INVALID: legacy id {legacy_id} did not resolve via registry.get')
 print('OK')
 " 2>&1)
 if echo "$CACHE_CHECK" | grep -q "INVALID"; then
@@ -128,16 +133,22 @@ else
   warn "llama-server-turbo — not installed (run scripts/build-llama-turbo.sh)"
 fi
 
-# ChaosEngine submodule
-if [[ -d "vendor/ChaosEngine/.git" ]]; then
-  CE_BEHIND=$(git -C vendor/ChaosEngine rev-list HEAD..origin/main --count 2>/dev/null || echo "?")
-  if [[ "$CE_BEHIND" == "0" ]]; then
-    pass "vendor/ChaosEngine — up to date"
-  elif [[ "$CE_BEHIND" == "?" ]]; then
-    warn "vendor/ChaosEngine — could not check (fetch first)"
-  else
-    warn "vendor/ChaosEngine — $CE_BEHIND commits behind upstream"
-  fi
+# FU-030 dropped vendor/ChaosEngine; the staleness probe that lived
+# here used to walk vendor/ChaosEngine/.git and warn on commits behind
+# upstream. Removed alongside the vendored package.
+
+# FU-033: dflash-mlx pin sync between pyproject.toml and stage-runtime.mjs.
+# Mirrors the assert in scripts/pre-build-check.mjs — see that file for
+# the full rationale (the two pins drifted in May 2026 and shipped an
+# old binary in release builds).
+PYPROJECT_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' pyproject.toml | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+STAGE_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' scripts/stage-runtime.mjs | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" ]]; then
+  warn "dflash-mlx pin sync — could not extract commit hashes from both files"
+elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
+  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12}. Sync both to the same commit."
+else
+  pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
 fi
 echo
 

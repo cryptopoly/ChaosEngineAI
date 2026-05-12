@@ -249,6 +249,12 @@
     "menuAriaLabel": "スラッシュコマンド"
   },
   "compareView": {
+    "slot": {
+      "a": "モデル A",
+      "b": "モデル B",
+      "c": "モデル C",
+      "d": "モデル D"
+    },
     "selectModel": "モデルを選択",
     "removeSlotTitle": "{slot} を削除",
     "remove": "削除",

@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "First token: {ms} ms",
     "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Fused attention",
+    "aboutTitle": "About fused attention",
+    "body": "Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility."
+  },
+  "dflash": {
+    "tooltip": "DFlash speculative decoding: 3-5x faster generation with zero quality loss.",
+    "label": "DFlash",
+    "installing": "Installing...",
+    "installButton": "Install DFlash",
+    "aboutTitle": "About DFlash speculative decoding",
+    "body": "DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.",
+    "requiresLabel": "Requires:",
+    "requiresBody": "Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.",
+    "currentModelLabel": "Current model:",
+    "supportedVia": "Supported via {model}",
+    "compatibilityUnresolved": "Compatibility not resolved yet."
   }
 }

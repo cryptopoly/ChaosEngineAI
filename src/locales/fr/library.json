@@ -418,5 +418,175 @@
       "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
     },
     "releaseUnknown": "Inconnu"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Ouverts uniquement",
+      "gatedOnly": "Restreints uniquement",
+      "all": "Ouverts + restreints",
+      "gated": "Restreint",
+      "open": "Ouvert"
+    },
+    "memory": {
+      "pending": "en attente",
+      "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
+    },
+    "subtitle": "{filtered} sur {total} modèles / métadonnées Hugging Face en direct",
+    "hero": {
+      "heading": "Parcourir et télécharger des modèles d'image pour la génération locale.",
+      "body": "Téléchargez n'importe quel modèle pour l'utiliser dans Image Studio. L'état d'exécution se trouve dans l'onglet Studio.",
+      "installedModels": "Modèles installés",
+      "openStudio": "Ouvrir Studio"
+    },
+    "filter": {
+      "search": "Rechercher",
+      "searchPlaceholder": "Rechercher FLUX, SDXL, fournisseur, tâche, étiquettes, licence...",
+      "task": "Tâche",
+      "access": "Accès",
+      "status": "Statut",
+      "sortBy": "Trier par",
+      "clear": "Effacer les filtres"
+    },
+    "task": {
+      "all": "Toutes les tâches",
+      "txt2img": "Texte vers image",
+      "img2img": "Image vers image",
+      "inpaint": "Inpainting"
+    },
+    "status": {
+      "any": "Tout statut",
+      "installed": "Installé",
+      "notInstalled": "Non installé",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "incomplete": "Incomplet"
+    },
+    "sort": {
+      "name": "Nom",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "release": "Plus récents",
+      "size": "Taille la plus grande",
+      "ram": "RAM/VRAM la plus élevée",
+      "likes": "Plus appréciés",
+      "downloads": "Plus téléchargés",
+      "status": "Statut"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
+      "searchBadge": "Recherche : {query}",
+      "taskBadge": "Tâche : {task}",
+      "accessBadge": "Accès : {access}",
+      "statusBadge": "Statut : {status}"
+    },
+    "empty": {
+      "body": "Essayez d'élargir les filtres ou les termes de recherche."
+    },
+    "column": {
+      "model": "Modèle",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "size": "Taille",
+      "ramVram": "RAM/VRAM",
+      "released": "Publié",
+      "status": "Statut"
+    },
+    "unknown": "Inconnu",
+    "action": {
+      "generate": "Générer",
+      "pauseDownload": "Mettre le téléchargement en pause",
+      "cancelDownload": "Annuler le téléchargement",
+      "resumeDownload": "Reprendre le téléchargement",
+      "deleteDownload": "Supprimer le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "downloadModel": "Télécharger le modèle",
+      "deleteModel": "Supprimer le modèle",
+      "openHuggingFace": "Ouvrir sur Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Paramètres"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "en attente",
+      "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
+    },
+    "action": {
+      "cancelDownload": "Annuler le téléchargement",
+      "deleteModel": "Supprimer le modèle",
+      "deleteDownload": "Supprimer le téléchargement",
+      "generate": "Générer",
+      "installing": "Installation",
+      "install": "Installer",
+      "pauseDownload": "Mettre le téléchargement en pause",
+      "resumeDownload": "Reprendre le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "downloadModel": "Télécharger le modèle",
+      "openModelCard": "Ouvrir la fiche du modèle"
+    },
+    "subtitle": "{filtered} sur {total} modèles vidéo / métadonnées Hugging Face en direct",
+    "hero": {
+      "heading": "Parcourir et télécharger des modèles vidéo pour la génération locale.",
+      "body": "Téléchargez n'importe quel modèle pour l'utiliser dans Video Studio. L'état d'exécution se trouve dans l'onglet Studio.",
+      "installedModels": "Modèles installés",
+      "openStudio": "Ouvrir Studio"
+    },
+    "filter": {
+      "search": "Rechercher",
+      "searchPlaceholder": "Rechercher LTX, Wan, Mochi, fournisseur, étiquettes...",
+      "task": "Tâche",
+      "status": "Statut",
+      "sortBy": "Trier par",
+      "clear": "Effacer les filtres"
+    },
+    "task": {
+      "all": "Toutes les tâches",
+      "txt2video": "Texte vers vidéo",
+      "img2video": "Image vers vidéo",
+      "video2video": "Vidéo vers vidéo"
+    },
+    "status": {
+      "any": "Tout statut",
+      "installed": "Installé",
+      "notInstalled": "Non installé",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "incomplete": "Incomplet"
+    },
+    "sort": {
+      "name": "Nom",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "release": "Plus récents",
+      "size": "Taille la plus grande",
+      "ram": "RAM/VRAM la plus élevée",
+      "likes": "Plus appréciés",
+      "downloads": "Plus téléchargés",
+      "status": "Statut"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
+      "searchBadge": "Recherche : {query}",
+      "taskBadge": "Tâche : {task}",
+      "statusBadge": "Statut : {status}"
+    },
+    "empty": {
+      "body": "Essayez d'élargir les filtres ou les termes de recherche."
+    },
+    "column": {
+      "model": "Modèle",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "size": "Taille",
+      "ramVram": "RAM/VRAM",
+      "released": "Publié",
+      "status": "Statut"
+    },
+    "unknown": "Inconnu",
+    "longLive": {
+      "installNote": "LongLive s'installe dans un venv isolé à ~/.chaosengine/longlive. CUDA uniquement, 5-15 min selon le réseau."
+    }
   }
 }

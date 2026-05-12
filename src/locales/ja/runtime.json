@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "最初のトークン:{ms} ms",
     "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "融合アテンション",
+    "aboutTitle": "融合アテンションについて",
+    "body": "融合アテンションは、選択したバックエンドが対応している場合に最適化されたアテンションカーネルを使用します。スループットを向上させオーバーヘッドを削減できますが、互換性のため標準アテンションパスを好むモデル/バックエンドの組み合わせもあります。"
+  },
+  "dflash": {
+    "tooltip": "DFlash 投機的デコーディング:品質を損なわず 3-5 倍高速な生成。",
+    "label": "DFlash",
+    "installing": "インストール中...",
+    "installButton": "DFlash をインストール",
+    "aboutTitle": "DFlash 投機的デコーディングについて",
+    "body": "DFlash は小さなドラフトモデルを使用して複数のトークンを並列に提案し、1 回の順伝播で検証します。これにより品質を損なわず 3-5 倍高速な生成を実現します。",
+    "requiresLabel": "必須:",
+    "requiresBody": "Apple Silicon + dflash-mlx、または Linux/CUDA + dflash。ターゲットの互換ドラフトモデルが必要。",
+    "currentModelLabel": "現在のモデル:",
+    "supportedVia": "{model} 経由でサポート",
+    "compatibilityUnresolved": "互換性はまだ確認されていません。"
   }
 }

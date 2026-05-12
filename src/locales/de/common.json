@@ -432,7 +432,8 @@
       "tailHint": "Ausführen",
       "terminalHint": "im Terminal für vollständige stderr.",
       "close": "Schließen",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "Benchmark abbrechen"
     }
   },
   "benchmarkHistory": {

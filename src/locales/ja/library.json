@@ -418,5 +418,175 @@
       "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
     },
     "releaseUnknown": "不明"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "オープンのみ",
+      "gatedOnly": "ゲート付きのみ",
+      "all": "オープン + ゲート付き",
+      "gated": "ゲート付き",
+      "open": "オープン"
+    },
+    "memory": {
+      "pending": "保留中",
+      "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
+    },
+    "subtitle": "{total} 個のモデルのうち {filtered} 個 / Hugging Face のライブメタデータ",
+    "hero": {
+      "heading": "ローカル生成用の画像モデルを閲覧してダウンロード。",
+      "body": "任意のモデルをダウンロードして画像スタジオで使用できます。ランタイムステータスはスタジオタブにあります。",
+      "installedModels": "インストール済みモデル",
+      "openStudio": "スタジオを開く"
+    },
+    "filter": {
+      "search": "検索",
+      "searchPlaceholder": "FLUX、SDXL、プロバイダー、タスク、タグ、ライセンスを検索...",
+      "task": "タスク",
+      "access": "アクセス",
+      "status": "ステータス",
+      "sortBy": "並べ替え",
+      "clear": "フィルターをクリア"
+    },
+    "task": {
+      "all": "すべてのタスク",
+      "txt2img": "テキストから画像",
+      "img2img": "画像から画像",
+      "inpaint": "インペイント"
+    },
+    "status": {
+      "any": "すべてのステータス",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "incomplete": "不完全"
+    },
+    "sort": {
+      "name": "名前",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "release": "リリース日が新しい順",
+      "size": "サイズが大きい順",
+      "ram": "RAM/VRAM が高い順",
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロードが多い順",
+      "status": "ステータス"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "searchBadge": "検索:{query}",
+      "taskBadge": "タスク:{task}",
+      "accessBadge": "アクセス:{access}",
+      "statusBadge": "ステータス:{status}"
+    },
+    "empty": {
+      "body": "フィルターまたは検索語の範囲を広げてみてください。"
+    },
+    "column": {
+      "model": "モデル",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "size": "サイズ",
+      "ramVram": "RAM/VRAM",
+      "released": "リリース日",
+      "status": "ステータス"
+    },
+    "unknown": "不明",
+    "action": {
+      "generate": "生成",
+      "pauseDownload": "ダウンロードを一時停止",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "resumeDownload": "ダウンロードを再開",
+      "deleteDownload": "ダウンロードを削除",
+      "retryDownload": "ダウンロードを再試行",
+      "downloadModel": "モデルをダウンロード",
+      "deleteModel": "モデルを削除",
+      "openHuggingFace": "Hugging Face で開く",
+      "huggingFace": "Hugging Face",
+      "settings": "設定"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "保留中",
+      "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
+    },
+    "action": {
+      "cancelDownload": "ダウンロードをキャンセル",
+      "deleteModel": "モデルを削除",
+      "deleteDownload": "ダウンロードを削除",
+      "generate": "生成",
+      "installing": "インストール中",
+      "install": "インストール",
+      "pauseDownload": "ダウンロードを一時停止",
+      "resumeDownload": "ダウンロードを再開",
+      "retryDownload": "ダウンロードを再試行",
+      "downloadModel": "モデルをダウンロード",
+      "openModelCard": "モデルカードを開く"
+    },
+    "subtitle": "{total} 個の動画モデルのうち {filtered} 個 / Hugging Face のライブメタデータ",
+    "hero": {
+      "heading": "ローカル生成用の動画モデルを閲覧してダウンロード。",
+      "body": "任意のモデルをダウンロードして動画スタジオで使用できます。ランタイムステータスはスタジオタブにあります。",
+      "installedModels": "インストール済みモデル",
+      "openStudio": "スタジオを開く"
+    },
+    "filter": {
+      "search": "検索",
+      "searchPlaceholder": "LTX、Wan、Mochi、プロバイダー、タグを検索...",
+      "task": "タスク",
+      "status": "ステータス",
+      "sortBy": "並べ替え",
+      "clear": "フィルターをクリア"
+    },
+    "task": {
+      "all": "すべてのタスク",
+      "txt2video": "テキストから動画",
+      "img2video": "画像から動画",
+      "video2video": "動画から動画"
+    },
+    "status": {
+      "any": "すべてのステータス",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "incomplete": "不完全"
+    },
+    "sort": {
+      "name": "名前",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "release": "リリース日が新しい順",
+      "size": "サイズが大きい順",
+      "ram": "RAM/VRAM が高い順",
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロードが多い順",
+      "status": "ステータス"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "searchBadge": "検索:{query}",
+      "taskBadge": "タスク:{task}",
+      "statusBadge": "ステータス:{status}"
+    },
+    "empty": {
+      "body": "フィルターまたは検索語の範囲を広げてみてください。"
+    },
+    "column": {
+      "model": "モデル",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "size": "サイズ",
+      "ramVram": "RAM/VRAM",
+      "released": "リリース日",
+      "status": "ステータス"
+    },
+    "unknown": "不明",
+    "longLive": {
+      "installNote": "LongLive は ~/.chaosengine/longlive の隔離された venv にインストールされます。CUDA のみ、ネットワークによって 5~15 分。"
+    }
   }
 }

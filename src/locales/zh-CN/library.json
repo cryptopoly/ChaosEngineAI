@@ -418,5 +418,175 @@
       "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
     },
     "releaseUnknown": "未知"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "仅开放",
+      "gatedOnly": "仅受限",
+      "all": "开放 + 受限",
+      "gated": "受限",
+      "open": "开放"
+    },
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "subtitle": "{filtered} / {total} 个模型 / 实时 Hugging Face 元数据",
+    "hero": {
+      "heading": "浏览并下载用于本地生成的图像模型。",
+      "body": "下载任意模型即可在图像工作室中使用。运行时状态位于工作室标签。",
+      "installedModels": "已安装的模型",
+      "openStudio": "打开工作室"
+    },
+    "filter": {
+      "search": "搜索",
+      "searchPlaceholder": "搜索 FLUX、SDXL、提供商、任务、标签、许可证...",
+      "task": "任务",
+      "access": "访问",
+      "status": "状态",
+      "sortBy": "排序方式",
+      "clear": "清除过滤器"
+    },
+    "task": {
+      "all": "所有任务",
+      "txt2img": "文本到图像",
+      "img2img": "图像到图像",
+      "inpaint": "修补"
+    },
+    "status": {
+      "any": "任何状态",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "release": "最新发布",
+      "size": "最大大小",
+      "ram": "最高 RAM/VRAM",
+      "likes": "点赞最多",
+      "downloads": "下载最多",
+      "status": "状态"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchBadge": "搜索:{query}",
+      "taskBadge": "任务:{task}",
+      "accessBadge": "访问:{access}",
+      "statusBadge": "状态:{status}"
+    },
+    "empty": {
+      "body": "请尝试扩大过滤器或搜索词。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "unknown": "未知",
+    "action": {
+      "generate": "生成",
+      "pauseDownload": "暂停下载",
+      "cancelDownload": "取消下载",
+      "resumeDownload": "恢复下载",
+      "deleteDownload": "删除下载",
+      "retryDownload": "重试下载",
+      "downloadModel": "下载模型",
+      "deleteModel": "删除模型",
+      "openHuggingFace": "在 Hugging Face 上打开",
+      "huggingFace": "Hugging Face",
+      "settings": "设置"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "action": {
+      "cancelDownload": "取消下载",
+      "deleteModel": "删除模型",
+      "deleteDownload": "删除下载",
+      "generate": "生成",
+      "installing": "安装中",
+      "install": "安装",
+      "pauseDownload": "暂停下载",
+      "resumeDownload": "恢复下载",
+      "retryDownload": "重试下载",
+      "downloadModel": "下载模型",
+      "openModelCard": "打开模型卡"
+    },
+    "subtitle": "{filtered} / {total} 个视频模型 / 实时 Hugging Face 元数据",
+    "hero": {
+      "heading": "浏览并下载用于本地生成的视频模型。",
+      "body": "下载任意模型即可在视频工作室中使用。运行时状态位于工作室标签。",
+      "installedModels": "已安装的模型",
+      "openStudio": "打开工作室"
+    },
+    "filter": {
+      "search": "搜索",
+      "searchPlaceholder": "搜索 LTX、Wan、Mochi、提供商、标签...",
+      "task": "任务",
+      "status": "状态",
+      "sortBy": "排序方式",
+      "clear": "清除过滤器"
+    },
+    "task": {
+      "all": "所有任务",
+      "txt2video": "文本到视频",
+      "img2video": "图像到视频",
+      "video2video": "视频到视频"
+    },
+    "status": {
+      "any": "任何状态",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "release": "最新发布",
+      "size": "最大大小",
+      "ram": "最高 RAM/VRAM",
+      "likes": "点赞最多",
+      "downloads": "下载最多",
+      "status": "状态"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchBadge": "搜索:{query}",
+      "taskBadge": "任务:{task}",
+      "statusBadge": "状态:{status}"
+    },
+    "empty": {
+      "body": "请尝试扩大过滤器或搜索词。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "unknown": "未知",
+    "longLive": {
+      "installNote": "LongLive 安装到 ~/.chaosengine/longlive 下的独立 venv。仅支持 CUDA,根据网络情况需要 5-15 分钟。"
+    }
   }
 }

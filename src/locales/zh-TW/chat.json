@@ -249,6 +249,12 @@
     "menuAriaLabel": "斜線指令"
   },
   "compareView": {
+    "slot": {
+      "a": "模型 A",
+      "b": "模型 B",
+      "c": "模型 C",
+      "d": "模型 D"
+    },
     "selectModel": "選擇模型",
     "removeSlotTitle": "移除 {slot}",
     "remove": "移除",

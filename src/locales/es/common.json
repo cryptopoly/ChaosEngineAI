@@ -432,7 +432,8 @@
       "tailHint": "Ejecuta",
       "terminalHint": "en la Terminal para ver todo el stderr.",
       "close": "Cerrar",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "Cancelar benchmark"
     }
   },
   "benchmarkHistory": {

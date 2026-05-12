@@ -249,6 +249,12 @@
     "menuAriaLabel": "슬래시 명령어"
   },
   "compareView": {
+    "slot": {
+      "a": "모델 A",
+      "b": "모델 B",
+      "c": "모델 C",
+      "d": "모델 D"
+    },
     "selectModel": "모델 선택",
     "removeSlotTitle": "{slot} 제거",
     "remove": "제거",

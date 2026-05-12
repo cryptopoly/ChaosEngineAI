@@ -1685,6 +1685,7 @@ export default function App() {
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
         onBenchmarkDraftUpdate={setBenchmarkDraft}
         onRunBenchmark={() => void benchmarks.handleRunBenchmark(benchmarkOption)}
+        onCancelBenchmark={benchmarks.handleCancelBenchmark}
         onShowBenchmarkPickerChange={setShowBenchmarkPicker}
         onShowBenchmarkModalChange={setShowBenchmarkModal}
         onSelectedBenchmarkIdChange={setSelectedBenchmarkId}

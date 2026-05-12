@@ -249,6 +249,12 @@
     "menuAriaLabel": "Слэш-команды"
   },
   "compareView": {
+    "slot": {
+      "a": "Модель A",
+      "b": "Модель B",
+      "c": "Модель C",
+      "d": "Модель D"
+    },
     "selectModel": "Выбрать модель",
     "removeSlotTitle": "Удалить {slot}",
     "remove": "Удалить",

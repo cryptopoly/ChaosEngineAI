@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "Primeiro token: {ms} ms",
     "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Atenção fundida",
+    "aboutTitle": "Sobre atenção fundida",
+    "body": "Atenção fundida usa kernels de atenção otimizados quando o backend selecionado os suporta. Pode melhorar a vazão e reduzir a sobrecarga, mas algumas combinações de modelo/backend podem preferir o caminho de atenção padrão por compatibilidade."
+  },
+  "dflash": {
+    "tooltip": "DFlash decodificação especulativa: geração 3-5× mais rápida sem perda de qualidade.",
+    "label": "DFlash",
+    "installing": "Instalando...",
+    "installButton": "Instalar DFlash",
+    "aboutTitle": "Sobre DFlash decodificação especulativa",
+    "body": "DFlash usa um pequeno modelo rascunho para propor múltiplos tokens em paralelo, depois os verifica em uma única passagem direta. Isso dá geração 3-5× mais rápida sem perda de qualidade.",
+    "requiresLabel": "Requer:",
+    "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modelo rascunho compatível para o alvo.",
+    "currentModelLabel": "Modelo atual:",
+    "supportedVia": "Suportado via {model}",
+    "compatibilityUnresolved": "Compatibilidade ainda não resolvida."
   }
 }

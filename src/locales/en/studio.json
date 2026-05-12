@@ -179,7 +179,10 @@
       "applyTitle": "Apply {label}",
       "useSafer": "Use safer settings ({label})",
       "browseSmaller": "Browse smaller models",
-      "overrideAck": "Generate anyway — I accept that the backend may crash."
+      "overrideAck": "Generate anyway — I accept that the backend may crash.",
+      "reasonDangerOver": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, the estimated working set is ~{working} GB, so the model alone is already over that. Even small images would likely crash the backend. Try a smaller model (SD 1.5 is ~4 GB, SDXL ~13 GB) or a machine with more memory.",
+      "reasonDangerNear": "The model needs ~{model} GB just to hold its weights + text encoder, and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that is above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). Generation is likely to crash the backend; lower the resolution or choose a smaller model.",
+      "reasonCaution": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, that is above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable."
     },
     "recent": {
       "subtitle": "{recent} newest of {total} saved generations",
@@ -337,9 +340,97 @@
       "applyTitle": "Apply {label}",
       "useSafer": "Use safer settings ({label})",
       "browseSmaller": "Browse smaller models",
-      "overrideAck": "Allow high-risk generation — I accept that the backend may crash and my machine may need to be restarted."
+      "overrideAck": "Allow high-risk generation — I accept that the backend may crash and my machine may need to be restarted.",
+      "reasonDangerOver": "The model needs ~{model} GB resident at the standard placement, but {platform} with {total} GB total only has ~{working} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and {offloadDevice} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.",
+      "reasonDangerNear": "The model needs ~{model} GB resident and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that's above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.",
+      "reasonCaution": "The model needs ~{model} GB resident. On {platform} with {total} GB total, that's above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation should fit; lower the settings if it becomes unstable."
     },
     "disabledHint": "Generate disabled: {reason}",
     "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants."
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} of {total, plural, one {# saved output} other {# saved outputs}}",
+      "empty": "Saved generations, filters, and quick reuse actions"
+    },
+    "actions": {
+      "studio": "Studio",
+      "installedModels": "Installed Models"
+    },
+    "hero": {
+      "eyebrow": "Saved Outputs",
+      "heading": "Browse, filter, and reuse generated images",
+      "body": "Keep Image Studio focused on prompting and generation, then use Image Gallery to search old outputs, compare models, and jump back into Studio with the same settings."
+    },
+    "stats": {
+      "saved": "{count, plural, one {# saved} other {# saved}}",
+      "modelsUsed": "{count, plural, one {# model used} other {# models used}}",
+      "realEngine": "{count} real engine",
+      "placeholder": "{count} placeholder",
+      "withNotes": "{count} with notes"
+    },
+    "toolbar": {
+      "search": "Search",
+      "searchPlaceholder": "Prompt, model, runtime note",
+      "model": "Model",
+      "allModels": "All models",
+      "runtime": "Runtime",
+      "allRuntimes": "All runtimes",
+      "runtimeReal": "Real engine",
+      "runtimePlaceholder": "Placeholder",
+      "runtimeWithNotes": "With notes",
+      "frame": "Frame",
+      "allFrames": "All frames",
+      "frameSquare": "Square",
+      "framePortrait": "Portrait",
+      "frameLandscape": "Landscape",
+      "sort": "Sort",
+      "sortNewest": "Newest first",
+      "sortOldest": "Oldest first",
+      "clearFilters": "Clear Filters"
+    },
+    "matching": "Showing {count, plural, one {# matching output.} other {# matching outputs.}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, one {# image ready to browse} other {# images ready to browse}}",
+      "noneMatch": "No saved outputs match the current filters",
+      "startGenerating": "Generate in Image Studio to start building the gallery"
+    },
+    "empty": {
+      "firstGeneration": "Generate a prompt in Image Studio to create the first saved image artifact for this branch.",
+      "noMatches": "No saved images match the current filters yet. Try broadening the search or clearing one of the filters.",
+      "openStudio": "Open Studio"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, one {# saved clip} other {# saved clips}}",
+      "empty": "Saved video renders"
+    },
+    "actions": {
+      "autoPlay": "Auto-Play",
+      "openStudio": "Open Studio",
+      "installedModels": "Installed Models"
+    },
+    "empty": {
+      "body": "No video outputs yet. Load a model in the Studio and generate a clip — finished renders will land here.",
+      "openStudio": "Open Video Studio"
+    },
+    "card": {
+      "loadError": "Could not load video.",
+      "collapse": "Collapse",
+      "loading": "Loading clip...",
+      "meta": {
+        "frames": "{count, plural, one {# frame} other {# frames}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds}s clip",
+        "steps": "{count, plural, one {# step} other {# steps}}",
+        "cfg": "CFG {value}",
+        "seed": "Seed {value}",
+        "render": "{seconds}s render"
+      },
+      "expand": "Expand",
+      "revealFile": "Reveal File",
+      "delete": "Delete"
+    }
   }
 }

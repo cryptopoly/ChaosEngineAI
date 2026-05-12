@@ -418,5 +418,175 @@
       "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
     },
     "releaseUnknown": "Unknown"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Open only",
+      "gatedOnly": "Gated only",
+      "all": "Open + gated",
+      "gated": "Gated",
+      "open": "Open"
+    },
+    "memory": {
+      "pending": "pending",
+      "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
+    },
+    "subtitle": "{filtered} of {total} models / live Hugging Face metadata",
+    "hero": {
+      "heading": "Browse and download image models for local generation.",
+      "body": "Download any model to use it in Image Studio. Runtime status lives in the Studio tab.",
+      "installedModels": "Installed Models",
+      "openStudio": "Open Studio"
+    },
+    "filter": {
+      "search": "Search",
+      "searchPlaceholder": "Search FLUX, SDXL, provider, task, tags, license...",
+      "task": "Task",
+      "access": "Access",
+      "status": "Status",
+      "sortBy": "Sort by",
+      "clear": "Clear Filters"
+    },
+    "task": {
+      "all": "All tasks",
+      "txt2img": "Text to image",
+      "img2img": "Image to image",
+      "inpaint": "Inpaint"
+    },
+    "status": {
+      "any": "Any status",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "incomplete": "Incomplete"
+    },
+    "sort": {
+      "name": "Name",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "release": "Newest released",
+      "size": "Largest size",
+      "ram": "Highest RAM/VRAM",
+      "likes": "Most likes",
+      "downloads": "Most downloads",
+      "status": "Status"
+    },
+    "summary": {
+      "count": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "searchBadge": "Search: {query}",
+      "taskBadge": "Task: {task}",
+      "accessBadge": "Access: {access}",
+      "statusBadge": "Status: {status}"
+    },
+    "empty": {
+      "body": "Try broadening the filters or search terms."
+    },
+    "column": {
+      "model": "Model",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "size": "Size",
+      "ramVram": "RAM/VRAM",
+      "released": "Released",
+      "status": "Status"
+    },
+    "unknown": "Unknown",
+    "action": {
+      "generate": "Generate",
+      "pauseDownload": "Pause download",
+      "cancelDownload": "Cancel download",
+      "resumeDownload": "Resume download",
+      "deleteDownload": "Delete download",
+      "retryDownload": "Retry download",
+      "downloadModel": "Download model",
+      "deleteModel": "Delete model",
+      "openHuggingFace": "Open on Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Settings"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "pending",
+      "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
+    },
+    "action": {
+      "cancelDownload": "Cancel download",
+      "deleteModel": "Delete model",
+      "deleteDownload": "Delete download",
+      "generate": "Generate",
+      "installing": "Installing",
+      "install": "Install",
+      "pauseDownload": "Pause download",
+      "resumeDownload": "Resume download",
+      "retryDownload": "Retry download",
+      "downloadModel": "Download model",
+      "openModelCard": "Open model card"
+    },
+    "subtitle": "{filtered} of {total} video models / live Hugging Face metadata",
+    "hero": {
+      "heading": "Browse and download video models for local generation.",
+      "body": "Download any model to use it in Video Studio. Runtime status lives in the Studio tab.",
+      "installedModels": "Installed Models",
+      "openStudio": "Open Studio"
+    },
+    "filter": {
+      "search": "Search",
+      "searchPlaceholder": "Search LTX, Wan, Mochi, provider, tags...",
+      "task": "Task",
+      "status": "Status",
+      "sortBy": "Sort by",
+      "clear": "Clear Filters"
+    },
+    "task": {
+      "all": "All tasks",
+      "txt2video": "Text to video",
+      "img2video": "Image to video",
+      "video2video": "Video to video"
+    },
+    "status": {
+      "any": "Any status",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "incomplete": "Incomplete"
+    },
+    "sort": {
+      "name": "Name",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "release": "Newest released",
+      "size": "Largest size",
+      "ram": "Highest RAM/VRAM",
+      "likes": "Most likes",
+      "downloads": "Most downloads",
+      "status": "Status"
+    },
+    "summary": {
+      "count": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "searchBadge": "Search: {query}",
+      "taskBadge": "Task: {task}",
+      "statusBadge": "Status: {status}"
+    },
+    "empty": {
+      "body": "Try broadening the filters or search terms."
+    },
+    "column": {
+      "model": "Model",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "size": "Size",
+      "ramVram": "RAM/VRAM",
+      "released": "Released",
+      "status": "Status"
+    },
+    "unknown": "Unknown",
+    "longLive": {
+      "installNote": "LongLive installs into an isolated venv at ~/.chaosengine/longlive. CUDA only, 5-15 min depending on network."
+    }
   }
 }

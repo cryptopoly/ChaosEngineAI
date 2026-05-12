@@ -432,7 +432,8 @@
       "tailHint": "実行",
       "terminalHint": "を Terminal で実行すると完全な stderr が表示されます。",
       "close": "閉じる",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "ベンチマークをキャンセル"
     }
   },
   "benchmarkHistory": {

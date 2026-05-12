@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "Первый токен: {ms} мс",
     "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Fused Attention",
+    "aboutTitle": "О Fused Attention",
+    "body": "Fused Attention использует оптимизированные ядра внимания, когда выбранный бэкенд их поддерживает. Это может улучшить пропускную способность и уменьшить накладные расходы, но некоторые комбинации модель/бэкенд предпочитают стандартный путь внимания для совместимости."
+  },
+  "dflash": {
+    "tooltip": "DFlash спекулятивное декодирование: в 3-5 раз быстрее без потери качества.",
+    "label": "DFlash",
+    "installing": "Установка...",
+    "installButton": "Установить DFlash",
+    "aboutTitle": "О DFlash спекулятивном декодировании",
+    "body": "DFlash использует небольшую черновую модель для параллельного предложения нескольких токенов, затем проверяет их за один прямой проход. Это даёт в 3-5 раз быстрее генерацию без потери качества.",
+    "requiresLabel": "Требует:",
+    "requiresBody": "Apple Silicon + dflash-mlx или Linux/CUDA + dflash. Совместимая черновая модель для цели.",
+    "currentModelLabel": "Текущая модель:",
+    "supportedVia": "Поддерживается через {model}",
+    "compatibilityUnresolved": "Совместимость ещё не определена."
   }
 }

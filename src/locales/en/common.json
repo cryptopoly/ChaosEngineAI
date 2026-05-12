@@ -432,7 +432,8 @@
       "tailHint": "Run",
       "terminalHint": "in Terminal for full stderr.",
       "close": "Close",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "Cancel benchmark"
     }
   },
   "benchmarkHistory": {

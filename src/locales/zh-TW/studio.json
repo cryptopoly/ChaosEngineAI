@@ -179,7 +179,10 @@
       "applyTitle": "套用 {label}",
       "useSafer": "使用較安全的設定 ({label})",
       "browseSmaller": "瀏覽較小型的模型",
-      "overrideAck": "仍然生成 — 我接受後端可能崩潰。"
+      "overrideAck": "仍然生成 — 我接受後端可能崩潰。",
+      "reasonDangerOver": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,估計工作集約為 {working} GB,因此光是模型本身就已超出。即使是小型影像也可能讓後端崩潰。請嘗試較小型的模型 (SD 1.5 約 4 GB、SDXL 約 13 GB) 或記憶體較多的機器。",
+      "reasonDangerNear": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。生成可能會讓後端崩潰;請降低解析度或選擇較小型的模型。",
+      "reasonCaution": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成可能會緩慢或失敗;若變得不穩定請降低解析度。"
     },
     "recent": {
       "subtitle": "已儲存 {total} 個生成,顯示最新 {recent} 個",
@@ -337,9 +340,97 @@
       "applyTitle": "套用 {label}",
       "useSafer": "使用較安全的設定 ({label})",
       "browseSmaller": "瀏覽較小型的模型",
-      "overrideAck": "允許高風險生成 — 我接受後端可能崩潰,且我的機器可能需要重新啟動。"
+      "overrideAck": "允許高風險生成 — 我接受後端可能崩潰,且我的機器可能需要重新啟動。",
+      "reasonDangerOver": "模型在標準放置下需要約 {model} GB 常駐,但 {platform} 上總共 {total} GB,只有約 {working} GB 可安全使用。執行環境會自動回退至循序 CPU 卸載 -- 生成會成功,但每步都會慢上數倍,因為子模組會在每次傳遞時於 CPU 與 {offloadDevice} 記憶體之間交換。若要全速生成,請選擇較小型的模型 (LTX-Video 約 2 GB 常駐) 或記憶體較多的機器。",
+      "reasonDangerNear": "模型需要約 {model} GB 常駐,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。執行環境可能啟用 CPU 卸載以容納 -- 若要全速生成,請降低設定或選擇較小型的模型。",
+      "reasonCaution": "模型需要約 {model} GB 常駐。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成應該可以容納;若變得不穩定請降低設定。"
     },
     "disabledHint": "生成已停用:{reason}",
     "willLoadHint": "選定的模型將在下次生成時載入記憶體。較大的變體首次載入可能需要一分鐘。"
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} / {total, plural, other {# 個已儲存輸出}}",
+      "empty": "已儲存的生成、篩選器與快速重用動作"
+    },
+    "actions": {
+      "studio": "工作室",
+      "installedModels": "已安裝模型"
+    },
+    "hero": {
+      "eyebrow": "已儲存輸出",
+      "heading": "瀏覽、篩選與重用已生成的影像",
+      "body": "讓影像工作室專注於提示詞與生成,然後使用影像圖庫搜尋舊輸出、比較模型,並以相同設定回到工作室。"
+    },
+    "stats": {
+      "saved": "{count, plural, other {# 個已儲存}}",
+      "modelsUsed": "{count, plural, other {# 個已使用模型}}",
+      "realEngine": "{count} 個真實引擎",
+      "placeholder": "{count} 個佔位符",
+      "withNotes": "{count} 個含備註"
+    },
+    "toolbar": {
+      "search": "搜尋",
+      "searchPlaceholder": "提示詞、模型、執行階段備註",
+      "model": "模型",
+      "allModels": "全部模型",
+      "runtime": "執行環境",
+      "allRuntimes": "全部執行環境",
+      "runtimeReal": "真實引擎",
+      "runtimePlaceholder": "佔位符",
+      "runtimeWithNotes": "含備註",
+      "frame": "畫面",
+      "allFrames": "全部畫面",
+      "frameSquare": "正方形",
+      "framePortrait": "直向",
+      "frameLandscape": "橫向",
+      "sort": "排序",
+      "sortNewest": "最新優先",
+      "sortOldest": "最舊優先",
+      "clearFilters": "清除篩選器"
+    },
+    "matching": "顯示 {count, plural, other {# 個符合的輸出。}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, other {# 張影像可瀏覽}}",
+      "noneMatch": "沒有已儲存輸出符合目前的篩選條件",
+      "startGenerating": "在影像工作室中生成以開始建立圖庫"
+    },
+    "empty": {
+      "firstGeneration": "在影像工作室中生成提示詞,為此分支建立第一個已儲存的影像產出。",
+      "noMatches": "目前沒有已儲存影像符合篩選條件。請嘗試擴大搜尋範圍或清除其中一個篩選器。",
+      "openStudio": "開啟工作室"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, other {# 個已儲存片段}}",
+      "empty": "已儲存的影片渲染"
+    },
+    "actions": {
+      "autoPlay": "自動播放",
+      "openStudio": "開啟工作室",
+      "installedModels": "已安裝模型"
+    },
+    "empty": {
+      "body": "尚無影片輸出。在工作室中載入模型並生成片段 — 完成的渲染將顯示在此。",
+      "openStudio": "開啟影片工作室"
+    },
+    "card": {
+      "loadError": "無法載入影片。",
+      "collapse": "收合",
+      "loading": "載入片段中...",
+      "meta": {
+        "frames": "{count, plural, other {# 幀}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds} 秒片段",
+        "steps": "{count, plural, other {# 步}}",
+        "cfg": "CFG {value}",
+        "seed": "種子 {value}",
+        "render": "{seconds} 秒渲染"
+      },
+      "expand": "展開",
+      "revealFile": "顯示檔案",
+      "delete": "刪除"
+    }
   }
 }

@@ -179,7 +179,10 @@
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar ajustes más seguros ({label})",
       "browseSmaller": "Explorar modelos más pequeños",
-      "overrideAck": "Generar igualmente — acepto que el backend puede romperse."
+      "overrideAck": "Generar igualmente — acepto que el backend puede romperse.",
+      "reasonDangerOver": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, el conjunto de trabajo estimado es ~{working} GB, así que el modelo por sí solo ya supera ese límite. Incluso imágenes pequeñas probablemente romperían el backend. Prueba un modelo más pequeño (SD 1.5 es ~4 GB, SDXL ~13 GB) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto, y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). Es probable que la generación rompa el backend; reduce la resolución o elige un modelo más pequeño.",
+      "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable."
     },
     "recent": {
       "subtitle": "{recent} más recientes de {total} generaciones guardadas",
@@ -337,9 +340,97 @@
       "applyTitle": "Aplicar {label}",
       "useSafer": "Usar ajustes más seguros ({label})",
       "browseSmaller": "Explorar modelos más pequeños",
-      "overrideAck": "Permitir generación de alto riesgo — acepto que el backend puede romperse y que mi equipo puede necesitar reinicio."
+      "overrideAck": "Permitir generación de alto riesgo — acepto que el backend puede romperse y que mi equipo puede necesitar reinicio.",
+      "reasonDangerOver": "El modelo necesita ~{model} GB residentes con la colocación estándar, pero {platform} con {total} GB totales solo tiene ~{working} GB disponibles con seguridad. El runtime recurrirá automáticamente al CPU offload secuencial -- la generación tendrá éxito pero cada paso será varias veces más lento porque los submódulos se intercambiarán entre la memoria de la CPU y la de {offloadDevice} en cada pasada. Para generación a máxima velocidad, elige un modelo más pequeño (LTX-Video es ~2 GB residentes) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB residentes y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). El runtime puede activar CPU offload para hacerlo encajar -- reduce los ajustes o elige un modelo más pequeño si quieres generación a máxima velocidad.",
+      "reasonCaution": "El modelo necesita ~{model} GB residentes. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación debería caber; reduce los ajustes si se vuelve inestable."
     },
     "disabledHint": "Generación desactivada: {reason}",
     "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto para las variantes más grandes."
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} de {total, plural, one {# salida guardada} other {# salidas guardadas}}",
+      "empty": "Generaciones guardadas, filtros y acciones de reutilización rápida"
+    },
+    "actions": {
+      "studio": "Studio",
+      "installedModels": "Modelos instalados"
+    },
+    "hero": {
+      "eyebrow": "Salidas guardadas",
+      "heading": "Explora, filtra y reutiliza imágenes generadas",
+      "body": "Mantén Image Studio centrado en la indicación y la generación, y luego usa Image Gallery para buscar salidas antiguas, comparar modelos y volver a Studio con los mismos ajustes."
+    },
+    "stats": {
+      "saved": "{count, plural, one {# guardada} other {# guardadas}}",
+      "modelsUsed": "{count, plural, one {# modelo usado} other {# modelos usados}}",
+      "realEngine": "{count} con motor real",
+      "placeholder": "{count} marcador de posición",
+      "withNotes": "{count} con notas"
+    },
+    "toolbar": {
+      "search": "Buscar",
+      "searchPlaceholder": "Indicación, modelo, nota del runtime",
+      "model": "Modelo",
+      "allModels": "Todos los modelos",
+      "runtime": "Runtime",
+      "allRuntimes": "Todos los runtimes",
+      "runtimeReal": "Motor real",
+      "runtimePlaceholder": "Marcador de posición",
+      "runtimeWithNotes": "Con notas",
+      "frame": "Encuadre",
+      "allFrames": "Todos los encuadres",
+      "frameSquare": "Cuadrado",
+      "framePortrait": "Vertical",
+      "frameLandscape": "Horizontal",
+      "sort": "Ordenar",
+      "sortNewest": "Más recientes primero",
+      "sortOldest": "Más antiguas primero",
+      "clearFilters": "Limpiar filtros"
+    },
+    "matching": "Mostrando {count, plural, one {# salida coincidente.} other {# salidas coincidentes.}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, one {# imagen lista para explorar} other {# imágenes listas para explorar}}",
+      "noneMatch": "Ninguna salida guardada coincide con los filtros actuales",
+      "startGenerating": "Genera en Image Studio para empezar a construir la galería"
+    },
+    "empty": {
+      "firstGeneration": "Genera una indicación en Image Studio para crear el primer artefacto de imagen guardado para esta rama.",
+      "noMatches": "Aún no hay imágenes guardadas que coincidan con los filtros actuales. Intenta ampliar la búsqueda o limpiar alguno de los filtros.",
+      "openStudio": "Abrir Studio"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, one {# clip guardado} other {# clips guardados}}",
+      "empty": "Renders de video guardados"
+    },
+    "actions": {
+      "autoPlay": "Reproducción automática",
+      "openStudio": "Abrir Studio",
+      "installedModels": "Modelos instalados"
+    },
+    "empty": {
+      "body": "Aún no hay salidas de video. Carga un modelo en Studio y genera un clip — los renders terminados aparecerán aquí.",
+      "openStudio": "Abrir Video Studio"
+    },
+    "card": {
+      "loadError": "No se pudo cargar el video.",
+      "collapse": "Contraer",
+      "loading": "Cargando clip...",
+      "meta": {
+        "frames": "{count, plural, one {# fotograma} other {# fotogramas}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "clip de {seconds}s",
+        "steps": "{count, plural, one {# paso} other {# pasos}}",
+        "cfg": "CFG {value}",
+        "seed": "Semilla {value}",
+        "render": "render de {seconds}s"
+      },
+      "expand": "Expandir",
+      "revealFile": "Mostrar archivo",
+      "delete": "Eliminar"
+    }
   }
 }

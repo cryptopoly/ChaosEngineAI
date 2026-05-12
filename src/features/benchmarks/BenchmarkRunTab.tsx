@@ -43,6 +43,7 @@ export interface BenchmarkRunTabProps {
   onBenchmarkModelKeyChange: (key: string) => void;
   onBenchmarkDraftUpdate: (updater: (current: BenchmarkRunPayload) => BenchmarkRunPayload) => void;
   onRunBenchmark: () => void;
+  onCancelBenchmark: () => void;
   onShowBenchmarkPickerChange: (open: boolean) => void;
   onShowBenchmarkModalChange: (open: boolean) => void;
   onSelectedBenchmarkIdChange: (id: string) => void;
@@ -71,6 +72,7 @@ export function BenchmarkRunTab({
   onBenchmarkModelKeyChange,
   onBenchmarkDraftUpdate,
   onRunBenchmark,
+  onCancelBenchmark,
   onShowBenchmarkPickerChange,
   onShowBenchmarkModalChange,
   onSelectedBenchmarkIdChange,
@@ -412,19 +414,30 @@ export function BenchmarkRunTab({
             </div>
             <div className="modal-body">
               {busyAction === "Running benchmark..." && benchmarkStartedAt ? (
-                <LiveProgress
-                  title={t("benchmarkTab.progress.title", { defaultValue: "Running benchmark" })}
-                  subtitle={benchmarkOption?.model ?? undefined}
-                  startedAt={benchmarkStartedAt}
-                  accent="benchmark"
-                  phases={[
-                    { id: "load", label: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }), estimatedSeconds: 12 },
-                    { id: "warm", label: t("benchmarkTab.progress.phases.warm", { defaultValue: "Warming up KV cache" }), estimatedSeconds: 4 },
-                    { id: "prompt", label: t("benchmarkTab.progress.phases.prompt", { defaultValue: "Processing prompt" }), estimatedSeconds: 3 },
-                    { id: "generate", label: t("benchmarkTab.progress.phases.generate", { tokens: benchmarkDraft.maxTokens, defaultValue: `Generating ${benchmarkDraft.maxTokens} tokens` }), estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
-                    { id: "measure", label: t("benchmarkTab.progress.phases.measure", { defaultValue: "Measuring stats" }), estimatedSeconds: 2 },
-                  ] as LiveProgressPhase[]}
-                />
+                <>
+                  <LiveProgress
+                    title={t("benchmarkTab.progress.title", { defaultValue: "Running benchmark" })}
+                    subtitle={benchmarkOption?.model ?? undefined}
+                    startedAt={benchmarkStartedAt}
+                    accent="benchmark"
+                    phases={[
+                      { id: "load", label: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }), estimatedSeconds: 12 },
+                      { id: "warm", label: t("benchmarkTab.progress.phases.warm", { defaultValue: "Warming up KV cache" }), estimatedSeconds: 4 },
+                      { id: "prompt", label: t("benchmarkTab.progress.phases.prompt", { defaultValue: "Processing prompt" }), estimatedSeconds: 3 },
+                      { id: "generate", label: t("benchmarkTab.progress.phases.generate", { tokens: benchmarkDraft.maxTokens, defaultValue: `Generating ${benchmarkDraft.maxTokens} tokens` }), estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
+                      { id: "measure", label: t("benchmarkTab.progress.phases.measure", { defaultValue: "Measuring stats" }), estimatedSeconds: 2 },
+                    ] as LiveProgressPhase[]}
+                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="secondary-button danger-button"
+                      onClick={onCancelBenchmark}
+                    >
+                      {t("benchmarkTab.modal.cancel", { defaultValue: "Cancel benchmark" })}
+                    </button>
+                  </div>
+                </>
               ) : benchmarkError ? (
                 <div className="callout error">
                   <h3>{t("benchmarkTab.modal.titleFailed", { defaultValue: "Benchmark failed" })}</h3>

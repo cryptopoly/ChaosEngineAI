@@ -249,8 +249,14 @@
     "menuAriaLabel": "Slash commands"
   },
   "compareView": {
+    "slot": {
+      "a": "Model A",
+      "b": "Model B",
+      "c": "Model C",
+      "d": "Model D"
+    },
     "selectModel": "Select a model",
-    "removeSlotTitle": "Remove ${slotLabel}",
+    "removeSlotTitle": "Remove {slot}",
     "remove": "Remove",
     "change": "Change",
     "select": "Select",

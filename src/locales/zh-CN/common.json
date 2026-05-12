@@ -432,7 +432,8 @@
       "tailHint": "运行",
       "terminalHint": "在终端中以查看完整 stderr。",
       "close": "关闭",
-      "ok": "确定"
+      "ok": "确定",
+      "cancel": "取消基准测试"
     }
   },
   "benchmarkHistory": {

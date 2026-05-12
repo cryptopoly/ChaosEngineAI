@@ -179,7 +179,10 @@
       "applyTitle": "{label} を適用",
       "useSafer": "より安全な設定を使用({label})",
       "browseSmaller": "より小さいモデルを閲覧",
-      "overrideAck": "それでも生成する — バックエンドがクラッシュする可能性を受け入れます。"
+      "overrideAck": "それでも生成する — バックエンドがクラッシュする可能性を受け入れます。",
+      "reasonDangerOver": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では推定ワーキングセットは約 {working} GB なので、モデル単独ですでにそれを超えています。小さな画像でもバックエンドがクラッシュする可能性が高いです。より小さなモデル(SD 1.5 は約 4 GB、SDXL は約 13 GB)、またはメモリの大きいマシンを試してください。",
+      "reasonDangerNear": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。生成によりバックエンドがクラッシュする可能性が高いです。解像度を下げるか、より小さなモデルを選択してください。",
+      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。"
     },
     "recent": {
       "subtitle": "保存された {total} 個の生成のうち最新 {recent} 個",
@@ -337,9 +340,97 @@
       "applyTitle": "{label} を適用",
       "useSafer": "より安全な設定を使用({label})",
       "browseSmaller": "より小さいモデルを閲覧",
-      "overrideAck": "ハイリスク生成を許可 — バックエンドがクラッシュしてマシンの再起動が必要になる可能性を受け入れます。"
+      "overrideAck": "ハイリスク生成を許可 — バックエンドがクラッシュしてマシンの再起動が必要になる可能性を受け入れます。",
+      "reasonDangerOver": "モデルは標準配置で約 {model} GB の常駐を必要としますが、{platform}(合計 {total} GB)で安全に利用できるのは約 {working} GB のみです。ランタイムは自動的にシーケンシャル CPU オフロードにフォールバックします — 生成は成功しますが、各ステップごとにサブモジュールが CPU と {offloadDevice} メモリの間で入れ替わるため、数倍遅くなります。フルスピード生成にはより小さなモデル(LTX-Video は約 2 GB 常駐)、またはメモリの大きいマシンを選択してください。",
+      "reasonDangerNear": "モデルは約 {model} GB の常駐を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。ランタイムは収めるために CPU オフロードを使用する可能性があります — フルスピード生成にしたい場合は設定を下げるかより小さなモデルを選択してください。",
+      "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
     },
     "disabledHint": "生成は無効:{reason}",
     "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。"
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{total, plural, other {# 個の保存済み出力}} のうち {filtered} 個",
+      "empty": "保存された生成物、フィルター、クイック再利用アクション"
+    },
+    "actions": {
+      "studio": "スタジオ",
+      "installedModels": "インストール済みモデル"
+    },
+    "hero": {
+      "eyebrow": "保存された出力",
+      "heading": "生成された画像を閲覧、フィルタ、再利用",
+      "body": "画像スタジオはプロンプトと生成に集中させ、画像ギャラリーで過去の出力を検索したり、モデルを比較したり、同じ設定でスタジオに戻ったりできます。"
+    },
+    "stats": {
+      "saved": "{count, plural, other {# 個保存}}",
+      "modelsUsed": "{count, plural, other {使用モデル # 個}}",
+      "realEngine": "リアルエンジン {count} 個",
+      "placeholder": "プレースホルダー {count} 個",
+      "withNotes": "メモあり {count} 個"
+    },
+    "toolbar": {
+      "search": "検索",
+      "searchPlaceholder": "プロンプト、モデル、ランタイムメモ",
+      "model": "モデル",
+      "allModels": "すべてのモデル",
+      "runtime": "ランタイム",
+      "allRuntimes": "すべてのランタイム",
+      "runtimeReal": "リアルエンジン",
+      "runtimePlaceholder": "プレースホルダー",
+      "runtimeWithNotes": "メモあり",
+      "frame": "フレーム",
+      "allFrames": "すべてのフレーム",
+      "frameSquare": "正方形",
+      "framePortrait": "縦長",
+      "frameLandscape": "横長",
+      "sort": "並べ替え",
+      "sortNewest": "新しい順",
+      "sortOldest": "古い順",
+      "clearFilters": "フィルターをクリア"
+    },
+    "matching": "一致する出力 {count, plural, other {# 個}} を表示しています。",
+    "savedSubtitle": {
+      "ready": "{count, plural, other {# 枚の画像が閲覧可能}}",
+      "noneMatch": "現在のフィルターに一致する保存済み出力はありません",
+      "startGenerating": "画像スタジオで生成してギャラリーを構築し始めましょう"
+    },
+    "empty": {
+      "firstGeneration": "画像スタジオでプロンプトを生成して、このブランチで最初の保存済み画像アーティファクトを作成してください。",
+      "noMatches": "現在のフィルターに一致する保存済み画像はまだありません。検索範囲を広げるか、いずれかのフィルターをクリアしてみてください。",
+      "openStudio": "スタジオを開く"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, other {# 個の保存済みクリップ}}",
+      "empty": "保存された動画レンダー"
+    },
+    "actions": {
+      "autoPlay": "自動再生",
+      "openStudio": "スタジオを開く",
+      "installedModels": "インストール済みモデル"
+    },
+    "empty": {
+      "body": "動画出力はまだありません。スタジオでモデルを読み込んでクリップを生成すると、完了したレンダーがここに表示されます。",
+      "openStudio": "動画スタジオを開く"
+    },
+    "card": {
+      "loadError": "動画を読み込めませんでした。",
+      "collapse": "折りたたむ",
+      "loading": "クリップを読み込み中...",
+      "meta": {
+        "frames": "{count, plural, other {# フレーム}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds} 秒クリップ",
+        "steps": "{count, plural, other {# ステップ}}",
+        "cfg": "CFG {value}",
+        "seed": "シード {value}",
+        "render": "{seconds} 秒レンダー"
+      },
+      "expand": "展開",
+      "revealFile": "ファイルを表示",
+      "delete": "削除"
+    }
   }
 }

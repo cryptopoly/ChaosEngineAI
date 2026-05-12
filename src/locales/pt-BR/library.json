@@ -418,5 +418,175 @@
       "pendingTitle": "Estimativa de RAM/VRAM pendente até que o tamanho dos pesos do modelo seja conhecido."
     },
     "releaseUnknown": "Desconhecido"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Apenas abertos",
+      "gatedOnly": "Apenas restritos",
+      "all": "Abertos + restritos",
+      "gated": "Restrito",
+      "open": "Aberto"
+    },
+    "memory": {
+      "pending": "pendente",
+      "pendingTitle": "Estimativa de RAM/VRAM pendente até que o tamanho dos pesos do modelo seja conhecido."
+    },
+    "subtitle": "{filtered} de {total} modelos / metadados ao vivo do Hugging Face",
+    "hero": {
+      "heading": "Navegue e baixe modelos de imagem para geração local.",
+      "body": "Baixe qualquer modelo para usá-lo no Estúdio de imagem. O status do runtime fica na aba Estúdio.",
+      "installedModels": "Modelos instalados",
+      "openStudio": "Abrir Estúdio"
+    },
+    "filter": {
+      "search": "Pesquisar",
+      "searchPlaceholder": "Pesquisar FLUX, SDXL, provedor, tarefa, tags, licença...",
+      "task": "Tarefa",
+      "access": "Acesso",
+      "status": "Status",
+      "sortBy": "Ordenar por",
+      "clear": "Limpar filtros"
+    },
+    "task": {
+      "all": "Todas as tarefas",
+      "txt2img": "Texto para imagem",
+      "img2img": "Imagem para imagem",
+      "inpaint": "Inpaint"
+    },
+    "status": {
+      "any": "Qualquer status",
+      "installed": "Instalado",
+      "notInstalled": "Não instalado",
+      "downloading": "Baixando",
+      "paused": "Pausado",
+      "failed": "Falhou",
+      "incomplete": "Incompleto"
+    },
+    "sort": {
+      "name": "Nome",
+      "provider": "Provedor",
+      "tasks": "Tarefas",
+      "release": "Lançamento mais recente",
+      "size": "Maior tamanho",
+      "ram": "Maior RAM/VRAM",
+      "likes": "Mais curtidas",
+      "downloads": "Mais downloads",
+      "status": "Status"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchBadge": "Pesquisa: {query}",
+      "taskBadge": "Tarefa: {task}",
+      "accessBadge": "Acesso: {access}",
+      "statusBadge": "Status: {status}"
+    },
+    "empty": {
+      "body": "Tente ampliar os filtros ou termos de pesquisa."
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Provedor",
+      "tasks": "Tarefas",
+      "size": "Tamanho",
+      "ramVram": "RAM/VRAM",
+      "released": "Lançado",
+      "status": "Status"
+    },
+    "unknown": "Desconhecido",
+    "action": {
+      "generate": "Gerar",
+      "pauseDownload": "Pausar download",
+      "cancelDownload": "Cancelar download",
+      "resumeDownload": "Retomar download",
+      "deleteDownload": "Excluir download",
+      "retryDownload": "Tentar download novamente",
+      "downloadModel": "Baixar modelo",
+      "deleteModel": "Excluir modelo",
+      "openHuggingFace": "Abrir no Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Configurações"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "pendente",
+      "pendingTitle": "Estimativa de RAM/VRAM pendente até que o tamanho dos pesos do modelo seja conhecido."
+    },
+    "action": {
+      "cancelDownload": "Cancelar download",
+      "deleteModel": "Excluir modelo",
+      "deleteDownload": "Excluir download",
+      "generate": "Gerar",
+      "installing": "Instalando",
+      "install": "Instalar",
+      "pauseDownload": "Pausar download",
+      "resumeDownload": "Retomar download",
+      "retryDownload": "Tentar download novamente",
+      "downloadModel": "Baixar modelo",
+      "openModelCard": "Abrir model card"
+    },
+    "subtitle": "{filtered} de {total} modelos de vídeo / metadados ao vivo do Hugging Face",
+    "hero": {
+      "heading": "Navegue e baixe modelos de vídeo para geração local.",
+      "body": "Baixe qualquer modelo para usá-lo no Estúdio de vídeo. O status do runtime fica na aba Estúdio.",
+      "installedModels": "Modelos instalados",
+      "openStudio": "Abrir Estúdio"
+    },
+    "filter": {
+      "search": "Pesquisar",
+      "searchPlaceholder": "Pesquisar LTX, Wan, Mochi, provedor, tags...",
+      "task": "Tarefa",
+      "status": "Status",
+      "sortBy": "Ordenar por",
+      "clear": "Limpar filtros"
+    },
+    "task": {
+      "all": "Todas as tarefas",
+      "txt2video": "Texto para vídeo",
+      "img2video": "Imagem para vídeo",
+      "video2video": "Vídeo para vídeo"
+    },
+    "status": {
+      "any": "Qualquer status",
+      "installed": "Instalado",
+      "notInstalled": "Não instalado",
+      "downloading": "Baixando",
+      "paused": "Pausado",
+      "failed": "Falhou",
+      "incomplete": "Incompleto"
+    },
+    "sort": {
+      "name": "Nome",
+      "provider": "Provedor",
+      "tasks": "Tarefas",
+      "release": "Lançamento mais recente",
+      "size": "Maior tamanho",
+      "ram": "Maior RAM/VRAM",
+      "likes": "Mais curtidas",
+      "downloads": "Mais downloads",
+      "status": "Status"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchBadge": "Pesquisa: {query}",
+      "taskBadge": "Tarefa: {task}",
+      "statusBadge": "Status: {status}"
+    },
+    "empty": {
+      "body": "Tente ampliar os filtros ou termos de pesquisa."
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Provedor",
+      "tasks": "Tarefas",
+      "size": "Tamanho",
+      "ramVram": "RAM/VRAM",
+      "released": "Lançado",
+      "status": "Status"
+    },
+    "unknown": "Desconhecido",
+    "longLive": {
+      "installNote": "LongLive instala em uma venv isolada em ~/.chaosengine/longlive. Apenas CUDA, 5-15 min dependendo da rede."
+    }
   }
 }

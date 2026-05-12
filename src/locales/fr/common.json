@@ -432,7 +432,8 @@
       "tailHint": "Exécutez",
       "terminalHint": "dans le Terminal pour le stderr complet.",
       "close": "Fermer",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "Annuler le benchmark"
     }
   },
   "benchmarkHistory": {

@@ -418,5 +418,175 @@
       "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
     },
     "releaseUnknown": "Неизвестно"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Только открытые",
+      "gatedOnly": "Только закрытые",
+      "all": "Открытые + закрытые",
+      "gated": "Закрытые",
+      "open": "Открытые"
+    },
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "subtitle": "{filtered} из {total} моделей / актуальные метаданные Hugging Face",
+    "hero": {
+      "heading": "Просмотр и скачивание моделей изображений для локальной генерации.",
+      "body": "Скачайте любую модель, чтобы использовать её в Image Studio. Состояние среды выполнения находится во вкладке Studio.",
+      "installedModels": "Установленные модели",
+      "openStudio": "Открыть Studio"
+    },
+    "filter": {
+      "search": "Поиск",
+      "searchPlaceholder": "Поиск FLUX, SDXL, провайдера, задачи, тегов, лицензии...",
+      "task": "Задача",
+      "access": "Доступ",
+      "status": "Статус",
+      "sortBy": "Сортировать по",
+      "clear": "Очистить фильтры"
+    },
+    "task": {
+      "all": "Все задачи",
+      "txt2img": "Текст в изображение",
+      "img2img": "Изображение в изображение",
+      "inpaint": "Inpaint"
+    },
+    "status": {
+      "any": "Любой статус",
+      "installed": "Установлено",
+      "notInstalled": "Не установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "incomplete": "Неполный"
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "release": "Самые новые",
+      "size": "Наибольший размер",
+      "ram": "Наибольшая RAM/VRAM",
+      "likes": "Больше всего лайков",
+      "downloads": "Больше всего скачиваний",
+      "status": "Статус"
+    },
+    "summary": {
+      "count": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchBadge": "Поиск: {query}",
+      "taskBadge": "Задача: {task}",
+      "accessBadge": "Доступ: {access}",
+      "statusBadge": "Статус: {status}"
+    },
+    "empty": {
+      "body": "Попробуйте расширить фильтры или поисковые запросы."
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "unknown": "Неизвестно",
+    "action": {
+      "generate": "Сгенерировать",
+      "pauseDownload": "Приостановить скачивание",
+      "cancelDownload": "Отменить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "deleteDownload": "Удалить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "downloadModel": "Скачать модель",
+      "deleteModel": "Удалить модель",
+      "openHuggingFace": "Открыть на Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Настройки"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "action": {
+      "cancelDownload": "Отменить скачивание",
+      "deleteModel": "Удалить модель",
+      "deleteDownload": "Удалить скачивание",
+      "generate": "Сгенерировать",
+      "installing": "Установка",
+      "install": "Установить",
+      "pauseDownload": "Приостановить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "downloadModel": "Скачать модель",
+      "openModelCard": "Открыть карточку модели"
+    },
+    "subtitle": "{filtered} из {total} моделей видео / актуальные метаданные Hugging Face",
+    "hero": {
+      "heading": "Просмотр и скачивание моделей видео для локальной генерации.",
+      "body": "Скачайте любую модель, чтобы использовать её в Video Studio. Состояние среды выполнения находится во вкладке Studio.",
+      "installedModels": "Установленные модели",
+      "openStudio": "Открыть Studio"
+    },
+    "filter": {
+      "search": "Поиск",
+      "searchPlaceholder": "Поиск LTX, Wan, Mochi, провайдера, тегов...",
+      "task": "Задача",
+      "status": "Статус",
+      "sortBy": "Сортировать по",
+      "clear": "Очистить фильтры"
+    },
+    "task": {
+      "all": "Все задачи",
+      "txt2video": "Текст в видео",
+      "img2video": "Изображение в видео",
+      "video2video": "Видео в видео"
+    },
+    "status": {
+      "any": "Любой статус",
+      "installed": "Установлено",
+      "notInstalled": "Не установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "incomplete": "Неполный"
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "release": "Самые новые",
+      "size": "Наибольший размер",
+      "ram": "Наибольшая RAM/VRAM",
+      "likes": "Больше всего лайков",
+      "downloads": "Больше всего скачиваний",
+      "status": "Статус"
+    },
+    "summary": {
+      "count": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchBadge": "Поиск: {query}",
+      "taskBadge": "Задача: {task}",
+      "statusBadge": "Статус: {status}"
+    },
+    "empty": {
+      "body": "Попробуйте расширить фильтры или поисковые запросы."
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "unknown": "Неизвестно",
+    "longLive": {
+      "installNote": "LongLive устанавливается в изолированный venv в ~/.chaosengine/longlive. Только CUDA, 5–15 минут в зависимости от сети."
+    }
   }
 }

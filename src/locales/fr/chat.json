@@ -249,6 +249,12 @@
     "menuAriaLabel": "Commandes slash"
   },
   "compareView": {
+    "slot": {
+      "a": "Modèle A",
+      "b": "Modèle B",
+      "c": "Modèle C",
+      "d": "Modèle D"
+    },
     "selectModel": "Sélectionner un modèle",
     "removeSlotTitle": "Retirer {slot}",
     "remove": "Retirer",

@@ -418,5 +418,175 @@
       "pendingTitle": "모델 가중치 크기를 알 때까지 RAM/VRAM 추정이 대기 중입니다."
     },
     "releaseUnknown": "알 수 없음"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "공개만",
+      "gatedOnly": "제한만",
+      "all": "공개 + 제한",
+      "gated": "제한",
+      "open": "공개"
+    },
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 수 있을 때까지 RAM/VRAM 추정이 보류됩니다."
+    },
+    "subtitle": "총 {total}개 모델 중 {filtered}개 / 실시간 Hugging Face 메타데이터",
+    "hero": {
+      "heading": "로컬 생성을 위한 이미지 모델을 둘러보고 다운로드합니다.",
+      "body": "Image Studio에서 사용하려면 모델을 다운로드하세요. 런타임 상태는 Studio 탭에 있습니다.",
+      "installedModels": "설치된 모델",
+      "openStudio": "Studio 열기"
+    },
+    "filter": {
+      "search": "검색",
+      "searchPlaceholder": "FLUX, SDXL, 제공자, 작업, 태그, 라이선스 검색...",
+      "task": "작업",
+      "access": "접근",
+      "status": "상태",
+      "sortBy": "정렬 기준",
+      "clear": "필터 지우기"
+    },
+    "task": {
+      "all": "모든 작업",
+      "txt2img": "텍스트→이미지",
+      "img2img": "이미지→이미지",
+      "inpaint": "인페인트"
+    },
+    "status": {
+      "any": "모든 상태",
+      "installed": "설치됨",
+      "notInstalled": "미설치",
+      "downloading": "다운로드 중",
+      "paused": "일시정지",
+      "failed": "실패",
+      "incomplete": "미완료"
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "release": "최신 출시",
+      "size": "큰 크기",
+      "ram": "높은 RAM/VRAM",
+      "likes": "좋아요 많음",
+      "downloads": "다운로드 많음",
+      "status": "상태"
+    },
+    "summary": {
+      "count": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchBadge": "검색: {query}",
+      "taskBadge": "작업: {task}",
+      "accessBadge": "접근: {access}",
+      "statusBadge": "상태: {status}"
+    },
+    "empty": {
+      "body": "필터나 검색어를 더 넓혀 보세요."
+    },
+    "column": {
+      "model": "모델",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "unknown": "알 수 없음",
+    "action": {
+      "generate": "생성",
+      "pauseDownload": "다운로드 일시정지",
+      "cancelDownload": "다운로드 취소",
+      "resumeDownload": "다운로드 재개",
+      "deleteDownload": "다운로드 삭제",
+      "retryDownload": "다운로드 재시도",
+      "downloadModel": "모델 다운로드",
+      "deleteModel": "모델 삭제",
+      "openHuggingFace": "Hugging Face에서 열기",
+      "huggingFace": "Hugging Face",
+      "settings": "설정"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 수 있을 때까지 RAM/VRAM 추정이 보류됩니다."
+    },
+    "action": {
+      "cancelDownload": "다운로드 취소",
+      "deleteModel": "모델 삭제",
+      "deleteDownload": "다운로드 삭제",
+      "generate": "생성",
+      "installing": "설치 중",
+      "install": "설치",
+      "pauseDownload": "다운로드 일시정지",
+      "resumeDownload": "다운로드 재개",
+      "retryDownload": "다운로드 재시도",
+      "downloadModel": "모델 다운로드",
+      "openModelCard": "모델 카드 열기"
+    },
+    "subtitle": "총 {total}개 비디오 모델 중 {filtered}개 / 실시간 Hugging Face 메타데이터",
+    "hero": {
+      "heading": "로컬 생성을 위한 비디오 모델을 둘러보고 다운로드합니다.",
+      "body": "Video Studio에서 사용하려면 모델을 다운로드하세요. 런타임 상태는 Studio 탭에 있습니다.",
+      "installedModels": "설치된 모델",
+      "openStudio": "Studio 열기"
+    },
+    "filter": {
+      "search": "검색",
+      "searchPlaceholder": "LTX, Wan, Mochi, 제공자, 태그 검색...",
+      "task": "작업",
+      "status": "상태",
+      "sortBy": "정렬 기준",
+      "clear": "필터 지우기"
+    },
+    "task": {
+      "all": "모든 작업",
+      "txt2video": "텍스트→비디오",
+      "img2video": "이미지→비디오",
+      "video2video": "비디오→비디오"
+    },
+    "status": {
+      "any": "모든 상태",
+      "installed": "설치됨",
+      "notInstalled": "미설치",
+      "downloading": "다운로드 중",
+      "paused": "일시정지",
+      "failed": "실패",
+      "incomplete": "미완료"
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "release": "최신 출시",
+      "size": "큰 크기",
+      "ram": "높은 RAM/VRAM",
+      "likes": "좋아요 많음",
+      "downloads": "다운로드 많음",
+      "status": "상태"
+    },
+    "summary": {
+      "count": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchBadge": "검색: {query}",
+      "taskBadge": "작업: {task}",
+      "statusBadge": "상태: {status}"
+    },
+    "empty": {
+      "body": "필터나 검색어를 더 넓혀 보세요."
+    },
+    "column": {
+      "model": "모델",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "unknown": "알 수 없음",
+    "longLive": {
+      "installNote": "LongLive는 ~/.chaosengine/longlive의 격리된 venv에 설치됩니다. CUDA 전용이며 네트워크에 따라 5~15분 소요됩니다."
+    }
   }
 }

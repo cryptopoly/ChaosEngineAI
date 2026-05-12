@@ -432,7 +432,8 @@
       "tailHint": "執行",
       "terminalHint": "在終端機中以取得完整 stderr。",
       "close": "關閉",
-      "ok": "確定"
+      "ok": "確定",
+      "cancel": "取消基準測試"
     }
   },
   "benchmarkHistory": {

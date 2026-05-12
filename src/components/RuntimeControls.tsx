@@ -574,20 +574,25 @@ export function RuntimeControls({
               checked={settings.fusedAttention}
               onChange={(event) => onChange("fusedAttention", event.target.checked)}
             />
-            <span>Fused attention</span>
+            <span>{t("fusedAttention.label", { defaultValue: "Fused attention" })}</span>
           </label>
           <button
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "fused-attention" ? null : "fused-attention")}
-            title="About fused attention"
+            title={t("fusedAttention.aboutTitle", { defaultValue: "About fused attention" })}
           >
             i
           </button>
         </div>
         {expandedInfo === "fused-attention" ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.</p>
+            <p>
+              {t("fusedAttention.body", {
+                defaultValue:
+                  "Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.",
+              })}
+            </p>
           </div>
         ) : null}
         {/* FU-034 (2026-05-10): hide the DFlash toggle entirely when the
@@ -602,7 +607,13 @@ export function RuntimeControls({
             is the missing pip package. */}
         {dflashAvailable || canInstallDflashForModel ? (
         <div className="check-row">
-          <label className="check-row" style={{ margin: 0 }} title="DFlash speculative decoding: 3-5x faster generation with zero quality loss.">
+          <label
+            className="check-row"
+            style={{ margin: 0 }}
+            title={t("dflash.tooltip", {
+              defaultValue: "DFlash speculative decoding: 3-5x faster generation with zero quality loss.",
+            })}
+          >
             <input
               type="checkbox"
               checked={settings.speculativeDecoding && dflashAvailable}
@@ -617,7 +628,7 @@ export function RuntimeControls({
                 }
               }}
             />
-            <span>DFlash</span>
+            <span>{t("dflash.label", { defaultValue: "DFlash" })}</span>
           </label>
           {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (
             <button
@@ -626,14 +637,16 @@ export function RuntimeControls({
               disabled={installingPackage != null}
               onClick={() => onInstallPackage("dflash-mlx")}
             >
-              {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
+              {installingPackage === "dflash-mlx"
+                ? t("dflash.installing", { defaultValue: "Installing..." })
+                : t("dflash.installButton", { defaultValue: "Install DFlash" })}
             </button>
           ) : null}
           <button
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "dflash" ? null : "dflash")}
-            title="About DFlash speculative decoding"
+            title={t("dflash.aboutTitle", { defaultValue: "About DFlash speculative decoding" })}
           >
             i
           </button>
@@ -641,14 +654,26 @@ export function RuntimeControls({
         ) : null}
         {expandedInfo === "dflash" && (dflashAvailable || canInstallDflashForModel) ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.</p>
+            <p>
+              {t("dflash.body", {
+                defaultValue:
+                  "DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.",
+              })}
+            </p>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Requires:</span>
-              <span>Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.</span>
+              <span className="cache-strategy-meta-label">{t("dflash.requiresLabel", { defaultValue: "Requires:" })}</span>
+              <span>
+                {t("dflash.requiresBody", {
+                  defaultValue:
+                    "Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.",
+                })}
+              </span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Current model:</span>
-              <span>{dflashSupport.matchedModel ? `Supported via ${dflashSupport.matchedModel}` : dflashUnavailableReason ?? "Compatibility not resolved yet."}</span>
+              <span className="cache-strategy-meta-label">{t("dflash.currentModelLabel", { defaultValue: "Current model:" })}</span>
+              <span>{dflashSupport.matchedModel
+                ? t("dflash.supportedVia", { model: dflashSupport.matchedModel, defaultValue: `Supported via ${dflashSupport.matchedModel}` })
+                : dflashUnavailableReason ?? t("dflash.compatibilityUnresolved", { defaultValue: "Compatibility not resolved yet." })}</span>
             </div>
             <div className="cache-strategy-meta">
               <span className="cache-strategy-meta-label">Registered targets:</span>

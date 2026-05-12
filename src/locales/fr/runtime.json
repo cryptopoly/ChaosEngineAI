@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "Premier jeton : {ms} ms",
     "vramUsed": "VRAM : {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Attention fusionnée",
+    "aboutTitle": "À propos de l'attention fusionnée",
+    "body": "L'attention fusionnée utilise des noyaux d'attention optimisés lorsque le backend sélectionné les prend en charge. Elle peut améliorer le débit et réduire les surcoûts, mais certaines combinaisons modèle/backend peuvent préférer le chemin d'attention standard pour la compatibilité."
+  },
+  "dflash": {
+    "tooltip": "DFlash décodage spéculatif : génération 3-5× plus rapide sans perte de qualité.",
+    "label": "DFlash",
+    "installing": "Installation...",
+    "installButton": "Installer DFlash",
+    "aboutTitle": "À propos de DFlash décodage spéculatif",
+    "body": "DFlash utilise un petit modèle de brouillon pour proposer plusieurs tokens en parallèle, puis les vérifie en une seule passe avant. Cela donne une génération 3-5× plus rapide sans perte de qualité.",
+    "requiresLabel": "Requiert :",
+    "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modèle de brouillon compatible pour la cible.",
+    "currentModelLabel": "Modèle actuel :",
+    "supportedVia": "Pris en charge via {model}",
+    "compatibilityUnresolved": "Compatibilité non encore résolue."
   }
 }

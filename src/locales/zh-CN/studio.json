@@ -179,7 +179,10 @@
       "applyTitle": "应用 {label}",
       "useSafer": "使用更安全的设置 ({label})",
       "browseSmaller": "浏览更小的模型",
-      "overrideAck": "仍要生成 — 我接受后端可能会崩溃。"
+      "overrideAck": "仍要生成 — 我接受后端可能会崩溃。",
+      "reasonDangerOver": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,估算工作集为约 {working} GB,因此仅模型本身就已超出。即便生成小图像也可能使后端崩溃。请尝试更小的模型(SD 1.5 约 4 GB,SDXL 约 13 GB)或内存更大的机器。",
+      "reasonDangerNear": "模型仅加载权重 + 文本编码器就需要约 {model} GB,本次运行峰值约 {peak} GB。在 {platform} 上共有 {total} GB,这超过了高风险阈值(约 {highRisk} GB)且接近估算工作集(约 {working} GB)。生成很可能使后端崩溃;请降低分辨率或选择更小的模型。",
+      "reasonCaution": "模型仅加载权重 + 文本编码器就需要约 {model} GB。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成可能较慢或失败;如果不稳定请降低分辨率。"
     },
     "recent": {
       "subtitle": "{total} 个已保存生成中最新的 {recent} 个",
@@ -337,9 +340,97 @@
       "applyTitle": "应用 {label}",
       "useSafer": "使用更安全的设置 ({label})",
       "browseSmaller": "浏览更小的模型",
-      "overrideAck": "允许高风险生成 — 我接受后端可能崩溃,并且我的机器可能需要重启。"
+      "overrideAck": "允许高风险生成 — 我接受后端可能崩溃,并且我的机器可能需要重启。",
+      "reasonDangerOver": "模型在标准放置下需要约 {model} GB 常驻,但 {platform} 上共有 {total} GB,仅约 {working} GB 可安全使用。运行时将自动回退到顺序 CPU offload — 生成会成功,但每一步会慢几倍,因为子模块每次都要在 CPU 和 {offloadDevice} 内存之间交换。要获得全速生成,请选择更小的模型(LTX-Video 常驻约 2 GB)或内存更大的机器。",
+      "reasonDangerNear": "模型需要约 {model} GB 常驻,本次运行峰值约 {peak} GB。在 {platform} 上共有 {total} GB,这超过了高风险阈值(约 {highRisk} GB)且接近估算工作集(约 {working} GB)。运行时可能会启用 CPU offload 以使其装下 — 如果你想要全速生成,请降低设置或选择更小的模型。",
+      "reasonCaution": "模型需要约 {model} GB 常驻。在 {platform} 上共有 {total} GB,这超过了保守舒适目标(约 {comfort} GB),但仍低于估算工作集(约 {working} GB)。生成应能装下;如果不稳定请降低设置。"
     },
     "disabledHint": "生成已禁用:{reason}",
     "willLoadHint": "所选模型将在下次生成时加载到内存。大型变体的首次加载可能需要一分钟。"
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} / {total, plural, other {# 个已保存输出}}",
+      "empty": "已保存的生成、过滤器和快速复用操作"
+    },
+    "actions": {
+      "studio": "工作室",
+      "installedModels": "已安装的模型"
+    },
+    "hero": {
+      "eyebrow": "已保存的输出",
+      "heading": "浏览、过滤并复用生成的图像",
+      "body": "让图像工作室专注于提示词和生成,然后使用图像图库搜索旧输出、对比模型,并以相同设置跳回工作室。"
+    },
+    "stats": {
+      "saved": "{count, plural, other {# 个已保存}}",
+      "modelsUsed": "{count, plural, other {# 个模型已使用}}",
+      "realEngine": "{count} 个真实引擎",
+      "placeholder": "{count} 个占位",
+      "withNotes": "{count} 个带备注"
+    },
+    "toolbar": {
+      "search": "搜索",
+      "searchPlaceholder": "提示词、模型、运行时备注",
+      "model": "模型",
+      "allModels": "所有模型",
+      "runtime": "运行时",
+      "allRuntimes": "所有运行时",
+      "runtimeReal": "真实引擎",
+      "runtimePlaceholder": "占位",
+      "runtimeWithNotes": "带备注",
+      "frame": "画幅",
+      "allFrames": "所有画幅",
+      "frameSquare": "正方形",
+      "framePortrait": "竖向",
+      "frameLandscape": "横向",
+      "sort": "排序",
+      "sortNewest": "最新优先",
+      "sortOldest": "最旧优先",
+      "clearFilters": "清除过滤器"
+    },
+    "matching": "显示 {count, plural, other {# 个匹配的输出。}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, other {# 张图像可浏览}}",
+      "noneMatch": "当前过滤器下没有已保存的输出",
+      "startGenerating": "在图像工作室中生成以开始构建图库"
+    },
+    "empty": {
+      "firstGeneration": "在图像工作室中生成一个提示词,以为此分支创建第一个已保存的图像产物。",
+      "noMatches": "尚无与当前过滤器匹配的已保存图像。请尝试扩大搜索范围或清除其中一个过滤器。",
+      "openStudio": "打开工作室"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, other {# 个已保存片段}}",
+      "empty": "已保存的视频渲染"
+    },
+    "actions": {
+      "autoPlay": "自动播放",
+      "openStudio": "打开工作室",
+      "installedModels": "已安装的模型"
+    },
+    "empty": {
+      "body": "尚无视频输出。在工作室中加载模型并生成片段 — 完成的渲染将出现在此处。",
+      "openStudio": "打开视频工作室"
+    },
+    "card": {
+      "loadError": "无法加载视频。",
+      "collapse": "折叠",
+      "loading": "正在加载片段...",
+      "meta": {
+        "frames": "{count, plural, other {# 帧}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds} 秒片段",
+        "steps": "{count, plural, other {# 步}}",
+        "cfg": "CFG {value}",
+        "seed": "种子 {value}",
+        "render": "渲染 {seconds} 秒"
+      },
+      "expand": "展开",
+      "revealFile": "显示文件",
+      "delete": "删除"
+    }
   }
 }

@@ -179,7 +179,10 @@
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Trotzdem generieren — ich akzeptiere, dass das Backend abstürzen kann."
+      "overrideAck": "Trotzdem generieren — ich akzeptiere, dass das Backend abstürzen kann.",
+      "reasonDangerOver": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das geschätzte Working Set bei ~{working} GB, sodass das Modell allein bereits darüber liegt. Selbst kleine Bilder würden das Backend wahrscheinlich zum Absturz bringen. Probiere ein kleineres Modell (SD 1.5 ist ~4 GB, SDXL ~13 GB) oder einen Rechner mit mehr Speicher.",
+      "reasonDangerNear": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten, und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Generierung wird das Backend wahrscheinlich zum Absturz bringen; senke die Auflösung oder wähle ein kleineres Modell.",
+      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird."
     },
     "recent": {
       "subtitle": "{recent} neueste von {total} gespeicherten Generierungen",
@@ -337,9 +340,97 @@
       "applyTitle": "{label} anwenden",
       "useSafer": "Sicherere Einstellungen verwenden ({label})",
       "browseSmaller": "Kleinere Modelle durchsuchen",
-      "overrideAck": "Hochrisiko-Generierung erlauben — ich akzeptiere, dass das Backend abstürzen kann und mein Rechner möglicherweise neu gestartet werden muss."
+      "overrideAck": "Hochrisiko-Generierung erlauben — ich akzeptiere, dass das Backend abstürzen kann und mein Rechner möglicherweise neu gestartet werden muss.",
+      "reasonDangerOver": "Das Modell benötigt ~{model} GB resident an der Standardposition, aber {platform} mit insgesamt {total} GB hat nur ~{working} GB sicher verfügbar. Die Laufzeit fällt automatisch auf sequentielles CPU-Offload zurück — die Generierung gelingt, aber jeder Schritt wird einige Male langsamer, weil Submodule pro Durchgang zwischen CPU- und {offloadDevice}-Speicher wechseln. Für Generierung mit voller Geschwindigkeit wähle ein kleineres Modell (LTX-Video ist ~2 GB resident) oder einen Rechner mit mehr Speicher.",
+      "reasonDangerNear": "Das Modell benötigt ~{model} GB resident und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Laufzeit aktiviert möglicherweise CPU-Offload, damit es passt — senke die Einstellungen oder wähle ein kleineres Modell, wenn du Generierung mit voller Geschwindigkeit möchtest.",
+      "reasonCaution": "Das Modell benötigt ~{model} GB resident. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung sollte passen; senke die Einstellungen, falls es instabil wird."
     },
     "disabledHint": "Generieren deaktiviert: {reason}",
     "willLoadHint": "Das ausgewählte Modell wird bei der nächsten Generierung in den Speicher geladen. Der erste Ladevorgang kann bei größeren Varianten eine Minute dauern."
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} von {total, plural, one {# gespeicherte Ausgabe} other {# gespeicherten Ausgaben}}",
+      "empty": "Gespeicherte Generierungen, Filter und schnelle Wiederverwendungsaktionen"
+    },
+    "actions": {
+      "studio": "Studio",
+      "installedModels": "Installierte Modelle"
+    },
+    "hero": {
+      "eyebrow": "Gespeicherte Ausgaben",
+      "heading": "Generierte Bilder durchsuchen, filtern und wiederverwenden",
+      "body": "Halte das Image Studio auf Prompting und Generierung fokussiert, und nutze dann die Bildgalerie, um alte Ausgaben zu durchsuchen, Modelle zu vergleichen und mit denselben Einstellungen ins Studio zurückzukehren."
+    },
+    "stats": {
+      "saved": "{count, plural, one {# gespeichert} other {# gespeichert}}",
+      "modelsUsed": "{count, plural, one {# verwendetes Modell} other {# verwendete Modelle}}",
+      "realEngine": "{count} echte Engine",
+      "placeholder": "{count} Platzhalter",
+      "withNotes": "{count} mit Notizen"
+    },
+    "toolbar": {
+      "search": "Suchen",
+      "searchPlaceholder": "Prompt, Modell, Laufzeit-Notiz",
+      "model": "Modell",
+      "allModels": "Alle Modelle",
+      "runtime": "Laufzeit",
+      "allRuntimes": "Alle Laufzeiten",
+      "runtimeReal": "Echte Engine",
+      "runtimePlaceholder": "Platzhalter",
+      "runtimeWithNotes": "Mit Notizen",
+      "frame": "Format",
+      "allFrames": "Alle Formate",
+      "frameSquare": "Quadratisch",
+      "framePortrait": "Hochformat",
+      "frameLandscape": "Querformat",
+      "sort": "Sortieren",
+      "sortNewest": "Neueste zuerst",
+      "sortOldest": "Älteste zuerst",
+      "clearFilters": "Filter zurücksetzen"
+    },
+    "matching": "{count, plural, one {# passende Ausgabe wird angezeigt.} other {# passende Ausgaben werden angezeigt.}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, one {# Bild bereit zum Durchsuchen} other {# Bilder bereit zum Durchsuchen}}",
+      "noneMatch": "Keine gespeicherten Ausgaben entsprechen den aktuellen Filtern",
+      "startGenerating": "Generiere im Image Studio, um die Galerie aufzubauen"
+    },
+    "empty": {
+      "firstGeneration": "Generiere einen Prompt im Image Studio, um das erste gespeicherte Bild-Artefakt für diesen Branch zu erzeugen.",
+      "noMatches": "Noch keine gespeicherten Bilder entsprechen den aktuellen Filtern. Versuche, die Suche zu erweitern oder einen der Filter zurückzusetzen.",
+      "openStudio": "Studio öffnen"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, one {# gespeicherter Clip} other {# gespeicherte Clips}}",
+      "empty": "Gespeicherte Video-Renders"
+    },
+    "actions": {
+      "autoPlay": "Auto-Play",
+      "openStudio": "Studio öffnen",
+      "installedModels": "Installierte Modelle"
+    },
+    "empty": {
+      "body": "Noch keine Videoausgaben. Lade ein Modell im Studio und generiere einen Clip — fertige Renders landen hier.",
+      "openStudio": "Video Studio öffnen"
+    },
+    "card": {
+      "loadError": "Video konnte nicht geladen werden.",
+      "collapse": "Einklappen",
+      "loading": "Clip wird geladen...",
+      "meta": {
+        "frames": "{count, plural, one {# Bild} other {# Bilder}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds}s Clip",
+        "steps": "{count, plural, one {# Schritt} other {# Schritte}}",
+        "cfg": "CFG {value}",
+        "seed": "Seed {value}",
+        "render": "{seconds}s Render"
+      },
+      "expand": "Ausklappen",
+      "revealFile": "Datei anzeigen",
+      "delete": "Löschen"
+    }
   }
 }

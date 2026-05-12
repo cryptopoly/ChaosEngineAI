@@ -226,19 +226,19 @@ export async function fetchJson<T>(
   }
 }
 
-export async function postJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
-  return await sendJson<T>("POST", path, body, timeoutMs);
+export async function postJson<T>(path: string, body?: object, timeoutMs: number | null = 120000, externalSignal?: AbortSignal): Promise<T> {
+  return await sendJson<T>("POST", path, body, timeoutMs, externalSignal);
 }
 
-export async function patchJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
-  return await sendJson<T>("PATCH", path, body, timeoutMs);
+export async function patchJson<T>(path: string, body?: object, timeoutMs: number | null = 120000, externalSignal?: AbortSignal): Promise<T> {
+  return await sendJson<T>("PATCH", path, body, timeoutMs, externalSignal);
 }
 
-export async function deleteJson<T>(path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
-  return await sendJson<T>("DELETE", path, body, timeoutMs);
+export async function deleteJson<T>(path: string, body?: object, timeoutMs: number | null = 120000, externalSignal?: AbortSignal): Promise<T> {
+  return await sendJson<T>("DELETE", path, body, timeoutMs, externalSignal);
 }
 
-async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, body?: object, timeoutMs: number | null = 120000): Promise<T> {
+async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, body?: object, timeoutMs: number | null = 120000, externalSignal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
   // `timeoutMs: null` (or 0) means no client-side timeout — used for
   // model loads where the backend drives its own long ceiling and we
@@ -247,6 +247,16 @@ async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, bo
     timeoutMs && timeoutMs > 0
       ? setTimeout(() => controller.abort(), timeoutMs)
       : null;
+  // Chain caller-supplied `externalSignal` into the internal controller
+  // so callers can cancel long-running requests (e.g. an in-flight
+  // benchmark) without losing the timeout-vs-user-abort distinction.
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+  }
   let response: Response;
   try {
     response = await apiFetch(path, {
@@ -259,8 +269,9 @@ async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", path: string, bo
     });
   } catch (err) {
     if (timer) clearTimeout(timer);
-    if (err instanceof DOMException && err.name === "AbortError" && timer) {
-      throw new Error(`Request to ${path} timed out after ${Math.round((timeoutMs ?? 0) / 1000)}s`);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      if (externalSignal?.aborted) throw new Error("Request cancelled");
+      if (timer) throw new Error(`Request to ${path} timed out after ${Math.round((timeoutMs ?? 0) / 1000)}s`);
     }
     throw err;
   }

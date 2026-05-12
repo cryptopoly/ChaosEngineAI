@@ -432,7 +432,8 @@
       "tailHint": "Запустите",
       "terminalHint": "в Terminal для полного stderr.",
       "close": "Закрыть",
-      "ok": "OK"
+      "ok": "OK",
+      "cancel": "Отменить бенчмарк"
     }
   },
   "benchmarkHistory": {

@@ -70,5 +70,23 @@
     "promptTokensPerSec": "{value} prompt tok/s",
     "firstTokenLatency": "首个标记:{ms} 毫秒",
     "vramUsed": "显存:{used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "融合注意力",
+    "aboutTitle": "关于融合注意力",
+    "body": "融合注意力在所选后端支持时使用优化的注意力内核。可提升吞吐量并减少开销,但某些模型/后端组合可能更适合使用标准注意力以保证兼容性。"
+  },
+  "dflash": {
+    "tooltip": "DFlash 推测解码:3-5 倍更快的生成且无质量损失。",
+    "label": "DFlash",
+    "installing": "安装中...",
+    "installButton": "安装 DFlash",
+    "aboutTitle": "关于 DFlash 推测解码",
+    "body": "DFlash 使用一个小型草稿模型并行提议多个标记,然后在一次前向传递中验证它们。这带来 3-5 倍更快的生成且无质量损失。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon + dflash-mlx,或 Linux/CUDA + dflash。目标模型需有兼容的草稿模型。",
+    "currentModelLabel": "当前模型:",
+    "supportedVia": "通过 {model} 支持",
+    "compatibilityUnresolved": "兼容性尚未确定。"
   }
 }

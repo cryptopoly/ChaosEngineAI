@@ -249,6 +249,12 @@
     "menuAriaLabel": "Comandos de barra"
   },
   "compareView": {
+    "slot": {
+      "a": "Modelo A",
+      "b": "Modelo B",
+      "c": "Modelo C",
+      "d": "Modelo D"
+    },
     "selectModel": "Seleccionar un modelo",
     "removeSlotTitle": "Quitar {slot}",
     "remove": "Quitar",

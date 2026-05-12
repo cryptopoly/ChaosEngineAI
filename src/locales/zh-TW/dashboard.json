@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "活動摘要",
-    "subtitle": "無需深入記錄即可檢視的操作事件。"
+    "subtitle": "無需深入記錄即可檢視的操作事件。",
+    "now": "剛剛"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "模型庫掃描已完成",
+      "detail": "在已設定的模型目錄中找到 {count} 個本機項目。"
+    },
+    "hardwareProfile": {
+      "title": "硬體設定檔已重新整理"
+    },
+    "backendReadiness": {
+      "title": "後端就緒狀態",
+      "detail": "MLX 已安裝：{mlx} / mlx-lm 已安裝：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 執行階段：{gguf}"
+    }
   }
 }

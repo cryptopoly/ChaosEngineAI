@@ -11,6 +11,7 @@ import {
   updateSettings as updateSettingsApi,
 } from "./api";
 import { FirstLaunchLocaleBanner } from "./components/FirstLaunchLocaleBanner";
+import { changeLocale, normaliseLocale, SUPPORTED_LOCALES, type SupportedLocale } from "./i18n";
 import {
   performConvertModel,
   pickConversionOutputDir,
@@ -129,6 +130,21 @@ export default function App() {
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
+  const { i18n: i18nInstance } = useTranslation();
+
+  // FU-042: hydrate the persisted locale from settings as soon as
+  // ``getWorkspace`` resolves.  Boot-time ``initI18n`` only had the
+  // navigator default; the saved ``settings.locale`` overrides it here
+  // so the UI flips to the user's chosen language on cold start.
+  useEffect(() => {
+    if (loading) return;
+    const persisted = ws.workspace.settings?.locale;
+    if (!persisted || persisted === "system") return;
+    const normalised = normaliseLocale(persisted) as SupportedLocale;
+    if (!SUPPORTED_LOCALES.includes(normalised)) return;
+    if (i18nInstance.language === normalised) return;
+    void changeLocale(normalised);
+  }, [loading, ws.workspace.settings?.locale, i18nInstance]);
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);

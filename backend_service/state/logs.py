@@ -66,11 +66,34 @@ class LogManager:
         except ValueError:
             pass
 
-    def add_activity(self, title: str, detail: str) -> None:
-        self.activity.appendleft(
-            {
-                "time": "Now",
-                "title": title,
-                "detail": detail,
-            }
-        )
+    def add_activity(
+        self,
+        title: str,
+        detail: str,
+        *,
+        title_key: str | None = None,
+        detail_key: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Push an entry onto the dashboard activity ring.
+
+        ``title`` + ``detail`` carry the canonical English copy and remain
+        the fallback when no i18n metadata is available. ``title_key`` /
+        ``detail_key`` are dot-paths inside the frontend ``dashboard``
+        namespace (e.g. ``"activity.libraryScan.title"``). ``payload`` is
+        the ICU MessageFormat variable bag (e.g. ``{"count": 34}``). The
+        frontend dashboard widget uses the keys + payload when present
+        and falls back to ``title`` / ``detail`` otherwise.
+        """
+        entry: dict[str, Any] = {
+            "time": "Now",
+            "title": title,
+            "detail": detail,
+        }
+        if title_key:
+            entry["titleKey"] = title_key
+        if detail_key:
+            entry["detailKey"] = detail_key
+        if payload:
+            entry["payload"] = payload
+        self.activity.appendleft(entry)

@@ -247,5 +247,21 @@
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
+  },
+  "compareView": {
+    "selectModel": "モデルを選択",
+    "removeSlotTitle": "{slot} を削除",
+    "remove": "削除",
+    "change": "変更",
+    "select": "選択",
+    "backToChat": "チャットに戻る",
+    "title": "モデル比較",
+    "subtitle": "2-4 個のモデルをキューに入れます。各スロットは排他的に読み込まれ、実行され、次のスロットが始まる前にアンロードされます。",
+    "addModel": "モデルを追加",
+    "queued": "{count}/4 キュー中",
+    "duplicateNote": "複数のスロットで同じモデルが選択されています。ランタイムプロファイル A/B テストに便利です。",
+    "promptPlaceholder": "比較するプロンプトを入力...",
+    "cancel": "キャンセル",
+    "compareButton": "比較"
   }
 }

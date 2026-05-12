@@ -247,5 +247,21 @@
   },
   "slashCommands": {
     "menuAriaLabel": "Comandos de barra"
+  },
+  "compareView": {
+    "selectModel": "Seleccionar un modelo",
+    "removeSlotTitle": "Quitar {slot}",
+    "remove": "Quitar",
+    "change": "Cambiar",
+    "select": "Seleccionar",
+    "backToChat": "Volver al chat",
+    "title": "Comparar modelos",
+    "subtitle": "Poner en cola 2-4 modelos. Cada ranura carga exclusivamente, se ejecuta y se descarga antes de iniciar la siguiente.",
+    "addModel": "Añadir modelo",
+    "queued": "{count}/4 en cola",
+    "duplicateNote": "El mismo modelo seleccionado en múltiples ranuras; útil para pruebas A/B de perfil de runtime.",
+    "promptPlaceholder": "Introducir una indicación para comparar...",
+    "cancel": "Cancelar",
+    "compareButton": "Comparar"
   }
 }

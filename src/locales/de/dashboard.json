@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "Aktivitäten",
-    "subtitle": "Betriebsereignisse, die sichtbar bleiben sollten, ohne Logs durchsuchen zu müssen."
+    "subtitle": "Betriebsereignisse, die sichtbar bleiben sollten, ohne Logs durchsuchen zu müssen.",
+    "now": "Jetzt"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Bibliotheksscan abgeschlossen",
+      "detail": "{count} lokale Einträge in konfigurierten Modellverzeichnissen gefunden."
+    },
+    "hardwareProfile": {
+      "title": "Hardware-Profil aktualisiert"
+    },
+    "backendReadiness": {
+      "title": "Backend-Bereitschaft",
+      "detail": "MLX installiert: {mlx} / mlx-lm installiert: {mlxLm} / MLX nutzbar: {mlxUsable} / GGUF-Laufzeit: {gguf}"
+    }
   }
 }

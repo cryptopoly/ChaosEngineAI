@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "活动源",
-    "subtitle": "无需深入日志即可查看的操作事件。"
+    "subtitle": "无需深入日志即可查看的操作事件。",
+    "now": "刚刚"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "模型库扫描已完成",
+      "detail": "在已配置的模型目录中找到 {count} 个本地条目。"
+    },
+    "hardwareProfile": {
+      "title": "硬件配置已刷新"
+    },
+    "backendReadiness": {
+      "title": "后端就绪状态",
+      "detail": "MLX 已安装：{mlx} / mlx-lm 已安装：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 运行时：{gguf}"
+    }
   }
 }

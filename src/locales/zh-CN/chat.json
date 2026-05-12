@@ -247,5 +247,21 @@
   },
   "slashCommands": {
     "menuAriaLabel": "斜杠命令"
+  },
+  "compareView": {
+    "selectModel": "选择模型",
+    "removeSlotTitle": "移除 {slot}",
+    "remove": "移除",
+    "change": "更改",
+    "select": "选择",
+    "backToChat": "返回对话",
+    "title": "比较模型",
+    "subtitle": "排队 2-4 个模型。每个槽位独占加载、运行并在下一个槽位开始前卸载。",
+    "addModel": "添加模型",
+    "queued": "{count}/4 已排队",
+    "duplicateNote": "多个槽位选择了同一模型；对运行时配置 A/B 测试很有用。",
+    "promptPlaceholder": "输入要比较的提示...",
+    "cancel": "取消",
+    "compareButton": "比较"
   }
 }

@@ -17,6 +17,7 @@
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Panel } from "../../components/Panel";
+import { updateSettings } from "../../api";
 import { changeLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n";
 import enMeta from "../../locales/en/meta.json";
 import type { SettingsDraft } from "../../types/chat";
@@ -69,6 +70,12 @@ export function LanguagePanel({
 
   const handleLocaleChange = (next: string) => {
     onSettingsDraftChange((current) => ({ ...current, locale: next }));
+    // Persist immediately — matches the FirstLaunchLocaleBanner contract:
+    // a locale pick should survive a cold restart without requiring the
+    // user to click the page-level Save button. The PATCH is
+    // fire-and-forget; on failure the user simply sees the dropdown
+    // revert to the previous value on next cold start.
+    void updateSettings({ locale: next });
     // Apply live so the UI flips immediately.  ``"system"`` maps to the
     // detected default (already what i18next has loaded) so the
     // ``changeLocale`` call is a no-op in that case — but we still call
@@ -88,6 +95,7 @@ export function LanguagePanel({
 
   const handleClockChange = (next: SettingsDraft["clockFormat"]) => {
     onSettingsDraftChange((current) => ({ ...current, clockFormat: next }));
+    void updateSettings({ clockFormat: next });
   };
 
   return (

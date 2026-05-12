@@ -209,15 +209,26 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
 
       <Panel title={t("activityFeed.title")} subtitle={t("activityFeed.subtitle")}>
         <div className="list scrollable-list">
-          {activity.map((item, idx) => (
-            <div className="list-row" key={`${idx}-${item.title}`}>
-              <div>
-                <strong>{item.title}</strong>
-                <p>{item.detail}</p>
+          {activity.map((item, idx) => {
+            const localTitle = item.titleKey
+              ? t(item.titleKey, { ...(item.payload ?? {}), defaultValue: item.title })
+              : item.title;
+            const localDetail = item.detailKey
+              ? t(item.detailKey, { ...(item.payload ?? {}), defaultValue: item.detail })
+              : item.detail;
+            const localTime = item.time === "Now"
+              ? t("activityFeed.now", { defaultValue: "Now" })
+              : item.time;
+            return (
+              <div className="list-row" key={`${idx}-${item.title}`}>
+                <div>
+                  <strong>{localTitle}</strong>
+                  <p>{localDetail}</p>
+                </div>
+                <span className="badge muted">{localTime}</span>
               </div>
-              <span className="badge muted">{item.time}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Panel>
     </div>

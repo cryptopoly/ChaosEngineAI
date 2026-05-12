@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "활동 피드",
-    "subtitle": "로그를 파헤치지 않고도 보이는 상태로 유지해야 하는 운영 이벤트."
+    "subtitle": "로그를 파헤치지 않고도 보이는 상태로 유지해야 하는 운영 이벤트.",
+    "now": "방금"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "라이브러리 스캔이 완료되었습니다",
+      "detail": "구성된 모델 디렉터리에서 {count}개의 로컬 항목이 발견되었습니다."
+    },
+    "hardwareProfile": {
+      "title": "하드웨어 프로필이 새로 고쳐졌습니다"
+    },
+    "backendReadiness": {
+      "title": "백엔드 준비 상태",
+      "detail": "MLX 설치됨: {mlx} / mlx-lm 설치됨: {mlxLm} / MLX 사용 가능: {mlxUsable} / GGUF 런타임: {gguf}"
+    }
   }
 }

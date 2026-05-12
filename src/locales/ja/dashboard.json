@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "アクティビティフィード",
-    "subtitle": "ログを深く掘り下げずに見える状態に保つべき運用イベント。"
+    "subtitle": "ログを深く掘り下げずに見える状態に保つべき運用イベント。",
+    "now": "今"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "ライブラリスキャンが完了しました",
+      "detail": "設定済みのモデルディレクトリで {count} 個のローカルエントリが見つかりました。"
+    },
+    "hardwareProfile": {
+      "title": "ハードウェアプロファイルを更新しました"
+    },
+    "backendReadiness": {
+      "title": "バックエンドの準備状況",
+      "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}"
+    }
   }
 }

@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "Activity Feed",
-    "subtitle": "Operational events that should stay visible without digging into logs."
+    "subtitle": "Operational events that should stay visible without digging into logs.",
+    "now": "Now"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Library scan completed",
+      "detail": "{count} local entries found across configured model directories."
+    },
+    "hardwareProfile": {
+      "title": "Hardware profile refreshed"
+    },
+    "backendReadiness": {
+      "title": "Backend readiness",
+      "detail": "MLX installed: {mlx} / mlx-lm installed: {mlxLm} / MLX usable: {mlxUsable} / GGUF runtime: {gguf}"
+    }
   }
 }

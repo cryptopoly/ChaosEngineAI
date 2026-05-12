@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "Feed de actividad",
-    "subtitle": "Eventos operativos que deben permanecer visibles sin tener que profundizar en los registros."
+    "subtitle": "Eventos operativos que deben permanecer visibles sin tener que profundizar en los registros.",
+    "now": "Ahora"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Escaneo de biblioteca completado",
+      "detail": "{count} entradas locales encontradas en los directorios de modelos configurados."
+    },
+    "hardwareProfile": {
+      "title": "Perfil de hardware actualizado"
+    },
+    "backendReadiness": {
+      "title": "Disponibilidad del backend",
+      "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizable: {mlxUsable} / Runtime GGUF: {gguf}"
+    }
   }
 }

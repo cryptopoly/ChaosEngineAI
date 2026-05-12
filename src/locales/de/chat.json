@@ -247,5 +247,21 @@
   },
   "slashCommands": {
     "menuAriaLabel": "Slash-Befehle"
+  },
+  "compareView": {
+    "selectModel": "Modell auswählen",
+    "removeSlotTitle": "{slot} entfernen",
+    "remove": "Entfernen",
+    "change": "Ändern",
+    "select": "Auswählen",
+    "backToChat": "Zurück zum Chat",
+    "title": "Modelle vergleichen",
+    "subtitle": "2-4 Modelle in die Warteschlange stellen. Jeder Slot lädt exklusiv, läuft und wird entladen, bevor der nächste startet.",
+    "addModel": "Modell hinzufügen",
+    "queued": "{count}/4 in Warteschlange",
+    "duplicateNote": "Dasselbe Modell in mehreren Slots ausgewählt; nützlich für Runtime-Profil-A/B-Tests.",
+    "promptPlaceholder": "Prompt zum Vergleichen eingeben...",
+    "cancel": "Abbrechen",
+    "compareButton": "Vergleichen"
   }
 }

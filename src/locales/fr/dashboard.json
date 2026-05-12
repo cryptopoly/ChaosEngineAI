@@ -58,6 +58,20 @@
   },
   "activityFeed": {
     "title": "Flux d'activité",
-    "subtitle": "Événements opérationnels qui doivent rester visibles sans plonger dans les journaux."
+    "subtitle": "Événements opérationnels qui doivent rester visibles sans plonger dans les journaux.",
+    "now": "Maintenant"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Scan de la bibliothèque terminé",
+      "detail": "{count} entrées locales trouvées dans les répertoires de modèles configurés."
+    },
+    "hardwareProfile": {
+      "title": "Profil matériel actualisé"
+    },
+    "backendReadiness": {
+      "title": "État du backend",
+      "detail": "MLX installé : {mlx} / mlx-lm installé : {mlxLm} / MLX utilisable : {mlxUsable} / Runtime GGUF : {gguf}"
+    }
   }
 }

@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import type { PreviewMetrics } from "../types";
 import { ProgressRow } from "./ProgressRow";
 import { getCacheFitStatus } from "../utils/cache";
+import type { TFunction } from "i18next";
 
 interface PerformancePreviewProps {
   preview: PreviewMetrics;
@@ -21,14 +23,15 @@ function fmt(value: number, digits = 1): string {
   return value.toFixed(digits);
 }
 
-function getSpeedLabel(tokS: number): { label: string; className: string } | null {
-  if (tokS < 5) return { label: "Slow", className: "perf-preview__speed-label--slow" };
-  if (tokS < 15) return { label: "Good", className: "perf-preview__speed-label--good" };
-  if (tokS < 30) return { label: "Fast", className: "perf-preview__speed-label--fast" };
-  return { label: "Very fast", className: "perf-preview__speed-label--fast" };
+function getSpeedLabel(tokS: number, t: TFunction): { label: string; className: string } | null {
+  if (tokS < 5) return { label: t("performancePreview.speedSlow", { defaultValue: "Slow" }), className: "perf-preview__speed-label--slow" };
+  if (tokS < 15) return { label: t("performancePreview.speedGood", { defaultValue: "Good" }), className: "perf-preview__speed-label--good" };
+  if (tokS < 30) return { label: t("performancePreview.speedFast", { defaultValue: "Fast" }), className: "perf-preview__speed-label--fast" };
+  return { label: t("performancePreview.speedVeryFast", { defaultValue: "Very fast" }), className: "perf-preview__speed-label--fast" };
 }
 
 export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, gpuVramTotalGb, compact, actualDiskSizeGb }: PerformancePreviewProps) {
+  const { t } = useTranslation("common");
   const diskGb = actualDiskSizeGb ?? preview.diskSizeGb;
   const fitStatus = getCacheFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits, gpuVramTotalGb);
   const cacheDelta = preview.baselineCacheGb - preview.optimizedCacheGb;
@@ -38,12 +41,13 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
     ? Math.min(100, ((preview.optimizedCacheGb + diskGb) / totalMemoryGb) * 100)
     : 0;
   const ramColor = ramUsedPercent > 90 ? "var(--warning, #e4be75)" : "var(--accent)";
-  const speedLabel = getSpeedLabel(preview.estimatedTokS);
+  const speedLabel = getSpeedLabel(preview.estimatedTokS, t);
+  const cacheLabel = t("performancePreview.cacheLabel", { defaultValue: "Cache" });
 
   return (
     <div className={`perf-preview${compact ? " perf-preview--compact" : ""}`}>
       <div className="perf-preview__header">
-        <span className="eyebrow">Performance preview</span>
+        <span className="eyebrow">{t("performancePreview.heading", { defaultValue: "Performance preview" })}</span>
         <span className={`badge ${fitStatus.className}`}>{fitStatus.label}</span>
       </div>
 
@@ -56,10 +60,16 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
       {cacheDelta > 0.1 ? (
         <div className="perf-preview__headline">
           <span className="perf-preview__headline-delta">
-            {fmt(cacheDelta)} GB
+            {t("performancePreview.headlineDelta", {
+              defaultValue: "{value} GB",
+              value: fmt(cacheDelta),
+            })}
           </span>
           <span className="perf-preview__headline-label">
-            cache savings ({fmt(preview.compressionRatio)}x compression)
+            {t("performancePreview.headlineLabel", {
+              defaultValue: "cache savings ({ratio}x compression)",
+              ratio: fmt(preview.compressionRatio),
+            })}
           </span>
         </div>
       ) : null}
@@ -67,47 +77,64 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
       <div className="perf-preview__compare">
         {/* Baseline column */}
         <div className="perf-preview__col">
-          <span className="eyebrow">Baseline (FP16)</span>
+          <span className="eyebrow">{t("performancePreview.baselineHeading", { defaultValue: "Baseline (FP16)" })}</span>
           <div className="metric-list">
             <ProgressRow
-              label="Cache"
+              label={cacheLabel}
               value={preview.baselineCacheGb}
               max={cacheMax}
-              valueLabel={`${fmt(preview.baselineCacheGb)} GB`}
+              valueLabel={t("performancePreview.gbValue", {
+                defaultValue: "{value} GB",
+                value: fmt(preview.baselineCacheGb),
+              })}
             />
             <div className="metric-row">
-              <span>Speed</span>
-              <strong className="muted-text">baseline</strong>
+              <span>{t("performancePreview.speed", { defaultValue: "Speed" })}</span>
+              <strong className="muted-text">{t("performancePreview.baselineSpeedValue", { defaultValue: "baseline" })}</strong>
             </div>
             <div className="metric-row">
-              <span>Quality</span>
-              <strong>100%</strong>
+              <span>{t("performancePreview.quality", { defaultValue: "Quality" })}</span>
+              <strong>{t("performancePreview.baselineQualityValue", { defaultValue: "100%" })}</strong>
             </div>
           </div>
         </div>
 
         {/* Arrow divider */}
         <div className="perf-preview__arrow" aria-hidden="true">
-          <span>{preview.bits > 0 ? `${preview.bits}-bit` : "f16"}</span>
+          <span>{preview.bits > 0
+            ? t("performancePreview.bitsLabel", { defaultValue: "{bits}-bit", bits: preview.bits })
+            : t("performancePreview.f16Label", { defaultValue: "f16" })
+          }</span>
         </div>
 
         {/* Optimized column */}
         <div className="perf-preview__col perf-preview__col--accent">
-          <span className="eyebrow">Optimized</span>
+          <span className="eyebrow">{t("performancePreview.optimizedHeading", { defaultValue: "Optimized" })}</span>
           <div className="metric-list">
             <ProgressRow
-              label="Cache"
+              label={cacheLabel}
               value={preview.optimizedCacheGb}
               max={cacheMax}
-              valueLabel={`${fmt(preview.optimizedCacheGb)} GB`}
+              valueLabel={t("performancePreview.gbValue", {
+                defaultValue: "{value} GB",
+                value: fmt(preview.optimizedCacheGb),
+              })}
               baseline={preview.baselineCacheGb}
-              delta={cacheDelta > 0.05 ? `-${fmt(cacheDelta)} GB` : undefined}
+              delta={cacheDelta > 0.05
+                ? t("performancePreview.cacheDelta", {
+                    defaultValue: "-{value} GB",
+                    value: fmt(cacheDelta),
+                  })
+                : undefined}
               deltaPositive={cacheDelta > 0}
             />
             <div className="metric-row">
-              <span>Speed</span>
+              <span>{t("performancePreview.speed", { defaultValue: "Speed" })}</span>
               <span className="metric-row-right">
-                <strong>{fmt(preview.estimatedTokS)} tok/s</strong>
+                <strong>{t("performancePreview.tokensPerSec", {
+                  defaultValue: "{value} tok/s",
+                  value: fmt(preview.estimatedTokS),
+                })}</strong>
                 {speedLabel ? (
                   <span className={`perf-preview__speed-label ${speedLabel.className}`}>
                     {speedLabel.label}
@@ -116,12 +143,18 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
               </span>
             </div>
             <div className="metric-row">
-              <span>Quality</span>
+              <span>{t("performancePreview.quality", { defaultValue: "Quality" })}</span>
               <span className="metric-row-right">
-                <strong>{fmt(preview.qualityPercent, 1)}%</strong>
+                <strong>{t("performancePreview.percentValue", {
+                  defaultValue: "{value}%",
+                  value: fmt(preview.qualityPercent, 1),
+                })}</strong>
                 {qualityDelta < -0.1 ? (
                   <span className="delta-badge delta-badge--negative">
-                    {fmt(qualityDelta, 1)}%
+                    {t("performancePreview.percentValue", {
+                      defaultValue: "{value}%",
+                      value: fmt(qualityDelta, 1),
+                    })}
                   </span>
                 ) : null}
               </span>
@@ -131,10 +164,16 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
       </div>
 
       <div className="perf-preview__footer">
-        <span className="perf-preview__stat">Disk: {fmt(diskGb)} GB</span>
-        <span className="perf-preview__stat">{fmt(preview.compressionRatio)}x compression</span>
+        <span className="perf-preview__stat">{t("performancePreview.diskStat", {
+          defaultValue: "Disk: {value} GB",
+          value: fmt(diskGb),
+        })}</span>
+        <span className="perf-preview__stat">{t("performancePreview.compressionStat", {
+          defaultValue: "{ratio}x compression",
+          ratio: fmt(preview.compressionRatio),
+        })}</span>
         <div className="perf-preview__ram-group">
-          <span className="perf-preview__ram-label">RAM</span>
+          <span className="perf-preview__ram-label">{t("performancePreview.ramLabel", { defaultValue: "RAM" })}</span>
           <div className="perf-preview__ram-bar">
             <div
               className="perf-preview__ram-fill"
@@ -142,7 +181,11 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
             />
           </div>
           <span className="perf-preview__ram-label">
-            {fmt(preview.optimizedCacheGb + diskGb)}/{fmt(totalMemoryGb)} GB
+            {t("performancePreview.ramValue", {
+              defaultValue: "{used}/{total} GB",
+              used: fmt(preview.optimizedCacheGb + diskGb),
+              total: fmt(totalMemoryGb),
+            })}
           </span>
         </div>
       </div>

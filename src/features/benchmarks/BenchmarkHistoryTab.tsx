@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { StatCard } from "../../components/StatCard";
 import { BenchmarkScatter } from "../../components/BenchmarkScatter";
@@ -27,6 +28,7 @@ export function BenchmarkHistoryTab({
   onSelectedBenchmarkIdChange,
   onCompareBenchmarkIdChange,
 }: BenchmarkHistoryTabProps) {
+  const { t } = useTranslation("common");
   const benchmarkModels = [...new Set(benchmarks.map(b => b.model))];
   const filteredBenchmarks = benchmarkModelFilter
     ? benchmarks.filter(b => b.model === benchmarkModelFilter)
@@ -58,21 +60,21 @@ export function BenchmarkHistoryTab({
 
     const rows: DeltaRow[] = [];
     if (mode === "perplexity") {
-      rows.push({ label: "Perplexity", selected: number(s.perplexity ?? 0), baseline: number(c.perplexity ?? 0), delta: (s.perplexity ?? 0) - (c.perplexity ?? 0), pct: pct(s.perplexity ?? 0, c.perplexity ?? 0), lowerIsBetter: true });
-      rows.push({ label: "Eval speed", selected: `${number(s.evalTokensPerSecond ?? 0)} tok/s`, baseline: `${number(c.evalTokensPerSecond ?? 0)} tok/s`, delta: (s.evalTokensPerSecond ?? 0) - (c.evalTokensPerSecond ?? 0), pct: pct(s.evalTokensPerSecond ?? 0, c.evalTokensPerSecond ?? 0) });
-      rows.push({ label: "Eval time", selected: `${number(s.evalSeconds ?? 0)} s`, baseline: `${number(c.evalSeconds ?? 0)} s`, delta: (s.evalSeconds ?? 0) - (c.evalSeconds ?? 0), pct: pct(s.evalSeconds ?? 0, c.evalSeconds ?? 0), lowerIsBetter: true });
+      rows.push({ label: t("benchmarkHistory.metric.perplexity", { defaultValue: "Perplexity" }), selected: number(s.perplexity ?? 0), baseline: number(c.perplexity ?? 0), delta: (s.perplexity ?? 0) - (c.perplexity ?? 0), pct: pct(s.perplexity ?? 0, c.perplexity ?? 0), lowerIsBetter: true });
+      rows.push({ label: t("benchmarkHistory.metric.evalSpeed", { defaultValue: "Eval speed" }), selected: `${number(s.evalTokensPerSecond ?? 0)} tok/s`, baseline: `${number(c.evalTokensPerSecond ?? 0)} tok/s`, delta: (s.evalTokensPerSecond ?? 0) - (c.evalTokensPerSecond ?? 0), pct: pct(s.evalTokensPerSecond ?? 0, c.evalTokensPerSecond ?? 0) });
+      rows.push({ label: t("benchmarkHistory.metric.evalTime", { defaultValue: "Eval time" }), selected: `${number(s.evalSeconds ?? 0)} s`, baseline: `${number(c.evalSeconds ?? 0)} s`, delta: (s.evalSeconds ?? 0) - (c.evalSeconds ?? 0), pct: pct(s.evalSeconds ?? 0, c.evalSeconds ?? 0), lowerIsBetter: true });
     } else if (mode === "task_accuracy") {
-      rows.push({ label: "Accuracy", selected: `${((s.taskAccuracy ?? 0) * 100).toFixed(1)}%`, baseline: `${((c.taskAccuracy ?? 0) * 100).toFixed(1)}%`, delta: (s.taskAccuracy ?? 0) - (c.taskAccuracy ?? 0), pct: pct(s.taskAccuracy ?? 0, c.taskAccuracy ?? 0) });
-      rows.push({ label: "Correct", selected: `${s.taskCorrect ?? 0}/${s.taskTotal ?? 0}`, baseline: `${c.taskCorrect ?? 0}/${c.taskTotal ?? 0}`, delta: (s.taskCorrect ?? 0) - (c.taskCorrect ?? 0), pct: 0 });
+      rows.push({ label: t("benchmarkHistory.metric.accuracy", { defaultValue: "Accuracy" }), selected: `${((s.taskAccuracy ?? 0) * 100).toFixed(1)}%`, baseline: `${((c.taskAccuracy ?? 0) * 100).toFixed(1)}%`, delta: (s.taskAccuracy ?? 0) - (c.taskAccuracy ?? 0), pct: pct(s.taskAccuracy ?? 0, c.taskAccuracy ?? 0) });
+      rows.push({ label: t("benchmarkHistory.metric.correct", { defaultValue: "Correct" }), selected: `${s.taskCorrect ?? 0}/${s.taskTotal ?? 0}`, baseline: `${c.taskCorrect ?? 0}/${c.taskTotal ?? 0}`, delta: (s.taskCorrect ?? 0) - (c.taskCorrect ?? 0), pct: 0 });
     } else {
-      rows.push({ label: "Speed", selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
-      rows.push({ label: "Response", selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
+      rows.push({ label: t("benchmarkHistory.metric.speed", { defaultValue: "Speed" }), selected: `${number(s.tokS)} tok/s`, baseline: `${number(c.tokS)} tok/s`, delta: s.tokS - c.tokS, pct: pct(s.tokS, c.tokS) });
+      rows.push({ label: t("benchmarkHistory.metric.response", { defaultValue: "Response" }), selected: `${number(s.responseSeconds)} s`, baseline: `${number(c.responseSeconds)} s`, delta: s.responseSeconds - c.responseSeconds, pct: pct(s.responseSeconds, c.responseSeconds), lowerIsBetter: true });
     }
-    rows.push({ label: "Cache", selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
-    rows.push({ label: "Quality", selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
-    rows.push({ label: "Compression", selected: `${number(s.compression)}x`, baseline: `${number(c.compression)}x`, delta: s.compression - c.compression, pct: pct(s.compression, c.compression) });
-    rows.push({ label: "Context", selected: `${Math.round((s.contextTokens ?? 0) / 1024)}K`, baseline: `${Math.round((c.contextTokens ?? 0) / 1024)}K`, delta: 0, pct: 0 });
-    rows.push({ label: "Strategy", selected: s.cacheLabel, baseline: c.cacheLabel, delta: 0, pct: 0 });
+    rows.push({ label: t("benchmarkHistory.metric.cache", { defaultValue: "Cache" }), selected: `${number(s.cacheGb)} GB`, baseline: `${number(c.cacheGb)} GB`, delta: s.cacheGb - c.cacheGb, pct: pct(s.cacheGb, c.cacheGb), lowerIsBetter: true });
+    rows.push({ label: t("benchmarkHistory.metric.quality", { defaultValue: "Quality" }), selected: `${s.quality}%`, baseline: `${c.quality}%`, delta: s.quality - c.quality, pct: pct(s.quality, c.quality) });
+    rows.push({ label: t("benchmarkHistory.metric.compression", { defaultValue: "Compression" }), selected: `${number(s.compression)}x`, baseline: `${number(c.compression)}x`, delta: s.compression - c.compression, pct: pct(s.compression, c.compression) });
+    rows.push({ label: t("benchmarkHistory.metric.context", { defaultValue: "Context" }), selected: `${Math.round((s.contextTokens ?? 0) / 1024)}K`, baseline: `${Math.round((c.contextTokens ?? 0) / 1024)}K`, delta: 0, pct: 0 });
+    rows.push({ label: t("benchmarkHistory.metric.strategy", { defaultValue: "Strategy" }), selected: s.cacheLabel, baseline: c.cacheLabel, delta: 0, pct: 0 });
     return rows;
   }
 
@@ -93,8 +95,12 @@ export function BenchmarkHistoryTab({
   return (
     <div className="content-grid">
       <Panel
-        title="Benchmark History"
-        subtitle={`${filteredBenchmarks.length} run${filteredBenchmarks.length !== 1 ? "s" : ""}${benchmarkModelFilter ? ` for ${benchmarkModelFilter}` : ""}`}
+        title={t("panels.benchmarkHistory", { defaultValue: "Benchmark History" })}
+        subtitle={t("benchmarkHistory.subtitle", {
+          count: filteredBenchmarks.length,
+          filterSuffix: benchmarkModelFilter ? ` ${t("benchmarkHistory.filterSuffix", { model: benchmarkModelFilter, defaultValue: "for {model}" })}` : "",
+          defaultValue: "{count, plural, one {# run} other {# runs}}{filterSuffix}",
+        })}
         className="span-2 benchmark-history-page-panel"
         actions={
           <div className="bm-toolbar">
@@ -103,7 +109,7 @@ export function BenchmarkHistoryTab({
               value={benchmarkModelFilter ?? ""}
               onChange={(e) => onBenchmarkModelFilterChange(e.target.value || null)}
             >
-              <option value="">All models</option>
+              <option value="">{t("benchmarkHistory.allModels", { defaultValue: "All models" })}</option>
               {benchmarkModels.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <div className="bm-view-toggle">
@@ -114,7 +120,11 @@ export function BenchmarkHistoryTab({
                   className={`bm-view-btn${benchmarkViewMode === mode ? " bm-view-btn--active" : ""}`}
                   onClick={() => onBenchmarkViewModeChange(mode)}
                 >
-                  {mode === "table" ? "Table" : mode === "chart" ? "Chart" : "Both"}
+                  {mode === "table"
+                    ? t("benchmarkHistory.view.table", { defaultValue: "Table" })
+                    : mode === "chart"
+                      ? t("benchmarkHistory.view.chart", { defaultValue: "Chart" })
+                      : t("benchmarkHistory.view.both", { defaultValue: "Both" })}
                 </button>
               ))}
             </div>
@@ -130,19 +140,48 @@ export function BenchmarkHistoryTab({
               }}
               disabled={!effectiveSelected || !effectiveCompare}
             >
-              Swap
+              {t("benchmarkHistory.swap", { defaultValue: "Swap" })}
             </button>
           </div>
         }
       >
         <div className="benchmark-history-page">
           <div className="benchmark-summary-row">
-            <StatCard label="Total runs" value={String(filteredBenchmarks.length)} hint="Persistent history" />
-            <StatCard label="Latest" value={latestRun ? `${number(latestRun.tokS)} tok/s` : "None"} hint={latestRun?.cacheLabel ?? "No runs"} onClick={latestRun ? () => onSelectedBenchmarkIdChange(latestRun.id) : undefined} />
-            <StatCard label="Fastest" value={fastestRun ? `${number(fastestRun.tokS)} tok/s` : "None"} hint={fastestRun?.label ?? "No runs"} onClick={fastestRun ? () => onSelectedBenchmarkIdChange(fastestRun.id) : undefined} />
-            <StatCard label="Leanest cache" value={mostEfficientRun ? `${number(mostEfficientRun.cacheGb)} GB` : "None"} hint={mostEfficientRun?.label ?? "No runs"} onClick={mostEfficientRun ? () => onSelectedBenchmarkIdChange(mostEfficientRun.id) : undefined} />
-            <StatCard label="Best quality" value={bestQualityRun ? `${bestQualityRun.quality}%` : "None"} hint={bestQualityRun?.cacheLabel ?? "No runs"} onClick={bestQualityRun ? () => onSelectedBenchmarkIdChange(bestQualityRun.id) : undefined} />
-            <StatCard label="Best value" value={bestValueRun ? `${number(bestValueRun.tokS / Math.max(bestValueRun.cacheGb, 0.1))} tok/s/GB` : "None"} hint={bestValueRun?.cacheLabel ?? "No runs"} onClick={bestValueRun ? () => onSelectedBenchmarkIdChange(bestValueRun.id) : undefined} />
+            <StatCard
+              label={t("benchmarkHistory.summary.totalRuns", { defaultValue: "Total runs" })}
+              value={String(filteredBenchmarks.length)}
+              hint={t("benchmarkHistory.summary.persistentHistory", { defaultValue: "Persistent history" })}
+            />
+            <StatCard
+              label={t("benchmarkHistory.summary.latest", { defaultValue: "Latest" })}
+              value={latestRun ? `${number(latestRun.tokS)} tok/s` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={latestRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
+              onClick={latestRun ? () => onSelectedBenchmarkIdChange(latestRun.id) : undefined}
+            />
+            <StatCard
+              label={t("benchmarkHistory.summary.fastest", { defaultValue: "Fastest" })}
+              value={fastestRun ? `${number(fastestRun.tokS)} tok/s` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={fastestRun?.label ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
+              onClick={fastestRun ? () => onSelectedBenchmarkIdChange(fastestRun.id) : undefined}
+            />
+            <StatCard
+              label={t("benchmarkHistory.summary.leanestCache", { defaultValue: "Leanest cache" })}
+              value={mostEfficientRun ? `${number(mostEfficientRun.cacheGb)} GB` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={mostEfficientRun?.label ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
+              onClick={mostEfficientRun ? () => onSelectedBenchmarkIdChange(mostEfficientRun.id) : undefined}
+            />
+            <StatCard
+              label={t("benchmarkHistory.summary.bestQuality", { defaultValue: "Best quality" })}
+              value={bestQualityRun ? `${bestQualityRun.quality}%` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={bestQualityRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
+              onClick={bestQualityRun ? () => onSelectedBenchmarkIdChange(bestQualityRun.id) : undefined}
+            />
+            <StatCard
+              label={t("benchmarkHistory.summary.bestValue", { defaultValue: "Best value" })}
+              value={bestValueRun ? `${number(bestValueRun.tokS / Math.max(bestValueRun.cacheGb, 0.1))} tok/s/GB` : t("benchmarkHistory.summary.none", { defaultValue: "None" })}
+              hint={bestValueRun?.cacheLabel ?? t("benchmarkHistory.summary.noRuns", { defaultValue: "No runs" })}
+              onClick={bestValueRun ? () => onSelectedBenchmarkIdChange(bestValueRun.id) : undefined}
+            />
           </div>
 
           {effectiveSelected ? (
@@ -152,9 +191,9 @@ export function BenchmarkHistoryTab({
                   <table className="bm-comparison-table">
                     <thead>
                       <tr>
-                        <th>Metric</th>
+                        <th>{t("benchmarkHistory.table.metric", { defaultValue: "Metric" })}</th>
                         <th>
-                          <span className="bm-col-label">Selected</span>
+                          <span className="bm-col-label">{t("benchmarkHistory.table.selected", { defaultValue: "Selected" })}</span>
                           <select
                             className="bm-run-select"
                             value={effectiveSelected.id}
@@ -166,7 +205,7 @@ export function BenchmarkHistoryTab({
                           </select>
                         </th>
                         <th>
-                          <span className="bm-col-label">Baseline</span>
+                          <span className="bm-col-label">{t("benchmarkHistory.table.baseline", { defaultValue: "Baseline" })}</span>
                           <select
                             className="bm-run-select"
                             value={effectiveCompare.id}
@@ -177,7 +216,7 @@ export function BenchmarkHistoryTab({
                             ))}
                           </select>
                         </th>
-                        <th>Delta</th>
+                        <th>{t("benchmarkHistory.table.delta", { defaultValue: "Delta" })}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -205,43 +244,43 @@ export function BenchmarkHistoryTab({
                   </div>
                   {filteredBenchmarks.length > 1 ? (
                     <div className="bm-pick-baseline">
-                      <label className="muted-text">Compare against:</label>
+                      <label className="muted-text">{t("benchmarkHistory.compareAgainst", { defaultValue: "Compare against:" })}</label>
                       <select
                         className="bm-run-select"
                         value=""
                         onChange={(e) => onCompareBenchmarkIdChange(e.target.value)}
                       >
-                        <option value="" disabled>Pick a baseline run...</option>
+                        <option value="" disabled>{t("benchmarkHistory.pickBaseline", { defaultValue: "Pick a baseline run..." })}</option>
                         {filteredBenchmarks.filter(b => b.id !== effectiveSelected.id).map(b => (
                           <option key={b.id} value={b.id}>{b.label} {"\u2014"} {b.model}</option>
                         ))}
                       </select>
                     </div>
                   ) : (
-                    <p className="muted-text">Run another benchmark to enable comparison.</p>
+                    <p className="muted-text">{t("benchmarkHistory.runAnother", { defaultValue: "Run another benchmark to enable comparison." })}</p>
                   )}
                 </div>
               )}
 
               <div className="bm-run-properties">
-                <span className="eyebrow">Run properties</span>
+                <span className="eyebrow">{t("benchmarkHistory.properties.heading", { defaultValue: "Run properties" })}</span>
                 <div className="bm-props-grid">
-                  <div><span>Model</span><span>{effectiveSelected.model}</span></div>
-                  <div><span>Backend</span><span>{effectiveSelected.backend}</span></div>
-                  <div><span>Cache</span><span>{effectiveSelected.cacheLabel}</span></div>
-                  <div><span>Strategy</span><span>{effectiveSelected.cacheStrategy}</span></div>
-                  <div><span>Bits</span><span>{effectiveSelected.bits}</span></div>
-                  <div><span>FP16 layers</span><span>{effectiveSelected.fp16Layers}</span></div>
-                  <div><span>Context</span><span>{Math.round((effectiveSelected.contextTokens ?? 0) / 1024)}K</span></div>
-                  <div><span>Max tokens</span><span>{effectiveSelected.maxTokens}</span></div>
-                  <div><span>Measured</span><span>{effectiveSelected.measuredAt}</span></div>
-                  {effectiveSelected.notes ? <div className="bm-prop-full"><span>Notes</span><span>{effectiveSelected.notes}</span></div> : null}
+                  <div><span>{t("benchmarkHistory.properties.model", { defaultValue: "Model" })}</span><span>{effectiveSelected.model}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.backend", { defaultValue: "Backend" })}</span><span>{effectiveSelected.backend}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.cache", { defaultValue: "Cache" })}</span><span>{effectiveSelected.cacheLabel}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.strategy", { defaultValue: "Strategy" })}</span><span>{effectiveSelected.cacheStrategy}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.bits", { defaultValue: "Bits" })}</span><span>{effectiveSelected.bits}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.fp16Layers", { defaultValue: "FP16 layers" })}</span><span>{effectiveSelected.fp16Layers}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.context", { defaultValue: "Context" })}</span><span>{Math.round((effectiveSelected.contextTokens ?? 0) / 1024)}K</span></div>
+                  <div><span>{t("benchmarkHistory.properties.maxTokens", { defaultValue: "Max tokens" })}</span><span>{effectiveSelected.maxTokens}</span></div>
+                  <div><span>{t("benchmarkHistory.properties.measured", { defaultValue: "Measured" })}</span><span>{effectiveSelected.measuredAt}</span></div>
+                  {effectiveSelected.notes ? <div className="bm-prop-full"><span>{t("benchmarkHistory.properties.notes", { defaultValue: "Notes" })}</span><span>{effectiveSelected.notes}</span></div> : null}
                 </div>
               </div>
             </div>
           ) : (
             <div className="empty-state">
-              <p>Run a benchmark to populate comparison stats.</p>
+              <p>{t("benchmarkHistory.runOneToCompare", { defaultValue: "Run a benchmark to populate comparison stats." })}</p>
             </div>
           )}
 
@@ -250,17 +289,17 @@ export function BenchmarkHistoryTab({
               <div className="benchmark-history-table-wrap">
                 <div className="benchmark-history-table">
                   <div className="table-row table-head benchmark-history-row bm-history-row-wide">
-                    <span>Run</span>
-                    <span>Mode</span>
-                    <span>Result</span>
-                    <span>Time</span>
-                    <span>Cache</span>
+                    <span>{t("benchmarkHistory.list.run", { defaultValue: "Run" })}</span>
+                    <span>{t("benchmarkHistory.list.mode", { defaultValue: "Mode" })}</span>
+                    <span>{t("benchmarkHistory.list.result", { defaultValue: "Result" })}</span>
+                    <span>{t("benchmarkHistory.list.time", { defaultValue: "Time" })}</span>
+                    <span>{t("benchmarkHistory.list.cache", { defaultValue: "Cache" })}</span>
                     {benchmarkViewMode === "table" ? (
                       <>
-                        <span>Strategy</span>
-                        <span>Bits</span>
-                        <span>Context</span>
-                        <span>Quality</span>
+                        <span>{t("benchmarkHistory.list.strategy", { defaultValue: "Strategy" })}</span>
+                        <span>{t("benchmarkHistory.list.bits", { defaultValue: "Bits" })}</span>
+                        <span>{t("benchmarkHistory.list.context", { defaultValue: "Context" })}</span>
+                        <span>{t("benchmarkHistory.list.quality", { defaultValue: "Quality" })}</span>
                       </>
                     ) : null}
                   </div>
@@ -270,11 +309,15 @@ export function BenchmarkHistoryTab({
                       const isCompare = result.id === effectiveCompare?.id;
                       const mode = result.mode ?? "throughput";
                       const resultValue = mode === "perplexity"
-                        ? `${number(result.perplexity ?? 0)} ppl`
+                        ? t("benchmarkHistory.list.pplValue", { value: number(result.perplexity ?? 0), defaultValue: "{value} ppl" })
                         : mode === "task_accuracy"
                         ? `${((result.taskAccuracy ?? 0) * 100).toFixed(1)}%`
                         : `${number(result.tokS)} tok/s`;
-                      const modeLabel = mode === "perplexity" ? "PPL" : mode === "task_accuracy" ? (result.taskName ?? "mmlu").toUpperCase() : "Speed";
+                      const modeLabel = mode === "perplexity"
+                        ? t("benchmarkHistory.modeLabel.ppl", { defaultValue: "PPL" })
+                        : mode === "task_accuracy"
+                          ? (result.taskName ?? "mmlu").toUpperCase()
+                          : t("benchmarkHistory.modeLabel.speed", { defaultValue: "Speed" });
                       return (
                         <button
                           key={result.id}
@@ -311,8 +354,8 @@ export function BenchmarkHistoryTab({
             {benchmarkViewMode !== "table" ? (
               <div className="benchmark-scatter-panel">
                 <div className="benchmark-scatter-header">
-                  <span className="eyebrow">Cache vs Speed</span>
-                  <small>Click a dot to select</small>
+                  <span className="eyebrow">{t("benchmarkHistory.scatter.heading", { defaultValue: "Cache vs Speed" })}</span>
+                  <small>{t("benchmarkHistory.scatter.hint", { defaultValue: "Click a dot to select" })}</small>
                 </div>
                 <BenchmarkScatter runs={filteredBenchmarks} selectedId={effectiveSelected?.id ?? null} compareId={effectiveCompare?.id ?? null} onSelect={(id) => onSelectedBenchmarkIdChange(id)} />
               </div>

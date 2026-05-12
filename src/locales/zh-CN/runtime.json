@@ -1,0 +1,130 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple 芯片原生推理引擎"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "通过 llama-server 进行 GGUF 推理"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA 推理引擎"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "原生",
+      "description": "内置缓存类型(f16、q8_0、q4_0 等)。兼容性最高。"
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard 旋转 KV 量化。2–4 倍压缩,质量损失极小。"
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "长上下文稀疏注意力压缩器。支持 Apple 芯片和 CUDA。"
+    },
+    "fbcache": {
+      "name": "首块缓存",
+      "description": "仅扩散模型缓存挂钩。DiT 管线上约 1.8 倍加速。"
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "仅扩散模型的泰勒展开缓存。激进加速,适用于 FLUX / SD3。"
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "仅扩散模型的幅度缓存。未校准时仅支持 FLUX。"
+    },
+    "pab": {
+      "name": "金字塔注意力广播",
+      "description": "仅扩散模型,跨时间步的注意力复用。"
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "仅扩散模型,条件 / 无条件复用缓存。"
+    }
+  },
+  "controls": {
+    "engine": "引擎",
+    "cacheStrategy": "缓存策略",
+    "cacheStrategyLockedNote": "(推测解码期间锁定为原生)",
+    "cacheType": "缓存类型",
+    "speculativeDecoding": "推测解码",
+    "draftModel": "草稿模型",
+    "contextSize": "上下文大小",
+    "gpuLayers": "GPU 层数",
+    "threads": "线程数",
+    "fitInMemory": "适配内存"
+  },
+  "notes": {
+    "binaryRequired": "需要 {binary}。",
+    "platformRequired": "需要 {platform}。",
+    "engineIncompatible": "与 {engine} 不兼容。",
+    "unknownEngine": "未知引擎。"
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "首个标记:{ms} 毫秒",
+    "vramUsed": "显存:{used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "融合注意力",
+    "aboutTitle": "关于融合注意力",
+    "body": "融合注意力在所选后端支持时使用优化的注意力内核。可提升吞吐量并减少开销,但某些模型/后端组合可能更适合使用标准注意力以保证兼容性。"
+  },
+  "dflash": {
+    "tooltip": "DFlash 推测解码:3-5 倍更快的生成且无质量损失。",
+    "label": "DFlash",
+    "installing": "安装中...",
+    "installButton": "安装 DFlash",
+    "aboutTitle": "关于 DFlash 推测解码",
+    "body": "DFlash 使用一个小型草稿模型并行提议多个标记,然后在一次前向传递中验证它们。这带来 3-5 倍更快的生成且无质量损失。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon + dflash-mlx,或 Linux/CUDA + dflash。目标模型需有兼容的草稿模型。",
+    "currentModelLabel": "当前模型:",
+    "supportedVia": "通过 {model} 支持",
+    "compatibilityUnresolved": "兼容性尚未确定。"
+  },
+  "presets": {
+    "quality": {
+      "label": "最高质量",
+      "hint": "编程与推理"
+    },
+    "balanced": {
+      "label": "平衡",
+      "hint": "通用对话"
+    },
+    "speed": {
+      "label": "最快速度",
+      "hint": "快速迭代"
+    },
+    "memory": {
+      "label": "最小内存",
+      "hint": "紧张内存"
+    }
+  },
+  "sliders": {
+    "context": "上下文",
+    "maxTokens": "最大 tokens",
+    "temperature": "温度"
+  },
+  "fitInMemory": {
+    "body": "适配内存让 ChaosEngineAI 选择一个将模型和 KV 缓存控制在可用内存内的运行时/缓存配置。仅当您希望强制使用更大或更激进的配置并接受可能的交换或加载失败时才禁用此选项。"
+  },
+  "cacheFit": {
+    "mayNotFit": "可能不适配",
+    "modelMayNotFit": "模型可能不适配",
+    "fitsEasily": "轻松适配",
+    "tightFit": "紧凑适配",
+    "contextMayNotFit": "完整上下文可能不适配"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "仅模型权重就超出预估可用内存。请选择更小的模型或更激进的量化。",
+    "nativeF16TooBig": "模型可以加载,但在此上下文下完整的原生 f16 缓存可能在线程填充时超出系统内存。降低上下文或选择压缩策略。",
+    "compressedTooBig": "模型可以加载,但所选上下文缓存可能在线程填充时超出系统内存。降低上下文或减少 FP16 层数。"
+  }
+}

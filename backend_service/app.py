@@ -568,8 +568,23 @@ def create_app(
         allow_origins=allowed_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Accept", "Authorization", "Content-Type", "X-ChaosEngine-Token"],
+        allow_headers=[
+            "Accept",
+            "Accept-Language",
+            "Authorization",
+            "Content-Type",
+            "X-ChaosEngine-Token",
+        ],
     )
+    # FU-042: i18n middleware reads ``Accept-Language`` + persisted
+    # ``settings.locale`` to populate ``request.state.locale`` /
+    # ``request.state.t`` / ``request.state.tn`` for downstream route
+    # handlers.  Babel is lazy-imported inside the middleware so it
+    # only costs at first translation call.  Installed before route
+    # registration so every router can rely on it.
+    from backend_service import i18n as _i18n
+
+    _i18n.install(app)
     app.state.chaosengine = state or ChaosEngineState(
         server_port=DEFAULT_PORT,
         background_capability_probe=True,

@@ -14,7 +14,7 @@ The remaining codebase — backend service, desktop app, inference engines, mode
 
 ## Architecture
 
-Models now run through native llama.cpp and mlx-lm runtimes. A pluggable cache strategy interface (`backend_service/cache_strategies/`) allows optional third-party compression backends (TriAttention, RotorQuant, MegaKernel) to be installed and selected at runtime without any upstream code being bundled in this repository.
+Models now run through native llama.cpp and mlx-lm runtimes. A pluggable cache strategy interface (`cache_compression/`) allows optional third-party compression backends (TriAttention, TurboQuant) to be installed and selected at runtime without any upstream code being bundled in this repository.
 
 ## Compliance
 

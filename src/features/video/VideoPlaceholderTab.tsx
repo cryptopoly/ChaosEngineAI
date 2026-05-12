@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 
 export type VideoPlaceholderVariant = "models" | "discover" | "studio" | "gallery";
@@ -64,6 +65,7 @@ interface VideoPlaceholderTabProps {
 }
 
 export function VideoPlaceholderTab({ variant }: VideoPlaceholderTabProps) {
+  const { t } = useTranslation("common");
   const { title, subtitle, body } = copy[variant];
   const showCatalog = variant === "discover" || variant === "models";
 
@@ -84,8 +86,10 @@ export function VideoPlaceholderTab({ variant }: VideoPlaceholderTabProps) {
 
       {showCatalog ? (
         <Panel
-          title="Planned engines"
-          subtitle="Candidates we're evaluating for the first release"
+          title={t("panels.plannedEngines", { defaultValue: "Planned engines" })}
+          subtitle={t("panels.plannedEnginesSubtitle", {
+            defaultValue: "Candidates we're evaluating for the first release",
+          })}
           className="span-2"
         >
           <div className="image-library-grid">

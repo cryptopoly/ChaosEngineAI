@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from backend_service.i18n import localized_detail
 from backend_service.models import (
     DownloadModelRequest,
     ImageGenerationRequest,
@@ -43,9 +44,10 @@ def _unload_idle_video_runtime_for_image(request: Request, action: str) -> None:
     if VIDEO_PROGRESS.snapshot().get("active"):
         raise HTTPException(
             status_code=409,
-            detail=(
+            detail=localized_detail(
+                request,
                 "A video generation is still running. Wait for it to finish or cancel it "
-                "before loading an image model."
+                "before loading an image model.",
             ),
         )
     try:
@@ -125,21 +127,30 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
     variant = _find_image_variant(body.modelId)
     if variant is None:
         state.add_log("images", "error", f"Preload failed: model '{body.modelId}' not found")
-        raise HTTPException(status_code=404, detail=f"Unknown image model '{body.modelId}'.")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Unknown image model '{body.modelId}'."),
+        )
     library = state._library()
     if not _image_variant_available_locally(variant, library):
         validation_error = _image_download_validation_error(variant["repo"])
         detail = validation_error or f"{variant['name']} is not installed locally yet."
-        raise HTTPException(status_code=409, detail=detail)
+        raise HTTPException(status_code=409, detail=localized_detail(request, detail))
     _unload_idle_video_runtime_for_image(request, "image preload")
     try:
         runtime = state.image_runtime.preload(variant["repo"])
     except RuntimeError as exc:
         state.add_log("images", "error", f"Failed to preload {variant['name']}: {exc}")
-        raise HTTPException(status_code=400, detail=f"Failed to load {variant['name']}: {exc}") from exc
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, f"Failed to load {variant['name']}: {exc}"),
+        ) from exc
     except Exception as exc:
         state.add_log("images", "error", f"Unexpected error preloading {variant['name']}: {type(exc).__name__}: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=localized_detail(request, f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}"),
+        ) from exc
     state.add_log("images", "info", f"Preloaded image model {variant['name']}.")
     state.add_activity("Image model loaded", variant["name"])
     return {"runtime": runtime}
@@ -153,7 +164,10 @@ def unload_image_model(request: Request, body: ImageRuntimeUnloadRequest | None 
     if body and body.modelId:
         variant = _find_image_variant(body.modelId)
         if variant is None:
-            raise HTTPException(status_code=404, detail=f"Unknown image model '{body.modelId}'.")
+            raise HTTPException(
+                status_code=404,
+                detail=localized_detail(request, f"Unknown image model '{body.modelId}'."),
+            )
         requested_repo = variant["repo"]
         requested_name = variant["name"]
     current_runtime = state.image_runtime.capabilities()
@@ -161,7 +175,10 @@ def unload_image_model(request: Request, body: ImageRuntimeUnloadRequest | None 
     try:
         runtime = state.image_runtime.unload(requested_repo)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc
     unloaded_repo = requested_repo or current_repo
     if unloaded_repo and (requested_repo is None or requested_repo == current_repo):
         unloaded_variant = _find_image_variant_by_repo(unloaded_repo)
@@ -226,7 +243,13 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
     variant = _find_image_variant(body.modelId)
     if variant is None:
         state.add_log("images", "error", f"Image model not found in catalog or tracked seeds: '{body.modelId}'")
-        raise HTTPException(status_code=404, detail=f"Unknown image model '{body.modelId}'. The model isn't in the curated catalog or tracked seeds.")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(
+                request,
+                f"Unknown image model '{body.modelId}'. The model isn't in the curated catalog or tracked seeds.",
+            ),
+        )
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
     # Phase 2.0.5-H: pre-flight memory gate. Refuse before invoking the
     # diffusion pipeline if the host is already memory-starved — image
@@ -247,7 +270,10 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
                 f"Memory gate refused image gen: {refusal['code']} "
                 f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
             )
-            raise HTTPException(status_code=503, detail=refusal["message"])
+            raise HTTPException(
+                status_code=503,
+                detail=localized_detail(request, refusal["message"]),
+            )
     except HTTPException:
         raise
     except Exception as gate_exc:
@@ -262,7 +288,10 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         # and 499 is a non-standard nginx extension the Python stdlib
         # HTTPException doesn't recognise.
         state.add_log("images", "info", f"Image generation cancelled for {variant.get('name')} by user.")
-        raise HTTPException(status_code=409, detail="cancelled") from None
+        raise HTTPException(
+            status_code=409,
+            detail=localized_detail(request, "cancelled"),
+        ) from None
     except Exception as exc:
         from backend_service.helpers.video_runtime_diagnostics import (
             diagnose_diffusers_lazy_import_error,
@@ -277,7 +306,10 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
         # instead of "Could not import module 'T5EncoderModel'".
         friendly = diagnose_diffusers_lazy_import_error(str(exc))
         detail = friendly or f"Image generation failed for {variant.get('name')}: {type(exc).__name__}: {exc}"
-        raise HTTPException(status_code=500, detail=detail) from exc
+        raise HTTPException(
+            status_code=500,
+            detail=localized_detail(request, detail),
+        ) from exc
     state.add_log(
         "images",
         "info",
@@ -296,10 +328,13 @@ def image_outputs() -> dict[str, Any]:
 
 
 @router.get("/api/images/outputs/{artifact_id}")
-def image_output_detail(artifact_id: str) -> dict[str, Any]:
+def image_output_detail(request: Request, artifact_id: str) -> dict[str, Any]:
     output = _find_image_output(artifact_id)
     if output is None:
-        raise HTTPException(status_code=404, detail=f"Image output '{artifact_id}' not found.")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Image output '{artifact_id}' not found."),
+        )
     return {"artifact": output}
 
 
@@ -308,6 +343,9 @@ def delete_image_output_endpoint(request: Request, artifact_id: str) -> dict[str
     state = request.app.state.chaosengine
     deleted = _delete_image_output(artifact_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Image output '{artifact_id}' not found.")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Image output '{artifact_id}' not found."),
+        )
     state.add_log("images", "info", f"Deleted image output {artifact_id}.")
     return {"deleted": artifact_id, "outputs": _load_image_outputs()}

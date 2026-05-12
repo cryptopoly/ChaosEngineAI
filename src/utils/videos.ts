@@ -1,3 +1,4 @@
+import i18next from "i18next";
 import type { VideoModelFamily, VideoModelVariant, VideoRuntimeStatus } from "../types";
 import type { VideoDiscoverTaskFilter } from "../types/video";
 
@@ -752,12 +753,34 @@ export function assessVideoGenerationSafety(opts: {
   if (modelFootprintGb > cautionRatio * budgetGb) {
     const comfortBudgetGb = cautionRatio * budgetGb;
     const highRiskBudgetGb = dangerRatio * budgetGb;
+    const reasonVars = {
+      model: fmt(modelFootprintGb),
+      peak: fmt(estimatedPeakGb),
+      platform,
+      total: fmt(totalMemoryGb),
+      working: fmt(budgetGb),
+      comfort: fmt(comfortBudgetGb),
+      highRisk: fmt(highRiskBudgetGb),
+      offloadDevice: effectiveDevice === "cuda" ? "GPU" : "device",
+    };
     const reason =
       riskLevel === "danger"
         ? modelFootprintGb > budgetGb
-          ? `The model needs ~${fmt(modelFootprintGb)} GB resident at the standard placement, but ${platform} with ${fmt(totalMemoryGb)} GB total only has ~${fmt(budgetGb)} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and ${effectiveDevice === "cuda" ? "GPU" : "device"} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.`
-          : `The model needs ~${fmt(modelFootprintGb)} GB resident and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.`
-        : `The model needs ~${fmt(modelFootprintGb)} GB resident. On ${platform} with ${fmt(totalMemoryGb)} GB total, that's above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation should fit; lower the settings if it becomes unstable.`;
+          ? i18next.t("videoStudio.safety.reasonDangerOver", {
+              ns: "studio",
+              ...reasonVars,
+              defaultValue: "The model needs ~{model} GB resident at the standard placement, but {platform} with {total} GB total only has ~{working} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and {offloadDevice} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.",
+            })
+          : i18next.t("videoStudio.safety.reasonDangerNear", {
+              ns: "studio",
+              ...reasonVars,
+              defaultValue: "The model needs ~{model} GB resident and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that's above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.",
+            })
+        : i18next.t("videoStudio.safety.reasonCaution", {
+            ns: "studio",
+            ...reasonVars,
+            defaultValue: "The model needs ~{model} GB resident. On {platform} with {total} GB total, that's above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation should fit; lower the settings if it becomes unstable.",
+          });
     return {
       riskLevel,
       latentTokens,

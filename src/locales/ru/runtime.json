@@ -1,0 +1,130 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Нативный движок вывода для Apple Silicon"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "GGUF-инференс через llama-server"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA-движок вывода"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Нативный",
+      "description": "Встроенные типы кэша (f16, q8_0, q4_0 и т.д.). Максимальная совместимость."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "KV-квантование с поворотом Адамара. Сжатие 2–4× с минимальной потерей качества."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Sparse-attention компрессор для длинного контекста. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Кэш-хук только для диффузии. Ускорение ~1,8× на DiT-конвейерах."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Кэш на основе разложения Тейлора. Агрессивное ускорение, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Кэш на основе амплитуд. Без калибровки только для FLUX."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Только для диффузии, повторное использование attention между шагами."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Только для диффузии, кэш условного/безусловного повторного использования."
+    }
+  },
+  "controls": {
+    "engine": "Движок",
+    "cacheStrategy": "Стратегия кэша",
+    "cacheStrategyLockedNote": "(заблокировано на Native во время спекулятивного декодирования)",
+    "cacheType": "Тип кэша",
+    "speculativeDecoding": "Спекулятивное декодирование",
+    "draftModel": "Черновая модель",
+    "contextSize": "Размер контекста",
+    "gpuLayers": "Слои GPU",
+    "threads": "Потоки",
+    "fitInMemory": "Вместить в память"
+  },
+  "notes": {
+    "binaryRequired": "Требуется {binary}.",
+    "platformRequired": "Требуется {platform}.",
+    "engineIncompatible": "Несовместимо с {engine}.",
+    "unknownEngine": "Неизвестный движок."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "Первый токен: {ms} мс",
+    "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Fused Attention",
+    "aboutTitle": "О Fused Attention",
+    "body": "Fused Attention использует оптимизированные ядра внимания, когда выбранный бэкенд их поддерживает. Это может улучшить пропускную способность и уменьшить накладные расходы, но некоторые комбинации модель/бэкенд предпочитают стандартный путь внимания для совместимости."
+  },
+  "dflash": {
+    "tooltip": "DFlash спекулятивное декодирование: в 3-5 раз быстрее без потери качества.",
+    "label": "DFlash",
+    "installing": "Установка...",
+    "installButton": "Установить DFlash",
+    "aboutTitle": "О DFlash спекулятивном декодировании",
+    "body": "DFlash использует небольшую черновую модель для параллельного предложения нескольких токенов, затем проверяет их за один прямой проход. Это даёт в 3-5 раз быстрее генерацию без потери качества.",
+    "requiresLabel": "Требует:",
+    "requiresBody": "Apple Silicon + dflash-mlx или Linux/CUDA + dflash. Совместимая черновая модель для цели.",
+    "currentModelLabel": "Текущая модель:",
+    "supportedVia": "Поддерживается через {model}",
+    "compatibilityUnresolved": "Совместимость ещё не определена."
+  },
+  "presets": {
+    "quality": {
+      "label": "Макс. качество",
+      "hint": "Код и рассуждение"
+    },
+    "balanced": {
+      "label": "Сбалансировано",
+      "hint": "Общий чат"
+    },
+    "speed": {
+      "label": "Макс. скорость",
+      "hint": "Быстрая итерация"
+    },
+    "memory": {
+      "label": "Мин. память",
+      "hint": "Ограниченная RAM"
+    }
+  },
+  "sliders": {
+    "context": "Контекст",
+    "maxTokens": "Макс. токенов",
+    "temperature": "Температура"
+  },
+  "fitInMemory": {
+    "body": "Вместить в память просит ChaosEngineAI выбрать профиль среды выполнения/кэша, который сохраняет модель и KV-кэш в пределах доступной памяти. Отключайте только когда хотите принудительно выбрать больший или более агрессивный профиль и готовы принять возможный своппинг или сбой загрузки."
+  },
+  "cacheFit": {
+    "mayNotFit": "Может не поместиться",
+    "modelMayNotFit": "Модель может не поместиться",
+    "fitsEasily": "Помещается легко",
+    "tightFit": "Впритык",
+    "contextMayNotFit": "Полный контекст может не поместиться"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Веса модели сами по себе превышают расчётную доступную RAM. Выберите меньшую модель или более агрессивное квантование.",
+    "nativeF16TooBig": "Модель может загрузиться, но полный нативный f16-кэш при этом контексте может превысить системную RAM по мере заполнения потока. Уменьшите контекст или выберите сжатую стратегию.",
+    "compressedTooBig": "Модель может загрузиться, но выбранный кэш контекста может превысить системную RAM по мере заполнения потока. Уменьшите контекст или уменьшите FP16-слои."
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
@@ -10,14 +11,16 @@ import {
 
 const LAUNCH_PRESETS: Array<{
   id: string;
-  label: string;
-  hint: string;
+  labelKey: string;
+  labelFallback: string;
+  hintKey: string;
+  hintFallback: string;
   values: Partial<LaunchPreferences>;
 }> = [
-  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
-  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
-  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
-  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
+  { id: "quality", labelKey: "presets.quality.label", labelFallback: "Max Quality", hintKey: "presets.quality.hint", hintFallback: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
+  { id: "balanced", labelKey: "presets.balanced.label", labelFallback: "Balanced", hintKey: "presets.balanced.hint", hintFallback: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
+  { id: "speed", labelKey: "presets.speed.label", labelFallback: "Max Speed", hintKey: "presets.speed.hint", hintFallback: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
+  { id: "memory", labelKey: "presets.memory.label", labelFallback: "Min Memory", hintKey: "presets.memory.hint", hintFallback: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
 ];
 
 const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string }> = {
@@ -230,6 +233,7 @@ export function RuntimeControls({
   turboInstalled,
   turboUpdateAvailable,
 }: RuntimeControlsProps) {
+  const { t } = useTranslation("runtime");
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
   const contextMin = Math.min(2048, Math.max(256, Math.floor(effectiveMaxContext / 4)));
   const clampedContext = Math.max(contextMin, Math.min(settings.contextTokens, effectiveMaxContext));
@@ -360,7 +364,7 @@ export function RuntimeControls({
 
   return (
     <>
-      <span className="eyebrow">Cache strategy {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> (locked to Native during speculative decoding)</small> : null}</span>
+      <span className="eyebrow">{t("controls.cacheStrategy")} {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> {t("controls.cacheStrategyLockedNote", { defaultValue: "(locked to Native during speculative decoding)" })}</small> : null}</span>
       <div className="cache-strategy-cards">
         {strategies.map((strategy) => {
           const info = STRATEGY_INFO[strategy.id];
@@ -372,6 +376,20 @@ export function RuntimeControls({
           const turboMissing = needsTurbo && isGgufBackend && !turboInstalled;
           const runtimeAvailable = isStrategyRuntimeAvailable(strategy);
           const isDisabled = !runtimeAvailable || (specActive && strategy.id !== "native") || isIncompat || turboMissing;
+
+          // FU-034 (2026-05-10): hide cards the user has no in-app path to
+          // recover. ``isIncompat`` is a hard engine mismatch (e.g.
+          // TriAttention selected on MLX) — there's no install button that
+          // fixes that, so showing a disabled card with an "N/A" badge just
+          // teaches the user the wrong thing. Same logic for the turbo
+          // binary on GGUF: the only fix is ``scripts/build-llama-turbo.sh``
+          // outside the app. Strategies whose backing pip package isn't
+          // installed STAY visible because the modal renders an "Install"
+          // button that gets the user to ready in one click. ``native``
+          // always survives (the f16 fallback every engine speaks).
+          if (strategy.id !== "native" && (isIncompat || turboMissing)) {
+            return null;
+          }
 
           return (
             <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
@@ -466,8 +484,8 @@ export function RuntimeControls({
             type="button"
             onClick={() => applyPreset(preset.id)}
           >
-            <strong>{preset.label}</strong>
-            <small>{preset.hint}</small>
+            <strong>{t(preset.labelKey, { defaultValue: preset.labelFallback })}</strong>
+            <small>{t(preset.hintKey, { defaultValue: preset.hintFallback })}</small>
           </button>
         ))}
       </div>
@@ -475,7 +493,7 @@ export function RuntimeControls({
       <div className="slider-grid">
         {selectedStrategy?.bitRange != null ? (
           <SliderField
-            label="Cache bits"
+            label={t("controls.cacheType", { defaultValue: "Cache bits" })}
             value={settings.cacheBits}
             min={selectedStrategy.bitRange[0]} max={selectedStrategy.bitRange[selectedStrategy.bitRange.length - 1]} step={1}
             ticks={selectedStrategy.bitRange.map((v) => ({ value: v, label: String(v) }))}
@@ -493,7 +511,7 @@ export function RuntimeControls({
           />
         ) : null}
         <SliderField
-          label="Context"
+          label={t("sliders.context", { defaultValue: "Context" })}
           value={clampedContext}
           min={contextMin} max={effectiveMaxContext} step={contextStep}
           ticks={contextTicksFor(effectiveMaxContext)}
@@ -501,7 +519,7 @@ export function RuntimeControls({
           onChange={(v) => onChange("contextTokens", Math.min(v, effectiveMaxContext))}
         />
         <SliderField
-          label="Max tokens"
+          label={t("sliders.maxTokens", { defaultValue: "Max tokens" })}
           value={settings.maxTokens}
           min={256} max={32768} step={256}
           ticks={[
@@ -517,7 +535,7 @@ export function RuntimeControls({
         />
         {showTemperature ? (
           <SliderField
-            label="Temperature"
+            label={t("sliders.temperature", { defaultValue: "Temperature" })}
             value={settings.temperature}
             min={0} max={2} step={0.1}
             ticks={[{ value: 0, label: "0" }, { value: 0.5, label: "0.5" }, { value: 1, label: "1.0" }, { value: 1.5, label: "1.5" }, { value: 2, label: "2.0" }]}
@@ -535,7 +553,7 @@ export function RuntimeControls({
               checked={settings.fitModelInMemory}
               onChange={(event) => onChange("fitModelInMemory", event.target.checked)}
             />
-            <span>Fit in memory</span>
+            <span>{t("controls.fitInMemory", { defaultValue: "Fit in memory" })}</span>
           </label>
           <button
             type="button"
@@ -548,7 +566,12 @@ export function RuntimeControls({
         </div>
         {expandedInfo === "fit-memory" ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.</p>
+            <p>
+              {t("fitInMemory.body", {
+                defaultValue:
+                  "Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.",
+              })}
+            </p>
           </div>
         ) : null}
         <div className="check-row">
@@ -558,24 +581,46 @@ export function RuntimeControls({
               checked={settings.fusedAttention}
               onChange={(event) => onChange("fusedAttention", event.target.checked)}
             />
-            <span>Fused attention</span>
+            <span>{t("fusedAttention.label", { defaultValue: "Fused attention" })}</span>
           </label>
           <button
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "fused-attention" ? null : "fused-attention")}
-            title="About fused attention"
+            title={t("fusedAttention.aboutTitle", { defaultValue: "About fused attention" })}
           >
             i
           </button>
         </div>
         {expandedInfo === "fused-attention" ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.</p>
+            <p>
+              {t("fusedAttention.body", {
+                defaultValue:
+                  "Fused attention uses optimized attention kernels when the selected backend supports them. It can improve throughput and reduce overhead, but some model/backend combinations may prefer the standard attention path for compatibility.",
+              })}
+            </p>
           </div>
         ) : null}
+        {/* FU-034 (2026-05-10): hide the DFlash toggle entirely when the
+            selected model has no draft in DRAFT_MODEL_MAP, or when the
+            engine is GGUF (DFlash requires MLX/vLLM). Both cases give
+            the user no in-app path to recover, so a disabled checkbox
+            with an "N/A" badge added confusion without value. The
+            "DFlash package not installed but model would be supported"
+            case stays visible — the install button gets the user to
+            ready in one click. ``canInstallDflashForModel`` is True
+            whenever the model is in the draft map AND the runtime gap
+            is the missing pip package. */}
+        {dflashAvailable || canInstallDflashForModel ? (
         <div className="check-row">
-          <label className="check-row" style={{ margin: 0 }} title={dflashUnavailableReason ?? "DFlash speculative decoding: 3-5x faster generation with zero quality loss."}>
+          <label
+            className="check-row"
+            style={{ margin: 0 }}
+            title={t("dflash.tooltip", {
+              defaultValue: "DFlash speculative decoding: 3-5x faster generation with zero quality loss.",
+            })}
+          >
             <input
               type="checkbox"
               checked={settings.speculativeDecoding && dflashAvailable}
@@ -590,7 +635,7 @@ export function RuntimeControls({
                 }
               }}
             />
-            <span>DFlash</span>
+            <span>{t("dflash.label", { defaultValue: "DFlash" })}</span>
           </label>
           {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (
             <button
@@ -599,35 +644,43 @@ export function RuntimeControls({
               disabled={installingPackage != null}
               onClick={() => onInstallPackage("dflash-mlx")}
             >
-              {installingPackage === "dflash-mlx" ? "Installing..." : "Install DFlash"}
+              {installingPackage === "dflash-mlx"
+                ? t("dflash.installing", { defaultValue: "Installing..." })
+                : t("dflash.installButton", { defaultValue: "Install DFlash" })}
             </button>
-          ) : null}
-          {dflashUnavailableReason ? (
-            <span
-              className="cache-strategy-badge cache-strategy-badge--warning"
-              style={{ marginLeft: 4, fontSize: "0.7em" }}
-              title={dflashUnavailableReason}
-            >N/A</span>
           ) : null}
           <button
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "dflash" ? null : "dflash")}
-            title="About DFlash speculative decoding"
+            title={t("dflash.aboutTitle", { defaultValue: "About DFlash speculative decoding" })}
           >
             i
           </button>
         </div>
-        {expandedInfo === "dflash" ? (
+        ) : null}
+        {expandedInfo === "dflash" && (dflashAvailable || canInstallDflashForModel) ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.</p>
+            <p>
+              {t("dflash.body", {
+                defaultValue:
+                  "DFlash uses a small draft model to propose multiple tokens in parallel, then verifies them in a single forward pass. This gives 3-5x faster generation with zero quality loss.",
+              })}
+            </p>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Requires:</span>
-              <span>Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.</span>
+              <span className="cache-strategy-meta-label">{t("dflash.requiresLabel", { defaultValue: "Requires:" })}</span>
+              <span>
+                {t("dflash.requiresBody", {
+                  defaultValue:
+                    "Apple Silicon + dflash-mlx, or Linux/CUDA + dflash. Compatible draft model for the target.",
+                })}
+              </span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Current model:</span>
-              <span>{dflashSupport.matchedModel ? `Supported via ${dflashSupport.matchedModel}` : dflashUnavailableReason ?? "Compatibility not resolved yet."}</span>
+              <span className="cache-strategy-meta-label">{t("dflash.currentModelLabel", { defaultValue: "Current model:" })}</span>
+              <span>{dflashSupport.matchedModel
+                ? t("dflash.supportedVia", { model: dflashSupport.matchedModel, defaultValue: `Supported via ${dflashSupport.matchedModel}` })
+                : dflashUnavailableReason ?? t("dflash.compatibilityUnresolved", { defaultValue: "Compatibility not resolved yet." })}</span>
             </div>
             <div className="cache-strategy-meta">
               <span className="cache-strategy-meta-label">Registered targets:</span>
@@ -640,7 +693,10 @@ export function RuntimeControls({
             {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
                 <span className="cache-strategy-meta-label">Install:</span>
-                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd"</code>
+                {/* Pin string mirrors pyproject.toml + scripts/stage-runtime.mjs.
+                    Update all three together when bumping (FU-033 pin-sync probe
+                    catches drift between the latter two). */}
+                <code>./.venv/bin/python3 -m pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"</code>
               </div>
             ) : null}
           </div>

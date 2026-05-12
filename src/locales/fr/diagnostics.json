@@ -1,0 +1,48 @@
+{
+  "title": "Diagnostic",
+  "subtitle": "Inspecter l'état d'exécution, la santé du GPU et les journaux",
+  "subtitleSnapshot": "Instantané système pour le diagnostic. Copiez le markdown pour le partager avec le support en cas de problème.",
+  "sections": {
+    "snapshot": "Instantané système",
+    "gpu": "GPU",
+    "memory": "Mémoire",
+    "runtime": "Environnement d'exécution",
+    "binaries": "Binaires",
+    "extras": "Extras",
+    "logs": "Journaux",
+    "locales": "Langues"
+  },
+  "fields": {
+    "platform": "Plateforme",
+    "architecture": "Architecture",
+    "kernel": "Noyau",
+    "appVersion": "Version de l'app",
+    "tauriVersion": "Version de Tauri",
+    "pythonVersion": "Version de Python",
+    "totalRAM": "RAM totale",
+    "availableRAM": "RAM disponible",
+    "totalVRAM": "VRAM totale",
+    "freeVRAM": "VRAM libre",
+    "diskFree": "Espace disque libre"
+  },
+  "logs": {
+    "tail": "Fin",
+    "follow": "Suivre",
+    "pauseFollow": "Mettre en pause le suivi",
+    "clear": "Effacer",
+    "download": "Télécharger le journal",
+    "lines": "{count, plural, one {# ligne} other {# lignes}}",
+    "filterPlaceholder": "Filtrer…"
+  },
+  "actions": {
+    "copySnapshot": "Copier l'instantané",
+    "downloadSnapshot": "Télécharger l'instantané",
+    "openLogFolder": "Ouvrir le dossier des journaux"
+  },
+  "logsTab": {
+    "title": "Journaux",
+    "subtitle": "Vue recherchable sur les canaux sidecar, runtime et serveur.",
+    "filterPlaceholder": "Filtrer les journaux",
+    "emptyFiltered": "Aucune ligne de journal ne correspond au filtre actuel."
+  }
+}

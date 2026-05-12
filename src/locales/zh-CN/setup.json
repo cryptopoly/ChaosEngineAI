@@ -1,0 +1,84 @@
+{
+  "title": "设置",
+  "subtitle": "为您的硬件安装运行时组件",
+  "sections": {
+    "core": "核心运行时",
+    "speculative": "推测解码",
+    "caching": "缓存策略",
+    "diffusion": "扩散运行时",
+    "tools": "可选工具"
+  },
+  "actions": {
+    "install": "安装",
+    "uninstall": "卸载",
+    "update": "更新",
+    "viewLog": "查看日志",
+    "showInFinder": "在 Finder 中显示"
+  },
+  "states": {
+    "installed": "已安装",
+    "available": "可用",
+    "installing": "安装中…",
+    "uninstalling": "卸载中…",
+    "checking": "检查中…",
+    "unavailable": "此平台不可用",
+    "needsRestart": "需要重启"
+  },
+  "messages": {
+    "diskSpaceWarning": "将下载约 {size}。",
+    "requiresNetwork": "需要互联网连接。",
+    "platformOnly": "此组件仅在 {platform} 上可用。",
+    "succeeded": "安装成功。",
+    "failed": "安装失败:{reason}"
+  },
+  "installLog": {
+    "finalStatus": "最终状态:",
+    "statusNoun": {
+      "longlive": "LongLive 安装",
+      "gpuBundle": "安装"
+    },
+    "status": {
+      "failed": "{noun}失败 — 查看日志",
+      "complete": "{noun}完成 — 查看日志",
+      "starting": "{noun}启动中…",
+      "verifyingCuda": "正在验证 CUDA…",
+      "inProgress": "{noun}进行中"
+    },
+    "meta": {
+      "target": "目标：{dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA 索引：{url}",
+      "cudaVerified": "CUDA 已验证",
+      "cudaVerificationFailed": "CUDA 验证失败",
+      "noWheelForPython": "此 Python 没有可用的 CUDA wheel",
+      "restartBackend": "重启后端以激活"
+    },
+    "step": {
+      "waiting": "（等待中）",
+      "final": "最终：{done}/{total} 个包 · {percent}%",
+      "current": "步骤 {done}/{total}：{current} · {percent}%"
+    },
+    "terminal": {
+      "working": "运行中…",
+      "noOutput": "（未捕获到输出）"
+    },
+    "attempt": {
+      "verifyCuda": "验证 torch.cuda.is_available()",
+      "torchDeps": "torch 依赖项（来自 {url}）",
+      "torchCleanup": "清理过期的 torch 文件",
+      "torchRepair": "修复 CUDA torch wheel",
+      "constraint": "固定 torch 版本",
+      "torchFromIndex": "torch（来自 {url}）",
+      "pipInstall": "pip install {pkg}",
+      "step": "步骤"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "安装完成 — 查看日志{index}",
+    "installFailed": "{count, plural, =0 {安装失败 — 查看日志} other {安装失败 — 查看日志(# 次尝试)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan MLX 运行时",
+    "ready": "就绪"
+  }
+}

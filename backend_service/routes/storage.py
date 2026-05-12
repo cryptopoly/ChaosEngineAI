@@ -42,6 +42,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.discovery import _path_size_bytes
 from backend_service.helpers.huggingface import _hf_hub_cache_root
 
@@ -202,7 +203,7 @@ def update_storage_path(request: Request, body: UpdateStoragePath) -> dict[str, 
         except OSError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Could not create {resolved}: {exc}",
+                detail=localized_detail(request, f"Could not create {resolved}: {exc}"),
             ) from exc
         cleaned = str(resolved)
 
@@ -464,7 +465,10 @@ def start_model_move(request: Request, body: StartMoveRequest) -> dict[str, Any]
     if source_hub_resolved == dest_hub.resolve() if dest_hub.exists() else dest_hub:
         raise HTTPException(
             status_code=400,
-            detail="Source and destination resolve to the same path — nothing to move.",
+            detail=localized_detail(
+                request,
+                "Source and destination resolve to the same path — nothing to move.",
+            ),
         )
 
     with _MOVE_LOCK:

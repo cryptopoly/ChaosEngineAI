@@ -55,10 +55,10 @@ class TeaCacheRegistrationTests(unittest.TestCase):
 
     def test_text_strategies_default_to_text_domain(self):
         """The default CacheStrategy.applies_to() is {"text"} — every
-        pre-existing strategy (native, rotor, tri, turbo, chaos) should
-        still report text-only without any code change.
+        pre-existing text strategy (native, triattention, turboquant)
+        should still report text-only without any code change.
         """
-        for sid in ("native", "rotorquant", "triattention", "turboquant", "chaosengine"):
+        for sid in ("native", "triattention", "turboquant"):
             strategy = self.registry.get(sid)
             self.assertEqual(
                 strategy.applies_to(), frozenset({"text"}),

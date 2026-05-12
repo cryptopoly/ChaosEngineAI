@@ -1,0 +1,86 @@
+name: Perf Gate
+
+# Manual + label-driven perf check. We don't run this on every push because
+# the text gen alone needs the mlx-community/Qwen2.5-0.5B-Instruct-4bit
+# weights (~700 MB) cached on the runner, and image/video gens need
+# multi-GB diffusers checkpoints we can't realistically download on every
+# CI invocation. Trigger via:
+#
+#   - the "Run workflow" button under Actions → Perf Gate, or
+#   - adding the `perf-gate` label to a pull request.
+#
+# Floors live in scripts/perf-gate.py (BASELINES list). Update them
+# deliberately when a refactor produces a real validated win — never to
+# squeeze the gate the other way.
+on:
+  workflow_dispatch:
+    inputs:
+      gen:
+        description: "Which gen to run (text|image|video|all)"
+        required: false
+        default: "text"
+      tolerance:
+        description: "Allowed regression ratio (default 0.05 = 5%)"
+        required: false
+        default: "0.05"
+  pull_request:
+    types: [labeled]
+
+jobs:
+  perf-gate:
+    name: Perf gate (text gen)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'perf-gate')
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Cache Hugging Face models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface/hub
+          key: hf-perf-gate-${{ runner.os }}-qwen25-0.5b-4bit-v1
+          # Reuse partial cache so a brand-new runner doesn't always
+          # re-download the 700 MB weights.
+          restore-keys: |
+            hf-perf-gate-${{ runner.os }}-qwen25-0.5b-4bit-
+
+      - name: Install Python deps
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -e ".[desktop,dev]"
+
+      - name: Run perf-baseline (text gen)
+        env:
+          GEN: ${{ github.event.inputs.gen || 'text' }}
+        run: |
+          source .venv/bin/activate
+          if [ "$GEN" = "all" ]; then
+            python scripts/perf-baseline.py --output /tmp/perf-baseline.json
+          else
+            python scripts/perf-baseline.py --only "$GEN" --output /tmp/perf-baseline.json
+          fi
+          echo "--- baseline JSON ---"
+          cat /tmp/perf-baseline.json
+
+      - name: Compare against floor
+        env:
+          TOLERANCE: ${{ github.event.inputs.tolerance || '0.05' }}
+        run: |
+          source .venv/bin/activate
+          python scripts/perf-gate.py /tmp/perf-baseline.json --tolerance "$TOLERANCE"
+
+      - name: Upload baseline JSON
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: perf-baseline
+          path: /tmp/perf-baseline.json
+          retention-days: 30

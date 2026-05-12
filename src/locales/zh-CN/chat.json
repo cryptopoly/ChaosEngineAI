@@ -1,0 +1,273 @@
+{
+  "composer": {
+    "placeholderReady": "输入消息…(Enter 发送,Shift+Enter 换行,/ 输入命令)",
+    "placeholderNoModel": "请先加载模型 — 从 我的模型 或 发现 选择一个,然后点击 对话。",
+    "send": "发送",
+    "stop": "停止",
+    "clear": "清除",
+    "sendDisabledTooltip": "请先加载模型再发送消息"
+  },
+  "thinkingMode": {
+    "label": "思考",
+    "tooltip": "选择模型回答前进行多少推理。关闭 = 直接回答;低 / 中 / 高 = 对兼容模型逐步增加推理深度。",
+    "off": "关闭",
+    "offTooltip": "无推理 — 模型直接回答",
+    "low": "低",
+    "lowTooltip": "简短推理",
+    "medium": "中",
+    "mediumTooltip": "默认推理深度",
+    "high": "高",
+    "highTooltip": "扩展推理"
+  },
+  "tools": {
+    "toggleLabel": "工具",
+    "toggleOn": "工具 开启",
+    "enableTooltip": "启用代理工具",
+    "enabledTooltip": "工具已启用(网页搜索、代码、计算器、文件读取)"
+  },
+  "newSession": "新建会话",
+  "newSessionTitle": "未命名对话",
+  "deleteSession": "删除会话",
+  "deleteSessionConfirm": "删除此对话?此操作无法撤销。",
+  "renameSession": "重命名会话",
+  "exportSession": "导出会话",
+  "promptPlaceholder": "发送消息…",
+  "promptPlaceholderImage": "描述图像,或拖入一张以讨论…",
+  "stopGeneration": "停止生成",
+  "regenerateResponse": "重新生成回复",
+  "branchHere": "从此处分支",
+  "copyMessage": "复制消息",
+  "copyAsMarkdown": "复制为 Markdown",
+  "tokensUsed": "{count, plural, other {# 个标记}}",
+  "thinking": "思考中…",
+  "toolCall": {
+    "label": "工具调用",
+    "running": "运行工具:{tool}",
+    "succeeded": "工具成功:{tool}",
+    "failed": "工具失败:{tool}",
+    "noArguments": "(无参数)",
+    "input": "输入",
+    "result": "结果"
+  },
+  "attachments": {
+    "image": "附加图像",
+    "document": "附加文档",
+    "code": "附加代码",
+    "removeAttachment": "移除附件",
+    "imageTooLarge": "图像必须小于 10MB"
+  },
+  "modelPicker": {
+    "label": "模型",
+    "noneSelected": "未加载模型",
+    "loadModel": "加载模型"
+  },
+  "header": {
+    "expandChatList": "展开对话列表",
+    "chatsLabel": "对话",
+    "threadName": "线程名称",
+    "selectModel": "选择模型",
+    "exportThread": "导出此线程",
+    "export": "导出",
+    "modelCapabilities": "模型能力",
+    "ready": "就绪",
+    "loadChatModel": "加载此对话的模型",
+    "loading": "加载中...",
+    "loadModel": "加载模型"
+  },
+  "sidebar": {
+    "title": "对话",
+    "newThread": "新线程",
+    "compare": "对比",
+    "compareTooltip": "并排对比两个模型",
+    "collapseChatList": "折叠对话列表",
+    "searchThreadsPlaceholder": "搜索线程...",
+    "searchThreadsAriaLabel": "搜索线程",
+    "clearSearch": "清除搜索"
+  },
+  "swapMenu": {
+    "clearOverride": "清除覆盖",
+    "dialogAriaLabel": "为下一轮选择模型",
+    "sendNextVia": "下一条通过",
+    "oneTurnNote": "覆盖仅适用于一轮。",
+    "noWarmModels": "没有其他热模型。从 我的模型 加载第二个模型以启用快速切换。"
+  },
+  "activeThread": {
+    "title": "活动线程",
+    "subtitle": "响应元数据默认折叠,但可在每个代理回合中查看。"
+  },
+  "compare": {
+    "latest": "最新"
+  },
+  "tempChip": {
+    "label": "温度 {value}",
+    "tooltip": "温度:{value}(来自启动设置)",
+    "overrideTooltip": "温度覆盖:{value}(默认 {defaultValue_})",
+    "dialogAriaLabel": "温度覆盖",
+    "overrideLabel": "覆盖温度",
+    "reset": "重置",
+    "hint": "较低 = 聚焦。较高 = 富有创造性。来自启动设置的默认值 {value}。"
+  },
+  "thread": {
+    "copyMessageTooltip": "复制消息",
+    "retryTooltip": "重试响应",
+    "forkTooltip": "从此处分支(创建新线程)",
+    "delveTooltip": "深入 — 以批评的眼光重读并提出修订后的回答",
+    "deleteMessageTooltip": "删除消息",
+    "loadExactSettingsTooltip": "加载此响应使用的精确模型和运行时设置",
+    "roleAgent": "代理",
+    "roleUser": "用户",
+    "thermalThrottleTitle": "热降频",
+    "memoryCriticalTitle": "系统内存告急",
+    "memoryStats": "可用 {available} GB · 压力 {pressure}%",
+    "cancel": "取消",
+    "emptyState": "发送消息以开始对话。",
+    "reloadSettings": "重新加载这些设置",
+    "fitInMemory": {
+      "on": "开",
+      "off": "关",
+      "unknown": "未知"
+    },
+    "variants": {
+      "heading": "对比响应",
+      "subtitle": "同一提示词路由到不同的热模型。"
+    },
+    "details": {
+      "summary": "模型详情",
+      "unknown": "未知",
+      "auto": "自动",
+      "dflashAccepted": "DFLASH 平均接受 {value}",
+      "model": "模型",
+      "runtime": "运行时",
+      "cache": "缓存",
+      "strategy": "策略",
+      "cacheBits": "缓存位数",
+      "fp16Layers": "FP16 层",
+      "backend": "后端",
+      "context": "上下文",
+      "fitInMemory": "适配内存",
+      "tokens": "Token",
+      "tokensTotal": "共 {count}",
+      "responseTime": "响应时间",
+      "decodeSpeed": "解码速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "请求的缓存",
+      "requestedFit": "请求的适配",
+      "requestedDflashDdtree": "请求的 DFlash / DDTree",
+      "runtimeStatus": "运行时状态",
+      "treeBudget": "树预算",
+      "dflashAcceptance": "DFLASH 接受率",
+      "avgTokens": "平均 {value} 个 token",
+      "draftModel": "草稿模型"
+    }
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "挑战标题",
+    "promptPlaceholder": "用同一个网页挑战向所有选中的模型发起提示...",
+    "openBrowser": "在默认浏览器中打开",
+    "historyPlaceholder": "搜索以前的挑战...",
+    "moveToTrash": "移到回收站",
+    "moveToTrashAria": "将 \"{title}\" 移到回收站",
+    "noMatching": "没有匹配的挑战。",
+    "layoutToggleAria": "HTML 挑战布局",
+    "layoutRow": "行",
+    "thisChallengeFallback": "此挑战",
+    "deleteConfirm": "将 \"{title}\" 移到 .trash 文件夹？如有需要可从磁盘中恢复。",
+    "actions": {
+      "newChallenge": "新建挑战",
+      "openFolder": "打开文件夹",
+      "openSettings": "打开设置",
+      "addModel": "添加模型",
+      "cancel": "取消",
+      "usePromptInNewChallenge": "在新挑战中使用此提示",
+      "runChallenge": "运行挑战",
+      "runNewChallenge": "运行新挑战"
+    },
+    "status": {
+      "generating": "正在生成...",
+      "queuedRetry": "已排队重试...",
+      "queuedContinuation": "已排队续写...",
+      "queuedRepair": "已排队修复..."
+    },
+    "errors": {
+      "deleteFailed": "删除挑战失败。",
+      "challengeFailed": "挑战失败",
+      "retryFailed": "重试失败",
+      "repairFailed": "修复失败"
+    },
+    "modelCard": {
+      "selectAModel": "选择一个模型",
+      "thinking": "思考",
+      "thinkingOff": "关闭",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "温度",
+      "seed": "种子",
+      "seedPlaceholder": "随机",
+      "randomize": "随机化",
+      "remove": "移除",
+      "change": "更改",
+      "select": "选择"
+    },
+    "picker": {
+      "title": "选择模型",
+      "titleForSlot": "选择 {slot}",
+      "confirm": "使用模型",
+      "confirmForSlot": "用于 {slot}"
+    }
+  },
+  "samplerPanel": {
+    "label": "采样器",
+    "openTooltip": "打开采样器面板",
+    "activeTooltip": "{count, plural, other {# 个采样器覆盖已激活}}",
+    "dialogAriaLabel": "采样器覆盖",
+    "headerTitle": "采样器覆盖",
+    "resetAll": "全部重置",
+    "resetAllTooltip": "全部重置为后端默认值"
+  },
+  "kvChip": {
+    "clearOverride": "清除 KV 覆盖",
+    "revertTooltip": "恢复到会话默认值",
+    "dialogAriaLabel": "KV 缓存策略",
+    "headingTitle": "下一轮的 KV 缓存",
+    "reloadNote": "切换将在需要时重新加载运行时。"
+  },
+  "citations": {
+    "sourcesLabel": "来源：",
+    "pageInfo": "（第 {page} 页）",
+    "chunkLabel": "片段 {index}"
+  },
+  "modelLoading": {
+    "elapsed": "（{seconds} 秒）",
+    "loadingWithElapsed": "正在加载 {name}... 已用 {seconds} 秒"
+  },
+  "promptPhase": {
+    "processingPrompt": "正在处理提示词",
+    "generating": "正在生成"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "斜杠命令"
+  },
+  "compareView": {
+    "slot": {
+      "a": "模型 A",
+      "b": "模型 B",
+      "c": "模型 C",
+      "d": "模型 D"
+    },
+    "selectModel": "选择模型",
+    "removeSlotTitle": "移除 {slot}",
+    "remove": "移除",
+    "change": "更改",
+    "select": "选择",
+    "backToChat": "返回对话",
+    "title": "比较模型",
+    "subtitle": "排队 2-4 个模型。每个槽位独占加载、运行并在下一个槽位开始前卸载。",
+    "addModel": "添加模型",
+    "queued": "{count}/4 已排队",
+    "duplicateNote": "多个槽位选择了同一模型；对运行时配置 A/B 测试很有用。",
+    "promptPlaceholder": "输入要比较的提示...",
+    "cancel": "取消",
+    "compareButton": "比较"
+  }
+}

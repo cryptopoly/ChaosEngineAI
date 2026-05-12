@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 
 interface LogEntry {
@@ -14,17 +15,20 @@ export interface LogsTabProps {
 }
 
 export function LogsTab({ filteredLogs, logQuery, onLogQueryChange }: LogsTabProps) {
+  const { t } = useTranslation("diagnostics");
   return (
     <div className="content-grid">
       <Panel
-        title="Logs"
-        subtitle="Searchable view over the sidecar, runtime, and server channels."
+        title={t("logsTab.title", { defaultValue: "Logs" })}
+        subtitle={t("logsTab.subtitle", {
+          defaultValue: "Searchable view over the sidecar, runtime, and server channels.",
+        })}
         className="span-2"
         actions={
           <input
             className="text-input"
             type="search"
-            placeholder="Filter logs"
+            placeholder={t("logsTab.filterPlaceholder", { defaultValue: "Filter logs" })}
             value={logQuery}
             onChange={(event) => onLogQueryChange(event.target.value)}
           />
@@ -45,7 +49,9 @@ export function LogsTab({ filteredLogs, logQuery, onLogQueryChange }: LogsTabPro
             ))
           ) : (
             <div className="empty-state">
-              <p>No log lines match the current filter.</p>
+              <p>
+                {t("logsTab.emptyFiltered", { defaultValue: "No log lines match the current filter." })}
+              </p>
             </div>
           )}
         </div>

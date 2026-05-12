@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { PerformancePreview } from "../../components/PerformancePreview";
 import { LiveProgress, type LiveProgressPhase } from "../../components/LiveProgress";
@@ -76,8 +77,9 @@ export function ConversionTab({
   onPrepareLibraryConversion,
   onRevealPath,
 }: ConversionTabProps) {
+  const { t } = useTranslation("common");
   const beforeSize = conversionSource?.sizeGb ?? lastConversion?.sourceSizeGb ?? null;
-  const estimatedContext = lastConversion?.contextWindow ?? conversionVariant?.contextWindow ?? "Varies";
+  const estimatedContext = lastConversion?.contextWindow ?? conversionVariant?.contextWindow ?? t("conversionTab.varies", { defaultValue: "Varies" });
 
   // --- Live projection from the conversion draft (responds immediately to slider changes) ---
   // Detect the source's effective bits-per-weight from name/quantization metadata
@@ -135,20 +137,24 @@ export function ConversionTab({
 
   const conversionCompression =
     beforeSize && afterSize && afterSize > 0
-      ? `${number(beforeSize / afterSize)}x smaller on disk`
+      ? t("conversionTab.smallerOnDisk", { ratio: number(beforeSize / afterSize), defaultValue: "{ratio}x smaller on disk" })
       : projectedDiskGb && beforeSize
-        ? `≈ ${number(beforeSize / projectedDiskGb)}x projected`
-        : "Pick a source and bits to project disk footprint";
+        ? t("conversionTab.projectedRatio", { ratio: number(beforeSize / projectedDiskGb), defaultValue: "≈ {ratio}x projected" })
+        : t("conversionTab.pickSourceHint", { defaultValue: "Pick a source and bits to project disk footprint" });
 
   return (
     <div className="content-grid">
       <Panel
-        title="MLX Conversion"
-        subtitle="Prepare a local source, compare before and after stats, then convert into an MLX-ready output."
+        title={t("panels.mlxConversion", { defaultValue: "MLX Conversion" })}
+        subtitle={t("panels.mlxConversionSubtitle", {
+          defaultValue: "Prepare a local source, compare before and after stats, then convert into an MLX-ready output.",
+        })}
         className="span-2"
         actions={
           <span className={`badge ${conversionReady ? "success" : "warning"}`}>
-            {conversionReady ? "Converter ready" : "Converter unavailable"}
+            {conversionReady
+              ? t("conversionTab.converterReady", { defaultValue: "Converter ready" })
+              : t("conversionTab.converterUnavailable", { defaultValue: "Converter unavailable" })}
           </span>
         }
       >
@@ -157,7 +163,7 @@ export function ConversionTab({
             {convertibleLibrary.length ? (
               <>
                 <div className="conversion-source-picker">
-                  <span className="eyebrow">Source model</span>
+                  <span className="eyebrow">{t("conversionTab.sourceModel", { defaultValue: "Source model" })}</span>
                   {conversionSource ? (
                     <div className="model-selected-card">
                       <div className="model-selected-info">
@@ -169,24 +175,24 @@ export function ConversionTab({
                         </div>
                       </div>
                       <button className="secondary-button" type="button" onClick={() => onShowConversionPickerChange(true)}>
-                        Change
+                        {t("conversionTab.change", { defaultValue: "Change" })}
                       </button>
                     </div>
                   ) : (
                     <button className="secondary-button" type="button" onClick={() => onShowConversionPickerChange(true)} style={{ width: "100%" }}>
-                      Select a model to convert...
+                      {t("conversionTab.selectModelToConvert", { defaultValue: "Select a model to convert..." })}
                     </button>
                   )}
                 </div>
 
                 <div className="field-grid">
                   <label>
-                    Output path
+                    {t("conversionTab.outputPath", { defaultValue: "Output path" })}
                     <div className="input-with-button">
                       <input
                         className="text-input"
                         type="text"
-                        placeholder="Leave blank to use ~/Models/<name>-mlx"
+                        placeholder={t("conversionTab.outputPathPlaceholder", { defaultValue: "Leave blank to use ~/Models/<name>-mlx" })}
                         value={conversionDraft.outputPath}
                         onChange={(event) => onConversionDraftChange("outputPath", event.target.value)}
                       />
@@ -194,19 +200,19 @@ export function ConversionTab({
                         className="secondary-button"
                         type="button"
                         onClick={() => void onPickConversionOutputDir()}
-                        title="Choose output folder"
+                        title={t("conversionTab.chooseOutputFolder", { defaultValue: "Choose output folder" })}
                       >
-                        Browse...
+                        {t("conversionTab.browse", { defaultValue: "Browse..." })}
                       </button>
                     </div>
                   </label>
                   {conversionSource?.format?.toUpperCase() === "GGUF" ? (
                     <label>
-                      Base HF repo (required for GGUF)
+                      {t("conversionTab.baseHfRepo", { defaultValue: "Base HF repo (required for GGUF)" })}
                       <input
                         className="text-input"
                         type="text"
-                        placeholder="e.g. Qwen/Qwen2.5-7B-Instruct"
+                        placeholder={t("conversionTab.baseHfRepoPlaceholder", { defaultValue: "e.g. Qwen/Qwen2.5-7B-Instruct" })}
                         value={conversionDraft.hfRepo}
                         onChange={(event) => onConversionDraftChange("hfRepo", event.target.value)}
                       />
@@ -215,26 +221,26 @@ export function ConversionTab({
                 </div>
 
                 <SliderField
-                  label="Quantization bits"
+                  label={t("conversionTab.quantizationBits", { defaultValue: "Quantization bits" })}
                   value={conversionDraft.qBits}
                   min={2} max={8} step={1}
                   ticks={[{ value: 2, label: "2" }, { value: 3, label: "3" }, { value: 4, label: "4" }, { value: 5, label: "5" }, { value: 6, label: "6" }, { value: 7, label: "7" }, { value: 8, label: "8" }]}
-                  formatValue={(v) => `${v}-bit`}
+                  formatValue={(v) => t("conversionTab.bitFormat", { value: v, defaultValue: "{value}-bit" })}
                   onChange={(v) => onConversionDraftChange("qBits", v)}
                 />
 
                 <SliderField
-                  label="Group size"
+                  label={t("conversionTab.groupSize", { defaultValue: "Group size" })}
                   value={conversionDraft.qGroupSize}
                   min={32} max={128} step={32}
                   ticks={[{ value: 32, label: "32" }, { value: 64, label: "64" }, { value: 96, label: "96" }, { value: 128, label: "128" }]}
-                  formatValue={(v) => `${v} weights/group`}
+                  formatValue={(v) => t("conversionTab.weightsPerGroup", { value: v, defaultValue: "{value} weights/group" })}
                   onChange={(v) => onConversionDraftChange("qGroupSize", v)}
                 />
 
                 <div className="field-grid">
                   <label>
-                    Dtype
+                    {t("conversionTab.dtype", { defaultValue: "Dtype" })}
                     <select
                       className="text-input"
                       value={conversionDraft.dtype}
@@ -251,16 +257,18 @@ export function ConversionTab({
                       checked={conversionDraft.quantize}
                       onChange={(event) => onConversionDraftChange("quantize", event.target.checked)}
                     />
-                    Quantize converted weights
+                    {t("conversionTab.quantizeConvertedWeights", { defaultValue: "Quantize converted weights" })}
                   </label>
                   <div className={`callout ${isReQuantizing ? "warning" : "quiet"} compact-callout`}>
-                    <h3>{isReQuantizing ? "Re-quantizing an already quantized source" : "Backend note"}</h3>
+                    <h3>{isReQuantizing
+                      ? t("conversionTab.reQuantizingTitle", { defaultValue: "Re-quantizing an already quantized source" })
+                      : t("conversionTab.backendNote", { defaultValue: "Backend note" })}</h3>
                     <p>
                       {isReQuantizing
-                        ? `Source is already ~${Math.round(sourceBpw)}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights.`
+                        ? t("conversionTab.reQuantizingDetail", { bits: Math.round(sourceBpw), defaultValue: "Source is already ~{bits}-bit. Going lower compounds quality loss — for best results convert from the original FP16/BF16 weights." })
                         : conversionReady
-                          ? "mlx-lm conversion is available in the active backend."
-                          : nativeBackends?.mlxMessage ?? "Start the native sidecar to enable conversion."}
+                          ? t("conversionTab.mlxLmAvailable", { defaultValue: "mlx-lm conversion is available in the active backend." })
+                          : nativeBackends?.mlxMessage ?? t("conversionTab.startNativeSidecar", { defaultValue: "Start the native sidecar to enable conversion." })}
                     </p>
                   </div>
                 </div>
@@ -272,64 +280,70 @@ export function ConversionTab({
                     onClick={() => void onConvertModel()}
                     disabled={!conversionReady || !conversionDraft.path || busy}
                   >
-                    {busy ? "Converting..." : "Convert to MLX"}
+                    {busy
+                      ? t("conversionTab.converting", { defaultValue: "Converting..." })
+                      : t("conversionTab.convertToMlx", { defaultValue: "Convert to MLX" })}
                   </button>
                   <button
                     className="secondary-button"
                     type="button"
                     onClick={onConversionDraftReset}
                   >
-                    Clear
+                    {t("conversionTab.clear", { defaultValue: "Clear" })}
                   </button>
                 </div>
               </>
             ) : (
               <div className="empty-state">
-                <p>Add model directories in Settings first, then conversion sources found there will appear here.</p>
+                <p>{t("conversionTab.addDirsHint", { defaultValue: "Add model directories in Settings first, then conversion sources found there will appear here." })}</p>
               </div>
             )}
           </div>
 
           <div className="conversion-visuals">
             <div className="stat-grid compact-grid">
-              <StatCard label="Params" value={conversionVariant ? `${number(conversionVariant.paramsB)}B` : (lastConversion?.paramsB ? `${number(lastConversion.paramsB)}B` : "Unknown")} hint={estimatedContext} />
               <StatCard
-                label="Disk before"
-                value={beforeSize ? sizeLabel(beforeSize) : "Unknown"}
-                hint={conversionSource?.format ?? lastConversion?.sourceFormat ?? "Source"}
+                label={t("conversionTab.params", { defaultValue: "Params" })}
+                value={conversionVariant ? `${number(conversionVariant.paramsB)}B` : (lastConversion?.paramsB ? `${number(lastConversion.paramsB)}B` : t("conversionTab.unknown", { defaultValue: "Unknown" }))}
+                hint={estimatedContext}
               />
               <StatCard
-                label="Disk after"
-                value={afterSize ? sizeLabel(afterSize) : "Pending"}
+                label={t("conversionTab.diskBefore", { defaultValue: "Disk before" })}
+                value={beforeSize ? sizeLabel(beforeSize) : t("conversionTab.unknown", { defaultValue: "Unknown" })}
+                hint={conversionSource?.format ?? lastConversion?.sourceFormat ?? t("conversionTab.sourceFallback", { defaultValue: "Source" })}
+              />
+              <StatCard
+                label={t("conversionTab.diskAfter", { defaultValue: "Disk after" })}
+                value={afterSize ? sizeLabel(afterSize) : t("conversionTab.pending", { defaultValue: "Pending" })}
                 hint={conversionCompression}
               />
               <StatCard
-                label="Est. tok/s"
+                label={t("conversionTab.estTokS", { defaultValue: "Est. tok/s" })}
                 value={`${number(estimatedTokS)} tok/s`}
-                hint={`Using ${launchCacheLabel}`}
+                hint={t("conversionTab.usingCache", { cache: launchCacheLabel, defaultValue: "Using {cache}" })}
               />
             </div>
 
             <div className="conversion-compare">
               <div className="conversion-card">
-                <span className="eyebrow">Before</span>
-                <h3>{conversionSource?.name ?? lastConversion?.sourceLabel ?? "Choose a source"}</h3>
-                <p>{conversionSource?.path ?? lastConversion?.sourcePath ?? "Select a local GGUF or HF-cache source to inspect its current footprint."}</p>
+                <span className="eyebrow">{t("conversionTab.before", { defaultValue: "Before" })}</span>
+                <h3>{conversionSource?.name ?? lastConversion?.sourceLabel ?? t("conversionTab.chooseSource", { defaultValue: "Choose a source" })}</h3>
+                <p>{conversionSource?.path ?? lastConversion?.sourcePath ?? t("conversionTab.sourceFootprintHint", { defaultValue: "Select a local GGUF or HF-cache source to inspect its current footprint." })}</p>
                 <div className="metric-list">
                   <div className="metric-row">
-                    <span>Format</span>
-                    <strong>{conversionSource?.format ?? lastConversion?.sourceFormat ?? "Unknown"}{isReQuantizing ? ` · ~${Math.round(sourceBpw)}-bit` : ""}</strong>
+                    <span>{t("conversionTab.format", { defaultValue: "Format" })}</span>
+                    <strong>{conversionSource?.format ?? lastConversion?.sourceFormat ?? t("conversionTab.unknown", { defaultValue: "Unknown" })}{isReQuantizing ? ` · ~${Math.round(sourceBpw)}-bit` : ""}</strong>
                   </div>
                   <div className="metric-row">
-                    <span>On-disk size</span>
-                    <strong>{beforeSize ? sizeLabel(beforeSize) : "Unknown"}</strong>
+                    <span>{t("conversionTab.onDiskSize", { defaultValue: "On-disk size" })}</span>
+                    <strong>{beforeSize ? sizeLabel(beforeSize) : t("conversionTab.unknown", { defaultValue: "Unknown" })}</strong>
                   </div>
                   <div className="metric-row">
-                    <span>Context</span>
+                    <span>{t("conversionTab.context", { defaultValue: "Context" })}</span>
                     <strong>{estimatedContext}</strong>
                   </div>
                   <div className="metric-row">
-                    <span>Cache footprint</span>
+                    <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
                     <strong>{number(cacheBefore)} GB</strong>
                   </div>
                 </div>
@@ -340,24 +354,28 @@ export function ConversionTab({
               </div>
 
               <div className="conversion-card accent-card">
-                <span className="eyebrow">After</span>
-                <h3>{lastConversion ? "MLX-ready output" : "Target preview"}</h3>
-                <p>{lastConversion?.outputPath ?? "Converted output will appear here together with derived stats and metadata."}</p>
+                <span className="eyebrow">{t("conversionTab.after", { defaultValue: "After" })}</span>
+                <h3>{lastConversion
+                  ? t("conversionTab.mlxReadyOutput", { defaultValue: "MLX-ready output" })
+                  : t("conversionTab.targetPreview", { defaultValue: "Target preview" })}</h3>
+                <p>{lastConversion?.outputPath ?? t("conversionTab.outputHint", { defaultValue: "Converted output will appear here together with derived stats and metadata." })}</p>
                 <div className="metric-list">
                   <div className="metric-row">
-                    <span>Target profile</span>
-                    <strong>{conversionDraft.quantize ? `${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}` : "Unquantized"} / {conversionDraft.dtype}</strong>
+                    <span>{t("conversionTab.targetProfile", { defaultValue: "Target profile" })}</span>
+                    <strong>{conversionDraft.quantize
+                      ? t("conversionTab.bitProfile", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: "{bits}-bit g{group}" })
+                      : t("conversionTab.unquantized", { defaultValue: "Unquantized" })} / {conversionDraft.dtype}</strong>
                   </div>
                   <div className="metric-row">
-                    <span>On-disk size</span>
-                    <strong>{afterSize ? sizeLabel(afterSize) : "Pending"}</strong>
+                    <span>{t("conversionTab.onDiskSize", { defaultValue: "On-disk size" })}</span>
+                    <strong>{afterSize ? sizeLabel(afterSize) : t("conversionTab.pending", { defaultValue: "Pending" })}</strong>
                   </div>
                   <div className="metric-row">
-                    <span>Cache footprint</span>
+                    <span>{t("conversionTab.cacheFootprint", { defaultValue: "Cache footprint" })}</span>
                     <strong>{number(cacheAfter)} GB</strong>
                   </div>
                   <div className="metric-row">
-                    <span>Quality estimate</span>
+                    <span>{t("conversionTab.qualityEstimate", { defaultValue: "Quality estimate" })}</span>
                     <strong>{number(lastConversion?.qualityPercent ?? projectedQualityPercent, 1)}%</strong>
                   </div>
                 </div>
@@ -373,25 +391,27 @@ export function ConversionTab({
 
             {lastConversion && !busy ? (
               <div className="callout">
-                <span className="badge success">Last conversion</span>
+                <span className="badge success">{t("conversionTab.lastConversion", { defaultValue: "Last conversion" })}</span>
                 <h3>{lastConversion.sourceLabel}</h3>
                 <p>{lastConversion.outputPath}</p>
                 <div className="field-grid detail-grid">
                   <div>
-                    <span className="eyebrow">Base repo</span>
+                    <span className="eyebrow">{t("conversionTab.baseRepo", { defaultValue: "Base repo" })}</span>
                     <p>{lastConversion.hfRepo}</p>
                   </div>
                   <div>
-                    <span className="eyebrow">Architecture</span>
-                    <p>{lastConversion.architecture ?? "Unknown"}</p>
+                    <span className="eyebrow">{t("conversionTab.architecture", { defaultValue: "Architecture" })}</span>
+                    <p>{lastConversion.architecture ?? t("conversionTab.unknown", { defaultValue: "Unknown" })}</p>
                   </div>
                   <div>
-                    <span className="eyebrow">Context</span>
+                    <span className="eyebrow">{t("conversionTab.context", { defaultValue: "Context" })}</span>
                     <p>{lastConversion.contextWindow ?? estimatedContext}</p>
                   </div>
                   <div>
-                    <span className="eyebrow">Compression</span>
-                    <p>{lastConversion.compressionRatio ? `${number(lastConversion.compressionRatio)}x cache reduction` : conversionCompression}</p>
+                    <span className="eyebrow">{t("conversionTab.compression", { defaultValue: "Compression" })}</span>
+                    <p>{lastConversion.compressionRatio
+                      ? t("conversionTab.cacheReduction", { ratio: number(lastConversion.compressionRatio), defaultValue: "{ratio}x cache reduction" })
+                      : conversionCompression}</p>
                   </div>
                 </div>
               </div>
@@ -402,7 +422,7 @@ export function ConversionTab({
 
       <ModelPicker
         open={showConversionPicker}
-        title="Select Source Model"
+        title={t("panels.selectSourceModel", { defaultValue: "Select Source Model" })}
         library={workspace.library}
         filter={(item) => libraryItemFormat(item) !== "MLX"}
         selectedPath={conversionDraft.path || null}
@@ -418,61 +438,63 @@ export function ConversionTab({
             <div className="modal-header">
               <h3>
                 {busyAction === "Converting model..."
-                  ? "Converting model"
+                  ? t("conversionTab.modal.titleConverting", { defaultValue: "Converting model" })
                   : conversionError
-                    ? "Conversion failed"
-                    : "Conversion complete"}
+                    ? t("conversionTab.modal.titleFailed", { defaultValue: "Conversion failed" })
+                    : t("conversionTab.modal.titleComplete", { defaultValue: "Conversion complete" })}
               </h3>
             </div>
             <div className="modal-body">
               {busyAction === "Converting model..." && conversionStartedAt ? (
                 <LiveProgress
-                  title="Converting model"
+                  title={t("conversionTab.progress.title", { defaultValue: "Converting model" })}
                   subtitle={conversionSource?.name ?? conversionDraft.modelRef ?? undefined}
                   startedAt={conversionStartedAt}
                   accent="convert"
                   phases={[
-                    { id: "resolve", label: "Resolving source", estimatedSeconds: 3 },
-                    { id: "download", label: "Fetching weights", estimatedSeconds: 60 },
-                    { id: "load", label: "Loading into MLX", estimatedSeconds: 15 },
-                    { id: "quantize", label: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}`, estimatedSeconds: 45 },
-                    { id: "shard", label: "Sharding & writing safetensors", estimatedSeconds: 10 },
-                    { id: "verify", label: "Verifying output", estimatedSeconds: 5 },
+                    { id: "resolve", label: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }), estimatedSeconds: 3 },
+                    { id: "download", label: t("conversionTab.progress.phases.download", { defaultValue: "Fetching weights" }), estimatedSeconds: 60 },
+                    { id: "load", label: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }), estimatedSeconds: 15 },
+                    { id: "quantize", label: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}` }), estimatedSeconds: 45 },
+                    { id: "shard", label: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }), estimatedSeconds: 10 },
+                    { id: "verify", label: t("conversionTab.progress.phases.verify", { defaultValue: "Verifying output" }), estimatedSeconds: 5 },
                   ] as LiveProgressPhase[]}
                 />
               ) : conversionError ? (
                 <div className="callout error">
-                  <h3>Conversion failed</h3>
+                  <h3>{t("conversionTab.modal.titleFailed", { defaultValue: "Conversion failed" })}</h3>
                   <p>{conversionError}</p>
                   <details className="debug-details">
-                    <summary>Debug details</summary>
+                    <summary>{t("conversionTab.modal.debugDetails", { defaultValue: "Debug details" })}</summary>
                     <dl className="debug-grid">
-                      <dt>Model ref</dt>
+                      <dt>{t("conversionTab.modal.modelRef", { defaultValue: "Model ref" })}</dt>
                       <dd><code>{conversionDraft.modelRef || "\u2014"}</code></dd>
-                      <dt>Source path</dt>
+                      <dt>{t("conversionTab.modal.sourcePath", { defaultValue: "Source path" })}</dt>
                       <dd><code>{conversionDraft.path || "\u2014"}</code></dd>
-                      <dt>HF repo override</dt>
+                      <dt>{t("conversionTab.modal.hfRepoOverride", { defaultValue: "HF repo override" })}</dt>
                       <dd><code>{conversionDraft.hfRepo || "\u2014"}</code></dd>
-                      <dt>Output path</dt>
+                      <dt>{t("conversionTab.outputPath", { defaultValue: "Output path" })}</dt>
                       <dd>
-                        <code>{conversionDraft.outputPath || "(default)"}</code>
+                        <code>{conversionDraft.outputPath || t("conversionTab.modal.default", { defaultValue: "(default)" })}</code>
                         {conversionDraft.outputPath && !conversionDraft.outputPath.startsWith("/") && !conversionDraft.outputPath.startsWith("~") ? (
-                          <small className="muted-text"> {"\u2192"} resolved under <code>~/Models/</code></small>
+                          <small className="muted-text"> {"\u2192"} {t("conversionTab.modal.resolvedUnder", { defaultValue: "resolved under" })} <code>~/Models/</code></small>
                         ) : null}
                       </dd>
-                      <dt>Quantize</dt>
-                      <dd>{conversionDraft.quantize ? `yes \u00B7 q${conversionDraft.qBits} g${conversionDraft.qGroupSize}` : "no"}</dd>
-                      <dt>Dtype</dt>
+                      <dt>{t("conversionTab.modal.quantize", { defaultValue: "Quantize" })}</dt>
+                      <dd>{conversionDraft.quantize
+                        ? t("conversionTab.modal.quantizeYes", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: "yes \u00B7 q{bits} g{group}" })
+                        : t("conversionTab.modal.quantizeNo", { defaultValue: "no" })}</dd>
+                      <dt>{t("conversionTab.dtype", { defaultValue: "Dtype" })}</dt>
                       <dd>{conversionDraft.dtype}</dd>
                     </dl>
                     <p className="muted-text debug-hint">
-                      Backend log: <code>~/Library/.../chaosengine-backend-8876.log</code>. Run <code>tail -100 $(ls -t $TMPDIR/chaosengine-backend-*.log | head -1)</code> in Terminal for full stderr.
+                      {t("conversionTab.modal.backendLogHint", { defaultValue: "Backend log:" })} <code>~/Library/.../chaosengine-backend-8876.log</code>. {t("conversionTab.modal.tailHint", { defaultValue: "Run" })} <code>tail -100 $(ls -t $TMPDIR/chaosengine-backend-*.log | head -1)</code> {t("conversionTab.modal.terminalHint", { defaultValue: "in Terminal for full stderr." })}
                     </p>
                   </details>
                 </div>
               ) : lastConversion ? (
                 <div className="callout">
-                  <span className="badge success">{"\u2713"} Conversion complete</span>
+                  <span className="badge success">{"\u2713"} {t("conversionTab.modal.titleComplete", { defaultValue: "Conversion complete" })}</span>
                   <h3>{lastConversion.sourceLabel}</h3>
                   <div className="conversion-output-row">
                     <p className="mono-text">{lastConversion.outputPath}</p>
@@ -491,27 +513,29 @@ export function ConversionTab({
                   </div>
                   <div className="field-grid detail-grid">
                     <div>
-                      <span className="eyebrow">Base repo</span>
+                      <span className="eyebrow">{t("conversionTab.baseRepo", { defaultValue: "Base repo" })}</span>
                       <p>{lastConversion.hfRepo}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Architecture</span>
-                      <p>{lastConversion.architecture ?? "Unknown"}</p>
+                      <span className="eyebrow">{t("conversionTab.architecture", { defaultValue: "Architecture" })}</span>
+                      <p>{lastConversion.architecture ?? t("conversionTab.unknown", { defaultValue: "Unknown" })}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Context</span>
-                      <p>{lastConversion.contextWindow ?? "Varies"}</p>
+                      <span className="eyebrow">{t("conversionTab.context", { defaultValue: "Context" })}</span>
+                      <p>{lastConversion.contextWindow ?? t("conversionTab.varies", { defaultValue: "Varies" })}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Compression</span>
-                      <p>{lastConversion.compressionRatio ? `${number(lastConversion.compressionRatio)}x cache reduction` : "\u2014"}</p>
+                      <span className="eyebrow">{t("conversionTab.compression", { defaultValue: "Compression" })}</span>
+                      <p>{lastConversion.compressionRatio
+                        ? t("conversionTab.cacheReduction", { ratio: number(lastConversion.compressionRatio), defaultValue: "{ratio}x cache reduction" })
+                        : "\u2014"}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Quality</span>
+                      <span className="eyebrow">{t("conversionTab.quality", { defaultValue: "Quality" })}</span>
                       <p>{number(lastConversion.qualityPercent ?? 0, 1)}%</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Disk before {"\u2192"} after</span>
+                      <span className="eyebrow">{t("conversionTab.diskBeforeAfter", { defaultValue: "Disk before \u2192 after" })}</span>
                       <p>
                         {lastConversion.sourceSizeGb ? sizeLabel(lastConversion.sourceSizeGb) : "\u2014"}
                         {" \u2192 "}
@@ -529,7 +553,9 @@ export function ConversionTab({
                   type="button"
                   onClick={() => onShowConversionModalChange(false)}
                 >
-                  {conversionError ? "Close" : "OK"}
+                  {conversionError
+                    ? t("conversionTab.modal.close", { defaultValue: "Close" })
+                    : t("conversionTab.modal.ok", { defaultValue: "OK" })}
                 </button>
               </div>
             ) : null}

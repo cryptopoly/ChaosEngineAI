@@ -316,15 +316,17 @@ class WanInstallEndpointsTests(unittest.TestCase):
             json={"repo": "Lightricks/LTX-Video"},
         )
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("Unsupported Wan repo", resp.json()["detail"])
+        detail = resp.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("Unsupported Wan repo", detail_text)
 
     def test_install_returns_job_state_immediately(self):
         # Mock the worker so the test doesn't actually start a thread
         # that would fail preflight on a non-Apple-Silicon CI machine.
         with patch(
-            "backend_service.routes.setup._wan_install_job_worker",
+            "backend_service.routes.setup.wan_install._wan_install_job_worker",
         ), patch(
-            "backend_service.routes.setup.threading.Thread",
+            "backend_service.routes.setup.wan_install.threading.Thread",
         ) as mock_thread:
             mock_thread.return_value = MagicMock()
             resp = self.client.post(

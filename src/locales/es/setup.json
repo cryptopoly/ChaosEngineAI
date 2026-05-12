@@ -1,0 +1,84 @@
+{
+  "title": "Configuración",
+  "subtitle": "Instalar componentes de ejecución para tu hardware",
+  "sections": {
+    "core": "Entornos principales",
+    "speculative": "Decodificación especulativa",
+    "caching": "Estrategias de caché",
+    "diffusion": "Entornos de difusión",
+    "tools": "Herramientas opcionales"
+  },
+  "actions": {
+    "install": "Instalar",
+    "uninstall": "Desinstalar",
+    "update": "Actualizar",
+    "viewLog": "Ver registro",
+    "showInFinder": "Mostrar en Finder"
+  },
+  "states": {
+    "installed": "Instalado",
+    "available": "Disponible",
+    "installing": "Instalando…",
+    "uninstalling": "Desinstalando…",
+    "checking": "Comprobando…",
+    "unavailable": "No disponible en esta plataforma",
+    "needsRestart": "Reinicio requerido"
+  },
+  "messages": {
+    "diskSpaceWarning": "Se descargarán aproximadamente {size}.",
+    "requiresNetwork": "Se requiere conexión a Internet.",
+    "platformOnly": "Este componente solo está disponible en {platform}.",
+    "succeeded": "Instalación correcta.",
+    "failed": "Instalación fallida: {reason}"
+  },
+  "installLog": {
+    "finalStatus": "Estado final:",
+    "statusNoun": {
+      "longlive": "Instalación de LongLive",
+      "gpuBundle": "Instalación"
+    },
+    "status": {
+      "failed": "{noun} fallida — ver registro",
+      "complete": "{noun} completa — ver registro",
+      "starting": "{noun} iniciando…",
+      "verifyingCuda": "Verificando CUDA…",
+      "inProgress": "{noun} en curso"
+    },
+    "meta": {
+      "target": "Destino: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "Índice CUDA: {url}",
+      "cudaVerified": "CUDA verificado",
+      "cudaVerificationFailed": "Verificación de CUDA fallida",
+      "noWheelForPython": "Sin wheel CUDA para este Python",
+      "restartBackend": "Reinicie el backend para activar"
+    },
+    "step": {
+      "waiting": "(esperando)",
+      "final": "Final: {done}/{total} paquetes · {percent}%",
+      "current": "Paso {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "trabajando…",
+      "noOutput": "(sin salida capturada)"
+    },
+    "attempt": {
+      "verifyCuda": "Verificar torch.cuda.is_available()",
+      "torchDeps": "dependencias de torch (desde {url})",
+      "torchCleanup": "Limpiar archivos torch obsoletos",
+      "torchRepair": "Reparar wheel CUDA de torch",
+      "constraint": "Fijar versión de torch",
+      "torchFromIndex": "torch (desde {url})",
+      "pipInstall": "pip install {pkg}",
+      "step": "paso"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "Instalación completa — ver registro{index}",
+    "installFailed": "{count, plural, =0 {Instalación fallida — ver registro} one {Instalación fallida — ver registro (# intento)} other {Instalación fallida — ver registro (# intentos)}}"
+  },
+  "wanRuntime": {
+    "title": "Runtime Wan MLX",
+    "ready": "Listo"
+  }
+}

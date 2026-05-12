@@ -1,5 +1,146 @@
 # Changelog
 
+## v0.8.0 - 2026-05-10
+
+### Refactor + audit
+
+Multi-week pass through the largest backend / frontend modules to land
+the v0.8.0 modularisation goal. Zero feature regressions — 1,302 Python
+tests + 340 TypeScript tests pass before and after every commit; all
+type checks (mypy, tsc) clean.
+
+**Bundled MLX worker memory leak fix.** `JsonRpcProcess.close()` now
+captures and nulls `self.process` up-front + wraps the post-kill
+`wait()` in `try/except TimeoutExpired` with a 1 s ceiling, mirroring
+`LlamaCppEngine._cleanup_process`. Without the fix, force-killing a
+worker that held ~47 GB of MLX weights routinely raised
+`TimeoutExpired` on the macOS vm_map teardown, the exception was
+swallowed by the route layer's broad `except Exception: pass`,
+`self.process` was never nulled, and the next load spawned a second
+worker alongside the dying one — Activity Monitor showed two ~47 GB
+Python processes; `/api/server/status` reported one model.
+
+**Backend (`backend_service/`)** — major shrinks across the four
+biggest modules:
+
+- `state/__init__.py`: 4,418 → 860 LOC (-81%) via
+  `state/{logs,metrics,_helpers,documents,benchmarks,openai_compat,
+  payloads,settings_state,sessions,downloads,generation,lifecycle}.py`.
+  Class methods that moved out are 1-3 line thin wrappers; tests that
+  patch `_describe_process` / `_spawn_snapshot_download` /
+  `threading.Thread` / `subprocess.Popen` retarget to the new module
+  paths; no external import path changes. The facade is essentially
+  just construction, validation, and wiring now.
+- `inference/__init__.py`: 3,574 → 97 LOC (-97%) via the existing
+  `engines/` subpackage (RemoteOpenAIEngine + MockInferenceEngine +
+  MLXWorkerEngine + LlamaCppEngine + binaries + capabilities +
+  conversion) plus `controller.py` (the full ~1,050 LOC
+  RuntimeController class). The package's `__init__` is now just the
+  public re-export surface.
+- `mlx_worker.py`: 2,115 → 318 LOC (-85%) via
+  `mlx_worker_{request,prompt,io,diagnostics,multimodal,cache,eval,loader,
+  lifecycle,speculative,generate}.py`. WorkerState methods are 1-3 line
+  wrappers; load_model + unload_model + update_profile + cache profile
+  helpers + DFLASH + DDTree speculative generation + plain text /
+  streaming generation paths + JSON IPC channel + HF snapshot download
+  + perplexity / task-accuracy eval + multimodal paths all sit in
+  their own cohesive modules now.
+- `image_runtime/__init__.py`: 2,097 → 992 LOC (-53%) and
+  `video_runtime/__init__.py`: 2,378 → 1,018 LOC (-57%) via
+  `transformer_loaders.py` + `pipeline_helpers.py` per package +
+  the existing `{types,repos,snapshot,device,placeholder_engine,
+  mflux_engine,defaults,warmup}` modules. Quantised transformer
+  loaders (NF4, int8wo, GGUF, Nunchaku SVDQuant, BitsAndBytes NF4,
+  lightx2v Wan distill swap) + FP8 layerwise casting + device
+  probes + dtype pickers + per-step pipeline callbacks +
+  finalize_config / swap_scheduler / build_pipeline_kwargs +
+  encode_frames_to_mp4 all moved out.
+- `routes/setup/`: 1,932 → 353 LOC (-82%) via
+  `setup/{longlive,wan_install,turbo,_install_helpers,cuda_torch,gpu_bundle}.py`.
+- `routes/html_challenges/`: 1,183 → 2-file package
+  (`__init__.py` + `_helpers.py`).
+- `helpers/`: 14 sibling modules pulled out of the original
+  helpers files (image_artifacts, image_validation, video_artifacts,
+  mlx_video_validation, quantization, model_classifier,
+  snapshot_integrity, model_family_payload, hf_cache_paths, hf_format,
+  hf_errors, system_processes, system_hardware, document_text,
+  torch_status). Cumulative shrink: images 983→751, video 769→565,
+  discovery 806→429, huggingface 703→525, system 559→252,
+  documents 586→478.
+
+**Frontend (`src/`)** — same pattern applied to the largest hooks +
+components:
+
+- `api.ts`: 1,430 → 6 domain modules (chat, image, video, models,
+  setup, admin). Live-binding circular re-exports preserve every
+  existing import path.
+- `types.ts`: 1,378 → 230 LOC (-83%) via 11-file `types/` package.
+- `useChat.ts`: 1,203 → 1,067 LOC. `optimisticTurns` (the
+  push/replace/rollback state machine) + per-session localStorage
+  helpers (temperature, reasoning effort) moved to `features/chat/`.
+- `useImageState.ts`: 846 → 809 LOC via
+  `features/image/{downloadActions,studioPresets,galleryActions}.ts`.
+- `useVideoState.ts`: 1,126 → 899 LOC (-20%) via
+  `features/video/{downloadActions,modelLifecycle,installActions}.ts`.
+- `HtmlChallengeTab.tsx`: 1,677 → 1,103 LOC via the
+  `features/chat/html_challenge/` package — 5 child components
+  (ChallengeSetupPanel, ChallengeSlotPanel, ChallengeModelCard,
+  ChallengePickerModal, ChallengeHistoryCombobox) + 2 helper modules
+  (challengeApi.ts fetch wrappers, htmlChallengeTabHelpers.ts pure
+  derived-value helpers + slot-state reducers).
+- `VideoStudioTab.tsx`: 1,712 → 1,479 LOC via
+  `VideoStudioRuntimeBanner.tsx` (~265 LOC of dense runtime status
+  callout, chip row, and conditional install action panels for
+  LongLive / mlx-video / mp4 encoder / missing tokenizer deps / GPU
+  bundle).
+- `ImageStudioTab.tsx`: 1,178 → 992 LOC via
+  `ImageStudioRuntimeBanner.tsx` (~205 LOC of CUDA torch banner,
+  chip row, model preload/unload control row, GPU runtime install
+  action stack).
+- App.tsx: 2,334 → 2,081 LOC via `features/app/` package
+  (`modelActions.ts` for unload/delete handlers,
+  `variantPayloads.ts` for pure variant → load/thread payload
+  helpers, `conversionActions.ts` for the model conversion flow).
+  CUDA torch install hook + capability strip shared component
+  also pulled out.
+
+**Rust shell (`src-tauri/src/`)** — full Phase 3 split:
+
+- `binaries.rs` — bundled binary path resolvers (`resolve_llama_server` /
+  `resolve_llama_server_turbo` / `resolve_llama_cli` / `resolve_sd_cpp` +
+  `resolve_candidate` / `find_in_path` utilities).
+- `env_setup.rs` — env-var + path-list helpers (`apply_library_path`,
+  `join_paths`, `prepend_env_paths`).
+- `runtime.rs` — `EmbeddedRuntimeManifest` + `EmbeddedRuntime` structs +
+  20 helpers covering manifest fingerprint, tar extraction, extras-dir
+  ABI namespacing, env application.
+- `backend.rs` — `impl BackendManager` (~400 LOC) bootstrap → spawn →
+  wait_for_port → probe sequence.
+
+lib.rs: 1,335 → 302 LOC (-77%). Just public API surface (Tauri commands,
+run() entry, struct decls) remains.
+
+**Performance gate.** `scripts/perf-gate.py` compares a
+`scripts/perf-baseline.py` JSON run against the captured floors in
+`PERF_BASELINE.md`; default ±5% tolerance, configurable. Initial
+floor: `text.tokens_per_second ≥ 297 tok/s` (Qwen2.5-0.5B 4-bit MLX,
+Apple Silicon, 2026-05-09). New `.github/workflows/perf-gate.yml` runs
+the comparator on `macos-latest` with HF cache restore — triggered via
+the Actions "Run workflow" button or by labeling a PR with
+`perf-gate`. We deliberately don't bolt this onto every push because
+the cheapest gen needs ~700 MB of cached weights.
+
+**Cross-OS parity.** PowerShell ports of the existing bash update
+scripts; cross-platform `pre-build-check.mjs`; Windows promoted from
+advisory to required in the CI test matrix.
+
+**CLAUDE.md** extended with a Code Quality Guidelines section
+(performance / security / modularisation) capturing the patterns this
+refactor codified — file-size soft caps (backend 600 LOC, hooks 400,
+components 500, Rust 800), unload-before-reload, list-form
+subprocess-only, hostile-path validation, lazy imports, no premature
+abstraction.
+
 ## v0.7.6 - 2026-05-08
 
 ### HTML Challenge — side-by-side HTML generation comparison
@@ -82,7 +223,7 @@
 - VRAM-fit hints on every Discover variant card so you see at a glance what'll actually run on your machine.
 
 **Phase 3.x — substrate transparency**
-- KV strategy chip in composer: per-turn cache override (native / chaosengine / rotorquant / turboquant / triattention) without touching launch settings.
+- KV strategy chip in composer: per-turn cache override (native / turboquant / triattention) without touching launch settings.
 - DDTree accepted-token overlay: substrate truth view of which speculative draft tokens were accepted.
 - Logprobs viz (advanced-mode gated): per-message confidence summary, MLX logprobs streaming passthrough.
 - Substrate routing inspector: per-turn badge above the metrics row showing which engine + binary served the response.

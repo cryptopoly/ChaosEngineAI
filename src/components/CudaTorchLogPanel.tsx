@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { CudaTorchInstallResult } from "../api";
 
 // Collapsible terminal-style log for the inline "Install CUDA torch"
@@ -22,6 +24,7 @@ interface CudaTorchLogPanelProps {
 }
 
 export function CudaTorchLogPanel({ result }: CudaTorchLogPanelProps) {
+  const { t } = useTranslation("setup");
   const scrollRef = useRef<HTMLPreElement | null>(null);
   const attemptCount = result?.attempts.length ?? 0;
   useEffect(() => {
@@ -34,38 +37,44 @@ export function CudaTorchLogPanel({ result }: CudaTorchLogPanelProps) {
 
   const openByDefault = !result.ok;
   const summary = result.ok
-    ? `Install complete — see log${result.indexUrl ? ` (${shortIndex(result.indexUrl)})` : ""}`
-    : `Install failed — see log${result.attempts.length > 0 ? ` (${result.attempts.length} attempt${result.attempts.length === 1 ? "" : "s"})` : ""}`;
+    ? t("cudaTorch.installComplete", {
+        index: result.indexUrl ? ` (${shortIndex(result.indexUrl)})` : "",
+        defaultValue: `Install complete — see log${result.indexUrl ? ` (${shortIndex(result.indexUrl)})` : ""}`,
+      })
+    : t("cudaTorch.installFailed", {
+        count: result.attempts.length,
+        defaultValue: `Install failed — see log${result.attempts.length > 0 ? ` (${result.attempts.length} attempt${result.attempts.length === 1 ? "" : "s"})` : ""}`,
+      });
 
   return (
     <details className="install-log-panel" open={openByDefault} style={{ marginTop: "0.5rem" }}>
       <summary className="install-log-summary">{summary}</summary>
       <div className="install-log-body">
-        {renderMeta(result)}
+        {renderMeta(result, t)}
         <pre ref={scrollRef} className="install-log-terminal">
-          {renderTerminal(result)}
+          {renderTerminal(result, t)}
         </pre>
       </div>
     </details>
   );
 }
 
-function renderMeta(result: CudaTorchInstallResult): React.ReactNode {
+function renderMeta(result: CudaTorchInstallResult, t: TFunction): React.ReactNode {
   const fragments: string[] = [];
-  if (result.targetDir) fragments.push(`Target: ${result.targetDir}`);
-  if (result.pythonVersion) fragments.push(`Python ${result.pythonVersion}`);
-  if (result.indexUrl) fragments.push(`CUDA index: ${result.indexUrl}`);
-  if (result.noWheelForPython) fragments.push("No CUDA wheel for this Python");
-  if (result.requiresRestart) fragments.push("Restart Backend to activate");
+  if (result.targetDir) fragments.push(t("installLog.meta.target", { dir: result.targetDir, defaultValue: `Target: ${result.targetDir}` }));
+  if (result.pythonVersion) fragments.push(t("installLog.meta.python", { version: result.pythonVersion, defaultValue: `Python ${result.pythonVersion}` }));
+  if (result.indexUrl) fragments.push(t("installLog.meta.cudaIndex", { url: result.indexUrl, defaultValue: `CUDA index: ${result.indexUrl}` }));
+  if (result.noWheelForPython) fragments.push(t("installLog.meta.noWheelForPython", { defaultValue: "No CUDA wheel for this Python" }));
+  if (result.requiresRestart) fragments.push(t("installLog.meta.restartBackend", { defaultValue: "Restart Backend to activate" }));
   if (fragments.length === 0) return null;
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function renderTerminal(result: CudaTorchInstallResult): string {
+function renderTerminal(result: CudaTorchInstallResult, t: TFunction): string {
   const lines: string[] = [];
   for (const attempt of result.attempts) {
     const marker = attempt.ok ? "[ OK ]" : "[FAIL]";
-    lines.push(`${marker} torch (from ${attempt.indexUrl})`);
+    lines.push(`${marker} ${t("installLog.attempt.torchFromIndex", { url: attempt.indexUrl, defaultValue: `torch (from ${attempt.indexUrl})` })}`);
     if (attempt.output) {
       const body = filterPipNoise(attempt.output);
       if (body) {
@@ -87,7 +96,7 @@ function renderTerminal(result: CudaTorchInstallResult): string {
       }
     }
   }
-  return lines.join("\n").trimEnd() || "(no output captured)";
+  return lines.join("\n").trimEnd() || t("installLog.terminal.noOutput", { defaultValue: "(no output captured)" });
 }
 
 function shortIndex(url: string): string {

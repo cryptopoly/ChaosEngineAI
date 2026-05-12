@@ -1,0 +1,436 @@
+{
+  "image": {
+    "title": "画像スタジオ",
+    "subtitle": "モデルを選択し、プロンプトを入力し、保存された出力を反復",
+    "savedOutputsLabel": "保存された出力",
+    "promptPanelTitle": "プロンプト",
+    "promptPanelSubtitle": "モデルを選択し、アスペクト比と品質を設定して、ローカルギャラリーに生成します。",
+    "recentOutputsTitle": "最近の出力",
+    "prompt": "プロンプト",
+    "negativePrompt": "ネガティブプロンプト",
+    "enhancePrompt": "強化",
+    "width": "幅",
+    "height": "高さ",
+    "steps": "ステップ",
+    "guidance": "ガイダンス",
+    "guidanceScale": "ガイダンススケール",
+    "seed": "シード",
+    "seedRandom": "ランダム",
+    "sampler": "サンプラー",
+    "scheduler": "スケジューラー",
+    "batchSize": "バッチサイズ",
+    "generate": "画像を生成",
+    "generating": "画像を生成中…",
+    "queued": "待機中",
+    "decoding": "デコード中…",
+    "saveImage": "画像を保存",
+    "copyImage": "画像をコピー",
+    "openFolder": "フォルダーで表示",
+    "modelLabel": "モデル",
+    "noModelsOption": "インストール済みモデルなし — ディスカバーからダウンロード",
+    "aspectRatio": "アスペクト比",
+    "qualityPreset": "品質プリセット",
+    "previewLabel": "プレビュー",
+    "draftOn": "512px · オン",
+    "draftOff": "ドラフト @ 512px",
+    "diffusionCache": "拡散キャッシュ",
+    "modal": {
+      "cancelling": "キャンセル中...",
+      "generating": "画像を生成中",
+      "cancelled": "画像生成がキャンセルされました",
+      "failed": "画像生成に失敗しました",
+      "imagesReady": "画像の準備ができました",
+      "imageReady": "画像の準備ができました"
+    }
+  },
+  "video": {
+    "title": "動画スタジオ",
+    "prompt": "プロンプト",
+    "negativePrompt": "ネガティブプロンプト",
+    "duration": "長さ",
+    "framesPerSecond": "フレームレート",
+    "frames": "フレーム数",
+    "resolution": "解像度",
+    "generate": "動画を生成",
+    "generating": "動画を生成中…",
+    "encoding": "エンコード中…",
+    "saveVideo": "動画を保存",
+    "modelLabel": "動画モデル",
+    "qualityPreset": "品質プリセット",
+    "aspectRatio": "アスペクト比",
+    "modal": {
+      "cancelling": "キャンセル中...",
+      "generating": "動画を生成中",
+      "cancelled": "動画生成がキャンセルされました",
+      "failed": "動画生成に失敗しました",
+      "ready": "動画の準備ができました"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "ステップ {current} / {total}",
+    "estimatedRemaining": "残り約 {seconds} 秒"
+  },
+  "advanced": {
+    "title": "詳細",
+    "show": "詳細設定を表示",
+    "hide": "詳細設定を非表示"
+  },
+  "enhance": {
+    "label": "強化",
+    "busy": "強化中...",
+    "tooltip": "このプロンプトをローカルで強化",
+    "error": "エンハンサーエラー:{message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "モデルをメモリに読み込み中..."
+  },
+  "imageStudio": {
+    "generateTitle": {
+      "dangerBlocked": "危険レベルの設定 — 続行するには、安全コールアウト下の承認にチェックを入れてください。",
+      "generating": "生成中...",
+      "selectModel": "最初にモデルを選択してください。",
+      "ready": "この画像を生成します。"
+    },
+    "actions": {
+      "discover": "ディスカバー",
+      "installed": "インストール済み",
+      "gallery": "ギャラリー"
+    },
+    "hero": {
+      "currentRuntime": "現在のランタイム",
+      "placeholder": "画像モデルを選択"
+    },
+    "badges": {
+      "installed": "インストール済み",
+      "loadedInMemory": "メモリに読み込み済み",
+      "loadsOnFirstGenerate": "初回生成時に読み込み",
+      "loadingIntoMemory": "メモリに読み込み中",
+      "downloaded": "ダウンロード済み"
+    },
+    "noModelsCallout": {
+      "message": "まだ画像モデルがダウンロードされていません。画像ディスカバーから閲覧してインストールし、ここに戻って生成してください。",
+      "openDiscover": "画像ディスカバーを開く"
+    },
+    "download": {
+      "failedMessage": "{name} のダウンロードが正常に完了しませんでした。ChaosEngineAI は部分的なローカルスナップショットしか見つけられなかったため、実際の画像パイプラインをまだ読み込めません。",
+      "pausedMessage": "{name} は部分的にダウンロードされています。再開すると ChaosEngineAI は既にディスク上にあるファイルから続行します。",
+      "completeMessage": "{name} のダウンロードが完了しました。インストール済みモデルのスキャンが自動的に更新されます。",
+      "notInstalledMessage": "{name} はローカルにインストールされていません。ローカル生成を有効にするには、ディスカバーからダウンロードしてください。",
+      "huggingFace": "Hugging Face",
+      "settings": "設定",
+      "technicalDetails": "技術的な詳細",
+      "pause": "一時停止",
+      "cancel": "キャンセル",
+      "resume": "再開",
+      "delete": "削除",
+      "retry": "ダウンロードを再試行",
+      "complete": "ダウンロード完了",
+      "downloadModel": "モデルをダウンロード"
+    },
+    "prompt": {
+      "label": "プロンプト",
+      "placeholder": "雨上がりのムーディーで映画的な路地、ネオンの反射、35mm 写真、浅い被写界深度"
+    },
+    "negativePrompt": {
+      "placeholder": "ぼやけている、変形した手、余分な手足、露出過多"
+    },
+    "draft": {
+      "tooltip": "プロンプトを素早く反復するため、長辺 512px のレンダリングを強制します。出力はドラフトサイズで保存されます — 最終的なフル解像度パスでは無効にしてください。"
+    },
+    "sampler": {
+      "tooltip": "デノイズ時に使用するスケジューラ / サンプラーアルゴリズム。「モデルのデフォルト」はパイプラインに同梱されたものをそのまま使用します。AYS DPM++ 2M(SD1.5 / SDXL)は NVIDIA の Align Your Steps スケジュールを使用し、Karras / Euler がソフトに見える 7-10 ステップで詳細を勝ち取ります。FLUX、SD3、Qwen-Image、Sana、HiDream では非表示 — これらのフローマッチングパイプラインは固定スケジューラを同梱しており、入れ替えるとノイズが発生します。"
+    },
+    "diffusionCache": {
+      "tooltip": "類似のサンプリングステップ間で Transformer ブロック出力を再利用することで生成を高速化します。First Block Cache はクロスプラットフォームのデフォルトで、macOS / Windows / Linux のすべての DiT パイプライン(FLUX、SD3、Qwen-Image、Sana、HiDream、Z-Image、ERNIE-Image、GLM-Image)で動作します — デフォルトしきい値で通常 1.5-2 倍の実時間短縮、品質への影響はほぼ知覚できません。TeaCache は画像側では FLUX ファミリーのキャリブレーション済みフォワードのみを同梱 — 他の DiT では非表示にして、バックエンドが実際に適用する内容をドロップダウンに反映します。Transformer の接続ポイントを持たない UNet パイプライン(SDXL / SD1.5 / SD2)では完全に非表示です。",
+      "teaCacheHidden": "TeaCache は非表示 — 画像側のキャリブレーションは FLUX ファミリーのみを対象としています。First Block Cache は現在出荷されているすべての DiT パイプラインで動作します(クロスプラットフォーム)。",
+      "threshold": "しきい値({value})",
+      "thresholdTooltip": "連続するブロックキャッシュ状態間の相対 L1 距離。低い = より厳格(高速化が少ない、ドリフトが少ない)。高い = より積極的なキャッシュ(高速化が多い、細部がちらつく可能性あり)。デフォルト:First Block Cache 0.12、TeaCache 0.4 — どちらも diffusers ブログ / 上流の論文に対してキャリブレーションされ、FLUX.1-dev で品質損失が無視できる程度です。"
+    },
+    "toggles": {
+      "cfgDecay": {
+        "label": "CFG ディケイ",
+        "description": "スケジュール全体でスライダー値から 1.5 に向かってガイダンスを線形に緩めます。初期ステップのセマンティクスを変えずに、後期ステップの過飽和を抑えます。デフォルトはオフ。バックエンドは SD1.5 / SDXL ではこれを無視します。",
+        "tooltip": "フローマッチモデル(FLUX、SD3、Qwen-Image、Sana、HiDream)では、classifier-free ガイダンスが全ステップで高いままだとハイライトを「焼き付け」がちです。ディケイを使うと、初期ステップで意味を確定(高 CFG)し、後期ステップで細部を保持(低 CFG)できます。フロアは 1.5 で固定 — スケジュール途中で 1.0 に落とすとパイプラインが 2-バッチから 1-バッチ形状に切り替わり、diffusers がクラッシュします。動画ランタイムですでに使っているノブと同じ形状です。"
+      },
+      "previewVae": {
+        "label": "プレビュー VAE",
+        "description": "フル VAE を対応する小型 VAE(TAESD / TAEHV)と入れ替えて、各ステップを実時間のごく一部でデコードします。最終的な忠実度を反復速度と引き換えにします。デフォルトはオフ。",
+        "tooltip": "小型 VAE(madebyollin/taef1、taef2、taesd3、taesdxl、taesd、taeqwenimage)はフル VAE より 1-2 桁高速ですが、細部の忠実度がやや失われます。素早い反復 / ドラフトに最適。最終画像を出荷する準備ができたらオフにしてください。マッピングされた小型 VAE のないリポジトリではバックエンドが静かに no-op になるので、心配せずオンのままにできます。"
+      },
+      "fp8Layerwise": {
+        "label": "FP8 レイヤーワイズ(CUDA Ada+)",
+        "description": "Transformer の重みを fp8 で保存し、matmul 内で bf16 に昇格します。現代の GPU では品質への影響をほぼ感じずに VRAM を半減できます。Apple Silicon / Ada 以前の GPU では正常に no-op します。",
+        "tooltip": "diffusers の enable_layerwise_casting。ファミリーに応じた dtype:HunyuanVideo は E5M2、FLUX / Wan / Qwen-Image / SD3 / LTX は E4M3。バックエンドは適用前に GPU の compute capability をチェック — Ada 以前(SM <8.9)はハードウェア fp8 を持たず、runtimeNote と共にスキップします。最小フットプリントを得るには Nunchaku INT4 と組み合わせるのが最適です。"
+      }
+    },
+    "fields": {
+      "width": "幅",
+      "height": "高さ",
+      "steps": "ステップ",
+      "guidance": "ガイダンス",
+      "images": "画像数",
+      "randomSeed": "ランダムシード",
+      "seed": "シード"
+    },
+    "safety": {
+      "dangerTitle": "バックエンドがクラッシュする可能性が高い",
+      "warningTitle": "注意 — このデバイスでは厳しいかもしれません",
+      "resourceEstimate": "モデル ≈ {model} · この実行のピーク ≈ {peak} / 合計 ~{total}。",
+      "applyTitle": "{label} を適用",
+      "useSafer": "より安全な設定を使用({label})",
+      "browseSmaller": "より小さいモデルを閲覧",
+      "overrideAck": "それでも生成する — バックエンドがクラッシュする可能性を受け入れます。",
+      "reasonDangerOver": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では推定ワーキングセットは約 {working} GB なので、モデル単独ですでにそれを超えています。小さな画像でもバックエンドがクラッシュする可能性が高いです。より小さなモデル(SD 1.5 は約 4 GB、SDXL は約 13 GB)、またはメモリの大きいマシンを試してください。",
+      "reasonDangerNear": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。生成によりバックエンドがクラッシュする可能性が高いです。解像度を下げるか、より小さなモデルを選択してください。",
+      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。"
+    },
+    "recent": {
+      "subtitle": "保存された {total} 個の生成のうち最新 {recent} 個",
+      "emptySubtitle": "生成された画像はここに表示されます",
+      "openGallery": "ギャラリーを開く",
+      "emptyHint": "このブランチの最初の保存済み画像アーティファクトを作成するにはプロンプトを生成してください。",
+      "footnote": "ここには最新の保存済み画像 {recent} 個を表示しています。すべてを閲覧し、モデルでフィルターし、古い実行を管理するには画像ギャラリーを開いてください。"
+    }
+  },
+  "videoStudio": {
+    "generateButton": "動画を生成",
+    "disabled": {
+      "noModel": "最初に動画モデルを選択してください。",
+      "notInstalled": "{name} はまだローカルにインストールされていません。",
+      "restartRequired": "生成する前に、新しくインストールされた GPU ランタイムを有効にするにはバックエンドを再起動してください。",
+      "runtimeNotReady": "動画ランタイムの準備ができていません。",
+      "noPrompt": "生成する前にプロンプトを入力してください。",
+      "backendOffline": "バックエンドはオフラインです。",
+      "busy": "ビジー…",
+      "dangerLevel": "この設定はバックエンドをクラッシュさせる可能性が高いです。警告を確認した上で下の「ハイリスク生成を許可」にチェックを入れるか、解像度 / フレーム数 / モデルを下げてください。"
+    },
+    "generateTitle": "このクリップの生成を開始します。",
+    "device": {
+      "gpuDetected": "GPU(検出済み)",
+      "cpuDetected": "CPU(検出済み)",
+      "appleDetected": "Apple Silicon(検出済み)",
+      "appleMlx": "Apple Silicon(MLX)",
+      "gpu": "GPU",
+      "apple": "Apple Silicon"
+    },
+    "memory": {
+      "defaultFallback": "~{value}(デフォルト — 実際の検出にはバックエンドを再起動してください)"
+    },
+    "capacityLine": {
+      "withModel": "{device} · {memory} 合計 · モデル ≈ {model}、この実行のピーク ≈ {peak}",
+      "short": "{device} · {memory} 合計 · この実行のピーク ≈ {peak}"
+    },
+    "subtitle": "開始するには動画モデルを選択してください",
+    "actions": {
+      "browseCatalog": "カタログを閲覧",
+      "installedModels": "インストール済みモデル",
+      "downloadModel": "モデルをダウンロード",
+      "loadIntoMemory": "メモリに読み込み",
+      "unload": "アンロード",
+      "unloadNamed": "{name} をアンロード",
+      "modelCard": "モデルカード"
+    },
+    "modelOption": {
+      "installed": "インストール済み",
+      "incomplete": "未完了"
+    },
+    "noModelsCallout": {
+      "message": "まだ動画モデルがインストールされていません。カタログを閲覧してダウンロードしてください。",
+      "openDiscover": "動画ディスカバーを開く"
+    },
+    "stats": {
+      "clipDuration": "{value} 秒のクリップ"
+    },
+    "badges": {
+      "installed": "インストール済み",
+      "incomplete": "未完了",
+      "notDownloaded": "未ダウンロード",
+      "inMemory": "メモリ内",
+      "loadedModel": "読み込まれたモデル:{name}"
+    },
+    "prompt": {
+      "label": "プロンプト",
+      "placeholder": "夜明けの霧の松林を映した映画的なドローンショット...",
+      "ltxShortWarning": "LTX-Video は詳細なプロンプト(~50-100 ワード)で最良の結果を出します。短いプロンプト(「藁を食べる漫画ラマ」)はモデルを十分に条件付けせず、ドリフトする傾向があります。Lightricks は最初にアクションを書き、その後に視覚的な詳細、ライティング、カメラの向きを加えることを推奨しています。"
+    },
+    "negativePrompt": {
+      "tooltip": "モデルに避けるべきものを伝えます。一般的なプロンプトが事前に入力されており、ほとんどの動画モデル向けにチューニングされています — モデル固有の好みがあればクリアまたは編集してください。具体性は通常、害よりも益をもたらします。",
+      "placeholder": "任意:避けるべきもの(低品質、ウォーターマークなど)"
+    },
+    "fastPreview": {
+      "label": "高速プレビュー",
+      "via": "経由",
+      "tooltip": "この生成を {parent} の代わりに {sibling} 経由で同じプロンプト + シードでレンダリングします。蒸留された固定ステップサンプラー — 通常、フル品質の dev レンダリングより 6-9 倍高速です。dev バリアントのフル品質が欲しい場合はチェックを外してください。",
+      "devVariantFallback": "dev バリアント"
+    },
+    "qualityPreset": {
+      "tooltip": "デノイズステップ数を設定します。ステップ数が多いほど = フレームが鮮明 + 生成時間が長くなります。フレーム数(クリップ長)とガイダンスは設定したままです — プリセットはそれらに触れません。"
+    },
+    "aspectRatio": {
+      "tooltip": "幅と高さを一般的な動画形状に設定します。すべてのプリセットはサポートされているすべてのモデルで安全です(長辺 ≤1024、8 で割り切れる)。より細かい制御には下の幅 / 高さを編集してください。"
+    },
+    "ltx2Distilled": {
+      "title": "LTX-2 distilled は高速サンプラーです。",
+      "body": "mlx-video は CFG 無効で固定 8+3 デノイズパスとして実行するため、ステップとガイダンスのコントロールはこのバリアントを改善しません。リファレンスデフォルトとの品質比較には dev バリアントを使用してください。",
+      "switchTo": "{name} に切り替え"
+    },
+    "fields": {
+      "width": "幅",
+      "widthTooltip": "水平解像度(ピクセル)。8 で割り切れる必要があります。大きいほど = 鮮明 + 遅い + VRAM 増加。安全な値を求める場合は上のアスペクト比プリセットを試してください。",
+      "height": "高さ",
+      "heightTooltip": "垂直解像度(ピクセル)。8 で割り切れる必要があります。大きいほど = 鮮明 + 遅い + VRAM 増加。安全な値を求める場合は上のアスペクト比プリセットを試してください。",
+      "frames": "フレーム",
+      "framesTooltip": "レンダリングするフレーム数。Wan / LTX は (frames-1) が 4 で割り切れる必要があります — 有効な値は 1、5、9、13、…、161 です。クリップ長(秒)= フレーム ÷ FPS。",
+      "fps": "FPS",
+      "fpsTooltip": "再生用の毎秒フレーム数。24 は映画的、30 はより滑らかです。生成コストには影響しません — クリップの再生速度のみ影響します。",
+      "steps": "ステップ",
+      "stepsTooltip": "デノイズステップ — モデルがノイズを画像に整えるためのパス数。多いほど = 鮮明で一貫しますが、線形に遅くなります。20 はドラフト品質、30 は標準、50+ は収穫逓減のある高品質です。",
+      "guidance": "ガイダンス",
+      "guidanceTooltip": "モデルがプロンプトにどれだけ強く従うか。低すぎ = プロンプトを無視、高すぎ = 硬直または歪んだ出力。推奨:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。プロンプトの「ネガティブ」方向は上のネガティブプロンプトから来ます。",
+      "guidanceLtxWarning": "LTX-Video はフローマッチングモデル — CFG が ~3.5 を超えると過飽和となり、ぼやけた / 虹色の出力を生成します。最もクリーンな結果を得るには 3 に下げてください。",
+      "randomSeed": "ランダムシード",
+      "seedPlaceholder": "シード(整数)"
+    },
+    "clipLength": {
+      "line": "クリップ長:{seconds} 秒({frames} フレーム ÷ {fps} fps)"
+    },
+    "ltxAutoTuneNote": "バックエンドが LTX デコードパラメータ(モデル条件付けとしての frame_rate、decode_timestep、decode_noise_scale、guidance_rescale)を Lightricks のリファレンスデフォルトに自動チューニングします — 追加のスライダーは不要です。",
+    "toggles": {
+      "nf4": {
+        "label": "4-bit(NF4)",
+        "tooltip": "動画 DiT Transformer 用の bitsandbytes 4-bit 重み量子化。Wan 2.1 14B を <24 GB VRAM に収めながら品質損失をほぼゼロに保ちます。CUDA のみ — bitsandbytes は Metal カーネルを出荷していないため、macOS(MPS)と CPU ではトグルが無視されます。追加の実時間短縮のため First Block Cache と組み合わせ可能です。"
+      },
+      "ltxRefiner": {
+        "label": "LTX 2 段階空間アップスケール",
+        "tooltip": "要求された解像度でベースサンプルをレンダリングし、その後 Lightricks/LTX-Video-0.9.5-spatial-upscaler を通して 2 倍の空間解像度でリファインします。フレーム予算が ~1.5 倍増加します。シャープなマイクロディテールとクリーンなモーションエッジ。実時間への影響が大きいためデフォルトはオフです。"
+      },
+      "enhancePrompt": {
+        "label": "短いプロンプトを自動強化",
+        "tooltip": "プロンプトが 25 ワード未満の場合、モデルにチューニングされた構造的ヒント(映画的な記述子、ライティング、カメラの向き)を追加します。拡散動画モデルは 50-100 ワードのプロンプトで学習されており、短い入力では十分に条件付けされません。長いカスタムプロンプトはそのまま送信されます — しきい値はセーフガードです。"
+      },
+      "cfgDecay": {
+        "label": "CFG ディケイ",
+        "tooltip": "ステップ 0 のスライダー値から最終ステップで 1.5(classifier-free ガイダンスをエンドツーエンドで有効に保つフロア)に向かって guidance_scale を線形に下げます。フローマッチ動画モデル(Wan、LTX、HunyuanVideo)はサンプリング中ずっと CFG が高いと過飽和になります。ディケイにより初期ステップで意味を確定し、後期ステップで細部を保持できます。動画ではデフォルトオン — ランタイムは非フローマッチリポジトリを自動的にゲートします。"
+      },
+      "previewVae": {
+        "label": "プレビュー VAE",
+        "tooltip": "フル VAE を対応する小型 VAE(Wan には madebyollin/taew2_2、LTX には taeltx2_3_wide、HunyuanVideo には taehv1_5、その他には taecogvideox / taemochi)と入れ替えて、各ステップを実時間のごく一部でデコードします。最終的な忠実度を反復速度と引き換えにします。デフォルトはオフ。マッピングされた小型 VAE のないリポジトリではバックエンドが静かに no-op になります。"
+      },
+      "fp8Layerwise": {
+        "label": "FP8 レイヤーワイズ(CUDA Ada+)",
+        "tooltip": "diffusers の enable_layerwise_casting。ファミリーに応じた dtype:HunyuanVideo は E5M2、Wan / LTX / FLUX / Qwen-Image は E4M3。バックエンドは適用前に GPU の compute capability をチェック — Ada 以前の GPU はハードウェア fp8 を持たず、runtimeNote と共にスキップします。最小 VRAM フットプリントを得るには GGUF または Nunchaku 量子化パスと組み合わせるのが最適です。"
+      }
+    },
+    "diffusionCache": {
+      "label": "拡散キャッシュ",
+      "tooltip": "類似のタイムステップ間で Transformer ブロック出力を再利用することで生成を高速化します。First Block Cache は macOS / Windows / Linux のすべての DiT パイプライン(Wan、LTX、Hunyuan、CogVideoX、Mochi)で動作します。TeaCache は FLUX ファミリーの動画モデル(Hunyuan / LTX / CogVideoX / Mochi)のみに適用 — Wan では非表示。上流パッチが異なる Transformer レイアウトを対象としているためです。mlx-video LTX-2 サブプロセスパスは diffusers のフックシステム外でレンダリングするため、そこではキャッシュが利用できません。",
+      "mlxSubprocessNote": "mlx-video LTX-2 は diffusers フックシステム外のサブプロセスとして実行されます — キャッシュ戦略はここでは利用できません。First Block Cache を使うには diffusers の Wan / LTX / Hunyuan バリアントに切り替えてください。",
+      "wanNote": "TeaCache は Wan では非表示 — そのキャリブレーションテーブルは異なる Transformer レイアウトを対象としています。First Block Cache は diffusers 0.36 の汎用フックを介して Wan をカバーします。",
+      "threshold": "しきい値({value})",
+      "thresholdTooltip": "低い = より厳格(高速化が少ない、品質ドリフトが少ない)。高い = より積極的なキャッシュ。動画 DiT は画像 DiT よりドリフトに敏感なため、デフォルトはより厳しい(0.08 vs 0.12)です。"
+    },
+    "stgScale": {
+      "label": "STG スケール",
+      "tooltip": "Spatial-Temporal Guidance。LTX-2 dev MLX パスでサンプラーステップごとに追加の摂動フォワードパスを実行し、オブジェクトの破綻とクロマドリフトを低減します。1.0 は上流の推奨デフォルトに一致。0.0 は無効にし、わずかな品質コストで dev 実行を ~33% 高速化します。蒸留パイプラインは固定サンプラーで実行され、値を無視します。",
+      "distilledNote": "蒸留パイプラインは固定サンプラーで実行されます — STG は無視されます。このノブを使うには dev バリアントに切り替えてください。"
+    },
+    "safety": {
+      "dangerTitle": "バックエンドがクラッシュする可能性が高い",
+      "warningTitle": "注意 — このデバイスでは厳しいかもしれません",
+      "applyTitle": "{label} を適用",
+      "useSafer": "より安全な設定を使用({label})",
+      "browseSmaller": "より小さいモデルを閲覧",
+      "overrideAck": "ハイリスク生成を許可 — バックエンドがクラッシュしてマシンの再起動が必要になる可能性を受け入れます。",
+      "reasonDangerOver": "モデルは標準配置で約 {model} GB の常駐を必要としますが、{platform}(合計 {total} GB)で安全に利用できるのは約 {working} GB のみです。ランタイムは自動的にシーケンシャル CPU オフロードにフォールバックします — 生成は成功しますが、各ステップごとにサブモジュールが CPU と {offloadDevice} メモリの間で入れ替わるため、数倍遅くなります。フルスピード生成にはより小さなモデル(LTX-Video は約 2 GB 常駐)、またはメモリの大きいマシンを選択してください。",
+      "reasonDangerNear": "モデルは約 {model} GB の常駐を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。ランタイムは収めるために CPU オフロードを使用する可能性があります — フルスピード生成にしたい場合は設定を下げるかより小さなモデルを選択してください。",
+      "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
+    },
+    "disabledHint": "生成は無効:{reason}",
+    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。"
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{total, plural, other {# 個の保存済み出力}} のうち {filtered} 個",
+      "empty": "保存された生成物、フィルター、クイック再利用アクション"
+    },
+    "actions": {
+      "studio": "スタジオ",
+      "installedModels": "インストール済みモデル"
+    },
+    "hero": {
+      "eyebrow": "保存された出力",
+      "heading": "生成された画像を閲覧、フィルタ、再利用",
+      "body": "画像スタジオはプロンプトと生成に集中させ、画像ギャラリーで過去の出力を検索したり、モデルを比較したり、同じ設定でスタジオに戻ったりできます。"
+    },
+    "stats": {
+      "saved": "{count, plural, other {# 個保存}}",
+      "modelsUsed": "{count, plural, other {使用モデル # 個}}",
+      "realEngine": "リアルエンジン {count} 個",
+      "placeholder": "プレースホルダー {count} 個",
+      "withNotes": "メモあり {count} 個"
+    },
+    "toolbar": {
+      "search": "検索",
+      "searchPlaceholder": "プロンプト、モデル、ランタイムメモ",
+      "model": "モデル",
+      "allModels": "すべてのモデル",
+      "runtime": "ランタイム",
+      "allRuntimes": "すべてのランタイム",
+      "runtimeReal": "リアルエンジン",
+      "runtimePlaceholder": "プレースホルダー",
+      "runtimeWithNotes": "メモあり",
+      "frame": "フレーム",
+      "allFrames": "すべてのフレーム",
+      "frameSquare": "正方形",
+      "framePortrait": "縦長",
+      "frameLandscape": "横長",
+      "sort": "並べ替え",
+      "sortNewest": "新しい順",
+      "sortOldest": "古い順",
+      "clearFilters": "フィルターをクリア"
+    },
+    "matching": "一致する出力 {count, plural, other {# 個}} を表示しています。",
+    "savedSubtitle": {
+      "ready": "{count, plural, other {# 枚の画像が閲覧可能}}",
+      "noneMatch": "現在のフィルターに一致する保存済み出力はありません",
+      "startGenerating": "画像スタジオで生成してギャラリーを構築し始めましょう"
+    },
+    "empty": {
+      "firstGeneration": "画像スタジオでプロンプトを生成して、このブランチで最初の保存済み画像アーティファクトを作成してください。",
+      "noMatches": "現在のフィルターに一致する保存済み画像はまだありません。検索範囲を広げるか、いずれかのフィルターをクリアしてみてください。",
+      "openStudio": "スタジオを開く"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, other {# 個の保存済みクリップ}}",
+      "empty": "保存された動画レンダー"
+    },
+    "actions": {
+      "autoPlay": "自動再生",
+      "openStudio": "スタジオを開く",
+      "installedModels": "インストール済みモデル"
+    },
+    "empty": {
+      "body": "動画出力はまだありません。スタジオでモデルを読み込んでクリップを生成すると、完了したレンダーがここに表示されます。",
+      "openStudio": "動画スタジオを開く"
+    },
+    "card": {
+      "loadError": "動画を読み込めませんでした。",
+      "collapse": "折りたたむ",
+      "loading": "クリップを読み込み中...",
+      "meta": {
+        "frames": "{count, plural, other {# フレーム}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "{seconds} 秒クリップ",
+        "steps": "{count, plural, other {# ステップ}}",
+        "cfg": "CFG {value}",
+        "seed": "シード {value}",
+        "render": "{seconds} 秒レンダー"
+      },
+      "expand": "展開",
+      "revealFile": "ファイルを表示",
+      "delete": "削除"
+    }
+  }
+}

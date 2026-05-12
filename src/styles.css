@@ -1,6 +1,19 @@
 :root {
   color-scheme: dark;
-  font-family: "SF Pro Text", Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* FU-042: Latin baseline.  Locale-specific CJK stacks override below
+     via `html[lang="..."]` matchers — picking system-native fonts that
+     ship on each platform (Apple Silicon, Windows, Linux Noto). */
+  --font-latin: "SF Pro Text", Inter, "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-cjk-sc: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Source Han Sans SC", "Noto Sans CJK SC";
+  --font-cjk-tc: "PingFang TC", "Microsoft JhengHei",
+    "Source Han Sans TC", "Noto Sans CJK TC";
+  --font-cjk-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+    Meiryo, "Source Han Sans", "Noto Sans CJK JP";
+  --font-cjk-kr: "Apple SD Gothic Neo", "Malgun Gothic",
+    "Source Han Sans KR", "Noto Sans CJK KR";
+  font-family: var(--font-latin);
   background: #0f1215;
   color: #f4f6f8;
   font-size: 14px;
@@ -2240,6 +2253,89 @@ select.text-input {
   border: 1px solid var(--border);
 }
 
+/* FU-037: per-tab ErrorBoundary fallback. Shown when a React render
+   error tears down a tab's tree; the wrapper keeps the rest of the
+   workspace usable while exposing the error inline with a copy /
+   reset surface. */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(224, 154, 154, 0.45);
+  background: rgba(224, 154, 154, 0.06);
+  color: var(--text);
+  max-width: 920px;
+  margin: 32px auto;
+}
+
+.error-boundary__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-boundary__head strong {
+  color: var(--danger);
+  font-size: 1.05rem;
+}
+
+.error-boundary__sub {
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.error-boundary__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.error-boundary__details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+}
+
+.error-boundary__details > summary {
+  cursor: pointer;
+  color: var(--muted-strong);
+  font-size: 0.82rem;
+}
+
+.error-boundary__stack {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--muted-strong);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.error-boundary__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.error-boundary__hint code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .success-banner {
   background: rgba(143, 207, 159, 0.08);
   border-color: rgba(143, 207, 159, 0.45);
@@ -4043,12 +4139,17 @@ select.text-input {
 }
 
 .html-challenge-stream {
-  flex: 0 0 auto;
-  /* Fixed-ish height so the streaming token feed scrolls inside its own
-     box instead of expanding the panel. Auto-scroll-to-bottom kicks in
-     when the user is already near the tail; scrolling up pauses tracking
-     so previous content stays put for reading. */
-  height: clamp(280px, 38vh, 520px);
+  /* FU-036 (2026-05-10): grow to fill the model panel instead of the
+     previous fixed ``height: clamp(280px, 38vh, 520px)``. The parent
+     ``.html-challenge-panel-body`` is a column flex container; using
+     ``flex: 1 1 auto; min-height: 280px`` lets the streaming code box
+     consume the same vertical space the rendered iframe would, so the
+     panel no longer shows a tall band of empty area below the stream
+     while a model is generating. ``min-height: 280px`` keeps the box
+     usable on short viewports where the surrounding panel cannot
+     contribute much height. */
+  flex: 1 1 auto;
+  min-height: 280px;
   overflow: auto;
   overscroll-behavior: contain;
   margin: 0;
@@ -8169,6 +8270,23 @@ select.text-input {
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
+/* Wrapper that joins SubstrateRoutingBadge + ChatPerfStrip into a single
+   wrap-row so engine/cache/runtime-note chips flow inline with the perf
+   chips instead of breaking onto their own line (FU-035). The two child
+   strips use ``display: contents`` below so their inner chips become
+   direct flex children of this wrapper. */
+.message-runtime-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+
+.message-runtime-strip > .substrate-routing,
+.message-runtime-strip > .chat-perf-strip {
+  display: contents;
+}
+
 /* Substrate routing inspector badge (Phase 3.4) */
 .substrate-routing {
   display: flex;
@@ -8885,4 +9003,80 @@ select.text-input {
   color: var(--muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ----------------------------------------------------------------------
+ * FU-042 — locale-specific font stacks + first-launch banner styles.
+ *
+ * Each `html[lang="…"]` rule overrides the Latin baseline with the
+ * platform-native CJK font that ships on macOS / Windows / Linux Noto.
+ * No web-font download — every face is in the system already, so
+ * shipped builds stay binary-clean.
+ * -------------------------------------------------------------------- */
+
+html[lang="zh-CN"] body,
+html[lang="zh-CN"] input,
+html[lang="zh-CN"] textarea,
+html[lang="zh-CN"] button,
+html[lang="zh-CN"] select {
+  font-family: var(--font-latin), var(--font-cjk-sc);
+}
+
+html[lang="zh-TW"] body,
+html[lang="zh-TW"] input,
+html[lang="zh-TW"] textarea,
+html[lang="zh-TW"] button,
+html[lang="zh-TW"] select {
+  font-family: var(--font-latin), var(--font-cjk-tc);
+}
+
+html[lang="ja"] body,
+html[lang="ja"] input,
+html[lang="ja"] textarea,
+html[lang="ja"] button,
+html[lang="ja"] select {
+  font-family: var(--font-latin), var(--font-cjk-jp);
+}
+
+html[lang="ko"] body,
+html[lang="ko"] input,
+html[lang="ko"] textarea,
+html[lang="ko"] button,
+html[lang="ko"] select {
+  font-family: var(--font-latin), var(--font-cjk-kr);
+}
+
+/* FirstLaunchLocaleBanner — pinned to the top of the viewport. */
+.locale-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #1a2230, #141a23);
+  border-bottom: 1px solid #232c38;
+  color: #f4f6f8;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.locale-banner__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.locale-banner__copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.locale-banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }

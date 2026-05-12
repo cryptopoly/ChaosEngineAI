@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
@@ -305,6 +306,7 @@ export function CompareView({
   installingPackage,
   installLogs,
 }: CompareViewProps) {
+  const { t } = useTranslation("chat");
   const [slots, setSlots] = useState<CompareSlot[]>(() => [
     { id: "a", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
     { id: "b", modelKey: "", settings: cloneLaunchSettings(launchSettings) },
@@ -530,12 +532,13 @@ export function CompareView({
 
   function renderModelCard(slot: CompareSlot) {
     const option = selectedBySlot[slot.id];
+    const slotLabel = t(`compareView.slot.${slot.id}`, { defaultValue: compareTargetLabels[slot.id] });
     return (
       <div key={slot.id}>
-        <span className="eyebrow">{compareTargetLabels[slot.id]}</span>
+        <span className="eyebrow">{slotLabel}</span>
         <div className="model-selected-card" style={{ minHeight: 104 }}>
           <div className="model-selected-info">
-            <strong>{option?.label ?? "Select a model"}</strong>
+            <strong>{option?.label ?? t("compareView.selectModel", { defaultValue: "Select a model" })}</strong>
             <div className="model-selected-meta">
               {option?.format ? <span className="badge muted">{option.format}</span> : null}
               {option?.quantization ? <span className="badge muted">{option.quantization}</span> : null}
@@ -551,9 +554,9 @@ export function CompareView({
                 type="button"
                 onClick={removeLastSlot}
                 disabled={busy}
-                title={`Remove ${compareTargetLabels[slot.id]}`}
+                title={t("compareView.removeSlotTitle", { slot: slotLabel, defaultValue: `Remove ${slotLabel}` })}
               >
-                Remove
+                {t("compareView.remove", { defaultValue: "Remove" })}
               </button>
             ) : null}
             <button
@@ -562,7 +565,9 @@ export function CompareView({
               onClick={() => openPicker(slot.id)}
               disabled={busy}
             >
-              {option ? "Change" : "Select"}
+              {option
+                ? t("compareView.change", { defaultValue: "Change" })
+                : t("compareView.select", { defaultValue: "Select" })}
             </button>
           </div>
         </div>
@@ -610,7 +615,7 @@ export function CompareView({
         subtitle={subtitle}
         actions={showLatestButton ? (
           <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(slot.id)}>
-            Latest
+            {t("compare.latest", { defaultValue: "Latest" })}
           </button>
         ) : null}
       >
@@ -667,11 +672,16 @@ export function CompareView({
     <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 12, overflowY: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", flexWrap: "wrap" }}>
         <button className="secondary-button" type="button" onClick={onBack} style={{ fontSize: 12 }}>
-          Back to Chat
+          {t("compareView.backToChat", { defaultValue: "Back to Chat" })}
         </button>
-        <h3 style={{ margin: 0, fontSize: 16, color: "#c8d0da" }}>Compare Models</h3>
+        <h3 style={{ margin: 0, fontSize: 16, color: "#c8d0da" }}>
+          {t("compareView.title", { defaultValue: "Compare Models" })}
+        </h3>
         <small style={{ color: "#7a8594", fontSize: 11 }}>
-          Queue 2-4 models. Each slot loads exclusively, runs, and unloads before the next slot starts.
+          {t("compareView.subtitle", {
+            defaultValue:
+              "Queue 2-4 models. Each slot loads exclusively, runs, and unloads before the next slot starts.",
+          })}
         </small>
       </div>
 
@@ -681,12 +691,16 @@ export function CompareView({
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", minHeight: 28 }}>
         <button className="secondary-button" type="button" onClick={addSlot} disabled={busy || slots.length >= 4}>
-          Add model
+          {t("compareView.addModel", { defaultValue: "Add model" })}
         </button>
-        <span className="muted-text" style={{ fontSize: 11 }}>{slots.length}/4 queued</span>
+        <span className="muted-text" style={{ fontSize: 11 }}>
+          {t("compareView.queued", { count: slots.length, defaultValue: "{count}/4 queued" })}
+        </span>
         {duplicateSelected ? (
           <span className="muted-text" style={{ fontSize: 11 }}>
-            Same model selected in multiple slots; useful for runtime-profile A/B tests.
+            {t("compareView.duplicateNote", {
+              defaultValue: "Same model selected in multiple slots; useful for runtime-profile A/B tests.",
+            })}
           </span>
         ) : null}
       </div>
@@ -699,13 +713,13 @@ export function CompareView({
           onKeyDown={(event) => {
             if (event.key === "Enter" && !busy) void handleCompare();
           }}
-          placeholder="Enter a prompt to compare..."
+          placeholder={t("compareView.promptPlaceholder", { defaultValue: "Enter a prompt to compare..." })}
           className="text-input"
           style={{ flex: 1 }}
           disabled={busy}
         />
         {busy ? (
-          <button className="secondary-button" type="button" onClick={handleCancel}>Cancel</button>
+          <button className="secondary-button" type="button" onClick={handleCancel}>{t("compareView.cancel", { defaultValue: "Cancel" })}</button>
         ) : (
           <button
             className="primary-button"
@@ -713,7 +727,7 @@ export function CompareView({
             onClick={() => void handleCompare()}
             disabled={!prompt.trim() || !allSelected}
           >
-            Compare
+            {t("compareView.compareButton", { defaultValue: "Compare" })}
           </button>
         )}
       </div>

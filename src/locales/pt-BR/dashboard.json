@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "Estatísticas do sistema ao vivo",
+    "subtitle": "Atualizadas pelo sidecar Python para que o shell do desktop possa fazer recomendações de adequação.",
+    "runtimeEngine": "Motor do runtime",
+    "noModelLoaded": "Nenhum modelo carregado",
+    "inferenceActivity": "Atividade de inferência",
+    "activeCount": "{count} ativos",
+    "totalServed": "{count} servidos no total",
+    "warmPool": "Pool quente",
+    "warmModelCount": "{count, plural, one {# modelo} other {# modelos}}",
+    "noWarmModels": "Sem modelos quentes",
+    "modelDisk": "Disco dos modelos",
+    "diskFree": "{value} GB livres",
+    "diskTotal": "{value} GB no total",
+    "spareHeadroom": "Margem disponível",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% de margem de trabalho",
+    "memoryInUse": "Memória em uso",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "Pressão de memória",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} GB comprimidos",
+    "swapUsage": "Uso de swap",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "Carga de CPU",
+    "cpuLabel": "{value}%",
+    "headroomFor": "Margem para {target}",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "Energia",
+      "charging": "Carregando",
+      "acPower": "Energia CA",
+      "onBattery": "Na bateria",
+      "lowNotice": "Desconectado — a inferência pode reduzir sob pressão térmica"
+    },
+    "processes": {
+      "name": "Processo",
+      "owner": "Proprietário",
+      "memory": "Memória",
+      "cpu": "CPU",
+      "active": "ATIVO",
+      "warm": "QUENTE",
+      "system": "Sistema",
+      "empty": "Nenhum processo LLM local ativo foi detectado.",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "Adequação de hardware",
+    "subtitle": "Orientação em relação ao perfil de destino recomendado para esta máquina.",
+    "recommendedTarget": "Destino recomendado",
+    "currentRuntime": "Runtime atual",
+    "modelLoadedVia": "{model} carregado via {engine}.",
+    "noModelHint": "Ainda não há modelo carregado. Escolha um modelo de thread no Chat ou navegue em uma família mais nova em Descobrir."
+  },
+  "activityFeed": {
+    "title": "Feed de atividades",
+    "subtitle": "Eventos operacionais que devem permanecer visíveis sem ter que explorar logs.",
+    "now": "Agora"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Varredura da biblioteca concluída",
+      "detail": "{count} entradas locais encontradas nos diretórios de modelos configurados."
+    },
+    "hardwareProfile": {
+      "title": "Perfil de hardware atualizado"
+    },
+    "backendReadiness": {
+      "title": "Prontidão do backend",
+      "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizável: {mlxUsable} / Runtime GGUF: {gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "Alvo recomendado: classe {modelSize} @ {cacheLabel}",
+    "mlxDetail": "Esta previsão é relativa a um alvo local recomendado da classe {modelSize} em {hardware}, não a um modelo de chat atualmente selecionado.",
+    "ggufTitle": "Alvo recomendado: {modelSize} GGUF",
+    "ggufDetail": "O modo multiplataforma preferirá llama.cpp GGUF para amplo suporte de hardware."
+  }
+}

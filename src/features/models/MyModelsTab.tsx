@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { DownloadStatus } from "../../api";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
@@ -10,7 +11,6 @@ import type {
 import {
   number,
   sizeLabel,
-  capabilityMeta,
   parseContextK,
   compareOptionalNumber,
   inferHfRepoFromLocalPath,
@@ -19,6 +19,7 @@ import {
   formatReleaseLabel,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
+import { CapabilityStrip } from "../../components/CapabilityStrip";
 import { candidateKeys } from "../../components/runtimeSupport";
 
 export interface LibraryRow {
@@ -35,7 +36,6 @@ export interface LibraryRow {
 interface StrategyCompatInfo {
   turboInstalled: boolean;
   turboquantMlxAvailable: boolean;
-  chaosengineAvailable: boolean;
   dflashSupportedModels: string[];
 }
 
@@ -98,6 +98,7 @@ export function MyModelsTab({
   onLibrarySortKeyChange,
   onLibrarySortDirChange,
 }: MyModelsTabProps) {
+  const { t } = useTranslation("library");
   function toggleLibrarySort(key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") {
     if (librarySortKey === key) {
       onLibrarySortDirChange(librarySortDir === "asc" ? "desc" : "asc");
@@ -115,12 +116,16 @@ export function MyModelsTab({
   function libraryDownloadDetail(download: DownloadStatus): string {
     const sizeDetail = downloadSizeTooltip(download);
     if (download.state === "failed") {
-      return download.error ?? "Download failed.";
+      return download.error ?? t("myModels.download.failed", { defaultValue: "Download failed." });
     }
     if (download.state === "cancelled") {
-      return sizeDetail ? `${sizeDetail} downloaded.` : "Download paused.";
+      return sizeDetail
+        ? t("myModels.download.downloadedDetail", { defaultValue: "{size} downloaded.", size: sizeDetail })
+        : t("myModels.download.paused", { defaultValue: "Download paused." });
     }
-    return sizeDetail ? `${sizeDetail} downloaded.` : "Download in progress.";
+    return sizeDetail
+      ? t("myModels.download.downloadedDetail", { defaultValue: "{size} downloaded.", size: sizeDetail })
+      : t("myModels.download.inProgress", { defaultValue: "Download in progress." });
   }
 
   function inferredPartialDownload(row: LibraryRow, repo: string | null): DownloadStatus | null {
@@ -147,26 +152,6 @@ export function MyModelsTab({
     };
   }
 
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span
-              className="capability-icon"
-              key={capability}
-              title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}
-            >
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   function renderCapabilityFilterBar(
     active: string | null,
@@ -183,20 +168,22 @@ export function MyModelsTab({
           type="button"
           onClick={() => setActive(null)}
         >
-          All
+          {t("myModels.filter.all", { defaultValue: "All" })}
         </button>
         {uniqueCaps.map((cap) => {
           const meta = CAPABILITY_META[cap];
+          const localizedTitle = t(`myModels.capability.title.${cap}`, { defaultValue: meta?.title ?? cap });
+          const localizedShort = t(`myModels.capability.short.${cap}`, { defaultValue: meta?.shortLabel ?? cap });
           return (
             <button
               key={cap}
               className={`cap-filter-btn${active === cap ? " cap-filter-btn--active" : ""}`}
               type="button"
               onClick={() => setActive(active === cap ? null : cap)}
-              title={meta?.title ?? cap}
+              title={localizedTitle}
               style={active === cap && meta ? { borderColor: meta.color, color: meta.color, background: `${meta.color}15` } : undefined}
             >
-              {meta?.icon ?? ""} {meta?.shortLabel ?? cap}
+              {meta?.icon ?? ""} {localizedShort}
             </button>
           );
         })}
@@ -208,8 +195,9 @@ export function MyModelsTab({
     active: string | null,
     setActive: (fmt: string | null) => void,
     formats: string[],
-    allLabel = "All formats",
+    allLabel?: string,
   ) {
+    const resolvedAllLabel = allLabel ?? t("myModels.filter.allFormats", { defaultValue: "All formats" });
     const uniqueFormats = [...new Set(formats)].sort();
     if (uniqueFormats.length < 2) return null;
     return (
@@ -219,7 +207,7 @@ export function MyModelsTab({
           type="button"
           onClick={() => setActive(null)}
         >
-          {allLabel}
+          {resolvedAllLabel}
         </button>
         {uniqueFormats.map((fmt) => (
           <button
@@ -258,20 +246,16 @@ export function MyModelsTab({
       }
       case "turboquant":
         return (isGGUF && !!strategyCompat?.turboInstalled) || (isMLX && !!strategyCompat?.turboquantMlxAvailable);
-      case "rotorquant":
-        return isGGUF && !!strategyCompat?.turboInstalled;
-      case "chaosengine":
-        return isGGUF && !!strategyCompat?.chaosengineAvailable;
       default:
         return true;
     }
   }
 
+  // Note: id keeps the canonical strategy slug; label is rendered through
+  // ``t()`` at the render site so the chip text follows the active locale.
   const STRATEGY_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
-    { id: "rotorquant", label: "RotorQuant", color: "#34d399" },
-    { id: "chaosengine", label: "ChaosEngine", color: "#f59e0b" },
   ];
 
   const allLibraryCaps = filteredLibraryRows.flatMap(({ matchedVariant }) => matchedVariant?.capabilities ?? []);
@@ -295,14 +279,19 @@ export function MyModelsTab({
   return (
     <div className="content-grid">
       <Panel
-        title="My Models"
-        subtitle={`${filteredLibraryRows.length} models / ${sizeLabel(libraryTotalSizeGb)} on disk / ${enabledDirectoryCount} directories`}
+        title={t("common:tabs.myModels")}
+        subtitle={t("myModels.subtitle", {
+          defaultValue: "{count} models / {size} on disk / {dirs} directories",
+          count: filteredLibraryRows.length,
+          size: sizeLabel(libraryTotalSizeGb),
+          dirs: enabledDirectoryCount,
+        })}
         className="span-2"
         actions={
           <input
             className="text-input discover-search"
             type="search"
-            placeholder="Filter by name, path, format, quant, or backend..."
+            placeholder={t("myModels.searchPlaceholder", { defaultValue: "Filter by name, path, format, quant, or backend..." })}
             value={librarySearchInput}
             onChange={(event) => onLibrarySearchInputChange(event.target.value)}
           />
@@ -310,7 +299,7 @@ export function MyModelsTab({
       >
         {renderCapabilityFilterBar(libraryCapFilter, onLibraryCapFilterChange, allLibraryCaps)}
         {renderFormatFilterBar(libraryFormatFilter, onLibraryFormatFilterChange, allLibraryFormats)}
-        {renderFormatFilterBar(libraryBackendFilter, onLibraryBackendFilterChange, allLibraryBackends, "All backends")}
+        {renderFormatFilterBar(libraryBackendFilter, onLibraryBackendFilterChange, allLibraryBackends, t("myModels.filter.allBackends", { defaultValue: "All backends" }))}
         {strategyCompat ? (
           <div className="cap-filter-bar">
             <button
@@ -318,7 +307,7 @@ export function MyModelsTab({
               type="button"
               onClick={() => setStrategyFilter(null)}
             >
-              All strategies
+              {t("myModels.filter.allStrategies", { defaultValue: "All strategies" })}
             </button>
             {STRATEGY_FILTERS.map((sf) => {
               const count = filteredLibraryRows.filter((row) => modelSupportsStrategy(row, sf.id)).length;
@@ -327,11 +316,18 @@ export function MyModelsTab({
               // so users land on "0" often unless they have a base
               // Qwen3 / Llama-3.1 / gpt-oss / Kimi model.
               const tooltip = sf.id === "dflash" && count === 0
-                ? "DFlash speculative-decode drafts only exist for specific base models: "
-                  + "Qwen/Qwen3-{4B,8B}, Qwen/Qwen3-Coder-{4B,8B,30B-A3B,Next}, Qwen/Qwen3.5-{4B,7B,9B,14B,27B,35B-A3B}, "
-                  + "Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss-{20B,120B}, moonshotai/Kimi-K2.5. "
-                  + "Fine-tunes typically don't match. Download a base model from Discover to enable DFlash."
-                : `Show models compatible with ${sf.label} (${count})`;
+                ? t("myModels.strategy.dflashEmptyTooltip", {
+                    defaultValue:
+                      "DFlash speculative-decode drafts only exist for specific base models: "
+                      + "Qwen/Qwen3-{4B,8B}, Qwen/Qwen3-Coder-{4B,8B,30B-A3B,Next}, Qwen/Qwen3.5-{4B,7B,9B,14B,27B,35B-A3B}, "
+                      + "Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss-{20B,120B}, moonshotai/Kimi-K2.5. "
+                      + "Fine-tunes typically don't match. Download a base model from Discover to enable DFlash.",
+                  })
+                : t("myModels.strategy.compatTooltip", {
+                    defaultValue: "Show models compatible with {label} ({count})",
+                    label: sf.label,
+                    count,
+                  });
               return (
                 <button
                   key={sf.id}
@@ -341,7 +337,7 @@ export function MyModelsTab({
                   title={tooltip}
                   style={strategyFilter === sf.id ? { borderColor: sf.color, color: sf.color, background: `${sf.color}15` } : undefined}
                 >
-                  {sf.label} ({count})
+                  {t("myModels.strategy.chip", { defaultValue: "{label} ({count})", label: sf.label, count })}
                 </button>
               );
             })}
@@ -350,15 +346,15 @@ export function MyModelsTab({
         {capFilteredLibrary.length ? (
           <div className="library-full-table">
             <div className="library-head">
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("name")}>Model{sortIndicator("name")}</button>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("format")}>Format{sortIndicator("format")}</button>
-              <span className="sort-header">Quant</span>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("backend")}>Backend{sortIndicator("backend")}</button>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("size")}>Size{sortIndicator("size")}</button>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("ram")}>RAM{sortIndicator("ram")}</button>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("compressed")}>Compressed{sortIndicator("compressed")}</button>
-              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("context")}>Context{sortIndicator("context")}</button>
-              <span className="sort-header">Status</span>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("name")}>{t("myModels.column.model", { defaultValue: "Model" })}{sortIndicator("name")}</button>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("format")}>{t("myModels.column.format", { defaultValue: "Format" })}{sortIndicator("format")}</button>
+              <span className="sort-header">{t("myModels.column.quant", { defaultValue: "Quant" })}</span>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("backend")}>{t("myModels.column.backend", { defaultValue: "Backend" })}{sortIndicator("backend")}</button>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("size")}>{t("myModels.column.size", { defaultValue: "Size" })}{sortIndicator("size")}</button>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("ram")}>{t("myModels.column.ram", { defaultValue: "RAM" })}{sortIndicator("ram")}</button>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("compressed")}>{t("myModels.column.compressed", { defaultValue: "Compressed" })}{sortIndicator("compressed")}</button>
+              <button className="sort-header" type="button" onClick={() => toggleLibrarySort("context")}>{t("myModels.column.context", { defaultValue: "Context" })}{sortIndicator("context")}</button>
+              <span className="sort-header">{t("myModels.column.status", { defaultValue: "Status" })}</span>
               <span className="sort-header"></span>
             </div>
             <div className="library-rows">
@@ -389,14 +385,14 @@ export function MyModelsTab({
                 // file on disk yet, so hide path-only actions.
                 const isSyntheticDownloadRow = item.path.startsWith("download://");
                 const rowStatus: { kind: ModelStatusKind; label: string; detail?: string | null } = isDownloading && downloadState
-                  ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                  ? { kind: "downloading", label: t("myModels.status.downloading", { defaultValue: "Downloading" }), detail: downloadProgressLabel(downloadState) }
                   : isPaused && downloadState
-                    ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                    ? { kind: "paused", label: t("myModels.status.paused", { defaultValue: "Paused" }), detail: downloadProgressLabel(downloadState) }
                     : isDownloadFailed && downloadState
-                      ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
+                      ? { kind: "failed", label: t("myModels.status.failed", { defaultValue: "Failed" }), detail: downloadState.error ?? t("myModels.download.failedShort", { defaultValue: "Download failed" }) }
                       : showBroken
-                        ? { kind: "incomplete", label: "Incomplete", detail: item.brokenReason ?? "Incomplete or broken" }
-                        : { kind: "installed", label: "Installed" };
+                        ? { kind: "incomplete", label: t("myModels.status.incomplete", { defaultValue: "Incomplete" }), detail: item.brokenReason ?? t("myModels.status.incompleteReason", { defaultValue: "Incomplete or broken" }) }
+                        : { kind: "installed", label: t("myModels.status.installed", { defaultValue: "Installed" }) };
                 const wrapperClassName = [
                   "library-item-wrap",
                   isExpanded ? "expanded" : "",
@@ -416,10 +412,10 @@ export function MyModelsTab({
                         <div className="library-item-meta-row">
                           <span className="badge muted">{sourceKind}</span>
                           {hasDownloadOverlay && downloadState ? (
-                            <span className="badge muted" title={downloadSizeTooltip(downloadState)}>Active download</span>
+                            <span className="badge muted" title={downloadSizeTooltip(downloadState)}>{t("myModels.badge.activeDownload", { defaultValue: "Active download" })}</span>
                           ) : null}
                         </div>
-                        {matchedVariant ? renderCapabilityIcons(matchedVariant.capabilities, 5) : null}
+                        {matchedVariant ? <CapabilityStrip capabilities={matchedVariant.capabilities} max={5} /> : null}
                         {hasDownloadOverlay && downloadState ? (
                           <span className="library-download-tag">
                             <small className={`library-download-reason${isDownloadFailed ? " error" : ""}`}>
@@ -429,8 +425,8 @@ export function MyModelsTab({
                         ) : null}
                         {showBroken ? (
                           <span className="broken-tag">
-                            <span className="badge warning">BROKEN</span>
-                            <small className="broken-reason">{item.brokenReason ?? "Incomplete or broken"}</small>
+                            <span className="badge warning">{t("myModels.badge.broken", { defaultValue: "BROKEN" })}</span>
+                            <small className="broken-reason">{item.brokenReason ?? t("myModels.status.incompleteReason", { defaultValue: "Incomplete or broken" })}</small>
                           </span>
                         ) : null}
                       </div>
@@ -438,10 +434,10 @@ export function MyModelsTab({
                       <span>{displayQuantization ?? "-"}</span>
                       <span>{displayBackend}</span>
                       <span>{sizeLabel(item.sizeGb)}</span>
-                      <span title="Rough resident memory at 8K context (weights + KV + framework)">
+                      <span title={t("myModels.tooltip.ram", { defaultValue: "Rough resident memory at 8K context (weights + KV + framework)" })}>
                         {estimatedRamGb != null ? `~${number(estimatedRamGb)} GB` : "?"}
                       </span>
-                      <span title="Rough resident memory with a compressed KV cache strategy">
+                      <span title={t("myModels.tooltip.compressed", { defaultValue: "Rough resident memory with a compressed KV cache strategy" })}>
                         {estimatedCompressedGb != null ? `~${number(estimatedCompressedGb)} GB` : "?"}
                       </span>
                       <span>{matchedVariant?.contextWindow ?? ""}</span>
@@ -452,23 +448,23 @@ export function MyModelsTab({
                         {hasDownloadOverlay && repo ? (
                           <>
                             {isDownloading ? (
-                              <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(repo)} />
+                              <IconActionButton icon="pause" label={t("myModels.action.pauseDownload", { defaultValue: "Pause download" })} onClick={() => onCancelModelDownload(repo)} />
                             ) : (
-                              <IconActionButton icon={isDownloadFailed ? "retry" : "resume"} label={isDownloadFailed ? "Retry download" : "Resume download"} buttonStyle="primary" onClick={() => onDownloadModel(repo)} />
+                              <IconActionButton icon={isDownloadFailed ? "retry" : "resume"} label={isDownloadFailed ? t("myModels.action.retryDownload", { defaultValue: "Retry download" }) : t("myModels.action.resumeDownload", { defaultValue: "Resume download" })} buttonStyle="primary" onClick={() => onDownloadModel(repo)} />
                             )}
-                            <IconActionButton icon={isDownloading ? "cancel" : "delete"} label={isDownloading ? "Cancel download" : "Delete download"} danger onClick={() => onDeleteModelDownload(repo)} />
+                            <IconActionButton icon={isDownloading ? "cancel" : "delete"} label={isDownloading ? t("myModels.action.cancelDownload", { defaultValue: "Cancel download" }) : t("myModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(repo)} />
                           </>
                         ) : canRetryBrokenRepo ? (
                           <>
-                            <IconActionButton icon="retry" label="Retry download" buttonStyle="primary" onClick={() => onDownloadModel(repo!)} />
-                            <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(repo!)} />
+                            <IconActionButton icon="retry" label={t("myModels.action.retryDownload", { defaultValue: "Retry download" })} buttonStyle="primary" onClick={() => onDownloadModel(repo!)} />
+                            <IconActionButton icon="delete" label={t("myModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(repo!)} />
                           </>
                         ) : (
                           <>
                             {!item.broken ? (
                               <>
-                                <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)} />
-                                <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", `library:${item.path}`)} />
+                                <IconActionButton icon="chat" label={t("myModels.action.chatWithModel", { defaultValue: "Chat with model" })} buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("chat", `library:${item.path}`)} />
+                                <IconActionButton icon="server" label={t("myModels.action.loadForServer", { defaultValue: "Load for server" })} buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", `library:${item.path}`)} />
                               </>
                             ) : null}
                           </>
@@ -477,7 +473,7 @@ export function MyModelsTab({
                           <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(item.path)} />
                         ) : null}
                         {!hasDownloadOverlay ? (
-                          <IconActionButton icon="delete" label="Delete model" danger onClick={() => onDeleteModel(item)} />
+                          <IconActionButton icon="delete" label={t("myModels.action.deleteModel", { defaultValue: "Delete model" })} danger onClick={() => onDeleteModel(item)} />
                         ) : null}
                       </div>
                     </div>
@@ -503,7 +499,7 @@ export function MyModelsTab({
           </div>
         ) : (
           <div className="empty-state">
-            <p>No models found. Add directories in Settings to scan for local models.</p>
+            <p>{t("myModels.empty", { defaultValue: "No models found. Add directories in Settings to scan for local models." })}</p>
           </div>
         )}
       </Panel>

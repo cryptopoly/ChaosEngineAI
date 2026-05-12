@@ -386,7 +386,7 @@ class DFlashCompatibilityTests(unittest.TestCase):
 
         with (
             patch.object(worker, "_generate_dflash", side_effect=RuntimeError("draft verifier failed")),
-            patch("backend_service.mlx_worker._emit", side_effect=emitted.append),
+            patch("backend_service.mlx_worker_generate._emit", side_effect=emitted.append),
             patch.dict("sys.modules", {"mlx_lm": fake_mlx_lm, "mlx_lm.sample_utils": fake_sample_utils}),
         ):
             worker.stream_generate({"prompt": "hello", "maxTokens": 8})

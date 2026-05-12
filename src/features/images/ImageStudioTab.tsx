@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
-import { InstallLogPanel } from "../../components/InstallLogPanel";
-import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { ImageStudioRuntimeBanner } from "./ImageStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
   ImageCacheStrategyId,
@@ -204,6 +204,7 @@ export function ImageStudioTab({
   onRevealPath,
   onDeleteImageArtifact,
 }: ImageStudioTabProps) {
+  const { t } = useTranslation("studio");
   const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
   // Per-configuration acknowledgement that unlocks Generate when the image
   // safety heuristic flags a danger-level run. Image OOMs on MPS are less
@@ -349,12 +350,54 @@ export function ImageStudioTab({
   const imageGenerateDisabled =
     imageBusy || !selectedImageVariant || imageGenerateBlockedByDanger;
   const imageGenerateTitle = imageGenerateBlockedByDanger
-    ? "Danger-level configuration — tick the acknowledgement below the safety callout to proceed."
+    ? t("imageStudio.generateTitle.dangerBlocked", {
+        defaultValue: "Danger-level configuration — tick the acknowledgement below the safety callout to proceed.",
+      })
     : imageBusy
-      ? "Generating..."
+      ? t("imageStudio.generateTitle.generating", { defaultValue: "Generating..." })
       : !selectedImageVariant
-        ? "Select a model first."
-        : "Generate this image.";
+        ? t("imageStudio.generateTitle.selectModel", { defaultValue: "Select a model first." })
+        : t("imageStudio.generateTitle.ready", { defaultValue: "Generate this image." });
+
+  // Localized aspect-ratio + quality preset labels. Static config arrays
+  // in src/constants/image.ts stay english-only (shared with non-React
+  // call sites); we resolve the visible label here so the studio renders
+  // the user's chosen locale.
+  const ratioLabelFor = (id: string): string =>
+    t(`imageStudio.aspectRatios.${id}.label`, {
+      defaultValue:
+        IMAGE_RATIO_PRESETS.find((p) => p.id === id)?.label ?? id,
+    });
+  const qualityLabelFor = (id: string): string =>
+    t(`imageStudio.quality.${id}.label`, {
+      defaultValue:
+        IMAGE_QUALITY_PRESETS.find((p) => p.id === id)?.label ?? id,
+    });
+  const qualityHintFor = (id: string): string =>
+    t(`imageStudio.quality.${id}.hint`, {
+      defaultValue:
+        IMAGE_QUALITY_PRESETS.find((p) => p.id === id)?.hint ?? "",
+    });
+  const samplerLabelFor = (id: string): string =>
+    t(`imageStudio.samplers.${id}.label`, {
+      defaultValue:
+        IMAGE_SAMPLERS.find((s) => s.id === id)?.label ?? id,
+    });
+  const samplerHintFor = (id: string): string =>
+    t(`imageStudio.samplers.${id}.hint`, {
+      defaultValue:
+        IMAGE_SAMPLERS.find((s) => s.id === id)?.hint ?? "",
+    });
+  const cacheStrategyLabelFor = (id: string): string =>
+    t(`imageStudio.cacheStrategies.${id}.label`, {
+      defaultValue:
+        availableImageCacheStrategies.find((s) => s.id === id)?.label ?? id,
+    });
+  const cacheStrategyHintFor = (id: string): string =>
+    t(`imageStudio.cacheStrategies.${id}.hint`, {
+      defaultValue:
+        availableImageCacheStrategies.find((s) => s.id === id)?.hint ?? "",
+    });
 
   const formatImageGb = (gb: number): string =>
     gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`;
@@ -362,254 +405,71 @@ export function ImageStudioTab({
   return (
     <div className="content-grid image-page-grid">
       <Panel
-        title="Image Studio"
+        title={t("image.title")}
         subtitle={selectedImageVariant
-          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtime} / ${imageOutputs.length} saved outputs`
-          : "Choose a model, prompt it, and iterate on saved outputs"}
+          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtime} / ${imageOutputs.length} ${t("image.savedOutputsLabel", { defaultValue: "saved outputs" })}`
+          : t("image.subtitle", { defaultValue: "Choose a model, prompt it, and iterate on saved outputs" })}
         className="span-2"
         actions={
           <div className="button-row">
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
-              Discover
+              {t("imageStudio.actions.discover", { defaultValue: "Discover" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
-              Installed
+              {t("imageStudio.actions.installed", { defaultValue: "Installed" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onOpenImageGallery()}>
-              Gallery
+              {t("imageStudio.actions.gallery", { defaultValue: "Gallery" })}
             </button>
           </div>
         }
       >
         <div className="image-studio-hero">
           <div>
-            <span className="eyebrow">Current Runtime</span>
-            <h3>{selectedImageVariant?.name ?? "Select an image model"}</h3>
+            <span className="eyebrow">{t("imageStudio.hero.currentRuntime", { defaultValue: "Current Runtime" })}</span>
+            <h3>{selectedImageVariant?.name ?? t("imageStudio.hero.placeholder", { defaultValue: "Select an image model" })}</h3>
           </div>
           {selectedImageVariant ? (
             <div className="image-studio-hero-stats">
               <span className="badge muted">{selectedImageFamily?.name ?? selectedImageVariant.provider}</span>
               <span className="badge muted">{selectedImageVariant.recommendedResolution}</span>
               <span className="badge muted">{sizeLabel(selectedImageVariant.sizeGb)}</span>
-              {selectedImageVariant.availableLocally ? <span className="badge success">Installed</span> : null}
-              {selectedImageLoaded ? <span className="badge success">Loaded In Memory</span> : null}
-              {selectedImageWillLoadOnGenerate ? <span className="badge subtle">Loads On First Generate</span> : null}
-              {imageBusy && selectedImageWillLoadOnGenerate ? <span className="badge accent">Loading Into Memory</span> : null}
-              {!selectedImageVariant.availableLocally && selectedImageDownloadComplete ? <span className="badge success">Downloaded</span> : null}
+              {selectedImageVariant.availableLocally ? <span className="badge success">{t("imageStudio.badges.installed", { defaultValue: "Installed" })}</span> : null}
+              {selectedImageLoaded ? <span className="badge success">{t("imageStudio.badges.loadedInMemory", { defaultValue: "Loaded In Memory" })}</span> : null}
+              {selectedImageWillLoadOnGenerate ? <span className="badge subtle">{t("imageStudio.badges.loadsOnFirstGenerate", { defaultValue: "Loads On First Generate" })}</span> : null}
+              {imageBusy && selectedImageWillLoadOnGenerate ? <span className="badge accent">{t("imageStudio.badges.loadingIntoMemory", { defaultValue: "Loading Into Memory" })}</span> : null}
+              {!selectedImageVariant.availableLocally && selectedImageDownloadComplete ? <span className="badge success">{t("imageStudio.badges.downloaded", { defaultValue: "Downloaded" })}</span> : null}
             </div>
           ) : null}
         </div>
-        <div className="callout image-callout image-runtime-callout">
-          {/* torchInstallWarning is the loudest signal -- e.g. +cpu torch
-            * wheel on a CUDA host -- so render it as a banner above the
-            * chip row. Without this, "Real local generation available" +
-            * "Device: cuda (expected)" would still light up green while
-            * the user's NVIDIA GPU sits idle and generation runs on CPU
-            * at 1/100th speed. */}
-          {/* Three states for this slot, all in ONE callout to keep
-            * the panel uncluttered (no stacked banners):
-            *   (a) install just succeeded but backend still has the
-            *       old torch in its module cache -> show "Restart
-            *       Backend to activate" with a single primary button
-            *   (b) torchInstallWarning is set (the +cpu wheel case
-            *       and friends) -> show the warning + Install CUDA
-            *       torch button + collapsible log panel
-            *   (c) neither -> render nothing (the chip row below
-            *       still announces engine / device state)
-            *
-            * State (a) takes priority because once a successful
-            * install lands, the warning is meaningless until the
-            * backend reloads -- showing both at once just confuses. */}
-          {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
-            <div className="callout" style={{ marginBottom: "0.6rem" }}>
-              <strong>CUDA torch installed.</strong>{" "}
-              The running backend still has the old torch in its module cache.
-              Restart the backend to activate the new wheel
-              {cudaTorchResult.indexUrl
-                ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
-                : ""}
-              .
-              <div style={{ marginTop: "0.5rem" }}>
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={() => onRestartServer()}
-                  disabled={busy}
-                >
-                  {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                </button>
-              </div>
-              <CudaTorchLogPanel result={cudaTorchResult ?? null} />
-            </div>
-          ) : imageRuntimeStatus.torchInstallWarning ? (
-            <div className="callout error" style={{ marginBottom: "0.6rem" }}>
-              <strong>GPU acceleration not active.</strong>{" "}
-              {imageRuntimeStatus.torchInstallWarning}
-              {/* Inline remedy button + collapsible log. Only renders
-                * when the warning is the "+cpu wheel" case (text
-                * mentions "Install CUDA torch"); for "torch missing
-                * entirely" the larger Install GPU runtime flow below
-                * is the right remedy. */}
-              {onInstallCudaTorch
-                && imageRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => onInstallCudaTorch()}
-                    disabled={Boolean(installingCudaTorch) || !backendOnline}
-                  >
-                    {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
-                  </button>
-                  <CudaTorchLogPanel result={cudaTorchResult ?? null} />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="chip-row">
-            <span className={`badge ${imageRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
-              {imageRuntimeStatus.realGenerationAvailable
-                ? "Real local generation available"
-                : imageRuntimeStatus.activeEngine === "unavailable"
-                  ? "Runtime unavailable"
-                  : "Using placeholder outputs"}
-            </span>
-            {imageRuntimeStatus.torchInstallWarning ? (
-              <span className="badge danger" title={imageRuntimeStatus.torchInstallWarning}>
-                CPU fallback
-              </span>
-            ) : null}
-            <span className="badge muted">Engine: {imageRuntimeStatus.activeEngine}</span>
-            {/* Prefer the actual-loaded device; fall back to the
-              * predicted expectedDevice computed cheaply via
-              * nvidia-smi + find_spec (no torch import). When
-              * nothing is loaded yet the badge reads 'Device: cuda
-              * (expected)' which tells the user what will happen on
-              * first Generate instead of leaving them to guess. */}
-            {(() => {
-              const resolved =
-                imageRuntimeStatus.device
-                ?? (imageRuntimeStatus.expectedDevice
-                  ? `${imageRuntimeStatus.expectedDevice} (expected)`
-                  : null);
-              return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
-            })()}
-          </div>
-          {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
-            <div className="image-runtime-summary">
-              <p className="muted-text">
-                {selectedImageLoaded
-                  ? `${selectedImageVariant.name} is loaded and ready to generate.`
-                  : imageRuntimeLoadedDifferentModel && loadedImageVariant
-                    ? `${loadedImageVariant.name} is loaded. Generating with ${selectedImageVariant.name} will swap the pipeline.`
-                    : selectedImageWillLoadOnGenerate
-                      ? `${selectedImageVariant.name} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.`
-                      : !selectedImageVariant.availableLocally
-                        ? `${selectedImageVariant.name} is not installed locally. Download it from Discover to enable local generation.`
-                        : "Model will load on demand when you generate."}
-              </p>
-              {imageBusy && selectedImageWillLoadOnGenerate ? (
-                <p className="busy-indicator"><span className="busy-dot" />Loading model into memory...</p>
-              ) : null}
-              {(selectedImageVariant.availableLocally || loadedImageVariant) ? (
-                <div className="button-row image-runtime-control-row">
-                  {selectedImageVariant.availableLocally && !selectedImageLoaded ? (
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => onPreloadImageModel(selectedImageVariant)}
-                      disabled={imageBusy || busy || !backendOnline}
-                    >
-                      Preload Model
-                    </button>
-                  ) : null}
-                  {selectedImageLoaded ? (
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => onUnloadImageModel(selectedImageVariant)}
-                      disabled={imageBusy || busy || !backendOnline}
-                    >
-                      Unload Model
-                    </button>
-                  ) : null}
-                  {!selectedImageLoaded && loadedImageVariant ? (
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => onUnloadImageModel()}
-                      disabled={imageBusy || busy || !backendOnline}
-                    >
-                      Unload {loadedImageVariant.name}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {!imageRuntimeStatus.realGenerationAvailable ? (
-            <>
-              <div className="image-runtime-actions">
-                {/* Two display modes for the same not-available state:
-                  * (a) Fresh / broken install → offer Install GPU runtime.
-                  * (b) Install just completed this session but backend
-                  *     hasn't been restarted yet → PYTHONPATH in the
-                  *     running backend is frozen from spawn time, so
-                  *     find_spec still can't see the freshly-installed
-                  *     torch. The user doesn't need to install again,
-                  *     they need to restart. Keep the restart button
-                  *     prominent and explain why. */}
-                {gpuBundleJob?.phase === "done" && gpuBundleJob.requiresRestart ? (
-                  <>
-                    <p className="muted-text">
-                      GPU runtime installed to{" "}
-                      <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
-                      still has its old import cache — click Restart Backend to activate the
-                      new runtime, then image generation will use your GPU.
-                    </p>
-                    <div className="button-row">
-                      <button
-                        className="primary-button"
-                        type="button"
-                        onClick={() => onRestartServer()}
-                        disabled={busy}
-                      >
-                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="muted-text">
-                      Install the GPU image runtime (torch + diffusers + accelerate + transformers,
-                      ~2.5 GB) to enable real local generation. Writes to a persistent user-local
-                      folder so app updates don't wipe it.
-                    </p>
-                    <div className="button-row">
-                      <button
-                        className="primary-button"
-                        type="button"
-                        onClick={() => void handleInstallImageRuntime()}
-                        disabled={installingImageRuntime || !backendOnline}
-                      >
-                        {installingImageRuntime ? "Installing..." : "Install GPU runtime"}
-                      </button>
-                      <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                        {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <InstallLogPanel job={gpuBundleJob} />
-            </>
-          ) : null}
-        </div>
+        <ImageStudioRuntimeBanner
+          imageRuntimeStatus={imageRuntimeStatus}
+          selectedImageVariant={selectedImageVariant}
+          selectedImageLoaded={selectedImageLoaded}
+          selectedImageWillLoadOnGenerate={selectedImageWillLoadOnGenerate}
+          imageRuntimeLoadedDifferentModel={imageRuntimeLoadedDifferentModel}
+          loadedImageVariant={loadedImageVariant}
+          busy={busy}
+          busyAction={busyAction}
+          imageBusy={imageBusy}
+          backendOnline={backendOnline}
+          onRestartServer={onRestartServer}
+          onPreloadImageModel={onPreloadImageModel}
+          onUnloadImageModel={onUnloadImageModel}
+          onInstallCudaTorch={onInstallCudaTorch}
+          installingCudaTorch={installingCudaTorch}
+          cudaTorchResult={cudaTorchResult}
+          installingImageRuntime={installingImageRuntime}
+          gpuBundleJob={gpuBundleJob}
+          onInstallImageRuntime={() => void handleInstallImageRuntime()}
+        />
       </Panel>
 
       <Panel
-        title="Prompt"
-        subtitle="Choose a model, set the aspect ratio and quality, then generate into the local gallery."
+        title={t("image.promptPanelTitle", { defaultValue: "Prompt" })}
+        subtitle={t("image.promptPanelSubtitle", {
+          defaultValue: "Choose a model, set the aspect ratio and quality, then generate into the local gallery.",
+        })}
         className="image-studio-form-panel"
         actions={
           <button
@@ -619,13 +479,15 @@ export function ImageStudioTab({
             disabled={imageGenerateDisabled}
             title={imageGenerateTitle}
           >
-            {imageBusy ? "Generating..." : "Generate"}
+            {imageBusy
+              ? t("image.generating", { defaultValue: "Generating..." })
+              : t("image.generate", { defaultValue: "Generate" })}
           </button>
         }
       >
         <div className="image-form-stack">
           <label>
-            Model
+            {t("image.modelLabel", { defaultValue: "Model" })}
             <select
               className="text-input"
               value={hasInstalledImageModels ? selectedImageModelId : ""}
@@ -643,7 +505,7 @@ export function ImageStudioTab({
                   </optgroup>
                 ))
               ) : (
-                <option value="">No models installed — download one from Discover</option>
+                <option value="">{t("image.noModelsOption", { defaultValue: "No models installed — download one from Discover" })}</option>
               )}
             </select>
           </label>
@@ -651,12 +513,14 @@ export function ImageStudioTab({
           {!hasInstalledImageModels ? (
             <div className="callout image-callout">
               <p>
-                You don't have any image models downloaded yet. Head to Image Discover to
-                browse and install one, then come back here to generate.
+                {t("imageStudio.noModelsCallout.message", {
+                  defaultValue:
+                    "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
+                })}
               </p>
               <div className="button-row">
                 <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
-                  Open Image Discover
+                  {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Discover" })}
                 </button>
               </div>
             </div>
@@ -666,12 +530,28 @@ export function ImageStudioTab({
             <div className="callout image-callout">
               <p>
                 {selectedImageDownloadFailed
-                  ? `${selectedImageVariant.name} did not finish downloading correctly. ChaosEngineAI only found a partial local snapshot, so it cannot load the real image pipeline yet.`
+                  ? t("imageStudio.download.failedMessage", {
+                      defaultValue:
+                        "{name} did not finish downloading correctly. ChaosEngineAI only found a partial local snapshot, so it cannot load the real image pipeline yet.",
+                      name: selectedImageVariant.name,
+                    })
                   : selectedImageDownloadPaused
-                  ? `${selectedImageVariant.name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.`
+                  ? t("imageStudio.download.pausedMessage", {
+                      defaultValue:
+                        "{name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.",
+                      name: selectedImageVariant.name,
+                    })
                   : selectedImageDownloadComplete
-                  ? `${selectedImageVariant.name} finished downloading. The installed-model scan will refresh automatically.`
-                  : `${selectedImageVariant.name} is not installed locally. Download it from Discover to enable local generation.`}
+                  ? t("imageStudio.download.completeMessage", {
+                      defaultValue:
+                        "{name} finished downloading. The installed-model scan will refresh automatically.",
+                      name: selectedImageVariant.name,
+                    })
+                  : t("imageStudio.download.notInstalledMessage", {
+                      defaultValue:
+                        "{name} is not installed locally. Download it from Discover to enable local generation.",
+                      name: selectedImageVariant.name,
+                    })}
               </p>
               {selectedImageDownloadFailed && selectedImageDownload?.error ? (
                 <>
@@ -679,16 +559,16 @@ export function ImageStudioTab({
                   {selectedImageNeedsGatedAccess ? (
                     <div className="button-row">
                       <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(selectedImageVariant.link)}>
-                        Hugging Face
+                        {t("imageStudio.download.huggingFace", { defaultValue: "Hugging Face" })}
                       </button>
                       <button className="secondary-button" type="button" onClick={() => onActiveTabChange("settings")}>
-                        Settings
+                        {t("imageStudio.download.settings", { defaultValue: "Settings" })}
                       </button>
                     </div>
                   ) : null}
                   {selectedImageFriendlyDownloadError !== selectedImageDownload.error ? (
                     <details className="debug-details">
-                      <summary>Technical details</summary>
+                      <summary>{t("imageStudio.download.technicalDetails", { defaultValue: "Technical details" })}</summary>
                       <p className="mono-text">{selectedImageDownload.error}</p>
                     </details>
                   ) : null}
@@ -699,47 +579,47 @@ export function ImageStudioTab({
                   <>
                     <span className="badge accent">{downloadProgressLabel(selectedImageDownload)}</span>
                     <button className="secondary-button" type="button" onClick={() => onCancelImageDownload(selectedImageVariant.repo)}>
-                      Pause
+                      {t("imageStudio.download.pause", { defaultValue: "Pause" })}
                     </button>
                     <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
-                      Cancel
+                      {t("imageStudio.download.cancel", { defaultValue: "Cancel" })}
                     </button>
                   </>
                 ) : selectedImageDownloadPaused ? (
                   <>
                     <span className="badge warning">{downloadProgressLabel(selectedImageDownload)}</span>
                     <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
-                      Resume
+                      {t("imageStudio.download.resume", { defaultValue: "Resume" })}
                     </button>
                     <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
-                      Delete
+                      {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                     </button>
                   </>
                 ) : selectedImageDownloadFailed ? (
                   <>
                     <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
-                      Retry Download
+                      {t("imageStudio.download.retry", { defaultValue: "Retry Download" })}
                     </button>
                     <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
-                      Delete
+                      {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                     </button>
                   </>
                 ) : selectedImageDownloadComplete ? (
-                  <span className="badge success">Download complete</span>
+                  <span className="badge success">{t("imageStudio.download.complete", { defaultValue: "Download complete" })}</span>
                 ) : (
                   <>
                     <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
-                      Download Model
+                      {t("imageStudio.download.downloadModel", { defaultValue: "Download Model" })}
                     </button>
                     {selectedImageVariant.hasLocalData ? (
                       <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
-                        Delete
+                        {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                       </button>
                     ) : null}
                   </>
                 )}
                 <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(selectedImageVariant.link)}>
-                  Hugging Face
+                  {t("imageStudio.download.huggingFace", { defaultValue: "Hugging Face" })}
                 </button>
               </div>
             </div>
@@ -747,7 +627,7 @@ export function ImageStudioTab({
 
           <label>
             <span className="prompt-label-row">
-              Prompt
+              {t("imageStudio.prompt.label", { defaultValue: "Prompt" })}
               <PromptEnhanceButton
                 prompt={imagePrompt}
                 repo={selectedImageVariant?.repo ?? ""}
@@ -757,25 +637,30 @@ export function ImageStudioTab({
             <textarea
               className="text-input prompt-area"
               rows={5}
-              placeholder="Moody cinematic alleyway after rain, neon reflections, 35mm photo, shallow depth of field"
+              placeholder={t("imageStudio.prompt.placeholder", {
+                defaultValue:
+                  "Moody cinematic alleyway after rain, neon reflections, 35mm photo, shallow depth of field",
+              })}
               value={imagePrompt}
               onChange={(event) => onImagePromptChange(event.target.value)}
             />
           </label>
 
           <label>
-            Negative prompt
+            {t("image.negativePrompt", { defaultValue: "Negative prompt" })}
             <textarea
               className="text-input prompt-area prompt-area--secondary"
               rows={3}
-              placeholder="blurry, deformed hands, extra limbs, overexposed"
+              placeholder={t("imageStudio.negativePrompt.placeholder", {
+                defaultValue: "blurry, deformed hands, extra limbs, overexposed",
+              })}
               value={imageNegativePrompt}
               onChange={(event) => onImageNegativePromptChange(event.target.value)}
             />
           </label>
 
           <div className="control-stack">
-            <span className="eyebrow">Aspect Ratio</span>
+            <span className="eyebrow">{t("image.aspectRatio", { defaultValue: "Aspect Ratio" })}</span>
             <div className="image-pill-row">
               {IMAGE_RATIO_PRESETS.map((preset) => (
                 <button
@@ -784,7 +669,7 @@ export function ImageStudioTab({
                   type="button"
                   onClick={() => onApplyImageRatioPreset(preset.id)}
                 >
-                  <strong>{preset.label}</strong>
+                  <strong>{ratioLabelFor(preset.id)}</strong>
                   <span>{preset.hint}</span>
                 </button>
               ))}
@@ -792,7 +677,7 @@ export function ImageStudioTab({
           </div>
 
           <div className="control-stack">
-            <span className="eyebrow">Quality Preset</span>
+            <span className="eyebrow">{t("image.qualityPreset", { defaultValue: "Quality Preset" })}</span>
             <div className="image-pill-row">
               {IMAGE_QUALITY_PRESETS.map((preset) => (
                 <button
@@ -801,18 +686,23 @@ export function ImageStudioTab({
                   type="button"
                   onClick={() => onApplyImageQuality(preset.id)}
                 >
-                  <strong>{preset.label}</strong>
-                  <span>{preset.hint}</span>
+                  <strong>{qualityLabelFor(preset.id)}</strong>
+                  <span>{qualityHintFor(preset.id)}</span>
                 </button>
               ))}
               <button
                 className={imageDraftMode ? "pill-button active" : "pill-button"}
                 type="button"
                 onClick={() => onImageDraftModeChange(!imageDraftMode)}
-                title="Force a 512px long-edge render for fast prompt iteration. Output saves at the draft size — disable for a full-resolution final pass."
+                title={t("imageStudio.draft.tooltip", {
+                  defaultValue:
+                    "Force a 512px long-edge render for fast prompt iteration. Output saves at the draft size — disable for a full-resolution final pass.",
+                })}
               >
-                <strong>Preview</strong>
-                <span>{imageDraftMode ? "512px · on" : "Draft @ 512px"}</span>
+                <strong>{t("image.previewLabel", { defaultValue: "Preview" })}</strong>
+                <span>{imageDraftMode
+                  ? t("image.draftOn", { defaultValue: "512px · on" })
+                  : t("image.draftOff", { defaultValue: "Draft @ 512px" })}</span>
               </button>
             </div>
           </div>
@@ -820,8 +710,11 @@ export function ImageStudioTab({
           {selectedImageVariant && !isFlowMatchingRepo(selectedImageVariant.repo) ? (
             <div className="control-stack">
               <span className="eyebrow">
-                Sampler
-                <InfoTooltip text="Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise." />
+                {t("image.sampler", { defaultValue: "Sampler" })}
+                <InfoTooltip text={t("imageStudio.sampler.tooltip", {
+                  defaultValue:
+                    "Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise.",
+                })} />
               </span>
               <select
                 className="text-input"
@@ -830,7 +723,7 @@ export function ImageStudioTab({
               >
                 {IMAGE_SAMPLERS.map((sampler) => (
                   <option key={sampler.id} value={sampler.id}>
-                    {sampler.label} · {sampler.hint}
+                    {samplerLabelFor(sampler.id)} · {samplerHintFor(sampler.id)}
                   </option>
                 ))}
               </select>
@@ -849,8 +742,11 @@ export function ImageStudioTab({
           {selectedImageVariant && !isUnetVariant ? (
             <div className="control-stack">
               <span className="eyebrow">
-                Diffusion cache
-                <InfoTooltip text="Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point." />
+                {t("image.diffusionCache", { defaultValue: "Diffusion cache" })}
+                <InfoTooltip text={t("imageStudio.diffusionCache.tooltip", {
+                  defaultValue:
+                    "Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point.",
+                })} />
               </span>
               <select
                 className="text-input"
@@ -861,23 +757,30 @@ export function ImageStudioTab({
               >
                 {availableImageCacheStrategies.map((strategy) => (
                   <option key={strategy.id} value={strategy.id}>
-                    {strategy.label} · {strategy.hint}
+                    {cacheStrategyLabelFor(strategy.id)} · {cacheStrategyHintFor(strategy.id)}
                   </option>
                 ))}
               </select>
               {availableImageCacheStrategies.length === 2 ? (
                 <span className="muted-text" style={{ fontSize: 11 }}>
-                  TeaCache hidden — its image-side calibration only covers
-                  the FLUX family. First Block Cache works on every DiT
-                  pipeline shipped today (cross-platform).
+                  {t("imageStudio.diffusionCache.teaCacheHidden", {
+                    defaultValue:
+                      "TeaCache hidden — its image-side calibration only covers the FLUX family. First Block Cache works on every DiT pipeline shipped today (cross-platform).",
+                  })}
                 </span>
               ) : null}
               {imageCacheStrategy !== "none" ? (
                 <label className="control-stack-inline">
                   <span className="muted-text">
-                    Threshold ({imageCacheRelL1Thresh ??
-                      IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy]})
-                    <InfoTooltip text="Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev." />
+                    {t("imageStudio.diffusionCache.threshold", {
+                      defaultValue: "Threshold ({value})",
+                      value: imageCacheRelL1Thresh ??
+                        IMAGE_CACHE_STRATEGY_DEFAULT_THRESH[imageCacheStrategy],
+                    })}
+                    <InfoTooltip text={t("imageStudio.diffusionCache.thresholdTooltip", {
+                      defaultValue:
+                        "Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev.",
+                    })} />
                   </span>
                   <input
                     className="text-input"
@@ -916,12 +819,15 @@ export function ImageStudioTab({
                 onChange={(event) => onImageCfgDecayChange(event.target.checked)}
               />
               <span>
-                <strong>CFG decay</strong> — linearly relax guidance from your
-                slider value toward 1.5 across the schedule. Reduces
-                oversaturation on late steps without changing semantics
-                from early steps. Off by default; backend ignores this on
-                SD1.5 / SDXL.
-                <InfoTooltip text="Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use." />
+                <strong>{t("imageStudio.toggles.cfgDecay.label", { defaultValue: "CFG decay" })}</strong>
+                {" "}— {t("imageStudio.toggles.cfgDecay.description", {
+                  defaultValue:
+                    "linearly relax guidance from your slider value toward 1.5 across the schedule. Reduces oversaturation on late steps without changing semantics from early steps. Off by default; backend ignores this on SD1.5 / SDXL.",
+                })}
+                <InfoTooltip text={t("imageStudio.toggles.cfgDecay.tooltip", {
+                  defaultValue:
+                    "Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use.",
+                })} />
               </span>
             </label>
           ) : null}
@@ -940,11 +846,15 @@ export function ImageStudioTab({
               onChange={(event) => onImagePreviewVaeChange(event.target.checked)}
             />
             <span>
-              <strong>Preview VAE</strong> — swap the full VAE for the
-              matching tiny VAE (TAESD / TAEHV) so each step decodes
-              in a fraction of the wall-time. Trades final fidelity
-              for iteration speed. Off by default.
-              <InfoTooltip text="Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises." />
+              <strong>{t("imageStudio.toggles.previewVae.label", { defaultValue: "Preview VAE" })}</strong>
+              {" "}— {t("imageStudio.toggles.previewVae.description", {
+                defaultValue:
+                  "swap the full VAE for the matching tiny VAE (TAESD / TAEHV) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default.",
+              })}
+              <InfoTooltip text={t("imageStudio.toggles.previewVae.tooltip", {
+                defaultValue:
+                  "Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises.",
+              })} />
             </span>
           </label>
 
@@ -961,17 +871,21 @@ export function ImageStudioTab({
               onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
             />
             <span>
-              <strong>FP8 layerwise (CUDA Ada+)</strong> — store
-              transformer weights in fp8 + promote to bf16 inside the
-              matmul. Halves VRAM with negligible quality drift on
-              modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.
-              <InfoTooltip text="diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint." />
+              <strong>{t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
+              {" "}— {t("imageStudio.toggles.fp8Layerwise.description", {
+                defaultValue:
+                  "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
+              })}
+              <InfoTooltip text={t("imageStudio.toggles.fp8Layerwise.tooltip", {
+                defaultValue:
+                  "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint.",
+              })} />
             </span>
           </label>
 
           <div className="field-grid image-field-grid">
             <label>
-              Width
+              {t("imageStudio.fields.width", { defaultValue: "Width" })}
               <input
                 className="text-input"
                 type="number"
@@ -983,7 +897,7 @@ export function ImageStudioTab({
               />
             </label>
             <label>
-              Height
+              {t("imageStudio.fields.height", { defaultValue: "Height" })}
               <input
                 className="text-input"
                 type="number"
@@ -995,7 +909,7 @@ export function ImageStudioTab({
               />
             </label>
             <label>
-              Steps
+              {t("imageStudio.fields.steps", { defaultValue: "Steps" })}
               <input
                 className="text-input"
                 type="number"
@@ -1006,7 +920,7 @@ export function ImageStudioTab({
               />
             </label>
             <label>
-              Guidance
+              {t("imageStudio.fields.guidance", { defaultValue: "Guidance" })}
               <input
                 className="text-input"
                 type="number"
@@ -1018,7 +932,7 @@ export function ImageStudioTab({
               />
             </label>
             <label>
-              Images
+              {t("imageStudio.fields.images", { defaultValue: "Images" })}
               <input
                 className="text-input"
                 type="number"
@@ -1029,7 +943,7 @@ export function ImageStudioTab({
               />
             </label>
             <label className="checkbox-card">
-              <span className="checkbox-card-label">Random seed</span>
+              <span className="checkbox-card-label">{t("imageStudio.fields.randomSeed", { defaultValue: "Random seed" })}</span>
               <input
                 type="checkbox"
                 checked={imageUseRandomSeed}
@@ -1060,16 +974,21 @@ export function ImageStudioTab({
               <p>
                 <strong>
                   {imageSafety.riskLevel === "danger"
-                    ? "Likely to crash the backend"
-                    : "Heads up — may struggle on this device"}
+                    ? t("imageStudio.safety.dangerTitle", { defaultValue: "Likely to crash the backend" })
+                    : t("imageStudio.safety.warningTitle", { defaultValue: "Heads up — may struggle on this device" })}
                   :
                 </strong>{" "}
                 {imageSafety.reason}
               </p>
               {imageSafety.modelFootprintGb > 0 ? (
                 <p className="muted-text">
-                  Model ≈ {formatImageGb(imageSafety.modelFootprintGb)} · this run peak ≈ {" "}
-                  {formatImageGb(imageSafety.estimatedPeakGb)} of ~{formatImageGb(imageSafety.deviceMemoryGb)} total.
+                  {t("imageStudio.safety.resourceEstimate", {
+                    defaultValue:
+                      "Model ≈ {model} · this run peak ≈ {peak} of ~{total} total.",
+                    model: formatImageGb(imageSafety.modelFootprintGb),
+                    peak: formatImageGb(imageSafety.estimatedPeakGb),
+                    total: formatImageGb(imageSafety.deviceMemoryGb),
+                  })}
                 </p>
               ) : null}
               {imageSafety.suggestion ? (
@@ -1079,9 +998,15 @@ export function ImageStudioTab({
                     type="button"
                     onClick={handleApplySafeImageSettings}
                     disabled={imageBusy}
-                    title={`Apply ${imageSafety.suggestion.label}`}
+                    title={t("imageStudio.safety.applyTitle", {
+                      defaultValue: "Apply {label}",
+                      label: imageSafety.suggestion.label,
+                    })}
                   >
-                    Use safer settings ({imageSafety.suggestion.label})
+                    {t("imageStudio.safety.useSafer", {
+                      defaultValue: "Use safer settings ({label})",
+                      label: imageSafety.suggestion.label,
+                    })}
                   </button>
                 </div>
               ) : (
@@ -1092,7 +1017,7 @@ export function ImageStudioTab({
                     onClick={() => onActiveTabChange("image-discover")}
                     disabled={imageBusy}
                   >
-                    Browse smaller models
+                    {t("imageStudio.safety.browseSmaller", { defaultValue: "Browse smaller models" })}
                   </button>
                 </div>
               )}
@@ -1107,7 +1032,9 @@ export function ImageStudioTab({
                     onChange={(event) => setDangerOverrideAck(event.target.checked)}
                   />
                   <span>
-                    Generate anyway — I accept that the backend may crash.
+                    {t("imageStudio.safety.overrideAck", {
+                      defaultValue: "Generate anyway — I accept that the backend may crash.",
+                    })}
                   </span>
                 </label>
               ) : null}
@@ -1116,7 +1043,7 @@ export function ImageStudioTab({
 
           {!imageUseRandomSeed ? (
             <label>
-              Seed
+              {t("imageStudio.fields.seed", { defaultValue: "Seed" })}
               <input
                 className="text-input"
                 type="number"
@@ -1135,18 +1062,26 @@ export function ImageStudioTab({
       </Panel>
 
       <Panel
-        title="Recent Outputs"
-        subtitle={imageOutputs.length > 0 ? `${recentImageOutputs.length} newest of ${imageOutputs.length} saved generations` : "Generated images will appear here"}
+        title={t("image.recentOutputsTitle", { defaultValue: "Recent Outputs" })}
+        subtitle={imageOutputs.length > 0
+          ? t("imageStudio.recent.subtitle", {
+              defaultValue: "{recent} newest of {total} saved generations",
+              recent: recentImageOutputs.length,
+              total: imageOutputs.length,
+            })
+          : t("imageStudio.recent.emptySubtitle", { defaultValue: "Generated images will appear here" })}
         className="image-gallery-panel"
         actions={
           <button className="secondary-button" type="button" onClick={() => onOpenImageGallery()}>
-            Open Gallery
+            {t("imageStudio.recent.openGallery", { defaultValue: "Open Gallery" })}
           </button>
         }
       >
         {imageOutputs.length === 0 ? (
           <div className="empty-state image-empty-state">
-            <p>Generate a prompt to create the first saved image artifact for this branch.</p>
+            <p>{t("imageStudio.recent.emptyHint", {
+              defaultValue: "Generate a prompt to create the first saved image artifact for this branch.",
+            })}</p>
           </div>
         ) : (
           <div className="image-gallery-grid">
@@ -1168,8 +1103,11 @@ export function ImageStudioTab({
         )}
         {imageOutputs.length > recentImageOutputs.length ? (
           <p className="muted-text image-gallery-footnote">
-            Showing the newest {recentImageOutputs.length} saved images here. Open Image Gallery to browse everything,
-            filter by model, and manage older runs.
+            {t("imageStudio.recent.footnote", {
+              defaultValue:
+                "Showing the newest {recent} saved images here. Open Image Gallery to browse everything, filter by model, and manage older runs.",
+              recent: recentImageOutputs.length,
+            })}
           </p>
         ) : null}
       </Panel>

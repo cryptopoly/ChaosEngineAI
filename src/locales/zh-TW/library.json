@@ -1,0 +1,592 @@
+{
+  "title": "模型庫",
+  "search": "搜尋模型…",
+  "filter": {
+    "all": "全部",
+    "text": "文字",
+    "image": "影像",
+    "video": "影片",
+    "vision": "視覺",
+    "audio": "音訊",
+    "installed": "已安裝",
+    "uninstalled": "未安裝",
+    "favourites": "我的最愛"
+  },
+  "card": {
+    "size": "大小",
+    "quantization": "量化",
+    "context": "上下文",
+    "capabilities": "能力",
+    "license": "授權",
+    "author": "作者",
+    "lastUpdated": "最後更新"
+  },
+  "download": {
+    "start": "下載",
+    "inProgress": "下載中…",
+    "paused": "已暫停",
+    "resumed": "已恢復",
+    "cancelled": "已取消",
+    "complete": "已完成",
+    "totalSize": "共 {size}",
+    "downloaded": "已下載 {downloaded} / 共 {total}"
+  },
+  "details": {
+    "loadModel": "載入模型",
+    "unloadModel": "卸載模型",
+    "viewOnHF": "在 Hugging Face 檢視",
+    "deleteFromDisk": "從磁碟刪除"
+  },
+  "myModels": {
+    "subtitle": "{count} 個模型 / 磁碟用量 {size} / {dirs} 個目錄",
+    "searchPlaceholder": "依名稱、路徑、格式、量化或後端篩選...",
+    "empty": "找不到模型。請在 偏好設定 中新增目錄以掃描本地模型。",
+    "filter": {
+      "all": "全部",
+      "allFormats": "所有格式",
+      "allBackends": "所有後端",
+      "allStrategies": "所有策略"
+    },
+    "capability": {
+      "title": {
+        "agents": "代理工作流",
+        "chat": "一般對話",
+        "coding": "程式碼支援",
+        "multilingual": "多語言支援",
+        "reasoning": "推理導向",
+        "thinking": "思考 / 慎思推理",
+        "tool-use": "工具使用 / 函式呼叫",
+        "video": "影片理解",
+        "vision": "影像 / 視覺支援"
+      },
+      "short": {
+        "agents": "代理",
+        "chat": "對話",
+        "coding": "程式碼",
+        "multilingual": "多語",
+        "reasoning": "推理",
+        "thinking": "思考",
+        "tool-use": "工具",
+        "video": "影片",
+        "vision": "視覺"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "顯示相容於 {label} 的模型 ({count})",
+      "dflashEmptyTooltip": "DFlash 推測解碼草稿模型僅存在於特定的基礎模型:Qwen/Qwen3 (4B, 8B)、Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next)、Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B, 120B)、moonshotai/Kimi-K2.5。微調模型通常不相符。請從 探索 下載基礎模型以啟用 DFlash。"
+    },
+    "column": {
+      "model": "模型",
+      "format": "格式",
+      "quant": "量化",
+      "backend": "後端",
+      "size": "大小",
+      "ram": "RAM",
+      "compressed": "壓縮後",
+      "context": "上下文",
+      "status": "狀態"
+    },
+    "status": {
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "incomplete": "不完整",
+      "incompleteReason": "不完整或損壞",
+      "installed": "已安裝"
+    },
+    "badge": {
+      "activeDownload": "下載進行中",
+      "broken": "損壞"
+    },
+    "tooltip": {
+      "ram": "8K 上下文下的概略常駐記憶體(權重 + KV + 框架)",
+      "compressed": "使用壓縮 KV cache 策略時的概略常駐記憶體"
+    },
+    "download": {
+      "failed": "下載失敗。",
+      "failedShort": "下載失敗",
+      "paused": "下載已暫停。",
+      "inProgress": "下載進行中。",
+      "downloadedDetail": "已下載 {size}。"
+    },
+    "action": {
+      "pauseDownload": "暫停下載",
+      "retryDownload": "重試下載",
+      "resumeDownload": "恢復下載",
+      "cancelDownload": "取消下載",
+      "deleteDownload": "刪除下載",
+      "chatWithModel": "與模型對話",
+      "loadForServer": "為伺服器載入",
+      "deleteModel": "刪除模型"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} 個模型系列 / 已於本地下載 {downloaded} 個",
+    "searchPlaceholder": "依名稱、提供者或能力搜尋...",
+    "variantCount": "{count, plural, other {# 個變體}}",
+    "filter": {
+      "all": "全部",
+      "allFormats": "所有格式"
+    },
+    "capability": {
+      "title": {
+        "agents": "代理工作流",
+        "chat": "一般對話",
+        "coding": "程式碼支援",
+        "multilingual": "多語言支援",
+        "reasoning": "推理導向",
+        "thinking": "思考 / 慎思推理",
+        "tool-use": "工具使用 / 函式呼叫",
+        "video": "影片理解",
+        "vision": "影像 / 視覺支援"
+      },
+      "short": {
+        "agents": "代理",
+        "chat": "對話",
+        "coding": "程式碼",
+        "multilingual": "多語",
+        "reasoning": "推理",
+        "thinking": "思考",
+        "tool-use": "工具",
+        "video": "影片",
+        "vision": "視覺"
+      }
+    },
+    "section": {
+      "curatedAria": "精選模型系列"
+    },
+    "status": {
+      "countInstalled": "已安裝 {count} 個",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "downloadFailed": "下載失敗",
+      "installed": "已安裝",
+      "downloadComplete": "下載完成",
+      "failed": "失敗",
+      "notInstalled": "未安裝"
+    },
+    "column": {
+      "variant": "變體",
+      "format": "格式",
+      "backend": "後端",
+      "params": "參數",
+      "size": "大小",
+      "ram": "RAM",
+      "compressed": "壓縮後",
+      "context": "上下文",
+      "status": "狀態"
+    },
+    "memory": {
+      "comfortable": "可舒適容納於可用的 {available} GB",
+      "tight": "可容納但接近可用的 {available} GB — 載入前請關閉其他應用程式",
+      "over": "預估 {estimated} GB 超出可用的 {available} GB — 請嘗試更小的量化",
+      "comfortableLabel": "可容納",
+      "tightLabel": "勉強",
+      "overLabel": "過大"
+    },
+    "action": {
+      "details": "詳細資訊",
+      "detailsTooltip": "於聚焦檢視中顯示完整詳細資訊",
+      "convertModel": "轉換模型",
+      "chatWithModel": "與模型對話",
+      "loadForServer": "為伺服器載入",
+      "pauseDownload": "暫停下載",
+      "cancelDownload": "取消下載",
+      "resumeDownload": "恢復下載",
+      "deleteDownload": "刪除下載",
+      "retryDownload": "重試下載",
+      "downloadModel": "下載模型",
+      "openModelCardHF": "在 Hugging Face 開啟模型卡片",
+      "openOnHF": "在 Hugging Face 開啟"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub 結果",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, other {來自 huggingface.co 的 # 筆即時結果}},依最近更新排序",
+      "loading": "正在從 Hugging Face 載入檔案清單...",
+      "previewUnavailable": "無法預覽",
+      "licenseLabel": "授權:{license}",
+      "totalGb": "共 {size} GB",
+      "updatedDate": "更新於 {date}",
+      "moreTags": "另外 +{count}",
+      "filePreviewUnavailable": "此 repo 目前無法提供檔案預覽。",
+      "weightsHeader": "權重 ({count})",
+      "largestShard": "最大分片 {size}",
+      "showFiles": "顯示檔案",
+      "visionTag": "vision",
+      "configAndTokenizer": "Config 與 tokenizer",
+      "otherFiles": "+{count, plural, other {# 個其他檔案}}"
+    },
+    "searchError": {
+      "fallback": "顯示上次成功的 探索 結果。"
+    },
+    "empty": {
+      "capFilter": "沒有模型符合「{cap}」篩選。",
+      "search": "沒有模型符合「{query}」。請嘗試其他搜尋字詞。",
+      "prompt": "輸入以搜尋模型。"
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# 個模型}} 中有 {rows} 個含本地資料",
+      "none": "尚未在本地偵測到影像模型"
+    },
+    "empty": {
+      "noModels": "從 影像探索 下載影像模型以開始使用。",
+      "noMatches": "沒有已安裝的影像模型符合目前的篩選條件。"
+    },
+    "action": {
+      "browseCatalog": "瀏覽目錄",
+      "clearFilters": "清除篩選",
+      "generate": "生成",
+      "pauseDownload": "暫停下載",
+      "retryDownload": "重試下載",
+      "resumeDownload": "恢復下載",
+      "downloadModel": "下載模型",
+      "cancelDownload": "取消下載",
+      "deleteModel": "刪除模型",
+      "openModelCard": "開啟模型卡片"
+    },
+    "filter": {
+      "searchLabel": "搜尋",
+      "searchPlaceholder": "依模型、提供者、repo、任務或標籤篩選...",
+      "taskLabel": "任務",
+      "statusLabel": "狀態",
+      "sortByLabel": "排序方式",
+      "task": {
+        "all": "所有任務",
+        "txt2img": "文字轉影像",
+        "img2img": "影像轉影像",
+        "inpaint": "局部重繪"
+      },
+      "status": {
+        "all": "任何狀態",
+        "installed": "已安裝",
+        "incomplete": "不完整",
+        "downloading": "下載中",
+        "paused": "已暫停",
+        "failed": "失敗"
+      }
+    },
+    "sort": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "newestReleased": "最新發佈",
+      "largestSize": "最大",
+      "highestRamVram": "最高 RAM/VRAM",
+      "status": "狀態",
+      "direction": {
+        "ascending": "遞增",
+        "descending": "遞減"
+      },
+      "providerDir": "提供者 {direction}",
+      "tasksDir": "任務 {direction}",
+      "statusDir": "狀態 {direction}",
+      "largestFirst": "最大優先",
+      "smallestFirst": "最小優先",
+      "highestRam": "最高 RAM/VRAM 優先",
+      "lowestRam": "最低 RAM/VRAM 優先",
+      "nameAsc": "名稱 A-Z",
+      "nameDesc": "名稱 Z-A",
+      "newestFirst": "最新發佈優先",
+      "oldestFirst": "最舊發佈優先"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "searchChip": "搜尋:{query}",
+      "taskChip": "任務:{value}",
+      "statusChip": "狀態:{value}"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "發佈日期",
+      "status": "狀態"
+    },
+    "status": {
+      "installed": "已安裝",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "downloadFailed": "下載失敗",
+      "incomplete": "不完整"
+    },
+    "memory": {
+      "pending": "等待中",
+      "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
+    },
+    "releaseUnknown": "未知"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# 個模型}} 中有 {rows} 個含本地資料",
+      "none": "尚未在本地偵測到影片模型"
+    },
+    "empty": {
+      "noModels": "從 影片探索 下載影片模型以開始使用。",
+      "noMatches": "沒有已安裝的影片模型符合目前的篩選條件。"
+    },
+    "action": {
+      "browseCatalog": "瀏覽目錄",
+      "clearFilters": "清除篩選",
+      "generate": "生成",
+      "pauseDownload": "暫停下載",
+      "retryDownload": "重試下載",
+      "resumeDownload": "恢復下載",
+      "downloadModel": "下載模型",
+      "cancelDownload": "取消下載",
+      "deleteModel": "刪除模型",
+      "openModelCard": "開啟模型卡片"
+    },
+    "filter": {
+      "searchLabel": "搜尋",
+      "searchPlaceholder": "依模型、提供者、repo、任務或標籤篩選...",
+      "taskLabel": "任務",
+      "statusLabel": "狀態",
+      "sortByLabel": "排序方式",
+      "task": {
+        "all": "所有任務",
+        "txt2video": "文字轉影片",
+        "img2video": "影像轉影片",
+        "video2video": "影片轉影片"
+      },
+      "status": {
+        "all": "任何狀態",
+        "loaded": "已於記憶體中",
+        "installed": "已安裝",
+        "incomplete": "不完整",
+        "downloading": "下載中",
+        "paused": "已暫停",
+        "failed": "失敗"
+      }
+    },
+    "sort": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "newestReleased": "最新發佈",
+      "largestSize": "最大",
+      "highestRamVram": "最高 RAM/VRAM",
+      "status": "狀態",
+      "direction": {
+        "ascending": "遞增",
+        "descending": "遞減"
+      },
+      "providerDir": "提供者 {direction}",
+      "tasksDir": "任務 {direction}",
+      "statusDir": "狀態 {direction}",
+      "largestFirst": "最大優先",
+      "smallestFirst": "最小優先",
+      "highestRam": "最高 RAM/VRAM 優先",
+      "lowestRam": "最低 RAM/VRAM 優先",
+      "nameAsc": "名稱 A-Z",
+      "nameDesc": "名稱 Z-A",
+      "newestFirst": "最新發佈優先",
+      "oldestFirst": "最舊發佈優先"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "searchChip": "搜尋:{query}",
+      "taskChip": "任務:{value}",
+      "statusChip": "狀態:{value}"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "發佈日期",
+      "status": "狀態"
+    },
+    "status": {
+      "loaded": "已於記憶體中載入",
+      "installed": "已安裝",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "downloadFailed": "下載失敗",
+      "incomplete": "不完整"
+    },
+    "memory": {
+      "pending": "等待中",
+      "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
+    },
+    "releaseUnknown": "未知"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "僅開放",
+      "gatedOnly": "僅受限",
+      "all": "開放 + 受限",
+      "gated": "受限",
+      "open": "開放"
+    },
+    "memory": {
+      "pending": "等待中",
+      "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
+    },
+    "subtitle": "{filtered} / {total} 個模型 / 即時 Hugging Face 中繼資料",
+    "hero": {
+      "heading": "瀏覽並下載本地生成用的影像模型。",
+      "body": "下載任何模型以在影像工作室中使用。執行階段狀態位於工作室分頁。",
+      "installedModels": "已安裝模型",
+      "openStudio": "開啟工作室"
+    },
+    "filter": {
+      "search": "搜尋",
+      "searchPlaceholder": "搜尋 FLUX、SDXL、提供者、任務、標籤、授權...",
+      "task": "任務",
+      "access": "存取",
+      "status": "狀態",
+      "sortBy": "排序方式",
+      "clear": "清除篩選器"
+    },
+    "task": {
+      "all": "所有任務",
+      "txt2img": "文字轉影像",
+      "img2img": "影像轉影像",
+      "inpaint": "修補"
+    },
+    "status": {
+      "any": "任何狀態",
+      "installed": "已安裝",
+      "notInstalled": "未安裝",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "release": "最新發佈",
+      "size": "最大",
+      "ram": "最高 RAM/VRAM",
+      "likes": "最多按讚",
+      "downloads": "最多下載",
+      "status": "狀態"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "searchBadge": "搜尋:{query}",
+      "taskBadge": "任務:{task}",
+      "accessBadge": "存取:{access}",
+      "statusBadge": "狀態:{status}"
+    },
+    "empty": {
+      "body": "請嘗試擴大篩選條件或搜尋字詞。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "發佈日期",
+      "status": "狀態"
+    },
+    "unknown": "未知",
+    "action": {
+      "generate": "生成",
+      "pauseDownload": "暫停下載",
+      "cancelDownload": "取消下載",
+      "resumeDownload": "恢復下載",
+      "deleteDownload": "刪除下載",
+      "retryDownload": "重試下載",
+      "downloadModel": "下載模型",
+      "deleteModel": "刪除模型",
+      "openHuggingFace": "在 Hugging Face 開啟",
+      "huggingFace": "Hugging Face",
+      "settings": "設定"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "等待中",
+      "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
+    },
+    "action": {
+      "cancelDownload": "取消下載",
+      "deleteModel": "刪除模型",
+      "deleteDownload": "刪除下載",
+      "generate": "生成",
+      "installing": "安裝中",
+      "install": "安裝",
+      "pauseDownload": "暫停下載",
+      "resumeDownload": "恢復下載",
+      "retryDownload": "重試下載",
+      "downloadModel": "下載模型",
+      "openModelCard": "開啟模型卡片"
+    },
+    "subtitle": "{filtered} / {total} 個影片模型 / 即時 Hugging Face 中繼資料",
+    "hero": {
+      "heading": "瀏覽並下載本地生成用的影片模型。",
+      "body": "下載任何模型以在影片工作室中使用。執行階段狀態位於工作室分頁。",
+      "installedModels": "已安裝模型",
+      "openStudio": "開啟工作室"
+    },
+    "filter": {
+      "search": "搜尋",
+      "searchPlaceholder": "搜尋 LTX、Wan、Mochi、提供者、標籤...",
+      "task": "任務",
+      "status": "狀態",
+      "sortBy": "排序方式",
+      "clear": "清除篩選器"
+    },
+    "task": {
+      "all": "所有任務",
+      "txt2video": "文字轉影片",
+      "img2video": "影像轉影片",
+      "video2video": "影片轉影片"
+    },
+    "status": {
+      "any": "任何狀態",
+      "installed": "已安裝",
+      "notInstalled": "未安裝",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "release": "最新發佈",
+      "size": "最大",
+      "ram": "最高 RAM/VRAM",
+      "likes": "最多按讚",
+      "downloads": "最多下載",
+      "status": "狀態"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 個模型}} · {sortLabel}",
+      "searchBadge": "搜尋:{query}",
+      "taskBadge": "任務:{task}",
+      "statusBadge": "狀態:{status}"
+    },
+    "empty": {
+      "body": "請嘗試擴大篩選條件或搜尋字詞。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "發佈日期",
+      "status": "狀態"
+    },
+    "unknown": "未知",
+    "longLive": {
+      "installNote": "LongLive 將安裝至 ~/.chaosengine/longlive 的獨立 venv。僅限 CUDA,依網路速度需 5-15 分鐘。"
+    }
+  }
+}

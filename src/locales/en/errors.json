@@ -1,0 +1,33 @@
+{
+  "generic": "Something went wrong.",
+  "network": "Network error. Check your connection.",
+  "timeout": "Request timed out.",
+  "notFound": "Not found.",
+  "permissionDenied": "Permission denied.",
+  "diskFull": "Not enough disk space.",
+  "outOfMemory": "Out of memory.",
+  "modelLoadFailed": "Failed to load model: {reason}",
+  "modelNotFound": "Model not found: {repo}",
+  "engineNotInstalled": "Engine not installed: {engine}. Install it from the Setup tab.",
+  "binaryMissing": "Required binary missing: {binary}",
+  "downloadFailed": "Download failed: {reason}",
+  "downloadCancelled": "Download cancelled.",
+  "huggingFaceGated": "This model is gated. Accept its license on Hugging Face and try again.",
+  "huggingFaceAuthRequired": "Authentication required. Set a Hugging Face token in Settings.",
+  "incompatibleHardware": "Your hardware does not meet the requirements for this model.",
+  "platformOnly": "This feature requires {platform}.",
+  "unsupportedFormat": "Unsupported file format: {format}",
+  "validationFailed": "Validation failed: {reason}",
+  "sessionCorrupt": "Session data is corrupted and could not be loaded.",
+  "boundaryFallback": "Something went wrong in this tab.",
+  "boundaryHint": "Try again, switch tabs, or copy the error details for diagnostics.",
+  "boundary": {
+    "scopeCrashed": "{scope} crashed",
+    "tryAgain": "Try again",
+    "copyDetails": "Copy details",
+    "stackTrace": "Stack trace",
+    "noJsStack": "(no JS stack captured)",
+    "componentStack": "Component stack",
+    "hint": "Frontend errors also appear in the webview console (right-click → Inspect Element in release builds, or run the app with npm run dev). Backend logs are visible in the Diagnostics tab."
+  }
+}

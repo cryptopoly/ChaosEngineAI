@@ -85,6 +85,92 @@ class DraftModelLookupTests(unittest.TestCase):
             result = get_draft_model(target)
             self.assertEqual(result, expected_draft, f"Failed for target: {target}")
 
+    # ------------------------------------------------------------------
+    # 2026-05-10: dflash-mlx 0.1.5 added Gemma4 backend (commit 05cc456)
+    # and z-lab published draft checkpoints for Gemma-4, Qwen3.5-122B,
+    # MiniMax M2.5/M2.7, and Kimi K2.6. Pin those mappings so future
+    # regressions surface here rather than at first-use.
+    # ------------------------------------------------------------------
+
+    def test_gemma4_31b_drafter(self):
+        self.assertEqual(
+            get_draft_model("google/gemma-4-31B-it"),
+            "z-lab/gemma-4-31B-it-DFlash",
+        )
+
+    def test_gemma4_26b_a4b_drafter(self):
+        self.assertEqual(
+            get_draft_model("google/gemma-4-26B-A4B-it"),
+            "z-lab/gemma-4-26B-A4B-it-DFlash",
+        )
+
+    def test_gemma4_mlx_community_alias(self):
+        # Apple Silicon users pull the mlx-community quants; the alias
+        # map has to canonicalise back to the google/ key so the drafter
+        # is still reachable.
+        for variant in (
+            "mlx-community/gemma-4-31B-it-bf16",
+            "mlx-community/gemma-4-31B-it-4bit",
+            "mlx-community/gemma-4-31B-it-8bit",
+        ):
+            self.assertEqual(
+                get_draft_model(variant),
+                "z-lab/gemma-4-31B-it-DFlash",
+                f"alias mismatch for {variant}",
+            )
+
+    def test_qwen35_122b_a10b_drafter(self):
+        self.assertEqual(
+            get_draft_model("Qwen/Qwen3.5-122B-A10B"),
+            "z-lab/Qwen3.5-122B-A10B-DFlash",
+        )
+
+    def test_minimax_m25_drafter(self):
+        self.assertEqual(
+            get_draft_model("MiniMaxAI/MiniMax-M2.5"),
+            "z-lab/MiniMax-M2.5-DFlash",
+        )
+
+    def test_minimax_m27_drafter(self):
+        self.assertEqual(
+            get_draft_model("MiniMaxAI/MiniMax-M2.7"),
+            "z-lab/MiniMax-M2.7-DFlash",
+        )
+
+    def test_kimi_k26_drafter(self):
+        self.assertEqual(
+            get_draft_model("moonshotai/Kimi-K2.6"),
+            "z-lab/Kimi-K2.6-DFlash",
+        )
+
+    def test_kimi_k26_mlx_community_alias(self):
+        self.assertEqual(
+            get_draft_model("mlx-community/Kimi-K2.6-4bit"),
+            "z-lab/Kimi-K2.6-DFlash",
+        )
+
+    def test_coder_next_mlx_4bit_alias_resolves(self):
+        """FU-041: ``lmstudio-community/Qwen3-Coder-Next-MLX-4bit`` is
+        the Qwen3-Next MoE coder (qwen3_next architecture, 512 experts,
+        hidden_size=2048). Confirmed by inspecting the local config.json
+        — it is NOT the same checkpoint as ``mlx-community/Qwen3.6-27B-4bit``
+        (which is the dense Qwen3.6-27B). The alias routes to the
+        Coder-Next drafter; the dense 27B-4bit has no drafter."""
+        self.assertEqual(
+            get_draft_model("lmstudio-community/Qwen3-Coder-Next-MLX-4bit"),
+            "z-lab/Qwen3-Coder-Next-DFlash",
+        )
+
+    def test_qwen36_27b_4bit_is_dense_not_coder_next(self):
+        """Regression test for the FU-038 bug we reverted in FU-041:
+        ``mlx-community/Qwen3.6-27B-4bit`` is the DENSE 27B Coder
+        (qwen3 architecture, hidden_size=5120). It must NOT alias to
+        the Qwen3-Next MoE drafter."""
+        self.assertNotEqual(
+            get_draft_model("mlx-community/Qwen3.6-27B-4bit"),
+            "z-lab/Qwen3-Coder-Next-DFlash",
+        )
+
 
 class ModelResolutionTests(unittest.TestCase):
     def test_resolve_dflash_target_prefers_canonical_repo(self):

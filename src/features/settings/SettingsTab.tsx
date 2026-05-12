@@ -1,6 +1,8 @@
 import { useState, type SetStateAction } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
+import { LanguagePanel } from "./LanguagePanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
 import type { SidebarMode } from "../../types";
@@ -52,15 +54,16 @@ type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | 
 
 interface SettingsSectionDef {
   id: SettingsSectionId;
-  label: string;
+  labelKey: string;
+  labelDefault: string;
 }
 
 const SETTINGS_SECTIONS: SettingsSectionDef[] = [
-  { id: "general", label: "General" },
-  { id: "storage", label: "Storage" },
-  { id: "providers", label: "Providers" },
-  { id: "integrations", label: "Integrations" },
-  { id: "diagnostics", label: "Diagnostics" },
+  { id: "general", labelKey: "settingsTab.sections.general", labelDefault: "General" },
+  { id: "storage", labelKey: "settingsTab.sections.storage", labelDefault: "Storage" },
+  { id: "providers", labelKey: "settingsTab.sections.providers", labelDefault: "Providers" },
+  { id: "integrations", labelKey: "settingsTab.sections.integrations", labelDefault: "Integrations" },
+  { id: "diagnostics", labelKey: "settingsTab.sections.diagnostics", labelDefault: "Diagnostics" },
 ];
 
 export function SettingsTab({
@@ -92,6 +95,7 @@ export function SettingsTab({
   onRestartServer,
   busyAction,
 }: SettingsTabProps) {
+  const { t } = useTranslation("common");
   const integrationApiToken = apiToken ?? "<chaosengine-api-token>";
   // Section selection lives in component state because it's purely a UI
   // concern — there's no need to thread it through the App-level workspace
@@ -114,11 +118,18 @@ export function SettingsTab({
   const generalPanels = (
     <div className="content-grid settings-section-grid">
       <Panel
-        title="Appearance"
-        subtitle="Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts."
+        title={t("settingsTab.appearance.title", { defaultValue: "Appearance" })}
+        subtitle={t("settingsTab.appearance.subtitle", {
+          defaultValue:
+            "Choose how the sidebar organises grouped tabs. Switches are instant and remembered across restarts.",
+        })}
       >
         <div className="control-stack">
-          <div className="segmented" role="radiogroup" aria-label="Sidebar style">
+          <div
+            className="segmented"
+            role="radiogroup"
+            aria-label={t("settingsTab.appearance.sidebarStyleAria", { defaultValue: "Sidebar style" })}
+          >
             <button
               type="button"
               role="radio"
@@ -126,7 +137,7 @@ export function SettingsTab({
               className={sidebarMode === "collapsible" ? "segment active" : "segment"}
               onClick={() => onSidebarModeChange("collapsible")}
             >
-              Collapsible
+              {t("settingsTab.appearance.sidebarCollapsible", { defaultValue: "Collapsible" })}
             </button>
             <button
               type="button"
@@ -135,15 +146,26 @@ export function SettingsTab({
               className={sidebarMode === "tabs" ? "segment active" : "segment"}
               onClick={() => onSidebarModeChange("tabs")}
             >
-              Tabs
+              {t("settingsTab.appearance.sidebarTabs", { defaultValue: "Tabs" })}
             </button>
           </div>
           <p className="help-text">
-            <strong>Collapsible</strong> shows all groups expanded with children listed inline — one click per
-            destination. <strong>Tabs</strong> keeps the sidebar compact: groups behave like single buttons that jump
-            to their last-used tab, with a sub-tab bar above the content.
+            <strong>{t("settingsTab.appearance.sidebarCollapsible", { defaultValue: "Collapsible" })}</strong>{" "}
+            {t("settingsTab.appearance.sidebarCollapsibleHelp", {
+              defaultValue:
+                "shows all groups expanded with children listed inline — one click per destination.",
+            })}{" "}
+            <strong>{t("settingsTab.appearance.sidebarTabs", { defaultValue: "Tabs" })}</strong>{" "}
+            {t("settingsTab.appearance.sidebarTabsHelp", {
+              defaultValue:
+                "keeps the sidebar compact: groups behave like single buttons that jump to their last-used tab, with a sub-tab bar above the content.",
+            })}
           </p>
-          <div className="segmented" role="radiogroup" aria-label="UI scale">
+          <div
+            className="segmented"
+            role="radiogroup"
+            aria-label={t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
+          >
             {([0.85, 0.9, 0.95, 1] as UiScale[]).map((scale) => (
               <button
                 key={scale}
@@ -158,10 +180,18 @@ export function SettingsTab({
             ))}
           </div>
           <p className="help-text">
-            UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.
+            {t("settingsTab.appearance.uiScaleHelp", {
+              defaultValue:
+                "UI scale changes the app chrome density immediately. Media previews keep their own aspect-ratio sizing.",
+            })}
           </p>
         </div>
       </Panel>
+      <LanguagePanel
+        settingsDraft={settingsDraft}
+        onSettingsDraftChange={onSettingsDraftChange}
+        onCopyText={onCopyText}
+      />
     </div>
   );
 
@@ -177,8 +207,11 @@ export function SettingsTab({
     <div className="settings-storage-grid">
       <div className="settings-storage-col">
         <Panel
-          title="Data Directory"
-          subtitle="Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines."
+          title={t("settingsTab.dataDirectory.title", { defaultValue: "Data Directory" })}
+          subtitle={t("settingsTab.dataDirectory.subtitle", {
+            defaultValue:
+              "Where ChaosEngineAI stores chat history, settings, and benchmark runs. Change to a cloud-synced folder (Dropbox, iCloud) to back up or share across machines.",
+          })}
         >
           <div className="control-stack">
             <div className="directory-add-row">
@@ -188,9 +221,13 @@ export function SettingsTab({
                 readOnly
                 value={effectiveDataDirectory}
               />
-              {dataDirectoryIsDefault ? <span className="badge muted">default</span> : null}
+              {dataDirectoryIsDefault ? (
+                <span className="badge muted">
+                  {t("settingsTab.badges.default", { defaultValue: "default" })}
+                </span>
+              ) : null}
               <button className="secondary-button" type="button" onClick={() => void onPickDataDirectory()}>
-                Browse...
+                {t("settingsTab.dataDirectory.browseButton", { defaultValue: "Browse..." })}
               </button>
               <button
                 className="secondary-button"
@@ -198,23 +235,34 @@ export function SettingsTab({
                 disabled={dataDirectoryIsDefault}
                 onClick={() => onSettingsDraftChange((current) => ({ ...current, dataDirectory: "" }))}
               >
-                Reset to default
+                {t("settingsTab.dataDirectory.resetButton", { defaultValue: "Reset to default" })}
               </button>
             </div>
             <p className="help-text">
-              Changes take effect after the backend restarts. Existing data will be copied to the new location; the
-              old files are left in place.
+              {t("settingsTab.dataDirectory.helpText", {
+                defaultValue:
+                  "Changes take effect after the backend restarts. Existing data will be copied to the new location; the old files are left in place.",
+              })}
             </p>
           </div>
         </Panel>
         <Panel
-          title="Delivery Folders"
-          subtitle="Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD."
+          title={t("settingsTab.deliveryFolders.title", { defaultValue: "Delivery Folders" })}
+          subtitle={t("settingsTab.deliveryFolders.subtitle", {
+            defaultValue:
+              "Where newly generated images and videos land. Override the defaults to drop finished renders straight into a client folder, Dropbox sync, or an external SSD.",
+          })}
         >
           <div className="control-stack">
             <div className="field-label-row">
-              <label className="field-label">Images</label>
-              {imagesOutputsIsDefault ? <span className="badge muted">default</span> : null}
+              <label className="field-label">
+                {t("settingsTab.deliveryFolders.imagesLabel", { defaultValue: "Images" })}
+              </label>
+              {imagesOutputsIsDefault ? (
+                <span className="badge muted">
+                  {t("settingsTab.badges.default", { defaultValue: "default" })}
+                </span>
+              ) : null}
             </div>
             <div className="directory-add-row">
               <input
@@ -224,7 +272,7 @@ export function SettingsTab({
                 value={effectiveImagesOutputs}
               />
               <button className="secondary-button" type="button" onClick={() => void onPickImageOutputsDirectory()}>
-                Browse...
+                {t("settingsTab.deliveryFolders.browseButton", { defaultValue: "Browse..." })}
               </button>
               <button
                 className="secondary-button"
@@ -232,12 +280,18 @@ export function SettingsTab({
                 disabled={imagesOutputsIsDefault}
                 onClick={() => onSettingsDraftChange((current) => ({ ...current, imageOutputsDirectory: "" }))}
               >
-                Reset to default
+                {t("settingsTab.deliveryFolders.resetButton", { defaultValue: "Reset to default" })}
               </button>
             </div>
             <div className="field-label-row">
-              <label className="field-label">Videos</label>
-              {videosOutputsIsDefault ? <span className="badge muted">default</span> : null}
+              <label className="field-label">
+                {t("settingsTab.deliveryFolders.videosLabel", { defaultValue: "Videos" })}
+              </label>
+              {videosOutputsIsDefault ? (
+                <span className="badge muted">
+                  {t("settingsTab.badges.default", { defaultValue: "default" })}
+                </span>
+              ) : null}
             </div>
             <div className="directory-add-row">
               <input
@@ -247,7 +301,7 @@ export function SettingsTab({
                 value={effectiveVideosOutputs}
               />
               <button className="secondary-button" type="button" onClick={() => void onPickVideoOutputsDirectory()}>
-                Browse...
+                {t("settingsTab.deliveryFolders.browseButton", { defaultValue: "Browse..." })}
               </button>
               <button
                 className="secondary-button"
@@ -255,12 +309,14 @@ export function SettingsTab({
                 disabled={videosOutputsIsDefault}
                 onClick={() => onSettingsDraftChange((current) => ({ ...current, videoOutputsDirectory: "" }))}
               >
-                Reset to default
+                {t("settingsTab.deliveryFolders.resetButton", { defaultValue: "Reset to default" })}
               </button>
             </div>
             <p className="help-text">
-              New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where
-              they were written. Reset returns the row to the default under the Data Directory.
+              {t("settingsTab.deliveryFolders.helpText", {
+                defaultValue:
+                  "New artifacts go to the folder you pick right away — no backend restart needed. Existing renders stay where they were written. Reset returns the row to the default under the Data Directory.",
+              })}
             </p>
           </div>
         </Panel>
@@ -272,11 +328,14 @@ export function SettingsTab({
         />
       </div>
       <Panel
-        title="Model Directories"
-        subtitle="Add the folders ChaosEngineAI should scan for local models, including custom paths and shared model directories."
+        title={t("settingsTab.modelDirectories.title", { defaultValue: "Model Directories" })}
+        subtitle={t("settingsTab.modelDirectories.subtitle", {
+          defaultValue:
+            "Add the folders ChaosEngineAI should scan for local models, including custom paths and shared model directories.",
+        })}
         actions={
           <button className="primary-button" type="button" onClick={() => void onSaveSettings()}>
-            Save settings
+            {t("settingsTab.modelDirectories.saveButton", { defaultValue: "Save settings" })}
           </button>
         }
       >
@@ -285,7 +344,9 @@ export function SettingsTab({
             <input
               className="text-input directory-add-label"
               type="text"
-              placeholder="Label (e.g. Shared models)"
+              placeholder={t("settingsTab.modelDirectories.labelPlaceholder", {
+                defaultValue: "Label (e.g. Shared models)",
+              })}
               value={newDirectoryLabel}
               onChange={(event) => onNewDirectoryLabelChange(event.target.value)}
             />
@@ -310,10 +371,10 @@ export function SettingsTab({
                 }
               }}
             >
-              Browse…
+              {t("settingsTab.modelDirectories.browseButton", { defaultValue: "Browse…" })}
             </button>
             <button className="secondary-button" type="button" onClick={onAddDirectory}>
-              Add
+              {t("settingsTab.modelDirectories.addButton", { defaultValue: "Add" })}
             </button>
           </div>
           <div className="list scrollable-list directory-list">
@@ -325,9 +386,16 @@ export function SettingsTab({
                 </div>
                 <div className="directory-row-actions">
                   <span className={`badge ${directory.exists ? "success" : "warning"}`}>
-                    {directory.exists ? "Found" : "Missing"}
+                    {directory.exists
+                      ? t("settingsTab.modelDirectories.foundBadge", { defaultValue: "Found" })
+                      : t("settingsTab.modelDirectories.missingBadge", { defaultValue: "Missing" })}
                   </span>
-                  <span className="badge muted">{directory.modelCount ?? 0} models</span>
+                  <span className="badge muted">
+                    {t("settingsTab.modelDirectories.modelCount", {
+                      defaultValue: "{count, plural, one {# model} other {# models}}",
+                      count: directory.modelCount ?? 0,
+                    })}
+                  </span>
                   <button
                     className="secondary-button small-button"
                     type="button"
@@ -336,14 +404,16 @@ export function SettingsTab({
                       if (picked) onUpdateDirectoryPath(directory.id, picked);
                     }}
                   >
-                    Change…
+                    {t("settingsTab.modelDirectories.changeButton", { defaultValue: "Change…" })}
                   </button>
                   <button className="secondary-button small-button" type="button" onClick={() => onToggleDirectory(directory.id)}>
-                    {directory.enabled ? "Disable" : "Enable"}
+                    {directory.enabled
+                      ? t("settingsTab.modelDirectories.disableButton", { defaultValue: "Disable" })
+                      : t("settingsTab.modelDirectories.enableButton", { defaultValue: "Enable" })}
                   </button>
                   {directory.source === "user" ? (
                     <button className="secondary-button small-button" type="button" onClick={() => onRemoveDirectory(directory.id)}>
-                      Remove
+                      {t("settingsTab.modelDirectories.removeButton", { defaultValue: "Remove" })}
                     </button>
                   ) : null}
                 </div>
@@ -358,8 +428,11 @@ export function SettingsTab({
   const providerPanels = (
     <div className="content-grid settings-section-grid">
       <Panel
-        title="Remote Providers"
-        subtitle="Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions."
+        title={t("settingsTab.providers.title", { defaultValue: "Remote Providers" })}
+        subtitle={t("settingsTab.providers.subtitle", {
+          defaultValue:
+            "Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions.",
+        })}
         actions={
           <button className="secondary-button" type="button" onClick={() => {
             const id = `remote-${Date.now()}`;
@@ -368,19 +441,23 @@ export function SettingsTab({
               remoteProviders: [...(c.remoteProviders ?? []), { id, label: "New Provider", apiBase: "https://api.openai.com/v1", apiKey: "", model: "gpt-4o-mini" }],
             }));
           }}>
-            + Add Provider
+            {t("settingsTab.providers.addButton", { defaultValue: "+ Add Provider" })}
           </button>
         }
       >
         <div className="control-stack">
           {(settingsDraft.remoteProviders ?? []).length === 0 ? (
-            <p className="empty-state">No remote providers configured. Add one to use cloud models as a fallback.</p>
+            <p className="empty-state">
+              {t("settingsTab.providers.emptyState", {
+                defaultValue: "No remote providers configured. Add one to use cloud models as a fallback.",
+              })}
+            </p>
           ) : null}
           {(settingsDraft.remoteProviders ?? []).map((provider, idx) => (
             <div key={provider.id} className="remote-provider-card">
               <div className="field-grid">
                 <label>
-                  Label
+                  {t("settingsTab.providers.labelField", { defaultValue: "Label" })}
                   <input
                     className="text-input"
                     type="text"
@@ -393,7 +470,7 @@ export function SettingsTab({
                   />
                 </label>
                 <label>
-                  Model name
+                  {t("settingsTab.providers.modelField", { defaultValue: "Model name" })}
                   <input
                     className="text-input"
                     type="text"
@@ -406,7 +483,7 @@ export function SettingsTab({
                   />
                 </label>
                 <label>
-                  API base URL (must be HTTPS)
+                  {t("settingsTab.providers.apiBaseField", { defaultValue: "API base URL (must be HTTPS)" })}
                   <input
                     className="text-input"
                     type="url"
@@ -420,11 +497,18 @@ export function SettingsTab({
                   />
                 </label>
                 <label>
-                  API key
+                  {t("settingsTab.providers.apiKeyField", { defaultValue: "API key" })}
                   <input
                     className="text-input"
                     type="password"
-                    placeholder={provider.hasApiKey ? provider.apiKeyMasked || "•••• stored ••••" : "sk-..."}
+                    placeholder={
+                      provider.hasApiKey
+                        ? provider.apiKeyMasked ||
+                          t("settingsTab.providers.apiKeyStoredPlaceholder", {
+                            defaultValue: "•••• stored ••••",
+                          })
+                        : t("settingsTab.providers.apiKeyPlaceholder", { defaultValue: "sk-..." })
+                    }
                     value={provider.apiKey ?? ""}
                     onChange={(event) => {
                       const next = [...(settingsDraft.remoteProviders ?? [])];
@@ -439,7 +523,7 @@ export function SettingsTab({
                   const next = (settingsDraft.remoteProviders ?? []).filter((_, i) => i !== idx);
                   onSettingsDraftChange((c) => ({ ...c, remoteProviders: next }));
                 }}>
-                  Remove
+                  {t("settingsTab.providers.removeButton", { defaultValue: "Remove" })}
                 </button>
               </div>
             </div>
@@ -448,24 +532,28 @@ export function SettingsTab({
       </Panel>
 
       <Panel
-        title="Hugging Face"
-        subtitle="Required for gated models like Mistral, Llama, Gemma. Get one at huggingface.co/settings/tokens"
+        title={t("settingsTab.huggingFace.title", { defaultValue: "Hugging Face" })}
+        subtitle={t("settingsTab.huggingFace.subtitle", {
+          defaultValue:
+            "Required for gated models like Mistral, Llama, Gemma. Get one at huggingface.co/settings/tokens",
+        })}
         actions={
           <button className="primary-button" type="button" onClick={() => void onSaveSettings()}>
-            Save settings
+            {t("settingsTab.huggingFace.saveButton", { defaultValue: "Save settings" })}
           </button>
         }
       >
         <div className="control-stack">
           <label>
-            Hugging Face token
+            {t("settingsTab.huggingFace.tokenLabel", { defaultValue: "Hugging Face token" })}
             <input
               className="text-input"
               type="password"
               placeholder={
                 settingsDraft.hasHuggingFaceToken
-                  ? settingsDraft.huggingFaceTokenMasked || "•••• stored ••••"
-                  : "hf_..."
+                  ? settingsDraft.huggingFaceTokenMasked ||
+                    t("settingsTab.huggingFace.tokenStoredPlaceholder", { defaultValue: "•••• stored ••••" })
+                  : t("settingsTab.huggingFace.tokenPlaceholder", { defaultValue: "hf_..." })
               }
               value={settingsDraft.huggingFaceToken}
               onChange={(event) =>
@@ -474,7 +562,10 @@ export function SettingsTab({
             />
           </label>
           <p className="muted-text">
-            Stored locally. Used by MLX conversion when fetching gated models from Hugging Face.
+            {t("settingsTab.huggingFace.helpText", {
+              defaultValue:
+                "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face.",
+            })}
           </p>
         </div>
       </Panel>
@@ -484,13 +575,17 @@ export function SettingsTab({
   const integrationPanels = (
     <div className="content-grid settings-section-grid">
       <Panel
-        title="Integrations"
-        subtitle="Connect external tools to ChaosEngineAI's OpenAI-compatible API."
+        title={t("settingsTab.integrations.title", { defaultValue: "Integrations" })}
+        subtitle={t("settingsTab.integrations.subtitle", {
+          defaultValue: "Connect external tools to ChaosEngineAI's OpenAI-compatible API.",
+        })}
         className="settings-integrations-panel"
       >
         <div className="control-stack">
           <p className="muted-text">
-            Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on{" "}
+            {t("settingsTab.integrations.intro", {
+              defaultValue: "Use these snippets to connect popular tools to ChaosEngineAI as their LLM backend. The server must be running on",
+            })}{" "}
             <span className="mono-text">{serverLocalhostUrl ?? `http://127.0.0.1:${serverPort}/v1`}</span>.
           </p>
           {[
@@ -503,7 +598,7 @@ export function SettingsTab({
               <div className="integration-card-header">
                 <strong>{item.name}</strong>
                 <button className="secondary-button" type="button" onClick={() => onCopyText(item.config)}>
-                  Copy
+                  {t("settingsTab.integrations.copyButton", { defaultValue: "Copy" })}
                 </button>
               </div>
               <pre className="integration-snippet">{item.config}</pre>
@@ -550,7 +645,11 @@ export function SettingsTab({
   // keep the standard 2-col ``content-grid``.
   return (
     <div className="settings-layout">
-      <div className="subtab-bar settings-subtab-bar" role="tablist" aria-label="Settings sections">
+      <div
+        className="subtab-bar settings-subtab-bar"
+        role="tablist"
+        aria-label={t("settingsTab.sectionsAria", { defaultValue: "Settings sections" })}
+      >
         {SETTINGS_SECTIONS.map((section) => {
           const isActive = section.id === activeSection;
           return (
@@ -562,7 +661,7 @@ export function SettingsTab({
               className={isActive ? "subtab active" : "subtab"}
               onClick={() => setActiveSection(section.id)}
             >
-              {section.label}
+              {t(section.labelKey, { defaultValue: section.labelDefault })}
             </button>
           );
         })}

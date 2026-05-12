@@ -1,0 +1,48 @@
+{
+  "title": "Диагностика",
+  "subtitle": "Проверить состояние среды выполнения, GPU и журналы",
+  "subtitleSnapshot": "Снимок системы для устранения неполадок. Скопируйте markdown, чтобы поделиться с поддержкой при сбоях.",
+  "sections": {
+    "snapshot": "Снимок системы",
+    "gpu": "GPU",
+    "memory": "Память",
+    "runtime": "Среда выполнения",
+    "binaries": "Бинарные файлы",
+    "extras": "Дополнительно",
+    "logs": "Журналы",
+    "locales": "Языки"
+  },
+  "fields": {
+    "platform": "Платформа",
+    "architecture": "Архитектура",
+    "kernel": "Ядро",
+    "appVersion": "Версия приложения",
+    "tauriVersion": "Версия Tauri",
+    "pythonVersion": "Версия Python",
+    "totalRAM": "Всего ОЗУ",
+    "availableRAM": "Доступно ОЗУ",
+    "totalVRAM": "Всего VRAM",
+    "freeVRAM": "Свободно VRAM",
+    "diskFree": "Свободно на диске"
+  },
+  "logs": {
+    "tail": "Хвост",
+    "follow": "Следить",
+    "pauseFollow": "Приостановить слежение",
+    "clear": "Очистить",
+    "download": "Скачать журнал",
+    "lines": "{count, plural, one {# строка} few {# строки} many {# строк} other {# строки}}",
+    "filterPlaceholder": "Фильтр…"
+  },
+  "actions": {
+    "copySnapshot": "Копировать снимок",
+    "downloadSnapshot": "Скачать снимок",
+    "openLogFolder": "Открыть папку журналов"
+  },
+  "logsTab": {
+    "title": "Журналы",
+    "subtitle": "Поисковый вид по каналам sidecar, среды выполнения и сервера.",
+    "filterPlaceholder": "Фильтровать журналы",
+    "emptyFiltered": "Ни одна строка журнала не соответствует текущему фильтру."
+  }
+}

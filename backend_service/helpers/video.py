@@ -7,10 +7,8 @@ alongside the image routes without a new mental model.
 
 from __future__ import annotations
 
-import base64
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,9 +16,23 @@ from backend_service.catalog import VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.huggingface import _format_release_label, _hf_repo_snapshot_dir
 from backend_service.helpers.images import _image_repo_live_metadata, _snapshot_on_disk_bytes
+from backend_service.helpers.mlx_video_validation import (
+    _is_mlx_video_routed_repo,
+    _missing_mlx_text_components,
+    _mlx_video_required_components,
+    _validate_mlx_video_snapshot,
+)
 from backend_service.helpers.platform_filter import (
     filter_mlx_only_families,
     is_apple_silicon,
+)
+from backend_service.helpers.video_artifacts import (
+    _delete_video_output,
+    _find_video_output,
+    _hydrate_video_artifact,
+    _load_video_outputs,
+    _save_video_artifact,
+    _video_output_directory,
 )
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 
@@ -543,103 +555,6 @@ def _video_component_has_weight_reference(component_dir: Path) -> bool:
     return False
 
 
-def _is_mlx_video_routed_repo(repo_id: str) -> bool:
-    """True iff this repo is meant to load through mlx-video on Apple Silicon.
-
-    Imports ``mlx_video_runtime`` lazily so the validator path doesn't drag
-    that module's torch warmup costs into every video catalog refresh.
-    """
-    try:
-        from backend_service.mlx_video_runtime import _is_mlx_video_repo
-    except Exception:
-        return False
-    return _is_mlx_video_repo(repo_id)
-
-
-# Component folders any mlx-video LTX-2 snapshot must carry. Subset of the
-# diffusers layout — no model_index.json. Lifted from the ``prince-canuma/
-# LTX-2-distilled`` repo tree as the canonical shape; bump as new mlx-video
-# families with different layouts come online.
-_MLX_VIDEO_LTX2_REQUIRED_COMPONENTS: tuple[str, ...] = (
-    "text_encoder",
-    "tokenizer",
-    "text_projections",
-    "transformer",
-    "vae",
-)
-
-_MLX_VIDEO_LTX23_REQUIRED_COMPONENTS: tuple[str, ...] = (
-    "audio_vae",
-    "text_projections",
-    "transformer",
-    "vae",
-    "vocoder",
-)
-
-
-def _mlx_video_required_components(repo_id: str | None = None) -> tuple[str, ...]:
-    repo_key = str(repo_id or "").lower()
-    if "ltx-2.3" in repo_key:
-        return _MLX_VIDEO_LTX23_REQUIRED_COMPONENTS
-    return _MLX_VIDEO_LTX2_REQUIRED_COMPONENTS
-
-
-def _missing_mlx_text_components(root: Path) -> list[str]:
-    missing: list[str] = []
-    checks = {
-        "text_encoder": (
-            root / "text_encoder" / "config.json",
-            root / "text_encoder" / "model.safetensors.index.json",
-        ),
-        "tokenizer": (
-            root / "tokenizer" / "tokenizer.json",
-            root / "tokenizer" / "tokenizer.model",
-        ),
-    }
-    for component, required_paths in checks.items():
-        component_dir = root / component
-        if not component_dir.is_dir():
-            missing.append(component)
-            continue
-        if not all(path.exists() for path in required_paths):
-            missing.append(component)
-    return missing
-
-
-def _validate_mlx_video_snapshot(snapshot_dir: str, repo_id: str | None = None) -> str | None:
-    """Return ``None`` if the snapshot has the required MLX component folders.
-
-    Mirrors the contract of ``validate_local_diffusers_snapshot`` so the
-    callers can swap one for the other without restructuring the result
-    handling. Each missing folder is named explicitly so the user sees
-    which file an interrupted download stopped on.
-    """
-    root = Path(snapshot_dir)
-    if not root.exists():
-        return (
-            f"Local snapshot directory does not exist at {root}. "
-            "Re-download the model."
-        )
-    missing: list[str] = []
-    for component in _mlx_video_required_components(repo_id):
-        component_dir = root / component
-        if not component_dir.is_dir():
-            missing.append(component)
-            continue
-        # Empty component dirs indicate a half-completed download — count
-        # them as missing so the retry CTA fires.
-        try:
-            if not any(component_dir.iterdir()):
-                missing.append(f"{component} (empty)")
-        except OSError:
-            missing.append(component)
-    if missing:
-        return (
-            "The local snapshot is incomplete. Missing mlx-video components: "
-            f"{', '.join(missing)}. Re-download the model and keep ChaosEngineAI "
-            "open until the download completes."
-        )
-    return None
 
 
 # ---- Video output CRUD ----
@@ -648,122 +563,3 @@ def _validate_mlx_video_snapshot(snapshot_dir: str, repo_id: str | None = None) 
 # the real deliverable and there's no cheap "preview" we can embed inline. The
 # frontend loads the file directly via a dedicated ``/file`` endpoint rather
 # than getting a base64 data URL in the list payload.
-
-
-def _video_output_directory(video_outputs_dir: Path, created_at: str | None = None) -> Path:
-    day_label = (created_at or datetime.utcnow().isoformat())[:10]
-    output_dir = video_outputs_dir / day_label
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
-
-
-def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
-    prompt = str(payload.get("prompt") or "")
-    model_name = str(payload.get("modelName") or payload.get("modelId") or "Video model")
-    return {
-        "artifactId": str(payload.get("artifactId") or ""),
-        "modelId": str(payload.get("modelId") or ""),
-        "modelName": model_name,
-        "prompt": prompt,
-        "negativePrompt": str(payload.get("negativePrompt") or ""),
-        "width": int(payload.get("width") or 768),
-        "height": int(payload.get("height") or 512),
-        "numFrames": int(payload.get("numFrames") or 0),
-        "fps": int(payload.get("fps") or 24),
-        "steps": int(payload.get("steps") or 0),
-        "guidance": float(payload.get("guidance") or 0.0),
-        "seed": int(payload.get("seed") or 0),
-        "createdAt": str(
-            payload.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-        ),
-        "durationSeconds": float(payload.get("durationSeconds") or 0.0),
-        "clipDurationSeconds": float(payload.get("clipDurationSeconds") or 0.0),
-        "videoPath": str(payload.get("videoPath") or "") or None,
-        "metadataPath": str(payload.get("metadataPath") or "") or None,
-        "videoMimeType": str(payload.get("videoMimeType") or "video/mp4"),
-        "videoExtension": str(payload.get("videoExtension") or "mp4"),
-        "runtimeLabel": str(payload.get("runtimeLabel") or ""),
-        "runtimeNote": str(payload.get("runtimeNote") or "") or None,
-    }
-
-
-def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> dict[str, Any]:
-    created_at = str(
-        artifact.get("createdAt") or datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-    )
-    output_dir = _video_output_directory(video_outputs_dir, created_at)
-    artifact_id = str(artifact["artifactId"])
-    extension = str(artifact.get("videoExtension") or "mp4").lstrip(".")
-    video_path = output_dir / f"{artifact_id}.{extension}"
-    metadata_path = output_dir / f"{artifact_id}.json"
-
-    video_bytes = artifact.get("videoBytes")
-    if isinstance(video_bytes, str):
-        video_bytes = base64.b64decode(video_bytes.encode("ascii"))
-    if isinstance(video_bytes, (bytes, bytearray)):
-        video_path.write_bytes(bytes(video_bytes))
-    else:
-        raise ValueError(
-            "Cannot persist video artifact: no raw bytes supplied. "
-            "Pass `videoBytes` as bytes from the generation pipeline."
-        )
-
-    persisted = {
-        **artifact,
-        "videoPath": str(video_path),
-        "metadataPath": str(metadata_path),
-    }
-    metadata_payload = {
-        key: value
-        for key, value in persisted.items()
-        if key not in {"videoBytes", "videoMimeType", "videoExtension"}
-    }
-    metadata_path.write_text(json.dumps(metadata_payload, indent=2), encoding="utf-8")
-    return _hydrate_video_artifact(persisted)
-
-
-def _load_video_outputs(video_outputs_dir: Path) -> list[dict[str, Any]]:
-    if not video_outputs_dir.exists():
-        return []
-    outputs: list[dict[str, Any]] = []
-    for metadata_path in video_outputs_dir.rglob("*.json"):
-        try:
-            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(payload, dict):
-            continue
-        outputs.append(_hydrate_video_artifact({**payload, "metadataPath": str(metadata_path)}))
-    outputs.sort(key=lambda item: str(item.get("createdAt") or ""), reverse=True)
-    return outputs
-
-
-def _find_video_output(artifact_id: str, video_outputs_dir: Path) -> dict[str, Any] | None:
-    for output in _load_video_outputs(video_outputs_dir):
-        if output.get("artifactId") == artifact_id:
-            return output
-    return None
-
-
-def _delete_video_output(artifact_id: str, video_outputs_dir: Path) -> bool:
-    if not video_outputs_dir.exists():
-        return False
-    found = False
-    for metadata_path in video_outputs_dir.rglob(f"{artifact_id}.json"):
-        found = True
-        video_path = metadata_path.with_suffix(".mp4")
-        try:
-            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
-            if isinstance(payload, dict) and payload.get("videoPath"):
-                video_path = Path(str(payload["videoPath"]))
-        except (OSError, json.JSONDecodeError):
-            pass
-        try:
-            metadata_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-        try:
-            video_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-    return found

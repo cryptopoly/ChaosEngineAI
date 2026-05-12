@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "即時系統統計",
+    "subtitle": "從 Python sidecar 重新整理資料,以便桌面 Shell 提供適配建議。",
+    "runtimeEngine": "執行階段引擎",
+    "noModelLoaded": "未載入模型",
+    "inferenceActivity": "推論活動",
+    "activeCount": "{count} 個活動",
+    "totalServed": "共服務 {count} 次",
+    "warmPool": "熱池",
+    "warmModelCount": "{count, plural, other {# 個模型}}",
+    "noWarmModels": "無熱模型",
+    "modelDisk": "模型磁碟",
+    "diskFree": "可用 {value} GB",
+    "diskTotal": "共 {value} GB",
+    "spareHeadroom": "剩餘空間",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% 工作餘量",
+    "memoryInUse": "記憶體使用中",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "記憶體壓力",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · 壓縮 {compressed} GB",
+    "swapUsage": "交換空間使用",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU 負載",
+    "cpuLabel": "{value}%",
+    "headroomFor": "{target} 的餘量",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "電源",
+      "charging": "充電中",
+      "acPower": "交流電源",
+      "onBattery": "使用電池",
+      "lowNotice": "未接電源 — 推論可能因熱壓力而降速"
+    },
+    "processes": {
+      "name": "處理程序",
+      "owner": "擁有者",
+      "memory": "記憶體",
+      "cpu": "CPU",
+      "active": "活動",
+      "warm": "熱",
+      "system": "系統",
+      "empty": "未偵測到活動的本地 LLM 處理程序。",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "硬體適配",
+    "subtitle": "相對於此機器推薦目標設定的指引。",
+    "recommendedTarget": "推薦目標",
+    "currentRuntime": "目前執行階段",
+    "modelLoadedVia": "{model} 透過 {engine} 載入。",
+    "noModelHint": "尚未載入模型。在 對話 中選擇執行緒模型,或在 探索 中瀏覽更新的家族。"
+  },
+  "activityFeed": {
+    "title": "活動摘要",
+    "subtitle": "無需深入記錄即可檢視的操作事件。",
+    "now": "剛剛"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "模型庫掃描已完成",
+      "detail": "在已設定的模型目錄中找到 {count} 個本機項目。"
+    },
+    "hardwareProfile": {
+      "title": "硬體設定檔已重新整理"
+    },
+    "backendReadiness": {
+      "title": "後端就緒狀態",
+      "detail": "MLX 已安裝：{mlx} / mlx-lm 已安裝：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 執行階段：{gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "推薦目標:{modelSize} 級 @ {cacheLabel}",
+    "mlxDetail": "此預測相對於 {hardware} 上推薦的 {modelSize} 級本機目標,而非目前選擇的對話模型。",
+    "ggufTitle": "推薦目標:{modelSize} GGUF",
+    "ggufDetail": "跨平台模式將優先選擇 llama.cpp GGUF 以相容廣泛硬體。"
+  }
+}

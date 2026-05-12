@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
-  installCudaTorch,
   loadModel,
   getWorkspace,
-  deleteModelPath,
-  openHtmlChallengeFile,
-  revealModelPath,
   resolveApiToken,
-  unloadModel,
   updateSession,
+  updateSettings as updateSettingsApi,
 } from "./api";
+import { FirstLaunchLocaleBanner } from "./components/FirstLaunchLocaleBanner";
+import { changeLocale, normaliseLocale, SUPPORTED_LOCALES, type SupportedLocale } from "./i18n";
+import {
+  performConvertModel,
+  pickConversionOutputDir,
+  prepareCatalogConversion as prepareCatalogConversionAction,
+  prepareLibraryConversion as prepareLibraryConversionAction,
+} from "./features/app/conversionActions";
+import { performDeleteModel, performUnloadModel } from "./features/app/modelActions";
+import { threadPatchFromVariant } from "./features/app/variantPayloads";
 import { LaunchModal } from "./components/LaunchModal";
 import { sanitizeSpeculativeSelection } from "./components/runtimeSupport";
 import { ImageGenerationModal } from "./components/ImageGenerationModal";
@@ -23,6 +30,7 @@ import { SubtabBar } from "./components/SubtabBar";
 import { LogsTab } from "./features/logs/LogsTab";
 import { SettingsTab } from "./features/settings/SettingsTab";
 import { DashboardTab } from "./features/dashboard/DashboardTab";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ServerTab } from "./features/server/ServerTab";
 import { ChatTab } from "./features/chat/ChatTab";
 import { CompareView } from "./features/chat/CompareView";
@@ -51,12 +59,12 @@ import type {
   TabId,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { tabs, CAPABILITY_META } from "./constants";
+import { tabs } from "./constants";
+import { CapabilityStrip } from "./components/CapabilityStrip";
 import {
   number,
   sizeLabel,
   flattenVariants,
-  capabilityMeta,
   firstDirectVariant,
   findVariantById,
   findVariantForReference,
@@ -93,9 +101,17 @@ import {
   useSidebarPrefs,
   useUiScale,
   useGpuStatus,
+  useCudaTorchInstall,
+  useDetailsWindowResize,
+  useFileActions,
 } from "./hooks";
 
 export default function App() {
+  // FU-042: i18n hook — used for the workspace header tab label /
+  // caption resolution and the first-launch locale banner.  Other
+  // tab-level surfaces use their own ``useTranslation`` call to keep
+  // this top-level component's dependency surface tight.
+  const { t: tCommon } = useTranslation("common");
   // ── Workspace (core state) ─────────────────────────────────
   const ws = useWorkspace();
   const {
@@ -114,99 +130,49 @@ export default function App() {
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
-  const [installingCudaTorch, setInstallingCudaTorch] = useState(false);
-  const [cudaTorchResult, setCudaTorchResult] = useState<
-    | { ok: true; indexUrl: string | null; pythonVersion: string | null }
-    | { ok: false; message: string; pythonVersion: string | null; noWheelForPython: boolean }
-    | null
-  >(null);
-  // Raw install result, kept alongside the reduced ``cudaTorchResult``
-  // shape above so the Studio's CudaTorchLogPanel can render the full
-  // per-attempt pip output (the reduced shape drops ``attempts`` to
-  // keep the in-line success/failure summary terse). One more state
-  // slot is cheaper than reshaping every existing call site.
-  const [cudaTorchRawResult, setCudaTorchRawResult] = useState<
-    import("./api").CudaTorchInstallResult | null
-  >(null);
+  const { i18n: i18nInstance } = useTranslation();
 
-  const handleInstallCudaTorch = async () => {
-    if (installingCudaTorch) return;
-    setInstallingCudaTorch(true);
-    setCudaTorchResult(null);
-    setCudaTorchRawResult(null);
-    try {
-      const result = await installCudaTorch();
-      setCudaTorchRawResult(result);
-      if (result.ok) {
-        setCudaTorchResult({
-          ok: true,
-          indexUrl: result.indexUrl,
-          pythonVersion: result.pythonVersion,
-        });
-      } else {
-        const last = result.attempts[result.attempts.length - 1];
-        const tail = (last?.output ?? result.output ?? "").split("\n").slice(-3).join("\n");
-        setCudaTorchResult({
-          ok: false,
-          message: tail || "pip install failed — see backend logs for details.",
-          pythonVersion: result.pythonVersion,
-          noWheelForPython: result.noWheelForPython,
-        });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setCudaTorchResult({
-        ok: false,
-        message,
-        pythonVersion: null,
-        noWheelForPython: false,
-      });
-      // Always synthesize a raw result on exception so the
-      // CudaTorchLogPanel renders the failure instead of silently
-      // hiding -- previously any network error / 5xx / timeout left
-      // the panel showing nothing and the user couldn't tell whether
-      // the install was running, finished, or never reached the
-      // backend at all. The synthesized "attempt" carries the
-      // exception text so the panel surfaces it as a [FAIL] entry.
-      setCudaTorchRawResult({
-        ok: false,
-        output: message,
-        indexUrl: null,
-        attempts: [
-          { indexUrl: "(request never returned)", ok: false, output: message },
-        ],
-        requiresRestart: false,
-        pythonExecutable: "",
-        pythonVersion: null,
-        noWheelForPython: false,
-        capabilities: {},
-      });
-    } finally {
-      setInstallingCudaTorch(false);
-    }
-    // Refresh runtime status after install completes (success or
-    // failure). Without this, the warning banner keeps reading the
-    // pre-install torchInstallWarning value and the user thinks the
-    // button did nothing -- the cache is bound to whatever the
-    // probe last returned. Both Studios subscribe to their own
-    // runtime probes via useImageState / useVideoState; calling
-    // their refresh handlers re-runs the probe and the banner
-    // self-clears (or self-updates with a new failure mode).
-    try {
-      await imgState.refreshImageData();
-    } catch {
-      /* refresh is best-effort */
-    }
-    try {
-      await videoState.refreshVideoData();
-    } catch {
-      /* refresh is best-effort */
-    }
-  };
+  // FU-042: hydrate the persisted locale from settings as soon as
+  // ``getWorkspace`` resolves.  Boot-time ``initI18n`` only had the
+  // navigator default; the saved ``settings.locale`` overrides it here
+  // so the UI flips to the user's chosen language on cold start.
+  useEffect(() => {
+    if (loading) return;
+    const persisted = ws.workspace.settings?.locale;
+    if (!persisted || persisted === "system") return;
+    const normalised = normaliseLocale(persisted) as SupportedLocale;
+    if (!SUPPORTED_LOCALES.includes(normalised)) return;
+    if (i18nInstance.language === normalised) return;
+    void changeLocale(normalised);
+  }, [loading, ws.workspace.settings?.locale, i18nInstance]);
 
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
+
+  const {
+    installingCudaTorch,
+    cudaTorchResult,
+    cudaTorchRawResult,
+    handleInstallCudaTorch,
+  } = useCudaTorchInstall({
+    onAfterInstall: async () => {
+      // Both Studios subscribe to their own runtime probes via
+      // useImageState / useVideoState; re-running them refreshes the
+      // ``torchInstallWarning`` banner so it self-clears (or updates
+      // with a new failure mode) without a backend restart.
+      try {
+        await imgState.refreshImageData();
+      } catch {
+        /* refresh is best-effort */
+      }
+      try {
+        await videoState.refreshVideoData();
+      } catch {
+        /* refresh is best-effort */
+      }
+    },
+  });
   const settings = useSettings(
     workspace, setWorkspace,
     backendOnline, setBackendOnline,
@@ -935,16 +901,13 @@ export default function App() {
   }
 
   async function handleUnloadModel(ref?: string) {
-    setBusyAction("Unloading model...");
-    try {
-      const runtime = await unloadModel(ref);
-      setWorkspace((current) => syncRuntime(current, runtime));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to unload model.");
-    } finally {
-      setBusyAction(null);
-    }
+    return performUnloadModel(ref, {
+      setBusyAction,
+      setError,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   async function handleUnloadWarmModel(ref: string) {
@@ -968,217 +931,70 @@ export default function App() {
     });
   }
 
-  async function handleRevealPath(path: string) {
-    try {
-      if (backendOnline) { await revealModelPath(path); return; }
-    } catch { /* fallback below */ }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      const parentDir = path.replace(/\/[^/]+$/, "");
-      await tauriInvoke("plugin:opener|open_path", { path: parentDir });
-    } catch {
-      setError("Could not open file location. Try navigating manually to: " + path);
-    }
-  }
-
-  function fileUrlFromPath(path: string) {
-    if (/^(https?|file):\/\//i.test(path)) return path;
-    const normalized = path.replace(/\\/g, "/");
-    const encoded = normalized.split("/").map((part) => encodeURIComponent(part)).join("/");
-    return `${normalized.startsWith("/") ? "file://" : "file:///"}${encoded}`;
-  }
-
-  async function handleOpenFilePath(path: string) {
-    if (backendOnline) {
-      try {
-        await openHtmlChallengeFile(path);
-        return;
-      } catch { /* fallback below */ }
-    }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_url", { url: fileUrlFromPath(path) });
-      return;
-    } catch { /* fall through */ }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_path", { path });
-    } catch {
-      setError("Could not open file. Try opening this path manually: " + path);
-    }
-  }
-
-  async function handleOpenExternalUrl(url: string) {
-    if (/^(\/|[A-Za-z]:[\\/])/.test(url)) {
-      await handleOpenFilePath(url);
-      return;
-    }
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      await tauriInvoke("plugin:opener|open_url", { url });
-      return;
-    } catch { /* fall through */ }
-    try {
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (opened) return;
-    } catch { /* fall through */ }
-    setError(`Could not open link. Try opening this URL manually: ${url}`);
-  }
+  const { handleRevealPath, handleOpenFilePath, handleOpenExternalUrl } = useFileActions(backendOnline, setError);
 
   async function handleDeleteModel(item: LibraryItem) {
-    const confirmed = window.confirm(
-      `Delete "${item.name}"?\n\nThis will permanently remove the files at:\n${item.path}\n\nThis action cannot be undone.`,
-    );
-    if (!confirmed) return;
-    setBusyAction("Deleting model...");
-    try {
-      const result = await deleteModelPath(item.path);
-      setWorkspace((current) => ({ ...current, library: result.library }));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Failed to delete model.");
-    } finally {
-      setBusyAction(null);
-    }
+    return performDeleteModel(item, {
+      setBusyAction,
+      setError,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   function prepareCatalogConversion(model: ModelVariant) {
-    const matchingItem = findLibraryItemForVariant(convertibleLibrary, model);
-    if (matchingItem) { prepareLibraryConversion(matchingItem); return; }
-    setActiveTab("conversion");
-    setLastConversion(null);
+    return prepareCatalogConversionAction(model, {
+      convertibleLibrary,
+      setConversionDraft,
+      setLastConversion,
+      setActiveTab,
+    });
   }
 
   function prepareLibraryConversion(item: LibraryItem, resolvedPath?: string) {
-    const isGguf = libraryItemFormat(item).toUpperCase() === "GGUF";
-    setConversionDraft({
-      modelRef: item.name,
-      path: resolvedPath ?? item.path,
-      hfRepo: isGguf ? "" : item.name,
-      outputPath: "",
-      quantize: true,
-      qBits: 4,
-      qGroupSize: 64,
-      dtype: "float16",
+    return prepareLibraryConversionAction(item, resolvedPath, {
+      setConversionDraft,
+      setLastConversion,
+      setActiveTab,
     });
-    setLastConversion(null);
-    setActiveTab("conversion");
   }
 
   async function handleConvertModel() {
-    const modelRef = conversionDraft.modelRef.trim();
-    const path = conversionDraft.path.trim();
-    const hfRepo = conversionDraft.hfRepo.trim();
-    const outputPath = conversionDraft.outputPath.trim();
-    if (!modelRef && !path) { setError("Enter a model reference or a local path before starting conversion."); return; }
-    setBusyAction("Converting model...");
-    setConversionStartedAt(Date.now());
-    setConversionError(null);
-    setShowConversionModal(true);
-    try {
-      const response = await convertModel({
-        modelRef: modelRef || undefined,
-        path: path || undefined,
-        hfRepo: hfRepo || undefined,
-        outputPath: outputPath || undefined,
-        quantize: conversionDraft.quantize,
-        qBits: conversionDraft.qBits,
-        qGroupSize: conversionDraft.qGroupSize,
-        dtype: conversionDraft.dtype,
-      });
-      setLastConversion(response.conversion);
-      setWorkspace((current) => syncRuntime({ ...current, library: response.library }, response.runtime));
-      await refreshWorkspace(activeChatId || undefined);
-    } catch (actionError) {
-      const message = actionError instanceof Error ? actionError.message : "Failed to convert model.";
-      setError(message);
-      setConversionError(message);
-    } finally {
-      setBusyAction(null);
-      setConversionStartedAt(null);
-    }
+    return performConvertModel({
+      conversionDraft,
+      setError,
+      setBusyAction,
+      setConversionStartedAt,
+      setConversionError,
+      setShowConversionModal,
+      setLastConversion,
+      setWorkspace,
+      refreshWorkspace,
+      activeChatId,
+    });
   }
 
   async function handlePickConversionOutputDir() {
-    try {
-      const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
-      const picked = await tauriInvoke<string | null>("pick_directory");
-      if (picked) {
-        const suggested = conversionSource?.name
-          ? `${picked.replace(/\/$/, "")}/${conversionSource.name.replace(/[^\w.-]/g, "-")}-mlx`
-          : picked;
-        updateConversionDraft("outputPath", suggested);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open the directory picker.");
-    }
-  }
-
-  function loadPayloadFromVariant(variant: ModelVariant, nextTab?: TabId) {
-    const localItem = findLibraryItemForVariant(chatLibrary, variant);
-    if (localItem) {
-      return {
-        modelRef: localItem.name,
-        modelName: localItem.name,
-        canonicalRepo: variant.repo,
-        source: "library",
-        backend: libraryItemBackend(localItem),
-        path: localItem.path,
-        nextTab,
-      };
-    }
-    return {
-      modelRef: variant.id,
-      modelName: variant.name,
-      canonicalRepo: variant.repo,
-      source: "catalog",
-      backend: variant.backend,
-      nextTab,
-    };
-  }
-
-  function threadPatchFromVariant(variant: ModelVariant): Pick<
-    ChatSession,
-    "model" | "modelRef" | "canonicalRepo" | "modelSource" | "modelPath" | "modelBackend" | "cacheLabel" | "updatedAt"
-    | "cacheStrategy" | "cacheBits" | "fp16Layers" | "fusedAttention" | "fitModelInMemory"
-    | "contextTokens" | "speculativeDecoding" | "dflashDraftModel" | "treeBudget"
-  > {
-    const localItem = findLibraryItemForVariant(chatLibrary, variant);
-    const modelRef = localItem?.name ?? variant.id;
-    const modelName = localItem?.name ?? variant.name;
-    const modelBackend = localItem ? libraryItemBackend(localItem, variant) : variant.backend;
-    const sanitizedSpeculative = sanitizeSpeculativeForModel({
-      backend: modelBackend,
-      modelRef,
-      canonicalRepo: variant.repo,
-      modelName,
-      speculativeDecoding: launchSettings.speculativeDecoding,
-      treeBudget: launchSettings.treeBudget,
+    return pickConversionOutputDir({
+      conversionSource,
+      setError,
+      updateConversionDraft,
     });
-    return {
-      model: modelName,
-      modelRef,
-      canonicalRepo: variant.repo,
-      modelSource: localItem ? "library" : "catalog",
-      modelPath: localItem?.path ?? null,
-      modelBackend,
-      cacheLabel: launchCacheLabel,
-      cacheStrategy: launchSettings.cacheStrategy,
-      cacheBits: launchSettings.cacheBits,
-      fp16Layers: launchSettings.fp16Layers,
-      fusedAttention: launchSettings.fusedAttention,
-      fitModelInMemory: launchSettings.fitModelInMemory,
-      contextTokens: launchSettings.contextTokens,
-      speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
-      dflashDraftModel: null,
-      treeBudget: sanitizedSpeculative.treeBudget,
-      updatedAt: new Date().toLocaleString(),
-    };
+  }
+
+  function threadPatchFromVariantLocal(variant: ModelVariant) {
+    return threadPatchFromVariant(variant, {
+      chatLibrary,
+      launchSettings,
+      launchCacheLabel,
+      sanitizeSpeculativeForModel,
+    });
   }
 
   async function handleApplyVariantToActiveThread(variant: ModelVariant) {
     if (!activeChat) return;
-    await persistSessionChanges(activeChat.id, threadPatchFromVariant(variant));
+    await persistSessionChanges(activeChat.id, threadPatchFromVariantLocal(variant));
     setActiveTab("chat");
   }
 
@@ -1188,7 +1004,7 @@ export default function App() {
       title: "New chat",
       pinned: false,
       messages: [],
-      ...threadPatchFromVariant(variant),
+      ...threadPatchFromVariantLocal(variant),
     };
     setWorkspace((current) => ({
       ...current,
@@ -1288,52 +1104,8 @@ export default function App() {
     void navigator.clipboard.writeText(text);
   }
 
-  // Window resize for details panels
-  const originalWindowSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const [openDetailsCount, setOpenDetailsCount] = useState(0);
-  async function handleDetailsToggle(opened: boolean) {
-    try {
-      const { isTauri } = await import("@tauri-apps/api/core");
-      if (!isTauri()) return;
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const win = getCurrentWindow();
-      setOpenDetailsCount((prev) => {
-        const next = opened ? prev + 1 : Math.max(0, prev - 1);
-        void (async () => {
-          if (next > 0 && prev === 0) {
-            const size = await win.innerSize();
-            originalWindowSizeRef.current = { width: size.width, height: size.height };
-            await win.setSize(new (await import("@tauri-apps/api/window")).LogicalSize(
-              Math.min(1800, Math.round(size.width * 1.15)),
-              Math.min(1100, Math.round(size.height * 1.1)),
-            ));
-          } else if (next === 0 && prev > 0 && originalWindowSizeRef.current) {
-            const { LogicalSize } = await import("@tauri-apps/api/window");
-            await win.setSize(new LogicalSize(originalWindowSizeRef.current.width, originalWindowSizeRef.current.height));
-            originalWindowSizeRef.current = null;
-          }
-        })();
-        return next;
-      });
-    } catch { /* Not running in Tauri */ }
-  }
+  const { handleDetailsToggle } = useDetailsWindowResize();
 
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span className="capability-icon" key={capability} title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}>
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   // ── Tab content ────────────────────────────────────────────
   let content = <DashboardTab
@@ -1394,7 +1166,6 @@ export default function App() {
         strategyCompat={{
           turboInstalled: !!workspace.system.llamaServerTurboPath,
           turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
-          chaosengineAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "chaosengine" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}
@@ -1914,6 +1685,7 @@ export default function App() {
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
         onBenchmarkDraftUpdate={setBenchmarkDraft}
         onRunBenchmark={() => void benchmarks.handleRunBenchmark(benchmarkOption)}
+        onCancelBenchmark={benchmarks.handleCancelBenchmark}
         onShowBenchmarkPickerChange={setShowBenchmarkPicker}
         onShowBenchmarkModalChange={setShowBenchmarkModal}
         onSelectedBenchmarkIdChange={setSelectedBenchmarkId}
@@ -1981,6 +1753,17 @@ export default function App() {
       className="app-shell"
       style={{ "--ui-scale": uiScalePrefs.uiScale } as CSSProperties}
     >
+      <FirstLaunchLocaleBanner
+        persistedLocale={workspace.settings?.locale}
+        onPersistLocale={(locale) => {
+          // Fire-and-forget — we don't await because the banner already
+          // mutates the live i18n state via ``changeLocale`` and sets the
+          // localStorage dismissal flag.  This PATCH only ensures the
+          // choice survives a cold restart; a network failure here is
+          // self-healing (the banner just re-appears next launch).
+          void updateSettingsApi({ locale });
+        }}
+      />
       <Sidebar
         activeTab={activeTab}
         onTabChange={(tabId) => { setActiveTab(tabId); setError(null); }}
@@ -2000,9 +1783,21 @@ export default function App() {
       <main className="workspace">
         <header className="workspace-header">
           <div>
-            <span className="eyebrow">Workspace</span>
-            <h2>{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
-            <p>{tabs.find((tab) => tab.id === activeTab)?.caption}</p>
+            <span className="eyebrow">{tCommon("app.workspace", { defaultValue: "Workspace" })}</span>
+            <h2>
+              {(() => {
+                const tab = tabs.find((entry) => entry.id === activeTab);
+                if (!tab) return null;
+                return tCommon(tab.labelKey, { defaultValue: tab.label });
+              })()}
+            </h2>
+            <p>
+              {(() => {
+                const tab = tabs.find((entry) => entry.id === activeTab);
+                if (!tab) return null;
+                return tCommon(tab.captionKey, { defaultValue: tab.caption });
+              })()}
+            </p>
           </div>
           <div className="header-badges">
             <span className="badge muted">{workspace.system.platform}</span>
@@ -2109,7 +1904,13 @@ export default function App() {
               tauriBackend={tauriBackend}
             />
           ) : (
-            content
+            // FU-037: per-tab ErrorBoundary so an uncaught render error
+            // in one tab no longer blanks the whole workspace. ``key``
+            // is the active tab id so switching tabs unmounts the
+            // boundary and gives the user a clean recovery path.
+            <ErrorBoundary key={activeTab} scope={tabs.find((tab) => tab.id === activeTab)?.label ?? activeTab}>
+              {content}
+            </ErrorBoundary>
           )}
         </div>
       </main>
@@ -2197,7 +1998,7 @@ export default function App() {
               </div>
               <div className="modal-body detail-modal-body">
                 <p className="discover-summary">{family.summary}</p>
-                {renderCapabilityIcons(family.capabilities, 12)}
+                <CapabilityStrip capabilities={family.capabilities} max={12} />
                 <div className="detail-variants">
                   <span className="eyebrow">Variants ({family.variants.length})</span>
                   {family.variants.map((variant) => {

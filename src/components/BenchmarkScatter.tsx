@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { BenchmarkResult } from "../types";
 
 export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
@@ -6,8 +7,9 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
   compareId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation("common");
   if (runs.length === 0) {
-    return <div className="empty-state"><p>Run some benchmarks to populate the scatter plot.</p></div>;
+    return <div className="empty-state"><p>{t("benchmarkScatter.emptyState", { defaultValue: "Run some benchmarks to populate the scatter plot." })}</p></div>;
   }
   const padding = { top: 20, right: 20, bottom: 44, left: 50 };
   const width = 560;
@@ -63,14 +65,14 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
         ))}
         {/* Axis labels */}
         <text x={padding.left + innerW / 2} y={height - 6} textAnchor="middle" className="scatter-axis-title">
-          Cache (GB) →
+          {t("benchmarkScatter.xAxisLabel", { defaultValue: "Cache (GB) →" })}
         </text>
         <text
           x={14} y={padding.top + innerH / 2}
           textAnchor="middle" className="scatter-axis-title"
           transform={`rotate(-90 14 ${padding.top + innerH / 2})`}
         >
-          ↑ Tokens/sec
+          {t("benchmarkScatter.yAxisLabel", { defaultValue: "↑ Tokens/sec" })}
         </text>
         {/* Points */}
         {runs.map((run) => {
@@ -94,19 +96,25 @@ export function BenchmarkScatter({ runs, selectedId, compareId, onSelect }: {
                 onClick={() => onSelect(run.id)}
                 style={{ cursor: "pointer" }}
               >
-                <title>{`${run.label}\n${run.tokS.toFixed(1)} tok/s · ${run.cacheGb.toFixed(1)} GB · ${run.quality}% quality`}</title>
+                <title>{t("benchmarkScatter.pointTooltip", {
+                  defaultValue: "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% quality",
+                  label: run.label,
+                  tokS: run.tokS.toFixed(1),
+                  cacheGb: run.cacheGb.toFixed(1),
+                  quality: run.quality,
+                })}</title>
               </circle>
             </g>
           );
         })}
       </svg>
       <div className="scatter-legend">
-        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#f87171" }} />1-bit</span>
-        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#fb923c" }} />2-bit</span>
-        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#facc15" }} />3-bit</span>
-        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fcf9f" }} />4-bit</span>
-        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fb4ff" }} />Native f16</span>
-        <span className="scatter-legend-item scatter-legend-spacer">Dot size = quality %</span>
+        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#f87171" }} />{t("benchmarkScatter.legend1Bit", { defaultValue: "1-bit" })}</span>
+        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#fb923c" }} />{t("benchmarkScatter.legend2Bit", { defaultValue: "2-bit" })}</span>
+        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#facc15" }} />{t("benchmarkScatter.legend3Bit", { defaultValue: "3-bit" })}</span>
+        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fcf9f" }} />{t("benchmarkScatter.legend4Bit", { defaultValue: "4-bit" })}</span>
+        <span className="scatter-legend-item"><span className="scatter-dot" style={{ background: "#8fb4ff" }} />{t("benchmarkScatter.legendNativeF16", { defaultValue: "Native f16" })}</span>
+        <span className="scatter-legend-item scatter-legend-spacer">{t("benchmarkScatter.legendDotSize", { defaultValue: "Dot size = quality %" })}</span>
       </div>
     </div>
   );

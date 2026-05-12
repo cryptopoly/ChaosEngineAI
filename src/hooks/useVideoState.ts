@@ -1,25 +1,15 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
-  cancelVideoDownload,
   cancelVideoGeneration,
-  deleteVideoDownload,
   deleteVideoOutput,
-  downloadVideoModel,
   generateVideo,
   getGpuBundleStatus,
-  getLongLiveInstallStatus,
-  getLongLiveRuntime,
   getMlxVideoRuntime,
   getVideoCatalog,
   getVideoDownloadStatus,
   getVideoOutputs,
   getVideoRuntime,
-  installPipPackage,
   installSystemPackage,
-  preloadVideoModel,
-  startGpuBundleInstall,
-  startLongLiveInstall,
-  unloadVideoModel,
 } from "../api";
 import type {
   DownloadStatus,
@@ -28,50 +18,30 @@ import type {
   LongLiveJobState,
 } from "../api";
 
-// Duplicate of the same helper in useImageState — both Studio tabs surface
-// the same bundle-install progress string through their own busy labels.
-// Kept inline here (instead of in ../utils) because the hook files import
-// the same api types and the helper is ~20 LOC.
-function formatGpuBundleLabel(job: GpuBundleJobState): string {
-  const phase = job.phase;
-  if (phase === "preflight") return job.message || "Preparing GPU bundle install...";
-  if (phase === "downloading") {
-    const total = job.packageTotal || 1;
-    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
-    const current = job.packageCurrent || job.message || "package";
-    return `Installing GPU bundle: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
-  }
-  if (phase === "verifying") return "Verifying CUDA availability...";
-  if (phase === "done") return job.message || "GPU bundle installed.";
-  if (phase === "error") return job.error || job.message || "GPU bundle install failed.";
-  return job.message || "Working...";
-}
-
-// Same shape as ``formatGpuBundleLabel`` but worded for the LongLive
-// install. The phases there (clone repo / build venv / pip / weights /
-// marker) need different copy than the GPU bundle's CUDA-walk vocab.
-function formatLongLiveLabel(job: LongLiveJobState): string {
-  const phase = job.phase;
-  if (phase === "preflight") return job.message || "Preparing LongLive install...";
-  if (phase === "downloading") {
-    const total = job.packageTotal || 1;
-    const pct = Math.max(0, Math.min(100, Math.round(job.percent)));
-    const current = job.packageCurrent || job.message || "step";
-    return `Installing LongLive: ${current} (${job.packageIndex}/${total}, ${pct}%)`;
-  }
-  if (phase === "done") return job.message || "LongLive installed.";
-  if (phase === "error") return job.error || job.message || "LongLive install failed.";
-  return job.message || "Working...";
-}
 import {
-  buildDownloadStatusMap,
+  buildVariantAwareDownloadMap,
+  handleCancelVideoDownload as handleCancelVideoDownloadAction,
+  handleDeleteVideoDownload as handleDeleteVideoDownloadAction,
+  handleVideoDownload as handleVideoDownloadAction,
+} from "../features/video/downloadActions";
+import {
+  handleInstallLongLive as handleInstallLongLiveAction,
+  handleInstallMlxVideo as handleInstallMlxVideoAction,
+  handleInstallVideoGpuRuntime as handleInstallVideoGpuRuntimeAction,
+  handleInstallVideoOutputDeps as handleInstallVideoOutputDepsAction,
+  refreshLongLiveStatus as refreshLongLiveStatusAction,
+  refreshMlxVideoStatus as refreshMlxVideoStatusAction,
+} from "../features/video/installActions";
+import {
+  handlePreloadVideoModel as handlePreloadVideoModelAction,
+  handleUnloadVideoModel as handleUnloadVideoModelAction,
+} from "../features/video/modelLifecycle";
+import {
   defaultVideoVariantForFamily,
-  failedDownloadStatus,
   findVideoVariantById,
   findVideoVariantByRepo,
   flattenVideoVariants,
   isTransientNetworkError,
-  pendingDownloadStatus,
   videoDiscoverFamilyMatchesQuery,
   videoDiscoverVariantMatchesQuery,
   videoDownloadRepos,
@@ -90,73 +60,18 @@ import type {
 import type { VideoDiscoverTaskFilter } from "../types/video";
 import type { DiscoverSort } from "../types/image";
 import { compareDiscoverVariants } from "../utils";
+import {
+  DEFAULT_VIDEO_FPS,
+  DEFAULT_VIDEO_GUIDANCE,
+  DEFAULT_VIDEO_NEGATIVE_PROMPT,
+  DEFAULT_VIDEO_NUM_FRAMES,
+  DEFAULT_VIDEO_STEPS,
+  MAX_VIDEO_SEED,
+  clampNumFrames,
+  parseRecommendedResolution,
+  recommendedGuidanceForRepo,
+} from "./videoStateDefaults";
 
-const MAX_VIDEO_SEED = 2147483647;
-
-// Default starting point for the Studio sliders. We deliberately choose a
-// short clip (~1.4s @ 24fps) and a moderate step count so the *first* generate
-// out of the box completes on Apple Silicon unified memory rather than
-// detonating Metal with a 70+ GB attention tensor (issue: Wan 2.1 1.3B at
-// 832x480 × 96 frames × 50 steps blew up MPS during initial testing).
-// Users can dial up via the Studio controls once they know their hardware.
-const DEFAULT_VIDEO_NUM_FRAMES = 33;
-const DEFAULT_VIDEO_FPS = 24;
-const DEFAULT_VIDEO_STEPS = 30;
-const DEFAULT_VIDEO_GUIDANCE = 5.0;
-
-// Baseline negative prompt that's generic enough to apply across every
-// open-source video model we ship (LTX, Wan, HunyuanVideo, Mochi). With
-// the field blank the models render without any corrective signal and
-// produce noticeably worse geometry/anatomy — especially on LTX, which
-// has the weakest priors. Users can edit or clear this if they have a
-// model-specific preference.
-const DEFAULT_VIDEO_NEGATIVE_PROMPT =
-  "worst quality, low quality, blurry, distorted, deformed, bad anatomy, "
-  + "watermark, text, logo, static, frozen frame, jittery, flickering";
-
-// Per-family recommended CFG. LTX dev pipelines commonly use CFG 3.0; the
-// distilled LTX-2 MLX path ignores CFG entirely, but keeping the visible
-// slider at 3.0 avoids over-guiding when the user switches to dev. HunyuanVideo
-// benefits from stronger guidance. Everything else stays on the generic default.
-function recommendedGuidanceForRepo(repo: string | null | undefined): number {
-  if (!repo) return DEFAULT_VIDEO_GUIDANCE;
-  const lowered = repo.toLowerCase();
-  if (lowered.includes("ltx")) return 3.0;
-  if (lowered.includes("hunyuan")) return 6.0;
-  return DEFAULT_VIDEO_GUIDANCE;
-}
-
-// Wan-family pipelines require ``(num_frames - 1) % 4 == 0``. We round to
-// the nearest valid value so the user can type any frame count and we still
-// hand the backend something it can run.
-function clampNumFrames(value: number): number {
-  if (!Number.isFinite(value)) return DEFAULT_VIDEO_NUM_FRAMES;
-  const clamped = Math.max(1, Math.min(257, Math.round(value)));
-  // Snap to the nearest n where (n - 1) % 4 == 0 (i.e. 1, 5, 9, 13, ...)
-  const remainder = (clamped - 1) % 4;
-  if (remainder === 0) return clamped;
-  const down = clamped - remainder;
-  const up = down + 4;
-  return up - clamped < clamped - down ? up : down;
-}
-
-/** Parse "832x480" (or similar) into [width, height], falling back to defaults. */
-function parseRecommendedResolution(
-  value: string | null | undefined,
-  defaultWidth: number,
-  defaultHeight: number,
-): [number, number] {
-  if (!value) return [defaultWidth, defaultHeight];
-  const match = String(value).trim().match(/^(\d+)\s*[xX\u00d7]\s*(\d+)/);
-  if (!match) return [defaultWidth, defaultHeight];
-  const width = Number(match[1]);
-  const height = Number(match[2]);
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return [defaultWidth, defaultHeight];
-  if (width < 256 || width > 2048 || height < 256 || height > 2048) {
-    return [defaultWidth, defaultHeight];
-  }
-  return [width, height];
-}
 
 export function useVideoState(
   backendOnline: boolean,
@@ -395,29 +310,11 @@ export function useVideoState(
 
   const knownVideoDownloadVariants = flattenVideoVariants(videoCatalogWithLatest);
 
-  function pickVideoDownloadStatus(statuses: DownloadStatus[]): DownloadStatus | undefined {
-    return (
-      statuses.find((status) => status.state === "downloading")
-      ?? statuses.find((status) => status.state === "failed")
-      ?? statuses.find((status) => status.state === "cancelled")
-      ?? statuses.find((status) => status.state === "completed")
-    );
-  }
-
-  function buildVariantAwareDownloadMap(
+  function buildVariantAwareDownloadMapLocal(
     statuses: DownloadStatus[],
     previous: Record<string, DownloadStatus>,
   ): Record<string, DownloadStatus> {
-    const repoMap = buildDownloadStatusMap(statuses);
-    const next = { ...repoMap };
-    for (const variant of knownVideoDownloadVariants) {
-      if (!previous[variant.id]) continue;
-      const variantStatuses = videoDownloadRepos(variant)
-        .map((repo) => repoMap[repo])
-        .filter((status): status is DownloadStatus => Boolean(status));
-      next[variant.id] = pickVideoDownloadStatus(variantStatuses) ?? previous[variant.id];
-    }
-    return next;
+    return buildVariantAwareDownloadMap(statuses, previous, knownVideoDownloadVariants);
   }
 
   // ── Selection sync ──────────────────────────────────────────
@@ -507,7 +404,7 @@ export function useVideoState(
       void (async () => {
         try {
           const statuses = await getVideoDownloadStatus();
-          setActiveVideoDownloads((prev) => buildVariantAwareDownloadMap(statuses, prev));
+          setActiveVideoDownloads((prev) => buildVariantAwareDownloadMapLocal(statuses, prev));
           if (statuses.some((status) => status.state === "completed")) {
             void refreshVideoData();
           }
@@ -570,7 +467,7 @@ export function useVideoState(
       setLatestVideoDiscoverResults(catalog.value.latest ?? []);
     }
     if (statuses.status === "fulfilled") {
-      setActiveVideoDownloads((prev) => buildVariantAwareDownloadMap(statuses.value, prev));
+      setActiveVideoDownloads((prev) => buildVariantAwareDownloadMapLocal(statuses.value, prev));
     }
     if (runtime.status === "fulfilled") {
       setVideoRuntimeStatus(runtime.value);
@@ -602,81 +499,44 @@ export function useVideoState(
 
   // ── Download handlers ───────────────────────────────────────
   async function handleVideoDownload(repo: string, modelId?: string) {
-    const activeKey = modelId ?? repo;
-    try {
-      setActiveVideoDownloads((prev) => ({
-        ...prev,
-        [activeKey]: pendingDownloadStatus(repo, prev[activeKey] ?? prev[repo]),
-      }));
-      const download = await downloadVideoModel(repo, modelId);
-      setActiveVideoDownloads((prev) => ({ ...prev, [activeKey]: download, [download.repo]: download }));
-      void refreshVideoData();
-    } catch (err) {
-      if (isTransientNetworkError(err)) {
-        setError("Backend is restarting or temporarily unreachable. Try the download again when it is online.");
-        setActiveVideoDownloads((prev) => {
-          const next = { ...prev };
-          delete next[activeKey];
-          return next;
-        });
-        return;
-      }
-      setError(err instanceof Error ? err.message : "Video download failed");
-      setActiveVideoDownloads((prev) => ({ ...prev, [activeKey]: failedDownloadStatus(repo, String(err)) }));
-    }
+    return handleVideoDownloadAction(repo, modelId, {
+      setActiveVideoDownloads,
+      setError,
+      refreshVideoData,
+    });
   }
 
   async function handleCancelVideoDownload(repo: string) {
-    try {
-      const download = await cancelVideoDownload(repo);
-      setActiveVideoDownloads((prev) => ({ ...prev, [repo]: download }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not pause video download");
-    }
+    return handleCancelVideoDownloadAction(repo, {
+      setActiveVideoDownloads,
+      setError,
+    });
   }
 
   async function handleDeleteVideoDownload(repo: string) {
-    try {
-      await deleteVideoDownload(repo);
-      const statuses = await getVideoDownloadStatus();
-      setActiveVideoDownloads(buildDownloadStatusMap(statuses));
-      await refreshVideoData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete video download");
-    }
+    return handleDeleteVideoDownloadAction(repo, {
+      setActiveVideoDownloads,
+      setError,
+      refreshVideoData,
+    });
   }
 
   // ── Runtime handlers ────────────────────────────────────────
   async function handlePreloadVideoModel(variant?: VideoModelVariant | null) {
-    if (!variant) {
-      setError("Choose an installed video model first.");
-      return;
-    }
-    setVideoBusyLabel(`Loading ${variant.name} into memory...`);
-    try {
-      const runtime = await preloadVideoModel(variant.id);
-      setVideoRuntimeStatus(runtime);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not preload the video model.");
-    } finally {
-      setVideoBusyLabel(null);
-    }
+    return handlePreloadVideoModelAction(variant, {
+      setVideoBusyLabel,
+      setVideoRuntimeStatus,
+      setError,
+    });
   }
 
   async function handleUnloadVideoModel(variant?: VideoModelVariant | null) {
-    setVideoBusyLabel(
-      `Unloading ${variant?.name ?? loadedVideoVariant?.name ?? "video model"} from memory...`,
-    );
-    try {
-      const runtime = await unloadVideoModel(variant?.id);
-      setVideoRuntimeStatus(runtime);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not unload the video model.");
-    } finally {
-      setVideoBusyLabel(null);
-    }
+    return handleUnloadVideoModelAction(variant, {
+      setVideoBusyLabel,
+      setVideoRuntimeStatus,
+      setError,
+      loadedVideoVariant,
+    });
   }
 
   // ── Generation handlers ─────────────────────────────────────
@@ -859,113 +719,22 @@ export function useVideoState(
   // diffusers missing). Uses the same async backend job as the Image
   // Studio's install — installing once covers both tabs.
   async function handleInstallVideoGpuRuntime(): Promise<InstallResult> {
-    setVideoBusyLabel("Starting GPU bundle install...");
-    try {
-      let job: GpuBundleJobState;
-      try {
-        job = await startGpuBundleInstall();
-        setGpuBundleJob(job);
-      } catch (err) {
-        const message = `Failed to start GPU bundle install: ${err instanceof Error ? err.message : String(err)}`;
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-
-      const POLL_MS = 1500;
-      const MAX_WAIT_MS = 30 * 60_000;
-      const deadline = Date.now() + MAX_WAIT_MS;
-      while (!job.done && Date.now() < deadline) {
-        setVideoBusyLabel(formatGpuBundleLabel(job));
-        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        try {
-          job = await getGpuBundleStatus();
-          setGpuBundleJob(job);
-        } catch (err) {
-          setVideoBusyLabel(
-            `Install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
-          );
-        }
-      }
-
-      try {
-        const runtime = await getVideoRuntime();
-        setVideoRuntimeStatus(runtime);
-      } catch {
-        // Stale status is fine — restart will refresh.
-      }
-
-      if (job.phase === "error" || job.error) {
-        const rawMessage = job.error || job.message || "GPU bundle install failed.";
-        const hint = job.targetDir
-          ? ` See the install log below for per-step pip output. Target: ${job.targetDir}`
-          : " See the install log below for per-step pip output.";
-        const message = rawMessage + hint;
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-      if (!job.done) {
-        const message = "GPU bundle install did not finish within 30 minutes. See the install log below.";
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-
-      setError(null);
-      const output = job.requiresRestart
-        ? `${job.message}\n\nRestart the backend to activate GPU acceleration.`
-        : job.message;
-      return { ok: true, output, capabilities: {} };
-    } finally {
-      setVideoBusyLabel(null);
-    }
+    return handleInstallVideoGpuRuntimeAction({
+      setVideoBusyLabel,
+      setGpuBundleJob,
+      setVideoRuntimeStatus,
+      setError,
+    });
   }
 
   async function handleInstallVideoOutputDeps(
     packages?: readonly string[],
   ): Promise<InstallResult> {
-    const targetPackages =
-      packages && packages.length > 0 ? Array.from(packages) : ["imageio", "imageio-ffmpeg"];
-    const isMp4Only =
-      targetPackages.length === 2
-      && targetPackages.includes("imageio")
-      && targetPackages.includes("imageio-ffmpeg");
-    const friendlyLabel = isMp4Only
-      ? "Installing mp4 encoder (imageio + imageio-ffmpeg)..."
-      : `Installing video runtime packages (${targetPackages.join(", ")})...`;
-    setVideoBusyLabel(friendlyLabel);
-    const failures: string[] = [];
-    let lastOutput = "";
-    try {
-      for (const pkg of targetPackages) {
-        try {
-          const result = await installPipPackage(pkg);
-          lastOutput = result.output;
-          if (!result.ok) {
-            failures.push(`${pkg}: ${result.output.slice(0, 200)}`);
-          }
-        } catch (err) {
-          failures.push(`${pkg}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-      // Re-probe regardless — even a partial install can flip one flag.
-      try {
-        const runtime = await getVideoRuntime();
-        setVideoRuntimeStatus(runtime);
-      } catch {
-        // keep the pre-install status if the probe itself fails
-      }
-      if (failures.length > 0) {
-        const failureSummary = isMp4Only
-          ? "mp4 encoder install failed"
-          : "Video runtime package install failed";
-        const message = `${failureSummary}:\n${failures.join("\n")}`;
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-      setError(null);
-      return { ok: true, output: lastOutput, capabilities: {} };
-    } finally {
-      setVideoBusyLabel(null);
-    }
+    return handleInstallVideoOutputDepsAction(packages, {
+      setVideoBusyLabel,
+      setVideoRuntimeStatus,
+      setError,
+    });
   }
 
   async function handleDeleteVideoOutput(artifactId: string) {
@@ -1103,109 +872,28 @@ export function useVideoState(
   };
 
   async function refreshLongLiveStatus(): Promise<void> {
-    try {
-      const status = await getLongLiveRuntime();
-      setLongLiveStatus(status);
-    } catch {
-      // Ignore — LongLive probe failures just mean we show a retry prompt.
-    }
+    return refreshLongLiveStatusAction(setLongLiveStatus);
   }
 
-  // Async install — kicks off a backend daemon thread, polls the status
-  // endpoint at ~1.5 Hz, surfaces phase progress through ``longLiveJob``
-  // (rendered by InstallLogPanel) and busy label through ``videoBusyLabel``.
-  // Replaces the synchronous ``installSystemPackage("longlive")`` path
-  // because the install routinely takes 10-20 minutes (~30 pip packages,
-  // optional flash-attn build, ~8 GB of HF weights) — well past the 600s
-  // timeout that route enforces.
   async function handleInstallLongLive(): Promise<InstallResult> {
-    setInstallingLongLive(true);
-    setError(null);
-    setVideoBusyLabel("Starting LongLive install...");
-    try {
-      let job: LongLiveJobState;
-      try {
-        job = await startLongLiveInstall();
-        setLongLiveJob(job);
-      } catch (err) {
-        const message = `Failed to start LongLive install: ${err instanceof Error ? err.message : String(err)}`;
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-
-      const POLL_MS = 1500;
-      // Mirrors GPU bundle ceiling. The LongLive install is bounded by
-      // HF download speed for ~8 GB; 30 minutes covers a 5 MB/s connection
-      // with comfortable headroom for the pip+flash-attn build phase.
-      const MAX_WAIT_MS = 30 * 60_000;
-      const deadline = Date.now() + MAX_WAIT_MS;
-      while (!job.done && Date.now() < deadline) {
-        setVideoBusyLabel(formatLongLiveLabel(job));
-        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        try {
-          job = await getLongLiveInstallStatus();
-          setLongLiveJob(job);
-        } catch (err) {
-          setVideoBusyLabel(
-            `LongLive install in progress (status fetch hiccup: ${err instanceof Error ? err.message : "unknown"})`,
-          );
-        }
-      }
-
-      // Refresh the runtime probe regardless of outcome — even a partial
-      // install changes the install marker / repo state, and we want the
-      // chip to reflect reality next time the user mounts the Studio.
-      await refreshLongLiveStatus();
-
-      if (job.phase === "error" || job.error) {
-        const rawMessage = job.error || job.message || "LongLive install failed.";
-        const hint = " See the install log below for per-phase output.";
-        const message = rawMessage + hint;
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-      if (!job.done) {
-        const message = "LongLive install did not finish within 30 minutes. See the install log below.";
-        setError(message);
-        return { ok: false, output: message, capabilities: {} };
-      }
-
-      return { ok: true, output: job.message, capabilities: {} };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "LongLive install failed.";
-      setError(message);
-      return { ok: false, output: message, capabilities: {} };
-    } finally {
-      setInstallingLongLive(false);
-      setVideoBusyLabel(null);
-    }
+    return handleInstallLongLiveAction({
+      setInstallingLongLive,
+      setVideoBusyLabel,
+      setLongLiveJob,
+      setLongLiveStatus,
+      setError,
+    });
   }
 
   async function refreshMlxVideoStatus(): Promise<void> {
-    try {
-      const status = await getMlxVideoRuntime();
-      setMlxVideoStatus(status);
-    } catch {
-      // Ignore — same rationale as LongLive: probe failure shows retry prompt.
-    }
+    return refreshMlxVideoStatusAction(setMlxVideoStatus);
   }
 
   async function handleInstallMlxVideo(): Promise<InstallResult> {
-    setInstallingMlxVideo(true);
-    setError(null);
-    try {
-      const result = await installPipPackage("mlx-video");
-      if (!result.ok) {
-        setError(`mlx-video install failed: ${result.output.slice(0, 300)}`);
-      }
-      await refreshMlxVideoStatus();
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "mlx-video install failed.";
-      setError(message);
-      return { ok: false, output: message, capabilities: {} };
-    } finally {
-      setInstallingMlxVideo(false);
-    }
+    return handleInstallMlxVideoAction({
+      setInstallingMlxVideo,
+      setMlxVideoStatus,
+      setError,
+    });
   }
 }

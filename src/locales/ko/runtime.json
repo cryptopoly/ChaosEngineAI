@@ -1,0 +1,130 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple Silicon 네이티브 추론 엔진"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "llama-server를 통한 GGUF 추론"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA 추론 엔진"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "네이티브",
+      "description": "내장 캐시 유형 (f16, q8_0, q4_0 등). 최대 호환성."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Hadamard 회전 KV 양자화. 품질 손실을 최소화하면서 2–4배 압축."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "긴 컨텍스트용 희소 어텐션 압축기. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "디퓨전 전용 캐시 훅. DiT 파이프라인에서 약 1.8배 가속."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "디퓨전 전용 테일러 전개 캐시. FLUX/SD3에서 적극적인 가속."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "디퓨전 전용 크기 기반 캐시. 보정 없이는 FLUX만 지원."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "디퓨전 전용, 타임스텝 간 어텐션 재사용."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "디퓨전 전용 조건부/비조건부 재사용 캐시."
+    }
+  },
+  "controls": {
+    "engine": "엔진",
+    "cacheStrategy": "캐시 전략",
+    "cacheStrategyLockedNote": "(추측 디코딩 중에는 네이티브로 고정됨)",
+    "cacheType": "캐시 유형",
+    "speculativeDecoding": "추측 디코딩",
+    "draftModel": "드래프트 모델",
+    "contextSize": "컨텍스트 크기",
+    "gpuLayers": "GPU 레이어",
+    "threads": "스레드",
+    "fitInMemory": "메모리에 맞추기"
+  },
+  "notes": {
+    "binaryRequired": "{binary}가 필요합니다.",
+    "platformRequired": "{platform}이 필요합니다.",
+    "engineIncompatible": "{engine}과(와) 호환되지 않습니다.",
+    "unknownEngine": "알 수 없는 엔진."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "첫 토큰: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "융합 어텐션",
+    "aboutTitle": "융합 어텐션 정보",
+    "body": "융합 어텐션은 선택한 백엔드가 지원할 때 최적화된 어텐션 커널을 사용합니다. 처리량을 향상시키고 오버헤드를 줄일 수 있지만, 일부 모델/백엔드 조합은 호환성을 위해 표준 어텐션 경로를 선호할 수 있습니다."
+  },
+  "dflash": {
+    "tooltip": "DFlash 추측 디코딩: 품질 손실 없이 3-5배 더 빠른 생성.",
+    "label": "DFlash",
+    "installing": "설치 중...",
+    "installButton": "DFlash 설치",
+    "aboutTitle": "DFlash 추측 디코딩 정보",
+    "body": "DFlash는 작은 드래프트 모델을 사용하여 여러 토큰을 병렬로 제안한 다음 한 번의 순방향 통과로 검증합니다. 이를 통해 품질 손실 없이 3-5배 빠른 생성이 가능합니다.",
+    "requiresLabel": "필요:",
+    "requiresBody": "Apple Silicon + dflash-mlx, 또는 Linux/CUDA + dflash. 대상 모델용 호환 드래프트 모델.",
+    "currentModelLabel": "현재 모델:",
+    "supportedVia": "{model}을 통해 지원됨",
+    "compatibilityUnresolved": "호환성이 아직 확인되지 않았습니다."
+  },
+  "presets": {
+    "quality": {
+      "label": "최고 품질",
+      "hint": "코딩 및 추론"
+    },
+    "balanced": {
+      "label": "균형",
+      "hint": "일반 채팅"
+    },
+    "speed": {
+      "label": "최고 속도",
+      "hint": "빠른 반복"
+    },
+    "memory": {
+      "label": "최소 메모리",
+      "hint": "빠듯한 RAM"
+    }
+  },
+  "sliders": {
+    "context": "컨텍스트",
+    "maxTokens": "최대 토큰",
+    "temperature": "온도"
+  },
+  "fitInMemory": {
+    "body": "메모리에 맞추기는 ChaosEngineAI가 모델과 KV 캐시를 사용 가능한 메모리 내에 유지하는 런타임/캐시 프로필을 선택하도록 요청합니다. 더 크거나 적극적인 프로필을 강제하고 스와핑이나 로드 실패 가능성을 받아들이려는 경우에만 비활성화하세요."
+  },
+  "cacheFit": {
+    "mayNotFit": "맞지 않을 수 있음",
+    "modelMayNotFit": "모델이 맞지 않을 수 있음",
+    "fitsEasily": "쉽게 맞음",
+    "tightFit": "빠듯하게 맞음",
+    "contextMayNotFit": "전체 컨텍스트가 맞지 않을 수 있음"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "모델 가중치만으로도 예상 사용 가능 RAM을 초과합니다. 더 작은 모델이나 더 적극적인 양자화를 선택하세요.",
+    "nativeF16TooBig": "모델은 로드될 수 있지만 이 컨텍스트에서 전체 네이티브 f16 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 압축 전략을 선택하세요.",
+    "compressedTooBig": "모델은 로드될 수 있지만 선택한 컨텍스트 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 FP16 레이어를 줄이세요."
+  }
+}

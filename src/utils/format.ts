@@ -13,15 +13,53 @@ export function signedDelta(value: number, digits = 1, suffix = "") {
   return `${prefix}${value.toFixed(digits)}${suffix}`;
 }
 
-export function formatImageTimestamp(value: string) {
+export function formatImageTimestamp(value: string, locale?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString([], {
+  // FU-042: when a locale is passed (from ``i18n.language``), use it so
+  // CJK / Cyrillic / Latin date formats render in the user's writing
+  // system.  Caller omits the arg → browser default (back-compat with
+  // the pre-i18n call sites that haven't been migrated yet).
+  return new Intl.DateTimeFormat(locale ?? [], {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+  }).format(date);
+}
+
+/**
+ * FU-042 — locale-aware byte formatter.  Uses the ``Intl.NumberFormat``
+ * "unit" style with ``gigabyte`` / ``megabyte`` / ``kilobyte`` so the
+ * unit symbol + decimal separator + thousands grouping all flip with
+ * the active locale (e.g. ``1,8 GB`` in de vs ``1.8 GB`` in en).
+ */
+export function formatBytes(bytes: number, locale?: string): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const formatter = (unit: "gigabyte" | "megabyte" | "kilobyte" | "byte", value: number) =>
+    new Intl.NumberFormat(locale ?? [], {
+      style: "unit",
+      unit,
+      maximumFractionDigits: value >= 100 ? 0 : 1,
+    }).format(value);
+  if (bytes >= 1e9) return formatter("gigabyte", bytes / 1e9);
+  if (bytes >= 1e6) return formatter("megabyte", bytes / 1e6);
+  if (bytes >= 1e3) return formatter("kilobyte", bytes / 1e3);
+  return formatter("byte", bytes);
+}
+
+/**
+ * FU-042 — locale-aware number formatter for everything that isn't a
+ * byte / unit count (e.g. tokens/sec values, percentages, plain ints).
+ * Honours the locale's decimal + thousands separators.
+ */
+export function formatNumber(
+  value: number,
+  locale?: string,
+  options?: Intl.NumberFormatOptions,
+): string {
+  if (!Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat(locale ?? [], options).format(value);
 }
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

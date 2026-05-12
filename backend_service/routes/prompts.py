@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.prompts import PromptLibrary
 
 router = APIRouter(prefix="/api", tags=["prompts"])
@@ -21,7 +22,7 @@ def _get_library(request: Request) -> PromptLibrary:
     if _library is not None:
         return _library
 
-    state = request.app.state.engine
+    state = request.app.state.chaosengine
     data_dir_str = state.settings.get("dataDirectory", "")
     if data_dir_str:
         data_dir = Path(data_dir_str).expanduser()
@@ -96,7 +97,10 @@ async def delete_prompt(template_id: str, request: Request) -> dict[str, Any]:
     """Delete a prompt template by ID."""
     lib = _get_library(request)
     if not lib.delete(template_id):
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, "Template not found"),
+        )
     return {"deleted": True, "id": template_id}
 
 

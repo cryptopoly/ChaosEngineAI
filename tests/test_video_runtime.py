@@ -44,8 +44,8 @@ class ProbeTests(unittest.TestCase):
         engine = DiffusersVideoEngine()
         fake_torch = SimpleNamespace(backends=SimpleNamespace(mps=None))
 
-        with mock.patch.object(video_runtime.platform, "system", return_value="Windows"), \
-                mock.patch.object(video_runtime, "nvidia_gpu_present", return_value=True):
+        with mock.patch.object(video_runtime.device.platform, "system", return_value="Windows"), \
+                mock.patch.object(video_runtime.device, "nvidia_gpu_present", return_value=True):
             with self.assertRaisesRegex(RuntimeError, "Install CUDA torch"):
                 engine._detect_device(fake_torch)
 

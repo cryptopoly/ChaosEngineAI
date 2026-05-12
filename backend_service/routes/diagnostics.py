@@ -22,6 +22,7 @@ import glob
 import importlib.util
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -40,6 +41,33 @@ router = APIRouter()
 # chat UI.
 _LOG_TAIL_MAX_LINES = 500
 _LOG_TAIL_DEFAULT_LINES = 200
+
+# FU-038 (2026-05-10): patterns to strip from log tails before returning
+# them. The macOS hardened runtime (which we ship under
+# ``bundle.macOS.hardenedRuntime: true``) inherits a MallocStackLogging
+# env var from somewhere in the Tauri parent and every Python subprocess
+# prints three lines of "MallocStackLogging: can't turn off malloc stack
+# logging because it was not enabled." at startup — hundreds per minute
+# under the metrics poll loop, drowning out the actual INFO / ERROR
+# lines this endpoint exists to surface. The Tauri-side ``env_remove``
+# in FU-038 fixes new builds; this regex filters out the spam from
+# logs produced by older builds AND any future hardened-runtime spam
+# we haven't traced yet, so the existing build's Diagnostics panel
+# becomes useful immediately.
+_LOG_NOISE_PATTERNS = (
+    re.compile(r"^Python\(\d+\) MallocStackLogging:"),
+    re.compile(r"^Python\(\d+\) MallocScribble:"),
+)
+
+
+def _filter_log_noise(lines: list[str]) -> list[str]:
+    """Drop lines matching ``_LOG_NOISE_PATTERNS``.
+
+    Keeps ordering. ``re.match`` is anchored at start-of-string, so we
+    only drop the specific spam shape — anything that legitimately
+    embeds the word "MallocStackLogging" later in a line is preserved.
+    """
+    return [line for line in lines if not any(p.match(line) for p in _LOG_NOISE_PATTERNS)]
 
 # Environment variables we redact before returning. The diagnostics
 # payload is designed to be shared with support; anything here could
@@ -136,7 +164,15 @@ def diagnostics_log_tail(lines: int = _LOG_TAIL_DEFAULT_LINES) -> dict[str, Any]
     path = _active_log_path()
     if path is None:
         return {"path": None, "lines": [], "lineCount": 0}
-    tail = _read_log_tail(path, lines)
+    # FU-038: read up to 4x the requested window from disk so the noise
+    # filter has headroom to drop MallocStackLogging spam and still
+    # return ``lines`` worth of useful output. The 4x multiplier is
+    # capped at ``_LOG_TAIL_MAX_LINES * 4`` to keep memory bounded on
+    # pathological logs. If the log has no spam at all the extra reads
+    # are cheap (we then trim back to ``lines`` after filtering).
+    raw = _read_log_tail(path, min(lines * 4, _LOG_TAIL_MAX_LINES * 4))
+    filtered = _filter_log_noise(raw)
+    tail = filtered[-lines:]
     return {
         "path": str(path),
         "lines": tail,
@@ -432,9 +468,16 @@ def _env_vars() -> dict[str, Any]:
 
 def _log_info() -> dict[str, Any]:
     path = _active_log_path()
+    if path is None:
+        return {"path": None, "tailLines": []}
+    # FU-038: read 4x then filter so the snapshot's log section is
+    # readable even on older builds that still emit the
+    # MallocStackLogging spam (FU-038 also drops the env var at the
+    # Tauri shell level so new builds never produce it).
+    raw = _read_log_tail(path, _LOG_TAIL_DEFAULT_LINES * 4)
     return {
-        "path": str(path) if path else None,
-        "tailLines": _read_log_tail(path, _LOG_TAIL_DEFAULT_LINES) if path else [],
+        "path": str(path),
+        "tailLines": _filter_log_noise(raw)[-_LOG_TAIL_DEFAULT_LINES:],
     }
 
 

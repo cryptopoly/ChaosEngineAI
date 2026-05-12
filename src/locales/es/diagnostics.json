@@ -1,0 +1,48 @@
+{
+  "title": "Diagnóstico",
+  "subtitle": "Inspeccionar el estado de ejecución, la salud de la GPU y los registros",
+  "subtitleSnapshot": "Instantánea del sistema para diagnóstico. Copia el markdown para compartirlo con soporte cuando algo falle.",
+  "sections": {
+    "snapshot": "Instantánea del sistema",
+    "gpu": "GPU",
+    "memory": "Memoria",
+    "runtime": "Entorno de ejecución",
+    "binaries": "Binarios",
+    "extras": "Extras",
+    "logs": "Registros",
+    "locales": "Idiomas"
+  },
+  "fields": {
+    "platform": "Plataforma",
+    "architecture": "Arquitectura",
+    "kernel": "Kernel",
+    "appVersion": "Versión de la app",
+    "tauriVersion": "Versión de Tauri",
+    "pythonVersion": "Versión de Python",
+    "totalRAM": "RAM total",
+    "availableRAM": "RAM disponible",
+    "totalVRAM": "VRAM total",
+    "freeVRAM": "VRAM libre",
+    "diskFree": "Espacio libre en disco"
+  },
+  "logs": {
+    "tail": "Cola",
+    "follow": "Seguir",
+    "pauseFollow": "Pausar seguimiento",
+    "clear": "Limpiar",
+    "download": "Descargar registro",
+    "lines": "{count, plural, one {# línea} other {# líneas}}",
+    "filterPlaceholder": "Filtrar…"
+  },
+  "actions": {
+    "copySnapshot": "Copiar instantánea",
+    "downloadSnapshot": "Descargar instantánea",
+    "openLogFolder": "Abrir carpeta de registros"
+  },
+  "logsTab": {
+    "title": "Registros",
+    "subtitle": "Vista buscable sobre los canales sidecar, runtime y servidor.",
+    "filterPlaceholder": "Filtrar registros",
+    "emptyFiltered": "Ninguna línea de registro coincide con el filtro actual."
+  }
+}

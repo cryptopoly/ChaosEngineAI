@@ -1,0 +1,436 @@
+{
+  "image": {
+    "title": "Estudio de imagen",
+    "subtitle": "Elige un modelo, promptea e itera sobre las salidas guardadas",
+    "savedOutputsLabel": "salidas guardadas",
+    "promptPanelTitle": "Prompt",
+    "promptPanelSubtitle": "Elige un modelo, configura la relación de aspecto y la calidad, luego genera en la galería local.",
+    "recentOutputsTitle": "Salidas recientes",
+    "prompt": "Prompt",
+    "negativePrompt": "Prompt negativo",
+    "enhancePrompt": "Mejorar",
+    "width": "Ancho",
+    "height": "Alto",
+    "steps": "Pasos",
+    "guidance": "Guidance",
+    "guidanceScale": "Escala de guidance",
+    "seed": "Semilla",
+    "seedRandom": "Aleatorio",
+    "sampler": "Sampler",
+    "scheduler": "Scheduler",
+    "batchSize": "Tamaño del lote",
+    "generate": "Generar imagen",
+    "generating": "Generando imagen…",
+    "queued": "En cola",
+    "decoding": "Decodificando…",
+    "saveImage": "Guardar imagen",
+    "copyImage": "Copiar imagen",
+    "openFolder": "Mostrar en carpeta",
+    "modelLabel": "Modelo",
+    "noModelsOption": "No hay modelos instalados — descarga uno desde Descubrir",
+    "aspectRatio": "Relación de aspecto",
+    "qualityPreset": "Preajuste de calidad",
+    "previewLabel": "Vista previa",
+    "draftOn": "512px · activado",
+    "draftOff": "Borrador @ 512px",
+    "diffusionCache": "Caché de difusión",
+    "modal": {
+      "cancelling": "Cancelando...",
+      "generating": "Generando imagen",
+      "cancelled": "Generación de imagen cancelada",
+      "failed": "Generación de imagen fallida",
+      "imagesReady": "Imágenes listas",
+      "imageReady": "Imagen lista"
+    }
+  },
+  "video": {
+    "title": "Estudio de video",
+    "prompt": "Prompt",
+    "negativePrompt": "Prompt negativo",
+    "duration": "Duración",
+    "framesPerSecond": "Fotogramas por segundo",
+    "frames": "Fotogramas",
+    "resolution": "Resolución",
+    "generate": "Generar video",
+    "generating": "Generando video…",
+    "encoding": "Codificando…",
+    "saveVideo": "Guardar video",
+    "modelLabel": "Modelo de video",
+    "qualityPreset": "Preajuste de calidad",
+    "aspectRatio": "Relación de aspecto",
+    "modal": {
+      "cancelling": "Cancelando...",
+      "generating": "Generando video",
+      "cancelled": "Generación de video cancelada",
+      "failed": "Generación de video fallida",
+      "ready": "Video listo"
+    }
+  },
+  "progress": {
+    "stepOfTotal": "Paso {current} de {total}",
+    "estimatedRemaining": "~{seconds} s restantes"
+  },
+  "advanced": {
+    "title": "Avanzado",
+    "show": "Mostrar configuración avanzada",
+    "hide": "Ocultar configuración avanzada"
+  },
+  "enhance": {
+    "label": "Mejorar",
+    "busy": "Mejorando...",
+    "tooltip": "Mejorar este prompt localmente",
+    "error": "Error del mejorador: {message}"
+  },
+  "runtimeBanner": {
+    "loadingModel": "Cargando modelo en memoria..."
+  },
+  "imageStudio": {
+    "generateTitle": {
+      "dangerBlocked": "Configuración de nivel peligroso — marca la confirmación bajo el aviso de seguridad para continuar.",
+      "generating": "Generando...",
+      "selectModel": "Selecciona primero un modelo.",
+      "ready": "Genera esta imagen."
+    },
+    "actions": {
+      "discover": "Descubrir",
+      "installed": "Instalados",
+      "gallery": "Galería"
+    },
+    "hero": {
+      "currentRuntime": "Runtime actual",
+      "placeholder": "Selecciona un modelo de imagen"
+    },
+    "badges": {
+      "installed": "Instalado",
+      "loadedInMemory": "Cargado en memoria",
+      "loadsOnFirstGenerate": "Se carga en la primera generación",
+      "loadingIntoMemory": "Cargando en memoria",
+      "downloaded": "Descargado"
+    },
+    "noModelsCallout": {
+      "message": "Aún no tienes ningún modelo de imagen descargado. Ve a Descubrir imagen para explorar e instalar uno, luego vuelve aquí para generar.",
+      "openDiscover": "Abrir Descubrir imagen"
+    },
+    "download": {
+      "failedMessage": "{name} no terminó de descargarse correctamente. ChaosEngineAI solo encontró un snapshot local parcial, por lo que aún no puede cargar el pipeline real de imagen.",
+      "pausedMessage": "{name} está parcialmente descargado. Reanuda cuando estés listo y ChaosEngineAI continuará desde los archivos que ya están en disco.",
+      "completeMessage": "{name} terminó de descargarse. El escaneo de modelos instalados se actualizará automáticamente.",
+      "notInstalledMessage": "{name} no está instalado localmente. Descárgalo desde Descubrir para habilitar la generación local.",
+      "huggingFace": "Hugging Face",
+      "settings": "Ajustes",
+      "technicalDetails": "Detalles técnicos",
+      "pause": "Pausar",
+      "cancel": "Cancelar",
+      "resume": "Reanudar",
+      "delete": "Eliminar",
+      "retry": "Reintentar descarga",
+      "complete": "Descarga completa",
+      "downloadModel": "Descargar modelo"
+    },
+    "prompt": {
+      "label": "Prompt",
+      "placeholder": "Callejón cinematográfico melancólico tras la lluvia, reflejos de neón, foto en 35mm, profundidad de campo reducida"
+    },
+    "negativePrompt": {
+      "placeholder": "borroso, manos deformadas, extremidades adicionales, sobreexpuesto"
+    },
+    "draft": {
+      "tooltip": "Forzar un renderizado de 512px en el lado largo para iterar prompts rápidamente. La salida se guarda al tamaño de borrador — desactívalo para un pase final a resolución completa."
+    },
+    "sampler": {
+      "tooltip": "Algoritmo de scheduler / sampler usado durante el denoising. \"Predeterminado del modelo\" mantiene lo que vino con el pipeline. AYS DPM++ 2M (SD1.5 / SDXL) usa la programación Align Your Steps de NVIDIA — gana detalle con 7-10 pasos donde Karras / Euler se ven blandos. Oculto para FLUX, SD3, Qwen-Image, Sana y HiDream — esos pipelines flow-matching traen schedulers bloqueados y cambiarlos produce ruido."
+    },
+    "diffusionCache": {
+      "tooltip": "Acelera la generación reutilizando salidas de bloques del transformer entre pasos de sampling similares. First Block Cache es el valor por defecto multiplataforma y funciona en cualquier pipeline DiT (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) en macOS / Windows / Linux — típicamente 1,5-2× de ahorro de tiempo en el threshold por defecto con una variación de calidad imperceptible. TeaCache solo trae forwards calibrados para la familia FLUX en el lado de imagen — oculto para otros DiTs para que el desplegable refleje lo que el backend realmente aplicará. Oculto por completo para pipelines UNet (SDXL / SD1.5 / SD2) que carecen del punto de enganche del transformer.",
+      "teaCacheHidden": "TeaCache oculto — su calibración del lado de imagen solo cubre la familia FLUX. First Block Cache funciona en todos los pipelines DiT actuales (multiplataforma).",
+      "threshold": "Umbral ({value})",
+      "thresholdTooltip": "Distancia L1 relativa entre estados consecutivos del block-cache. Menor = más estricto (menos aceleración, menos variación). Mayor = caché más agresivo (más aceleración, puede tremular los detalles finos). Valores por defecto: First Block Cache 0,12, TeaCache 0,4 — ambos calibrados contra el blog de diffusers / papers upstream para pérdida de calidad insignificante en FLUX.1-dev."
+    },
+    "toggles": {
+      "cfgDecay": {
+        "label": "Decay de CFG",
+        "description": "relaja linealmente el guidance desde el valor del slider hacia 1,5 durante la programación. Reduce la sobresaturación en los pasos finales sin cambiar la semántica de los pasos iniciales. Desactivado por defecto; el backend lo ignora en SD1.5 / SDXL.",
+        "tooltip": "Los modelos flow-match (FLUX, SD3, Qwen-Image, Sana, HiDream) tienden a \"quemar\" altas luces cuando la guía sin clasificador se mantiene alta en cada paso. Decaerla deja que los pasos iniciales fijen la semántica (CFG alto) mientras los pasos finales preservan el detalle fino (CFG bajo). El piso se mantiene en 1,5 — bajar a 1,0 a mitad de la programación cambia la forma del pipeline de 2-batch a 1-batch y rompe diffusers. Misma forma que el control del runtime de video que ya usas."
+      },
+      "previewVae": {
+        "label": "Preview VAE",
+        "description": "cambia el VAE completo por el tiny VAE correspondiente (TAESD / TAEHV) para que cada paso decodifique en una fracción del tiempo. Sacrifica fidelidad final por velocidad de iteración. Desactivado por defecto.",
+        "tooltip": "Los tiny VAE (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) son 1-2 órdenes de magnitud más rápidos que el VAE completo pero pierden algo de fidelidad en detalle fino. Ideal para iterar / borradores rápidos; desactívalo cuando estés listo para entregar la imagen final. El backend hace no-op silenciosamente en repos sin un tiny VAE mapeado para que puedas dejarlo activado sin sorpresas."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 layerwise (CUDA Ada+)",
+        "description": "guarda los pesos del transformer en fp8 + los promueve a bf16 dentro del matmul. Reduce la VRAM a la mitad con una variación de calidad insignificante en GPUs modernas. Apple Silicon / GPUs pre-Ada hacen no-op limpiamente.",
+        "tooltip": "enable_layerwise_casting de diffusers. dtype correcto por familia: E5M2 para HunyuanVideo, E4M3 para FLUX / Wan / Qwen-Image / SD3 / LTX. El backend revisa la capacidad de cómputo de la GPU antes de aplicar — pre-Ada (SM <8.9) carece de fp8 por hardware y omite con un runtimeNote. Mejor combinado con Nunchaku INT4 para la huella más pequeña."
+      }
+    },
+    "fields": {
+      "width": "Ancho",
+      "height": "Alto",
+      "steps": "Pasos",
+      "guidance": "Guidance",
+      "images": "Imágenes",
+      "randomSeed": "Semilla aleatoria",
+      "seed": "Semilla"
+    },
+    "safety": {
+      "dangerTitle": "Probable que rompa el backend",
+      "warningTitle": "Atención — puede costarle a este dispositivo",
+      "resourceEstimate": "Modelo ≈ {model} · pico de esta ejecución ≈ {peak} de ~{total} total.",
+      "applyTitle": "Aplicar {label}",
+      "useSafer": "Usar ajustes más seguros ({label})",
+      "browseSmaller": "Explorar modelos más pequeños",
+      "overrideAck": "Generar igualmente — acepto que el backend puede romperse.",
+      "reasonDangerOver": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, el conjunto de trabajo estimado es ~{working} GB, así que el modelo por sí solo ya supera ese límite. Incluso imágenes pequeñas probablemente romperían el backend. Prueba un modelo más pequeño (SD 1.5 es ~4 GB, SDXL ~13 GB) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto, y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). Es probable que la generación rompa el backend; reduce la resolución o elige un modelo más pequeño.",
+      "reasonCaution": "El modelo necesita ~{model} GB solo para mantener sus pesos + codificador de texto. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación puede ser lenta o fallar; reduce la resolución si se vuelve inestable."
+    },
+    "recent": {
+      "subtitle": "{recent} más recientes de {total} generaciones guardadas",
+      "emptySubtitle": "Las imágenes generadas aparecerán aquí",
+      "openGallery": "Abrir Galería",
+      "emptyHint": "Genera un prompt para crear la primera imagen guardada para esta rama.",
+      "footnote": "Mostrando las {recent} imágenes guardadas más recientes aquí. Abre la Galería de imagen para explorar todo, filtrar por modelo y gestionar ejecuciones más antiguas."
+    }
+  },
+  "videoStudio": {
+    "generateButton": "Generar video",
+    "disabled": {
+      "noModel": "Elige primero un modelo de video.",
+      "notInstalled": "{name} aún no está instalado localmente.",
+      "restartRequired": "Reinicia el backend para activar el runtime de GPU recién instalado antes de generar.",
+      "runtimeNotReady": "El runtime de video no está listo.",
+      "noPrompt": "Escribe un prompt antes de generar.",
+      "backendOffline": "El backend está desconectado.",
+      "busy": "Ocupado…",
+      "dangerLevel": "Es probable que esta configuración rompa el backend. Marca \\\"Permitir generación de alto riesgo\\\" abajo tras revisar el aviso, o baja resolución/fotogramas/modelo."
+    },
+    "generateTitle": "Empezar a generar este clip.",
+    "device": {
+      "gpuDetected": "GPU (detectado)",
+      "cpuDetected": "CPU (detectada)",
+      "appleDetected": "Apple Silicon (detectado)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "gpu": "GPU",
+      "apple": "Apple Silicon"
+    },
+    "memory": {
+      "defaultFallback": "~{value} (por defecto — reinicia el backend para detección real)"
+    },
+    "capacityLine": {
+      "withModel": "{device} · {memory} total · modelo ≈ {model}, pico de esta ejecución ≈ {peak}",
+      "short": "{device} · {memory} total · pico de esta ejecución ≈ {peak}"
+    },
+    "subtitle": "Elige un modelo de video para empezar",
+    "actions": {
+      "browseCatalog": "Explorar catálogo",
+      "installedModels": "Modelos instalados",
+      "downloadModel": "Descargar modelo",
+      "loadIntoMemory": "Cargar en memoria",
+      "unload": "Descargar",
+      "unloadNamed": "Descargar {name}",
+      "modelCard": "Ficha del modelo"
+    },
+    "modelOption": {
+      "installed": "instalado",
+      "incomplete": "incompleto"
+    },
+    "noModelsCallout": {
+      "message": "Aún no hay modelos de video instalados. Explora el catálogo para descargar uno.",
+      "openDiscover": "Abrir Descubrir video"
+    },
+    "stats": {
+      "clipDuration": "clip de {value}s"
+    },
+    "badges": {
+      "installed": "Instalado",
+      "incomplete": "Incompleto",
+      "notDownloaded": "No descargado",
+      "inMemory": "En memoria",
+      "loadedModel": "Modelo cargado: {name}"
+    },
+    "prompt": {
+      "label": "Prompt",
+      "placeholder": "Una toma de dron cinematográfica de un bosque de pinos brumoso al amanecer...",
+      "ltxShortWarning": "LTX-Video produce mejores resultados con prompts detallados (~50-100 palabras). Los prompts cortos (\\\"llama caricatura comiendo paja\\\") sub-condicionan el modelo y tienden a derivar. Lightricks recomienda empezar con la acción y luego agregar detalles visuales, iluminación y dirección de cámara."
+    },
+    "negativePrompt": {
+      "tooltip": "Le dice al modelo qué evitar. Hay un prompt genérico precargado y ajustado para la mayoría de los modelos de video — bórralo o edítalo si tienes una preferencia específica del modelo. Más especificidad suele ayudar más que perjudicar.",
+      "placeholder": "Opcional: cosas a evitar (baja calidad, marca de agua, etc.)"
+    },
+    "fastPreview": {
+      "label": "Vista previa rápida",
+      "via": "vía",
+      "tooltip": "Renderiza esta generación a través de {sibling} en lugar de {parent} usando el mismo prompt + semilla. Sampler destilado de pasos fijos — típicamente 6-9× más rápido que el render completo de la variante dev. Desmárcalo cuando quieras la calidad completa de la variante dev.",
+      "devVariantFallback": "la variante dev"
+    },
+    "qualityPreset": {
+      "tooltip": "Define el número de pasos de denoising. Más pasos = fotogramas más nítidos + mayor tiempo de generación. El número de fotogramas (duración del clip) y el guidance se mantienen como están — los preajustes no los tocan."
+    },
+    "aspectRatio": {
+      "tooltip": "Configura Ancho y Alto a una forma de video común. Todos los preajustes son seguros en cualquier modelo soportado (≤1024 en el lado largo, divisible por 8). Edita Ancho/Alto abajo para un control más fino."
+    },
+    "ltx2Distilled": {
+      "title": "LTX-2 distilled es el sampler rápido.",
+      "body": "mlx-video lo ejecuta como pasadas fijas de denoise 8+3 con CFG desactivado, por lo que los controles de Pasos y Guidance no mejoran esta variante. Usa una variante dev para comparaciones de calidad contra los valores por defecto de referencia.",
+      "switchTo": "Cambiar a {name}"
+    },
+    "fields": {
+      "width": "Ancho",
+      "widthTooltip": "Resolución horizontal en píxeles. Debe ser divisible por 8. Mayor = más nítido + más lento + más VRAM. Prueba un preajuste de relación de aspecto arriba para valores seguros.",
+      "height": "Alto",
+      "heightTooltip": "Resolución vertical en píxeles. Debe ser divisible por 8. Mayor = más nítido + más lento + más VRAM. Prueba un preajuste de relación de aspecto arriba para valores seguros.",
+      "frames": "Fotogramas",
+      "framesTooltip": "Cuántos fotogramas renderizar. Wan / LTX requieren que (fotogramas-1) sea divisible por 4 — valores válidos: 1, 5, 9, 13, …, 161. Duración del clip en segundos = Fotogramas ÷ FPS.",
+      "fps": "FPS",
+      "fpsTooltip": "Fotogramas por segundo para reproducción. 24 es cinematográfico, 30 es más suave. No afecta el coste de generación — solo la velocidad de reproducción del clip.",
+      "steps": "Pasos",
+      "stepsTooltip": "Pasos de denoising — cuántas pasadas hace el modelo para limpiar el ruido y convertirlo en imagen. Más = más nítido y coherente, pero linealmente más lento. 20 es calidad borrador, 30 es estándar, 50+ es alta calidad con retornos decrecientes.",
+      "guidance": "Guidance",
+      "guidanceTooltip": "Qué tan fuertemente el modelo sigue tu prompt. Demasiado bajo = ignora el prompt; demasiado alto = salida rígida o distorsionada. Recomendado: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. La dirección 'negativa' del prompt viene del Prompt negativo de arriba.",
+      "guidanceLtxWarning": "LTX-Video es un modelo flow-matching — CFG por encima de ~3,5 sobresatura y produce salida borrosa / arcoíris. Baja a 3 para los resultados más limpios.",
+      "randomSeed": "Semilla aleatoria",
+      "seedPlaceholder": "Semilla (entero)"
+    },
+    "clipLength": {
+      "line": "Duración del clip: {seconds}s ({frames} fotogramas ÷ {fps} fps)"
+    },
+    "ltxAutoTuneNote": "El backend autoajusta los parámetros de decodificación LTX (frame_rate como condicionamiento del modelo, decode_timestep, decode_noise_scale, guidance_rescale) a los valores por defecto de referencia de Lightricks — no se necesitan sliders extra.",
+    "toggles": {
+      "nf4": {
+        "label": "4-bit (NF4)",
+        "tooltip": "Cuantización de pesos a 4-bit de bitsandbytes para el transformer DiT de video. Mete Wan 2.1 14B en <24 GB de VRAM con pérdida de calidad insignificante. Solo CUDA — bitsandbytes no trae kernels Metal, así que el toggle se ignora en macOS (MPS) y CPU. Se combina con First Block Cache para una ganancia adicional de tiempo."
+      },
+      "ltxRefiner": {
+        "label": "Escalado espacial LTX en dos etapas",
+        "tooltip": "Renderiza la muestra base a la resolución solicitada y luego refina a través de Lightricks/LTX-Video-0.9.5-spatial-upscaler a 2× de resolución espacial. El presupuesto de fotogramas crece ~1,5×. Microdetalle más nítido y bordes de movimiento más limpios; desactivado por defecto porque el coste en tiempo es real."
+      },
+      "enhancePrompt": {
+        "label": "Auto-mejorar prompts cortos",
+        "tooltip": "Añade pistas estructurales ajustadas al modelo (descriptores cinematográficos, iluminación, dirección de cámara) cuando el prompt tiene menos de 25 palabras. Los modelos de video por difusión se entrenan con prompts de 50-100 palabras y sub-condicionan con entradas más cortas. Los prompts largos personalizados se envían tal cual — el umbral es la salvaguarda."
+      },
+      "cfgDecay": {
+        "label": "Decay de CFG",
+        "tooltip": "Reduce linealmente guidance_scale desde el valor del slider en el paso 0 hacia 1,5 (el piso que mantiene la guía sin clasificador activa de extremo a extremo) en el paso final. Los modelos de video flow-match (Wan, LTX, HunyuanVideo) sobresaturan cuando el CFG se mantiene alto durante todo el sampling; el decay deja que los pasos iniciales fijen la semántica y los pasos finales preserven el detalle fino. Activado por defecto para video — el runtime filtra los repos que no son flow-match automáticamente."
+      },
+      "previewVae": {
+        "label": "Preview VAE",
+        "tooltip": "Cambia el VAE completo por el tiny VAE correspondiente (madebyollin/taew2_2 para Wan, taeltx2_3_wide para LTX, taehv1_5 para HunyuanVideo, taecogvideox / taemochi para los demás) para que cada paso decodifique en una fracción del tiempo. Sacrifica fidelidad final por velocidad de iteración. Desactivado por defecto; el backend hace no-op silenciosamente en repos sin un tiny VAE mapeado."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 layerwise (CUDA Ada+)",
+        "tooltip": "enable_layerwise_casting de diffusers. dtype correcto por familia: E5M2 para HunyuanVideo, E4M3 para Wan / LTX / FLUX / Qwen-Image. El backend revisa la capacidad de cómputo de la GPU antes de aplicar — las GPUs pre-Ada carecen de fp8 por hardware y omiten con un runtimeNote. Mejor combinado con los caminos de cuantización GGUF o Nunchaku para la huella de VRAM más pequeña."
+      }
+    },
+    "diffusionCache": {
+      "label": "Caché de difusión",
+      "tooltip": "Acelera la generación reutilizando salidas de bloques del transformer entre timesteps similares. First Block Cache funciona en cualquier pipeline DiT (Wan, LTX, Hunyuan, CogVideoX, Mochi) en macOS / Windows / Linux. TeaCache solo se aplica a los modelos de video de la familia FLUX (Hunyuan / LTX / CogVideoX / Mochi) — oculto para Wan porque el parche upstream apunta a una disposición distinta del transformer. La ruta de subproceso mlx-video LTX-2 renderiza fuera del sistema de hooks de diffusers, así que el caché no está disponible ahí.",
+      "mlxSubprocessNote": "mlx-video LTX-2 se ejecuta como subproceso fuera del sistema de hooks de diffusers — las estrategias de caché no están disponibles aquí. Cambia a una variante diffusers Wan / LTX / Hunyuan para usar First Block Cache.",
+      "wanNote": "TeaCache oculto para Wan — sus tablas de calibración apuntan a una disposición distinta del transformer. First Block Cache cubre Wan a través del hook genérico de diffusers 0.36.",
+      "threshold": "Umbral ({value})",
+      "thresholdTooltip": "Menor = más estricto (menos aceleración, menos variación de calidad). Mayor = caché más agresivo. Los DiTs de video son más sensibles a la variación que los DiTs de imagen, así que el valor por defecto es más estricto (0,08 vs 0,12)."
+    },
+    "stgScale": {
+      "label": "Escala STG",
+      "tooltip": "Spatial-Temporal Guidance. Añade una pasada forward perturbada extra por paso del sampler en la ruta LTX-2 dev MLX para reducir la fragmentación de objetos y la deriva de croma. 1,0 coincide con el valor por defecto recomendado upstream; 0,0 lo desactiva para runs dev ~33% más rápidos con un coste de calidad leve. Los pipelines distilled corren un sampler fijo e ignoran el valor.",
+      "distilledNote": "Los pipelines distilled corren un sampler fijo — STG se ignora. Cambia a una variante dev para usar este control."
+    },
+    "safety": {
+      "dangerTitle": "Probable que rompa el backend",
+      "warningTitle": "Atención — puede costarle a este dispositivo",
+      "applyTitle": "Aplicar {label}",
+      "useSafer": "Usar ajustes más seguros ({label})",
+      "browseSmaller": "Explorar modelos más pequeños",
+      "overrideAck": "Permitir generación de alto riesgo — acepto que el backend puede romperse y que mi equipo puede necesitar reinicio.",
+      "reasonDangerOver": "El modelo necesita ~{model} GB residentes con la colocación estándar, pero {platform} con {total} GB totales solo tiene ~{working} GB disponibles con seguridad. El runtime recurrirá automáticamente al CPU offload secuencial -- la generación tendrá éxito pero cada paso será varias veces más lento porque los submódulos se intercambiarán entre la memoria de la CPU y la de {offloadDevice} en cada pasada. Para generación a máxima velocidad, elige un modelo más pequeño (LTX-Video es ~2 GB residentes) o una máquina con más memoria.",
+      "reasonDangerNear": "El modelo necesita ~{model} GB residentes y esta ejecución alcanza un pico de ~{peak} GB. En {platform} con {total} GB totales, eso está por encima del umbral de alto riesgo (~{highRisk} GB) y cerca del conjunto de trabajo estimado (~{working} GB). El runtime puede activar CPU offload para hacerlo encajar -- reduce los ajustes o elige un modelo más pequeño si quieres generación a máxima velocidad.",
+      "reasonCaution": "El modelo necesita ~{model} GB residentes. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación debería caber; reduce los ajustes si se vuelve inestable."
+    },
+    "disabledHint": "Generación desactivada: {reason}",
+    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto para las variantes más grandes."
+  },
+  "imageGallery": {
+    "subtitle": {
+      "count": "{filtered} de {total, plural, one {# salida guardada} other {# salidas guardadas}}",
+      "empty": "Generaciones guardadas, filtros y acciones de reutilización rápida"
+    },
+    "actions": {
+      "studio": "Studio",
+      "installedModels": "Modelos instalados"
+    },
+    "hero": {
+      "eyebrow": "Salidas guardadas",
+      "heading": "Explora, filtra y reutiliza imágenes generadas",
+      "body": "Mantén Image Studio centrado en la indicación y la generación, y luego usa Image Gallery para buscar salidas antiguas, comparar modelos y volver a Studio con los mismos ajustes."
+    },
+    "stats": {
+      "saved": "{count, plural, one {# guardada} other {# guardadas}}",
+      "modelsUsed": "{count, plural, one {# modelo usado} other {# modelos usados}}",
+      "realEngine": "{count} con motor real",
+      "placeholder": "{count} marcador de posición",
+      "withNotes": "{count} con notas"
+    },
+    "toolbar": {
+      "search": "Buscar",
+      "searchPlaceholder": "Indicación, modelo, nota del runtime",
+      "model": "Modelo",
+      "allModels": "Todos los modelos",
+      "runtime": "Runtime",
+      "allRuntimes": "Todos los runtimes",
+      "runtimeReal": "Motor real",
+      "runtimePlaceholder": "Marcador de posición",
+      "runtimeWithNotes": "Con notas",
+      "frame": "Encuadre",
+      "allFrames": "Todos los encuadres",
+      "frameSquare": "Cuadrado",
+      "framePortrait": "Vertical",
+      "frameLandscape": "Horizontal",
+      "sort": "Ordenar",
+      "sortNewest": "Más recientes primero",
+      "sortOldest": "Más antiguas primero",
+      "clearFilters": "Limpiar filtros"
+    },
+    "matching": "Mostrando {count, plural, one {# salida coincidente.} other {# salidas coincidentes.}}",
+    "savedSubtitle": {
+      "ready": "{count, plural, one {# imagen lista para explorar} other {# imágenes listas para explorar}}",
+      "noneMatch": "Ninguna salida guardada coincide con los filtros actuales",
+      "startGenerating": "Genera en Image Studio para empezar a construir la galería"
+    },
+    "empty": {
+      "firstGeneration": "Genera una indicación en Image Studio para crear el primer artefacto de imagen guardado para esta rama.",
+      "noMatches": "Aún no hay imágenes guardadas que coincidan con los filtros actuales. Intenta ampliar la búsqueda o limpiar alguno de los filtros.",
+      "openStudio": "Abrir Studio"
+    }
+  },
+  "videoGallery": {
+    "subtitle": {
+      "count": "{count, plural, one {# clip guardado} other {# clips guardados}}",
+      "empty": "Renders de video guardados"
+    },
+    "actions": {
+      "autoPlay": "Reproducción automática",
+      "openStudio": "Abrir Studio",
+      "installedModels": "Modelos instalados"
+    },
+    "empty": {
+      "body": "Aún no hay salidas de video. Carga un modelo en Studio y genera un clip — los renders terminados aparecerán aquí.",
+      "openStudio": "Abrir Video Studio"
+    },
+    "card": {
+      "loadError": "No se pudo cargar el video.",
+      "collapse": "Contraer",
+      "loading": "Cargando clip...",
+      "meta": {
+        "frames": "{count, plural, one {# fotograma} other {# fotogramas}}",
+        "fps": "{fps} fps",
+        "clipSeconds": "clip de {seconds}s",
+        "steps": "{count, plural, one {# paso} other {# pasos}}",
+        "cfg": "CFG {value}",
+        "seed": "Semilla {value}",
+        "render": "render de {seconds}s"
+      },
+      "expand": "Expandir",
+      "revealFile": "Mostrar archivo",
+      "delete": "Eliminar"
+    }
+  }
+}

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.finetuning import (
     list_adapters,
     prepare_dataset,
@@ -49,7 +50,7 @@ class StartFineTuneRequest(BaseModel):
 @router.get("/adapters")
 async def get_adapters(request: Request) -> dict[str, Any]:
     """List available LoRA adapters found on disk."""
-    state = request.app.state.engine
+    state = request.app.state.chaosengine
     data_dir = Path(state.settings.get("dataDirectory", "")).expanduser()
     if not data_dir.is_dir():
         # Fall back to home Models dir
@@ -75,7 +76,7 @@ async def start_finetuning(
     if _training_state["status"] == "training":
         raise HTTPException(
             status_code=409,
-            detail="A training run is already in progress.",
+            detail=localized_detail(request, "A training run is already in progress."),
         )
 
     import uuid

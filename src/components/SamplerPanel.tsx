@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SamplerOverrides } from "../types";
 
 /**
@@ -72,6 +73,7 @@ function NumericInput({ label, hint, value, min, max, step, defaultLabel, onChan
 }
 
 export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProps) {
+  const { t } = useTranslation("chat");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -127,23 +129,25 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
         className={`secondary-button sampler-panel__trigger${hasOverrides ? " sampler-panel__trigger--overridden" : ""}`}
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        title={hasOverrides ? `${overrideCount} sampler override${overrideCount === 1 ? "" : "s"} active` : "Open sampler panel"}
+        title={hasOverrides
+          ? t("samplerPanel.activeTooltip", { count: overrideCount, defaultValue: `${overrideCount} sampler override${overrideCount === 1 ? "" : "s"} active` })
+          : t("samplerPanel.openTooltip", { defaultValue: "Open sampler panel" })}
       >
-        Samplers
+        {t("samplerPanel.label", { defaultValue: "Samplers" })}
         {hasOverrides ? <span className="sampler-panel__badge" aria-hidden="true">{overrideCount}</span> : null}
       </button>
       {open ? (
-        <div className="sampler-panel__popover" role="dialog" aria-label="Sampler overrides">
+        <div className="sampler-panel__popover" role="dialog" aria-label={t("samplerPanel.dialogAriaLabel", { defaultValue: "Sampler overrides" })}>
           <div className="sampler-panel__header">
-            <strong>Sampler overrides</strong>
+            <strong>{t("samplerPanel.headerTitle", { defaultValue: "Sampler overrides" })}</strong>
             <button
               type="button"
               className="sampler-panel__clear"
               onClick={() => onChange({})}
               disabled={disabled || !hasOverrides}
-              title="Reset all to backend defaults"
+              title={t("samplerPanel.resetAllTooltip", { defaultValue: "Reset all to backend defaults" })}
             >
-              Reset all
+              {t("samplerPanel.resetAll", { defaultValue: "Reset all" })}
             </button>
           </div>
           <NumericInput

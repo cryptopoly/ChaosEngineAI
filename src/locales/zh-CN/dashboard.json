@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "实时系统统计",
+    "subtitle": "从 Python 边车刷新数据,以便桌面 Shell 提供适配建议。",
+    "runtimeEngine": "运行时引擎",
+    "noModelLoaded": "未加载模型",
+    "inferenceActivity": "推理活动",
+    "activeCount": "{count} 个活动",
+    "totalServed": "共服务 {count} 次",
+    "warmPool": "热池",
+    "warmModelCount": "{count, plural, other {# 个模型}}",
+    "noWarmModels": "无热模型",
+    "modelDisk": "模型磁盘",
+    "diskFree": "可用 {value} GB",
+    "diskTotal": "共 {value} GB",
+    "spareHeadroom": "剩余空间",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% 工作余量",
+    "memoryInUse": "内存使用中",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "内存压力",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · 压缩 {compressed} GB",
+    "swapUsage": "交换空间使用",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU 负载",
+    "cpuLabel": "{value}%",
+    "headroomFor": "{target} 的余量",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "电源",
+      "charging": "充电中",
+      "acPower": "交流电源",
+      "onBattery": "使用电池",
+      "lowNotice": "未接电源 — 推理可能因热压力而降速"
+    },
+    "processes": {
+      "name": "进程",
+      "owner": "所有者",
+      "memory": "内存",
+      "cpu": "CPU",
+      "active": "活动",
+      "warm": "热",
+      "system": "系统",
+      "empty": "未检测到活动的本地 LLM 进程。",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "硬件适配",
+    "subtitle": "相对于此机器推荐目标配置的指导。",
+    "recommendedTarget": "推荐目标",
+    "currentRuntime": "当前运行时",
+    "modelLoadedVia": "{model} 通过 {engine} 加载。",
+    "noModelHint": "尚未加载模型。在 对话 中选择线程模型,或在 发现 中浏览更新的家族。"
+  },
+  "activityFeed": {
+    "title": "活动源",
+    "subtitle": "无需深入日志即可查看的操作事件。",
+    "now": "刚刚"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "模型库扫描已完成",
+      "detail": "在已配置的模型目录中找到 {count} 个本地条目。"
+    },
+    "hardwareProfile": {
+      "title": "硬件配置已刷新"
+    },
+    "backendReadiness": {
+      "title": "后端就绪状态",
+      "detail": "MLX 已安装：{mlx} / mlx-lm 已安装：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 运行时：{gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "推荐目标:{modelSize} 级 @ {cacheLabel}",
+    "mlxDetail": "此预测相对于 {hardware} 上推荐的 {modelSize} 级本地目标,而非当前选择的对话模型。",
+    "ggufTitle": "推荐目标:{modelSize} GGUF",
+    "ggufDetail": "跨平台模式将优先选择 llama.cpp GGUF 以兼容广泛硬件。"
+  }
+}

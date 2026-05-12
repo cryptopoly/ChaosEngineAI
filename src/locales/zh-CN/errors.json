@@ -1,0 +1,33 @@
+{
+  "generic": "出错了。",
+  "network": "网络错误。请检查您的连接。",
+  "timeout": "请求超时。",
+  "notFound": "未找到。",
+  "permissionDenied": "权限被拒绝。",
+  "diskFull": "磁盘空间不足。",
+  "outOfMemory": "内存不足。",
+  "modelLoadFailed": "加载模型失败:{reason}",
+  "modelNotFound": "未找到模型:{repo}",
+  "engineNotInstalled": "引擎未安装:{engine}。请从设置标签页安装。",
+  "binaryMissing": "缺少所需二进制文件:{binary}",
+  "downloadFailed": "下载失败:{reason}",
+  "downloadCancelled": "下载已取消。",
+  "huggingFaceGated": "此模型受限。请在 Hugging Face 接受其许可证后重试。",
+  "huggingFaceAuthRequired": "需要身份验证。请在首选项中设置 Hugging Face 令牌。",
+  "incompatibleHardware": "您的硬件不满足此模型的要求。",
+  "platformOnly": "此功能需要 {platform}。",
+  "unsupportedFormat": "不支持的文件格式:{format}",
+  "validationFailed": "验证失败:{reason}",
+  "sessionCorrupt": "会话数据已损坏,无法加载。",
+  "boundaryFallback": "此标签页中出现错误。",
+  "boundaryHint": "请重试、切换标签页,或复制错误详细信息以进行诊断。",
+  "boundary": {
+    "scopeCrashed": "{scope} 崩溃了",
+    "tryAgain": "重试",
+    "copyDetails": "复制详细信息",
+    "stackTrace": "堆栈跟踪",
+    "noJsStack": "(未捕获 JS 堆栈)",
+    "componentStack": "组件堆栈",
+    "hint": "前端错误也会出现在 webview 控制台中(在发行版中右键点击 → 检查元素,或使用 npm run dev 运行应用)。后端日志在 诊断 标签页中可见。"
+  }
+}

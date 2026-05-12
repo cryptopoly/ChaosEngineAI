@@ -1,6 +1,6 @@
 [package]
 name = "chaosengineai"
-version = "0.7.6"
+version = "0.8.0"
 description = "ChaosEngineAI desktop shell for local AI model inference"
 authors = ["OpenAI Codex"]
 edition = "2021"
@@ -21,7 +21,23 @@ flate2 = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tar = "0.4"
-tauri = { version = "~2.11.0", features = [] }
+# FU-042 i18n: ``rust-i18n`` (MIT) loads compile-time message catalogs from
+# ``src-tauri/locales/{lang}.yml`` for static native menu / tray / updater
+# strings via the ``t!("menu.file")`` macro. Zero runtime cost — everything
+# resolves at build time. The ``fluent-bundle`` (Apache-2.0, Mozilla)
+# complements it for runtime-composed strings that need ICU-style plurals
+# / select / select-ordinal — e.g. updater progress "{n, plural, one {# minute
+# remaining} other {# minutes remaining}}" where ``n`` only exists at runtime.
+rust-i18n = "3"
+fluent-bundle = "0.16"
+unic-langid = "0.9"
+# FU-037 (2026-05-10): ``devtools`` flips on the WebKit inspector in
+# release builds too — right-click → Inspect Element opens devtools so
+# the user can read the console, set breakpoints, and grab a stack
+# without rebuilding the app with ``cargo tauri dev``. We pair this
+# with the per-tab ``ErrorBoundary`` so JS exceptions stay recoverable
+# AND inspectable.
+tauri = { version = "~2.11.0", features = ["devtools"] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"

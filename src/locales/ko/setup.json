@@ -1,0 +1,84 @@
+{
+  "title": "설정",
+  "subtitle": "하드웨어용 런타임 구성 요소 설치",
+  "sections": {
+    "core": "핵심 런타임",
+    "speculative": "추측 디코딩",
+    "caching": "캐시 전략",
+    "diffusion": "디퓨전 런타임",
+    "tools": "선택적 도구"
+  },
+  "actions": {
+    "install": "설치",
+    "uninstall": "제거",
+    "update": "업데이트",
+    "viewLog": "로그 보기",
+    "showInFinder": "Finder에서 표시"
+  },
+  "states": {
+    "installed": "설치됨",
+    "available": "사용 가능",
+    "installing": "설치 중…",
+    "uninstalling": "제거 중…",
+    "checking": "확인 중…",
+    "unavailable": "이 플랫폼에서 사용할 수 없음",
+    "needsRestart": "재시작 필요"
+  },
+  "messages": {
+    "diskSpaceWarning": "약 {size}가 다운로드됩니다.",
+    "requiresNetwork": "인터넷 연결이 필요합니다.",
+    "platformOnly": "이 구성 요소는 {platform}에서만 사용할 수 있습니다.",
+    "succeeded": "설치 성공.",
+    "failed": "설치 실패: {reason}"
+  },
+  "installLog": {
+    "finalStatus": "최종 상태:",
+    "statusNoun": {
+      "longlive": "LongLive 설치",
+      "gpuBundle": "설치"
+    },
+    "status": {
+      "failed": "{noun} 실패 — 로그 확인",
+      "complete": "{noun} 완료 — 로그 확인",
+      "starting": "{noun} 시작 중…",
+      "verifyingCuda": "CUDA 검증 중…",
+      "inProgress": "{noun} 진행 중"
+    },
+    "meta": {
+      "target": "대상: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA 인덱스: {url}",
+      "cudaVerified": "CUDA 검증됨",
+      "cudaVerificationFailed": "CUDA 검증 실패",
+      "noWheelForPython": "이 Python용 CUDA wheel 없음",
+      "restartBackend": "활성화하려면 백엔드를 다시 시작하세요"
+    },
+    "step": {
+      "waiting": "(대기 중)",
+      "final": "최종: {done}/{total} 패키지 · {percent}%",
+      "current": "단계 {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "작업 중…",
+      "noOutput": "(캡처된 출력 없음)"
+    },
+    "attempt": {
+      "verifyCuda": "torch.cuda.is_available() 검증",
+      "torchDeps": "torch 종속성 ({url}에서)",
+      "torchCleanup": "오래된 torch 파일 정리",
+      "torchRepair": "CUDA torch wheel 복구",
+      "constraint": "torch 버전 고정",
+      "torchFromIndex": "torch ({url}에서)",
+      "pipInstall": "pip install {pkg}",
+      "step": "단계"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "설치 완료 — 로그 확인{index}",
+    "installFailed": "{count, plural, =0 {설치 실패 — 로그 확인} other {설치 실패 — 로그 확인 (# 회 시도)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan MLX 런타임",
+    "ready": "준비됨"
+  }
+}

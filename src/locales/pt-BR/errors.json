@@ -1,0 +1,33 @@
+{
+  "generic": "Algo deu errado.",
+  "network": "Erro de rede. Verifique sua conexão.",
+  "timeout": "Tempo de solicitação esgotado.",
+  "notFound": "Não encontrado.",
+  "permissionDenied": "Permissão negada.",
+  "diskFull": "Espaço em disco insuficiente.",
+  "outOfMemory": "Memória insuficiente.",
+  "modelLoadFailed": "Falha ao carregar o modelo: {reason}",
+  "modelNotFound": "Modelo não encontrado: {repo}",
+  "engineNotInstalled": "Motor não instalado: {engine}. Instale-o na aba Configuração.",
+  "binaryMissing": "Binário necessário ausente: {binary}",
+  "downloadFailed": "Falha no download: {reason}",
+  "downloadCancelled": "Download cancelado.",
+  "huggingFaceGated": "Este modelo é restrito. Aceite sua licença no Hugging Face e tente novamente.",
+  "huggingFaceAuthRequired": "Autenticação necessária. Defina um token do Hugging Face em Preferências.",
+  "incompatibleHardware": "Seu hardware não atende aos requisitos deste modelo.",
+  "platformOnly": "Este recurso requer {platform}.",
+  "unsupportedFormat": "Formato de arquivo não suportado: {format}",
+  "validationFailed": "Falha na validação: {reason}",
+  "sessionCorrupt": "Os dados da sessão estão corrompidos e não puderam ser carregados.",
+  "boundaryFallback": "Ocorreu um erro nesta aba.",
+  "boundaryHint": "Tente novamente, troque de aba ou copie os detalhes do erro para diagnóstico.",
+  "boundary": {
+    "scopeCrashed": "{scope} travou",
+    "tryAgain": "Tentar novamente",
+    "copyDetails": "Copiar detalhes",
+    "stackTrace": "Stack trace",
+    "noJsStack": "(stack JS não capturado)",
+    "componentStack": "Stack de componentes",
+    "hint": "Erros do frontend também aparecem no console do webview (em builds de release, clique com o botão direito → Inspecionar elemento, ou execute o app com npm run dev). Logs do backend são visíveis na aba Diagnóstico."
+  }
+}

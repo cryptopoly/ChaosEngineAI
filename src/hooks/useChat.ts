@@ -27,6 +27,15 @@ import {
 } from "../utils/chatRuntime";
 import { sanitizeSpeculativeSelection } from "../components/runtimeSupport";
 import { readKvStrategyOverride } from "../features/chat/kvStrategyOverride";
+import {
+  appendOptimisticTurn,
+  mergeSessionMetadata,
+  replaceOptimisticAssistant,
+  rollbackOptimisticTurn,
+} from "../features/chat/optimisticTurns";
+import { readReasoningEffort } from "../features/chat/reasoningEffort";
+import { readSamplerOverrides, samplerPayload } from "../features/chat/samplerOverrides";
+import { readTemperatureOverride } from "../features/chat/temperatureOverride";
 import type {
   ChatSession,
   ChatThinkingMode,
@@ -39,84 +48,9 @@ import type {
 } from "../types";
 import type { ChatModelOption } from "../types/chat";
 
-/**
- * Read the per-thread temperature override stored by ChatTab's TemperatureChip.
- * Returns null when no override is set, in which case the launch-settings
- * default applies. Mirrors the localStorage key produced by the chip.
- */
-function readTemperatureOverride(sessionId: string | null | undefined): number | null {
-  if (!sessionId || typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`chat.tempOverride.${sessionId}`);
-    if (raw == null) return null;
-    const parsed = parseFloat(raw);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
-/**
- * Phase 2.2: read the per-thread sampler overrides (top_p, top_k, etc.)
- * stashed by SamplerPanel. Returns the GeneratePayload field shape so
- * useChat can spread it into the stream payload. Empty object = no
- * overrides; backend defaults apply.
- */
 function readSamplerPayload(sessionId: string | null | undefined): Record<string, unknown> {
-  if (!sessionId || typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(`chat.samplers.${sessionId}`);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    const out: Record<string, unknown> = {};
-    for (const key of ["topP", "topK", "minP", "repeatPenalty", "seed", "mirostatTau", "mirostatEta"]) {
-      const value = (parsed as Record<string, unknown>)[key];
-      if (typeof value === "number" && Number.isFinite(value)) {
-        out[key] = value;
-      }
-    }
-    const mode = (parsed as Record<string, unknown>).mirostatMode;
-    if (mode === 0 || mode === 1 || mode === 2) {
-      out.mirostatMode = mode;
-    }
-    // Phase 2.2: opt-in constrained decoding. The SamplerPanel stores
-    // the schema as raw JSON text so we can round-trip mid-type edits;
-    // parse here and only forward when the result is a valid object.
-    // Invalid JSON falls through silently — the backend will then use
-    // unconstrained decoding rather than 400-ing the request.
-    const schemaText = (parsed as Record<string, unknown>).jsonSchemaText;
-    if (typeof schemaText === "string" && schemaText.trim().length > 0) {
-      try {
-        const schema = JSON.parse(schemaText);
-        if (schema && typeof schema === "object" && !Array.isArray(schema)) {
-          out.jsonSchema = schema;
-        }
-      } catch {
-        // Mid-type / malformed — silently skip rather than block the send.
-      }
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Read the per-thread reasoning effort level (Phase 1.12). Stored alongside
- * thinkingMode but separate so a session can independently track "Off" vs
- * Low/Medium/High effort. Returns undefined when no level is stored, which
- * lets the backend treat absence as "use whatever the model defaults to".
- */
-function readReasoningEffort(sessionId: string | null | undefined): "low" | "medium" | "high" | undefined {
-  if (!sessionId || typeof window === "undefined") return undefined;
-  try {
-    const raw = window.localStorage.getItem(`chat.reasoningEffort.${sessionId}`);
-    if (raw === "low" || raw === "medium" || raw === "high") return raw;
-  } catch {
-    // ignore
-  }
-  return undefined;
+  return samplerPayload(readSamplerOverrides(sessionId));
 }
 
 export function useChat(
@@ -241,86 +175,16 @@ export function useChat(
     return null;
   }
 
-  function mergeSessionMetadata(session: ChatSession, patch: Partial<ChatSession>): ChatSession {
-    return { ...session, ...patch };
+  function appendOptimisticTurnLocal(sessionId: string, prompt: string) {
+    appendOptimisticTurn(setWorkspace, sessionId, prompt);
   }
 
-  function appendOptimisticTurn(sessionId: string, prompt: string) {
-    const updatedAt = new Date().toLocaleString();
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              updatedAt,
-              messages: [
-                ...session.messages,
-                { role: "user" as const, text: prompt, metrics: null },
-                {
-                  role: "assistant" as const,
-                  text: "",
-                  reasoning: "",
-                  reasoningDone: true,
-                  metrics: null,
-                  // Phase 2.0: start in prompt_eval so the indicator shows
-                  // immediately on send, before backend's first SSE phase
-                  // event arrives. Cleared by onDone via the session refresh.
-                  streamPhase: "prompt_eval",
-                },
-              ],
-            }
-          : session,
-      ),
-    }));
+  function replaceOptimisticAssistantLocal(sessionId: string, prompt: string, text: string) {
+    replaceOptimisticAssistant(setWorkspace, sessionId, prompt, text);
   }
 
-  function replaceOptimisticAssistant(sessionId: string, prompt: string, text: string) {
-    const updatedAt = new Date().toLocaleString();
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) => {
-        if (session.id !== sessionId) return session;
-        const messages = [...session.messages];
-        const last = messages[messages.length - 1];
-        const previous = messages[messages.length - 2];
-        if (
-          last?.role === "assistant" &&
-          !last.text &&
-          !last.metrics &&
-          previous?.role === "user" &&
-          previous.text === prompt
-        ) {
-          messages[messages.length - 1] = { ...last, text };
-        } else {
-          messages.push({ role: "user", text: prompt, metrics: null });
-          messages.push({ role: "assistant", text, metrics: null });
-        }
-        return { ...session, updatedAt, messages };
-      }),
-    }));
-  }
-
-  function rollbackOptimisticTurn(sessionId: string, prompt: string) {
-    setWorkspace((current) => ({
-      ...current,
-      chatSessions: current.chatSessions.map((session) => {
-        if (session.id !== sessionId) return session;
-        const messages = [...session.messages];
-        const last = messages[messages.length - 1];
-        const previous = messages[messages.length - 2];
-        if (
-          last?.role === "assistant" &&
-          !last.text &&
-          !last.metrics &&
-          previous?.role === "user" &&
-          previous.text === prompt
-        ) {
-          return { ...session, messages: messages.slice(0, -2) };
-        }
-        return session;
-      }),
-    }));
+  function rollbackOptimisticTurnLocal(sessionId: string, prompt: string) {
+    rollbackOptimisticTurn(setWorkspace, sessionId, prompt);
   }
 
   async function persistSessionChanges(sessionId: string, patch: Partial<ChatSession>) {
@@ -728,7 +592,7 @@ export function useChat(
     setError(null);
 
     if (optimisticTurnAdded && sendingSessionId) {
-      appendOptimisticTurn(sendingSessionId, trimmed);
+      appendOptimisticTurnLocal(sendingSessionId, trimmed);
     }
 
     const { online: isOnline, startupError } = await ensureBackendAvailable(sendingSessionId ?? undefined);
@@ -741,7 +605,7 @@ export function useChat(
         setError(`API service restart failed: ${startupError}`);
       }
       if (optimisticTurnAdded && sendingSessionId) {
-        replaceOptimisticAssistant(sendingSessionId, trimmed, offlineMessage);
+        replaceOptimisticAssistantLocal(sendingSessionId, trimmed, offlineMessage);
         setActiveChatId(sendingSessionId);
       } else {
         const fallbackSession = activeChat ?? {
@@ -891,7 +755,7 @@ export function useChat(
 
       const streamingChatId = sessionId ?? sendingSessionId;
       if (streamingChatId && (!optimisticTurnAdded || streamingChatId !== sendingSessionId)) {
-        appendOptimisticTurn(streamingChatId, trimmed);
+        appendOptimisticTurnLocal(streamingChatId, trimmed);
       }
 
       const streamAbort = new AbortController();
@@ -1100,7 +964,7 @@ export function useChat(
       // Aborted by user — not a real error
       if (actionError instanceof DOMException && actionError.name === "AbortError") {
         if (!streamStarted && sendingSessionId && optimisticTurnAdded) {
-          rollbackOptimisticTurn(sendingSessionId, trimmed);
+          rollbackOptimisticTurnLocal(sendingSessionId, trimmed);
         }
         setChatBusySessionId(null);
         streamAbortRef.current = null;
@@ -1108,7 +972,7 @@ export function useChat(
       }
       if (!streamStarted) {
         if (sendingSessionId && optimisticTurnAdded) {
-          rollbackOptimisticTurn(sendingSessionId, trimmed);
+          rollbackOptimisticTurnLocal(sendingSessionId, trimmed);
         }
         restoreComposer();
       }

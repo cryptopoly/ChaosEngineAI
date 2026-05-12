@@ -712,7 +712,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual([model["repo"] for model in direct_results], ["Qwen/Qwen3.6-35B-A3B"])
         self.assertEqual([model["repo"] for model in short_results], ["Qwen/Qwen3.6-35B-A3B"])
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=74.9)
     def test_model_download_preflight_sets_live_size_before_starting(
@@ -733,7 +733,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         thread_cls.assert_called_once()
         fake_thread.start.assert_called_once()
 
-    @mock.patch("backend_service.state._spawn_snapshot_download")
+    @mock.patch("backend_service.state.downloads._spawn_snapshot_download")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=66.99)
     def test_model_download_disables_hf_xet_for_snapshot_download(
@@ -766,7 +766,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             def join(self, timeout=None):
                 return None
 
-        with mock.patch("backend_service.state.threading.Thread", side_effect=ImmediateThread):
+        with mock.patch("backend_service.state.downloads.threading.Thread", side_effect=ImmediateThread):
             payload = state.start_download("Qwen/Qwen3.6-35B-A3B")
 
         self.assertEqual(payload["state"], "completed")
@@ -776,7 +776,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(env["HF_HUB_DISABLE_PROGRESS_BARS"], "1")
         self.assertEqual(env["PYTHONUNBUFFERED"], "1")
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch(
         "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
@@ -796,7 +796,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIn("not found on Hugging Face", payload["error"])
         thread_cls.assert_not_called()
 
-    @mock.patch("backend_service.state.threading.Thread")
+    @mock.patch("backend_service.state.downloads.threading.Thread")
     @mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0)
     @mock.patch(
         "backend_service.helpers.huggingface._hf_repo_preflight_size_gb",
@@ -1025,9 +1025,14 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 500)
         detail = response.json()["detail"]
+        # FU-042: routes that adopted ``localized_detail`` return an envelope
+        # ``{message, localized, locale, errorKey?}`` instead of a plain
+        # string.  Old tests asserted against the raw string; accept both
+        # shapes so we don't have to rewrite every assertion at once.
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
         # Error text must mention the model and point at the fix.
-        self.assertIn("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF", detail)
-        self.assertIn("Discover", detail)
+        self.assertIn("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF", detail_text)
+        self.assertIn("Discover", detail_text)
         # Crucially: llama-server / the runtime should NEVER be invoked.
         self.assertEqual(self.client.app.state.chaosengine.runtime.load_requests, [])
 
@@ -1207,7 +1212,10 @@ class ChaosEngineBackendTests(unittest.TestCase):
             VIDEO_PROGRESS.finish()
 
         self.assertEqual(response.status_code, 409)
-        self.assertIn("video generation is still running", response.json()["detail"])
+        # FU-042: ``localized_detail`` envelope wraps the error message.
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("video generation is still running", detail_text)
 
     def test_image_download_delete_removes_cache_and_unloads_matching_models(self):
         repo = "black-forest-labs/FLUX.1-dev"
@@ -1506,8 +1514,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         try:
             response = self.client.post(
                 "/api/chat/html-challenges",
@@ -1529,7 +1537,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                             "launch": {
                                 "temperature": 0.7,
                                 "maxTokens": 8192,
-                                "cacheStrategy": "chaosengine",
+                                "cacheStrategy": "turboquant",
                                 "cacheBits": 4,
                                 "fp16Layers": 0,
                                 "fusedAttention": False,
@@ -1587,7 +1595,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIn("Q4_K_M", settings_text)
             self.assertIn("16.3 GB", settings_text)
             self.assertIn("128K", settings_text)
-            self.assertIn("chaosengine 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
+            self.assertIn("turboquant 4-bit · 256K ctx · 8K max · temp 0.7", settings_text)
             self.assertIn("turboquant 3-bit · 256K ctx · 8K max · temp 0.7", settings_text)
             self.assertIn("Thinking off", settings_text)
             self.assertEqual([slot["status"] for slot in challenge["slots"]], ["done", "done"])
@@ -1600,8 +1608,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
             second_slot = challenge["slots"][1]
-            with mock.patch.object(html_challenge_routes.platform, "system", return_value="Darwin"), \
-                    mock.patch.object(html_challenge_routes.subprocess, "Popen") as popen:
+            with mock.patch.object(html_challenge_routes._helpers.platform, "system", return_value="Darwin"), \
+                    mock.patch.object(html_challenge_routes._helpers.subprocess, "Popen") as popen:
                 open_response = self.client.post(
                     "/api/chat/html-challenges/open-file",
                     json={"path": str(folder / second_slot["filename"])},
@@ -1658,7 +1666,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
             missing_response = self.client.get(f"/api/chat/html-challenges/{challenge['id']}")
             self.assertEqual(missing_response.status_code, 404)
         finally:
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_html_challenge_validation_flags_common_failures(self):
@@ -1687,8 +1695,8 @@ class ChaosEngineBackendTests(unittest.TestCase):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         try:
             response = self.client.post(
                 "/api/chat/html-challenges",
@@ -1746,15 +1754,15 @@ class ChaosEngineBackendTests(unittest.TestCase):
             self.assertIn("Thinking low", settings_text)
             self.assertIn("Seed 123", settings_text)
         finally:
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_html_challenge_repair_includes_partial_file(self):
         from backend_service.routes import html_challenges as html_challenge_routes
 
         root = Path(self.tempdir.name) / "html-challenges"
-        original_root = html_challenge_routes._challenge_root
-        html_challenge_routes._challenge_root = lambda: root
+        original_root = html_challenge_routes._helpers._challenge_root
+        html_challenge_routes._helpers._challenge_root = lambda: root
         runtime = self.client.app.state.chaosengine.runtime
         model_a = {
             "modelRef": "local/model-a",
@@ -1817,7 +1825,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         finally:
             runtime.stream_text_override = None
             runtime.stream_finish_reason = "stop"
-            html_challenge_routes._challenge_root = original_root
+            html_challenge_routes._helpers._challenge_root = original_root
         self.assertIsNone(self.client.app.state.chaosengine.runtime.loaded_model)
 
     def test_mlx_vlm_kwargs_read_sampler_top_p(self):
@@ -1864,7 +1872,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         with mock.patch(
-            "backend_service.state._describe_process",
+            "backend_service.state.payloads._describe_process",
             return_value={
                 "pid": 4242,
                 "name": "python",
@@ -1922,7 +1930,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         with mock.patch(
-            "backend_service.state._describe_process",
+            "backend_service.state.payloads._describe_process",
             return_value={
                 "pid": 4242,
                 "name": "python",
@@ -2006,7 +2014,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
                     "canonicalRepo": "google/gemma-4-E4B-it",
                     "source": "catalog",
                     "backend": "mlx",
-                    "cacheStrategy": "rotorquant",
+                    "cacheStrategy": "turboquant",
                     "cacheBits": 4,
                     "fp16Layers": 2,
                     "fusedAttention": True,
@@ -2017,14 +2025,14 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         load_model_spy.assert_not_called()
         self.assertEqual(len(state.runtime.profile_updates), 1)
-        self.assertEqual(state.runtime.loaded_model.cacheStrategy, "rotorquant")
+        self.assertEqual(state.runtime.loaded_model.cacheStrategy, "turboquant")
         self.assertEqual(state.runtime.loaded_model.cacheBits, 4)
         self.assertEqual(state.runtime.loaded_model.fp16Layers, 2)
         self.assertTrue(state.runtime.loaded_model.fusedAttention)
 
     def test_snapshot_download_process_redirects_progress_output_to_log_file(self):
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download("org/model", {"PYTHONUNBUFFERED": "1"}, handle)
 
         kwargs = popen.call_args.kwargs
@@ -2035,7 +2043,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
     def test_snapshot_download_passes_empty_allowlist_for_standard_repos(self):
         """Non-video repos should not receive an allowlist arg (empty string)."""
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download("org/model", {}, handle)
 
         args = popen.call_args.args[0]
@@ -2048,7 +2056,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         """A supplied allowlist arrives at the subprocess as JSON."""
         patterns = ["model_index.json", "transformer/**"]
         with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as handle:
-            with mock.patch("backend_service.state.subprocess.Popen") as popen:
+            with mock.patch("backend_service.state.downloads.subprocess.Popen") as popen:
                 _spawn_snapshot_download(
                     "org/video-model", {}, handle, allow_patterns=patterns,
                 )
@@ -2067,20 +2075,24 @@ class ChaosEngineBackendTests(unittest.TestCase):
             context_tokens=8192,
             params_b=7.0,
             system_stats=fake_system_snapshot(),
-            strategy="rotorquant",
+            strategy="turboquant",
         )
         self.assertLess(preview["optimizedCacheGb"], preview["baselineCacheGb"])
         self.assertGreater(preview["compressionRatio"], 1.0)
 
-    def test_manual_cache_backend_install_returns_helpful_error(self):
-        for package_name in ("chaosengine", "chaos-engine"):
-            response = self.client.post(
-                "/api/setup/install-package",
-                json={"package": package_name},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertIn("not published on PyPI", response.json()["detail"])
-            self.assertIn("pip install -e /path/to/ChaosEngine", response.json()["detail"])
+    def test_unknown_package_install_returns_helpful_error(self):
+        """FU-030: ``chaosengine`` was a manual install candidate; the strategy
+        is gone now. Installing an unknown package must surface the standard
+        "not in allowed install list" 400 instead of the old ChaosEngine
+        clone-and-install message."""
+        response = self.client.post(
+            "/api/setup/install-package",
+            json={"package": "not-a-real-package"},
+        )
+        self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("not in the allowed install list", detail_text)
 
     def test_convert_endpoint_returns_conversion_payload(self):
         state = ChaosEngineState(
@@ -2575,8 +2587,11 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 500)
-        self.assertIn("Cannot load", response.json()["detail"])
-        self.assertIn("NVFP4", response.json()["detail"])
+        # FU-042: ``localized_detail`` envelope wraps the error message.
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("Cannot load", detail_text)
+        self.assertIn("NVFP4", detail_text)
 
     def test_reveal_model_path_endpoint_returns_resolved_path(self):
         target = Path(self.tempdir.name) / "example.gguf"

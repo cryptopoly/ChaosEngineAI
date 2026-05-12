@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ChatStreamPhase } from "../types";
 
 interface PromptPhaseIndicatorProps {
   phase: ChatStreamPhase;
 }
-
-const PROMPT_EVAL_LABEL = "Processing prompt";
-const GENERATING_LABEL = "Generating";
 
 /**
  * Live phase indicator shown below an assistant placeholder while a
@@ -19,6 +17,7 @@ const GENERATING_LABEL = "Generating";
  * re-renders for the timer.
  */
 export function PromptPhaseIndicator({ phase }: PromptPhaseIndicatorProps) {
+  const { t } = useTranslation("chat");
   const [elapsedMs, setElapsedMs] = useState(0);
 
   // Reset the counter whenever the phase flips so "Generating" starts at 0s
@@ -36,7 +35,10 @@ export function PromptPhaseIndicator({ phase }: PromptPhaseIndicatorProps) {
   const tenths = Math.floor((elapsedMs % 1000) / 100);
   const formatted = `${seconds}.${tenths}s`;
 
-  const label = phase === "prompt_eval" ? PROMPT_EVAL_LABEL : GENERATING_LABEL;
+  const label =
+    phase === "prompt_eval"
+      ? t("promptPhase.processingPrompt", { defaultValue: "Processing prompt" })
+      : t("promptPhase.generating", { defaultValue: "Generating" });
   const className = `prompt-phase-indicator prompt-phase-indicator--${phase}`;
 
   return (

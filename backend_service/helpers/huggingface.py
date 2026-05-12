@@ -9,12 +9,27 @@ import urllib.parse
 import urllib.request
 from hashlib import sha256
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from backend_service.catalog import MODEL_FAMILIES, IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
 from backend_service.helpers.formatting import _bytes_to_gb
 from backend_service.helpers.discovery import _path_size_bytes
+from backend_service.helpers.hf_cache_paths import (
+    _hf_hub_cache_root,
+    _hf_repo_cache_dir,
+    _hf_repo_downloaded_bytes,
+    _hf_repo_snapshot_dir,
+)
+from backend_service.helpers.hf_errors import (
+    _condense_hf_error,
+    _friendly_hf_download_error,
+)
+from backend_service.helpers.hf_format import (
+    _format_hf_updated_label,
+    _format_release_label,
+    _hf_number_label,
+    _parse_iso_datetime,
+)
 
 
 _HF_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+/[a-zA-Z0-9_.\-]+$")
@@ -350,201 +365,8 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
     return payload
 
 
-def _condense_hf_error(error: str) -> str:
-    lines = [line.strip() for line in str(error).splitlines() if line.strip()]
-    ignored_prefixes = (
-        "traceback",
-        "file ",
-        "raise ",
-        "for more information",
-        "for more details",
-    )
-    ignored_substrings = (
-        "userwarning",
-        "warnings.warn",
-        "httpstatuserror:",
-        "repositorynotfounderror:",
-    )
-    for line in reversed(lines):
-        lowered = line.lower()
-        if lowered.startswith(ignored_prefixes):
-            continue
-        if any(fragment in lowered for fragment in ignored_substrings):
-            continue
-        return line
-    return lines[-1] if lines else str(error).strip()
 
 
-def _friendly_hf_download_error(repo_id: str, error: str) -> str:
-    lowered = str(error).lower()
-    # The snapshot_download subprocess imports ``huggingface_hub`` which
-    # transitively imports ``yaml``. A partially-installed PyYAML in the
-    # extras dir surfaces as ``ModuleNotFoundError: No module named 'yaml...'``
-    # rather than a network or repo error. Translate it into actionable
-    # guidance (open Setup → install pyyaml) instead of a cryptic Python
-    # traceback rendered as the download status.
-    if "no module named 'yaml" in lowered or "no module named yaml" in lowered:
-        return (
-            "The backend Python is missing PyYAML, which huggingface_hub needs "
-            "to read model cards. Open Settings > Setup and click Install "
-            "pyyaml (or re-run Install GPU runtime) to repair the runtime, "
-            f"then retry the download for {repo_id}."
-        )
-    if "modulenotfounderror" in lowered and "huggingface_hub" in lowered:
-        return (
-            "The backend Python could not import huggingface_hub. Open Settings > "
-            "Setup and click Install GPU runtime to repair the runtime, then "
-            f"retry the download for {repo_id}."
-        )
-    if (
-        "repository not found" in lowered
-        or "repo not found" in lowered
-        or "404 client error" in lowered
-    ):
-        return (
-            f"{repo_id} was not found on Hugging Face. "
-            "This repo may have moved or the catalog entry may be stale."
-        )
-    if (
-        "refused access" in lowered
-        or "http 401" in lowered
-        or "http 403" in lowered
-        or "invalid username or password" in lowered
-        or "authentication required" in lowered
-        or "cannot access gated repo" in lowered
-        or "gated repo" in lowered
-        or ("access to model" in lowered and "restricted" in lowered)
-    ):
-        return (
-            f"Hugging Face refused access to {repo_id}. "
-            "If the repo is gated or private, make sure your account has access "
-            "and add a read-enabled HF_TOKEN in Settings."
-        )
-    if (
-        "connecterror" in lowered
-        or "name or service not known" in lowered
-        or "nodename nor servname provided" in lowered
-        or "temporary failure in name resolution" in lowered
-        or "timed out" in lowered
-    ):
-        return (
-            f"ChaosEngineAI could not reach Hugging Face while checking {repo_id}. "
-            "Check the backend network connection and retry."
-        )
-    condensed = _condense_hf_error(error)
-    return condensed or f"Download failed for {repo_id}."
-
-
-def _parse_iso_datetime(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed
-
-
-def _format_hf_updated_label(value: str | None) -> str | None:
-    parsed = _parse_iso_datetime(value)
-    if parsed is None:
-        return None
-    now = datetime.now(timezone.utc)
-    month_label = parsed.strftime("%b")
-    if parsed.year == now.year:
-        return f"Updated {month_label} {parsed.day}"
-    return f"Updated {month_label} {parsed.day}, {parsed.year}"
-
-
-def _format_release_label(value: str | None) -> str | None:
-    """Format a release date / HF ``createdAt`` into a short human label.
-
-    Accepts either a full ISO datetime (``2024-08-01T12:34:56Z`` — HF API)
-    or a year-month shorthand (``2024-08`` — curated catalog entries) and
-    returns ``"Released Aug 2024"``. Falls back to None when the input
-    can't be parsed.
-    """
-    if not value:
-        return None
-    parsed = _parse_iso_datetime(value)
-    if parsed is None:
-        # Try ``YYYY-MM`` or ``YYYY-MM-DD`` shorthand used in curated catalog
-        # entries — ``_parse_iso_datetime`` only handles the full datetime form.
-        text = str(value).strip()
-        for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
-            try:
-                parsed = datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
-                break
-            except ValueError:
-                continue
-        if parsed is None:
-            return None
-    return f"Released {parsed.strftime('%b')} {parsed.year}"
-
-
-def _hf_number_label(value: int, noun: str) -> str:
-    return f"{value:,} {noun}"
-
-
-def _hf_hub_cache_root() -> Path:
-    explicit = os.environ.get("HUGGINGFACE_HUB_CACHE") or os.environ.get("HF_HUB_CACHE")
-    if explicit:
-        return Path(os.path.expanduser(explicit)).expanduser()
-    hf_home = os.environ.get("HF_HOME")
-    if hf_home:
-        return Path(os.path.expanduser(hf_home)).expanduser() / "hub"
-    # Use huggingface_hub's own cache constant when available -- it handles
-    # platform differences (Windows uses LOCALAPPDATA or userprofile).
-    try:
-        from huggingface_hub import constants as _hf_constants
-        return Path(_hf_constants.HF_HUB_CACHE)
-    except Exception:
-        pass
-    return Path.home() / ".cache" / "huggingface" / "hub"
-
-
-def _hf_repo_cache_dir(repo_id: str) -> Path:
-    return _hf_hub_cache_root() / f"models--{repo_id.replace('/', '--')}"
-
-
-def _hf_repo_downloaded_bytes(repo_id: str) -> int:
-    cache_dir = _hf_repo_cache_dir(repo_id)
-    try:
-        if not cache_dir.exists():
-            return 0
-    except OSError:
-        return 0
-    try:
-        return _path_size_bytes(cache_dir)
-    except OSError:
-        return 0
-
-
-def _hf_repo_snapshot_dir(repo_id: str) -> Path | None:
-    cache_dir = _hf_repo_cache_dir(repo_id)
-    snapshots_dir = cache_dir / "snapshots"
-    ref_path = cache_dir / "refs" / "main"
-    try:
-        if ref_path.exists():
-            revision = ref_path.read_text(encoding="utf-8").strip()
-            if revision:
-                candidate = snapshots_dir / revision
-                if candidate.exists():
-                    return candidate
-    except OSError:
-        pass
-
-    try:
-        snapshots = sorted(
-            [candidate for candidate in snapshots_dir.iterdir() if candidate.is_dir()],
-            key=lambda candidate: candidate.stat().st_mtime,
-            reverse=True,
-        )
-    except OSError:
-        return None
-    return snapshots[0] if snapshots else None
 
 
 def _known_repo_size_gb(repo_id: str) -> float | None:

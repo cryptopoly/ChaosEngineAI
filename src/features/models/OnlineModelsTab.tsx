@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { ModelStatusKind } from "../../components/ModelActionIcons";
@@ -12,13 +13,13 @@ import type {
 import {
   number,
   sizeLabel,
-  capabilityMeta,
   findLibraryItemForVariant,
   downloadProgressLabel,
   formatReleaseLabel,
   handleActionKeyDown,
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
+import { CapabilityStrip } from "../../components/CapabilityStrip";
 
 export interface OnlineModelsTabProps {
   searchResults: ModelFamily[];
@@ -70,6 +71,10 @@ export function memoryFitBucket(
   variant: ModelVariant,
   availableMemoryGb: number | null | undefined,
 ): { kind: "comfortable" | "tight" | "over" | "unknown"; label: string } {
+  // ``label`` is the English fallback. The render site re-resolves the
+  // localized label via ``t("onlineModels.memory.<kind>Label")`` so it
+  // follows the active locale; this string is only used when callers
+  // need a sensible default outside i18n context.
   if (availableMemoryGb == null || availableMemoryGb <= 0) {
     return { kind: "unknown", label: "" };
   }
@@ -117,26 +122,7 @@ export function OnlineModelsTab({
   hubFileError,
   availableMemoryGb,
 }: OnlineModelsTabProps) {
-  function renderCapabilityIcons(capabilities: string[], max = 5) {
-    return (
-      <div className="capability-strip">
-        {capabilities.slice(0, max).map((capability) => {
-          const meta = capabilityMeta(capability);
-          const fullMeta = CAPABILITY_META[capability];
-          return (
-            <span
-              className="capability-icon"
-              key={capability}
-              title={meta.title}
-              style={fullMeta ? { borderColor: `${fullMeta.color}40`, color: fullMeta.color } : undefined}
-            >
-              {fullMeta?.icon ?? ""} {meta.shortLabel}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
+  const { t } = useTranslation("library");
 
   function renderCapabilityFilterBar(
     active: string | null,
@@ -153,20 +139,22 @@ export function OnlineModelsTab({
           type="button"
           onClick={() => setActive(null)}
         >
-          All
+          {t("onlineModels.filter.all", { defaultValue: "All" })}
         </button>
         {uniqueCaps.map((cap) => {
           const meta = CAPABILITY_META[cap];
+          const localizedTitle = t(`onlineModels.capability.title.${cap}`, { defaultValue: meta?.title ?? cap });
+          const localizedShort = t(`onlineModels.capability.short.${cap}`, { defaultValue: meta?.shortLabel ?? cap });
           return (
             <button
               key={cap}
               className={`cap-filter-btn${active === cap ? " cap-filter-btn--active" : ""}`}
               type="button"
               onClick={() => setActive(active === cap ? null : cap)}
-              title={meta?.title ?? cap}
+              title={localizedTitle}
               style={active === cap && meta ? { borderColor: meta.color, color: meta.color, background: `${meta.color}15` } : undefined}
             >
-              {meta?.icon ?? ""} {meta?.shortLabel ?? cap}
+              {meta?.icon ?? ""} {localizedShort}
             </button>
           );
         })}
@@ -178,8 +166,9 @@ export function OnlineModelsTab({
     active: string | null,
     setActive: (fmt: string | null) => void,
     formats: string[],
-    allLabel = "All formats",
+    allLabel?: string,
   ) {
+    const resolvedAllLabel = allLabel ?? t("onlineModels.filter.allFormats", { defaultValue: "All formats" });
     const uniqueFormats = [...new Set(formats)].sort();
     if (uniqueFormats.length < 2) return null;
     return (
@@ -189,7 +178,7 @@ export function OnlineModelsTab({
           type="button"
           onClick={() => setActive(null)}
         >
-          {allLabel}
+          {resolvedAllLabel}
         </button>
         {uniqueFormats.map((fmt) => (
           <button
@@ -231,7 +220,7 @@ export function OnlineModelsTab({
   function renderCuratedSection() {
     if (filteredResults.length === 0) return null;
     return (
-      <section className="discover-section" aria-label="Curated model families">
+      <section className="discover-section" aria-label={t("onlineModels.section.curatedAria", { defaultValue: "Curated model families" })}>
         <div className="discover-list">
           {filteredResults.map((family) => {
             const isExpanded = expandedFamilyId === family.id;
@@ -268,19 +257,19 @@ export function OnlineModelsTab({
                       <span className="badge muted">{family.provider}</span>
                       <span className="badge muted">{paramRange}</span>
                       {formats.map((f) => <span key={f} className="badge muted">{f}</span>)}
-                      {localCount > 0 ? <StatusIcon status="installed" label={`${localCount} installed`} /> : null}
+                      {localCount > 0 ? <StatusIcon status="installed" label={t("onlineModels.status.countInstalled", { defaultValue: "{count} installed", count: localCount })} /> : null}
                       {headerIsDownloading ? (
-                        <StatusIcon status="downloading" label="Downloading" detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
+                        <StatusIcon status="downloading" label={t("onlineModels.status.downloading", { defaultValue: "Downloading" })} detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
                       ) : headerIsPaused ? (
-                        <StatusIcon status="paused" label="Paused" detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
+                        <StatusIcon status="paused" label={t("onlineModels.status.paused", { defaultValue: "Paused" })} detail={headerDownload ? downloadProgressLabel(headerDownload) : null} />
                       ) : headerIsFailed ? (
-                        <StatusIcon status="failed" label="Download failed" detail={headerDownload?.error ?? null} />
+                        <StatusIcon status="failed" label={t("onlineModels.status.downloadFailed", { defaultValue: "Download failed" })} detail={headerDownload?.error ?? null} />
                       ) : null}
                     </div>
                     <p>{family.headline}</p>
                     <div className="discover-card-meta">
-                      {renderCapabilityIcons(family.capabilities, 8)}
-                      <small>{family.variants.length} variants</small>
+                      <CapabilityStrip capabilities={family.capabilities} max={8} />
+                      <small>{t("onlineModels.variantCount", { defaultValue: "{count, plural, one {# variant} other {# variants}}", count: family.variants.length })}</small>
                       <small>{family.updatedLabel}</small>
                     </div>
                   </div>
@@ -292,9 +281,9 @@ export function OnlineModelsTab({
                         e.stopPropagation();
                         onDetailFamilyIdChange(family.id);
                       }}
-                      title="Show full details in a focused view"
+                      title={t("onlineModels.action.detailsTooltip", { defaultValue: "Show full details in a focused view" })}
                     >
-                      Details
+                      {t("onlineModels.action.details", { defaultValue: "Details" })}
                     </button>
                     <span className="discover-chevron">{isExpanded ? "\u25B2" : "\u25BC"}</span>
                   </div>
@@ -305,15 +294,15 @@ export function OnlineModelsTab({
                     <p className="discover-summary">{family.summary}</p>
                     <div className="discover-variant-table">
                       <div className="discover-variant-head">
-                        <span>Variant</span>
-                        <span>Format</span>
-                        <span>Backend</span>
-                        <span>Params</span>
-                        <span>Size</span>
-                        <span>RAM</span>
-                        <span>Compressed</span>
-                        <span>Context</span>
-                        <span>Status</span>
+                        <span>{t("onlineModels.column.variant", { defaultValue: "Variant" })}</span>
+                        <span>{t("onlineModels.column.format", { defaultValue: "Format" })}</span>
+                        <span>{t("onlineModels.column.backend", { defaultValue: "Backend" })}</span>
+                        <span>{t("onlineModels.column.params", { defaultValue: "Params" })}</span>
+                        <span>{t("onlineModels.column.size", { defaultValue: "Size" })}</span>
+                        <span>{t("onlineModels.column.ram", { defaultValue: "RAM" })}</span>
+                        <span>{t("onlineModels.column.compressed", { defaultValue: "Compressed" })}</span>
+                        <span>{t("onlineModels.column.context", { defaultValue: "Context" })}</span>
+                        <span>{t("onlineModels.column.status", { defaultValue: "Status" })}</span>
                         <span></span>
                       </div>
                       {family.variants.map((variant) => {
@@ -325,14 +314,14 @@ export function OnlineModelsTab({
                         const isDownloadFailed = downloadState?.state === "failed";
                         const isDownloadComplete = downloadState?.state === "completed";
                         const variantStatus: { kind: ModelStatusKind; label: string; detail?: string | null } = variant.availableLocally || isDownloadComplete
-                          ? { kind: "installed", label: variant.availableLocally ? "Installed" : "Download complete" }
+                          ? { kind: "installed", label: variant.availableLocally ? t("onlineModels.status.installed", { defaultValue: "Installed" }) : t("onlineModels.status.downloadComplete", { defaultValue: "Download complete" }) }
                           : isDownloading && downloadState
-                            ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                            ? { kind: "downloading", label: t("onlineModels.status.downloading", { defaultValue: "Downloading" }), detail: downloadProgressLabel(downloadState) }
                             : isDownloadPaused && downloadState
-                              ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                              ? { kind: "paused", label: t("onlineModels.status.paused", { defaultValue: "Paused" }), detail: downloadProgressLabel(downloadState) }
                               : isDownloadFailed && downloadState
-                                ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
-                                : { kind: "incomplete", label: "Not installed" };
+                                ? { kind: "failed", label: t("onlineModels.status.failed", { defaultValue: "Failed" }), detail: downloadState.error ?? t("onlineModels.status.downloadFailed", { defaultValue: "Download failed" }) }
+                                : { kind: "incomplete", label: t("onlineModels.status.notInstalled", { defaultValue: "Not installed" }) };
                         return (
                           <div key={variant.id}>
                             <div
@@ -343,7 +332,7 @@ export function OnlineModelsTab({
                             >
                               <div className="discover-variant-name">
                                 <strong>{variant.name}</strong>
-                                {renderCapabilityIcons(variant.capabilities, 4)}
+                                <CapabilityStrip capabilities={variant.capabilities} max={4} />
                               </div>
                               <span>{variant.format} / {variant.quantization}</span>
                               <span>{variant.backend}</span>
@@ -359,13 +348,23 @@ export function OnlineModelsTab({
                                       className={`memory-fit-badge memory-fit-badge--${fit.kind}`}
                                       title={
                                         fit.kind === "comfortable"
-                                          ? `Fits comfortably in ${availableMemoryGb?.toFixed(1)} GB available`
+                                          ? t("onlineModels.memory.comfortable", {
+                                              defaultValue: "Fits comfortably in {available} GB available",
+                                              available: availableMemoryGb?.toFixed(1),
+                                            })
                                           : fit.kind === "tight"
-                                          ? `Fits but tight against ${availableMemoryGb?.toFixed(1)} GB available — close other apps before loading`
-                                          : `Estimated ${variant.estimatedMemoryGb?.toFixed?.(1) ?? "?"} GB exceeds ${availableMemoryGb?.toFixed(1)} GB available — try a smaller quantisation`
+                                          ? t("onlineModels.memory.tight", {
+                                              defaultValue: "Fits but tight against {available} GB available — close other apps before loading",
+                                              available: availableMemoryGb?.toFixed(1),
+                                            })
+                                          : t("onlineModels.memory.over", {
+                                              defaultValue: "Estimated {estimated} GB exceeds {available} GB available — try a smaller quantisation",
+                                              estimated: variant.estimatedMemoryGb?.toFixed?.(1) ?? "?",
+                                              available: availableMemoryGb?.toFixed(1),
+                                            })
                                       }
                                     >
-                                      {fit.label}
+                                      {t(`onlineModels.memory.${fit.kind}Label`, { defaultValue: fit.label })}
                                     </span>
                                   );
                                 })()}
@@ -377,30 +376,30 @@ export function OnlineModelsTab({
                                 {variant.availableLocally ? (
                                   <>
                                     {variant.launchMode === "convert" ? (
-                                      <IconActionButton icon="convert" label="Convert model" buttonStyle="primary" className="action-convert" onClick={() => onPrepareCatalogConversion(variant)} />
+                                      <IconActionButton icon="convert" label={t("onlineModels.action.convertModel", { defaultValue: "Convert model" })} buttonStyle="primary" className="action-convert" onClick={() => onPrepareCatalogConversion(variant)} />
                                     ) : null}
-                                    <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
-                                    <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
+                                    <IconActionButton icon="chat" label={t("onlineModels.action.chatWithModel", { defaultValue: "Chat with model" })} buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
+                                    <IconActionButton icon="server" label={t("onlineModels.action.loadForServer", { defaultValue: "Load for server" })} buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`)} />
                                   </>
                                 ) : isDownloading ? (
                                   <>
-                                    <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(variant.repo)} />
-                                    <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
+                                    <IconActionButton icon="pause" label={t("onlineModels.action.pauseDownload", { defaultValue: "Pause download" })} onClick={() => onCancelModelDownload(variant.repo)} />
+                                    <IconActionButton icon="cancel" label={t("onlineModels.action.cancelDownload", { defaultValue: "Cancel download" })} danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadPaused ? (
                                   <>
-                                    <IconActionButton icon="resume" label="Resume download" onClick={() => onDownloadModel(variant.repo)} />
-                                    <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
+                                    <IconActionButton icon="resume" label={t("onlineModels.action.resumeDownload", { defaultValue: "Resume download" })} onClick={() => onDownloadModel(variant.repo)} />
+                                    <IconActionButton icon="delete" label={t("onlineModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadFailed ? (
                                   <>
-                                    <IconActionButton icon="retry" label="Retry download" onClick={() => onDownloadModel(variant.repo)} />
-                                    <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(variant.repo)} />
+                                    <IconActionButton icon="retry" label={t("onlineModels.action.retryDownload", { defaultValue: "Retry download" })} onClick={() => onDownloadModel(variant.repo)} />
+                                    <IconActionButton icon="delete" label={t("onlineModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(variant.repo)} />
                                   </>
                                 ) : isDownloadComplete ? (
                                   null
                                 ) : (
-                                  <IconActionButton icon="download" label="Download model" onClick={() => onDownloadModel(variant.repo)} />
+                                  <IconActionButton icon="download" label={t("onlineModels.action.downloadModel", { defaultValue: "Download model" })} onClick={() => onDownloadModel(variant.repo)} />
                                 )}
                               </div>
                             </div>
@@ -419,7 +418,7 @@ export function OnlineModelsTab({
                                     </p>
                                   ) : null}
                                   {matchedLocal ? <p className="mono-text variant-local-path">{matchedLocal.path}</p> : null}
-                                  <IconActionButton icon="huggingFace" label="Open model card on Hugging Face" onClick={() => onOpenExternalUrl(variant.link)} />
+                                  <IconActionButton icon="huggingFace" label={t("onlineModels.action.openModelCardHF", { defaultValue: "Open model card on Hugging Face" })} onClick={() => onOpenExternalUrl(variant.link)} />
                                 </div>
                               </div>
                             ) : null}
@@ -445,11 +444,14 @@ export function OnlineModelsTab({
   function renderHubSection() {
     if (filteredHubResults.length === 0) return null;
     return (
-      <section className="discover-section discover-section--hub" aria-label="Hugging Face Hub results">
+      <section className="discover-section discover-section--hub" aria-label={t("onlineModels.hub.sectionAria", { defaultValue: "Hugging Face Hub results" })}>
         <div className="hub-section-header">
-          <span className="eyebrow">HuggingFace Hub</span>
+          <span className="eyebrow">{t("onlineModels.hub.header", { defaultValue: "HuggingFace Hub" })}</span>
           <p>
-            {filteredHubResults.length} live result{filteredHubResults.length !== 1 ? "s" : ""} from huggingface.co, sorted by most recent update
+            {t("onlineModels.hub.liveResults", {
+              defaultValue: "{count, plural, one {# live result} other {# live results}} from huggingface.co, sorted by most recent update",
+              count: filteredHubResults.length,
+            })}
           </p>
         </div>
         <div className="discover-list">
@@ -464,15 +466,15 @@ export function OnlineModelsTab({
             const isDownloadFailed = downloadState?.state === "failed";
             const isDownloadComplete = downloadState?.state === "completed";
             const hubStatus: { kind: ModelStatusKind; label: string; detail?: string | null } | null = model.availableLocally
-              ? { kind: "installed", label: "Installed" }
+              ? { kind: "installed", label: t("onlineModels.status.installed", { defaultValue: "Installed" }) }
               : isDownloadComplete
-                ? { kind: "downloaded", label: "Download complete" }
+                ? { kind: "downloaded", label: t("onlineModels.status.downloadComplete", { defaultValue: "Download complete" }) }
                 : isDownloading && downloadState
-                  ? { kind: "downloading", label: "Downloading", detail: downloadProgressLabel(downloadState) }
+                  ? { kind: "downloading", label: t("onlineModels.status.downloading", { defaultValue: "Downloading" }), detail: downloadProgressLabel(downloadState) }
                   : isDownloadPaused && downloadState
-                    ? { kind: "paused", label: "Paused", detail: downloadProgressLabel(downloadState) }
+                    ? { kind: "paused", label: t("onlineModels.status.paused", { defaultValue: "Paused" }), detail: downloadProgressLabel(downloadState) }
                     : isDownloadFailed && downloadState
-                      ? { kind: "failed", label: "Failed", detail: downloadState.error ?? "Download failed" }
+                      ? { kind: "failed", label: t("onlineModels.status.failed", { defaultValue: "Failed" }), detail: downloadState.error ?? t("onlineModels.status.downloadFailed", { defaultValue: "Download failed" }) }
                       : null;
             return (
               <div key={model.id} className={`discover-card${isExpanded ? " expanded" : ""}`}>
@@ -506,7 +508,7 @@ export function OnlineModelsTab({
                 {isExpanded ? (
                   <div className="discover-card-body">
                     {loading ? (
-                      <p className="muted-text">Loading file list from Hugging Face...</p>
+                      <p className="muted-text">{t("onlineModels.hub.loading", { defaultValue: "Loading file list from Hugging Face..." })}</p>
                     ) : errorMsg ? (
                       <div className="callout error">
                         <p>{errorMsg}</p>
@@ -516,27 +518,27 @@ export function OnlineModelsTab({
                         {fileData.warning ? (
                           <div className="callout quiet">
                             <div className="chip-row">
-                              <span className="badge warning">Preview unavailable</span>
+                              <span className="badge warning">{t("onlineModels.hub.previewUnavailable", { defaultValue: "Preview unavailable" })}</span>
                             </div>
                             <p>{fileData.warning}</p>
                           </div>
                         ) : null}
                         <div className="hub-detail-meta">
-                          {fileData.license ? <span className="badge muted">License: {fileData.license}</span> : null}
+                          {fileData.license ? <span className="badge muted">{t("onlineModels.hub.licenseLabel", { defaultValue: "License: {license}", license: fileData.license })}</span> : null}
                           {fileData.pipelineTag ? <span className="badge muted">{fileData.pipelineTag}</span> : null}
-                          {fileData.totalSizeGb ? <span className="badge muted">{number(fileData.totalSizeGb)} GB total</span> : null}
-                          {fileData.lastModified ? <span className="badge muted">Updated {fileData.lastModified.slice(0, 10)}</span> : null}
+                          {fileData.totalSizeGb ? <span className="badge muted">{t("onlineModels.hub.totalGb", { defaultValue: "{size} GB total", size: number(fileData.totalSizeGb) })}</span> : null}
+                          {fileData.lastModified ? <span className="badge muted">{t("onlineModels.hub.updatedDate", { defaultValue: "Updated {date}", date: fileData.lastModified.slice(0, 10) })}</span> : null}
                         </div>
                         {fileData.tags.length > 0 ? (
                           <div className="hub-detail-tags">
                             {fileData.tags.slice(0, 12).map((tag) => (
                               <span key={tag} className="badge muted hub-tag">{tag}</span>
                             ))}
-                            {fileData.tags.length > 12 ? <small className="muted-text">+{fileData.tags.length - 12} more</small> : null}
+                            {fileData.tags.length > 12 ? <small className="muted-text">{t("onlineModels.hub.moreTags", { defaultValue: "+{count} more", count: fileData.tags.length - 12 })}</small> : null}
                           </div>
                         ) : null}
                         {fileData.files.length === 0 ? (
-                          <p className="muted-text">File preview is not available for this repo right now.</p>
+                          <p className="muted-text">{t("onlineModels.hub.filePreviewUnavailable", { defaultValue: "File preview is not available for this repo right now." })}</p>
                         ) : (() => {
                           const weights = fileData.files.filter((f) => f.kind === "weight" || f.kind === "vision_projector");
                           const tokenizer = fileData.files.filter((f) => f.kind === "tokenizer" || f.kind === "config" || f.kind === "template");
@@ -549,28 +551,30 @@ export function OnlineModelsTab({
                                 collapseWeightsByDefault ? (
                                   <details className="hub-file-group hub-file-group--collapsible">
                                     <summary>
-                                      <span className="eyebrow">Weights ({weights.length})</span>
-                                      <span className="muted-text">{largestWeight ? `Largest shard ${largestWeight}` : "Show files"}</span>
+                                      <span className="eyebrow">{t("onlineModels.hub.weightsHeader", { defaultValue: "Weights ({count})", count: weights.length })}</span>
+                                      <span className="muted-text">{largestWeight
+                                        ? t("onlineModels.hub.largestShard", { defaultValue: "Largest shard {size}", size: largestWeight })
+                                        : t("onlineModels.hub.showFiles", { defaultValue: "Show files" })}</span>
                                     </summary>
                                     <ul className="hub-file-list">
                                       {weights.map((f) => (
                                         <li key={f.path}>
                                           <code>{f.path}</code>
                                           <span className="muted-text">{f.sizeGb ? `${number(f.sizeGb)} GB` : ""}</span>
-                                          {f.kind === "vision_projector" ? <span className="badge muted">vision</span> : null}
+                                          {f.kind === "vision_projector" ? <span className="badge muted">{t("onlineModels.hub.visionTag", { defaultValue: "vision" })}</span> : null}
                                         </li>
                                       ))}
                                     </ul>
                                   </details>
                                 ) : (
                                   <div className="hub-file-group">
-                                    <span className="eyebrow">Weights ({weights.length})</span>
+                                    <span className="eyebrow">{t("onlineModels.hub.weightsHeader", { defaultValue: "Weights ({count})", count: weights.length })}</span>
                                     <ul className="hub-file-list">
                                       {weights.map((f) => (
                                         <li key={f.path}>
                                           <code>{f.path}</code>
                                           <span className="muted-text">{f.sizeGb ? `${number(f.sizeGb)} GB` : ""}</span>
-                                          {f.kind === "vision_projector" ? <span className="badge muted">vision</span> : null}
+                                          {f.kind === "vision_projector" ? <span className="badge muted">{t("onlineModels.hub.visionTag", { defaultValue: "vision" })}</span> : null}
                                         </li>
                                       ))}
                                     </ul>
@@ -579,7 +583,7 @@ export function OnlineModelsTab({
                               ) : null}
                               {tokenizer.length > 0 ? (
                                 <div className="hub-file-group">
-                                  <span className="eyebrow">Config &amp; tokenizer</span>
+                                  <span className="eyebrow">{t("onlineModels.hub.configAndTokenizer", { defaultValue: "Config & tokenizer" })}</span>
                                   <ul className="hub-file-list">
                                     {tokenizer.map((f) => (
                                       <li key={f.path}><code>{f.path}</code></li>
@@ -589,7 +593,7 @@ export function OnlineModelsTab({
                               ) : null}
                               {other.length > 0 ? (
                                 <details className="hub-file-extras">
-                                  <summary>+{other.length} other files</summary>
+                                  <summary>{t("onlineModels.hub.otherFiles", { defaultValue: "+{count, plural, one {# other file} other {# other files}}", count: other.length })}</summary>
                                   <ul className="hub-file-list">
                                     {other.map((f) => (
                                       <li key={f.path}><code>{f.path}</code></li>
@@ -610,30 +614,30 @@ export function OnlineModelsTab({
                     <div className="button-row">
                       {model.availableLocally ? (
                         <>
-                          <IconActionButton icon="chat" label="Chat with model" buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread")} />
-                          <IconActionButton icon="server" label="Load for server" buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server")} />
+                          <IconActionButton icon="chat" label={t("onlineModels.action.chatWithModel", { defaultValue: "Chat with model" })} buttonStyle="primary" className="action-chat" onClick={() => onOpenModelSelector("thread")} />
+                          <IconActionButton icon="server" label={t("onlineModels.action.loadForServer", { defaultValue: "Load for server" })} buttonStyle="primary" className="action-server" onClick={() => onOpenModelSelector("server")} />
                         </>
                       ) : isDownloading ? (
                         <>
-                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelModelDownload(model.repo)} />
-                          <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteModelDownload(model.repo)} />
+                          <IconActionButton icon="pause" label={t("onlineModels.action.pauseDownload", { defaultValue: "Pause download" })} onClick={() => onCancelModelDownload(model.repo)} />
+                          <IconActionButton icon="cancel" label={t("onlineModels.action.cancelDownload", { defaultValue: "Cancel download" })} danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadPaused ? (
                         <>
-                          <IconActionButton icon="resume" label="Resume download" onClick={() => onDownloadModel(model.repo)} />
-                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(model.repo)} />
+                          <IconActionButton icon="resume" label={t("onlineModels.action.resumeDownload", { defaultValue: "Resume download" })} onClick={() => onDownloadModel(model.repo)} />
+                          <IconActionButton icon="delete" label={t("onlineModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadFailed ? (
                         <>
-                          <IconActionButton icon="retry" label="Retry download" onClick={() => onDownloadModel(model.repo)} />
-                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteModelDownload(model.repo)} />
+                          <IconActionButton icon="retry" label={t("onlineModels.action.retryDownload", { defaultValue: "Retry download" })} onClick={() => onDownloadModel(model.repo)} />
+                          <IconActionButton icon="delete" label={t("onlineModels.action.deleteDownload", { defaultValue: "Delete download" })} danger onClick={() => onDeleteModelDownload(model.repo)} />
                         </>
                       ) : isDownloadComplete ? (
-                        <StatusIcon status="downloaded" label="Download complete" />
+                        <StatusIcon status="downloaded" label={t("onlineModels.status.downloadComplete", { defaultValue: "Download complete" })} />
                       ) : (
-                        <IconActionButton icon="download" label="Download model" buttonStyle="primary" onClick={() => onDownloadModel(model.repo)} />
+                        <IconActionButton icon="download" label={t("onlineModels.action.downloadModel", { defaultValue: "Download model" })} buttonStyle="primary" onClick={() => onDownloadModel(model.repo)} />
                       )}
-                      <IconActionButton icon="huggingFace" label="Open on Hugging Face" onClick={() => onOpenExternalUrl(model.link)} />
+                      <IconActionButton icon="huggingFace" label={t("onlineModels.action.openOnHF", { defaultValue: "Open on Hugging Face" })} onClick={() => onOpenExternalUrl(model.link)} />
                     </div>
                   </div>
                 ) : null}
@@ -648,14 +652,18 @@ export function OnlineModelsTab({
   return (
     <div className="content-grid discover-page">
       <Panel
-        title="Discover Models"
-        subtitle={`${searchResults.length} model families / ${localVariantCount} downloaded locally`}
+        title={t("common:panels.discoverModels", { defaultValue: "Discover Models" })}
+        subtitle={t("onlineModels.subtitle", {
+          defaultValue: "{count} model families / {downloaded} downloaded locally",
+          count: searchResults.length,
+          downloaded: localVariantCount,
+        })}
         className="span-2 discover-panel"
         actions={
           <input
             className="text-input discover-search"
             type="search"
-            placeholder="Search by name, provider, or capability..."
+            placeholder={t("onlineModels.searchPlaceholder", { defaultValue: "Search by name, provider, or capability..." })}
             value={searchInput}
             onChange={(event) => onSearchInputChange(event.target.value)}
           />
@@ -666,7 +674,7 @@ export function OnlineModelsTab({
         {searchError ? (
           <div className="callout error">
             <p>{searchError}</p>
-            <p className="muted-text">Showing the last successful Discover results.</p>
+            <p className="muted-text">{t("onlineModels.searchError.fallback", { defaultValue: "Showing the last successful Discover results." })}</p>
           </div>
         ) : null}
         {filteredResults.length > 0 || filteredHubResults.length > 0 ? (
@@ -679,7 +687,17 @@ export function OnlineModelsTab({
 
         {filteredResults.length === 0 && filteredHubResults.length === 0 ? (
           <div className="empty-state">
-            <p>{discoverCapFilter ? `No models match the "${CAPABILITY_META[discoverCapFilter]?.shortLabel ?? discoverCapFilter}" filter.` : searchInput ? `No models match "${searchInput}". Try a different search term.` : "Type to search for models."}</p>
+            <p>{discoverCapFilter
+              ? t("onlineModels.empty.capFilter", {
+                  defaultValue: "No models match the \"{cap}\" filter.",
+                  cap: t(`onlineModels.capability.short.${discoverCapFilter}`, { defaultValue: CAPABILITY_META[discoverCapFilter]?.shortLabel ?? discoverCapFilter }),
+                })
+              : searchInput
+                ? t("onlineModels.empty.search", {
+                    defaultValue: "No models match \"{query}\". Try a different search term.",
+                    query: searchInput,
+                  })
+                : t("onlineModels.empty.prompt", { defaultValue: "Type to search for models." })}</p>
           </div>
         ) : null}
       </Panel>

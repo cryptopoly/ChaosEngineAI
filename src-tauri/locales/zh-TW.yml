@@ -1,0 +1,43 @@
+menu:
+  file: "檔案"
+  edit: "編輯"
+  view: "檢視"
+  window: "視窗"
+  help: "說明"
+  quit: "結束 ChaosEngineAI"
+  preferences: "偏好設定…"
+  about: "關於 ChaosEngineAI"
+  checkForUpdates: "檢查更新…"
+  reload: "重新載入"
+  toggleDevTools: "切換開發者工具"
+  toggleFullScreen: "切換全螢幕"
+  minimize: "最小化"
+  zoom: "縮放"
+  bringAllToFront: "全部移到最前"
+  hideOthers: "隱藏其他"
+  showAll: "全部顯示"
+  hide: "隱藏 ChaosEngineAI"
+
+tray:
+  show: "顯示 ChaosEngineAI"
+  hide: "隱藏 ChaosEngineAI"
+  quit: "結束"
+  status:
+    idle: "閒置"
+    loading: "正在載入模型…"
+    busy: "正在生成…"
+
+updater:
+  available: "ChaosEngineAI 有新版本可用。"
+  download: "下載"
+  later: "稍後"
+  installing: "正在安裝更新…"
+  restartRequired: "重新啟動以套用更新。"
+
+dialog:
+  ok: "確定"
+  cancel: "取消"
+  save: "儲存"
+  open: "開啟"
+  yes: "是"
+  no: "否"

@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
+from backend_service.i18n import localized_detail
 from backend_service.helpers.video import (
     _VIDEO_MLX_TEXT_ENCODER_ALLOW_PATTERNS,
     _find_video_variant,
@@ -45,9 +46,10 @@ def _unload_idle_image_runtime_for_video(request: Request, action: str) -> None:
     if IMAGE_PROGRESS.snapshot().get("active"):
         raise HTTPException(
             status_code=409,
-            detail=(
+            detail=localized_detail(
+                request,
                 "An image generation is still running. Wait for it to finish or cancel it "
-                "before loading a video model."
+                "before loading a video model.",
             ),
         )
     try:
@@ -152,12 +154,15 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
     variant = _find_video_variant(body.modelId)
     if variant is None:
         state.add_log("video", "error", f"Preload failed: model '{body.modelId}' not found")
-        raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Unknown video model '{body.modelId}'."),
+        )
 
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
-        raise HTTPException(status_code=409, detail=detail)
+        raise HTTPException(status_code=409, detail=localized_detail(request, detail))
 
     _unload_idle_image_runtime_for_video(request, "video preload")
     try:
@@ -179,7 +184,7 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
         )
         friendly = diagnose_diffusers_lazy_import_error(str(exc))
         detail = friendly or f"Failed to load {variant['name']}: {exc}"
-        raise HTTPException(status_code=400, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=localized_detail(request, detail)) from exc
     except Exception as exc:
         from backend_service.helpers.video_runtime_diagnostics import (
             diagnose_diffusers_lazy_import_error,
@@ -193,7 +198,7 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
         )
         friendly = diagnose_diffusers_lazy_import_error(str(exc))
         detail = friendly or f"Failed to load {variant['name']}: {type(exc).__name__}: {exc}"
-        raise HTTPException(status_code=500, detail=detail) from exc
+        raise HTTPException(status_code=500, detail=localized_detail(request, detail)) from exc
 
     state.add_log("video", "info", f"Preloaded video model {variant['name']}.")
     state.add_activity("Video model loaded", variant["name"])
@@ -208,7 +213,10 @@ def unload_video_model(request: Request, body: VideoRuntimeUnloadRequest | None 
     if body and body.modelId:
         variant = _find_video_variant(body.modelId)
         if variant is None:
-            raise HTTPException(status_code=404, detail=f"Unknown video model '{body.modelId}'.")
+            raise HTTPException(
+                status_code=404,
+                detail=localized_detail(request, f"Unknown video model '{body.modelId}'."),
+            )
         requested_repo = variant["repo"]
         requested_name = variant["name"]
 
@@ -217,7 +225,10 @@ def unload_video_model(request: Request, body: VideoRuntimeUnloadRequest | None 
     try:
         runtime = state.video_runtime.unload(requested_repo)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc
 
     unloaded_repo = requested_repo or current_repo
     if unloaded_repo and (requested_repo is None or requested_repo == current_repo):

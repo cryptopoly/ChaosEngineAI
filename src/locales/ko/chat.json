@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "프롬프트 처리 중",
     "generating": "생성 중"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "슬래시 명령어"
   }
 }

@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "Prompt wird verarbeitet",
     "generating": "Generiert"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Slash-Befehle"
   }
 }

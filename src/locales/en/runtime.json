@@ -1,8 +1,17 @@
 {
   "engines": {
-    "mlx": { "name": "MLX", "description": "Apple Silicon native inference engine" },
-    "llamaCpp": { "name": "llama.cpp", "description": "GGUF inference via llama-server" },
-    "vllm": { "name": "vLLM", "description": "CUDA inference engine" }
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple Silicon native inference engine"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "GGUF inference via llama-server"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA inference engine"
+    }
   },
   "cacheStrategies": {
     "native": {

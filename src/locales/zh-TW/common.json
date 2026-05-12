@@ -934,5 +934,50 @@
         "detail": "冷啟動匯入花費的時間比平常長。若停滯超過兩分鐘,請關閉並重新開啟 — 過期的 manifest 可能會強制重新解壓縮。"
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "最大大小優先",
+      "ram": "最高 RAM/VRAM 優先",
+      "likes": "最多按讚優先",
+      "downloads": "最多下載優先",
+      "status": "狀態",
+      "release": "最新發佈優先"
+    },
+    "status": {
+      "installed": "已安裝",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "failedDetail": "下載失敗",
+      "incomplete": "未完成",
+      "notInstalled": "未安裝"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "名稱",
+      "provider": "提供者",
+      "tasks": "任務",
+      "size": "最大大小優先",
+      "ram": "最高 RAM/VRAM 優先",
+      "likes": "最多按讚優先",
+      "downloads": "最多下載優先",
+      "status": "狀態",
+      "release": "最新發佈優先"
+    },
+    "status": {
+      "installed": "已安裝",
+      "installing": "安裝中",
+      "downloading": "下載中",
+      "paused": "已暫停",
+      "failed": "失敗",
+      "failedDetail": "下載失敗",
+      "incomplete": "未完成",
+      "notInstalled": "未安裝"
+    }
   }
 }

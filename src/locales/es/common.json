@@ -934,5 +934,50 @@
         "detail": "Las importaciones del arranque en frío están tardando más de lo habitual. Si se queda parado más de dos minutos, cierra y vuelve a abrir — un manifiesto obsoleto puede forzar una nueva extracción."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "nombre",
+      "provider": "proveedor",
+      "tasks": "tareas",
+      "size": "tamaño mayor primero",
+      "ram": "mayor RAM/VRAM primero",
+      "likes": "más valorado primero",
+      "downloads": "más descargas primero",
+      "status": "estado",
+      "release": "publicación más reciente primero"
+    },
+    "status": {
+      "installed": "Instalado",
+      "downloading": "Descargando",
+      "paused": "En pausa",
+      "failed": "Falló",
+      "failedDetail": "La descarga falló",
+      "incomplete": "Incompleto",
+      "notInstalled": "No instalado"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "nombre",
+      "provider": "proveedor",
+      "tasks": "tareas",
+      "size": "tamaño mayor primero",
+      "ram": "mayor RAM/VRAM primero",
+      "likes": "más valorado primero",
+      "downloads": "más descargas primero",
+      "status": "estado",
+      "release": "publicación más reciente primero"
+    },
+    "status": {
+      "installed": "Instalado",
+      "installing": "Instalando",
+      "downloading": "Descargando",
+      "paused": "En pausa",
+      "failed": "Falló",
+      "failedDetail": "La descarga falló",
+      "incomplete": "Incompleto",
+      "notInstalled": "No instalado"
+    }
   }
 }

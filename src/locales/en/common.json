@@ -934,5 +934,50 @@
         "detail": "Cold-start imports are taking longer than usual. If this stalls for more than two minutes, quit and reopen — a stale manifest can force a re-extract."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "name",
+      "provider": "provider",
+      "tasks": "tasks",
+      "size": "largest size first",
+      "ram": "highest RAM/VRAM first",
+      "likes": "most liked first",
+      "downloads": "most downloads first",
+      "status": "status",
+      "release": "newest released first"
+    },
+    "status": {
+      "installed": "Installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "failedDetail": "Download failed",
+      "incomplete": "Incomplete",
+      "notInstalled": "Not installed"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "name",
+      "provider": "provider",
+      "tasks": "tasks",
+      "size": "largest size first",
+      "ram": "highest RAM/VRAM first",
+      "likes": "most liked first",
+      "downloads": "most downloads first",
+      "status": "status",
+      "release": "newest released first"
+    },
+    "status": {
+      "installed": "Installed",
+      "installing": "Installing",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "failedDetail": "Download failed",
+      "incomplete": "Incomplete",
+      "notInstalled": "Not installed"
+    }
   }
 }

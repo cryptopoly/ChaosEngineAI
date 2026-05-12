@@ -83,5 +83,263 @@
   },
   "runtimeBanner": {
     "loadingModel": "Loading model into memory..."
+  },
+  "imageStudio": {
+    "generateTitle": {
+      "dangerBlocked": "Danger-level configuration — tick the acknowledgement below the safety callout to proceed.",
+      "generating": "Generating...",
+      "selectModel": "Select a model first.",
+      "ready": "Generate this image."
+    },
+    "actions": {
+      "discover": "Discover",
+      "installed": "Installed",
+      "gallery": "Gallery"
+    },
+    "hero": {
+      "currentRuntime": "Current Runtime",
+      "placeholder": "Select an image model"
+    },
+    "badges": {
+      "installed": "Installed",
+      "loadedInMemory": "Loaded In Memory",
+      "loadsOnFirstGenerate": "Loads On First Generate",
+      "loadingIntoMemory": "Loading Into Memory",
+      "downloaded": "Downloaded"
+    },
+    "noModelsCallout": {
+      "message": "You don't have any image models downloaded yet. Head to Image Discover to browse and install one, then come back here to generate.",
+      "openDiscover": "Open Image Discover"
+    },
+    "download": {
+      "failedMessage": "{name} did not finish downloading correctly. ChaosEngineAI only found a partial local snapshot, so it cannot load the real image pipeline yet.",
+      "pausedMessage": "{name} is partially downloaded. Resume when you're ready and ChaosEngineAI will continue from the files already on disk.",
+      "completeMessage": "{name} finished downloading. The installed-model scan will refresh automatically.",
+      "notInstalledMessage": "{name} is not installed locally. Download it from Discover to enable local generation.",
+      "huggingFace": "Hugging Face",
+      "settings": "Settings",
+      "technicalDetails": "Technical details",
+      "pause": "Pause",
+      "cancel": "Cancel",
+      "resume": "Resume",
+      "delete": "Delete",
+      "retry": "Retry Download",
+      "complete": "Download complete",
+      "downloadModel": "Download Model"
+    },
+    "prompt": {
+      "label": "Prompt",
+      "placeholder": "Moody cinematic alleyway after rain, neon reflections, 35mm photo, shallow depth of field"
+    },
+    "negativePrompt": {
+      "placeholder": "blurry, deformed hands, extra limbs, overexposed"
+    },
+    "draft": {
+      "tooltip": "Force a 512px long-edge render for fast prompt iteration. Output saves at the draft size — disable for a full-resolution final pass."
+    },
+    "sampler": {
+      "tooltip": "Scheduler / sampler algorithm used during denoising. ‘Model default’ keeps whatever the pipeline shipped with. AYS DPM++ 2M (SD1.5 / SDXL) uses NVIDIA’s Align Your Steps schedule — wins detail at 7-10 steps where Karras / Euler look soft. Hidden for FLUX, SD3, Qwen-Image, Sana and HiDream — those flow-matching pipelines ship locked schedulers and swapping produces noise."
+    },
+    "diffusionCache": {
+      "tooltip": "Speed up generation by reusing transformer block outputs between similar sampling steps. First Block Cache is the cross-platform default and works on every DiT pipeline (FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image) on macOS / Windows / Linux — typical 1.5-2× wall-time win at default threshold with imperceptible quality drift. TeaCache only ships calibrated forwards for the FLUX family on the image side — hidden for other DiTs so the dropdown reflects what the backend will actually apply. Hidden entirely for UNet pipelines (SDXL / SD1.5 / SD2) which lack the transformer attachment point.",
+      "teaCacheHidden": "TeaCache hidden — its image-side calibration only covers the FLUX family. First Block Cache works on every DiT pipeline shipped today (cross-platform).",
+      "threshold": "Threshold ({value})",
+      "thresholdTooltip": "Relative L1 distance between consecutive block-cache states. Lower = stricter (less speedup, less drift). Higher = more aggressive caching (more speedup, may shimmer fine detail). Defaults: First Block Cache 0.12, TeaCache 0.4 — both calibrated against the diffusers blog / upstream papers for negligible quality loss on FLUX.1-dev."
+    },
+    "toggles": {
+      "cfgDecay": {
+        "label": "CFG decay",
+        "description": "linearly relax guidance from your slider value toward 1.5 across the schedule. Reduces oversaturation on late steps without changing semantics from early steps. Off by default; backend ignores this on SD1.5 / SDXL.",
+        "tooltip": "Flow-match models (FLUX, SD3, Qwen-Image, Sana, HiDream) tend to ‘burn’ highlights when classifier-free guidance stays high through every step. Decaying lets early steps lock semantics (high CFG) while late steps preserve fine detail (low CFG). Floor stays at 1.5 — dropping to 1.0 mid-schedule swaps the pipeline from 2-batch to 1-batch shape and crashes diffusers. Same shape as the video runtime knob you already use."
+      },
+      "previewVae": {
+        "label": "Preview VAE",
+        "description": "swap the full VAE for the matching tiny VAE (TAESD / TAEHV) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default.",
+        "tooltip": "Tiny VAEs (madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage) are 1-2 order of magnitude faster than the full VAE but lose some fine-detail fidelity. Best for fast iteration / drafting; flip off when you're ready to ship the final image. Backend silently no-ops on repos without a mapped tiny VAE so you can leave it on without surprises."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 layerwise (CUDA Ada+)",
+        "description": "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
+        "tooltip": "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint."
+      }
+    },
+    "fields": {
+      "width": "Width",
+      "height": "Height",
+      "steps": "Steps",
+      "guidance": "Guidance",
+      "images": "Images",
+      "randomSeed": "Random seed",
+      "seed": "Seed"
+    },
+    "safety": {
+      "dangerTitle": "Likely to crash the backend",
+      "warningTitle": "Heads up — may struggle on this device",
+      "resourceEstimate": "Model ≈ {model} · this run peak ≈ {peak} of ~{total} total.",
+      "applyTitle": "Apply {label}",
+      "useSafer": "Use safer settings ({label})",
+      "browseSmaller": "Browse smaller models",
+      "overrideAck": "Generate anyway — I accept that the backend may crash."
+    },
+    "recent": {
+      "subtitle": "{recent} newest of {total} saved generations",
+      "emptySubtitle": "Generated images will appear here",
+      "openGallery": "Open Gallery",
+      "emptyHint": "Generate a prompt to create the first saved image artifact for this branch.",
+      "footnote": "Showing the newest {recent} saved images here. Open Image Gallery to browse everything, filter by model, and manage older runs."
+    }
+  },
+  "videoStudio": {
+    "generateButton": "Generate video",
+    "disabled": {
+      "noModel": "Choose a video model first.",
+      "notInstalled": "{name} is not installed locally yet.",
+      "restartRequired": "Restart the backend to activate the newly installed GPU runtime before generating.",
+      "runtimeNotReady": "Video runtime is not ready.",
+      "noPrompt": "Write a prompt before generating.",
+      "backendOffline": "Backend is offline.",
+      "busy": "Busy…",
+      "dangerLevel": "This configuration is likely to crash the backend. Tick \\\"Allow high-risk generation\\\" below after reviewing the warning, or lower resolution/frames/model."
+    },
+    "generateTitle": "Start generating this clip.",
+    "device": {
+      "gpuDetected": "GPU (detected)",
+      "cpuDetected": "CPU (detected)",
+      "appleDetected": "Apple Silicon (detected)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "gpu": "GPU",
+      "apple": "Apple Silicon"
+    },
+    "memory": {
+      "defaultFallback": "~{value} (default — restart backend for real detection)"
+    },
+    "capacityLine": {
+      "withModel": "{device} · {memory} total · model ≈ {model}, this run peak ≈ {peak}",
+      "short": "{device} · {memory} total · this run peak ≈ {peak}"
+    },
+    "subtitle": "Choose a video model to get started",
+    "actions": {
+      "browseCatalog": "Browse Catalog",
+      "installedModels": "Installed Models",
+      "downloadModel": "Download model",
+      "loadIntoMemory": "Load into memory",
+      "unload": "Unload",
+      "unloadNamed": "Unload {name}",
+      "modelCard": "Model Card"
+    },
+    "modelOption": {
+      "installed": "installed",
+      "incomplete": "incomplete"
+    },
+    "noModelsCallout": {
+      "message": "No video models installed yet. Browse the catalog to download one.",
+      "openDiscover": "Open Video Discover"
+    },
+    "stats": {
+      "clipDuration": "{value}s clip"
+    },
+    "badges": {
+      "installed": "Installed",
+      "incomplete": "Incomplete",
+      "notDownloaded": "Not downloaded",
+      "inMemory": "In Memory",
+      "loadedModel": "Loaded model: {name}"
+    },
+    "prompt": {
+      "label": "Prompt",
+      "placeholder": "A cinematic drone shot of a misty pine forest at dawn...",
+      "ltxShortWarning": "LTX-Video produces best results with detailed prompts (~50-100 words). Short prompts (\\\"cartoon llama eating straw\\\") under-condition the model and tend to drift. Lightricks recommends starting with the action, then adding visual details, lighting, and camera direction."
+    },
+    "negativePrompt": {
+      "tooltip": "Tells the model what to avoid. A generic prompt is pre-filled and tuned for most video models — clear or edit it if you have a model-specific preference. More specificity usually helps more than it hurts.",
+      "placeholder": "Optional: things to avoid (low quality, watermark, etc.)"
+    },
+    "fastPreview": {
+      "label": "Fast preview",
+      "via": "via",
+      "tooltip": "Renders this generation through {sibling} instead of {parent} using the same prompt + seed. Distilled fixed-step sampler — typically 6–9× faster than the full quality dev render. Untick when you want the dev variant's full quality.",
+      "devVariantFallback": "the dev variant"
+    },
+    "qualityPreset": {
+      "tooltip": "Sets the denoising step count. More steps = sharper frames + longer generation time. Frame count (clip length) and guidance stay as set — presets don't touch them."
+    },
+    "aspectRatio": {
+      "tooltip": "Sets Width and Height to a common video shape. All presets are safe on every supported model (≤1024 on the long edge, divisible by 8). Edit Width/Height below for finer control."
+    },
+    "ltx2Distilled": {
+      "title": "LTX-2 distilled is the fast sampler.",
+      "body": "mlx-video runs it as fixed 8+3 denoise passes with CFG disabled, so the Steps and Guidance controls do not improve this variant. Use a dev variant for quality comparisons against the reference defaults.",
+      "switchTo": "Switch to {name}"
+    },
+    "fields": {
+      "width": "Width",
+      "widthTooltip": "Horizontal resolution in pixels. Must be divisible by 8. Higher = sharper + slower + more VRAM. Try an Aspect ratio preset above for safe values.",
+      "height": "Height",
+      "heightTooltip": "Vertical resolution in pixels. Must be divisible by 8. Higher = sharper + slower + more VRAM. Try an Aspect ratio preset above for safe values.",
+      "frames": "Frames",
+      "framesTooltip": "How many frames to render. Wan / LTX require (frames-1) to be divisible by 4 — valid values are 1, 5, 9, 13, …, 161. Clip length in seconds = Frames ÷ FPS.",
+      "fps": "FPS",
+      "fpsTooltip": "Frames per second for playback. 24 is cinematic, 30 is smoother. Doesn't affect generation cost — only how fast the clip plays back.",
+      "steps": "Steps",
+      "stepsTooltip": "Denoising steps — how many passes the model makes to clean up noise into an image. More = sharper and more coherent, but linearly slower. 20 is draft quality, 30 is standard, 50+ is high quality with diminishing returns.",
+      "guidance": "Guidance",
+      "guidanceTooltip": "How strongly the model follows your prompt. Too low = ignores the prompt; too high = rigid or distorted output. Recommended: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. The prompt's 'negative' direction comes from the Negative prompt above.",
+      "guidanceLtxWarning": "LTX-Video is a flow-matching model — CFG above ~3.5 over-saturates and produces blurred / rainbow output. Lower to 3 for the cleanest results.",
+      "randomSeed": "Random seed",
+      "seedPlaceholder": "Seed (integer)"
+    },
+    "clipLength": {
+      "line": "Clip length: {seconds}s ({frames} frames ÷ {fps} fps)"
+    },
+    "ltxAutoTuneNote": "Backend auto-tunes LTX decode parameters (frame_rate as model conditioning, decode_timestep, decode_noise_scale, guidance_rescale) to the Lightricks reference defaults — no extra sliders needed.",
+    "toggles": {
+      "nf4": {
+        "label": "4-bit (NF4)",
+        "tooltip": "bitsandbytes 4-bit weight quantization for the video DiT transformer. Fits Wan 2.1 14B in <24 GB VRAM with negligible quality loss. CUDA only — bitsandbytes ships no Metal kernels, so the toggle is ignored on macOS (MPS) and CPU. Stacks with First Block Cache for additional wall-time win."
+      },
+      "ltxRefiner": {
+        "label": "LTX two-stage spatial upscale",
+        "tooltip": "Renders the base sample at the requested resolution, then refines through Lightricks/LTX-Video-0.9.5-spatial-upscaler at 2× spatial resolution. Frame budget grows ~1.5×. Sharper micro-detail and cleaner motion edges; off by default because the wall-time hit is real."
+      },
+      "enhancePrompt": {
+        "label": "Auto-enhance short prompts",
+        "tooltip": "Appends model-tuned structural hints (cinematic descriptors, lighting, camera direction) when the prompt is under 25 words. Diffusion video models train on 50-100-word prompts and under-condition on shorter inputs. Long custom prompts are sent verbatim — the threshold is the safeguard."
+      },
+      "cfgDecay": {
+        "label": "CFG decay",
+        "tooltip": "Linearly drops guidance_scale from your slider value at step 0 toward 1.5 (the floor that keeps classifier-free guidance enabled end-to-end) at the final step. Flow-match video models (Wan, LTX, HunyuanVideo) oversaturate when CFG stays high throughout sampling; decay lets early steps lock semantics and late steps preserve fine detail. Default on for video — the runtime gates non-flow-match repos automatically."
+      },
+      "previewVae": {
+        "label": "Preview VAE",
+        "tooltip": "Swaps the full VAE for the matching tiny VAE (madebyollin/taew2_2 for Wan, taeltx2_3_wide for LTX, taehv1_5 for HunyuanVideo, taecogvideox / taemochi for the others) so each step decodes in a fraction of the wall-time. Trades final fidelity for iteration speed. Off by default; backend silently no-ops on repos without a mapped tiny VAE."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 layerwise (CUDA Ada+)",
+        "tooltip": "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX / Qwen-Image. Backend checks GPU compute capability before applying — pre-Ada GPUs lack hardware fp8 and skip with a runtimeNote. Best stacked with the GGUF or Nunchaku quant paths for the smallest VRAM footprint."
+      }
+    },
+    "diffusionCache": {
+      "label": "Diffusion cache",
+      "tooltip": "Speed up generation by reusing transformer block outputs between similar timesteps. First Block Cache works on every DiT pipeline (Wan, LTX, Hunyuan, CogVideoX, Mochi) on macOS / Windows / Linux. TeaCache only applies to FLUX-family video models (Hunyuan / LTX / CogVideoX / Mochi) — hidden for Wan because the upstream patch targets a different transformer layout. The mlx-video LTX-2 subprocess path renders outside the diffusers hook system, so caching is unavailable there.",
+      "mlxSubprocessNote": "mlx-video LTX-2 runs as a subprocess outside the diffusers hook system — caching strategies are not available here. Switch to a diffusers Wan / LTX / Hunyuan variant to use First Block Cache.",
+      "wanNote": "TeaCache hidden for Wan — its calibration tables target a different transformer layout. First Block Cache covers Wan via the diffusers 0.36 generic hook.",
+      "threshold": "Threshold ({value})",
+      "thresholdTooltip": "Lower = stricter (less speedup, less quality drift). Higher = more aggressive caching. Video DiTs are more sensitive to drift than image DiTs, so the default is tighter (0.08 vs 0.12)."
+    },
+    "stgScale": {
+      "label": "STG scale",
+      "tooltip": "Spatial-Temporal Guidance. Adds an extra perturbed forward pass per sampler step on the LTX-2 dev MLX path to reduce object breakup and chroma drift. 1.0 matches upstream's recommended default; 0.0 disables for ~33% faster dev runs at a mild quality cost. Distilled pipelines run a fixed sampler and ignore the value.",
+      "distilledNote": "Distilled pipelines run a fixed sampler — STG is ignored. Switch to a dev variant to use this knob."
+    },
+    "safety": {
+      "dangerTitle": "Likely to crash the backend",
+      "warningTitle": "Heads up — may struggle on this device",
+      "applyTitle": "Apply {label}",
+      "useSafer": "Use safer settings ({label})",
+      "browseSmaller": "Browse smaller models",
+      "overrideAck": "Allow high-risk generation — I accept that the backend may crash and my machine may need to be restarted."
+    },
+    "disabledHint": "Generate disabled: {reason}",
+    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants."
   }
 }

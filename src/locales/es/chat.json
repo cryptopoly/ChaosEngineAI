@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "Procesando indicación",
     "generating": "Generando"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Comandos de barra"
   }
 }

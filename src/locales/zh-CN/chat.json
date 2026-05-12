@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "正在处理提示词",
     "generating": "正在生成"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "斜杠命令"
   }
 }

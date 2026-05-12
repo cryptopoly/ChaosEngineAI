@@ -83,5 +83,263 @@
   },
   "runtimeBanner": {
     "loadingModel": "모델을 메모리에 로드 중..."
+  },
+  "imageStudio": {
+    "generateTitle": {
+      "dangerBlocked": "위험 수준 구성 — 진행하려면 안전 경고 아래의 확인란을 체크하세요.",
+      "generating": "생성 중...",
+      "selectModel": "먼저 모델을 선택하세요.",
+      "ready": "이 이미지를 생성합니다."
+    },
+    "actions": {
+      "discover": "둘러보기",
+      "installed": "설치됨",
+      "gallery": "갤러리"
+    },
+    "hero": {
+      "currentRuntime": "현재 런타임",
+      "placeholder": "이미지 모델을 선택하세요"
+    },
+    "badges": {
+      "installed": "설치됨",
+      "loadedInMemory": "메모리에 로드됨",
+      "loadsOnFirstGenerate": "첫 생성 시 로드",
+      "loadingIntoMemory": "메모리에 로드 중",
+      "downloaded": "다운로드됨"
+    },
+    "noModelsCallout": {
+      "message": "아직 다운로드된 이미지 모델이 없습니다. 이미지 둘러보기로 이동하여 둘러보고 설치한 다음 여기로 돌아와 생성하세요.",
+      "openDiscover": "이미지 둘러보기 열기"
+    },
+    "download": {
+      "failedMessage": "{name}이(가) 올바르게 다운로드되지 않았습니다. ChaosEngineAI는 부분적인 로컬 스냅샷만 발견했으므로 아직 실제 이미지 파이프라인을 로드할 수 없습니다.",
+      "pausedMessage": "{name}이(가) 부분적으로 다운로드되었습니다. 준비되면 재개하세요. ChaosEngineAI가 이미 디스크에 있는 파일에서 계속 진행합니다.",
+      "completeMessage": "{name} 다운로드가 완료되었습니다. 설치된 모델 스캔이 자동으로 새로 고침됩니다.",
+      "notInstalledMessage": "{name}이(가) 로컬에 설치되지 않았습니다. 로컬 생성을 활성화하려면 둘러보기에서 다운로드하세요.",
+      "huggingFace": "Hugging Face",
+      "settings": "설정",
+      "technicalDetails": "기술 세부 정보",
+      "pause": "일시 중지",
+      "cancel": "취소",
+      "resume": "재개",
+      "delete": "삭제",
+      "retry": "다운로드 재시도",
+      "complete": "다운로드 완료",
+      "downloadModel": "모델 다운로드"
+    },
+    "prompt": {
+      "label": "프롬프트",
+      "placeholder": "비 온 후 무드 있는 시네마틱 골목, 네온 반사, 35mm 사진, 얕은 피사계 심도"
+    },
+    "negativePrompt": {
+      "placeholder": "흐림, 기형 손, 여분의 팔다리, 과다 노출"
+    },
+    "draft": {
+      "tooltip": "빠른 프롬프트 반복을 위해 512px 긴 변 렌더링을 강제합니다. 출력은 초안 크기로 저장됩니다 — 풀 해상도 최종 패스를 위해 비활성화하세요."
+    },
+    "sampler": {
+      "tooltip": "디노이징 중에 사용되는 스케줄러/샘플러 알고리즘입니다. '모델 기본값'은 파이프라인과 함께 출시된 것을 유지합니다. AYS DPM++ 2M (SD1.5 / SDXL)는 NVIDIA의 Align Your Steps 스케줄을 사용합니다 — Karras / Euler가 흐릿하게 보이는 7-10 단계에서 디테일을 얻습니다. FLUX, SD3, Qwen-Image, Sana, HiDream에서는 숨겨집니다 — 이 flow-matching 파이프라인은 잠긴 스케줄러로 출시되며 교체하면 노이즈가 발생합니다."
+    },
+    "diffusionCache": {
+      "tooltip": "유사한 샘플링 단계 사이에서 트랜스포머 블록 출력을 재사용하여 생성 속도를 높입니다. First Block Cache는 크로스플랫폼 기본값이며 macOS / Windows / Linux의 모든 DiT 파이프라인(FLUX, SD3, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image, GLM-Image)에서 작동합니다 — 기본 임계값에서 일반적으로 1.5-2배 실제 시간 단축, 감지하기 어려운 품질 변화. TeaCache는 이미지 측에서 FLUX 패밀리에 대해서만 보정된 forwards를 출시합니다 — 다른 DiT에서는 숨겨져 드롭다운에 백엔드가 실제로 적용할 내용이 반영됩니다. 트랜스포머 부착 지점이 없는 UNet 파이프라인(SDXL / SD1.5 / SD2)에서는 완전히 숨겨집니다.",
+      "teaCacheHidden": "TeaCache 숨김 — 이미지 측 보정은 FLUX 패밀리만 다룹니다. First Block Cache는 오늘 출시된 모든 DiT 파이프라인에서 작동합니다(크로스플랫폼).",
+      "threshold": "임계값 ({value})",
+      "thresholdTooltip": "연속된 블록 캐시 상태 사이의 상대적 L1 거리입니다. 낮음 = 더 엄격(속도 향상 적음, 변화 적음). 높음 = 더 적극적 캐싱(속도 향상 많음, 미세한 디테일이 흔들릴 수 있음). 기본값: First Block Cache 0.12, TeaCache 0.4 — 둘 다 FLUX.1-dev에서 무시할 수 있는 품질 손실을 위해 diffusers 블로그 / 상위 논문에 대해 보정되었습니다."
+    },
+    "toggles": {
+      "cfgDecay": {
+        "label": "CFG 감쇠",
+        "description": "스케줄 전반에 걸쳐 슬라이더 값에서 1.5를 향해 가이던스를 선형적으로 완화합니다. 초기 단계의 의미를 변경하지 않고 후반 단계의 과포화를 줄입니다. 기본적으로 꺼져 있으며 백엔드는 SD1.5 / SDXL에서 이를 무시합니다.",
+        "tooltip": "Flow-match 모델(FLUX, SD3, Qwen-Image, Sana, HiDream)은 모든 단계에서 classifier-free 가이던스가 높게 유지되면 하이라이트를 '태우는' 경향이 있습니다. 감쇠는 초기 단계에서 의미를 고정하고(높은 CFG) 후반 단계에서 미세한 디테일을 보존합니다(낮은 CFG). 하한은 1.5에서 유지됩니다 — 중간 스케줄에서 1.0으로 떨어뜨리면 파이프라인이 2-배치에서 1-배치 형태로 전환되어 diffusers가 충돌합니다. 이미 사용 중인 비디오 런타임 노브와 동일한 형태입니다."
+      },
+      "previewVae": {
+        "label": "미리보기 VAE",
+        "description": "전체 VAE를 일치하는 작은 VAE(TAESD / TAEHV)로 교체하여 각 단계가 실제 시간의 일부만에 디코딩됩니다. 최종 충실도를 반복 속도와 교환합니다. 기본적으로 꺼져 있습니다.",
+        "tooltip": "작은 VAE(madebyollin/taef1, taef2, taesd3, taesdxl, taesd, taeqwenimage)는 전체 VAE보다 1-2 자릿수 더 빠르지만 일부 미세한 디테일 충실도를 잃습니다. 빠른 반복/초안 작성에 가장 적합합니다. 최종 이미지를 출시할 준비가 되면 끄세요. 매핑된 작은 VAE가 없는 리포지토리에서는 백엔드가 조용히 비활성화되므로 놀라움 없이 켜진 상태로 둘 수 있습니다."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 레이어별 (CUDA Ada+)",
+        "description": "트랜스포머 가중치를 fp8로 저장하고 matmul 내부에서 bf16으로 승격합니다. 최신 GPU에서 무시할 수 있는 품질 변화로 VRAM을 절반으로 줄입니다. Apple Silicon / Ada 이전 GPU에서는 깔끔하게 비활성화됩니다.",
+        "tooltip": "diffusers의 enable_layerwise_casting. 패밀리별 올바른 dtype: HunyuanVideo는 E5M2, FLUX / Wan / Qwen-Image / SD3 / LTX는 E4M3. 백엔드는 적용 전 GPU 컴퓨팅 기능을 확인합니다 — Ada 이전(SM <8.9)은 하드웨어 fp8이 없으며 runtimeNote와 함께 건너뜁니다. 가장 작은 사이즈를 위해 Nunchaku INT4와 스택하는 것이 가장 좋습니다."
+      }
+    },
+    "fields": {
+      "width": "너비",
+      "height": "높이",
+      "steps": "단계",
+      "guidance": "가이던스",
+      "images": "이미지",
+      "randomSeed": "랜덤 시드",
+      "seed": "시드"
+    },
+    "safety": {
+      "dangerTitle": "백엔드가 충돌할 가능성이 있음",
+      "warningTitle": "주의 — 이 기기에서 어려움이 있을 수 있음",
+      "resourceEstimate": "모델 ≈ {model} · 이 실행 피크 ≈ 총 ~{total} 중 {peak}.",
+      "applyTitle": "{label} 적용",
+      "useSafer": "더 안전한 설정 사용 ({label})",
+      "browseSmaller": "더 작은 모델 둘러보기",
+      "overrideAck": "그래도 생성 — 백엔드가 충돌할 수 있음을 수용합니다."
+    },
+    "recent": {
+      "subtitle": "{total}개의 저장된 생성물 중 최신 {recent}개",
+      "emptySubtitle": "생성된 이미지가 여기에 나타납니다",
+      "openGallery": "갤러리 열기",
+      "emptyHint": "이 브랜치에 대한 첫 번째 저장된 이미지 아티팩트를 만들려면 프롬프트를 생성하세요.",
+      "footnote": "여기에 최신 {recent}개의 저장된 이미지를 표시 중. 이미지 갤러리를 열어 모든 항목을 둘러보고 모델로 필터링하고 이전 실행을 관리하세요."
+    }
+  },
+  "videoStudio": {
+    "generateButton": "비디오 생성",
+    "disabled": {
+      "noModel": "먼저 비디오 모델을 선택하세요.",
+      "notInstalled": "{name}이(가) 아직 로컬에 설치되지 않았습니다.",
+      "restartRequired": "생성하기 전에 백엔드를 다시 시작하여 새로 설치된 GPU 런타임을 활성화하세요.",
+      "runtimeNotReady": "비디오 런타임이 준비되지 않았습니다.",
+      "noPrompt": "생성하기 전에 프롬프트를 작성하세요.",
+      "backendOffline": "백엔드가 오프라인입니다.",
+      "busy": "사용 중…",
+      "dangerLevel": "이 구성은 백엔드가 충돌할 가능성이 있습니다. 경고를 검토한 후 아래의 \\\"고위험 생성 허용\\\"을 체크하거나 해상도/프레임/모델을 낮추세요."
+    },
+    "generateTitle": "이 클립 생성을 시작합니다.",
+    "device": {
+      "gpuDetected": "GPU (감지됨)",
+      "cpuDetected": "CPU (감지됨)",
+      "appleDetected": "Apple Silicon (감지됨)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "gpu": "GPU",
+      "apple": "Apple Silicon"
+    },
+    "memory": {
+      "defaultFallback": "~{value} (기본값 — 실제 감지를 위해 백엔드 재시작)"
+    },
+    "capacityLine": {
+      "withModel": "{device} · 총 {memory} · 모델 ≈ {model}, 이 실행 피크 ≈ {peak}",
+      "short": "{device} · 총 {memory} · 이 실행 피크 ≈ {peak}"
+    },
+    "subtitle": "시작하려면 비디오 모델을 선택하세요",
+    "actions": {
+      "browseCatalog": "카탈로그 둘러보기",
+      "installedModels": "설치된 모델",
+      "downloadModel": "모델 다운로드",
+      "loadIntoMemory": "메모리에 로드",
+      "unload": "언로드",
+      "unloadNamed": "{name} 언로드",
+      "modelCard": "모델 카드"
+    },
+    "modelOption": {
+      "installed": "설치됨",
+      "incomplete": "불완전"
+    },
+    "noModelsCallout": {
+      "message": "아직 비디오 모델이 설치되지 않았습니다. 카탈로그를 둘러보고 다운로드하세요.",
+      "openDiscover": "비디오 둘러보기 열기"
+    },
+    "stats": {
+      "clipDuration": "{value}초 클립"
+    },
+    "badges": {
+      "installed": "설치됨",
+      "incomplete": "불완전",
+      "notDownloaded": "다운로드되지 않음",
+      "inMemory": "메모리 내",
+      "loadedModel": "로드된 모델: {name}"
+    },
+    "prompt": {
+      "label": "프롬프트",
+      "placeholder": "새벽 안개 낀 소나무 숲의 시네마틱 드론 샷...",
+      "ltxShortWarning": "LTX-Video는 상세한 프롬프트(약 50-100단어)에서 최상의 결과를 생성합니다. 짧은 프롬프트(\\\"짚을 먹는 만화 라마\\\")는 모델을 충분히 조건화하지 못하며 드리프트하는 경향이 있습니다. Lightricks는 액션으로 시작한 다음 시각적 디테일, 조명, 카메라 방향을 추가하는 것을 권장합니다."
+    },
+    "negativePrompt": {
+      "tooltip": "모델에게 피해야 할 것을 알려줍니다. 일반적인 프롬프트가 미리 채워져 있으며 대부분의 비디오 모델에 맞게 조정되어 있습니다 — 모델별 선호도가 있는 경우 지우거나 편집하세요. 더 많은 구체성은 일반적으로 해를 끼치는 것보다 도움이 됩니다.",
+      "placeholder": "선택 사항: 피해야 할 것들 (낮은 품질, 워터마크 등)"
+    },
+    "fastPreview": {
+      "label": "빠른 미리보기",
+      "via": "경유",
+      "tooltip": "동일한 프롬프트 + 시드를 사용하여 {parent} 대신 {sibling}을(를) 통해 이 생성을 렌더링합니다. 증류된 고정 단계 샘플러 — 일반적으로 풀 품질 dev 렌더링보다 6-9배 빠릅니다. dev 변형의 풀 품질을 원할 때 체크 해제하세요.",
+      "devVariantFallback": "dev 변형"
+    },
+    "qualityPreset": {
+      "tooltip": "디노이징 단계 수를 설정합니다. 단계 증가 = 더 선명한 프레임 + 더 긴 생성 시간. 프레임 수(클립 길이)와 가이던스는 설정된 대로 유지됩니다 — 프리셋은 이를 건드리지 않습니다."
+    },
+    "aspectRatio": {
+      "tooltip": "너비와 높이를 일반적인 비디오 모양으로 설정합니다. 모든 프리셋은 지원되는 모든 모델에서 안전합니다(긴 변에서 ≤1024, 8로 나누어 떨어짐). 더 세밀한 제어를 위해 아래의 너비/높이를 편집하세요."
+    },
+    "ltx2Distilled": {
+      "title": "LTX-2 distilled은 빠른 샘플러입니다.",
+      "body": "mlx-video는 CFG가 비활성화된 고정 8+3 디노이즈 패스로 실행되므로 단계 및 가이던스 컨트롤은 이 변형을 개선하지 않습니다. 참조 기본값에 대한 품질 비교를 위해 dev 변형을 사용하세요.",
+      "switchTo": "{name}(으)로 전환"
+    },
+    "fields": {
+      "width": "너비",
+      "widthTooltip": "픽셀 단위의 수평 해상도. 8로 나누어 떨어져야 합니다. 더 높음 = 더 선명함 + 더 느림 + 더 많은 VRAM. 안전한 값을 위해 위의 종횡비 프리셋을 시도하세요.",
+      "height": "높이",
+      "heightTooltip": "픽셀 단위의 수직 해상도. 8로 나누어 떨어져야 합니다. 더 높음 = 더 선명함 + 더 느림 + 더 많은 VRAM. 안전한 값을 위해 위의 종횡비 프리셋을 시도하세요.",
+      "frames": "프레임",
+      "framesTooltip": "렌더링할 프레임 수. Wan / LTX는 (frames-1)이 4로 나누어 떨어져야 합니다 — 유효한 값은 1, 5, 9, 13, …, 161입니다. 초 단위 클립 길이 = 프레임 ÷ FPS.",
+      "fps": "FPS",
+      "fpsTooltip": "재생을 위한 초당 프레임. 24는 시네마틱, 30은 더 부드럽습니다. 생성 비용에는 영향을 미치지 않습니다 — 클립이 재생되는 속도에만 영향을 미칩니다.",
+      "steps": "단계",
+      "stepsTooltip": "디노이징 단계 — 모델이 노이즈를 이미지로 정리하기 위해 수행하는 패스 수. 더 많음 = 더 선명하고 일관성 있지만 선형적으로 느림. 20은 초안 품질, 30은 표준, 50+는 수익 감소가 있는 고품질입니다.",
+      "guidance": "가이던스",
+      "guidanceTooltip": "모델이 프롬프트를 얼마나 강하게 따르는지. 너무 낮음 = 프롬프트 무시; 너무 높음 = 경직되거나 왜곡된 출력. 권장: LTX-Video ≈ 3, Wan ≈ 5, HunyuanVideo ≈ 6. 프롬프트의 '네거티브' 방향은 위의 네거티브 프롬프트에서 옵니다.",
+      "guidanceLtxWarning": "LTX-Video는 flow-matching 모델입니다 — CFG가 ~3.5를 초과하면 과포화되고 흐릿한/무지개색 출력이 생성됩니다. 가장 깔끔한 결과를 위해 3으로 낮추세요.",
+      "randomSeed": "랜덤 시드",
+      "seedPlaceholder": "시드 (정수)"
+    },
+    "clipLength": {
+      "line": "클립 길이: {seconds}초 ({frames} 프레임 ÷ {fps} fps)"
+    },
+    "ltxAutoTuneNote": "백엔드는 LTX 디코드 매개변수(모델 컨디셔닝으로서의 frame_rate, decode_timestep, decode_noise_scale, guidance_rescale)를 Lightricks 참조 기본값으로 자동 조정합니다 — 추가 슬라이더가 필요하지 않습니다.",
+    "toggles": {
+      "nf4": {
+        "label": "4비트 (NF4)",
+        "tooltip": "비디오 DiT 트랜스포머에 대한 bitsandbytes 4비트 가중치 양자화. 무시할 수 있는 품질 손실로 Wan 2.1 14B를 <24 GB VRAM에 맞춥니다. CUDA 전용 — bitsandbytes는 Metal 커널을 출시하지 않으므로 macOS(MPS) 및 CPU에서는 토글이 무시됩니다. 추가 실제 시간 단축을 위해 First Block Cache와 스택됩니다."
+      },
+      "ltxRefiner": {
+        "label": "LTX 2단계 공간 업스케일",
+        "tooltip": "요청된 해상도에서 기본 샘플을 렌더링한 다음 2배 공간 해상도에서 Lightricks/LTX-Video-0.9.5-spatial-upscaler를 통해 정제합니다. 프레임 예산은 ~1.5배 증가합니다. 더 선명한 미시 디테일과 더 깔끔한 모션 가장자리; 실제 시간 영향이 실제이므로 기본적으로 꺼져 있습니다."
+      },
+      "enhancePrompt": {
+        "label": "짧은 프롬프트 자동 향상",
+        "tooltip": "프롬프트가 25단어 미만일 때 모델 조정 구조적 힌트(시네마틱 설명자, 조명, 카메라 방향)를 추가합니다. 디퓨전 비디오 모델은 50-100단어 프롬프트에서 훈련되며 더 짧은 입력에서는 충분히 조건화되지 않습니다. 긴 사용자 정의 프롬프트는 그대로 전송됩니다 — 임계값이 안전 장치입니다."
+      },
+      "cfgDecay": {
+        "label": "CFG 감쇠",
+        "tooltip": "단계 0에서 슬라이더 값에서 마지막 단계의 1.5(엔드 투 엔드로 classifier-free 가이던스를 활성화 유지하는 하한)를 향해 guidance_scale을 선형적으로 떨어뜨립니다. Flow-match 비디오 모델(Wan, LTX, HunyuanVideo)은 샘플링 전반에 걸쳐 CFG가 높게 유지되면 과포화됩니다; 감쇠는 초기 단계에서 의미를 고정하고 후반 단계에서 미세한 디테일을 보존합니다. 비디오에서 기본적으로 켜져 있습니다 — 런타임은 non-flow-match 리포지토리를 자동으로 게이트합니다."
+      },
+      "previewVae": {
+        "label": "미리보기 VAE",
+        "tooltip": "전체 VAE를 일치하는 작은 VAE(Wan은 madebyollin/taew2_2, LTX는 taeltx2_3_wide, HunyuanVideo는 taehv1_5, 다른 것들은 taecogvideox / taemochi)로 교체하여 각 단계가 실제 시간의 일부만에 디코딩됩니다. 최종 충실도를 반복 속도와 교환합니다. 기본적으로 꺼져 있습니다; 백엔드는 매핑된 작은 VAE가 없는 리포지토리에서 조용히 비활성화됩니다."
+      },
+      "fp8Layerwise": {
+        "label": "FP8 레이어별 (CUDA Ada+)",
+        "tooltip": "diffusers의 enable_layerwise_casting. 패밀리별 올바른 dtype: HunyuanVideo는 E5M2, Wan / LTX / FLUX / Qwen-Image는 E4M3. 백엔드는 적용 전 GPU 컴퓨팅 기능을 확인합니다 — Ada 이전 GPU는 하드웨어 fp8이 없으며 runtimeNote와 함께 건너뜁니다. 가장 작은 VRAM 사이즈를 위해 GGUF 또는 Nunchaku quant 경로와 스택하는 것이 가장 좋습니다."
+      }
+    },
+    "diffusionCache": {
+      "label": "디퓨전 캐시",
+      "tooltip": "유사한 타임스텝 사이에서 트랜스포머 블록 출력을 재사용하여 생성 속도를 높입니다. First Block Cache는 macOS / Windows / Linux의 모든 DiT 파이프라인(Wan, LTX, Hunyuan, CogVideoX, Mochi)에서 작동합니다. TeaCache는 FLUX 패밀리 비디오 모델(Hunyuan / LTX / CogVideoX / Mochi)에만 적용됩니다 — 상위 패치가 다른 트랜스포머 레이아웃을 대상으로 하므로 Wan에서는 숨겨집니다. mlx-video LTX-2 서브프로세스 경로는 diffusers 후크 시스템 외부에서 렌더링되므로 거기에서는 캐싱을 사용할 수 없습니다.",
+      "mlxSubprocessNote": "mlx-video LTX-2는 diffusers 후크 시스템 외부의 서브프로세스로 실행됩니다 — 캐싱 전략은 여기에서 사용할 수 없습니다. First Block Cache를 사용하려면 diffusers Wan / LTX / Hunyuan 변형으로 전환하세요.",
+      "wanNote": "Wan에서 TeaCache 숨김 — 보정 테이블은 다른 트랜스포머 레이아웃을 대상으로 합니다. First Block Cache는 diffusers 0.36 generic 후크를 통해 Wan을 다룹니다.",
+      "threshold": "임계값 ({value})",
+      "thresholdTooltip": "낮음 = 더 엄격(속도 향상 적음, 품질 변화 적음). 높음 = 더 적극적 캐싱. 비디오 DiT는 이미지 DiT보다 변화에 더 민감하므로 기본값이 더 타이트합니다(0.12 대비 0.08)."
+    },
+    "stgScale": {
+      "label": "STG 스케일",
+      "tooltip": "Spatial-Temporal Guidance. 객체 분리와 색차 드리프트를 줄이기 위해 LTX-2 dev MLX 경로에서 샘플러 단계당 추가 perturbed forward 패스를 추가합니다. 1.0은 상위의 권장 기본값과 일치합니다; 0.0은 약간의 품질 비용으로 ~33% 더 빠른 dev 실행을 위해 비활성화합니다. 증류된 파이프라인은 고정 샘플러를 실행하며 값을 무시합니다.",
+      "distilledNote": "증류된 파이프라인은 고정 샘플러를 실행합니다 — STG는 무시됩니다. 이 노브를 사용하려면 dev 변형으로 전환하세요."
+    },
+    "safety": {
+      "dangerTitle": "백엔드가 충돌할 가능성이 있음",
+      "warningTitle": "주의 — 이 기기에서 어려움이 있을 수 있음",
+      "applyTitle": "{label} 적용",
+      "useSafer": "더 안전한 설정 사용 ({label})",
+      "browseSmaller": "더 작은 모델 둘러보기",
+      "overrideAck": "고위험 생성 허용 — 백엔드가 충돌하고 내 기기를 다시 시작해야 할 수 있음을 수용합니다."
+    },
+    "disabledHint": "생성 비활성화: {reason}",
+    "willLoadHint": "선택한 모델은 다음 생성 시 메모리에 로드됩니다. 큰 변형의 경우 첫 로드에 1분이 걸릴 수 있습니다."
   }
 }

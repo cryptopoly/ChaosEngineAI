@@ -934,5 +934,50 @@
         "detail": "コールドスタートのインポートに通常より時間がかかっています。これが 2 分以上停止する場合は、終了して再度開いてください — 古いマニフェストが再展開を強制することがあります。"
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "名前",
+      "provider": "プロバイダ",
+      "tasks": "タスク",
+      "size": "サイズが大きい順",
+      "ram": "RAM/VRAM が多い順",
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロード数が多い順",
+      "status": "ステータス",
+      "release": "リリースが新しい順"
+    },
+    "status": {
+      "installed": "インストール済み",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "failedDetail": "ダウンロードに失敗しました",
+      "incomplete": "未完了",
+      "notInstalled": "未インストール"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "名前",
+      "provider": "プロバイダ",
+      "tasks": "タスク",
+      "size": "サイズが大きい順",
+      "ram": "RAM/VRAM が多い順",
+      "likes": "いいねが多い順",
+      "downloads": "ダウンロード数が多い順",
+      "status": "ステータス",
+      "release": "リリースが新しい順"
+    },
+    "status": {
+      "installed": "インストール済み",
+      "installing": "インストール中",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "failedDetail": "ダウンロードに失敗しました",
+      "incomplete": "未完了",
+      "notInstalled": "未インストール"
+    }
   }
 }

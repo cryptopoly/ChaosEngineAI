@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "Обработка запроса",
     "generating": "Генерация"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Слэш-команды"
   }
 }

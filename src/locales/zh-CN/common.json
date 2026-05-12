@@ -934,5 +934,50 @@
         "detail": "冷启动导入时间比平时长。如果停滞超过两分钟，请退出并重新打开 — 过时的清单可能强制重新解压。"
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "最大大小优先",
+      "ram": "最高 RAM/VRAM 优先",
+      "likes": "最受欢迎优先",
+      "downloads": "下载量最多优先",
+      "status": "状态",
+      "release": "最新发布优先"
+    },
+    "status": {
+      "installed": "已安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "failedDetail": "下载失败",
+      "incomplete": "不完整",
+      "notInstalled": "未安装"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "最大大小优先",
+      "ram": "最高 RAM/VRAM 优先",
+      "likes": "最受欢迎优先",
+      "downloads": "下载量最多优先",
+      "status": "状态",
+      "release": "最新发布优先"
+    },
+    "status": {
+      "installed": "已安装",
+      "installing": "安装中",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "failedDetail": "下载失败",
+      "incomplete": "不完整",
+      "notInstalled": "未安装"
+    }
   }
 }

@@ -934,5 +934,50 @@
         "detail": "Die Kaltstart-Imports dauern länger als üblich. Wenn dies länger als zwei Minuten hängt, beende die App und öffne sie erneut — ein veraltetes Manifest kann ein erneutes Extrahieren erzwingen."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "Name",
+      "provider": "Anbieter",
+      "tasks": "Aufgaben",
+      "size": "Größte zuerst",
+      "ram": "Höchster RAM/VRAM zuerst",
+      "likes": "Beliebteste zuerst",
+      "downloads": "Meiste Downloads zuerst",
+      "status": "Status",
+      "release": "Neueste zuerst"
+    },
+    "status": {
+      "installed": "Installiert",
+      "downloading": "Wird heruntergeladen",
+      "paused": "Pausiert",
+      "failed": "Fehlgeschlagen",
+      "failedDetail": "Download fehlgeschlagen",
+      "incomplete": "Unvollständig",
+      "notInstalled": "Nicht installiert"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "Name",
+      "provider": "Anbieter",
+      "tasks": "Aufgaben",
+      "size": "Größte zuerst",
+      "ram": "Höchster RAM/VRAM zuerst",
+      "likes": "Beliebteste zuerst",
+      "downloads": "Meiste Downloads zuerst",
+      "status": "Status",
+      "release": "Neueste zuerst"
+    },
+    "status": {
+      "installed": "Installiert",
+      "installing": "Wird installiert",
+      "downloading": "Wird heruntergeladen",
+      "paused": "Pausiert",
+      "failed": "Fehlgeschlagen",
+      "failedDetail": "Download fehlgeschlagen",
+      "incomplete": "Unvollständig",
+      "notInstalled": "Nicht installiert"
+    }
   }
 }

@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "Traitement de l'invite",
     "generating": "Génération"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Commandes slash"
   }
 }

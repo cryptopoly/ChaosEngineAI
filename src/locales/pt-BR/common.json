@@ -934,5 +934,50 @@
         "detail": "Os imports de cold-start estão demorando mais do que o usual. Se isso travar por mais de dois minutos, feche e reabra — um manifest desatualizado pode forçar uma nova extração."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "nome",
+      "provider": "provedor",
+      "tasks": "tarefas",
+      "size": "maior tamanho primeiro",
+      "ram": "maior RAM/VRAM primeiro",
+      "likes": "mais curtidos primeiro",
+      "downloads": "mais downloads primeiro",
+      "status": "status",
+      "release": "lançamento mais recente primeiro"
+    },
+    "status": {
+      "installed": "Instalado",
+      "downloading": "Baixando",
+      "paused": "Pausado",
+      "failed": "Falhou",
+      "failedDetail": "Falha no download",
+      "incomplete": "Incompleto",
+      "notInstalled": "Não instalado"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "nome",
+      "provider": "provedor",
+      "tasks": "tarefas",
+      "size": "maior tamanho primeiro",
+      "ram": "maior RAM/VRAM primeiro",
+      "likes": "mais curtidos primeiro",
+      "downloads": "mais downloads primeiro",
+      "status": "status",
+      "release": "lançamento mais recente primeiro"
+    },
+    "status": {
+      "installed": "Instalado",
+      "installing": "Instalando",
+      "downloading": "Baixando",
+      "paused": "Pausado",
+      "failed": "Falhou",
+      "failedDetail": "Falha no download",
+      "incomplete": "Incompleto",
+      "notInstalled": "Não instalado"
+    }
   }
 }

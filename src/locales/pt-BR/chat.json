@@ -244,5 +244,8 @@
   "promptPhase": {
     "processingPrompt": "Processando prompt",
     "generating": "Gerando"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Comandos slash"
   }
 }

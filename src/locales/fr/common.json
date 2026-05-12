@@ -934,5 +934,50 @@
         "detail": "Les imports à froid prennent plus de temps que d'habitude. Si cela se prolonge au-delà de deux minutes, quittez et rouvrez — un manifeste obsolète peut forcer une nouvelle extraction."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "nom",
+      "provider": "fournisseur",
+      "tasks": "tâches",
+      "size": "taille la plus grande en premier",
+      "ram": "RAM/VRAM la plus élevée en premier",
+      "likes": "favoris en premier",
+      "downloads": "téléchargements en premier",
+      "status": "statut",
+      "release": "plus récent en premier"
+    },
+    "status": {
+      "installed": "Installé",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "failedDetail": "Échec du téléchargement",
+      "incomplete": "Incomplet",
+      "notInstalled": "Non installé"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "nom",
+      "provider": "fournisseur",
+      "tasks": "tâches",
+      "size": "taille la plus grande en premier",
+      "ram": "RAM/VRAM la plus élevée en premier",
+      "likes": "favoris en premier",
+      "downloads": "téléchargements en premier",
+      "status": "statut",
+      "release": "plus récent en premier"
+    },
+    "status": {
+      "installed": "Installé",
+      "installing": "Installation en cours",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "failedDetail": "Échec du téléchargement",
+      "incomplete": "Incomplet",
+      "notInstalled": "Non installé"
+    }
   }
 }

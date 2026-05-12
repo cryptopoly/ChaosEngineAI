@@ -83,5 +83,263 @@
   },
   "runtimeBanner": {
     "loadingModel": "正在将模型加载到内存中..."
+  },
+  "imageStudio": {
+    "generateTitle": {
+      "dangerBlocked": "危险级配置 — 请在下方安全提示中勾选确认后继续。",
+      "generating": "生成中...",
+      "selectModel": "请先选择一个模型。",
+      "ready": "生成此图像。"
+    },
+    "actions": {
+      "discover": "发现",
+      "installed": "已安装",
+      "gallery": "图库"
+    },
+    "hero": {
+      "currentRuntime": "当前运行时",
+      "placeholder": "选择一个图像模型"
+    },
+    "badges": {
+      "installed": "已安装",
+      "loadedInMemory": "已加载到内存",
+      "loadsOnFirstGenerate": "首次生成时加载",
+      "loadingIntoMemory": "正在加载到内存",
+      "downloaded": "已下载"
+    },
+    "noModelsCallout": {
+      "message": "你还没有下载任何图像模型。前往图像发现浏览并安装一个模型,然后回到这里生成。",
+      "openDiscover": "打开图像发现"
+    },
+    "download": {
+      "failedMessage": "{name} 未正确完成下载。ChaosEngineAI 只发现部分本地快照,因此无法加载真实的图像管线。",
+      "pausedMessage": "{name} 已部分下载。准备就绪后恢复,ChaosEngineAI 将从磁盘已有的文件继续。",
+      "completeMessage": "{name} 已完成下载。已安装模型扫描将自动刷新。",
+      "notInstalledMessage": "{name} 未在本地安装。从发现页面下载以启用本地生成。",
+      "huggingFace": "Hugging Face",
+      "settings": "设置",
+      "technicalDetails": "技术细节",
+      "pause": "暂停",
+      "cancel": "取消",
+      "resume": "恢复",
+      "delete": "删除",
+      "retry": "重试下载",
+      "complete": "下载完成",
+      "downloadModel": "下载模型"
+    },
+    "prompt": {
+      "label": "提示词",
+      "placeholder": "雨后氛围感小巷,霓虹倒影,35mm 胶片照,浅景深"
+    },
+    "negativePrompt": {
+      "placeholder": "模糊,变形的手,多余的肢体,过度曝光"
+    },
+    "draft": {
+      "tooltip": "强制 512px 长边渲染,用于快速迭代提示词。输出会以草稿尺寸保存 — 关闭以进行全分辨率最终渲染。"
+    },
+    "sampler": {
+      "tooltip": "去噪过程中使用的调度器 / 采样器算法。\"模型默认\"保留管线随附的设置。AYS DPM++ 2M (SD1.5 / SDXL) 使用 NVIDIA 的 Align Your Steps 调度 — 在 7-10 步即可获得细节,而 Karras / Euler 看起来偏柔。FLUX、SD3、Qwen-Image、Sana 和 HiDream 隐藏此项 — 这些流匹配管线使用锁定的调度,切换会产生噪点。"
+    },
+    "diffusionCache": {
+      "tooltip": "通过在相似采样步骤间复用 transformer 块输出来加速生成。First Block Cache 是跨平台默认选项,适用于所有 DiT 管线 (FLUX、SD3、Qwen-Image、Sana、HiDream、Z-Image、ERNIE-Image、GLM-Image),支持 macOS / Windows / Linux — 在默认阈值下通常可获得 1.5-2 倍的耗时优势,质量漂移几乎不可察觉。TeaCache 在图像端仅为 FLUX 系列提供校准的 forward — 对其他 DiT 隐藏,这样下拉菜单反映后端实际会应用的内容。对于 UNet 管线 (SDXL / SD1.5 / SD2) 完全隐藏,因为它们没有 transformer 挂载点。",
+      "teaCacheHidden": "TeaCache 已隐藏 — 其图像端校准仅覆盖 FLUX 系列。First Block Cache 适用于当前所有 DiT 管线(跨平台)。",
+      "threshold": "阈值 ({value})",
+      "thresholdTooltip": "连续块缓存状态之间的相对 L1 距离。越低 = 越严格(加速越少,漂移越少)。越高 = 缓存越积极(加速越多,可能在细节处产生闪烁)。默认值:First Block Cache 0.12,TeaCache 0.4 — 两者均根据 diffusers 博客 / 上游论文针对 FLUX.1-dev 校准,质量损失可忽略。"
+    },
+    "toggles": {
+      "cfgDecay": {
+        "label": "CFG 衰减",
+        "description": "在调度过程中将引导从滑块值线性松弛至 1.5。在保持前期步骤语义不变的同时减少后期步骤的过饱和。默认关闭;后端在 SD1.5 / SDXL 上忽略此项。",
+        "tooltip": "流匹配模型 (FLUX、SD3、Qwen-Image、Sana、HiDream) 在每一步都保持高 classifier-free guidance 时容易\"烧坏\"高光。衰减让前期步骤锁定语义(高 CFG),后期步骤保留细节(低 CFG)。下限保持 1.5 — 在调度中途降至 1.0 会将管线从 2 批形状切换为 1 批形状并使 diffusers 崩溃。与你已使用的视频运行时旋钮形状相同。"
+      },
+      "previewVae": {
+        "label": "预览 VAE",
+        "description": "将完整 VAE 替换为对应的微型 VAE (TAESD / TAEHV),使每一步解码耗时仅为原来的一小部分。以最终保真度换取迭代速度。默认关闭。",
+        "tooltip": "微型 VAE (madebyollin/taef1、taef2、taesd3、taesdxl、taesd、taeqwenimage) 比完整 VAE 快 1-2 个数量级,但会损失一些细节保真度。最适合快速迭代 / 草稿;准备发布最终图像时关闭。后端会在没有映射微型 VAE 的 repo 上静默禁用,因此可以放心开启。"
+      },
+      "fp8Layerwise": {
+        "label": "FP8 逐层 (CUDA Ada+)",
+        "description": "以 fp8 存储 transformer 权重,在 matmul 内提升至 bf16。在现代 GPU 上将 VRAM 减半,质量漂移可忽略。Apple Silicon / 前 Ada GPU 会干净地禁用。",
+        "tooltip": "diffusers 的 enable_layerwise_casting。系列正确的 dtype:HunyuanVideo 使用 E5M2,FLUX / Wan / Qwen-Image / SD3 / LTX 使用 E4M3。后端在应用前检查 GPU 计算能力 — 前 Ada (SM <8.9) 缺少硬件 fp8,会跳过并附带 runtimeNote。最佳搭配是与 Nunchaku INT4 叠加,以获得最小占用。"
+      }
+    },
+    "fields": {
+      "width": "宽度",
+      "height": "高度",
+      "steps": "步数",
+      "guidance": "引导",
+      "images": "图像数",
+      "randomSeed": "随机种子",
+      "seed": "种子"
+    },
+    "safety": {
+      "dangerTitle": "可能导致后端崩溃",
+      "warningTitle": "注意 — 在此设备上可能会吃力",
+      "resourceEstimate": "模型 ≈ {model} · 本次运行峰值 ≈ {peak} / 总 ~{total}。",
+      "applyTitle": "应用 {label}",
+      "useSafer": "使用更安全的设置 ({label})",
+      "browseSmaller": "浏览更小的模型",
+      "overrideAck": "仍要生成 — 我接受后端可能会崩溃。"
+    },
+    "recent": {
+      "subtitle": "{total} 个已保存生成中最新的 {recent} 个",
+      "emptySubtitle": "生成的图像将显示在此处",
+      "openGallery": "打开图库",
+      "emptyHint": "生成一个提示词,为此分支创建第一个已保存的图像。",
+      "footnote": "此处显示最新的 {recent} 张已保存图像。打开图像图库浏览全部、按模型过滤并管理较旧的生成。"
+    }
+  },
+  "videoStudio": {
+    "generateButton": "生成视频",
+    "disabled": {
+      "noModel": "请先选择一个视频模型。",
+      "notInstalled": "{name} 尚未在本地安装。",
+      "restartRequired": "在生成之前重启后端以激活新安装的 GPU 运行时。",
+      "runtimeNotReady": "视频运行时尚未就绪。",
+      "noPrompt": "在生成之前编写一个提示词。",
+      "backendOffline": "后端离线。",
+      "busy": "繁忙…",
+      "dangerLevel": "此配置可能导致后端崩溃。在审阅警告后勾选下方\\\"允许高风险生成\\\",或降低分辨率 / 帧数 / 模型。"
+    },
+    "generateTitle": "开始生成此视频片段。",
+    "device": {
+      "gpuDetected": "GPU(已检测)",
+      "cpuDetected": "CPU(已检测)",
+      "appleDetected": "Apple Silicon(已检测)",
+      "appleMlx": "Apple Silicon (MLX)",
+      "gpu": "GPU",
+      "apple": "Apple Silicon"
+    },
+    "memory": {
+      "defaultFallback": "~{value}(默认 — 重启后端以进行真实检测)"
+    },
+    "capacityLine": {
+      "withModel": "{device} · 总 {memory} · 模型 ≈ {model},本次运行峰值 ≈ {peak}",
+      "short": "{device} · 总 {memory} · 本次运行峰值 ≈ {peak}"
+    },
+    "subtitle": "选择一个视频模型以开始",
+    "actions": {
+      "browseCatalog": "浏览目录",
+      "installedModels": "已安装的模型",
+      "downloadModel": "下载模型",
+      "loadIntoMemory": "加载到内存",
+      "unload": "卸载",
+      "unloadNamed": "卸载 {name}",
+      "modelCard": "模型卡片"
+    },
+    "modelOption": {
+      "installed": "已安装",
+      "incomplete": "不完整"
+    },
+    "noModelsCallout": {
+      "message": "尚未安装任何视频模型。浏览目录下载一个。",
+      "openDiscover": "打开视频发现"
+    },
+    "stats": {
+      "clipDuration": "{value} 秒片段"
+    },
+    "badges": {
+      "installed": "已安装",
+      "incomplete": "不完整",
+      "notDownloaded": "未下载",
+      "inMemory": "在内存中",
+      "loadedModel": "已加载模型:{name}"
+    },
+    "prompt": {
+      "label": "提示词",
+      "placeholder": "黎明时分薄雾笼罩的松树林的电影感无人机镜头...",
+      "ltxShortWarning": "LTX-Video 在详细提示词(约 50-100 个词)下效果最佳。短提示词(\\\"卡通羊驼吃稻草\\\")对模型条件化不足,容易漂移。Lightricks 建议先描述动作,然后添加视觉细节、灯光和摄影指导。"
+    },
+    "negativePrompt": {
+      "tooltip": "告诉模型要避免的内容。已预填一个通用提示词,适合大多数视频模型 — 如果你有针对特定模型的偏好,请清除或编辑。具体性通常利大于弊。",
+      "placeholder": "可选:要避免的内容(低质量、水印等)"
+    },
+    "fastPreview": {
+      "label": "快速预览",
+      "via": "通过",
+      "tooltip": "使用相同的提示词 + 种子,通过 {sibling} 而非 {parent} 渲染本次生成。蒸馏的固定步数采样器 — 通常比完整质量 dev 渲染快 6-9 倍。当你需要 dev 变体的完整质量时取消勾选。",
+      "devVariantFallback": "dev 变体"
+    },
+    "qualityPreset": {
+      "tooltip": "设置去噪步数。步数越多 = 帧越清晰 + 生成时间越长。帧数(片段长度)和引导保持设置不变 — 预设不会修改它们。"
+    },
+    "aspectRatio": {
+      "tooltip": "将宽度和高度设置为常见的视频形状。所有预设在每个支持的模型上都是安全的(长边 ≤1024,可被 8 整除)。在下方编辑宽度 / 高度以进行更精细的控制。"
+    },
+    "ltx2Distilled": {
+      "title": "LTX-2 distilled 是快速采样器。",
+      "body": "mlx-video 以固定的 8+3 去噪 pass 运行,禁用 CFG,因此步数和引导控件不会改善此变体。使用 dev 变体来与参考默认值进行质量对比。",
+      "switchTo": "切换到 {name}"
+    },
+    "fields": {
+      "width": "宽度",
+      "widthTooltip": "水平分辨率(像素)。必须可被 8 整除。越高 = 越清晰 + 越慢 + 越占 VRAM。尝试上方的纵横比预设以获取安全值。",
+      "height": "高度",
+      "heightTooltip": "垂直分辨率(像素)。必须可被 8 整除。越高 = 越清晰 + 越慢 + 越占 VRAM。尝试上方的纵横比预设以获取安全值。",
+      "frames": "帧数",
+      "framesTooltip": "要渲染的帧数。Wan / LTX 要求 (frames-1) 可被 4 整除 — 有效值为 1、5、9、13、…、161。片段长度(秒)= 帧数 ÷ FPS。",
+      "fps": "FPS",
+      "fpsTooltip": "播放的每秒帧数。24 是电影感,30 更流畅。不影响生成成本 — 只影响片段的播放速度。",
+      "steps": "步数",
+      "stepsTooltip": "去噪步数 — 模型清理噪声为图像所做的 pass 次数。越多 = 越清晰、越一致,但线性变慢。20 是草稿质量,30 是标准,50+ 是高质量但收益递减。",
+      "guidance": "引导",
+      "guidanceTooltip": "模型遵循提示词的强度。过低 = 忽略提示词;过高 = 输出僵硬或失真。推荐:LTX-Video ≈ 3、Wan ≈ 5、HunyuanVideo ≈ 6。提示词的\"反向\"方向来自上方的反向提示词。",
+      "guidanceLtxWarning": "LTX-Video 是流匹配模型 — CFG 超过约 3.5 会导致过饱和并产生模糊 / 彩虹色输出。降低至 3 以获得最干净的结果。",
+      "randomSeed": "随机种子",
+      "seedPlaceholder": "种子(整数)"
+    },
+    "clipLength": {
+      "line": "片段长度:{seconds} 秒({frames} 帧 ÷ {fps} fps)"
+    },
+    "ltxAutoTuneNote": "后端自动将 LTX 解码参数(frame_rate 作为模型条件、decode_timestep、decode_noise_scale、guidance_rescale)调整到 Lightricks 参考默认值 — 无需额外滑块。",
+    "toggles": {
+      "nf4": {
+        "label": "4 位 (NF4)",
+        "tooltip": "用于视频 DiT transformer 的 bitsandbytes 4 位权重量化。可将 Wan 2.1 14B 装入 <24 GB VRAM,质量损失可忽略。仅支持 CUDA — bitsandbytes 没有 Metal 内核,因此在 macOS (MPS) 和 CPU 上忽略此开关。与 First Block Cache 叠加可获得额外的耗时优势。"
+      },
+      "ltxRefiner": {
+        "label": "LTX 两阶段空间放大",
+        "tooltip": "以请求的分辨率渲染基础样本,然后通过 Lightricks/LTX-Video-0.9.5-spatial-upscaler 以 2 倍空间分辨率精炼。帧预算增长 ~1.5 倍。微细节更清晰、运动边缘更干净;默认关闭,因为耗时代价真实存在。"
+      },
+      "enhancePrompt": {
+        "label": "自动增强短提示词",
+        "tooltip": "当提示词少于 25 个词时,附加模型调优的结构提示(电影感描述符、灯光、摄影指导)。扩散视频模型基于 50-100 个词的提示词训练,在较短输入上条件化不足。较长的自定义提示词原样发送 — 此阈值是保护措施。"
+      },
+      "cfgDecay": {
+        "label": "CFG 衰减",
+        "tooltip": "在第 0 步将 guidance_scale 从你的滑块值线性降至最终步的 1.5(保持 classifier-free guidance 端到端启用的下限)。流匹配视频模型 (Wan、LTX、HunyuanVideo) 在 CFG 整个采样过程中保持高位时容易过饱和;衰减让前期步骤锁定语义,后期步骤保留细节。视频默认开启 — 运行时自动隔离非流匹配 repo。"
+      },
+      "previewVae": {
+        "label": "预览 VAE",
+        "tooltip": "将完整 VAE 替换为对应的微型 VAE(Wan 用 madebyollin/taew2_2、LTX 用 taeltx2_3_wide、HunyuanVideo 用 taehv1_5、其他用 taecogvideox / taemochi),使每一步解码耗时仅为原来的一小部分。以最终保真度换取迭代速度。默认关闭;后端会在没有映射微型 VAE 的 repo 上静默禁用。"
+      },
+      "fp8Layerwise": {
+        "label": "FP8 逐层 (CUDA Ada+)",
+        "tooltip": "diffusers 的 enable_layerwise_casting。系列正确的 dtype:HunyuanVideo 使用 E5M2,Wan / LTX / FLUX / Qwen-Image 使用 E4M3。后端在应用前检查 GPU 计算能力 — 前 Ada GPU 缺少硬件 fp8,会跳过并附带 runtimeNote。最佳搭配是与 GGUF 或 Nunchaku 量化路径叠加,以获得最小 VRAM 占用。"
+      }
+    },
+    "diffusionCache": {
+      "label": "扩散缓存",
+      "tooltip": "通过在相似时间步之间复用 transformer 块输出来加速生成。First Block Cache 适用于所有 DiT 管线 (Wan、LTX、Hunyuan、CogVideoX、Mochi),支持 macOS / Windows / Linux。TeaCache 仅适用于 FLUX 系列视频模型 (Hunyuan / LTX / CogVideoX / Mochi) — 对 Wan 隐藏,因为上游补丁针对不同的 transformer 布局。mlx-video LTX-2 子进程路径在 diffusers 钩子系统之外渲染,因此那里不可用缓存。",
+      "mlxSubprocessNote": "mlx-video LTX-2 在 diffusers 钩子系统之外作为子进程运行 — 此处不可用缓存策略。切换到 diffusers Wan / LTX / Hunyuan 变体以使用 First Block Cache。",
+      "wanNote": "Wan 的 TeaCache 已隐藏 — 其校准表针对不同的 transformer 布局。First Block Cache 通过 diffusers 0.36 的通用钩子覆盖 Wan。",
+      "threshold": "阈值 ({value})",
+      "thresholdTooltip": "越低 = 越严格(加速越少,质量漂移越少)。越高 = 缓存越积极。视频 DiT 比图像 DiT 对漂移更敏感,因此默认值更紧(0.08 vs 0.12)。"
+    },
+    "stgScale": {
+      "label": "STG 比例",
+      "tooltip": "Spatial-Temporal Guidance(空间-时间引导)。在 LTX-2 dev MLX 路径上为每个采样步添加额外的扰动 forward pass,以减少对象崩坏和色度漂移。1.0 匹配上游推荐的默认值;0.0 禁用,可使 dev 运行快约 33%,代价是轻微的质量损失。蒸馏管线运行固定采样器,会忽略此值。",
+      "distilledNote": "蒸馏管线运行固定采样器 — STG 会被忽略。切换到 dev 变体以使用此旋钮。"
+    },
+    "safety": {
+      "dangerTitle": "可能导致后端崩溃",
+      "warningTitle": "注意 — 在此设备上可能会吃力",
+      "applyTitle": "应用 {label}",
+      "useSafer": "使用更安全的设置 ({label})",
+      "browseSmaller": "浏览更小的模型",
+      "overrideAck": "允许高风险生成 — 我接受后端可能崩溃,并且我的机器可能需要重启。"
+    },
+    "disabledHint": "生成已禁用:{reason}",
+    "willLoadHint": "所选模型将在下次生成时加载到内存。大型变体的首次加载可能需要一分钟。"
   }
 }

@@ -934,5 +934,50 @@
         "detail": "콜드 스타트 임포트가 평소보다 더 오래 걸리고 있습니다. 2분 이상 중단되면 종료 후 다시 여세요 — 오래된 매니페스트가 재추출을 강제할 수 있습니다."
       }
     }
+  },
+  "imageDiscover": {
+    "sortLabel": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "큰 크기 순",
+      "ram": "높은 RAM/VRAM 순",
+      "likes": "좋아요 많은 순",
+      "downloads": "다운로드 많은 순",
+      "status": "상태",
+      "release": "최신 출시 순"
+    },
+    "status": {
+      "installed": "설치됨",
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "failed": "실패",
+      "failedDetail": "다운로드 실패",
+      "incomplete": "불완전",
+      "notInstalled": "설치되지 않음"
+    }
+  },
+  "videoDiscover": {
+    "sortLabel": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "큰 크기 순",
+      "ram": "높은 RAM/VRAM 순",
+      "likes": "좋아요 많은 순",
+      "downloads": "다운로드 많은 순",
+      "status": "상태",
+      "release": "최신 출시 순"
+    },
+    "status": {
+      "installed": "설치됨",
+      "installing": "설치 중",
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "failed": "실패",
+      "failedDetail": "다운로드 실패",
+      "incomplete": "불완전",
+      "notInstalled": "설치되지 않음"
+    }
   }
 }

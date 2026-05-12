@@ -73,5 +73,11 @@
       "title": "Disponibilidad del backend",
       "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizable: {mlxUsable} / Runtime GGUF: {gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "Objetivo recomendado: clase {modelSize} @ {cacheLabel}",
+    "mlxDetail": "Esta previsión es relativa a un objetivo local recomendado de clase {modelSize} en {hardware}, no a un modelo de chat actualmente seleccionado.",
+    "ggufTitle": "Objetivo recomendado: {modelSize} GGUF",
+    "ggufDetail": "El modo multiplataforma preferirá llama.cpp GGUF para amplio soporte de hardware."
   }
 }

@@ -73,5 +73,11 @@
       "title": "Backend readiness",
       "detail": "MLX installed: {mlx} / mlx-lm installed: {mlxLm} / MLX usable: {mlxUsable} / GGUF runtime: {gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "Recommended target: {modelSize} class @ {cacheLabel}",
+    "mlxDetail": "This forecast is relative to a recommended {modelSize} class local target on {hardware}, not a currently selected chat model.",
+    "ggufTitle": "Recommended target: {modelSize} GGUF",
+    "ggufDetail": "Cross-platform mode will prefer llama.cpp GGUF for broad hardware support."
   }
 }

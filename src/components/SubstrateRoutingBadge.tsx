@@ -140,16 +140,25 @@ function buildChips(metrics: GenerationMetrics, t: TFunction | typeof defaultTra
  * notice. The boring "which library versions ran" prefix is always
  * present and not actionable; the warn tone should fire only when a
  * substantive issue appears later in the same string.
+ *
+ * Cache-strategy fall-backs and `Cache strategy failed (…)` lines are
+ * deliberately NOT warnings — they're informational notes about the
+ * runtime gracefully degrading to native f16. Operators wanted the
+ * orange chip muted for these because every chat turn was lighting up
+ * the badge for what is fundamentally a normal fallback.
  */
 export function runtimeNoteIsWarning(note: string): boolean {
   const lowered = note.toLowerCase();
+  // "Cache strategy failed (...)" / "Fell back to native f16 cache." are
+  // informational fall-back notes — treat them as default-tone so the
+  // chip doesn't shout for every routine fallback.
+  if (lowered.includes("cache strategy failed") || lowered.includes("fell back to native")) {
+    return false;
+  }
   const warningTokens = [
     "unavailable",
-    "fell back",
-    "fall back",
-    "fallback",
-    "failed",
     "error",
+    "failed to load",
     " not applied",
     " not supported",
     "warning",

@@ -88,5 +88,43 @@
     "currentModelLabel": "현재 모델:",
     "supportedVia": "{model}을 통해 지원됨",
     "compatibilityUnresolved": "호환성이 아직 확인되지 않았습니다."
+  },
+  "presets": {
+    "quality": {
+      "label": "최고 품질",
+      "hint": "코딩 및 추론"
+    },
+    "balanced": {
+      "label": "균형",
+      "hint": "일반 채팅"
+    },
+    "speed": {
+      "label": "최고 속도",
+      "hint": "빠른 반복"
+    },
+    "memory": {
+      "label": "최소 메모리",
+      "hint": "빠듯한 RAM"
+    }
+  },
+  "sliders": {
+    "context": "컨텍스트",
+    "maxTokens": "최대 토큰",
+    "temperature": "온도"
+  },
+  "fitInMemory": {
+    "body": "메모리에 맞추기는 ChaosEngineAI가 모델과 KV 캐시를 사용 가능한 메모리 내에 유지하는 런타임/캐시 프로필을 선택하도록 요청합니다. 더 크거나 적극적인 프로필을 강제하고 스와핑이나 로드 실패 가능성을 받아들이려는 경우에만 비활성화하세요."
+  },
+  "cacheFit": {
+    "mayNotFit": "맞지 않을 수 있음",
+    "modelMayNotFit": "모델이 맞지 않을 수 있음",
+    "fitsEasily": "쉽게 맞음",
+    "tightFit": "빠듯하게 맞음",
+    "contextMayNotFit": "전체 컨텍스트가 맞지 않을 수 있음"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "모델 가중치만으로도 예상 사용 가능 RAM을 초과합니다. 더 작은 모델이나 더 적극적인 양자화를 선택하세요.",
+    "nativeF16TooBig": "모델은 로드될 수 있지만 이 컨텍스트에서 전체 네이티브 f16 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 압축 전략을 선택하세요.",
+    "compressedTooBig": "모델은 로드될 수 있지만 선택한 컨텍스트 캐시는 스레드가 채워지면서 시스템 RAM을 초과할 수 있습니다. 컨텍스트를 낮추거나 FP16 레이어를 줄이세요."
   }
 }

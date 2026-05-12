@@ -88,5 +88,43 @@
     "currentModelLabel": "現在のモデル:",
     "supportedVia": "{model} 経由でサポート",
     "compatibilityUnresolved": "互換性はまだ確認されていません。"
+  },
+  "presets": {
+    "quality": {
+      "label": "最高品質",
+      "hint": "コーディングと推論"
+    },
+    "balanced": {
+      "label": "バランス",
+      "hint": "一般チャット"
+    },
+    "speed": {
+      "label": "最高速度",
+      "hint": "高速反復"
+    },
+    "memory": {
+      "label": "最小メモリ",
+      "hint": "メモリ逼迫"
+    }
+  },
+  "sliders": {
+    "context": "コンテキスト",
+    "maxTokens": "最大トークン",
+    "temperature": "温度"
+  },
+  "fitInMemory": {
+    "body": "メモリに収めるは、モデルと KV キャッシュを利用可能なメモリ内に保つランタイム/キャッシュプロファイルを ChaosEngineAI が選択するよう指示します。より大きくまたはより積極的なプロファイルを強制し、スワップやロード失敗の可能性を受け入れる場合にのみ無効にしてください。"
+  },
+  "cacheFit": {
+    "mayNotFit": "収まらない可能性",
+    "modelMayNotFit": "モデルが収まらない可能性",
+    "fitsEasily": "余裕で収まる",
+    "tightFit": "ギリギリ収まる",
+    "contextMayNotFit": "完全なコンテキストは収まらない可能性"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "モデルの重みだけで推定使用可能 RAM を超えています。より小さなモデルまたはより積極的な量子化を選択してください。",
+    "nativeF16TooBig": "モデルは読み込めますが、このコンテキストでの完全なネイティブ f16 キャッシュはスレッドが満たされるにつれてシステム RAM を超える可能性があります。コンテキストを下げるか、圧縮戦略を選択してください。",
+    "compressedTooBig": "モデルは読み込めますが、選択したコンテキストキャッシュはスレッドが満たされるにつれてシステム RAM を超える可能性があります。コンテキストを下げるか FP16 レイヤーを減らしてください。"
   }
 }

@@ -88,5 +88,43 @@
     "currentModelLabel": "Modelo actual:",
     "supportedVia": "Compatible vía {model}",
     "compatibilityUnresolved": "Compatibilidad aún no resuelta."
+  },
+  "presets": {
+    "quality": {
+      "label": "Máx. calidad",
+      "hint": "Código y razonamiento"
+    },
+    "balanced": {
+      "label": "Equilibrado",
+      "hint": "Chat general"
+    },
+    "speed": {
+      "label": "Máx. velocidad",
+      "hint": "Iteración rápida"
+    },
+    "memory": {
+      "label": "Mín. memoria",
+      "hint": "RAM ajustada"
+    }
+  },
+  "sliders": {
+    "context": "Contexto",
+    "maxTokens": "Tokens máx.",
+    "temperature": "Temperatura"
+  },
+  "fitInMemory": {
+    "body": "Caber en memoria pide a ChaosEngineAI elegir un perfil de runtime/caché que mantenga el modelo y el caché KV dentro de la memoria disponible. Desactívalo solo cuando quieras forzar un perfil más grande o agresivo y aceptes posibles intercambios o fallos de carga."
+  },
+  "cacheFit": {
+    "mayNotFit": "Puede no caber",
+    "modelMayNotFit": "Modelo puede no caber",
+    "fitsEasily": "Cabe fácilmente",
+    "tightFit": "Cabe ajustado",
+    "contextMayNotFit": "El contexto completo puede no caber"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Los pesos del modelo solos superan la RAM utilizable estimada. Elige un modelo más pequeño o una cuantización más agresiva.",
+    "nativeF16TooBig": "El modelo puede cargarse, pero un caché f16 nativo completo en este contexto puede superar la RAM del sistema a medida que el hilo se llena. Reduce el contexto o elige una estrategia comprimida.",
+    "compressedTooBig": "El modelo puede cargarse, pero el caché de contexto seleccionado puede superar la RAM del sistema a medida que el hilo se llena. Reduce el contexto o reduce las capas FP16."
   }
 }

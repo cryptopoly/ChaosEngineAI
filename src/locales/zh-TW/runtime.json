@@ -88,5 +88,43 @@
     "currentModelLabel": "目前模型:",
     "supportedVia": "透過 {model} 支援",
     "compatibilityUnresolved": "相容性尚未確定。"
+  },
+  "presets": {
+    "quality": {
+      "label": "最高品質",
+      "hint": "程式與推理"
+    },
+    "balanced": {
+      "label": "平衡",
+      "hint": "一般對話"
+    },
+    "speed": {
+      "label": "最快速度",
+      "hint": "快速迭代"
+    },
+    "memory": {
+      "label": "最小記憶體",
+      "hint": "緊湊記憶體"
+    }
+  },
+  "sliders": {
+    "context": "上下文",
+    "maxTokens": "最大 tokens",
+    "temperature": "溫度"
+  },
+  "fitInMemory": {
+    "body": "適配記憶體讓 ChaosEngineAI 選擇一個將模型和 KV 快取控制在可用記憶體內的執行階段/快取設定檔。僅當您希望強制使用更大或更積極的設定檔並接受可能的交換或載入失敗時才停用此選項。"
+  },
+  "cacheFit": {
+    "mayNotFit": "可能不適配",
+    "modelMayNotFit": "模型可能不適配",
+    "fitsEasily": "輕鬆適配",
+    "tightFit": "緊湊適配",
+    "contextMayNotFit": "完整上下文可能不適配"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "僅模型權重就超出預估可用記憶體。請選擇更小的模型或更積極的量化。",
+    "nativeF16TooBig": "模型可以載入,但在此上下文下完整的原生 f16 快取可能在執行緒填充時超出系統記憶體。降低上下文或選擇壓縮策略。",
+    "compressedTooBig": "模型可以載入,但所選上下文快取可能在執行緒填充時超出系統記憶體。降低上下文或減少 FP16 層數。"
   }
 }

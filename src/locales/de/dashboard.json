@@ -73,5 +73,11 @@
       "title": "Backend-Bereitschaft",
       "detail": "MLX installiert: {mlx} / mlx-lm installiert: {mlxLm} / MLX nutzbar: {mlxUsable} / GGUF-Laufzeit: {gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "Empfohlenes Ziel: {modelSize}-Klasse @ {cacheLabel}",
+    "mlxDetail": "Diese Prognose bezieht sich auf ein empfohlenes lokales {modelSize}-Klasse-Ziel auf {hardware}, nicht auf ein aktuell ausgewähltes Chat-Modell.",
+    "ggufTitle": "Empfohlenes Ziel: {modelSize} GGUF",
+    "ggufDetail": "Plattformübergreifender Modus bevorzugt llama.cpp GGUF für breite Hardware-Unterstützung."
   }
 }

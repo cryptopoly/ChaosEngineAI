@@ -186,8 +186,16 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
       <Panel title={t("hardwareFit.title")} subtitle={t("hardwareFit.subtitle")}>
         <div className="callout">
           <span className="badge accent">{t("hardwareFit.recommendedTarget")}</span>
-          <h3>{recommendation.title}</h3>
-          <p>{recommendation.detail}</p>
+          <h3>
+            {recommendation.titleKey
+              ? t(recommendation.titleKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.title })
+              : recommendation.title}
+          </h3>
+          <p>
+            {recommendation.detailKey
+              ? t(recommendation.detailKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.detail })
+              : recommendation.detail}
+          </p>
         </div>
         <ProgressRow
           label={t("liveStats.headroomFor", { target: recommendation.targetModel })}

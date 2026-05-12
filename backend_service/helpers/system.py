@@ -237,11 +237,22 @@ def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
             f"This forecast is relative to a recommended {model_size} class local target on "
             f"{system_stats['hardwareSummary']}, not a currently selected chat model."
         )
+        # FU-042: structured i18n keys + payload for frontend translation.
+        title_key = "recommendation.mlxTitle"
+        detail_key = "recommendation.mlxDetail"
+        payload = {
+            "modelSize": model_size,
+            "cacheLabel": cache_label,
+            "hardware": system_stats["hardwareSummary"],
+        }
     else:
         title = f"Recommended target: {model_size} GGUF"
         detail = (
             "Cross-platform mode will prefer llama.cpp GGUF for broad hardware support."
         )
+        title_key = "recommendation.ggufTitle"
+        detail_key = "recommendation.ggufDetail"
+        payload = {"modelSize": model_size}
 
     return {
         "title": title,
@@ -249,4 +260,7 @@ def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
         "targetModel": model_size,
         "cacheLabel": cache_label,
         "headroomPercent": headroom_percent,
+        "titleKey": title_key,
+        "detailKey": detail_key,
+        "payload": payload,
     }

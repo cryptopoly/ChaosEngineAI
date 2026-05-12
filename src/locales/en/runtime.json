@@ -88,5 +88,31 @@
     "currentModelLabel": "Current model:",
     "supportedVia": "Supported via {model}",
     "compatibilityUnresolved": "Compatibility not resolved yet."
+  },
+  "presets": {
+    "quality": { "label": "Max Quality", "hint": "Coding & reasoning" },
+    "balanced": { "label": "Balanced", "hint": "General chat" },
+    "speed": { "label": "Max Speed", "hint": "Fast iteration" },
+    "memory": { "label": "Min Memory", "hint": "Tight RAM" }
+  },
+  "sliders": {
+    "context": "Context",
+    "maxTokens": "Max tokens",
+    "temperature": "Temperature"
+  },
+  "fitInMemory": {
+    "body": "Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure."
+  },
+  "cacheFit": {
+    "mayNotFit": "May not fit",
+    "modelMayNotFit": "Model may not fit",
+    "fitsEasily": "Fits easily",
+    "tightFit": "Tight fit",
+    "contextMayNotFit": "Full context may not fit"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Model weights alone exceed estimated usable RAM. Pick a smaller model or a more aggressive quantisation.",
+    "nativeF16TooBig": "The model can load, but a full native f16 cache at this context may exceed system RAM as the thread fills. Lower context, or pick a compressed strategy.",
+    "compressedTooBig": "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers."
   }
 }

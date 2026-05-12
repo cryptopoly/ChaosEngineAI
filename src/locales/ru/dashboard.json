@@ -73,5 +73,11 @@
       "title": "Готовность бэкенда",
       "detail": "MLX установлен: {mlx} / mlx-lm установлен: {mlxLm} / MLX работает: {mlxUsable} / GGUF среда: {gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "Рекомендуемая цель: класс {modelSize} @ {cacheLabel}",
+    "mlxDetail": "Этот прогноз относится к рекомендуемой локальной цели класса {modelSize} на {hardware}, а не к текущей выбранной модели чата.",
+    "ggufTitle": "Рекомендуемая цель: {modelSize} GGUF",
+    "ggufDetail": "Кросс-платформенный режим предпочитает llama.cpp GGUF для широкой аппаратной поддержки."
   }
 }

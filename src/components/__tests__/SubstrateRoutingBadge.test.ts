@@ -97,11 +97,11 @@ describe("SubstrateRoutingBadge buildChips", () => {
     expect(chips.find((c) => c.key === "note")?.tone).toBe("warn");
   });
 
-  it("uses warn tone when the cache strategy fell back", () => {
+  it("uses default tone for cache-strategy fallbacks (informational, not user-action)", () => {
     const chips = buildChips(makeMetrics({
       runtimeNote: "Using python with MLX 0.31.2 and mlx-lm 0.31.3. Cache strategy failed ('tuple'). Fell back to native f16 cache.",
     }));
-    expect(chips.find((c) => c.key === "note")?.tone).toBe("warn");
+    expect(chips.find((c) => c.key === "note")?.tone).toBe("default");
   });
 });
 
@@ -114,12 +114,9 @@ describe("runtimeNoteIsWarning", () => {
     expect(runtimeNoteIsWarning("DFLASH unavailable for 'foo/bar'.")).toBe(true);
   });
 
-  it("returns true when 'fell back' appears", () => {
-    expect(runtimeNoteIsWarning("Cache strategy failed. Fell back to native f16 cache.")).toBe(true);
-  });
-
-  it("returns true when 'failed' appears", () => {
-    expect(runtimeNoteIsWarning("Cache strategy failed.")).toBe(true);
+  it("returns false for cache-strategy fallbacks (informational, not user-action-required)", () => {
+    expect(runtimeNoteIsWarning("Cache strategy failed. Fell back to native f16 cache.")).toBe(false);
+    expect(runtimeNoteIsWarning("Cache strategy failed.")).toBe(false);
   });
 
   it("returns true when 'error' appears", () => {
@@ -127,7 +124,7 @@ describe("runtimeNoteIsWarning", () => {
   });
 
   it("is case-insensitive", () => {
-    expect(runtimeNoteIsWarning("WARNING: cache fallback")).toBe(true);
+    expect(runtimeNoteIsWarning("WARNING: unavailable")).toBe(true);
   });
 
   it("returns false for empty string", () => {

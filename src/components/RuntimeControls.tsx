@@ -11,14 +11,16 @@ import {
 
 const LAUNCH_PRESETS: Array<{
   id: string;
-  label: string;
-  hint: string;
+  labelKey: string;
+  labelFallback: string;
+  hintKey: string;
+  hintFallback: string;
   values: Partial<LaunchPreferences>;
 }> = [
-  { id: "quality", label: "Max Quality", hint: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
-  { id: "balanced", label: "Balanced", hint: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
-  { id: "speed", label: "Max Speed", hint: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
-  { id: "memory", label: "Min Memory", hint: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
+  { id: "quality", labelKey: "presets.quality.label", labelFallback: "Max Quality", hintKey: "presets.quality.hint", hintFallback: "Coding & reasoning", values: { contextTokens: 32768, fusedAttention: false, fitModelInMemory: true, maxTokens: 8192 } },
+  { id: "balanced", labelKey: "presets.balanced.label", labelFallback: "Balanced", hintKey: "presets.balanced.hint", hintFallback: "General chat", values: { contextTokens: 16384, fusedAttention: false, fitModelInMemory: true, maxTokens: 4096 } },
+  { id: "speed", labelKey: "presets.speed.label", labelFallback: "Max Speed", hintKey: "presets.speed.hint", hintFallback: "Fast iteration", values: { contextTokens: 8192, fusedAttention: true, fitModelInMemory: true, maxTokens: 2048 } },
+  { id: "memory", labelKey: "presets.memory.label", labelFallback: "Min Memory", hintKey: "presets.memory.hint", hintFallback: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
 ];
 
 const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string }> = {
@@ -482,8 +484,8 @@ export function RuntimeControls({
             type="button"
             onClick={() => applyPreset(preset.id)}
           >
-            <strong>{preset.label}</strong>
-            <small>{preset.hint}</small>
+            <strong>{t(preset.labelKey, { defaultValue: preset.labelFallback })}</strong>
+            <small>{t(preset.hintKey, { defaultValue: preset.hintFallback })}</small>
           </button>
         ))}
       </div>
@@ -509,7 +511,7 @@ export function RuntimeControls({
           />
         ) : null}
         <SliderField
-          label="Context"
+          label={t("sliders.context", { defaultValue: "Context" })}
           value={clampedContext}
           min={contextMin} max={effectiveMaxContext} step={contextStep}
           ticks={contextTicksFor(effectiveMaxContext)}
@@ -517,7 +519,7 @@ export function RuntimeControls({
           onChange={(v) => onChange("contextTokens", Math.min(v, effectiveMaxContext))}
         />
         <SliderField
-          label="Max tokens"
+          label={t("sliders.maxTokens", { defaultValue: "Max tokens" })}
           value={settings.maxTokens}
           min={256} max={32768} step={256}
           ticks={[
@@ -533,7 +535,7 @@ export function RuntimeControls({
         />
         {showTemperature ? (
           <SliderField
-            label="Temperature"
+            label={t("sliders.temperature", { defaultValue: "Temperature" })}
             value={settings.temperature}
             min={0} max={2} step={0.1}
             ticks={[{ value: 0, label: "0" }, { value: 0.5, label: "0.5" }, { value: 1, label: "1.0" }, { value: 1.5, label: "1.5" }, { value: 2, label: "2.0" }]}
@@ -564,7 +566,12 @@ export function RuntimeControls({
         </div>
         {expandedInfo === "fit-memory" ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
-            <p>Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.</p>
+            <p>
+              {t("fitInMemory.body", {
+                defaultValue:
+                  "Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.",
+              })}
+            </p>
           </div>
         ) : null}
         <div className="check-row">

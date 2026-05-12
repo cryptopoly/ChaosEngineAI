@@ -88,5 +88,43 @@
     "currentModelLabel": "当前模型:",
     "supportedVia": "通过 {model} 支持",
     "compatibilityUnresolved": "兼容性尚未确定。"
+  },
+  "presets": {
+    "quality": {
+      "label": "最高质量",
+      "hint": "编程与推理"
+    },
+    "balanced": {
+      "label": "平衡",
+      "hint": "通用对话"
+    },
+    "speed": {
+      "label": "最快速度",
+      "hint": "快速迭代"
+    },
+    "memory": {
+      "label": "最小内存",
+      "hint": "紧张内存"
+    }
+  },
+  "sliders": {
+    "context": "上下文",
+    "maxTokens": "最大 tokens",
+    "temperature": "温度"
+  },
+  "fitInMemory": {
+    "body": "适配内存让 ChaosEngineAI 选择一个将模型和 KV 缓存控制在可用内存内的运行时/缓存配置。仅当您希望强制使用更大或更激进的配置并接受可能的交换或加载失败时才禁用此选项。"
+  },
+  "cacheFit": {
+    "mayNotFit": "可能不适配",
+    "modelMayNotFit": "模型可能不适配",
+    "fitsEasily": "轻松适配",
+    "tightFit": "紧凑适配",
+    "contextMayNotFit": "完整上下文可能不适配"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "仅模型权重就超出预估可用内存。请选择更小的模型或更激进的量化。",
+    "nativeF16TooBig": "模型可以加载,但在此上下文下完整的原生 f16 缓存可能在线程填充时超出系统内存。降低上下文或选择压缩策略。",
+    "compressedTooBig": "模型可以加载,但所选上下文缓存可能在线程填充时超出系统内存。降低上下文或减少 FP16 层数。"
   }
 }

@@ -73,5 +73,11 @@
       "title": "État du backend",
       "detail": "MLX installé : {mlx} / mlx-lm installé : {mlxLm} / MLX utilisable : {mlxUsable} / Runtime GGUF : {gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "Cible recommandée : classe {modelSize} @ {cacheLabel}",
+    "mlxDetail": "Cette prévision est relative à une cible locale recommandée de classe {modelSize} sur {hardware}, pas à un modèle de chat actuellement sélectionné.",
+    "ggufTitle": "Cible recommandée : {modelSize} GGUF",
+    "ggufDetail": "Le mode multiplateforme préférera llama.cpp GGUF pour une prise en charge matérielle étendue."
   }
 }

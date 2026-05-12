@@ -88,5 +88,43 @@
     "currentModelLabel": "Aktuelles Modell:",
     "supportedVia": "Unterstützt über {model}",
     "compatibilityUnresolved": "Kompatibilität noch nicht aufgelöst."
+  },
+  "presets": {
+    "quality": {
+      "label": "Max. Qualität",
+      "hint": "Coding & Reasoning"
+    },
+    "balanced": {
+      "label": "Ausgewogen",
+      "hint": "Allgemeiner Chat"
+    },
+    "speed": {
+      "label": "Max. Geschwindigkeit",
+      "hint": "Schnelle Iteration"
+    },
+    "memory": {
+      "label": "Min. Speicher",
+      "hint": "Knapper RAM"
+    }
+  },
+  "sliders": {
+    "context": "Kontext",
+    "maxTokens": "Max. Tokens",
+    "temperature": "Temperatur"
+  },
+  "fitInMemory": {
+    "body": "In Speicher passen weist ChaosEngineAI an, ein Runtime-/Cache-Profil zu wählen, das Modell und KV-Cache im verfügbaren Speicher hält. Deaktiviere es nur, wenn du ein größeres oder aggressiveres Profil erzwingen und mögliches Swapping oder Ladefehler in Kauf nehmen willst."
+  },
+  "cacheFit": {
+    "mayNotFit": "Passt evtl. nicht",
+    "modelMayNotFit": "Modell passt evtl. nicht",
+    "fitsEasily": "Passt locker",
+    "tightFit": "Knapp",
+    "contextMayNotFit": "Voller Kontext passt evtl. nicht"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Modellgewichte allein überschreiten den geschätzten nutzbaren RAM. Wähle ein kleineres Modell oder eine aggressivere Quantisierung.",
+    "nativeF16TooBig": "Das Modell kann laden, aber ein voller nativer f16-Cache bei diesem Kontext kann den System-RAM überschreiten, sobald der Thread voll wird. Reduziere den Kontext oder wähle eine komprimierte Strategie.",
+    "compressedTooBig": "Das Modell kann laden, aber der gewählte Kontext-Cache kann den System-RAM überschreiten, sobald der Thread voll wird. Reduziere den Kontext oder verringere FP16-Schichten."
   }
 }

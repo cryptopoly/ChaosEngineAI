@@ -73,5 +73,11 @@
       "title": "バックエンドの準備状況",
       "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}"
     }
+  },
+  "recommendation": {
+    "mlxTitle": "推奨ターゲット:{modelSize} クラス @ {cacheLabel}",
+    "mlxDetail": "この予測は、{hardware} 上の推奨される {modelSize} クラスのローカルターゲットに対するものであり、現在選択されているチャットモデルに対するものではありません。",
+    "ggufTitle": "推奨ターゲット:{modelSize} GGUF",
+    "ggufDetail": "クロスプラットフォームモードでは、幅広いハードウェアサポートのため llama.cpp GGUF が優先されます。"
   }
 }

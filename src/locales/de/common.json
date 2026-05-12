@@ -232,5 +232,19 @@
         "measure": "Statistiken werden gemessen"
       }
     }
+  },
+  "languagePanel": {
+    "title": "Einstellungen",
+    "subtitle": "Wählen Sie die Sprache der App und das Format der Uhrzeiten. Neue Auswahlen wirken sofort und werden mit den anderen Einstellungen gespeichert.",
+    "label": "Sprache",
+    "systemDefault": "Systemstandard",
+    "helpText": "Jede Sprache wird in ihrer eigenen Schrift gezeigt — wählen Sie die Zeile, die sich für Sie natürlich liest. Fehlende Übersetzungen fallen automatisch auf Englisch zurück; wenn Sie etwas Falsches sehen, führt der Link unten direkt zur JSON-Datei auf GitHub, damit Sie eine Korrektur vorschlagen können.",
+    "clockFormatAria": "Uhrzeitformat",
+    "clockSystem": "System",
+    "clock12h": "12 Stunden",
+    "clock24h": "24 Stunden",
+    "clockHint": "System folgt dem Standard Ihrer Sprache (12 Stunden für US-Englisch, 24 Stunden sonst). Wählen Sie eine Seite, wenn Sie dies überschreiben möchten.",
+    "helpImprove": "Übersetzungen verbessern",
+    "openOnGithub": "{locale} auf GitHub öffnen →"
   }
 }

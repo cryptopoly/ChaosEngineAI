@@ -232,5 +232,19 @@
         "measure": "正在測量統計資料"
       }
     }
+  },
+  "languagePanel": {
+    "title": "設定",
+    "subtitle": "選擇應用程式使用的語言以及時間顯示方式。新選擇會立即套用，並隨其他設定一起儲存。",
+    "label": "語言",
+    "systemDefault": "系統預設",
+    "helpText": "每種語言都以其自身文字顯示——選擇您覺得最自然的那一行。缺失的翻譯會自動回退為英文；如發現問題，下方連結會直接跳轉到 GitHub 上的 JSON 檔案，便於您提交修正。",
+    "clockFormatAria": "時間格式",
+    "clockSystem": "系統",
+    "clock12h": "12 小時制",
+    "clock24h": "24 小時制",
+    "clockHint": "系統遵循您語言的預設設定（美式英語為 12 小時制，其他為 24 小時制）。如想覆寫，請選擇其中一項。",
+    "helpImprove": "協助改進翻譯",
+    "openOnGithub": "在 GitHub 上開啟 {locale} →"
   }
 }

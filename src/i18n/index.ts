@@ -165,21 +165,38 @@ const enBundles: Record<Namespace, unknown> = {
 loadedBundles.set("en", enBundles);
 
 /**
- * Dynamically load a locale's namespace bundles via ``import()`` so
- * they're code-split into their own chunks.  Returns silently on miss
- * (file not present yet for unfinished locales) and lets i18next's
- * ``fallbackLng: 'en'`` cover the gap at render time.
+ * Eagerly resolve every locale's JSON catalogs at build time via
+ * ``import.meta.glob`` so Vite emits them as static assets the bundle
+ * actually contains.
+ *
+ * The previous implementation used ``import(\`../locales/${locale}/${ns}.json\`)``
+ * with a ``/* @vite-ignore *\/`` comment, which told Vite *not* to
+ * analyse the path — so the production build never emitted the
+ * per-locale chunks.  At runtime the dynamic import then 404'd inside
+ * the packaged app and ``i18n.addResourceBundle`` was never called,
+ * which fell back to en for every key.  Switching to
+ * ``import.meta.glob`` keeps the catalogs lazy-loaded (each file is
+ * its own chunk, loaded only when the locale is picked) but lets Vite
+ * see + emit them.
  */
+const LOCALE_GLOB = import.meta.glob("../locales/*/*.json") as Record<
+  string,
+  () => Promise<{ default: unknown }>
+>;
+
 async function loadLocale(locale: SupportedLocale): Promise<void> {
   if (loadedBundles.has(locale)) return;
   const bundles: Partial<Record<Namespace, unknown>> = {};
   await Promise.all(
     NAMESPACES.map(async (ns) => {
+      const key = `../locales/${locale}/${ns}.json`;
+      const loader = LOCALE_GLOB[key];
+      if (!loader) return; // Locale file not present yet — fallback to en at runtime.
       try {
-        const mod = await import(/* @vite-ignore */ `../locales/${locale}/${ns}.json`);
+        const mod = await loader();
         bundles[ns] = mod.default ?? mod;
       } catch {
-        // Locale file not present yet — fallback to en at runtime.
+        // Parse / network error — fallback to en at runtime.
       }
     }),
   );

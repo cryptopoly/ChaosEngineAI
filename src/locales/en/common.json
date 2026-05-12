@@ -232,5 +232,19 @@
         "measure": "Measuring stats"
       }
     }
+  },
+  "languagePanel": {
+    "title": "Settings",
+    "subtitle": "Choose the language used across the app and how clock times are shown. New choices apply immediately and save with your other settings.",
+    "label": "Language",
+    "systemDefault": "System default",
+    "helpText": "Each language is shown in its own writing — choose the row that reads naturally to you. Missing translations fall back to English automatically; if you spot something off, the link below jumps straight to the JSON file on GitHub so you can suggest a fix.",
+    "clockFormatAria": "Clock format",
+    "clockSystem": "System",
+    "clock12h": "12-hour",
+    "clock24h": "24-hour",
+    "clockHint": "System follows your language's default (12-hour for US English, 24-hour elsewhere). Pick a side if you'd rather override that.",
+    "helpImprove": "Help improve translations",
+    "openOnGithub": "Open {locale} on GitHub →"
   }
 }

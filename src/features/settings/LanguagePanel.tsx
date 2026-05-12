@@ -92,19 +92,22 @@ export function LanguagePanel({
 
   return (
     <Panel
-      title={t("tabs.settings")}
-      subtitle="Choose the language used across the app and how clock times are shown. New choices apply immediately and save with your other settings."
+      title={t("languagePanel.title", { defaultValue: "Settings" })}
+      subtitle={t("languagePanel.subtitle", {
+        defaultValue:
+          "Choose the language used across the app and how clock times are shown. New choices apply immediately and save with your other settings.",
+      })}
     >
       <div className="control-stack">
         <label className="field-row" htmlFor="settings-language-select">
-          <span className="field-label">Language</span>
+          <span className="field-label">{t("languagePanel.label", { defaultValue: "Language" })}</span>
           <select
             id="settings-language-select"
             className="text-input"
             value={selected}
             onChange={(event) => handleLocaleChange(event.target.value)}
           >
-            <option value="system">System default</option>
+            <option value="system">{t("languagePanel.systemDefault", { defaultValue: "System default" })}</option>
             {locales.map((entry) => (
               <option key={entry.code} value={entry.code}>
                 {entry.endonym}
@@ -113,12 +116,17 @@ export function LanguagePanel({
           </select>
         </label>
         <p className="help-text">
-          Each language is shown in its own writing — choose the row that reads naturally to you. Missing
-          translations fall back to English automatically; if you spot something off, the link below jumps
-          straight to the JSON file on GitHub so you can suggest a fix.
+          {t("languagePanel.helpText", {
+            defaultValue:
+              "Each language is shown in its own writing — choose the row that reads naturally to you. Missing translations fall back to English automatically; if you spot something off, the link below jumps straight to the JSON file on GitHub so you can suggest a fix.",
+          })}
         </p>
 
-        <div className="segmented" role="radiogroup" aria-label="Clock format">
+        <div
+          className="segmented"
+          role="radiogroup"
+          aria-label={t("languagePanel.clockFormatAria", { defaultValue: "Clock format" })}
+        >
           {(["system", "12h", "24h"] as const).map((mode) => (
             <button
               key={mode}
@@ -128,17 +136,25 @@ export function LanguagePanel({
               className={settingsDraft.clockFormat === mode ? "segment active" : "segment"}
               onClick={() => handleClockChange(mode)}
             >
-              {mode === "system" ? "System" : mode === "12h" ? "12-hour" : "24-hour"}
+              {mode === "system"
+                ? t("languagePanel.clockSystem", { defaultValue: "System" })
+                : mode === "12h"
+                  ? t("languagePanel.clock12h", { defaultValue: "12-hour" })
+                  : t("languagePanel.clock24h", { defaultValue: "24-hour" })}
             </button>
           ))}
         </div>
         <p className="help-text">
-          <strong>System</strong> follows your language's default (12-hour for US English, 24-hour
-          elsewhere). Pick a side if you'd rather override that.
+          {t("languagePanel.clockHint", {
+            defaultValue:
+              "System follows your language's default (12-hour for US English, 24-hour elsewhere). Pick a side if you'd rather override that.",
+          })}
         </p>
 
         <div className="field-row">
-          <span className="field-label">Help improve translations</span>
+          <span className="field-label">
+            {t("languagePanel.helpImprove", { defaultValue: "Help improve translations" })}
+          </span>
           <div className="row-gap">
             <a
               className="link-button"
@@ -146,7 +162,10 @@ export function LanguagePanel({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open {activeLocale || "en"} on GitHub →
+              {t("languagePanel.openOnGithub", {
+                locale: activeLocale || "en",
+                defaultValue: `Open ${activeLocale || "en"} on GitHub →`,
+              })}
             </a>
             <button
               type="button"

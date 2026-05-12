@@ -25,11 +25,17 @@ mod probe;
 use probe::port_responding;
 mod lease;
 // FU-042: rust-i18n compile-time message catalogs for native menu /
-// tray / updater strings.  The `i18n!()` macro inside `i18n.rs` walks
+// tray / updater strings.  The `i18n!()` macro walks
 // `src-tauri/locales/*.yml` so the bundle is materialised once at
 // binary start; runtime calls to `i18n::set_locale("zh-CN")` flip the
 // active tag.  Wired through to the React layer via the Tauri command
 // `set_app_locale` (added alongside the Settings → Language dropdown).
+//
+// NOTE: `rust_i18n::i18n!` MUST live at crate root — the macro emits
+// `_rust_i18n_t` here and `t!()` resolves it via `crate::_rust_i18n_t`.
+// Calling `i18n!()` inside the `i18n` submodule places the symbol in
+// the wrong namespace and `t!()` then fails to resolve at compile time.
+rust_i18n::i18n!("locales", fallback = "en");
 mod i18n;
 
 #[derive(Clone, Serialize)]

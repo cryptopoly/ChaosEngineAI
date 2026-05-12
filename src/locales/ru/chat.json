@@ -121,7 +121,54 @@
     "historyPlaceholder": "Поиск предыдущих челленджей...",
     "moveToTrash": "В корзину",
     "moveToTrashAria": "Переместить «{title}» в корзину",
-    "noMatching": "Подходящих челленджей нет."
+    "noMatching": "Подходящих челленджей нет.",
+    "layoutToggleAria": "Раскладка HTML-челленджа",
+    "layoutRow": "Строка",
+    "thisChallengeFallback": "этот челлендж",
+    "deleteConfirm": "Переместить «{title}» в папку .trash? При необходимости вы можете восстановить его с диска.",
+    "actions": {
+      "newChallenge": "Новый челлендж",
+      "openFolder": "Открыть папку",
+      "openSettings": "Открыть настройки",
+      "addModel": "Добавить модель",
+      "cancel": "Отмена",
+      "usePromptInNewChallenge": "Использовать промпт в новом челлендже",
+      "runChallenge": "Запустить челлендж",
+      "runNewChallenge": "Запустить новый челлендж"
+    },
+    "status": {
+      "generating": "Генерация...",
+      "queuedRetry": "Повтор в очереди...",
+      "queuedContinuation": "Продолжение в очереди...",
+      "queuedRepair": "Восстановление в очереди..."
+    },
+    "errors": {
+      "deleteFailed": "Не удалось удалить челлендж.",
+      "challengeFailed": "Челлендж не удался",
+      "retryFailed": "Повтор не удался",
+      "repairFailed": "Восстановление не удалось"
+    },
+    "modelCard": {
+      "selectAModel": "Выберите модель",
+      "thinking": "Размышление",
+      "thinkingOff": "Выкл",
+      "thinkingLow": "Низк",
+      "thinkingMed": "Сред",
+      "thinkingHigh": "Выс",
+      "temp": "Темп",
+      "seed": "Сид",
+      "seedPlaceholder": "случайный",
+      "randomize": "Случайный",
+      "remove": "Удалить",
+      "change": "Изменить",
+      "select": "Выбрать"
+    },
+    "picker": {
+      "title": "Выбрать модель",
+      "titleForSlot": "Выбрать {slot}",
+      "confirm": "Использовать модель",
+      "confirmForSlot": "Использовать для {slot}"
+    }
   },
   "samplerPanel": {
     "label": "Сэмплеры",

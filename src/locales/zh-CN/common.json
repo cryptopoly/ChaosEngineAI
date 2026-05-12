@@ -246,5 +246,350 @@
     "clockHint": "系统遵循您语言的默认设置（美式英语为 12 小时制，其他为 24 小时制）。如想覆盖，请选择其中一项。",
     "helpImprove": "帮助改进翻译",
     "openOnGithub": "在 GitHub 上打开 {locale} →"
+  },
+  "imageOutputCard": {
+    "huggingFace": "Hugging Face",
+    "settings": "设置",
+    "stepsCount": "{count} 步",
+    "cfgLabel": "CFG {value}",
+    "seedLabel": "种子 {value}",
+    "durationSeconds": "{value} 秒",
+    "useSameSettings": "使用相同设置",
+    "varySeed": "变换种子",
+    "open": "打开",
+    "reveal": "在文件夹中显示",
+    "delete": "删除"
+  },
+  "benchmarkScatter": {
+    "emptyState": "运行一些基准测试以填充散点图。",
+    "xAxisLabel": "缓存 (GB) →",
+    "yAxisLabel": "↑ tokens/sec",
+    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% 质量",
+    "legend1Bit": "1 位",
+    "legend2Bit": "2 位",
+    "legend3Bit": "3 位",
+    "legend4Bit": "4 位",
+    "legendNativeF16": "原生 f16",
+    "legendDotSize": "点大小 = 质量 %"
+  },
+  "logprobSummary": {
+    "title": "token 置信度",
+    "statsTokensAvg": "{count} 个 token · 平均 logprob {avg}",
+    "statsLowConfidenceSuffix": " · {count} 个低置信度",
+    "empty": "没有低置信度的 token — 模型全程稳定。",
+    "hint": "发射概率低于约 5% 的 token。悬停以查看模型考虑过的最佳替代选项。",
+    "noAlternatives": "未记录替代项。",
+    "metricLogprob": "logprob {value}"
+  },
+  "liveProgress": {
+    "thumbnailAlt": "实时去噪预览",
+    "thumbnailCaption": "实时预览 · TAESD 解码",
+    "stepCounter": "第 {current} / {total} 步",
+    "inProgress": "进行中…",
+    "finalizing": "正在完成…",
+    "phaseTiming": "{elapsed} 秒 / ~{estimated} 秒"
+  },
+  "acceptedTokenOverlay": {
+    "title": "DDTree 接受率叠加层",
+    "stats": "{totalChars} 个字符中有 {percent}% 来自草稿被接受 · {spanCount} 个连续段",
+    "hint": "绿色区间 = 验证器无需重新解码即从草稿模型接受的 token。普通区间 = 验证器直接生成的 token。接受率越高，DDTree 节省的计算越多。",
+    "spanAcceptedTitle": "从草稿接受",
+    "spanVerifierTitle": "验证器解码"
+  },
+  "substrateRoutingBadge": {
+    "ariaLabel": "本轮的底层路由",
+    "engineTitle": "服务本轮的推理运行时 ({engine})",
+    "cacheTitle": "KV cache 策略 ({label})",
+    "specLabel": "DDTree",
+    "specLabelWithBudget": "DDTree {budget}",
+    "specTitle": "基于树的推测解码已激活",
+    "specTitleWithBudget": "基于树的推测解码已激活（每步预算 {budget} 个草稿 token）",
+    "acceptLabel": "平均接受 {value}",
+    "acceptTitle": "每步平均接受的草稿 token 数 ({value})"
+  },
+  "gpuCard": {
+    "heading": "GPU",
+    "vramLabel": "显存",
+    "vramValue": "{used} / {total} GB ({percent}%)",
+    "utilLabel": "利用率：",
+    "tempLabel": "温度：",
+    "tempValue": "{value}°C",
+    "powerLabel": "功耗：",
+    "powerValue": "{value}W"
+  },
+  "performancePreview": {
+    "heading": "性能预览",
+    "headlineDelta": "{value} GB",
+    "headlineLabel": "缓存节省 ({ratio}x 压缩)",
+    "baselineHeading": "基线 (FP16)",
+    "optimizedHeading": "已优化",
+    "cacheLabel": "缓存",
+    "speed": "速度",
+    "quality": "质量",
+    "baselineSpeedValue": "基线",
+    "baselineQualityValue": "100%",
+    "gbValue": "{value} GB",
+    "cacheDelta": "-{value} GB",
+    "tokensPerSec": "{value} tok/s",
+    "percentValue": "{value}%",
+    "bitsLabel": "{bits} 位",
+    "f16Label": "f16",
+    "diskStat": "磁盘：{value} GB",
+    "compressionStat": "{ratio}x 压缩",
+    "ramLabel": "内存",
+    "ramValue": "{used}/{total} GB",
+    "speedSlow": "慢",
+    "speedGood": "良好",
+    "speedFast": "快",
+    "speedVeryFast": "非常快"
+  },
+  "reasoningPanel": {
+    "label": "思考",
+    "labelStreaming": "思考中..."
+  },
+  "chatPerfStrip": {
+    "ariaLabel": "本轮的主机遥测",
+    "toksLabel": "{value} tok/s",
+    "toksTitle": "本轮的解码吞吐量 ({value} tokens/sec)",
+    "cpuLabel": "CPU {value}%",
+    "cpuTitle": "回合完成时的 CPU 利用率 ({value}%)",
+    "gpuLabel": "GPU {value}%",
+    "gpuTitle": "回合完成时的 GPU / 加速器利用率 ({value}%)",
+    "memLabel": "可用 {value} GB",
+    "memTitle": "回合完成时的可用内存 ({value} GB)",
+    "thermalLabel": "热状态：{state}",
+    "thermalTitle": "主机热状态 ({state})。严重表示正在主动降频。"
+  },
+  "videoStudioRuntimeBanner": {
+    "cudaTorchInstalledHeading": "CUDA torch 已安装。",
+    "cudaTorchRestartIntro": "正在运行的后端在模块缓存中仍持有旧的 torch。请重启后端以激活新版本",
+    "gpuNotActiveHeading": "GPU 加速未激活。",
+    "installingCudaTorch": "正在安装 CUDA torch...",
+    "installCudaTorch": "安装 CUDA torch",
+    "restartingButton": "正在重启...",
+    "restartBackendButton": "重启后端",
+    "restartBackendToActivate": "重启后端以激活",
+    "realEngineReady": "真实引擎就绪",
+    "fallbackActive": "回退已激活",
+    "cpuFallback": "CPU 回退",
+    "restartRequired": "需要重启",
+    "engineChip": "引擎：{engine}",
+    "deviceChip": "设备：{device}",
+    "deviceExpectedSuffix": "{device}（预期）",
+    "loadedChip": "已加载：{name}",
+    "mp4EncoderMissing": "缺少 mp4 编码器",
+    "depMissing": "缺少 {dependency}",
+    "longLiveReady": "LongLive 就绪",
+    "longLiveNotInstalled": "LongLive 未安装",
+    "mlxVideoNotInstalled": "mlx-video 未安装",
+    "mlxVideoScaffold": "mlx-video 脚手架",
+    "mlxVideoReady": "mlx-video 就绪",
+    "mlxVideoEngineChip": "引擎：mlx-video",
+    "longLiveDescription": "LongLive 在隔离的 venv 中运行，位于",
+    "longLiveDescriptionTail": "以避免其 CUDA 专用依赖与主运行时冲突。安装可能需要 10-20 分钟 — pip 依赖、可选的 flash-attn 构建，以及约 8 GB 的 HF 权重。",
+    "installingLongLive": "正在安装 LongLive...",
+    "installLongLive": "安装 LongLive",
+    "mlxVideoMissingFallback": "mlx-video 未安装。",
+    "mlxVideoDescription": "为 Apple Silicon 添加 Wan2.1 / Wan2.2 / LTX-2 的原生 MLX 视频生成 — 一旦生成路径就位，将比 diffusers+MPS 更快。",
+    "installingMlxVideo": "正在安装 mlx-video...",
+    "installMlxVideo": "安装 mlx-video",
+    "mp4EncoderPrompt": "视频生成需要 imageio + imageio-ffmpeg 来写入 mp4 文件。是否立即将它们安装到后端环境？",
+    "installing": "正在安装...",
+    "installMp4Encoder": "安装 mp4 编码器",
+    "tokenizerDepsIntro": "某些视频模型按需加载分词器 / 文本编码器包。以下缺失项将阻止生成：",
+    "tokenizerDepsOutro": "请立即安装以避免生成过程中出错。",
+    "installTokenizers": "安装分词器 ({count})",
+    "gpuRuntimeInstalledIntro": "GPU 运行时已安装至",
+    "gpuRuntimeInstalledOutro": "正在运行的后端仍保留旧的导入缓存 — 点击重启后端以激活新运行时，然后视频生成将使用它。",
+    "extrasFallback": "附加项",
+    "gpuRuntimeInstallPrompt": "视频生成需要 GPU 运行时包（torch + diffusers + tokenizers，约 2.5 GB）。一次安装即可 — 它写入到持久的用户本地目录，后续应用更新不会重新下载。",
+    "installingGpuRuntime": "正在安装 GPU 运行时...",
+    "installGpuRuntime": "安装 GPU 运行时"
+  },
+  "variantPickerButton": {
+    "compareButtonTitle": "与另一个热模型对比",
+    "popoverAriaLabel": "选择要对比的模型",
+    "heading": "对比对象",
+    "headingSubtitle": "添加来自另一个热模型的同级响应。",
+    "capVision": "视觉",
+    "capTools": "工具",
+    "capReasoning": "推理",
+    "capCoding": "代码"
+  },
+  "settingsTab": {
+    "sections": {
+      "general": "通用",
+      "storage": "存储",
+      "providers": "提供商",
+      "integrations": "集成",
+      "diagnostics": "诊断"
+    },
+    "sectionsAria": "设置分区",
+    "badges": {
+      "default": "默认"
+    },
+    "appearance": {
+      "title": "外观",
+      "subtitle": "选择侧边栏如何组织分组标签页。切换会立即生效，并在重启后保留。",
+      "sidebarStyleAria": "侧边栏样式",
+      "sidebarCollapsible": "可折叠",
+      "sidebarTabs": "标签页",
+      "sidebarCollapsibleHelp": "显示所有分组并展开，子项内联列出 — 每个目标一次点击。",
+      "sidebarTabsHelp": "保持侧边栏紧凑：分组的行为类似单个按钮，跳转到上次使用的标签页，并在内容上方显示子标签页栏。",
+      "uiScaleAria": "界面缩放",
+      "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。"
+    },
+    "dataDirectory": {
+      "title": "数据目录",
+      "subtitle": "ChaosEngineAI 存储对话历史、设置和基准测试运行的位置。改为云同步文件夹（Dropbox、iCloud）以跨机器备份或共享。",
+      "browseButton": "浏览...",
+      "resetButton": "重置为默认",
+      "helpText": "后端重启后更改生效。现有数据将复制到新位置；旧文件保留在原位。"
+    },
+    "deliveryFolders": {
+      "title": "交付文件夹",
+      "subtitle": "新生成的图像和视频的落地位置。覆盖默认值可将完成的渲染直接放到客户文件夹、Dropbox 同步或外置 SSD。",
+      "imagesLabel": "图像",
+      "videosLabel": "视频",
+      "browseButton": "浏览...",
+      "resetButton": "重置为默认",
+      "helpText": "新产物会立即进入您选择的文件夹 — 无需重启后端。已有渲染保留在写入位置。重置会将该行恢复为数据目录下的默认值。"
+    },
+    "modelDirectories": {
+      "title": "模型目录",
+      "subtitle": "添加 ChaosEngineAI 应扫描本地模型的文件夹，包括自定义路径和共享模型目录。",
+      "saveButton": "保存设置",
+      "labelPlaceholder": "标签（例如 共享模型）",
+      "browseButton": "浏览…",
+      "addButton": "添加",
+      "foundBadge": "已找到",
+      "missingBadge": "缺失",
+      "modelCount": "{count, plural, other {# 个模型}}",
+      "changeButton": "更改…",
+      "enableButton": "启用",
+      "disableButton": "禁用",
+      "removeButton": "移除"
+    },
+    "providers": {
+      "title": "远程提供商",
+      "subtitle": "配置云端 OpenAI 兼容 API 作为回退。密钥以 0600 权限存储在本地。",
+      "addButton": "+ 添加提供商",
+      "emptyState": "尚未配置远程提供商。添加一个以使用云端模型作为回退。",
+      "labelField": "标签",
+      "modelField": "模型名称",
+      "apiBaseField": "API 基础 URL（必须为 HTTPS）",
+      "apiKeyField": "API 密钥",
+      "apiKeyStoredPlaceholder": "•••• 已存储 ••••",
+      "apiKeyPlaceholder": "sk-...",
+      "removeButton": "移除"
+    },
+    "huggingFace": {
+      "title": "Hugging Face",
+      "subtitle": "Mistral、Llama、Gemma 等受限模型需要。请在 huggingface.co/settings/tokens 获取。",
+      "saveButton": "保存设置",
+      "tokenLabel": "Hugging Face token",
+      "tokenStoredPlaceholder": "•••• 已存储 ••••",
+      "tokenPlaceholder": "hf_...",
+      "helpText": "存储在本地。MLX 转换在从 Hugging Face 拉取受限模型时使用。"
+    },
+    "integrations": {
+      "title": "集成",
+      "subtitle": "将外部工具连接到 ChaosEngineAI 的 OpenAI 兼容 API。",
+      "intro": "使用以下代码片段将常用工具连接到 ChaosEngineAI 作为其 LLM 后端。服务器必须运行在",
+      "copyButton": "复制"
+    }
+  },
+  "modelLaunchModal": {
+    "defaultTitle": "选择模型",
+    "capabilityBadgesAriaLabel": "模型能力",
+    "capability": {
+      "vision": {
+        "label": "视觉",
+        "title": "模型接受图像输入"
+      },
+      "tools": {
+        "label": "工具",
+        "title": "模型支持工具 / 函数调用"
+      },
+      "reasoning": {
+        "label": "推理",
+        "title": "模型输出推理过程"
+      },
+      "code": {
+        "label": "代码",
+        "title": "模型针对代码生成进行了调优"
+      },
+      "agents": {
+        "label": "代理",
+        "title": "模型针对多步代理流程进行了调优"
+      },
+      "audio": {
+        "label": "音频",
+        "title": "模型接受音频输入"
+      },
+      "video": {
+        "label": "视频",
+        "title": "模型接受视频输入"
+      }
+    },
+    "changeButton": "更改",
+    "searchPlaceholder": "搜索模型...",
+    "contextDetected": "检测到 {contextLabel}",
+    "emptyState": "没有模型匹配您的搜索。",
+    "launchSettings": "启动设置",
+    "cancelButton": "取消"
+  },
+  "modelPicker": {
+    "weightFileTitle": "选择权重文件：{name}",
+    "scanning": "正在扫描...",
+    "visionProjectorBadge": "视觉投影器",
+    "mainBadge": "主体",
+    "backButton": "返回",
+    "searchPlaceholder": "搜索本地模型...",
+    "incompleteBrokenTooltip": "不完整 / 已损坏",
+    "sizeGb": "{size} GB",
+    "contextLarge": "{value}K ctx",
+    "contextSmall": "{value} ctx",
+    "brokenBadge": "已损坏",
+    "emptyState": "没有匹配的模型。",
+    "cancelButton": "取消",
+    "error": {
+      "brokenDirectory": "模型目录不完整或已损坏。",
+      "noGgufWeights": "此目录中没有 .gguf 权重文件。",
+      "listWeightsFailed": "无法列出权重文件。"
+    }
+  },
+  "startupProgress": {
+    "error": {
+      "title": "后端启动失败"
+    },
+    "elapsed": "已用 {seconds} 秒",
+    "elapsedSlow": "已用 {seconds} 秒 — 首次启动可能需要一分钟",
+    "phase": {
+      "loadingWorkspace": {
+        "title": "正在加载工作区状态",
+        "detail": "后端已就绪 — 正在获取您的模型、会话和设置。"
+      },
+      "startingSidecar": {
+        "title": "正在启动后端 sidecar",
+        "detail": "正在启动 ChaosEngineAI 运行时。"
+      },
+      "extractingRuntime": {
+        "title": "正在解压内嵌运行时",
+        "detail": "仅首次启动 — 正在将打包的 Python 运行时和 llama.cpp 解压到应用缓存。"
+      },
+      "startingPython": {
+        "title": "正在启动 Python 运行时",
+        "detail": "正在加载核心 API 并恢复工作区状态。"
+      },
+      "waitingBackend": {
+        "title": "正在等待后端",
+        "detail": "sidecar 仍在绑定其 API 端口并检查本地运行时状态。"
+      },
+      "stillLoading": {
+        "title": "仍在加载",
+        "detail": "冷启动导入时间比平时长。如果停滞超过两分钟，请退出并重新打开 — 过时的清单可能强制重新解压。"
+      }
+    }
   }
 }

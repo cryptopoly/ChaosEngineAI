@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ImageModelFamily, ImageOutputArtifact } from "../types";
 import {
   findImageVariantById,
@@ -33,6 +34,7 @@ export function ImageOutputCard({
   onDelete,
   onNavigateSettings,
 }: ImageOutputCardProps) {
+  const { t } = useTranslation("common");
   const artifactVariant = findImageVariantById(imageCatalog, artifact.modelId);
   const friendlyRuntimeNote = formatImageAccessError(artifact.runtimeNote, artifactVariant);
   const artifactNeedsGatedAccess = isGatedImageAccessError(artifact.runtimeNote);
@@ -55,26 +57,26 @@ export function ImageOutputCard({
         {artifactNeedsGatedAccess && artifactVariant ? (
           <div className="button-row">
             <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(artifactVariant.link)}>
-              Hugging Face
+              {t("imageOutputCard.huggingFace", { defaultValue: "Hugging Face" })}
             </button>
             <button className="secondary-button" type="button" onClick={onNavigateSettings}>
-              Settings
+              {t("imageOutputCard.settings", { defaultValue: "Settings" })}
             </button>
           </div>
         ) : null}
         <div className="image-output-meta">
           <span>{artifact.width} x {artifact.height}</span>
-          <span>{artifact.steps} steps</span>
-          <span>CFG {artifact.guidance}</span>
-          <span>Seed {artifact.seed}</span>
-          <span>{number(artifact.durationSeconds)}s</span>
+          <span>{t("imageOutputCard.stepsCount", { defaultValue: "{count} steps", count: artifact.steps })}</span>
+          <span>{t("imageOutputCard.cfgLabel", { defaultValue: "CFG {value}", value: artifact.guidance })}</span>
+          <span>{t("imageOutputCard.seedLabel", { defaultValue: "Seed {value}", value: artifact.seed })}</span>
+          <span>{t("imageOutputCard.durationSeconds", { defaultValue: "{value}s", value: number(artifact.durationSeconds) })}</span>
         </div>
         <div className="button-row">
           <button className="secondary-button" type="button" onClick={() => onUseSameSettings(artifact)}>
-            Use Same Settings
+            {t("imageOutputCard.useSameSettings", { defaultValue: "Use Same Settings" })}
           </button>
           <button className="secondary-button" type="button" onClick={() => onVarySeed(artifact)} disabled={imageBusy}>
-            Vary Seed
+            {t("imageOutputCard.varySeed", { defaultValue: "Vary Seed" })}
           </button>
         </div>
         <div className="button-row">
@@ -83,17 +85,17 @@ export function ImageOutputCard({
             type="button"
             onClick={() => onOpenExternalUrl(artifact.imagePath ?? artifact.previewUrl)}
           >
-            Open
+            {t("imageOutputCard.open", { defaultValue: "Open" })}
           </button>
           <button
             className="secondary-button"
             type="button"
             onClick={() => artifact.imagePath ? onRevealPath(artifact.imagePath) : onOpenExternalUrl(artifact.previewUrl)}
           >
-            Reveal
+            {t("imageOutputCard.reveal", { defaultValue: "Reveal" })}
           </button>
           <button className="secondary-button danger-button" type="button" onClick={() => onDelete(artifact.artifactId)}>
-            Delete
+            {t("imageOutputCard.delete", { defaultValue: "Delete" })}
           </button>
         </div>
       </div>

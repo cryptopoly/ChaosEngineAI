@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { TokenLogprob } from "../types";
 
 /**
@@ -47,6 +48,7 @@ function lowConfidenceEntries(entries: TokenLogprob[]): TokenLogprob[] {
 }
 
 export function LogprobSummary({ entries }: LogprobSummaryProps) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   if (!entries?.length) return null;
   const stats = computeStats(entries);
@@ -59,19 +61,29 @@ export function LogprobSummary({ entries }: LogprobSummaryProps) {
       onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="logprob-summary__head">
-        <span>Token confidence</span>
+        <span>{t("logprobSummary.title", { defaultValue: "Token confidence" })}</span>
         <small>
-          {stats.count} tokens · avg logprob {stats.avgLogprob.toFixed(2)}
-          {stats.lowConfidenceCount > 0 ? ` · ${stats.lowConfidenceCount} low confidence` : ""}
+          {t("logprobSummary.statsTokensAvg", {
+            defaultValue: "{count} tokens · avg logprob {avg}",
+            count: stats.count,
+            avg: stats.avgLogprob.toFixed(2),
+          })}
+          {stats.lowConfidenceCount > 0
+            ? t("logprobSummary.statsLowConfidenceSuffix", {
+                defaultValue: " · {count} low confidence",
+                count: stats.lowConfidenceCount,
+              })
+            : ""}
         </small>
       </summary>
       {flagged.length === 0 ? (
-        <p className="logprob-summary__empty">No low-confidence tokens — model was steady throughout.</p>
+        <p className="logprob-summary__empty">{t("logprobSummary.empty", { defaultValue: "No low-confidence tokens — model was steady throughout." })}</p>
       ) : (
         <div className="logprob-summary__list">
           <p className="logprob-summary__hint">
-            Tokens emitted with probability under ~5%. Hover for the top
-            alternatives the model considered.
+            {t("logprobSummary.hint", {
+              defaultValue: "Tokens emitted with probability under ~5%. Hover for the top alternatives the model considered.",
+            })}
           </p>
           <ul>
             {flagged.map((entry, idx) => (
@@ -82,12 +94,15 @@ export function LogprobSummary({ entries }: LogprobSummaryProps) {
                     ? entry.alternatives
                         .map((alt) => `${JSON.stringify(alt.token ?? "")} (${(alt.logprob ?? 0).toFixed(2)})`)
                         .join("\n")
-                    : "No alternatives recorded."
+                    : t("logprobSummary.noAlternatives", { defaultValue: "No alternatives recorded." })
                 }
               >
                 <code>{JSON.stringify(entry.token ?? "")}</code>
                 <span className="logprob-summary__metric">
-                  logprob {(entry.logprob ?? 0).toFixed(2)}
+                  {t("logprobSummary.metricLogprob", {
+                    defaultValue: "logprob {value}",
+                    value: (entry.logprob ?? 0).toFixed(2),
+                  })}
                 </span>
               </li>
             ))}

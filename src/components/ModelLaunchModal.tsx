@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
 import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
@@ -11,27 +12,34 @@ import type { ChatModelOption } from "../types/chat";
  */
 const CAPABILITY_BADGES: Array<{
   flag: keyof Omit<ModelCapabilities, "tags">;
-  label: string;
-  title: string;
+  labelKey: string;
+  labelDefault: string;
+  titleKey: string;
+  titleDefault: string;
 }> = [
-  { flag: "supportsVision", label: "Vision", title: "Model accepts image input" },
-  { flag: "supportsTools", label: "Tools", title: "Model supports tool / function calling" },
-  { flag: "supportsReasoning", label: "Reasoning", title: "Model emits a reasoning trace" },
-  { flag: "supportsCoding", label: "Code", title: "Model is tuned for code generation" },
-  { flag: "supportsAgents", label: "Agents", title: "Model is tuned for multi-step agentic flows" },
-  { flag: "supportsAudio", label: "Audio", title: "Model accepts audio input" },
-  { flag: "supportsVideo", label: "Video", title: "Model accepts video input" },
+  { flag: "supportsVision", labelKey: "capability.vision.label", labelDefault: "Vision", titleKey: "capability.vision.title", titleDefault: "Model accepts image input" },
+  { flag: "supportsTools", labelKey: "capability.tools.label", labelDefault: "Tools", titleKey: "capability.tools.title", titleDefault: "Model supports tool / function calling" },
+  { flag: "supportsReasoning", labelKey: "capability.reasoning.label", labelDefault: "Reasoning", titleKey: "capability.reasoning.title", titleDefault: "Model emits a reasoning trace" },
+  { flag: "supportsCoding", labelKey: "capability.code.label", labelDefault: "Code", titleKey: "capability.code.title", titleDefault: "Model is tuned for code generation" },
+  { flag: "supportsAgents", labelKey: "capability.agents.label", labelDefault: "Agents", titleKey: "capability.agents.title", titleDefault: "Model is tuned for multi-step agentic flows" },
+  { flag: "supportsAudio", labelKey: "capability.audio.label", labelDefault: "Audio", titleKey: "capability.audio.title", titleDefault: "Model accepts audio input" },
+  { flag: "supportsVideo", labelKey: "capability.video.label", labelDefault: "Video", titleKey: "capability.video.title", titleDefault: "Model accepts video input" },
 ];
 
-function renderCapabilityBadges(capabilities: ModelCapabilities | null | undefined) {
+function CapabilityBadges({ capabilities }: { capabilities: ModelCapabilities | null | undefined }) {
+  const { t } = useTranslation("common");
   if (!capabilities) return null;
   const active = CAPABILITY_BADGES.filter((entry) => capabilities[entry.flag]);
   if (active.length === 0) return null;
   return (
-    <span className="capability-badges" aria-label="Model capabilities">
+    <span className="capability-badges" aria-label={t("modelLaunchModal.capabilityBadgesAriaLabel", { defaultValue: "Model capabilities" })}>
       {active.map((entry) => (
-        <span key={entry.flag} className="capability-badge" title={entry.title}>
-          {entry.label}
+        <span
+          key={entry.flag}
+          className="capability-badge"
+          title={t(`modelLaunchModal.${entry.titleKey}`, { defaultValue: entry.titleDefault })}
+        >
+          {t(`modelLaunchModal.${entry.labelKey}`, { defaultValue: entry.labelDefault })}
         </span>
       ))}
     </span>
@@ -66,7 +74,7 @@ export interface ModelLaunchModalProps {
 
 export function ModelLaunchModal({
   open,
-  title = "Select Model",
+  title,
   confirmLabel,
   selectedKey,
   collapseOnOpen = false,
@@ -89,6 +97,8 @@ export function ModelLaunchModal({
   onClose,
   onInstallPackage,
 }: ModelLaunchModalProps) {
+  const { t } = useTranslation("common");
+  const resolvedTitle = title ?? t("modelLaunchModal.defaultTitle", { defaultValue: "Select Model" });
   const [showList, setShowList] = useState(true);
 
   useEffect(() => {
@@ -116,7 +126,7 @@ export function ModelLaunchModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content modal-wide" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
-          <h3>{title}</h3>
+          <h3>{resolvedTitle}</h3>
         </div>
         <div className="modal-body">
           {selectedOption ? (
@@ -131,7 +141,7 @@ export function ModelLaunchModal({
                   {selectedOption.contextWindow ? <span className="badge muted">{selectedOption.contextWindow}</span> : null}
                   <span className={`badge ${selectedOption.source === "library" ? "success" : "accent"}`}>{selectedOption.group}</span>
                 </div>
-                {renderCapabilityBadges(selectedOption.capabilities)}
+                <CapabilityBadges capabilities={selectedOption.capabilities} />
               </div>
               <button
                 className="secondary-button"
@@ -141,7 +151,7 @@ export function ModelLaunchModal({
                   setShowList(true);
                 }}
               >
-                Change
+                {t("modelLaunchModal.changeButton", { defaultValue: "Change" })}
               </button>
             </div>
           ) : null}
@@ -151,7 +161,7 @@ export function ModelLaunchModal({
               <input
                 className="text-input"
                 type="search"
-                placeholder="Search models..."
+                placeholder={t("modelLaunchModal.searchPlaceholder", { defaultValue: "Search models..." })}
                 value={search}
                 onChange={(event) => onSearchChange(event.target.value)}
                 autoFocus
@@ -176,20 +186,33 @@ export function ModelLaunchModal({
                         {option.quantization ? <span>{option.quantization}</span> : null}
                         {option.sizeGb ? <span>{sizeLabel(option.sizeGb)}</span> : null}
                         {option.contextWindow ? <span>{option.contextWindow}</span> : null}
-                        {option.maxContext ? <span>{`${option.maxContext >= 1_000_000 ? (option.maxContext / 1_048_576).toFixed(1) + "M" : Math.round(option.maxContext / 1024) + "K"} detected`}</span> : null}
+                        {option.maxContext ? (
+                          <span>
+                            {t("modelLaunchModal.contextDetected", {
+                              defaultValue: "{contextLabel} detected",
+                              contextLabel: option.maxContext >= 1_000_000
+                                ? (option.maxContext / 1_048_576).toFixed(1) + "M"
+                                : Math.round(option.maxContext / 1024) + "K",
+                            })}
+                          </span>
+                        ) : null}
                       </div>
-                      {renderCapabilityBadges(option.capabilities)}
+                      <CapabilityBadges capabilities={option.capabilities} />
                     </div>
                     <span className={`badge ${option.source === "library" ? "success" : "accent"}`}>{option.group}</span>
                   </button>
                 ))}
-                {filteredOptions.length === 0 ? <p className="model-select-empty">No models match your search.</p> : null}
+                {filteredOptions.length === 0 ? (
+                  <p className="model-select-empty">
+                    {t("modelLaunchModal.emptyState", { defaultValue: "No models match your search." })}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
 
           <div className="model-select-settings">
-            <span className="eyebrow">Launch settings</span>
+            <span className="eyebrow">{t("modelLaunchModal.launchSettings", { defaultValue: "Launch settings" })}</span>
             <RuntimeControls
               settings={settings}
               onChange={onSettingChange}
@@ -223,7 +246,7 @@ export function ModelLaunchModal({
             {confirmLabel}
           </button>
           <button className="secondary-button" type="button" onClick={onClose}>
-            Cancel
+            {t("modelLaunchModal.cancelButton", { defaultValue: "Cancel" })}
           </button>
         </div>
       </div>

@@ -121,7 +121,54 @@
     "historyPlaceholder": "Frühere Challenges suchen...",
     "moveToTrash": "In den Papierkorb",
     "moveToTrashAria": "„{title}“ in den Papierkorb",
-    "noMatching": "Keine passenden Challenges."
+    "noMatching": "Keine passenden Challenges.",
+    "layoutToggleAria": "HTML-Challenge-Layout",
+    "layoutRow": "Reihe",
+    "thisChallengeFallback": "diese Challenge",
+    "deleteConfirm": "„{title}“ in den .trash-Ordner verschieben? Du kannst sie bei Bedarf von der Festplatte wiederherstellen.",
+    "actions": {
+      "newChallenge": "Neue Challenge",
+      "openFolder": "Ordner öffnen",
+      "openSettings": "Einstellungen öffnen",
+      "addModel": "Modell hinzufügen",
+      "cancel": "Abbrechen",
+      "usePromptInNewChallenge": "Prompt in neuer Challenge verwenden",
+      "runChallenge": "Challenge ausführen",
+      "runNewChallenge": "Neue Challenge ausführen"
+    },
+    "status": {
+      "generating": "Wird generiert...",
+      "queuedRetry": "Wiederholung in Warteschlange...",
+      "queuedContinuation": "Fortsetzung in Warteschlange...",
+      "queuedRepair": "Reparatur in Warteschlange..."
+    },
+    "errors": {
+      "deleteFailed": "Challenge löschen fehlgeschlagen.",
+      "challengeFailed": "Challenge fehlgeschlagen",
+      "retryFailed": "Wiederholung fehlgeschlagen",
+      "repairFailed": "Reparatur fehlgeschlagen"
+    },
+    "modelCard": {
+      "selectAModel": "Modell auswählen",
+      "thinking": "Denken",
+      "thinkingOff": "Aus",
+      "thinkingLow": "Niedrig",
+      "thinkingMed": "Mittel",
+      "thinkingHigh": "Hoch",
+      "temp": "Temp",
+      "seed": "Seed",
+      "seedPlaceholder": "zufällig",
+      "randomize": "Zufällig",
+      "remove": "Entfernen",
+      "change": "Ändern",
+      "select": "Auswählen"
+    },
+    "picker": {
+      "title": "Modell auswählen",
+      "titleForSlot": "{slot} auswählen",
+      "confirm": "Modell verwenden",
+      "confirmForSlot": "Für {slot} verwenden"
+    }
   },
   "samplerPanel": {
     "label": "Sampler",

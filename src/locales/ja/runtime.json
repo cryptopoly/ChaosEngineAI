@@ -1,8 +1,17 @@
 {
   "engines": {
-    "mlx": { "name": "MLX", "description": "Apple シリコンネイティブ推論エンジン" },
-    "llamaCpp": { "name": "llama.cpp", "description": "llama-server による GGUF 推論" },
-    "vllm": { "name": "vLLM", "description": "CUDA 推論エンジン" }
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple シリコンネイティブ推論エンジン"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "llama-server による GGUF 推論"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA 推論エンジン"
+    }
   },
   "cacheStrategies": {
     "native": {

@@ -121,7 +121,54 @@
     "historyPlaceholder": "Search previous challenges...",
     "moveToTrash": "Move to trash",
     "moveToTrashAria": "Move \"{title}\" to trash",
-    "noMatching": "No matching challenges."
+    "noMatching": "No matching challenges.",
+    "layoutToggleAria": "HTML challenge layout",
+    "layoutRow": "Row",
+    "thisChallengeFallback": "this challenge",
+    "deleteConfirm": "Move \"{title}\" to the .trash folder? You can restore it from disk if needed.",
+    "actions": {
+      "newChallenge": "New Challenge",
+      "openFolder": "Open Folder",
+      "openSettings": "Open Settings",
+      "addModel": "Add model",
+      "cancel": "Cancel",
+      "usePromptInNewChallenge": "Use Prompt in New Challenge",
+      "runChallenge": "Run Challenge",
+      "runNewChallenge": "Run New Challenge"
+    },
+    "status": {
+      "generating": "Generating...",
+      "queuedRetry": "Queued retry...",
+      "queuedContinuation": "Queued continuation...",
+      "queuedRepair": "Queued repair..."
+    },
+    "errors": {
+      "deleteFailed": "Delete challenge failed.",
+      "challengeFailed": "Challenge failed",
+      "retryFailed": "Retry failed",
+      "repairFailed": "Repair failed"
+    },
+    "modelCard": {
+      "selectAModel": "Select a model",
+      "thinking": "Thinking",
+      "thinkingOff": "Off",
+      "thinkingLow": "Low",
+      "thinkingMed": "Med",
+      "thinkingHigh": "High",
+      "temp": "Temp",
+      "seed": "Seed",
+      "seedPlaceholder": "random",
+      "randomize": "Randomize",
+      "remove": "Remove",
+      "change": "Change",
+      "select": "Select"
+    },
+    "picker": {
+      "title": "Select Model",
+      "titleForSlot": "Select {slot}",
+      "confirm": "Use model",
+      "confirmForSlot": "Use for {slot}"
+    }
   },
   "samplerPanel": {
     "label": "Samplers",

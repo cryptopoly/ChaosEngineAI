@@ -121,7 +121,54 @@
     "historyPlaceholder": "過去のチャレンジを検索...",
     "moveToTrash": "ゴミ箱に移動",
     "moveToTrashAria": "「{title}」をゴミ箱に移動",
-    "noMatching": "一致するチャレンジはありません。"
+    "noMatching": "一致するチャレンジはありません。",
+    "layoutToggleAria": "HTML チャレンジのレイアウト",
+    "layoutRow": "行",
+    "thisChallengeFallback": "このチャレンジ",
+    "deleteConfirm": "「{title}」を .trash フォルダに移動しますか?必要であればディスクから復元できます。",
+    "actions": {
+      "newChallenge": "新規チャレンジ",
+      "openFolder": "フォルダを開く",
+      "openSettings": "設定を開く",
+      "addModel": "モデルを追加",
+      "cancel": "キャンセル",
+      "usePromptInNewChallenge": "新規チャレンジでこのプロンプトを使用",
+      "runChallenge": "チャレンジを実行",
+      "runNewChallenge": "新しいチャレンジを実行"
+    },
+    "status": {
+      "generating": "生成中...",
+      "queuedRetry": "再試行をキューに追加...",
+      "queuedContinuation": "継続をキューに追加...",
+      "queuedRepair": "修復をキューに追加..."
+    },
+    "errors": {
+      "deleteFailed": "チャレンジの削除に失敗しました。",
+      "challengeFailed": "チャレンジが失敗しました",
+      "retryFailed": "再試行に失敗しました",
+      "repairFailed": "修復に失敗しました"
+    },
+    "modelCard": {
+      "selectAModel": "モデルを選択",
+      "thinking": "思考",
+      "thinkingOff": "オフ",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "温度",
+      "seed": "シード",
+      "seedPlaceholder": "ランダム",
+      "randomize": "ランダム化",
+      "remove": "削除",
+      "change": "変更",
+      "select": "選択"
+    },
+    "picker": {
+      "title": "モデルを選択",
+      "titleForSlot": "{slot} を選択",
+      "confirm": "モデルを使用",
+      "confirmForSlot": "{slot} に使用"
+    }
   },
   "samplerPanel": {
     "label": "サンプラー",

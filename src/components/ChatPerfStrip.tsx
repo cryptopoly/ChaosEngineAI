@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import type { GenerationMetrics, PerfTelemetry } from "../types";
+import type { TFunction } from "i18next";
 
 /**
  * Phase 3.5: cross-platform per-turn perf telemetry strip.
@@ -29,14 +31,35 @@ const THERMAL_TONE: Record<string, PerfChip["tone"]> = {
   critical: "alert",
 };
 
-function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip[] {
+// Same fallback contract as SubstrateRoutingBadge — keeps the standalone
+// buildPerfChips export usable from unit tests without an i18n provider.
+function defaultTranslator(_key: string, options?: Record<string, unknown>): string {
+  const fallback = (options?.defaultValue as string | undefined) ?? "";
+  if (!options) return fallback;
+  return fallback.replace(/\{(\w+)\}/g, (_match, name: string) => {
+    const value = options[name];
+    return value == null ? "" : String(value);
+  });
+}
+
+function buildPerfChips(
+  telemetry: PerfTelemetry,
+  tokS: number | null,
+  t: TFunction | typeof defaultTranslator = defaultTranslator,
+): PerfChip[] {
   const chips: PerfChip[] = [];
 
   if (tokS != null && tokS > 0) {
     chips.push({
       key: "toks",
-      label: `${tokS.toFixed(1)} tok/s`,
-      title: `Decode throughput for this turn (${tokS.toFixed(2)} tokens/sec)`,
+      label: t("chatPerfStrip.toksLabel", {
+        defaultValue: "{value} tok/s",
+        value: tokS.toFixed(1),
+      }),
+      title: t("chatPerfStrip.toksTitle", {
+        defaultValue: "Decode throughput for this turn ({value} tokens/sec)",
+        value: tokS.toFixed(2),
+      }),
       tone: tokS < 1 ? "alert" : tokS < 5 ? "warn" : "default",
     });
   }
@@ -44,8 +67,14 @@ function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip
   if (telemetry.cpuPercent != null) {
     chips.push({
       key: "cpu",
-      label: `CPU ${telemetry.cpuPercent.toFixed(0)}%`,
-      title: `CPU utilisation at turn finalisation (${telemetry.cpuPercent.toFixed(1)}%)`,
+      label: t("chatPerfStrip.cpuLabel", {
+        defaultValue: "CPU {value}%",
+        value: telemetry.cpuPercent.toFixed(0),
+      }),
+      title: t("chatPerfStrip.cpuTitle", {
+        defaultValue: "CPU utilisation at turn finalisation ({value}%)",
+        value: telemetry.cpuPercent.toFixed(1),
+      }),
       tone: telemetry.cpuPercent > 90 ? "warn" : "default",
     });
   }
@@ -53,8 +82,14 @@ function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip
   if (telemetry.gpuPercent != null) {
     chips.push({
       key: "gpu",
-      label: `GPU ${telemetry.gpuPercent.toFixed(0)}%`,
-      title: `GPU / accelerator utilisation at turn finalisation (${telemetry.gpuPercent.toFixed(1)}%)`,
+      label: t("chatPerfStrip.gpuLabel", {
+        defaultValue: "GPU {value}%",
+        value: telemetry.gpuPercent.toFixed(0),
+      }),
+      title: t("chatPerfStrip.gpuTitle", {
+        defaultValue: "GPU / accelerator utilisation at turn finalisation ({value}%)",
+        value: telemetry.gpuPercent.toFixed(1),
+      }),
       tone: telemetry.gpuPercent > 90 ? "warn" : "default",
     });
   }
@@ -62,8 +97,14 @@ function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip
   if (telemetry.availableMemoryGb != null) {
     chips.push({
       key: "mem",
-      label: `${telemetry.availableMemoryGb.toFixed(1)} GB free`,
-      title: `Available RAM at turn finalisation (${telemetry.availableMemoryGb.toFixed(2)} GB)`,
+      label: t("chatPerfStrip.memLabel", {
+        defaultValue: "{value} GB free",
+        value: telemetry.availableMemoryGb.toFixed(1),
+      }),
+      title: t("chatPerfStrip.memTitle", {
+        defaultValue: "Available RAM at turn finalisation ({value} GB)",
+        value: telemetry.availableMemoryGb.toFixed(2),
+      }),
       tone: telemetry.availableMemoryGb < 2 ? "alert" : telemetry.availableMemoryGb < 4 ? "warn" : "default",
     });
   }
@@ -71,8 +112,14 @@ function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip
   if (telemetry.thermalState) {
     chips.push({
       key: "thermal",
-      label: `Thermal: ${telemetry.thermalState}`,
-      title: `Host thermal state (${telemetry.thermalState}). Critical means active throttling.`,
+      label: t("chatPerfStrip.thermalLabel", {
+        defaultValue: "Thermal: {state}",
+        state: telemetry.thermalState,
+      }),
+      title: t("chatPerfStrip.thermalTitle", {
+        defaultValue: "Host thermal state ({state}). Critical means active throttling.",
+        state: telemetry.thermalState,
+      }),
       tone: THERMAL_TONE[telemetry.thermalState] ?? "default",
     });
   }
@@ -81,12 +128,16 @@ function buildPerfChips(telemetry: PerfTelemetry, tokS: number | null): PerfChip
 }
 
 export function ChatPerfStrip({ metrics }: ChatPerfStripProps) {
+  const { t } = useTranslation("common");
   const telemetry = metrics.perfTelemetry;
   if (!telemetry) return null;
-  const chips = buildPerfChips(telemetry, metrics.tokS ?? null);
+  const chips = buildPerfChips(telemetry, metrics.tokS ?? null, t);
   if (chips.length === 0) return null;
   return (
-    <div className="chat-perf-strip" aria-label="Host telemetry for this turn">
+    <div
+      className="chat-perf-strip"
+      aria-label={t("chatPerfStrip.ariaLabel", { defaultValue: "Host telemetry for this turn" })}
+    >
       {chips.map((chip) => (
         <span
           key={chip.key}

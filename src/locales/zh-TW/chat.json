@@ -121,7 +121,54 @@
     "historyPlaceholder": "搜尋過去的挑戰...",
     "moveToTrash": "移至垃圾桶",
     "moveToTrashAria": "將 \"{title}\" 移至垃圾桶",
-    "noMatching": "沒有相符的挑戰。"
+    "noMatching": "沒有相符的挑戰。",
+    "layoutToggleAria": "HTML 挑戰版面配置",
+    "layoutRow": "列",
+    "thisChallengeFallback": "此挑戰",
+    "deleteConfirm": "將「{title}」移至 .trash 資料夾?如有需要,您可以從磁碟還原。",
+    "actions": {
+      "newChallenge": "新增挑戰",
+      "openFolder": "開啟資料夾",
+      "openSettings": "開啟設定",
+      "addModel": "新增模型",
+      "cancel": "取消",
+      "usePromptInNewChallenge": "在新挑戰中使用提示詞",
+      "runChallenge": "執行挑戰",
+      "runNewChallenge": "執行新挑戰"
+    },
+    "status": {
+      "generating": "正在生成...",
+      "queuedRetry": "已排入重試佇列...",
+      "queuedContinuation": "已排入接續佇列...",
+      "queuedRepair": "已排入修復佇列..."
+    },
+    "errors": {
+      "deleteFailed": "刪除挑戰失敗。",
+      "challengeFailed": "挑戰失敗",
+      "retryFailed": "重試失敗",
+      "repairFailed": "修復失敗"
+    },
+    "modelCard": {
+      "selectAModel": "選擇模型",
+      "thinking": "思考",
+      "thinkingOff": "關閉",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "溫度",
+      "seed": "種子",
+      "seedPlaceholder": "隨機",
+      "randomize": "隨機化",
+      "remove": "移除",
+      "change": "變更",
+      "select": "選擇"
+    },
+    "picker": {
+      "title": "選擇模型",
+      "titleForSlot": "選擇 {slot}",
+      "confirm": "使用模型",
+      "confirmForSlot": "用於 {slot}"
+    }
   },
   "samplerPanel": {
     "label": "取樣器",

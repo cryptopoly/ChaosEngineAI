@@ -41,6 +41,11 @@ const LOCALES = [
 
 function leafPaths(node: unknown, prefix: string[] = []): string[] {
   if (typeof node === "string") return [prefix.join(".")];
+  // Per FU-042, non-en locales may ship `null` placeholders for
+  // keys that haven't been translated yet — runtime falls back to en.
+  // Treat null as a present leaf so the parity test agrees with the
+  // documented workflow.
+  if (node === null) return prefix.length ? [prefix.join(".")] : [];
   if (Array.isArray(node)) {
     // `meta.supportedLocales` is an array — treat as a single leaf.
     return prefix.length ? [prefix.join(".")] : [];

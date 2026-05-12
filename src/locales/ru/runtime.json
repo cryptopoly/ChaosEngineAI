@@ -1,8 +1,17 @@
 {
   "engines": {
-    "mlx": { "name": "MLX", "description": "Нативный движок вывода для Apple Silicon" },
-    "llamaCpp": { "name": "llama.cpp", "description": "GGUF-инференс через llama-server" },
-    "vllm": { "name": "vLLM", "description": "CUDA-движок вывода" }
+    "mlx": {
+      "name": "MLX",
+      "description": "Нативный движок вывода для Apple Silicon"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "GGUF-инференс через llama-server"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA-движок вывода"
+    }
   },
   "cacheStrategies": {
     "native": {

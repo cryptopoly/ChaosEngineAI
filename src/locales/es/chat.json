@@ -121,7 +121,54 @@
     "historyPlaceholder": "Buscar retos anteriores...",
     "moveToTrash": "Mover a la papelera",
     "moveToTrashAria": "Mover «{title}» a la papelera",
-    "noMatching": "Sin retos coincidentes."
+    "noMatching": "Sin retos coincidentes.",
+    "layoutToggleAria": "Disposición del reto HTML",
+    "layoutRow": "Fila",
+    "thisChallengeFallback": "este reto",
+    "deleteConfirm": "¿Mover «{title}» a la carpeta .trash? Puedes restaurarlo desde el disco si lo necesitas.",
+    "actions": {
+      "newChallenge": "Nuevo reto",
+      "openFolder": "Abrir carpeta",
+      "openSettings": "Abrir preferencias",
+      "addModel": "Añadir modelo",
+      "cancel": "Cancelar",
+      "usePromptInNewChallenge": "Usar prompt en nuevo reto",
+      "runChallenge": "Ejecutar reto",
+      "runNewChallenge": "Ejecutar nuevo reto"
+    },
+    "status": {
+      "generating": "Generando...",
+      "queuedRetry": "Reintento en cola...",
+      "queuedContinuation": "Continuación en cola...",
+      "queuedRepair": "Reparación en cola..."
+    },
+    "errors": {
+      "deleteFailed": "Falló la eliminación del reto.",
+      "challengeFailed": "El reto falló",
+      "retryFailed": "El reintento falló",
+      "repairFailed": "La reparación falló"
+    },
+    "modelCard": {
+      "selectAModel": "Selecciona un modelo",
+      "thinking": "Razonamiento",
+      "thinkingOff": "Apagado",
+      "thinkingLow": "Bajo",
+      "thinkingMed": "Med",
+      "thinkingHigh": "Alto",
+      "temp": "Temp",
+      "seed": "Seed",
+      "seedPlaceholder": "aleatorio",
+      "randomize": "Aleatorizar",
+      "remove": "Quitar",
+      "change": "Cambiar",
+      "select": "Seleccionar"
+    },
+    "picker": {
+      "title": "Seleccionar modelo",
+      "titleForSlot": "Seleccionar {slot}",
+      "confirm": "Usar modelo",
+      "confirmForSlot": "Usar para {slot}"
+    }
   },
   "samplerPanel": {
     "label": "Samplers",

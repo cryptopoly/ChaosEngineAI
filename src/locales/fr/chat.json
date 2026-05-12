@@ -121,7 +121,54 @@
     "historyPlaceholder": "Rechercher les défis précédents...",
     "moveToTrash": "Mettre à la corbeille",
     "moveToTrashAria": "Mettre « {title} » à la corbeille",
-    "noMatching": "Aucun défi correspondant."
+    "noMatching": "Aucun défi correspondant.",
+    "layoutToggleAria": "Disposition du défi HTML",
+    "layoutRow": "Ligne",
+    "thisChallengeFallback": "ce défi",
+    "deleteConfirm": "Mettre « {title} » dans le dossier .trash ? Vous pourrez le restaurer depuis le disque si nécessaire.",
+    "actions": {
+      "newChallenge": "Nouveau défi",
+      "openFolder": "Ouvrir le dossier",
+      "openSettings": "Ouvrir les préférences",
+      "addModel": "Ajouter un modèle",
+      "cancel": "Annuler",
+      "usePromptInNewChallenge": "Utiliser l'invite dans un nouveau défi",
+      "runChallenge": "Lancer le défi",
+      "runNewChallenge": "Lancer un nouveau défi"
+    },
+    "status": {
+      "generating": "Génération...",
+      "queuedRetry": "Nouvelle tentative en file d'attente...",
+      "queuedContinuation": "Continuation en file d'attente...",
+      "queuedRepair": "Réparation en file d'attente..."
+    },
+    "errors": {
+      "deleteFailed": "Échec de la suppression du défi.",
+      "challengeFailed": "Échec du défi",
+      "retryFailed": "Échec de la nouvelle tentative",
+      "repairFailed": "Échec de la réparation"
+    },
+    "modelCard": {
+      "selectAModel": "Sélectionner un modèle",
+      "thinking": "Réflexion",
+      "thinkingOff": "Désactivé",
+      "thinkingLow": "Faible",
+      "thinkingMed": "Moy.",
+      "thinkingHigh": "Élevé",
+      "temp": "Temp",
+      "seed": "Graine",
+      "seedPlaceholder": "aléatoire",
+      "randomize": "Aléatoire",
+      "remove": "Retirer",
+      "change": "Modifier",
+      "select": "Sélectionner"
+    },
+    "picker": {
+      "title": "Sélectionner un modèle",
+      "titleForSlot": "Sélectionner {slot}",
+      "confirm": "Utiliser ce modèle",
+      "confirmForSlot": "Utiliser pour {slot}"
+    }
   },
   "samplerPanel": {
     "label": "Échantillonneurs",

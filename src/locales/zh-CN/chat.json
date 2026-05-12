@@ -121,7 +121,54 @@
     "historyPlaceholder": "搜索以前的挑战...",
     "moveToTrash": "移到回收站",
     "moveToTrashAria": "将 \"{title}\" 移到回收站",
-    "noMatching": "没有匹配的挑战。"
+    "noMatching": "没有匹配的挑战。",
+    "layoutToggleAria": "HTML 挑战布局",
+    "layoutRow": "行",
+    "thisChallengeFallback": "此挑战",
+    "deleteConfirm": "将 \"{title}\" 移到 .trash 文件夹？如有需要可从磁盘中恢复。",
+    "actions": {
+      "newChallenge": "新建挑战",
+      "openFolder": "打开文件夹",
+      "openSettings": "打开设置",
+      "addModel": "添加模型",
+      "cancel": "取消",
+      "usePromptInNewChallenge": "在新挑战中使用此提示",
+      "runChallenge": "运行挑战",
+      "runNewChallenge": "运行新挑战"
+    },
+    "status": {
+      "generating": "正在生成...",
+      "queuedRetry": "已排队重试...",
+      "queuedContinuation": "已排队续写...",
+      "queuedRepair": "已排队修复..."
+    },
+    "errors": {
+      "deleteFailed": "删除挑战失败。",
+      "challengeFailed": "挑战失败",
+      "retryFailed": "重试失败",
+      "repairFailed": "修复失败"
+    },
+    "modelCard": {
+      "selectAModel": "选择一个模型",
+      "thinking": "思考",
+      "thinkingOff": "关闭",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "温度",
+      "seed": "种子",
+      "seedPlaceholder": "随机",
+      "randomize": "随机化",
+      "remove": "移除",
+      "change": "更改",
+      "select": "选择"
+    },
+    "picker": {
+      "title": "选择模型",
+      "titleForSlot": "选择 {slot}",
+      "confirm": "使用模型",
+      "confirmForSlot": "用于 {slot}"
+    }
   },
   "samplerPanel": {
     "label": "采样器",

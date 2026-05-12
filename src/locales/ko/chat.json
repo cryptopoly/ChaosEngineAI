@@ -121,7 +121,54 @@
     "historyPlaceholder": "이전 챌린지 검색...",
     "moveToTrash": "휴지통으로 이동",
     "moveToTrashAria": "\"{title}\" 휴지통으로 이동",
-    "noMatching": "일치하는 챌린지가 없습니다."
+    "noMatching": "일치하는 챌린지가 없습니다.",
+    "layoutToggleAria": "HTML 챌린지 레이아웃",
+    "layoutRow": "행",
+    "thisChallengeFallback": "이 챌린지",
+    "deleteConfirm": "\"{title}\"을(를) .trash 폴더로 이동하시겠습니까? 필요하면 디스크에서 복원할 수 있습니다.",
+    "actions": {
+      "newChallenge": "새 챌린지",
+      "openFolder": "폴더 열기",
+      "openSettings": "환경설정 열기",
+      "addModel": "모델 추가",
+      "cancel": "취소",
+      "usePromptInNewChallenge": "새 챌린지에서 프롬프트 사용",
+      "runChallenge": "챌린지 실행",
+      "runNewChallenge": "새 챌린지 실행"
+    },
+    "status": {
+      "generating": "생성 중...",
+      "queuedRetry": "재시도 대기 중...",
+      "queuedContinuation": "이어서 진행 대기 중...",
+      "queuedRepair": "복구 대기 중..."
+    },
+    "errors": {
+      "deleteFailed": "챌린지 삭제 실패.",
+      "challengeFailed": "챌린지 실패",
+      "retryFailed": "재시도 실패",
+      "repairFailed": "복구 실패"
+    },
+    "modelCard": {
+      "selectAModel": "모델 선택",
+      "thinking": "사고",
+      "thinkingOff": "끄기",
+      "thinkingLow": "낮음",
+      "thinkingMed": "중간",
+      "thinkingHigh": "높음",
+      "temp": "온도",
+      "seed": "시드",
+      "seedPlaceholder": "랜덤",
+      "randomize": "랜덤화",
+      "remove": "제거",
+      "change": "변경",
+      "select": "선택"
+    },
+    "picker": {
+      "title": "모델 선택",
+      "titleForSlot": "{slot} 선택",
+      "confirm": "모델 사용",
+      "confirmForSlot": "{slot}에 사용"
+    }
   },
   "samplerPanel": {
     "label": "샘플러",

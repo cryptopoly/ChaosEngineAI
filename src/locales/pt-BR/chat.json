@@ -121,7 +121,54 @@
     "historyPlaceholder": "Pesquisar desafios anteriores...",
     "moveToTrash": "Mover para a lixeira",
     "moveToTrashAria": "Mover \"{title}\" para a lixeira",
-    "noMatching": "Sem desafios correspondentes."
+    "noMatching": "Sem desafios correspondentes.",
+    "layoutToggleAria": "Layout do desafio HTML",
+    "layoutRow": "Linha",
+    "thisChallengeFallback": "este desafio",
+    "deleteConfirm": "Mover \"{title}\" para a pasta .trash? Você pode restaurá-lo do disco se precisar.",
+    "actions": {
+      "newChallenge": "Novo desafio",
+      "openFolder": "Abrir pasta",
+      "openSettings": "Abrir preferências",
+      "addModel": "Adicionar modelo",
+      "cancel": "Cancelar",
+      "usePromptInNewChallenge": "Usar prompt em novo desafio",
+      "runChallenge": "Executar desafio",
+      "runNewChallenge": "Executar novo desafio"
+    },
+    "status": {
+      "generating": "Gerando...",
+      "queuedRetry": "Nova tentativa em fila...",
+      "queuedContinuation": "Continuação em fila...",
+      "queuedRepair": "Reparo em fila..."
+    },
+    "errors": {
+      "deleteFailed": "Falha ao excluir desafio.",
+      "challengeFailed": "Desafio falhou",
+      "retryFailed": "Nova tentativa falhou",
+      "repairFailed": "Reparo falhou"
+    },
+    "modelCard": {
+      "selectAModel": "Selecione um modelo",
+      "thinking": "Raciocínio",
+      "thinkingOff": "Desligado",
+      "thinkingLow": "Baixo",
+      "thinkingMed": "Médio",
+      "thinkingHigh": "Alto",
+      "temp": "Temp",
+      "seed": "Seed",
+      "seedPlaceholder": "aleatório",
+      "randomize": "Aleatorizar",
+      "remove": "Remover",
+      "change": "Alterar",
+      "select": "Selecionar"
+    },
+    "picker": {
+      "title": "Selecionar modelo",
+      "titleForSlot": "Selecionar {slot}",
+      "confirm": "Usar modelo",
+      "confirmForSlot": "Usar para {slot}"
+    }
   },
   "samplerPanel": {
     "label": "Samplers",

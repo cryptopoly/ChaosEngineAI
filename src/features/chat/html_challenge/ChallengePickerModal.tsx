@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ModelLaunchModal } from "../../../components/ModelLaunchModal";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../../types";
 import type { ChatModelOption } from "../../../types/chat";
@@ -48,6 +49,7 @@ export function ChallengePickerModal({
   onClose,
   onInstallPackage,
 }: ChallengePickerModalProps) {
+  const { t } = useTranslation("chat");
   const [search, setSearch] = useState("");
   const [draftKey, setDraftKey] = useState(initialKey);
   const [draftSettings, setDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(initialSettings));
@@ -72,8 +74,12 @@ export function ChallengePickerModal({
   return (
     <ModelLaunchModal
       open={target != null}
-      title={target ? `Select ${compareTargetLabels[target]}` : "Select Model"}
-      confirmLabel={target ? `Use for ${compareTargetLabels[target]}` : "Use model"}
+      title={target
+        ? t("htmlChallenge.picker.titleForSlot", { defaultValue: "Select {slot}", slot: compareTargetLabels[target] })
+        : t("htmlChallenge.picker.title", { defaultValue: "Select Model" })}
+      confirmLabel={target
+        ? t("htmlChallenge.picker.confirmForSlot", { defaultValue: "Use for {slot}", slot: compareTargetLabels[target] })
+        : t("htmlChallenge.picker.confirm", { defaultValue: "Use model" })}
       selectedKey={draftKey}
       collapseOnOpen={Boolean(draftKey)}
       search={search}

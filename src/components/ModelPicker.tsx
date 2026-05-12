@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LibraryItem } from "../types";
 import { fetchJson } from "../api";
 
@@ -40,6 +41,7 @@ function formatSize(gb: number): string {
 }
 
 export function ModelPicker({ open, title, library, filter, selectedPath, onSelect, onClose }: ModelPickerProps) {
+  const { t } = useTranslation("common");
   const [search, setSearch] = useState("");
   const [subPickItem, setSubPickItem] = useState<LibraryItem | null>(null);
   const [subPickLoading, setSubPickLoading] = useState(false);
@@ -76,13 +78,13 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
       try {
         const resp = await fetchWeightList(item.path);
         if (resp.broken) {
-          setSubPickError(resp.brokenReason ?? "Incomplete or broken model directory.");
+          setSubPickError(resp.brokenReason ?? t("modelPicker.error.brokenDirectory", { defaultValue: "Incomplete or broken model directory." }));
           setSubPickLoading(false);
           return;
         }
         const mainFiles = resp.files.filter((f) => f.role !== "mmproj");
         if (mainFiles.length === 0) {
-          setSubPickError("No .gguf weights present in this directory.");
+          setSubPickError(t("modelPicker.error.noGgufWeights", { defaultValue: "No .gguf weights present in this directory." }));
           setSubPickLoading(false);
           return;
         }
@@ -94,7 +96,7 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
         setSubPickFiles(resp.files);
         setSubPickLoading(false);
       } catch (err) {
-        setSubPickError(err instanceof Error ? err.message : "Failed to list weight files.");
+        setSubPickError(err instanceof Error ? err.message : t("modelPicker.error.listWeightsFailed", { defaultValue: "Failed to list weight files." }));
         setSubPickLoading(false);
       }
       return;
@@ -113,12 +115,18 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>{subPickItem ? `Select weight file: ${subPickItem.name}` : title}</h3>
+          <h3>
+            {subPickItem
+              ? t("modelPicker.weightFileTitle", { defaultValue: "Select weight file: {name}", name: subPickItem.name })
+              : title}
+          </h3>
         </div>
         <div className="modal-body">
           {subPickItem ? (
             <>
-              {subPickLoading ? <p className="muted-text">Scanning...</p> : null}
+              {subPickLoading ? (
+                <p className="muted-text">{t("modelPicker.scanning", { defaultValue: "Scanning..." })}</p>
+              ) : null}
               {subPickError ? <p className="muted-text">{subPickError}</p> : null}
               {!subPickLoading && !subPickError ? (
                 <div className="model-select-list">
@@ -133,8 +141,16 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
                         <strong>{file.name}</strong>
                         <div className="model-select-item-meta">
                           <span>{formatSize(file.sizeGb)}</span>
-                          {file.role === "mmproj" ? <span className="badge muted">vision projector</span> : null}
-                          {file.role === "main" ? <span className="badge muted">main</span> : null}
+                          {file.role === "mmproj" ? (
+                            <span className="badge muted">
+                              {t("modelPicker.visionProjectorBadge", { defaultValue: "vision projector" })}
+                            </span>
+                          ) : null}
+                          {file.role === "main" ? (
+                            <span className="badge muted">
+                              {t("modelPicker.mainBadge", { defaultValue: "main" })}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </button>
@@ -143,7 +159,7 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
               ) : null}
               <div style={{ marginTop: 12 }}>
                 <button className="secondary-button" type="button" onClick={() => { setSubPickItem(null); setSubPickFiles([]); setSubPickError(null); }}>
-                  Back
+                  {t("modelPicker.backButton", { defaultValue: "Back" })}
                 </button>
               </div>
             </>
@@ -152,7 +168,7 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
               <input
                 className="text-input"
                 type="search"
-                placeholder="Search local models..."
+                placeholder={t("modelPicker.searchPlaceholder", { defaultValue: "Search local models..." })}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
@@ -167,19 +183,25 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
                       type="button"
                       disabled={isBroken}
                       onClick={() => void handleItemClick(item)}
-                      title={isBroken ? item.brokenReason ?? "Incomplete / broken" : undefined}
+                      title={isBroken ? item.brokenReason ?? t("modelPicker.incompleteBrokenTooltip", { defaultValue: "Incomplete / broken" }) : undefined}
                     >
                       <div className="model-select-item-info">
                         <strong>{item.name}</strong>
                         <div className="model-select-item-meta">
                           <span>{item.format}</span>
-                          {item.sizeGb ? <span>{item.sizeGb.toFixed(1)} GB</span> : null}
+                          {item.sizeGb ? <span>{t("modelPicker.sizeGb", { defaultValue: "{size} GB", size: item.sizeGb.toFixed(1) })}</span> : null}
                           {item.maxContext ? (
                             <span>
-                              {item.maxContext >= 1000 ? `${Math.round(item.maxContext / 1024)}K ctx` : `${item.maxContext} ctx`}
+                              {item.maxContext >= 1000
+                                ? t("modelPicker.contextLarge", { defaultValue: "{value}K ctx", value: Math.round(item.maxContext / 1024) })
+                                : t("modelPicker.contextSmall", { defaultValue: "{value} ctx", value: item.maxContext })}
                             </span>
                           ) : null}
-                          {isBroken ? <span className="badge warning">BROKEN</span> : null}
+                          {isBroken ? (
+                            <span className="badge warning">
+                              {t("modelPicker.brokenBadge", { defaultValue: "BROKEN" })}
+                            </span>
+                          ) : null}
                         </div>
                         {isBroken && item.brokenReason ? (
                           <small className="muted-text">{item.brokenReason}</small>
@@ -188,14 +210,18 @@ export function ModelPicker({ open, title, library, filter, selectedPath, onSele
                     </button>
                   );
                 })}
-                {filtered.length === 0 ? <p className="model-select-empty">No models match.</p> : null}
+                {filtered.length === 0 ? (
+                  <p className="model-select-empty">
+                    {t("modelPicker.emptyState", { defaultValue: "No models match." })}
+                  </p>
+                ) : null}
               </div>
             </>
           )}
         </div>
         <div className="modal-footer">
           <button className="secondary-button" type="button" onClick={onClose}>
-            Cancel
+            {t("modelPicker.cancelButton", { defaultValue: "Cancel" })}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RichMarkdown } from "./RichMarkdown";
 
 interface ReasoningPanelProps {
@@ -36,6 +37,7 @@ export function tidyReasoningForDisplay(text: string): string {
 }
 
 export function ReasoningPanel({ text, streaming = false, className }: ReasoningPanelProps) {
+  const { t } = useTranslation("common");
   const rawContent = text?.trim() ?? "";
   const content = tidyReasoningForDisplay(rawContent);
   // Default to *collapsed* during streaming so the user sees a compact
@@ -98,7 +100,9 @@ export function ReasoningPanel({ text, streaming = false, className }: Reasoning
         aria-expanded={open}
       >
         <span className={`reasoning-panel__chevron${open ? " reasoning-panel__chevron--open" : ""}`}>›</span>
-        <span className="reasoning-panel__label">{streaming ? "Thinking..." : "Thinking"}</span>
+        <span className="reasoning-panel__label">{streaming
+          ? t("reasoningPanel.labelStreaming", { defaultValue: "Thinking..." })
+          : t("reasoningPanel.label", { defaultValue: "Thinking" })}</span>
         {preview ? (
           <span className="reasoning-panel__preview" title={preview}>
             {preview}

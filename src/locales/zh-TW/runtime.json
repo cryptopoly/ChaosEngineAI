@@ -1,8 +1,17 @@
 {
   "engines": {
-    "mlx": { "name": "MLX", "description": "Apple 晶片原生推論引擎" },
-    "llamaCpp": { "name": "llama.cpp", "description": "透過 llama-server 進行 GGUF 推論" },
-    "vllm": { "name": "vLLM", "description": "CUDA 推論引擎" }
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple 晶片原生推論引擎"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "透過 llama-server 進行 GGUF 推論"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA 推論引擎"
+    }
   },
   "cacheStrategies": {
     "native": {

@@ -246,5 +246,350 @@
     "clockHint": "Sistema sigue el valor por defecto de tu idioma (12 horas para inglés de EE. UU., 24 horas en otros casos). Elige un lado si prefieres anularlo.",
     "helpImprove": "Ayuda a mejorar las traducciones",
     "openOnGithub": "Abrir {locale} en GitHub →"
+  },
+  "imageOutputCard": {
+    "huggingFace": "Hugging Face",
+    "settings": "Configuración",
+    "stepsCount": "{count} pasos",
+    "cfgLabel": "CFG {value}",
+    "seedLabel": "Seed {value}",
+    "durationSeconds": "{value}s",
+    "useSameSettings": "Usar misma configuración",
+    "varySeed": "Variar seed",
+    "open": "Abrir",
+    "reveal": "Mostrar",
+    "delete": "Eliminar"
+  },
+  "benchmarkScatter": {
+    "emptyState": "Ejecuta algunos benchmarks para llenar el gráfico de dispersión.",
+    "xAxisLabel": "Caché (GB) →",
+    "yAxisLabel": "↑ Tokens/seg",
+    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} GB · {quality}% calidad",
+    "legend1Bit": "1 bit",
+    "legend2Bit": "2 bits",
+    "legend3Bit": "3 bits",
+    "legend4Bit": "4 bits",
+    "legendNativeF16": "Nativo f16",
+    "legendDotSize": "Tamaño del punto = % de calidad"
+  },
+  "logprobSummary": {
+    "title": "Confianza del token",
+    "statsTokensAvg": "{count} tokens · logprob promedio {avg}",
+    "statsLowConfidenceSuffix": " · {count} de baja confianza",
+    "empty": "Sin tokens de baja confianza — el modelo se mantuvo estable.",
+    "hint": "Tokens emitidos con probabilidad por debajo del ~5%. Pasa el cursor para ver las alternativas principales que consideró el modelo.",
+    "noAlternatives": "Sin alternativas registradas.",
+    "metricLogprob": "logprob {value}"
+  },
+  "liveProgress": {
+    "thumbnailAlt": "Vista previa de eliminación de ruido en vivo",
+    "thumbnailCaption": "Vista previa en vivo · Decodificación TAESD",
+    "stepCounter": "paso {current} / {total}",
+    "inProgress": "en curso…",
+    "finalizing": "finalizando…",
+    "phaseTiming": "{elapsed}s / ~{estimated}s"
+  },
+  "acceptedTokenOverlay": {
+    "title": "Superposición de aceptación DDTree",
+    "stats": "{percent}% de {totalChars} caracteres aceptados del borrador · {spanCount} secuencias",
+    "hint": "Los rangos verdes = tokens que el verificador aceptó del modelo borrador sin redecodificar. Los rangos en blanco = tokens que el verificador produjo directamente. Mayor aceptación significa que DDTree ahorró más cómputo.",
+    "spanAcceptedTitle": "Aceptado del borrador",
+    "spanVerifierTitle": "Decodificado por el verificador"
+  },
+  "substrateRoutingBadge": {
+    "ariaLabel": "Enrutamiento de sustrato para este turno",
+    "engineTitle": "Runtime de inferencia que atendió este turno ({engine})",
+    "cacheTitle": "Estrategia de caché KV ({label})",
+    "specLabel": "DDTree",
+    "specLabelWithBudget": "DDTree {budget}",
+    "specTitle": "Decodificación especulativa basada en árbol activa",
+    "specTitleWithBudget": "Decodificación especulativa basada en árbol activa (presupuesto de {budget} tokens borrador por paso)",
+    "acceptLabel": "{value} aceptación promedio",
+    "acceptTitle": "Promedio de tokens borrador aceptados por paso ({value})"
+  },
+  "gpuCard": {
+    "heading": "GPU",
+    "vramLabel": "VRAM",
+    "vramValue": "{used} / {total} GB ({percent}%)",
+    "utilLabel": "Uso: ",
+    "tempLabel": "Temp: ",
+    "tempValue": "{value}C",
+    "powerLabel": "Energía: ",
+    "powerValue": "{value}W"
+  },
+  "performancePreview": {
+    "heading": "Vista previa de rendimiento",
+    "headlineDelta": "{value} GB",
+    "headlineLabel": "ahorro de caché ({ratio}x de compresión)",
+    "baselineHeading": "Línea base (FP16)",
+    "optimizedHeading": "Optimizado",
+    "cacheLabel": "Caché",
+    "speed": "Velocidad",
+    "quality": "Calidad",
+    "baselineSpeedValue": "línea base",
+    "baselineQualityValue": "100%",
+    "gbValue": "{value} GB",
+    "cacheDelta": "-{value} GB",
+    "tokensPerSec": "{value} tok/s",
+    "percentValue": "{value}%",
+    "bitsLabel": "{bits} bits",
+    "f16Label": "f16",
+    "diskStat": "Disco: {value} GB",
+    "compressionStat": "{ratio}x de compresión",
+    "ramLabel": "RAM",
+    "ramValue": "{used}/{total} GB",
+    "speedSlow": "Lento",
+    "speedGood": "Bueno",
+    "speedFast": "Rápido",
+    "speedVeryFast": "Muy rápido"
+  },
+  "reasoningPanel": {
+    "label": "Pensando",
+    "labelStreaming": "Pensando..."
+  },
+  "chatPerfStrip": {
+    "ariaLabel": "Telemetría del host para este turno",
+    "toksLabel": "{value} tok/s",
+    "toksTitle": "Rendimiento de decodificación para este turno ({value} tokens/seg)",
+    "cpuLabel": "CPU {value}%",
+    "cpuTitle": "Uso de CPU al finalizar el turno ({value}%)",
+    "gpuLabel": "GPU {value}%",
+    "gpuTitle": "Uso de GPU / acelerador al finalizar el turno ({value}%)",
+    "memLabel": "{value} GB libres",
+    "memTitle": "RAM disponible al finalizar el turno ({value} GB)",
+    "thermalLabel": "Térmico: {state}",
+    "thermalTitle": "Estado térmico del host ({state}). Crítico significa limitación activa."
+  },
+  "videoStudioRuntimeBanner": {
+    "cudaTorchInstalledHeading": "CUDA torch instalado.",
+    "cudaTorchRestartIntro": "El backend en ejecución aún tiene el torch antiguo en su caché de módulos. Reinicia el backend para activar el nuevo wheel",
+    "gpuNotActiveHeading": "Aceleración por GPU no activa.",
+    "installingCudaTorch": "Instalando CUDA torch...",
+    "installCudaTorch": "Instalar CUDA torch",
+    "restartingButton": "Reiniciando...",
+    "restartBackendButton": "Reiniciar backend",
+    "restartBackendToActivate": "Reinicia el backend para activar",
+    "realEngineReady": "Motor real listo",
+    "fallbackActive": "Plan de respaldo activo",
+    "cpuFallback": "Plan de respaldo en CPU",
+    "restartRequired": "Reinicio requerido",
+    "engineChip": "Motor: {engine}",
+    "deviceChip": "Dispositivo: {device}",
+    "deviceExpectedSuffix": "{device} (esperado)",
+    "loadedChip": "Cargado: {name}",
+    "mp4EncoderMissing": "codificador mp4 faltante",
+    "depMissing": "{dependency} faltante",
+    "longLiveReady": "LongLive listo",
+    "longLiveNotInstalled": "LongLive no instalado",
+    "mlxVideoNotInstalled": "mlx-video no instalado",
+    "mlxVideoScaffold": "andamiaje de mlx-video",
+    "mlxVideoReady": "mlx-video listo",
+    "mlxVideoEngineChip": "Motor: mlx-video",
+    "longLiveDescription": "LongLive se ejecuta en un venv aislado en",
+    "longLiveDescriptionTail": "para que sus dependencias específicas de CUDA no choquen con el runtime principal. La instalación puede tardar 10–20 minutos — dependencias pip, compilación opcional de flash-attn, y luego ~8 GB de pesos de HF.",
+    "installingLongLive": "Instalando LongLive...",
+    "installLongLive": "Instalar LongLive",
+    "mlxVideoMissingFallback": "mlx-video no instalado.",
+    "mlxVideoDescription": "Añade generación nativa de video MLX para Wan2.1 / Wan2.2 / LTX-2 en Apple Silicon — más rápido que diffusers+MPS una vez que aterrice la ruta de generación.",
+    "installingMlxVideo": "Instalando mlx-video...",
+    "installMlxVideo": "Instalar mlx-video",
+    "mp4EncoderPrompt": "La generación de video necesita imageio + imageio-ffmpeg para escribir archivos mp4. ¿Instalarlos ahora en el entorno del backend?",
+    "installing": "Instalando...",
+    "installMp4Encoder": "Instalar codificador mp4",
+    "tokenizerDepsIntro": "Algunos modelos de video cargan paquetes de tokenizador / codificador de texto bajo demanda. Faltan los siguientes y bloquearían la generación:",
+    "tokenizerDepsOutro": "Instálalos ahora para evitar un error a mitad de la generación.",
+    "installTokenizers": "Instalar tokenizadores ({count})",
+    "gpuRuntimeInstalledIntro": "Runtime de GPU instalado en",
+    "gpuRuntimeInstalledOutro": "El backend en ejecución aún tiene su antigua caché de importación — pulsa Reiniciar backend para activar el nuevo runtime, y entonces la generación de video lo usará.",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstallPrompt": "La generación de video necesita el paquete de runtime de GPU (torch + diffusers + tokenizadores, ~2,5 GB). Instálalo una sola vez — se escribe en un directorio local persistente del usuario para que las siguientes actualizaciones de la app no lo vuelvan a descargar.",
+    "installingGpuRuntime": "Instalando runtime de GPU...",
+    "installGpuRuntime": "Instalar runtime de GPU"
+  },
+  "variantPickerButton": {
+    "compareButtonTitle": "Comparar con otro modelo caliente",
+    "popoverAriaLabel": "Elige un modelo para comparar",
+    "heading": "Comparar con",
+    "headingSubtitle": "Añade una respuesta paralela de otro modelo caliente.",
+    "capVision": "Visión",
+    "capTools": "Herramientas",
+    "capReasoning": "Razonamiento",
+    "capCoding": "Código"
+  },
+  "settingsTab": {
+    "sections": {
+      "general": "General",
+      "storage": "Almacenamiento",
+      "providers": "Proveedores",
+      "integrations": "Integraciones",
+      "diagnostics": "Diagnóstico"
+    },
+    "sectionsAria": "Secciones de configuración",
+    "badges": {
+      "default": "predeterminado"
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "subtitle": "Elige cómo la barra lateral organiza las pestañas agrupadas. Los cambios son inmediatos y se conservan al reiniciar.",
+      "sidebarStyleAria": "Estilo de barra lateral",
+      "sidebarCollapsible": "Plegable",
+      "sidebarTabs": "Pestañas",
+      "sidebarCollapsibleHelp": "muestra todos los grupos expandidos con los elementos hijos listados en línea — un clic por destino.",
+      "sidebarTabsHelp": "mantiene la barra lateral compacta: los grupos se comportan como botones únicos que saltan a su última pestaña usada, con una barra de subpestañas arriba del contenido.",
+      "uiScaleAria": "Escala de la interfaz",
+      "uiScaleHelp": "La escala de la interfaz cambia la densidad del cromo de la app inmediatamente. Las vistas previas de medios conservan su propio dimensionamiento por relación de aspecto."
+    },
+    "dataDirectory": {
+      "title": "Directorio de datos",
+      "subtitle": "Donde ChaosEngineAI guarda el historial de chat, las preferencias y las ejecuciones de benchmark. Cámbialo a una carpeta sincronizada en la nube (Dropbox, iCloud) para hacer copias de seguridad o compartir entre máquinas.",
+      "browseButton": "Examinar...",
+      "resetButton": "Restablecer al predeterminado",
+      "helpText": "Los cambios se aplican tras reiniciar el backend. Los datos existentes se copiarán a la nueva ubicación; los archivos antiguos se mantienen en su sitio."
+    },
+    "deliveryFolders": {
+      "title": "Carpetas de entrega",
+      "subtitle": "Donde aterrizan las imágenes y videos recién generados. Anula los valores predeterminados para que los renderizados terminados caigan directamente en una carpeta de cliente, una sincronización de Dropbox o un SSD externo.",
+      "imagesLabel": "Imágenes",
+      "videosLabel": "Videos",
+      "browseButton": "Examinar...",
+      "resetButton": "Restablecer al predeterminado",
+      "helpText": "Los nuevos artefactos van enseguida a la carpeta que elijas — no se necesita reiniciar el backend. Los renderizados existentes se quedan donde fueron escritos. Restablecer devuelve la fila al valor predeterminado bajo el Directorio de datos."
+    },
+    "modelDirectories": {
+      "title": "Directorios de modelos",
+      "subtitle": "Añade las carpetas que ChaosEngineAI debe escanear en busca de modelos locales, incluidas rutas personalizadas y directorios de modelos compartidos.",
+      "saveButton": "Guardar configuración",
+      "labelPlaceholder": "Etiqueta (p. ej., Modelos compartidos)",
+      "browseButton": "Examinar…",
+      "addButton": "Añadir",
+      "foundBadge": "Encontrado",
+      "missingBadge": "Faltante",
+      "modelCount": "{count, plural, one {# modelo} other {# modelos}}",
+      "changeButton": "Cambiar…",
+      "enableButton": "Habilitar",
+      "disableButton": "Deshabilitar",
+      "removeButton": "Quitar"
+    },
+    "providers": {
+      "title": "Proveedores remotos",
+      "subtitle": "Configura APIs en la nube compatibles con OpenAI como plan de respaldo. Las claves se almacenan localmente con permisos 0600.",
+      "addButton": "+ Añadir proveedor",
+      "emptyState": "Ningún proveedor remoto configurado. Añade uno para usar modelos en la nube como plan de respaldo.",
+      "labelField": "Etiqueta",
+      "modelField": "Nombre del modelo",
+      "apiBaseField": "URL base de la API (debe ser HTTPS)",
+      "apiKeyField": "Clave de API",
+      "apiKeyStoredPlaceholder": "•••• almacenada ••••",
+      "apiKeyPlaceholder": "sk-...",
+      "removeButton": "Quitar"
+    },
+    "huggingFace": {
+      "title": "Hugging Face",
+      "subtitle": "Necesario para modelos restringidos como Mistral, Llama, Gemma. Consigue uno en huggingface.co/settings/tokens",
+      "saveButton": "Guardar configuración",
+      "tokenLabel": "Token de Hugging Face",
+      "tokenStoredPlaceholder": "•••• almacenado ••••",
+      "tokenPlaceholder": "hf_...",
+      "helpText": "Se almacena localmente. Usado por la conversión MLX al obtener modelos restringidos de Hugging Face."
+    },
+    "integrations": {
+      "title": "Integraciones",
+      "subtitle": "Conecta herramientas externas a la API compatible con OpenAI de ChaosEngineAI.",
+      "intro": "Usa estos fragmentos para conectar herramientas populares a ChaosEngineAI como su backend de LLM. El servidor debe estar ejecutándose en",
+      "copyButton": "Copiar"
+    }
+  },
+  "modelLaunchModal": {
+    "defaultTitle": "Seleccionar modelo",
+    "capabilityBadgesAriaLabel": "Capacidades del modelo",
+    "capability": {
+      "vision": {
+        "label": "Visión",
+        "title": "El modelo acepta entrada de imagen"
+      },
+      "tools": {
+        "label": "Herramientas",
+        "title": "El modelo admite llamadas a herramientas / funciones"
+      },
+      "reasoning": {
+        "label": "Razonamiento",
+        "title": "El modelo emite una traza de razonamiento"
+      },
+      "code": {
+        "label": "Código",
+        "title": "El modelo está ajustado para generación de código"
+      },
+      "agents": {
+        "label": "Agentes",
+        "title": "El modelo está ajustado para flujos agénticos de varios pasos"
+      },
+      "audio": {
+        "label": "Audio",
+        "title": "El modelo acepta entrada de audio"
+      },
+      "video": {
+        "label": "Video",
+        "title": "El modelo acepta entrada de video"
+      }
+    },
+    "changeButton": "Cambiar",
+    "searchPlaceholder": "Buscar modelos...",
+    "contextDetected": "{contextLabel} detectado",
+    "emptyState": "Ningún modelo coincide con tu búsqueda.",
+    "launchSettings": "Configuración de lanzamiento",
+    "cancelButton": "Cancelar"
+  },
+  "modelPicker": {
+    "weightFileTitle": "Seleccionar archivo de pesos: {name}",
+    "scanning": "Escaneando...",
+    "visionProjectorBadge": "proyector de visión",
+    "mainBadge": "principal",
+    "backButton": "Atrás",
+    "searchPlaceholder": "Buscar modelos locales...",
+    "incompleteBrokenTooltip": "Incompleto / roto",
+    "sizeGb": "{size} GB",
+    "contextLarge": "{value}K ctx",
+    "contextSmall": "{value} ctx",
+    "brokenBadge": "ROTO",
+    "emptyState": "Ningún modelo coincide.",
+    "cancelButton": "Cancelar",
+    "error": {
+      "brokenDirectory": "Directorio de modelo incompleto o roto.",
+      "noGgufWeights": "No hay pesos .gguf presentes en este directorio.",
+      "listWeightsFailed": "Error al listar los archivos de pesos."
+    }
+  },
+  "startupProgress": {
+    "error": {
+      "title": "El backend no se pudo iniciar"
+    },
+    "elapsed": "{seconds}s transcurridos",
+    "elapsedSlow": "{seconds}s transcurridos — los primeros arranques pueden tardar hasta un minuto",
+    "phase": {
+      "loadingWorkspace": {
+        "title": "Cargando estado del espacio de trabajo",
+        "detail": "El backend está activo — obteniendo tus modelos, sesiones y configuración."
+      },
+      "startingSidecar": {
+        "title": "Iniciando sidecar del backend",
+        "detail": "Lanzando el runtime de ChaosEngineAI."
+      },
+      "extractingRuntime": {
+        "title": "Extrayendo runtime incorporado",
+        "detail": "Solo en el primer arranque — descomprimiendo el runtime de Python y llama.cpp incluidos en la caché de la app."
+      },
+      "startingPython": {
+        "title": "Iniciando runtime de Python",
+        "detail": "Cargando la API principal y restaurando el estado del espacio de trabajo."
+      },
+      "waitingBackend": {
+        "title": "Esperando al backend",
+        "detail": "El sidecar todavía está enlazando su puerto de API y comprobando el estado del runtime local."
+      },
+      "stillLoading": {
+        "title": "Aún cargando",
+        "detail": "Las importaciones del arranque en frío están tardando más de lo habitual. Si se queda parado más de dos minutos, cierra y vuelve a abrir — un manifiesto obsoleto puede forzar una nueva extracción."
+      }
+    }
   }
 }

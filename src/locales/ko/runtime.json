@@ -1,8 +1,17 @@
 {
   "engines": {
-    "mlx": { "name": "MLX", "description": "Apple Silicon 네이티브 추론 엔진" },
-    "llamaCpp": { "name": "llama.cpp", "description": "llama-server를 통한 GGUF 추론" },
-    "vllm": { "name": "vLLM", "description": "CUDA 추론 엔진" }
+    "mlx": {
+      "name": "MLX",
+      "description": "Apple Silicon 네이티브 추론 엔진"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "llama-server를 통한 GGUF 추론"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "CUDA 추론 엔진"
+    }
   },
   "cacheStrategies": {
     "native": {

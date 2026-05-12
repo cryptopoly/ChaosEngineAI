@@ -10,15 +10,55 @@
   "dateFormatHuman": "d MMMM yyyy",
   "dateFormatISO": "yyyy-MM-dd",
   "supportedLocales": [
-    { "code": "en",    "endonym": "English",            "rtl": false },
-    { "code": "zh-CN", "endonym": "简体中文",            "rtl": false },
-    { "code": "zh-TW", "endonym": "繁體中文",            "rtl": false },
-    { "code": "ja",    "endonym": "日本語",              "rtl": false },
-    { "code": "de",    "endonym": "Deutsch",            "rtl": false },
-    { "code": "ru",    "endonym": "Русский",            "rtl": false },
-    { "code": "ko",    "endonym": "한국어",              "rtl": false },
-    { "code": "fr",    "endonym": "Français",           "rtl": false },
-    { "code": "es",    "endonym": "Español",            "rtl": false },
-    { "code": "pt-BR", "endonym": "Português (Brasil)", "rtl": false }
+    {
+      "code": "en",
+      "endonym": "English",
+      "rtl": false
+    },
+    {
+      "code": "zh-CN",
+      "endonym": "简体中文",
+      "rtl": false
+    },
+    {
+      "code": "zh-TW",
+      "endonym": "繁體中文",
+      "rtl": false
+    },
+    {
+      "code": "ja",
+      "endonym": "日本語",
+      "rtl": false
+    },
+    {
+      "code": "de",
+      "endonym": "Deutsch",
+      "rtl": false
+    },
+    {
+      "code": "ru",
+      "endonym": "Русский",
+      "rtl": false
+    },
+    {
+      "code": "ko",
+      "endonym": "한국어",
+      "rtl": false
+    },
+    {
+      "code": "fr",
+      "endonym": "Français",
+      "rtl": false
+    },
+    {
+      "code": "es",
+      "endonym": "Español",
+      "rtl": false
+    },
+    {
+      "code": "pt-BR",
+      "endonym": "Português (Brasil)",
+      "rtl": false
+    }
   ]
 }

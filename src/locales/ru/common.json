@@ -246,5 +246,350 @@
     "clockHint": "Системный использует значение по умолчанию для вашего языка (12 часов для US English, 24 часа в остальных случаях). Выберите вариант, если хотите переопределить.",
     "helpImprove": "Помочь с переводами",
     "openOnGithub": "Открыть {locale} на GitHub →"
+  },
+  "imageOutputCard": {
+    "huggingFace": "Hugging Face",
+    "settings": "Настройки",
+    "stepsCount": "{count} шагов",
+    "cfgLabel": "CFG {value}",
+    "seedLabel": "Сид {value}",
+    "durationSeconds": "{value}с",
+    "useSameSettings": "Те же настройки",
+    "varySeed": "Менять сид",
+    "open": "Открыть",
+    "reveal": "Показать",
+    "delete": "Удалить"
+  },
+  "benchmarkScatter": {
+    "emptyState": "Запустите несколько бенчмарков, чтобы заполнить точечный график.",
+    "xAxisLabel": "Кэш (ГБ) →",
+    "yAxisLabel": "↑ Токенов/сек",
+    "pointTooltip": "{label}\n{tokS} tok/s · {cacheGb} ГБ · качество {quality}%",
+    "legend1Bit": "1-бит",
+    "legend2Bit": "2-бит",
+    "legend3Bit": "3-бит",
+    "legend4Bit": "4-бит",
+    "legendNativeF16": "Нативный f16",
+    "legendDotSize": "Размер точки = качество %"
+  },
+  "logprobSummary": {
+    "title": "Уверенность по токенам",
+    "statsTokensAvg": "{count} токенов · средний logprob {avg}",
+    "statsLowConfidenceSuffix": " · {count} с низкой уверенностью",
+    "empty": "Токенов с низкой уверенностью нет — модель отвечала стабильно.",
+    "hint": "Токены с вероятностью ниже ~5%. Наведите курсор, чтобы увидеть лучшие альтернативы, которые рассмотрела модель.",
+    "noAlternatives": "Альтернативы не записаны.",
+    "metricLogprob": "logprob {value}"
+  },
+  "liveProgress": {
+    "thumbnailAlt": "Предпросмотр denoise в реальном времени",
+    "thumbnailCaption": "Предпросмотр · декодирование TAESD",
+    "stepCounter": "шаг {current} / {total}",
+    "inProgress": "в процессе…",
+    "finalizing": "завершение…",
+    "phaseTiming": "{elapsed}с / ~{estimated}с"
+  },
+  "acceptedTokenOverlay": {
+    "title": "Слой принятия DDTree",
+    "stats": "{percent}% из {totalChars} символов приняты из черновика · {spanCount} серий",
+    "hint": "Зелёные диапазоны = токены, принятые верификатором из черновой модели без повторного декодирования. Обычные диапазоны = токены, выведенные верификатором напрямую. Чем выше принятие, тем больше вычислений сэкономил DDTree.",
+    "spanAcceptedTitle": "Принято из черновика",
+    "spanVerifierTitle": "Декодировано верификатором"
+  },
+  "substrateRoutingBadge": {
+    "ariaLabel": "Маршрутизация подложки для этого хода",
+    "engineTitle": "Среда выполнения, обслужившая этот ход ({engine})",
+    "cacheTitle": "Стратегия KV cache ({label})",
+    "specLabel": "DDTree",
+    "specLabelWithBudget": "DDTree {budget}",
+    "specTitle": "Спекулятивное декодирование на основе дерева активно",
+    "specTitleWithBudget": "Спекулятивное декодирование на основе дерева активно (бюджет {budget} черновых токенов на шаг)",
+    "acceptLabel": "{value} в среднем принято",
+    "acceptTitle": "Среднее количество черновых токенов, принятых за шаг ({value})"
+  },
+  "gpuCard": {
+    "heading": "GPU",
+    "vramLabel": "VRAM",
+    "vramValue": "{used} / {total} ГБ ({percent}%)",
+    "utilLabel": "Загрузка: ",
+    "tempLabel": "Темп.: ",
+    "tempValue": "{value}C",
+    "powerLabel": "Питание: ",
+    "powerValue": "{value}Вт"
+  },
+  "performancePreview": {
+    "heading": "Предпросмотр производительности",
+    "headlineDelta": "{value} ГБ",
+    "headlineLabel": "экономия кэша (сжатие {ratio}x)",
+    "baselineHeading": "Базовый (FP16)",
+    "optimizedHeading": "Оптимизированный",
+    "cacheLabel": "Кэш",
+    "speed": "Скорость",
+    "quality": "Качество",
+    "baselineSpeedValue": "базовая",
+    "baselineQualityValue": "100%",
+    "gbValue": "{value} ГБ",
+    "cacheDelta": "-{value} ГБ",
+    "tokensPerSec": "{value} tok/s",
+    "percentValue": "{value}%",
+    "bitsLabel": "{bits}-бит",
+    "f16Label": "f16",
+    "diskStat": "Диск: {value} ГБ",
+    "compressionStat": "сжатие {ratio}x",
+    "ramLabel": "RAM",
+    "ramValue": "{used}/{total} ГБ",
+    "speedSlow": "Медленно",
+    "speedGood": "Хорошо",
+    "speedFast": "Быстро",
+    "speedVeryFast": "Очень быстро"
+  },
+  "reasoningPanel": {
+    "label": "Размышление",
+    "labelStreaming": "Размышление..."
+  },
+  "chatPerfStrip": {
+    "ariaLabel": "Телеметрия хоста для этого хода",
+    "toksLabel": "{value} tok/s",
+    "toksTitle": "Пропускная способность декодирования для этого хода ({value} токенов/сек)",
+    "cpuLabel": "CPU {value}%",
+    "cpuTitle": "Загрузка CPU при завершении хода ({value}%)",
+    "gpuLabel": "GPU {value}%",
+    "gpuTitle": "Загрузка GPU / ускорителя при завершении хода ({value}%)",
+    "memLabel": "{value} ГБ свободно",
+    "memTitle": "Доступная RAM при завершении хода ({value} ГБ)",
+    "thermalLabel": "Тепло: {state}",
+    "thermalTitle": "Тепловое состояние хоста ({state}). Critical означает активное троттлирование."
+  },
+  "videoStudioRuntimeBanner": {
+    "cudaTorchInstalledHeading": "CUDA torch установлен.",
+    "cudaTorchRestartIntro": "У работающего бэкенда в кэше модулей всё ещё старый torch. Перезапустите бэкенд, чтобы активировать новое колесо",
+    "gpuNotActiveHeading": "GPU-ускорение не активно.",
+    "installingCudaTorch": "Установка CUDA torch...",
+    "installCudaTorch": "Установить CUDA torch",
+    "restartingButton": "Перезапуск...",
+    "restartBackendButton": "Перезапустить бэкенд",
+    "restartBackendToActivate": "Перезапустите бэкенд для активации",
+    "realEngineReady": "Реальный движок готов",
+    "fallbackActive": "Фолбэк активен",
+    "cpuFallback": "Фолбэк на CPU",
+    "restartRequired": "Требуется перезапуск",
+    "engineChip": "Движок: {engine}",
+    "deviceChip": "Устройство: {device}",
+    "deviceExpectedSuffix": "{device} (ожидается)",
+    "loadedChip": "Загружено: {name}",
+    "mp4EncoderMissing": "mp4-кодировщик отсутствует",
+    "depMissing": "{dependency} отсутствует",
+    "longLiveReady": "LongLive готов",
+    "longLiveNotInstalled": "LongLive не установлен",
+    "mlxVideoNotInstalled": "mlx-video не установлен",
+    "mlxVideoScaffold": "mlx-video каркас",
+    "mlxVideoReady": "mlx-video готов",
+    "mlxVideoEngineChip": "Движок: mlx-video",
+    "longLiveDescription": "LongLive работает в изолированной venv по пути",
+    "longLiveDescriptionTail": "чтобы его CUDA-зависимости не конфликтовали с основной средой выполнения. Установка может занять 10–20 минут — pip-зависимости, опциональная сборка flash-attn, затем ~8 ГБ весов HF.",
+    "installingLongLive": "Установка LongLive...",
+    "installLongLive": "Установить LongLive",
+    "mlxVideoMissingFallback": "mlx-video не установлен.",
+    "mlxVideoDescription": "Добавляет нативную MLX-генерацию видео для Wan2.1 / Wan2.2 / LTX-2 на Apple Silicon — быстрее, чем diffusers+MPS, как только появится путь генерации.",
+    "installingMlxVideo": "Установка mlx-video...",
+    "installMlxVideo": "Установить mlx-video",
+    "mp4EncoderPrompt": "Для генерации видео нужны imageio + imageio-ffmpeg для записи файлов mp4. Установить их в окружение бэкенда сейчас?",
+    "installing": "Установка...",
+    "installMp4Encoder": "Установить mp4-кодировщик",
+    "tokenizerDepsIntro": "Некоторые видеомодели загружают пакеты токенизатора / текстового энкодера по требованию. Следующие отсутствуют и заблокировали бы генерацию:",
+    "tokenizerDepsOutro": "Установите их сейчас, чтобы избежать ошибки в середине генерации.",
+    "installTokenizers": "Установить токенизаторы ({count})",
+    "gpuRuntimeInstalledIntro": "GPU-среда выполнения установлена в",
+    "gpuRuntimeInstalledOutro": "У работающего бэкенда всё ещё старый кэш импорта — нажмите «Перезапустить бэкенд», чтобы активировать новую среду выполнения, тогда генерация видео начнёт её использовать.",
+    "extrasFallback": "доп.",
+    "gpuRuntimeInstallPrompt": "Для генерации видео нужен пакет GPU-среды выполнения (torch + diffusers + tokenizers, ~2.5 ГБ). Установите его один раз — он пишется в постоянный пользовательский каталог, чтобы последующие обновления приложения не перезагружали его.",
+    "installingGpuRuntime": "Установка GPU-среды выполнения...",
+    "installGpuRuntime": "Установить GPU-среду выполнения"
+  },
+  "variantPickerButton": {
+    "compareButtonTitle": "Сравнить с другой тёплой моделью",
+    "popoverAriaLabel": "Выберите модель для сравнения",
+    "heading": "Сравнить с",
+    "headingSubtitle": "Добавляет параллельный ответ от другой тёплой модели.",
+    "capVision": "Vision",
+    "capTools": "Tools",
+    "capReasoning": "Reasoning",
+    "capCoding": "Code"
+  },
+  "settingsTab": {
+    "sections": {
+      "general": "Общее",
+      "storage": "Хранилище",
+      "providers": "Провайдеры",
+      "integrations": "Интеграции",
+      "diagnostics": "Диагностика"
+    },
+    "sectionsAria": "Разделы настроек",
+    "badges": {
+      "default": "по умолчанию"
+    },
+    "appearance": {
+      "title": "Внешний вид",
+      "subtitle": "Выберите, как боковая панель организует сгруппированные вкладки. Переключения мгновенные и запоминаются после перезапусков.",
+      "sidebarStyleAria": "Стиль боковой панели",
+      "sidebarCollapsible": "Сворачиваемая",
+      "sidebarTabs": "Вкладки",
+      "sidebarCollapsibleHelp": "показывает все группы развёрнутыми с дочерними элементами в строку — один клик до каждого назначения.",
+      "sidebarTabsHelp": "сохраняет боковую панель компактной: группы ведут себя как одиночные кнопки, переходящие на последнюю использованную вкладку, с панелью под-вкладок над содержимым.",
+      "uiScaleAria": "Масштаб интерфейса",
+      "uiScaleHelp": "Масштаб интерфейса немедленно меняет плотность хрома приложения. Превью медиа сохраняют свои размеры по соотношению сторон."
+    },
+    "dataDirectory": {
+      "title": "Каталог данных",
+      "subtitle": "Где ChaosEngineAI хранит историю чатов, настройки и запуски бенчмарков. Поменяйте на папку, синхронизируемую с облаком (Dropbox, iCloud), чтобы делать резервные копии или делиться между машинами.",
+      "browseButton": "Обзор...",
+      "resetButton": "Сбросить к значениям по умолчанию",
+      "helpText": "Изменения вступят в силу после перезапуска бэкенда. Существующие данные будут скопированы в новое место; старые файлы останутся на месте."
+    },
+    "deliveryFolders": {
+      "title": "Папки доставки",
+      "subtitle": "Куда попадают вновь созданные изображения и видео. Переопределите значения по умолчанию, чтобы готовые рендеры сразу попадали в клиентскую папку, в синхронизацию Dropbox или на внешний SSD.",
+      "imagesLabel": "Изображения",
+      "videosLabel": "Видео",
+      "browseButton": "Обзор...",
+      "resetButton": "Сбросить к значениям по умолчанию",
+      "helpText": "Новые артефакты сразу попадают в выбранную вами папку — перезапуск бэкенда не нужен. Существующие рендеры остаются там, где были записаны. Сброс возвращает строку к значению по умолчанию в каталоге данных."
+    },
+    "modelDirectories": {
+      "title": "Каталоги моделей",
+      "subtitle": "Добавьте папки, которые ChaosEngineAI должен сканировать на локальные модели, включая пользовательские пути и общие каталоги моделей.",
+      "saveButton": "Сохранить настройки",
+      "labelPlaceholder": "Метка (например, Общие модели)",
+      "browseButton": "Обзор…",
+      "addButton": "Добавить",
+      "foundBadge": "Найдено",
+      "missingBadge": "Отсутствует",
+      "modelCount": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}}",
+      "changeButton": "Изменить…",
+      "enableButton": "Включить",
+      "disableButton": "Отключить",
+      "removeButton": "Удалить"
+    },
+    "providers": {
+      "title": "Удалённые провайдеры",
+      "subtitle": "Настройте облачные API, совместимые с OpenAI, как фолбэк. Ключи хранятся локально с правами 0600.",
+      "addButton": "+ Добавить провайдера",
+      "emptyState": "Удалённые провайдеры не настроены. Добавьте одного, чтобы использовать облачные модели как фолбэк.",
+      "labelField": "Метка",
+      "modelField": "Имя модели",
+      "apiBaseField": "Базовый URL API (должен быть HTTPS)",
+      "apiKeyField": "API-ключ",
+      "apiKeyStoredPlaceholder": "•••• сохранён ••••",
+      "apiKeyPlaceholder": "sk-...",
+      "removeButton": "Удалить"
+    },
+    "huggingFace": {
+      "title": "Hugging Face",
+      "subtitle": "Требуется для закрытых моделей вроде Mistral, Llama, Gemma. Получите токен на huggingface.co/settings/tokens",
+      "saveButton": "Сохранить настройки",
+      "tokenLabel": "Токен Hugging Face",
+      "tokenStoredPlaceholder": "•••• сохранён ••••",
+      "tokenPlaceholder": "hf_...",
+      "helpText": "Хранится локально. Используется MLX-конвертацией при получении закрытых моделей с Hugging Face."
+    },
+    "integrations": {
+      "title": "Интеграции",
+      "subtitle": "Подключите внешние инструменты к API ChaosEngineAI, совместимому с OpenAI.",
+      "intro": "Используйте эти сниппеты, чтобы подключить популярные инструменты к ChaosEngineAI как их LLM-бэкенду. Сервер должен быть запущен на",
+      "copyButton": "Копировать"
+    }
+  },
+  "modelLaunchModal": {
+    "defaultTitle": "Выбрать модель",
+    "capabilityBadgesAriaLabel": "Возможности модели",
+    "capability": {
+      "vision": {
+        "label": "Vision",
+        "title": "Модель принимает входное изображение"
+      },
+      "tools": {
+        "label": "Tools",
+        "title": "Модель поддерживает вызов инструментов / функций"
+      },
+      "reasoning": {
+        "label": "Reasoning",
+        "title": "Модель выдаёт цепочку размышлений"
+      },
+      "code": {
+        "label": "Code",
+        "title": "Модель настроена для генерации кода"
+      },
+      "agents": {
+        "label": "Agents",
+        "title": "Модель настроена для многошаговых агентских потоков"
+      },
+      "audio": {
+        "label": "Audio",
+        "title": "Модель принимает аудио на вход"
+      },
+      "video": {
+        "label": "Video",
+        "title": "Модель принимает видео на вход"
+      }
+    },
+    "changeButton": "Изменить",
+    "searchPlaceholder": "Поиск моделей...",
+    "contextDetected": "Обнаружен {contextLabel}",
+    "emptyState": "Ни одна модель не соответствует вашему поиску.",
+    "launchSettings": "Настройки запуска",
+    "cancelButton": "Отмена"
+  },
+  "modelPicker": {
+    "weightFileTitle": "Выбрать файл весов: {name}",
+    "scanning": "Сканирование...",
+    "visionProjectorBadge": "vision-проектор",
+    "mainBadge": "основной",
+    "backButton": "Назад",
+    "searchPlaceholder": "Поиск локальных моделей...",
+    "incompleteBrokenTooltip": "Неполный / повреждённый",
+    "sizeGb": "{size} ГБ",
+    "contextLarge": "{value}K ctx",
+    "contextSmall": "{value} ctx",
+    "brokenBadge": "ПОВРЕЖДЁН",
+    "emptyState": "Совпадений нет.",
+    "cancelButton": "Отмена",
+    "error": {
+      "brokenDirectory": "Неполный или повреждённый каталог модели.",
+      "noGgufWeights": "В этом каталоге нет файлов .gguf с весами.",
+      "listWeightsFailed": "Не удалось получить список файлов весов."
+    }
+  },
+  "startupProgress": {
+    "error": {
+      "title": "Не удалось запустить бэкенд"
+    },
+    "elapsed": "прошло {seconds}с",
+    "elapsedSlow": "прошло {seconds}с — первые запуски могут занять до минуты",
+    "phase": {
+      "loadingWorkspace": {
+        "title": "Загрузка состояния рабочей области",
+        "detail": "Бэкенд запущен — получаем ваши модели, сессии и настройки."
+      },
+      "startingSidecar": {
+        "title": "Запуск сайдкара бэкенда",
+        "detail": "Запускается среда выполнения ChaosEngineAI."
+      },
+      "extractingRuntime": {
+        "title": "Извлечение встроенной среды выполнения",
+        "detail": "Только при первом запуске — распаковка встроенной среды выполнения Python и llama.cpp в кэш приложения."
+      },
+      "startingPython": {
+        "title": "Запуск среды выполнения Python",
+        "detail": "Загрузка основного API и восстановление состояния рабочей области."
+      },
+      "waitingBackend": {
+        "title": "Ожидание бэкенда",
+        "detail": "Сайдкар всё ещё привязывает порт API и проверяет состояние локальной среды выполнения."
+      },
+      "stillLoading": {
+        "title": "Всё ещё загружается",
+        "detail": "Импорты холодного старта занимают больше времени, чем обычно. Если зависнет дольше двух минут, закройте и откройте снова — устаревший манифест может вызвать повторное извлечение."
+      }
+    }
   }
 }

@@ -53,7 +53,8 @@
     "image": "Прикрепить изображение",
     "document": "Прикрепить документ",
     "code": "Прикрепить код",
-    "removeAttachment": "Удалить вложение"
+    "removeAttachment": "Удалить вложение",
+    "imageTooLarge": "Изображение должно быть меньше 10 МБ"
   },
   "modelPicker": {
     "label": "Модель",
@@ -112,7 +113,52 @@
     "forkTooltip": "Создать ветку отсюда (новый поток)",
     "delveTooltip": "Глубже — перечитать критическим взглядом и предложить переработанный ответ",
     "deleteMessageTooltip": "Удалить сообщение",
-    "loadExactSettingsTooltip": "Загрузить точную модель и настройки среды выполнения, использованные для этого ответа"
+    "loadExactSettingsTooltip": "Загрузить точную модель и настройки среды выполнения, использованные для этого ответа",
+    "roleAgent": "Агент",
+    "roleUser": "Пользователь",
+    "thermalThrottleTitle": "Тепловое троттлирование",
+    "memoryCriticalTitle": "Критически низкая системная память",
+    "memoryStats": "{available} ГБ свободно · давление {pressure}%",
+    "cancel": "Отмена",
+    "emptyState": "Отправьте сообщение, чтобы начать беседу.",
+    "reloadSettings": "Перезагрузить эти настройки",
+    "fitInMemory": {
+      "on": "Вкл",
+      "off": "Выкл",
+      "unknown": "Неизвестно"
+    },
+    "variants": {
+      "heading": "Сравнение ответов",
+      "subtitle": "Один и тот же промпт направлен через альтернативные тёплые модели."
+    },
+    "details": {
+      "summary": "Детали модели",
+      "unknown": "Неизвестно",
+      "auto": "Авто",
+      "dflashAccepted": "DFLASH {value} в среднем принято",
+      "model": "Модель",
+      "runtime": "Среда выполнения",
+      "cache": "Кэш",
+      "strategy": "Стратегия",
+      "cacheBits": "Биты кэша",
+      "fp16Layers": "FP16-слои",
+      "backend": "Бэкенд",
+      "context": "Контекст",
+      "fitInMemory": "Помещается в памяти",
+      "tokens": "Токены",
+      "tokensTotal": "{count} всего",
+      "responseTime": "Время ответа",
+      "decodeSpeed": "Скорость декодирования",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "Запрошенный кэш",
+      "requestedFit": "Запрошенное размещение",
+      "requestedDflashDdtree": "Запрошенный DFlash / DDTree",
+      "runtimeStatus": "Состояние среды выполнения",
+      "treeBudget": "Бюджет дерева",
+      "dflashAcceptance": "Приём DFLASH",
+      "avgTokens": "{value} в среднем токенов",
+      "draftModel": "Черновая модель"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "Название челленджа",

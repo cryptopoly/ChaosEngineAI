@@ -53,7 +53,8 @@
     "image": "附加影像",
     "document": "附加文件",
     "code": "附加程式碼",
-    "removeAttachment": "移除附件"
+    "removeAttachment": "移除附件",
+    "imageTooLarge": "影像必須小於 10MB"
   },
   "modelPicker": {
     "label": "模型",
@@ -112,7 +113,52 @@
     "forkTooltip": "從此處分支(建立新執行緒)",
     "delveTooltip": "深入 — 以批評的眼光重讀並提出修訂後的回答",
     "deleteMessageTooltip": "刪除訊息",
-    "loadExactSettingsTooltip": "載入此回應使用的確切模型和執行階段設定"
+    "loadExactSettingsTooltip": "載入此回應使用的確切模型和執行階段設定",
+    "roleAgent": "代理",
+    "roleUser": "使用者",
+    "thermalThrottleTitle": "溫度降頻",
+    "memoryCriticalTitle": "系統記憶體已達臨界",
+    "memoryStats": "{available} GB 可用 · 壓力 {pressure}%",
+    "cancel": "取消",
+    "emptyState": "傳送訊息以開始對話。",
+    "reloadSettings": "重新載入這些設定",
+    "fitInMemory": {
+      "on": "開",
+      "off": "關",
+      "unknown": "未知"
+    },
+    "variants": {
+      "heading": "比較回覆",
+      "subtitle": "同一提示詞路由至其他熱模型。"
+    },
+    "details": {
+      "summary": "模型詳細資訊",
+      "unknown": "未知",
+      "auto": "自動",
+      "dflashAccepted": "DFLASH 平均接受 {value}",
+      "model": "模型",
+      "runtime": "執行階段",
+      "cache": "快取",
+      "strategy": "策略",
+      "cacheBits": "快取位元",
+      "fp16Layers": "FP16 層",
+      "backend": "後端",
+      "context": "上下文",
+      "fitInMemory": "符合記憶體",
+      "tokens": "Token",
+      "tokensTotal": "共 {count}",
+      "responseTime": "回應時間",
+      "decodeSpeed": "解碼速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "請求的快取",
+      "requestedFit": "請求的符合度",
+      "requestedDflashDdtree": "請求的 DFlash / DDTree",
+      "runtimeStatus": "執行階段狀態",
+      "treeBudget": "樹預算",
+      "dflashAcceptance": "DFLASH 接受率",
+      "avgTokens": "平均 {value} 個 token",
+      "draftModel": "草稿模型"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "挑戰標題",

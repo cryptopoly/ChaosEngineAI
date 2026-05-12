@@ -167,7 +167,7 @@ export function ServerTab({
                   onClick={() => onOpenModelSelector("server", selectedServerOptionKey)}
                   disabled={busy || !backendOnline}
                 >
-                  Load Model
+                  {t("serverTab.loadModel", { defaultValue: "Load Model" })}
                 </button>
                 <button
                   className="secondary-button"
@@ -175,7 +175,7 @@ export function ServerTab({
                   onClick={() => void onRestartServer()}
                   disabled={busy || !backendOnline}
                 >
-                  Restart
+                  {t("serverTab.restart", { defaultValue: "Restart" })}
                 </button>
                 <button
                   className="secondary-button danger-button"
@@ -183,26 +183,28 @@ export function ServerTab({
                   onClick={() => void onStopServer()}
                   disabled={busy || !backendOnline}
                 >
-                  Stop
+                  {t("serverTab.stop", { defaultValue: "Stop" })}
                 </button>
                 <button
                   className="secondary-button"
                   type="button"
                   onClick={() => { onTestModelIdChange(null); onShowRemoteTestChange(true); }}
                 >
-                  Test
+                  {t("serverTab.test", { defaultValue: "Test" })}
                 </button>
               </div>
             </div>
 
             <div className="server-api-token-row">
               <div className="server-api-token-label">
-                <strong>API key</strong>
-                <small className="muted-text">Required as <span className="mono-text">Authorization: Bearer …</span> on every /v1 and /api call.</small>
+                <strong>{t("serverTab.apiKey", { defaultValue: "API key" })}</strong>
+                <small className="muted-text">{t("serverTab.apiKeyHint", { defaultValue: "Required as Authorization: Bearer … on every /v1 and /api call." })}</small>
               </div>
               <div className="server-api-token-value">
                 <span className="mono-text">
-                  {apiToken ? (showApiToken ? apiToken : maskedToken) : "(waiting for backend…)"}
+                  {apiToken
+                    ? (showApiToken ? apiToken : maskedToken)
+                    : t("serverTab.waitingForBackend", { defaultValue: "(waiting for backend…)" })}
                 </span>
                 <div className="button-row">
                   <button
@@ -211,7 +213,9 @@ export function ServerTab({
                     disabled={!apiToken}
                     onClick={() => setShowApiToken((v) => !v)}
                   >
-                    {showApiToken ? "Hide" : "Reveal"}
+                    {showApiToken
+                      ? t("serverTab.hide", { defaultValue: "Hide" })
+                      : t("serverTab.reveal", { defaultValue: "Reveal" })}
                   </button>
                   <button
                     className="secondary-button"
@@ -219,7 +223,7 @@ export function ServerTab({
                     disabled={!apiToken}
                     onClick={() => apiToken && copyText(apiToken)}
                   >
-                    Copy
+                    {t("serverTab.copy", { defaultValue: "Copy" })}
                   </button>
                 </div>
               </div>
@@ -264,7 +268,11 @@ export function ServerTab({
                   {warmModels.map((w) => {
                     const isLoading = loadingRef === w.ref;
                     const badgeClass = w.active ? "success" : isLoading ? "accent" : "muted";
-                    const badgeLabel = w.active ? "ACTIVE" : isLoading ? "LOADING" : "WARM";
+                    const badgeLabel = w.active
+                      ? t("serverTab.badgeActive", { defaultValue: "ACTIVE" })
+                      : isLoading
+                        ? t("serverTab.badgeLoading", { defaultValue: "LOADING" })
+                        : t("serverTab.badgeWarm", { defaultValue: "WARM" });
                     const endpoint = `${localServerUrl}  ${w.ref}`;
                     return (
                       <div key={w.ref} className={`warm-pool-row${w.active ? " active" : ""}${isLoading ? " loading" : ""}`}>
@@ -276,13 +284,13 @@ export function ServerTab({
                           </div>
                           <div className="row-endpoint">
                             <p className="mono-text">{localServerUrl}</p>
-                            <p className="mono-text muted-text">model id: {w.ref}</p>
+                            <p className="mono-text muted-text">{t("serverTab.modelIdLabel", { ref: w.ref, defaultValue: "model id: {ref}" })}</p>
                             <button
                               className="secondary-button"
                               type="button"
                               onClick={() => copyText(endpoint)}
                             >
-                              Copy
+                              {t("serverTab.copy", { defaultValue: "Copy" })}
                             </button>
                           </div>
                           {isLoading && serverLoading ? (
@@ -296,7 +304,7 @@ export function ServerTab({
                             disabled={w.active || busy || !backendOnline}
                             onClick={() => void onLoadModel({ modelRef: w.ref, modelName: w.name, source: "warm-pool" })}
                           >
-                            Activate
+                            {t("serverTab.activate", { defaultValue: "Activate" })}
                           </button>
                           <button
                             className="secondary-button"
@@ -304,14 +312,14 @@ export function ServerTab({
                             disabled={busy || !backendOnline}
                             onClick={() => void onUnloadWarmModel(w.ref)}
                           >
-                            Unload
+                            {t("serverTab.unload", { defaultValue: "Unload" })}
                           </button>
                           <button
                             className="secondary-button"
                             type="button"
                             onClick={() => { onTestModelIdChange(w.ref); onShowRemoteTestChange(true); }}
                           >
-                            Test
+                            {t("serverTab.test", { defaultValue: "Test" })}
                           </button>
                         </div>
                       </div>
@@ -322,35 +330,47 @@ export function ServerTab({
             })()}
 
             <div className="stat-grid server-stat-grid">
-              <StatCard label="Port" value={String(serverPort)} hint={preferredPortUnavailable ? "Preferred port is busy" : "Active"} />
               <StatCard
-                label="Active"
-                value={warmModels.find((m) => m.active)?.name ?? "None"}
+                label={t("serverTab.stat.port", { defaultValue: "Port" })}
+                value={String(serverPort)}
+                hint={preferredPortUnavailable
+                  ? t("serverTab.stat.portBusy", { defaultValue: "Preferred port is busy" })
+                  : t("serverTab.stat.portActive", { defaultValue: "Active" })}
+              />
+              <StatCard
+                label={t("serverTab.stat.active", { defaultValue: "Active" })}
+                value={warmModels.find((m) => m.active)?.name ?? t("serverTab.stat.none", { defaultValue: "None" })}
                 hint={engineLabel}
               />
               <StatCard
-                label="Warm pool"
+                label={t("serverTab.stat.warmPool", { defaultValue: "Warm pool" })}
                 value={String(warmModels.length)}
-                hint={`${warmModels.filter((m) => m.warm).length} warm`}
+                hint={t("serverTab.stat.warmCount", { count: warmModels.filter((m) => m.warm).length, defaultValue: "{count} warm" })}
               />
               <StatCard
-                label="LAN"
-                value={remoteAccessActive ? "Enabled" : "Local only"}
+                label={t("serverTab.stat.lan", { defaultValue: "LAN" })}
+                value={remoteAccessActive
+                  ? t("serverTab.stat.lanEnabled", { defaultValue: "Enabled" })
+                  : t("serverTab.stat.lanLocalOnly", { defaultValue: "Local only" })}
                 hint={
                   remoteAccessRequested && !remoteAccessActive
-                    ? "Restart to enable LAN"
+                    ? t("serverTab.stat.restartToEnableLan", { defaultValue: "Restart to enable LAN" })
                     : remoteAccessActive
                       ? primaryLanOrigin ?? "0.0.0.0"
-                      : "Localhost"
+                      : t("serverTab.stat.localhost", { defaultValue: "Localhost" })
                 }
               />
-              <StatCard label="Requests" value={String(requestsServed)} hint={`${activeConnections} active`} />
+              <StatCard
+                label={t("serverTab.stat.requests", { defaultValue: "Requests" })}
+                value={String(requestsServed)}
+                hint={t("serverTab.stat.activeConnections", { count: activeConnections, defaultValue: "{count} active" })}
+              />
             </div>
 
             <div className="server-compact-settings">
               <div className="server-settings-row">
                 <label>
-                  Port
+                  {t("serverTab.settings.port", { defaultValue: "Port" })}
                   <input
                     className="text-input"
                     type="number"
@@ -368,11 +388,11 @@ export function ServerTab({
                     disabled={busy}
                     onChange={(event) => onSettingsDraftChange((c) => ({ ...c, allowRemoteConnections: event.target.checked }))}
                   />
-                  LAN access
+                  {t("serverTab.settings.lanAccess", { defaultValue: "LAN access" })}
                 </label>
                 <label
                   className="check-row"
-                  title="Disable to let external clients (OpenWebUI, curl, other apps) hit /api and /v1 without a bearer token. Leave on for local-only use."
+                  title={t("serverTab.settings.requireApiAuthTooltip", { defaultValue: "Disable to let external clients (OpenWebUI, curl, other apps) hit /api and /v1 without a bearer token. Leave on for local-only use." })}
                 >
                   <input
                     type="checkbox"
@@ -380,7 +400,7 @@ export function ServerTab({
                     disabled={busy}
                     onChange={(event) => onSettingsDraftChange((c) => ({ ...c, requireApiAuth: event.target.checked }))}
                   />
-                  Require API token
+                  {t("serverTab.settings.requireApiToken", { defaultValue: "Require API token" })}
                 </label>
                 <label className="check-row">
                   <input
@@ -389,7 +409,7 @@ export function ServerTab({
                     disabled={busy}
                     onChange={(event) => onSettingsDraftChange((c) => ({ ...c, autoStartServer: event.target.checked }))}
                   />
-                  Auto-start
+                  {t("serverTab.settings.autoStart", { defaultValue: "Auto-start" })}
                 </label>
                 <button
                   className="secondary-button"
@@ -397,13 +417,13 @@ export function ServerTab({
                   onClick={() => void onSaveSettings()}
                   disabled={busy || !backendOnline}
                 >
-                  Save
+                  {t("serverTab.settings.save", { defaultValue: "Save" })}
                 </button>
               </div>
             </div>
 
             <div className="server-log-panel">
-              <span className="eyebrow">Dev Log</span>
+              <span className="eyebrow">{t("serverTab.devLog", { defaultValue: "Dev Log" })}</span>
               <div className="server-log-scroll" ref={serverLogRef} onScroll={handleServerLogScroll}>
                 {serverLogEntries.length > 0 ? (
                   serverLogEntries.map((entry, i) => (
@@ -416,7 +436,7 @@ export function ServerTab({
                   ))
                 ) : (
                   <div className="server-log-line">
-                    <span className="server-log-placeholder">No log lines yet.</span>
+                    <span className="server-log-placeholder">{t("serverTab.noLogLines", { defaultValue: "No log lines yet." })}</span>
                   </div>
                 )}
               </div>
@@ -426,7 +446,7 @@ export function ServerTab({
                   type="button"
                   onClick={scrollServerLogToBottom}
                 >
-                  Latest
+                  {t("serverTab.latest", { defaultValue: "Latest" })}
                 </button>
               ) : null}
             </div>
@@ -438,22 +458,25 @@ export function ServerTab({
         <div className="modal-overlay" onClick={() => onShowRemoteTestChange(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>API Test Commands</h3>
-              <p>Copy these commands to test the server from a terminal.{testModelId ? ` Pre-filled for ${testModelId}.` : ""}</p>
+              <h3>{t("serverTab.testModal.title", { defaultValue: "API Test Commands" })}</h3>
+              <p>
+                {t("serverTab.testModal.subtitle", { defaultValue: "Copy these commands to test the server from a terminal." })}
+                {testModelId ? ` ${t("serverTab.testModal.preFilledFor", { id: testModelId, defaultValue: "Pre-filled for {id}." })}` : ""}
+              </p>
             </div>
             <div className="modal-body">
               <div className="server-command-list">
                 <div className="server-command">
                   <div className="server-command-header">
-                    <strong>Health check</strong>
-                    <button className="secondary-button" type="button" onClick={() => copyText(localHealthCurl)}>Copy</button>
+                    <strong>{t("serverTab.testModal.healthCheck", { defaultValue: "Health check" })}</strong>
+                    <button className="secondary-button" type="button" onClick={() => copyText(localHealthCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                   </div>
                   <p className="mono-text">{localHealthCurl}</p>
                 </div>
                 <div className="server-command">
                   <div className="server-command-header">
-                    <strong>List models</strong>
-                    <button className="secondary-button" type="button" onClick={() => copyText(localModelsCurl)}>Copy</button>
+                    <strong>{t("serverTab.testModal.listModels", { defaultValue: "List models" })}</strong>
+                    <button className="secondary-button" type="button" onClick={() => copyText(localModelsCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                   </div>
                   <p className="mono-text">{localModelsCurl}</p>
                 </div>
@@ -465,8 +488,8 @@ export function ServerTab({
                   return (
                     <div className="server-command">
                       <div className="server-command-header">
-                        <strong>Chat completion ({testModelId})</strong>
-                        <button className="secondary-button" type="button" onClick={() => copyText(cmd)}>Copy</button>
+                        <strong>{t("serverTab.testModal.chatCompletion", { id: testModelId, defaultValue: "Chat completion ({id})" })}</strong>
+                        <button className="secondary-button" type="button" onClick={() => copyText(cmd)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                       </div>
                       <p className="mono-text">{cmd}</p>
                     </div>
@@ -476,16 +499,16 @@ export function ServerTab({
                   <>
                     <div className="server-command">
                       <div className="server-command-header">
-                        <strong>Remote health</strong>
-                        <button className="secondary-button" type="button" onClick={() => copyText(remoteHealthCurl)}>Copy</button>
+                        <strong>{t("serverTab.testModal.remoteHealth", { defaultValue: "Remote health" })}</strong>
+                        <button className="secondary-button" type="button" onClick={() => copyText(remoteHealthCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                       </div>
                       <p className="mono-text">{remoteHealthCurl}</p>
                     </div>
                     {remoteModelsCurl ? (
                       <div className="server-command">
                         <div className="server-command-header">
-                          <strong>Remote models</strong>
-                          <button className="secondary-button" type="button" onClick={() => copyText(remoteModelsCurl)}>Copy</button>
+                          <strong>{t("serverTab.testModal.remoteModels", { defaultValue: "Remote models" })}</strong>
+                          <button className="secondary-button" type="button" onClick={() => copyText(remoteModelsCurl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
                         </div>
                         <p className="mono-text">{remoteModelsCurl}</p>
                       </div>
@@ -495,7 +518,7 @@ export function ServerTab({
               </div>
             </div>
             <div className="modal-footer">
-              <button className="secondary-button" type="button" onClick={() => onShowRemoteTestChange(false)}>Close</button>
+              <button className="secondary-button" type="button" onClick={() => onShowRemoteTestChange(false)}>{t("serverTab.testModal.close", { defaultValue: "Close" })}</button>
             </div>
           </div>
         </div>

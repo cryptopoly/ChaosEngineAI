@@ -18,7 +18,15 @@ interface PluginsTabProps {
   backendOnline: boolean;
 }
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  cache_strategy: "pluginsTab.types.cacheStrategy",
+  inference_engine: "pluginsTab.types.inferenceEngine",
+  tool: "pluginsTab.types.tool",
+  model_source: "pluginsTab.types.modelSource",
+  post_processor: "pluginsTab.types.postProcessor",
+};
+
+const TYPE_LABEL_DEFAULTS: Record<string, string> = {
   cache_strategy: "Cache Strategies",
   inference_engine: "Inference Engines",
   tool: "Agent Tools",
@@ -84,14 +92,19 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
         }
       >
         {loading ? (
-          <p className="muted-text" style={{ padding: 16 }}>Discovering plugins...</p>
+          <p className="muted-text" style={{ padding: 16 }}>{t("pluginsTab.discovering", { defaultValue: "Discovering plugins..." })}</p>
         ) : totalCount === 0 ? (
-          <p className="muted-text" style={{ padding: 24, textAlign: "center" }}>No plugins found.</p>
+          <p className="muted-text" style={{ padding: 24, textAlign: "center" }}>{t("pluginsTab.noPlugins", { defaultValue: "No plugins found." })}</p>
         ) : (
-          Object.entries(plugins).map(([type, list]) => (
+          Object.entries(plugins).map(([type, list]) => {
+            const labelKey = TYPE_LABEL_KEYS[type];
+            const typeLabel = labelKey
+              ? t(labelKey, { defaultValue: TYPE_LABEL_DEFAULTS[type] ?? type })
+              : type;
+            return (
             <div key={type} style={{ marginBottom: 16, padding: "0 8px" }}>
               <h4 style={{ color: TYPE_COLORS[type] ?? "#c8d0da", fontSize: 13, marginBottom: 8, fontWeight: 600 }}>
-                {TYPE_LABELS[type] ?? type} ({list.length})
+                {typeLabel} ({list.length})
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 8 }}>
                 {list.map((plugin) => (
@@ -134,13 +147,16 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
                         flexShrink: 0,
                       }}
                     >
-                      {plugin.enabled ? "ON" : "OFF"}
+                      {plugin.enabled
+                        ? t("pluginsTab.toggleOn", { defaultValue: "ON" })
+                        : t("pluginsTab.toggleOff", { defaultValue: "OFF" })}
                     </button>
                   </div>
                 ))}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </Panel>
 
@@ -150,13 +166,13 @@ export function PluginsTab({ backendOnline }: PluginsTabProps) {
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 8 }}>
-            Place plugin directories with a manifest.json in:
+            {t("pluginsTab.externalIntro", { defaultValue: "Place plugin directories with a manifest.json in:" })}
           </p>
           <code style={{ background: "#0f1215", padding: "4px 12px", borderRadius: 6, color: "#8fb4ff", fontSize: 12 }}>
             ~/.chaosengine/plugins/
           </code>
           <p style={{ color: "#5a6574", fontSize: 12, marginTop: 8 }}>
-            Each plugin needs a manifest.json with id, name, type, and entry_point fields.
+            {t("pluginsTab.externalManifestHint", { defaultValue: "Each plugin needs a manifest.json with id, name, type, and entry_point fields." })}
           </p>
         </div>
       </Panel>

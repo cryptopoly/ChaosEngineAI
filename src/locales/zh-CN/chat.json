@@ -53,7 +53,8 @@
     "image": "附加图像",
     "document": "附加文档",
     "code": "附加代码",
-    "removeAttachment": "移除附件"
+    "removeAttachment": "移除附件",
+    "imageTooLarge": "图像必须小于 10MB"
   },
   "modelPicker": {
     "label": "模型",
@@ -112,7 +113,52 @@
     "forkTooltip": "从此处分支(创建新线程)",
     "delveTooltip": "深入 — 以批评的眼光重读并提出修订后的回答",
     "deleteMessageTooltip": "删除消息",
-    "loadExactSettingsTooltip": "加载此响应使用的精确模型和运行时设置"
+    "loadExactSettingsTooltip": "加载此响应使用的精确模型和运行时设置",
+    "roleAgent": "代理",
+    "roleUser": "用户",
+    "thermalThrottleTitle": "热降频",
+    "memoryCriticalTitle": "系统内存告急",
+    "memoryStats": "可用 {available} GB · 压力 {pressure}%",
+    "cancel": "取消",
+    "emptyState": "发送消息以开始对话。",
+    "reloadSettings": "重新加载这些设置",
+    "fitInMemory": {
+      "on": "开",
+      "off": "关",
+      "unknown": "未知"
+    },
+    "variants": {
+      "heading": "对比响应",
+      "subtitle": "同一提示词路由到不同的热模型。"
+    },
+    "details": {
+      "summary": "模型详情",
+      "unknown": "未知",
+      "auto": "自动",
+      "dflashAccepted": "DFLASH 平均接受 {value}",
+      "model": "模型",
+      "runtime": "运行时",
+      "cache": "缓存",
+      "strategy": "策略",
+      "cacheBits": "缓存位数",
+      "fp16Layers": "FP16 层",
+      "backend": "后端",
+      "context": "上下文",
+      "fitInMemory": "适配内存",
+      "tokens": "Token",
+      "tokensTotal": "共 {count}",
+      "responseTime": "响应时间",
+      "decodeSpeed": "解码速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "请求的缓存",
+      "requestedFit": "请求的适配",
+      "requestedDflashDdtree": "请求的 DFlash / DDTree",
+      "runtimeStatus": "运行时状态",
+      "treeBudget": "树预算",
+      "dflashAcceptance": "DFLASH 接受率",
+      "avgTokens": "平均 {value} 个 token",
+      "draftModel": "草稿模型"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "挑战标题",

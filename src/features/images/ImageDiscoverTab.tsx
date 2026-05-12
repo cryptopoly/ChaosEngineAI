@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
@@ -53,21 +54,29 @@ export interface ImageDiscoverTabProps {
   onRevealPath: (path: string) => void;
 }
 
-function imageDiscoverSortLabel(sort: DiscoverSort): string {
-  if (sort === "name") return "name";
-  if (sort === "provider") return "provider";
-  if (sort === "tasks") return "tasks";
-  if (sort === "size") return "largest size first";
-  if (sort === "ram") return "highest RAM/VRAM first";
-  if (sort === "likes") return "most liked first";
-  if (sort === "downloads") return "most downloads first";
-  if (sort === "status") return "status";
-  return "newest released first";
+function imageDiscoverSortLabel(sort: DiscoverSort, t: TFunction<"library">): string {
+  if (sort === "name")
+    return t("imageDiscover.sortLabel.name", { defaultValue: "name" });
+  if (sort === "provider")
+    return t("imageDiscover.sortLabel.provider", { defaultValue: "provider" });
+  if (sort === "tasks")
+    return t("imageDiscover.sortLabel.tasks", { defaultValue: "tasks" });
+  if (sort === "size")
+    return t("imageDiscover.sortLabel.size", { defaultValue: "largest size first" });
+  if (sort === "ram")
+    return t("imageDiscover.sortLabel.ram", { defaultValue: "highest RAM/VRAM first" });
+  if (sort === "likes")
+    return t("imageDiscover.sortLabel.likes", { defaultValue: "most liked first" });
+  if (sort === "downloads")
+    return t("imageDiscover.sortLabel.downloads", { defaultValue: "most downloads first" });
+  if (sort === "status")
+    return t("imageDiscover.sortLabel.status", { defaultValue: "status" });
+  return t("imageDiscover.sortLabel.release", { defaultValue: "newest released first" });
 }
 
 function sortIndicator(activeSort: DiscoverSort, sortDir: SortDir, key: DiscoverSort): string {
   if (activeSort !== key) return "";
-  return sortDir === "asc" ? " \u25B2" : " \u25BC";
+  return sortDir === "asc" ? " ▲" : " ▼";
 }
 
 function defaultSortDir(sort: DiscoverSort): SortDir {
@@ -110,8 +119,8 @@ function statusSortKey(status: MediaStatusFilter): number {
   return 6;
 }
 
-function memoryParts(label: string | null | undefined): { primary: string; secondary: string | null } {
-  if (!label) return { primary: "pending", secondary: null };
+function memoryParts(label: string | null | undefined, pendingLabel: string): { primary: string; secondary: string | null } {
+  if (!label) return { primary: pendingLabel, secondary: null };
   const [primary, secondary] = label.split(" @ ");
   if (!secondary) return { primary, secondary: null };
   return { primary: `${primary} @`, secondary };
@@ -129,20 +138,62 @@ function imageVariantStatus(
   return "not-installed";
 }
 
-function statusBadge(status: MediaStatusFilter, downloadState?: DownloadStatus) {
+function statusBadge(
+  status: MediaStatusFilter,
+  t: TFunction<"library">,
+  downloadState?: DownloadStatus,
+) {
   const downloadDetail = downloadState
     ? [downloadProgressLabel(downloadState), downloadSizeTooltip(downloadState)].filter(Boolean).join(" / ")
     : null;
-  if (status === "installed") return <StatusIcon status="installed" label="Installed" />;
+  if (status === "installed")
+    return (
+      <StatusIcon
+        status="installed"
+        label={t("imageDiscover.status.installed", { defaultValue: "Installed" })}
+      />
+    );
   if (status === "downloading" && downloadState) {
-    return <StatusIcon status="downloading" label="Downloading" detail={downloadDetail} />;
+    return (
+      <StatusIcon
+        status="downloading"
+        label={t("imageDiscover.status.downloading", { defaultValue: "Downloading" })}
+        detail={downloadDetail}
+      />
+    );
   }
   if (status === "paused" && downloadState) {
-    return <StatusIcon status="paused" label="Paused" detail={downloadDetail} />;
+    return (
+      <StatusIcon
+        status="paused"
+        label={t("imageDiscover.status.paused", { defaultValue: "Paused" })}
+        detail={downloadDetail}
+      />
+    );
   }
-  if (status === "failed") return <StatusIcon status="failed" label="Failed" detail={downloadState?.error ?? "Download failed"} />;
-  if (status === "incomplete") return <StatusIcon status="incomplete" label="Incomplete" />;
-  return <StatusIcon status="incomplete" label="Not installed" />;
+  if (status === "failed")
+    return (
+      <StatusIcon
+        status="failed"
+        label={t("imageDiscover.status.failed", { defaultValue: "Failed" })}
+        detail={
+          downloadState?.error ?? t("imageDiscover.status.failedDetail", { defaultValue: "Download failed" })
+        }
+      />
+    );
+  if (status === "incomplete")
+    return (
+      <StatusIcon
+        status="incomplete"
+        label={t("imageDiscover.status.incomplete", { defaultValue: "Incomplete" })}
+      />
+    );
+  return (
+    <StatusIcon
+      status="incomplete"
+      label={t("imageDiscover.status.notInstalled", { defaultValue: "Not installed" })}
+    />
+  );
 }
 
 export function ImageDiscoverTab({
@@ -169,6 +220,7 @@ export function ImageDiscoverTab({
   onRevealPath,
 }: ImageDiscoverTabProps) {
   const { t } = useTranslation("common");
+  const { t: tLib } = useTranslation("library");
   const [statusFilter, setStatusFilter] = useState<MediaStatusFilter>("all");
   const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir(imageDiscoverSort));
   const filteredResults = useMemo(
@@ -227,83 +279,130 @@ export function ImageDiscoverTab({
     }
   }
 
+  const accessFilterLabel =
+    imageDiscoverAccessFilter === "open"
+      ? tLib("imageDiscover.access.openOnly", { defaultValue: "Open only" })
+      : tLib("imageDiscover.access.gatedOnly", { defaultValue: "Gated only" });
+  const pendingMemoryLabel = tLib("imageDiscover.memory.pending", { defaultValue: "pending" });
+
   return (
     <div className="image-discover-stack">
       <Panel
         title={t("tabs.imageDiscover")}
-        subtitle={`${filteredResults.length} of ${combinedImageDiscoverResults.length} models / live Hugging Face metadata`}
+        subtitle={tLib("imageDiscover.subtitle", {
+          defaultValue: "{filtered} of {total} models / live Hugging Face metadata",
+          filtered: filteredResults.length,
+          total: combinedImageDiscoverResults.length,
+        })}
       >
         <div className="image-hero">
           <div>
-            <h3>Browse and download image models for local generation.</h3>
+            <h3>
+              {tLib("imageDiscover.hero.heading", {
+                defaultValue: "Browse and download image models for local generation.",
+              })}
+            </h3>
             <p className="muted-text">
-              Download any model to use it in Image Studio. Runtime status lives in the Studio tab.
+              {tLib("imageDiscover.hero.body", {
+                defaultValue:
+                  "Download any model to use it in Image Studio. Runtime status lives in the Studio tab.",
+              })}
             </p>
           </div>
           <div className="image-hero-actions">
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
-              Installed Models
+              {tLib("imageDiscover.hero.installedModels", { defaultValue: "Installed Models" })}
             </button>
             <button className="primary-button" type="button" onClick={() => onOpenImageStudio(selectedImageVariant?.id)}>
-              Open Studio
+              {tLib("imageDiscover.hero.openStudio", { defaultValue: "Open Studio" })}
             </button>
           </div>
         </div>
 
         <div className="image-discover-filter-row image-discover-filter-row--wide">
           <label className="image-discover-search">
-            Search
+            {tLib("imageDiscover.filter.search", { defaultValue: "Search" })}
             <input
               className="text-input"
               type="search"
               value={imageDiscoverSearchInput}
               onChange={(event) => onImageDiscoverSearchInputChange(event.target.value)}
-              placeholder="Search FLUX, SDXL, provider, task, tags, license..."
+              placeholder={tLib("imageDiscover.filter.searchPlaceholder", {
+                defaultValue: "Search FLUX, SDXL, provider, task, tags, license...",
+              })}
             />
           </label>
           <label>
-            Task
+            {tLib("imageDiscover.filter.task", { defaultValue: "Task" })}
             <select
               className="text-input"
               value={imageDiscoverTaskFilter}
               onChange={(event) => onImageDiscoverTaskFilterChange(event.target.value as ImageDiscoverTaskFilter)}
             >
-              <option value="all">All tasks</option>
-              <option value="txt2img">Text to image</option>
-              <option value="img2img">Image to image</option>
-              <option value="inpaint">Inpaint</option>
+              <option value="all">
+                {tLib("imageDiscover.task.all", { defaultValue: "All tasks" })}
+              </option>
+              <option value="txt2img">
+                {tLib("imageDiscover.task.txt2img", { defaultValue: "Text to image" })}
+              </option>
+              <option value="img2img">
+                {tLib("imageDiscover.task.img2img", { defaultValue: "Image to image" })}
+              </option>
+              <option value="inpaint">
+                {tLib("imageDiscover.task.inpaint", { defaultValue: "Inpaint" })}
+              </option>
             </select>
           </label>
           <label>
-            Access
+            {tLib("imageDiscover.filter.access", { defaultValue: "Access" })}
             <select
               className="text-input"
               value={imageDiscoverAccessFilter}
               onChange={(event) => onImageDiscoverAccessFilterChange(event.target.value as ImageDiscoverAccessFilter)}
             >
-              <option value="all">Open + gated</option>
-              <option value="open">Open only</option>
-              <option value="gated">Gated only</option>
+              <option value="all">
+                {tLib("imageDiscover.access.all", { defaultValue: "Open + gated" })}
+              </option>
+              <option value="open">
+                {tLib("imageDiscover.access.openOnly", { defaultValue: "Open only" })}
+              </option>
+              <option value="gated">
+                {tLib("imageDiscover.access.gatedOnly", { defaultValue: "Gated only" })}
+              </option>
             </select>
           </label>
           <label>
-            Status
+            {tLib("imageDiscover.filter.status", { defaultValue: "Status" })}
             <select
               className="text-input"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as MediaStatusFilter)}
             >
-              <option value="all">Any status</option>
-              <option value="installed">Installed</option>
-              <option value="not-installed">Not installed</option>
-              <option value="downloading">Downloading</option>
-              <option value="paused">Paused</option>
-              <option value="failed">Failed</option>
-              <option value="incomplete">Incomplete</option>
+              <option value="all">
+                {tLib("imageDiscover.status.any", { defaultValue: "Any status" })}
+              </option>
+              <option value="installed">
+                {tLib("imageDiscover.status.installed", { defaultValue: "Installed" })}
+              </option>
+              <option value="not-installed">
+                {tLib("imageDiscover.status.notInstalled", { defaultValue: "Not installed" })}
+              </option>
+              <option value="downloading">
+                {tLib("imageDiscover.status.downloading", { defaultValue: "Downloading" })}
+              </option>
+              <option value="paused">
+                {tLib("imageDiscover.status.paused", { defaultValue: "Paused" })}
+              </option>
+              <option value="failed">
+                {tLib("imageDiscover.status.failed", { defaultValue: "Failed" })}
+              </option>
+              <option value="incomplete">
+                {tLib("imageDiscover.status.incomplete", { defaultValue: "Incomplete" })}
+              </option>
             </select>
           </label>
           <label>
-            Sort by
+            {tLib("imageDiscover.filter.sortBy", { defaultValue: "Sort by" })}
             <select
               className="text-input"
               value={imageDiscoverSort}
@@ -313,15 +412,33 @@ export function ImageDiscoverTab({
                 setSortDir(defaultSortDir(nextSort));
               }}
             >
-              <option value="name">Name</option>
-              <option value="provider">Provider</option>
-              <option value="tasks">Tasks</option>
-              <option value="release">Newest released</option>
-              <option value="size">Largest size</option>
-              <option value="ram">Highest RAM/VRAM</option>
-              <option value="likes">Most likes</option>
-              <option value="downloads">Most downloads</option>
-              <option value="status">Status</option>
+              <option value="name">
+                {tLib("imageDiscover.sort.name", { defaultValue: "Name" })}
+              </option>
+              <option value="provider">
+                {tLib("imageDiscover.sort.provider", { defaultValue: "Provider" })}
+              </option>
+              <option value="tasks">
+                {tLib("imageDiscover.sort.tasks", { defaultValue: "Tasks" })}
+              </option>
+              <option value="release">
+                {tLib("imageDiscover.sort.release", { defaultValue: "Newest released" })}
+              </option>
+              <option value="size">
+                {tLib("imageDiscover.sort.size", { defaultValue: "Largest size" })}
+              </option>
+              <option value="ram">
+                {tLib("imageDiscover.sort.ram", { defaultValue: "Highest RAM/VRAM" })}
+              </option>
+              <option value="likes">
+                {tLib("imageDiscover.sort.likes", { defaultValue: "Most likes" })}
+              </option>
+              <option value="downloads">
+                {tLib("imageDiscover.sort.downloads", { defaultValue: "Most downloads" })}
+              </option>
+              <option value="status">
+                {tLib("imageDiscover.sort.status", { defaultValue: "Status" })}
+              </option>
             </select>
           </label>
           <div className="image-discover-filter-actions">
@@ -338,27 +455,51 @@ export function ImageDiscoverTab({
               }}
               disabled={!hasActiveFilters}
             >
-              Clear Filters
+              {tLib("imageDiscover.filter.clear", { defaultValue: "Clear Filters" })}
             </button>
           </div>
         </div>
 
         <div className="image-discover-results-summary">
           <span>
-            {filteredResults.length} model{filteredResults.length !== 1 ? "s" : ""} · {imageDiscoverSortLabel(imageDiscoverSort)}
+            {tLib("imageDiscover.summary.count", {
+              defaultValue: "{count, plural, one {# model} other {# models}} · {sortLabel}",
+              count: filteredResults.length,
+              sortLabel: imageDiscoverSortLabel(imageDiscoverSort, tLib),
+            })}
           </span>
           {imageDiscoverSearchQuery ? (
-            <span className="badge subtle">Search: {imageDiscoverSearchInput.trim()}</span>
+            <span className="badge subtle">
+              {tLib("imageDiscover.summary.searchBadge", {
+                defaultValue: "Search: {query}",
+                query: imageDiscoverSearchInput.trim(),
+              })}
+            </span>
           ) : null}
           {imageDiscoverTaskFilter !== "all" ? (
-            <span className="badge muted">Task: {imageDiscoverTaskFilter}</span>
+            <span className="badge muted">
+              {tLib("imageDiscover.summary.taskBadge", {
+                defaultValue: "Task: {task}",
+                task: imageDiscoverTaskFilter,
+              })}
+            </span>
           ) : null}
           {imageDiscoverAccessFilter !== "all" ? (
             <span className="badge muted">
-              Access: {imageDiscoverAccessFilter === "open" ? "Open only" : "Gated only"}
+              {tLib("imageDiscover.summary.accessBadge", {
+                defaultValue: "Access: {access}",
+                access: accessFilterLabel,
+              })}
             </span>
           ) : null}
-          {statusFilter !== "all" ? <span className="badge muted">Status: {statusFilter}</span> : null}
+          {statusFilter !== "all" ? (
+            <span className="badge muted">
+              {tLib("imageDiscover.summary.statusBadge", {
+                defaultValue: "Status: {status}",
+                status: statusFilter,
+              })}
+            </span>
+          ) : null}
         </div>
       </Panel>
 
@@ -369,25 +510,44 @@ export function ImageDiscoverTab({
           className="image-discover-section-panel"
         >
           <div className="empty-state image-empty-state">
-            <p>Try broadening the filters or search terms.</p>
+            <p>
+              {tLib("imageDiscover.empty.body", {
+                defaultValue: "Try broadening the filters or search terms.",
+              })}
+            </p>
           </div>
         </Panel>
       ) : (
         <div className="media-model-table media-model-table--image">
           <div className="media-model-head">
-            <button className="sort-header" type="button" onClick={() => applySort("name")}>Model{sortIndicator(imageDiscoverSort, sortDir, "name")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("provider")}>Provider{sortIndicator(imageDiscoverSort, sortDir, "provider")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>Tasks{sortIndicator(imageDiscoverSort, sortDir, "tasks")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("name")}>
+              {tLib("imageDiscover.column.model", { defaultValue: "Model" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "name")}
+            </button>
+            <button className="sort-header" type="button" onClick={() => applySort("provider")}>
+              {tLib("imageDiscover.column.provider", { defaultValue: "Provider" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "provider")}
+            </button>
+            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>
+              {tLib("imageDiscover.column.tasks", { defaultValue: "Tasks" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "tasks")}
+            </button>
             <button className="sort-header" type="button" onClick={() => applySort("size")}>
-              Size{sortIndicator(imageDiscoverSort, sortDir, "size")}
+              {tLib("imageDiscover.column.size", { defaultValue: "Size" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "size")}
             </button>
             <button className="sort-header" type="button" onClick={() => applySort("ram")}>
-              RAM/VRAM{sortIndicator(imageDiscoverSort, sortDir, "ram")}
+              {tLib("imageDiscover.column.ramVram", { defaultValue: "RAM/VRAM" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "ram")}
             </button>
             <button className="sort-header" type="button" onClick={() => applySort("release")}>
-              Released{sortIndicator(imageDiscoverSort, sortDir, "release")}
+              {tLib("imageDiscover.column.released", { defaultValue: "Released" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "release")}
             </button>
-            <button className="sort-header" type="button" onClick={() => applySort("status")}>Status{sortIndicator(imageDiscoverSort, sortDir, "status")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("status")}>
+              {tLib("imageDiscover.column.status", { defaultValue: "Status" })}
+              {sortIndicator(imageDiscoverSort, sortDir, "status")}
+            </button>
             <span className="sort-header"></span>
           </div>
           <div className="media-model-rows">
@@ -406,7 +566,7 @@ export function ImageDiscoverTab({
               const releaseLabel = compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt));
               const primarySizeLabel = imagePrimarySizeLabel(variant);
               const sizeTitle = [primarySizeLabel, secondarySize].filter(Boolean).join(" / ");
-              const memory = memoryParts(memoryEstimate?.label);
+              const memory = memoryParts(memoryEstimate?.label, pendingMemoryLabel);
               return (
                 <div key={variant.id} className={`media-model-row-wrap${isComplete ? " downloaded" : ""}`}>
                   <div className="media-model-row">
@@ -418,7 +578,11 @@ export function ImageDiscoverTab({
                           <span key={tag} className="badge subtle">{tag}</span>
                         ))}
                         {typeof variant.gated === "boolean" ? (
-                          <span className="badge muted">{variant.gated ? "Gated" : "Open"}</span>
+                          <span className="badge muted">
+                            {variant.gated
+                              ? tLib("imageDiscover.access.gated", { defaultValue: "Gated" })
+                              : tLib("imageDiscover.access.open", { defaultValue: "Open" })}
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -431,47 +595,104 @@ export function ImageDiscoverTab({
                     <span title={sizeTitle || undefined}>
                       {compactModelSizeLabel(primarySizeLabel)}
                     </span>
-                    <span className="media-model-memory" title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
+                    <span
+                      className="media-model-memory"
+                      title={
+                        memoryEstimate?.title ??
+                        tLib("imageDiscover.memory.pendingTitle", {
+                          defaultValue: "RAM/VRAM estimate pending until model weight size is known.",
+                        })
+                      }
+                    >
                       <span>{memory.primary}</span>
                       {memory.secondary ? <small>{memory.secondary}</small> : null}
                     </span>
                     <span>
-                      {releaseLabel ?? "Unknown"}
+                      {releaseLabel ?? tLib("imageDiscover.unknown", { defaultValue: "Unknown" })}
                       {variant.downloadsLabel ? <small>{variant.downloadsLabel}</small> : null}
                       {variant.likesLabel ? <small>{variant.likesLabel}</small> : null}
                       {variant.license ? <small>{formatImageLicenseLabel(variant.license)}</small> : null}
                     </span>
-                    <span>{statusBadge(status, downloadState)}</span>
+                    <span>{statusBadge(status, tLib, downloadState)}</span>
                     <div className="media-model-actions">
                       {isComplete ? (
-                        <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenImageStudio(variant.id)} />
+                        <IconActionButton
+                          icon="generate"
+                          label={tLib("imageDiscover.action.generate", { defaultValue: "Generate" })}
+                          buttonStyle="primary"
+                          onClick={() => onOpenImageStudio(variant.id)}
+                        />
                       ) : isDownloading ? (
                         <>
-                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelImageDownload(variant.repo)} />
-                          <IconActionButton icon="cancel" label="Cancel download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
+                          <IconActionButton
+                            icon="pause"
+                            label={tLib("imageDiscover.action.pauseDownload", { defaultValue: "Pause download" })}
+                            onClick={() => onCancelImageDownload(variant.repo)}
+                          />
+                          <IconActionButton
+                            icon="cancel"
+                            label={tLib("imageDiscover.action.cancelDownload", { defaultValue: "Cancel download" })}
+                            danger
+                            onClick={() => onDeleteImageDownload(variant.repo)}
+                          />
                         </>
                       ) : isPaused ? (
                         <>
-                          <IconActionButton icon="resume" label="Resume download" onClick={() => onImageDownload(variant.repo)} />
-                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
+                          <IconActionButton
+                            icon="resume"
+                            label={tLib("imageDiscover.action.resumeDownload", { defaultValue: "Resume download" })}
+                            onClick={() => onImageDownload(variant.repo)}
+                          />
+                          <IconActionButton
+                            icon="delete"
+                            label={tLib("imageDiscover.action.deleteDownload", { defaultValue: "Delete download" })}
+                            danger
+                            onClick={() => onDeleteImageDownload(variant.repo)}
+                          />
                         </>
                       ) : isDownloadFailed ? (
                         <>
-                          <IconActionButton icon="retry" label="Retry download" onClick={() => onImageDownload(variant.repo)} />
-                          <IconActionButton icon="delete" label="Delete download" danger onClick={() => onDeleteImageDownload(variant.repo)} />
+                          <IconActionButton
+                            icon="retry"
+                            label={tLib("imageDiscover.action.retryDownload", { defaultValue: "Retry download" })}
+                            onClick={() => onImageDownload(variant.repo)}
+                          />
+                          <IconActionButton
+                            icon="delete"
+                            label={tLib("imageDiscover.action.deleteDownload", { defaultValue: "Delete download" })}
+                            danger
+                            onClick={() => onDeleteImageDownload(variant.repo)}
+                          />
                         </>
                       ) : (
                         <>
-                          <IconActionButton icon={isPartial ? "resume" : "download"} label={isPartial ? "Resume download" : "Download model"} onClick={() => onImageDownload(variant.repo)} />
+                          <IconActionButton
+                            icon={isPartial ? "resume" : "download"}
+                            label={
+                              isPartial
+                                ? tLib("imageDiscover.action.resumeDownload", { defaultValue: "Resume download" })
+                                : tLib("imageDiscover.action.downloadModel", { defaultValue: "Download model" })
+                            }
+                            onClick={() => onImageDownload(variant.repo)}
+                          />
                           {hasLocalData ? (
-                            <IconActionButton icon="delete" label="Delete model" danger onClick={() => onDeleteImageDownload(variant.repo)} />
+                            <IconActionButton
+                              icon="delete"
+                              label={tLib("imageDiscover.action.deleteModel", { defaultValue: "Delete model" })}
+                              danger
+                              onClick={() => onDeleteImageDownload(variant.repo)}
+                            />
                           ) : null}
                         </>
                       )}
                       {variant.localPath ? (
                         <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(variant.localPath as string)} />
                       ) : null}
-                      <IconActionButton icon="huggingFace" label="Open on Hugging Face" onClick={() => onOpenExternalUrl(variant.link)} />
+                      <IconActionButton
+                        icon="huggingFace"
+                        label={tLib("imageDiscover.action.openHuggingFace", { defaultValue: "Open on Hugging Face" })}
+                        onClick={() => onOpenExternalUrl(variant.link)}
+                      />
                     </div>
                   </div>
                   {isDownloadFailed && downloadState?.error ? (
@@ -480,10 +701,10 @@ export function ImageDiscoverTab({
                       {needsGatedAccess ? (
                         <div className="button-row">
                           <button className="secondary-button" type="button" onClick={() => onOpenExternalUrl(variant.link)}>
-                            Hugging Face
+                            {tLib("imageDiscover.action.huggingFace", { defaultValue: "Hugging Face" })}
                           </button>
                           <button className="secondary-button" type="button" onClick={() => onActiveTabChange("settings")}>
-                            Settings
+                            {tLib("imageDiscover.action.settings", { defaultValue: "Settings" })}
                           </button>
                         </div>
                       ) : null}

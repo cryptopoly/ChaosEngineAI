@@ -53,7 +53,8 @@
     "image": "Anexar imagem",
     "document": "Anexar documento",
     "code": "Anexar código",
-    "removeAttachment": "Remover anexo"
+    "removeAttachment": "Remover anexo",
+    "imageTooLarge": "A imagem deve ter menos de 10MB"
   },
   "modelPicker": {
     "label": "Modelo",
@@ -112,7 +113,52 @@
     "forkTooltip": "Ramificar daqui (cria uma nova thread)",
     "delveTooltip": "Aprofundar — reler com olhar crítico e propor uma resposta revisada",
     "deleteMessageTooltip": "Excluir mensagem",
-    "loadExactSettingsTooltip": "Carregar o modelo exato e configurações de runtime usados para esta resposta"
+    "loadExactSettingsTooltip": "Carregar o modelo exato e configurações de runtime usados para esta resposta",
+    "roleAgent": "Agente",
+    "roleUser": "Usuário",
+    "thermalThrottleTitle": "Throttle térmico",
+    "memoryCriticalTitle": "Memória do sistema crítica",
+    "memoryStats": "{available} GB livres · pressão {pressure}%",
+    "cancel": "Cancelar",
+    "emptyState": "Envie uma mensagem para começar a conversa.",
+    "reloadSettings": "Recarregar estas configurações",
+    "fitInMemory": {
+      "on": "Ligado",
+      "off": "Desligado",
+      "unknown": "Desconhecido"
+    },
+    "variants": {
+      "heading": "Comparando respostas",
+      "subtitle": "Mesmo prompt roteado por modelos quentes alternativos."
+    },
+    "details": {
+      "summary": "Detalhes do modelo",
+      "unknown": "Desconhecido",
+      "auto": "Auto",
+      "dflashAccepted": "DFLASH {value} aceitos em média",
+      "model": "Modelo",
+      "runtime": "Runtime",
+      "cache": "Cache",
+      "strategy": "Estratégia",
+      "cacheBits": "Bits de cache",
+      "fp16Layers": "Camadas FP16",
+      "backend": "Backend",
+      "context": "Contexto",
+      "fitInMemory": "Cabe na memória",
+      "tokens": "Tokens",
+      "tokensTotal": "{count} no total",
+      "responseTime": "Tempo de resposta",
+      "decodeSpeed": "Velocidade de decodificação",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "Cache solicitado",
+      "requestedFit": "Fit solicitado",
+      "requestedDflashDdtree": "DFlash / DDTree solicitado",
+      "runtimeStatus": "Status do runtime",
+      "treeBudget": "Orçamento da árvore",
+      "dflashAcceptance": "Aceitação DFLASH",
+      "avgTokens": "{value} tokens em média",
+      "draftModel": "Modelo draft"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "Título do desafio",

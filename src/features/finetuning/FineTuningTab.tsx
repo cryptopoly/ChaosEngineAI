@@ -49,13 +49,12 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
         })}
       >
         {loading ? (
-          <p className="muted-text">Loading adapters...</p>
+          <p className="muted-text">{t("fineTuning.loadingAdapters", { defaultValue: "Loading adapters..." })}</p>
         ) : adapters.length === 0 ? (
           <div style={{ padding: 24, textAlign: "center" }}>
-            <p className="muted-text" style={{ marginBottom: 8 }}>No LoRA adapters found.</p>
+            <p className="muted-text" style={{ marginBottom: 8 }}>{t("fineTuning.noAdapters", { defaultValue: "No LoRA adapters found." })}</p>
             <p style={{ color: "#5a6574", fontSize: 12 }}>
-              Place adapter directories (with adapter_config.json) in your model directories,
-              or use the fine-tuning feature below to create new adapters.
+              {t("fineTuning.noAdaptersHint", { defaultValue: "Place adapter directories (with adapter_config.json) in your model directories, or use the fine-tuning feature below to create new adapters." })}
             </p>
           </div>
         ) : (
@@ -71,9 +70,9 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
                 }}
               >
                 <div style={{ fontWeight: 600, color: "#c8d0da", marginBottom: 4 }}>{adapter.name}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>Base: {adapter.base_model}</div>
-                <div style={{ fontSize: 12, color: "#7a8594" }}>Size: {adapter.size_mb.toFixed(1)} MB</div>
-                <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>Created: {adapter.created}</div>
+                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterBase", { value: adapter.base_model, defaultValue: "Base: {value}" })}</div>
+                <div style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.adapterSize", { value: adapter.size_mb.toFixed(1), defaultValue: "Size: {value} MB" })}</div>
+                <div style={{ fontSize: 11, color: "#5a6574", marginTop: 4 }}>{t("fineTuning.adapterCreated", { value: adapter.created, defaultValue: "Created: {value}" })}</div>
               </div>
             ))}
           </div>
@@ -86,20 +85,20 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
       >
         <div style={{ padding: 24, textAlign: "center" }}>
           <p className="muted-text" style={{ marginBottom: 12 }}>
-            Fine-tune models with QLoRA on Apple Silicon (MLX) or via llama.cpp.
+            {t("fineTuning.intro", { defaultValue: "Fine-tune models with QLoRA on Apple Silicon (MLX) or via llama.cpp." })}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <div style={{ border: "1px solid #27303a", borderRadius: 8, padding: 16, background: "#1a1f26", maxWidth: 240 }}>
-              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>1. Upload Dataset</div>
-              <p style={{ fontSize: 12, color: "#7a8594" }}>JSONL format with "prompt" and "completion" fields</p>
+              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>{t("fineTuning.step1Title", { defaultValue: "1. Upload Dataset" })}</div>
+              <p style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.step1Body", { defaultValue: "JSONL format with \"prompt\" and \"completion\" fields" })}</p>
             </div>
             <div style={{ border: "1px solid #27303a", borderRadius: 8, padding: 16, background: "#1a1f26", maxWidth: 240 }}>
-              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>2. Configure</div>
-              <p style={{ fontSize: 12, color: "#7a8594" }}>Set learning rate, epochs, LoRA rank, and batch size</p>
+              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>{t("fineTuning.step2Title", { defaultValue: "2. Configure" })}</div>
+              <p style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.step2Body", { defaultValue: "Set learning rate, epochs, LoRA rank, and batch size" })}</p>
             </div>
             <div style={{ border: "1px solid #27303a", borderRadius: 8, padding: 16, background: "#1a1f26", maxWidth: 240 }}>
-              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>3. Train</div>
-              <p style={{ fontSize: 12, color: "#7a8594" }}>Monitor loss and progress in real-time</p>
+              <div style={{ fontWeight: 600, color: "#8fb4ff", marginBottom: 4 }}>{t("fineTuning.step3Title", { defaultValue: "3. Train" })}</div>
+              <p style={{ fontSize: 12, color: "#7a8594" }}>{t("fineTuning.step3Body", { defaultValue: "Monitor loss and progress in real-time" })}</p>
             </div>
           </div>
           <button
@@ -109,7 +108,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
             disabled={!backendOnline}
             onClick={() => {/* TODO: open training config modal */}}
           >
-            Start Fine-Tuning
+            {t("fineTuning.startButton", { defaultValue: "Start Fine-Tuning" })}
           </button>
         </div>
       </Panel>

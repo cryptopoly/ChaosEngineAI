@@ -53,7 +53,8 @@
     "image": "画像を添付",
     "document": "ドキュメントを添付",
     "code": "コードを添付",
-    "removeAttachment": "添付を削除"
+    "removeAttachment": "添付を削除",
+    "imageTooLarge": "画像は 10MB 以下にしてください"
   },
   "modelPicker": {
     "label": "モデル",
@@ -112,7 +113,52 @@
     "forkTooltip": "ここから分岐(新しいスレッドを作成)",
     "delveTooltip": "深掘り — 批評家の目で読み直し、改訂された回答を提案",
     "deleteMessageTooltip": "メッセージを削除",
-    "loadExactSettingsTooltip": "この応答に使用された正確なモデルとランタイム設定を読み込む"
+    "loadExactSettingsTooltip": "この応答に使用された正確なモデルとランタイム設定を読み込む",
+    "roleAgent": "エージェント",
+    "roleUser": "ユーザー",
+    "thermalThrottleTitle": "サーマルスロットリング",
+    "memoryCriticalTitle": "システムメモリが逼迫しています",
+    "memoryStats": "{available} GB 空き · 圧迫率 {pressure}%",
+    "cancel": "キャンセル",
+    "emptyState": "メッセージを送信して会話を開始します。",
+    "reloadSettings": "これらの設定を再読み込み",
+    "fitInMemory": {
+      "on": "オン",
+      "off": "オフ",
+      "unknown": "不明"
+    },
+    "variants": {
+      "heading": "応答を比較",
+      "subtitle": "同じプロンプトを別のウォームモデルにルーティングしました。"
+    },
+    "details": {
+      "summary": "モデル詳細",
+      "unknown": "不明",
+      "auto": "自動",
+      "dflashAccepted": "DFLASH 平均受理 {value}",
+      "model": "モデル",
+      "runtime": "ランタイム",
+      "cache": "キャッシュ",
+      "strategy": "戦略",
+      "cacheBits": "キャッシュビット",
+      "fp16Layers": "FP16 レイヤー",
+      "backend": "バックエンド",
+      "context": "コンテキスト",
+      "fitInMemory": "メモリに収まる",
+      "tokens": "トークン",
+      "tokensTotal": "合計 {count}",
+      "responseTime": "応答時間",
+      "decodeSpeed": "デコード速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "要求されたキャッシュ",
+      "requestedFit": "要求された適合",
+      "requestedDflashDdtree": "要求された DFlash / DDTree",
+      "runtimeStatus": "ランタイム状態",
+      "treeBudget": "ツリー予算",
+      "dflashAcceptance": "DFLASH 受理率",
+      "avgTokens": "平均 {value} トークン",
+      "draftModel": "ドラフトモデル"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "チャレンジタイトル",

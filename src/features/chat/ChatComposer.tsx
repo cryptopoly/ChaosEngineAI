@@ -239,7 +239,10 @@ export function ChatComposer({
                   const files = event.target.files;
                   if (!files) return;
                   for (const file of Array.from(files)) {
-                    if (file.size > 10 * 1024 * 1024) { onSetError("Image must be under 10MB"); continue; }
+                    if (file.size > 10 * 1024 * 1024) {
+                      onSetError(t("attachments.imageTooLarge", { defaultValue: "Image must be under 10MB" }));
+                      continue;
+                    }
                     const reader = new FileReader();
                     reader.onload = () => {
                       const b64 = (reader.result as string).split(",")[1];

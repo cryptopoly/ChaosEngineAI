@@ -53,7 +53,8 @@
     "image": "Joindre une image",
     "document": "Joindre un document",
     "code": "Joindre du code",
-    "removeAttachment": "Retirer la pièce jointe"
+    "removeAttachment": "Retirer la pièce jointe",
+    "imageTooLarge": "L'image doit faire moins de 10 Mo"
   },
   "modelPicker": {
     "label": "Modèle",
@@ -112,7 +113,52 @@
     "forkTooltip": "Brancher depuis ici (crée un nouveau fil)",
     "delveTooltip": "Approfondir — relire avec un œil critique et proposer une réponse révisée",
     "deleteMessageTooltip": "Supprimer le message",
-    "loadExactSettingsTooltip": "Charger le modèle exact et les paramètres d'exécution utilisés pour cette réponse"
+    "loadExactSettingsTooltip": "Charger le modèle exact et les paramètres d'exécution utilisés pour cette réponse",
+    "roleAgent": "Agent",
+    "roleUser": "Utilisateur",
+    "thermalThrottleTitle": "Limitation thermique",
+    "memoryCriticalTitle": "Mémoire système critique",
+    "memoryStats": "{available} Go libres · pression {pressure} %",
+    "cancel": "Annuler",
+    "emptyState": "Envoyez un message pour démarrer la conversation.",
+    "reloadSettings": "Recharger ces paramètres",
+    "fitInMemory": {
+      "on": "Oui",
+      "off": "Non",
+      "unknown": "Inconnu"
+    },
+    "variants": {
+      "heading": "Comparaison des réponses",
+      "subtitle": "Même invite envoyée à d'autres modèles chauds."
+    },
+    "details": {
+      "summary": "Détails du modèle",
+      "unknown": "Inconnu",
+      "auto": "Auto",
+      "dflashAccepted": "DFLASH {value} accepté en moyenne",
+      "model": "Modèle",
+      "runtime": "Runtime",
+      "cache": "Cache",
+      "strategy": "Stratégie",
+      "cacheBits": "Bits du cache",
+      "fp16Layers": "Couches FP16",
+      "backend": "Backend",
+      "context": "Contexte",
+      "fitInMemory": "Tient en mémoire",
+      "tokens": "Tokens",
+      "tokensTotal": "{count} au total",
+      "responseTime": "Temps de réponse",
+      "decodeSpeed": "Vitesse de décodage",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "Cache demandé",
+      "requestedFit": "Tient demandé",
+      "requestedDflashDdtree": "DFlash / DDTree demandé",
+      "runtimeStatus": "Statut du runtime",
+      "treeBudget": "Budget arborescent",
+      "dflashAcceptance": "Acceptation DFLASH",
+      "avgTokens": "{value} tokens en moyenne",
+      "draftModel": "Modèle brouillon"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "Titre du défi",

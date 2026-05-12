@@ -53,7 +53,8 @@
     "image": "이미지 첨부",
     "document": "문서 첨부",
     "code": "코드 첨부",
-    "removeAttachment": "첨부 파일 제거"
+    "removeAttachment": "첨부 파일 제거",
+    "imageTooLarge": "이미지는 10MB 미만이어야 합니다"
   },
   "modelPicker": {
     "label": "모델",
@@ -112,7 +113,52 @@
     "forkTooltip": "여기서 분기 (새 스레드 생성)",
     "delveTooltip": "심층 분석 — 비평적 시각으로 다시 읽고 수정된 답변 제안",
     "deleteMessageTooltip": "메시지 삭제",
-    "loadExactSettingsTooltip": "이 응답에 사용된 정확한 모델과 런타임 설정 로드"
+    "loadExactSettingsTooltip": "이 응답에 사용된 정확한 모델과 런타임 설정 로드",
+    "roleAgent": "에이전트",
+    "roleUser": "사용자",
+    "thermalThrottleTitle": "발열 스로틀",
+    "memoryCriticalTitle": "시스템 메모리 위험",
+    "memoryStats": "{available} GB 사용 가능 · 압박 {pressure}%",
+    "cancel": "취소",
+    "emptyState": "대화를 시작하려면 메시지를 보내세요.",
+    "reloadSettings": "이 설정 다시 불러오기",
+    "fitInMemory": {
+      "on": "켜짐",
+      "off": "꺼짐",
+      "unknown": "알 수 없음"
+    },
+    "variants": {
+      "heading": "응답 비교",
+      "subtitle": "동일한 프롬프트를 다른 웜 모델로 라우팅했습니다."
+    },
+    "details": {
+      "summary": "모델 세부 정보",
+      "unknown": "알 수 없음",
+      "auto": "자동",
+      "dflashAccepted": "DFLASH 평균 수락 {value}",
+      "model": "모델",
+      "runtime": "런타임",
+      "cache": "캐시",
+      "strategy": "전략",
+      "cacheBits": "캐시 비트",
+      "fp16Layers": "FP16 레이어",
+      "backend": "백엔드",
+      "context": "컨텍스트",
+      "fitInMemory": "메모리 적합성",
+      "tokens": "토큰",
+      "tokensTotal": "총 {count}",
+      "responseTime": "응답 시간",
+      "decodeSpeed": "디코드 속도",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "요청된 캐시",
+      "requestedFit": "요청된 적합성",
+      "requestedDflashDdtree": "요청된 DFlash / DDTree",
+      "runtimeStatus": "런타임 상태",
+      "treeBudget": "트리 예산",
+      "dflashAcceptance": "DFLASH 수락",
+      "avgTokens": "평균 토큰 {value}개",
+      "draftModel": "드래프트 모델"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "챌린지 제목",

@@ -53,7 +53,8 @@
     "image": "Attach image",
     "document": "Attach document",
     "code": "Attach code",
-    "removeAttachment": "Remove attachment"
+    "removeAttachment": "Remove attachment",
+    "imageTooLarge": "Image must be under 10MB"
   },
   "modelPicker": {
     "label": "Model",
@@ -112,7 +113,52 @@
     "forkTooltip": "Fork from here (creates a new thread)",
     "delveTooltip": "Delve — re-read with a critic's eye and propose a revised answer",
     "deleteMessageTooltip": "Delete message",
-    "loadExactSettingsTooltip": "Load the exact model and runtime settings used for this response"
+    "loadExactSettingsTooltip": "Load the exact model and runtime settings used for this response",
+    "roleAgent": "Agent",
+    "roleUser": "User",
+    "thermalThrottleTitle": "Thermal throttle",
+    "memoryCriticalTitle": "System memory critical",
+    "memoryStats": "{available} GB free · pressure {pressure}%",
+    "cancel": "Cancel",
+    "emptyState": "Send a message to start the conversation.",
+    "reloadSettings": "Reload these settings",
+    "fitInMemory": {
+      "on": "On",
+      "off": "Off",
+      "unknown": "Unknown"
+    },
+    "variants": {
+      "heading": "Comparing responses",
+      "subtitle": "Same prompt routed through alternate warm models."
+    },
+    "details": {
+      "summary": "Model details",
+      "unknown": "Unknown",
+      "auto": "Auto",
+      "dflashAccepted": "DFLASH {value} avg accepted",
+      "model": "Model",
+      "runtime": "Runtime",
+      "cache": "Cache",
+      "strategy": "Strategy",
+      "cacheBits": "Cache bits",
+      "fp16Layers": "FP16 layers",
+      "backend": "Backend",
+      "context": "Context",
+      "fitInMemory": "Fit in memory",
+      "tokens": "Tokens",
+      "tokensTotal": "{count} total",
+      "responseTime": "Response time",
+      "decodeSpeed": "Decode speed",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "Requested cache",
+      "requestedFit": "Requested fit",
+      "requestedDflashDdtree": "Requested DFlash / DDTree",
+      "runtimeStatus": "Runtime status",
+      "treeBudget": "Tree budget",
+      "dflashAcceptance": "DFLASH acceptance",
+      "avgTokens": "{value} avg tokens",
+      "draftModel": "Draft model"
+    }
   },
   "htmlChallenge": {
     "titlePlaceholder": "Challenge title",

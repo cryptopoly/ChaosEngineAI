@@ -36,5 +36,387 @@
     "unloadModel": "Décharger le modèle",
     "viewOnHF": "Voir sur Hugging Face",
     "deleteFromDisk": "Supprimer du disque"
+  },
+  "myModels": {
+    "subtitle": "{count} modèles / {size} sur disque / {dirs} répertoires",
+    "searchPlaceholder": "Filtrer par nom, chemin, format, quantification ou backend...",
+    "empty": "Aucun modèle trouvé. Ajoutez des répertoires dans Préférences pour rechercher des modèles locaux.",
+    "filter": {
+      "all": "Tous",
+      "allFormats": "Tous les formats",
+      "allBackends": "Tous les backends",
+      "allStrategies": "Toutes les stratégies"
+    },
+    "capability": {
+      "title": {
+        "agents": "Flux d'agent",
+        "chat": "Discussion générale",
+        "coding": "Aide à la programmation",
+        "multilingual": "Prise en charge multilingue",
+        "reasoning": "Axé raisonnement",
+        "thinking": "Réflexion / raisonnement délibéré",
+        "tool-use": "Utilisation d'outils / appel de fonctions",
+        "video": "Compréhension vidéo",
+        "vision": "Prise en charge image / vision"
+      },
+      "short": {
+        "agents": "Agents",
+        "chat": "Discussion",
+        "coding": "Code",
+        "multilingual": "Multi",
+        "reasoning": "Raison.",
+        "thinking": "Réflex.",
+        "tool-use": "Outils",
+        "video": "Vidéo",
+        "vision": "Vision"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "Afficher les modèles compatibles avec {label} ({count})",
+      "dflashEmptyTooltip": "Les brouillons de décodage spéculatif DFlash n'existent que pour des modèles de base spécifiques : Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Les fine-tunes ne correspondent généralement pas. Téléchargez un modèle de base depuis Découvrir pour activer DFlash."
+    },
+    "column": {
+      "model": "Modèle",
+      "format": "Format",
+      "quant": "Quant.",
+      "backend": "Backend",
+      "size": "Taille",
+      "ram": "RAM",
+      "compressed": "Compressé",
+      "context": "Contexte",
+      "status": "Statut"
+    },
+    "status": {
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "incomplete": "Incomplet",
+      "incompleteReason": "Incomplet ou corrompu",
+      "installed": "Installé"
+    },
+    "badge": {
+      "activeDownload": "Téléchargement actif",
+      "broken": "CORROMPU"
+    },
+    "tooltip": {
+      "ram": "Mémoire résidente approximative à 8 k de contexte (poids + KV + framework)",
+      "compressed": "Mémoire résidente approximative avec une stratégie de KV cache compressée"
+    },
+    "download": {
+      "failed": "Échec du téléchargement.",
+      "failedShort": "Échec du téléchargement",
+      "paused": "Téléchargement en pause.",
+      "inProgress": "Téléchargement en cours.",
+      "downloadedDetail": "{size} téléchargés."
+    },
+    "action": {
+      "pauseDownload": "Mettre en pause le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "resumeDownload": "Reprendre le téléchargement",
+      "cancelDownload": "Annuler le téléchargement",
+      "deleteDownload": "Supprimer le téléchargement",
+      "chatWithModel": "Discuter avec le modèle",
+      "loadForServer": "Charger pour le serveur",
+      "deleteModel": "Supprimer le modèle"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} familles de modèles / {downloaded} téléchargées localement",
+    "searchPlaceholder": "Rechercher par nom, fournisseur ou capacité...",
+    "variantCount": "{count, plural, one {# variante} other {# variantes}}",
+    "filter": {
+      "all": "Tous",
+      "allFormats": "Tous les formats"
+    },
+    "capability": {
+      "title": {
+        "agents": "Flux d'agent",
+        "chat": "Discussion générale",
+        "coding": "Aide à la programmation",
+        "multilingual": "Prise en charge multilingue",
+        "reasoning": "Axé raisonnement",
+        "thinking": "Réflexion / raisonnement délibéré",
+        "tool-use": "Utilisation d'outils / appel de fonctions",
+        "video": "Compréhension vidéo",
+        "vision": "Prise en charge image / vision"
+      },
+      "short": {
+        "agents": "Agents",
+        "chat": "Discussion",
+        "coding": "Code",
+        "multilingual": "Multi",
+        "reasoning": "Raison.",
+        "thinking": "Réflex.",
+        "tool-use": "Outils",
+        "video": "Vidéo",
+        "vision": "Vision"
+      }
+    },
+    "section": {
+      "curatedAria": "Familles de modèles sélectionnées"
+    },
+    "status": {
+      "countInstalled": "{count} installés",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "downloadFailed": "Échec du téléchargement",
+      "installed": "Installé",
+      "downloadComplete": "Téléchargement terminé",
+      "failed": "Échec",
+      "notInstalled": "Non installé"
+    },
+    "column": {
+      "variant": "Variante",
+      "format": "Format",
+      "backend": "Backend",
+      "params": "Paramètres",
+      "size": "Taille",
+      "ram": "RAM",
+      "compressed": "Compressé",
+      "context": "Contexte",
+      "status": "Statut"
+    },
+    "memory": {
+      "comfortable": "Tient confortablement dans les {available} Go disponibles",
+      "tight": "Tient mais juste contre les {available} Go disponibles — fermez d'autres apps avant de charger",
+      "over": "Les {estimated} Go estimés dépassent les {available} Go disponibles — essayez une quantification plus petite",
+      "comfortableLabel": "Tient",
+      "tightLabel": "Juste",
+      "overLabel": "Trop grand"
+    },
+    "action": {
+      "details": "Détails",
+      "detailsTooltip": "Afficher tous les détails dans une vue dédiée",
+      "convertModel": "Convertir le modèle",
+      "chatWithModel": "Discuter avec le modèle",
+      "loadForServer": "Charger pour le serveur",
+      "pauseDownload": "Mettre en pause le téléchargement",
+      "cancelDownload": "Annuler le téléchargement",
+      "resumeDownload": "Reprendre le téléchargement",
+      "deleteDownload": "Supprimer le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "downloadModel": "Télécharger le modèle",
+      "openModelCardHF": "Ouvrir la fiche du modèle sur Hugging Face",
+      "openOnHF": "Ouvrir sur Hugging Face"
+    },
+    "hub": {
+      "sectionAria": "Résultats du Hub Hugging Face",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, one {# résultat en direct} other {# résultats en direct}} depuis huggingface.co, triés par mise à jour la plus récente",
+      "loading": "Chargement de la liste des fichiers depuis Hugging Face...",
+      "previewUnavailable": "Aperçu indisponible",
+      "licenseLabel": "Licence : {license}",
+      "totalGb": "{size} Go au total",
+      "updatedDate": "Mis à jour le {date}",
+      "moreTags": "+{count} de plus",
+      "filePreviewUnavailable": "L'aperçu des fichiers n'est pas disponible pour ce repo actuellement.",
+      "weightsHeader": "Poids ({count})",
+      "largestShard": "Plus grande partition {size}",
+      "showFiles": "Afficher les fichiers",
+      "visionTag": "vision",
+      "configAndTokenizer": "Config et tokenizer",
+      "otherFiles": "+{count, plural, one {# autre fichier} other {# autres fichiers}}"
+    },
+    "searchError": {
+      "fallback": "Affichage des derniers résultats de Découvrir réussis."
+    },
+    "empty": {
+      "capFilter": "Aucun modèle ne correspond au filtre « {cap} ».",
+      "search": "Aucun modèle ne correspond à « {query} ». Essayez un autre terme.",
+      "prompt": "Saisissez pour rechercher des modèles."
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{rows} sur {total, plural, one {# modèle} other {# modèles}} avec données locales",
+      "none": "Aucun modèle image détecté localement pour l'instant"
+    },
+    "empty": {
+      "noModels": "Téléchargez un modèle image depuis Découvrir Image pour commencer.",
+      "noMatches": "Aucun modèle image installé ne correspond aux filtres actuels."
+    },
+    "action": {
+      "browseCatalog": "Parcourir le catalogue",
+      "clearFilters": "Effacer les filtres",
+      "generate": "Générer",
+      "pauseDownload": "Mettre en pause le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "resumeDownload": "Reprendre le téléchargement",
+      "downloadModel": "Télécharger le modèle",
+      "cancelDownload": "Annuler le téléchargement",
+      "deleteModel": "Supprimer le modèle",
+      "openModelCard": "Ouvrir la fiche du modèle"
+    },
+    "filter": {
+      "searchLabel": "Rechercher",
+      "searchPlaceholder": "Filtrer par modèle, fournisseur, repo, tâche ou étiquette...",
+      "taskLabel": "Tâche",
+      "statusLabel": "Statut",
+      "sortByLabel": "Trier par",
+      "task": {
+        "all": "Toutes les tâches",
+        "txt2img": "Texte vers image",
+        "img2img": "Image vers image",
+        "inpaint": "Inpaint"
+      },
+      "status": {
+        "all": "Tout statut",
+        "installed": "Installé",
+        "incomplete": "Incomplet",
+        "downloading": "Téléchargement",
+        "paused": "En pause",
+        "failed": "Échec"
+      }
+    },
+    "sort": {
+      "name": "Nom",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "newestReleased": "Plus récemment publié",
+      "largestSize": "Plus grande taille",
+      "highestRamVram": "RAM/VRAM la plus élevée",
+      "status": "Statut",
+      "direction": {
+        "ascending": "ascendant",
+        "descending": "descendant"
+      },
+      "providerDir": "fournisseur {direction}",
+      "tasksDir": "tâches {direction}",
+      "statusDir": "statut {direction}",
+      "largestFirst": "plus grande taille d'abord",
+      "smallestFirst": "plus petite taille d'abord",
+      "highestRam": "RAM/VRAM la plus élevée d'abord",
+      "lowestRam": "RAM/VRAM la plus faible d'abord",
+      "nameAsc": "nom A-Z",
+      "nameDesc": "nom Z-A",
+      "newestFirst": "plus récemment publié d'abord",
+      "oldestFirst": "plus anciennement publié d'abord"
+    },
+    "summary": {
+      "results": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
+      "searchChip": "Recherche : {query}",
+      "taskChip": "Tâche : {value}",
+      "statusChip": "Statut : {value}"
+    },
+    "column": {
+      "model": "Modèle",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "size": "Taille",
+      "ramVram": "RAM/VRAM",
+      "released": "Publié",
+      "status": "Statut"
+    },
+    "status": {
+      "installed": "Installé",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "downloadFailed": "Échec du téléchargement",
+      "incomplete": "Incomplet"
+    },
+    "memory": {
+      "pending": "en attente",
+      "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
+    },
+    "releaseUnknown": "Inconnu"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{rows} sur {total, plural, one {# modèle} other {# modèles}} avec données locales",
+      "none": "Aucun modèle vidéo détecté localement pour l'instant"
+    },
+    "empty": {
+      "noModels": "Téléchargez un modèle vidéo depuis Découvrir Vidéo pour commencer.",
+      "noMatches": "Aucun modèle vidéo installé ne correspond aux filtres actuels."
+    },
+    "action": {
+      "browseCatalog": "Parcourir le catalogue",
+      "clearFilters": "Effacer les filtres",
+      "generate": "Générer",
+      "pauseDownload": "Mettre en pause le téléchargement",
+      "retryDownload": "Réessayer le téléchargement",
+      "resumeDownload": "Reprendre le téléchargement",
+      "downloadModel": "Télécharger le modèle",
+      "cancelDownload": "Annuler le téléchargement",
+      "deleteModel": "Supprimer le modèle",
+      "openModelCard": "Ouvrir la fiche du modèle"
+    },
+    "filter": {
+      "searchLabel": "Rechercher",
+      "searchPlaceholder": "Filtrer par modèle, fournisseur, repo, tâche ou étiquette...",
+      "taskLabel": "Tâche",
+      "statusLabel": "Statut",
+      "sortByLabel": "Trier par",
+      "task": {
+        "all": "Toutes les tâches",
+        "txt2video": "Texte vers vidéo",
+        "img2video": "Image vers vidéo",
+        "video2video": "Vidéo vers vidéo"
+      },
+      "status": {
+        "all": "Tout statut",
+        "loaded": "En mémoire",
+        "installed": "Installé",
+        "incomplete": "Incomplet",
+        "downloading": "Téléchargement",
+        "paused": "En pause",
+        "failed": "Échec"
+      }
+    },
+    "sort": {
+      "name": "Nom",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "newestReleased": "Plus récemment publié",
+      "largestSize": "Plus grande taille",
+      "highestRamVram": "RAM/VRAM la plus élevée",
+      "status": "Statut",
+      "direction": {
+        "ascending": "ascendant",
+        "descending": "descendant"
+      },
+      "providerDir": "fournisseur {direction}",
+      "tasksDir": "tâches {direction}",
+      "statusDir": "statut {direction}",
+      "largestFirst": "plus grande taille d'abord",
+      "smallestFirst": "plus petite taille d'abord",
+      "highestRam": "RAM/VRAM la plus élevée d'abord",
+      "lowestRam": "RAM/VRAM la plus faible d'abord",
+      "nameAsc": "nom A-Z",
+      "nameDesc": "nom Z-A",
+      "newestFirst": "plus récemment publié d'abord",
+      "oldestFirst": "plus anciennement publié d'abord"
+    },
+    "summary": {
+      "results": "{count, plural, one {# modèle} other {# modèles}} · {sortLabel}",
+      "searchChip": "Recherche : {query}",
+      "taskChip": "Tâche : {value}",
+      "statusChip": "Statut : {value}"
+    },
+    "column": {
+      "model": "Modèle",
+      "provider": "Fournisseur",
+      "tasks": "Tâches",
+      "size": "Taille",
+      "ramVram": "RAM/VRAM",
+      "released": "Publié",
+      "status": "Statut"
+    },
+    "status": {
+      "loaded": "Chargé en mémoire",
+      "installed": "Installé",
+      "downloading": "Téléchargement",
+      "paused": "En pause",
+      "failed": "Échec",
+      "downloadFailed": "Échec du téléchargement",
+      "incomplete": "Incomplet"
+    },
+    "memory": {
+      "pending": "en attente",
+      "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
+    },
+    "releaseUnknown": "Inconnu"
   }
 }

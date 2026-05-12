@@ -23,6 +23,7 @@ export function VideoGalleryTab({
   onDeleteVideoArtifact,
 }: VideoGalleryTabProps) {
   const { t } = useTranslation("common");
+  const { t: tStudio, i18n } = useTranslation("studio");
   const [expandedArtifactId, setExpandedArtifactId] = useState<string | null>(null);
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const expandedArtifact = videoOutputs.find((artifact) => artifact.artifactId === expandedArtifactId) ?? null;
@@ -40,8 +41,11 @@ export function VideoGalleryTab({
         title={t("tabs.videoGallery")}
         subtitle={
           videoOutputs.length > 0
-            ? `${videoOutputs.length} saved clip${videoOutputs.length === 1 ? "" : "s"}`
-            : "Saved video renders"
+            ? tStudio("videoGallery.subtitle.count", {
+                defaultValue: "{count, plural, one {# saved clip} other {# saved clips}}",
+                count: videoOutputs.length,
+              })
+            : tStudio("videoGallery.subtitle.empty", { defaultValue: "Saved video renders" })
         }
         className="span-2"
         actions={
@@ -52,13 +56,13 @@ export function VideoGalleryTab({
                 checked={autoPlayVideos}
                 onChange={(event) => setAutoPlayVideos(event.target.checked)}
               />
-              <span>Auto-Play</span>
+              <span>{tStudio("videoGallery.actions.autoPlay", { defaultValue: "Auto-Play" })}</span>
             </label>
             <button className="secondary-button" type="button" onClick={() => onOpenVideoStudio()}>
-              Open Studio
+              {tStudio("videoGallery.actions.openStudio", { defaultValue: "Open Studio" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
-              Installed Models
+              {tStudio("videoGallery.actions.installedModels", { defaultValue: "Installed Models" })}
             </button>
           </div>
         }
@@ -66,12 +70,14 @@ export function VideoGalleryTab({
         {videoOutputs.length === 0 ? (
           <div className="empty-state image-empty-state">
             <p>
-              No video outputs yet. Load a model in the Studio and generate a clip — finished renders will
-              land here.
+              {tStudio("videoGallery.empty.body", {
+                defaultValue:
+                  "No video outputs yet. Load a model in the Studio and generate a clip — finished renders will land here.",
+              })}
             </p>
             <div className="button-row" style={{ marginTop: 12 }}>
               <button className="secondary-button" type="button" onClick={() => onOpenVideoStudio()}>
-                Open Video Studio
+                {tStudio("videoGallery.empty.openStudio", { defaultValue: "Open Video Studio" })}
               </button>
             </div>
           </div>
@@ -84,6 +90,7 @@ export function VideoGalleryTab({
                 videoBusy={videoBusy}
                 expanded={expandedArtifactId === artifact.artifactId}
                 autoPlay={autoPlayVideos}
+                locale={i18n.language}
                 onToggleExpanded={(artifactId) => {
                   setExpandedArtifactId((current) => (current === artifactId ? null : artifactId));
                 }}
@@ -103,6 +110,7 @@ interface VideoOutputCardProps {
   videoBusy: boolean;
   expanded: boolean;
   autoPlay: boolean;
+  locale: string;
   onToggleExpanded: (artifactId: string) => void;
   onRevealPath: (path: string) => void;
   onDelete: (artifactId: string) => void;
@@ -120,10 +128,12 @@ function VideoOutputCard({
   videoBusy,
   expanded,
   autoPlay,
+  locale,
   onToggleExpanded,
   onRevealPath,
   onDelete,
 }: VideoOutputCardProps) {
+  const { t: tStudio } = useTranslation("studio");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const activeUrlRef = useRef<string | null>(null);
@@ -144,7 +154,11 @@ function VideoOutputCard({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : "Could not load video.");
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : tStudio("videoGallery.card.loadError", { defaultValue: "Could not load video." }),
+        );
       });
     return () => {
       cancelled = true;
@@ -153,7 +167,7 @@ function VideoOutputCard({
         activeUrlRef.current = null;
       }
     };
-  }, [artifact.artifactId]);
+  }, [artifact.artifactId, tStudio]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -178,7 +192,7 @@ function VideoOutputCard({
           type="button"
           onClick={() => onToggleExpanded(artifact.artifactId)}
         >
-          Collapse
+          {tStudio("videoGallery.card.collapse", { defaultValue: "Collapse" })}
         </button>
       ) : null}
       {videoUrl ? (
@@ -204,13 +218,15 @@ function VideoOutputCard({
             minHeight: 160,
           }}
         >
-          <span className="muted-text">{loadError ?? "Loading clip..."}</span>
+          <span className="muted-text">
+            {loadError ?? tStudio("videoGallery.card.loading", { defaultValue: "Loading clip..." })}
+          </span>
         </div>
       )}
       <div className="image-output-card-body">
         <div className="image-output-card-head">
           <strong>{artifact.modelName}</strong>
-          <span className="badge muted">{formatImageTimestamp(artifact.createdAt)}</span>
+          <span className="badge muted">{formatImageTimestamp(artifact.createdAt, locale)}</span>
         </div>
         {artifact.runtimeLabel ? (
           <div className="chip-row">
@@ -223,13 +239,45 @@ function VideoOutputCard({
         <p className="image-output-prompt">{artifact.prompt}</p>
         {artifact.runtimeNote ? <p className="muted-text">{artifact.runtimeNote}</p> : null}
         <div className="image-output-meta">
-          <span>{artifact.numFrames} frames</span>
-          <span>{artifact.fps} fps</span>
-          <span>{number(clipSeconds)}s clip</span>
-          <span>{artifact.steps} steps</span>
-          <span>CFG {artifact.guidance}</span>
-          <span>Seed {artifact.seed}</span>
-          <span>{number(artifact.durationSeconds)}s render</span>
+          <span>
+            {tStudio("videoGallery.card.meta.frames", {
+              defaultValue: "{count, plural, one {# frame} other {# frames}}",
+              count: artifact.numFrames,
+            })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.fps", { defaultValue: "{fps} fps", fps: artifact.fps })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.clipSeconds", {
+              defaultValue: "{seconds}s clip",
+              seconds: number(clipSeconds),
+            })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.steps", {
+              defaultValue: "{count, plural, one {# step} other {# steps}}",
+              count: artifact.steps,
+            })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.cfg", {
+              defaultValue: "CFG {value}",
+              value: artifact.guidance,
+            })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.seed", {
+              defaultValue: "Seed {value}",
+              value: artifact.seed,
+            })}
+          </span>
+          <span>
+            {tStudio("videoGallery.card.meta.render", {
+              defaultValue: "{seconds}s render",
+              seconds: number(artifact.durationSeconds),
+            })}
+          </span>
         </div>
         <div className="button-row">
           {!expanded ? (
@@ -238,7 +286,7 @@ function VideoOutputCard({
               type="button"
               onClick={() => onToggleExpanded(artifact.artifactId)}
             >
-              Expand
+              {tStudio("videoGallery.card.expand", { defaultValue: "Expand" })}
             </button>
           ) : null}
           {artifact.videoPath ? (
@@ -247,7 +295,7 @@ function VideoOutputCard({
               type="button"
               onClick={() => onRevealPath(artifact.videoPath as string)}
             >
-              Reveal File
+              {tStudio("videoGallery.card.revealFile", { defaultValue: "Reveal File" })}
             </button>
           ) : null}
           <button
@@ -256,7 +304,7 @@ function VideoOutputCard({
             disabled={videoBusy}
             onClick={() => onDelete(artifact.artifactId)}
           >
-            Delete
+            {tStudio("videoGallery.card.delete", { defaultValue: "Delete" })}
           </button>
         </div>
       </div>

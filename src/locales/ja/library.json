@@ -36,5 +36,387 @@
     "unloadModel": "モデルをアンロード",
     "viewOnHF": "Hugging Face で表示",
     "deleteFromDisk": "ディスクから削除"
+  },
+  "myModels": {
+    "subtitle": "{count} モデル / ディスク上 {size} / {dirs} ディレクトリ",
+    "searchPlaceholder": "名前、パス、フォーマット、量子化、バックエンドで絞り込み...",
+    "empty": "モデルが見つかりません。設定でディレクトリを追加してローカルモデルをスキャンしてください。",
+    "filter": {
+      "all": "すべて",
+      "allFormats": "すべてのフォーマット",
+      "allBackends": "すべてのバックエンド",
+      "allStrategies": "すべての戦略"
+    },
+    "capability": {
+      "title": {
+        "agents": "エージェントワークフロー",
+        "chat": "一般チャット",
+        "coding": "コーディング支援",
+        "multilingual": "多言語サポート",
+        "reasoning": "推論重視",
+        "thinking": "思考 / 熟考的推論",
+        "tool-use": "ツール使用 / 関数呼び出し",
+        "video": "動画理解",
+        "vision": "画像 / 視覚サポート"
+      },
+      "short": {
+        "agents": "エージェント",
+        "chat": "チャット",
+        "coding": "コード",
+        "multilingual": "多言語",
+        "reasoning": "推論",
+        "thinking": "思考",
+        "tool-use": "ツール",
+        "video": "動画",
+        "vision": "視覚"
+      }
+    },
+    "strategy": {
+      "chip": "{label}({count})",
+      "compatTooltip": "{label} と互換性のあるモデルを表示({count})",
+      "dflashEmptyTooltip": "DFlash の投機的デコード用ドラフトは特定のベースモデルにのみ存在します:Qwen/Qwen3(4B、8B)、Qwen/Qwen3-Coder(4B、8B、30B-A3B、Next)、Qwen/Qwen3.5(4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss(20B、120B)、moonshotai/Kimi-K2.5。ファインチューン版は通常合致しません。DFlash を有効化するにはディスカバーからベースモデルをダウンロードしてください。"
+    },
+    "column": {
+      "model": "モデル",
+      "format": "フォーマット",
+      "quant": "量子化",
+      "backend": "バックエンド",
+      "size": "サイズ",
+      "ram": "RAM",
+      "compressed": "圧縮後",
+      "context": "コンテキスト",
+      "status": "ステータス"
+    },
+    "status": {
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "incomplete": "不完全",
+      "incompleteReason": "不完全または破損",
+      "installed": "インストール済み"
+    },
+    "badge": {
+      "activeDownload": "ダウンロード中",
+      "broken": "破損"
+    },
+    "tooltip": {
+      "ram": "8K コンテキスト時のおおよその常駐メモリ(重み + KV + フレームワーク)",
+      "compressed": "圧縮 KV キャッシュ戦略を使用したおおよその常駐メモリ"
+    },
+    "download": {
+      "failed": "ダウンロードに失敗しました。",
+      "failedShort": "ダウンロード失敗",
+      "paused": "ダウンロードを一時停止しました。",
+      "inProgress": "ダウンロード中です。",
+      "downloadedDetail": "{size} ダウンロード済み。"
+    },
+    "action": {
+      "pauseDownload": "ダウンロードを一時停止",
+      "retryDownload": "ダウンロードを再試行",
+      "resumeDownload": "ダウンロードを再開",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "deleteDownload": "ダウンロードを削除",
+      "chatWithModel": "モデルとチャット",
+      "loadForServer": "サーバー用に読み込む",
+      "deleteModel": "モデルを削除"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} 個のモデルファミリー / ローカルに {downloaded} 個ダウンロード済み",
+    "searchPlaceholder": "名前、プロバイダー、機能で検索...",
+    "variantCount": "{count, plural, other {# 個のバリアント}}",
+    "filter": {
+      "all": "すべて",
+      "allFormats": "すべてのフォーマット"
+    },
+    "capability": {
+      "title": {
+        "agents": "エージェントワークフロー",
+        "chat": "一般チャット",
+        "coding": "コーディング支援",
+        "multilingual": "多言語サポート",
+        "reasoning": "推論重視",
+        "thinking": "思考 / 熟考的推論",
+        "tool-use": "ツール使用 / 関数呼び出し",
+        "video": "動画理解",
+        "vision": "画像 / 視覚サポート"
+      },
+      "short": {
+        "agents": "エージェント",
+        "chat": "チャット",
+        "coding": "コード",
+        "multilingual": "多言語",
+        "reasoning": "推論",
+        "thinking": "思考",
+        "tool-use": "ツール",
+        "video": "動画",
+        "vision": "視覚"
+      }
+    },
+    "section": {
+      "curatedAria": "キュレーションされたモデルファミリー"
+    },
+    "status": {
+      "countInstalled": "{count} 個インストール済み",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "downloadFailed": "ダウンロードに失敗",
+      "installed": "インストール済み",
+      "downloadComplete": "ダウンロード完了",
+      "failed": "失敗",
+      "notInstalled": "未インストール"
+    },
+    "column": {
+      "variant": "バリアント",
+      "format": "フォーマット",
+      "backend": "バックエンド",
+      "params": "パラメータ",
+      "size": "サイズ",
+      "ram": "RAM",
+      "compressed": "圧縮後",
+      "context": "コンテキスト",
+      "status": "ステータス"
+    },
+    "memory": {
+      "comfortable": "空きの {available} GB に余裕を持って収まります",
+      "tight": "空きの {available} GB に収まりますが余裕がありません — 読み込み前に他のアプリを閉じてください",
+      "over": "推定 {estimated} GB は空きの {available} GB を超えています — より小さい量子化を試してください",
+      "comfortableLabel": "収まる",
+      "tightLabel": "ギリギリ",
+      "overLabel": "大きすぎる"
+    },
+    "action": {
+      "details": "詳細",
+      "detailsTooltip": "詳細をフォーカスビューで表示",
+      "convertModel": "モデルを変換",
+      "chatWithModel": "モデルとチャット",
+      "loadForServer": "サーバー用に読み込む",
+      "pauseDownload": "ダウンロードを一時停止",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "resumeDownload": "ダウンロードを再開",
+      "deleteDownload": "ダウンロードを削除",
+      "retryDownload": "ダウンロードを再試行",
+      "downloadModel": "モデルをダウンロード",
+      "openModelCardHF": "Hugging Face のモデルカードを開く",
+      "openOnHF": "Hugging Face で開く"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub の結果",
+      "header": "Hugging Face Hub",
+      "liveResults": "{count, plural, other {huggingface.co からのライブ結果 # 件}}、最新更新順",
+      "loading": "Hugging Face からファイルリストを読み込み中...",
+      "previewUnavailable": "プレビューは利用できません",
+      "licenseLabel": "ライセンス:{license}",
+      "totalGb": "合計 {size} GB",
+      "updatedDate": "更新日 {date}",
+      "moreTags": "+{count} 件",
+      "filePreviewUnavailable": "現在このリポジトリのファイルプレビューは利用できません。",
+      "weightsHeader": "重み({count})",
+      "largestShard": "最大シャード {size}",
+      "showFiles": "ファイルを表示",
+      "visionTag": "視覚",
+      "configAndTokenizer": "設定とトークナイザー",
+      "otherFiles": "+{count, plural, other {その他 # 個のファイル}}"
+    },
+    "searchError": {
+      "fallback": "直近で成功したディスカバー結果を表示しています。"
+    },
+    "empty": {
+      "capFilter": "「{cap}」フィルターに一致するモデルはありません。",
+      "search": "「{query}」に一致するモデルはありません。別の検索語を試してください。",
+      "prompt": "モデルを検索するために入力してください。"
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "ローカルデータあり {total, plural, other {# 個のモデル中}} {rows} 個",
+      "none": "ローカルにはまだ画像モデルが検出されていません"
+    },
+    "empty": {
+      "noModels": "画像ディスカバーから画像モデルをダウンロードして開始してください。",
+      "noMatches": "現在のフィルターに一致するインストール済み画像モデルはありません。"
+    },
+    "action": {
+      "browseCatalog": "カタログを閲覧",
+      "clearFilters": "フィルターをクリア",
+      "generate": "生成",
+      "pauseDownload": "ダウンロードを一時停止",
+      "retryDownload": "ダウンロードを再試行",
+      "resumeDownload": "ダウンロードを再開",
+      "downloadModel": "モデルをダウンロード",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "deleteModel": "モデルを削除",
+      "openModelCard": "モデルカードを開く"
+    },
+    "filter": {
+      "searchLabel": "検索",
+      "searchPlaceholder": "モデル、プロバイダー、リポジトリ、タスク、タグで絞り込み...",
+      "taskLabel": "タスク",
+      "statusLabel": "ステータス",
+      "sortByLabel": "並べ替え",
+      "task": {
+        "all": "すべてのタスク",
+        "txt2img": "テキストから画像",
+        "img2img": "画像から画像",
+        "inpaint": "インペイント"
+      },
+      "status": {
+        "all": "すべてのステータス",
+        "installed": "インストール済み",
+        "incomplete": "不完全",
+        "downloading": "ダウンロード中",
+        "paused": "一時停止",
+        "failed": "失敗"
+      }
+    },
+    "sort": {
+      "name": "名前",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "newestReleased": "リリースが新しい順",
+      "largestSize": "サイズが大きい順",
+      "highestRamVram": "RAM/VRAM が大きい順",
+      "status": "ステータス",
+      "direction": {
+        "ascending": "昇順",
+        "descending": "降順"
+      },
+      "providerDir": "プロバイダー {direction}",
+      "tasksDir": "タスク {direction}",
+      "statusDir": "ステータス {direction}",
+      "largestFirst": "サイズが大きい順",
+      "smallestFirst": "サイズが小さい順",
+      "highestRam": "RAM/VRAM が大きい順",
+      "lowestRam": "RAM/VRAM が小さい順",
+      "nameAsc": "名前 A-Z",
+      "nameDesc": "名前 Z-A",
+      "newestFirst": "リリースが新しい順",
+      "oldestFirst": "リリースが古い順"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "searchChip": "検索:{query}",
+      "taskChip": "タスク:{value}",
+      "statusChip": "ステータス:{value}"
+    },
+    "column": {
+      "model": "モデル",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "size": "サイズ",
+      "ramVram": "RAM/VRAM",
+      "released": "リリース",
+      "status": "ステータス"
+    },
+    "status": {
+      "installed": "インストール済み",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "downloadFailed": "ダウンロード失敗",
+      "incomplete": "不完全"
+    },
+    "memory": {
+      "pending": "保留中",
+      "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
+    },
+    "releaseUnknown": "不明"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "ローカルデータあり {total, plural, other {# 個のモデル中}} {rows} 個",
+      "none": "ローカルにはまだ動画モデルが検出されていません"
+    },
+    "empty": {
+      "noModels": "動画ディスカバーから動画モデルをダウンロードして開始してください。",
+      "noMatches": "現在のフィルターに一致するインストール済み動画モデルはありません。"
+    },
+    "action": {
+      "browseCatalog": "カタログを閲覧",
+      "clearFilters": "フィルターをクリア",
+      "generate": "生成",
+      "pauseDownload": "ダウンロードを一時停止",
+      "retryDownload": "ダウンロードを再試行",
+      "resumeDownload": "ダウンロードを再開",
+      "downloadModel": "モデルをダウンロード",
+      "cancelDownload": "ダウンロードをキャンセル",
+      "deleteModel": "モデルを削除",
+      "openModelCard": "モデルカードを開く"
+    },
+    "filter": {
+      "searchLabel": "検索",
+      "searchPlaceholder": "モデル、プロバイダー、リポジトリ、タスク、タグで絞り込み...",
+      "taskLabel": "タスク",
+      "statusLabel": "ステータス",
+      "sortByLabel": "並べ替え",
+      "task": {
+        "all": "すべてのタスク",
+        "txt2video": "テキストから動画",
+        "img2video": "画像から動画",
+        "video2video": "動画から動画"
+      },
+      "status": {
+        "all": "すべてのステータス",
+        "loaded": "メモリ内",
+        "installed": "インストール済み",
+        "incomplete": "不完全",
+        "downloading": "ダウンロード中",
+        "paused": "一時停止",
+        "failed": "失敗"
+      }
+    },
+    "sort": {
+      "name": "名前",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "newestReleased": "リリースが新しい順",
+      "largestSize": "サイズが大きい順",
+      "highestRamVram": "RAM/VRAM が大きい順",
+      "status": "ステータス",
+      "direction": {
+        "ascending": "昇順",
+        "descending": "降順"
+      },
+      "providerDir": "プロバイダー {direction}",
+      "tasksDir": "タスク {direction}",
+      "statusDir": "ステータス {direction}",
+      "largestFirst": "サイズが大きい順",
+      "smallestFirst": "サイズが小さい順",
+      "highestRam": "RAM/VRAM が大きい順",
+      "lowestRam": "RAM/VRAM が小さい順",
+      "nameAsc": "名前 A-Z",
+      "nameDesc": "名前 Z-A",
+      "newestFirst": "リリースが新しい順",
+      "oldestFirst": "リリースが古い順"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 個のモデル}} · {sortLabel}",
+      "searchChip": "検索:{query}",
+      "taskChip": "タスク:{value}",
+      "statusChip": "ステータス:{value}"
+    },
+    "column": {
+      "model": "モデル",
+      "provider": "プロバイダー",
+      "tasks": "タスク",
+      "size": "サイズ",
+      "ramVram": "RAM/VRAM",
+      "released": "リリース",
+      "status": "ステータス"
+    },
+    "status": {
+      "loaded": "メモリ内に読み込み済み",
+      "installed": "インストール済み",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "failed": "失敗",
+      "downloadFailed": "ダウンロード失敗",
+      "incomplete": "不完全"
+    },
+    "memory": {
+      "pending": "保留中",
+      "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
+    },
+    "releaseUnknown": "不明"
   }
 }

@@ -20,9 +20,53 @@
  * without breaking other locales while follow-up PRs catch up.
  */
 
-import i18n from "i18next";
-import ICU from "i18next-icu";
+import i18n, { type PostProcessorModule } from "i18next";
+import IntlMessageFormat from "intl-messageformat";
 import { initReactI18next } from "react-i18next";
+
+/**
+ * ICU MessageFormat post-processor.
+ *
+ * The published `i18next-icu` 2.4.x plugin expects i18next v22's
+ * positional `parse(res, options, lng, ns, key, info)` signature, but
+ * i18next v24 calls `parse(res, dataObject)`. The mismatch leaves
+ * `{var}` and `{count, plural, …}` strings unsubstituted at render
+ * time. Until upstream catches up we wire `intl-messageformat`
+ * ourselves via a post-processor — runs after i18next resolves the
+ * key (or returns the defaultValue) and re-runs ICU substitution
+ * with the call-site variables.
+ *
+ * The cache keys on `${lng}::${value}` so repeated calls reuse the
+ * compiled IntlMessageFormat instance — formatter construction is
+ * the dominant cost.
+ */
+const icuCache = new Map<string, IntlMessageFormat>();
+
+const icuPostProcessor: PostProcessorModule = {
+  type: "postProcessor",
+  name: "icu",
+  process(value: string, _key: string | string[], options: Record<string, unknown>, translator: { language?: string }): string {
+    if (typeof value !== "string") return value as unknown as string;
+    if (!value.includes("{")) return value;
+    const lng = (options.lng as string | undefined) ?? translator.language ?? "en";
+    const cacheKey = `${lng}::${value}`;
+    let formatter = icuCache.get(cacheKey);
+    if (!formatter) {
+      try {
+        formatter = new IntlMessageFormat(value, lng, undefined, { ignoreTag: true });
+        icuCache.set(cacheKey, formatter);
+      } catch {
+        return value; // malformed pattern — fall through with literal string
+      }
+    }
+    try {
+      const out = formatter.format(options as Record<string, unknown>);
+      return typeof out === "string" ? out : value;
+    } catch {
+      return value;
+    }
+  },
+};
 
 // Eagerly bundle all namespaces for English (source of truth) so that
 // the moment ``initI18n`` resolves we can render *something* without a
@@ -229,17 +273,18 @@ export async function initI18n(opts: InitI18nOptions = {}): Promise<typeof i18n>
   }
 
   await i18n
-    .use(ICU)
+    .use(icuPostProcessor)
     .use(initReactI18next)
     .init({
       lng: initial,
       fallbackLng: "en",
       defaultNS: DEFAULT_NAMESPACE,
       ns: [...NAMESPACES],
-      // i18next-icu — wires intl-messageformat for plural/select/etc.
-      i18nFormat: {
-        memoize: true,
-      },
+      // Custom ICU post-processor (icuPostProcessor above) handles
+      // `{var}` + `{count, plural, …}` substitution via intl-messageformat.
+      // Applied to every t() call by default; opt out per-call with
+      // `{ postProcess: false }`.
+      postProcess: ["icu"],
       interpolation: {
         // React already escapes its render output; double-escaping breaks CJK.
         escapeValue: false,

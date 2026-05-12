@@ -125,12 +125,24 @@ export function ChatThread({
           const messageRuntimeWarning = message.metrics ? runtimeOutcomeWarning(message.metrics) : null;
           const actualFitInMemory = message.metrics?.fitModelInMemory;
           const requestedFitInMemory = message.metrics?.requestedFitModelInMemory;
-          const fitInMemoryLabel = actualFitInMemory == null ? "Unknown" : actualFitInMemory ? "On" : "Off";
-          const requestedFitInMemoryLabel = requestedFitInMemory == null ? null : requestedFitInMemory ? "On" : "Off";
+          const fitInMemoryLabel = actualFitInMemory == null
+            ? t("thread.fitInMemory.unknown", { defaultValue: "Unknown" })
+            : actualFitInMemory
+              ? t("thread.fitInMemory.on", { defaultValue: "On" })
+              : t("thread.fitInMemory.off", { defaultValue: "Off" });
+          const requestedFitInMemoryLabel = requestedFitInMemory == null
+            ? null
+            : requestedFitInMemory
+              ? t("thread.fitInMemory.on", { defaultValue: "On" })
+              : t("thread.fitInMemory.off", { defaultValue: "Off" });
           return (
             <div className={`message-bubble ${message.role}`} key={`${message.role}-${index}`}>
               <div className="message-header">
-                <span className="eyebrow">{message.role === "assistant" ? "Agent" : "User"}</span>
+                <span className="eyebrow">
+                  {message.role === "assistant"
+                    ? t("thread.roleAgent", { defaultValue: "Agent" })
+                    : t("thread.roleUser", { defaultValue: "User" })}
+                </span>
                 {!isStreamingMessage ? (
                   <div className="message-actions">
                     <button
@@ -227,7 +239,9 @@ export function ChatThread({
                     <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
                   </svg>
                   <div className="panic-banner__body">
-                    <strong className="panic-banner__title">Thermal throttle</strong>
+                    <strong className="panic-banner__title">
+                      {t("thread.thermalThrottleTitle", { defaultValue: "Thermal throttle" })}
+                    </strong>
                     <p className="panic-banner__message">{message.thermalWarning.message}</p>
                   </div>
                 </div>
@@ -240,11 +254,17 @@ export function ChatThread({
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                   <div className="panic-banner__body">
-                    <strong className="panic-banner__title">System memory critical</strong>
+                    <strong className="panic-banner__title">
+                      {t("thread.memoryCriticalTitle", { defaultValue: "System memory critical" })}
+                    </strong>
                     <p className="panic-banner__message">{message.panic.message}</p>
                     {message.panic.availableGb != null && message.panic.pressurePercent != null ? (
                       <small className="panic-banner__metrics">
-                        {message.panic.availableGb.toFixed(1)} GB free · pressure {message.panic.pressurePercent.toFixed(0)}%
+                        {t("thread.memoryStats", {
+                          available: message.panic.availableGb.toFixed(1),
+                          pressure: message.panic.pressurePercent.toFixed(0),
+                          defaultValue: "{available} GB free · pressure {pressure}%",
+                        })}
                       </small>
                     ) : null}
                   </div>
@@ -254,7 +274,7 @@ export function ChatThread({
                       type="button"
                       onClick={onCancelGeneration}
                     >
-                      Cancel
+                      {t("thread.cancel", { defaultValue: "Cancel" })}
                     </button>
                   ) : null}
                 </div>
@@ -279,8 +299,8 @@ export function ChatThread({
               {message.role === "assistant" && message.variants?.length ? (
                 <div className="variant-stack">
                   <div className="variant-stack__heading">
-                    <strong>Comparing responses</strong>
-                    <small>Same prompt routed through alternate warm models.</small>
+                    <strong>{t("thread.variants.heading", { defaultValue: "Comparing responses" })}</strong>
+                    <small>{t("thread.variants.subtitle", { defaultValue: "Same prompt routed through alternate warm models." })}</small>
                   </div>
                   {message.variants.map((variant, vIdx) => (
                     <VariantCard key={`${variant.modelRef}-${vIdx}`} variant={variant} />
@@ -302,10 +322,10 @@ export function ChatThread({
               {message.metrics ? (
                 <details className="message-details" onToggle={(event) => void onDetailsToggle(event.currentTarget.open)}>
                   <summary>
-                    <span>Model details</span>
+                    <span>{t("thread.details.summary", { defaultValue: "Model details" })}</span>
                     <small className="message-meta">
-                      {(message.metrics.model ?? activeChat?.model) || "Unknown"} | {number(message.metrics.tokS)} tok/s
-                      {message.metrics.dflashAcceptanceRate != null ? ` | DFLASH ${number(message.metrics.dflashAcceptanceRate)} avg accepted` : ""}
+                      {(message.metrics.model ?? activeChat?.model) || t("thread.details.unknown", { defaultValue: "Unknown" })} | {number(message.metrics.tokS)} tok/s
+                      {message.metrics.dflashAcceptanceRate != null ? ` | ${t("thread.details.dflashAccepted", { value: number(message.metrics.dflashAcceptanceRate), defaultValue: "DFLASH {value} avg accepted" })}` : ""}
                       {messageSpeculativeMode && messageSpeculativeMode !== "Off" ? ` | ${messageSpeculativeMode}` : ""}
                       {messageRuntimeWarning ? ` | ${messageRuntimeWarning}` : ""}
                       {" | "}{number(message.metrics.responseSeconds ?? 0)} s
@@ -313,94 +333,94 @@ export function ChatThread({
                   </summary>
                   <div className="message-detail-grid">
                     <div>
-                      <span className="eyebrow">Model</span>
+                      <span className="eyebrow">{t("thread.details.model", { defaultValue: "Model" })}</span>
                       <p>{message.metrics.model ?? activeChat?.model}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Runtime</span>
+                      <span className="eyebrow">{t("thread.details.runtime", { defaultValue: "Runtime" })}</span>
                       <p>{message.metrics.engineLabel ?? engineLabel}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Cache</span>
+                      <span className="eyebrow">{t("thread.details.cache", { defaultValue: "Cache" })}</span>
                       <p>{resolvedCacheLabel(message.metrics)}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Strategy</span>
+                      <span className="eyebrow">{t("thread.details.strategy", { defaultValue: "Strategy" })}</span>
                       <p>{resolvedCacheStrategy(message.metrics)}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Cache bits</span>
+                      <span className="eyebrow">{t("thread.details.cacheBits", { defaultValue: "Cache bits" })}</span>
                       <p>{resolvedCacheBits(message.metrics)}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">FP16 layers</span>
+                      <span className="eyebrow">{t("thread.details.fp16Layers", { defaultValue: "FP16 layers" })}</span>
                       <p>{resolvedFp16Layers(message.metrics)}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Backend</span>
-                      <p>{message.metrics.backend ?? activeChat?.modelBackend ?? "Auto"}</p>
+                      <span className="eyebrow">{t("thread.details.backend", { defaultValue: "Backend" })}</span>
+                      <p>{message.metrics.backend ?? activeChat?.modelBackend ?? t("thread.details.auto", { defaultValue: "Auto" })}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Context</span>
+                      <span className="eyebrow">{t("thread.details.context", { defaultValue: "Context" })}</span>
                       <p>{message.metrics.contextTokens?.toLocaleString() ?? launchSettings.contextTokens.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Fit in memory</span>
+                      <span className="eyebrow">{t("thread.details.fitInMemory", { defaultValue: "Fit in memory" })}</span>
                       <p>{fitInMemoryLabel}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Tokens</span>
-                      <p>{message.metrics.totalTokens} total</p>
+                      <span className="eyebrow">{t("thread.details.tokens", { defaultValue: "Tokens" })}</span>
+                      <p>{t("thread.details.tokensTotal", { count: message.metrics.totalTokens, defaultValue: "{count} total" })}</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Response time</span>
+                      <span className="eyebrow">{t("thread.details.responseTime", { defaultValue: "Response time" })}</span>
                       <p>{number(message.metrics.responseSeconds ?? 0)} s</p>
                     </div>
                     <div>
-                      <span className="eyebrow">Decode speed</span>
+                      <span className="eyebrow">{t("thread.details.decodeSpeed", { defaultValue: "Decode speed" })}</span>
                       <p>{number(message.metrics.tokS)} tok/s</p>
                     </div>
                     <div>
-                      <span className="eyebrow">DFlash / DDTree</span>
+                      <span className="eyebrow">{t("thread.details.dflashDdtree", { defaultValue: "DFlash / DDTree" })}</span>
                       <p>{messageSpeculativeMode}</p>
                     </div>
                     {messageRequestedCache && messageRequestedCache !== resolvedCacheLabel(message.metrics) ? (
                       <div>
-                        <span className="eyebrow">Requested cache</span>
+                        <span className="eyebrow">{t("thread.details.requestedCache", { defaultValue: "Requested cache" })}</span>
                         <p>{messageRequestedCache}</p>
                       </div>
                     ) : null}
                     {requestedFitInMemoryLabel && requestedFitInMemory !== actualFitInMemory ? (
                       <div>
-                        <span className="eyebrow">Requested fit</span>
+                        <span className="eyebrow">{t("thread.details.requestedFit", { defaultValue: "Requested fit" })}</span>
                         <p>{requestedFitInMemoryLabel}</p>
                       </div>
                     ) : null}
                     {messageRequestedSpeculativeMode && messageRequestedSpeculativeMode !== "Off" ? (
                       <div>
-                        <span className="eyebrow">Requested DFlash / DDTree</span>
+                        <span className="eyebrow">{t("thread.details.requestedDflashDdtree", { defaultValue: "Requested DFlash / DDTree" })}</span>
                         <p>{messageRequestedSpeculativeMode}</p>
                       </div>
                     ) : null}
                     {messageRuntimeWarning ? (
                       <div>
-                        <span className="eyebrow">Runtime status</span>
+                        <span className="eyebrow">{t("thread.details.runtimeStatus", { defaultValue: "Runtime status" })}</span>
                         <p>{messageRuntimeWarning}</p>
                       </div>
                     ) : null}
                     <div>
-                      <span className="eyebrow">Tree budget</span>
+                      <span className="eyebrow">{t("thread.details.treeBudget", { defaultValue: "Tree budget" })}</span>
                       <p>{resolvedTreeBudget(message.metrics)}</p>
                     </div>
                     {message.metrics.dflashAcceptanceRate != null ? (
                       <div>
-                        <span className="eyebrow">DFLASH acceptance</span>
-                        <p>{number(message.metrics.dflashAcceptanceRate)} avg tokens</p>
+                        <span className="eyebrow">{t("thread.details.dflashAcceptance", { defaultValue: "DFLASH acceptance" })}</span>
+                        <p>{t("thread.details.avgTokens", { value: number(message.metrics.dflashAcceptanceRate), defaultValue: "{value} avg tokens" })}</p>
                       </div>
                     ) : null}
                     {messageDraftModel ? (
                       <div>
-                        <span className="eyebrow">Draft model</span>
+                        <span className="eyebrow">{t("thread.details.draftModel", { defaultValue: "Draft model" })}</span>
                         <p>{messageDraftModel}</p>
                       </div>
                     ) : null}
@@ -431,7 +451,7 @@ export function ChatThread({
                       });
                     }}
                   >
-                    Reload these settings
+                    {t("thread.reloadSettings", { defaultValue: "Reload these settings" })}
                   </button>
                 </details>
               ) : null}
@@ -440,12 +460,12 @@ export function ChatThread({
         })
       ) : (
         <div className="empty-state">
-          <p>Send a message to start the conversation.</p>
+          <p>{t("thread.emptyState", { defaultValue: "Send a message to start the conversation." })}</p>
         </div>
       )}
       {serverLoading ? (
         <div className="message-bubble assistant">
-          <span className="eyebrow">Agent</span>
+          <span className="eyebrow">{t("thread.roleAgent", { defaultValue: "Agent" })}</span>
           <div className="model-loading-chat">
             <ModelLoadingProgress loading={serverLoading} />
           </div>

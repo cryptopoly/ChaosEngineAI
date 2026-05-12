@@ -36,5 +36,387 @@
     "unloadModel": "Unload model",
     "viewOnHF": "View on Hugging Face",
     "deleteFromDisk": "Delete from disk"
+  },
+  "myModels": {
+    "subtitle": "{count} models / {size} on disk / {dirs} directories",
+    "searchPlaceholder": "Filter by name, path, format, quant, or backend...",
+    "empty": "No models found. Add directories in Settings to scan for local models.",
+    "filter": {
+      "all": "All",
+      "allFormats": "All formats",
+      "allBackends": "All backends",
+      "allStrategies": "All strategies"
+    },
+    "capability": {
+      "title": {
+        "agents": "Agent workflows",
+        "chat": "General chat",
+        "coding": "Coding support",
+        "multilingual": "Multilingual support",
+        "reasoning": "Reasoning-focused",
+        "thinking": "Thinking / deliberate reasoning",
+        "tool-use": "Tool use / function calling",
+        "video": "Video understanding",
+        "vision": "Image / vision support"
+      },
+      "short": {
+        "agents": "Agents",
+        "chat": "Chat",
+        "coding": "Code",
+        "multilingual": "Multi",
+        "reasoning": "Reason",
+        "thinking": "Think",
+        "tool-use": "Tools",
+        "video": "Video",
+        "vision": "Vision"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "Show models compatible with {label} ({count})",
+      "dflashEmptyTooltip": "DFlash speculative-decode drafts only exist for specific base models: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes typically don't match. Download a base model from Discover to enable DFlash."
+    },
+    "column": {
+      "model": "Model",
+      "format": "Format",
+      "quant": "Quant",
+      "backend": "Backend",
+      "size": "Size",
+      "ram": "RAM",
+      "compressed": "Compressed",
+      "context": "Context",
+      "status": "Status"
+    },
+    "status": {
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "incomplete": "Incomplete",
+      "incompleteReason": "Incomplete or broken",
+      "installed": "Installed"
+    },
+    "badge": {
+      "activeDownload": "Active download",
+      "broken": "BROKEN"
+    },
+    "tooltip": {
+      "ram": "Rough resident memory at 8K context (weights + KV + framework)",
+      "compressed": "Rough resident memory with a compressed KV cache strategy"
+    },
+    "download": {
+      "failed": "Download failed.",
+      "failedShort": "Download failed",
+      "paused": "Download paused.",
+      "inProgress": "Download in progress.",
+      "downloadedDetail": "{size} downloaded."
+    },
+    "action": {
+      "pauseDownload": "Pause download",
+      "retryDownload": "Retry download",
+      "resumeDownload": "Resume download",
+      "cancelDownload": "Cancel download",
+      "deleteDownload": "Delete download",
+      "chatWithModel": "Chat with model",
+      "loadForServer": "Load for server",
+      "deleteModel": "Delete model"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} model families / {downloaded} downloaded locally",
+    "searchPlaceholder": "Search by name, provider, or capability...",
+    "variantCount": "{count, plural, one {# variant} other {# variants}}",
+    "filter": {
+      "all": "All",
+      "allFormats": "All formats"
+    },
+    "capability": {
+      "title": {
+        "agents": "Agent workflows",
+        "chat": "General chat",
+        "coding": "Coding support",
+        "multilingual": "Multilingual support",
+        "reasoning": "Reasoning-focused",
+        "thinking": "Thinking / deliberate reasoning",
+        "tool-use": "Tool use / function calling",
+        "video": "Video understanding",
+        "vision": "Image / vision support"
+      },
+      "short": {
+        "agents": "Agents",
+        "chat": "Chat",
+        "coding": "Code",
+        "multilingual": "Multi",
+        "reasoning": "Reason",
+        "thinking": "Think",
+        "tool-use": "Tools",
+        "video": "Video",
+        "vision": "Vision"
+      }
+    },
+    "section": {
+      "curatedAria": "Curated model families"
+    },
+    "status": {
+      "countInstalled": "{count} installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "downloadFailed": "Download failed",
+      "installed": "Installed",
+      "downloadComplete": "Download complete",
+      "failed": "Failed",
+      "notInstalled": "Not installed"
+    },
+    "column": {
+      "variant": "Variant",
+      "format": "Format",
+      "backend": "Backend",
+      "params": "Params",
+      "size": "Size",
+      "ram": "RAM",
+      "compressed": "Compressed",
+      "context": "Context",
+      "status": "Status"
+    },
+    "memory": {
+      "comfortable": "Fits comfortably in {available} GB available",
+      "tight": "Fits but tight against {available} GB available — close other apps before loading",
+      "over": "Estimated {estimated} GB exceeds {available} GB available — try a smaller quantisation",
+      "comfortableLabel": "Fits",
+      "tightLabel": "Tight",
+      "overLabel": "Too big"
+    },
+    "action": {
+      "details": "Details",
+      "detailsTooltip": "Show full details in a focused view",
+      "convertModel": "Convert model",
+      "chatWithModel": "Chat with model",
+      "loadForServer": "Load for server",
+      "pauseDownload": "Pause download",
+      "cancelDownload": "Cancel download",
+      "resumeDownload": "Resume download",
+      "deleteDownload": "Delete download",
+      "retryDownload": "Retry download",
+      "downloadModel": "Download model",
+      "openModelCardHF": "Open model card on Hugging Face",
+      "openOnHF": "Open on Hugging Face"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub results",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, one {# live result} other {# live results}} from huggingface.co, sorted by most recent update",
+      "loading": "Loading file list from Hugging Face...",
+      "previewUnavailable": "Preview unavailable",
+      "licenseLabel": "License: {license}",
+      "totalGb": "{size} GB total",
+      "updatedDate": "Updated {date}",
+      "moreTags": "+{count} more",
+      "filePreviewUnavailable": "File preview is not available for this repo right now.",
+      "weightsHeader": "Weights ({count})",
+      "largestShard": "Largest shard {size}",
+      "showFiles": "Show files",
+      "visionTag": "vision",
+      "configAndTokenizer": "Config & tokenizer",
+      "otherFiles": "+{count, plural, one {# other file} other {# other files}}"
+    },
+    "searchError": {
+      "fallback": "Showing the last successful Discover results."
+    },
+    "empty": {
+      "capFilter": "No models match the \"{cap}\" filter.",
+      "search": "No models match \"{query}\". Try a different search term.",
+      "prompt": "Type to search for models."
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{rows} of {total, plural, one {# model} other {# models}} with local data",
+      "none": "No image models detected locally yet"
+    },
+    "empty": {
+      "noModels": "Download an image model from Image Discover to get started.",
+      "noMatches": "No installed image models match the current filters."
+    },
+    "action": {
+      "browseCatalog": "Browse Catalog",
+      "clearFilters": "Clear Filters",
+      "generate": "Generate",
+      "pauseDownload": "Pause download",
+      "retryDownload": "Retry download",
+      "resumeDownload": "Resume download",
+      "downloadModel": "Download model",
+      "cancelDownload": "Cancel download",
+      "deleteModel": "Delete model",
+      "openModelCard": "Open model card"
+    },
+    "filter": {
+      "searchLabel": "Search",
+      "searchPlaceholder": "Filter by model, provider, repo, task, or tag...",
+      "taskLabel": "Task",
+      "statusLabel": "Status",
+      "sortByLabel": "Sort by",
+      "task": {
+        "all": "All tasks",
+        "txt2img": "Text to image",
+        "img2img": "Image to image",
+        "inpaint": "Inpaint"
+      },
+      "status": {
+        "all": "Any status",
+        "installed": "Installed",
+        "incomplete": "Incomplete",
+        "downloading": "Downloading",
+        "paused": "Paused",
+        "failed": "Failed"
+      }
+    },
+    "sort": {
+      "name": "Name",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "newestReleased": "Newest released",
+      "largestSize": "Largest size",
+      "highestRamVram": "Highest RAM/VRAM",
+      "status": "Status",
+      "direction": {
+        "ascending": "ascending",
+        "descending": "descending"
+      },
+      "providerDir": "provider {direction}",
+      "tasksDir": "tasks {direction}",
+      "statusDir": "status {direction}",
+      "largestFirst": "largest size first",
+      "smallestFirst": "smallest size first",
+      "highestRam": "highest RAM/VRAM first",
+      "lowestRam": "lowest RAM/VRAM first",
+      "nameAsc": "name A-Z",
+      "nameDesc": "name Z-A",
+      "newestFirst": "newest released first",
+      "oldestFirst": "oldest released first"
+    },
+    "summary": {
+      "results": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "searchChip": "Search: {query}",
+      "taskChip": "Task: {value}",
+      "statusChip": "Status: {value}"
+    },
+    "column": {
+      "model": "Model",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "size": "Size",
+      "ramVram": "RAM/VRAM",
+      "released": "Released",
+      "status": "Status"
+    },
+    "status": {
+      "installed": "Installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "downloadFailed": "Download failed",
+      "incomplete": "Incomplete"
+    },
+    "memory": {
+      "pending": "pending",
+      "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
+    },
+    "releaseUnknown": "Unknown"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{rows} of {total, plural, one {# model} other {# models}} with local data",
+      "none": "No video models detected locally yet"
+    },
+    "empty": {
+      "noModels": "Download a video model from Video Discover to get started.",
+      "noMatches": "No installed video models match the current filters."
+    },
+    "action": {
+      "browseCatalog": "Browse Catalog",
+      "clearFilters": "Clear Filters",
+      "generate": "Generate",
+      "pauseDownload": "Pause download",
+      "retryDownload": "Retry download",
+      "resumeDownload": "Resume download",
+      "downloadModel": "Download model",
+      "cancelDownload": "Cancel download",
+      "deleteModel": "Delete model",
+      "openModelCard": "Open model card"
+    },
+    "filter": {
+      "searchLabel": "Search",
+      "searchPlaceholder": "Filter by model, provider, repo, task, or tag...",
+      "taskLabel": "Task",
+      "statusLabel": "Status",
+      "sortByLabel": "Sort by",
+      "task": {
+        "all": "All tasks",
+        "txt2video": "Text to video",
+        "img2video": "Image to video",
+        "video2video": "Video to video"
+      },
+      "status": {
+        "all": "Any status",
+        "loaded": "In memory",
+        "installed": "Installed",
+        "incomplete": "Incomplete",
+        "downloading": "Downloading",
+        "paused": "Paused",
+        "failed": "Failed"
+      }
+    },
+    "sort": {
+      "name": "Name",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "newestReleased": "Newest released",
+      "largestSize": "Largest size",
+      "highestRamVram": "Highest RAM/VRAM",
+      "status": "Status",
+      "direction": {
+        "ascending": "ascending",
+        "descending": "descending"
+      },
+      "providerDir": "provider {direction}",
+      "tasksDir": "tasks {direction}",
+      "statusDir": "status {direction}",
+      "largestFirst": "largest size first",
+      "smallestFirst": "smallest size first",
+      "highestRam": "highest RAM/VRAM first",
+      "lowestRam": "lowest RAM/VRAM first",
+      "nameAsc": "name A-Z",
+      "nameDesc": "name Z-A",
+      "newestFirst": "newest released first",
+      "oldestFirst": "oldest released first"
+    },
+    "summary": {
+      "results": "{count, plural, one {# model} other {# models}} · {sortLabel}",
+      "searchChip": "Search: {query}",
+      "taskChip": "Task: {value}",
+      "statusChip": "Status: {value}"
+    },
+    "column": {
+      "model": "Model",
+      "provider": "Provider",
+      "tasks": "Tasks",
+      "size": "Size",
+      "ramVram": "RAM/VRAM",
+      "released": "Released",
+      "status": "Status"
+    },
+    "status": {
+      "loaded": "Loaded in memory",
+      "installed": "Installed",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "failed": "Failed",
+      "downloadFailed": "Download failed",
+      "incomplete": "Incomplete"
+    },
+    "memory": {
+      "pending": "pending",
+      "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
+    },
+    "releaseUnknown": "Unknown"
   }
 }

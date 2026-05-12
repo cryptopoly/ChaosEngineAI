@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ChatSession, ModelCapabilities, ModelLoadingState } from "../../types";
 import { downloadExport, type ExportFormat } from "./exportThread";
 
@@ -77,6 +78,7 @@ export function ChatHeader({
   onRefreshWorkspace,
   onSetError,
 }: ChatHeaderProps) {
+  const { t } = useTranslation("chat");
   return (
     <>
       {sidebarCollapsed ? (
@@ -84,18 +86,18 @@ export function ChatHeader({
           type="button"
           className="secondary-button sidebar-expand-toggle"
           onClick={onToggleSidebar}
-          title="Expand chat list"
-          aria-label="Expand chat list"
+          title={t("header.expandChatList", { defaultValue: "Expand chat list" })}
+          aria-label={t("header.expandChatList", { defaultValue: "Expand chat list" })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="9 18 15 12 9 6" />
           </svg>
-          <span style={{ fontSize: 11 }}>Chats</span>
+          <span style={{ fontSize: 11 }}>{t("header.chatsLabel", { defaultValue: "Chats" })}</span>
         </button>
       ) : null}
       <div className="thread-toolbar">
         <label className="thread-title-field">
-          Thread name
+          {t("header.threadName", { defaultValue: "Thread name" })}
           <input
             className="text-input"
             type="text"
@@ -112,21 +114,21 @@ export function ChatHeader({
         </label>
         <div className="thread-toolbar-actions">
           <button className="secondary-button" type="button" onClick={() => onOpenModelSelector("chat", activeThreadOptionKey)}>
-            {activeChat?.model ?? "Select Model"}
+            {activeChat?.model ?? t("header.selectModel", { defaultValue: "Select Model" })}
           </button>
           {activeChat && activeChat.messages.length > 0 ? (
             <details className="thread-export-menu">
               <summary
                 className="secondary-button thread-export-menu__summary"
-                title="Export this thread"
-                aria-label="Export this thread"
+                title={t("header.exportThread", { defaultValue: "Export this thread" })}
+                aria-label={t("header.exportThread", { defaultValue: "Export this thread" })}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                <span>Export</span>
+                <span>{t("header.export", { defaultValue: "Export" })}</span>
               </summary>
               <div className="thread-export-menu__content">
                 {(["md", "json", "txt"] as ExportFormat[]).map((fmt) => (
@@ -148,7 +150,7 @@ export function ChatHeader({
             </details>
           ) : null}
           {activeChat?.modelRef === loadedModelRef && loadedModelCapabilities ? (
-            <span className="capability-badges" aria-label="Model capabilities">
+            <span className="capability-badges" aria-label={t("header.modelCapabilities", { defaultValue: "Model capabilities" })}>
               {CAPABILITY_BADGES.filter((entry) => loadedModelCapabilities[entry.flag]).map((entry) => (
                 <span key={entry.flag} className="capability-badge" title={entry.title}>
                   {entry.label}
@@ -157,7 +159,7 @@ export function ChatHeader({
             </span>
           ) : null}
           {activeChat?.modelRef === loadedModelRef ? (
-            <span className="badge success">Ready</span>
+            <span className="badge success">{t("header.ready", { defaultValue: "Ready" })}</span>
           ) : serverLoading ? (
             <div className="badge accent chat-loading-pill">
               <span className="busy-dot" />
@@ -174,7 +176,7 @@ export function ChatHeader({
               className="primary-button action-convert"
               type="button"
               disabled={busy}
-              title="Load this chat's model"
+              title={t("header.loadChatModel", { defaultValue: "Load this chat's model" })}
               onClick={() => {
                 if (!activeChat?.modelRef) return;
                 void onLoadModel({
@@ -195,7 +197,9 @@ export function ChatHeader({
                 });
               }}
             >
-              {busy ? "Loading..." : "Load model"}
+              {busy
+                ? t("header.loading", { defaultValue: "Loading..." })
+                : t("header.loadModel", { defaultValue: "Load model" })}
             </button>
           ) : null}
         </div>

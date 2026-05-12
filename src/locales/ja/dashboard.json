@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "ライブシステム統計",
+    "subtitle": "デスクトップシェルが適合推奨を提示できるよう Python サイドカーから更新します。",
+    "runtimeEngine": "ランタイムエンジン",
+    "noModelLoaded": "モデルが読み込まれていません",
+    "inferenceActivity": "推論アクティビティ",
+    "activeCount": "{count} 件アクティブ",
+    "totalServed": "合計 {count} 件提供",
+    "warmPool": "ウォームプール",
+    "warmModelCount": "{count, plural, other {# 個のモデル}}",
+    "noWarmModels": "ウォームモデルなし",
+    "modelDisk": "モデルディスク",
+    "diskFree": "空き {value} GB",
+    "diskTotal": "合計 {value} GB",
+    "spareHeadroom": "予備の余裕",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% の作業余裕",
+    "memoryInUse": "使用中のメモリ",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "メモリ圧力",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · 圧縮 {compressed} GB",
+    "swapUsage": "スワップ使用量",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU 負荷",
+    "cpuLabel": "{value}%",
+    "headroomFor": "{target} の余裕",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "電源",
+      "charging": "充電中",
+      "acPower": "AC 電源",
+      "onBattery": "バッテリー使用",
+      "lowNotice": "電源未接続 — 熱圧力により推論が低下する可能性があります"
+    },
+    "processes": {
+      "name": "プロセス",
+      "owner": "所有者",
+      "memory": "メモリ",
+      "cpu": "CPU",
+      "active": "アクティブ",
+      "warm": "ウォーム",
+      "system": "システム",
+      "empty": "アクティブなローカル LLM プロセスは検出されませんでした。",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "ハードウェア適合",
+    "subtitle": "このマシン推奨のターゲットプロファイルに対するガイダンス。",
+    "recommendedTarget": "推奨ターゲット",
+    "currentRuntime": "現在のランタイム",
+    "modelLoadedVia": "{model} を {engine} 経由で読み込み済み。",
+    "noModelHint": "まだモデルが読み込まれていません。チャットでスレッドモデルを選択するか、ディスカバーで新しいファミリーを参照してください。"
+  },
+  "activityFeed": {
+    "title": "アクティビティフィード",
+    "subtitle": "ログを深く掘り下げずに見える状態に保つべき運用イベント。",
+    "now": "今"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "ライブラリスキャンが完了しました",
+      "detail": "設定済みのモデルディレクトリで {count} 個のローカルエントリが見つかりました。"
+    },
+    "hardwareProfile": {
+      "title": "ハードウェアプロファイルを更新しました"
+    },
+    "backendReadiness": {
+      "title": "バックエンドの準備状況",
+      "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "推奨ターゲット:{modelSize} クラス @ {cacheLabel}",
+    "mlxDetail": "この予測は、{hardware} 上の推奨される {modelSize} クラスのローカルターゲットに対するものであり、現在選択されているチャットモデルに対するものではありません。",
+    "ggufTitle": "推奨ターゲット:{modelSize} GGUF",
+    "ggufDetail": "クロスプラットフォームモードでは、幅広いハードウェアサポートのため llama.cpp GGUF が優先されます。"
+  }
+}

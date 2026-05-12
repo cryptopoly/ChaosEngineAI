@@ -7,6 +7,7 @@
  * for the real state mutations.
  */
 
+import { useTranslation } from "react-i18next";
 import { compareTargetLabels, type CompareTarget } from "../CompareView";
 import {
   type ChallengeSlot,
@@ -53,7 +54,8 @@ export function ChallengeModelCard({
   onRemoveLastSlot,
   onOpenPicker,
 }: ChallengeModelCardProps) {
-  const label = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? "Select a model";
+  const { t } = useTranslation("chat");
+  const label = option?.label ?? manifestSlot?.displayLabel ?? manifestSlot?.modelName ?? t("htmlChallenge.modelCard.selectAModel", { defaultValue: "Select a model" });
   const format = option?.format ?? manifestSlot?.format ?? "";
   const quantization = option?.quantization ?? manifestSlot?.quantization ?? "";
   const sizeGb = typeof option?.sizeGb === "number"
@@ -80,7 +82,7 @@ export function ChallengeModelCard({
           {!completedChallenge ? (
             <div className="html-challenge-slot-sampler-row">
               <label>
-                <span>Thinking</span>
+                <span>{t("htmlChallenge.modelCard.thinking", { defaultValue: "Thinking" })}</span>
                 <select
                   className="text-input"
                   value={thinkingValue}
@@ -91,14 +93,14 @@ export function ChallengeModelCard({
                     else onUpdateThinking(slot.id, "auto", next as HtmlChallengeReasoningEffort);
                   }}
                 >
-                  <option value="off">Off</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Med</option>
-                  <option value="high">High</option>
+                  <option value="off">{t("htmlChallenge.modelCard.thinkingOff", { defaultValue: "Off" })}</option>
+                  <option value="low">{t("htmlChallenge.modelCard.thinkingLow", { defaultValue: "Low" })}</option>
+                  <option value="medium">{t("htmlChallenge.modelCard.thinkingMed", { defaultValue: "Med" })}</option>
+                  <option value="high">{t("htmlChallenge.modelCard.thinkingHigh", { defaultValue: "High" })}</option>
                 </select>
               </label>
               <label>
-                <span>Temp</span>
+                <span>{t("htmlChallenge.modelCard.temp", { defaultValue: "Temp" })}</span>
                 <input
                   className="text-input"
                   type="number"
@@ -114,7 +116,7 @@ export function ChallengeModelCard({
                 />
               </label>
               <label className="html-challenge-seed-field">
-                <span>Seed</span>
+                <span>{t("htmlChallenge.modelCard.seed", { defaultValue: "Seed" })}</span>
                 <div className="html-challenge-seed-field-controls">
                   <input
                     className="text-input"
@@ -122,7 +124,7 @@ export function ChallengeModelCard({
                     min={0}
                     max={2147483647}
                     step={1}
-                    placeholder="random"
+                    placeholder={t("htmlChallenge.modelCard.seedPlaceholder", { defaultValue: "random" })}
                     value={slot.seed ?? ""}
                     disabled={busy}
                     onChange={(event) => {
@@ -141,7 +143,7 @@ export function ChallengeModelCard({
                     disabled={busy}
                     onClick={() => onUpdateSeed(slot.id, randomChallengeSeed())}
                   >
-                    Randomize
+                    {t("htmlChallenge.modelCard.randomize", { defaultValue: "Randomize" })}
                   </button>
                 </div>
               </label>
@@ -152,11 +154,13 @@ export function ChallengeModelCard({
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             {canRemove && isLastSlot ? (
               <button className="secondary-button" type="button" disabled={busy} onClick={onRemoveLastSlot}>
-                Remove
+                {t("htmlChallenge.modelCard.remove", { defaultValue: "Remove" })}
               </button>
             ) : null}
             <button className="secondary-button" type="button" disabled={busy} onClick={() => onOpenPicker(slot.id)}>
-              {option || manifestSlot ? "Change" : "Select"}
+              {option || manifestSlot
+                ? t("htmlChallenge.modelCard.change", { defaultValue: "Change" })
+                : t("htmlChallenge.modelCard.select", { defaultValue: "Select" })}
             </button>
           </div>
         ) : null}

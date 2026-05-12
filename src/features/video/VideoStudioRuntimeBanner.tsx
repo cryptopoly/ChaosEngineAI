@@ -10,6 +10,7 @@
  * Extracted as part of the v0.8.0 Phase 2d-2a refactor.
  */
 
+import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
@@ -64,6 +65,7 @@ export interface VideoStudioRuntimeBannerProps {
 
 
 export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
+  const { t } = useTranslation("common");
   const {
     videoRuntimeStatus,
     loadedVideoVariant,
@@ -115,9 +117,10 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
         * uncluttered by never stacking two banners. */}
       {cudaTorchResult?.ok && cudaTorchResult.requiresRestart ? (
         <div className="callout" style={{ marginBottom: "0.6rem" }}>
-          <strong>CUDA torch installed.</strong>{" "}
-          The running backend still has the old torch in its module cache.
-          Restart the backend to activate the new wheel
+          <strong>{t("videoStudioRuntimeBanner.cudaTorchInstalledHeading", { defaultValue: "CUDA torch installed." })}</strong>{" "}
+          {t("videoStudioRuntimeBanner.cudaTorchRestartIntro", {
+            defaultValue: "The running backend still has the old torch in its module cache. Restart the backend to activate the new wheel",
+          })}
           {cudaTorchResult.indexUrl
             ? ` (${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")})`
             : ""}
@@ -129,14 +132,16 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
               onClick={() => onRestartServer()}
               disabled={busy}
             >
-              {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+              {busyAction === "Restarting server..."
+                ? t("videoStudioRuntimeBanner.restartingButton", { defaultValue: "Restarting..." })
+                : t("videoStudioRuntimeBanner.restartBackendButton", { defaultValue: "Restart Backend" })}
             </button>
           </div>
           <CudaTorchLogPanel result={cudaTorchResult ?? null} />
         </div>
       ) : videoRuntimeStatus.torchInstallWarning ? (
         <div className="callout error" style={{ marginBottom: "0.6rem" }}>
-          <strong>GPU acceleration not active.</strong>{" "}
+          <strong>{t("videoStudioRuntimeBanner.gpuNotActiveHeading", { defaultValue: "GPU acceleration not active." })}</strong>{" "}
           {videoRuntimeStatus.torchInstallWarning}
           {onInstallCudaTorch
             && videoRuntimeStatus.torchInstallWarning.includes("Install CUDA torch") ? (
@@ -147,7 +152,9 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
                 onClick={() => onInstallCudaTorch()}
                 disabled={Boolean(installingCudaTorch) || !backendOnline}
               >
-                {installingCudaTorch ? "Installing CUDA torch..." : "Install CUDA torch"}
+                {installingCudaTorch
+                  ? t("videoStudioRuntimeBanner.installingCudaTorch", { defaultValue: "Installing CUDA torch..." })
+                  : t("videoStudioRuntimeBanner.installCudaTorch", { defaultValue: "Install CUDA torch" })}
               </button>
               <CudaTorchLogPanel result={cudaTorchResult ?? null} />
             </div>
@@ -157,15 +164,17 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
       <p>{videoRuntimeStatus.message}</p>
       <div className="chip-row">
         <span className={`badge ${videoRuntimeStatus.realGenerationAvailable ? "success" : "warning"}`}>
-          {videoRuntimeStatus.realGenerationAvailable ? "Real engine ready" : "Fallback active"}
+          {videoRuntimeStatus.realGenerationAvailable
+            ? t("videoStudioRuntimeBanner.realEngineReady", { defaultValue: "Real engine ready" })
+            : t("videoStudioRuntimeBanner.fallbackActive", { defaultValue: "Fallback active" })}
         </span>
         {videoRuntimeStatus.torchInstallWarning ? (
           <span className="badge danger" title={videoRuntimeStatus.torchInstallWarning}>
-            CPU fallback
+            {t("videoStudioRuntimeBanner.cpuFallback", { defaultValue: "CPU fallback" })}
           </span>
         ) : null}
         {gpuBundleRestartRequired && !videoRuntimeStatus.realGenerationAvailable ? (
-          <span className="badge warning">Restart required</span>
+          <span className="badge warning">{t("videoStudioRuntimeBanner.restartRequired", { defaultValue: "Restart required" })}</span>
         ) : null}
         {/* The "Engine: …" muted chip is suppressed when a more
           * specific engine badge (mlx-video accent / LongLive
@@ -176,7 +185,10 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
         {isMlxVideoVariant
           && isAppleSiliconHost
           && mlxVideoStatus?.realGenerationAvailable ? null : (
-          <span className="badge muted">Engine: {videoRuntimeStatus.activeEngine}</span>
+          <span className="badge muted">{t("videoStudioRuntimeBanner.engineChip", {
+            defaultValue: "Engine: {engine}",
+            engine: videoRuntimeStatus.activeEngine,
+          })}</span>
         )}
         {/* Prefer the actual-loaded device; fall back to the predicted
           * expectedDevice computed via nvidia-smi + find_spec (no torch
@@ -187,18 +199,32 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
           const resolved =
             videoRuntimeStatus.device
             ?? (videoRuntimeStatus.expectedDevice
-              ? `${videoRuntimeStatus.expectedDevice} (expected)`
+              ? t("videoStudioRuntimeBanner.deviceExpectedSuffix", {
+                  defaultValue: "{device} (expected)",
+                  device: videoRuntimeStatus.expectedDevice,
+                })
               : null);
-          return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
+          return resolved ? (
+            <span className="badge muted">{t("videoStudioRuntimeBanner.deviceChip", {
+              defaultValue: "Device: {device}",
+              device: resolved,
+            })}</span>
+          ) : null;
         })()}
         {loadedVideoVariant ? (
-          <span className="badge accent">Loaded: {loadedVideoVariant.name}</span>
+          <span className="badge accent">{t("videoStudioRuntimeBanner.loadedChip", {
+            defaultValue: "Loaded: {name}",
+            name: loadedVideoVariant.name,
+          })}</span>
         ) : null}
         {mp4EncoderMissing ? (
-          <span className="badge warning">mp4 encoder missing</span>
+          <span className="badge warning">{t("videoStudioRuntimeBanner.mp4EncoderMissing", { defaultValue: "mp4 encoder missing" })}</span>
         ) : null}
         {missingTokenizerDeps.map((dependency) => (
-          <span key={dependency} className="badge warning">{dependency} missing</span>
+          <span key={dependency} className="badge warning">{t("videoStudioRuntimeBanner.depMissing", {
+            defaultValue: "{dependency} missing",
+            dependency,
+          })}</span>
         ))}
         {otherMissingDependencies.slice(0, 4).map((dependency) => (
           <span key={dependency} className="badge subtle">{dependency}</span>
@@ -210,8 +236,8 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
             }`}
           >
             {longLiveStatus.realGenerationAvailable
-              ? "LongLive ready"
-              : "LongLive not installed"}
+              ? t("videoStudioRuntimeBanner.longLiveReady", { defaultValue: "LongLive ready" })
+              : t("videoStudioRuntimeBanner.longLiveNotInstalled", { defaultValue: "LongLive not installed" })}
           </span>
         ) : null}
         {/* mlx-video chip — Apple Silicon only. Four states:
@@ -219,29 +245,35 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
           * (success), or active=true when an LTX-2 variant is
           * loaded and routing through mlx-video. Hidden off-platform. */}
         {mlxVideoMissing ? (
-          <span className="badge warning">mlx-video not installed</span>
+          <span className="badge warning">{t("videoStudioRuntimeBanner.mlxVideoNotInstalled", { defaultValue: "mlx-video not installed" })}</span>
         ) : null}
         {mlxVideoInstalledScaffold ? (
-          <span className="badge subtle">mlx-video scaffold</span>
+          <span className="badge subtle">{t("videoStudioRuntimeBanner.mlxVideoScaffold", { defaultValue: "mlx-video scaffold" })}</span>
         ) : null}
         {isAppleSiliconHost
           && mlxVideoStatus?.realGenerationAvailable
           && !isMlxVideoVariant ? (
-          <span className="badge success">mlx-video ready</span>
+          <span className="badge success">{t("videoStudioRuntimeBanner.mlxVideoReady", { defaultValue: "mlx-video ready" })}</span>
         ) : null}
         {isAppleSiliconHost
           && mlxVideoStatus?.realGenerationAvailable
           && isMlxVideoVariant ? (
-          <span className="badge accent">Engine: mlx-video</span>
+          <span className="badge accent">{t("videoStudioRuntimeBanner.mlxVideoEngineChip", { defaultValue: "Engine: mlx-video" })}</span>
         ) : null}
       </div>
       {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
         <div className="image-runtime-actions">
           <p className="muted-text">
-            {longLiveStatus.message} LongLive runs in an isolated venv at
-            {" "}<code>~/.chaosengine/longlive</code> so its CUDA-specific deps don't
-            clash with the main runtime. Install can take 10–20 minutes — pip
-            deps, optional flash-attn build, then ~8 GB of HF weights.
+            {longLiveStatus.message}{" "}
+            {t("videoStudioRuntimeBanner.longLiveDescription", {
+              defaultValue:
+                "LongLive runs in an isolated venv at",
+            })}
+            {" "}<code>~/.chaosengine/longlive</code>{" "}
+            {t("videoStudioRuntimeBanner.longLiveDescriptionTail", {
+              defaultValue:
+                "so its CUDA-specific deps don't clash with the main runtime. Install can take 10–20 minutes — pip deps, optional flash-attn build, then ~8 GB of HF weights.",
+            })}
           </p>
           <button
             className="primary-button"
@@ -249,7 +281,9 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
             onClick={() => onInstallLongLive()}
             disabled={installingLongLive || !backendOnline}
           >
-            {installingLongLive ? "Installing LongLive..." : "Install LongLive"}
+            {installingLongLive
+              ? t("videoStudioRuntimeBanner.installingLongLive", { defaultValue: "Installing LongLive..." })
+              : t("videoStudioRuntimeBanner.installLongLive", { defaultValue: "Install LongLive" })}
           </button>
           <InstallLogPanel job={longLiveJob} variant="longlive" />
         </div>
@@ -261,10 +295,11 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
       {mlxVideoMissing ? (
         <div className="image-runtime-actions">
           <p className="muted-text">
-            {mlxVideoStatus?.message ?? "mlx-video not installed."} Adds
-            native MLX video generation for Wan2.1 / Wan2.2 / LTX-2 on
-            Apple Silicon — faster than diffusers+MPS once the
-            generation path lands.
+            {mlxVideoStatus?.message ?? t("videoStudioRuntimeBanner.mlxVideoMissingFallback", { defaultValue: "mlx-video not installed." })}{" "}
+            {t("videoStudioRuntimeBanner.mlxVideoDescription", {
+              defaultValue:
+                "Adds native MLX video generation for Wan2.1 / Wan2.2 / LTX-2 on Apple Silicon — faster than diffusers+MPS once the generation path lands.",
+            })}
           </p>
           <button
             className="primary-button"
@@ -272,7 +307,9 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
             onClick={() => onInstallMlxVideo()}
             disabled={installingMlxVideo || !backendOnline}
           >
-            {installingMlxVideo ? "Installing mlx-video..." : "Install mlx-video"}
+            {installingMlxVideo
+              ? t("videoStudioRuntimeBanner.installingMlxVideo", { defaultValue: "Installing mlx-video..." })
+              : t("videoStudioRuntimeBanner.installMlxVideo", { defaultValue: "Install mlx-video" })}
           </button>
         </div>
       ) : null}
@@ -287,8 +324,10 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
       {mp4EncoderMissing ? (
         <div className="image-runtime-actions">
           <p className="muted-text">
-            Video generation needs imageio + imageio-ffmpeg to write mp4 files. Install them
-            into the backend environment now?
+            {t("videoStudioRuntimeBanner.mp4EncoderPrompt", {
+              defaultValue:
+                "Video generation needs imageio + imageio-ffmpeg to write mp4 files. Install them into the backend environment now?",
+            })}
           </p>
           <button
             className="primary-button"
@@ -296,16 +335,23 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
             onClick={() => onInstallOutputDeps()}
             disabled={installingOutputDeps || !backendOnline}
           >
-            {installingOutputDeps ? "Installing..." : "Install mp4 encoder"}
+            {installingOutputDeps
+              ? t("videoStudioRuntimeBanner.installing", { defaultValue: "Installing..." })
+              : t("videoStudioRuntimeBanner.installMp4Encoder", { defaultValue: "Install mp4 encoder" })}
           </button>
         </div>
       ) : null}
       {missingTokenizerDeps.length > 0 ? (
         <div className="image-runtime-actions">
           <p className="muted-text">
-            Some video models load tokenizer / text-encoder packages on demand. The
-            following are missing and would block generation: <strong>{missingTokenizerDeps.join(", ")}</strong>.
-            Install them now to avoid a mid-generate error.
+            {t("videoStudioRuntimeBanner.tokenizerDepsIntro", {
+              defaultValue:
+                "Some video models load tokenizer / text-encoder packages on demand. The following are missing and would block generation:",
+            })}{" "}
+            <strong>{missingTokenizerDeps.join(", ")}</strong>.{" "}
+            {t("videoStudioRuntimeBanner.tokenizerDepsOutro", {
+              defaultValue: "Install them now to avoid a mid-generate error.",
+            })}
           </p>
           <button
             className="primary-button"
@@ -314,8 +360,11 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
             disabled={installingOutputDeps || !backendOnline}
           >
             {installingOutputDeps
-              ? "Installing..."
-              : `Install tokenizers (${missingTokenizerDeps.length})`}
+              ? t("videoStudioRuntimeBanner.installing", { defaultValue: "Installing..." })
+              : t("videoStudioRuntimeBanner.installTokenizers", {
+                  defaultValue: "Install tokenizers ({count})",
+                  count: missingTokenizerDeps.length,
+                })}
           </button>
         </div>
       ) : null}
@@ -323,10 +372,14 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
         <>
           <div className="image-runtime-actions">
             <p className="muted-text">
-              GPU runtime installed to{" "}
-              <code>{gpuBundleJob.targetDir ?? "extras"}</code>. The running backend
-              still has its old import cache — click Restart Backend to activate the
-              new runtime, then video generation will use it.
+              {t("videoStudioRuntimeBanner.gpuRuntimeInstalledIntro", {
+                defaultValue: "GPU runtime installed to",
+              })}{" "}
+              <code>{gpuBundleJob.targetDir ?? t("videoStudioRuntimeBanner.extrasFallback", { defaultValue: "extras" })}</code>.{" "}
+              {t("videoStudioRuntimeBanner.gpuRuntimeInstalledOutro", {
+                defaultValue:
+                  "The running backend still has its old import cache — click Restart Backend to activate the new runtime, then video generation will use it.",
+              })}
             </p>
             <div className="button-row">
               <button
@@ -335,7 +388,9 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
                 onClick={() => onRestartServer()}
                 disabled={busy}
               >
-                {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend to activate"}
+                {busyAction === "Restarting server..."
+                  ? t("videoStudioRuntimeBanner.restartingButton", { defaultValue: "Restarting..." })
+                  : t("videoStudioRuntimeBanner.restartBackendToActivate", { defaultValue: "Restart Backend to activate" })}
               </button>
             </div>
           </div>
@@ -345,9 +400,10 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
         <>
           <div className="image-runtime-actions">
             <p className="muted-text">
-              Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers,
-              ~2.5 GB). Install it once — it writes to a persistent user-local directory so
-              subsequent app updates don't re-download it.
+              {t("videoStudioRuntimeBanner.gpuRuntimeInstallPrompt", {
+                defaultValue:
+                  "Video generation needs the GPU runtime bundle (torch + diffusers + tokenizers, ~2.5 GB). Install it once — it writes to a persistent user-local directory so subsequent app updates don't re-download it.",
+              })}
             </p>
             <div className="button-row">
               <button
@@ -356,10 +412,14 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
                 onClick={() => onInstallGpuRuntime()}
                 disabled={installingGpuRuntime || !backendOnline}
               >
-                {installingGpuRuntime ? "Installing GPU runtime..." : "Install GPU runtime"}
+                {installingGpuRuntime
+                  ? t("videoStudioRuntimeBanner.installingGpuRuntime", { defaultValue: "Installing GPU runtime..." })
+                  : t("videoStudioRuntimeBanner.installGpuRuntime", { defaultValue: "Install GPU runtime" })}
               </button>
               <button className="secondary-button" type="button" onClick={() => onRestartServer()} disabled={busy}>
-                {busyAction === "Restarting server..." ? "Restarting..." : "Restart Backend"}
+                {busyAction === "Restarting server..."
+                  ? t("videoStudioRuntimeBanner.restartingButton", { defaultValue: "Restarting..." })
+                  : t("videoStudioRuntimeBanner.restartBackendButton", { defaultValue: "Restart Backend" })}
               </button>
             </div>
           </div>

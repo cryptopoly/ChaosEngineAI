@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ModelCapabilities, WarmModel } from "../../types";
 import { resolveCapabilities } from "../../utils";
 
 const CAPABILITY_HINT_FLAGS: Array<{
   flag: keyof Omit<ModelCapabilities, "tags">;
-  label: string;
+  labelKey: string;
+  defaultLabel: string;
 }> = [
-  { flag: "supportsVision", label: "Vision" },
-  { flag: "supportsTools", label: "Tools" },
-  { flag: "supportsReasoning", label: "Reasoning" },
-  { flag: "supportsCoding", label: "Code" },
+  { flag: "supportsVision", labelKey: "variantPickerButton.capVision", defaultLabel: "Vision" },
+  { flag: "supportsTools", labelKey: "variantPickerButton.capTools", defaultLabel: "Tools" },
+  { flag: "supportsReasoning", labelKey: "variantPickerButton.capReasoning", defaultLabel: "Reasoning" },
+  { flag: "supportsCoding", labelKey: "variantPickerButton.capCoding", defaultLabel: "Code" },
 ];
 
 /**
@@ -33,6 +35,7 @@ export function VariantPickerButton({
   onPick,
   disabled,
 }: VariantPickerButtonProps) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +58,7 @@ export function VariantPickerButton({
       <button
         type="button"
         className="message-action-btn"
-        title="Compare with another warm model"
+        title={t("variantPickerButton.compareButtonTitle", { defaultValue: "Compare with another warm model" })}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
       >
@@ -65,10 +68,14 @@ export function VariantPickerButton({
         </svg>
       </button>
       {open ? (
-        <div className="variant-picker__popover" role="dialog" aria-label="Pick a model to compare">
+        <div
+          className="variant-picker__popover"
+          role="dialog"
+          aria-label={t("variantPickerButton.popoverAriaLabel", { defaultValue: "Pick a model to compare" })}
+        >
           <div className="variant-picker__heading">
-            <strong>Compare with</strong>
-            <small>Adds a sibling response from another warm model.</small>
+            <strong>{t("variantPickerButton.heading", { defaultValue: "Compare with" })}</strong>
+            <small>{t("variantPickerButton.headingSubtitle", { defaultValue: "Adds a sibling response from another warm model." })}</small>
           </div>
           {candidates.map((warm) => {
             const caps = resolveCapabilities(warm.ref, null);
@@ -91,7 +98,7 @@ export function VariantPickerButton({
                   <span className="variant-picker__item-hints">
                     {hints.map((entry) => (
                       <span key={entry.flag} className="capability-badge">
-                        {entry.label}
+                        {t(entry.labelKey, { defaultValue: entry.defaultLabel })}
                       </span>
                     ))}
                   </span>

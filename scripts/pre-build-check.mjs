@@ -117,7 +117,7 @@ console.log("=== ChaosEngineAI Pre-Build Checks ===\n");
 // ------------------------------------------------------------------
 // 1. Python tests
 // ------------------------------------------------------------------
-console.log("[1/7] Python tests...");
+console.log("[1/8] Python tests...");
 {
   const py = venvPython();
   const result = run(py, ["-m", "pytest", "tests/", "-q", "--tb=line"]);
@@ -129,7 +129,7 @@ console.log();
 // ------------------------------------------------------------------
 // 2. TypeScript tests
 // ------------------------------------------------------------------
-console.log("[2/7] TypeScript tests...");
+console.log("[2/8] TypeScript tests...");
 {
   // The vitest config defaults to watch mode in TTY; --run forces a
   // single CI-friendly pass.
@@ -142,7 +142,7 @@ console.log();
 // ------------------------------------------------------------------
 // 3. TypeScript type checking
 // ------------------------------------------------------------------
-console.log("[3/7] TypeScript type checking...");
+console.log("[3/8] TypeScript type checking...");
 {
   const result = run(npxCommand(), ["tsc", "--noEmit"]);
   if (result.ok) pass("TypeScript types");
@@ -153,7 +153,7 @@ console.log();
 // ------------------------------------------------------------------
 // 4. Licence notices
 // ------------------------------------------------------------------
-console.log("[4/7] Licence notices...");
+console.log("[4/8] Licence notices...");
 {
   const noticesPath = path.join(REPO_ROOT, "THIRD_PARTY_NOTICES.md");
   if (!existsSync(noticesPath) || statSync(noticesPath).size === 0) {
@@ -179,7 +179,7 @@ console.log();
 // ------------------------------------------------------------------
 // 5. Cache strategy validation
 // ------------------------------------------------------------------
-console.log("[5/7] Cache strategy validation...");
+console.log("[5/8] Cache strategy validation...");
 {
   const probe = `
 from cache_compression import registry
@@ -221,7 +221,7 @@ console.log();
 // ------------------------------------------------------------------
 // 6. Upstream dependency update check
 // ------------------------------------------------------------------
-console.log("[6/7] Upstream dependency check...");
+console.log("[6/8] Upstream dependency check...");
 {
   // Turbo fork: read version file (commit | branch | build_date) +
   // compare to live HEAD via git ls-remote. Mirrors the .sh exactly,
@@ -280,7 +280,7 @@ console.log();
 // ------------------------------------------------------------------
 // 7. Binary availability
 // ------------------------------------------------------------------
-console.log("[7/7] Binary availability...");
+console.log("[7/8] Binary availability...");
 {
   const isWin = platform() === "win32";
   const exeSuffix = isWin ? ".exe" : "";
@@ -305,6 +305,18 @@ console.log("[7/7] Binary availability...");
   } else {
     warn("llama-server-turbo — not found (RotorQuant/TurboQuant GGUF will fall back to f16)");
   }
+}
+console.log();
+
+// ------------------------------------------------------------------
+// 8. i18n locale validation (FU-042)
+// ------------------------------------------------------------------
+// Warn-only by default; --strict upgrades to fail-on-coverage <95 %.
+console.log("[8/8] i18n locale validation...");
+{
+  const result = run("node", ["scripts/i18n-validate.mjs"]);
+  if (result.ok) pass("i18n locale catalogs");
+  else fail("i18n locale catalogs — see output above");
 }
 console.log();
 

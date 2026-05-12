@@ -1,3 +1,5 @@
+import i18next from "i18next";
+
 export function parseContextK(ctx: string | undefined | null): number {
   if (!ctx) return 0;
   const upper = ctx.toUpperCase();
@@ -70,13 +72,22 @@ export function getCacheFitStatus(
   // Use total system memory because loading a new chat model unloads the old
   // one. Keep a reserve for the OS and other desktop apps.
   const usable = totalGb > 0 ? totalGb * 0.80 : 0;
-  if (usable <= 0) return { label: "May not fit", className: "warning", advice: null };
+  if (usable <= 0) {
+    return {
+      label: i18next.t("runtime:cacheFit.mayNotFit", { defaultValue: "May not fit" }),
+      className: "warning",
+      advice: null,
+    };
+  }
 
   if (diskSizeGb > usable) {
     return {
-      label: "Model may not fit",
+      label: i18next.t("runtime:cacheFit.modelMayNotFit", { defaultValue: "Model may not fit" }),
       className: "warning",
-      advice: "Model weights alone exceed estimated usable RAM. Pick a smaller model or a more aggressive quantisation.",
+      advice: i18next.t("runtime:cacheAdvice.modelExceedsRam", {
+        defaultValue:
+          "Model weights alone exceed estimated usable RAM. Pick a smaller model or a more aggressive quantisation.",
+      }),
     };
   }
 
@@ -109,11 +120,33 @@ export function getCacheFitStatus(
 
   const totalNeeded = optimizedCacheGb + diskSizeGb;
   const ratio = totalNeeded / usable;
-  if (ratio < 0.7) return { label: "Fits easily", className: "success", advice: null };
-  if (ratio < 0.95) return { label: "Tight fit", className: "warning", advice: null };
+  if (ratio < 0.7) {
+    return {
+      label: i18next.t("runtime:cacheFit.fitsEasily", { defaultValue: "Fits easily" }),
+      className: "success",
+      advice: null,
+    };
+  }
+  if (ratio < 0.95) {
+    return {
+      label: i18next.t("runtime:cacheFit.tightFit", { defaultValue: "Tight fit" }),
+      className: "warning",
+      advice: null,
+    };
+  }
 
   const advice = bits <= 0
-    ? "The model can load, but a full native f16 cache at this context may exceed system RAM as the thread fills. Lower context, or pick a compressed strategy."
-    : "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers.";
-  return { label: "Full context may not fit", className: "warning", advice };
+    ? i18next.t("runtime:cacheAdvice.nativeF16TooBig", {
+        defaultValue:
+          "The model can load, but a full native f16 cache at this context may exceed system RAM as the thread fills. Lower context, or pick a compressed strategy.",
+      })
+    : i18next.t("runtime:cacheAdvice.compressedTooBig", {
+        defaultValue:
+          "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers.",
+      });
+  return {
+    label: i18next.t("runtime:cacheFit.contextMayNotFit", { defaultValue: "Full context may not fit" }),
+    className: "warning",
+    advice,
+  };
 }

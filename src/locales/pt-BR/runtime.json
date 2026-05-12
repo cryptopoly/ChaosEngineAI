@@ -1,0 +1,130 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Motor de inferência nativo para Apple Silicon"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "Inferência GGUF via llama-server"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "Motor de inferência CUDA"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Nativo",
+      "description": "Tipos de cache integrados (f16, q8_0, q4_0 etc.). Compatibilidade máxima."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Quantização KV por rotação de Hadamard. Compressão 2–4× com perda mínima de qualidade."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Compressor de atenção esparsa para contexto longo. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Hook de cache apenas para difusão. Aceleração ~1,8× em pipelines DiT."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Cache de expansão de Taylor para difusão. Aceleração agressiva, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Cache baseado em magnitude para difusão. Sem calibração, apenas FLUX."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Reuso de atenção entre passos de tempo, apenas difusão."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Cache de reuso condicional/incondicional, apenas difusão."
+    }
+  },
+  "controls": {
+    "engine": "Motor",
+    "cacheStrategy": "Estratégia de cache",
+    "cacheStrategyLockedNote": "(travado em Nativo durante decodificação especulativa)",
+    "cacheType": "Tipo de cache",
+    "speculativeDecoding": "Decodificação especulativa",
+    "draftModel": "Modelo de rascunho",
+    "contextSize": "Tamanho do contexto",
+    "gpuLayers": "Camadas de GPU",
+    "threads": "Threads",
+    "fitInMemory": "Caber na memória"
+  },
+  "notes": {
+    "binaryRequired": "Requer {binary}.",
+    "platformRequired": "Requer {platform}.",
+    "engineIncompatible": "Incompatível com {engine}.",
+    "unknownEngine": "Motor desconhecido."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "Primeiro token: {ms} ms",
+    "vramUsed": "VRAM: {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Atenção fundida",
+    "aboutTitle": "Sobre atenção fundida",
+    "body": "Atenção fundida usa kernels de atenção otimizados quando o backend selecionado os suporta. Pode melhorar a vazão e reduzir a sobrecarga, mas algumas combinações de modelo/backend podem preferir o caminho de atenção padrão por compatibilidade."
+  },
+  "dflash": {
+    "tooltip": "DFlash decodificação especulativa: geração 3-5× mais rápida sem perda de qualidade.",
+    "label": "DFlash",
+    "installing": "Instalando...",
+    "installButton": "Instalar DFlash",
+    "aboutTitle": "Sobre DFlash decodificação especulativa",
+    "body": "DFlash usa um pequeno modelo rascunho para propor múltiplos tokens em paralelo, depois os verifica em uma única passagem direta. Isso dá geração 3-5× mais rápida sem perda de qualidade.",
+    "requiresLabel": "Requer:",
+    "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modelo rascunho compatível para o alvo.",
+    "currentModelLabel": "Modelo atual:",
+    "supportedVia": "Suportado via {model}",
+    "compatibilityUnresolved": "Compatibilidade ainda não resolvida."
+  },
+  "presets": {
+    "quality": {
+      "label": "Máx. qualidade",
+      "hint": "Código e raciocínio"
+    },
+    "balanced": {
+      "label": "Equilibrado",
+      "hint": "Chat geral"
+    },
+    "speed": {
+      "label": "Máx. velocidade",
+      "hint": "Iteração rápida"
+    },
+    "memory": {
+      "label": "Mín. memória",
+      "hint": "RAM apertada"
+    }
+  },
+  "sliders": {
+    "context": "Contexto",
+    "maxTokens": "Tokens máx.",
+    "temperature": "Temperatura"
+  },
+  "fitInMemory": {
+    "body": "Caber na memória pede ao ChaosEngineAI para escolher um perfil de runtime/cache que mantenha o modelo e o cache KV dentro da memória disponível. Desative apenas quando quiser forçar um perfil maior ou mais agressivo e aceitar possível swap ou falha de carregamento."
+  },
+  "cacheFit": {
+    "mayNotFit": "Pode não caber",
+    "modelMayNotFit": "Modelo pode não caber",
+    "fitsEasily": "Cabe fácil",
+    "tightFit": "Cabe apertado",
+    "contextMayNotFit": "Contexto completo pode não caber"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Os pesos do modelo sozinhos excedem a RAM utilizável estimada. Escolha um modelo menor ou uma quantização mais agressiva.",
+    "nativeF16TooBig": "O modelo pode carregar, mas um cache f16 nativo completo neste contexto pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou escolha uma estratégia comprimida.",
+    "compressedTooBig": "O modelo pode carregar, mas o cache de contexto selecionado pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou reduza as camadas FP16."
+  }
+}

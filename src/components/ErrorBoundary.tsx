@@ -1,4 +1,17 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { i18n } from "../i18n";
+
+/**
+ * FU-042: i18n helper for the class component below.  We can't use the
+ * ``useTranslation`` hook in a React class, so we go through the
+ * i18next instance directly.  Calls are safe even before
+ * ``initI18n`` resolves — i18next returns the ``defaultValue`` when
+ * the catalog isn't loaded yet, which keeps the boundary functional
+ * during early startup crashes.
+ */
+function bt(key: string, defaultValue: string, vars?: Record<string, unknown>): string {
+  return i18n.t(key, { ns: "errors", defaultValue, ...(vars ?? {}) });
+}
 
 /**
  * FU-037 (2026-05-10): per-tab React error boundary.
@@ -100,31 +113,36 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <div className="error-boundary" role="alert">
         <div className="error-boundary__head">
-          <strong>{this.props.scope} crashed</strong>
+          <strong>
+            {bt("boundary.scopeCrashed", "{{scope}} crashed", { scope: this.props.scope })}
+          </strong>
           <span className="error-boundary__sub">{error.name}: {error.message}</span>
         </div>
         <div className="error-boundary__actions">
           <button className="primary-button" type="button" onClick={this.reset}>
-            Try again
+            {bt("boundary.tryAgain", "Try again")}
           </button>
           <button className="secondary-button" type="button" onClick={this.copyDetails}>
-            Copy details
+            {bt("boundary.copyDetails", "Copy details")}
           </button>
         </div>
         <details className="error-boundary__details">
-          <summary>Stack trace</summary>
-          <pre className="error-boundary__stack">{error.stack ?? "(no JS stack captured)"}</pre>
+          <summary>{bt("boundary.stackTrace", "Stack trace")}</summary>
+          <pre className="error-boundary__stack">
+            {error.stack ?? bt("boundary.noJsStack", "(no JS stack captured)")}
+          </pre>
           {componentStack ? (
             <>
-              <strong>Component stack</strong>
+              <strong>{bt("boundary.componentStack", "Component stack")}</strong>
               <pre className="error-boundary__stack">{componentStack}</pre>
             </>
           ) : null}
         </details>
         <p className="error-boundary__hint">
-          Frontend errors also appear in the webview console (right-click → Inspect
-          Element in release builds, or run the app with <code>npm run dev</code>).
-          Backend logs are visible in the Diagnostics tab.
+          {bt(
+            "boundary.hint",
+            "Frontend errors also appear in the webview console (right-click → Inspect Element in release builds, or run the app with npm run dev). Backend logs are visible in the Diagnostics tab.",
+          )}
         </p>
       </div>
     );

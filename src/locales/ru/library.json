@@ -1,0 +1,592 @@
+{
+  "title": "Библиотека",
+  "search": "Поиск моделей…",
+  "filter": {
+    "all": "Все",
+    "text": "Текст",
+    "image": "Изображение",
+    "video": "Видео",
+    "vision": "Зрение",
+    "audio": "Аудио",
+    "installed": "Установлено",
+    "uninstalled": "Не установлено",
+    "favourites": "Избранное"
+  },
+  "card": {
+    "size": "Размер",
+    "quantization": "Квантование",
+    "context": "Контекст",
+    "capabilities": "Возможности",
+    "license": "Лицензия",
+    "author": "Автор",
+    "lastUpdated": "Последнее обновление"
+  },
+  "download": {
+    "start": "Скачать",
+    "inProgress": "Скачивание…",
+    "paused": "Приостановлено",
+    "resumed": "Возобновлено",
+    "cancelled": "Отменено",
+    "complete": "Завершено",
+    "totalSize": "Всего {size}",
+    "downloaded": "{downloaded} из {total}"
+  },
+  "details": {
+    "loadModel": "Загрузить модель",
+    "unloadModel": "Выгрузить модель",
+    "viewOnHF": "Открыть на Hugging Face",
+    "deleteFromDisk": "Удалить с диска"
+  },
+  "myModels": {
+    "subtitle": "{count} моделей / {size} на диске / {dirs} каталогов",
+    "searchPlaceholder": "Фильтр по имени, пути, формату, кванту или бэкенду...",
+    "empty": "Модели не найдены. Добавьте каталоги в Настройках для сканирования локальных моделей.",
+    "filter": {
+      "all": "Все",
+      "allFormats": "Все форматы",
+      "allBackends": "Все бэкенды",
+      "allStrategies": "Все стратегии"
+    },
+    "capability": {
+      "title": {
+        "agents": "Агентские потоки",
+        "chat": "Общий чат",
+        "coding": "Поддержка кодинга",
+        "multilingual": "Многоязычная поддержка",
+        "reasoning": "Ориентация на рассуждения",
+        "thinking": "Размышление / осмысленные рассуждения",
+        "tool-use": "Использование инструментов / вызов функций",
+        "video": "Понимание видео",
+        "vision": "Поддержка изображений / зрения"
+      },
+      "short": {
+        "agents": "Агенты",
+        "chat": "Чат",
+        "coding": "Код",
+        "multilingual": "Мульти",
+        "reasoning": "Рассужд.",
+        "thinking": "Размышл.",
+        "tool-use": "Инстр.",
+        "video": "Видео",
+        "vision": "Зрение"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "Показать модели, совместимые с {label} ({count})",
+      "dflashEmptyTooltip": "Черновики спекулятивного декодирования DFlash существуют только для конкретных базовых моделей: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Файн-тюны, как правило, не подходят. Скачайте базовую модель из «Обзор», чтобы включить DFlash."
+    },
+    "column": {
+      "model": "Модель",
+      "format": "Формат",
+      "quant": "Квант",
+      "backend": "Бэкенд",
+      "size": "Размер",
+      "ram": "RAM",
+      "compressed": "Сжато",
+      "context": "Контекст",
+      "status": "Статус"
+    },
+    "status": {
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "incomplete": "Неполный",
+      "incompleteReason": "Неполный или повреждённый",
+      "installed": "Установлено"
+    },
+    "badge": {
+      "activeDownload": "Активное скачивание",
+      "broken": "ПОВРЕЖДЁН"
+    },
+    "tooltip": {
+      "ram": "Примерный объём резидентной памяти при контексте 8K (веса + KV + фреймворк)",
+      "compressed": "Примерный объём резидентной памяти со стратегией сжатого KV cache"
+    },
+    "download": {
+      "failed": "Скачивание не удалось.",
+      "failedShort": "Скачивание не удалось",
+      "paused": "Скачивание приостановлено.",
+      "inProgress": "Идёт скачивание.",
+      "downloadedDetail": "Скачано: {size}."
+    },
+    "action": {
+      "pauseDownload": "Приостановить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "cancelDownload": "Отменить скачивание",
+      "deleteDownload": "Удалить скачивание",
+      "chatWithModel": "Чат с моделью",
+      "loadForServer": "Загрузить для сервера",
+      "deleteModel": "Удалить модель"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} семейств моделей / {downloaded} скачано локально",
+    "searchPlaceholder": "Поиск по имени, провайдеру или возможностям...",
+    "variantCount": "{count, plural, one {# вариант} few {# варианта} many {# вариантов} other {# варианта}}",
+    "filter": {
+      "all": "Все",
+      "allFormats": "Все форматы"
+    },
+    "capability": {
+      "title": {
+        "agents": "Агентские потоки",
+        "chat": "Общий чат",
+        "coding": "Поддержка кодинга",
+        "multilingual": "Многоязычная поддержка",
+        "reasoning": "Ориентация на рассуждения",
+        "thinking": "Размышление / осмысленные рассуждения",
+        "tool-use": "Использование инструментов / вызов функций",
+        "video": "Понимание видео",
+        "vision": "Поддержка изображений / зрения"
+      },
+      "short": {
+        "agents": "Агенты",
+        "chat": "Чат",
+        "coding": "Код",
+        "multilingual": "Мульти",
+        "reasoning": "Рассужд.",
+        "thinking": "Размышл.",
+        "tool-use": "Инстр.",
+        "video": "Видео",
+        "vision": "Зрение"
+      }
+    },
+    "section": {
+      "curatedAria": "Кураторские семейства моделей"
+    },
+    "status": {
+      "countInstalled": "{count} установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "downloadFailed": "Скачивание не удалось",
+      "installed": "Установлено",
+      "downloadComplete": "Скачивание завершено",
+      "failed": "Не удалось",
+      "notInstalled": "Не установлено"
+    },
+    "column": {
+      "variant": "Вариант",
+      "format": "Формат",
+      "backend": "Бэкенд",
+      "params": "Параметры",
+      "size": "Размер",
+      "ram": "RAM",
+      "compressed": "Сжато",
+      "context": "Контекст",
+      "status": "Статус"
+    },
+    "memory": {
+      "comfortable": "Комфортно помещается в доступных {available} ГБ",
+      "tight": "Помещается, но впритык к доступным {available} ГБ — закройте другие приложения перед загрузкой",
+      "over": "Расчётные {estimated} ГБ превышают доступные {available} ГБ — попробуйте меньшую квантизацию",
+      "comfortableLabel": "Помещается",
+      "tightLabel": "Впритык",
+      "overLabel": "Слишком большая"
+    },
+    "action": {
+      "details": "Подробности",
+      "detailsTooltip": "Показать полные подробности в фокусированном виде",
+      "convertModel": "Конвертировать модель",
+      "chatWithModel": "Чат с моделью",
+      "loadForServer": "Загрузить для сервера",
+      "pauseDownload": "Приостановить скачивание",
+      "cancelDownload": "Отменить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "deleteDownload": "Удалить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "downloadModel": "Скачать модель",
+      "openModelCardHF": "Открыть карточку модели на Hugging Face",
+      "openOnHF": "Открыть на Hugging Face"
+    },
+    "hub": {
+      "sectionAria": "Результаты Hugging Face Hub",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, one {# актуальный результат} few {# актуальных результата} many {# актуальных результатов} other {# актуальных результата}} с huggingface.co, отсортировано по последнему обновлению",
+      "loading": "Загрузка списка файлов с Hugging Face...",
+      "previewUnavailable": "Предпросмотр недоступен",
+      "licenseLabel": "Лицензия: {license}",
+      "totalGb": "Всего {size} ГБ",
+      "updatedDate": "Обновлено {date}",
+      "moreTags": "+ ещё {count}",
+      "filePreviewUnavailable": "Предпросмотр файлов для этого репозитория сейчас недоступен.",
+      "weightsHeader": "Веса ({count})",
+      "largestShard": "Крупнейший шард {size}",
+      "showFiles": "Показать файлы",
+      "visionTag": "vision",
+      "configAndTokenizer": "Конфиг и токенизатор",
+      "otherFiles": "+{count, plural, one {# другой файл} few {# других файла} many {# других файлов} other {# других файла}}"
+    },
+    "searchError": {
+      "fallback": "Показаны последние успешные результаты «Обзор»."
+    },
+    "empty": {
+      "capFilter": "Ни одна модель не соответствует фильтру «{cap}».",
+      "search": "Ни одна модель не соответствует «{query}». Попробуйте другой запрос.",
+      "prompt": "Введите запрос для поиска моделей."
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{rows} из {total, plural, one {# модели} few {# моделей} many {# моделей} other {# моделей}} с локальными данными",
+      "none": "Локальных моделей изображений пока не обнаружено"
+    },
+    "empty": {
+      "noModels": "Скачайте модель изображений из «Обзор изображений», чтобы начать.",
+      "noMatches": "Ни одна установленная модель изображений не соответствует текущим фильтрам."
+    },
+    "action": {
+      "browseCatalog": "Просмотр каталога",
+      "clearFilters": "Очистить фильтры",
+      "generate": "Сгенерировать",
+      "pauseDownload": "Приостановить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "downloadModel": "Скачать модель",
+      "cancelDownload": "Отменить скачивание",
+      "deleteModel": "Удалить модель",
+      "openModelCard": "Открыть карточку модели"
+    },
+    "filter": {
+      "searchLabel": "Поиск",
+      "searchPlaceholder": "Фильтр по модели, провайдеру, репозиторию, задаче или тегу...",
+      "taskLabel": "Задача",
+      "statusLabel": "Статус",
+      "sortByLabel": "Сортировать по",
+      "task": {
+        "all": "Все задачи",
+        "txt2img": "Текст в изображение",
+        "img2img": "Изображение в изображение",
+        "inpaint": "Inpaint"
+      },
+      "status": {
+        "all": "Любой статус",
+        "installed": "Установлено",
+        "incomplete": "Неполный",
+        "downloading": "Скачивается",
+        "paused": "Приостановлено",
+        "failed": "Не удалось"
+      }
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "newestReleased": "Самые новые",
+      "largestSize": "Наибольший размер",
+      "highestRamVram": "Наибольшая RAM/VRAM",
+      "status": "Статус",
+      "direction": {
+        "ascending": "по возрастанию",
+        "descending": "по убыванию"
+      },
+      "providerDir": "провайдер {direction}",
+      "tasksDir": "задачи {direction}",
+      "statusDir": "статус {direction}",
+      "largestFirst": "сначала наибольший размер",
+      "smallestFirst": "сначала наименьший размер",
+      "highestRam": "сначала наибольшая RAM/VRAM",
+      "lowestRam": "сначала наименьшая RAM/VRAM",
+      "nameAsc": "имя А-Я",
+      "nameDesc": "имя Я-А",
+      "newestFirst": "сначала самые новые",
+      "oldestFirst": "сначала самые старые"
+    },
+    "summary": {
+      "results": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchChip": "Поиск: {query}",
+      "taskChip": "Задача: {value}",
+      "statusChip": "Статус: {value}"
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "status": {
+      "installed": "Установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "downloadFailed": "Скачивание не удалось",
+      "incomplete": "Неполный"
+    },
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "releaseUnknown": "Неизвестно"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{rows} из {total, plural, one {# модели} few {# моделей} many {# моделей} other {# моделей}} с локальными данными",
+      "none": "Локальных моделей видео пока не обнаружено"
+    },
+    "empty": {
+      "noModels": "Скачайте модель видео из «Обзор видео», чтобы начать.",
+      "noMatches": "Ни одна установленная модель видео не соответствует текущим фильтрам."
+    },
+    "action": {
+      "browseCatalog": "Просмотр каталога",
+      "clearFilters": "Очистить фильтры",
+      "generate": "Сгенерировать",
+      "pauseDownload": "Приостановить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "downloadModel": "Скачать модель",
+      "cancelDownload": "Отменить скачивание",
+      "deleteModel": "Удалить модель",
+      "openModelCard": "Открыть карточку модели"
+    },
+    "filter": {
+      "searchLabel": "Поиск",
+      "searchPlaceholder": "Фильтр по модели, провайдеру, репозиторию, задаче или тегу...",
+      "taskLabel": "Задача",
+      "statusLabel": "Статус",
+      "sortByLabel": "Сортировать по",
+      "task": {
+        "all": "Все задачи",
+        "txt2video": "Текст в видео",
+        "img2video": "Изображение в видео",
+        "video2video": "Видео в видео"
+      },
+      "status": {
+        "all": "Любой статус",
+        "loaded": "В памяти",
+        "installed": "Установлено",
+        "incomplete": "Неполный",
+        "downloading": "Скачивается",
+        "paused": "Приостановлено",
+        "failed": "Не удалось"
+      }
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "newestReleased": "Самые новые",
+      "largestSize": "Наибольший размер",
+      "highestRamVram": "Наибольшая RAM/VRAM",
+      "status": "Статус",
+      "direction": {
+        "ascending": "по возрастанию",
+        "descending": "по убыванию"
+      },
+      "providerDir": "провайдер {direction}",
+      "tasksDir": "задачи {direction}",
+      "statusDir": "статус {direction}",
+      "largestFirst": "сначала наибольший размер",
+      "smallestFirst": "сначала наименьший размер",
+      "highestRam": "сначала наибольшая RAM/VRAM",
+      "lowestRam": "сначала наименьшая RAM/VRAM",
+      "nameAsc": "имя А-Я",
+      "nameDesc": "имя Я-А",
+      "newestFirst": "сначала самые новые",
+      "oldestFirst": "сначала самые старые"
+    },
+    "summary": {
+      "results": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchChip": "Поиск: {query}",
+      "taskChip": "Задача: {value}",
+      "statusChip": "Статус: {value}"
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "status": {
+      "loaded": "Загружено в память",
+      "installed": "Установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "downloadFailed": "Скачивание не удалось",
+      "incomplete": "Неполный"
+    },
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "releaseUnknown": "Неизвестно"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Только открытые",
+      "gatedOnly": "Только закрытые",
+      "all": "Открытые + закрытые",
+      "gated": "Закрытые",
+      "open": "Открытые"
+    },
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "subtitle": "{filtered} из {total} моделей / актуальные метаданные Hugging Face",
+    "hero": {
+      "heading": "Просмотр и скачивание моделей изображений для локальной генерации.",
+      "body": "Скачайте любую модель, чтобы использовать её в Image Studio. Состояние среды выполнения находится во вкладке Studio.",
+      "installedModels": "Установленные модели",
+      "openStudio": "Открыть Studio"
+    },
+    "filter": {
+      "search": "Поиск",
+      "searchPlaceholder": "Поиск FLUX, SDXL, провайдера, задачи, тегов, лицензии...",
+      "task": "Задача",
+      "access": "Доступ",
+      "status": "Статус",
+      "sortBy": "Сортировать по",
+      "clear": "Очистить фильтры"
+    },
+    "task": {
+      "all": "Все задачи",
+      "txt2img": "Текст в изображение",
+      "img2img": "Изображение в изображение",
+      "inpaint": "Inpaint"
+    },
+    "status": {
+      "any": "Любой статус",
+      "installed": "Установлено",
+      "notInstalled": "Не установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "incomplete": "Неполный"
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "release": "Самые новые",
+      "size": "Наибольший размер",
+      "ram": "Наибольшая RAM/VRAM",
+      "likes": "Больше всего лайков",
+      "downloads": "Больше всего скачиваний",
+      "status": "Статус"
+    },
+    "summary": {
+      "count": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchBadge": "Поиск: {query}",
+      "taskBadge": "Задача: {task}",
+      "accessBadge": "Доступ: {access}",
+      "statusBadge": "Статус: {status}"
+    },
+    "empty": {
+      "body": "Попробуйте расширить фильтры или поисковые запросы."
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "unknown": "Неизвестно",
+    "action": {
+      "generate": "Сгенерировать",
+      "pauseDownload": "Приостановить скачивание",
+      "cancelDownload": "Отменить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "deleteDownload": "Удалить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "downloadModel": "Скачать модель",
+      "deleteModel": "Удалить модель",
+      "openHuggingFace": "Открыть на Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Настройки"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "ожидание",
+      "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
+    },
+    "action": {
+      "cancelDownload": "Отменить скачивание",
+      "deleteModel": "Удалить модель",
+      "deleteDownload": "Удалить скачивание",
+      "generate": "Сгенерировать",
+      "installing": "Установка",
+      "install": "Установить",
+      "pauseDownload": "Приостановить скачивание",
+      "resumeDownload": "Возобновить скачивание",
+      "retryDownload": "Повторить скачивание",
+      "downloadModel": "Скачать модель",
+      "openModelCard": "Открыть карточку модели"
+    },
+    "subtitle": "{filtered} из {total} моделей видео / актуальные метаданные Hugging Face",
+    "hero": {
+      "heading": "Просмотр и скачивание моделей видео для локальной генерации.",
+      "body": "Скачайте любую модель, чтобы использовать её в Video Studio. Состояние среды выполнения находится во вкладке Studio.",
+      "installedModels": "Установленные модели",
+      "openStudio": "Открыть Studio"
+    },
+    "filter": {
+      "search": "Поиск",
+      "searchPlaceholder": "Поиск LTX, Wan, Mochi, провайдера, тегов...",
+      "task": "Задача",
+      "status": "Статус",
+      "sortBy": "Сортировать по",
+      "clear": "Очистить фильтры"
+    },
+    "task": {
+      "all": "Все задачи",
+      "txt2video": "Текст в видео",
+      "img2video": "Изображение в видео",
+      "video2video": "Видео в видео"
+    },
+    "status": {
+      "any": "Любой статус",
+      "installed": "Установлено",
+      "notInstalled": "Не установлено",
+      "downloading": "Скачивается",
+      "paused": "Приостановлено",
+      "failed": "Не удалось",
+      "incomplete": "Неполный"
+    },
+    "sort": {
+      "name": "Имя",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "release": "Самые новые",
+      "size": "Наибольший размер",
+      "ram": "Наибольшая RAM/VRAM",
+      "likes": "Больше всего лайков",
+      "downloads": "Больше всего скачиваний",
+      "status": "Статус"
+    },
+    "summary": {
+      "count": "{count, plural, one {# модель} few {# модели} many {# моделей} other {# модели}} · {sortLabel}",
+      "searchBadge": "Поиск: {query}",
+      "taskBadge": "Задача: {task}",
+      "statusBadge": "Статус: {status}"
+    },
+    "empty": {
+      "body": "Попробуйте расширить фильтры или поисковые запросы."
+    },
+    "column": {
+      "model": "Модель",
+      "provider": "Провайдер",
+      "tasks": "Задачи",
+      "size": "Размер",
+      "ramVram": "RAM/VRAM",
+      "released": "Выпущено",
+      "status": "Статус"
+    },
+    "unknown": "Неизвестно",
+    "longLive": {
+      "installNote": "LongLive устанавливается в изолированный venv в ~/.chaosengine/longlive. Только CUDA, 5–15 минут в зависимости от сети."
+    }
+  }
+}

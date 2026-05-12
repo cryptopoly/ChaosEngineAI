@@ -309,6 +309,9 @@ class ChaosEngineState:
         self.add_activity(
             "Library scan completed",
             f"{len(library)} local entries found across configured model directories.",
+            title_key="activity.libraryScan.title",
+            detail_key="activity.libraryScan.detail",
+            payload={"count": len(library)},
         )
 
     def _settings_payload(self, library: list[dict[str, Any]]) -> dict[str, Any]:
@@ -327,7 +330,14 @@ class ChaosEngineState:
         recommendation = _best_fit_recommendation(system)
         self.add_log("chaosengine", "info", f"Workspace booted in {system['backendLabel']} mode.")
         self.add_log("chaosengine", "info", f"ChaosEngine v{app_version} detected.")
-        self.add_activity("Hardware profile refreshed", recommendation["title"])
+        # Hardware profile uses `recommendation["title"]` raw because the title
+        # is dynamically composed backend-side. Frontend renders it verbatim;
+        # localizing requires a follow-up structured payload for the recommender.
+        self.add_activity(
+            "Hardware profile refreshed",
+            recommendation["title"],
+            title_key="activity.hardwareProfile.title",
+        )
         self.add_activity(
             "Backend readiness",
             " / ".join(
@@ -338,6 +348,14 @@ class ChaosEngineState:
                     f"GGUF runtime: {'yes' if system.get('ggufAvailable') else 'no'}",
                 ]
             ),
+            title_key="activity.backendReadiness.title",
+            detail_key="activity.backendReadiness.detail",
+            payload={
+                "mlx": "yes" if system["mlxAvailable"] else "no",
+                "mlxLm": "yes" if system["mlxLmAvailable"] else "no",
+                "mlxUsable": "yes" if system.get("mlxUsable") else "no",
+                "gguf": "yes" if system.get("ggufAvailable") else "no",
+            },
         )
         self._kick_library_scan()
 
@@ -362,8 +380,22 @@ class ChaosEngineState:
     def unsubscribe_logs(self, q) -> None:
         self._log_manager.unsubscribe(q)
 
-    def add_activity(self, title: str, detail: str) -> None:
-        self._log_manager.add_activity(title, detail)
+    def add_activity(
+        self,
+        title: str,
+        detail: str,
+        *,
+        title_key: str | None = None,
+        detail_key: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        self._log_manager.add_activity(
+            title,
+            detail,
+            title_key=title_key,
+            detail_key=detail_key,
+            payload=payload,
+        )
 
     # Cache + profile + metrics helpers — pure delegations to ``state.metrics``.
     # The methods stay on the class so internal call sites that go through

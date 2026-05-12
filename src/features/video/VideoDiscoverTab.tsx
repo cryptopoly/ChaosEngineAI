@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { Panel } from "../../components/Panel";
@@ -63,21 +65,29 @@ export interface VideoDiscoverTabProps {
   onInstallLongLive: () => Promise<InstallResult>;
 }
 
-function videoDiscoverSortLabel(sort: DiscoverSort): string {
-  if (sort === "name") return "name";
-  if (sort === "provider") return "provider";
-  if (sort === "tasks") return "tasks";
-  if (sort === "size") return "largest size first";
-  if (sort === "ram") return "highest RAM/VRAM first";
-  if (sort === "likes") return "most liked first";
-  if (sort === "downloads") return "most downloads first";
-  if (sort === "status") return "status";
-  return "newest released first";
+function videoDiscoverSortLabel(sort: DiscoverSort, t: TFunction<"library">): string {
+  if (sort === "name")
+    return t("videoDiscover.sortLabel.name", { defaultValue: "name" });
+  if (sort === "provider")
+    return t("videoDiscover.sortLabel.provider", { defaultValue: "provider" });
+  if (sort === "tasks")
+    return t("videoDiscover.sortLabel.tasks", { defaultValue: "tasks" });
+  if (sort === "size")
+    return t("videoDiscover.sortLabel.size", { defaultValue: "largest size first" });
+  if (sort === "ram")
+    return t("videoDiscover.sortLabel.ram", { defaultValue: "highest RAM/VRAM first" });
+  if (sort === "likes")
+    return t("videoDiscover.sortLabel.likes", { defaultValue: "most liked first" });
+  if (sort === "downloads")
+    return t("videoDiscover.sortLabel.downloads", { defaultValue: "most downloads first" });
+  if (sort === "status")
+    return t("videoDiscover.sortLabel.status", { defaultValue: "status" });
+  return t("videoDiscover.sortLabel.release", { defaultValue: "newest released first" });
 }
 
 function sortIndicator(activeSort: DiscoverSort, sortDir: SortDir, key: DiscoverSort): string {
   if (activeSort !== key) return "";
-  return sortDir === "asc" ? " \u25B2" : " \u25BC";
+  return sortDir === "asc" ? " ▲" : " ▼";
 }
 
 function defaultSortDir(sort: DiscoverSort): SortDir {
@@ -120,8 +130,8 @@ function statusSortKey(status: MediaStatusFilter): number {
   return 6;
 }
 
-function memoryParts(label: string | null | undefined): { primary: string; secondary: string | null } {
-  if (!label) return { primary: "pending", secondary: null };
+function memoryParts(label: string | null | undefined, pendingLabel: string): { primary: string; secondary: string | null } {
+  if (!label) return { primary: pendingLabel, secondary: null };
   const [primary, secondary] = label.split(" @ ");
   if (!secondary) return { primary, secondary: null };
   return { primary: `${primary} @`, secondary };
@@ -146,21 +156,70 @@ function videoVariantStatus(
   return "not-installed";
 }
 
-function statusBadge(status: MediaStatusFilter, downloadState?: DownloadStatus, longLiveInstalling = false) {
+function statusBadge(
+  status: MediaStatusFilter,
+  t: TFunction<"library">,
+  downloadState?: DownloadStatus,
+  longLiveInstalling = false,
+) {
   const downloadDetail = downloadState
     ? [downloadProgressLabel(downloadState), downloadSizeTooltip(downloadState)].filter(Boolean).join(" / ")
     : null;
-  if (status === "installed") return <StatusIcon status="installed" label="Installed" />;
-  if (longLiveInstalling) return <StatusIcon status="downloading" label="Installing" />;
+  if (status === "installed")
+    return (
+      <StatusIcon
+        status="installed"
+        label={t("videoDiscover.status.installed", { defaultValue: "Installed" })}
+      />
+    );
+  if (longLiveInstalling)
+    return (
+      <StatusIcon
+        status="downloading"
+        label={t("videoDiscover.status.installing", { defaultValue: "Installing" })}
+      />
+    );
   if (status === "downloading" && downloadState) {
-    return <StatusIcon status="downloading" label="Downloading" detail={downloadDetail} />;
+    return (
+      <StatusIcon
+        status="downloading"
+        label={t("videoDiscover.status.downloading", { defaultValue: "Downloading" })}
+        detail={downloadDetail}
+      />
+    );
   }
   if (status === "paused" && downloadState) {
-    return <StatusIcon status="paused" label="Paused" detail={downloadDetail} />;
+    return (
+      <StatusIcon
+        status="paused"
+        label={t("videoDiscover.status.paused", { defaultValue: "Paused" })}
+        detail={downloadDetail}
+      />
+    );
   }
-  if (status === "failed") return <StatusIcon status="failed" label="Failed" detail={downloadState?.error ?? "Download failed"} />;
-  if (status === "incomplete") return <StatusIcon status="incomplete" label="Incomplete" />;
-  return <StatusIcon status="incomplete" label="Not installed" />;
+  if (status === "failed")
+    return (
+      <StatusIcon
+        status="failed"
+        label={t("videoDiscover.status.failed", { defaultValue: "Failed" })}
+        detail={
+          downloadState?.error ?? t("videoDiscover.status.failedDetail", { defaultValue: "Download failed" })
+        }
+      />
+    );
+  if (status === "incomplete")
+    return (
+      <StatusIcon
+        status="incomplete"
+        label={t("videoDiscover.status.incomplete", { defaultValue: "Incomplete" })}
+      />
+    );
+  return (
+    <StatusIcon
+      status="incomplete"
+      label={t("videoDiscover.status.notInstalled", { defaultValue: "Not installed" })}
+    />
+  );
 }
 
 export function VideoDiscoverTab({
@@ -189,6 +248,8 @@ export function VideoDiscoverTab({
   onRefreshLongLiveStatus,
   onInstallLongLive,
 }: VideoDiscoverTabProps) {
+  const { t } = useTranslation("common");
+  const { t: tLib } = useTranslation("library");
   const hasLongLiveVariant = combinedVideoDiscoverResults.some((variant) =>
     isLongLiveRepo(variant.repo),
   );
@@ -263,71 +324,111 @@ export function VideoDiscoverTab({
     }
   }
 
+  const pendingMemoryLabel = tLib("videoDiscover.memory.pending", { defaultValue: "pending" });
+  const cancelDownloadLabel = tLib("videoDiscover.action.cancelDownload", { defaultValue: "Cancel download" });
+  const deleteModelFallback = tLib("videoDiscover.action.deleteModel", { defaultValue: "Delete model" });
+  const deleteDownloadFallback = tLib("videoDiscover.action.deleteDownload", { defaultValue: "Delete download" });
+
   return (
     <div className="image-discover-stack">
       <Panel
-        title="Video Discover"
-        subtitle={`${filteredResults.length} of ${combinedVideoDiscoverResults.length} video models / live Hugging Face metadata`}
+        title={t("tabs.videoDiscover")}
+        subtitle={tLib("videoDiscover.subtitle", {
+          defaultValue: "{filtered} of {total} video models / live Hugging Face metadata",
+          filtered: filteredResults.length,
+          total: combinedVideoDiscoverResults.length,
+        })}
       >
         <div className="image-hero">
           <div>
-            <h3>Browse and download video models for local generation.</h3>
+            <h3>
+              {tLib("videoDiscover.hero.heading", {
+                defaultValue: "Browse and download video models for local generation.",
+              })}
+            </h3>
             <p className="muted-text">
-              Download any model to use it in Video Studio. Runtime status lives in the Studio tab.
+              {tLib("videoDiscover.hero.body", {
+                defaultValue:
+                  "Download any model to use it in Video Studio. Runtime status lives in the Studio tab.",
+              })}
             </p>
           </div>
           <div className="image-hero-actions">
             <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
-              Installed Models
+              {tLib("videoDiscover.hero.installedModels", { defaultValue: "Installed Models" })}
             </button>
             <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(selectedVideoVariant?.id)}>
-              Open Studio
+              {tLib("videoDiscover.hero.openStudio", { defaultValue: "Open Studio" })}
             </button>
           </div>
         </div>
 
         <div className="image-discover-filter-row">
           <label className="image-discover-search">
-            Search
+            {tLib("videoDiscover.filter.search", { defaultValue: "Search" })}
             <input
               className="text-input"
               type="search"
               value={videoDiscoverSearchInput}
               onChange={(event) => onVideoDiscoverSearchInputChange(event.target.value)}
-              placeholder="Search LTX, Wan, Mochi, provider, tags..."
+              placeholder={tLib("videoDiscover.filter.searchPlaceholder", {
+                defaultValue: "Search LTX, Wan, Mochi, provider, tags...",
+              })}
             />
           </label>
           <label>
-            Task
+            {tLib("videoDiscover.filter.task", { defaultValue: "Task" })}
             <select
               className="text-input"
               value={videoDiscoverTaskFilter}
               onChange={(event) => onVideoDiscoverTaskFilterChange(event.target.value as VideoDiscoverTaskFilter)}
             >
-              <option value="all">All tasks</option>
-              <option value="txt2video">Text to video</option>
-              <option value="img2video">Image to video</option>
-              <option value="video2video">Video to video</option>
+              <option value="all">
+                {tLib("videoDiscover.task.all", { defaultValue: "All tasks" })}
+              </option>
+              <option value="txt2video">
+                {tLib("videoDiscover.task.txt2video", { defaultValue: "Text to video" })}
+              </option>
+              <option value="img2video">
+                {tLib("videoDiscover.task.img2video", { defaultValue: "Image to video" })}
+              </option>
+              <option value="video2video">
+                {tLib("videoDiscover.task.video2video", { defaultValue: "Video to video" })}
+              </option>
             </select>
           </label>
           <label>
-            Status
+            {tLib("videoDiscover.filter.status", { defaultValue: "Status" })}
             <select
               className="text-input"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as MediaStatusFilter)}
             >
-              <option value="all">Any status</option>
-              <option value="installed">Installed</option>
-              <option value="not-installed">Not installed</option>
-              <option value="downloading">Downloading</option>
-              <option value="paused">Paused</option>
-              <option value="failed">Failed</option>
-              <option value="incomplete">Incomplete</option>
+              <option value="all">
+                {tLib("videoDiscover.status.any", { defaultValue: "Any status" })}
+              </option>
+              <option value="installed">
+                {tLib("videoDiscover.status.installed", { defaultValue: "Installed" })}
+              </option>
+              <option value="not-installed">
+                {tLib("videoDiscover.status.notInstalled", { defaultValue: "Not installed" })}
+              </option>
+              <option value="downloading">
+                {tLib("videoDiscover.status.downloading", { defaultValue: "Downloading" })}
+              </option>
+              <option value="paused">
+                {tLib("videoDiscover.status.paused", { defaultValue: "Paused" })}
+              </option>
+              <option value="failed">
+                {tLib("videoDiscover.status.failed", { defaultValue: "Failed" })}
+              </option>
+              <option value="incomplete">
+                {tLib("videoDiscover.status.incomplete", { defaultValue: "Incomplete" })}
+              </option>
             </select>
           </label>
           <label>
-            Sort by
+            {tLib("videoDiscover.filter.sortBy", { defaultValue: "Sort by" })}
             <select
               className="text-input"
               value={videoDiscoverSort}
@@ -337,15 +438,33 @@ export function VideoDiscoverTab({
                 setSortDir(defaultSortDir(nextSort));
               }}
             >
-              <option value="name">Name</option>
-              <option value="provider">Provider</option>
-              <option value="tasks">Tasks</option>
-              <option value="release">Newest released</option>
-              <option value="size">Largest size</option>
-              <option value="ram">Highest RAM/VRAM</option>
-              <option value="likes">Most likes</option>
-              <option value="downloads">Most downloads</option>
-              <option value="status">Status</option>
+              <option value="name">
+                {tLib("videoDiscover.sort.name", { defaultValue: "Name" })}
+              </option>
+              <option value="provider">
+                {tLib("videoDiscover.sort.provider", { defaultValue: "Provider" })}
+              </option>
+              <option value="tasks">
+                {tLib("videoDiscover.sort.tasks", { defaultValue: "Tasks" })}
+              </option>
+              <option value="release">
+                {tLib("videoDiscover.sort.release", { defaultValue: "Newest released" })}
+              </option>
+              <option value="size">
+                {tLib("videoDiscover.sort.size", { defaultValue: "Largest size" })}
+              </option>
+              <option value="ram">
+                {tLib("videoDiscover.sort.ram", { defaultValue: "Highest RAM/VRAM" })}
+              </option>
+              <option value="likes">
+                {tLib("videoDiscover.sort.likes", { defaultValue: "Most likes" })}
+              </option>
+              <option value="downloads">
+                {tLib("videoDiscover.sort.downloads", { defaultValue: "Most downloads" })}
+              </option>
+              <option value="status">
+                {tLib("videoDiscover.sort.status", { defaultValue: "Status" })}
+              </option>
             </select>
           </label>
           <div className="image-discover-filter-actions">
@@ -361,47 +480,91 @@ export function VideoDiscoverTab({
               }}
               disabled={!hasActiveFilters}
             >
-              Clear Filters
+              {tLib("videoDiscover.filter.clear", { defaultValue: "Clear Filters" })}
             </button>
           </div>
         </div>
 
         <div className="image-discover-results-summary">
           <span>
-            {filteredResults.length} model{filteredResults.length !== 1 ? "s" : ""} · {videoDiscoverSortLabel(videoDiscoverSort)}
+            {tLib("videoDiscover.summary.count", {
+              defaultValue: "{count, plural, one {# model} other {# models}} · {sortLabel}",
+              count: filteredResults.length,
+              sortLabel: videoDiscoverSortLabel(videoDiscoverSort, tLib),
+            })}
           </span>
           {videoDiscoverSearchQuery ? (
-            <span className="badge subtle">Search: {videoDiscoverSearchInput.trim()}</span>
+            <span className="badge subtle">
+              {tLib("videoDiscover.summary.searchBadge", {
+                defaultValue: "Search: {query}",
+                query: videoDiscoverSearchInput.trim(),
+              })}
+            </span>
           ) : null}
           {videoDiscoverTaskFilter !== "all" ? (
-            <span className="badge muted">Task: {videoDiscoverTaskFilter}</span>
+            <span className="badge muted">
+              {tLib("videoDiscover.summary.taskBadge", {
+                defaultValue: "Task: {task}",
+                task: videoDiscoverTaskFilter,
+              })}
+            </span>
           ) : null}
-          {statusFilter !== "all" ? <span className="badge muted">Status: {statusFilter}</span> : null}
+          {statusFilter !== "all" ? (
+            <span className="badge muted">
+              {tLib("videoDiscover.summary.statusBadge", {
+                defaultValue: "Status: {status}",
+                status: statusFilter,
+              })}
+            </span>
+          ) : null}
         </div>
       </Panel>
 
       {filteredResults.length === 0 ? (
-        <Panel title="Video Models" subtitle="No models match the current filters" className="image-discover-section-panel">
+        <Panel
+          title={t("tabs.videoModels")}
+          subtitle={t("panels.noModelsMatchFilters", { defaultValue: "No models match the current filters" })}
+          className="image-discover-section-panel"
+        >
           <div className="empty-state image-empty-state">
-            <p>Try broadening the filters or search terms.</p>
+            <p>
+              {tLib("videoDiscover.empty.body", {
+                defaultValue: "Try broadening the filters or search terms.",
+              })}
+            </p>
           </div>
         </Panel>
       ) : (
         <div className="media-model-table media-model-table--video">
           <div className="media-model-head">
-            <button className="sort-header" type="button" onClick={() => applySort("name")}>Model{sortIndicator(videoDiscoverSort, sortDir, "name")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("provider")}>Provider{sortIndicator(videoDiscoverSort, sortDir, "provider")}</button>
-            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>Tasks{sortIndicator(videoDiscoverSort, sortDir, "tasks")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("name")}>
+              {tLib("videoDiscover.column.model", { defaultValue: "Model" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "name")}
+            </button>
+            <button className="sort-header" type="button" onClick={() => applySort("provider")}>
+              {tLib("videoDiscover.column.provider", { defaultValue: "Provider" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "provider")}
+            </button>
+            <button className="sort-header" type="button" onClick={() => applySort("tasks")}>
+              {tLib("videoDiscover.column.tasks", { defaultValue: "Tasks" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "tasks")}
+            </button>
             <button className="sort-header" type="button" onClick={() => applySort("size")}>
-              Size{sortIndicator(videoDiscoverSort, sortDir, "size")}
+              {tLib("videoDiscover.column.size", { defaultValue: "Size" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "size")}
             </button>
             <button className="sort-header" type="button" onClick={() => applySort("ram")}>
-              RAM/VRAM{sortIndicator(videoDiscoverSort, sortDir, "ram")}
+              {tLib("videoDiscover.column.ramVram", { defaultValue: "RAM/VRAM" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "ram")}
             </button>
             <button className="sort-header" type="button" onClick={() => applySort("release")}>
-              Released{sortIndicator(videoDiscoverSort, sortDir, "release")}
+              {tLib("videoDiscover.column.released", { defaultValue: "Released" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "release")}
             </button>
-            <button className="sort-header" type="button" onClick={() => applySort("status")}>Status{sortIndicator(videoDiscoverSort, sortDir, "status")}</button>
+            <button className="sort-header" type="button" onClick={() => applySort("status")}>
+              {tLib("videoDiscover.column.status", { defaultValue: "Status" })}
+              {sortIndicator(videoDiscoverSort, sortDir, "status")}
+            </button>
             <span className="sort-header"></span>
           </div>
           <div className="media-model-rows">
@@ -422,11 +585,11 @@ export function VideoDiscoverTab({
               const releaseLabel = compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt));
               const primarySizeLabel = videoPrimarySizeLabel(variant);
               const sizeTitle = [primarySizeLabel, secondarySize].filter(Boolean).join(" / ");
-              const memory = memoryParts(memoryEstimate?.label);
+              const memory = memoryParts(memoryEstimate?.label, pendingMemoryLabel);
               const deleteRepo = videoDeleteRepoForVariant(variant, downloadState);
               const deleteLabel = isDownloading
-                ? "Cancel download"
-                : videoDeleteLabelForRepo(variant, deleteRepo, "Delete model");
+                ? cancelDownloadLabel
+                : videoDeleteLabelForRepo(variant, deleteRepo, deleteModelFallback);
               return (
                 <div key={variant.id} className={`media-model-row-wrap${isComplete ? " downloaded" : ""}`}>
                   <div className="media-model-row">
@@ -448,40 +611,90 @@ export function VideoDiscoverTab({
                     <span title={sizeTitle || undefined}>
                       {compactModelSizeLabel(primarySizeLabel)}
                     </span>
-                    <span className="media-model-memory" title={memoryEstimate?.title ?? "RAM/VRAM estimate pending until model weight size is known."}>
+                    <span
+                      className="media-model-memory"
+                      title={
+                        memoryEstimate?.title ??
+                        tLib("videoDiscover.memory.pendingTitle", {
+                          defaultValue: "RAM/VRAM estimate pending until model weight size is known.",
+                        })
+                      }
+                    >
                       <span>{memory.primary}</span>
                       {memory.secondary ? <small>{memory.secondary}</small> : null}
                     </span>
                     <span>
-                      {releaseLabel ?? "Unknown"}
+                      {releaseLabel ?? tLib("videoDiscover.unknown", { defaultValue: "Unknown" })}
                       {variant.downloadsLabel ? <small>{variant.downloadsLabel}</small> : null}
                       {variant.likesLabel ? <small>{variant.likesLabel}</small> : null}
                     </span>
-                    <span>{statusBadge(status, downloadState, isLongLive && installingLongLive && !longLiveReady)}</span>
+                    <span>{statusBadge(status, tLib, downloadState, isLongLive && installingLongLive && !longLiveReady)}</span>
                     <div className="media-model-actions">
                       {isLongLive ? (
                         isComplete ? (
-                          <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenVideoStudio(variant.id)} />
+                          <IconActionButton
+                            icon="generate"
+                            label={tLib("videoDiscover.action.generate", { defaultValue: "Generate" })}
+                            buttonStyle="primary"
+                            onClick={() => onOpenVideoStudio(variant.id)}
+                          />
                         ) : (
                           <>
-                            <IconActionButton icon="install" label={installingLongLive ? "Installing" : "Install"} onClick={() => void onInstallLongLive()} disabled={installingLongLive} />
+                            <IconActionButton
+                              icon="install"
+                              label={
+                                installingLongLive
+                                  ? tLib("videoDiscover.action.installing", { defaultValue: "Installing" })
+                                  : tLib("videoDiscover.action.install", { defaultValue: "Install" })
+                              }
+                              onClick={() => void onInstallLongLive()}
+                              disabled={installingLongLive}
+                            />
                             <InstallLogPanel job={longLiveJob} variant="longlive" />
                           </>
                         )
                       ) : isComplete ? (
-                        <IconActionButton icon="generate" label="Generate" buttonStyle="primary" onClick={() => onOpenVideoStudio(variant.id)} />
+                        <IconActionButton
+                          icon="generate"
+                          label={tLib("videoDiscover.action.generate", { defaultValue: "Generate" })}
+                          buttonStyle="primary"
+                          onClick={() => onOpenVideoStudio(variant.id)}
+                        />
                       ) : isDownloading ? (
                         <>
-                          <IconActionButton icon="pause" label="Pause download" onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)} />
+                          <IconActionButton
+                            icon="pause"
+                            label={tLib("videoDiscover.action.pauseDownload", { defaultValue: "Pause download" })}
+                            onClick={() => onCancelVideoDownload(downloadState?.repo ?? variant.repo)}
+                          />
                           <IconActionButton icon="cancel" label={deleteLabel} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
                         </>
                       ) : isPaused ? (
                         <>
-                          <IconActionButton icon="resume" label="Resume download" onClick={() => onVideoDownload(variant.repo, variant.id)} />
-                          <IconActionButton icon="delete" label={videoDeleteLabelForRepo(variant, deleteRepo, "Delete download")} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
+                          <IconActionButton
+                            icon="resume"
+                            label={tLib("videoDiscover.action.resumeDownload", { defaultValue: "Resume download" })}
+                            onClick={() => onVideoDownload(variant.repo, variant.id)}
+                          />
+                          <IconActionButton
+                            icon="delete"
+                            label={videoDeleteLabelForRepo(variant, deleteRepo, deleteDownloadFallback)}
+                            danger
+                            onClick={() => onDeleteVideoDownload(deleteRepo)}
+                          />
                         </>
                       ) : (
-                        <IconActionButton icon={isDownloadFailed ? "retry" : isPartial ? "resume" : "download"} label={isDownloadFailed ? "Retry download" : isPartial ? "Resume download" : "Download model"} onClick={() => onVideoDownload(variant.repo, variant.id)} />
+                        <IconActionButton
+                          icon={isDownloadFailed ? "retry" : isPartial ? "resume" : "download"}
+                          label={
+                            isDownloadFailed
+                              ? tLib("videoDiscover.action.retryDownload", { defaultValue: "Retry download" })
+                              : isPartial
+                                ? tLib("videoDiscover.action.resumeDownload", { defaultValue: "Resume download" })
+                                : tLib("videoDiscover.action.downloadModel", { defaultValue: "Download model" })
+                          }
+                          onClick={() => onVideoDownload(variant.repo, variant.id)}
+                        />
                       )}
                       {!isLongLive && !isDownloading && !isPaused && canDeleteLocalData ? (
                         <IconActionButton icon="delete" label={deleteLabel} danger onClick={() => onDeleteVideoDownload(deleteRepo)} />
@@ -489,14 +702,20 @@ export function VideoDiscoverTab({
                       {variant.localPath ? (
                         <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(variant.localPath as string)} />
                       ) : null}
-                      <IconActionButton icon="modelCard" label="Open model card" onClick={() => onOpenExternalUrl(variant.link)} />
+                      <IconActionButton
+                        icon="modelCard"
+                        label={tLib("videoDiscover.action.openModelCard", { defaultValue: "Open model card" })}
+                        onClick={() => onOpenExternalUrl(variant.link)}
+                      />
                     </div>
                   </div>
                   {isLongLive && !isComplete ? (
                     <div className="media-model-row-detail callout quiet">
                       <p>
-                        LongLive installs into an isolated venv at <code>~/.chaosengine/longlive</code>.
-                        CUDA only, 5-15 min depending on network.
+                        {tLib("videoDiscover.longLive.installNote", {
+                          defaultValue:
+                            "LongLive installs into an isolated venv at ~/.chaosengine/longlive. CUDA only, 5-15 min depending on network.",
+                        })}
                       </p>
                     </div>
                   ) : isDownloadFailed && downloadState?.error ? (

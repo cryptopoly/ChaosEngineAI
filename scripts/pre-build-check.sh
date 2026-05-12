@@ -29,7 +29,7 @@ echo
 # ------------------------------------------------------------------
 # 1. Python tests
 # ------------------------------------------------------------------
-echo "[1/7] Python tests..."
+echo "[1/8] Python tests..."
 if .venv/bin/python -m pytest tests/ -q --tb=line 2>&1 | tail -3; then
   pass "Python tests"
 else
@@ -40,7 +40,7 @@ echo
 # ------------------------------------------------------------------
 # 2. TypeScript tests
 # ------------------------------------------------------------------
-echo "[2/7] TypeScript tests..."
+echo "[2/8] TypeScript tests..."
 if npm test 2>&1 | tail -5; then
   pass "TypeScript tests"
 else
@@ -51,7 +51,7 @@ echo
 # ------------------------------------------------------------------
 # 3. TypeScript type checking
 # ------------------------------------------------------------------
-echo "[3/7] TypeScript type checking..."
+echo "[3/8] TypeScript type checking..."
 if npx tsc --noEmit 2>&1; then
   pass "TypeScript types"
 else
@@ -62,7 +62,7 @@ echo
 # ------------------------------------------------------------------
 # 4. Licence notices
 # ------------------------------------------------------------------
-echo "[4/7] Licence notices..."
+echo "[4/8] Licence notices..."
 if [[ -f "THIRD_PARTY_NOTICES.md" ]] && [[ -s "THIRD_PARTY_NOTICES.md" ]]; then
   # Check that key dependencies are mentioned
   missing=""
@@ -84,7 +84,7 @@ echo
 # ------------------------------------------------------------------
 # 5. Cache strategy validation
 # ------------------------------------------------------------------
-echo "[5/7] Cache strategy validation..."
+echo "[5/8] Cache strategy validation..."
 CACHE_CHECK=$(.venv/bin/python -c "
 from cache_compression import registry
 registry.discover()
@@ -117,7 +117,7 @@ echo
 # ------------------------------------------------------------------
 # 6. Upstream dependency update check
 # ------------------------------------------------------------------
-echo "[6/7] Upstream dependency check..."
+echo "[6/8] Upstream dependency check..."
 
 # Turbo fork
 TURBO_VERSION_FILE="$HOME/.chaosengine/bin/llama-server-turbo.version"
@@ -155,7 +155,7 @@ echo
 # ------------------------------------------------------------------
 # 7. Binary availability
 # ------------------------------------------------------------------
-echo "[7/7] Binary availability..."
+echo "[7/8] Binary availability..."
 if command -v llama-server &>/dev/null || [[ -f "/opt/homebrew/bin/llama-server" ]]; then
   pass "llama-server (standard) — found"
 else
@@ -166,6 +166,20 @@ if [[ -x "$HOME/.chaosengine/bin/llama-server-turbo" ]]; then
   pass "llama-server-turbo — found"
 else
   warn "llama-server-turbo — not found (RotorQuant/TurboQuant GGUF will fall back to f16)"
+fi
+echo
+
+# ------------------------------------------------------------------
+# 8. i18n locale validation (FU-042)
+# ------------------------------------------------------------------
+# Runs the JS-side parity + ICU compile + orphan checker.  Warn-only
+# by default per FU-042 §Coverage Gate; pass --strict to upgrade the
+# threshold to fail-on-merge once translations stabilise.
+echo "[8/8] i18n locale validation..."
+if node scripts/i18n-validate.mjs 2>&1 | tail -15; then
+  pass "i18n locale catalogs"
+else
+  fail "i18n locale catalogs — see output above"
 fi
 echo
 

@@ -1,8 +1,9 @@
 """Plugin management endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from backend_service.i18n import localized_detail
 from backend_service.plugins import plugin_registry, PluginType
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
@@ -28,16 +29,22 @@ async def list_plugins():
 
 
 @router.post("/{plugin_id}/enable")
-async def enable_plugin(plugin_id: str):
+async def enable_plugin(plugin_id: str, request: Request):
     """Enable a plugin by ID."""
     if not plugin_registry.enable(plugin_id):
-        raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Plugin '{plugin_id}' not found"),
+        )
     return {"ok": True, "plugin_id": plugin_id, "enabled": True}
 
 
 @router.post("/{plugin_id}/disable")
-async def disable_plugin(plugin_id: str):
+async def disable_plugin(plugin_id: str, request: Request):
     """Disable a plugin by ID."""
     if not plugin_registry.disable(plugin_id):
-        raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=localized_detail(request, f"Plugin '{plugin_id}' not found"),
+        )
     return {"ok": True, "plugin_id": plugin_id, "enabled": False}

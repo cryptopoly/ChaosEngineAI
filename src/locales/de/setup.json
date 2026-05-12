@@ -1,0 +1,84 @@
+{
+  "title": "Einrichtung",
+  "subtitle": "Laufzeitkomponenten für Ihre Hardware installieren",
+  "sections": {
+    "core": "Kern-Laufzeiten",
+    "speculative": "Spekulative Decodierung",
+    "caching": "Cache-Strategien",
+    "diffusion": "Diffusions-Laufzeiten",
+    "tools": "Optionale Tools"
+  },
+  "actions": {
+    "install": "Installieren",
+    "uninstall": "Deinstallieren",
+    "update": "Aktualisieren",
+    "viewLog": "Log anzeigen",
+    "showInFinder": "Im Finder anzeigen"
+  },
+  "states": {
+    "installed": "Installiert",
+    "available": "Verfügbar",
+    "installing": "Wird installiert…",
+    "uninstalling": "Wird deinstalliert…",
+    "checking": "Wird geprüft…",
+    "unavailable": "Auf dieser Plattform nicht verfügbar",
+    "needsRestart": "Neustart erforderlich"
+  },
+  "messages": {
+    "diskSpaceWarning": "Es werden etwa {size} heruntergeladen.",
+    "requiresNetwork": "Eine Internetverbindung ist erforderlich.",
+    "platformOnly": "Diese Komponente ist nur auf {platform} verfügbar.",
+    "succeeded": "Installation erfolgreich.",
+    "failed": "Installation fehlgeschlagen: {reason}"
+  },
+  "installLog": {
+    "finalStatus": "Endstatus:",
+    "statusNoun": {
+      "longlive": "LongLive-Installation",
+      "gpuBundle": "Installation"
+    },
+    "status": {
+      "failed": "{noun} fehlgeschlagen — Log einsehen",
+      "complete": "{noun} abgeschlossen — Log einsehen",
+      "starting": "{noun} startet…",
+      "verifyingCuda": "CUDA wird verifiziert…",
+      "inProgress": "{noun} läuft"
+    },
+    "meta": {
+      "target": "Ziel: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA-Index: {url}",
+      "cudaVerified": "CUDA verifiziert",
+      "cudaVerificationFailed": "CUDA-Verifizierung fehlgeschlagen",
+      "noWheelForPython": "Kein CUDA-Wheel für dieses Python",
+      "restartBackend": "Backend neu starten, um zu aktivieren"
+    },
+    "step": {
+      "waiting": "(wartet)",
+      "final": "Endstand: {done}/{total} Pakete · {percent}%",
+      "current": "Schritt {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "arbeitet…",
+      "noOutput": "(keine Ausgabe erfasst)"
+    },
+    "attempt": {
+      "verifyCuda": "torch.cuda.is_available() verifizieren",
+      "torchDeps": "torch-Abhängigkeiten (von {url})",
+      "torchCleanup": "Veraltete torch-Dateien bereinigen",
+      "torchRepair": "CUDA-torch-Wheel reparieren",
+      "constraint": "torch-Version anpinnen",
+      "torchFromIndex": "torch (von {url})",
+      "pipInstall": "pip install {pkg}",
+      "step": "Schritt"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "Installation abgeschlossen — Log einsehen{index}",
+    "installFailed": "{count, plural, =0 {Installation fehlgeschlagen — Log einsehen} one {Installation fehlgeschlagen — Log einsehen (# Versuch)} other {Installation fehlgeschlagen — Log einsehen (# Versuche)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan-MLX-Laufzeit",
+    "ready": "Bereit"
+  }
+}

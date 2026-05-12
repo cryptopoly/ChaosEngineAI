@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import type { GenerationMetrics } from "../types";
+import type { TFunction } from "i18next";
 
 /**
  * Phase 3.4: Substrate routing inspector — concise per-turn badge
@@ -27,7 +29,20 @@ interface Chip {
   tone: "default" | "accent" | "warn";
 }
 
-function buildChips(metrics: GenerationMetrics): Chip[] {
+// Fallback translator used by unit tests where the i18n provider is
+// not mounted; mirrors react-i18next's contract of "use defaultValue
+// when no key is registered" by simply interpolating {var} placeholders
+// in the defaultValue itself.
+function defaultTranslator(_key: string, options?: Record<string, unknown>): string {
+  const fallback = (options?.defaultValue as string | undefined) ?? "";
+  if (!options) return fallback;
+  return fallback.replace(/\{(\w+)\}/g, (_match, name: string) => {
+    const value = options[name];
+    return value == null ? "" : String(value);
+  });
+}
+
+function buildChips(metrics: GenerationMetrics, t: TFunction | typeof defaultTranslator = defaultTranslator): Chip[] {
   const chips: Chip[] = [];
 
   // Engine — MLX / llama.cpp / vLLM / etc. The runtime ships its own
@@ -37,7 +52,10 @@ function buildChips(metrics: GenerationMetrics): Chip[] {
     chips.push({
       key: "engine",
       label: String(engine),
-      title: `Inference runtime that served this turn (${engine})`,
+      title: t("substrateRoutingBadge.engineTitle", {
+        defaultValue: "Inference runtime that served this turn ({engine})",
+        engine,
+      }),
       tone: "default",
     });
   }
@@ -53,7 +71,10 @@ function buildChips(metrics: GenerationMetrics): Chip[] {
     chips.push({
       key: "cache",
       label: String(cacheLabel),
-      title: `KV cache strategy (${cacheLabel})`,
+      title: t("substrateRoutingBadge.cacheTitle", {
+        defaultValue: "KV cache strategy ({label})",
+        label: cacheLabel,
+      }),
       tone: "default",
     });
   }
@@ -64,18 +85,34 @@ function buildChips(metrics: GenerationMetrics): Chip[] {
     const budget = metrics.treeBudget;
     chips.push({
       key: "spec",
-      label: budget && budget > 0 ? `DDTree ${budget}` : "DDTree",
+      label: budget && budget > 0
+        ? t("substrateRoutingBadge.specLabelWithBudget", {
+            defaultValue: "DDTree {budget}",
+            budget,
+          })
+        : t("substrateRoutingBadge.specLabel", { defaultValue: "DDTree" }),
       title: budget
-        ? `Tree-based speculative decoding active (budget ${budget} draft tokens per step)`
-        : "Tree-based speculative decoding active",
+        ? t("substrateRoutingBadge.specTitleWithBudget", {
+            defaultValue: "Tree-based speculative decoding active (budget {budget} draft tokens per step)",
+            budget,
+          })
+        : t("substrateRoutingBadge.specTitle", {
+            defaultValue: "Tree-based speculative decoding active",
+          }),
       tone: "accent",
     });
 
     if (metrics.dflashAcceptanceRate != null && metrics.dflashAcceptanceRate > 0) {
       chips.push({
         key: "accept",
-        label: `${metrics.dflashAcceptanceRate.toFixed(1)} avg accepted`,
-        title: `Average draft tokens accepted per step (${metrics.dflashAcceptanceRate.toFixed(2)})`,
+        label: t("substrateRoutingBadge.acceptLabel", {
+          defaultValue: "{value} avg accepted",
+          value: metrics.dflashAcceptanceRate.toFixed(1),
+        }),
+        title: t("substrateRoutingBadge.acceptTitle", {
+          defaultValue: "Average draft tokens accepted per step ({value})",
+          value: metrics.dflashAcceptanceRate.toFixed(2),
+        }),
         tone: "accent",
       });
     }
@@ -103,16 +140,25 @@ function buildChips(metrics: GenerationMetrics): Chip[] {
  * notice. The boring "which library versions ran" prefix is always
  * present and not actionable; the warn tone should fire only when a
  * substantive issue appears later in the same string.
+ *
+ * Cache-strategy fall-backs and `Cache strategy failed (…)` lines are
+ * deliberately NOT warnings — they're informational notes about the
+ * runtime gracefully degrading to native f16. Operators wanted the
+ * orange chip muted for these because every chat turn was lighting up
+ * the badge for what is fundamentally a normal fallback.
  */
 export function runtimeNoteIsWarning(note: string): boolean {
   const lowered = note.toLowerCase();
+  // "Cache strategy failed (...)" / "Fell back to native f16 cache." are
+  // informational fall-back notes — treat them as default-tone so the
+  // chip doesn't shout for every routine fallback.
+  if (lowered.includes("cache strategy failed") || lowered.includes("fell back to native")) {
+    return false;
+  }
   const warningTokens = [
     "unavailable",
-    "fell back",
-    "fall back",
-    "fallback",
-    "failed",
     "error",
+    "failed to load",
     " not applied",
     " not supported",
     "warning",
@@ -122,10 +168,14 @@ export function runtimeNoteIsWarning(note: string): boolean {
 }
 
 export function SubstrateRoutingBadge({ metrics }: SubstrateRoutingBadgeProps) {
-  const chips = buildChips(metrics);
+  const { t } = useTranslation("common");
+  const chips = buildChips(metrics, t);
   if (chips.length === 0) return null;
   return (
-    <div className="substrate-routing" aria-label="Substrate routing for this turn">
+    <div
+      className="substrate-routing"
+      aria-label={t("substrateRoutingBadge.ariaLabel", { defaultValue: "Substrate routing for this turn" })}
+    >
       {chips.map((chip) => (
         <span
           key={chip.key}

@@ -306,8 +306,9 @@ class VideoPreloadRouteTests(unittest.TestCase):
         # Nothing is downloaded in this test env — expect 409 Conflict.
         self.assertEqual(response.status_code, 409)
         detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
         self.assertTrue(
-            "not installed" in detail.lower() or "did not produce" in detail.lower(),
+            "not installed" in detail_text.lower() or "did not produce" in detail_text.lower(),
             f"unexpected detail: {detail}",
         )
 
@@ -528,7 +529,9 @@ class VideoGenerateRouteTests(unittest.TestCase):
             IMAGE_PROGRESS.finish()
 
         self.assertEqual(response.status_code, 409)
-        self.assertIn("image generation is still running", response.json()["detail"])
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("image generation is still running", detail_text)
 
     def test_generate_then_stream_file_then_delete_round_trip(self):
         state = self.client.app.state.chaosengine

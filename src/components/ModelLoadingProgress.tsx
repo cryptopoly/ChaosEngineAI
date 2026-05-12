@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import type { ModelLoadingState } from "../types";
 
 export function ModelLoadingProgress({ loading }: { loading: ModelLoadingState }) {
+  const { t } = useTranslation("chat");
   const rawPct =
     typeof loading.progressPercent === "number" && !Number.isNaN(loading.progressPercent)
       ? loading.progressPercent
@@ -27,11 +29,17 @@ export function ModelLoadingProgress({ loading }: { loading: ModelLoadingState }
           {Math.round(pct as number)}%{phase ? ` - ${phase}` : ""}
           {message ? ` - ${message}` : ""}
           {" "}
-          <span className="loading-progress-elapsed">({loading.elapsedSeconds}s)</span>
+          <span className="loading-progress-elapsed">
+            {t("modelLoading.elapsed", { seconds: loading.elapsedSeconds, defaultValue: `({{seconds}}s)` })}
+          </span>
         </p>
       ) : (
         <p className="loading-progress-label">
-          Loading {loading.modelName}... {loading.elapsedSeconds}s elapsed
+          {t("modelLoading.loadingWithElapsed", {
+            name: loading.modelName,
+            seconds: loading.elapsedSeconds,
+            defaultValue: "Loading {{name}}... {{seconds}}s elapsed",
+          })}
         </p>
       )}
       {recentLogs.length > 0 ? (

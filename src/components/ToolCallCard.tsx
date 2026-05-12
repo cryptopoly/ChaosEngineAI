@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ToolCallInfo, ToolRenderAs } from "../types";
 import { CodeBlock } from "./CodeBlock";
 import { RichMarkdown } from "./RichMarkdown";
@@ -111,6 +112,7 @@ const TOOL_ICONS: Record<string, string> = {
 
 export function ToolCallCard({ toolCall }: ToolCallCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation("chat");
 
   const icon = TOOL_ICONS[toolCall.name] ?? "tool";
   // FU-039 (2026-05-10): defensive guards on every shape field that
@@ -132,7 +134,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
       : {};
   const argEntries = Object.entries(safeArgs);
   const argSummary = argEntries.length === 0
-    ? "(no arguments)"
+    ? t("toolCall.noArguments", { defaultValue: "(no arguments)" })
     : argEntries
         .map(([k, v]) => {
           const str = typeof v === "string" ? v : JSON.stringify(v);
@@ -200,7 +202,9 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
       {expanded && (
         <div style={{ padding: "0 12px 12px", fontSize: 12 }}>
           <div style={{ marginBottom: 8 }}>
-            <div style={{ color: "#7a8594", marginBottom: 4, fontWeight: 600 }}>Input</div>
+            <div style={{ color: "#7a8594", marginBottom: 4, fontWeight: 600 }}>
+              {t("toolCall.input", { defaultValue: "Input" })}
+            </div>
             <pre
               style={{
                 background: "#0f1215",
@@ -218,7 +222,9 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
             </pre>
           </div>
           <div>
-            <div style={{ color: "#7a8594", marginBottom: 4, fontWeight: 600 }}>Result</div>
+            <div style={{ color: "#7a8594", marginBottom: 4, fontWeight: 600 }}>
+              {t("toolCall.result", { defaultValue: "Result" })}
+            </div>
             {renderStructuredOutput(toolCall)}
           </div>
         </div>

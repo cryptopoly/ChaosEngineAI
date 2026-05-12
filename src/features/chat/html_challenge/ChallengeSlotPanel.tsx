@@ -8,6 +8,7 @@
  */
 
 import { type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
 import { ReasoningPanel } from "../../../components/ReasoningPanel";
 import { compareTargetLabels, type CompareTarget } from "../CompareView";
@@ -101,6 +102,7 @@ export function ChallengeSlotPanel({
   onFocusPreviewFrame,
   onForwardPreviewKey,
 }: ChallengeSlotPanelProps) {
+  const { t } = useTranslation("chat");
   const validation = htmlValidationForState(state);
   const actionPath = fileActionPath(state, manifest?.folderPath);
 
@@ -141,8 +143,8 @@ export function ChallengeSlotPanel({
             <button
               className="secondary-button html-challenge-icon-button"
               type="button"
-              aria-label="Open in default browser"
-              title="Open in default browser"
+              aria-label={t("htmlChallenge.openBrowser", { defaultValue: "Open in default browser" })}
+              title={t("htmlChallenge.openBrowser", { defaultValue: "Open in default browser" })}
               onClick={() => onOpenFilePath(actionPath)}
             >
               <BrowserIcon />

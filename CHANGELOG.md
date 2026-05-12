@@ -223,7 +223,7 @@ abstraction.
 - VRAM-fit hints on every Discover variant card so you see at a glance what'll actually run on your machine.
 
 **Phase 3.x — substrate transparency**
-- KV strategy chip in composer: per-turn cache override (native / chaosengine / rotorquant / turboquant / triattention) without touching launch settings.
+- KV strategy chip in composer: per-turn cache override (native / turboquant / triattention) without touching launch settings.
 - DDTree accepted-token overlay: substrate truth view of which speculative draft tokens were accepted.
 - Logprobs viz (advanced-mode gated): per-message confidence summary, MLX logprobs streaming passthrough.
 - Substrate routing inspector: per-turn badge above the metrics row showing which engine + binary served the response.

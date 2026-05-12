@@ -10,6 +10,7 @@
  * changes short prompts without adding runtime cost.
  */
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { enhancePromptViaLLM } from "../api";
 
 export interface PromptEnhanceButtonProps {
@@ -23,6 +24,7 @@ export function PromptEnhanceButton({
   repo,
   onEnhanced,
 }: PromptEnhanceButtonProps) {
+  const { t } = useTranslation("studio");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -45,7 +47,7 @@ export function PromptEnhanceButton({
       setNote(result.note);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setNote(`Enhancer error: ${message}`);
+      setNote(t("enhance.error", { message, defaultValue: `Enhancer error: ${message}` }));
     } finally {
       setBusy(false);
     }
@@ -57,9 +59,11 @@ export function PromptEnhanceButton({
       className="prompt-enhance-button"
       onClick={() => void handleClick()}
       disabled={disabled}
-      title={note ?? "Enhance this prompt locally"}
+      title={note ?? t("enhance.tooltip", { defaultValue: "Enhance this prompt locally" })}
     >
-      {busy ? "Enhancing..." : "Enhance"}
+      {busy
+        ? t("enhance.busy", { defaultValue: "Enhancing..." })
+        : t("enhance.label", { defaultValue: "Enhance" })}
     </button>
   );
 }

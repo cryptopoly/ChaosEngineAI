@@ -1025,9 +1025,14 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 500)
         detail = response.json()["detail"]
+        # FU-042: routes that adopted ``localized_detail`` return an envelope
+        # ``{message, localized, locale, errorKey?}`` instead of a plain
+        # string.  Old tests asserted against the raw string; accept both
+        # shapes so we don't have to rewrite every assertion at once.
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
         # Error text must mention the model and point at the fix.
-        self.assertIn("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF", detail)
-        self.assertIn("Discover", detail)
+        self.assertIn("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF", detail_text)
+        self.assertIn("Discover", detail_text)
         # Crucially: llama-server / the runtime should NEVER be invoked.
         self.assertEqual(self.client.app.state.chaosengine.runtime.load_requests, [])
 
@@ -1207,7 +1212,10 @@ class ChaosEngineBackendTests(unittest.TestCase):
             VIDEO_PROGRESS.finish()
 
         self.assertEqual(response.status_code, 409)
-        self.assertIn("video generation is still running", response.json()["detail"])
+        # FU-042: ``localized_detail`` envelope wraps the error message.
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("video generation is still running", detail_text)
 
     def test_image_download_delete_removes_cache_and_unloads_matching_models(self):
         repo = "black-forest-labs/FLUX.1-dev"
@@ -2082,7 +2090,9 @@ class ChaosEngineBackendTests(unittest.TestCase):
             json={"package": "not-a-real-package"},
         )
         self.assertEqual(response.status_code, 400)
-        self.assertIn("not in the allowed install list", response.json()["detail"])
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("not in the allowed install list", detail_text)
 
     def test_convert_endpoint_returns_conversion_payload(self):
         state = ChaosEngineState(
@@ -2577,8 +2587,11 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 500)
-        self.assertIn("Cannot load", response.json()["detail"])
-        self.assertIn("NVFP4", response.json()["detail"])
+        # FU-042: ``localized_detail`` envelope wraps the error message.
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("Cannot load", detail_text)
+        self.assertIn("NVFP4", detail_text)
 
     def test_reveal_model_path_endpoint_returns_resolved_path(self):
         target = Path(self.tempdir.name) / "example.gguf"

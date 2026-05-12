@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch, fetchJson } from "../../api";
 import { Panel } from "../../components/Panel";
 
@@ -58,6 +59,7 @@ interface PromptLibraryTabProps {
 }
 
 export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibraryTabProps) {
+  const { t } = useTranslation("common");
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,11 +222,14 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
     <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 12, height: "100%" }}>
       {/* Left: Template list */}
       <Panel
-        title="Templates"
-        subtitle={`${filtered.length} templates`}
+        title={t("panels.templates", { defaultValue: "Templates" })}
+        subtitle={t("promptLibrary.templatesCount", {
+          count: filtered.length,
+          defaultValue: "{count, plural, one {# template} other {# templates}}",
+        })}
         actions={
           <button className="secondary-button" type="button" onClick={() => { setSelectedId(null); startEdit(null); }} style={{ fontSize: 11 }}>
-            New
+            {t("promptLibrary.new", { defaultValue: "New" })}
           </button>
         }
       >
@@ -232,7 +237,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
           <input
             type="text"
             className="text-input"
-            placeholder="Search templates..."
+            placeholder={t("promptLibrary.searchPlaceholder", { defaultValue: "Search templates..." })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: "100%", fontSize: 12 }}
@@ -255,23 +260,32 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
       </Panel>
 
       {/* Right: Detail/Editor */}
-      <Panel title={editMode ? (selectedId ? "Edit Template" : "New Template") : (selected?.name ?? "Select a template")} subtitle="">
+      <Panel
+        title={
+          editMode
+            ? selectedId
+              ? t("panels.editTemplate", { defaultValue: "Edit Template" })
+              : t("panels.newTemplate", { defaultValue: "New Template" })
+            : selected?.name ?? t("panels.selectTemplate", { defaultValue: "Select a template" })
+        }
+        subtitle=""
+      >
         {editMode ? (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>Name</label>
+              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.name", { defaultValue: "Name" })}</label>
               <input className="text-input" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>Category</label>
+              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.category", { defaultValue: "Category" })}</label>
               <input className="text-input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>Tags (comma-separated)</label>
+              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.tags", { defaultValue: "Tags (comma-separated)" })}</label>
               <input className="text-input" value={editTags} onChange={(e) => setEditTags(e.target.value)} style={{ width: "100%" }} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>System Prompt</label>
+              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}</label>
               <textarea
                 className="text-input"
                 value={editPrompt}
@@ -279,12 +293,12 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                 style={{ width: "100%", minHeight: 200, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
               />
               <small style={{ fontSize: 10, color: "#5a6574" }}>
-                Use {"{{name}}"} placeholders for variables you declare below.
+                {t("promptLibrary.editor.placeholderHint", { defaultValue: "Use '{{'name'}}' placeholders for variables you declare below." })}
               </small>
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>
-                Variables (JSON array — Phase 2.7)
+                {t("promptLibrary.editor.variables", { defaultValue: "Variables (JSON array — Phase 2.7)" })}
               </label>
               <textarea
                 className="text-input"
@@ -296,19 +310,19 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>
-                Preset model ref (optional)
+                {t("promptLibrary.editor.presetModelRef", { defaultValue: "Preset model ref (optional)" })}
               </label>
               <input
                 className="text-input"
                 value={editPresetModelRef}
                 onChange={(e) => setEditPresetModelRef(e.target.value)}
-                placeholder="e.g. Qwen3-7B-Instruct"
+                placeholder={t("promptLibrary.editor.presetModelRefPlaceholder", { defaultValue: "e.g. Qwen3-7B-Instruct" })}
                 style={{ width: "100%" }}
               />
             </div>
             <div>
               <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>
-                Preset samplers (JSON object — optional)
+                {t("promptLibrary.editor.presetSamplers", { defaultValue: "Preset samplers (JSON object — optional)" })}
               </label>
               <textarea
                 className="text-input"
@@ -319,8 +333,8 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="primary-button" type="button" onClick={() => void handleSave()}>Save</button>
-              <button className="secondary-button" type="button" onClick={() => setEditMode(false)}>Cancel</button>
+              <button className="primary-button" type="button" onClick={() => void handleSave()}>{t("promptLibrary.editor.save", { defaultValue: "Save" })}</button>
+              <button className="secondary-button" type="button" onClick={() => setEditMode(false)}>{t("promptLibrary.editor.cancel", { defaultValue: "Cancel" })}</button>
             </div>
           </div>
         ) : selected ? (
@@ -329,35 +343,40 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
               <span className="badge">{selected.category}</span>
               {selected.tags.map((tag) => <span key={tag} className="badge" style={{ background: "#1e3a5f", color: "#8fb4ff" }}>{tag}</span>)}
               {selected.presetModelRef ? (
-                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title="Preset model — applied when you Use in Chat">
-                  preset: {selected.presetModelRef}
+                <span className="badge" style={{ background: "#1f2a44", color: "#9bc7ff" }} title={t("promptLibrary.presetModelTitle", { defaultValue: "Preset model — applied when you Use in Chat" })}>
+                  {t("promptLibrary.presetLabel", { ref: selected.presetModelRef, defaultValue: "preset: {ref}" })}
                 </span>
               ) : null}
               {selected.variables?.length ? (
-                <span className="badge" style={{ background: "#2a3a1f", color: "#b9d18f" }} title="Template has variable placeholders">
-                  {selected.variables.length} variable{selected.variables.length === 1 ? "" : "s"}
+                <span className="badge" style={{ background: "#2a3a1f", color: "#b9d18f" }} title={t("promptLibrary.hasPlaceholders", { defaultValue: "Template has variable placeholders" })}>
+                  {t("promptLibrary.variableCount", {
+                    count: selected.variables.length,
+                    defaultValue: "{count, plural, one {# variable} other {# variables}}",
+                  })}
                 </span>
               ) : null}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>System Prompt</label>
+              <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.editor.systemPrompt", { defaultValue: "System Prompt" })}</label>
               <pre style={{ background: "#0f1215", borderRadius: 8, padding: 12, color: "#c8d0da", whiteSpace: "pre-wrap", fontSize: 12, maxHeight: 300, overflow: "auto" }}>
                 {selected.systemPrompt}
               </pre>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="primary-button" type="button" onClick={openFillForm}>
-                {selectedVariables.length ? "Use in Chat..." : "Use in Chat"}
+                {selectedVariables.length
+                  ? t("promptLibrary.useInChatWithVars", { defaultValue: "Use in Chat..." })
+                  : t("promptLibrary.useInChat", { defaultValue: "Use in Chat" })}
               </button>
-              <button className="secondary-button" type="button" onClick={() => startEdit(selected)}>Edit</button>
-              <button className="secondary-button message-action-delete" type="button" onClick={() => void handleDelete(selected.id)}>Delete</button>
+              <button className="secondary-button" type="button" onClick={() => startEdit(selected)}>{t("promptLibrary.edit", { defaultValue: "Edit" })}</button>
+              <button className="secondary-button message-action-delete" type="button" onClick={() => void handleDelete(selected.id)}>{t("promptLibrary.delete", { defaultValue: "Delete" })}</button>
             </div>
             <div style={{ marginTop: 12, fontSize: 11, color: "#5a6574" }}>
-              Created: {selected.createdAt} | Updated: {selected.updatedAt}
+              {t("promptLibrary.createdUpdated", { created: selected.createdAt, updated: selected.updatedAt, defaultValue: "Created: {created} | Updated: {updated}" })}
             </div>
             {fillOpen && selectedVariables.length ? (
               <div style={{ marginTop: 16, padding: 12, background: "#0f1215", borderRadius: 8, border: "1px solid #1f2a3a" }}>
-                <strong style={{ fontSize: 12 }}>Fill template variables</strong>
+                <strong style={{ fontSize: 12 }}>{t("promptLibrary.fillTitle", { defaultValue: "Fill template variables" })}</strong>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
                   {selectedVariables.map((variable) => (
                     <div key={variable.name}>
@@ -392,17 +411,17 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
                   ))}
                 </div>
                 <div style={{ marginTop: 12 }}>
-                  <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>Resolved prompt preview</label>
+                  <label style={{ fontSize: 11, color: "#7a8594", display: "block", marginBottom: 4 }}>{t("promptLibrary.resolvedPreview", { defaultValue: "Resolved prompt preview" })}</label>
                   <pre style={{ background: "#080a0c", borderRadius: 6, padding: 10, color: "#c8d0da", whiteSpace: "pre-wrap", fontSize: 11, maxHeight: 200, overflow: "auto" }}>
                     {resolvedFillPrompt}
                   </pre>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <button className="primary-button" type="button" onClick={applyFilledTemplate}>
-                    Apply to chat
+                    {t("promptLibrary.applyToChat", { defaultValue: "Apply to chat" })}
                   </button>
                   <button className="secondary-button" type="button" onClick={() => setFillOpen(false)}>
-                    Cancel
+                    {t("promptLibrary.editor.cancel", { defaultValue: "Cancel" })}
                   </button>
                 </div>
               </div>
@@ -410,7 +429,7 @@ export function PromptLibraryTab({ backendOnline, onApplyTemplate }: PromptLibra
           </div>
         ) : (
           <div style={{ padding: 24, textAlign: "center" }}>
-            <p className="muted-text">Select a template from the list or create a new one.</p>
+            <p className="muted-text">{t("promptLibrary.selectOrCreate", { defaultValue: "Select a template from the list or create a new one." })}</p>
           </div>
         )}
       </Panel>

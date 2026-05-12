@@ -1,0 +1,273 @@
+{
+  "composer": {
+    "placeholderReady": "Digite uma mensagem… (Enter para enviar, Shift+Enter para nova linha, / para comandos)",
+    "placeholderNoModel": "Carregue um modelo primeiro — escolha um em Meus modelos ou Descobrir e clique em CHAT.",
+    "send": "Enviar",
+    "stop": "Parar",
+    "clear": "Limpar",
+    "sendDisabledTooltip": "Carregue um modelo primeiro para enviar mensagens"
+  },
+  "thinkingMode": {
+    "label": "Raciocínio",
+    "tooltip": "Escolha quanto o modelo raciocina antes de responder. Desligado = respostas diretas; Baixo / Médio / Alto = profundidade de raciocínio crescente para modelos capazes.",
+    "off": "Desligado",
+    "offTooltip": "Sem raciocínio — o modelo responde diretamente",
+    "low": "Baixo",
+    "lowTooltip": "Raciocínio breve",
+    "medium": "Médio",
+    "mediumTooltip": "Profundidade de raciocínio padrão",
+    "high": "Alto",
+    "highTooltip": "Raciocínio estendido"
+  },
+  "tools": {
+    "toggleLabel": "Ferramentas",
+    "toggleOn": "Ferramentas ON",
+    "enableTooltip": "Ativar ferramentas de agente",
+    "enabledTooltip": "Ferramentas ativadas (busca web, código, calculadora, leitor de arquivos)"
+  },
+  "newSession": "Nova sessão",
+  "newSessionTitle": "Chat sem título",
+  "deleteSession": "Excluir sessão",
+  "deleteSessionConfirm": "Excluir este chat? Esta ação não pode ser desfeita.",
+  "renameSession": "Renomear sessão",
+  "exportSession": "Exportar sessão",
+  "promptPlaceholder": "Enviar uma mensagem…",
+  "promptPlaceholderImage": "Descreva uma imagem ou solte uma para conversar sobre ela…",
+  "stopGeneration": "Parar geração",
+  "regenerateResponse": "Regenerar resposta",
+  "branchHere": "Criar ramo a partir daqui",
+  "copyMessage": "Copiar mensagem",
+  "copyAsMarkdown": "Copiar como Markdown",
+  "tokensUsed": "{count, plural, one {# token} other {# tokens}}",
+  "thinking": "Pensando…",
+  "toolCall": {
+    "label": "Chamada de ferramenta",
+    "running": "Executando ferramenta: {tool}",
+    "succeeded": "Ferramenta bem-sucedida: {tool}",
+    "failed": "Ferramenta falhou: {tool}",
+    "noArguments": "(sem argumentos)",
+    "input": "Entrada",
+    "result": "Resultado"
+  },
+  "attachments": {
+    "image": "Anexar imagem",
+    "document": "Anexar documento",
+    "code": "Anexar código",
+    "removeAttachment": "Remover anexo",
+    "imageTooLarge": "A imagem deve ter menos de 10MB"
+  },
+  "modelPicker": {
+    "label": "Modelo",
+    "noneSelected": "Nenhum modelo carregado",
+    "loadModel": "Carregar modelo"
+  },
+  "header": {
+    "expandChatList": "Expandir a lista de chats",
+    "chatsLabel": "Chats",
+    "threadName": "Nome da thread",
+    "selectModel": "Selecionar modelo",
+    "exportThread": "Exportar esta thread",
+    "export": "Exportar",
+    "modelCapabilities": "Capacidades do modelo",
+    "ready": "Pronto",
+    "loadChatModel": "Carregar o modelo deste chat",
+    "loading": "Carregando...",
+    "loadModel": "Carregar modelo"
+  },
+  "sidebar": {
+    "title": "Chats",
+    "newThread": "Nova thread",
+    "compare": "Comparar",
+    "compareTooltip": "Comparar dois modelos lado a lado",
+    "collapseChatList": "Recolher a lista de chats",
+    "searchThreadsPlaceholder": "Pesquisar threads...",
+    "searchThreadsAriaLabel": "Pesquisar threads",
+    "clearSearch": "Limpar pesquisa"
+  },
+  "swapMenu": {
+    "clearOverride": "Limpar substituição",
+    "dialogAriaLabel": "Escolha um modelo para o próximo turno",
+    "sendNextVia": "Enviar próximo via",
+    "oneTurnNote": "A substituição se aplica apenas para um turno.",
+    "noWarmModels": "Nenhum outro modelo quente disponível. Carregue um segundo modelo em Meus modelos para habilitar trocas rápidas."
+  },
+  "activeThread": {
+    "title": "Thread ativa",
+    "subtitle": "Metadados de resposta são recolhidos por padrão, mas disponíveis por turno do agente."
+  },
+  "compare": {
+    "latest": "Mais recente"
+  },
+  "tempChip": {
+    "label": "Temp {value}",
+    "tooltip": "Temperatura: {value} (das configurações de inicialização)",
+    "overrideTooltip": "Substituição de temperatura: {value} (padrão {defaultValue_})",
+    "dialogAriaLabel": "Substituição de temperatura",
+    "overrideLabel": "Substituir temperatura",
+    "reset": "Redefinir",
+    "hint": "Menor = focado. Maior = criativo. Padrão {value} das configurações de inicialização."
+  },
+  "thread": {
+    "copyMessageTooltip": "Copiar mensagem",
+    "retryTooltip": "Tentar resposta novamente",
+    "forkTooltip": "Ramificar daqui (cria uma nova thread)",
+    "delveTooltip": "Aprofundar — reler com olhar crítico e propor uma resposta revisada",
+    "deleteMessageTooltip": "Excluir mensagem",
+    "loadExactSettingsTooltip": "Carregar o modelo exato e configurações de runtime usados para esta resposta",
+    "roleAgent": "Agente",
+    "roleUser": "Usuário",
+    "thermalThrottleTitle": "Throttle térmico",
+    "memoryCriticalTitle": "Memória do sistema crítica",
+    "memoryStats": "{available} GB livres · pressão {pressure}%",
+    "cancel": "Cancelar",
+    "emptyState": "Envie uma mensagem para começar a conversa.",
+    "reloadSettings": "Recarregar estas configurações",
+    "fitInMemory": {
+      "on": "Ligado",
+      "off": "Desligado",
+      "unknown": "Desconhecido"
+    },
+    "variants": {
+      "heading": "Comparando respostas",
+      "subtitle": "Mesmo prompt roteado por modelos quentes alternativos."
+    },
+    "details": {
+      "summary": "Detalhes do modelo",
+      "unknown": "Desconhecido",
+      "auto": "Auto",
+      "dflashAccepted": "DFLASH {value} aceitos em média",
+      "model": "Modelo",
+      "runtime": "Runtime",
+      "cache": "Cache",
+      "strategy": "Estratégia",
+      "cacheBits": "Bits de cache",
+      "fp16Layers": "Camadas FP16",
+      "backend": "Backend",
+      "context": "Contexto",
+      "fitInMemory": "Cabe na memória",
+      "tokens": "Tokens",
+      "tokensTotal": "{count} no total",
+      "responseTime": "Tempo de resposta",
+      "decodeSpeed": "Velocidade de decodificação",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "Cache solicitado",
+      "requestedFit": "Fit solicitado",
+      "requestedDflashDdtree": "DFlash / DDTree solicitado",
+      "runtimeStatus": "Status do runtime",
+      "treeBudget": "Orçamento da árvore",
+      "dflashAcceptance": "Aceitação DFLASH",
+      "avgTokens": "{value} tokens em média",
+      "draftModel": "Modelo draft"
+    }
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "Título do desafio",
+    "promptPlaceholder": "Promptar todos os modelos selecionados com o mesmo desafio de página web...",
+    "openBrowser": "Abrir no navegador padrão",
+    "historyPlaceholder": "Pesquisar desafios anteriores...",
+    "moveToTrash": "Mover para a lixeira",
+    "moveToTrashAria": "Mover \"{title}\" para a lixeira",
+    "noMatching": "Sem desafios correspondentes.",
+    "layoutToggleAria": "Layout do desafio HTML",
+    "layoutRow": "Linha",
+    "thisChallengeFallback": "este desafio",
+    "deleteConfirm": "Mover \"{title}\" para a pasta .trash? Você pode restaurá-lo do disco se precisar.",
+    "actions": {
+      "newChallenge": "Novo desafio",
+      "openFolder": "Abrir pasta",
+      "openSettings": "Abrir preferências",
+      "addModel": "Adicionar modelo",
+      "cancel": "Cancelar",
+      "usePromptInNewChallenge": "Usar prompt em novo desafio",
+      "runChallenge": "Executar desafio",
+      "runNewChallenge": "Executar novo desafio"
+    },
+    "status": {
+      "generating": "Gerando...",
+      "queuedRetry": "Nova tentativa em fila...",
+      "queuedContinuation": "Continuação em fila...",
+      "queuedRepair": "Reparo em fila..."
+    },
+    "errors": {
+      "deleteFailed": "Falha ao excluir desafio.",
+      "challengeFailed": "Desafio falhou",
+      "retryFailed": "Nova tentativa falhou",
+      "repairFailed": "Reparo falhou"
+    },
+    "modelCard": {
+      "selectAModel": "Selecione um modelo",
+      "thinking": "Raciocínio",
+      "thinkingOff": "Desligado",
+      "thinkingLow": "Baixo",
+      "thinkingMed": "Médio",
+      "thinkingHigh": "Alto",
+      "temp": "Temp",
+      "seed": "Seed",
+      "seedPlaceholder": "aleatório",
+      "randomize": "Aleatorizar",
+      "remove": "Remover",
+      "change": "Alterar",
+      "select": "Selecionar"
+    },
+    "picker": {
+      "title": "Selecionar modelo",
+      "titleForSlot": "Selecionar {slot}",
+      "confirm": "Usar modelo",
+      "confirmForSlot": "Usar para {slot}"
+    }
+  },
+  "samplerPanel": {
+    "label": "Samplers",
+    "openTooltip": "Abrir painel de samplers",
+    "activeTooltip": "{count, plural, one {# substituição de sampler ativa} other {# substituições de sampler ativas}}",
+    "dialogAriaLabel": "Substituições de sampler",
+    "headerTitle": "Substituições de sampler",
+    "resetAll": "Redefinir tudo",
+    "resetAllTooltip": "Redefinir tudo para os padrões do backend"
+  },
+  "kvChip": {
+    "clearOverride": "Limpar substituição KV",
+    "revertTooltip": "Reverter ao padrão da sessão",
+    "dialogAriaLabel": "Estratégia de cache KV",
+    "headingTitle": "Cache KV para o próximo turno",
+    "reloadNote": "A troca recarrega o runtime se necessário."
+  },
+  "citations": {
+    "sourcesLabel": "Fontes:",
+    "pageInfo": "(página {page})",
+    "chunkLabel": "Trecho {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}s)",
+    "loadingWithElapsed": "Carregando {name}... {seconds}s decorridos"
+  },
+  "promptPhase": {
+    "processingPrompt": "Processando prompt",
+    "generating": "Gerando"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "Comandos slash"
+  },
+  "compareView": {
+    "slot": {
+      "a": "Modelo A",
+      "b": "Modelo B",
+      "c": "Modelo C",
+      "d": "Modelo D"
+    },
+    "selectModel": "Selecionar um modelo",
+    "removeSlotTitle": "Remover {slot}",
+    "remove": "Remover",
+    "change": "Alterar",
+    "select": "Selecionar",
+    "backToChat": "Voltar ao chat",
+    "title": "Comparar modelos",
+    "subtitle": "Coloque 2-4 modelos na fila. Cada slot carrega exclusivamente, executa e descarrega antes do próximo iniciar.",
+    "addModel": "Adicionar modelo",
+    "queued": "{count}/4 na fila",
+    "duplicateNote": "Mesmo modelo selecionado em vários slots; útil para testes A/B de perfil de runtime.",
+    "promptPlaceholder": "Digite um prompt para comparar...",
+    "cancel": "Cancelar",
+    "compareButton": "Comparar"
+  }
+}

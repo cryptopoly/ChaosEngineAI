@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 
+from backend_service.i18n import localized_detail
 from backend_service.models import (
     AddVariantRequest,
     CreateSessionRequest,
@@ -39,7 +40,13 @@ def delve_message(request: Request, session_id: str, message_index: int) -> dict
             message_index=message_index,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # FU-042: wrap with the localized envelope so the React error
+        # parser can surface a translated message when the catalog has
+        # one, falling back to the raw English ``str(exc)`` otherwise.
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc
     return {"session": session}
 
 
@@ -63,7 +70,13 @@ def add_message_variant(request: Request, session_id: str, body: AddVariantReque
             temperature=body.temperature,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # FU-042: wrap with the localized envelope so the React error
+        # parser can surface a translated message when the catalog has
+        # one, falling back to the raw English ``str(exc)`` otherwise.
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc
     return {"session": session}
 
 
@@ -85,7 +98,13 @@ def fork_session(request: Request, session_id: str, body: ForkSessionRequest) ->
             title=body.title,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # FU-042: wrap with the localized envelope so the React error
+        # parser can surface a translated message when the catalog has
+        # one, falling back to the raw English ``str(exc)`` otherwise.
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc
     return {"session": session}
 
 

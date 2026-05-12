@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { runBenchmark } from "../api";
 import { emptyWorkspace } from "../defaults";
 import { BENCHMARK_PROMPTS } from "../constants";
@@ -97,6 +97,15 @@ export function useBenchmarks(
     }));
   }
 
+  // AbortController for the in-flight benchmark — cleared when the
+  // request resolves so a stale controller can't accidentally abort the
+  // next run.
+  const benchmarkAbortRef = useRef<AbortController | null>(null);
+
+  function handleCancelBenchmark() {
+    benchmarkAbortRef.current?.abort();
+  }
+
   async function handleRunBenchmark(benchmarkOption: ChatModelOption | null) {
     const promptPreset = BENCHMARK_PROMPTS.find((item) => item.id === benchmarkPromptId) ?? BENCHMARK_PROMPTS[0];
     if (!benchmarkOption) {
@@ -108,18 +117,23 @@ export function useBenchmarks(
     setBenchmarkStartedAt(Date.now());
     setShowBenchmarkModal(true);
     setBenchmarkError(null);
+    const controller = new AbortController();
+    benchmarkAbortRef.current = controller;
 
     try {
-      const response = await runBenchmark({
-        ...benchmarkDraft,
-        modelRef: benchmarkOption.modelRef,
-        modelName: benchmarkOption.model,
-        source: benchmarkOption.source,
-        backend: benchmarkOption.backend,
-        path: benchmarkOption.path ?? undefined,
-        prompt: promptPreset.prompt,
-        label: `${benchmarkOption.model} / ${benchmarkDraft.cacheStrategy === "native" ? "Native f16" : `${benchmarkDraft.cacheStrategy} ${benchmarkDraft.cacheBits}-bit ${benchmarkDraft.fp16Layers}+${benchmarkDraft.fp16Layers}`} / ${Math.round(benchmarkDraft.contextTokens / 1024)}K ctx`,
-      });
+      const response = await runBenchmark(
+        {
+          ...benchmarkDraft,
+          modelRef: benchmarkOption.modelRef,
+          modelName: benchmarkOption.model,
+          source: benchmarkOption.source,
+          backend: benchmarkOption.backend,
+          path: benchmarkOption.path ?? undefined,
+          prompt: promptPreset.prompt,
+          label: `${benchmarkOption.model} / ${benchmarkDraft.cacheStrategy === "native" ? "Native f16" : `${benchmarkDraft.cacheStrategy} ${benchmarkDraft.cacheBits}-bit ${benchmarkDraft.fp16Layers}+${benchmarkDraft.fp16Layers}`} / ${Math.round(benchmarkDraft.contextTokens / 1024)}K ctx`,
+        },
+        { signal: controller.signal },
+      );
       setWorkspace((current) =>
         syncRuntime(
           {
@@ -132,10 +146,20 @@ export function useBenchmarks(
       setSelectedBenchmarkId(response.result.id);
       setCompareBenchmarkId((current) => (current === response.result.id ? selectedBenchmarkId : current));
     } catch (actionError) {
-      const message = actionError instanceof Error ? actionError.message : "Failed to run benchmark.";
-      setError(message);
-      setBenchmarkError(message);
+      const cancelled =
+        controller.signal.aborted ||
+        (actionError instanceof Error && actionError.message === "Request cancelled");
+      if (cancelled) {
+        const cancelMsg = "Benchmark cancelled.";
+        setError(cancelMsg);
+        setBenchmarkError(cancelMsg);
+      } else {
+        const message = actionError instanceof Error ? actionError.message : "Failed to run benchmark.";
+        setError(message);
+        setBenchmarkError(message);
+      }
     } finally {
+      if (benchmarkAbortRef.current === controller) benchmarkAbortRef.current = null;
       setBusyAction(null);
       setBenchmarkStartedAt(null);
     }
@@ -178,6 +202,7 @@ export function useBenchmarks(
     setShowBenchmarkModal,
     updateBenchmarkDraft,
     handleRunBenchmark,
+    handleCancelBenchmark,
     selectedBenchmark,
     compareBenchmark,
     benchmarkSpeedDelta,

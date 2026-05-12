@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface TemperatureChipProps {
   /** Default value pulled from launch settings (used when no override is set) */
@@ -14,6 +15,7 @@ const MAX_TEMP = 2;
 const STEP = 0.05;
 
 export function TemperatureChip({ defaultValue, override, onChange, disabled }: TemperatureChipProps) {
+  const { t } = useTranslation("chat");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -38,15 +40,24 @@ export function TemperatureChip({ defaultValue, override, onChange, disabled }: 
         className={`secondary-button temp-chip__trigger${isOverridden ? " temp-chip__trigger--overridden" : ""}`}
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        title={isOverridden ? `Temperature override: ${effective.toFixed(2)} (default ${defaultValue.toFixed(2)})` : `Temperature: ${effective.toFixed(2)} (from launch settings)`}
+        title={isOverridden
+          ? t("tempChip.overrideTooltip", {
+              value: effective.toFixed(2),
+              defaultValue_: defaultValue.toFixed(2),
+              defaultValue: `Temperature override: ${effective.toFixed(2)} (default ${defaultValue.toFixed(2)})`,
+            })
+          : t("tempChip.tooltip", {
+              value: effective.toFixed(2),
+              defaultValue: `Temperature: ${effective.toFixed(2)} (from launch settings)`,
+            })}
       >
-        Temp {effective.toFixed(2)}
+        {t("tempChip.label", { value: effective.toFixed(2), defaultValue: `Temp ${effective.toFixed(2)}` })}
         {isOverridden ? <span className="temp-chip__dot" aria-hidden="true" /> : null}
       </button>
       {open ? (
-        <div className="temp-chip__popover" role="dialog" aria-label="Temperature override">
+        <div className="temp-chip__popover" role="dialog" aria-label={t("tempChip.dialogAriaLabel", { defaultValue: "Temperature override" })}>
           <label className="temp-chip__label">
-            <span>Override temperature</span>
+            <span>{t("tempChip.overrideLabel", { defaultValue: "Override temperature" })}</span>
             <input
               type="range"
               min={MIN_TEMP}
@@ -77,11 +88,14 @@ export function TemperatureChip({ defaultValue, override, onChange, disabled }: 
               onClick={() => onChange(null)}
               disabled={!isOverridden}
             >
-              Reset
+              {t("tempChip.reset", { defaultValue: "Reset" })}
             </button>
           </div>
           <p className="temp-chip__hint">
-            Lower = focused. Higher = creative. Default {defaultValue.toFixed(2)} from launch settings.
+            {t("tempChip.hint", {
+              value: defaultValue.toFixed(2),
+              defaultValue: `Lower = focused. Higher = creative. Default ${defaultValue.toFixed(2)} from launch settings.`,
+            })}
           </p>
         </div>
       ) : null}

@@ -1,3 +1,4 @@
+import i18next from "i18next";
 import type { ImageModelFamily, ImageModelVariant, ImageOutputArtifact } from "../types";
 import type { ImageDiscoverTaskFilter, ImageDiscoverAccessFilter, ImageGalleryOrientationFilter } from "../types/image";
 import { inferDeviceFromHostPlatform } from "./videos";
@@ -454,12 +455,33 @@ export function assessImageGenerationSafety(opts: {
   if (modelFootprintGb > cautionRatio * budgetGb) {
     const comfortBudgetGb = cautionRatio * budgetGb;
     const highRiskBudgetGb = dangerRatio * budgetGb;
+    const reasonVars = {
+      model: fmt(modelFootprintGb),
+      peak: fmt(estimatedPeakGb),
+      platform,
+      total: fmt(totalMemoryGb),
+      working: fmt(budgetGb),
+      comfort: fmt(comfortBudgetGb),
+      highRisk: fmt(highRiskBudgetGb),
+    };
     const reason =
       riskLevel === "danger"
         ? modelFootprintGb > budgetGb
-          ? `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, the estimated working set is ~${fmt(budgetGb)} GB, so the model alone is already over that. Even small images would likely crash the backend. Try a smaller model (SD 1.5 is ~4 GB, SDXL ~13 GB) or a machine with more memory.`
-          : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder, and this run peaks around ~${fmt(estimatedPeakGb)} GB. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the high-risk threshold (~${fmt(highRiskBudgetGb)} GB) and close to the estimated working set (~${fmt(budgetGb)} GB). Generation is likely to crash the backend; lower the resolution or choose a smaller model.`
-        : `The model needs ~${fmt(modelFootprintGb)} GB just to hold its weights + text encoder. On ${platform} with ${fmt(totalMemoryGb)} GB total, that is above the conservative comfort target (~${fmt(comfortBudgetGb)} GB) but below the estimated working set (~${fmt(budgetGb)} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable.`;
+          ? i18next.t("imageStudio.safety.reasonDangerOver", {
+              ns: "studio",
+              ...reasonVars,
+              defaultValue: "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, the estimated working set is ~{working} GB, so the model alone is already over that. Even small images would likely crash the backend. Try a smaller model (SD 1.5 is ~4 GB, SDXL ~13 GB) or a machine with more memory.",
+            })
+          : i18next.t("imageStudio.safety.reasonDangerNear", {
+              ns: "studio",
+              ...reasonVars,
+              defaultValue: "The model needs ~{model} GB just to hold its weights + text encoder, and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that is above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). Generation is likely to crash the backend; lower the resolution or choose a smaller model.",
+            })
+        : i18next.t("imageStudio.safety.reasonCaution", {
+            ns: "studio",
+            ...reasonVars,
+            defaultValue: "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, that is above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable.",
+          });
     return {
       riskLevel,
       estimatedPeakGb,

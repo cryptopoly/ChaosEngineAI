@@ -1,0 +1,84 @@
+{
+  "title": "Установка",
+  "subtitle": "Установить компоненты среды выполнения для вашего оборудования",
+  "sections": {
+    "core": "Основные среды выполнения",
+    "speculative": "Спекулятивное декодирование",
+    "caching": "Стратегии кэша",
+    "diffusion": "Среды диффузии",
+    "tools": "Дополнительные инструменты"
+  },
+  "actions": {
+    "install": "Установить",
+    "uninstall": "Удалить",
+    "update": "Обновить",
+    "viewLog": "Показать журнал",
+    "showInFinder": "Показать в Finder"
+  },
+  "states": {
+    "installed": "Установлено",
+    "available": "Доступно",
+    "installing": "Установка…",
+    "uninstalling": "Удаление…",
+    "checking": "Проверка…",
+    "unavailable": "Недоступно на этой платформе",
+    "needsRestart": "Требуется перезапуск"
+  },
+  "messages": {
+    "diskSpaceWarning": "Будет загружено около {size}.",
+    "requiresNetwork": "Требуется подключение к интернету.",
+    "platformOnly": "Этот компонент доступен только на {platform}.",
+    "succeeded": "Установка завершена успешно.",
+    "failed": "Установка не удалась: {reason}"
+  },
+  "installLog": {
+    "finalStatus": "Итоговый статус:",
+    "statusNoun": {
+      "longlive": "Установка LongLive",
+      "gpuBundle": "Установка"
+    },
+    "status": {
+      "failed": "{noun} не удалась — см. журнал",
+      "complete": "{noun} завершена — см. журнал",
+      "starting": "{noun} запускается…",
+      "verifyingCuda": "Проверка CUDA…",
+      "inProgress": "{noun} в процессе"
+    },
+    "meta": {
+      "target": "Цель: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "Индекс CUDA: {url}",
+      "cudaVerified": "CUDA проверена",
+      "cudaVerificationFailed": "Проверка CUDA не удалась",
+      "noWheelForPython": "Нет CUDA-колеса для этого Python",
+      "restartBackend": "Перезапустите бэкенд для активации"
+    },
+    "step": {
+      "waiting": "(ожидание)",
+      "final": "Итог: {done}/{total} пакетов · {percent}%",
+      "current": "Шаг {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "работает…",
+      "noOutput": "(вывод не зафиксирован)"
+    },
+    "attempt": {
+      "verifyCuda": "Проверить torch.cuda.is_available()",
+      "torchDeps": "зависимости torch (с {url})",
+      "torchCleanup": "Очистить устаревшие файлы torch",
+      "torchRepair": "Восстановить CUDA-колесо torch",
+      "constraint": "Закрепить версию torch",
+      "torchFromIndex": "torch (с {url})",
+      "pipInstall": "pip install {pkg}",
+      "step": "шаг"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "Установка завершена — см. журнал{index}",
+    "installFailed": "{count, plural, =0 {Установка не удалась — см. журнал} one {Установка не удалась — см. журнал (# попытка)} few {Установка не удалась — см. журнал (# попытки)} many {Установка не удалась — см. журнал (# попыток)} other {Установка не удалась — см. журнал (# попыток)}}"
+  },
+  "wanRuntime": {
+    "title": "Среда выполнения Wan MLX",
+    "ready": "Готово"
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { GenerationProgressSnapshot } from "../types";
 
 export interface LiveProgressPhase {
@@ -39,6 +40,7 @@ export function LiveProgress({
   accent = "benchmark",
   realProgress,
 }: LiveProgressProps) {
+  const { t } = useTranslation("common");
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -156,10 +158,10 @@ export function LiveProgress({
         <div className="live-progress__thumbnail">
           <img
             src={`data:image/png;base64,${realProgress.thumbnail}`}
-            alt="Live denoise preview"
+            alt={t("liveProgress.thumbnailAlt", { defaultValue: "Live denoise preview" })}
           />
           <span className="live-progress__thumbnail-caption">
-            Live preview · TAESD decode
+            {t("liveProgress.thumbnailCaption", { defaultValue: "Live preview · TAESD decode" })}
           </span>
         </div>
       ) : null}
@@ -179,15 +181,25 @@ export function LiveProgress({
               {state === "active" ? (
                 showLiveStepLabel ? (
                   <span className="live-progress__phase-elapsed">
-                    step {realProgress!.step} / {realProgress!.totalSteps}
+                    {t("liveProgress.stepCounter", {
+                      defaultValue: "step {current} / {total}",
+                      current: realProgress!.step,
+                      total: realProgress!.totalSteps,
+                    })}
                   </span>
                 ) : realPhase ? (
                   <span className="live-progress__phase-elapsed">
-                    {realProgress?.message || "in progress…"}
+                    {realProgress?.message || t("liveProgress.inProgress", { defaultValue: "in progress…" })}
                   </span>
                 ) : (
                   <span className="live-progress__phase-elapsed">
-                    {overrunning ? "finalizing…" : `${phaseElapsed.toFixed(1)}s / ~${phase.estimatedSeconds}s`}
+                    {overrunning
+                      ? t("liveProgress.finalizing", { defaultValue: "finalizing…" })
+                      : t("liveProgress.phaseTiming", {
+                          defaultValue: "{elapsed}s / ~{estimated}s",
+                          elapsed: phaseElapsed.toFixed(1),
+                          estimated: phase.estimatedSeconds,
+                        })}
                   </span>
                 )
               ) : null}

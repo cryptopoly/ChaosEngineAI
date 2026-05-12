@@ -1,0 +1,273 @@
+{
+  "composer": {
+    "placeholderReady": "メッセージを入力…(Enter で送信、Shift+Enter で改行、/ でコマンド)",
+    "placeholderNoModel": "先にモデルを読み込んでください — マイモデル または ディスカバー から選択し、チャット を押してください。",
+    "send": "送信",
+    "stop": "停止",
+    "clear": "クリア",
+    "sendDisabledTooltip": "メッセージを送信する前にモデルを読み込んでください"
+  },
+  "thinkingMode": {
+    "label": "思考",
+    "tooltip": "応答前にモデルがどの程度推論するかを選択します。オフ = 直接回答;低 / 中 / 高 = 対応モデルで推論深度を段階的に増加。",
+    "off": "オフ",
+    "offTooltip": "推論なし — モデルは直接回答",
+    "low": "低",
+    "lowTooltip": "簡潔な推論",
+    "medium": "中",
+    "mediumTooltip": "デフォルトの推論深度",
+    "high": "高",
+    "highTooltip": "拡張推論"
+  },
+  "tools": {
+    "toggleLabel": "ツール",
+    "toggleOn": "ツール オン",
+    "enableTooltip": "エージェントツールを有効化",
+    "enabledTooltip": "ツールが有効です(Web 検索、コード、計算機、ファイルリーダー)"
+  },
+  "newSession": "新規セッション",
+  "newSessionTitle": "無題のチャット",
+  "deleteSession": "セッションを削除",
+  "deleteSessionConfirm": "このチャットを削除しますか?この操作は取り消せません。",
+  "renameSession": "セッション名を変更",
+  "exportSession": "セッションをエクスポート",
+  "promptPlaceholder": "メッセージを送信…",
+  "promptPlaceholderImage": "画像を説明するか、ドロップして話し合いましょう…",
+  "stopGeneration": "生成を停止",
+  "regenerateResponse": "応答を再生成",
+  "branchHere": "このターンから分岐",
+  "copyMessage": "メッセージをコピー",
+  "copyAsMarkdown": "Markdown としてコピー",
+  "tokensUsed": "{count, plural, other {# トークン}}",
+  "thinking": "考え中…",
+  "toolCall": {
+    "label": "ツール呼び出し",
+    "running": "ツール実行中:{tool}",
+    "succeeded": "ツール成功:{tool}",
+    "failed": "ツール失敗:{tool}",
+    "noArguments": "(引数なし)",
+    "input": "入力",
+    "result": "結果"
+  },
+  "attachments": {
+    "image": "画像を添付",
+    "document": "ドキュメントを添付",
+    "code": "コードを添付",
+    "removeAttachment": "添付を削除",
+    "imageTooLarge": "画像は 10MB 以下にしてください"
+  },
+  "modelPicker": {
+    "label": "モデル",
+    "noneSelected": "モデルが読み込まれていません",
+    "loadModel": "モデルを読み込む"
+  },
+  "header": {
+    "expandChatList": "チャットリストを展開",
+    "chatsLabel": "チャット",
+    "threadName": "スレッド名",
+    "selectModel": "モデルを選択",
+    "exportThread": "このスレッドをエクスポート",
+    "export": "エクスポート",
+    "modelCapabilities": "モデルの機能",
+    "ready": "準備完了",
+    "loadChatModel": "このチャットのモデルを読み込む",
+    "loading": "読み込み中...",
+    "loadModel": "モデルを読み込む"
+  },
+  "sidebar": {
+    "title": "チャット",
+    "newThread": "新規スレッド",
+    "compare": "比較",
+    "compareTooltip": "2つのモデルを並べて比較",
+    "collapseChatList": "チャットリストを折りたたむ",
+    "searchThreadsPlaceholder": "スレッドを検索...",
+    "searchThreadsAriaLabel": "スレッドを検索",
+    "clearSearch": "検索をクリア"
+  },
+  "swapMenu": {
+    "clearOverride": "オーバーライドをクリア",
+    "dialogAriaLabel": "次のターン用のモデルを選択",
+    "sendNextVia": "次は経由で送信",
+    "oneTurnNote": "オーバーライドは1ターンのみ適用されます。",
+    "noWarmModels": "他のウォームモデルがありません。マイモデルから2つ目のモデルを読み込んでクイックスワップを有効にしてください。"
+  },
+  "activeThread": {
+    "title": "アクティブスレッド",
+    "subtitle": "応答メタデータはデフォルトで折りたたまれていますが、エージェント・ターンごとに表示できます。"
+  },
+  "compare": {
+    "latest": "最新"
+  },
+  "tempChip": {
+    "label": "温度 {value}",
+    "tooltip": "温度:{value}(起動設定から)",
+    "overrideTooltip": "温度オーバーライド:{value}(デフォルト {defaultValue_})",
+    "dialogAriaLabel": "温度オーバーライド",
+    "overrideLabel": "温度をオーバーライド",
+    "reset": "リセット",
+    "hint": "低 = 焦点を絞る。高 = 創造的。起動設定からのデフォルト {value}。"
+  },
+  "thread": {
+    "copyMessageTooltip": "メッセージをコピー",
+    "retryTooltip": "応答を再試行",
+    "forkTooltip": "ここから分岐(新しいスレッドを作成)",
+    "delveTooltip": "深掘り — 批評家の目で読み直し、改訂された回答を提案",
+    "deleteMessageTooltip": "メッセージを削除",
+    "loadExactSettingsTooltip": "この応答に使用された正確なモデルとランタイム設定を読み込む",
+    "roleAgent": "エージェント",
+    "roleUser": "ユーザー",
+    "thermalThrottleTitle": "サーマルスロットリング",
+    "memoryCriticalTitle": "システムメモリが逼迫しています",
+    "memoryStats": "{available} GB 空き · 圧迫率 {pressure}%",
+    "cancel": "キャンセル",
+    "emptyState": "メッセージを送信して会話を開始します。",
+    "reloadSettings": "これらの設定を再読み込み",
+    "fitInMemory": {
+      "on": "オン",
+      "off": "オフ",
+      "unknown": "不明"
+    },
+    "variants": {
+      "heading": "応答を比較",
+      "subtitle": "同じプロンプトを別のウォームモデルにルーティングしました。"
+    },
+    "details": {
+      "summary": "モデル詳細",
+      "unknown": "不明",
+      "auto": "自動",
+      "dflashAccepted": "DFLASH 平均受理 {value}",
+      "model": "モデル",
+      "runtime": "ランタイム",
+      "cache": "キャッシュ",
+      "strategy": "戦略",
+      "cacheBits": "キャッシュビット",
+      "fp16Layers": "FP16 レイヤー",
+      "backend": "バックエンド",
+      "context": "コンテキスト",
+      "fitInMemory": "メモリに収まる",
+      "tokens": "トークン",
+      "tokensTotal": "合計 {count}",
+      "responseTime": "応答時間",
+      "decodeSpeed": "デコード速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "要求されたキャッシュ",
+      "requestedFit": "要求された適合",
+      "requestedDflashDdtree": "要求された DFlash / DDTree",
+      "runtimeStatus": "ランタイム状態",
+      "treeBudget": "ツリー予算",
+      "dflashAcceptance": "DFLASH 受理率",
+      "avgTokens": "平均 {value} トークン",
+      "draftModel": "ドラフトモデル"
+    }
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "チャレンジタイトル",
+    "promptPlaceholder": "同じ Web ページチャレンジで選択したすべてのモデルにプロンプト...",
+    "openBrowser": "デフォルトのブラウザで開く",
+    "historyPlaceholder": "過去のチャレンジを検索...",
+    "moveToTrash": "ゴミ箱に移動",
+    "moveToTrashAria": "「{title}」をゴミ箱に移動",
+    "noMatching": "一致するチャレンジはありません。",
+    "layoutToggleAria": "HTML チャレンジのレイアウト",
+    "layoutRow": "行",
+    "thisChallengeFallback": "このチャレンジ",
+    "deleteConfirm": "「{title}」を .trash フォルダに移動しますか?必要であればディスクから復元できます。",
+    "actions": {
+      "newChallenge": "新規チャレンジ",
+      "openFolder": "フォルダを開く",
+      "openSettings": "設定を開く",
+      "addModel": "モデルを追加",
+      "cancel": "キャンセル",
+      "usePromptInNewChallenge": "新規チャレンジでこのプロンプトを使用",
+      "runChallenge": "チャレンジを実行",
+      "runNewChallenge": "新しいチャレンジを実行"
+    },
+    "status": {
+      "generating": "生成中...",
+      "queuedRetry": "再試行をキューに追加...",
+      "queuedContinuation": "継続をキューに追加...",
+      "queuedRepair": "修復をキューに追加..."
+    },
+    "errors": {
+      "deleteFailed": "チャレンジの削除に失敗しました。",
+      "challengeFailed": "チャレンジが失敗しました",
+      "retryFailed": "再試行に失敗しました",
+      "repairFailed": "修復に失敗しました"
+    },
+    "modelCard": {
+      "selectAModel": "モデルを選択",
+      "thinking": "思考",
+      "thinkingOff": "オフ",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "温度",
+      "seed": "シード",
+      "seedPlaceholder": "ランダム",
+      "randomize": "ランダム化",
+      "remove": "削除",
+      "change": "変更",
+      "select": "選択"
+    },
+    "picker": {
+      "title": "モデルを選択",
+      "titleForSlot": "{slot} を選択",
+      "confirm": "モデルを使用",
+      "confirmForSlot": "{slot} に使用"
+    }
+  },
+  "samplerPanel": {
+    "label": "サンプラー",
+    "openTooltip": "サンプラーパネルを開く",
+    "activeTooltip": "{count, plural, other {# 個のサンプラーオーバーライドがアクティブ}}",
+    "dialogAriaLabel": "サンプラーオーバーライド",
+    "headerTitle": "サンプラーオーバーライド",
+    "resetAll": "すべてリセット",
+    "resetAllTooltip": "すべてバックエンドのデフォルトにリセット"
+  },
+  "kvChip": {
+    "clearOverride": "KV オーバーライドをクリア",
+    "revertTooltip": "セッションのデフォルトに戻す",
+    "dialogAriaLabel": "KV キャッシュ戦略",
+    "headingTitle": "次のターンの KV キャッシュ",
+    "reloadNote": "切り替えると必要に応じてランタイムが再読み込みされます。"
+  },
+  "citations": {
+    "sourcesLabel": "出典:",
+    "pageInfo": "(ページ {page})",
+    "chunkLabel": "チャンク {index}"
+  },
+  "modelLoading": {
+    "elapsed": "({seconds}秒)",
+    "loadingWithElapsed": "{name} を読み込み中... {seconds}秒経過"
+  },
+  "promptPhase": {
+    "processingPrompt": "プロンプトを処理中",
+    "generating": "生成中"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "スラッシュコマンド"
+  },
+  "compareView": {
+    "slot": {
+      "a": "モデル A",
+      "b": "モデル B",
+      "c": "モデル C",
+      "d": "モデル D"
+    },
+    "selectModel": "モデルを選択",
+    "removeSlotTitle": "{slot} を削除",
+    "remove": "削除",
+    "change": "変更",
+    "select": "選択",
+    "backToChat": "チャットに戻る",
+    "title": "モデル比較",
+    "subtitle": "2-4 個のモデルをキューに入れます。各スロットは排他的に読み込まれ、実行され、次のスロットが始まる前にアンロードされます。",
+    "addModel": "モデルを追加",
+    "queued": "{count}/4 キュー中",
+    "duplicateNote": "複数のスロットで同じモデルが選択されています。ランタイムプロファイル A/B テストに便利です。",
+    "promptPlaceholder": "比較するプロンプトを入力...",
+    "cancel": "キャンセル",
+    "compareButton": "比較"
+  }
+}

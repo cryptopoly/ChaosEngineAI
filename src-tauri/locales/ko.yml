@@ -1,0 +1,43 @@
+menu:
+  file: "파일"
+  edit: "편집"
+  view: "보기"
+  window: "윈도우"
+  help: "도움말"
+  quit: "ChaosEngineAI 종료"
+  preferences: "환경설정…"
+  about: "ChaosEngineAI 정보"
+  checkForUpdates: "업데이트 확인…"
+  reload: "새로 고침"
+  toggleDevTools: "개발자 도구 전환"
+  toggleFullScreen: "전체 화면 전환"
+  minimize: "최소화"
+  zoom: "줌"
+  bringAllToFront: "모두 앞으로 가져오기"
+  hideOthers: "다른 항목 숨기기"
+  showAll: "모두 표시"
+  hide: "ChaosEngineAI 숨기기"
+
+tray:
+  show: "ChaosEngineAI 표시"
+  hide: "ChaosEngineAI 숨기기"
+  quit: "종료"
+  status:
+    idle: "유휴"
+    loading: "모델 로드 중…"
+    busy: "생성 중…"
+
+updater:
+  available: "ChaosEngineAI의 새 버전이 있습니다."
+  download: "다운로드"
+  later: "나중에"
+  installing: "업데이트 설치 중…"
+  restartRequired: "업데이트를 적용하려면 다시 시작하세요."
+
+dialog:
+  ok: "확인"
+  cancel: "취소"
+  save: "저장"
+  open: "열기"
+  yes: "예"
+  no: "아니요"

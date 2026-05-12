@@ -121,11 +121,17 @@ export async function convertModel(payload: ConvertModelPayload): Promise<Conver
   return await postJson<ConvertModelResponse>("/api/models/convert", payload, null);
 }
 
-export async function runBenchmark(payload: BenchmarkRunPayload): Promise<BenchmarkRunResponse> {
+export async function runBenchmark(
+  payload: BenchmarkRunPayload,
+  options?: { signal?: AbortSignal },
+): Promise<BenchmarkRunResponse> {
   // No client-side timeout — a benchmark on a cold 70B model legitimately
   // takes >120s (cold load + prompt processing + N-token generation +
   // measurement). The backend has its own per-phase ceilings.
-  return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null);
+  // `options.signal` enables the Cancel button on the running-benchmark
+  // modal to abort the in-flight request without waiting for the backend
+  // to finish.
+  return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null, options?.signal);
 }
 
 export async function revealModelPath(path: string): Promise<void> {

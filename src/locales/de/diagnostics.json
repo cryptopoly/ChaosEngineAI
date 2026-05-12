@@ -1,0 +1,48 @@
+{
+  "title": "Diagnose",
+  "subtitle": "Laufzeitstatus, GPU-Zustand und Logs einsehen",
+  "subtitleSnapshot": "System-Snapshot zur Fehlersuche. Beim Auftreten von Problemen das Markdown kopieren und mit dem Support teilen.",
+  "sections": {
+    "snapshot": "System-Snapshot",
+    "gpu": "GPU",
+    "memory": "Arbeitsspeicher",
+    "runtime": "Laufzeit",
+    "binaries": "Binärdateien",
+    "extras": "Extras",
+    "logs": "Logs",
+    "locales": "Sprachen"
+  },
+  "fields": {
+    "platform": "Plattform",
+    "architecture": "Architektur",
+    "kernel": "Kernel",
+    "appVersion": "App-Version",
+    "tauriVersion": "Tauri-Version",
+    "pythonVersion": "Python-Version",
+    "totalRAM": "Gesamt-RAM",
+    "availableRAM": "Verfügbarer RAM",
+    "totalVRAM": "Gesamt-VRAM",
+    "freeVRAM": "Freier VRAM",
+    "diskFree": "Freier Speicherplatz"
+  },
+  "logs": {
+    "tail": "Ende",
+    "follow": "Folgen",
+    "pauseFollow": "Folgen anhalten",
+    "clear": "Leeren",
+    "download": "Log herunterladen",
+    "lines": "{count, plural, one {# Zeile} other {# Zeilen}}",
+    "filterPlaceholder": "Filtern…"
+  },
+  "actions": {
+    "copySnapshot": "Snapshot kopieren",
+    "downloadSnapshot": "Snapshot herunterladen",
+    "openLogFolder": "Log-Ordner öffnen"
+  },
+  "logsTab": {
+    "title": "Logs",
+    "subtitle": "Durchsuchbare Ansicht über Sidecar-, Laufzeit- und Server-Kanäle.",
+    "filterPlaceholder": "Logs filtern",
+    "emptyFiltered": "Keine Logzeilen entsprechen dem aktuellen Filter."
+  }
+}

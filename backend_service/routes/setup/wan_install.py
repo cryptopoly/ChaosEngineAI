@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+
+from backend_service.i18n import localized_detail
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -204,9 +206,10 @@ def start_install_mlx_video_wan(
     if not mlx_video_wan_installer.is_supported_raw_repo(body.repo):
         raise HTTPException(
             status_code=400,
-            detail=(
+            detail=localized_detail(
+                request,
                 f"Unsupported Wan repo {body.repo!r}. Supported: "
-                f"{sorted(mlx_video_wan_installer.SUPPORTED_RAW_REPOS)}"
+                f"{sorted(mlx_video_wan_installer.SUPPORTED_RAW_REPOS)}",
             ),
         )
 

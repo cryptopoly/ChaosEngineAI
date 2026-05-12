@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { GenerationMetrics } from "../types";
 
 /**
@@ -50,6 +51,7 @@ export function computeSpanStats(
 }
 
 export function AcceptedTokenOverlay({ metrics }: AcceptedTokenOverlayProps) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const spans = metrics.acceptedSpans;
   const text = metrics.acceptedTokenText;
@@ -63,23 +65,32 @@ export function AcceptedTokenOverlay({ metrics }: AcceptedTokenOverlayProps) {
       onToggle={(event) => setOpen((event.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="accepted-overlay__head">
-        <span>DDTree acceptance overlay</span>
+        <span>{t("acceptedTokenOverlay.title", { defaultValue: "DDTree acceptance overlay" })}</span>
         <small>
-          {(stats.acceptedRatio * 100).toFixed(1)}% of {stats.totalChars} chars
-          accepted from draft · {stats.spanCount} runs
+          {t("acceptedTokenOverlay.stats", {
+            defaultValue: "{percent}% of {totalChars} chars accepted from draft · {spanCount} runs",
+            percent: (stats.acceptedRatio * 100).toFixed(1),
+            totalChars: stats.totalChars,
+            spanCount: stats.spanCount,
+          })}
         </small>
       </summary>
       <p className="accepted-overlay__hint">
-        Green ranges = tokens the verifier accepted from the draft model
-        without re-decoding. Plain ranges = tokens the verifier produced
-        directly. Higher acceptance means DDTree saved more compute.
+        {t("acceptedTokenOverlay.hint", {
+          defaultValue:
+            "Green ranges = tokens the verifier accepted from the draft model without re-decoding. Plain ranges = tokens the verifier produced directly. Higher acceptance means DDTree saved more compute.",
+        })}
       </p>
       <pre className="accepted-overlay__text">
         {spans.map((span, idx) => (
           <span
             key={`${span.start}-${idx}`}
             className={`accepted-overlay__span${span.accepted ? " accepted-overlay__span--accepted" : ""}`}
-            title={span.accepted ? "Accepted from draft" : "Verifier-decoded"}
+            title={
+              span.accepted
+                ? t("acceptedTokenOverlay.spanAcceptedTitle", { defaultValue: "Accepted from draft" })
+                : t("acceptedTokenOverlay.spanVerifierTitle", { defaultValue: "Verifier-decoded" })
+            }
           >
             {text.slice(span.start, span.start + span.length)}
           </span>

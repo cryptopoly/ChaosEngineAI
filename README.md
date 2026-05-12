@@ -32,7 +32,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 - **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images and video.
 - **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation, plus diffusion DiT video models (Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, Mochi) via diffusers, mlx-video on Apple Silicon, and stable-diffusion.cpp scaffolding for cross-platform.
-- **Pluggable cache compression.** Native f16 cache out of the box, with five KV cache compression strategies — [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
+- **Pluggable cache compression.** Native f16 cache out of the box, with KV cache compression strategies — [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
 - **Speculative decoding.** DFlash and DDTree accelerate generation by 3-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates.
 - **Hybrid local + remote workflows.** Scan multiple local model directories, convert Hugging Face checkpoints to MLX, or point the app at remote OpenAI-compatible providers when you want a cloud fallback.
 - **Per-chat runtime profiles.** Each chat session remembers the exact model, cache strategy, quantization bits, context length, and speculative decoding settings used — switch between configurations without losing track.
@@ -112,7 +112,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - Optional thinking mode with collapsible reasoning traces and cleanup of raw reasoning tokens
 - Logprobs visualization (advanced-mode gated): per-message confidence summary, MLX logprobs streaming passthrough
 - Substrate routing inspector + per-turn host strip surface engine, binary, CPU / GPU / RAM / temperature alongside tok/s and TTFT
-- KV strategy chip in composer for per-turn cache override (native / chaosengine / rotorquant / turboquant / triattention) without touching launch settings
+- KV strategy chip in composer for per-turn cache override (native / turboquant / triattention) without touching launch settings
 - Delve mode — critic-pass on assistant messages
 - Tool-augmented conversations with `web_search`, `calculator`, `code_executor`, `file_reader`, plus stdio MCP client (JSON-RPC) so any local MCP server is callable from chat. Tool results render as table / code / markdown / image based on the returned shape.
 - Side-by-side compare mode that streams the same prompt through two models with independent runtime settings and metrics
@@ -133,7 +133,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 ### Performance, evaluation & extensibility
 
 - DFlash and DDTree speculative decoding with auto-resolved draft models and graceful fallback
-- Five LLM cache strategies: native f16, RotorQuant, TriAttention, TurboQuant, and ChaosEngine
+- LLM cache strategies: native f16, TriAttention, TurboQuant
 - TeaCache diffusion cache for five DiT families (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) with `rel_l1_thresh` quality knob
 - Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
 - Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
@@ -330,7 +330,7 @@ ChaosEngineAI is three cooperating layers:
 - **`src-tauri/`** — Tauri 2 Rust shell + bundled runtime.
 - **`backend_service/`** — Python service that owns model lifecycle, the warm pool, the OpenAI-compatible API, the benchmark runner, and speculative decoding (DFlash + DDTree).
 - **`backend_service/routes/`** — FastAPI routes for chat, prompts, compare mode, benchmarks, plugins, images, server controls, and settings.
-- **`cache_compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [RotorQuant](https://github.com/scrya-com/rotorquant), [TriAttention](https://github.com/WeianMao/triattention), [TurboQuant](https://pypi.org/project/turboquant-mlx/), and [ChaosEngine](https://github.com/cryptopoly/ChaosEngine).
+- **`cache_compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/).
 - **`dflash/`** — DFlash speculative decoding integration: draft model registry, fuzzy matching for quantized variants, MLX and vLLM backend detection.
 
 ---
@@ -342,13 +342,14 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 | Backend | Install | Bits | Platforms | Description |
 |---|---|---|---|---|
 | **Native f16** | Built-in | — | All | Full-precision KV cache. Maximum quality, no compression. |
-| **[RotorQuant](https://github.com/scrya-com/rotorquant)** | `./.venv/bin/python3 -m pip install turboquant` | 3-4 | CUDA, Metal (via llama.cpp fork) | IsoQuant (4D quaternion) and PlanarQuant (2D Givens) rotation-based cache compression. |
 | **[TriAttention](https://github.com/WeianMao/triattention)** | `./.venv/bin/python3 -m pip install triattention vllm` | 1-4 | Linux + CUDA only (via vLLM) | Transparent KV cache compression integrated into vLLM's scheduler. Not supported on macOS. |
-| **[TurboQuant](https://pypi.org/project/turboquant-mlx/)** | `./.venv/bin/python3 -m pip install turboquant-mlx` | 1-4 | Apple Silicon (MLX), llama.cpp | Experimental. The current PyPI package does not yet expose the MLX adapter hooks ChaosEngineAI expects, so this option may remain disabled in the current build. |
-| **[ChaosEngine](https://github.com/cryptopoly/ChaosEngine)** | `Bundled automatically in desktop builds when vendor/ChaosEngine is present; otherwise ./.venv/bin/python3 -m pip install -e /path/to/ChaosEngine` | 2-8 | PyTorch + llama.cpp or vLLM | PCA-based decorrelation, channel truncation, and hybrid quantization. Not published on PyPI. |
+| **[TurboQuant](https://pypi.org/project/turboquant-mlx-full/)** | `./.venv/bin/python3 -m pip install turboquant-mlx-full` (Apple Silicon) or `scripts/build-llama-turbo.sh` (CUDA / Metal via llama.cpp fork) | 1-4 (MLX) / turbo2/3/4 (llama.cpp) | Apple Silicon (MLX), CUDA + Metal (llama.cpp fork) | Hadamard / Walsh-Hadamard rotation-based KV cache compression. The MLX path uses `turboquant-mlx-full` for native MLX caches; the llama.cpp path uses the forked `llama-server-turbo` binary built by `scripts/build-llama-turbo.sh`. |
 | **[TeaCache](https://github.com/ali-vilab/TeaCache)** | Built-in (vendored `teacache_forward` patches under `cache_compression/_teacache_patches/`) | n/a (rel_l1_thresh) | Diffusion DiT (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Diffusion-side cache that skips redundant forward passes between adjacent timesteps. Default `rel_l1_thresh=0.4`. |
+| **[FBCache](https://github.com/huggingface/diffusers)** | Built-in (diffusers 0.36+ `apply_first_block_cache` hook) | n/a (threshold) | Diffusion DiT (FLUX, SD3.5, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Model-agnostic first-block cache for DiTs. Default threshold 0.12. |
 
-Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only, the current PyPI `turboquant-mlx` package may still leave TurboQuant disabled in the current build, and ChaosEngine can now be bundled directly into desktop builds by checking out `vendor/ChaosEngine` (or setting `CHAOSENGINE_VENDOR_PATH`) before `npm run stage:runtime`. Source/dev installs can still use the local editable install from GitHub.
+Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only. The TurboQuant MLX path needs `turboquant-mlx-full` from PyPI; the TurboQuant llama.cpp path needs the forked `llama-server-turbo` binary built locally via `scripts/build-llama-turbo.sh`.
+
+> **Removed in FU-030.** ChaosEngine (PCA-based; cryptopoly/ChaosEngine) and RotorQuant (IsoQuant / PlanarQuant rotation) were dropped from the strategy registry. ChaosEngine was eclipsed by KVTC at ICLR 2026 (same PCA approach but 8–32× compression vs 3.7×) and RotorQuant only ever aliased the TurboQuant llama.cpp fork. Persisted user configs that still reference `chaosengine` or `rotorquant` now coerce silently to `turboquant` via `CacheStrategyRegistry.resolve_legacy_id`.
 
 LLM cache strategies are filtered out of the diffusion picker via the `appliesTo` domain field — TeaCache only appears on diffusion models, and the LLM-side strategies only appear in chat. The system is designed so new compression methods can be added as single-file adapters in `cache_compression/` without touching any other code.
 
@@ -438,7 +439,6 @@ ChaosEngineAI/
 ├── backend_service/      Python backend (engine adapters + HTTP server)
 ├── cache_compression/    Pluggable cache/compression strategy adapters
 ├── dflash/               DFlash/DDTree speculative decoding integration
-├── vendor/ChaosEngine/   ChaosEngine compression (git submodule)
 ├── tests/                Backend integration tests
 ├── Screenshots/          UI screenshots used by this README
 ├── docs/                 Tour GIF + supporting docs

@@ -1,4 +1,5 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch } from "../../api";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
@@ -103,6 +104,7 @@ export function HtmlChallengeTab({
   onRevealPath,
   onOpenFilePath,
 }: HtmlChallengeTabProps) {
+  const { t } = useTranslation("chat");
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [slots, setSlots] = useState<ChallengeSlot[]>(() => [
@@ -489,15 +491,24 @@ export function HtmlChallengeTab({
     const display = label
       || (manifest?.id === challengeId ? displayChallengeTitle(manifest) : "")
       || (selectedChallenge?.id === challengeId ? displayChallengeTitle(selectedChallenge) : "")
-      || (challenges.find((c) => c.id === challengeId) ? displayChallengeTitle(challenges.find((c) => c.id === challengeId)!) : "this challenge");
-    const confirmed = window.confirm(`Move "${display}" to the .trash folder? You can restore it from disk if needed.`);
+      || (challenges.find((c) => c.id === challengeId)
+        ? displayChallengeTitle(challenges.find((c) => c.id === challengeId)!)
+        : t("htmlChallenge.thisChallengeFallback", { defaultValue: "this challenge" }));
+    const confirmed = window.confirm(t("htmlChallenge.deleteConfirm", {
+      defaultValue: "Move \"{title}\" to the .trash folder? You can restore it from disk if needed.",
+      title: display,
+    }));
     if (!confirmed) return;
     const result = await deleteChallenge(challengeId);
     if (!result.ok) {
       const firstSlot = slots[0]?.id ?? "a";
       setSlotStates((current) => ({
         ...current,
-        [firstSlot]: { ...current[firstSlot], error: result.error ?? "Delete challenge failed.", done: true },
+        [firstSlot]: {
+          ...current[firstSlot],
+          error: result.error ?? t("htmlChallenge.errors.deleteFailed", { defaultValue: "Delete challenge failed." }),
+          done: true,
+        },
       }));
       return;
     }
@@ -612,7 +623,7 @@ export function HtmlChallengeTab({
         next = {
           ...next,
           loading: false,
-          loadingMessage: "Generating...",
+          loadingMessage: t("htmlChallenge.status.generating", { defaultValue: "Generating..." }),
           loadSeconds: event.loadSeconds ?? next.loadSeconds,
           metrics: mergeMetrics(next.metrics, event),
         };
@@ -695,7 +706,10 @@ export function HtmlChallengeTab({
         const firstSlot = slots[0]?.id ?? "a";
         setSlotStates((current) => ({
           ...current,
-          [firstSlot]: { ...current[firstSlot], error: detail?.detail ?? "Challenge failed" },
+          [firstSlot]: {
+            ...current[firstSlot],
+            error: detail?.detail ?? t("htmlChallenge.errors.challengeFailed", { defaultValue: "Challenge failed" }),
+          },
         }));
         setBusy(false);
         return;
@@ -727,7 +741,7 @@ export function HtmlChallengeTab({
       [slot.id]: {
         ...emptySlotState(),
         loading: true,
-        loadingMessage: "Queued retry...",
+        loadingMessage: t("htmlChallenge.status.queuedRetry", { defaultValue: "Queued retry..." }),
       },
     }));
 
@@ -751,7 +765,7 @@ export function HtmlChallengeTab({
           ...current,
           [slot.id]: {
             ...current[slot.id],
-            error: detail?.detail ?? "Retry failed",
+            error: detail?.detail ?? t("htmlChallenge.errors.retryFailed", { defaultValue: "Retry failed" }),
             done: true,
             loading: false,
           },
@@ -789,7 +803,9 @@ export function HtmlChallengeTab({
       [slot.id]: {
         ...emptySlotState(),
         loading: true,
-        loadingMessage: mode === "continue" ? "Queued continuation..." : "Queued repair...",
+        loadingMessage: mode === "continue"
+          ? t("htmlChallenge.status.queuedContinuation", { defaultValue: "Queued continuation..." })
+          : t("htmlChallenge.status.queuedRepair", { defaultValue: "Queued repair..." }),
       },
     }));
 
@@ -814,7 +830,7 @@ export function HtmlChallengeTab({
           ...current,
           [slot.id]: {
             ...current[slot.id],
-            error: detail?.detail ?? "Repair failed",
+            error: detail?.detail ?? t("htmlChallenge.errors.repairFailed", { defaultValue: "Repair failed" }),
             done: true,
             loading: false,
           },
@@ -983,7 +999,7 @@ export function HtmlChallengeTab({
                   disabled={busy || (!manifest && !selectedChallengeId)}
                   onClick={newChallenge}
                 >
-                  New Challenge
+                  {t("htmlChallenge.actions.newChallenge", { defaultValue: "New Challenge" })}
                 </button>
                 <ChallengeHistoryCombobox
                   challenges={challenges}
@@ -1000,13 +1016,13 @@ export function HtmlChallengeTab({
               </div>
             ) : null}
             <div className="html-challenge-setup-actions-spacer" />
-            <div className="html-challenge-layout-toggle" aria-label="HTML challenge layout">
+            <div className="html-challenge-layout-toggle" aria-label={t("htmlChallenge.layoutToggleAria", { defaultValue: "HTML challenge layout" })}>
               <button
                 className={layoutMode === "row" ? "active" : ""}
                 type="button"
                 onClick={() => setLayoutMode("row")}
               >
-                Row
+                {t("htmlChallenge.layoutRow", { defaultValue: "Row" })}
               </button>
               <button
                 className={layoutMode === "stacked" ? "active" : ""}
@@ -1022,7 +1038,7 @@ export function HtmlChallengeTab({
                 type="button"
                 onClick={() => onRevealPath(manifest.folderPath)}
               >
-                Open Folder
+                {t("htmlChallenge.actions.openFolder", { defaultValue: "Open Folder" })}
               </button>
             ) : null}
             {manifest?.settingsPath ? (
@@ -1031,23 +1047,25 @@ export function HtmlChallengeTab({
                 type="button"
                 onClick={() => onOpenFilePath(manifest.settingsPath!)}
               >
-                Open Settings
+                {t("htmlChallenge.actions.openSettings", { defaultValue: "Open Settings" })}
               </button>
             ) : null}
             {!completedChallenge ? (
               <button className="secondary-button" type="button" onClick={addSlot} disabled={busy || slots.length >= 4}>
-                Add model
+                {t("htmlChallenge.actions.addModel", { defaultValue: "Add model" })}
               </button>
             ) : null}
             {busy ? (
-              <button className="secondary-button" type="button" onClick={cancelChallenge}>Cancel</button>
+              <button className="secondary-button" type="button" onClick={cancelChallenge}>
+                {t("htmlChallenge.actions.cancel", { defaultValue: "Cancel" })}
+              </button>
             ) : completedValidChallenge ? (
               <button
                 className="primary-button"
                 type="button"
                 onClick={usePromptInNewChallenge}
               >
-                Use Prompt in New Challenge
+                {t("htmlChallenge.actions.usePromptInNewChallenge", { defaultValue: "Use Prompt in New Challenge" })}
               </button>
             ) : (
               <button
@@ -1056,7 +1074,9 @@ export function HtmlChallengeTab({
                 onClick={() => void runChallenge()}
                 disabled={!title.trim() || !prompt.trim() || !allSelected}
               >
-                {manifest ? "Run New Challenge" : "Run Challenge"}
+                {manifest
+                  ? t("htmlChallenge.actions.runNewChallenge", { defaultValue: "Run New Challenge" })
+                  : t("htmlChallenge.actions.runChallenge", { defaultValue: "Run Challenge" })}
               </button>
             )}
           </div>
@@ -1066,14 +1086,14 @@ export function HtmlChallengeTab({
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Challenge title"
+              placeholder={t("htmlChallenge.titlePlaceholder", { defaultValue: "Challenge title" })}
               disabled={busy}
             />
             <textarea
               className="text-input html-challenge-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Prompt all selected models with the same webpage challenge..."
+              placeholder={t("htmlChallenge.promptPlaceholder", { defaultValue: "Prompt all selected models with the same webpage challenge..." })}
               disabled={busy}
             />
           </div>

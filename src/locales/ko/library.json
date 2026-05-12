@@ -1,0 +1,592 @@
+{
+  "title": "라이브러리",
+  "search": "모델 검색…",
+  "filter": {
+    "all": "전체",
+    "text": "텍스트",
+    "image": "이미지",
+    "video": "비디오",
+    "vision": "비전",
+    "audio": "오디오",
+    "installed": "설치됨",
+    "uninstalled": "설치되지 않음",
+    "favourites": "즐겨찾기"
+  },
+  "card": {
+    "size": "크기",
+    "quantization": "양자화",
+    "context": "컨텍스트",
+    "capabilities": "기능",
+    "license": "라이선스",
+    "author": "작성자",
+    "lastUpdated": "마지막 업데이트"
+  },
+  "download": {
+    "start": "다운로드",
+    "inProgress": "다운로드 중…",
+    "paused": "일시 중지됨",
+    "resumed": "재개됨",
+    "cancelled": "취소됨",
+    "complete": "완료",
+    "totalSize": "총 {size}",
+    "downloaded": "{total} 중 {downloaded}"
+  },
+  "details": {
+    "loadModel": "모델 로드",
+    "unloadModel": "모델 언로드",
+    "viewOnHF": "Hugging Face에서 보기",
+    "deleteFromDisk": "디스크에서 삭제"
+  },
+  "myModels": {
+    "subtitle": "모델 {count}개 / 디스크 {size} / 디렉터리 {dirs}개",
+    "searchPlaceholder": "이름, 경로, 형식, 양자화 또는 백엔드로 필터링...",
+    "empty": "모델을 찾을 수 없습니다. 로컬 모델을 스캔하려면 환경설정에서 디렉터리를 추가하세요.",
+    "filter": {
+      "all": "전체",
+      "allFormats": "모든 형식",
+      "allBackends": "모든 백엔드",
+      "allStrategies": "모든 전략"
+    },
+    "capability": {
+      "title": {
+        "agents": "에이전트 워크플로우",
+        "chat": "일반 채팅",
+        "coding": "코딩 지원",
+        "multilingual": "다국어 지원",
+        "reasoning": "추론 중심",
+        "thinking": "사고 / 신중한 추론",
+        "tool-use": "도구 사용 / 함수 호출",
+        "video": "비디오 이해",
+        "vision": "이미지 / 비전 지원"
+      },
+      "short": {
+        "agents": "에이전트",
+        "chat": "채팅",
+        "coding": "코드",
+        "multilingual": "다국어",
+        "reasoning": "추론",
+        "thinking": "사고",
+        "tool-use": "도구",
+        "video": "비디오",
+        "vision": "비전"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "{label}와 호환되는 모델 표시 ({count})",
+      "dflashEmptyTooltip": "DFlash 추측 디코드 드래프트는 특정 베이스 모델에만 존재합니다: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. 파인 튜닝 모델은 일반적으로 일치하지 않습니다. DFlash를 활성화하려면 둘러보기에서 베이스 모델을 다운로드하세요."
+    },
+    "column": {
+      "model": "모델",
+      "format": "형식",
+      "quant": "양자화",
+      "backend": "백엔드",
+      "size": "크기",
+      "ram": "RAM",
+      "compressed": "압축됨",
+      "context": "컨텍스트",
+      "status": "상태"
+    },
+    "status": {
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "failed": "실패",
+      "incomplete": "불완전",
+      "incompleteReason": "불완전 또는 손상",
+      "installed": "설치됨"
+    },
+    "badge": {
+      "activeDownload": "활성 다운로드",
+      "broken": "손상"
+    },
+    "tooltip": {
+      "ram": "8K 컨텍스트에서 대략적인 상주 메모리 (가중치 + KV + 프레임워크)",
+      "compressed": "압축된 KV cache 전략을 사용한 대략적인 상주 메모리"
+    },
+    "download": {
+      "failed": "다운로드 실패.",
+      "failedShort": "다운로드 실패",
+      "paused": "다운로드 일시 중지됨.",
+      "inProgress": "다운로드 진행 중.",
+      "downloadedDetail": "{size} 다운로드됨."
+    },
+    "action": {
+      "pauseDownload": "다운로드 일시 중지",
+      "retryDownload": "다운로드 재시도",
+      "resumeDownload": "다운로드 재개",
+      "cancelDownload": "다운로드 취소",
+      "deleteDownload": "다운로드 삭제",
+      "chatWithModel": "모델로 채팅",
+      "loadForServer": "서버용으로 로드",
+      "deleteModel": "모델 삭제"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "모델 패밀리 {count}개 / 로컬에 {downloaded}개 다운로드됨",
+    "searchPlaceholder": "이름, 공급자 또는 기능으로 검색...",
+    "variantCount": "{count, plural, other {변형 #개}}",
+    "filter": {
+      "all": "전체",
+      "allFormats": "모든 형식"
+    },
+    "capability": {
+      "title": {
+        "agents": "에이전트 워크플로우",
+        "chat": "일반 채팅",
+        "coding": "코딩 지원",
+        "multilingual": "다국어 지원",
+        "reasoning": "추론 중심",
+        "thinking": "사고 / 신중한 추론",
+        "tool-use": "도구 사용 / 함수 호출",
+        "video": "비디오 이해",
+        "vision": "이미지 / 비전 지원"
+      },
+      "short": {
+        "agents": "에이전트",
+        "chat": "채팅",
+        "coding": "코드",
+        "multilingual": "다국어",
+        "reasoning": "추론",
+        "thinking": "사고",
+        "tool-use": "도구",
+        "video": "비디오",
+        "vision": "비전"
+      }
+    },
+    "section": {
+      "curatedAria": "큐레이션된 모델 패밀리"
+    },
+    "status": {
+      "countInstalled": "{count}개 설치됨",
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "downloadFailed": "다운로드 실패",
+      "installed": "설치됨",
+      "downloadComplete": "다운로드 완료",
+      "failed": "실패",
+      "notInstalled": "설치되지 않음"
+    },
+    "column": {
+      "variant": "변형",
+      "format": "형식",
+      "backend": "백엔드",
+      "params": "파라미터",
+      "size": "크기",
+      "ram": "RAM",
+      "compressed": "압축됨",
+      "context": "컨텍스트",
+      "status": "상태"
+    },
+    "memory": {
+      "comfortable": "{available} GB 사용 가능 — 여유롭게 적합",
+      "tight": "{available} GB 사용 가능에 빠듯하게 적합 — 로드 전 다른 앱을 닫으세요",
+      "over": "예상 {estimated} GB가 사용 가능한 {available} GB를 초과합니다 — 더 작은 양자화를 시도하세요",
+      "comfortableLabel": "적합",
+      "tightLabel": "빠듯함",
+      "overLabel": "너무 큼"
+    },
+    "action": {
+      "details": "세부 정보",
+      "detailsTooltip": "집중된 화면에서 전체 세부 정보 표시",
+      "convertModel": "모델 변환",
+      "chatWithModel": "모델로 채팅",
+      "loadForServer": "서버용으로 로드",
+      "pauseDownload": "다운로드 일시 중지",
+      "cancelDownload": "다운로드 취소",
+      "resumeDownload": "다운로드 재개",
+      "deleteDownload": "다운로드 삭제",
+      "retryDownload": "다운로드 재시도",
+      "downloadModel": "모델 다운로드",
+      "openModelCardHF": "Hugging Face에서 모델 카드 열기",
+      "openOnHF": "Hugging Face에서 열기"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub 결과",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, other {huggingface.co의 라이브 결과 #개}}, 가장 최근 업데이트 순으로 정렬됨",
+      "loading": "Hugging Face에서 파일 목록 로딩 중...",
+      "previewUnavailable": "미리보기 사용 불가",
+      "licenseLabel": "라이선스: {license}",
+      "totalGb": "총 {size} GB",
+      "updatedDate": "{date} 업데이트됨",
+      "moreTags": "+{count}개 추가",
+      "filePreviewUnavailable": "현재 이 repo의 파일 미리보기를 사용할 수 없습니다.",
+      "weightsHeader": "가중치 ({count})",
+      "largestShard": "최대 샤드 {size}",
+      "showFiles": "파일 표시",
+      "visionTag": "비전",
+      "configAndTokenizer": "구성 및 토크나이저",
+      "otherFiles": "+{count, plural, other {기타 파일 #개}}"
+    },
+    "searchError": {
+      "fallback": "마지막 성공한 둘러보기 결과를 표시합니다."
+    },
+    "empty": {
+      "capFilter": "\"{cap}\" 필터와 일치하는 모델이 없습니다.",
+      "search": "\"{query}\"와 일치하는 모델이 없습니다. 다른 검색어를 시도해 보세요.",
+      "prompt": "모델을 검색하려면 입력하세요."
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {모델 #개}} 중 로컬 데이터가 있는 {rows}개",
+      "none": "로컬에 감지된 이미지 모델이 아직 없습니다"
+    },
+    "empty": {
+      "noModels": "시작하려면 이미지 둘러보기에서 이미지 모델을 다운로드하세요.",
+      "noMatches": "현재 필터와 일치하는 설치된 이미지 모델이 없습니다."
+    },
+    "action": {
+      "browseCatalog": "카탈로그 둘러보기",
+      "clearFilters": "필터 지우기",
+      "generate": "생성",
+      "pauseDownload": "다운로드 일시 중지",
+      "retryDownload": "다운로드 재시도",
+      "resumeDownload": "다운로드 재개",
+      "downloadModel": "모델 다운로드",
+      "cancelDownload": "다운로드 취소",
+      "deleteModel": "모델 삭제",
+      "openModelCard": "모델 카드 열기"
+    },
+    "filter": {
+      "searchLabel": "검색",
+      "searchPlaceholder": "모델, 공급자, repo, 태스크 또는 태그로 필터링...",
+      "taskLabel": "태스크",
+      "statusLabel": "상태",
+      "sortByLabel": "정렬 기준",
+      "task": {
+        "all": "모든 태스크",
+        "txt2img": "텍스트에서 이미지",
+        "img2img": "이미지에서 이미지",
+        "inpaint": "인페인트"
+      },
+      "status": {
+        "all": "모든 상태",
+        "installed": "설치됨",
+        "incomplete": "불완전",
+        "downloading": "다운로드 중",
+        "paused": "일시 중지됨",
+        "failed": "실패"
+      }
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "공급자",
+      "tasks": "태스크",
+      "newestReleased": "최신 출시",
+      "largestSize": "가장 큰 크기",
+      "highestRamVram": "가장 높은 RAM/VRAM",
+      "status": "상태",
+      "direction": {
+        "ascending": "오름차순",
+        "descending": "내림차순"
+      },
+      "providerDir": "공급자 {direction}",
+      "tasksDir": "태스크 {direction}",
+      "statusDir": "상태 {direction}",
+      "largestFirst": "가장 큰 크기부터",
+      "smallestFirst": "가장 작은 크기부터",
+      "highestRam": "가장 높은 RAM/VRAM부터",
+      "lowestRam": "가장 낮은 RAM/VRAM부터",
+      "nameAsc": "이름 가-하",
+      "nameDesc": "이름 하-가",
+      "newestFirst": "최신 출시부터",
+      "oldestFirst": "오래된 출시부터"
+    },
+    "summary": {
+      "results": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchChip": "검색: {query}",
+      "taskChip": "태스크: {value}",
+      "statusChip": "상태: {value}"
+    },
+    "column": {
+      "model": "모델",
+      "provider": "공급자",
+      "tasks": "태스크",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "status": {
+      "installed": "설치됨",
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "failed": "실패",
+      "downloadFailed": "다운로드 실패",
+      "incomplete": "불완전"
+    },
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 때까지 RAM/VRAM 추정이 대기 중입니다."
+    },
+    "releaseUnknown": "알 수 없음"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {모델 #개}} 중 로컬 데이터가 있는 {rows}개",
+      "none": "로컬에 감지된 비디오 모델이 아직 없습니다"
+    },
+    "empty": {
+      "noModels": "시작하려면 비디오 둘러보기에서 비디오 모델을 다운로드하세요.",
+      "noMatches": "현재 필터와 일치하는 설치된 비디오 모델이 없습니다."
+    },
+    "action": {
+      "browseCatalog": "카탈로그 둘러보기",
+      "clearFilters": "필터 지우기",
+      "generate": "생성",
+      "pauseDownload": "다운로드 일시 중지",
+      "retryDownload": "다운로드 재시도",
+      "resumeDownload": "다운로드 재개",
+      "downloadModel": "모델 다운로드",
+      "cancelDownload": "다운로드 취소",
+      "deleteModel": "모델 삭제",
+      "openModelCard": "모델 카드 열기"
+    },
+    "filter": {
+      "searchLabel": "검색",
+      "searchPlaceholder": "모델, 공급자, repo, 태스크 또는 태그로 필터링...",
+      "taskLabel": "태스크",
+      "statusLabel": "상태",
+      "sortByLabel": "정렬 기준",
+      "task": {
+        "all": "모든 태스크",
+        "txt2video": "텍스트에서 비디오",
+        "img2video": "이미지에서 비디오",
+        "video2video": "비디오에서 비디오"
+      },
+      "status": {
+        "all": "모든 상태",
+        "loaded": "메모리에 로드됨",
+        "installed": "설치됨",
+        "incomplete": "불완전",
+        "downloading": "다운로드 중",
+        "paused": "일시 중지됨",
+        "failed": "실패"
+      }
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "공급자",
+      "tasks": "태스크",
+      "newestReleased": "최신 출시",
+      "largestSize": "가장 큰 크기",
+      "highestRamVram": "가장 높은 RAM/VRAM",
+      "status": "상태",
+      "direction": {
+        "ascending": "오름차순",
+        "descending": "내림차순"
+      },
+      "providerDir": "공급자 {direction}",
+      "tasksDir": "태스크 {direction}",
+      "statusDir": "상태 {direction}",
+      "largestFirst": "가장 큰 크기부터",
+      "smallestFirst": "가장 작은 크기부터",
+      "highestRam": "가장 높은 RAM/VRAM부터",
+      "lowestRam": "가장 낮은 RAM/VRAM부터",
+      "nameAsc": "이름 가-하",
+      "nameDesc": "이름 하-가",
+      "newestFirst": "최신 출시부터",
+      "oldestFirst": "오래된 출시부터"
+    },
+    "summary": {
+      "results": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchChip": "검색: {query}",
+      "taskChip": "태스크: {value}",
+      "statusChip": "상태: {value}"
+    },
+    "column": {
+      "model": "모델",
+      "provider": "공급자",
+      "tasks": "태스크",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "status": {
+      "loaded": "메모리에 로드됨",
+      "installed": "설치됨",
+      "downloading": "다운로드 중",
+      "paused": "일시 중지됨",
+      "failed": "실패",
+      "downloadFailed": "다운로드 실패",
+      "incomplete": "불완전"
+    },
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 때까지 RAM/VRAM 추정이 대기 중입니다."
+    },
+    "releaseUnknown": "알 수 없음"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "공개만",
+      "gatedOnly": "제한만",
+      "all": "공개 + 제한",
+      "gated": "제한",
+      "open": "공개"
+    },
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 수 있을 때까지 RAM/VRAM 추정이 보류됩니다."
+    },
+    "subtitle": "총 {total}개 모델 중 {filtered}개 / 실시간 Hugging Face 메타데이터",
+    "hero": {
+      "heading": "로컬 생성을 위한 이미지 모델을 둘러보고 다운로드합니다.",
+      "body": "Image Studio에서 사용하려면 모델을 다운로드하세요. 런타임 상태는 Studio 탭에 있습니다.",
+      "installedModels": "설치된 모델",
+      "openStudio": "Studio 열기"
+    },
+    "filter": {
+      "search": "검색",
+      "searchPlaceholder": "FLUX, SDXL, 제공자, 작업, 태그, 라이선스 검색...",
+      "task": "작업",
+      "access": "접근",
+      "status": "상태",
+      "sortBy": "정렬 기준",
+      "clear": "필터 지우기"
+    },
+    "task": {
+      "all": "모든 작업",
+      "txt2img": "텍스트→이미지",
+      "img2img": "이미지→이미지",
+      "inpaint": "인페인트"
+    },
+    "status": {
+      "any": "모든 상태",
+      "installed": "설치됨",
+      "notInstalled": "미설치",
+      "downloading": "다운로드 중",
+      "paused": "일시정지",
+      "failed": "실패",
+      "incomplete": "미완료"
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "release": "최신 출시",
+      "size": "큰 크기",
+      "ram": "높은 RAM/VRAM",
+      "likes": "좋아요 많음",
+      "downloads": "다운로드 많음",
+      "status": "상태"
+    },
+    "summary": {
+      "count": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchBadge": "검색: {query}",
+      "taskBadge": "작업: {task}",
+      "accessBadge": "접근: {access}",
+      "statusBadge": "상태: {status}"
+    },
+    "empty": {
+      "body": "필터나 검색어를 더 넓혀 보세요."
+    },
+    "column": {
+      "model": "모델",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "unknown": "알 수 없음",
+    "action": {
+      "generate": "생성",
+      "pauseDownload": "다운로드 일시정지",
+      "cancelDownload": "다운로드 취소",
+      "resumeDownload": "다운로드 재개",
+      "deleteDownload": "다운로드 삭제",
+      "retryDownload": "다운로드 재시도",
+      "downloadModel": "모델 다운로드",
+      "deleteModel": "모델 삭제",
+      "openHuggingFace": "Hugging Face에서 열기",
+      "huggingFace": "Hugging Face",
+      "settings": "설정"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "대기 중",
+      "pendingTitle": "모델 가중치 크기를 알 수 있을 때까지 RAM/VRAM 추정이 보류됩니다."
+    },
+    "action": {
+      "cancelDownload": "다운로드 취소",
+      "deleteModel": "모델 삭제",
+      "deleteDownload": "다운로드 삭제",
+      "generate": "생성",
+      "installing": "설치 중",
+      "install": "설치",
+      "pauseDownload": "다운로드 일시정지",
+      "resumeDownload": "다운로드 재개",
+      "retryDownload": "다운로드 재시도",
+      "downloadModel": "모델 다운로드",
+      "openModelCard": "모델 카드 열기"
+    },
+    "subtitle": "총 {total}개 비디오 모델 중 {filtered}개 / 실시간 Hugging Face 메타데이터",
+    "hero": {
+      "heading": "로컬 생성을 위한 비디오 모델을 둘러보고 다운로드합니다.",
+      "body": "Video Studio에서 사용하려면 모델을 다운로드하세요. 런타임 상태는 Studio 탭에 있습니다.",
+      "installedModels": "설치된 모델",
+      "openStudio": "Studio 열기"
+    },
+    "filter": {
+      "search": "검색",
+      "searchPlaceholder": "LTX, Wan, Mochi, 제공자, 태그 검색...",
+      "task": "작업",
+      "status": "상태",
+      "sortBy": "정렬 기준",
+      "clear": "필터 지우기"
+    },
+    "task": {
+      "all": "모든 작업",
+      "txt2video": "텍스트→비디오",
+      "img2video": "이미지→비디오",
+      "video2video": "비디오→비디오"
+    },
+    "status": {
+      "any": "모든 상태",
+      "installed": "설치됨",
+      "notInstalled": "미설치",
+      "downloading": "다운로드 중",
+      "paused": "일시정지",
+      "failed": "실패",
+      "incomplete": "미완료"
+    },
+    "sort": {
+      "name": "이름",
+      "provider": "제공자",
+      "tasks": "작업",
+      "release": "최신 출시",
+      "size": "큰 크기",
+      "ram": "높은 RAM/VRAM",
+      "likes": "좋아요 많음",
+      "downloads": "다운로드 많음",
+      "status": "상태"
+    },
+    "summary": {
+      "count": "{count, plural, other {모델 #개}} · {sortLabel}",
+      "searchBadge": "검색: {query}",
+      "taskBadge": "작업: {task}",
+      "statusBadge": "상태: {status}"
+    },
+    "empty": {
+      "body": "필터나 검색어를 더 넓혀 보세요."
+    },
+    "column": {
+      "model": "모델",
+      "provider": "제공자",
+      "tasks": "작업",
+      "size": "크기",
+      "ramVram": "RAM/VRAM",
+      "released": "출시일",
+      "status": "상태"
+    },
+    "unknown": "알 수 없음",
+    "longLive": {
+      "installNote": "LongLive는 ~/.chaosengine/longlive의 격리된 venv에 설치됩니다. CUDA 전용이며 네트워크에 따라 5~15분 소요됩니다."
+    }
+  }
+}

@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from backend_service.i18n import localized_detail
 from backend_service.models import (
     LoadModelRequest,
     ConvertModelRequest,
@@ -115,7 +116,7 @@ def load_model(request: Request, body: LoadModelRequest) -> dict[str, Any]:
     except Exception as exc:
         detail = str(exc) or "Unknown error during model loading."
         state.add_log("runtime", "error", f"Load failed for {body.modelRef}: {detail}")
-        raise HTTPException(status_code=500, detail=detail) from exc
+        raise HTTPException(status_code=500, detail=localized_detail(request, detail)) from exc
 
 
 @router.post("/api/models/unload")
@@ -142,7 +143,7 @@ def convert_model(request: Request, body: ConvertModelRequest) -> dict[str, Any]
     except RuntimeError as exc:
         detail = str(exc)
         state.add_log("conversion", "error", f"Conversion failed: {detail}")
-        raise HTTPException(status_code=400, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=localized_detail(request, detail)) from exc
 
 
 @router.post("/api/models/reveal")
@@ -208,10 +209,16 @@ def hub_search(request: Request, query: str = Query("", alias="q", min_length=2,
 
 
 @router.get("/api/models/hub-files")
-def hub_files(repo: str = Query(min_length=3, max_length=200)) -> dict[str, Any]:
+def hub_files(request: Request, repo: str = Query(min_length=3, max_length=200)) -> dict[str, Any]:
     if "/" not in repo:
-        raise HTTPException(status_code=400, detail="Repo must be in `owner/name` format.")
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, "Repo must be in `owner/name` format."),
+        )
     try:
         return _hub_repo_files(repo)
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, str(exc)),
+        ) from exc

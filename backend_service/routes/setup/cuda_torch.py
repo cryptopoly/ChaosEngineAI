@@ -15,6 +15,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from backend_service.i18n import localized_detail
+
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
     _all_attempts_lack_wheel,
@@ -67,7 +69,7 @@ def install_cuda_torch(request: Request) -> dict[str, Any]:
     if extras_dir is None:
         raise HTTPException(
             status_code=500,
-            detail="Could not resolve the extras site-packages directory.",
+            detail=localized_detail(request, "Could not resolve the extras site-packages directory."),
         )
     extras_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "Live System Stats",
+    "subtitle": "Refreshed from the Python sidecar so the desktop shell can make fit recommendations.",
+    "runtimeEngine": "Runtime engine",
+    "noModelLoaded": "No model loaded",
+    "inferenceActivity": "Inference activity",
+    "activeCount": "{count} active",
+    "totalServed": "{count} total served",
+    "warmPool": "Warm pool",
+    "warmModelCount": "{count, plural, one {# model} other {# models}}",
+    "noWarmModels": "No warm models",
+    "modelDisk": "Model disk",
+    "diskFree": "{value} GB free",
+    "diskTotal": "{value} GB total",
+    "spareHeadroom": "Spare headroom",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% working headroom",
+    "memoryInUse": "Memory in use",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "Memory pressure",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} GB compressed",
+    "swapUsage": "Swap usage",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU load",
+    "cpuLabel": "{value}%",
+    "headroomFor": "Headroom for {target}",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "Power",
+      "charging": "Charging",
+      "acPower": "AC Power",
+      "onBattery": "On Battery",
+      "lowNotice": "Unplugged — inference may throttle on thermal pressure"
+    },
+    "processes": {
+      "name": "Process",
+      "owner": "Owner",
+      "memory": "Memory",
+      "cpu": "CPU",
+      "active": "ACTIVE",
+      "warm": "WARM",
+      "system": "System",
+      "empty": "No active local LLM processes were detected.",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "Hardware Fit",
+    "subtitle": "Guidance relative to the recommended target profile for this machine.",
+    "recommendedTarget": "Recommended target",
+    "currentRuntime": "Current runtime",
+    "modelLoadedVia": "{model} loaded via {engine}.",
+    "noModelHint": "No model is loaded yet. Pick a thread model in Chat or browse a newer family in Online Models."
+  },
+  "activityFeed": {
+    "title": "Activity Feed",
+    "subtitle": "Operational events that should stay visible without digging into logs.",
+    "now": "Now"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "Library scan completed",
+      "detail": "{count} local entries found across configured model directories."
+    },
+    "hardwareProfile": {
+      "title": "Hardware profile refreshed"
+    },
+    "backendReadiness": {
+      "title": "Backend readiness",
+      "detail": "MLX installed: {mlx} / mlx-lm installed: {mlxLm} / MLX usable: {mlxUsable} / GGUF runtime: {gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "Recommended target: {modelSize} class @ {cacheLabel}",
+    "mlxDetail": "This forecast is relative to a recommended {modelSize} class local target on {hardware}, not a currently selected chat model.",
+    "ggufTitle": "Recommended target: {modelSize} GGUF",
+    "ggufDetail": "Cross-platform mode will prefer llama.cpp GGUF for broad hardware support."
+  }
+}

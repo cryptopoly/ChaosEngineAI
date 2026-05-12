@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   getModelMoveStatus,
@@ -88,6 +89,7 @@ export function ModelStoragePanel({
   busyAction,
   onPickDirectory,
 }: ModelStoragePanelProps) {
+  const { t } = useTranslation("common");
   const [snapshot, setSnapshot] = useState<StorageSettingsSnapshot | null>(null);
   const [draftPath, setDraftPath] = useState("");
   const [loading, setLoading] = useState(false);
@@ -225,8 +227,10 @@ export function ModelStoragePanel({
 
   return (
     <Panel
-      title="Model Storage"
-      subtitle="Redirect Hugging Face model downloads to a different drive. Useful when your system drive is filling up with 14-100 GB image and video checkpoints."
+      title={t("panels.modelStorage", { defaultValue: "Model Storage" })}
+      subtitle={t("panels.modelStorageSubtitle", {
+        defaultValue: "Redirect Hugging Face model downloads to a different drive. Useful when your system drive is filling up with 14-100 GB image and video checkpoints.",
+      })}
     >
       {!snapshot && loading ? (
         <p className="muted-text">Reading storage info...</p>

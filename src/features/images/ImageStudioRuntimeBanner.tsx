@@ -6,6 +6,7 @@
  * Phase 2d-2b refactor.
  */
 
+import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import type {
@@ -39,6 +40,7 @@ export interface ImageStudioRuntimeBannerProps {
 
 
 export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
+  const { t } = useTranslation("studio");
   const {
     imageRuntimeStatus,
     selectedImageVariant,
@@ -172,7 +174,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
                     : "Model will load on demand when you generate."}
           </p>
           {imageBusy && selectedImageWillLoadOnGenerate ? (
-            <p className="busy-indicator"><span className="busy-dot" />Loading model into memory...</p>
+            <p className="busy-indicator"><span className="busy-dot" />{t("runtimeBanner.loadingModel", { defaultValue: "Loading model into memory..." })}</p>
           ) : null}
           {(selectedImageVariant.availableLocally || loadedImageVariant) ? (
             <div className="button-row image-runtime-control-row">

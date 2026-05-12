@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { TauriBackendInfo } from "../types";
 
 interface Props {
@@ -23,33 +25,44 @@ interface Props {
 // feel hung. This panel turns the wait into a phased narrative driven
 // off elapsed wall time + the tauri-side backend info.
 export function StartupProgressPanel(props: Props) {
+  const { t } = useTranslation("common");
   const { elapsedSeconds, backendOnline, tauriBackend } = props;
   const startupError = tauriBackend?.startupError;
 
   if (startupError) {
     return (
       <div className="loading-state loading-state-error">
-        <div className="loading-state-title">Backend failed to start</div>
+        <div className="loading-state-title">
+          {t("startupProgress.error.title", { defaultValue: "Backend failed to start" })}
+        </div>
         <div className="loading-state-detail">{startupError}</div>
       </div>
     );
   }
 
-  const phase = pickPhase(elapsedSeconds, backendOnline, tauriBackend);
+  const phase = pickPhase(t, elapsedSeconds, backendOnline, tauriBackend);
   return (
     <div className="loading-state loading-state-progress">
       <div className="loading-state-spinner" aria-hidden="true" />
       <div className="loading-state-title">{phase.title}</div>
       <div className="loading-state-detail">{phase.detail}</div>
       <div className="loading-state-elapsed">
-        {elapsedSeconds}s elapsed
-        {elapsedSeconds > 45 ? " — first launches can take up to a minute" : ""}
+        {elapsedSeconds > 45
+          ? t("startupProgress.elapsedSlow", {
+              defaultValue: "{seconds}s elapsed — first launches can take up to a minute",
+              seconds: elapsedSeconds,
+            })
+          : t("startupProgress.elapsed", {
+              defaultValue: "{seconds}s elapsed",
+              seconds: elapsedSeconds,
+            })}
       </div>
     </div>
   );
 }
 
 function pickPhase(
+  t: TFunction,
   elapsedSeconds: number,
   backendOnline: boolean,
   tauriBackend: TauriBackendInfo | null,
@@ -59,8 +72,10 @@ function pickPhase(
   // work on a fresh install (catalog scan, disk probe).
   if (backendOnline) {
     return {
-      title: "Loading workspace state",
-      detail: "Backend is up — fetching your models, sessions, and settings.",
+      title: t("startupProgress.phase.loadingWorkspace.title", { defaultValue: "Loading workspace state" }),
+      detail: t("startupProgress.phase.loadingWorkspace.detail", {
+        defaultValue: "Backend is up — fetching your models, sessions, and settings.",
+      }),
     };
   }
 
@@ -70,36 +85,43 @@ function pickPhase(
 
   if (!sidecarSpawned && elapsedSeconds < 4) {
     return {
-      title: "Starting backend sidecar",
-      detail: "Launching the ChaosEngineAI runtime.",
+      title: t("startupProgress.phase.startingSidecar.title", { defaultValue: "Starting backend sidecar" }),
+      detail: t("startupProgress.phase.startingSidecar.detail", {
+        defaultValue: "Launching the ChaosEngineAI runtime.",
+      }),
     };
   }
   if (!sidecarSpawned && elapsedSeconds < 15) {
     return {
-      title: "Extracting embedded runtime",
-      detail:
-        "First launch only — unpacking the bundled Python runtime and llama.cpp " +
-        "into the app cache.",
+      title: t("startupProgress.phase.extractingRuntime.title", { defaultValue: "Extracting embedded runtime" }),
+      detail: t("startupProgress.phase.extractingRuntime.detail", {
+        defaultValue:
+          "First launch only — unpacking the bundled Python runtime and llama.cpp into the app cache.",
+      }),
     };
   }
   if (elapsedSeconds < 25) {
     return {
-      title: "Starting Python runtime",
-      detail: "Loading the core API and restoring workspace state.",
+      title: t("startupProgress.phase.startingPython.title", { defaultValue: "Starting Python runtime" }),
+      detail: t("startupProgress.phase.startingPython.detail", {
+        defaultValue: "Loading the core API and restoring workspace state.",
+      }),
     };
   }
   if (elapsedSeconds < 45) {
     return {
-      title: "Waiting for backend",
-      detail:
-        "The sidecar is still binding its API port and checking local runtime state.",
+      title: t("startupProgress.phase.waitingBackend.title", { defaultValue: "Waiting for backend" }),
+      detail: t("startupProgress.phase.waitingBackend.detail", {
+        defaultValue:
+          "The sidecar is still binding its API port and checking local runtime state.",
+      }),
     };
   }
   return {
-    title: "Still loading",
-    detail:
-      "Cold-start imports are taking longer than usual. If this stalls for " +
-      "more than two minutes, quit and reopen — a stale manifest can force a " +
-      "re-extract.",
+    title: t("startupProgress.phase.stillLoading.title", { defaultValue: "Still loading" }),
+    detail: t("startupProgress.phase.stillLoading.detail", {
+      defaultValue:
+        "Cold-start imports are taking longer than usual. If this stalls for more than two minutes, quit and reopen — a stale manifest can force a re-extract.",
+    }),
   };
 }

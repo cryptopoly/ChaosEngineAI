@@ -151,7 +151,9 @@ class SetupRouteTests(unittest.TestCase):
         install list" 400 like any other unknown id."""
         resp = self.client.post("/api/setup/install-package", json={"package": "chaosengine"})
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("not in the allowed install list", resp.json()["detail"])
+        detail = resp.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("not in the allowed install list", detail_text)
 
     def test_install_pip_accepts_whitelisted_package(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:

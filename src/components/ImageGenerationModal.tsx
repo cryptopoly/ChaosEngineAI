@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { LiveProgress, type LiveProgressPhase } from "./LiveProgress";
 import { number, findImageVariantById, formatImageTimestamp, formatImageAccessError, isGatedImageAccessError } from "../utils";
 import { useGenerationProgress } from "../hooks/useGenerationProgress";
@@ -58,6 +59,7 @@ export function ImageGenerationModal({
   onDeleteArtifact,
   onCancelGeneration,
 }: ImageGenerationModalProps) {
+  const { t } = useTranslation("studio");
   // Hook ordering rule: react requires hooks to run in the same order on every
   // render, so we always invoke ``useGenerationProgress`` even when the modal
   // is hidden. The hook itself short-circuits when ``active`` is false.
@@ -103,15 +105,15 @@ export function ImageGenerationModal({
           <h3>
             {imageBusy
               ? imageGenerationCancelling
-                ? "Cancelling..."
-                : "Generating image"
+                ? t("image.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("image.modal.generating", { defaultValue: "Generating image" })
               : imageGenerationCancelled
-                ? "Image generation cancelled"
+                ? t("image.modal.cancelled", { defaultValue: "Image generation cancelled" })
                 : imageGenerationError
-                  ? "Image generation failed"
+                  ? t("image.modal.failed", { defaultValue: "Image generation failed" })
                   : imageGenerationArtifacts.length > 1
-                    ? "Images ready"
-                    : "Image ready"}
+                    ? t("image.modal.imagesReady", { defaultValue: "Images ready" })
+                    : t("image.modal.imageReady", { defaultValue: "Image ready" })}
           </h3>
           {!imageBusy && !imageGenerationError && !imageGenerationCancelled && activeArtifact ? (
             <p>
@@ -122,7 +124,9 @@ export function ImageGenerationModal({
         <div className="modal-body">
           {imageBusy && imageGenerationStartedAt ? (
             <LiveProgress
-              title={imageGenerationCancelling ? "Cancelling..." : "Generating image"}
+              title={imageGenerationCancelling
+                ? t("image.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("image.modal.generating", { defaultValue: "Generating image" })}
               subtitle={runInfo?.modelName ?? selectedImageVariant?.name ?? undefined}
               startedAt={imageGenerationStartedAt}
               accent="image"
@@ -138,7 +142,7 @@ export function ImageGenerationModal({
             </div>
           ) : imageGenerationError ? (
             <div className="callout error">
-              <h3>Image generation failed</h3>
+              <h3>{t("image.modal.failed", { defaultValue: "Image generation failed" })}</h3>
               <p>{imageGenerationError}</p>
               <p className="muted-text">
                 Adjust the prompt or runtime settings, then try again. The gallery keeps any earlier successful outputs.

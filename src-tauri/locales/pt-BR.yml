@@ -1,0 +1,43 @@
+menu:
+  file: "Arquivo"
+  edit: "Editar"
+  view: "Exibir"
+  window: "Janela"
+  help: "Ajuda"
+  quit: "Sair do ChaosEngineAI"
+  preferences: "Preferências…"
+  about: "Sobre o ChaosEngineAI"
+  checkForUpdates: "Verificar atualizações…"
+  reload: "Recarregar"
+  toggleDevTools: "Alternar ferramentas do desenvolvedor"
+  toggleFullScreen: "Alternar tela cheia"
+  minimize: "Minimizar"
+  zoom: "Zoom"
+  bringAllToFront: "Trazer tudo para frente"
+  hideOthers: "Ocultar outros"
+  showAll: "Mostrar tudo"
+  hide: "Ocultar ChaosEngineAI"
+
+tray:
+  show: "Mostrar ChaosEngineAI"
+  hide: "Ocultar ChaosEngineAI"
+  quit: "Sair"
+  status:
+    idle: "Ocioso"
+    loading: "Carregando modelo…"
+    busy: "Gerando…"
+
+updater:
+  available: "Uma nova versão do ChaosEngineAI está disponível."
+  download: "Baixar"
+  later: "Mais tarde"
+  installing: "Instalando atualização…"
+  restartRequired: "Reinicie para aplicar a atualização."
+
+dialog:
+  ok: "OK"
+  cancel: "Cancelar"
+  save: "Salvar"
+  open: "Abrir"
+  yes: "Sim"
+  no: "Não"

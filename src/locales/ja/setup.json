@@ -1,0 +1,84 @@
+{
+  "title": "セットアップ",
+  "subtitle": "ハードウェアに合わせてランタイムコンポーネントをインストール",
+  "sections": {
+    "core": "コアランタイム",
+    "speculative": "投機的デコーディング",
+    "caching": "キャッシュ戦略",
+    "diffusion": "拡散ランタイム",
+    "tools": "オプションツール"
+  },
+  "actions": {
+    "install": "インストール",
+    "uninstall": "アンインストール",
+    "update": "アップデート",
+    "viewLog": "ログを表示",
+    "showInFinder": "Finder で表示"
+  },
+  "states": {
+    "installed": "インストール済み",
+    "available": "利用可能",
+    "installing": "インストール中…",
+    "uninstalling": "アンインストール中…",
+    "checking": "確認中…",
+    "unavailable": "このプラットフォームでは利用できません",
+    "needsRestart": "再起動が必要"
+  },
+  "messages": {
+    "diskSpaceWarning": "約 {size} がダウンロードされます。",
+    "requiresNetwork": "インターネット接続が必要です。",
+    "platformOnly": "このコンポーネントは {platform} でのみ利用可能です。",
+    "succeeded": "インストールに成功しました。",
+    "failed": "インストールに失敗:{reason}"
+  },
+  "installLog": {
+    "finalStatus": "最終ステータス:",
+    "statusNoun": {
+      "longlive": "LongLive インストール",
+      "gpuBundle": "インストール"
+    },
+    "status": {
+      "failed": "{noun}失敗 — ログを参照",
+      "complete": "{noun}完了 — ログを参照",
+      "starting": "{noun}を開始中…",
+      "verifyingCuda": "CUDA を検証中…",
+      "inProgress": "{noun}実行中"
+    },
+    "meta": {
+      "target": "ターゲット: {dir}",
+      "python": "Python {version}",
+      "cudaIndex": "CUDA インデックス: {url}",
+      "cudaVerified": "CUDA 検証済み",
+      "cudaVerificationFailed": "CUDA 検証に失敗",
+      "noWheelForPython": "この Python 用の CUDA wheel がありません",
+      "restartBackend": "有効化するにはバックエンドを再起動してください"
+    },
+    "step": {
+      "waiting": "(待機中)",
+      "final": "最終: {done}/{total} パッケージ · {percent}%",
+      "current": "ステップ {done}/{total}: {current} · {percent}%"
+    },
+    "terminal": {
+      "working": "処理中…",
+      "noOutput": "(出力が取得されませんでした)"
+    },
+    "attempt": {
+      "verifyCuda": "torch.cuda.is_available() を検証",
+      "torchDeps": "torch の依存関係 ({url} から)",
+      "torchCleanup": "古い torch ファイルをクリーンアップ",
+      "torchRepair": "CUDA torch wheel を修復",
+      "constraint": "torch バージョンを固定",
+      "torchFromIndex": "torch ({url} から)",
+      "pipInstall": "pip install {pkg}",
+      "step": "ステップ"
+    }
+  },
+  "cudaTorch": {
+    "installComplete": "インストール完了 — ログを参照{index}",
+    "installFailed": "{count, plural, =0 {インストール失敗 — ログを参照} other {インストール失敗 — ログを参照(# 回試行)}}"
+  },
+  "wanRuntime": {
+    "title": "Wan MLX ランタイム",
+    "ready": "準備完了"
+  }
+}

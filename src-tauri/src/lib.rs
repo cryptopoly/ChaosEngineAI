@@ -24,6 +24,19 @@ use runtime::source_workspace_root;
 mod probe;
 use probe::port_responding;
 mod lease;
+// FU-042: rust-i18n compile-time message catalogs for native menu /
+// tray / updater strings.  The `i18n!()` macro walks
+// `src-tauri/locales/*.yml` so the bundle is materialised once at
+// binary start; runtime calls to `i18n::set_locale("zh-CN")` flip the
+// active tag.  Wired through to the React layer via the Tauri command
+// `set_app_locale` (added alongside the Settings → Language dropdown).
+//
+// NOTE: `rust_i18n::i18n!` MUST live at crate root — the macro emits
+// `_rust_i18n_t` here and `t!()` resolves it via `crate::_rust_i18n_t`.
+// Calling `i18n!()` inside the `i18n` submodule places the symbol in
+// the wrong namespace and `t!()` then fails to resolve at compile time.
+rust_i18n::i18n!("locales", fallback = "en");
+mod i18n;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -212,6 +225,30 @@ async fn pick_directory(app: AppHandle) -> Option<String> {
     rx.recv().ok().flatten()
 }
 
+/// FU-042: flip the Tauri shell's active locale so native menu / tray /
+/// updater dialog strings (compiled in via `rust_i18n!`) re-render in
+/// the picked language.  Called by the React Settings → Language
+/// dropdown via `@tauri-apps/api` `invoke("set_app_locale", { locale })`.
+///
+/// Idempotent + threadsafe.  Unknown locales fall back to the
+/// compiled-in `en` baseline at lookup time so a typo doesn't blank
+/// the menu — the underlying `rust-i18n` macro guarantees that.
+///
+/// Note: native menus that were *already built* before this call (the
+/// app menu, tray menu) keep showing the previous language until they
+/// are explicitly rebuilt.  That rebuild is a separate follow-up
+/// (`window.menu().set_menu(...)`); this command is the first half of
+/// the pair and is safe to ship on its own.
+#[tauri::command]
+fn set_app_locale(locale: String) -> Result<(), String> {
+    let trimmed = locale.trim();
+    if trimmed.is_empty() {
+        return Err("locale must be a non-empty string".to_string());
+    }
+    i18n::set_locale(trimmed);
+    Ok(())
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -219,6 +256,15 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            // FU-042: seed the rust-i18n active locale from the user's
+            // persisted ``settings.locale`` *before* anything reads from
+            // the catalog.  When unset, falls through to the compiled-in
+            // ``en`` baseline.  Native menus / tray / updater dialogs
+            // built downstream pick up this value automatically.
+            if let Some(locale) = settings::saved_locale() {
+                i18n::set_locale(&locale);
+            }
+
             // Register the manager in its default (not-yet-started) state
             // immediately so the frontend can query runtime_info without
             // racing the bootstrap. The frontend already renders a
@@ -249,7 +295,8 @@ pub fn run() {
             stop_backend_sidecar,
             restart_backend_sidecar,
             rebuild_llama_cpp,
-            pick_directory
+            pick_directory,
+            set_app_locale
         ])
         .build(tauri::generate_context!())
         .expect("error while running ChaosEngineAI");

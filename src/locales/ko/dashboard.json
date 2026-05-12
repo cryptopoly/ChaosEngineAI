@@ -1,0 +1,83 @@
+{
+  "liveStats": {
+    "title": "라이브 시스템 통계",
+    "subtitle": "데스크탑 셸이 적합 권장 사항을 제공할 수 있도록 Python 사이드카에서 새로 고침됩니다.",
+    "runtimeEngine": "런타임 엔진",
+    "noModelLoaded": "로드된 모델 없음",
+    "inferenceActivity": "추론 활동",
+    "activeCount": "{count}개 활성",
+    "totalServed": "총 {count}회 제공",
+    "warmPool": "웜 풀",
+    "warmModelCount": "{count, plural, other {모델 #개}}",
+    "noWarmModels": "웜 모델 없음",
+    "modelDisk": "모델 디스크",
+    "diskFree": "{value} GB 사용 가능",
+    "diskTotal": "총 {value} GB",
+    "spareHeadroom": "여유 공간",
+    "spareHeadroomValue": "{value} GB",
+    "workingHeadroom": "{value}% 작업 여유",
+    "memoryInUse": "사용 중인 메모리",
+    "memoryUsedLabel": "{used} GB / {total} GB",
+    "memoryPressure": "메모리 압력",
+    "memoryPressureLabel": "{value}%",
+    "memoryPressureCompressed": "{value}% · {compressed} GB 압축",
+    "swapUsage": "스왑 사용량",
+    "swapLabel": "{used} GB",
+    "swapLabelWithTotal": "{used} GB / {total} GB",
+    "cpuLoad": "CPU 부하",
+    "cpuLabel": "{value}%",
+    "headroomFor": "{target}의 여유",
+    "headroomLabel": "{value}%",
+    "battery": {
+      "eyebrow": "전원",
+      "charging": "충전 중",
+      "acPower": "AC 전원",
+      "onBattery": "배터리 사용",
+      "lowNotice": "전원 미연결 — 열 압력으로 인해 추론이 제한될 수 있습니다"
+    },
+    "processes": {
+      "name": "프로세스",
+      "owner": "소유자",
+      "memory": "메모리",
+      "cpu": "CPU",
+      "active": "활성",
+      "warm": "웜",
+      "system": "시스템",
+      "empty": "활성 로컬 LLM 프로세스가 감지되지 않았습니다.",
+      "memoryGb": "{value} GB",
+      "cpuPercent": "{value}%"
+    }
+  },
+  "hardwareFit": {
+    "title": "하드웨어 적합성",
+    "subtitle": "이 머신의 권장 대상 프로필에 대한 가이드.",
+    "recommendedTarget": "권장 대상",
+    "currentRuntime": "현재 런타임",
+    "modelLoadedVia": "{model}이(가) {engine}을(를) 통해 로드되었습니다.",
+    "noModelHint": "아직 모델이 로드되지 않았습니다. 채팅에서 스레드 모델을 선택하거나 둘러보기에서 새 패밀리를 살펴보세요."
+  },
+  "activityFeed": {
+    "title": "활동 피드",
+    "subtitle": "로그를 파헤치지 않고도 보이는 상태로 유지해야 하는 운영 이벤트.",
+    "now": "방금"
+  },
+  "activity": {
+    "libraryScan": {
+      "title": "라이브러리 스캔이 완료되었습니다",
+      "detail": "구성된 모델 디렉터리에서 {count}개의 로컬 항목이 발견되었습니다."
+    },
+    "hardwareProfile": {
+      "title": "하드웨어 프로필이 새로 고쳐졌습니다"
+    },
+    "backendReadiness": {
+      "title": "백엔드 준비 상태",
+      "detail": "MLX 설치됨: {mlx} / mlx-lm 설치됨: {mlxLm} / MLX 사용 가능: {mlxUsable} / GGUF 런타임: {gguf}"
+    }
+  },
+  "recommendation": {
+    "mlxTitle": "권장 대상: {modelSize} 클래스 @ {cacheLabel}",
+    "mlxDetail": "이 예측은 {hardware}의 권장 {modelSize} 클래스 로컬 대상에 대한 것이며, 현재 선택된 채팅 모델에 대한 것이 아닙니다.",
+    "ggufTitle": "권장 대상: {modelSize} GGUF",
+    "ggufDetail": "크로스 플랫폼 모드는 광범위한 하드웨어 지원을 위해 llama.cpp GGUF를 선호합니다."
+  }
+}

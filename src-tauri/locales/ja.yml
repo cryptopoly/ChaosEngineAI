@@ -1,0 +1,43 @@
+menu:
+  file: "ファイル"
+  edit: "編集"
+  view: "表示"
+  window: "ウィンドウ"
+  help: "ヘルプ"
+  quit: "ChaosEngineAI を終了"
+  preferences: "環境設定…"
+  about: "ChaosEngineAI について"
+  checkForUpdates: "アップデートを確認…"
+  reload: "再読み込み"
+  toggleDevTools: "開発者ツールの切替"
+  toggleFullScreen: "フルスクリーンの切替"
+  minimize: "最小化"
+  zoom: "ズーム"
+  bringAllToFront: "すべてを手前に移動"
+  hideOthers: "ほかを隠す"
+  showAll: "すべてを表示"
+  hide: "ChaosEngineAI を隠す"
+
+tray:
+  show: "ChaosEngineAI を表示"
+  hide: "ChaosEngineAI を隠す"
+  quit: "終了"
+  status:
+    idle: "アイドル"
+    loading: "モデル読み込み中…"
+    busy: "生成中…"
+
+updater:
+  available: "ChaosEngineAI の新しいバージョンが利用可能です。"
+  download: "ダウンロード"
+  later: "後で"
+  installing: "アップデートをインストール中…"
+  restartRequired: "更新を適用するには再起動してください。"
+
+dialog:
+  ok: "OK"
+  cancel: "キャンセル"
+  save: "保存"
+  open: "開く"
+  yes: "はい"
+  no: "いいえ"

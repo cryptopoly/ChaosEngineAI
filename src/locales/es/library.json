@@ -1,0 +1,592 @@
+{
+  "title": "Biblioteca",
+  "search": "Buscar modelos…",
+  "filter": {
+    "all": "Todos",
+    "text": "Texto",
+    "image": "Imagen",
+    "video": "Video",
+    "vision": "Visión",
+    "audio": "Audio",
+    "installed": "Instalado",
+    "uninstalled": "No instalado",
+    "favourites": "Favoritos"
+  },
+  "card": {
+    "size": "Tamaño",
+    "quantization": "Cuantización",
+    "context": "Contexto",
+    "capabilities": "Capacidades",
+    "license": "Licencia",
+    "author": "Autor",
+    "lastUpdated": "Última actualización"
+  },
+  "download": {
+    "start": "Descargar",
+    "inProgress": "Descargando…",
+    "paused": "Pausado",
+    "resumed": "Reanudado",
+    "cancelled": "Cancelado",
+    "complete": "Completo",
+    "totalSize": "{size} en total",
+    "downloaded": "{downloaded} de {total}"
+  },
+  "details": {
+    "loadModel": "Cargar modelo",
+    "unloadModel": "Descargar modelo",
+    "viewOnHF": "Ver en Hugging Face",
+    "deleteFromDisk": "Eliminar del disco"
+  },
+  "myModels": {
+    "subtitle": "{count} modelos / {size} en disco / {dirs} directorios",
+    "searchPlaceholder": "Filtrar por nombre, ruta, formato, cuantización o backend...",
+    "empty": "No se encontraron modelos. Añade directorios en Preferencias para escanear modelos locales.",
+    "filter": {
+      "all": "Todos",
+      "allFormats": "Todos los formatos",
+      "allBackends": "Todos los backends",
+      "allStrategies": "Todas las estrategias"
+    },
+    "capability": {
+      "title": {
+        "agents": "Flujos de agentes",
+        "chat": "Chat general",
+        "coding": "Soporte para código",
+        "multilingual": "Soporte multilingüe",
+        "reasoning": "Enfocado en razonamiento",
+        "thinking": "Pensamiento / razonamiento deliberado",
+        "tool-use": "Uso de herramientas / llamada a funciones",
+        "video": "Comprensión de video",
+        "vision": "Soporte de imagen / visión"
+      },
+      "short": {
+        "agents": "Agentes",
+        "chat": "Chat",
+        "coding": "Código",
+        "multilingual": "Multi",
+        "reasoning": "Razón",
+        "thinking": "Pensar",
+        "tool-use": "Herram.",
+        "video": "Video",
+        "vision": "Visión"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "Mostrar modelos compatibles con {label} ({count})",
+      "dflashEmptyTooltip": "Los borradores de decodificación especulativa DFlash solo existen para modelos base específicos: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Los ajustes finos normalmente no coinciden. Descarga un modelo base desde Descubrir para habilitar DFlash."
+    },
+    "column": {
+      "model": "Modelo",
+      "format": "Formato",
+      "quant": "Cuant.",
+      "backend": "Backend",
+      "size": "Tamaño",
+      "ram": "RAM",
+      "compressed": "Comprimido",
+      "context": "Contexto",
+      "status": "Estado"
+    },
+    "status": {
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "failed": "Fallido",
+      "incomplete": "Incompleto",
+      "incompleteReason": "Incompleto o roto",
+      "installed": "Instalado"
+    },
+    "badge": {
+      "activeDownload": "Descarga activa",
+      "broken": "ROTO"
+    },
+    "tooltip": {
+      "ram": "Memoria residente aproximada con contexto de 8K (pesos + KV + framework)",
+      "compressed": "Memoria residente aproximada con una estrategia de caché KV comprimida"
+    },
+    "download": {
+      "failed": "La descarga falló.",
+      "failedShort": "Descarga fallida",
+      "paused": "Descarga pausada.",
+      "inProgress": "Descarga en curso.",
+      "downloadedDetail": "{size} descargados."
+    },
+    "action": {
+      "pauseDownload": "Pausar descarga",
+      "retryDownload": "Reintentar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "cancelDownload": "Cancelar descarga",
+      "deleteDownload": "Eliminar descarga",
+      "chatWithModel": "Chatear con el modelo",
+      "loadForServer": "Cargar para el servidor",
+      "deleteModel": "Eliminar modelo"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} familias de modelos / {downloaded} descargados localmente",
+    "searchPlaceholder": "Buscar por nombre, proveedor o capacidad...",
+    "variantCount": "{count, plural, one {# variante} other {# variantes}}",
+    "filter": {
+      "all": "Todos",
+      "allFormats": "Todos los formatos"
+    },
+    "capability": {
+      "title": {
+        "agents": "Flujos de agentes",
+        "chat": "Chat general",
+        "coding": "Soporte para código",
+        "multilingual": "Soporte multilingüe",
+        "reasoning": "Enfocado en razonamiento",
+        "thinking": "Pensamiento / razonamiento deliberado",
+        "tool-use": "Uso de herramientas / llamada a funciones",
+        "video": "Comprensión de video",
+        "vision": "Soporte de imagen / visión"
+      },
+      "short": {
+        "agents": "Agentes",
+        "chat": "Chat",
+        "coding": "Código",
+        "multilingual": "Multi",
+        "reasoning": "Razón",
+        "thinking": "Pensar",
+        "tool-use": "Herram.",
+        "video": "Video",
+        "vision": "Visión"
+      }
+    },
+    "section": {
+      "curatedAria": "Familias de modelos seleccionadas"
+    },
+    "status": {
+      "countInstalled": "{count} instalados",
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "downloadFailed": "Descarga fallida",
+      "installed": "Instalado",
+      "downloadComplete": "Descarga completa",
+      "failed": "Fallido",
+      "notInstalled": "No instalado"
+    },
+    "column": {
+      "variant": "Variante",
+      "format": "Formato",
+      "backend": "Backend",
+      "params": "Params",
+      "size": "Tamaño",
+      "ram": "RAM",
+      "compressed": "Comprimido",
+      "context": "Contexto",
+      "status": "Estado"
+    },
+    "memory": {
+      "comfortable": "Cabe cómodamente en los {available} GB disponibles",
+      "tight": "Cabe pero justo en los {available} GB disponibles — cierra otras apps antes de cargar",
+      "over": "Los {estimated} GB estimados superan los {available} GB disponibles — prueba una cuantización menor",
+      "comfortableLabel": "Cabe",
+      "tightLabel": "Justo",
+      "overLabel": "Demasiado grande"
+    },
+    "action": {
+      "details": "Detalles",
+      "detailsTooltip": "Mostrar todos los detalles en una vista enfocada",
+      "convertModel": "Convertir modelo",
+      "chatWithModel": "Chatear con el modelo",
+      "loadForServer": "Cargar para el servidor",
+      "pauseDownload": "Pausar descarga",
+      "cancelDownload": "Cancelar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "deleteDownload": "Eliminar descarga",
+      "retryDownload": "Reintentar descarga",
+      "downloadModel": "Descargar modelo",
+      "openModelCardHF": "Abrir ficha del modelo en Hugging Face",
+      "openOnHF": "Abrir en Hugging Face"
+    },
+    "hub": {
+      "sectionAria": "Resultados de Hugging Face Hub",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, one {# resultado en vivo} other {# resultados en vivo}} de huggingface.co, ordenados por actualización más reciente",
+      "loading": "Cargando lista de archivos desde Hugging Face...",
+      "previewUnavailable": "Vista previa no disponible",
+      "licenseLabel": "Licencia: {license}",
+      "totalGb": "{size} GB en total",
+      "updatedDate": "Actualizado el {date}",
+      "moreTags": "+{count} más",
+      "filePreviewUnavailable": "La vista previa de archivos no está disponible para este repo en este momento.",
+      "weightsHeader": "Pesos ({count})",
+      "largestShard": "Mayor fragmento {size}",
+      "showFiles": "Mostrar archivos",
+      "visionTag": "visión",
+      "configAndTokenizer": "Config y tokenizador",
+      "otherFiles": "+{count, plural, one {# otro archivo} other {# otros archivos}}"
+    },
+    "searchError": {
+      "fallback": "Mostrando los últimos resultados exitosos de Descubrir."
+    },
+    "empty": {
+      "capFilter": "Ningún modelo coincide con el filtro «{cap}».",
+      "search": "Ningún modelo coincide con «{query}». Prueba con otro término de búsqueda.",
+      "prompt": "Escribe para buscar modelos."
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{rows} de {total, plural, one {# modelo} other {# modelos}} con datos locales",
+      "none": "Aún no se han detectado modelos de imagen localmente"
+    },
+    "empty": {
+      "noModels": "Descarga un modelo de imagen desde Descubrir imagen para empezar.",
+      "noMatches": "Ningún modelo de imagen instalado coincide con los filtros actuales."
+    },
+    "action": {
+      "browseCatalog": "Explorar catálogo",
+      "clearFilters": "Limpiar filtros",
+      "generate": "Generar",
+      "pauseDownload": "Pausar descarga",
+      "retryDownload": "Reintentar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "downloadModel": "Descargar modelo",
+      "cancelDownload": "Cancelar descarga",
+      "deleteModel": "Eliminar modelo",
+      "openModelCard": "Abrir ficha del modelo"
+    },
+    "filter": {
+      "searchLabel": "Buscar",
+      "searchPlaceholder": "Filtrar por modelo, proveedor, repo, tarea o etiqueta...",
+      "taskLabel": "Tarea",
+      "statusLabel": "Estado",
+      "sortByLabel": "Ordenar por",
+      "task": {
+        "all": "Todas las tareas",
+        "txt2img": "Texto a imagen",
+        "img2img": "Imagen a imagen",
+        "inpaint": "Inpaint"
+      },
+      "status": {
+        "all": "Cualquier estado",
+        "installed": "Instalado",
+        "incomplete": "Incompleto",
+        "downloading": "Descargando",
+        "paused": "Pausado",
+        "failed": "Fallido"
+      }
+    },
+    "sort": {
+      "name": "Nombre",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "newestReleased": "Lanzamiento más reciente",
+      "largestSize": "Mayor tamaño",
+      "highestRamVram": "Mayor RAM/VRAM",
+      "status": "Estado",
+      "direction": {
+        "ascending": "ascendente",
+        "descending": "descendente"
+      },
+      "providerDir": "proveedor {direction}",
+      "tasksDir": "tareas {direction}",
+      "statusDir": "estado {direction}",
+      "largestFirst": "mayor tamaño primero",
+      "smallestFirst": "menor tamaño primero",
+      "highestRam": "mayor RAM/VRAM primero",
+      "lowestRam": "menor RAM/VRAM primero",
+      "nameAsc": "nombre A-Z",
+      "nameDesc": "nombre Z-A",
+      "newestFirst": "lanzamiento más reciente primero",
+      "oldestFirst": "lanzamiento más antiguo primero"
+    },
+    "summary": {
+      "results": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchChip": "Buscar: {query}",
+      "taskChip": "Tarea: {value}",
+      "statusChip": "Estado: {value}"
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "size": "Tamaño",
+      "ramVram": "RAM/VRAM",
+      "released": "Lanzado",
+      "status": "Estado"
+    },
+    "status": {
+      "installed": "Instalado",
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "failed": "Fallido",
+      "downloadFailed": "Descarga fallida",
+      "incomplete": "Incompleto"
+    },
+    "memory": {
+      "pending": "pendiente",
+      "pendingTitle": "Estimación de RAM/VRAM pendiente hasta conocer el tamaño de los pesos del modelo."
+    },
+    "releaseUnknown": "Desconocido"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{rows} de {total, plural, one {# modelo} other {# modelos}} con datos locales",
+      "none": "Aún no se han detectado modelos de video localmente"
+    },
+    "empty": {
+      "noModels": "Descarga un modelo de video desde Descubrir video para empezar.",
+      "noMatches": "Ningún modelo de video instalado coincide con los filtros actuales."
+    },
+    "action": {
+      "browseCatalog": "Explorar catálogo",
+      "clearFilters": "Limpiar filtros",
+      "generate": "Generar",
+      "pauseDownload": "Pausar descarga",
+      "retryDownload": "Reintentar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "downloadModel": "Descargar modelo",
+      "cancelDownload": "Cancelar descarga",
+      "deleteModel": "Eliminar modelo",
+      "openModelCard": "Abrir ficha del modelo"
+    },
+    "filter": {
+      "searchLabel": "Buscar",
+      "searchPlaceholder": "Filtrar por modelo, proveedor, repo, tarea o etiqueta...",
+      "taskLabel": "Tarea",
+      "statusLabel": "Estado",
+      "sortByLabel": "Ordenar por",
+      "task": {
+        "all": "Todas las tareas",
+        "txt2video": "Texto a video",
+        "img2video": "Imagen a video",
+        "video2video": "Video a video"
+      },
+      "status": {
+        "all": "Cualquier estado",
+        "loaded": "En memoria",
+        "installed": "Instalado",
+        "incomplete": "Incompleto",
+        "downloading": "Descargando",
+        "paused": "Pausado",
+        "failed": "Fallido"
+      }
+    },
+    "sort": {
+      "name": "Nombre",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "newestReleased": "Lanzamiento más reciente",
+      "largestSize": "Mayor tamaño",
+      "highestRamVram": "Mayor RAM/VRAM",
+      "status": "Estado",
+      "direction": {
+        "ascending": "ascendente",
+        "descending": "descendente"
+      },
+      "providerDir": "proveedor {direction}",
+      "tasksDir": "tareas {direction}",
+      "statusDir": "estado {direction}",
+      "largestFirst": "mayor tamaño primero",
+      "smallestFirst": "menor tamaño primero",
+      "highestRam": "mayor RAM/VRAM primero",
+      "lowestRam": "menor RAM/VRAM primero",
+      "nameAsc": "nombre A-Z",
+      "nameDesc": "nombre Z-A",
+      "newestFirst": "lanzamiento más reciente primero",
+      "oldestFirst": "lanzamiento más antiguo primero"
+    },
+    "summary": {
+      "results": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchChip": "Buscar: {query}",
+      "taskChip": "Tarea: {value}",
+      "statusChip": "Estado: {value}"
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "size": "Tamaño",
+      "ramVram": "RAM/VRAM",
+      "released": "Lanzado",
+      "status": "Estado"
+    },
+    "status": {
+      "loaded": "Cargado en memoria",
+      "installed": "Instalado",
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "failed": "Fallido",
+      "downloadFailed": "Descarga fallida",
+      "incomplete": "Incompleto"
+    },
+    "memory": {
+      "pending": "pendiente",
+      "pendingTitle": "Estimación de RAM/VRAM pendiente hasta conocer el tamaño de los pesos del modelo."
+    },
+    "releaseUnknown": "Desconocido"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "Solo abiertos",
+      "gatedOnly": "Solo restringidos",
+      "all": "Abiertos + restringidos",
+      "gated": "Restringido",
+      "open": "Abierto"
+    },
+    "memory": {
+      "pending": "pendiente",
+      "pendingTitle": "Estimación de RAM/VRAM pendiente hasta conocer el tamaño de los pesos del modelo."
+    },
+    "subtitle": "{filtered} de {total} modelos / metadatos en vivo de Hugging Face",
+    "hero": {
+      "heading": "Explora y descarga modelos de imagen para generación local.",
+      "body": "Descarga cualquier modelo para usarlo en Image Studio. El estado del runtime se encuentra en la pestaña Studio.",
+      "installedModels": "Modelos instalados",
+      "openStudio": "Abrir Studio"
+    },
+    "filter": {
+      "search": "Buscar",
+      "searchPlaceholder": "Buscar FLUX, SDXL, proveedor, tarea, etiquetas, licencia...",
+      "task": "Tarea",
+      "access": "Acceso",
+      "status": "Estado",
+      "sortBy": "Ordenar por",
+      "clear": "Limpiar filtros"
+    },
+    "task": {
+      "all": "Todas las tareas",
+      "txt2img": "Texto a imagen",
+      "img2img": "Imagen a imagen",
+      "inpaint": "Restauración"
+    },
+    "status": {
+      "any": "Cualquier estado",
+      "installed": "Instalado",
+      "notInstalled": "No instalado",
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "failed": "Fallido",
+      "incomplete": "Incompleto"
+    },
+    "sort": {
+      "name": "Nombre",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "release": "Más recientes",
+      "size": "Mayor tamaño",
+      "ram": "Mayor RAM/VRAM",
+      "likes": "Más me gusta",
+      "downloads": "Más descargas",
+      "status": "Estado"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchBadge": "Búsqueda: {query}",
+      "taskBadge": "Tarea: {task}",
+      "accessBadge": "Acceso: {access}",
+      "statusBadge": "Estado: {status}"
+    },
+    "empty": {
+      "body": "Intenta ampliar los filtros o los términos de búsqueda."
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "size": "Tamaño",
+      "ramVram": "RAM/VRAM",
+      "released": "Publicado",
+      "status": "Estado"
+    },
+    "unknown": "Desconocido",
+    "action": {
+      "generate": "Generar",
+      "pauseDownload": "Pausar descarga",
+      "cancelDownload": "Cancelar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "deleteDownload": "Eliminar descarga",
+      "retryDownload": "Reintentar descarga",
+      "downloadModel": "Descargar modelo",
+      "deleteModel": "Eliminar modelo",
+      "openHuggingFace": "Abrir en Hugging Face",
+      "huggingFace": "Hugging Face",
+      "settings": "Configuración"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "pendiente",
+      "pendingTitle": "Estimación de RAM/VRAM pendiente hasta conocer el tamaño de los pesos del modelo."
+    },
+    "action": {
+      "cancelDownload": "Cancelar descarga",
+      "deleteModel": "Eliminar modelo",
+      "deleteDownload": "Eliminar descarga",
+      "generate": "Generar",
+      "installing": "Instalando",
+      "install": "Instalar",
+      "pauseDownload": "Pausar descarga",
+      "resumeDownload": "Reanudar descarga",
+      "retryDownload": "Reintentar descarga",
+      "downloadModel": "Descargar modelo",
+      "openModelCard": "Abrir ficha del modelo"
+    },
+    "subtitle": "{filtered} de {total} modelos de video / metadatos en vivo de Hugging Face",
+    "hero": {
+      "heading": "Explora y descarga modelos de video para generación local.",
+      "body": "Descarga cualquier modelo para usarlo en Video Studio. El estado del runtime se encuentra en la pestaña Studio.",
+      "installedModels": "Modelos instalados",
+      "openStudio": "Abrir Studio"
+    },
+    "filter": {
+      "search": "Buscar",
+      "searchPlaceholder": "Buscar LTX, Wan, Mochi, proveedor, etiquetas...",
+      "task": "Tarea",
+      "status": "Estado",
+      "sortBy": "Ordenar por",
+      "clear": "Limpiar filtros"
+    },
+    "task": {
+      "all": "Todas las tareas",
+      "txt2video": "Texto a video",
+      "img2video": "Imagen a video",
+      "video2video": "Video a video"
+    },
+    "status": {
+      "any": "Cualquier estado",
+      "installed": "Instalado",
+      "notInstalled": "No instalado",
+      "downloading": "Descargando",
+      "paused": "Pausado",
+      "failed": "Fallido",
+      "incomplete": "Incompleto"
+    },
+    "sort": {
+      "name": "Nombre",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "release": "Más recientes",
+      "size": "Mayor tamaño",
+      "ram": "Mayor RAM/VRAM",
+      "likes": "Más me gusta",
+      "downloads": "Más descargas",
+      "status": "Estado"
+    },
+    "summary": {
+      "count": "{count, plural, one {# modelo} other {# modelos}} · {sortLabel}",
+      "searchBadge": "Búsqueda: {query}",
+      "taskBadge": "Tarea: {task}",
+      "statusBadge": "Estado: {status}"
+    },
+    "empty": {
+      "body": "Intenta ampliar los filtros o los términos de búsqueda."
+    },
+    "column": {
+      "model": "Modelo",
+      "provider": "Proveedor",
+      "tasks": "Tareas",
+      "size": "Tamaño",
+      "ramVram": "RAM/VRAM",
+      "released": "Publicado",
+      "status": "Estado"
+    },
+    "unknown": "Desconocido",
+    "longLive": {
+      "installNote": "LongLive se instala en un venv aislado en ~/.chaosengine/longlive. Solo CUDA, 5-15 min según la red."
+    }
+  }
+}

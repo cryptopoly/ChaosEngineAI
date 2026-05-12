@@ -1,0 +1,273 @@
+{
+  "composer": {
+    "placeholderReady": "輸入訊息…(Enter 傳送,Shift+Enter 換行,/ 輸入命令)",
+    "placeholderNoModel": "請先載入模型 — 從 我的模型 或 探索 選擇一個,然後點擊 對話。",
+    "send": "傳送",
+    "stop": "停止",
+    "clear": "清除",
+    "sendDisabledTooltip": "請先載入模型再傳送訊息"
+  },
+  "thinkingMode": {
+    "label": "思考",
+    "tooltip": "選擇模型回答前進行多少推理。關閉 = 直接回答;低 / 中 / 高 = 對相容模型逐步增加推理深度。",
+    "off": "關閉",
+    "offTooltip": "無推理 — 模型直接回答",
+    "low": "低",
+    "lowTooltip": "簡短推理",
+    "medium": "中",
+    "mediumTooltip": "預設推理深度",
+    "high": "高",
+    "highTooltip": "擴展推理"
+  },
+  "tools": {
+    "toggleLabel": "工具",
+    "toggleOn": "工具 開啟",
+    "enableTooltip": "啟用代理工具",
+    "enabledTooltip": "工具已啟用(網頁搜尋、程式碼、計算機、檔案讀取)"
+  },
+  "newSession": "新增工作階段",
+  "newSessionTitle": "未命名對話",
+  "deleteSession": "刪除工作階段",
+  "deleteSessionConfirm": "刪除此對話?此操作無法復原。",
+  "renameSession": "重新命名工作階段",
+  "exportSession": "匯出工作階段",
+  "promptPlaceholder": "傳送訊息…",
+  "promptPlaceholderImage": "描述影像,或拖入一張以討論…",
+  "stopGeneration": "停止生成",
+  "regenerateResponse": "重新生成回覆",
+  "branchHere": "從此處分支",
+  "copyMessage": "複製訊息",
+  "copyAsMarkdown": "複製為 Markdown",
+  "tokensUsed": "{count, plural, other {# 個標記}}",
+  "thinking": "思考中…",
+  "toolCall": {
+    "label": "工具呼叫",
+    "running": "執行工具:{tool}",
+    "succeeded": "工具成功:{tool}",
+    "failed": "工具失敗:{tool}",
+    "noArguments": "(無參數)",
+    "input": "輸入",
+    "result": "結果"
+  },
+  "attachments": {
+    "image": "附加影像",
+    "document": "附加文件",
+    "code": "附加程式碼",
+    "removeAttachment": "移除附件",
+    "imageTooLarge": "影像必須小於 10MB"
+  },
+  "modelPicker": {
+    "label": "模型",
+    "noneSelected": "未載入模型",
+    "loadModel": "載入模型"
+  },
+  "header": {
+    "expandChatList": "展開對話清單",
+    "chatsLabel": "對話",
+    "threadName": "執行緒名稱",
+    "selectModel": "選擇模型",
+    "exportThread": "匯出此執行緒",
+    "export": "匯出",
+    "modelCapabilities": "模型能力",
+    "ready": "就緒",
+    "loadChatModel": "載入此對話的模型",
+    "loading": "載入中...",
+    "loadModel": "載入模型"
+  },
+  "sidebar": {
+    "title": "對話",
+    "newThread": "新執行緒",
+    "compare": "比較",
+    "compareTooltip": "並排比較兩個模型",
+    "collapseChatList": "摺疊對話清單",
+    "searchThreadsPlaceholder": "搜尋執行緒...",
+    "searchThreadsAriaLabel": "搜尋執行緒",
+    "clearSearch": "清除搜尋"
+  },
+  "swapMenu": {
+    "clearOverride": "清除覆寫",
+    "dialogAriaLabel": "為下一輪選擇模型",
+    "sendNextVia": "下一則透過",
+    "oneTurnNote": "覆寫僅適用於一輪。",
+    "noWarmModels": "沒有其他熱模型。從 我的模型 載入第二個模型以啟用快速切換。"
+  },
+  "activeThread": {
+    "title": "活動執行緒",
+    "subtitle": "回應中繼資料預設摺疊,但可在每個代理回合中檢視。"
+  },
+  "compare": {
+    "latest": "最新"
+  },
+  "tempChip": {
+    "label": "溫度 {value}",
+    "tooltip": "溫度:{value}(來自啟動設定)",
+    "overrideTooltip": "溫度覆寫:{value}(預設 {defaultValue_})",
+    "dialogAriaLabel": "溫度覆寫",
+    "overrideLabel": "覆寫溫度",
+    "reset": "重設",
+    "hint": "較低 = 聚焦。較高 = 富有創造性。來自啟動設定的預設值 {value}。"
+  },
+  "thread": {
+    "copyMessageTooltip": "複製訊息",
+    "retryTooltip": "重試回應",
+    "forkTooltip": "從此處分支(建立新執行緒)",
+    "delveTooltip": "深入 — 以批評的眼光重讀並提出修訂後的回答",
+    "deleteMessageTooltip": "刪除訊息",
+    "loadExactSettingsTooltip": "載入此回應使用的確切模型和執行階段設定",
+    "roleAgent": "代理",
+    "roleUser": "使用者",
+    "thermalThrottleTitle": "溫度降頻",
+    "memoryCriticalTitle": "系統記憶體已達臨界",
+    "memoryStats": "{available} GB 可用 · 壓力 {pressure}%",
+    "cancel": "取消",
+    "emptyState": "傳送訊息以開始對話。",
+    "reloadSettings": "重新載入這些設定",
+    "fitInMemory": {
+      "on": "開",
+      "off": "關",
+      "unknown": "未知"
+    },
+    "variants": {
+      "heading": "比較回覆",
+      "subtitle": "同一提示詞路由至其他熱模型。"
+    },
+    "details": {
+      "summary": "模型詳細資訊",
+      "unknown": "未知",
+      "auto": "自動",
+      "dflashAccepted": "DFLASH 平均接受 {value}",
+      "model": "模型",
+      "runtime": "執行階段",
+      "cache": "快取",
+      "strategy": "策略",
+      "cacheBits": "快取位元",
+      "fp16Layers": "FP16 層",
+      "backend": "後端",
+      "context": "上下文",
+      "fitInMemory": "符合記憶體",
+      "tokens": "Token",
+      "tokensTotal": "共 {count}",
+      "responseTime": "回應時間",
+      "decodeSpeed": "解碼速度",
+      "dflashDdtree": "DFlash / DDTree",
+      "requestedCache": "請求的快取",
+      "requestedFit": "請求的符合度",
+      "requestedDflashDdtree": "請求的 DFlash / DDTree",
+      "runtimeStatus": "執行階段狀態",
+      "treeBudget": "樹預算",
+      "dflashAcceptance": "DFLASH 接受率",
+      "avgTokens": "平均 {value} 個 token",
+      "draftModel": "草稿模型"
+    }
+  },
+  "htmlChallenge": {
+    "titlePlaceholder": "挑戰標題",
+    "promptPlaceholder": "用同一個網頁挑戰向所有選取的模型發起提示...",
+    "openBrowser": "在預設瀏覽器中開啟",
+    "historyPlaceholder": "搜尋過去的挑戰...",
+    "moveToTrash": "移至垃圾桶",
+    "moveToTrashAria": "將 \"{title}\" 移至垃圾桶",
+    "noMatching": "沒有相符的挑戰。",
+    "layoutToggleAria": "HTML 挑戰版面配置",
+    "layoutRow": "列",
+    "thisChallengeFallback": "此挑戰",
+    "deleteConfirm": "將「{title}」移至 .trash 資料夾?如有需要,您可以從磁碟還原。",
+    "actions": {
+      "newChallenge": "新增挑戰",
+      "openFolder": "開啟資料夾",
+      "openSettings": "開啟設定",
+      "addModel": "新增模型",
+      "cancel": "取消",
+      "usePromptInNewChallenge": "在新挑戰中使用提示詞",
+      "runChallenge": "執行挑戰",
+      "runNewChallenge": "執行新挑戰"
+    },
+    "status": {
+      "generating": "正在生成...",
+      "queuedRetry": "已排入重試佇列...",
+      "queuedContinuation": "已排入接續佇列...",
+      "queuedRepair": "已排入修復佇列..."
+    },
+    "errors": {
+      "deleteFailed": "刪除挑戰失敗。",
+      "challengeFailed": "挑戰失敗",
+      "retryFailed": "重試失敗",
+      "repairFailed": "修復失敗"
+    },
+    "modelCard": {
+      "selectAModel": "選擇模型",
+      "thinking": "思考",
+      "thinkingOff": "關閉",
+      "thinkingLow": "低",
+      "thinkingMed": "中",
+      "thinkingHigh": "高",
+      "temp": "溫度",
+      "seed": "種子",
+      "seedPlaceholder": "隨機",
+      "randomize": "隨機化",
+      "remove": "移除",
+      "change": "變更",
+      "select": "選擇"
+    },
+    "picker": {
+      "title": "選擇模型",
+      "titleForSlot": "選擇 {slot}",
+      "confirm": "使用模型",
+      "confirmForSlot": "用於 {slot}"
+    }
+  },
+  "samplerPanel": {
+    "label": "取樣器",
+    "openTooltip": "開啟取樣器面板",
+    "activeTooltip": "{count, plural, other {# 個取樣器覆寫已啟用}}",
+    "dialogAriaLabel": "取樣器覆寫",
+    "headerTitle": "取樣器覆寫",
+    "resetAll": "全部重設",
+    "resetAllTooltip": "全部重設為後端預設值"
+  },
+  "kvChip": {
+    "clearOverride": "清除 KV 覆寫",
+    "revertTooltip": "恢復至工作階段預設值",
+    "dialogAriaLabel": "KV 快取策略",
+    "headingTitle": "下一輪的 KV 快取",
+    "reloadNote": "切換將在需要時重新載入執行階段。"
+  },
+  "citations": {
+    "sourcesLabel": "來源：",
+    "pageInfo": "（第 {page} 頁）",
+    "chunkLabel": "片段 {index}"
+  },
+  "modelLoading": {
+    "elapsed": "（{seconds} 秒）",
+    "loadingWithElapsed": "正在載入 {name}... 已過 {seconds} 秒"
+  },
+  "promptPhase": {
+    "processingPrompt": "正在處理提示詞",
+    "generating": "正在生成"
+  },
+  "slashCommands": {
+    "menuAriaLabel": "斜線指令"
+  },
+  "compareView": {
+    "slot": {
+      "a": "模型 A",
+      "b": "模型 B",
+      "c": "模型 C",
+      "d": "模型 D"
+    },
+    "selectModel": "選擇模型",
+    "removeSlotTitle": "移除 {slot}",
+    "remove": "移除",
+    "change": "變更",
+    "select": "選擇",
+    "backToChat": "返回對話",
+    "title": "比較模型",
+    "subtitle": "排隊 2-4 個模型。每個槽位獨佔載入、執行並在下一個槽位開始前卸載。",
+    "addModel": "新增模型",
+    "queued": "{count}/4 已排隊",
+    "duplicateNote": "多個槽位選擇了同一模型；對執行階段設定檔 A/B 測試很有用。",
+    "promptPlaceholder": "輸入要比較的提示...",
+    "cancel": "取消",
+    "compareButton": "比較"
+  }
+}

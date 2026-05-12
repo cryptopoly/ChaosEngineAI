@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { SidebarGroupId, TabId } from "../types";
 import type { TabConfig } from "../constants";
 import { sidebarGroups, tabs as allTabs } from "../constants";
@@ -10,6 +11,7 @@ interface SubtabBarProps {
 }
 
 export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChild }: SubtabBarProps) {
+  const { t } = useTranslation("common");
   const activeTabConfig = allTabs.find((t) => t.id === activeTab);
   const groupId = activeTabConfig?.group;
   if (!groupId) return null;
@@ -31,8 +33,23 @@ export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChil
     onTabChange(child.id);
   }
 
+  // FU-042: localised group + per-tab labels via translation keys with
+  // English literal fallback.
+  const localizedGroupLabel = t(`tabGroups.${groupDef.id}`, { defaultValue: groupDef.label });
+  const childLabel = (child: TabConfig) =>
+    child.shortLabelKey
+      ? t(child.shortLabelKey, { defaultValue: child.shortLabel ?? child.label })
+      : child.shortLabel ?? child.label;
+
   return (
-    <div className="subtab-bar" role="tablist" aria-label={`${groupDef.label} tabs`}>
+    <div
+      className="subtab-bar"
+      role="tablist"
+      aria-label={t("sidebar.groupTabsAriaLabel", {
+        group: localizedGroupLabel,
+        defaultValue: "{{group}} tabs",
+      })}
+    >
       {children.map((child) => {
         const isActive = activeTab === child.id;
         return (
@@ -44,7 +61,7 @@ export function SubtabBar({ activeTab, onTabChange, platform, onRememberLastChil
             className={isActive ? "subtab active" : "subtab"}
             onClick={() => handleClick(child)}
           >
-            {child.shortLabel ?? child.label}
+            {childLabel(child)}
           </button>
         );
       })}

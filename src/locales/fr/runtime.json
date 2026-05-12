@@ -1,0 +1,130 @@
+{
+  "engines": {
+    "mlx": {
+      "name": "MLX",
+      "description": "Moteur d'inférence natif Apple Silicon"
+    },
+    "llamaCpp": {
+      "name": "llama.cpp",
+      "description": "Inférence GGUF via llama-server"
+    },
+    "vllm": {
+      "name": "vLLM",
+      "description": "Moteur d'inférence CUDA"
+    }
+  },
+  "cacheStrategies": {
+    "native": {
+      "name": "Natif",
+      "description": "Types de cache intégrés (f16, q8_0, q4_0, etc.). Compatibilité maximale."
+    },
+    "turboquant": {
+      "name": "TurboQuant",
+      "description": "Quantification KV à rotation Hadamard. Compression 2–4× avec perte de qualité minimale."
+    },
+    "triattention": {
+      "name": "TriAttention",
+      "description": "Compresseur d'attention sparse pour contexte long. Apple Silicon + CUDA."
+    },
+    "fbcache": {
+      "name": "First Block Cache",
+      "description": "Hook de cache pour diffusion uniquement. Accélération ~1,8× sur les pipelines DiT."
+    },
+    "taylorseer": {
+      "name": "TaylorSeer",
+      "description": "Cache à expansion de Taylor pour diffusion. Accélération agressive, FLUX/SD3."
+    },
+    "magcache": {
+      "name": "MagCache",
+      "description": "Cache basé sur l'amplitude pour diffusion. Sans calibrage, FLUX uniquement."
+    },
+    "pab": {
+      "name": "Pyramid Attention Broadcast",
+      "description": "Réutilisation d'attention entre pas de temps, diffusion uniquement."
+    },
+    "fastercache": {
+      "name": "FasterCache",
+      "description": "Cache de réutilisation conditionnel/inconditionnel, diffusion uniquement."
+    }
+  },
+  "controls": {
+    "engine": "Moteur",
+    "cacheStrategy": "Stratégie de cache",
+    "cacheStrategyLockedNote": "(verrouillé sur Natif pendant le décodage spéculatif)",
+    "cacheType": "Type de cache",
+    "speculativeDecoding": "Décodage spéculatif",
+    "draftModel": "Modèle de brouillon",
+    "contextSize": "Taille du contexte",
+    "gpuLayers": "Couches GPU",
+    "threads": "Threads",
+    "fitInMemory": "Tenir en mémoire"
+  },
+  "notes": {
+    "binaryRequired": "Nécessite {binary}.",
+    "platformRequired": "Nécessite {platform}.",
+    "engineIncompatible": "Incompatible avec {engine}.",
+    "unknownEngine": "Moteur inconnu."
+  },
+  "metrics": {
+    "tokensPerSec": "{value} tok/s",
+    "promptTokensPerSec": "{value} prompt tok/s",
+    "firstTokenLatency": "Premier jeton : {ms} ms",
+    "vramUsed": "VRAM : {used} / {total}"
+  },
+  "fusedAttention": {
+    "label": "Attention fusionnée",
+    "aboutTitle": "À propos de l'attention fusionnée",
+    "body": "L'attention fusionnée utilise des noyaux d'attention optimisés lorsque le backend sélectionné les prend en charge. Elle peut améliorer le débit et réduire les surcoûts, mais certaines combinaisons modèle/backend peuvent préférer le chemin d'attention standard pour la compatibilité."
+  },
+  "dflash": {
+    "tooltip": "DFlash décodage spéculatif : génération 3-5× plus rapide sans perte de qualité.",
+    "label": "DFlash",
+    "installing": "Installation...",
+    "installButton": "Installer DFlash",
+    "aboutTitle": "À propos de DFlash décodage spéculatif",
+    "body": "DFlash utilise un petit modèle de brouillon pour proposer plusieurs tokens en parallèle, puis les vérifie en une seule passe avant. Cela donne une génération 3-5× plus rapide sans perte de qualité.",
+    "requiresLabel": "Requiert :",
+    "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modèle de brouillon compatible pour la cible.",
+    "currentModelLabel": "Modèle actuel :",
+    "supportedVia": "Pris en charge via {model}",
+    "compatibilityUnresolved": "Compatibilité non encore résolue."
+  },
+  "presets": {
+    "quality": {
+      "label": "Qualité max",
+      "hint": "Code & raisonnement"
+    },
+    "balanced": {
+      "label": "Équilibré",
+      "hint": "Chat général"
+    },
+    "speed": {
+      "label": "Vitesse max",
+      "hint": "Itération rapide"
+    },
+    "memory": {
+      "label": "Mémoire min",
+      "hint": "RAM serrée"
+    }
+  },
+  "sliders": {
+    "context": "Contexte",
+    "maxTokens": "Tokens max",
+    "temperature": "Température"
+  },
+  "fitInMemory": {
+    "body": "Tenir en mémoire demande à ChaosEngineAI de choisir un profil runtime/cache qui maintient le modèle et le cache KV dans la mémoire disponible. Désactivez uniquement si vous voulez forcer un profil plus grand ou plus agressif et acceptez un éventuel swap ou échec de chargement."
+  },
+  "cacheFit": {
+    "mayNotFit": "Ne tient peut-être pas",
+    "modelMayNotFit": "Modèle ne tient peut-être pas",
+    "fitsEasily": "Tient facilement",
+    "tightFit": "Tient juste",
+    "contextMayNotFit": "Le contexte complet ne tient peut-être pas"
+  },
+  "cacheAdvice": {
+    "modelExceedsRam": "Les poids du modèle seuls dépassent la RAM utilisable estimée. Choisissez un modèle plus petit ou une quantification plus agressive.",
+    "nativeF16TooBig": "Le modèle peut se charger, mais un cache f16 natif complet à ce contexte peut dépasser la RAM système au fur et à mesure que le fil se remplit. Baissez le contexte ou choisissez une stratégie compressée.",
+    "compressedTooBig": "Le modèle peut se charger, mais le cache de contexte sélectionné peut dépasser la RAM système au fur et à mesure que le fil se remplit. Baissez le contexte ou réduisez les couches FP16."
+  }
+}

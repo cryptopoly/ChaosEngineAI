@@ -320,4 +320,8 @@ export type SettingsDraft = {
   dataDirectory: string;
   imageOutputsDirectory: string;
   videoOutputsDirectory: string;
+  // FU-042 — persisted UI locale. ``"system"`` (default) auto-detects.
+  locale: string;
+  // FU-042 — clock format override. ``"system"`` honours locale default.
+  clockFormat: "system" | "12h" | "24h";
 };

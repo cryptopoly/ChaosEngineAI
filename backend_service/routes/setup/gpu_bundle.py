@@ -28,6 +28,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from backend_service.i18n import localized_detail
+
 from backend_service.routes.setup._install_helpers import (
     _CUDA_TORCH_INDEXES,
     _all_attempts_lack_wheel,
@@ -572,7 +574,7 @@ def start_install_gpu_bundle(request: Request) -> dict[str, Any]:
     if extras is None:
         raise HTTPException(
             status_code=500,
-            detail="Could not resolve the extras site-packages directory.",
+            detail=localized_detail(request, "Could not resolve the extras site-packages directory."),
         )
     extras.mkdir(parents=True, exist_ok=True)
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ModelLaunchModal } from "./ModelLaunchModal";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
@@ -50,8 +51,13 @@ export function LaunchModal({
   onConfirmLaunch,
   onInstallPackage,
 }: LaunchModalProps) {
+  const { t } = useTranslation("common");
   if (!pendingLaunch) return null;
-  const actionLabel = pendingLaunch.action === "thread" ? "Start Chat" : pendingLaunch.action === "chat" ? "Load for Chat" : "Load for Server";
+  const actionLabel = pendingLaunch.action === "thread"
+    ? t("launchModal.startChat", { defaultValue: "Start Chat" })
+    : pendingLaunch.action === "chat"
+      ? t("launchModal.loadForChat", { defaultValue: "Load for Chat" })
+      : t("launchModal.loadForServer", { defaultValue: "Load for Server" });
   // Prefer local library, but if the caller preselected a catalog key
   // (e.g. the Discover Chat/Server buttons pass `catalog:${variant.id}`)
   // or the library is empty, fall back to the combined set so the
@@ -67,7 +73,7 @@ export function LaunchModal({
   return (
     <ModelLaunchModal
       open
-      title="Select Model"
+      title={t("launchModal.title", { defaultValue: "Select Model" })}
       confirmLabel={actionLabel}
       selectedKey={selectedLaunchKey}
       collapseOnOpen={Boolean(pendingLaunch.preselectedKey)}

@@ -107,4 +107,10 @@ export interface Recommendation {
   targetModel: string;
   cacheLabel: string;
   headroomPercent: number;
+  /** Optional i18n key under `dashboard` namespace for the title. */
+  titleKey?: string;
+  /** Optional i18n key under `dashboard` namespace for the detail. */
+  detailKey?: string;
+  /** ICU MessageFormat variables for the keyed strings. */
+  payload?: Record<string, unknown>;
 }

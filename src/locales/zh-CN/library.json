@@ -1,0 +1,592 @@
+{
+  "title": "模型库",
+  "search": "搜索模型…",
+  "filter": {
+    "all": "全部",
+    "text": "文本",
+    "image": "图像",
+    "video": "视频",
+    "vision": "视觉",
+    "audio": "音频",
+    "installed": "已安装",
+    "uninstalled": "未安装",
+    "favourites": "收藏"
+  },
+  "card": {
+    "size": "大小",
+    "quantization": "量化",
+    "context": "上下文",
+    "capabilities": "能力",
+    "license": "许可证",
+    "author": "作者",
+    "lastUpdated": "最后更新"
+  },
+  "download": {
+    "start": "下载",
+    "inProgress": "下载中…",
+    "paused": "已暂停",
+    "resumed": "已恢复",
+    "cancelled": "已取消",
+    "complete": "已完成",
+    "totalSize": "共 {size}",
+    "downloaded": "已下载 {downloaded} / 共 {total}"
+  },
+  "details": {
+    "loadModel": "加载模型",
+    "unloadModel": "卸载模型",
+    "viewOnHF": "在 Hugging Face 查看",
+    "deleteFromDisk": "从磁盘删除"
+  },
+  "myModels": {
+    "subtitle": "{count} 个模型 / 磁盘占用 {size} / {dirs} 个目录",
+    "searchPlaceholder": "按名称、路径、格式、量化或后端筛选...",
+    "empty": "未找到模型。在首选项中添加目录以扫描本地模型。",
+    "filter": {
+      "all": "全部",
+      "allFormats": "所有格式",
+      "allBackends": "所有后端",
+      "allStrategies": "所有策略"
+    },
+    "capability": {
+      "title": {
+        "agents": "代理工作流",
+        "chat": "通用对话",
+        "coding": "代码支持",
+        "multilingual": "多语言支持",
+        "reasoning": "推理导向",
+        "thinking": "思考 / 深思熟虑的推理",
+        "tool-use": "工具使用 / 函数调用",
+        "video": "视频理解",
+        "vision": "图像 / 视觉支持"
+      },
+      "short": {
+        "agents": "代理",
+        "chat": "对话",
+        "coding": "代码",
+        "multilingual": "多语",
+        "reasoning": "推理",
+        "thinking": "思考",
+        "tool-use": "工具",
+        "video": "视频",
+        "vision": "视觉"
+      }
+    },
+    "strategy": {
+      "chip": "{label} ({count})",
+      "compatTooltip": "显示与 {label} 兼容的模型 ({count})",
+      "dflashEmptyTooltip": "DFlash 推测解码草稿仅适用于特定的基础模型:Qwen/Qwen3 (4B、8B)、Qwen/Qwen3-Coder (4B、8B、30B-A3B、Next)、Qwen/Qwen3.5 (4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B、120B)、moonshotai/Kimi-K2.5。微调模型通常不匹配。从 发现 下载基础模型以启用 DFlash。"
+    },
+    "column": {
+      "model": "模型",
+      "format": "格式",
+      "quant": "量化",
+      "backend": "后端",
+      "size": "大小",
+      "ram": "内存",
+      "compressed": "压缩后",
+      "context": "上下文",
+      "status": "状态"
+    },
+    "status": {
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "incomplete": "不完整",
+      "incompleteReason": "不完整或已损坏",
+      "installed": "已安装"
+    },
+    "badge": {
+      "activeDownload": "活动下载",
+      "broken": "已损坏"
+    },
+    "tooltip": {
+      "ram": "8K 上下文下的大致常驻内存(权重 + KV + 框架)",
+      "compressed": "使用压缩 KV 缓存策略时的大致常驻内存"
+    },
+    "download": {
+      "failed": "下载失败。",
+      "failedShort": "下载失败",
+      "paused": "下载已暂停。",
+      "inProgress": "下载进行中。",
+      "downloadedDetail": "已下载 {size}。"
+    },
+    "action": {
+      "pauseDownload": "暂停下载",
+      "retryDownload": "重试下载",
+      "resumeDownload": "恢复下载",
+      "cancelDownload": "取消下载",
+      "deleteDownload": "删除下载",
+      "chatWithModel": "与模型对话",
+      "loadForServer": "为服务器加载",
+      "deleteModel": "删除模型"
+    }
+  },
+  "onlineModels": {
+    "subtitle": "{count} 个模型系列 / 已在本地下载 {downloaded} 个",
+    "searchPlaceholder": "按名称、提供商或能力搜索...",
+    "variantCount": "{count, plural, other {# 个变体}}",
+    "filter": {
+      "all": "全部",
+      "allFormats": "所有格式"
+    },
+    "capability": {
+      "title": {
+        "agents": "代理工作流",
+        "chat": "通用对话",
+        "coding": "代码支持",
+        "multilingual": "多语言支持",
+        "reasoning": "推理导向",
+        "thinking": "思考 / 深思熟虑的推理",
+        "tool-use": "工具使用 / 函数调用",
+        "video": "视频理解",
+        "vision": "图像 / 视觉支持"
+      },
+      "short": {
+        "agents": "代理",
+        "chat": "对话",
+        "coding": "代码",
+        "multilingual": "多语",
+        "reasoning": "推理",
+        "thinking": "思考",
+        "tool-use": "工具",
+        "video": "视频",
+        "vision": "视觉"
+      }
+    },
+    "section": {
+      "curatedAria": "精选模型系列"
+    },
+    "status": {
+      "countInstalled": "已安装 {count} 个",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "downloadFailed": "下载失败",
+      "installed": "已安装",
+      "downloadComplete": "下载完成",
+      "failed": "失败",
+      "notInstalled": "未安装"
+    },
+    "column": {
+      "variant": "变体",
+      "format": "格式",
+      "backend": "后端",
+      "params": "参数",
+      "size": "大小",
+      "ram": "内存",
+      "compressed": "压缩后",
+      "context": "上下文",
+      "status": "状态"
+    },
+    "memory": {
+      "comfortable": "可舒适放入可用的 {available} GB",
+      "tight": "可放入但接近可用的 {available} GB 上限 — 加载前请关闭其他应用",
+      "over": "预计 {estimated} GB 超过可用的 {available} GB — 请尝试更小的量化",
+      "comfortableLabel": "可放入",
+      "tightLabel": "紧张",
+      "overLabel": "过大"
+    },
+    "action": {
+      "details": "详情",
+      "detailsTooltip": "在聚焦视图中显示完整详情",
+      "convertModel": "转换模型",
+      "chatWithModel": "与模型对话",
+      "loadForServer": "为服务器加载",
+      "pauseDownload": "暂停下载",
+      "cancelDownload": "取消下载",
+      "resumeDownload": "恢复下载",
+      "deleteDownload": "删除下载",
+      "retryDownload": "重试下载",
+      "downloadModel": "下载模型",
+      "openModelCardHF": "在 Hugging Face 上打开模型卡",
+      "openOnHF": "在 Hugging Face 上打开"
+    },
+    "hub": {
+      "sectionAria": "Hugging Face Hub 结果",
+      "header": "HuggingFace Hub",
+      "liveResults": "{count, plural, other {来自 huggingface.co 的 # 个实时结果}},按最近更新排序",
+      "loading": "正在从 Hugging Face 加载文件列表...",
+      "previewUnavailable": "预览不可用",
+      "licenseLabel": "许可证:{license}",
+      "totalGb": "共 {size} GB",
+      "updatedDate": "更新于 {date}",
+      "moreTags": "+{count} 个",
+      "filePreviewUnavailable": "当前此仓库的文件预览不可用。",
+      "weightsHeader": "权重 ({count})",
+      "largestShard": "最大分片 {size}",
+      "showFiles": "显示文件",
+      "visionTag": "视觉",
+      "configAndTokenizer": "配置与分词器",
+      "otherFiles": "+{count, plural, other {# 个其他文件}}"
+    },
+    "searchError": {
+      "fallback": "正在显示上次成功的 发现 结果。"
+    },
+    "empty": {
+      "capFilter": "没有模型匹配 \"{cap}\" 筛选。",
+      "search": "没有模型匹配 \"{query}\"。请尝试不同的搜索词。",
+      "prompt": "输入以搜索模型。"
+    }
+  },
+  "imageModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# 个模型}}中有 {rows} 个含本地数据",
+      "none": "尚未在本地检测到图像模型"
+    },
+    "empty": {
+      "noModels": "从 图像发现 下载图像模型以开始使用。",
+      "noMatches": "没有已安装的图像模型符合当前筛选条件。"
+    },
+    "action": {
+      "browseCatalog": "浏览目录",
+      "clearFilters": "清除筛选",
+      "generate": "生成",
+      "pauseDownload": "暂停下载",
+      "retryDownload": "重试下载",
+      "resumeDownload": "恢复下载",
+      "downloadModel": "下载模型",
+      "cancelDownload": "取消下载",
+      "deleteModel": "删除模型",
+      "openModelCard": "打开模型卡"
+    },
+    "filter": {
+      "searchLabel": "搜索",
+      "searchPlaceholder": "按模型、提供商、仓库、任务或标签筛选...",
+      "taskLabel": "任务",
+      "statusLabel": "状态",
+      "sortByLabel": "排序方式",
+      "task": {
+        "all": "所有任务",
+        "txt2img": "文本到图像",
+        "img2img": "图像到图像",
+        "inpaint": "修补"
+      },
+      "status": {
+        "all": "任何状态",
+        "installed": "已安装",
+        "incomplete": "不完整",
+        "downloading": "下载中",
+        "paused": "已暂停",
+        "failed": "失败"
+      }
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "newestReleased": "最新发布",
+      "largestSize": "最大大小",
+      "highestRamVram": "最高 RAM/VRAM",
+      "status": "状态",
+      "direction": {
+        "ascending": "升序",
+        "descending": "降序"
+      },
+      "providerDir": "提供商 {direction}",
+      "tasksDir": "任务 {direction}",
+      "statusDir": "状态 {direction}",
+      "largestFirst": "最大大小优先",
+      "smallestFirst": "最小大小优先",
+      "highestRam": "最高 RAM/VRAM 优先",
+      "lowestRam": "最低 RAM/VRAM 优先",
+      "nameAsc": "名称 A-Z",
+      "nameDesc": "名称 Z-A",
+      "newestFirst": "最新发布优先",
+      "oldestFirst": "最早发布优先"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchChip": "搜索:{query}",
+      "taskChip": "任务:{value}",
+      "statusChip": "状态:{value}"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "status": {
+      "installed": "已安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "downloadFailed": "下载失败",
+      "incomplete": "不完整"
+    },
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "releaseUnknown": "未知"
+  },
+  "videoModels": {
+    "subtitle": {
+      "withLocal": "{total, plural, other {# 个模型}}中有 {rows} 个含本地数据",
+      "none": "尚未在本地检测到视频模型"
+    },
+    "empty": {
+      "noModels": "从 视频发现 下载视频模型以开始使用。",
+      "noMatches": "没有已安装的视频模型符合当前筛选条件。"
+    },
+    "action": {
+      "browseCatalog": "浏览目录",
+      "clearFilters": "清除筛选",
+      "generate": "生成",
+      "pauseDownload": "暂停下载",
+      "retryDownload": "重试下载",
+      "resumeDownload": "恢复下载",
+      "downloadModel": "下载模型",
+      "cancelDownload": "取消下载",
+      "deleteModel": "删除模型",
+      "openModelCard": "打开模型卡"
+    },
+    "filter": {
+      "searchLabel": "搜索",
+      "searchPlaceholder": "按模型、提供商、仓库、任务或标签筛选...",
+      "taskLabel": "任务",
+      "statusLabel": "状态",
+      "sortByLabel": "排序方式",
+      "task": {
+        "all": "所有任务",
+        "txt2video": "文本到视频",
+        "img2video": "图像到视频",
+        "video2video": "视频到视频"
+      },
+      "status": {
+        "all": "任何状态",
+        "loaded": "在内存中",
+        "installed": "已安装",
+        "incomplete": "不完整",
+        "downloading": "下载中",
+        "paused": "已暂停",
+        "failed": "失败"
+      }
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "newestReleased": "最新发布",
+      "largestSize": "最大大小",
+      "highestRamVram": "最高 RAM/VRAM",
+      "status": "状态",
+      "direction": {
+        "ascending": "升序",
+        "descending": "降序"
+      },
+      "providerDir": "提供商 {direction}",
+      "tasksDir": "任务 {direction}",
+      "statusDir": "状态 {direction}",
+      "largestFirst": "最大大小优先",
+      "smallestFirst": "最小大小优先",
+      "highestRam": "最高 RAM/VRAM 优先",
+      "lowestRam": "最低 RAM/VRAM 优先",
+      "nameAsc": "名称 A-Z",
+      "nameDesc": "名称 Z-A",
+      "newestFirst": "最新发布优先",
+      "oldestFirst": "最早发布优先"
+    },
+    "summary": {
+      "results": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchChip": "搜索:{query}",
+      "taskChip": "任务:{value}",
+      "statusChip": "状态:{value}"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "status": {
+      "loaded": "已加载到内存",
+      "installed": "已安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "downloadFailed": "下载失败",
+      "incomplete": "不完整"
+    },
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "releaseUnknown": "未知"
+  },
+  "imageDiscover": {
+    "access": {
+      "openOnly": "仅开放",
+      "gatedOnly": "仅受限",
+      "all": "开放 + 受限",
+      "gated": "受限",
+      "open": "开放"
+    },
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "subtitle": "{filtered} / {total} 个模型 / 实时 Hugging Face 元数据",
+    "hero": {
+      "heading": "浏览并下载用于本地生成的图像模型。",
+      "body": "下载任意模型即可在图像工作室中使用。运行时状态位于工作室标签。",
+      "installedModels": "已安装的模型",
+      "openStudio": "打开工作室"
+    },
+    "filter": {
+      "search": "搜索",
+      "searchPlaceholder": "搜索 FLUX、SDXL、提供商、任务、标签、许可证...",
+      "task": "任务",
+      "access": "访问",
+      "status": "状态",
+      "sortBy": "排序方式",
+      "clear": "清除过滤器"
+    },
+    "task": {
+      "all": "所有任务",
+      "txt2img": "文本到图像",
+      "img2img": "图像到图像",
+      "inpaint": "修补"
+    },
+    "status": {
+      "any": "任何状态",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "release": "最新发布",
+      "size": "最大大小",
+      "ram": "最高 RAM/VRAM",
+      "likes": "点赞最多",
+      "downloads": "下载最多",
+      "status": "状态"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchBadge": "搜索:{query}",
+      "taskBadge": "任务:{task}",
+      "accessBadge": "访问:{access}",
+      "statusBadge": "状态:{status}"
+    },
+    "empty": {
+      "body": "请尝试扩大过滤器或搜索词。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "unknown": "未知",
+    "action": {
+      "generate": "生成",
+      "pauseDownload": "暂停下载",
+      "cancelDownload": "取消下载",
+      "resumeDownload": "恢复下载",
+      "deleteDownload": "删除下载",
+      "retryDownload": "重试下载",
+      "downloadModel": "下载模型",
+      "deleteModel": "删除模型",
+      "openHuggingFace": "在 Hugging Face 上打开",
+      "huggingFace": "Hugging Face",
+      "settings": "设置"
+    }
+  },
+  "videoDiscover": {
+    "memory": {
+      "pending": "待定",
+      "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
+    },
+    "action": {
+      "cancelDownload": "取消下载",
+      "deleteModel": "删除模型",
+      "deleteDownload": "删除下载",
+      "generate": "生成",
+      "installing": "安装中",
+      "install": "安装",
+      "pauseDownload": "暂停下载",
+      "resumeDownload": "恢复下载",
+      "retryDownload": "重试下载",
+      "downloadModel": "下载模型",
+      "openModelCard": "打开模型卡"
+    },
+    "subtitle": "{filtered} / {total} 个视频模型 / 实时 Hugging Face 元数据",
+    "hero": {
+      "heading": "浏览并下载用于本地生成的视频模型。",
+      "body": "下载任意模型即可在视频工作室中使用。运行时状态位于工作室标签。",
+      "installedModels": "已安装的模型",
+      "openStudio": "打开工作室"
+    },
+    "filter": {
+      "search": "搜索",
+      "searchPlaceholder": "搜索 LTX、Wan、Mochi、提供商、标签...",
+      "task": "任务",
+      "status": "状态",
+      "sortBy": "排序方式",
+      "clear": "清除过滤器"
+    },
+    "task": {
+      "all": "所有任务",
+      "txt2video": "文本到视频",
+      "img2video": "图像到视频",
+      "video2video": "视频到视频"
+    },
+    "status": {
+      "any": "任何状态",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "failed": "失败",
+      "incomplete": "不完整"
+    },
+    "sort": {
+      "name": "名称",
+      "provider": "提供商",
+      "tasks": "任务",
+      "release": "最新发布",
+      "size": "最大大小",
+      "ram": "最高 RAM/VRAM",
+      "likes": "点赞最多",
+      "downloads": "下载最多",
+      "status": "状态"
+    },
+    "summary": {
+      "count": "{count, plural, other {# 个模型}} · {sortLabel}",
+      "searchBadge": "搜索:{query}",
+      "taskBadge": "任务:{task}",
+      "statusBadge": "状态:{status}"
+    },
+    "empty": {
+      "body": "请尝试扩大过滤器或搜索词。"
+    },
+    "column": {
+      "model": "模型",
+      "provider": "提供商",
+      "tasks": "任务",
+      "size": "大小",
+      "ramVram": "RAM/VRAM",
+      "released": "发布日期",
+      "status": "状态"
+    },
+    "unknown": "未知",
+    "longLive": {
+      "installNote": "LongLive 安装到 ~/.chaosengine/longlive 下的独立 venv。仅支持 CUDA,根据网络情况需要 5-15 分钟。"
+    }
+  }
+}

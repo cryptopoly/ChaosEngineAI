@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslation } from "react-i18next";
 import { KvStrategyChip } from "../../components/KvStrategyChip";
 import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
@@ -99,6 +100,11 @@ export function ChatComposer({
   handleEffortOff,
   handleEffortChange,
 }: ChatComposerProps) {
+  // FU-042: chat surface uses the ``chat`` namespace for prompt /
+  // affordance copy, falling back to literal English when a key isn't
+  // present yet.  Hook lives at the top so every render gets a stable
+  // ``t`` reference (re-renders only when the active language flips).
+  const { t } = useTranslation("chat");
   // Phase 2.11: when capabilities are known, hide affordances the loaded
   // model can't honour. When capabilities are absent (unknown model or
   // freshly downloaded HF entry without a catalog mapping) all
@@ -126,7 +132,11 @@ export function ChatComposer({
       ) : null}
       <div className="composer-input-wrap">
         {showSlashMenu ? (
-          <div className="slash-command-menu" role="listbox" aria-label="Slash commands">
+          <div
+            className="slash-command-menu"
+            role="listbox"
+            aria-label={t("slashCommands.menuAriaLabel", { defaultValue: "Slash commands" })}
+          >
             {slashMatches.map((cmd, idx) => (
               <button
                 key={cmd.command}
@@ -147,13 +157,26 @@ export function ChatComposer({
           className="text-area"
           placeholder={
             loadedModelRef
-              ? "Type a message... (Enter to send, Shift+Enter for new line, / for commands)"
-              : "Load a model first — pick one from My Models or Discover, then hit CHAT."
+              ? t("composer.placeholderReady", {
+                  defaultValue: "Type a message... (Enter to send, Shift+Enter for new line, / for commands)",
+                })
+              : t("composer.placeholderNoModel", {
+                  defaultValue: "Load a model first — pick one from My Models or Discover, then hit CHAT.",
+                })
           }
           rows={3}
           value={draftMessage}
           onChange={(event) => onDraftMessageChange(event.target.value)}
           onKeyDown={(event) => {
+            // FU-042: when an IME composition is active (Japanese / Pinyin
+            // Chinese / Korean Hangul), the Enter key confirms the
+            // composition and must NOT trigger send / slash-pick.  Browsers
+            // surface this via `event.nativeEvent.isComposing` (modern path)
+            // or `event.keyCode === 229` (legacy Webkit / older Safari).
+            // Guard both for safety — premature send on a half-typed
+            // Japanese sentence is the canonical "this app feels broken on
+            // CJK" experience and easy to ship by accident.
+            const isComposing = event.nativeEvent.isComposing || event.keyCode === 229;
             if (showSlashMenu) {
               if (event.key === "ArrowDown") {
                 event.preventDefault();
@@ -165,7 +188,7 @@ export function ChatComposer({
                 setSlashIndex((current) => (current - 1 + slashMatches.length) % slashMatches.length);
                 return;
               }
-              if (event.key === "Enter" && !event.shiftKey) {
+              if (event.key === "Enter" && !event.shiftKey && !isComposing) {
                 event.preventDefault();
                 const target = slashMatches[slashIndex];
                 if (target) runSlashCommand(target);
@@ -183,7 +206,7 @@ export function ChatComposer({
                 return;
               }
             }
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (event.key === "Enter" && !event.shiftKey && !isComposing) {
               event.preventDefault();
               // Mirror the Send button's disabled state — no-op when no
               // model is loaded so users don't trigger a confusing 500.
@@ -203,7 +226,10 @@ export function ChatComposer({
       <div className="button-row composer-button-row">
         <div className="composer-button-group composer-button-group--left">
           {showImageAttach ? (
-            <label className="secondary-button composer-attach-btn" title="Attach image">
+            <label
+              className="secondary-button composer-attach-btn"
+              title={t("attachments.image", { defaultValue: "Attach image" })}
+            >
               <input
                 type="file"
                 accept="image/*"
@@ -213,7 +239,10 @@ export function ChatComposer({
                   const files = event.target.files;
                   if (!files) return;
                   for (const file of Array.from(files)) {
-                    if (file.size > 10 * 1024 * 1024) { onSetError("Image must be under 10MB"); continue; }
+                    if (file.size > 10 * 1024 * 1024) {
+                      onSetError(t("attachments.imageTooLarge", { defaultValue: "Image must be under 10MB" }));
+                      continue;
+                    }
                     const reader = new FileReader();
                     reader.onload = () => {
                       const b64 = (reader.result as string).split(",")[1];
@@ -230,45 +259,54 @@ export function ChatComposer({
           {showThinkingControl ? (
           <div
             className="composer-mode-control"
-            title="Choose how much reasoning the model performs before answering. Off = direct answers; Low / Medium / High = increasing reasoning depth for capable models."
+            title={t("thinkingMode.tooltip", {
+              defaultValue:
+                "Choose how much reasoning the model performs before answering. Off = direct answers; Low / Medium / High = increasing reasoning depth for capable models.",
+            })}
           >
-            <span className="composer-mode-label">Thinking</span>
-            <div className="thread-mode-toggle composer-thinking-toggle" role="group" aria-label="Thinking mode">
+            <span className="composer-mode-label">
+              {t("thinkingMode.label", { defaultValue: "Thinking" })}
+            </span>
+            <div
+              className="thread-mode-toggle composer-thinking-toggle"
+              role="group"
+              aria-label={t("thinkingMode.label", { defaultValue: "Thinking mode" })}
+            >
               <button
                 type="button"
                 className={`thread-mode-button${thinkingMode === "off" ? " thread-mode-button--active" : ""}`}
                 disabled={chatBusySessionId === activeChat?.id}
                 onClick={handleEffortOff}
-                title="No reasoning — model answers directly"
+                title={t("thinkingMode.offTooltip", { defaultValue: "No reasoning — model answers directly" })}
               >
-                Off
+                {t("thinkingMode.off", { defaultValue: "Off" })}
               </button>
               <button
                 type="button"
                 className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "low" ? " thread-mode-button--active" : ""}`}
                 disabled={chatBusySessionId === activeChat?.id}
                 onClick={() => handleEffortChange("low")}
-                title="Brief reasoning"
+                title={t("thinkingMode.lowTooltip", { defaultValue: "Brief reasoning" })}
               >
-                Low
+                {t("thinkingMode.low", { defaultValue: "Low" })}
               </button>
               <button
                 type="button"
                 className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "medium" ? " thread-mode-button--active" : ""}`}
                 disabled={chatBusySessionId === activeChat?.id}
                 onClick={() => handleEffortChange("medium")}
-                title="Default reasoning depth"
+                title={t("thinkingMode.mediumTooltip", { defaultValue: "Default reasoning depth" })}
               >
-                Med
+                {t("thinkingMode.medium", { defaultValue: "Med" })}
               </button>
               <button
                 type="button"
                 className={`thread-mode-button${thinkingMode === "auto" && reasoningEffort === "high" ? " thread-mode-button--active" : ""}`}
                 disabled={chatBusySessionId === activeChat?.id}
                 onClick={() => handleEffortChange("high")}
-                title="Extended reasoning"
+                title={t("thinkingMode.highTooltip", { defaultValue: "Extended reasoning" })}
               >
-                High
+                {t("thinkingMode.high", { defaultValue: "High" })}
               </button>
             </div>
           </div>
@@ -305,7 +343,13 @@ export function ChatComposer({
               className={`secondary-button${enableTools ? " active-toggle" : ""}`}
               type="button"
               onClick={() => onToggleTools(!enableTools)}
-              title={enableTools ? "Tools enabled (web search, code, calculator, file reader)" : "Enable agent tools"}
+              title={
+                enableTools
+                  ? t("tools.enabledTooltip", {
+                      defaultValue: "Tools enabled (web search, code, calculator, file reader)",
+                    })
+                  : t("tools.enableTooltip", { defaultValue: "Enable agent tools" })
+              }
               style={{
                 background: enableTools ? "#1e3a5f" : undefined,
                 borderColor: enableTools ? "#3b82f6" : undefined,
@@ -314,17 +358,24 @@ export function ChatComposer({
                 padding: "4px 10px",
               }}
             >
-              {enableTools ? "Tools ON" : "Tools"}
+              {enableTools
+                ? t("tools.toggleOn", { defaultValue: "Tools ON" })
+                : t("tools.toggleLabel", { defaultValue: "Tools" })}
             </button>
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">
           <button className="secondary-button" type="button" onClick={onClearDraft}>
-            Clear
+            {t("composer.clear", { defaultValue: "Clear" })}
           </button>
           {chatBusySessionId !== null ? (
-            <button className="secondary-button" type="button" onClick={onCancelGeneration} style={{ background: "#7f1d1d", borderColor: "#dc2626", color: "#fca5a5" }}>
-              Stop
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={onCancelGeneration}
+              style={{ background: "#7f1d1d", borderColor: "#dc2626", color: "#fca5a5" }}
+            >
+              {t("composer.stop", { defaultValue: "Stop" })}
             </button>
           ) : (
             <button
@@ -332,9 +383,15 @@ export function ChatComposer({
               type="button"
               onClick={() => void onSendMessage()}
               disabled={!loadedModelRef}
-              title={!loadedModelRef ? "Load a model first to send messages" : undefined}
+              title={
+                !loadedModelRef
+                  ? t("composer.sendDisabledTooltip", {
+                      defaultValue: "Load a model first to send messages",
+                    })
+                  : undefined
+              }
             >
-              Send
+              {t("composer.send", { defaultValue: "Send" })}
             </button>
           )}
         </div>

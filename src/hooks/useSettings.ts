@@ -347,6 +347,16 @@ export function useSettings(
         ...(settingsDraft.videoOutputsDirectory !== (workspace.settings?.videoOutputsDirectory ?? "")
           ? { videoOutputsDirectory: settingsDraft.videoOutputsDirectory }
           : {}),
+        // FU-042 — locale + clock-format always go on the wire, since
+        // ``"system"`` is itself a meaningful persisted value and we
+        // can't distinguish "no change" from "user explicitly picked
+        // system" without a diff against the previous settings.
+        ...(settingsDraft.locale !== (workspace.settings?.locale ?? "system")
+          ? { locale: settingsDraft.locale }
+          : {}),
+        ...(settingsDraft.clockFormat !== (workspace.settings?.clockFormat ?? "system")
+          ? { clockFormat: settingsDraft.clockFormat }
+          : {}),
       });
       const settings = response.settings;
       setSettingsDraft(settingsDraftFromWorkspace(settings));

@@ -1,0 +1,48 @@
+{
+  "title": "診断",
+  "subtitle": "ランタイム状態、GPU の健康状態、ログを確認",
+  "subtitleSnapshot": "トラブルシューティング用のシステムスナップショット。問題が起きたら markdown をコピーしてサポートに共有してください。",
+  "sections": {
+    "snapshot": "システムスナップショット",
+    "gpu": "GPU",
+    "memory": "メモリ",
+    "runtime": "ランタイム",
+    "binaries": "バイナリ",
+    "extras": "追加項目",
+    "logs": "ログ",
+    "locales": "言語"
+  },
+  "fields": {
+    "platform": "プラットフォーム",
+    "architecture": "アーキテクチャ",
+    "kernel": "カーネル",
+    "appVersion": "アプリバージョン",
+    "tauriVersion": "Tauri バージョン",
+    "pythonVersion": "Python バージョン",
+    "totalRAM": "総メモリ",
+    "availableRAM": "利用可能メモリ",
+    "totalVRAM": "総 VRAM",
+    "freeVRAM": "空き VRAM",
+    "diskFree": "ディスク空き容量"
+  },
+  "logs": {
+    "tail": "末尾",
+    "follow": "追従",
+    "pauseFollow": "追従を一時停止",
+    "clear": "クリア",
+    "download": "ログをダウンロード",
+    "lines": "{count, plural, other {# 行}}",
+    "filterPlaceholder": "フィルター…"
+  },
+  "actions": {
+    "copySnapshot": "スナップショットをコピー",
+    "downloadSnapshot": "スナップショットをダウンロード",
+    "openLogFolder": "ログフォルダーを開く"
+  },
+  "logsTab": {
+    "title": "ログ",
+    "subtitle": "サイドカー、ランタイム、サーバーチャネルを横断する検索可能なビュー。",
+    "filterPlaceholder": "ログを絞り込む",
+    "emptyFiltered": "現在のフィルターに一致するログ行はありません。"
+  }
+}

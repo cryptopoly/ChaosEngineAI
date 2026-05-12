@@ -1,0 +1,48 @@
+{
+  "title": "진단",
+  "subtitle": "런타임 상태, GPU 상태 및 로그 검사",
+  "subtitleSnapshot": "문제 해결을 위한 시스템 스냅샷. 문제가 있을 때 markdown 을 복사하여 지원팀과 공유하세요.",
+  "sections": {
+    "snapshot": "시스템 스냅샷",
+    "gpu": "GPU",
+    "memory": "메모리",
+    "runtime": "런타임",
+    "binaries": "바이너리",
+    "extras": "추가 항목",
+    "logs": "로그",
+    "locales": "언어"
+  },
+  "fields": {
+    "platform": "플랫폼",
+    "architecture": "아키텍처",
+    "kernel": "커널",
+    "appVersion": "앱 버전",
+    "tauriVersion": "Tauri 버전",
+    "pythonVersion": "Python 버전",
+    "totalRAM": "전체 RAM",
+    "availableRAM": "사용 가능 RAM",
+    "totalVRAM": "전체 VRAM",
+    "freeVRAM": "사용 가능 VRAM",
+    "diskFree": "디스크 여유 공간"
+  },
+  "logs": {
+    "tail": "끝부분",
+    "follow": "따라가기",
+    "pauseFollow": "따라가기 일시 중지",
+    "clear": "지우기",
+    "download": "로그 다운로드",
+    "lines": "{count, plural, other {# 줄}}",
+    "filterPlaceholder": "필터…"
+  },
+  "actions": {
+    "copySnapshot": "스냅샷 복사",
+    "downloadSnapshot": "스냅샷 다운로드",
+    "openLogFolder": "로그 폴더 열기"
+  },
+  "logsTab": {
+    "title": "로그",
+    "subtitle": "사이드카, 런타임 및 서버 채널에 대한 검색 가능한 뷰.",
+    "filterPlaceholder": "로그 필터",
+    "emptyFiltered": "현재 필터와 일치하는 로그 줄이 없습니다."
+  }
+}

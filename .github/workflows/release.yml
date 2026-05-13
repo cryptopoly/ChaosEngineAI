@@ -245,6 +245,7 @@ jobs:
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
             conf.build.beforeBundleCommand = 'npm run stage:runtime:release';
+            conf.bundle.createUpdaterArtifacts = true;
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 

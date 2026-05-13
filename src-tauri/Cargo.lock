@@ -480,7 +480,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "chaosengineai"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "flate2",
  "fluent-bundle",

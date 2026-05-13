@@ -114,8 +114,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'

@@ -13,6 +13,8 @@ use std::env;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -292,7 +294,7 @@ impl BackendManager {
                     // cleanup_orphaned_backends sweep on next launch.
                     #[cfg(windows)]
                     {
-                        let _ = windows_job::assign_to_kill_on_close_job(&child);
+                        let _ = crate::windows_job::assign_to_kill_on_close_job(&child);
                     }
 
                     let lease = ManagedBackendLease {

@@ -190,7 +190,7 @@ function validateBundledPythonPackages(pythonBinary) {
   const script = [
     "import importlib.util, json",
     "requirements = {",
-    "  'desktop': [('fastapi', 'fastapi'), ('huggingface_hub', 'huggingface_hub'), ('psutil', 'psutil'), ('pypdf', 'pypdf'), ('uvicorn', 'uvicorn')],",
+    "  'desktop': [('fastapi', 'fastapi'), ('huggingface_hub', 'huggingface_hub'), ('psutil', 'psutil'), ('pypdf', 'pypdf'), ('uvicorn', 'uvicorn'), ('babel', 'babel')],",
     "  'images': [('accelerate', 'accelerate'), ('diffusers', 'diffusers'), ('huggingface_hub', 'huggingface_hub'), ('PIL', 'pillow'), ('safetensors', 'safetensors'), ('torch', 'torch')],",
     "  'inference': [('dflash_mlx', 'dflash-mlx'), ('turboquant', 'turboquant'), ('turboquant_mlx', 'turboquant-mlx-full')],",
     "}",

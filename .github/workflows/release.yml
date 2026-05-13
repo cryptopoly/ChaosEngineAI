@@ -214,21 +214,21 @@ jobs:
         run: |
           .python-portable/bin/python3 -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv/bin/pip install mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv/bin/pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub
+          .venv\Scripts\pip install fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
 
       - name: Set Python embed path (Unix)
         if: matrix.platform != 'windows'

@@ -133,12 +133,19 @@ def _load_translations(locale: str):
     fills" workflow without breaking user-facing surfaces."""
     # Lazy import: keeps Babel out of the import chain for callers
     # that never localize (mlx_worker, vllm, ddtree, etc.).
-    from babel.support import NullTranslations, Translations
+    # Fallback to stdlib gettext when babel is not bundled (e.g. fresh
+    # installs before the extras bundle includes babel).
+    try:
+        from babel.support import NullTranslations, Translations as _Translations
+        _babel_available = True
+    except ImportError:
+        from gettext import NullTranslations  # type: ignore[assignment]
+        _babel_available = False
 
-    if locale == DEFAULT_LOCALE:
+    if locale == DEFAULT_LOCALE or not _babel_available:
         return NullTranslations()
     try:
-        return Translations.load(str(LOCALE_DIR), [locale, DEFAULT_LOCALE], DOMAIN)
+        return _Translations.load(str(LOCALE_DIR), [locale, DEFAULT_LOCALE], DOMAIN)
     except Exception:
         return NullTranslations()
 

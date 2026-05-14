@@ -105,6 +105,7 @@ import {
   useDetailsWindowResize,
   useFileActions,
 } from "./hooks";
+import { useMtplxInstall } from "./hooks/useMtplxInstall";
 
 export default function App() {
   // FU-042: i18n hook — used for the workspace header tab label /
@@ -149,6 +150,11 @@ export default function App() {
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
+  const {
+    mtplxJob,
+    installingMtplx,
+    handleInstallMtplx,
+  } = useMtplxInstall();
 
   const {
     installingCudaTorch,
@@ -237,6 +243,7 @@ export default function App() {
     activeDownloads,
     discoverCapFilter, setDiscoverCapFilter,
     discoverFormatFilter, setDiscoverFormatFilter,
+    discoverAccelFilter, setDiscoverAccelFilter,
     handleDownloadModel,
     handleCancelModelDownload,
     handleDeleteModelDownload,
@@ -1127,6 +1134,13 @@ export default function App() {
         onDiscoverCapFilterChange={setDiscoverCapFilter}
         discoverFormatFilter={discoverFormatFilter}
         onDiscoverFormatFilterChange={setDiscoverFormatFilter}
+        discoverAccelFilter={discoverAccelFilter}
+        onDiscoverAccelFilterChange={setDiscoverAccelFilter}
+        accelCompat={{
+          dflashModels: workspace.system.dflash?.supportedModels ?? [],
+          mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
+          turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
+        }}
         expandedFamilyId={expandedFamilyId}
         onExpandedFamilyIdChange={setExpandedFamilyId}
         expandedVariantId={expandedVariantId}
@@ -1167,6 +1181,8 @@ export default function App() {
           turboInstalled: !!workspace.system.llamaServerTurboPath,
           turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
+          mtplxInstalled: workspace.system.mtplx?.available ?? false,
+          mtplxSupportedModels: workspace.system.mtplx?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}
         expandedLibraryPath={expandedLibraryPath}
@@ -1569,7 +1585,6 @@ export default function App() {
         onSetError={setError}
         enableTools={chat.enableTools}
         onToggleTools={chat.setEnableTools}
-        onCompareMode={() => setActiveTab("chat-compare")}
         onCancelGeneration={chat.cancelGeneration}
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
@@ -1588,6 +1603,10 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1604,6 +1623,10 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1665,6 +1688,7 @@ export default function App() {
             availableCacheStrategies: workspace.system.availableCacheStrategies,
             llamaServerTurboPath: workspace.system.llamaServerTurboPath,
             dflash: workspace.system.dflash,
+            mtplx: workspace.system.mtplx,
           },
         }}
         threadModelOptions={threadModelOptions}
@@ -1680,6 +1704,9 @@ export default function App() {
         showBenchmarkModal={showBenchmarkModal}
         installingPackage={installingPackage}
         installLogs={installLogs}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
         onBenchmarkDraftChange={updateBenchmarkDraft}
         onBenchmarkPromptIdChange={setBenchmarkPromptId}
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
@@ -1929,6 +1956,10 @@ export default function App() {
         installingPackage={installingPackage}
         installLogs={installLogs}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}
         onLaunchSettingChange={updateLaunchSetting}

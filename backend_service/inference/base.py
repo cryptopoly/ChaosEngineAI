@@ -90,6 +90,8 @@ class BackendCapabilities:
     converterAvailable: bool = False
     vllmAvailable: bool = False
     vllmVersion: str | None = None
+    mtplxAvailable: bool = False
+    mtplxPythonPath: str | None = None
     probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -108,6 +110,8 @@ class BackendCapabilities:
             "converterAvailable": self.converterAvailable,
             "vllmAvailable": self.vllmAvailable,
             "vllmVersion": self.vllmVersion,
+            "mtplxAvailable": self.mtplxAvailable,
+            "mtplxPythonPath": self.mtplxPythonPath,
             "probing": self.probing,
         }
 

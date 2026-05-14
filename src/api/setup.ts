@@ -273,6 +273,56 @@ export async function getWanInventory(): Promise<WanInventory> {
 }
 
 // ---------------------------------------------------------------------------
+// MTPLX install (feature/mtplx) — isolated venv + forked mlx
+// ---------------------------------------------------------------------------
+//
+// Same background-job shape as LongLiveJobState so the existing
+// InstallLogPanel renders it without modification.
+
+export interface MtplxAttempt {
+  phase?: string;
+  package?: string;
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface MtplxJobState {
+  id: string;
+  phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: MtplxAttempt[];
+  done: boolean;
+}
+
+export interface MtplxStatus {
+  installed: boolean;
+  version: string | null;
+  installedAt: string | null;
+  venvPath: string | null;
+}
+
+export async function getMtplxStatus(): Promise<MtplxStatus> {
+  return await fetchJson<MtplxStatus>("/api/setup/mtplx-status", 8000);
+}
+
+export async function startMtplxInstall(): Promise<MtplxJobState> {
+  return await postJson<MtplxJobState>("/api/setup/install-mtplx", {}, 15000);
+}
+
+export async function getMtplxInstallStatus(): Promise<MtplxJobState> {
+  return await fetchJson<MtplxJobState>("/api/setup/install-mtplx/status", 10000);
+}
+
+// ---------------------------------------------------------------------------
 // llama-server-turbo update probe + capability refresh
 // ---------------------------------------------------------------------------
 

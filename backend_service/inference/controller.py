@@ -87,6 +87,7 @@ from backend_service.inference.llama_cpp_engine import (
     LlamaCppEngine,
     _CACHE_TYPE_CACHE,
     _LLAMA_HELP_CACHE,
+    _LLAMA_HELP_LOCK,
     _LLAMA_SAMPLER_KEYS,
     _STANDARD_CACHE_TYPES,
     _apply_llama_chat_template_fixes,
@@ -99,10 +100,12 @@ from backend_service.inference.llama_cpp_engine import (
     _resolve_mmproj_path,
 )
 from backend_service.inference.mlx_engine import MLXWorkerEngine
+from backend_service.inference.mtplx_engine import MtplxEngine
 from backend_service.inference.simple_engines import (
     MockInferenceEngine,
     RemoteOpenAIEngine,
 )
+from backend_service.inference._mtp import has_mtp_heads
 
 
 class RuntimeController:
@@ -338,7 +341,8 @@ class RuntimeController:
 
             is_mlx_worker = "backend_service.mlx_worker" in cmdline or "mlx_worker" in cmdline
             is_llama = "llama-server" in name or "llama-server" in cmdline
-            if not (is_mlx_worker or is_llama):
+            is_mtplx = "mtplx" in name or "/mtplx-venv/" in cmdline or " mtplx " in f" {cmdline} " or cmdline.endswith(" mtplx")
+            if not (is_mlx_worker or is_llama or is_mtplx):
                 continue
             if child.pid in tracked:
                 continue
@@ -350,10 +354,16 @@ class RuntimeController:
             if now_wall - create_time < self.ORPHAN_DETECTION_GRACE_SECONDS:
                 continue
 
+            if is_mlx_worker:
+                kind, label = "mlx_worker", "MLX worker"
+            elif is_mtplx:
+                kind, label = "mtplx", "MTPLX server"
+            else:
+                kind, label = "llama_server", "llama-server"
             record = {
                 "pid": int(child.pid),
-                "kind": "mlx_worker" if is_mlx_worker else "llama_server",
-                "label": "MLX worker" if is_mlx_worker else "llama-server",
+                "kind": kind,
+                "label": label,
                 "action": "terminated",
                 "detectedAt": _now_label(),
                 # Internal monotonic stamp used for TTL; not serialized.
@@ -475,6 +485,9 @@ class RuntimeController:
         backend: str,
         runtime_target: str | None,
         path: str | None,
+        model_ref: str = "",
+        canonical_repo: str | None = None,
+        speculative_decoding: bool = False,
     ) -> BaseInferenceEngine:
         hint = (backend or "auto").lower()
         target = runtime_target or path
@@ -483,6 +496,12 @@ class RuntimeController:
             return RemoteOpenAIEngine(self.capabilities)
         if hint == "mlx":
             if self.capabilities.mlxUsable:
+                if (
+                    speculative_decoding
+                    and self.capabilities.mtplxAvailable
+                    and has_mtp_heads(canonical_repo or model_ref)
+                ):
+                    return MtplxEngine(self.capabilities)
                 return MLXWorkerEngine(self.capabilities)
             reason = self.capabilities.mlxMessage or "MLX is not available in this environment"
             raise RuntimeError(
@@ -727,6 +746,9 @@ class RuntimeController:
             backend=backend,
             runtime_target=runtime_target,
             path=path,
+            model_ref=model_ref,
+            canonical_repo=canonical_repo,
+            speculative_decoding=speculative_decoding,
         )
 
         # Never keep multiple warm copies of the same logical model under
@@ -739,25 +761,52 @@ class RuntimeController:
         )
 
         self.engine = selected_engine
+        _load_kwargs: dict[str, Any] = dict(
+            model_ref=model_ref,
+            model_name=resolved_name,
+            canonical_repo=canonical_repo,
+            source=source,
+            backend=self.engine.engine_name,
+            path=path,
+            runtime_target=runtime_target,
+            cache_strategy=cache_strategy,
+            cache_bits=cache_bits,
+            fp16_layers=fp16_layers,
+            fused_attention=fused_attention,
+            fit_model_in_memory=fit_model_in_memory,
+            context_tokens=context_tokens,
+            speculative_decoding=speculative_decoding,
+            tree_budget=tree_budget,
+            progress_callback=_internal_progress,
+        )
         try:
-            loaded = self.engine.load_model(
-                model_ref=model_ref,
-                model_name=resolved_name,
-                canonical_repo=canonical_repo,
-                source=source,
-                backend=self.engine.engine_name,
-                path=path,
-                runtime_target=runtime_target,
-                cache_strategy=cache_strategy,
-                cache_bits=cache_bits,
-                fp16_layers=fp16_layers,
-                fused_attention=fused_attention,
-                fit_model_in_memory=fit_model_in_memory,
-                context_tokens=context_tokens,
-                speculative_decoding=speculative_decoding,
-                tree_budget=tree_budget,
-                progress_callback=_internal_progress,
-            )
+            loaded = self.engine.load_model(**_load_kwargs)
+        except RuntimeError as _mtplx_exc:
+            # MtplxEngine startup failure → fall back to standard MLX worker.
+            if isinstance(self.engine, MtplxEngine):
+                fallback = MLXWorkerEngine(self.capabilities)
+                self.engine = fallback
+                _load_kwargs["backend"] = fallback.engine_name
+                try:
+                    loaded = self.engine.load_model(**_load_kwargs)
+                    loaded.runtimeNote = _append_runtime_note(
+                        loaded.runtimeNote,
+                        f"MTPLX startup failed ({_mtplx_exc}); using standard MLX.",
+                    )
+                except Exception:
+                    self.loaded_model = None
+                    self.runtime_note = None
+                    self._loading_progress = None
+                    self._loading_log_tail = []
+                    self.prune_stale_backend_children()
+                    raise
+            else:
+                self.loaded_model = None
+                self.runtime_note = None
+                self._loading_progress = None
+                self._loading_log_tail = []
+                self.prune_stale_backend_children()
+                raise
         except Exception:
             self.loaded_model = None
             self.runtime_note = None

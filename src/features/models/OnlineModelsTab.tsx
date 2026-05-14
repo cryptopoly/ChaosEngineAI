@@ -20,6 +20,7 @@ import {
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { CapabilityStrip } from "../../components/CapabilityStrip";
+import { candidateKeys } from "../../components/runtimeSupport";
 
 export interface OnlineModelsTabProps {
   searchResults: ModelFamily[];
@@ -31,6 +32,13 @@ export interface OnlineModelsTabProps {
   onDiscoverCapFilterChange: (cap: string | null) => void;
   discoverFormatFilter: string | null;
   onDiscoverFormatFilterChange: (fmt: string | null) => void;
+  discoverAccelFilter?: string | null;
+  onDiscoverAccelFilterChange?: (accel: string | null) => void;
+  accelCompat?: {
+    dflashModels: string[];
+    mtplxModels: string[];
+    turboInstalled: boolean;
+  };
   expandedFamilyId: string | null;
   onExpandedFamilyIdChange: (id: string | null) => void;
   expandedVariantId: string | null;
@@ -101,6 +109,9 @@ export function OnlineModelsTab({
   onDiscoverCapFilterChange,
   discoverFormatFilter,
   onDiscoverFormatFilterChange,
+  discoverAccelFilter,
+  onDiscoverAccelFilterChange,
+  accelCompat,
   expandedFamilyId,
   onExpandedFamilyIdChange,
   expandedVariantId,
@@ -194,6 +205,37 @@ export function OnlineModelsTab({
     );
   }
 
+  // Acceleration filter: DFlash / MTPLX / TurboQuant
+  const ACCEL_FILTERS = [
+    { id: "dflash", label: "DFlash", color: "#a78bfa" },
+    { id: "mtplx", label: "MTPLX", color: "#f472b6" },
+    { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
+  ];
+
+  function familyMatchesAccel(family: ModelFamily, accel: string): boolean {
+    const allRepos = family.variants.map((v) => v.repo);
+    switch (accel) {
+      case "dflash": {
+        const supported = accelCompat?.dflashModels ?? [];
+        return allRepos.some((repo) => {
+          const repoKeys = candidateKeys([repo]);
+          return supported.some((ref) => candidateKeys([ref]).some((k) => repoKeys.includes(k)));
+        });
+      }
+      case "mtplx": {
+        const supported = accelCompat?.mtplxModels ?? [];
+        return allRepos.some((repo) => {
+          const repoKeys = candidateKeys([repo]);
+          return supported.some((ref) => candidateKeys([ref]).some((k) => repoKeys.includes(k)));
+        });
+      }
+      case "turboquant":
+        return family.variants.some((v) => v.format === "GGUF");
+      default:
+        return true;
+    }
+  }
+
   const allDiscoverCaps = searchResults.flatMap((f) => f.capabilities);
   const allDiscoverFormats = searchResults.flatMap((f) => f.variants.map((v) => v.format));
   const hasActiveQuery = searchInput.trim().length > 0;
@@ -203,6 +245,9 @@ export function OnlineModelsTab({
   }
   if (discoverFormatFilter) {
     filteredResults = filteredResults.filter((f) => f.variants.some((v) => v.format === discoverFormatFilter));
+  }
+  if (discoverAccelFilter) {
+    filteredResults = filteredResults.filter((f) => familyMatchesAccel(f, discoverAccelFilter!));
   }
   const filteredHubResults = [...hubResults]
     .filter((model) => {
@@ -671,6 +716,30 @@ export function OnlineModelsTab({
       >
         {renderCapabilityFilterBar(discoverCapFilter, onDiscoverCapFilterChange, allDiscoverCaps)}
         {renderFormatFilterBar(discoverFormatFilter, onDiscoverFormatFilterChange, allDiscoverFormats)}
+        <div className="cap-filter-bar">
+          <button
+            className={`cap-filter-btn${(discoverAccelFilter ?? null) === null ? " cap-filter-btn--active" : ""}`}
+            type="button"
+            onClick={() => onDiscoverAccelFilterChange?.(null)}
+          >
+            {t("onlineModels.filter.allAccel", { defaultValue: "All acceleration" })}
+          </button>
+          {ACCEL_FILTERS.map((af) => {
+            const count = searchResults.filter((f) => familyMatchesAccel(f, af.id)).length;
+            return (
+              <button
+                key={af.id}
+                className={`cap-filter-btn${discoverAccelFilter === af.id ? " cap-filter-btn--active" : ""}`}
+                type="button"
+                onClick={() => onDiscoverAccelFilterChange?.(discoverAccelFilter === af.id ? null : af.id)}
+                title={t("onlineModels.accelFilter.tooltip", { label: af.label, count, defaultValue: `Show ${af.label}-compatible models (${count})` })}
+                style={(discoverAccelFilter ?? null) === af.id ? { borderColor: af.color, color: af.color, background: `${af.color}15` } : undefined}
+              >
+                {af.label}{count > 0 ? ` (${count})` : ""}
+              </button>
+            );
+          })}
+        </div>
         {searchError ? (
           <div className="callout error">
             <p>{searchError}</p>

@@ -1,0 +1,480 @@
+#!/usr/bin/env python3
+"""ChaosEngineAI CLI — automation wrapper over the FastAPI backend.
+
+Shells over the same HTTP surface the Tauri app uses. No new entry point;
+no bundle-size impact. Subcommands:
+
+    serve         Start backend (foreground). Prints port; runs until SIGINT.
+    status        Workspace + runtime snapshot (JSON).
+    load <ref>    Load a model into the runtime; blocks until ready.
+    unload [ref]  Unload active model (or a specific warm entry by ref).
+    prompt <txt>  Send a prompt; streams tokens. Prints final metrics.
+    bench <ref>   Load + prompt sweep; emit tok/s + latency JSON.
+    mtplx-install Drive the MTPLX background install.
+    mtplx-status  Probe MTPLX install state.
+
+Exit code 0 on success, non-zero on failure. Errors print one-line JSON to
+stderr; structured payloads land on stdout for piping into ``jq``.
+
+Examples:
+    # Foreground server
+    scripts/chaosengine-cli serve
+
+    # In another shell:
+    scripts/chaosengine-cli status | jq .runtime.state
+    scripts/chaosengine-cli load Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed \\
+        --backend mlx --spec --context 32768
+    scripts/chaosengine-cli prompt "Write a quicksort in Rust" --max-tokens 256
+    scripts/chaosengine-cli bench Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed --spec
+    scripts/chaosengine-cli unload
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+
+_DEFAULT_HOST = os.environ.get("CHAOSENGINE_HOST", "127.0.0.1")
+_DEFAULT_PORT = int(os.environ.get("CHAOSENGINE_PORT", "8876"))
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _base_url(args: argparse.Namespace) -> str:
+    return f"http://{args.host}:{args.port}"
+
+
+def _request(
+    method: str,
+    url: str,
+    *,
+    body: dict[str, Any] | None = None,
+    timeout: float = 30.0,
+) -> tuple[int, dict[str, Any] | str]:
+    """One-shot HTTP. Returns (status_code, parsed_json_or_text)."""
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Content-Type": "application/json"} if data else {}
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            status = resp.status
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        status = exc.code
+    except urllib.error.URLError as exc:
+        return 0, str(exc.reason)
+    try:
+        return status, json.loads(raw)
+    except json.JSONDecodeError:
+        return status, raw
+
+
+def _stream(url: str, body: dict[str, Any], timeout: float = 600.0):
+    """Yield each `data: {...}` JSON event from an SSE endpoint."""
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        buffer = ""
+        for raw in resp:
+            line = raw.decode("utf-8", errors="replace")
+            if line.strip() == "":
+                continue
+            if not line.startswith("data: "):
+                continue
+            payload = line[len("data: ") :].strip()
+            if payload == "[DONE]":
+                break
+            try:
+                yield json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            buffer = ""  # noqa: F841
+
+
+def _die(msg: str, *, code: int = 1) -> None:
+    print(json.dumps({"error": msg}), file=sys.stderr)
+    sys.exit(code)
+
+
+def _ok(payload: Any) -> None:
+    sys.stdout.write(json.dumps(payload, indent=2, default=str))
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+def _wait_ready(args: argparse.Namespace, *, timeout: float = 30.0) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        code, _ = _request("GET", f"{_base_url(args)}/api/health", timeout=2.0)
+        if code == 200:
+            return True
+        time.sleep(0.5)
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Foreground backend. Exits when the server exits."""
+    env = os.environ.copy()
+    env["CHAOSENGINE_PORT"] = str(args.port)
+    env["CHAOSENGINE_HOST"] = args.host
+    cmd = [sys.executable, "-m", "backend_service.app"]
+    print(f"[chaosengine-cli] serving on http://{args.host}:{args.port}", flush=True)
+    proc = subprocess.Popen(cmd, cwd=str(_REPO_ROOT), env=env)
+    try:
+        return proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    code, body = _request("GET", f"{_base_url(args)}/api/workspace", timeout=10.0)
+    if code != 200:
+        _die(f"workspace fetch failed: {body}")
+    workspace = body if isinstance(body, dict) else {}
+    runtime = workspace.get("runtime") or {}
+    system = workspace.get("system") or {}
+    snapshot = {
+        "runtime": {
+            "state": runtime.get("state"),
+            "engine": runtime.get("engine"),
+            "loadedModel": runtime.get("loadedModel"),
+            "runtimeNote": runtime.get("runtimeNote"),
+        },
+        "system": {
+            "platform": system.get("platform"),
+            "arch": system.get("arch"),
+            "totalMemoryGb": system.get("totalMemoryGb"),
+            "availableMemoryGb": system.get("availableMemoryGb"),
+            "mtplx": system.get("mtplx"),
+            "dflash": system.get("dflash"),
+        },
+        "libraryCount": len(workspace.get("library") or []),
+    }
+    _ok(snapshot)
+    return 0
+
+
+def cmd_load(args: argparse.Namespace) -> int:
+    payload: dict[str, Any] = {
+        "modelRef": args.ref,
+        "backend": args.backend,
+        "cacheStrategy": args.cache_strategy,
+        "contextTokens": args.context,
+        "speculativeDecoding": args.spec,
+    }
+    if args.path:
+        payload["path"] = args.path
+    if args.cache_bits is not None:
+        payload["cacheBits"] = args.cache_bits
+    if args.canonical_repo:
+        payload["canonicalRepo"] = args.canonical_repo
+    if args.fused_attention:
+        payload["fusedAttention"] = True
+    if args.tree_budget is not None:
+        payload["treeBudget"] = args.tree_budget
+
+    code, body = _request(
+        "POST",
+        f"{_base_url(args)}/api/models/load",
+        body=payload,
+        timeout=args.timeout,
+    )
+    if code != 200:
+        _die(f"load failed (HTTP {code}): {body}")
+    runtime = (body or {}).get("runtime", {}) if isinstance(body, dict) else {}
+    loaded = runtime.get("loadedModel") or {}
+    _ok({
+        "state": runtime.get("state"),
+        "engine": runtime.get("engine"),
+        "loadedRef": loaded.get("ref"),
+        "loadedPath": loaded.get("path"),
+        "runtimeNote": runtime.get("runtimeNote"),
+        "speculativeDecoding": loaded.get("speculativeDecoding"),
+    })
+    return 0
+
+
+def cmd_unload(args: argparse.Namespace) -> int:
+    body = {"ref": args.ref} if args.ref else None
+    code, payload = _request(
+        "POST",
+        f"{_base_url(args)}/api/models/unload",
+        body=body,
+        timeout=30.0,
+    )
+    if code != 200:
+        _die(f"unload failed (HTTP {code}): {payload}")
+    _ok({"state": (payload or {}).get("runtime", {}).get("state")})
+    return 0
+
+
+def cmd_prompt(args: argparse.Namespace) -> int:
+    body: dict[str, Any] = {
+        "prompt": args.text,
+        "temperature": args.temperature,
+        "maxTokens": args.max_tokens,
+    }
+    if args.system:
+        body["systemPrompt"] = args.system
+    if args.seed is not None:
+        body["seed"] = args.seed
+
+    start = time.perf_counter()
+    if not args.stream:
+        code, payload = _request(
+            "POST",
+            f"{_base_url(args)}/api/chat/generate",
+            body=body,
+            timeout=args.timeout,
+        )
+        if code != 200:
+            _die(f"generate failed (HTTP {code}): {payload}")
+        if not args.quiet and isinstance(payload, dict):
+            text = (payload.get("text") or payload.get("message", {}).get("text")) or ""
+            sys.stdout.write(text)
+            sys.stdout.write("\n")
+        if args.metrics:
+            _ok({
+                "tokS": (payload or {}).get("tokS") if isinstance(payload, dict) else None,
+                "promptTokens": (payload or {}).get("promptTokens") if isinstance(payload, dict) else None,
+                "completionTokens": (payload or {}).get("completionTokens") if isinstance(payload, dict) else None,
+                "responseSeconds": (payload or {}).get("responseSeconds") if isinstance(payload, dict) else None,
+                "wallSeconds": round(time.perf_counter() - start, 3),
+                "runtimeNote": (payload or {}).get("runtimeNote") if isinstance(payload, dict) else None,
+            })
+        return 0
+
+    # Streaming path.
+    final: dict[str, Any] = {}
+    completion_chars = 0
+    for event in _stream(f"{_base_url(args)}/api/chat/generate/stream", body, timeout=args.timeout):
+        if "token" in event:
+            tok = str(event["token"])
+            completion_chars += len(tok)
+            if not args.quiet:
+                sys.stdout.write(tok)
+                sys.stdout.flush()
+        if "done" in event or "metrics" in event or "completionTokens" in event:
+            final = event
+    if not args.quiet:
+        sys.stdout.write("\n")
+    if args.metrics:
+        _ok({
+            "tokS": final.get("tokS") or final.get("metrics", {}).get("tokS"),
+            "promptTokens": final.get("promptTokens"),
+            "completionTokens": final.get("completionTokens"),
+            "responseSeconds": final.get("responseSeconds"),
+            "wallSeconds": round(time.perf_counter() - start, 3),
+            "completionChars": completion_chars,
+            "runtimeNote": final.get("runtimeNote"),
+        })
+    return 0
+
+
+def cmd_bench(args: argparse.Namespace) -> int:
+    """Load model, run prompt N times, report tok/s + latency stats."""
+    load_args = argparse.Namespace(
+        host=args.host, port=args.port, ref=args.ref, backend=args.backend,
+        cache_strategy="native", cache_bits=None, context=args.context,
+        spec=args.spec, fused_attention=False, path=args.path,
+        canonical_repo=None, tree_budget=None, timeout=args.timeout,
+    )
+    rc = cmd_load(load_args)
+    if rc != 0:
+        return rc
+
+    runs: list[dict[str, Any]] = []
+    for i in range(args.runs):
+        body = {
+            "prompt": args.prompt,
+            "temperature": 0.7,
+            "maxTokens": args.max_tokens,
+        }
+        start = time.perf_counter()
+        code, payload = _request(
+            "POST",
+            f"{_base_url(args)}/api/chat/generate",
+            body=body,
+            timeout=args.timeout,
+        )
+        elapsed = time.perf_counter() - start
+        if code != 200 or not isinstance(payload, dict):
+            runs.append({"run": i, "error": str(payload), "wallSeconds": round(elapsed, 3)})
+            continue
+        runs.append({
+            "run": i,
+            "tokS": payload.get("tokS"),
+            "promptTokens": payload.get("promptTokens"),
+            "completionTokens": payload.get("completionTokens"),
+            "responseSeconds": payload.get("responseSeconds"),
+            "wallSeconds": round(elapsed, 3),
+        })
+
+    tok_s_values = [r["tokS"] for r in runs if isinstance(r.get("tokS"), (int, float))]
+    summary = {
+        "ref": args.ref,
+        "spec": args.spec,
+        "runs": runs,
+        "meanTokS": round(sum(tok_s_values) / len(tok_s_values), 2) if tok_s_values else None,
+        "maxTokS": max(tok_s_values) if tok_s_values else None,
+        "minTokS": min(tok_s_values) if tok_s_values else None,
+    }
+    _ok(summary)
+    return 0
+
+
+def cmd_mtplx_install(args: argparse.Namespace) -> int:
+    code, payload = _request(
+        "POST",
+        f"{_base_url(args)}/api/setup/install-mtplx",
+        body={},
+        timeout=30.0,
+    )
+    if code != 200:
+        _die(f"install start failed (HTTP {code}): {payload}")
+    if not args.wait:
+        _ok(payload)
+        return 0
+
+    deadline = time.time() + args.timeout
+    last_phase = ""
+    while time.time() < deadline:
+        code, payload = _request(
+            "GET",
+            f"{_base_url(args)}/api/setup/install-mtplx/status",
+            timeout=10.0,
+        )
+        if code != 200 or not isinstance(payload, dict):
+            time.sleep(2)
+            continue
+        phase = payload.get("phase") or ""
+        if phase != last_phase:
+            print(f"[chaosengine-cli] phase: {phase}", file=sys.stderr, flush=True)
+            last_phase = phase
+        if payload.get("done"):
+            _ok(payload)
+            return 0 if not payload.get("error") else 1
+        time.sleep(2)
+    _die("install timed out")
+    return 1
+
+
+def cmd_mtplx_status(args: argparse.Namespace) -> int:
+    code, payload = _request(
+        "GET",
+        f"{_base_url(args)}/api/setup/mtplx-status",
+        timeout=10.0,
+    )
+    if code != 200:
+        _die(f"mtplx-status failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="chaosengine-cli",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--host", default=_DEFAULT_HOST)
+    parser.add_argument("--port", type=int, default=_DEFAULT_PORT)
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("serve", help="Start backend in foreground.")
+    s.set_defaults(func=cmd_serve)
+
+    s = sub.add_parser("status", help="Workspace + runtime snapshot.")
+    s.set_defaults(func=cmd_status)
+
+    s = sub.add_parser("load", help="Load a model.")
+    s.add_argument("ref")
+    s.add_argument("--path", default=None)
+    s.add_argument("--backend", default="auto", choices=["auto", "mlx", "gguf", "llama.cpp", "vllm", "remote"])
+    s.add_argument("--cache-strategy", default="native")
+    s.add_argument("--cache-bits", type=int, default=None)
+    s.add_argument("--context", type=int, default=8192)
+    s.add_argument("--spec", action="store_true", help="Enable speculative decoding (DFlash/MTPLX auto-routed).")
+    s.add_argument("--fused-attention", action="store_true")
+    s.add_argument("--canonical-repo", default=None)
+    s.add_argument("--tree-budget", type=int, default=None)
+    s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_load)
+
+    s = sub.add_parser("unload", help="Unload model.")
+    s.add_argument("ref", nargs="?", default=None)
+    s.set_defaults(func=cmd_unload)
+
+    s = sub.add_parser("prompt", help="Send a prompt to the loaded model.")
+    s.add_argument("text")
+    s.add_argument("--max-tokens", type=int, default=512)
+    s.add_argument("--temperature", type=float, default=0.7)
+    s.add_argument("--seed", type=int, default=None)
+    s.add_argument("--system", default=None)
+    s.add_argument("--stream", action="store_true", help="Stream tokens to stdout.")
+    s.add_argument("--metrics", action="store_true", help="Print metrics JSON after the text.")
+    s.add_argument("--quiet", action="store_true", help="Suppress completion text.")
+    s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_prompt)
+
+    s = sub.add_parser("bench", help="Load model + N-prompt sweep + tok/s report.")
+    s.add_argument("ref")
+    s.add_argument("--prompt", default="Write a one-paragraph summary of speculative decoding.")
+    s.add_argument("--path", default=None)
+    s.add_argument("--backend", default="auto", choices=["auto", "mlx", "gguf", "llama.cpp"])
+    s.add_argument("--spec", action="store_true")
+    s.add_argument("--context", type=int, default=8192)
+    s.add_argument("--runs", type=int, default=3)
+    s.add_argument("--max-tokens", type=int, default=128)
+    s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_bench)
+
+    s = sub.add_parser("mtplx-install", help="Drive MTPLX background install.")
+    s.add_argument("--wait", action="store_true", help="Poll until done.")
+    s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_mtplx_install)
+
+    s = sub.add_parser("mtplx-status", help="Probe MTPLX install state.")
+    s.set_defaults(func=cmd_mtplx_status)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return int(args.func(args) or 0)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

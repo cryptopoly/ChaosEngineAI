@@ -508,6 +508,9 @@ export {
   startGpuBundleInstall,
   startLongLiveInstall,
   startWanInstall,
+  getMtplxStatus,
+  startMtplxInstall,
+  getMtplxInstallStatus,
 } from "./setup";
 export type {
   CudaTorchInstallAttempt,
@@ -519,6 +522,9 @@ export type {
   InstallResult,
   LongLiveAttempt,
   LongLiveJobState,
+  MtplxAttempt,
+  MtplxJobState,
+  MtplxStatus,
   PromptEnhanceResult,
   TurboUpdateInfo,
   WanConvertStatusFields,

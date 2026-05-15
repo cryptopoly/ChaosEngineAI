@@ -143,6 +143,13 @@ def _build_system_snapshot(
         from cache_compression import registry
         return registry.available()
 
+    def _get_mtplx_info():
+        from backend_service.inference._mtp import MTP_MODEL_MAP, _MTP_ALIASES
+        from backend_service.inference.capabilities import _detect_mtplx
+        available, _ = _detect_mtplx()
+        supported_models = list(MTP_MODEL_MAP.keys()) + list(_MTP_ALIASES.keys())
+        return {"available": available, "supportedModels": supported_models}
+
     def _get_dflash_info():
         try:
             from dflash import availability_info
@@ -173,6 +180,7 @@ def _build_system_snapshot(
         "appVersion": app_version,
         "availableCacheStrategies": _get_cache_strategies(),
         "dflash": _get_dflash_info(),
+        "mtplx": _get_mtplx_info(),
         "vllmAvailable": native.get("vllmAvailable", False),
         "vllmVersion": native.get("vllmVersion"),
         "mlxAvailable": native["mlxAvailable"],

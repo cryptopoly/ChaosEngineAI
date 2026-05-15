@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
+import type { MtplxJobState } from "../api";
+import { InstallLogPanel } from "./InstallLogPanel";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
@@ -136,6 +138,14 @@ interface RuntimeControlsProps {
   turboInstalled?: boolean;
   /** Whether an update is available for llama-server-turbo. */
   turboUpdateAvailable?: boolean;
+  /** MTPLX install state + model compatibility for the current selection. */
+  mtplxInfo?: {
+    available: boolean;
+    modelSupported: boolean;
+  };
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
 }
 
 function StrategyInstallTerminal({
@@ -232,6 +242,10 @@ export function RuntimeControls({
   selectedModelName,
   turboInstalled,
   turboUpdateAvailable,
+  mtplxInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
 }: RuntimeControlsProps) {
   const { t } = useTranslation("runtime");
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
@@ -254,6 +268,13 @@ export function RuntimeControls({
   const canInstallDflashForModel = dflashSupport.modelSupported === true;
   const dflashInstallLog = installLogs?.["dflash-mlx"] ?? installLogs?.dflash;
   const showDflashInstallTerminal = Boolean(dflashInstallLog || (!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage));
+  // Backend `_select_engine` routes to MtplxEngine whenever the model has MTP
+  // heads AND the MTPLX venv is installed — regardless of which checkbox the
+  // user clicked. Both toggles bind to the same speculativeDecoding flag, so
+  // showing DFlash alongside an installed MTPLX is confusing (it appears
+  // "ticked" even though MTPLX is what actually runs). Hide DFlash in that
+  // case; MTPLX takes precedence.
+  const mtplxSupersedesDflash = (mtplxInfo?.modelSupported ?? false) && (mtplxInfo?.available ?? false);
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
@@ -612,7 +633,7 @@ export function RuntimeControls({
             ready in one click. ``canInstallDflashForModel`` is True
             whenever the model is in the draft map AND the runtime gap
             is the missing pip package. */}
-        {dflashAvailable || canInstallDflashForModel ? (
+        {!mtplxSupersedesDflash && (dflashAvailable || canInstallDflashForModel) ? (
         <div className="check-row">
           <label
             className="check-row"
@@ -659,7 +680,7 @@ export function RuntimeControls({
           </button>
         </div>
         ) : null}
-        {expandedInfo === "dflash" && (dflashAvailable || canInstallDflashForModel) ? (
+        {expandedInfo === "dflash" && !mtplxSupersedesDflash && (dflashAvailable || canInstallDflashForModel) ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
             <p>
               {t("dflash.body", {
@@ -701,10 +722,10 @@ export function RuntimeControls({
             ) : null}
           </div>
         ) : null}
-        {showDflashInstallTerminal ? (
+        {showDflashInstallTerminal && !mtplxSupersedesDflash ? (
           <StrategyInstallTerminal label="DFlash" log={dflashInstallLog} />
         ) : null}
-        {settings.speculativeDecoding && dflashAvailable ? (
+        {settings.speculativeDecoding && dflashAvailable && !mtplxSupersedesDflash ? (
           <div className="slider-row" style={{ marginTop: 6 }}>
             <label className="slider-label" title="DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.">
               Tree budget (DDTree)
@@ -719,6 +740,94 @@ export function RuntimeControls({
               onChange={(event) => onChange("treeBudget", parseInt(event.target.value, 10))}
             />
             <span className="slider-value">{settings.treeBudget ?? 0}</span>
+          </div>
+        ) : null}
+        {/* MTPLX: native in-model MTP speculative decoding. Hidden when the
+            model has no MTP heads (no install button helps that case). Shown
+            with an install button when the model is supported but the venv
+            is not yet installed. Uses the same speculativeDecoding field as
+            DFlash — the controller auto-routes to MtplxEngine when both the
+            model has MTP heads and the venv is installed. */}
+        {mtplxInfo?.modelSupported ? (
+          <div className="check-row">
+            <label
+              className="check-row"
+              style={{ margin: 0 }}
+              title={t("mtplx.tooltip", {
+                defaultValue: "MTPLX: native MTP speculative decoding. Uses baked-in prediction heads for ~1.8–2.2x faster generation with zero quality loss.",
+              })}
+            >
+              <input
+                type="checkbox"
+                checked={settings.speculativeDecoding && (mtplxInfo?.available ?? false)}
+                disabled={!mtplxInfo?.available}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  onChange("speculativeDecoding", enabled);
+                  if (enabled) {
+                    onChange("cacheStrategy", "native");
+                    onChange("cacheBits", 0);
+                    onChange("fp16Layers", 0);
+                  }
+                }}
+              />
+              <span>{t("mtplx.label", { defaultValue: "MTPLX" })}</span>
+            </label>
+            {!mtplxInfo.available && onInstallMtplx ? (
+              <button
+                type="button"
+                className="cache-strategy-install-btn"
+                disabled={installingMtplx}
+                onClick={onInstallMtplx}
+              >
+                {installingMtplx
+                  ? t("mtplx.installing", { defaultValue: "Installing..." })
+                  : t("mtplx.installButton", { defaultValue: "Install MTPLX" })}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="cache-strategy-info-btn"
+              onClick={() => setExpandedInfo(expandedInfo === "mtplx" ? null : "mtplx")}
+              title={t("mtplx.aboutTitle", { defaultValue: "About MTPLX speculative decoding" })}
+            >
+              i
+            </button>
+          </div>
+        ) : null}
+        {/* Show terminal during install + on error. Hide on "done" so a
+            completed install doesn't keep re-appearing on every modal open
+            — capabilities probe already surfaces the installed state via
+            the MTPLX section's status copy. */}
+        {mtplxJob && mtplxJob.phase !== "idle" && mtplxJob.phase !== "done" ? (
+          <InstallLogPanel job={mtplxJob} variant="mtplx" />
+        ) : null}
+        {expandedInfo === "mtplx" && mtplxInfo?.modelSupported ? (
+          <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
+            <p>
+              {t("mtplx.body", {
+                defaultValue:
+                  "MTPLX uses baked-in Multi-Token Prediction (MTP) heads trained directly into the model. " +
+                  "At inference time the heads draft 1–3 tokens per forward pass, which are verified in the same pass — " +
+                  "no separate draft model needed. Gives ~1.8–2.2x faster generation with zero quality loss.",
+              })}
+            </p>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">{t("mtplx.requiresLabel", { defaultValue: "Requires:" })}</span>
+              <span>
+                {t("mtplx.requiresBody", {
+                  defaultValue: "Apple Silicon + MTPLX isolated venv. Model must have baked-in MTP heads (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+                })}
+              </span>
+            </div>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">{t("mtplx.statusLabel", { defaultValue: "Status:" })}</span>
+              <span>
+                {mtplxInfo.available
+                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculativeDecoding is enabled." })
+                  : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
+              </span>
+            </div>
           </div>
         ) : null}
       </div>

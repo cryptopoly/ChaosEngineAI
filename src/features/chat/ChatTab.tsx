@@ -101,7 +101,6 @@ export interface ChatTabProps {
   onSetError: (msg: string | null) => void;
   enableTools: boolean;
   onToggleTools: (enabled: boolean) => void;
-  onCompareMode: () => void;
   onCancelGeneration: () => void;
   /**
    * Phase 2.12: lifted to the parent so it survives across re-renders
@@ -165,7 +164,6 @@ export function ChatTab({
   onSetError,
   enableTools,
   onToggleTools,
-  onCompareMode,
   onCancelGeneration,
   oneTurnOverride,
   onOneTurnOverrideChange,
@@ -384,7 +382,6 @@ export function ChatTab({
           onCreateSession={onCreateSession}
           onToggleThreadPin={onToggleThreadPin}
           onDeleteSession={onDeleteSession}
-          onCompareMode={onCompareMode}
           onToggleCollapsed={toggleSidebar}
         />
       ) : null}

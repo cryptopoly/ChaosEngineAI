@@ -1,15 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { GpuBundleJobState, LongLiveJobState } from "../api";
+import type { GpuBundleJobState, LongLiveJobState, MtplxJobState } from "../api";
 
-// The panel renders either kind of install job — GPU bundle or LongLive.
-// They share the core fields (phase / message / attempts / progress
-// counters / targetDir) and differ only in optional metadata. Treating
-// the prop as a union keeps both Studio surfaces using one component
-// instead of duplicating the auto-scroll, pip-noise filter, and
+// The panel renders any background install job — GPU bundle, LongLive, or
+// MTPLX. All share the core fields (phase / message / attempts / progress
+// counters / targetDir). Treating the prop as a union keeps all surfaces
+// using one component without duplicating auto-scroll, pip-noise filter, and
 // terminal layout.
-export type InstallJobState = GpuBundleJobState | LongLiveJobState;
+export type InstallJobState = GpuBundleJobState | LongLiveJobState | MtplxJobState;
 
 // Optional fields read by the meta line. ``GpuBundleJobState`` has these;
 // ``LongLiveJobState`` doesn't. Centralised here so the meta renderer
@@ -26,7 +25,7 @@ interface InstallLogPanelProps {
   job: InstallJobState | null;
   // Title shown in the collapsed summary. Defaults to the GPU bundle
   // wording so existing call sites don't need to pass it.
-  variant?: "gpu-bundle" | "longlive";
+  variant?: "gpu-bundle" | "longlive" | "mtplx";
 }
 
 // Single scrollable terminal rendering the GPU bundle install progress.
@@ -101,9 +100,11 @@ function InstallLogMeta({ job, t }: { job: InstallJobState; t: TFunction }) {
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive", t: TFunction): string {
+function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive" | "mtplx", t: TFunction): string {
   const noun = variant === "longlive"
     ? t("installLog.statusNoun.longlive", { defaultValue: "LongLive install" })
+    : variant === "mtplx"
+    ? t("installLog.statusNoun.mtplx", { defaultValue: "MTPLX install" })
     : t("installLog.statusNoun.gpuBundle", { defaultValue: "Install" });
   if (job.phase === "error" || job.error) return t("installLog.status.failed", { noun, defaultValue: `${noun} failed — see log` });
   if (job.phase === "done") return t("installLog.status.complete", { noun, defaultValue: `${noun} complete — see log` });

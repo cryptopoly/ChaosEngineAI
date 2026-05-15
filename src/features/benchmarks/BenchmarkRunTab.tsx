@@ -9,6 +9,7 @@ import { StatCard } from "../../components/StatCard";
 import { BenchmarkGauge } from "../../components/BenchmarkGauge";
 import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
+import type { MtplxJobState } from "../../api";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
 
@@ -23,6 +24,7 @@ export interface BenchmarkRunTabProps {
       availableCacheStrategies: SystemStats["availableCacheStrategies"];
       llamaServerTurboPath?: string | null;
       dflash?: SystemStats["dflash"];
+      mtplx?: SystemStats["mtplx"];
     };
   };
   threadModelOptions: ChatModelOption[];
@@ -38,6 +40,9 @@ export interface BenchmarkRunTabProps {
   showBenchmarkModal: boolean;
   installingPackage: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
   onBenchmarkDraftChange: <K extends keyof BenchmarkRunPayload>(key: K, value: BenchmarkRunPayload[K]) => void;
   onBenchmarkPromptIdChange: (id: string) => void;
   onBenchmarkModelKeyChange: (key: string) => void;
@@ -67,6 +72,9 @@ export function BenchmarkRunTab({
   showBenchmarkModal,
   installingPackage,
   installLogs,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
   onBenchmarkDraftChange,
   onBenchmarkPromptIdChange,
   onBenchmarkModelKeyChange,
@@ -554,6 +562,10 @@ export function BenchmarkRunTab({
         installingPackage={installingPackage}
         installLogs={installLogs}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={onInstallMtplx}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
         onSelectedKeyChange={(key) => {
           onBenchmarkModelKeyChange(key);
         }}

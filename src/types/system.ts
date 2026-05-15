@@ -76,6 +76,10 @@ export interface SystemStats {
     ddtreeAvailable?: boolean;
     supportedModels: string[];
   };
+  mtplx?: {
+    available: boolean;
+    supportedModels: string[];
+  };
   runningLlmProcesses: Array<{
     pid: number;
     name: string;

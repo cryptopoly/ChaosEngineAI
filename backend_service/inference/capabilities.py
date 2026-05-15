@@ -13,6 +13,8 @@ from __future__ import annotations
 import time
 from threading import RLock
 
+from pathlib import Path
+
 from backend_service.inference._constants import CAPABILITY_CACHE_TTL_SECONDS
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.binaries import (
@@ -24,8 +26,24 @@ from backend_service.inference.binaries import (
 )
 
 
+_MTPLX_VENV = Path.home() / ".chaosengine" / "mtplx-venv"
+_MTPLX_VERSION_FILE = Path.home() / ".chaosengine" / "bin" / "mtplx.version"
+
 _capability_cache: tuple[float, BackendCapabilities] | None = None
 _capability_lock = RLock()
+
+
+def _detect_mtplx() -> tuple[bool, str | None]:
+    """Return (available, python_path) for the MTPLX isolated venv.
+
+    Cheap file-existence check — no subprocess spawn.  The version file is
+    written by install-mtplx.sh on clean install; its presence together with
+    the venv python binary is sufficient to confirm a usable install.
+    """
+    python = _MTPLX_VENV / "bin" / "python"
+    if _MTPLX_VERSION_FILE.exists() and python.exists():
+        return True, str(python)
+    return False, None
 
 
 def _initial_backend_capabilities() -> BackendCapabilities:
@@ -40,6 +58,7 @@ def _initial_backend_capabilities() -> BackendCapabilities:
     llama_server_path = _resolve_llama_server()
     llama_server_turbo_path = _resolve_llama_server_turbo()
     llama_cli_path = _resolve_llama_cli()
+    mtplx_available, mtplx_python = _detect_mtplx()
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=False,
@@ -53,6 +72,8 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         converterAvailable=False,
         vllmAvailable=False,
         vllmVersion=None,
+        mtplxAvailable=mtplx_available,
+        mtplxPythonPath=mtplx_python,
         probing=True,
     )
 
@@ -80,6 +101,7 @@ def _probe_native_backends() -> BackendCapabilities:
 
     from backend_service.vllm_engine import _vllm_importable, _vllm_version
 
+    mtplx_available, mtplx_python = _detect_mtplx()
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=mlx_available,
@@ -95,6 +117,8 @@ def _probe_native_backends() -> BackendCapabilities:
         converterAvailable=mlx_usable,
         vllmAvailable=_vllm_importable(),
         vllmVersion=_vllm_version(),
+        mtplxAvailable=mtplx_available,
+        mtplxPythonPath=mtplx_python,
     )
 
 

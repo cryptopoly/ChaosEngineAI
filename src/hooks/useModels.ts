@@ -45,6 +45,7 @@ export function useModels(
   const [activeDownloads, setActiveDownloads] = useState<Record<string, DownloadStatus>>({});
   const [discoverCapFilter, setDiscoverCapFilter] = useState<string | null>(null);
   const [discoverFormatFilter, setDiscoverFormatFilter] = useState<string | null>(null);
+  const [discoverAccelFilter, setDiscoverAccelFilter] = useState<string | null>(null);
 
   // Keep curated families in sync when workspace refreshes (without
   // retriggering the search effect, which would cancel in-flight API calls).
@@ -251,6 +252,8 @@ export function useModels(
     setDiscoverCapFilter,
     discoverFormatFilter,
     setDiscoverFormatFilter,
+    discoverAccelFilter,
+    setDiscoverAccelFilter,
     hasActiveDownloads,
     handleDownloadModel,
     handleCancelModelDownload,

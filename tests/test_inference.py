@@ -206,11 +206,23 @@ class MtpTensorProbeTests(unittest.TestCase):
         self.assertIsNone(model_has_mtp_tensors(""))
         self.assertIsNone(model_has_mtp_tensors("/nonexistent/path/model.gguf"))
 
-    def test_gguf_with_mtp_tensor_names(self):
+    def test_gguf_with_legacy_mtp_tensor_names(self):
         from backend_service.inference._mtp import model_has_mtp_tensors
 
         with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as fh:
             fh.write(b"GGUF\x00" * 100 + b"some_filler.mtp_decoder.weight" + b"\x00" * 1000)
+            tmp_path = fh.name
+        try:
+            self.assertTrue(model_has_mtp_tensors(tmp_path))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_gguf_with_nextn_metadata_key(self):
+        """PR #22673 emits ``<arch>.nextn_predict_layers`` for MTP GGUFs."""
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as fh:
+            fh.write(b"GGUF\x00" * 50 + b"qwen35.nextn_predict_layers" + b"\x00" * 200)
             tmp_path = fh.name
         try:
             self.assertTrue(model_has_mtp_tensors(tmp_path))

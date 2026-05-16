@@ -200,21 +200,27 @@ def model_has_mtp_tensors(path: str | None) -> bool | None:
     p = _Path(path)
     if not p.exists():
         return None
-    # GGUF case: peek the model file for ``mtp_decoder`` / ``mtp_emb``
-    # in the tensor names (gguf-py reader would be heavyweight here —
-    # the strings appear plain in the file's tensor-name table).
+    # GGUF case: peek the model file for the MTP / Next-N markers.
+    # PR #22673 emits the metadata key ``<arch>.nextn_predict_layers``
+    # in the GGUF header (near the top, well under 2 MB), and ships
+    # tensor weights under ``blk.{N}.nextn.*``. Older drafts used
+    # ``mtp_decoder`` / ``mtp_emb`` / ``mtp_heads``. The metadata key
+    # is the cheapest reliable signal — it's emitted by PR #22673 only
+    # for MTP-bearing models and lives in the first few KB.
     if p.is_file() and p.suffix.lower() == ".gguf":
         try:
             with p.open("rb") as fh:
-                # Read first ~512 KB; tensor names live in the GGUF
-                # header which is at the top of the file.
-                head = fh.read(512 * 1024)
+                head = fh.read(2 * 1024 * 1024)
         except OSError:
             return None
-        # Plain-ASCII tensor name search — false-positives essentially
-        # impossible because these are very specific identifiers.
-        if b"mtp_decoder" in head or b"mtp_emb" in head or b"mtp_heads" in head:
-            return True
+        for needle in (
+            b"nextn_predict",       # PR #22673 metadata key
+            b"mtp_decoder",         # legacy / pre-merge naming
+            b"mtp_emb",
+            b"mtp_heads",
+        ):
+            if needle in head:
+                return True
         return False
 
     # MLX / safetensors case: look for the dedicated shard or any

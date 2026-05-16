@@ -72,8 +72,9 @@ class PhaseResult:
 
 def _cli(*argv: str, timeout: float = 600.0, stdin: str | None = None) -> tuple[int, str, str]:
     """Run a CLI subcommand and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, str(_CLI), *argv] if os.name == "nt" else [str(_CLI), *argv]
     proc = subprocess.run(
-        [str(_CLI), *argv],
+        cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -639,6 +640,14 @@ def phase_5(cap: Capability) -> PhaseResult:
             "--timeout", "3600",
         )
         if rc != 0:
+            prereq_markers = (
+                "Video runtime needs these packages",
+                "Install GPU runtime",
+                "not installed locally",
+                "missingDependencies",
+            )
+            if any(marker in err for marker in prereq_markers):
+                return "skip", f"video runtime prerequisite missing: {err[:240]}", {}
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
@@ -769,7 +778,7 @@ def _write_reports(report_dir: Path, started: datetime, ended: datetime,
             "skip": sum(1 for p in phases if p.status == "skip"),
         },
     }
-    json_path.write_text(json.dumps(payload, indent=2, default=str))
+    json_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
     # Markdown summary
     lines = [
@@ -793,7 +802,7 @@ def _write_reports(report_dir: Path, started: datetime, ended: datetime,
             reason = (c.reason or "").replace("|", "\\|").replace("\n", " ")
             lines.append(f"| {c.name} | `{c.status}` | {c.elapsed_sec}s | {reason[:120]} |")
         lines.append("")
-    md_path.write_text("\n".join(lines))
+    md_path.write_text("\n".join(lines), encoding="utf-8")
     return json_path, md_path
 
 

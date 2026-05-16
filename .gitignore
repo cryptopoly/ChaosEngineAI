@@ -19,5 +19,6 @@ AGENTS.md
 .coverage
 coverage.json
 coverage/
+.tmp-*/
 # MkDocs build output
 site/

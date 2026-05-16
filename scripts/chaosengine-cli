@@ -52,6 +52,20 @@ from pathlib import Path
 from typing import Any
 
 
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="replace")
+        except Exception:
+            pass
+
+
+_configure_stdio()
+
+
 _DEFAULT_HOST = os.environ.get("CHAOSENGINE_HOST", "127.0.0.1")
 _DEFAULT_PORT = int(os.environ.get("CHAOSENGINE_PORT", "8876"))
 _REPO_ROOT = Path(__file__).resolve().parents[1]

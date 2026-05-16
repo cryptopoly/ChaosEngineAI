@@ -37,6 +37,8 @@ interface StrategyCompatInfo {
   turboInstalled: boolean;
   turboquantMlxAvailable: boolean;
   dflashSupportedModels: string[];
+  mtplxInstalled?: boolean;
+  mtplxSupportedModels?: string[];
 }
 
 export interface MyModelsTabProps {
@@ -246,6 +248,23 @@ export function MyModelsTab({
       }
       case "turboquant":
         return (isGGUF && !!strategyCompat?.turboInstalled) || (isMLX && !!strategyCompat?.turboquantMlxAvailable);
+      case "mtplx": {
+        // MTPLX needs baked-in MTP heads from training — much stricter than
+        // DFlash (separate drafter). The fuzzy ``matchedVariant.repo`` would
+        // attach unrelated Unsloth/Gemma locals to canonical Qwen entries
+        // that DO carry MTP heads, falsely listing them under MTPLX. Match
+        // on the actual on-disk name only; if a user installs the canonical
+        // ``mlx-community/Qwen3.6-27B-4bit`` the directory name itself
+        // normalises into the registry. Forks/repacks (e.g. ``-UD-MLX-4bit``)
+        // are excluded until explicitly aliased in ``_MTP_ALIASES``.
+        if (!isMLX) return false;
+        if (!strategyCompat?.mtplxSupportedModels?.length) return false;
+        const modelKeys = candidateKeys([modelName]);
+        return strategyCompat.mtplxSupportedModels.some((ref) => {
+          const refKeys = candidateKeys([ref]);
+          return refKeys.some((k) => modelKeys.includes(k));
+        });
+      }
       default:
         return true;
     }
@@ -255,6 +274,7 @@ export function MyModelsTab({
   // ``t()`` at the render site so the chip text follows the active locale.
   const STRATEGY_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
+    { id: "mtplx", label: "MTPLX", color: "#f472b6" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
 

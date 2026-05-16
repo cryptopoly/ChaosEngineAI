@@ -314,13 +314,22 @@ class CLILoadTests(unittest.TestCase):
 
 class CLIPromptTests(unittest.TestCase):
     def test_prompt_non_streaming_prints_text_and_metrics(self) -> None:
+        # Real /api/chat/generate shape: { session, runtime, assistant: { text, metrics } }
         body = {
-            "text": "Hello back!",
-            "tokS": 42.5,
-            "promptTokens": 5,
-            "completionTokens": 3,
-            "responseSeconds": 0.07,
-            "runtimeNote": "MTPLX active",
+            "session": {"id": "s-1"},
+            "runtime": {"state": "loaded"},
+            "assistant": {
+                "role": "assistant",
+                "text": "Hello back!",
+                "metrics": {
+                    "tokS": 42.5,
+                    "promptTokens": 5,
+                    "completionTokens": 3,
+                    "responseSeconds": 0.07,
+                    "runtimeNote": "MTPLX active",
+                    "finishReason": "stop",
+                },
+            },
         }
         resp = _FakeResp(json.dumps(body).encode("utf-8"))
         out = io.StringIO()

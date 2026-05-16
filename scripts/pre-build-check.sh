@@ -29,7 +29,7 @@ echo
 # ------------------------------------------------------------------
 # 1. Python tests
 # ------------------------------------------------------------------
-echo "[1/8] Python tests..."
+echo "[1/9] Python tests..."
 if .venv/bin/python -m pytest tests/ -q --tb=line 2>&1 | tail -3; then
   pass "Python tests"
 else
@@ -40,7 +40,7 @@ echo
 # ------------------------------------------------------------------
 # 2. TypeScript tests
 # ------------------------------------------------------------------
-echo "[2/8] TypeScript tests..."
+echo "[2/9] TypeScript tests..."
 if npm test 2>&1 | tail -5; then
   pass "TypeScript tests"
 else
@@ -51,7 +51,7 @@ echo
 # ------------------------------------------------------------------
 # 3. TypeScript type checking
 # ------------------------------------------------------------------
-echo "[3/8] TypeScript type checking..."
+echo "[3/9] TypeScript type checking..."
 if npx tsc --noEmit 2>&1; then
   pass "TypeScript types"
 else
@@ -62,11 +62,14 @@ echo
 # ------------------------------------------------------------------
 # 4. Licence notices
 # ------------------------------------------------------------------
-echo "[4/8] Licence notices..."
+echo "[4/9] Licence notices..."
 if [[ -f "THIRD_PARTY_NOTICES.md" ]] && [[ -s "THIRD_PARTY_NOTICES.md" ]]; then
   # Check that key dependencies are mentioned
   missing=""
-  for dep in "llama.cpp" "llama-cpp-turboquant" "dflash-mlx" "turboquant" "ChaosEngine"; do
+  # FU-030 dropped vendored ChaosEngine; FU-028 added mtplx — keep this
+  # list in sync with THIRD_PARTY_NOTICES.md section headings so any new
+  # runtime dep is flagged at build time if it's missing notice attribution.
+  for dep in "llama.cpp" "llama-cpp-turboquant" "dflash-mlx" "turboquant" "mtplx" "mlx-video"; do
     if ! grep -qi "$dep" THIRD_PARTY_NOTICES.md; then
       missing="$missing $dep"
     fi
@@ -84,7 +87,7 @@ echo
 # ------------------------------------------------------------------
 # 5. Cache strategy validation
 # ------------------------------------------------------------------
-echo "[5/8] Cache strategy validation..."
+echo "[5/9] Cache strategy validation..."
 CACHE_CHECK=$(.venv/bin/python -c "
 from cache_compression import registry
 registry.discover()
@@ -117,7 +120,7 @@ echo
 # ------------------------------------------------------------------
 # 6. Upstream dependency update check
 # ------------------------------------------------------------------
-echo "[6/8] Upstream dependency check..."
+echo "[6/9] Upstream dependency check..."
 
 # Turbo fork
 TURBO_VERSION_FILE="$HOME/.chaosengine/bin/llama-server-turbo.version"
@@ -155,7 +158,7 @@ echo
 # ------------------------------------------------------------------
 # 7. Binary availability
 # ------------------------------------------------------------------
-echo "[7/8] Binary availability..."
+echo "[7/9] Binary availability..."
 if command -v llama-server &>/dev/null || [[ -f "/opt/homebrew/bin/llama-server" ]]; then
   pass "llama-server (standard) — found"
 else
@@ -175,11 +178,31 @@ echo
 # Runs the JS-side parity + ICU compile + orphan checker.  Warn-only
 # by default per FU-042 §Coverage Gate; pass --strict to upgrade the
 # threshold to fail-on-merge once translations stabilise.
-echo "[8/8] i18n locale validation..."
+echo "[8/9] i18n locale validation..."
 if node scripts/i18n-validate.mjs 2>&1 | tail -15; then
   pass "i18n locale catalogs"
 else
   fail "i18n locale catalogs — see output above"
+fi
+echo
+
+# ------------------------------------------------------------------
+# 9. E2E smoke (CLI + backend round-trip across every major surface)
+# ------------------------------------------------------------------
+# Runs the phased E2E driver in --smoke mode: Phases 0,3,4,5,6,7
+# (skips the heavy chat sweep + compare to stay under ~90s wall).
+# Skip if no backend is running — pre-build doesn't spawn one.
+# Full suite (./scripts/e2e_test_suite.py) is required for releases;
+# see docs/E2E_TESTING.md.
+echo "[9/9] E2E smoke (CLI + backend)..."
+if curl -s -m 2 http://127.0.0.1:8876/api/health > /dev/null 2>&1; then
+  if ./scripts/e2e_test_suite.py --smoke 2>&1 | tail -12; then
+    pass "E2E smoke — all phases green"
+  else
+    fail "E2E smoke — see report in ~/.chaosengine/test-results/"
+  fi
+else
+  warn "E2E smoke skipped — backend not running on :8876. Start ./scripts/chaosengine-cli serve then re-run."
 fi
 echo
 

@@ -1,6 +1,10 @@
 site_name: ChaosEngineAI
 site_description: The local AI model runner for serious tinkerers.
-site_url: https://chaosengineai.readthedocs.io/
+# Hosted under /docs/ on the main marketing domain so backlinks accrue to
+# chaosengineai.com (subdirectory > subdomain for SEO). The CI workflow at
+# .github/workflows/deploy-docs.yml builds the site here and pushes the
+# output into cryptopoly/ChaosEngineAI-Site under docs/.
+site_url: https://chaosengineai.com/docs/
 repo_url: https://github.com/cryptopoly/ChaosEngineAI
 repo_name: cryptopoly/ChaosEngineAI
 edit_uri: edit/staging/docs/

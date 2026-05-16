@@ -69,6 +69,9 @@ Run before every release, PR, or significant change. Automated via `./scripts/pr
 - [ ] `cd /Users/dan/ChaosEngineAI && .venv/bin/python -m pytest tests/ -q` — all Python tests pass
 - [ ] `npm test` — all TypeScript tests pass
 - [ ] `npx tsc --noEmit` — no type errors
+- [ ] `./scripts/e2e_test_suite.py --smoke` — fast smoke (≤60s) confirms backend + CLI surface intact
+- [ ] `./scripts/e2e_test_suite.py` (full) — every phase passes (or correctly skips). **Required for release builds and any PR touching inference routing, engine implementations, cache strategies, or setup install endpoints.** See [docs/E2E_TESTING.md](docs/E2E_TESTING.md).
+- [ ] **New feature gate**: any user-visible feature, new engine wiring, new model family in catalog, new install endpoint, or new cache/spec-dec strategy MUST land alongside an E2E check in the relevant phase of `scripts/e2e_test_suite.py`. PRs that add a feature but no E2E check are incomplete. See *Adding new checks* in `docs/E2E_TESTING.md`.
 
 ### 2. Licences
 - [ ] `THIRD_PARTY_NOTICES.md` is up to date — all bundled/vendored deps listed with correct licence types

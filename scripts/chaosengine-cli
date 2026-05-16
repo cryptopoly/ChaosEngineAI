@@ -1,32 +1,40 @@
 #!/usr/bin/env python3
-"""ChaosEngineAI CLI — automation wrapper over the FastAPI backend.
+"""ChaosEngineAI CLI — full-surface automation wrapper over the FastAPI backend.
 
-Shells over the same HTTP surface the Tauri app uses. No new entry point;
-no bundle-size impact. Subcommands:
+Two layers:
 
-    serve         Start backend (foreground). Prints port; runs until SIGINT.
-    status        Workspace + runtime snapshot (JSON).
-    load <ref>    Load a model into the runtime; blocks until ready.
-    unload [ref]  Unload active model (or a specific warm entry by ref).
-    prompt <txt>  Send a prompt; streams tokens. Prints final metrics.
-    bench <ref>   Load + prompt sweep; emit tok/s + latency JSON.
-    mtplx-install Drive the MTPLX background install.
-    mtplx-status  Probe MTPLX install state.
+  1. ``call`` — generic HTTP dispatcher. Hits any registered route.
+     Covers 100% of the backend surface; every endpoint reachable.
+     ``chaosengine-cli call GET /api/health``
+     ``chaosengine-cli call POST /api/models/load --body '{"modelRef":"..."}'``
 
-Exit code 0 on success, non-zero on failure. Errors print one-line JSON to
-stderr; structured payloads land on stdout for piping into ``jq``.
+  2. Typed shortcuts — ergonomic subcommands for common workflows:
+     load / unload / prompt / bench / status / mtplx-install / mtplx-status
+     download / convert / search / hub-search / list-weights
+     session-create / session-delete / session-fork / session-variant
+     server-start / server-stop / server-status / server-logs
+     image-generate / image-progress / image-cancel / image-outputs
+     video-generate / video-progress / video-cancel / video-outputs
+     setup-install / setup-refresh / longlive-install / wan-install
+     cuda-torch-install / gpu-bundle-install / turbo-update-check
+     diagnostics-snapshot / diagnostics-log-tail / diagnostics-reextract
+     gpu-status / cache-preview / prompts-list / prompts-enhance
+     settings-get / settings-patch / workspaces-list
+     plugins-list / plugins-enable / plugins-disable / tools-list / adapters-list
+     finetuning-start / finetuning-status / metrics-gpu / compare
+     routes / openapi
+
+All structured output → stdout as JSON (composable with ``jq``); errors → stderr.
+Exit 0 on success, non-zero on failure.
 
 Examples:
-    # Foreground server
-    scripts/chaosengine-cli serve
-
-    # In another shell:
+    scripts/chaosengine-cli serve &
+    scripts/chaosengine-cli routes --filter /api/images
     scripts/chaosengine-cli status | jq .runtime.state
-    scripts/chaosengine-cli load Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed \\
-        --backend mlx --spec --context 32768
-    scripts/chaosengine-cli prompt "Write a quicksort in Rust" --max-tokens 256
-    scripts/chaosengine-cli bench Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed --spec
-    scripts/chaosengine-cli unload
+    scripts/chaosengine-cli load Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed --spec
+    scripts/chaosengine-cli prompt "hi" --stream --metrics
+    scripts/chaosengine-cli image-generate "neon city skyline" --model FLUX.1-schnell --steps 4
+    scripts/chaosengine-cli call POST /api/setup/install-package --body '{"package":"sageattention"}'
 """
 
 from __future__ import annotations
@@ -49,6 +57,11 @@ _DEFAULT_PORT = int(os.environ.get("CHAOSENGINE_PORT", "8876"))
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+# ---------------------------------------------------------------------------
+# Low-level HTTP helpers
+# ---------------------------------------------------------------------------
+
+
 def _base_url(args: argparse.Namespace) -> str:
     return f"http://{args.host}:{args.port}"
 
@@ -57,12 +70,24 @@ def _request(
     method: str,
     url: str,
     *,
-    body: dict[str, Any] | None = None,
+    body: Any = None,
     timeout: float = 30.0,
+    raw_body: bytes | None = None,
+    content_type: str = "application/json",
 ) -> tuple[int, dict[str, Any] | str]:
-    """One-shot HTTP. Returns (status_code, parsed_json_or_text)."""
-    data = json.dumps(body).encode("utf-8") if body is not None else None
-    headers = {"Content-Type": "application/json"} if data else {}
+    """One-shot HTTP. Returns (status_code, parsed_json_or_text).
+
+    Status 0 indicates a network-level failure (returns error string).
+    """
+    if raw_body is not None:
+        data = raw_body
+        headers = {"Content-Type": content_type}
+    elif body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+    else:
+        data = None
+        headers = {}
     req = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -79,21 +104,14 @@ def _request(
         return status, raw
 
 
-def _stream(url: str, body: dict[str, Any], timeout: float = 600.0):
-    """Yield each `data: {...}` JSON event from an SSE endpoint."""
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
-        method="POST",
-    )
+def _stream(url: str, body: dict[str, Any] | None, *, method: str = "POST", timeout: float = 600.0):
+    """Yield each ``data: {...}`` JSON event from an SSE endpoint."""
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        buffer = ""
         for raw in resp:
             line = raw.decode("utf-8", errors="replace")
-            if line.strip() == "":
-                continue
             if not line.startswith("data: "):
                 continue
             payload = line[len("data: ") :].strip()
@@ -103,7 +121,6 @@ def _stream(url: str, body: dict[str, Any], timeout: float = 600.0):
                 yield json.loads(payload)
             except json.JSONDecodeError:
                 continue
-            buffer = ""  # noqa: F841
 
 
 def _die(msg: str, *, code: int = 1) -> None:
@@ -117,19 +134,86 @@ def _ok(payload: Any) -> None:
     sys.stdout.flush()
 
 
-def _wait_ready(args: argparse.Namespace, *, timeout: float = 30.0) -> bool:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        code, _ = _request("GET", f"{_base_url(args)}/api/health", timeout=2.0)
-        if code == 200:
-            return True
-        time.sleep(0.5)
-    return False
+def _load_body_arg(body_str: str | None, file_path: str | None) -> Any:
+    """Resolve --body / --file precedence. ``--file -`` reads stdin."""
+    if body_str and file_path:
+        _die("--body and --file are mutually exclusive")
+    if file_path:
+        if file_path == "-":
+            return json.loads(sys.stdin.read())
+        return json.loads(Path(file_path).read_text())
+    if body_str:
+        return json.loads(body_str)
+    return None
+
+
+def _parse_query(pairs: list[str] | None) -> str:
+    if not pairs:
+        return ""
+    parsed: list[tuple[str, str]] = []
+    for pair in pairs:
+        if "=" not in pair:
+            _die(f"--query expects key=value, got: {pair}")
+        key, value = pair.split("=", 1)
+        parsed.append((key, value))
+    return "?" + urllib.parse.urlencode(parsed)
 
 
 # ---------------------------------------------------------------------------
-# Subcommands
+# Generic dispatcher
 # ---------------------------------------------------------------------------
+
+
+def cmd_call(args: argparse.Namespace) -> int:
+    """Generic HTTP dispatcher — every backend route reachable through this."""
+    body = _load_body_arg(args.body, args.file)
+    query = _parse_query(args.query)
+    url = f"{_base_url(args)}{args.path}{query}"
+    if args.stream:
+        for event in _stream(url, body, method=args.method.upper(), timeout=args.timeout):
+            sys.stdout.write(json.dumps(event) + "\n")
+            sys.stdout.flush()
+        return 0
+    code, payload = _request(args.method.upper(), url, body=body, timeout=args.timeout)
+    if code == 0:
+        _die(f"network error: {payload}")
+    if code >= 400:
+        _die(f"HTTP {code}: {payload}", code=2)
+    _ok(payload)
+    return 0
+
+
+def cmd_routes(args: argparse.Namespace) -> int:
+    """List backend routes from /openapi.json. Optionally filter by prefix / method."""
+    code, schema = _request("GET", f"{_base_url(args)}/openapi.json", timeout=10.0)
+    if code != 200 or not isinstance(schema, dict):
+        _die(f"openapi fetch failed: {schema}")
+    rows: list[dict[str, str]] = []
+    for path, ops in schema.get("paths", {}).items():
+        if args.filter and not path.startswith(args.filter):
+            continue
+        for method, op in ops.items():
+            if method.upper() not in {"GET", "POST", "PUT", "DELETE", "PATCH"}:
+                continue
+            if args.method and method.upper() != args.method.upper():
+                continue
+            rows.append({
+                "method": method.upper(),
+                "path": path,
+                "summary": (op.get("summary") or "").strip(),
+                "operationId": op.get("operationId", ""),
+            })
+    rows.sort(key=lambda r: (r["path"], r["method"]))
+    _ok({"count": len(rows), "routes": rows})
+    return 0
+
+
+def cmd_openapi(args: argparse.Namespace) -> int:
+    code, schema = _request("GET", f"{_base_url(args)}/openapi.json", timeout=10.0)
+    if code != 200:
+        _die(f"openapi fetch failed: {schema}")
+    _ok(schema)
+    return 0
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -151,11 +235,32 @@ def cmd_serve(args: argparse.Namespace) -> int:
         return 0
 
 
-def cmd_status(args: argparse.Namespace) -> int:
-    code, body = _request("GET", f"{_base_url(args)}/api/workspace", timeout=10.0)
+# ---------------------------------------------------------------------------
+# Typed shortcut helpers
+# ---------------------------------------------------------------------------
+
+
+def _hit_get(args: argparse.Namespace, path: str, *, timeout: float = 30.0) -> dict[str, Any]:
+    code, payload = _request("GET", f"{_base_url(args)}{path}", timeout=timeout)
     if code != 200:
-        _die(f"workspace fetch failed: {body}")
-    workspace = body if isinstance(body, dict) else {}
+        _die(f"GET {path} failed (HTTP {code}): {payload}")
+    return payload if isinstance(payload, dict) else {"value": payload}
+
+
+def _hit_post(args: argparse.Namespace, path: str, body: Any = None, *, timeout: float = 60.0) -> dict[str, Any]:
+    code, payload = _request("POST", f"{_base_url(args)}{path}", body=body, timeout=timeout)
+    if code != 200:
+        _die(f"POST {path} failed (HTTP {code}): {payload}")
+    return payload if isinstance(payload, dict) else {"value": payload}
+
+
+# ---------------------------------------------------------------------------
+# Runtime / status / health
+# ---------------------------------------------------------------------------
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    workspace = _hit_get(args, "/api/workspace", timeout=10.0)
     runtime = workspace.get("runtime") or {}
     system = workspace.get("system") or {}
     snapshot = {
@@ -179,6 +284,21 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_health(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/health", timeout=5.0))
+    return 0
+
+
+def cmd_runtime(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/runtime", timeout=10.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Model lifecycle
+# ---------------------------------------------------------------------------
+
+
 def cmd_load(args: argparse.Namespace) -> int:
     payload: dict[str, Any] = {
         "modelRef": args.ref,
@@ -197,13 +317,10 @@ def cmd_load(args: argparse.Namespace) -> int:
         payload["fusedAttention"] = True
     if args.tree_budget is not None:
         payload["treeBudget"] = args.tree_budget
+    if args.fp16_layers is not None:
+        payload["fp16Layers"] = args.fp16_layers
 
-    code, body = _request(
-        "POST",
-        f"{_base_url(args)}/api/models/load",
-        body=payload,
-        timeout=args.timeout,
-    )
+    code, body = _request("POST", f"{_base_url(args)}/api/models/load", body=payload, timeout=args.timeout)
     if code != 200:
         _die(f"load failed (HTTP {code}): {body}")
     runtime = (body or {}).get("runtime", {}) if isinstance(body, dict) else {}
@@ -221,37 +338,150 @@ def cmd_load(args: argparse.Namespace) -> int:
 
 def cmd_unload(args: argparse.Namespace) -> int:
     body = {"ref": args.ref} if args.ref else None
-    code, payload = _request(
-        "POST",
-        f"{_base_url(args)}/api/models/unload",
-        body=body,
-        timeout=30.0,
-    )
-    if code != 200:
-        _die(f"unload failed (HTTP {code}): {payload}")
-    _ok({"state": (payload or {}).get("runtime", {}).get("state")})
+    payload = _hit_post(args, "/api/models/unload", body=body, timeout=30.0)
+    _ok({"state": payload.get("runtime", {}).get("state")})
     return 0
 
 
-def cmd_prompt(args: argparse.Namespace) -> int:
+def cmd_search(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/models/search?q={urllib.parse.quote(args.query)}", timeout=15.0)
+    if code != 200:
+        _die(f"search failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_hub_search(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/models/hub-search?q={urllib.parse.quote(args.query)}", timeout=30.0)
+    if code != 200:
+        _die(f"hub-search failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_hub_files(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/models/hub-files?repo={urllib.parse.quote(args.repo)}", timeout=30.0)
+    if code != 200:
+        _die(f"hub-files failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_list_weights(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/models/list-weights?path={urllib.parse.quote(args.path_arg)}", timeout=30.0)
+    if code != 200:
+        _die(f"list-weights failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_download(args: argparse.Namespace) -> int:
+    payload = {"repo": args.repo}
+    if args.file:
+        payload["filename"] = args.file
+    result = _hit_post(args, "/api/models/download", body=payload, timeout=30.0)
+    if not args.wait:
+        _ok(result)
+        return 0
+    deadline = time.time() + args.timeout
+    last_pct = -1
+    while time.time() < deadline:
+        status = _hit_get(args, "/api/models/download/status", timeout=10.0)
+        match = next((s for s in status.get("downloads", []) if s.get("repo") == args.repo), None)
+        if not match:
+            time.sleep(2)
+            continue
+        pct = int(match.get("progress", 0) * 100)
+        if pct != last_pct:
+            print(f"[download] {pct}% {match.get('state')}", file=sys.stderr, flush=True)
+            last_pct = pct
+        if match.get("state") in {"completed", "failed", "cancelled"}:
+            _ok(match)
+            return 0 if match.get("state") == "completed" else 1
+        time.sleep(2)
+    _die("download timed out")
+    return 1
+
+
+def cmd_download_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/models/download/status", timeout=10.0))
+    return 0
+
+
+def cmd_download_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/models/download/cancel", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+def cmd_download_delete(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/models/download/delete", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+def cmd_convert(args: argparse.Namespace) -> int:
+    payload: dict[str, Any] = {
+        "outputPath": args.output,
+        "quantize": args.quantize,
+        "qBits": args.q_bits,
+        "qGroupSize": args.q_group_size,
+        "dtype": args.dtype,
+    }
+    if args.ref:
+        payload["sourceRef"] = args.ref
+    if args.source_path:
+        payload["sourcePath"] = args.source_path
+    if args.hf_repo:
+        payload["hfRepo"] = args.hf_repo
+    _ok(_hit_post(args, "/api/models/convert", body=payload, timeout=args.timeout))
+    return 0
+
+
+def cmd_reveal(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/models/reveal", body={"path": args.path_arg}, timeout=10.0))
+    return 0
+
+
+def cmd_delete_model(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/models/delete", body={"path": args.path_arg}, timeout=30.0))
+    return 0
+
+
+def cmd_quantized_variants(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/models/quantized-variants?repo={urllib.parse.quote(args.repo)}", timeout=30.0)
+    if code != 200:
+        _die(f"quantized-variants failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Chat / generation
+# ---------------------------------------------------------------------------
+
+
+def _build_generate_body(args: argparse.Namespace) -> dict[str, Any]:
     body: dict[str, Any] = {
         "prompt": args.text,
         "temperature": args.temperature,
         "maxTokens": args.max_tokens,
     }
-    if args.system:
-        body["systemPrompt"] = args.system
-    if args.seed is not None:
-        body["seed"] = args.seed
+    for src, dst in [
+        ("system", "systemPrompt"), ("session_id", "sessionId"),
+        ("seed", "seed"), ("top_p", "topP"), ("top_k", "topK"), ("min_p", "minP"),
+        ("repeat_penalty", "repeatPenalty"), ("thinking", "thinkingMode"),
+        ("reasoning_effort", "reasoningEffort"),
+    ]:
+        val = getattr(args, src, None)
+        if val is not None:
+            body[dst] = val
+    return body
 
+
+def cmd_prompt(args: argparse.Namespace) -> int:
+    body = _build_generate_body(args)
     start = time.perf_counter()
     if not args.stream:
-        code, payload = _request(
-            "POST",
-            f"{_base_url(args)}/api/chat/generate",
-            body=body,
-            timeout=args.timeout,
-        )
+        code, payload = _request("POST", f"{_base_url(args)}/api/chat/generate", body=body, timeout=args.timeout)
         if code != 200:
             _die(f"generate failed (HTTP {code}): {payload}")
         if not args.quiet and isinstance(payload, dict):
@@ -269,7 +499,6 @@ def cmd_prompt(args: argparse.Namespace) -> int:
             })
         return 0
 
-    # Streaming path.
     final: dict[str, Any] = {}
     completion_chars = 0
     for event in _stream(f"{_base_url(args)}/api/chat/generate/stream", body, timeout=args.timeout):
@@ -297,12 +526,11 @@ def cmd_prompt(args: argparse.Namespace) -> int:
 
 
 def cmd_bench(args: argparse.Namespace) -> int:
-    """Load model, run prompt N times, report tok/s + latency stats."""
     load_args = argparse.Namespace(
         host=args.host, port=args.port, ref=args.ref, backend=args.backend,
         cache_strategy="native", cache_bits=None, context=args.context,
         spec=args.spec, fused_attention=False, path=args.path,
-        canonical_repo=None, tree_budget=None, timeout=args.timeout,
+        canonical_repo=None, tree_budget=None, fp16_layers=None, timeout=args.timeout,
     )
     rc = cmd_load(load_args)
     if rc != 0:
@@ -310,94 +538,800 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
     runs: list[dict[str, Any]] = []
     for i in range(args.runs):
-        body = {
-            "prompt": args.prompt,
-            "temperature": 0.7,
-            "maxTokens": args.max_tokens,
-        }
+        body = {"prompt": args.prompt, "temperature": 0.7, "maxTokens": args.max_tokens}
         start = time.perf_counter()
-        code, payload = _request(
-            "POST",
-            f"{_base_url(args)}/api/chat/generate",
-            body=body,
-            timeout=args.timeout,
-        )
+        code, payload = _request("POST", f"{_base_url(args)}/api/chat/generate", body=body, timeout=args.timeout)
         elapsed = time.perf_counter() - start
         if code != 200 or not isinstance(payload, dict):
             runs.append({"run": i, "error": str(payload), "wallSeconds": round(elapsed, 3)})
             continue
         runs.append({
-            "run": i,
-            "tokS": payload.get("tokS"),
+            "run": i, "tokS": payload.get("tokS"),
             "promptTokens": payload.get("promptTokens"),
             "completionTokens": payload.get("completionTokens"),
             "responseSeconds": payload.get("responseSeconds"),
             "wallSeconds": round(elapsed, 3),
         })
 
-    tok_s_values = [r["tokS"] for r in runs if isinstance(r.get("tokS"), (int, float))]
-    summary = {
-        "ref": args.ref,
-        "spec": args.spec,
-        "runs": runs,
-        "meanTokS": round(sum(tok_s_values) / len(tok_s_values), 2) if tok_s_values else None,
-        "maxTokS": max(tok_s_values) if tok_s_values else None,
-        "minTokS": min(tok_s_values) if tok_s_values else None,
-    }
-    _ok(summary)
+    tok_s = [r["tokS"] for r in runs if isinstance(r.get("tokS"), (int, float))]
+    _ok({
+        "ref": args.ref, "spec": args.spec, "runs": runs,
+        "meanTokS": round(sum(tok_s) / len(tok_s), 2) if tok_s else None,
+        "maxTokS": max(tok_s) if tok_s else None,
+        "minTokS": min(tok_s) if tok_s else None,
+    })
     return 0
 
 
-def cmd_mtplx_install(args: argparse.Namespace) -> int:
-    code, payload = _request(
-        "POST",
-        f"{_base_url(args)}/api/setup/install-mtplx",
-        body={},
-        timeout=30.0,
-    )
-    if code != 200:
-        _die(f"install start failed (HTTP {code}): {payload}")
-    if not args.wait:
-        _ok(payload)
-        return 0
+def cmd_chat_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, f"/api/chat/generate/{args.session_id}/cancel", timeout=10.0))
+    return 0
 
+
+def cmd_session_create(args: argparse.Namespace) -> int:
+    body = {"title": args.title} if args.title else None
+    _ok(_hit_post(args, "/api/chat/sessions", body=body, timeout=10.0))
+    return 0
+
+
+def cmd_session_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/chat/sessions/{args.session_id}", timeout=15.0)
+    if code != 200:
+        _die(f"session-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_session_fork(args: argparse.Namespace) -> int:
+    body = {"forkAtMessageIndex": args.at}
+    if args.title:
+        body["title"] = args.title
+    _ok(_hit_post(args, f"/api/chat/sessions/{args.session_id}/fork", body=body, timeout=10.0))
+    return 0
+
+
+def cmd_session_variant(args: argparse.Namespace) -> int:
+    body = {
+        "messageIndex": args.message_index, "modelRef": args.ref,
+        "modelName": args.name or args.ref, "maxTokens": args.max_tokens, "temperature": args.temperature,
+    }
+    _ok(_hit_post(args, f"/api/chat/sessions/{args.session_id}/variants", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_session_delve(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, f"/api/chat/sessions/{args.session_id}/delve/{args.message_index}", timeout=args.timeout))
+    return 0
+
+
+def cmd_session_documents(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, f"/api/chat/sessions/{args.session_id}/documents", timeout=10.0))
+    return 0
+
+
+def cmd_compare(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("compare needs --body or --file with a CompareRequest payload")
+    _ok(_hit_post(args, "/api/chat/compare", body=body, timeout=args.timeout))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Server (OpenAI-compatible local server)
+# ---------------------------------------------------------------------------
+
+
+def cmd_server_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/server/status", timeout=10.0))
+    return 0
+
+
+def cmd_server_shutdown(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/server/shutdown", timeout=15.0))
+    return 0
+
+
+def cmd_server_logs(args: argparse.Namespace) -> int:
+    """Stream server log SSE until interrupted."""
+    for event in _stream(f"{_base_url(args)}/api/server/logs/stream", body=None, method="GET", timeout=args.timeout):
+        sys.stdout.write(json.dumps(event) + "\n")
+        sys.stdout.flush()
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Image generation
+# ---------------------------------------------------------------------------
+
+
+def cmd_image_generate(args: argparse.Namespace) -> int:
+    if args.body or args.file:
+        body = _load_body_arg(args.body, args.file)
+    else:
+        body = {
+            "prompt": args.prompt, "modelId": args.model,
+            "steps": args.steps, "width": args.width, "height": args.height,
+            "guidance": args.guidance, "seed": args.seed,
+            "negativePrompt": args.negative,
+        }
+        # Strip Nones — backend has its own defaults
+        body = {k: v for k, v in body.items() if v is not None}
+    if args.stream:
+        for event in _stream(f"{_base_url(args)}/api/images/generate", body, timeout=args.timeout):
+            sys.stdout.write(json.dumps(event) + "\n")
+            sys.stdout.flush()
+        return 0
+    _ok(_hit_post(args, "/api/images/generate", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_image_progress(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/progress", timeout=5.0))
+    return 0
+
+
+def cmd_image_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/images/cancel", timeout=10.0))
+    return 0
+
+
+def cmd_image_outputs(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/outputs", timeout=15.0))
+    return 0
+
+
+def cmd_image_runtime(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/runtime", timeout=10.0))
+    return 0
+
+
+def cmd_image_unload(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/images/unload", timeout=15.0))
+    return 0
+
+
+def cmd_image_library(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/library", timeout=15.0))
+    return 0
+
+
+def cmd_image_catalog(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/catalog", timeout=15.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Video generation
+# ---------------------------------------------------------------------------
+
+
+def cmd_video_generate(args: argparse.Namespace) -> int:
+    if args.body or args.file:
+        body = _load_body_arg(args.body, args.file)
+    else:
+        body = {
+            "prompt": args.prompt, "modelId": args.model,
+            "steps": args.steps, "width": args.width, "height": args.height,
+            "numFrames": args.frames, "fps": args.fps,
+            "guidance": args.guidance, "seed": args.seed,
+            "negativePrompt": args.negative,
+        }
+        body = {k: v for k, v in body.items() if v is not None}
+    _ok(_hit_post(args, "/api/video/generate", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_video_progress(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/progress", timeout=5.0))
+    return 0
+
+
+def cmd_video_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/video/cancel", timeout=10.0))
+    return 0
+
+
+def cmd_video_outputs(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/outputs", timeout=15.0))
+    return 0
+
+
+def cmd_video_runtime(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/runtime", timeout=10.0))
+    return 0
+
+
+def cmd_video_library(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/library", timeout=15.0))
+    return 0
+
+
+def cmd_video_catalog(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/catalog", timeout=15.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Setup / install endpoints
+# ---------------------------------------------------------------------------
+
+
+def _poll_install(args: argparse.Namespace, status_path: str, *, label: str) -> int:
     deadline = time.time() + args.timeout
     last_phase = ""
     while time.time() < deadline:
-        code, payload = _request(
-            "GET",
-            f"{_base_url(args)}/api/setup/install-mtplx/status",
-            timeout=10.0,
-        )
+        code, payload = _request("GET", f"{_base_url(args)}{status_path}", timeout=10.0)
         if code != 200 or not isinstance(payload, dict):
             time.sleep(2)
             continue
         phase = payload.get("phase") or ""
         if phase != last_phase:
-            print(f"[chaosengine-cli] phase: {phase}", file=sys.stderr, flush=True)
+            print(f"[{label}] phase: {phase}", file=sys.stderr, flush=True)
             last_phase = phase
         if payload.get("done"):
             _ok(payload)
             return 0 if not payload.get("error") else 1
         time.sleep(2)
-    _die("install timed out")
+    _die(f"{label} timed out")
     return 1
 
 
+def cmd_mtplx_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-mtplx", body={}, timeout=30.0)
+    if not args.wait:
+        _ok(_hit_get(args, "/api/setup/install-mtplx/status", timeout=10.0))
+        return 0
+    return _poll_install(args, "/api/setup/install-mtplx/status", label="mtplx")
+
+
 def cmd_mtplx_status(args: argparse.Namespace) -> int:
-    code, payload = _request(
-        "GET",
-        f"{_base_url(args)}/api/setup/mtplx-status",
-        timeout=10.0,
-    )
+    _ok(_hit_get(args, "/api/setup/mtplx-status", timeout=10.0))
+    return 0
+
+
+def cmd_longlive_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-longlive", body={}, timeout=30.0)
+    if not args.wait:
+        return cmd_longlive_status(args)
+    return _poll_install(args, "/api/setup/install-longlive/status", label="longlive")
+
+
+def cmd_longlive_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/install-longlive/status", timeout=10.0))
+    return 0
+
+
+def cmd_wan_install(args: argparse.Namespace) -> int:
+    body = {"repo": args.repo} if args.repo else {}
+    _hit_post(args, "/api/setup/install-mlx-video-wan", body=body, timeout=30.0)
+    if not args.wait:
+        return cmd_wan_status(args)
+    return _poll_install(args, "/api/setup/install-mlx-video-wan/status", label="wan")
+
+
+def cmd_wan_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/install-mlx-video-wan/status", timeout=10.0))
+    return 0
+
+
+def cmd_wan_inventory(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/mlx-video-wan/inventory", timeout=15.0))
+    return 0
+
+
+def cmd_cuda_torch_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-cuda-torch", body={}, timeout=30.0)
+    if not args.wait:
+        return cmd_gpu_bundle_status(args)
+    return _poll_install(args, "/api/setup/install-gpu-bundle/status", label="cuda-torch")
+
+
+def cmd_gpu_bundle_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-gpu-bundle", body={}, timeout=30.0)
+    if not args.wait:
+        return cmd_gpu_bundle_status(args)
+    return _poll_install(args, "/api/setup/install-gpu-bundle/status", label="gpu-bundle")
+
+
+def cmd_gpu_bundle_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/install-gpu-bundle/status", timeout=10.0))
+    return 0
+
+
+def cmd_gpu_bundle_info(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/gpu-bundle-info", timeout=10.0))
+    return 0
+
+
+def cmd_setup_install_package(args: argparse.Namespace) -> int:
+    body = {"package": args.package}
+    if args.extra_index:
+        body["extraIndexUrl"] = args.extra_index
+    _ok(_hit_post(args, "/api/setup/install-package", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_setup_install_system_package(args: argparse.Namespace) -> int:
+    body = {"package": args.package}
+    _ok(_hit_post(args, "/api/setup/install-system-package", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_setup_refresh(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/setup/refresh-capabilities", timeout=30.0))
+    return 0
+
+
+def cmd_turbo_update_check(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/turbo-update-check", timeout=30.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+
+
+def cmd_diagnostics_snapshot(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/diagnostics/snapshot", timeout=30.0))
+    return 0
+
+
+def cmd_diagnostics_log_tail(args: argparse.Namespace) -> int:
+    code, payload = _request("GET", f"{_base_url(args)}/api/diagnostics/log-tail?lines={args.lines}", timeout=15.0)
     if code != 200:
-        _die(f"mtplx-status failed (HTTP {code}): {payload}")
+        _die(f"log-tail failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_diagnostics_reextract(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/diagnostics/reextract-runtime", timeout=60.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Misc — gpu, cache, prompts, settings, workspaces, plugins, tools, adapters
+# ---------------------------------------------------------------------------
+
+
+def cmd_gpu_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/system/gpu-status", timeout=10.0))
+    return 0
+
+
+def cmd_metrics_gpu(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/metrics/gpu", timeout=10.0))
+    return 0
+
+
+def cmd_cache_preview(args: argparse.Namespace) -> int:
+    query = f"?ref={urllib.parse.quote(args.ref)}"
+    if args.context is not None:
+        query += f"&context={args.context}"
+    if args.cache_strategy:
+        query += f"&cacheStrategy={urllib.parse.quote(args.cache_strategy)}"
+    if args.cache_bits is not None:
+        query += f"&cacheBits={args.cache_bits}"
+    code, payload = _request("GET", f"{_base_url(args)}/api/cache/preview{query}", timeout=15.0)
+    if code != 200:
+        _die(f"cache-preview failed: {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_prompts_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/prompts", timeout=10.0))
+    return 0
+
+
+def cmd_prompts_create(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("prompts-create needs --body or --file with template JSON")
+    _ok(_hit_post(args, "/api/prompts", body=body, timeout=10.0))
+    return 0
+
+
+def cmd_prompts_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/prompts/{args.template_id}", timeout=10.0)
+    if code != 200:
+        _die(f"prompts-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_prompts_enhance(args: argparse.Namespace) -> int:
+    body = {"prompt": args.text}
+    if args.family:
+        body["family"] = args.family
+    if args.model:
+        body["model"] = args.model
+    _ok(_hit_post(args, "/api/prompt/enhance", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_settings_get(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/settings", timeout=10.0))
+    return 0
+
+
+def cmd_settings_patch(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("settings-patch needs --body or --file with patch JSON")
+    code, payload = _request("PATCH", f"{_base_url(args)}/api/settings", body=body, timeout=15.0)
+    if code != 200:
+        _die(f"settings-patch failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_settings_storage_get(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/settings/storage", timeout=10.0))
+    return 0
+
+
+def cmd_workspaces_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/workspaces", timeout=10.0))
+    return 0
+
+
+def cmd_plugins_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/plugins", timeout=10.0))
+    return 0
+
+
+def cmd_plugins_enable(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, f"/api/plugins/{args.plugin_id}/enable", timeout=10.0))
+    return 0
+
+
+def cmd_plugins_disable(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, f"/api/plugins/{args.plugin_id}/disable", timeout=10.0))
+    return 0
+
+
+def cmd_tools_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/tools", timeout=10.0))
+    return 0
+
+
+def cmd_adapters_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/adapters", timeout=10.0))
+    return 0
+
+
+def cmd_finetuning_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/finetuning/status", timeout=10.0))
+    return 0
+
+
+def cmd_finetuning_start(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("finetuning-start needs --body or --file with FinetuningRequest JSON")
+    _ok(_hit_post(args, "/api/finetuning/start", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_benchmark_run(args: argparse.Namespace) -> int:
+    """Generic benchmark via the dedicated /api/benchmarks/run endpoint."""
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("benchmark-run needs --body or --file with BenchmarkRunPayload JSON")
+    _ok(_hit_post(args, "/api/benchmarks/run", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_auth_session(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/auth/session", timeout=10.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# HTML Challenges
+# ---------------------------------------------------------------------------
+
+
+def cmd_challenges_list(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/chat/html-challenges", timeout=15.0))
+    return 0
+
+
+def cmd_challenges_get(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, f"/api/chat/html-challenges/{args.challenge_id}", timeout=15.0))
+    return 0
+
+
+def cmd_challenges_file(args: argparse.Namespace) -> int:
+    """Slot artefact file — returns raw bytes when --out is given, else JSON metadata."""
+    url = f"{_base_url(args)}/api/chat/html-challenges/{args.challenge_id}/files/{args.slot_id}"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=30.0) as resp:
+            data = resp.read()
+            content_type = resp.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as exc:
+        _die(f"challenges-file failed (HTTP {exc.code}): {exc.read().decode('utf-8', errors='replace')}")
+    if args.out:
+        Path(args.out).write_bytes(data)
+        _ok({"savedTo": args.out, "bytes": len(data), "contentType": content_type})
+    elif content_type.startswith("application/json"):
+        _ok(json.loads(data))
+    else:
+        sys.stdout.buffer.write(data)
+    return 0
+
+
+def cmd_challenges_create(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("challenges-create needs --body or --file with the challenge payload")
+    _ok(_hit_post(args, "/api/chat/html-challenges", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_challenges_open_file(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file) or {"path": args.path_arg}
+    _ok(_hit_post(args, "/api/chat/html-challenges/open-file", body=body, timeout=15.0))
+    return 0
+
+
+def cmd_challenges_repair(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    _ok(_hit_post(args, f"/api/chat/html-challenges/{args.challenge_id}/slots/{args.slot_id}/repair", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_challenges_retry(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    _ok(_hit_post(args, f"/api/chat/html-challenges/{args.challenge_id}/slots/{args.slot_id}/retry", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_challenges_validate(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("challenges-validate needs --body or --file with validation patch")
+    url = f"{_base_url(args)}/api/chat/html-challenges/{args.challenge_id}/slots/{args.slot_id}/validation"
+    code, payload = _request("PATCH", url, body=body, timeout=30.0)
+    if code != 200:
+        _die(f"validate failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_challenges_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/chat/html-challenges/{args.challenge_id}", timeout=15.0)
+    if code != 200:
+        _die(f"challenges-delete failed (HTTP {code}): {payload}")
     _ok(payload)
     return 0
 
 
 # ---------------------------------------------------------------------------
-# Argument parsing
+# Image / video download lifecycle
+# ---------------------------------------------------------------------------
+
+
+def cmd_image_download(args: argparse.Namespace) -> int:
+    payload: dict[str, Any] = {"repo": args.repo}
+    if args.file:
+        payload["filename"] = args.file
+    _ok(_hit_post(args, "/api/images/download", body=payload, timeout=30.0))
+    return 0
+
+
+def cmd_image_download_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/images/download/status", timeout=10.0))
+    return 0
+
+
+def cmd_image_download_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/images/download/cancel", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+def cmd_image_download_delete(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/images/download/delete", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+def cmd_video_download(args: argparse.Namespace) -> int:
+    payload: dict[str, Any] = {"repo": args.repo}
+    if args.file:
+        payload["filename"] = args.file
+    _ok(_hit_post(args, "/api/video/download", body=payload, timeout=30.0))
+    return 0
+
+
+def cmd_video_download_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/download/status", timeout=10.0))
+    return 0
+
+
+def cmd_video_download_cancel(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/video/download/cancel", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+def cmd_video_download_delete(args: argparse.Namespace) -> int:
+    _ok(_hit_post(args, "/api/video/download/delete", body={"repo": args.repo}, timeout=30.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Output artifacts
+# ---------------------------------------------------------------------------
+
+
+def cmd_image_output_get(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, f"/api/images/outputs/{args.artifact_id}", timeout=15.0))
+    return 0
+
+
+def cmd_image_output_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/images/outputs/{args.artifact_id}", timeout=15.0)
+    if code != 200:
+        _die(f"image-output-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_video_output_get(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, f"/api/video/outputs/{args.artifact_id}", timeout=15.0))
+    return 0
+
+
+def cmd_video_output_file(args: argparse.Namespace) -> int:
+    """Stream binary video file. Writes to --out path; stdout if --out omitted."""
+    url = f"{_base_url(args)}/api/video/outputs/{args.artifact_id}/file"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=60.0) as resp:
+            data = resp.read()
+            content_type = resp.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as exc:
+        _die(f"video-output-file failed (HTTP {exc.code}): {exc.read().decode('utf-8', errors='replace')}")
+    if args.out:
+        Path(args.out).write_bytes(data)
+        _ok({"savedTo": args.out, "bytes": len(data), "contentType": content_type})
+    else:
+        sys.stdout.buffer.write(data)
+    return 0
+
+
+def cmd_video_output_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/video/outputs/{args.artifact_id}", timeout=15.0)
+    if code != 200:
+        _die(f"video-output-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Workspaces management
+# ---------------------------------------------------------------------------
+
+
+def cmd_workspaces_rename(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        body = {"name": args.name} if args.name else None
+    if body is None:
+        _die("workspaces-rename needs --name or --body/--file")
+    code, payload = _request("PATCH", f"{_base_url(args)}/api/workspaces/{args.workspace_id}", body=body, timeout=15.0)
+    if code != 200:
+        _die(f"workspaces-rename failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_workspaces_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/workspaces/{args.workspace_id}", timeout=30.0)
+    if code != 200:
+        _die(f"workspaces-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_workspaces_document_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/workspaces/{args.workspace_id}/documents/{args.doc_id}", timeout=15.0)
+    if code != 200:
+        _die(f"workspaces-document-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Session extras (rename + documents)
+# ---------------------------------------------------------------------------
+
+
+def cmd_session_rename(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        body = {"title": args.title} if args.title else None
+    if body is None:
+        _die("session-rename needs --title or --body/--file")
+    code, payload = _request("PATCH", f"{_base_url(args)}/api/chat/sessions/{args.session_id}", body=body, timeout=15.0)
+    if code != 200:
+        _die(f"session-rename failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+def cmd_session_document_upload(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("session-document-upload needs --body or --file with the document payload")
+    _ok(_hit_post(args, f"/api/chat/sessions/{args.session_id}/documents", body=body, timeout=60.0))
+    return 0
+
+
+def cmd_session_document_delete(args: argparse.Namespace) -> int:
+    code, payload = _request("DELETE", f"{_base_url(args)}/api/chat/sessions/{args.session_id}/documents/{args.doc_id}", timeout=15.0)
+    if code != 200:
+        _die(f"session-document-delete failed (HTTP {code}): {payload}")
+    _ok(payload)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Misc (preload, storage move, video runtime probes, v1 models)
+# ---------------------------------------------------------------------------
+
+
+def cmd_image_preload(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        body = {"modelRef": args.model} if args.model else {}
+    _ok(_hit_post(args, "/api/images/preload", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_settings_storage_set(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        _die("settings-storage-set needs --body or --file")
+    _ok(_hit_post(args, "/api/settings/storage", body=body, timeout=15.0))
+    return 0
+
+
+def cmd_settings_storage_move(args: argparse.Namespace) -> int:
+    body = _load_body_arg(args.body, args.file)
+    if body is None:
+        body = {"destination": args.destination} if args.destination else None
+    if body is None:
+        _die("settings-storage-move needs --destination or --body/--file")
+    _ok(_hit_post(args, "/api/settings/storage/move", body=body, timeout=args.timeout))
+    return 0
+
+
+def cmd_settings_storage_move_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/settings/storage/move/status", timeout=10.0))
+    return 0
+
+
+def cmd_video_longlive(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/longlive", timeout=10.0))
+    return 0
+
+
+def cmd_video_mlx_runtime(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/video/mlx-runtime", timeout=10.0))
+    return 0
+
+
+def cmd_v1_models(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/v1/models", timeout=10.0))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Argument parser
 # ---------------------------------------------------------------------------
 
 
@@ -411,20 +1345,46 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=_DEFAULT_PORT)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
+    # -- Generic --
+    s = sub.add_parser("call", help="Generic HTTP dispatcher — every route reachable.")
+    s.add_argument("method", choices=["GET", "POST", "PUT", "DELETE", "PATCH",
+                                       "get", "post", "put", "delete", "patch"])
+    s.add_argument("path")
+    s.add_argument("--body", help="Inline JSON body.")
+    s.add_argument("--file", help="Read body from file (or '-' for stdin).")
+    s.add_argument("--query", nargs="*", help="Query params, format key=value.")
+    s.add_argument("--stream", action="store_true", help="Treat response as SSE.")
+    s.add_argument("--timeout", type=float, default=120.0)
+    s.set_defaults(func=cmd_call)
+
+    s = sub.add_parser("routes", help="List backend routes from /openapi.json.")
+    s.add_argument("--filter", help="Filter by path prefix, e.g. /api/images")
+    s.add_argument("--method", help="Filter by HTTP method.")
+    s.set_defaults(func=cmd_routes)
+
+    s = sub.add_parser("openapi", help="Dump full OpenAPI schema.")
+    s.set_defaults(func=cmd_openapi)
+
     s = sub.add_parser("serve", help="Start backend in foreground.")
     s.set_defaults(func=cmd_serve)
 
+    # -- Runtime --
     s = sub.add_parser("status", help="Workspace + runtime snapshot.")
     s.set_defaults(func=cmd_status)
+    sub.add_parser("health", help="Backend health probe.").set_defaults(func=cmd_health)
+    sub.add_parser("runtime", help="Current runtime info.").set_defaults(func=cmd_runtime)
 
+    # -- Models --
     s = sub.add_parser("load", help="Load a model.")
     s.add_argument("ref")
     s.add_argument("--path", default=None)
-    s.add_argument("--backend", default="auto", choices=["auto", "mlx", "gguf", "llama.cpp", "vllm", "remote"])
+    s.add_argument("--backend", default="auto",
+                    choices=["auto", "mlx", "gguf", "llama.cpp", "vllm", "remote"])
     s.add_argument("--cache-strategy", default="native")
     s.add_argument("--cache-bits", type=int, default=None)
+    s.add_argument("--fp16-layers", type=int, default=None)
     s.add_argument("--context", type=int, default=8192)
-    s.add_argument("--spec", action="store_true", help="Enable speculative decoding (DFlash/MTPLX auto-routed).")
+    s.add_argument("--spec", action="store_true")
     s.add_argument("--fused-attention", action="store_true")
     s.add_argument("--canonical-repo", default=None)
     s.add_argument("--tree-budget", type=int, default=None)
@@ -435,19 +1395,75 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("ref", nargs="?", default=None)
     s.set_defaults(func=cmd_unload)
 
+    s = sub.add_parser("search", help="Catalog search.")
+    s.add_argument("query", default="", nargs="?")
+    s.set_defaults(func=cmd_search)
+
+    s = sub.add_parser("hub-search", help="HuggingFace Hub search.")
+    s.add_argument("query")
+    s.set_defaults(func=cmd_hub_search)
+
+    s = sub.add_parser("hub-files", help="List files in a HF repo.")
+    s.add_argument("repo")
+    s.set_defaults(func=cmd_hub_files)
+
+    s = sub.add_parser("list-weights", help="List weight files at a local path.")
+    s.add_argument("path_arg", metavar="path")
+    s.set_defaults(func=cmd_list_weights)
+
+    s = sub.add_parser("download", help="Download a model from HF.")
+    s.add_argument("repo")
+    s.add_argument("--file", default=None, help="Single file to fetch (GGUF case).")
+    s.add_argument("--wait", action="store_true")
+    s.add_argument("--timeout", type=float, default=3600.0)
+    s.set_defaults(func=cmd_download)
+
+    sub.add_parser("download-status", help="Current downloads.").set_defaults(func=cmd_download_status)
+    s = sub.add_parser("download-cancel"); s.add_argument("repo"); s.set_defaults(func=cmd_download_cancel)
+    s = sub.add_parser("download-delete"); s.add_argument("repo"); s.set_defaults(func=cmd_download_delete)
+
+    s = sub.add_parser("convert", help="MLX conversion (safetensors → quantised MLX).")
+    s.add_argument("--ref", default=None)
+    s.add_argument("--source-path", default=None)
+    s.add_argument("--hf-repo", default=None)
+    s.add_argument("--output", required=True)
+    s.add_argument("--quantize", action="store_true")
+    s.add_argument("--q-bits", type=int, default=4)
+    s.add_argument("--q-group-size", type=int, default=64)
+    s.add_argument("--dtype", default="bfloat16")
+    s.add_argument("--timeout", type=float, default=3600.0)
+    s.set_defaults(func=cmd_convert)
+
+    s = sub.add_parser("reveal", help="Reveal model path in file manager.")
+    s.add_argument("path_arg", metavar="path"); s.set_defaults(func=cmd_reveal)
+
+    s = sub.add_parser("delete-model", help="Delete local model files.")
+    s.add_argument("path_arg", metavar="path"); s.set_defaults(func=cmd_delete_model)
+
+    s = sub.add_parser("quantized-variants", help="List quantised variants for a repo.")
+    s.add_argument("repo"); s.set_defaults(func=cmd_quantized_variants)
+
+    # -- Chat / generation --
     s = sub.add_parser("prompt", help="Send a prompt to the loaded model.")
     s.add_argument("text")
     s.add_argument("--max-tokens", type=int, default=512)
     s.add_argument("--temperature", type=float, default=0.7)
     s.add_argument("--seed", type=int, default=None)
+    s.add_argument("--top-p", type=float, default=None, dest="top_p")
+    s.add_argument("--top-k", type=int, default=None, dest="top_k")
+    s.add_argument("--min-p", type=float, default=None, dest="min_p")
+    s.add_argument("--repeat-penalty", type=float, default=None, dest="repeat_penalty")
+    s.add_argument("--thinking", default=None, choices=["off", "auto"])
+    s.add_argument("--reasoning-effort", default=None, choices=["low", "medium", "high"], dest="reasoning_effort")
     s.add_argument("--system", default=None)
-    s.add_argument("--stream", action="store_true", help="Stream tokens to stdout.")
-    s.add_argument("--metrics", action="store_true", help="Print metrics JSON after the text.")
-    s.add_argument("--quiet", action="store_true", help="Suppress completion text.")
+    s.add_argument("--session-id", default=None, dest="session_id")
+    s.add_argument("--stream", action="store_true")
+    s.add_argument("--metrics", action="store_true")
+    s.add_argument("--quiet", action="store_true")
     s.add_argument("--timeout", type=float, default=600.0)
     s.set_defaults(func=cmd_prompt)
 
-    s = sub.add_parser("bench", help="Load model + N-prompt sweep + tok/s report.")
+    s = sub.add_parser("bench", help="Load + N-prompt sweep + tok/s.")
     s.add_argument("ref")
     s.add_argument("--prompt", default="Write a one-paragraph summary of speculative decoding.")
     s.add_argument("--path", default=None)
@@ -459,13 +1475,173 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--timeout", type=float, default=600.0)
     s.set_defaults(func=cmd_bench)
 
-    s = sub.add_parser("mtplx-install", help="Drive MTPLX background install.")
-    s.add_argument("--wait", action="store_true", help="Poll until done.")
-    s.add_argument("--timeout", type=float, default=600.0)
-    s.set_defaults(func=cmd_mtplx_install)
+    s = sub.add_parser("benchmark-run", help="Drive /api/benchmarks/run (full payload).")
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_benchmark_run)
 
-    s = sub.add_parser("mtplx-status", help="Probe MTPLX install state.")
-    s.set_defaults(func=cmd_mtplx_status)
+    s = sub.add_parser("chat-cancel", help="Cancel an in-flight chat generation.")
+    s.add_argument("session_id"); s.set_defaults(func=cmd_chat_cancel)
+
+    s = sub.add_parser("session-create"); s.add_argument("--title", default=None); s.set_defaults(func=cmd_session_create)
+    s = sub.add_parser("session-delete"); s.add_argument("session_id"); s.set_defaults(func=cmd_session_delete)
+    s = sub.add_parser("session-fork"); s.add_argument("session_id"); s.add_argument("--at", type=int, required=True); s.add_argument("--title", default=None); s.set_defaults(func=cmd_session_fork)
+    s = sub.add_parser("session-variant")
+    s.add_argument("session_id"); s.add_argument("--message-index", type=int, required=True, dest="message_index")
+    s.add_argument("--ref", required=True); s.add_argument("--name", default=None)
+    s.add_argument("--max-tokens", type=int, default=2048); s.add_argument("--temperature", type=float, default=0.7)
+    s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_session_variant)
+    s = sub.add_parser("session-delve")
+    s.add_argument("session_id"); s.add_argument("--message-index", type=int, required=True, dest="message_index")
+    s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_session_delve)
+    s = sub.add_parser("session-documents"); s.add_argument("session_id"); s.set_defaults(func=cmd_session_documents)
+    s = sub.add_parser("compare", help="Side-by-side chat comparison (full payload required).")
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_compare)
+
+    # -- Server --
+    sub.add_parser("server-status").set_defaults(func=cmd_server_status)
+    sub.add_parser("server-shutdown").set_defaults(func=cmd_server_shutdown)
+    s = sub.add_parser("server-logs", help="Stream server log events.")
+    s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_server_logs)
+
+    # -- Image --
+    s = sub.add_parser("image-generate")
+    s.add_argument("prompt", nargs="?", default=None)
+    s.add_argument("--model", default=None); s.add_argument("--steps", type=int, default=None)
+    s.add_argument("--width", type=int, default=None); s.add_argument("--height", type=int, default=None)
+    s.add_argument("--guidance", type=float, default=None); s.add_argument("--seed", type=int, default=None)
+    s.add_argument("--negative", default=None)
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--stream", action="store_true"); s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_image_generate)
+    sub.add_parser("image-progress").set_defaults(func=cmd_image_progress)
+    sub.add_parser("image-cancel").set_defaults(func=cmd_image_cancel)
+    sub.add_parser("image-outputs").set_defaults(func=cmd_image_outputs)
+    sub.add_parser("image-runtime").set_defaults(func=cmd_image_runtime)
+    sub.add_parser("image-unload").set_defaults(func=cmd_image_unload)
+    sub.add_parser("image-library").set_defaults(func=cmd_image_library)
+    sub.add_parser("image-catalog").set_defaults(func=cmd_image_catalog)
+
+    # -- Video --
+    s = sub.add_parser("video-generate")
+    s.add_argument("prompt", nargs="?", default=None)
+    s.add_argument("--model", default=None); s.add_argument("--steps", type=int, default=None)
+    s.add_argument("--width", type=int, default=None); s.add_argument("--height", type=int, default=None)
+    s.add_argument("--frames", type=int, default=None); s.add_argument("--fps", type=int, default=None)
+    s.add_argument("--guidance", type=float, default=None); s.add_argument("--seed", type=int, default=None)
+    s.add_argument("--negative", default=None)
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--timeout", type=float, default=1800.0)
+    s.set_defaults(func=cmd_video_generate)
+    sub.add_parser("video-progress").set_defaults(func=cmd_video_progress)
+    sub.add_parser("video-cancel").set_defaults(func=cmd_video_cancel)
+    sub.add_parser("video-outputs").set_defaults(func=cmd_video_outputs)
+    sub.add_parser("video-runtime").set_defaults(func=cmd_video_runtime)
+    sub.add_parser("video-library").set_defaults(func=cmd_video_library)
+    sub.add_parser("video-catalog").set_defaults(func=cmd_video_catalog)
+
+    # -- Setup --
+    s = sub.add_parser("mtplx-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_mtplx_install)
+    sub.add_parser("mtplx-status").set_defaults(func=cmd_mtplx_status)
+    s = sub.add_parser("longlive-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_longlive_install)
+    sub.add_parser("longlive-status").set_defaults(func=cmd_longlive_status)
+    s = sub.add_parser("wan-install"); s.add_argument("--repo", default=None); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_wan_install)
+    sub.add_parser("wan-status").set_defaults(func=cmd_wan_status)
+    sub.add_parser("wan-inventory").set_defaults(func=cmd_wan_inventory)
+    s = sub.add_parser("cuda-torch-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_cuda_torch_install)
+    s = sub.add_parser("gpu-bundle-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_gpu_bundle_install)
+    sub.add_parser("gpu-bundle-status").set_defaults(func=cmd_gpu_bundle_status)
+    sub.add_parser("gpu-bundle-info").set_defaults(func=cmd_gpu_bundle_info)
+    s = sub.add_parser("setup-install-package", help="Install a pip package via the setup endpoint.")
+    s.add_argument("package"); s.add_argument("--extra-index", default=None); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_setup_install_package)
+    s = sub.add_parser("setup-install-system-package")
+    s.add_argument("package"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_setup_install_system_package)
+    sub.add_parser("setup-refresh").set_defaults(func=cmd_setup_refresh)
+    sub.add_parser("turbo-update-check").set_defaults(func=cmd_turbo_update_check)
+
+    # -- Diagnostics --
+    sub.add_parser("diagnostics-snapshot").set_defaults(func=cmd_diagnostics_snapshot)
+    s = sub.add_parser("diagnostics-log-tail")
+    s.add_argument("--lines", type=int, default=200); s.set_defaults(func=cmd_diagnostics_log_tail)
+    sub.add_parser("diagnostics-reextract").set_defaults(func=cmd_diagnostics_reextract)
+
+    # -- Misc --
+    sub.add_parser("gpu-status").set_defaults(func=cmd_gpu_status)
+    sub.add_parser("metrics-gpu").set_defaults(func=cmd_metrics_gpu)
+    s = sub.add_parser("cache-preview"); s.add_argument("ref"); s.add_argument("--context", type=int, default=None); s.add_argument("--cache-strategy", default=None); s.add_argument("--cache-bits", type=int, default=None); s.set_defaults(func=cmd_cache_preview)
+    sub.add_parser("prompts-list").set_defaults(func=cmd_prompts_list)
+    s = sub.add_parser("prompts-create"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_prompts_create)
+    s = sub.add_parser("prompts-delete"); s.add_argument("template_id"); s.set_defaults(func=cmd_prompts_delete)
+    s = sub.add_parser("prompts-enhance"); s.add_argument("text"); s.add_argument("--family", default=None); s.add_argument("--model", default=None); s.add_argument("--timeout", type=float, default=120.0); s.set_defaults(func=cmd_prompts_enhance)
+    sub.add_parser("settings-get").set_defaults(func=cmd_settings_get)
+    s = sub.add_parser("settings-patch"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_settings_patch)
+    sub.add_parser("settings-storage-get").set_defaults(func=cmd_settings_storage_get)
+    sub.add_parser("workspaces-list").set_defaults(func=cmd_workspaces_list)
+    sub.add_parser("plugins-list").set_defaults(func=cmd_plugins_list)
+    s = sub.add_parser("plugins-enable"); s.add_argument("plugin_id"); s.set_defaults(func=cmd_plugins_enable)
+    s = sub.add_parser("plugins-disable"); s.add_argument("plugin_id"); s.set_defaults(func=cmd_plugins_disable)
+    sub.add_parser("tools-list").set_defaults(func=cmd_tools_list)
+    sub.add_parser("adapters-list").set_defaults(func=cmd_adapters_list)
+    sub.add_parser("finetuning-status").set_defaults(func=cmd_finetuning_status)
+    s = sub.add_parser("finetuning-start"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.add_argument("--timeout", type=float, default=60.0); s.set_defaults(func=cmd_finetuning_start)
+    sub.add_parser("auth-session").set_defaults(func=cmd_auth_session)
+
+    # -- HTML Challenges --
+    sub.add_parser("challenges-list").set_defaults(func=cmd_challenges_list)
+    s = sub.add_parser("challenges-get"); s.add_argument("challenge_id"); s.set_defaults(func=cmd_challenges_get)
+    s = sub.add_parser("challenges-file"); s.add_argument("challenge_id"); s.add_argument("slot_id"); s.add_argument("--out", default=None); s.set_defaults(func=cmd_challenges_file)
+    s = sub.add_parser("challenges-create"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_challenges_create)
+    s = sub.add_parser("challenges-open-file")
+    s.add_argument("path_arg", metavar="path", nargs="?", default=None)
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_challenges_open_file)
+    s = sub.add_parser("challenges-repair")
+    s.add_argument("challenge_id"); s.add_argument("slot_id")
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_challenges_repair)
+    s = sub.add_parser("challenges-retry")
+    s.add_argument("challenge_id"); s.add_argument("slot_id")
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None)
+    s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_challenges_retry)
+    s = sub.add_parser("challenges-validate")
+    s.add_argument("challenge_id"); s.add_argument("slot_id")
+    s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_challenges_validate)
+    s = sub.add_parser("challenges-delete"); s.add_argument("challenge_id"); s.set_defaults(func=cmd_challenges_delete)
+
+    # -- Image / video download lifecycle --
+    s = sub.add_parser("image-download"); s.add_argument("repo"); s.add_argument("--file", default=None); s.set_defaults(func=cmd_image_download)
+    sub.add_parser("image-download-status").set_defaults(func=cmd_image_download_status)
+    s = sub.add_parser("image-download-cancel"); s.add_argument("repo"); s.set_defaults(func=cmd_image_download_cancel)
+    s = sub.add_parser("image-download-delete"); s.add_argument("repo"); s.set_defaults(func=cmd_image_download_delete)
+    s = sub.add_parser("video-download"); s.add_argument("repo"); s.add_argument("--file", default=None); s.set_defaults(func=cmd_video_download)
+    sub.add_parser("video-download-status").set_defaults(func=cmd_video_download_status)
+    s = sub.add_parser("video-download-cancel"); s.add_argument("repo"); s.set_defaults(func=cmd_video_download_cancel)
+    s = sub.add_parser("video-download-delete"); s.add_argument("repo"); s.set_defaults(func=cmd_video_download_delete)
+
+    # -- Output artifacts --
+    s = sub.add_parser("image-output-get"); s.add_argument("artifact_id"); s.set_defaults(func=cmd_image_output_get)
+    s = sub.add_parser("image-output-delete"); s.add_argument("artifact_id"); s.set_defaults(func=cmd_image_output_delete)
+    s = sub.add_parser("video-output-get"); s.add_argument("artifact_id"); s.set_defaults(func=cmd_video_output_get)
+    s = sub.add_parser("video-output-file"); s.add_argument("artifact_id"); s.add_argument("--out", default=None); s.set_defaults(func=cmd_video_output_file)
+    s = sub.add_parser("video-output-delete"); s.add_argument("artifact_id"); s.set_defaults(func=cmd_video_output_delete)
+
+    # -- Workspaces management --
+    s = sub.add_parser("workspaces-rename"); s.add_argument("workspace_id"); s.add_argument("--name", default=None); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_workspaces_rename)
+    s = sub.add_parser("workspaces-delete"); s.add_argument("workspace_id"); s.set_defaults(func=cmd_workspaces_delete)
+    s = sub.add_parser("workspaces-document-delete"); s.add_argument("workspace_id"); s.add_argument("doc_id"); s.set_defaults(func=cmd_workspaces_document_delete)
+
+    # -- Session extras --
+    s = sub.add_parser("session-rename"); s.add_argument("session_id"); s.add_argument("--title", default=None); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_session_rename)
+    s = sub.add_parser("session-document-upload"); s.add_argument("session_id"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_session_document_upload)
+    s = sub.add_parser("session-document-delete"); s.add_argument("session_id"); s.add_argument("doc_id"); s.set_defaults(func=cmd_session_document_delete)
+
+    # -- Misc --
+    s = sub.add_parser("image-preload"); s.add_argument("--model", default=None); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_image_preload)
+    s = sub.add_parser("settings-storage-set"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_settings_storage_set)
+    s = sub.add_parser("settings-storage-move"); s.add_argument("--destination", default=None); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_settings_storage_move)
+    sub.add_parser("settings-storage-move-status").set_defaults(func=cmd_settings_storage_move_status)
+    sub.add_parser("video-longlive").set_defaults(func=cmd_video_longlive)
+    sub.add_parser("video-mlx-runtime").set_defaults(func=cmd_video_mlx_runtime)
+    sub.add_parser("v1-models").set_defaults(func=cmd_v1_models)
 
     return parser
 

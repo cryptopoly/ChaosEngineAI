@@ -189,6 +189,54 @@ class CacheStrategyRegistryTests(unittest.TestCase):
             with patch.dict("os.environ", {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": tmp}):
                 self.assertEqual(_find_pip_turboquant_path(), str(package.resolve()))
 
+    def test_turboquant_preserves_hybrid_model_arrayscache_slots(self):
+        """Hybrid-attention models (Qwen3.5 / Qwen3.6 MoE) mix KV-cache
+        layers with ``ArraysCache(size=2)`` slots for linear-attention
+        layers. ``make_adaptive_cache`` must defer to the model's own
+        ``make_cache()`` for those slots; if it returns a KV-cache type
+        in a linear-attn position, the model's layer code does
+        ``cache[0]`` / ``cache[1]`` on it and crashes with
+        ``'TurboQuantKVCache' object is not subscriptable``.
+        """
+        from mlx_lm.models.cache import ArraysCache, KVCache
+        from turboquant_mlx import make_adaptive_cache
+
+        # Fake a 6-layer model where every other layer is "linear attn"
+        # (returns ArraysCache) and the rest are standard self-attn KV.
+        def fake_make_cache():
+            return [
+                ArraysCache(size=2) if i % 2 == 0 else KVCache()
+                for i in range(6)
+            ]
+
+        fake_model = SimpleNamespace(make_cache=fake_make_cache)
+
+        cache = make_adaptive_cache(6, bits=3, fp16_layers=0, fused=False, model=fake_model)
+
+        self.assertEqual(len(cache), 6)
+        # Even indices must keep the model's ArraysCache — these must
+        # support subscript so ``cache[0]`` works inside the model's
+        # linear-attn forward.
+        for i in (0, 2, 4):
+            self.assertIsInstance(cache[i], ArraysCache,
+                f"Layer {i} (linear-attn) must keep ArraysCache, got {type(cache[i]).__name__}")
+            # Sanity: the cache supports __getitem__.
+            _ = cache[i][0]
+        # Odd indices are KV-cache slots — either TurboQuantKVCache (when
+        # the upstream package is installed) or plain KVCache fallback.
+        for i in (1, 3, 5):
+            slot_name = type(cache[i]).__name__
+            self.assertIn(slot_name, ("TurboQuantKVCache", "KVCache", "QuantizedKVCache"),
+                f"Layer {i} (self-attn) got unexpected cache type {slot_name}")
+
+    def test_turboquant_handles_model_without_make_cache(self):
+        """Plain models (no ``make_cache`` method) should still get a
+        full-length cache list — preserving the pre-fix behaviour."""
+        from turboquant_mlx import make_adaptive_cache
+
+        cache = make_adaptive_cache(4, bits=3, fp16_layers=0, fused=False, model=None)
+        self.assertEqual(len(cache), 4)
+
     # ------------------------------------------------------------------
     # required_llama_binary() metadata
     # ------------------------------------------------------------------

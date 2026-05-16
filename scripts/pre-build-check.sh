@@ -168,7 +168,23 @@ fi
 if [[ -x "$HOME/.chaosengine/bin/llama-server-turbo" ]]; then
   pass "llama-server-turbo — found"
 else
-  warn "llama-server-turbo — not found (RotorQuant/TurboQuant GGUF will fall back to f16)"
+  warn "llama-server-turbo — not found (TurboQuant GGUF will fall back to f16)"
+fi
+
+# FU-047: detect when the resolved llama-server is too old to support
+# --spec-type draft-mtp (llama.cpp PR #22673 merged 2026-05-16). The
+# capability probe in inference/capabilities.py keys ggufMtpAvailable
+# off the presence of --spec-type, but the older Apr-12 homebrew bottle
+# advertises --spec-type without the draft-mtp value. Surface that gap
+# at build time so a release doesn't ship MTP-GGUF catalog entries that
+# the bundled binary can't actually load.
+LLAMA_SERVER_BIN=$(command -v llama-server 2>/dev/null || echo "/opt/homebrew/bin/llama-server")
+if [[ -x "$LLAMA_SERVER_BIN" ]]; then
+  if "$LLAMA_SERVER_BIN" --help 2>&1 | grep -A1 -- "--spec-type" | grep -q "draft-mtp"; then
+    pass "llama-server supports --spec-type draft-mtp (FU-047)"
+  else
+    warn "llama-server lacks draft-mtp support — upgrade llama.cpp (brew upgrade llama.cpp or rebuild from master ≥ 2026-05-16) to ship GGUF MTP speculative decoding"
+  fi
 fi
 echo
 

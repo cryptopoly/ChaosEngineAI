@@ -26,9 +26,12 @@ from __future__ import annotations
 
 MTP_MODEL_MAP: dict[str, int] = {
     # ----- Youssofal MTPLX-Optimized (upstream-verified for MTPLX v0.3.5) -----
-    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed": 1,
-    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed-FP16": 1,
-    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Quality": 1,
+    # Depth 3 matches MTPLX's own UI default for these models; benchmarks
+    # showed depth=1 hurt rather than helped because the HTTP-proxy
+    # overhead per token wasn't amortised across enough draft tokens.
+    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed": 3,
+    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed-FP16": 3,
+    "Youssofal/Qwen3.6-27B-MTPLX-Optimized-Quality": 3,
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": 1,
     "Qwen/Qwen3.5-7B": 1,

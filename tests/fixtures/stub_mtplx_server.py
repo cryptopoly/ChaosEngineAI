@@ -126,12 +126,22 @@ def _serve(port: int, *, fail_mode: str | None = None) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="cmd", required=True)
-    start = sub.add_parser("start")
-    start.add_argument("--model", required=True)
-    start.add_argument("--port", type=int, required=True)
-    start.add_argument("--fail-mode", default=None)
+    # MtplxEngine now invokes ``mtplx quickstart``; ``start`` kept for
+    # backwards-compat with older test fixtures that called the original
+    # subcommand. Both behave identically here — just accept the flags
+    # MtplxEngine emits and start the HTTP stub.
+    for sub_name in ("quickstart", "start"):
+        sp = sub.add_parser(sub_name)
+        sp.add_argument("--model", required=True)
+        sp.add_argument("--port", type=int, required=True)
+        sp.add_argument("--host", default="127.0.0.1")
+        sp.add_argument("--mtp", action="store_true")
+        sp.add_argument("--no-mtp", action="store_true")
+        sp.add_argument("--depth", type=int, default=3)
+        sp.add_argument("--yes", action="store_true")
+        sp.add_argument("--fail-mode", default=None)
     args = parser.parse_args()
-    if args.cmd == "start":
+    if args.cmd in {"quickstart", "start"}:
         _serve(args.port, fail_mode=args.fail_mode)
 
 

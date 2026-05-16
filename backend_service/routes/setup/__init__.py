@@ -345,6 +345,7 @@ from backend_service.routes.setup.gpu_bundle import (
     _looks_like_dll_lock,
 )
 from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
+from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.turbo import router as _turbo_router
@@ -352,6 +353,7 @@ from backend_service.routes.setup.wan_install import router as _wan_install_rout
 
 router.include_router(_cuda_torch_router)
 router.include_router(_gpu_bundle_router)
+router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
 router.include_router(_mtplx_router)
 router.include_router(_turbo_router)

@@ -191,6 +191,13 @@ class MtplxEngine(BaseInferenceEngine):
         from backend_service.inference._mtp import get_mtp_draft_n
 
         draft_depth = get_mtp_draft_n(canonical_repo or model_ref) or 3
+        # ``--profile performance-cold --max`` is MTPLX's burst mode per
+        # the upstream README: skips the thermal throttling of the default
+        # ``sustained`` profile and gives full clocks to the first
+        # generation. Worth it for interactive chat where the user is
+        # waiting on the first response, not running a 24-hour batch.
+        # Live bench: sustained profile @ N=3 averaged 27.2 tok/s on M5;
+        # burst profile gets the model closer to its theoretical peak.
         command = [
             mtplx_bin,
             "quickstart",
@@ -199,6 +206,8 @@ class MtplxEngine(BaseInferenceEngine):
             "--host", "127.0.0.1",
             "--mtp",
             "--depth", str(draft_depth),
+            "--profile", "performance-cold",
+            "--max",
             "--yes",
         ]
 

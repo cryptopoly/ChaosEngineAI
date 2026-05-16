@@ -873,6 +873,12 @@ def cmd_turbo_update_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_llama_server_status(args: argparse.Namespace) -> int:
+    """Probe the resolved llama-server binary; report draft-mtp readiness."""
+    _ok(_hit_get(args, "/api/setup/llama-server-status", timeout=15.0))
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # Diagnostics
 # ---------------------------------------------------------------------------
@@ -1563,6 +1569,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("package"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_setup_install_system_package)
     sub.add_parser("setup-refresh").set_defaults(func=cmd_setup_refresh)
     sub.add_parser("turbo-update-check").set_defaults(func=cmd_turbo_update_check)
+    sub.add_parser("llama-server-status", help="Probe llama-server build + draft-mtp support; surface upgrade command.").set_defaults(func=cmd_llama_server_status)
 
     # -- Diagnostics --
     sub.add_parser("diagnostics-snapshot").set_defaults(func=cmd_diagnostics_snapshot)

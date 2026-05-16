@@ -138,6 +138,8 @@ def main() -> None:
         sp.add_argument("--mtp", action="store_true")
         sp.add_argument("--no-mtp", action="store_true")
         sp.add_argument("--depth", type=int, default=3)
+        sp.add_argument("--profile", default=None)
+        sp.add_argument("--max", action="store_true")
         sp.add_argument("--yes", action="store_true")
         sp.add_argument("--fail-mode", default=None)
     args = parser.parse_args()

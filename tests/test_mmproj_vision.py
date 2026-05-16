@@ -68,21 +68,35 @@ class ResolveMmprojPathTests(unittest.TestCase):
             big.write_bytes(b"\x00" * 50)
             self.assertEqual(_resolve_mmproj_path(str(main)), str(big))
 
-    def test_finds_mmproj_in_sibling_directory(self):
-        # Some HF caches keep projectors one level up (in the snapshot
-        # root rather than the file's immediate folder). The walker
-        # checks the parent's parent too.
+    def test_does_not_cross_into_neighbouring_model_directory(self):
+        # Regression: a flat layout like
+        # `~/AI_Models/<org>/<repo>/file.gguf` puts unrelated models
+        # as sibling directories. The resolver MUST NOT walk up and
+        # pick up another model's mmproj — that crashed llama-server
+        # with an n_embd mismatch (gemma-4-31B + Qwen3.6-27B mmproj).
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            weights_dir = tmp_path / "weights"
-            weights_dir.mkdir()
-            main = weights_dir / "model.gguf"
+            gemma_dir = tmp_path / "gemma-4-31B-it-GGUF"
+            gemma_dir.mkdir()
+            main = gemma_dir / "gemma-4-31B-it-Q4_K_M.gguf"
             main.write_bytes(b"\x00")
-            sibling = tmp_path / "projectors"
-            sibling.mkdir()
-            mmproj = sibling / "mmproj.gguf"
-            mmproj.write_bytes(b"\x00")
-            self.assertEqual(_resolve_mmproj_path(str(main)), str(mmproj))
+            qwen_dir = tmp_path / "Qwen3.6-27B-GGUF"
+            qwen_dir.mkdir()
+            stray = qwen_dir / "mmproj-Qwen3.6-27B-BF16.gguf"
+            stray.write_bytes(b"\x00")
+            self.assertIsNone(_resolve_mmproj_path(str(main)))
+
+    def test_does_not_descend_into_subdirectory(self):
+        # Subdirs of the model's own folder are also out of scope —
+        # only files directly alongside the weights count as siblings.
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            main = tmp_path / "model.gguf"
+            main.write_bytes(b"\x00")
+            sub = tmp_path / "projectors"
+            sub.mkdir()
+            (sub / "mmproj.gguf").write_bytes(b"\x00")
+            self.assertIsNone(_resolve_mmproj_path(str(main)))
 
 
 class VisionCapabilityFlipTests(unittest.TestCase):

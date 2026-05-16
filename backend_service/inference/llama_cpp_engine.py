@@ -291,12 +291,12 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
 
     Vision support in llama.cpp is gated by the `--mmproj` flag; the
     projector lives as a separate `*mmproj*.gguf` file alongside the
-    main weights. HF repos for vision-capable models usually ship both
-    in the same snapshot (e.g. `gemma-3-27b-it-qat-4bit/` contains
-    `model.gguf` and `mmproj.gguf`). This helper scans the same
-    directory tree the main GGUF was found in and returns the largest
-    matching projector file, or None when no projector is present (the
-    model is text-only, or the user only downloaded the main weights).
+    main weights in the same repo directory. We deliberately scan ONLY
+    the main GGUF's own directory — earlier revisions walked sibling
+    subdirectories and the grandparent, which under a flat layout like
+    `~/AI_Models/<org>/<repo>/` picked up the mmproj of an unrelated
+    neighbouring model and crashed llama-server with an n_embd
+    mismatch. Returns None for text-only models (no mmproj present).
     """
     if not model_gguf_path:
         return None
@@ -304,55 +304,27 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     if not main_path.exists():
         return None
 
-    # Search the parent directory + its immediate sibling directories
-    # (covers the HF snapshot layout where projectors might live in a
-    # `projectors/` peer to the `weights/` folder). We deliberately do
-    # NOT recurse via `rglob` past one level — on macOS test rigs the
-    # parent's parent is sometimes a system-cache root that raises
-    # `OSError: Result too large` mid-scandir. Bounded depth keeps the
-    # resolver predictable across hosts.
-    candidates: list[Path] = []
     parent = main_path.parent
-    if parent.is_dir():
-        for entry in parent.iterdir():
-            if entry.is_file() and entry.suffix.lower() == ".gguf" and "mmproj" in entry.name.lower():
-                candidates.append(entry)
-            elif entry.is_dir():
-                try:
-                    for child in entry.iterdir():
-                        if (
-                            child.is_file()
-                            and child.suffix.lower() == ".gguf"
-                            and "mmproj" in child.name.lower()
-                        ):
-                            candidates.append(child)
-                except OSError:
-                    continue
-    grandparent = parent.parent
-    if grandparent.is_dir() and grandparent != parent:
-        try:
-            for entry in grandparent.iterdir():
-                if not entry.is_dir() or entry == parent:
-                    continue
-                try:
-                    for child in entry.iterdir():
-                        if (
-                            child.is_file()
-                            and child.suffix.lower() == ".gguf"
-                            and "mmproj" in child.name.lower()
-                            and child not in candidates
-                        ):
-                            candidates.append(child)
-                except OSError:
-                    continue
-        except OSError:
-            pass
-
-    valid = [p for p in candidates if p.is_file() and p != main_path]
-    if not valid:
+    if not parent.is_dir():
         return None
-    valid.sort(key=lambda f: f.stat().st_size, reverse=True)
-    return str(valid[0])
+
+    candidates: list[Path] = []
+    try:
+        for entry in parent.iterdir():
+            if (
+                entry.is_file()
+                and entry != main_path
+                and entry.suffix.lower() == ".gguf"
+                and "mmproj" in entry.name.lower()
+            ):
+                candidates.append(entry)
+    except OSError:
+        return None
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda f: f.stat().st_size, reverse=True)
+    return str(candidates[0])
 
 
 def _gguf_startup_fallback_note(strategy_name: str) -> str:

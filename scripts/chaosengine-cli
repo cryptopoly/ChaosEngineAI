@@ -484,18 +484,22 @@ def cmd_prompt(args: argparse.Namespace) -> int:
         code, payload = _request("POST", f"{_base_url(args)}/api/chat/generate", body=body, timeout=args.timeout)
         if code != 200:
             _die(f"generate failed (HTTP {code}): {payload}")
-        if not args.quiet and isinstance(payload, dict):
-            text = (payload.get("text") or payload.get("message", {}).get("text")) or ""
+        # Real response shape: { session, runtime, assistant: { text, metrics: {tokS,...} } }
+        assistant = (payload or {}).get("assistant", {}) if isinstance(payload, dict) else {}
+        metrics = assistant.get("metrics", {}) if isinstance(assistant, dict) else {}
+        if not args.quiet:
+            text = assistant.get("text") or ""
             sys.stdout.write(text)
             sys.stdout.write("\n")
         if args.metrics:
             _ok({
-                "tokS": (payload or {}).get("tokS") if isinstance(payload, dict) else None,
-                "promptTokens": (payload or {}).get("promptTokens") if isinstance(payload, dict) else None,
-                "completionTokens": (payload or {}).get("completionTokens") if isinstance(payload, dict) else None,
-                "responseSeconds": (payload or {}).get("responseSeconds") if isinstance(payload, dict) else None,
+                "tokS": metrics.get("tokS"),
+                "promptTokens": metrics.get("promptTokens"),
+                "completionTokens": metrics.get("completionTokens"),
+                "responseSeconds": metrics.get("responseSeconds"),
                 "wallSeconds": round(time.perf_counter() - start, 3),
-                "runtimeNote": (payload or {}).get("runtimeNote") if isinstance(payload, dict) else None,
+                "runtimeNote": metrics.get("runtimeNote"),
+                "finishReason": metrics.get("finishReason"),
             })
         return 0
 
@@ -545,11 +549,12 @@ def cmd_bench(args: argparse.Namespace) -> int:
         if code != 200 or not isinstance(payload, dict):
             runs.append({"run": i, "error": str(payload), "wallSeconds": round(elapsed, 3)})
             continue
+        metrics = ((payload.get("assistant") or {}).get("metrics") or {})
         runs.append({
-            "run": i, "tokS": payload.get("tokS"),
-            "promptTokens": payload.get("promptTokens"),
-            "completionTokens": payload.get("completionTokens"),
-            "responseSeconds": payload.get("responseSeconds"),
+            "run": i, "tokS": metrics.get("tokS"),
+            "promptTokens": metrics.get("promptTokens"),
+            "completionTokens": metrics.get("completionTokens"),
+            "responseSeconds": metrics.get("responseSeconds"),
             "wallSeconds": round(elapsed, 3),
         })
 

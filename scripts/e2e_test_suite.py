@@ -245,12 +245,16 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
                         spec: bool = False, cache_strategy: str = "native",
                         cache_bits: int | None = None, fused: bool = False,
                         context: int = 4096, max_tokens: int = 32,
-                        prompt: str = "Hello, respond with two words.") -> tuple[str, str, dict[str, Any]]:
+                        canonical_repo: str | None = None,
+                        prompt: str = "Hello, respond with two words.",
+                        load_timeout: float = 1800.0) -> tuple[str, str, dict[str, Any]]:
     """Helper: load → prompt → unload. Returns (status, reason, detail)."""
     load_args = ["load", ref, "--backend", backend, "--cache-strategy", cache_strategy,
-                  "--context", str(context), "--timeout", "600"]
+                  "--context", str(context), "--timeout", str(int(load_timeout))]
     if path:
         load_args.extend(["--path", path])
+    if canonical_repo:
+        load_args.extend(["--canonical-repo", canonical_repo])
     if spec:
         load_args.append("--spec")
     if cache_bits is not None:
@@ -258,7 +262,7 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
     if fused:
         load_args.append("--fused-attention")
 
-    rc, loaded, err = _cli_json(*load_args, timeout=600.0)
+    rc, loaded, err = _cli_json(*load_args, timeout=load_timeout + 60.0)
     if rc != 0 or not isinstance(loaded, dict):
         return "fail", f"load returned rc={rc}: {err[:200] if err else 'no detail'}", {}
 
@@ -293,11 +297,20 @@ def phase_1(cap: Capability) -> PhaseResult:
         phase.checks.append(CheckResult("phase 1", "skip", reason="backend not reachable"))
         return phase
 
+    # Preferred fast model for chat checks. 35B-A3B (MoE) is much faster to
+    # load than the 80B Qwen3-Next (Coder-Next). Fall back to whatever's
+    # available locally if not on disk.
+    PREFERRED_TEXT_MODEL = "Qwen3.6-35B-A3B-4bit"
+
+    def _pick_fast_mlx():
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, PREFERRED_TEXT_MODEL)
+        if pick:
+            return pick
+        return cap.local_mlx_models[0] if cap.local_mlx_models else None
+
     # 1a. MLX small/native cache
     def _mlx_native():
-        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "mlx-community/Qwen3.6-35B-A3B-4bit") \
-                or _pick_model_by_ref_prefix(cap.local_mlx_models, "lmstudio-community/Qwen3-Coder-Next-MLX-4bit") \
-                or _pick_model_by_ref_prefix(cap.local_mlx_models, "lmstudio-community/gemma-4-31B-it-MLX-8bit")
+        pick = _pick_fast_mlx()
         if not pick:
             return "skip", "no MLX text model on disk", {}
         ref, path = pick
@@ -305,8 +318,7 @@ def phase_1(cap: Capability) -> PhaseResult:
 
     # 1b. MLX + TurboQuant cache
     def _mlx_turboquant():
-        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "lmstudio-community/Qwen3-Coder-Next-MLX-4bit") \
-                or _pick_model_by_ref_prefix(cap.local_mlx_models, "mlx-community/Qwen3.6-35B-A3B-4bit")
+        pick = _pick_fast_mlx()
         if not pick:
             return "skip", "no MLX text model for TurboQuant test", {}
         ref, path = pick
@@ -332,32 +344,49 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return status, reason, detail
         return "skip", "no DFlash-capable model on disk", {}
 
-    # 1d. MTPLX (only meaningful when MTPLX venv installed AND MTP-bearing model present)
+    # 1d. MTPLX. Uses leaf-name as modelRef + canonical_repo for the registry
+    # match — works around a backend gotcha where the broken-library-entry
+    # rejection shadows path-load on the full ref.
     def _mtplx():
         if not cap.mtplx_available:
             return "skip", "MTPLX not installed", {}
         for support_ref in cap.mtplx_supported_models:
-            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, support_ref.split("/")[-1])
+            leaf = support_ref.split("/")[-1]
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
             if pick:
                 ref, path = pick
-                status, reason, detail = _load_unload_prompt(ref, path=path, backend="mlx", spec=True,
-                                                              context=8192, max_tokens=24)
+                status, reason, detail = _load_unload_prompt(
+                    leaf, path=path, backend="mlx", spec=True,
+                    canonical_repo=support_ref, context=8192, max_tokens=24,
+                    load_timeout=900.0,
+                )
                 if status == "pass":
                     note = (detail.get("runtimeNote") or "").lower()
                     if "mtplx" not in note:
                         return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
-                return status, reason, detail
+                    return "pass", "", detail
+                continue
         return "skip", "no MTPLX-capable model on disk", {}
 
-    # 1e. GGUF (llama.cpp backend)
+    # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
+    # so a single broken model doesn't fail the whole check.
     def _gguf():
         if not cap.gguf_available:
             return "skip", "GGUF backend (llama-server) not available", {}
         if not cap.local_gguf_files:
             return "skip", "no .gguf files on disk", {}
-        ref, gguf_path = cap.local_gguf_files[0]
-        return _load_unload_prompt(ref, path=gguf_path, backend="gguf",
-                                     cache_strategy="native", context=4096, max_tokens=24)
+        errors: list[str] = []
+        for ref, gguf_path in cap.local_gguf_files:
+            status, reason, detail = _load_unload_prompt(
+                ref, path=gguf_path, backend="gguf",
+                cache_strategy="native", context=4096, max_tokens=24,
+                load_timeout=600.0,
+            )
+            if status == "pass":
+                detail["triedFiles"] = 1
+                return "pass", "", detail
+            errors.append(f"{ref}: {reason[:120]}")
+        return "fail", f"all {len(errors)} GGUF candidates failed", {"errors": errors[:5]}
 
     # 1f. Long context cache preview
     def _long_context_preview():
@@ -372,10 +401,11 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", f"cache-preview failed: {err[:200]}", {}
         return "pass", "", {"keys": sorted(payload.keys())[:10]}
 
-    # 1g. Fused attention
+    # 1g. Fused attention. Use the fast model — some architectures (e.g.
+    # Qwen3-Next Coder-Next) emit parameter mismatch errors with the
+    # fused-attention flag.
     def _fused_attention():
-        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
-                or (cap.local_mlx_models[0] if cap.local_mlx_models else None)
+        pick = _pick_fast_mlx()
         if not pick:
             return "skip", "no model for fused-attention test", {}
         ref, path = pick

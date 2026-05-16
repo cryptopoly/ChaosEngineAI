@@ -30,6 +30,8 @@ from fastapi import APIRouter
 router = APIRouter()
 
 
+import os as _os
+
 _HOMEBREW_PATHS = [
     Path("/opt/homebrew/bin/llama-server"),
     Path("/usr/local/bin/llama-server"),
@@ -37,7 +39,18 @@ _HOMEBREW_PATHS = [
 
 
 def _resolve_llama_server() -> Path | None:
-    """Find the standard llama-server binary (not the turbo fork)."""
+    """Find the standard llama-server binary (not the turbo fork).
+
+    Priority matches ``backend_service.inference.binaries._resolve_llama_server``:
+    explicit env override first (set by the Tauri shell pointing at the
+    bundled binary, or by a developer pointing at a freshly-built one),
+    then homebrew, then PATH.
+    """
+    override = _os.environ.get("CHAOSENGINE_LLAMA_SERVER")
+    if override:
+        path = Path(override).expanduser()
+        if path.exists() and path.is_file():
+            return path
     for candidate in _HOMEBREW_PATHS:
         if candidate.exists() and candidate.is_file():
             return candidate

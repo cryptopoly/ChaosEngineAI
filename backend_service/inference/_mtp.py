@@ -41,8 +41,10 @@ MTP_MODEL_MAP: dict[str, int] = {
     "Qwen/Qwen3.5-35B-A3B": 1,
     "Qwen/Qwen3.5-122B-A10B": 1,
     # ----- Qwen3.6 family -----
-    "Qwen/Qwen3.6-27B": 1,
-    "Qwen/Qwen3.6-35B-A3B": 1,
+    # N=3 verified post-merge: 1.46x speedup @ N=1 on Q8_0 GGUF (M5);
+    # upstream PR #22673 reports ~72% acceptance @ N=3 on Qwen3.6-27B.
+    "Qwen/Qwen3.6-27B": 3,
+    "Qwen/Qwen3.6-35B-A3B": 3,
     # ----- Qwen3-Coder-Next -----
     "Qwen/Qwen3-Coder-Next": 1,
     # ----- DeepSeek V3 / R1 -----

@@ -136,9 +136,15 @@ class StateIntegrationTests(unittest.TestCase):
         self.assertEqual(len(payload["items"]), 1)
 
     def test_warm_start_uses_disk_cache(self):
+        # The vanished-entries filter (bug 1) prunes cached items whose
+        # path is gone, so use a path that actually exists on disk.
+        on_disk = Path(self.tmp.name) / "from-disk"
+        on_disk.mkdir()
+        entry = {"name": "from-disk", "path": str(on_disk)}
+
         with mock.patch(
             "backend_service.state._discover_local_models",
-            return_value=[{"name": "from-disk", "path": "/tmp/from-disk"}],
+            return_value=[entry],
         ):
             first = ChaosEngineState(**self.kwargs)
             self.assertTrue(first._library_scan_done.wait(2.0))
@@ -147,7 +153,7 @@ class StateIntegrationTests(unittest.TestCase):
 
         def counting_scan(directories):
             scan_calls["count"] += 1
-            return [{"name": "from-disk", "path": "/tmp/from-disk"}]
+            return [entry]
 
         with mock.patch(
             "backend_service.state._discover_local_models",
@@ -158,6 +164,119 @@ class StateIntegrationTests(unittest.TestCase):
             workspace = second.workspace()
             self.assertEqual(workspace["libraryStatus"], "ready")
             self.assertEqual(len(workspace["library"]), 1)
+
+    def test_library_filters_vanished_entries_on_read(self):
+        # Bug 1: an entry whose path was removed on disk after the last
+        # scan must disappear from ``_library()`` immediately without
+        # requiring a fresh full rescan. A background rescan is kicked
+        # so the persisted cache catches up, but the response returned
+        # right now already excludes the stale entry.
+        on_disk = Path(self.tmp.name) / "stage"
+        on_disk.mkdir()
+        real_path = on_disk / "owner" / "alive"
+        real_path.mkdir(parents=True)
+        gone_path = on_disk / "owner" / "gone"
+        gone_path.mkdir(parents=True)
+
+        entries = [
+            {"name": "owner/alive", "path": str(real_path)},
+            {"name": "owner/gone", "path": str(gone_path)},
+        ]
+
+        with mock.patch(
+            "backend_service.state._discover_local_models",
+            return_value=entries,
+        ):
+            state = ChaosEngineState(**self.kwargs)
+            self.assertTrue(state._library_scan_done.wait(2.0))
+
+        # Simulate the gone path being removed after the cache scan.
+        import shutil
+
+        shutil.rmtree(gone_path)
+
+        # Patch the rescan so the kick doesn't immediately re-add the
+        # stale entry (we want to confirm the per-request filter).
+        with mock.patch(
+            "backend_service.state._discover_local_models",
+            return_value=[{"name": "owner/alive", "path": str(real_path)}],
+        ):
+            names = [item["name"] for item in state._library()]
+
+        self.assertIn("owner/alive", names)
+        self.assertNotIn("owner/gone", names)
+
+    def test_workspace_excludes_vanished_library_entries(self):
+        # End-to-end variant of the bug 1 fix: ``/api/workspace`` consumers
+        # see the filtered view because ``workspace()`` calls ``_library()``.
+        on_disk = Path(self.tmp.name) / "stage"
+        on_disk.mkdir()
+        real_path = on_disk / "owner" / "alive"
+        real_path.mkdir(parents=True)
+        gone_path = on_disk / "owner" / "gone"
+        gone_path.mkdir(parents=True)
+
+        with mock.patch(
+            "backend_service.state._discover_local_models",
+            return_value=[
+                {"name": "owner/alive", "path": str(real_path)},
+                {"name": "owner/gone", "path": str(gone_path)},
+            ],
+        ):
+            state = ChaosEngineState(**self.kwargs)
+            self.assertTrue(state._library_scan_done.wait(2.0))
+
+        import shutil
+
+        shutil.rmtree(gone_path)
+
+        with mock.patch(
+            "backend_service.state._discover_local_models",
+            return_value=[{"name": "owner/alive", "path": str(real_path)}],
+        ):
+            workspace = state.workspace()
+
+        names = [item["name"] for item in workspace["library"]]
+        self.assertIn("owner/alive", names)
+        self.assertNotIn("owner/gone", names)
+
+    def test_find_library_entry_prefers_healthy_over_broken(self):
+        # Bug 2 helper: two entries with the same ``name`` (different
+        # paths) — one marked broken, one healthy. The lookup must
+        # return the healthy one, regardless of insertion order.
+        on_disk = Path(self.tmp.name) / "stage"
+        on_disk.mkdir()
+        healthy = on_disk / "real" / "owner" / "name"
+        healthy.mkdir(parents=True)
+        broken = on_disk / "stub" / "owner" / "name"
+        broken.mkdir(parents=True)
+
+        entries = [
+            {
+                "name": "owner/name",
+                "path": str(broken),
+                "broken": True,
+                "brokenReason": "stub",
+            },
+            {
+                "name": "owner/name",
+                "path": str(healthy),
+                "broken": False,
+                "brokenReason": None,
+            },
+        ]
+
+        with mock.patch(
+            "backend_service.state._discover_local_models",
+            return_value=entries,
+        ):
+            state = ChaosEngineState(**self.kwargs)
+            self.assertTrue(state._library_scan_done.wait(2.0))
+
+        found = state._find_library_entry(None, "owner/name")
+        self.assertIsNotNone(found)
+        self.assertEqual(found["path"], str(healthy))
+        self.assertFalse(found.get("broken"))
 
 
 if __name__ == "__main__":

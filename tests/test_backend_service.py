@@ -2573,12 +2573,15 @@ class ChaosEngineBackendTests(unittest.TestCase):
             }
         ]
 
+        # No ``path`` in the request body — the load resolves purely
+        # through the library lookup, so the broken-entry guard must
+        # fire. Bug 2's path-trust escape hatch only applies when the
+        # caller supplies a path that exists on disk.
         response = self.client.post(
             "/api/models/load",
             json={
                 "modelRef": "LilaRest/gemma-4-31B-it-NVFP4-turbo",
                 "modelName": "Gemma 4 31B NVFP4",
-                "path": str(target),
                 "source": "library",
                 "backend": "auto",
                 "cacheBits": 0,
@@ -2592,6 +2595,91 @@ class ChaosEngineBackendTests(unittest.TestCase):
         detail_text = detail["message"] if isinstance(detail, dict) else detail
         self.assertIn("Cannot load", detail_text)
         self.assertIn("NVFP4", detail_text)
+
+    def test_model_load_trusts_explicit_path_when_broken_entry_exists(self):
+        # Bug 2: a broken library entry should NOT block a load when the
+        # caller passed an explicit ``path`` that exists on disk. The
+        # broken entry typically refers to a stale HF-cache stub left
+        # behind by a failed download; the user is pointing at the real
+        # weights under a different ``modelDirectories`` root.
+        stale = Path(self.tempdir.name) / "hf-cache" / "models--owner--name"
+        stale.mkdir(parents=True)
+        real = Path(self.tempdir.name) / "AI_Models" / "owner" / "name"
+        real.mkdir(parents=True)
+
+        self.client.app.state.chaosengine._library_provider = lambda: [
+            {
+                "name": "owner/name",
+                "path": str(stale),
+                "format": "Transformers",
+                "sourceKind": "HF cache",
+                "quantization": None,
+                "backend": "mlx",
+                "sizeGb": 0.01,
+                "lastModified": "2026-05-14 16:33",
+                "actions": ["Run Chat"],
+                "broken": True,
+                "brokenReason": "No .gguf, .safetensors, or pytorch weights found in HF cache entry",
+            }
+        ]
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "owner/name",
+                "modelName": "Owner Name",
+                "path": str(real),
+                "source": "library",
+                "backend": "mock",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+
+    def test_model_load_still_rejects_broken_entry_when_path_does_not_exist(self):
+        # Bug 2 negative: the path-trust escape hatch must require the
+        # supplied path actually exist on disk. A request that points at
+        # a non-existent path with a broken library match should still
+        # fall through to the rejection.
+        stale = Path(self.tempdir.name) / "hf-cache" / "models--owner--name"
+        stale.mkdir(parents=True)
+        missing_path = str(Path(self.tempdir.name) / "does" / "not" / "exist")
+
+        self.client.app.state.chaosengine._library_provider = lambda: [
+            {
+                "name": "owner/name",
+                "path": str(stale),
+                "format": "Transformers",
+                "sourceKind": "HF cache",
+                "quantization": None,
+                "backend": "mlx",
+                "sizeGb": 0.01,
+                "lastModified": "2026-05-14 16:33",
+                "actions": ["Run Chat"],
+                "broken": True,
+                "brokenReason": "No .gguf, .safetensors, or pytorch weights found in HF cache entry",
+            }
+        ]
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "owner/name",
+                "modelName": "Owner Name",
+                "path": missing_path,
+                "source": "library",
+                "backend": "mock",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 500)
+        detail = response.json()["detail"]
+        detail_text = detail["message"] if isinstance(detail, dict) else detail
+        self.assertIn("Cannot load", detail_text)
 
     def test_reveal_model_path_endpoint_returns_resolved_path(self):
         target = Path(self.tempdir.name) / "example.gguf"

@@ -79,10 +79,25 @@ def load_model(
                 "Open the Discover tab and download it first, then try loading again."
             )
         if library_entry is not None and library_entry.get("broken"):
-            reason = library_entry.get("brokenReason") or "incomplete or corrupt"
-            raise RuntimeError(
-                f"Cannot load '{library_entry.get('name') or request.modelRef}': {reason}."
-            )
+            # When the caller passed an explicit ``request.path`` that
+            # exists on disk, trust them — the broken library entry
+            # likely refers to a stale or incomplete snapshot elsewhere
+            # (e.g. an empty HF cache stub) while the user is pointing
+            # at the real weights. Drop the broken match and let
+            # resolution fall through to the path-based code below.
+            trust_path = False
+            if has_path:
+                try:
+                    trust_path = Path(os.path.expanduser(request.path.strip())).exists()
+                except OSError:
+                    trust_path = False
+            if trust_path:
+                library_entry = None
+            else:
+                reason = library_entry.get("brokenReason") or "incomplete or corrupt"
+                raise RuntimeError(
+                    f"Cannot load '{library_entry.get('name') or request.modelRef}': {reason}."
+                )
         detected_max: int | None = None
         if library_entry is not None:
             detected_max = library_entry.get("maxContext")

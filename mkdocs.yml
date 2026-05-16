@@ -1,0 +1,134 @@
+site_name: ChaosEngineAI
+site_description: The local AI model runner for serious tinkerers.
+site_url: https://chaosengineai.readthedocs.io/
+repo_url: https://github.com/cryptopoly/ChaosEngineAI
+repo_name: cryptopoly/ChaosEngineAI
+edit_uri: edit/staging/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - getting-started/installation.md
+      - getting-started/headless-install.md
+      - getting-started/first-run.md
+      - getting-started/system-requirements.md
+  - Usage:
+      - usage/chat.md
+      - usage/compare.md
+      - usage/html-challenge.md
+      - usage/image-studio.md
+      - usage/video-studio.md
+      - usage/server-mode.md
+      - usage/benchmarks.md
+  - Features:
+      - features/mtplx.md
+      - features/dflash.md
+      - features/cache-strategies.md
+      - features/fused-attention.md
+      - features/context-sizes.md
+  - CLI:
+      - cli/overview.md
+      - cli/reference.md
+      - cli/recipes.md
+      - cli/automation.md
+  - Testing:
+      - testing/overview.md
+      - testing/e2e-testing.md
+      - testing/pre-build-check.md
+      - testing/adding-checks.md
+  - Architecture:
+      - architecture/overview.md
+      - architecture/inference-engines.md
+      - architecture/routing.md
+      - architecture/catalog-vs-library.md
+      - architecture/runtime-paths.md
+  - Troubleshooting:
+      - troubleshooting/model-load-failures.md
+      - troubleshooting/mtplx-install-issues.md
+      - troubleshooting/gpu-detection.md
+      - troubleshooting/orphan-workers.md
+      - troubleshooting/faq.md
+  - Contributing:
+      - contributing/development-setup.md
+      - contributing/coding-guidelines.md
+      - contributing/adding-a-feature.md
+  - Reference:
+      - reference/api.md
+      - reference/env-vars.md
+      - reference/third-party-deps.md
+      - reference/changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cryptopoly/ChaosEngineAI
+
+# Legacy markdown files that pre-date the MkDocs site. The canonical E2E
+# testing doc has been imported under docs/testing/e2e-testing.md.
+exclude_docs: |
+  E2E_TESTING.md
+  image-discover-next-level.md
+  image-generation-mvp.md
+  provenance-audit.md
+
+strict: true

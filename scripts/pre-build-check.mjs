@@ -274,6 +274,48 @@ console.log("[6/8] Upstream dependency check...");
   } else {
     pass(`dflash-mlx pin sync (${pyprojectMatch[1].slice(0, 12)})`);
   }
+
+  // App version sync across the 4 manifests. The v0.9.0 release shipped
+  // with pyproject.toml at 0.8.0 because nothing enforced cross-file
+  // sync — users saw "Latest release · v0.9.0" on the site but the
+  // bundled backend reported appVersion 0.8.0. Pre-build gate now
+  // pins all four sources to the same string.
+  const versionSources = [
+    {
+      label: "package.json",
+      path: path.join(REPO_ROOT, "package.json"),
+      re: /"version"\s*:\s*"([^"]+)"/,
+    },
+    {
+      label: "pyproject.toml",
+      path: path.join(REPO_ROOT, "pyproject.toml"),
+      re: /^\s*version\s*=\s*"([^"]+)"/m,
+    },
+    {
+      label: "src-tauri/Cargo.toml",
+      path: path.join(REPO_ROOT, "src-tauri", "Cargo.toml"),
+      re: /^\s*version\s*=\s*"([^"]+)"/m,
+    },
+    {
+      label: "src-tauri/tauri.conf.json",
+      path: path.join(REPO_ROOT, "src-tauri", "tauri.conf.json"),
+      re: /"version"\s*:\s*"([^"]+)"/,
+    },
+  ];
+  const versions = versionSources.map((s) => {
+    const text = readFileSync(s.path, "utf8");
+    const m = text.match(s.re);
+    return { label: s.label, version: m ? m[1] : null };
+  });
+  const distinct = [...new Set(versions.map((v) => v.version))];
+  if (versions.some((v) => v.version === null)) {
+    warn("app version sync — could not extract version from one or more manifests");
+  } else if (distinct.length > 1) {
+    const detail = versions.map((v) => `${v.label}=${v.version}`).join(" ");
+    fail(`app version drift across manifests — ${detail}. Bump all four to the same string.`);
+  } else {
+    pass(`app version sync (${distinct[0]})`);
+  }
 }
 console.log();
 

@@ -153,6 +153,20 @@ elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
 else
   pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
 fi
+
+# App version sync across the 4 manifests. v0.9.0 release shipped with
+# pyproject.toml at 0.8.0 because nothing enforced cross-file sync.
+PKG_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+PY_VERSION=$(grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+CARGO_VERSION=$(grep -E '^[[:space:]]*version[[:space:]]*=' src-tauri/Cargo.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+TAURI_VERSION=$(grep -E '"version"' src-tauri/tauri.conf.json | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+if [[ -z "$PKG_VERSION" || -z "$PY_VERSION" || -z "$CARGO_VERSION" || -z "$TAURI_VERSION" ]]; then
+  warn "app version sync — could not extract version from one or more manifests"
+elif [[ "$PKG_VERSION" != "$PY_VERSION" || "$PKG_VERSION" != "$CARGO_VERSION" || "$PKG_VERSION" != "$TAURI_VERSION" ]]; then
+  fail "app version drift — package.json=$PKG_VERSION pyproject.toml=$PY_VERSION Cargo.toml=$CARGO_VERSION tauri.conf.json=$TAURI_VERSION. Bump all four to the same string."
+else
+  pass "app version sync ($PKG_VERSION)"
+fi
 echo
 
 # ------------------------------------------------------------------

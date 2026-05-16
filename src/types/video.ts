@@ -1,6 +1,15 @@
 export type VideoDiscoverTaskFilter = "all" | "txt2video" | "img2video" | "video2video";
 
-export type VideoCacheStrategyId = "none" | "fbcache" | "teacache";
+// 2026-05-16 (FU-026 follow-up): taylorseer + pab exposed in the UI
+// alongside the original fbcache + teacache. magcache + fastercache
+// stay backend-only (CLI / API) until calibration / differentiation
+// stories land.
+export type VideoCacheStrategyId =
+  | "none"
+  | "fbcache"
+  | "teacache"
+  | "taylorseer"
+  | "pab";
 
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 

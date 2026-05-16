@@ -82,12 +82,29 @@ export const IMAGE_CACHE_STRATEGIES: Array<{
     label: "TeaCache",
     hint: "Calibrated for FLUX / Hunyuan / LTX / CogVideoX / Mochi",
   },
+  {
+    id: "taylorseer",
+    label: "TaylorSeer",
+    hint: "~2.4× via polynomial extrapolation (diffusers 0.38 native)",
+  },
+  {
+    id: "pab",
+    label: "PAB",
+    hint: "Pyramid Attention Broadcast — reuse attention across nearby steps",
+  },
 ];
 
 export const IMAGE_CACHE_STRATEGY_DEFAULT_THRESH: Record<ImageCacheStrategyId, number> = {
   none: 0,
   fbcache: 0.12,
   teacache: 0.4,
+  // TaylorSeer + PAB use diffusers 0.38 native configs whose tunable
+  // is the cache interval (steps to skip), not a threshold like FBCache.
+  // Setting 0 here means "use the diffusers default skip interval";
+  // backend reads taylorseer/pab specific kwargs from the cache_compression
+  // adapter when the strategy id is selected.
+  taylorseer: 0,
+  pab: 0,
 };
 
 // Video DiTs are slightly more sensitive to caching drift than image
@@ -99,6 +116,8 @@ export const VIDEO_CACHE_STRATEGY_DEFAULT_THRESH: Record<ImageCacheStrategyId, n
   none: 0,
   fbcache: 0.08,
   teacache: 0.4,
+  taylorseer: 0,
+  pab: 0,
 };
 
 const FLOW_MATCHING_TOKENS = ["flux", "stable-diffusion-3", "sd3", "qwen-image", "sana", "hidream"];
@@ -155,10 +174,15 @@ export function isUnetImageRepo(repo: string | null | undefined): boolean {
 
 /** Return the image cache strategies that actually apply to this repo.
  *
- * UNet pipelines get only the "Off" entry; the dropdown is effectively
- * disabled. FLUX family pipelines get all three. Every other DiT
- * pipeline gets Off + First Block Cache only — TeaCache calibration
- * exists for FLUX only on the image side. */
+ * UNet pipelines (SDXL / SD1.5 / SD2): only "Off" — none of the
+ * transformer-based caches attach to a UNet ``pipeline.transformer``.
+ * FLUX family: all five (Off, FBCache, TeaCache, TaylorSeer, PAB) —
+ * TeaCache calibration only exists for FLUX on the image side, the
+ * others are generic.
+ * Other DiTs (SD3.5, Qwen-Image, Sana, HiDream, Z-Image, ERNIE-Image,
+ * GLM-Image, Nucleus-Image): everything except TeaCache (no calibration
+ * tables for these pipelines yet — backend would no-op with a runtimeNote
+ * if selected). */
 export function imageCacheStrategiesForRepo(
   repo: string | null | undefined,
 ): typeof IMAGE_CACHE_STRATEGIES {

@@ -92,6 +92,11 @@ class BackendCapabilities:
     vllmVersion: str | None = None
     mtplxAvailable: bool = False
     mtplxPythonPath: str | None = None
+    # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673. Set
+    # when the resolved llama-server binary advertises --spec-type in its
+    # help text. The UI keys an MTP affordance for GGUF models off this
+    # alongside mtplxAvailable for MLX models.
+    ggufMtpAvailable: bool = False
     probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -112,6 +117,7 @@ class BackendCapabilities:
             "vllmVersion": self.vllmVersion,
             "mtplxAvailable": self.mtplxAvailable,
             "mtplxPythonPath": self.mtplxPythonPath,
+            "ggufMtpAvailable": self.ggufMtpAvailable,
             "probing": self.probing,
         }
 

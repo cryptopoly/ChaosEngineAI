@@ -102,6 +102,19 @@ def _probe_native_backends() -> BackendCapabilities:
     from backend_service.vllm_engine import _vllm_importable, _vllm_version
 
     mtplx_available, mtplx_python = _detect_mtplx()
+
+    # FU-047: detect whether the resolved llama-server advertises
+    # --spec-type (PR #22673 merged 2026-05-16). Probe the standard
+    # binary first, fall back to the turbo fork. Either is sufficient
+    # because the same flag was implemented in both upstream branches.
+    gguf_mtp_available = False
+    if llama_server_path or llama_server_turbo_path:
+        from backend_service.inference.llama_cpp_engine import _llama_server_supports
+        gguf_mtp_available = bool(
+            (llama_server_path and _llama_server_supports(llama_server_path, "--spec-type"))
+            or (llama_server_turbo_path and _llama_server_supports(llama_server_turbo_path, "--spec-type"))
+        )
+
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=mlx_available,
@@ -119,6 +132,7 @@ def _probe_native_backends() -> BackendCapabilities:
         vllmVersion=_vllm_version(),
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
+        ggufMtpAvailable=gguf_mtp_available,
     )
 
 

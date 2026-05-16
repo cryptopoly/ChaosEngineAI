@@ -420,6 +420,9 @@ class LlamaCppEngine(BaseInferenceEngine):
         context_tokens: int,
         fit_enabled: bool,
         is_fallback: bool,
+        speculative_decoding: bool = False,
+        canonical_repo: str | None = None,
+        model_ref: str = "",
     ) -> tuple[list[str], str | None, bool, str | None]:
         """Build the llama-server command line.
 
@@ -519,6 +522,46 @@ class LlamaCppEngine(BaseInferenceEngine):
             if mmproj_path:
                 command.extend(["--mmproj", mmproj_path])
 
+        # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673.
+        # Emit ``--spec-type draft-mtp --spec-draft-n-max N`` when the
+        # requested model is a known MTP-GGUF mirror AND the binary
+        # advertises ``--spec-type`` in its help text. Fall back to
+        # standard decode with a runtimeNote when either prerequisite
+        # is missing — never error.
+        if speculative_decoding:
+            from backend_service.inference._mtp import (
+                get_mtp_draft_n,
+                is_mtp_gguf_repo,
+            )
+            repo_for_mtp = canonical_repo or runtime_target or model_ref or path or ""
+            if is_mtp_gguf_repo(repo_for_mtp):
+                if _llama_server_supports(binary, "--spec-type"):
+                    n_max = get_mtp_draft_n(repo_for_mtp) or 2
+                    command.extend([
+                        "--spec-type", "draft-mtp",
+                        "--spec-draft-n-max", str(n_max),
+                    ])
+                    mtp_note = (
+                        f"MTP speculative decoding active "
+                        f"(draft-mtp, spec-draft-n-max={n_max}). "
+                        f"Prompt-processing speed may dip slightly vs. standard "
+                        f"decode due to D2H embedding transfers (per upstream PR #22673)."
+                    )
+                    runtime_note = (
+                        f"{runtime_note} {mtp_note}".strip()
+                        if runtime_note else mtp_note
+                    )
+                else:
+                    note = (
+                        "MTP speculative decoding requires llama-server built "
+                        "from ggml-org/llama.cpp master after 2026-05-16 (PR #22673). "
+                        "The installed binary does not advertise --spec-type; "
+                        "using standard decode."
+                    )
+                    runtime_note = (
+                        f"{runtime_note} {note}".strip() if runtime_note else note
+                    )
+
         return command, runtime_note, fell_back_to_native, mmproj_path
 
     def _wait_for_server(self) -> None:
@@ -605,6 +648,9 @@ class LlamaCppEngine(BaseInferenceEngine):
                 context_tokens=context_tokens,
                 fit_enabled=fit_enabled,
                 is_fallback=is_fallback,
+                speculative_decoding=speculative_decoding,
+                canonical_repo=canonical_repo,
+                model_ref=model_ref,
             )
 
             temp_log = tempfile.NamedTemporaryFile(prefix="chaosengine-llama-", suffix=".log", delete=False)

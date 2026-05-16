@@ -70,7 +70,50 @@ _MTP_ALIASES: dict[str, str] = {
     "lmstudio-community/Qwen3.6-27B-GGUF": "Qwen/Qwen3.6-27B",
     # Qwen3-Coder-Next
     "lmstudio-community/Qwen3-Coder-Next-MLX-4bit": "Qwen/Qwen3-Coder-Next",
+    # ----- llama.cpp MTP GGUF mirrors (FU-047, PR #22673 merged 2026-05-16) -----
+    # The ggml-org/* repos are the canonical mirrors am17an published with
+    # the PR; am17an/* are the author's pre-merge drafts. Both ship the
+    # same baked-in MTP heads. Aliasing them to the canonical safetensors
+    # repo means ``has_mtp_heads`` returns True and ``get_mtp_draft_n``
+    # picks up the same N as the MLX path.
+    "ggml-org/Qwen3.6-27B-MTP-GGUF": "Qwen/Qwen3.6-27B",
+    "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
+    "am17an/Qwen3.6-27B-MTP-GGUF": "Qwen/Qwen3.6-27B",
+    "am17an/Qwen3.6-35BA3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
 }
+
+
+# ---------------------------------------------------------------------------
+# GGUF MTP detection (FU-047)
+# ---------------------------------------------------------------------------
+
+_MTP_GGUF_REPOS: frozenset[str] = frozenset({
+    "ggml-org/Qwen3.6-27B-MTP-GGUF",
+    "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+    "am17an/Qwen3.6-27B-MTP-GGUF",
+    "am17an/Qwen3.6-35BA3B-MTP-GGUF",
+})
+
+
+def is_mtp_gguf_repo(repo: str | None) -> bool:
+    """True when *repo* names a GGUF mirror carrying baked-in MTP heads.
+
+    Used by the llama.cpp engine to decide whether to emit
+    ``--spec-type draft-mtp --spec-draft-n-max N`` flags.
+
+    Two checks: an exact-match set for the canonical mirrors am17an
+    published with PR #22673, plus a defensive ``-MTP-GGUF`` substring
+    heuristic so future mirrors get picked up as long as their canonical
+    is registered.
+    """
+    if not repo:
+        return False
+    if repo in _MTP_GGUF_REPOS:
+        return True
+    if "-MTP-GGUF" not in repo:
+        return False
+    aliased = _MTP_ALIASES.get(repo)
+    return aliased is not None and aliased in MTP_MODEL_MAP
 
 
 def get_mtp_draft_n(repo: str) -> int | None:

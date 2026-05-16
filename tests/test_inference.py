@@ -85,6 +85,112 @@ class LlamaCppCommandTests(unittest.TestCase):
         self.assertNotIn("--reasoning-format", command)
         self.assertNotIn("--reasoning", command)
 
+    # ----- FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673 -----
+
+    def test_build_command_emits_mtp_flags_for_mtp_gguf_repo(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+        ):
+            command, runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/qwen36-mtp.gguf",
+                runtime_target="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                model_ref="ggml-org/Qwen3.6-27B-MTP-GGUF",
+            )
+
+        self.assertIn("--spec-type", command)
+        idx = command.index("--spec-type")
+        self.assertEqual(command[idx + 1], "draft-mtp")
+        self.assertIn("--spec-draft-n-max", command)
+        self.assertIn("MTP speculative decoding active", runtime_note or "")
+
+    def test_build_command_skips_mtp_when_binary_lacks_spec_type(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        def _supports(_binary, option: str) -> bool:
+            return option != "--spec-type"
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", side_effect=_supports),
+        ):
+            command, runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/qwen36-mtp.gguf",
+                runtime_target="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                model_ref="ggml-org/Qwen3.6-27B-MTP-GGUF",
+            )
+
+        self.assertNotIn("--spec-type", command)
+        self.assertIn("requires llama-server", runtime_note or "")
+
+    def test_build_command_skips_mtp_for_non_mtp_repo(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+        ):
+            command, _runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/plain.gguf",
+                runtime_target="lmstudio-community/Qwen3.6-27B-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="lmstudio-community/Qwen3.6-27B-GGUF",
+                model_ref="lmstudio-community/Qwen3.6-27B-GGUF",
+            )
+
+        # Standard non-MTP GGUF — no spec-type flag even when speculativeDecoding=True
+        self.assertNotIn("--spec-type", command)
+
+
+class MtpGgufDetectionTests(unittest.TestCase):
+    """FU-047: is_mtp_gguf_repo + alias lookups."""
+
+    def test_canonical_mtp_gguf_repos(self):
+        from backend_service.inference._mtp import is_mtp_gguf_repo
+
+        for repo in [
+            "ggml-org/Qwen3.6-27B-MTP-GGUF",
+            "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+            "am17an/Qwen3.6-27B-MTP-GGUF",
+            "am17an/Qwen3.6-35BA3B-MTP-GGUF",
+        ]:
+            with self.subTest(repo=repo):
+                self.assertTrue(is_mtp_gguf_repo(repo))
+
+    def test_stock_qwen_gguf_is_not_mtp(self):
+        from backend_service.inference._mtp import is_mtp_gguf_repo
+
+        self.assertFalse(is_mtp_gguf_repo("lmstudio-community/Qwen3.6-27B-GGUF"))
+        self.assertFalse(is_mtp_gguf_repo(""))
+        self.assertFalse(is_mtp_gguf_repo(None))
+
+    def test_alias_resolves_draft_n(self):
+        from backend_service.inference._mtp import get_mtp_draft_n
+
+        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-27B-MTP-GGUF"), 1)
+        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-35B-A3B-MTP-GGUF"), 1)
+
 
 class GgufTargetDetectionTests(unittest.TestCase):
     def test_treats_huggingface_repo_id_as_non_local(self):

@@ -135,7 +135,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 - DFlash and DDTree speculative decoding with auto-resolved draft models and graceful fallback
 - LLM cache strategies: native f16, TriAttention, TurboQuant
-- TeaCache diffusion cache for five DiT families (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) with `rel_l1_thresh` quality knob
+- Diffusion cache strategies — FBCache + TeaCache + TaylorSeer + MagCache + PyramidAttentionBroadcast (PAB) + FasterCache — applied to image + video DiTs (FLUX, SD3.5, Wan2.1/2.2, HunyuanVideo, LTX-Video, CogVideoX, Mochi)
 - Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
 - Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
 - LoRA adapter discovery plus fine-tuning hooks for local training workflows
@@ -347,6 +347,10 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 | **[TurboQuant](https://pypi.org/project/turboquant-mlx-full/)** | `./.venv/bin/python3 -m pip install turboquant-mlx-full` (Apple Silicon) or `scripts/build-llama-turbo.sh` (CUDA / Metal via llama.cpp fork) | 1-4 (MLX) / turbo2/3/4 (llama.cpp) | Apple Silicon (MLX), CUDA + Metal (llama.cpp fork) | Hadamard / Walsh-Hadamard rotation-based KV cache compression. The MLX path uses `turboquant-mlx-full` for native MLX caches; the llama.cpp path uses the forked `llama-server-turbo` binary built by `scripts/build-llama-turbo.sh`. |
 | **[TeaCache](https://github.com/ali-vilab/TeaCache)** | Built-in (vendored `teacache_forward` patches under `cache_compression/_teacache_patches/`) | n/a (rel_l1_thresh) | Diffusion DiT (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Diffusion-side cache that skips redundant forward passes between adjacent timesteps. Default `rel_l1_thresh=0.4`. |
 | **[FBCache](https://github.com/huggingface/diffusers)** | Built-in (diffusers 0.36+ `apply_first_block_cache` hook) | n/a (threshold) | Diffusion DiT (FLUX, SD3.5, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Model-agnostic first-block cache for DiTs. Default threshold 0.12. |
+| **TaylorSeer** | Built-in (diffusers 0.38+ `TaylorSeerCacheConfig`) | n/a | Diffusion DiT (FLUX, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Taylor-series predictor caches skipped forward passes. Surfaced in Image + Video Studio pickers. |
+| **MagCache** | Built-in (diffusers 0.38+ `MagCacheConfig`) | n/a | Diffusion DiT (FLUX only without calibration) | Magnitude-aware caching using `FLUX_MAG_RATIOS`. CLI / API only until calibration UX lands. |
+| **PyramidAttentionBroadcast (PAB)** | Built-in (diffusers 0.38+ `PyramidAttentionBroadcastConfig`) | n/a | Diffusion DiT | Broadcasts attention across timestep pyramids. Surfaced in Image + Video Studio pickers. |
+| **FasterCache** | Built-in (diffusers 0.38+ `FasterCacheConfig`) | n/a | Diffusion DiT | Tight cache windowing for big DiTs. CLI / API only — not surfaced in the picker yet. |
 
 Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only. The TurboQuant MLX path needs `turboquant-mlx-full` from PyPI; the TurboQuant llama.cpp path needs the forked `llama-server-turbo` binary built locally via `scripts/build-llama-turbo.sh`.
 
@@ -364,7 +368,7 @@ ChaosEngineAI ships with three speculative decoding modes that accelerate genera
 
 A small draft model proposes a block of tokens; the target model verifies them in a single forward pass. Accepted tokens are committed instantly; rejected tokens fall back to standard autoregressive generation.
 
-**Supported model families:** Qwen3 (4B, 8B), Qwen3.5 (4B-35B), Qwen3-Coder (4B, 8B), LLaMA 3.1 8B, gpt-oss (20B, 120B), Kimi-K2.5.
+**Supported model families:** Qwen3 (4B, 8B), Qwen3.5 (4B-35B / 122B-A10B), Qwen3-Coder (4B, 8B), LLaMA 3.1 8B, gpt-oss (20B, 120B), Kimi families (K2.5, K2.6), Gemma-4 (31B, 26B-A4B-it), MiniMax-M2.5 / M2.7.
 
 **Requirements:** Apple Silicon + `dflash-mlx`, or Linux/CUDA + `dflash`. Native f16 cache (no compression). A compatible draft checkpoint is auto-resolved from the [z-lab](https://huggingface.co/z-lab) collection.
 
@@ -407,7 +411,8 @@ ChaosEngineAI includes a full local image and video generation pipeline powered 
 |---|---|---|---|
 | **Wan 2.1 T2V 1.3B / 14B** | Alibaba Wan-AI | diffusers (MPS / CUDA) | Text-to-video; 1.3B fits comfortably on a 64 GB Mac |
 | **Wan 2.2** | Alibaba Wan-AI | diffusers | T2V successor with catalog metadata fixes |
-| **Lightricks LTX-Video 2.0 / 2.3** (distilled + dev) | Lightricks | mlx-video (Apple Silicon) | Subprocess engine via `prince-canuma/LTX-2-*` repos |
+| **Lightricks LTX-Video** | Lightricks | diffusers | Base LTX-Video; CUDA + MPS paths |
+| **Lightricks LTX-2 / LTX-2.3** (distilled + dev) | Lightricks | mlx-video (Apple Silicon) | Subprocess engine via `prince-canuma/LTX-2*` repos |
 | **HunyuanVideo** | Tencent | diffusers | TeaCache rescale coefficients vendored |
 | **CogVideoX** | Zhipu | diffusers | TeaCache supported |
 | **Mochi** | Genmo | diffusers | TeaCache supported |

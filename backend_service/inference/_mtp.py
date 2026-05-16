@@ -136,5 +136,110 @@ def get_mtp_draft_n(repo: str) -> int | None:
 
 
 def has_mtp_heads(repo: str) -> bool:
-    """True when *repo* (or a community alias of it) carries baked-in MTP heads."""
+    """True when *repo* (or a community alias of it) carries baked-in MTP heads.
+
+    Name-only check. Use ``model_has_mtp_tensors(path)`` for the
+    authoritative tensor-level probe when a local path is available.
+    """
     return get_mtp_draft_n(repo) is not None
+
+
+# ---------------------------------------------------------------------------
+# Tensor-level MTP head detection (colleague feedback 2026-05-16):
+# repo-name aliasing has false-positives (FU-041 mismatched Coder-Next
+# variants) and false-negatives (any new MTP-bearing repo we haven't
+# enumerated yet). The authoritative signal is the safetensors weight
+# index — models with MTP heads ship ``mtp_*`` keys (``mtp_heads.*``,
+# ``model.mtp.*``, ``mtp.safetensors`` shard). Probe these directly
+# whenever a local path is known; fall back to name match otherwise.
+# ---------------------------------------------------------------------------
+
+import json as _json
+from pathlib import Path as _Path
+
+# Tensor-name fragments that uniquely identify baked-in MTP heads.
+# Verified against: Youssofal MTPLX-Optimized-Speed (mtp.safetensors
+# sibling + model.safetensors.index.json entries), Qwen3.6-MTP-GGUF
+# (mtp_decoder / mtp_emb tensor names).
+_MTP_TENSOR_HINTS: tuple[str, ...] = (
+    "mtp_heads.",
+    "mtp_decoder.",
+    "mtp_emb.",
+    "model.mtp.",
+    ".mtp.",
+)
+
+
+def _read_safetensors_index(model_dir: _Path) -> dict[str, str] | None:
+    """Return the weight_map from a sharded ``model.safetensors.index.json``."""
+    index_path = model_dir / "model.safetensors.index.json"
+    if not index_path.exists():
+        return None
+    try:
+        payload = _json.loads(index_path.read_text())
+    except (OSError, _json.JSONDecodeError):
+        return None
+    weight_map = payload.get("weight_map") if isinstance(payload, dict) else None
+    return weight_map if isinstance(weight_map, dict) else None
+
+
+def model_has_mtp_tensors(path: str | None) -> bool | None:
+    """Authoritative MTP-head probe via local model files.
+
+    Returns:
+      True  — model has MTP tensor keys (either a ``mtp.safetensors``
+              shard, or ``mtp_*`` keys in the safetensors index, or
+              ``mtp_decoder`` / ``mtp_emb`` tensors in a GGUF header).
+      False — local files probed, no MTP keys found.
+      None  — could not probe (path missing, no recognizable index).
+              Callers should fall back to ``has_mtp_heads(repo)``
+              for the name-only check.
+    """
+    if not path:
+        return None
+    p = _Path(path)
+    if not p.exists():
+        return None
+    # GGUF case: peek the model file for ``mtp_decoder`` / ``mtp_emb``
+    # in the tensor names (gguf-py reader would be heavyweight here —
+    # the strings appear plain in the file's tensor-name table).
+    if p.is_file() and p.suffix.lower() == ".gguf":
+        try:
+            with p.open("rb") as fh:
+                # Read first ~512 KB; tensor names live in the GGUF
+                # header which is at the top of the file.
+                head = fh.read(512 * 1024)
+        except OSError:
+            return None
+        # Plain-ASCII tensor name search — false-positives essentially
+        # impossible because these are very specific identifiers.
+        if b"mtp_decoder" in head or b"mtp_emb" in head or b"mtp_heads" in head:
+            return True
+        return False
+
+    # MLX / safetensors case: look for the dedicated shard or any
+    # ``mtp_*`` key in the index.
+    model_dir = p if p.is_dir() else p.parent
+    if (model_dir / "mtp.safetensors").exists():
+        return True
+    weight_map = _read_safetensors_index(model_dir)
+    if weight_map is None:
+        return None
+    for tensor_name in weight_map.keys():
+        if any(hint in tensor_name for hint in _MTP_TENSOR_HINTS):
+            return True
+    return False
+
+
+def has_mtp_heads_strict(repo: str, path: str | None = None) -> bool:
+    """Combined check: tensor probe (when path available) ELSE name alias.
+
+    Use this in routing logic when ``path`` is known — picks up new
+    MTP-bearing repos we haven't enumerated, rejects name-collisions
+    that don't actually have the tensors.
+    """
+    if path:
+        probe = model_has_mtp_tensors(path)
+        if probe is not None:
+            return probe
+    return has_mtp_heads(repo)

@@ -532,9 +532,20 @@ class LlamaCppEngine(BaseInferenceEngine):
             from backend_service.inference._mtp import (
                 get_mtp_draft_n,
                 is_mtp_gguf_repo,
+                model_has_mtp_tensors,
             )
             repo_for_mtp = canonical_repo or runtime_target or model_ref or path or ""
-            if is_mtp_gguf_repo(repo_for_mtp):
+            # Authoritative MTP check: peek the GGUF header for
+            # ``mtp_decoder`` / ``mtp_emb`` tensors when a local path
+            # is supplied. Falls back to name-alias matching for repo-
+            # only loads. Catches new MTP-GGUF mirrors we haven't
+            # enumerated; rejects non-MTP GGUFs that happen to match
+            # the heuristic by name.
+            tensor_probe = model_has_mtp_tensors(path)
+            has_mtp_tensors = (
+                tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo_for_mtp)
+            )
+            if has_mtp_tensors:
                 if _llama_server_supports(binary, "--spec-type"):
                     n_max = get_mtp_draft_n(repo_for_mtp) or 2
                     command.extend([

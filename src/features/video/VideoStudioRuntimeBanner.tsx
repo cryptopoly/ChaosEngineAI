@@ -13,6 +13,7 @@
 import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { TorchUpgradePill } from "../../components/TorchUpgradePill";
 import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
 import type {
   CudaTorchInstallResult,
@@ -261,6 +262,16 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
           <span className="badge accent">{t("videoStudioRuntimeBanner.mlxVideoEngineChip", { defaultValue: "Engine: mlx-video" })}</span>
         ) : null}
       </div>
+      {/* Torch upgrade nudge — same self-contained pill as in Image
+        * Studio. Only renders when real generation is working AND the
+        * pip index serves a newer wheel than the one on disk. */}
+      {videoRuntimeStatus.realGenerationAvailable ? (
+        <TorchUpgradePill
+          backendOnline={backendOnline}
+          onRestartBackend={onRestartServer}
+          busy={busy}
+        />
+      ) : null}
       {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
         <div className="image-runtime-actions">
           <p className="muted-text">

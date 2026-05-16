@@ -494,11 +494,13 @@ export {
 } from "./video";
 
 export {
+  checkTorchUpgradeAvailable,
   checkTurboUpdate,
   enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
+  getTorchUpgradeStatus,
   getWanInstallStatus,
   getWanInventory,
   installCudaTorch,
@@ -507,6 +509,7 @@ export {
   refreshCapabilities,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startTorchUpgrade,
   startWanInstall,
 } from "./setup";
 export type {
@@ -520,6 +523,11 @@ export type {
   LongLiveAttempt,
   LongLiveJobState,
   PromptEnhanceResult,
+  TorchUpgradeAttempt,
+  TorchUpgradeAvailability,
+  TorchUpgradeJobState,
+  TorchUpgradeType,
+  TorchUpgradeUnavailableReason,
   TurboUpdateInfo,
   WanConvertStatusFields,
   WanInstallAttempt,

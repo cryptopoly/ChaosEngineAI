@@ -9,6 +9,7 @@
 import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { TorchUpgradePill } from "../../components/TorchUpgradePill";
 import type {
   CudaTorchInstallResult,
   GpuBundleJobState,
@@ -160,6 +161,18 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
           return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
         })()}
       </div>
+      {/* Torch upgrade nudge — renders only when real generation is
+        * working (so the user's stable torch install isn't being
+        * second-guessed) AND a newer wheel is on the matching cu{N}
+        * index. The pill probes the backend itself on mount; this
+        * banner just plugs in the restart-backend callback. */}
+      {imageRuntimeStatus.realGenerationAvailable ? (
+        <TorchUpgradePill
+          backendOnline={backendOnline}
+          onRestartBackend={onRestartServer}
+          busy={busy}
+        />
+      ) : null}
       {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
         <div className="image-runtime-summary">
           <p className="muted-text">

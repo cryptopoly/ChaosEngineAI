@@ -522,9 +522,28 @@ class RuntimeController:
                 "Install with: brew install llama.cpp"
             )
         if hint == "vllm":
+            # FU-056 Phase 8: prefer the WSL bridge on Windows hosts.
+            # vLLM ships no native Windows wheels, so the in-process
+            # ``VLLMEngine`` can't import vllm on Windows — the WSL
+            # bridge engine spawns vLLM's OpenAI server inside the
+            # managed venv at ``~/.chaosengine/vllm-venv`` and proxies
+            # the HTTP surface. On Linux + CUDA the native
+            # ``VLLMEngine`` stays preferred (no subprocess overhead).
+            import sys
+            if sys.platform == "win32" and self.capabilities.wslVllmAvailable:
+                from backend_service.inference.vllm_wsl_engine import VllmWslEngine
+                return VllmWslEngine(self.capabilities)
             if self.capabilities.vllmAvailable:
                 from backend_service.vllm_engine import VLLMEngine
                 return VLLMEngine(self.capabilities)
+            # Neither route works. Tailor the error to the platform —
+            # Windows users get the WSL bridge hint, Linux users get
+            # the pip-install hint.
+            if sys.platform == "win32":
+                raise RuntimeError(
+                    "vLLM backend requested but not installed. On Windows, "
+                    "install vLLM into WSL via Diagnostics → WSL2 vLLM bridge."
+                )
             raise RuntimeError(
                 "vLLM backend requested but not installed. "
                 "Install with: pip install vllm (Linux + CUDA only)."

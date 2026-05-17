@@ -237,6 +237,10 @@ class UpdateSettingsRequest(BaseModel):
     # every send so llama-server returns top-k per-token confidence
     # info. Off by default.
     advancedLogprobs: bool | None = None
+    # FU-052 follow-up: list of canonical model refs the user has
+    # starred from the Chat → My Models tab. ``None`` means "leave the
+    # current list alone"; an empty list clears all favourites.
+    favoriteModelRefs: list[str] | None = None
 
 
 class OpenAIMessage(BaseModel):

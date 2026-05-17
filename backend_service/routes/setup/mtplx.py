@@ -168,6 +168,40 @@ def _job_worker() -> None:
         job.finished_at = time.time()
 
 
+def _detect_fan_control() -> dict[str, Any]:
+    """Look for fan-control daemons MTPLX's ``--max`` burst can drive.
+
+    MTPLX warns ``FAN CONTROL DID NOT TAKE EFFECT`` when ``--max`` runs
+    without ThermalForge or TG Pro present, falling back to silent
+    operation but losing the fan-boost that lets the GPU hold full
+    clocks for longer. Surface this so the Setup tab can suggest the
+    install rather than silently capping speedup.
+    """
+    import os as _os
+    import shutil as _shutil
+
+    thermalforge = _shutil.which("thermalforge") is not None or Path(
+        "/Applications/ThermalForge.app"
+    ).exists()
+    tg_pro = Path("/Applications/TG Pro.app").exists() or Path(
+        _os.path.expanduser("~/Applications/TG Pro.app")
+    ).exists()
+    return {
+        "thermalforge": thermalforge,
+        "tgPro": tg_pro,
+        "anyAvailable": thermalforge or tg_pro,
+        "recommendedAction": (
+            None
+            if thermalforge or tg_pro
+            else "Install ThermalForge (free, MTPLX-recommended) to enable "
+                 "fan boost during burst-mode generation: run "
+                 "`~/.chaosengine/mtplx-venv/bin/mtplx max --install`. "
+                 "Without it, --max requests succeed but the GPU thermally "
+                 "throttles after a few seconds of sustained load."
+        ),
+    }
+
+
 @router.get("/api/setup/mtplx-status")
 def mtplx_status() -> dict[str, Any]:
     """Lightweight probe: is MTPLX installed and what version?"""
@@ -178,6 +212,10 @@ def mtplx_status() -> dict[str, Any]:
         "version": version,
         "installedAt": installed_at,
         "venvPath": str(_MTPLX_VENV_DIR) if installed else None,
+        # FU-MTPLX-thermal: surface fan-control availability so the UI
+        # can prompt for ThermalForge install before the user hits the
+        # silent-throttle ceiling on burst-mode runs.
+        "fanControl": _detect_fan_control(),
     }
 
 

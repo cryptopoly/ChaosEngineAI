@@ -67,6 +67,13 @@ export interface AppSettings {
    * forces.
    */
   clockFormat?: "system" | "12h" | "24h";
+  /**
+   * FU-052 follow-up — canonical model refs the user has starred from
+   * the Chat → My Models tab. Drives the "favourite" badge + lifts
+   * matching rows to the top of the list. Empty / missing == no
+   * favourites recorded.
+   */
+  favoriteModelRefs?: string[];
 }
 
 export interface SettingsUpdateResponse {
@@ -94,4 +101,5 @@ export interface UpdateSettingsPayload {
   videoOutputsDirectory?: string | null;
   locale?: string | null;
   clockFormat?: "system" | "12h" | "24h" | null;
+  favoriteModelRefs?: string[];
 }

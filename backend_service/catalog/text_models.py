@@ -230,6 +230,43 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "backend": "llama.cpp",
                 "releaseDate": "2026-04",
             },
+            {
+                # FU-047 (PR #22673 merged 2026-05-16): GGUF mirror with
+                # baked-in MTP heads. Enables native --spec-type draft-mtp
+                # speculative decoding on any llama.cpp build that
+                # advertises --spec-type. Q8_0 is the recommended quant per
+                # the PR (BF16 also shipped but ~2x disk + RAM).
+                "id": "ggml-org/Qwen3.6-27B-MTP-GGUF",
+                "name": "Qwen3.6 27B MTP GGUF",
+                "repo": "ggml-org/Qwen3.6-27B-MTP-GGUF",
+                "link": "https://huggingface.co/ggml-org/Qwen3.6-27B-MTP-GGUF",
+                "paramsB": 27.0,
+                "sizeGb": 29.0,
+                "format": "GGUF",
+                "quantization": "Q8_0",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": "Baked-in MTP heads. Pair with --spec-type draft-mtp for 1.8-2.2x speedup with zero quality loss.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-05",
+            },
+            {
+                "id": "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+                "name": "Qwen3.6 35B A3B MTP GGUF",
+                "repo": "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+                "link": "https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+                "paramsB": 35.0,
+                "sizeGb": 37.0,
+                "format": "GGUF",
+                "quantization": "Q8_0",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "note": "MoE with baked-in MTP heads. --spec-type draft-mtp speedup compounds with the sparse activation savings.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-05",
+            },
         ],
         "readme": [
             "Qwen 3.6 is the April 2026 follow-up to Qwen 3.5, with two open-weight releases: a dense 27B and a 35B-A3B MoE.",

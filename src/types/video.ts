@@ -1,6 +1,15 @@
 export type VideoDiscoverTaskFilter = "all" | "txt2video" | "img2video" | "video2video";
 
-export type VideoCacheStrategyId = "none" | "fbcache" | "teacache";
+// 2026-05-16 (FU-026 follow-up): taylorseer + pab exposed in the UI
+// alongside the original fbcache + teacache. magcache + fastercache
+// stay backend-only (CLI / API) until calibration / differentiation
+// stories land.
+export type VideoCacheStrategyId =
+  | "none"
+  | "fbcache"
+  | "teacache"
+  | "taylorseer"
+  | "pab";
 
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
@@ -39,6 +48,19 @@ export interface VideoModelVariant {
   estimatedGenerationSeconds: number | null;
   onDiskBytes?: number | null;
   onDiskGb?: number | null;
+  /** FU-054: per-file size for GGUF-pinned variants. ``onDiskBytes`` is the
+   * shared repo dir total; ``ggufFileBytes`` is just this quant's
+   * ``ggufFile``. Three Q4/Q6/Q8 rows of the same repo each see the same
+   * ``onDiskBytes`` but distinct ``ggufFileBytes``. */
+  ggufFileBytes?: number | null;
+  ggufFileGb?: number | null;
+  /** FU-054: count of other catalog variants that resolve to the same
+   * on-disk repo. ``> 0`` means deleting this variant's snapshot dir would
+   * also affect siblings — power the "shares storage" badge + scope the
+   * delete confirmation. */
+  sharedRepoSiblings?: number | null;
+  sharedRepoSiblingIds?: string[];
+  sharedRepoKey?: string | null;
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;

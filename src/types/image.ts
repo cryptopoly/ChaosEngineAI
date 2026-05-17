@@ -42,7 +42,16 @@ export type ImageSamplerId =
 // keys of ``cache_compression`` in the backend. Default ``"none"`` keeps
 // the stock pipeline; ``"fbcache"`` is the cross-platform recommendation
 // for DiT pipelines (FLUX, SD3, Wan, Hunyuan, LTX, CogVideoX, Mochi).
-export type ImageCacheStrategyId = "none" | "fbcache" | "teacache";
+// ``"taylorseer"`` + ``"pab"`` added 2026-05-16 (FU-026 follow-up) — both
+// land via diffusers 0.38 native ``enable_cache`` config, generic across
+// DiTs. ``"magcache"`` + ``"fastercache"`` remain backend-only (CLI / API)
+// until calibration UX exists / a clear differentiator over FBCache lands.
+export type ImageCacheStrategyId =
+  | "none"
+  | "fbcache"
+  | "teacache"
+  | "taylorseer"
+  | "pab";
 
 export interface ImageModelVariant {
   id: string;

@@ -1199,6 +1199,16 @@ export default function App() {
         librarySortDir={librarySortDir}
         onLibrarySortKeyChange={setLibrarySortKey}
         onLibrarySortDirChange={setLibrarySortDir}
+        favoriteModelRefs={workspace.settings?.favoriteModelRefs ?? []}
+        onToggleFavoriteModel={(ref) => {
+          const current = workspace.settings?.favoriteModelRefs ?? [];
+          const next = current.includes(ref)
+            ? current.filter((r) => r !== ref)
+            : [...current, ref];
+          void updateSettingsApi({ favoriteModelRefs: next }).then(() => {
+            void refreshWorkspace();
+          });
+        }}
       />
     );
   } else if (activeTab === "image-discover") {

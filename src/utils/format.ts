@@ -138,13 +138,20 @@ export function imageSecondarySizeLabel(variant: ImageModelVariant) {
 
 export function videoPrimarySizeLabel(variant: VideoModelVariant) {
   // Preference order (best to worst):
-  //   1. onDiskGb — actual bytes on disk once downloaded. Ground truth.
-  //   2. coreWeightsGb — sum of weight-file siblings from HF. Matches what
+  //   1. ggufFileGb — for GGUF-pinned variants, the actual quant file size.
+  //      Three Q4/Q6/Q8 rows of one shared repo would otherwise all report
+  //      the same onDiskGb (~12 GB total), masking per-quant footprint.
+  //   2. onDiskGb — actual bytes on disk once downloaded. Ground truth for
+  //      single-repo variants.
+  //   3. coreWeightsGb — sum of weight-file siblings from HF. Matches what
   //      the diffusers allow-pattern download actually pulls.
-  //   3. repoSizeGb — total repo size. Overestimates on video repos with
+  //   4. repoSizeGb — total repo size. Overestimates on video repos with
   //      legacy non-diffusers checkpoints (Wan 2.2 ships ~109 GB but the
   //      diffusers subtree is ~14 GB).
-  //   4. curated sizeGb — hardcoded catalog guess, often stale.
+  //   5. curated sizeGb — hardcoded catalog guess, often stale.
+  if (typeof variant.ggufFileGb === "number" && variant.ggufFileGb > 0) {
+    return `${sizeLabel(variant.ggufFileGb)} on disk`;
+  }
   if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
     return `${sizeLabel(variant.onDiskGb)} on disk`;
   }

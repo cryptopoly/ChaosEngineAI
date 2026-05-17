@@ -33,7 +33,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images and video.
 - **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation, plus diffusion DiT video models (Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, Mochi) via diffusers, mlx-video on Apple Silicon, and stable-diffusion.cpp scaffolding for cross-platform.
 - **Pluggable cache compression.** Native f16 cache out of the box, with KV cache compression strategies — [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
-- **Speculative decoding.** DFlash and DDTree accelerate generation by 3-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates.
+- **Speculative decoding.** DFlash, DDTree, and MTPLX accelerate generation by 1.8-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates. MTPLX adds native Multi-Token Prediction for models that were trained with MTP heads (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).
 - **Hybrid local + remote workflows.** Scan multiple local model directories, convert Hugging Face checkpoints to MLX, or point the app at remote OpenAI-compatible providers when you want a cloud fallback.
 - **Per-chat runtime profiles.** Each chat session remembers the exact model, cache strategy, quantization bits, context length, and speculative decoding settings used — switch between configurations without losing track.
 - **Prompting + evaluation.** Built-in prompt templates, side-by-side compare mode, and benchmark modes for throughput, perplexity, and task accuracy keep experimentation in one place.
@@ -83,6 +83,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 📈 **Live telemetry** on the dashboard: backend health, engine, loaded model, hardware, warm-pool state
 - 🔮 **DFlash speculative decoding** for 3-5x faster generation with zero quality loss (Qwen3, Qwen3.5, LLaMA 3.1, gpt-oss, Kimi families)
 - 🌳 **DDTree** tree-based speculative decoding — explores multiple draft paths in parallel for higher acceptance rates
+- 🪄 **MTPLX** Multi-Token Prediction speculative decoding (Apple Silicon) — 1.8-2.2× speedup with zero quality loss for trained-with-MTP models (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next, Youssofal MTPLX-Optimized variants)
 - 🔧 **Agent tools** — web search, calculator, code executor, and file reader for tool-augmented conversations
 - 🎓 **Fine-tuning** with LoRA adapter support for MLX models
 - 🧩 **Plugin system** with 5 extension types: cache strategies, inference engines, tools, model sources, and post-processors
@@ -134,7 +135,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 - DFlash and DDTree speculative decoding with auto-resolved draft models and graceful fallback
 - LLM cache strategies: native f16, TriAttention, TurboQuant
-- TeaCache diffusion cache for five DiT families (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) with `rel_l1_thresh` quality knob
+- Diffusion cache strategies — FBCache + TeaCache + TaylorSeer + MagCache + PyramidAttentionBroadcast (PAB) + FasterCache — applied to image + video DiTs (FLUX, SD3.5, Wan2.1/2.2, HunyuanVideo, LTX-Video, CogVideoX, Mochi)
 - Runtime controls for cache bits, FP16 layers, fused attention, fit-in-memory behavior, context length, and speculative tree budget
 - Benchmark modes for throughput, perplexity, and task accuracy (MMLU / HellaSwag), with persistent history, scatter plots, and diff tables
 - LoRA adapter discovery plus fine-tuning hooks for local training workflows
@@ -346,6 +347,10 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 | **[TurboQuant](https://pypi.org/project/turboquant-mlx-full/)** | `./.venv/bin/python3 -m pip install turboquant-mlx-full` (Apple Silicon) or `scripts/build-llama-turbo.sh` (CUDA / Metal via llama.cpp fork) | 1-4 (MLX) / turbo2/3/4 (llama.cpp) | Apple Silicon (MLX), CUDA + Metal (llama.cpp fork) | Hadamard / Walsh-Hadamard rotation-based KV cache compression. The MLX path uses `turboquant-mlx-full` for native MLX caches; the llama.cpp path uses the forked `llama-server-turbo` binary built by `scripts/build-llama-turbo.sh`. |
 | **[TeaCache](https://github.com/ali-vilab/TeaCache)** | Built-in (vendored `teacache_forward` patches under `cache_compression/_teacache_patches/`) | n/a (rel_l1_thresh) | Diffusion DiT (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Diffusion-side cache that skips redundant forward passes between adjacent timesteps. Default `rel_l1_thresh=0.4`. |
 | **[FBCache](https://github.com/huggingface/diffusers)** | Built-in (diffusers 0.36+ `apply_first_block_cache` hook) | n/a (threshold) | Diffusion DiT (FLUX, SD3.5, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Model-agnostic first-block cache for DiTs. Default threshold 0.12. |
+| **TaylorSeer** | Built-in (diffusers 0.38+ `TaylorSeerCacheConfig`) | n/a | Diffusion DiT (FLUX, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Taylor-series predictor caches skipped forward passes. Surfaced in Image + Video Studio pickers. |
+| **MagCache** | Built-in (diffusers 0.38+ `MagCacheConfig`) | n/a | Diffusion DiT (FLUX only without calibration) | Magnitude-aware caching using `FLUX_MAG_RATIOS`. CLI / API only until calibration UX lands. |
+| **PyramidAttentionBroadcast (PAB)** | Built-in (diffusers 0.38+ `PyramidAttentionBroadcastConfig`) | n/a | Diffusion DiT | Broadcasts attention across timestep pyramids. Surfaced in Image + Video Studio pickers. |
+| **FasterCache** | Built-in (diffusers 0.38+ `FasterCacheConfig`) | n/a | Diffusion DiT | Tight cache windowing for big DiTs. CLI / API only — not surfaced in the picker yet. |
 
 Install optional backends into the backend runtime (`./.venv/bin/python3 -m pip install ...`), then restart ChaosEngineAI. TriAttention is Linux/CUDA only. The TurboQuant MLX path needs `turboquant-mlx-full` from PyPI; the TurboQuant llama.cpp path needs the forked `llama-server-turbo` binary built locally via `scripts/build-llama-turbo.sh`.
 
@@ -357,13 +362,13 @@ LLM cache strategies are filtered out of the diffusion picker via the `appliesTo
 
 ## Speculative Decoding
 
-ChaosEngineAI ships with two speculative decoding modes that accelerate generation by 3-5x with zero quality loss.
+ChaosEngineAI ships with three speculative decoding modes that accelerate generation by 1.8-5x with zero quality loss.
 
 ### DFlash
 
 A small draft model proposes a block of tokens; the target model verifies them in a single forward pass. Accepted tokens are committed instantly; rejected tokens fall back to standard autoregressive generation.
 
-**Supported model families:** Qwen3 (4B, 8B), Qwen3.5 (4B-35B), Qwen3-Coder (4B, 8B), LLaMA 3.1 8B, gpt-oss (20B, 120B), Kimi-K2.5.
+**Supported model families:** Qwen3 (4B, 8B), Qwen3.5 (4B-35B / 122B-A10B), Qwen3-Coder (4B, 8B), LLaMA 3.1 8B, gpt-oss (20B, 120B), Kimi families (K2.5, K2.6), Gemma-4 (31B, 26B-A4B-it), MiniMax-M2.5 / M2.7.
 
 **Requirements:** Apple Silicon + `dflash-mlx`, or Linux/CUDA + `dflash`. Native f16 cache (no compression). A compatible draft checkpoint is auto-resolved from the [z-lab](https://huggingface.co/z-lab) collection.
 
@@ -373,7 +378,17 @@ Extends DFlash with tree-structured candidate exploration. Instead of verifying 
 
 **Configuration:** Set the **tree budget** slider (0-64) in Runtime Controls when DFlash is enabled. Budget 0 = linear DFlash; higher budgets explore more branches at the cost of additional memory for the attention mask.
 
-Both modes fall back gracefully: DDTree falls back to linear DFlash on failure, and DFlash falls back to standard generation.
+DDTree falls back to linear DFlash on failure, and DFlash falls back to standard generation.
+
+### MTPLX (Multi-Token Prediction)
+
+Native MTP speculative decoding for Apple Silicon, powered by the [`mtplx`](https://github.com/youssofal/mtplx) package (Apache 2.0). Instead of pairing a separate draft model with the target, MTPLX uses the target model's own trained MTP heads to propose multiple tokens per forward pass — yielding 1.8-2.2× speedup with zero quality loss on supported models.
+
+**Supported model families:** Qwen3.5, Qwen3.6, DeepSeek V3 / R1, Qwen3-Coder-Next, plus the [Youssofal/MTPLX-Optimized](https://huggingface.co/Youssofal) variants. The full registry lives in `backend_service/inference/_mtp.py` (`MTP_MODEL_MAP` + `_MTP_ALIASES`).
+
+**Install:** One-click "Install MTPLX" button in the Setup tab. Because `mtplx` ships its own forked `mlx` and can't share the main backend `.venv`, the installer provisions an isolated environment at `~/.chaosengine/mtplx-venv/`.
+
+**Routing:** When speculative decoding is enabled and the loaded model has MTP heads, the backend's `_select_engine` auto-routes through MTPLX. If the MTPLX venv is missing or the model is not in the registry, the backend falls back to DFlash, then to standard MLX generation.
 
 ---
 
@@ -396,7 +411,8 @@ ChaosEngineAI includes a full local image and video generation pipeline powered 
 |---|---|---|---|
 | **Wan 2.1 T2V 1.3B / 14B** | Alibaba Wan-AI | diffusers (MPS / CUDA) | Text-to-video; 1.3B fits comfortably on a 64 GB Mac |
 | **Wan 2.2** | Alibaba Wan-AI | diffusers | T2V successor with catalog metadata fixes |
-| **Lightricks LTX-Video 2.0 / 2.3** (distilled + dev) | Lightricks | mlx-video (Apple Silicon) | Subprocess engine via `prince-canuma/LTX-2-*` repos |
+| **Lightricks LTX-Video** | Lightricks | diffusers | Base LTX-Video; CUDA + MPS paths |
+| **Lightricks LTX-2 / LTX-2.3** (distilled + dev) | Lightricks | mlx-video (Apple Silicon) | Subprocess engine via `prince-canuma/LTX-2*` repos |
 | **HunyuanVideo** | Tencent | diffusers | TeaCache rescale coefficients vendored |
 | **CogVideoX** | Zhipu | diffusers | TeaCache supported |
 | **Mochi** | Genmo | diffusers | TeaCache supported |
@@ -426,6 +442,50 @@ npm run release:macos -- --skip-sign --skip-notarize
 ```
 
 That writes the local app + DMG to `releases/macos/`.
+
+---
+
+## Headless Automation — `chaosengine-cli`
+
+Every feature in the desktop app is also reachable from the terminal via `scripts/chaosengine-cli` — a Python 3 wrapper (stdlib only, zero new dependencies) that talks to the same FastAPI backend the Tauri shell uses. It covers 100% of the 125 backend routes through a generic `call <METHOD> <PATH>` dispatcher plus 95 ergonomic typed shortcuts.
+
+**Subcommand categories:** `serve`, `status`, `load`, `unload`, `prompt`, `bench`, `mtplx-install`, `mtplx-status`, `image-generate`, `video-generate`, `session-*`, `setup-*`, `diagnostics-*`, and more. JSON is written to stdout, errors to stderr — composable with `jq` or any other pipeline tool.
+
+The backend on port 8876 must be running (either via the Tauri app or `./scripts/chaosengine-cli serve`).
+
+```bash
+# Start the backend (or just leave the Tauri app open)
+./scripts/chaosengine-cli serve &
+
+# Load a model with speculative decoding
+./scripts/chaosengine-cli load Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed --spec
+
+# Prompt with streaming + per-token metrics
+./scripts/chaosengine-cli prompt "Write a Rust quicksort" --max-tokens 256 --stream --metrics
+
+# Benchmark a model with 3 runs
+./scripts/chaosengine-cli bench mlx-community/Qwen3.6-35B-A3B-4bit --spec --runs 3
+```
+
+Optional PATH symlink so you can call it from anywhere:
+
+```bash
+ln -s /Users/dan/ChaosEngineAI/scripts/chaosengine-cli ~/.local/bin/chaosengine-cli
+```
+
+**Headless install** (no GUI, no Tauri, no npm, no cargo):
+
+```bash
+git clone https://github.com/cryptopoly/ChaosEngineAI.git
+cd ChaosEngineAI
+python3 -m venv .venv
+.venv/bin/pip install -e .
+./scripts/chaosengine-cli serve
+```
+
+### E2E test suite
+
+`scripts/e2e_test_suite.py` drives the CLI through 8 phases (env probe, chat, compare, HTML challenge, image studio, video studio, setup probes, diagnostics + cleanup) and writes JSON + Markdown reports to `~/.chaosengine/test-results/`. `--smoke` completes in ≤60s; the full sweep finishes in ≤5 min on a warm box. The suite is gated as phase 9 of 9 in `scripts/pre-build-check.sh`. See [`docs/E2E_TESTING.md`](./docs/E2E_TESTING.md) for the full phase-by-phase breakdown.
 
 ---
 

@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.9.2 - 2026-05-16
+
+### Added
+
+- **`chaosengine-cli` — full-surface CLI for headless automation.** 95 typed shortcuts covering chat, prompt, compare, html-challenge, image, video, benchmarks, setup, diagnostics, and server control, plus a generic dispatcher for 100% backend route coverage. Bundled with every install; works without the desktop GUI. `chaosengine-cli serve` boots the backend from any shell.
+- **MTPLX native MTP speculative decoding (Apple Silicon).** One-click install from the Setup tab into an isolated `~/.chaosengine/mtplx-venv/` (~500 MB). Supports Qwen3.5 / Qwen3.6, DeepSeek V3 / R1, Qwen3-Coder-Next, and the Youssofal MTPLX-Optimized variants. Default draft depth `3`.
+- **GGUF MTP speculative decoding** via llama.cpp PR #22673 — `--spec-type draft-mtp --spec-draft-n-max N` wired into the llama.cpp engine. New catalog entries `ggml-org/Qwen3.6-27B-MTP-GGUF` and `ggml-org/Qwen3.6-35B-A3B-MTP-GGUF`. Requires `llama-server` built from master ≥ 2026-05-16; older binaries fall back to standard decode with a clear note.
+- **Phased E2E test suite** (`scripts/e2e_test_suite.py`) — 8 phases, 32+ checks, ~2–3 min full sweep on warm cache. Drives the CLI through every major surface. Required before releases.
+- **MkDocs Material documentation site** auto-deployed to `chaosengineai.com/docs/` — ~42 pages covering install, CLI reference, feature deep-dives, troubleshooting, architecture, and contributing.
+
+### Fixed
+
+- TurboQuant cache crash on hybrid-attention MoE models (Qwen3.5 / Qwen3.6 A3B) when generating after load — ArraysCache slots now preserved for hybrid-attn layers.
+- My Models library: stale entries whose backing directory was deleted on disk are now pruned automatically; explicit `--path` is trusted over a broken-library-entry for the same ref.
+- GGUF vision: mmproj resolver scoped to the model's own directory — fixes `llama-server` startup crash on text-only Gemma-4 and other mismatched-model loads.
+- CLI `prompt` and `bench` subcommands now report live tokens/sec + token counts from the real response shape (previously nulls).
+- MTPLX no longer pops a browser window on first model load (uses `quickstart` mode); default draft depth raised from 1 to 3.
+
+### Changed
+
+- Pre-build gate (`scripts/pre-build-check.sh`) now runs the E2E smoke and a draft-mtp readiness probe, and flags a stale bundled `llama-server` against the GGUF MTP requirement.
+- CLAUDE.md adds a "new feature gate" rule: every user-visible feature ships with an E2E check.
+
+### Tests
+
+- Python: 1,418 pass (was 1,355 at v0.9.0). TypeScript: 371. New CLI smoke suite (39). New MTPLX integration suite (10). New MTP unit tests (5).
+
+### Upgrade notes
+
+- GGUF MTP requires a fresh `llama-server`: `brew upgrade llama.cpp` for Homebrew users. Bundled-binary release builds pick this up on the next stage-runtime cycle.
+- MTPLX install is opt-in; skip it if you're staying on DFlash or running CUDA.
+- On M5 hardware, MTPLX currently caps at ~95% of plain MLX baseline throughput on a 27B model — subprocess + HTTP-proxy overhead eats some of the per-token win. Optimisation work continues.
+- No breaking changes — all v0.9.0 settings, sessions, and APIs carry forward.
+
 ## v0.8.0 - 2026-05-10
 
 ### Refactor + audit

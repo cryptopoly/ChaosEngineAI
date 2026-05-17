@@ -1,9 +1,15 @@
 """MTPLX inference engine.
 
-Spawns the MTPLX server (``mtplx start --model <path> --port N``) from its
-isolated venv at ``~/.chaosengine/mtplx-venv/`` as a subprocess, then proxies
+Spawns the MTPLX server (``mtplx quickstart --model <path> --port N
+--mtp --depth N --yes``) from its isolated venv at
+``~/.chaosengine/mtplx-venv/`` as a subprocess, then proxies
 ``/v1/chat/completions`` through it — the same pattern used by
 ``LlamaCppEngine`` for llama-server.
+
+We use ``quickstart`` not ``start`` because the latter walks the user
+through an interactive onboarding flow and, on first run, pops MTPLX's
+own web UI in a browser tab. ``quickstart`` is the server-only entry
+point: pure HTTP, no UI, no prompts.
 
 MTPLX provides native in-model MTP speculative decoding for Apple Silicon;
 its forked mlx lives in the isolated venv so it never conflicts with the main
@@ -171,11 +177,38 @@ class MtplxEngine(BaseInferenceEngine):
         # Prefer local path; fall back to HF repo id (MTPLX will download).
         model_arg = path or runtime_target or model_ref
 
+        # Use ``quickstart`` not ``start``. The ``start`` subcommand defaults
+        # to MTPLX's interactive onboarding which on first run picks the
+        # ``web`` surface and pops a browser window pointed at the MTPLX UI
+        # — surprising for users who only asked ChaosEngineAI to load a
+        # model. ``quickstart`` is the server-only path: no UI, no browser,
+        # no onboarding prompts, just the OpenAI-compatible /v1 endpoint.
+        # ``--yes`` short-circuits any remaining safety prompt; ``--mtp``
+        # explicitly enables the MTP head + speculative path; ``--depth``
+        # passes through the draft-token count from our MTP_MODEL_MAP so
+        # the user actually gets the spec-dec acceleration instead of N=1
+        # behaviour with HTTP-proxy overhead masking the win.
+        from backend_service.inference._mtp import get_mtp_draft_n
+
+        draft_depth = get_mtp_draft_n(canonical_repo or model_ref) or 3
+        # ``--profile performance-cold --max`` is MTPLX's burst mode per
+        # the upstream README: skips the thermal throttling of the default
+        # ``sustained`` profile and gives full clocks to the first
+        # generation. Worth it for interactive chat where the user is
+        # waiting on the first response, not running a 24-hour batch.
+        # Live bench: sustained profile @ N=3 averaged 27.2 tok/s on M5;
+        # burst profile gets the model closer to its theoretical peak.
         command = [
             mtplx_bin,
-            "start",
+            "quickstart",
             "--model", model_arg,
             "--port", str(self.port),
+            "--host", "127.0.0.1",
+            "--mtp",
+            "--depth", str(draft_depth),
+            "--profile", "performance-cold",
+            "--max",
+            "--yes",
         ]
 
         temp_log = tempfile.NamedTemporaryFile(

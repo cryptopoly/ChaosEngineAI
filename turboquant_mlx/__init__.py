@@ -187,6 +187,29 @@ def make_adaptive_cache(
     clamped_bits = max(2, min(8, bits))
     fp16_count = max(0, min(fp16_layers, num_layers // 2))
 
+    # Hybrid-attention models (Qwen3.5 / Qwen3.6 MoE, Mamba/SSM stacks,
+    # Gemma3n) mix KV-cache layers with non-KV state slots — linear
+    # attention layers expect an ``ArraysCache(size=2)`` and access it
+    # via ``cache[0]`` / ``cache[1]``. Defer to the model's own
+    # ``make_cache()`` (when available) so those slots keep their native
+    # type; only swap KV-cache entries for TurboQuantKVCache. This avoids
+    # the "'TurboQuantKVCache' object is not subscriptable" runtime error
+    # the previous unconditional list construction triggered.
+    base_cache: list | None = None
+    if model is not None and hasattr(model, "make_cache"):
+        try:
+            base_cache = list(model.make_cache())
+        except Exception:
+            base_cache = None
+
+    def _is_kv_cache_slot(entry: object) -> bool:
+        # KVCache and its subclasses (QuantizedKVCache, RotatingKVCache,
+        # ChunkedKVCache) all expose ``update_and_fetch`` and lack the
+        # ``__getitem__`` API that ArraysCache / MambaCache rely on.
+        # ``isinstance(entry, KVCache)`` is the strongest signal we have
+        # since QuantizedKVCache subclasses KVCache upstream.
+        return isinstance(entry, KVCache)
+
     # Prefer the full TurboQuantKVCache which handles its own
     # rotation, codebook, and mask construction — compatible with
     # all mlx-lm versions and model architectures.
@@ -196,7 +219,11 @@ def make_adaptive_cache(
         cache: list = []
         for i in range(num_layers):
             is_fp16 = i < fp16_count or i >= (num_layers - fp16_count)
-            if is_fp16:
+            if base_cache is not None and i < len(base_cache) and not _is_kv_cache_slot(base_cache[i]):
+                # Non-KV slot (e.g. ArraysCache for linear attention).
+                # Preserve the model's native cache type.
+                cache.append(base_cache[i])
+            elif is_fp16:
                 cache.append(KVCache())
             else:
                 cache.append(TurboQuantKVCache(
@@ -213,7 +240,9 @@ def make_adaptive_cache(
     cache = []
     for i in range(num_layers):
         is_fp16 = i < fp16_count or i >= (num_layers - fp16_count)
-        if is_fp16:
+        if base_cache is not None and i < len(base_cache) and not _is_kv_cache_slot(base_cache[i]):
+            cache.append(base_cache[i])
+        elif is_fp16:
             cache.append(KVCache())
         else:
             cache.append(QuantizedKVCache(group_size=64, bits=clamped_bits))

@@ -105,7 +105,7 @@ from backend_service.inference.simple_engines import (
     MockInferenceEngine,
     RemoteOpenAIEngine,
 )
-from backend_service.inference._mtp import has_mtp_heads
+from backend_service.inference._mtp import has_mtp_heads, has_mtp_heads_strict
 
 
 class RuntimeController:
@@ -496,10 +496,16 @@ class RuntimeController:
             return RemoteOpenAIEngine(self.capabilities)
         if hint == "mlx":
             if self.capabilities.mlxUsable:
+                # ``has_mtp_heads_strict`` peeks the on-disk safetensors
+                # index for ``mtp_*`` tensor keys when a local path is
+                # known (more reliable than the name-alias map; catches
+                # new MTP repos we haven't enumerated AND rejects
+                # name-collisions like FU-041 where a non-MTP variant
+                # shared a canonical name with an MTP one).
                 if (
                     speculative_decoding
                     and self.capabilities.mtplxAvailable
-                    and has_mtp_heads(canonical_repo or model_ref)
+                    and has_mtp_heads_strict(canonical_repo or model_ref, path)
                 ):
                     return MtplxEngine(self.capabilities)
                 return MLXWorkerEngine(self.capabilities)

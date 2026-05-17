@@ -1,4 +1,8 @@
+import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from backend_service.inference import (
@@ -84,6 +88,204 @@ class LlamaCppCommandTests(unittest.TestCase):
 
         self.assertNotIn("--reasoning-format", command)
         self.assertNotIn("--reasoning", command)
+
+    # ----- FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673 -----
+
+    def test_build_command_emits_mtp_flags_for_mtp_gguf_repo(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+        ):
+            command, runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/qwen36-mtp.gguf",
+                runtime_target="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                model_ref="ggml-org/Qwen3.6-27B-MTP-GGUF",
+            )
+
+        self.assertIn("--spec-type", command)
+        idx = command.index("--spec-type")
+        self.assertEqual(command[idx + 1], "draft-mtp")
+        self.assertIn("--spec-draft-n-max", command)
+        self.assertIn("MTP speculative decoding active", runtime_note or "")
+
+    def test_build_command_skips_mtp_when_binary_lacks_spec_type(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        def _supports(_binary, option: str) -> bool:
+            return option != "--spec-type"
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", side_effect=_supports),
+        ):
+            command, runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/qwen36-mtp.gguf",
+                runtime_target="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.6-27B-MTP-GGUF",
+                model_ref="ggml-org/Qwen3.6-27B-MTP-GGUF",
+            )
+
+        self.assertNotIn("--spec-type", command)
+        self.assertIn("requires llama-server", runtime_note or "")
+
+    def test_build_command_skips_mtp_for_non_mtp_repo(self):
+        engine = LlamaCppEngine(self._capabilities())
+
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+        ):
+            command, _runtime_note, _, _mmproj = engine._build_command(
+                path="/tmp/plain.gguf",
+                runtime_target="lmstudio-community/Qwen3.6-27B-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="lmstudio-community/Qwen3.6-27B-GGUF",
+                model_ref="lmstudio-community/Qwen3.6-27B-GGUF",
+            )
+
+        # Standard non-MTP GGUF — no spec-type flag even when speculativeDecoding=True
+        self.assertNotIn("--spec-type", command)
+
+
+class MtpGgufDetectionTests(unittest.TestCase):
+    """FU-047: is_mtp_gguf_repo + alias lookups."""
+
+    def test_canonical_mtp_gguf_repos(self):
+        from backend_service.inference._mtp import is_mtp_gguf_repo
+
+        for repo in [
+            "ggml-org/Qwen3.6-27B-MTP-GGUF",
+            "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+            "am17an/Qwen3.6-27B-MTP-GGUF",
+            "am17an/Qwen3.6-35BA3B-MTP-GGUF",
+        ]:
+            with self.subTest(repo=repo):
+                self.assertTrue(is_mtp_gguf_repo(repo))
+
+    def test_stock_qwen_gguf_is_not_mtp(self):
+        from backend_service.inference._mtp import is_mtp_gguf_repo
+
+        self.assertFalse(is_mtp_gguf_repo("lmstudio-community/Qwen3.6-27B-GGUF"))
+        self.assertFalse(is_mtp_gguf_repo(""))
+        self.assertFalse(is_mtp_gguf_repo(None))
+
+    def test_alias_resolves_draft_n(self):
+        from backend_service.inference._mtp import get_mtp_draft_n
+
+        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-27B-MTP-GGUF"), 3)
+        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-35B-A3B-MTP-GGUF"), 3)
+
+
+class MtpTensorProbeTests(unittest.TestCase):
+    """Authoritative tensor-level MTP head detection."""
+
+    def test_returns_none_for_missing_path(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        self.assertIsNone(model_has_mtp_tensors(None))
+        self.assertIsNone(model_has_mtp_tensors(""))
+        self.assertIsNone(model_has_mtp_tensors("/nonexistent/path/model.gguf"))
+
+    def test_gguf_with_legacy_mtp_tensor_names(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as fh:
+            fh.write(b"GGUF\x00" * 100 + b"some_filler.mtp_decoder.weight" + b"\x00" * 1000)
+            tmp_path = fh.name
+        try:
+            self.assertTrue(model_has_mtp_tensors(tmp_path))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_gguf_with_nextn_metadata_key(self):
+        """PR #22673 emits ``<arch>.nextn_predict_layers`` for MTP GGUFs."""
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as fh:
+            fh.write(b"GGUF\x00" * 50 + b"qwen35.nextn_predict_layers" + b"\x00" * 200)
+            tmp_path = fh.name
+        try:
+            self.assertTrue(model_has_mtp_tensors(tmp_path))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_gguf_without_mtp_tensors(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.NamedTemporaryFile(suffix=".gguf", delete=False) as fh:
+            fh.write(b"GGUF\x00" * 100 + b"token_embd.weight" + b"\x00" * 1000)
+            tmp_path = fh.name
+        try:
+            self.assertFalse(model_has_mtp_tensors(tmp_path))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_safetensors_dedicated_mtp_shard(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "mtp.safetensors").write_bytes(b"")
+            self.assertTrue(model_has_mtp_tensors(tmp))
+
+    def test_safetensors_index_with_mtp_keys(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            index = {
+                "weight_map": {
+                    "model.embed_tokens.weight": "model-00001.safetensors",
+                    "mtp_heads.0.weight": "model-00002.safetensors",
+                }
+            }
+            (Path(tmp) / "model.safetensors.index.json").write_text(json.dumps(index))
+            self.assertTrue(model_has_mtp_tensors(tmp))
+
+    def test_safetensors_index_without_mtp_keys(self):
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            index = {
+                "weight_map": {
+                    "model.embed_tokens.weight": "model-00001.safetensors",
+                    "model.layers.0.self_attn.q_proj.weight": "model-00001.safetensors",
+                }
+            }
+            (Path(tmp) / "model.safetensors.index.json").write_text(json.dumps(index))
+            self.assertFalse(model_has_mtp_tensors(tmp))
+
+    def test_strict_prefers_tensor_probe_over_name(self):
+        from backend_service.inference._mtp import has_mtp_heads_strict
+
+        with tempfile.TemporaryDirectory() as tmp:
+            # Name says non-MTP but tensors say MTP — trust tensors.
+            (Path(tmp) / "mtp.safetensors").write_bytes(b"")
+            self.assertTrue(has_mtp_heads_strict("unknown/random-repo", tmp))
+
+    def test_strict_falls_back_to_name_when_path_missing(self):
+        from backend_service.inference._mtp import has_mtp_heads_strict
+
+        self.assertTrue(has_mtp_heads_strict("Qwen/Qwen3.6-27B", None))
+        self.assertFalse(has_mtp_heads_strict("unknown/random", None))
 
 
 class GgufTargetDetectionTests(unittest.TestCase):

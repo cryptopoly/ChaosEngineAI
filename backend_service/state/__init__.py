@@ -235,10 +235,30 @@ class ChaosEngineState:
                 self._library_scan_started = False
             return library
         if self._library_cache is not None:
-            return self._library_cache[1]
+            return self._filter_vanished_library_entries(self._library_cache[1])
         if self._library_scan_started:
             return []
         return self._library(force=True)
+
+    def _filter_vanished_library_entries(
+        self, entries: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        # Stat-only existence check per request so entries deleted on disk
+        # disappear from /api/workspace + load lookups without waiting for
+        # the next full rescan. Cheap: library is capped at 500 entries,
+        # ~sub-millisecond on local disks. Kicks a background rescan if
+        # anything was pruned so the persisted cache catches up.
+        kept: list[dict[str, Any]] = []
+        pruned = 0
+        for entry in entries:
+            path = entry.get("path")
+            if path and not os.path.exists(path):
+                pruned += 1
+                continue
+            kept.append(entry)
+        if pruned:
+            self._kick_library_scan(force=True)
+        return kept
 
     def _persist_library_cache(
         self,
@@ -556,12 +576,23 @@ class ChaosEngineState:
             and not self._library_scan_done.is_set()
         ):
             self._library_scan_done.wait(timeout=10.0)
+        # Two-pass: prefer a non-broken match over a broken one with the
+        # same name. A stale HF-cache stub (e.g. left behind after a
+        # cancelled download) shouldn't shadow a healthy on-disk copy
+        # under a different ``modelDirectories`` root.
+        broken_fallback: dict[str, Any] | None = None
         for entry in self._library():
-            if path and entry["path"] == path:
-                return entry
-            if model_ref and entry["name"] == model_ref:
-                return entry
-        return None
+            matches = (path and entry["path"] == path) or (
+                model_ref and entry["name"] == model_ref
+            )
+            if not matches:
+                continue
+            if entry.get("broken"):
+                if broken_fallback is None:
+                    broken_fallback = entry
+                continue
+            return entry
+        return broken_fallback
 
     def _resolve_canonical_repo(
         self,

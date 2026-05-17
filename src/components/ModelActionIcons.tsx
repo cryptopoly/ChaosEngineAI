@@ -14,7 +14,9 @@ export type ActionIconName =
   | "resume"
   | "retry"
   | "reveal"
-  | "server";
+  | "server"
+  | "star"
+  | "starOutline";
 
 export type ModelStatusKind =
   | "downloaded"
@@ -178,6 +180,30 @@ export function ModelActionIcon({ name, className }: IconProps) {
           <path d="M8 17h.01" />
           <path d="M12 7h4" />
           <path d="M12 17h4" />
+        </Svg>
+      );
+    case "star":
+      return (
+        <svg
+          className={className}
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M12 2.75 14.92 8.66l6.52.95-4.72 4.6 1.11 6.49L12 17.66l-5.83 3.04 1.11-6.49-4.72-4.6 6.52-.95Z" />
+        </svg>
+      );
+    case "starOutline":
+      return (
+        <Svg className={className}>
+          <path d="M12 2.75 14.92 8.66l6.52.95-4.72 4.6 1.11 6.49L12 17.66l-5.83 3.04 1.11-6.49-4.72-4.6 6.52-.95Z" />
         </Svg>
       );
     case "downloaded":

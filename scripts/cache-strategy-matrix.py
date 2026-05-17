@@ -199,6 +199,12 @@ class BackendCapabilities:
     vllm_available: bool
     has_turbo_binary: bool
     library_refs: set[str]
+    # FU-056 Phase 9: vLLM-via-WSL bridge availability. On Windows boxes
+    # native vLLM never works (no Windows wheels), but the WSL bridge
+    # gives the same engine class through a subprocess. The matrix
+    # runner treats either as "vllm cells can run" so a Windows + RTX
+    # box isn't permanently locked out of the vLLM lane.
+    wsl_vllm_available: bool = False
 
 
 def probe_backend(port: int) -> BackendCapabilities:
@@ -225,7 +231,15 @@ def probe_backend(port: int) -> BackendCapabilities:
         ddtree_available=bool(dflash.get("ddtreeAvailable")),
         mtplx_available=bool(native_backends.get("mtplxAvailable")),
         gguf_mtp_available=bool(native_backends.get("ggufMtpAvailable")),
-        vllm_available=bool(native_backends.get("vllmAvailable")),
+        # ``vllmAvailable`` (native) OR ``wslVllmAvailable`` (Windows
+        # bridge) — either route can serve the vllm cells. The runner
+        # doesn't care which path the backend chose; it cares whether
+        # a vllm load will succeed at all.
+        vllm_available=(
+            bool(native_backends.get("vllmAvailable"))
+            or bool(native_backends.get("wslVllmAvailable"))
+        ),
+        wsl_vllm_available=bool(native_backends.get("wslVllmAvailable")),
         has_turbo_binary=bool(system.get("llamaServerTurboPath")),
         library_refs=refs,
     )
@@ -236,7 +250,11 @@ def skip_reason(cell: MatrixCell, caps: BackendCapabilities, *, quick: bool) -> 
         return "deferred to full run (drop --quick)"
 
     if cell.backend == "vllm" and not caps.vllm_available:
-        return "vLLM not installed (CUDA-only)"
+        # ``vllm_available`` already considers the WSL bridge (FU-056
+        # Phase 8) — if neither route serves vLLM, the skip reason
+        # depends on the platform so the user gets the right next step.
+        # The runner doesn't know the OS, so name both paths.
+        return "vLLM not available (install via Diagnostics → WSL2 vLLM bridge on Windows, or pip install vllm on Linux+CUDA)"
 
     canonical = {"chaosengine": "turboquant", "rotorquant": "turboquant"}.get(
         cell.strategy, cell.strategy,
@@ -473,7 +491,22 @@ def main() -> int:
     try:
         caps = probe_backend(args.port)
     except ConnectionError as exc:
+        # The matrix runner is meant to exercise the installed app's
+        # runtime, the same way ``e2e_test_suite.py`` does. A failure to
+        # reach the backend almost always means "the app isn't open" —
+        # surface that clearly instead of just echoing the ConnectionError.
         print(f"  ! {exc}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(
+            "Open the ChaosEngineAI app and re-run this command — the matrix "
+            "is designed to exercise the production embedded runtime + extras.",
+            file=sys.stderr,
+        )
+        print(
+            f"(advanced: `npm run tauri:dev` or `python -m backend_service.app "
+            f"--port {args.port}` works for dev runs, but won't match the user-install path)",
+            file=sys.stderr,
+        )
         return 3
     print(f"  available strategies: {sorted(caps.available_strategies)}")
     print(f"  dflash={caps.dflash_available} ddtree={caps.ddtree_available} turbo-binary={caps.has_turbo_binary}")

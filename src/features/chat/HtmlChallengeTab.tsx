@@ -86,6 +86,8 @@ interface HtmlChallengeTabProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
@@ -107,6 +109,7 @@ export function HtmlChallengeTab({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
   installLogs,
@@ -1138,6 +1141,7 @@ export function HtmlChallengeTab({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onConfirm={(selectedKey, newSettings) => {
           if (pickerTarget) {
             const target = pickerTarget;

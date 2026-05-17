@@ -60,6 +60,24 @@ alarm.
 
 ### Full sweep (every phase, every check)
 
+The canonical run path is **against the installed app**, so the suite
+exercises the same embedded runtime + extras dir that users have:
+
+```bash
+# 1. Open ChaosEngineAI (Tauri shell launches the backend on 8876)
+# 2. From any shell:
+.venv/bin/python scripts/e2e_test_suite.py
+```
+
+The runner errors with an actionable hint if the backend isn't
+reachable (exit code 2). It will not silently fall back to a custom
+dev backend.
+
+#### Headless dev backend (advanced)
+
+For contributors iterating on the suite itself or running it in CI
+without the desktop shell:
+
 ```bash
 # In one shell — keep the backend running for the entire suite
 ./scripts/chaosengine-cli serve
@@ -67,6 +85,10 @@ alarm.
 # In another shell
 ./scripts/e2e_test_suite.py
 ```
+
+This works but doesn't exercise the `python-build-standalone` Python
+that ships in the desktop bundle — for release validation, prefer the
+installed-app path.
 
 Wall time depends on hardware and which models are on disk. M-series with
 27B MLX models on hand: 10–25 minutes. Add another 10–20 if Phase 4 / 5

@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dflashPackageFor,
   isStrategyCompatible,
   resolveDflashSupport,
   sanitizeSpeculativeSelection,
   strategyIncompatReason,
 } from "../runtimeSupport";
+
+describe("dflashPackageFor()", () => {
+  it("returns dflash-mlx for the MLX backend", () => {
+    expect(dflashPackageFor("mlx")).toBe("dflash-mlx");
+    expect(dflashPackageFor("MLX")).toBe("dflash-mlx");
+  });
+
+  it("returns dflash for the vLLM CUDA backend", () => {
+    expect(dflashPackageFor("vllm")).toBe("dflash");
+    expect(dflashPackageFor("VLLM")).toBe("dflash");
+  });
+
+  it("defaults to dflash-mlx for null / unknown backends", () => {
+    expect(dflashPackageFor(null)).toBe("dflash-mlx");
+    expect(dflashPackageFor(undefined)).toBe("dflash-mlx");
+    expect(dflashPackageFor("")).toBe("dflash-mlx");
+    expect(dflashPackageFor("auto")).toBe("dflash-mlx");
+    expect(dflashPackageFor("gguf")).toBe("dflash-mlx");
+  });
+});
 
 describe("resolveDflashSupport()", () => {
   const dflashInfo = {

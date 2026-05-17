@@ -26,20 +26,66 @@ release.
 
 ## Required commands
 
+ChaosEngineAI tests run against **the installed app's runtime** — the
+same torch / diffusers / mlx / nunchaku / etc. wheels users have
+installed via the in-app "Install GPU runtime" + per-feature install
+buttons. No custom dev setup. The flow is:
+
+1. Open the ChaosEngineAI app (the Tauri shell launches the backend
+   on port 8876 and adds the persistent extras dir to its `PYTHONPATH`).
+2. From any shell, run the test suites below.
+
 ```bash
-# Python tests
+# Python tests — auto-loads the app's extras dir via tests/conftest.py
 .venv/bin/python -m pytest tests/ -q
 
-# TypeScript tests
+# TypeScript tests — no backend dependency
 npm test
 
 # Type-check
 npx tsc --noEmit
 
-# E2E smoke
-./scripts/chaosengine-cli serve &  # one shell
-./scripts/e2e_test_suite.py --smoke  # another shell
+# E2E smoke — talks to the running app on 127.0.0.1:8876
+.venv/bin/python scripts/e2e_test_suite.py --smoke
 ```
+
+### Why the app's extras, not the dev venv?
+
+The dev `.venv` ships with FastAPI + pytest + huggingface-hub but
+deliberately **without** torch / diffusers / mlx / nunchaku /
+sageattention / triattention / vllm. Those heavy packages live in the
+persistent extras directory at:
+
+- Windows: `%LOCALAPPDATA%\ChaosEngineAI\extras\cp{XY}\site-packages`
+- macOS: `~/Library/Application Support/ChaosEngineAI/extras/cp{XY}/site-packages`
+- Linux: `${XDG_DATA_HOME}/ChaosEngineAI/extras/cp{XY}/site-packages`
+
+`tests/conftest.py` auto-discovers that path at pytest collection time
+and adds it to `sys.path` (via [`ensure_extras_on_sys_path`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/runtime_paths.py)),
+so `import torch` in a test resolves against the same wheel a user
+runs. A torch upgrade landing via the in-app installer is reflected in
+the next `pytest` run automatically — no `pip install` dance required.
+
+Set `CHAOSENGINE_TEST_TRACE_EXTRAS=1` to log which extras path got
+prepended for a given run (useful when debugging "is this test
+hitting the install I think it is?").
+
+### Headless dev backend (advanced)
+
+Contributors who want to run the suite without the Tauri shell open
+can stand up the backend headlessly:
+
+```bash
+# One shell — runs the FastAPI app under the dev venv
+.venv/bin/python -m backend_service.app --port 8876
+
+# OR (gets the embedded runtime via Tauri's stage script)
+npm run tauri:dev
+```
+
+This works, but won't exercise the exact `python-build-standalone`
+binary the desktop bundle ships — for release-blocking validation,
+prefer the production-app path above.
 
 ## Where the tests live
 

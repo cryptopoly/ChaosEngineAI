@@ -70,6 +70,9 @@ export interface ModelLaunchModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
+   * block hides on non-Apple-Silicon hosts where MTPLX can't run. */
+  isAppleSilicon?: boolean;
   onSelectedKeyChange: (key: string) => void;
   onSearchChange: (value: string) => void;
   onSettingChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -100,6 +103,7 @@ export function ModelLaunchModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
   onSelectedKeyChange,
   onSearchChange,
   onSettingChange,
@@ -254,6 +258,7 @@ export function ModelLaunchModal({
               onInstallMtplx={onInstallMtplx}
               installingMtplx={installingMtplx}
               mtplxJob={mtplxJob}
+              isAppleSilicon={isAppleSilicon}
               compact
             />
           </div>

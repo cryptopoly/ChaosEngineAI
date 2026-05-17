@@ -16,6 +16,25 @@ from threading import RLock
 from pathlib import Path
 
 from backend_service.inference._constants import CAPABILITY_CACHE_TTL_SECONDS
+from backend_service.inference.accelerators import (
+    dflash_cuda_available,
+    dflash_cuda_version,
+    dflash_mlx_available,
+    dflash_mlx_version,
+    kvpress_available,
+    kvpress_version,
+    nunchaku_available,
+    nunchaku_version,
+    sageattention_available,
+    sageattention_version,
+    triattention_available,
+    triattention_version,
+    wsl2_available,
+    wsl_cuda_available,
+    wsl_default_distro,
+    wsl_vllm_available,
+    wsl_vllm_version,
+)
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.binaries import (
     _json_subprocess,
@@ -59,6 +78,10 @@ def _initial_backend_capabilities() -> BackendCapabilities:
     llama_server_turbo_path = _resolve_llama_server_turbo()
     llama_cli_path = _resolve_llama_cli()
     mtplx_available, mtplx_python = _detect_mtplx()
+    # FU-056 Phase 1: prime accelerator flags during the placeholder phase
+    # too. The probes are cheap (single ``find_spec`` per package, no
+    # imports) so the UI gets accurate "Install" vs "Installed" state on
+    # first render without waiting for the full MLX subprocess probe.
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=False,
@@ -74,6 +97,23 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         vllmVersion=None,
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
+        nunchakuAvailable=nunchaku_available(),
+        nunchakuVersion=nunchaku_version(),
+        sageattentionAvailable=sageattention_available(),
+        sageattentionVersion=sageattention_version(),
+        dflashMlxAvailable=dflash_mlx_available(),
+        dflashMlxVersion=dflash_mlx_version(),
+        dflashCudaAvailable=dflash_cuda_available(),
+        dflashCudaVersion=dflash_cuda_version(),
+        triattentionAvailable=triattention_available(),
+        triattentionVersion=triattention_version(),
+        kvpressAvailable=kvpress_available(),
+        kvpressVersion=kvpress_version(),
+        wsl2Available=wsl2_available(),
+        # FU-056 Phase 8: WSL-detail probes deferred to the full probe
+        # below. They shell out to ``wsl --`` subprocesses which can
+        # take 5-8 s each on a cold service start — too slow for the
+        # placeholder path that primes the first UI render.
         probing=True,
     )
 
@@ -115,6 +155,18 @@ def _probe_native_backends() -> BackendCapabilities:
             or (llama_server_turbo_path and _llama_server_supports(llama_server_turbo_path, "--spec-type"))
         )
 
+    # FU-056 Phase 8: WSL2 + vLLM-bridge probes. ``wsl2_available`` is
+    # cheap (``wsl --status`` returns in <100ms on warm LxssManager);
+    # the three detail probes shell out via ``wsl --`` and can take a
+    # few seconds on a cold service start, so they're gated behind the
+    # ``wsl2_active`` short-circuit to avoid paying that cost on hosts
+    # that have no WSL at all.
+    wsl2_active = wsl2_available()
+    wsl_distro = wsl_default_distro() if wsl2_active else None
+    wsl_cuda = wsl_cuda_available() if wsl2_active else False
+    wsl_vllm = wsl_vllm_available() if wsl2_active else False
+    wsl_vllm_ver = wsl_vllm_version() if wsl2_active and wsl_vllm else None
+
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=mlx_available,
@@ -133,6 +185,25 @@ def _probe_native_backends() -> BackendCapabilities:
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
         ggufMtpAvailable=gguf_mtp_available,
+        # FU-056 Phase 1: per-accelerator import + version probes.
+        nunchakuAvailable=nunchaku_available(),
+        nunchakuVersion=nunchaku_version(),
+        sageattentionAvailable=sageattention_available(),
+        sageattentionVersion=sageattention_version(),
+        dflashMlxAvailable=dflash_mlx_available(),
+        dflashMlxVersion=dflash_mlx_version(),
+        dflashCudaAvailable=dflash_cuda_available(),
+        dflashCudaVersion=dflash_cuda_version(),
+        triattentionAvailable=triattention_available(),
+        triattentionVersion=triattention_version(),
+        kvpressAvailable=kvpress_available(),
+        kvpressVersion=kvpress_version(),
+        # FU-056 Phase 8 WSL bridge state (see note above).
+        wsl2Available=wsl2_active,
+        wslDistroName=wsl_distro,
+        wslCudaAvailable=wsl_cuda,
+        wslVllmAvailable=wsl_vllm,
+        wslVllmVersion=wsl_vllm_ver,
     )
 
 

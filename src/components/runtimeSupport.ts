@@ -31,6 +31,26 @@ export function isStrategyCompatible(strategyId: string, backend: string | null 
   return supported.some((candidate) => backend.includes(candidate));
 }
 
+/** FU-056 Phase 5: pick the right pip package name for DFlash given
+ * the active backend. Two distinct pip packages back the same feature:
+ *
+ *   - ``dflash-mlx`` — git+url to bstnxbt/dflash-mlx, Apple Silicon
+ *     MLX backend.
+ *   - ``dflash`` — PyPI ``dflash>=0.1.0``, CUDA / vLLM backend.
+ *
+ * The previous RuntimeControls install button hard-coded
+ * ``"dflash-mlx"``, which silently installed the wrong package on
+ * Windows / Linux CUDA boxes running vLLM. This helper picks the
+ * right one based on the engine string. Falls back to the MLX
+ * package for unknown backends — the install will fail loudly if
+ * the host doesn't match, which is better than silent no-ops.
+ */
+export function dflashPackageFor(backend: string | null | undefined): "dflash-mlx" | "dflash" {
+  if (backend && backend.toLowerCase().includes("vllm")) return "dflash";
+  return "dflash-mlx";
+}
+
+
 export function strategyIncompatReason(strategyId: string, backend: string | null | undefined): string | null {
   if (!backend || backend === "auto" || isStrategyCompatible(strategyId, backend)) return null;
   const engineLabel = backend.includes("gguf") || backend.includes("llama") ? "llama.cpp" : backend;

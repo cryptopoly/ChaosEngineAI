@@ -17,6 +17,7 @@ import type {
   TabId,
   TauriBackendInfo,
 } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   sizeLabel,
   downloadProgressLabel,
@@ -51,6 +52,10 @@ export interface ImageStudioTabProps {
   imageBusy: boolean;
   imageBusyLabel: string | null;
   backendOnline: boolean;
+  /** FU-056 Phase 3: capability snapshot used by the runtime banner's
+   * Performance boosters sub-section to gate Install / Installed pills
+   * on the accelerator cards. */
+  nativeBackends?: NativeBackendStatus;
   activeImageDownloads: Record<string, DownloadStatus>;
   imagePrompt: string;
   onImagePromptChange: (value: string) => void;
@@ -144,6 +149,7 @@ export function ImageStudioTab({
   imageBusy,
   imageBusyLabel,
   backendOnline,
+  nativeBackends,
   activeImageDownloads,
   imagePrompt,
   onImagePromptChange,
@@ -462,6 +468,7 @@ export function ImageStudioTab({
           installingImageRuntime={installingImageRuntime}
           gpuBundleJob={gpuBundleJob}
           onInstallImageRuntime={() => void handleInstallImageRuntime()}
+          nativeBackends={nativeBackends}
         />
       </Panel>
 

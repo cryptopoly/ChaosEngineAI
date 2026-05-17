@@ -701,6 +701,55 @@ def phase_6(cap: Capability) -> PhaseResult:
             return "pass", "", {"keys": sorted(payload.keys())[:8] if isinstance(payload, dict) else None}
         phase.checks.append(_check(name, _probe))
 
+    # FU-056 Phase 9: probe the new install-vllm-wsl status endpoint
+    # + the seven Phase 1 capability flags that the install panels
+    # gate on. The status endpoint is read-only (POST starts a job;
+    # GET returns the most-recent state, defaulting to ``idle``) so
+    # it's safe in this read-only phase.
+    def _vllm_wsl_status():
+        try:
+            with urllib.request.urlopen(
+                f"http://{_HOST}:{_PORT}/api/setup/install-vllm-wsl/status",
+                timeout=10.0,
+            ) as resp:
+                payload = json.loads(resp.read())
+        except Exception as exc:  # noqa: BLE001
+            return "fail", f"vllm-wsl status fetch failed: {exc}", {}
+        if not isinstance(payload, dict) or "phase" not in payload:
+            return "fail", "vllm-wsl status payload missing 'phase'", {}
+        return "pass", "", {"phase": payload.get("phase"), "done": payload.get("done")}
+
+    def _accelerator_flags():
+        try:
+            with urllib.request.urlopen(
+                f"http://{_HOST}:{_PORT}/api/health",
+                timeout=10.0,
+            ) as resp:
+                payload = json.loads(resp.read())
+        except Exception as exc:  # noqa: BLE001
+            return "fail", f"/api/health fetch failed: {exc}", {}
+        native = (payload or {}).get("nativeBackends") or {}
+        # The seven FU-056 Phase 1 flags + four Phase 8 WSL fields.
+        # Optional on the schema — older backends may not expose them.
+        # We don't assert any are True; we assert the keys are
+        # present so the frontend can read them without a fallback.
+        wanted = (
+            "nunchakuAvailable",
+            "sageattentionAvailable",
+            "dflashMlxAvailable",
+            "dflashCudaAvailable",
+            "triattentionAvailable",
+            "kvpressAvailable",
+            "wsl2Available",
+        )
+        missing = [k for k in wanted if k not in native]
+        if missing:
+            return "fail", f"nativeBackends missing FU-056 flags: {missing}", {}
+        return "pass", "", {"present_flags": len(wanted), "wsl2": native.get("wsl2Available")}
+
+    phase.checks.append(_check("vllm-wsl-status", _vllm_wsl_status))
+    phase.checks.append(_check("fu-056-capability-flags", _accelerator_flags))
+
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else "pass"
     return phase
@@ -844,7 +893,28 @@ def main(argv: list[str] | None = None) -> int:
         phase0 = phase_0(cap)
         phases.append(phase0)
         _write_reports(Path(args.report_dir), started, ended, phases, cap)
-        print("[e2e] backend not reachable; aborting", file=sys.stderr, flush=True)
+        # Comprehensive E2E runs against the installed ChaosEngineAI app,
+        # not a custom dev backend — so the actionable hint always points
+        # at "open the app". The headless dev path is mentioned as a
+        # fallback for contributors who already know it exists.
+        print("", file=sys.stderr, flush=True)
+        print(
+            f"[e2e] backend not reachable at http://{_HOST}:{_PORT}/api/health.",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            "[e2e] open the ChaosEngineAI app and re-run this command — the suite "
+            "exercises the production embedded runtime.",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            "[e2e] (advanced: `npm run tauri:dev` or `python -m backend_service.app "
+            f"--port {_PORT}` from .venv works too, but won't match the user-install path)",
+            file=sys.stderr,
+            flush=True,
+        )
         return 2
 
     phases: list[PhaseResult] = []

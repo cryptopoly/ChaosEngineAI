@@ -12,6 +12,8 @@ import {
   type InstallResult,
   type StorageTopResponse,
 } from "../../api";
+import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import { WslBridgePanel } from "./WslBridgePanel";
 
 // In-app troubleshooting panel. Surfaces OS, hardware, runtime paths,
 // GPU state, env vars, and the backend log tail without asking users to
@@ -413,6 +415,8 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
           </div>
         </div>
       ) : null}
+      <AcceleratorsBoostPack backendOnline={backendOnline} />
+      <WslBridgePanel backendOnline={backendOnline} />
       <StorageTopSection backendOnline={backendOnline} />
     </Panel>
   );

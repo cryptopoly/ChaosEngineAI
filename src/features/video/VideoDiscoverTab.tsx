@@ -6,12 +6,14 @@ import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons"
 import { Panel } from "../../components/Panel";
 import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
 import type {
+  SystemStats,
   TabId,
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
 import type { DiscoverSort } from "../../types/image";
 import type { VideoDiscoverTaskFilter } from "../../types/video";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   compactModelSizeLabel,
   compactReleaseLabel,
@@ -24,7 +26,14 @@ import {
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
+import { AcceleratorCard } from "../../components/AcceleratorCard";
+import {
+  getAccelerator,
+  getApplicableAccelerators,
+} from "../../components/acceleratorCatalog";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
 type SortDir = "asc" | "desc";
@@ -51,6 +60,13 @@ export interface VideoDiscoverTabProps {
   activeVideoDownloads: Record<string, DownloadStatus>;
   selectedVideoVariant: VideoModelVariant | null;
   fileRevealLabel: string;
+  /** FU-056 Phase 4: capability snapshot for the accelerator pills
+   * rendered next to each variant. Optional — older backends collapse
+   * pills to the "available" form. */
+  nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding mlx-video /
+   * LTX-2 (apple-only) variants on Win/Linux. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   longLiveStatus: VideoRuntimeStatus | null;
   installingLongLive: boolean;
   longLiveJob: LongLiveJobState | null;
@@ -235,6 +251,8 @@ export function VideoDiscoverTab({
   activeVideoDownloads,
   selectedVideoVariant,
   fileRevealLabel,
+  nativeBackends,
+  hostSystem,
   longLiveStatus,
   installingLongLive,
   longLiveJob,
@@ -269,6 +287,12 @@ export function VideoDiscoverTab({
           const memoryEstimate = videoDiscoverMemoryEstimate(variant);
           return { variant, status, memoryEstimate };
         })
+        .filter(({ variant }) =>
+          isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          ),
+        )
         .filter(({ status }) => statusFilter === "all" || status === statusFilter)
         .sort((left, right) => {
           if (videoDiscoverSort === "name") {
@@ -306,6 +330,7 @@ export function VideoDiscoverTab({
     [
       activeVideoDownloads,
       combinedVideoDiscoverResults,
+      hostSystem,
       installingLongLive,
       longLiveReady,
       sortDir,
@@ -600,6 +625,20 @@ export function VideoDiscoverTab({
                         {variant.styleTags.slice(0, 4).map((tag) => (
                           <span key={tag} className="badge subtle">{tag}</span>
                         ))}
+                        {/* FU-056 Phase 4: read-only accelerator pills.
+                            Install lives in Video Studio's runtime banner. */}
+                        {getApplicableAccelerators(variant.repo).map((acceleratorId) => {
+                          const meta = getAccelerator(acceleratorId);
+                          if (!meta) return null;
+                          return (
+                            <AcceleratorCard
+                              key={acceleratorId}
+                              meta={meta}
+                              capabilities={nativeBackends ?? null}
+                              variant="pill"
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                     <span>{variant.provider}</span>

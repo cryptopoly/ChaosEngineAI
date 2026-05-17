@@ -2193,6 +2193,38 @@ select.text-input {
   height: 100%;
 }
 
+/* FU-056 follow-up: Chat empty-state welcome banner. Sits inside the
+   ``.empty-state`` dashed container; gives users on a fresh install
+   a clear CTA to Discover instead of the silent "send a message and
+   the largest MLX model auto-downloads" failure mode. */
+.chat-empty-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 4px;
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+.chat-empty-banner-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.chat-empty-banner-body {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+.chat-empty-banner-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .loading-state-progress {
   display: flex;
   flex-direction: column;
@@ -4607,6 +4639,50 @@ select.text-input {
   gap: 6px;
   flex-wrap: wrap;
   padding: 6px 0;
+}
+
+/* FU-056 Phase 5: inline DFlash install nudge above the prompt
+   textarea. Same visual vocabulary as ``.torch-upgrade-pill`` so the
+   nudge reads as "optional acceleration available" rather than
+   alarming the user. */
+.composer-dflash-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(80, 140, 220, 0.10);
+  border: 1px solid rgba(80, 140, 220, 0.32);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--muted-strong);
+}
+.composer-dflash-hint-icon {
+  font-size: 0.95rem;
+}
+.composer-dflash-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+.composer-dflash-hint-button {
+  appearance: none;
+  border: 1px solid rgba(143, 180, 255, 0.45);
+  background: rgba(80, 140, 220, 0.20);
+  color: var(--accent-strong);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.composer-dflash-hint-button:hover:not(:disabled) {
+  background: rgba(80, 140, 220, 0.32);
+}
+.composer-dflash-hint-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .composer-image-thumb {
@@ -7780,6 +7856,207 @@ select.text-input {
   overflow-wrap: anywhere;
   max-height: 260px;
   overflow: auto;
+}
+
+/* -- FU-056 accelerator card --------------------------------------- */
+.accelerator-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+.accelerator-card.accelerator-card-installed {
+  background: rgba(80, 180, 100, 0.06);
+  border-color: rgba(80, 180, 100, 0.32);
+}
+.accelerator-card.accelerator-card-incompatible {
+  opacity: 0.55;
+}
+.accelerator-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.accelerator-card-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.accelerator-card-claim {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 0.86rem;
+}
+.accelerator-card-applies {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.accelerator-card-applies-label {
+  color: var(--muted-strong);
+  font-weight: 500;
+}
+.accelerator-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.accelerator-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+.accelerator-card-meta-follow-up {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--accent);
+}
+.accelerator-card-status {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+.accelerator-card-status-installed {
+  background: rgba(80, 180, 100, 0.22);
+  color: #8fd99e;
+}
+.accelerator-card-status-installing {
+  background: rgba(220, 170, 80, 0.22);
+  color: #e7c382;
+}
+.accelerator-card-status-failed {
+  background: rgba(220, 100, 100, 0.25);
+  color: #ec9c9c;
+}
+.accelerator-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.accelerator-card-action {
+  appearance: none;
+  border: 1px solid rgba(143, 180, 255, 0.45);
+  background: rgba(80, 140, 220, 0.18);
+  color: var(--accent-strong);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.accelerator-card-action:hover:not(:disabled) {
+  background: rgba(80, 140, 220, 0.30);
+}
+.accelerator-card-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.accelerator-card-action-primary {
+  font-weight: 600;
+}
+.accelerator-card-log {
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+.accelerator-card-log-summary {
+  cursor: pointer;
+  color: var(--muted-strong);
+}
+.accelerator-card-log-error {
+  margin: 6px 0 4px 0;
+  color: #ec9c9c;
+  font-size: 0.82rem;
+}
+.accelerator-card-log-output {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(226, 232, 240, 0.92);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.74rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* Compact pill variant — for catalog variant cards (Phase 3 / 4). */
+.accelerator-card-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 9px;
+  background: rgba(80, 140, 220, 0.12);
+  border: 1px solid rgba(80, 140, 220, 0.32);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  flex-direction: row;
+}
+.accelerator-card-pill.accelerator-card-installed {
+  background: rgba(80, 180, 100, 0.10);
+  border-color: rgba(80, 180, 100, 0.32);
+}
+.accelerator-card-pill-label {
+  font-weight: 500;
+  color: var(--text);
+}
+.accelerator-card-action-pill {
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  border-radius: 999px;
+}
+
+/* Table-row variant — for the Diagnostics Boost Pack (Phase 6). */
+tr.accelerator-card-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+tr.accelerator-card-row.accelerator-card-installed {
+  background: rgba(80, 180, 100, 0.04);
+}
+tr.accelerator-card-row.accelerator-card-incompatible {
+  opacity: 0.55;
+}
+.accelerator-card-row-label {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.accelerator-card-row-label strong {
+  font-weight: 600;
+}
+.accelerator-card-row-applies {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.accelerator-card-row-size,
+.accelerator-card-row-platform {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.accelerator-card-row-status,
+.accelerator-card-row-action {
+  padding: 8px 10px;
+  text-align: right;
 }
 
 /* -- Diagnostics panel --------------------------------------------- */

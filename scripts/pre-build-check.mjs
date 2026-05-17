@@ -177,9 +177,9 @@ console.log("[4/8] Licence notices...");
 console.log();
 
 // ------------------------------------------------------------------
-// 5. Cache strategy validation
+// 5. Cache strategy + FU-056 accelerator catalog validation
 // ------------------------------------------------------------------
-console.log("[5/8] Cache strategy validation...");
+console.log("[5/8] Cache strategy + accelerator catalog validation...");
 {
   const probe = `
 from cache_compression import registry
@@ -214,6 +214,65 @@ print('OK')
     fail(`Cache strategy probe crashed (exit ${result.code}): ${out.trim()}`);
   } else {
     pass("Cache strategy validation");
+  }
+}
+// FU-056 Phase 9: catalog ↔ backend invariant. Every accelerator the
+// frontend catalog promises must have (a) a matching pip-package
+// alias in the backend's _INSTALLABLE_PIP_PACKAGES allow-list, and
+// (b) a capability flag on BackendCapabilities so the UI can render
+// "Installed ✓" state. Probe walks the frontend TS source for the
+// catalog rows and cross-checks both surfaces from the backend side.
+{
+  const catalogPath = path.join(
+    REPO_ROOT,
+    "src",
+    "components",
+    "acceleratorCatalog.ts",
+  );
+  if (!existsSync(catalogPath)) {
+    fail(`acceleratorCatalog.ts missing at ${catalogPath}`);
+  } else {
+    const catalog = readFileSync(catalogPath, "utf8");
+    // Pull every (pipPackage, capabilityField) pair out of the catalog
+    // entries. The shape is "    pipPackage: \"X\"," — the TS parser
+    // is dependency-free here on purpose; the catalog file shape is
+    // stable and a regex catches drift just as well.
+    const pipMatches = [...catalog.matchAll(/pipPackage:\s*"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    const capMatches = [...catalog.matchAll(/capabilityField:\s*"([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+
+    const probe = `
+import sys
+from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+from backend_service.inference.base import BackendCapabilities
+
+# Frontend catalog rows the pre-build script extracted from TS.
+PIP_PKGS = ${JSON.stringify(pipMatches)}
+CAP_FIELDS = ${JSON.stringify(capMatches)}
+
+missing_pip = [p for p in PIP_PKGS if p not in _INSTALLABLE_PIP_PACKAGES]
+caps_fields = set(BackendCapabilities.__dataclass_fields__.keys())
+missing_cap = [c for c in CAP_FIELDS if c not in caps_fields]
+
+if missing_pip:
+    print(f"INVALID: catalog pipPackage(s) missing from _INSTALLABLE_PIP_PACKAGES: {missing_pip}")
+if missing_cap:
+    print(f"INVALID: catalog capabilityField(s) missing from BackendCapabilities: {missing_cap}")
+if not (missing_pip or missing_cap):
+    print(f"OK: {len(PIP_PKGS)} accelerator(s), all wired")
+`.trim();
+    const result = capture(venvPython(), ["-c", probe]);
+    const out = `${result.stdout}\n${result.stderr}`;
+    if (out.includes("INVALID")) {
+      fail(`Accelerator catalog invariant: ${out.trim()}`);
+    } else if (!result.ok) {
+      fail(`Accelerator catalog probe crashed (exit ${result.code}): ${out.trim()}`);
+    } else {
+      pass(`Accelerator catalog ↔ backend (${pipMatches.length} entries)`);
+    }
   }
 }
 console.log();

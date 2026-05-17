@@ -6,6 +6,7 @@ import { InstallLogPanel } from "./InstallLogPanel";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
+  dflashPackageFor,
   isStrategyCompatible,
   resolveDflashSupport,
   strategyIncompatReason,
@@ -146,6 +147,12 @@ interface RuntimeControlsProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: pass ``isAppleSilicon=true`` to surface the
+   * MTPLX block (Apple-Silicon-only). Defaults to ``false`` (hidden)
+   * on Windows / Linux where MTPLX can't run — the install button
+   * would error and the checkbox would render disabled with no path
+   * to recovery. Pass true on Darwin arm64 hosts only. */
+  isAppleSilicon?: boolean;
 }
 
 function StrategyInstallTerminal({
@@ -246,6 +253,7 @@ export function RuntimeControls({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
 }: RuntimeControlsProps) {
   const { t } = useTranslation("runtime");
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
@@ -658,18 +666,27 @@ export function RuntimeControls({
             />
             <span>{t("dflash.label", { defaultValue: "DFlash" })}</span>
           </label>
-          {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (
-            <button
-              type="button"
-              className="cache-strategy-install-btn"
-              disabled={installingPackage != null}
-              onClick={() => onInstallPackage("dflash-mlx")}
-            >
-              {installingPackage === "dflash-mlx"
-                ? t("dflash.installing", { defaultValue: "Installing..." })
-                : t("dflash.installButton", { defaultValue: "Install DFlash" })}
-            </button>
-          ) : null}
+          {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (() => {
+            // FU-056 Phase 5: pick the right pip package by backend.
+            // MLX backend → ``dflash-mlx`` (Apple Silicon git+url);
+            // vLLM backend → ``dflash`` (PyPI CUDA wheel). Previously
+            // hard-coded to ``dflash-mlx`` which silently installed
+            // the wrong package on Windows / Linux CUDA boxes.
+            const pkg = dflashPackageFor(selectedBackend);
+            const inFlight = installingPackage === pkg;
+            return (
+              <button
+                type="button"
+                className="cache-strategy-install-btn"
+                disabled={installingPackage != null}
+                onClick={() => onInstallPackage(pkg)}
+              >
+                {inFlight
+                  ? t("dflash.installing", { defaultValue: "Installing..." })
+                  : t("dflash.installButton", { defaultValue: "Install DFlash" })}
+              </button>
+            );
+          })() : null}
           <button
             type="button"
             className="cache-strategy-info-btn"
@@ -742,13 +759,15 @@ export function RuntimeControls({
             <span className="slider-value">{settings.treeBudget ?? 0}</span>
           </div>
         ) : null}
-        {/* MTPLX: native in-model MTP speculative decoding. Hidden when the
-            model has no MTP heads (no install button helps that case). Shown
-            with an install button when the model is supported but the venv
-            is not yet installed. Uses the same speculativeDecoding field as
-            DFlash — the controller auto-routes to MtplxEngine when both the
-            model has MTP heads and the venv is installed. */}
-        {mtplxInfo?.modelSupported ? (
+        {/* MTPLX: native in-model MTP speculative decoding. Apple-Silicon-only —
+            the engine runs in an isolated venv at ~/.chaosengine/mtplx-venv
+            and requires the MLX framework which has no Linux/Windows build.
+            Hidden entirely off-platform (FU-056 follow-up): the install
+            button would error + the checkbox would render disabled with no
+            user-actionable recovery path. Apple Silicon hosts still need the
+            model itself to advertise MTP heads (``modelSupported``) — no
+            install button rescues a model without baked-in MTP heads. */}
+        {isAppleSilicon && mtplxInfo?.modelSupported ? (
           <div className="check-row">
             <label
               className="check-row"
@@ -802,7 +821,7 @@ export function RuntimeControls({
         {mtplxJob && mtplxJob.phase !== "idle" && mtplxJob.phase !== "done" ? (
           <InstallLogPanel job={mtplxJob} variant="mtplx" />
         ) : null}
-        {expandedInfo === "mtplx" && mtplxInfo?.modelSupported ? (
+        {isAppleSilicon && expandedInfo === "mtplx" && mtplxInfo?.modelSupported ? (
           <div className="cache-strategy-info-panel" style={{ marginTop: 4 }}>
             <p>
               {t("mtplx.body", {

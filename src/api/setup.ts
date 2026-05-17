@@ -177,6 +177,52 @@ export async function getLongLiveInstallStatus(): Promise<LongLiveJobState> {
 }
 
 // ---------------------------------------------------------------------------
+// FU-056 Phase 8: vLLM-in-WSL install (Windows hosts only)
+//
+// Same background-job shape as LongLiveJobState so the existing
+// InstallLogPanel renders it without modification. The backend
+// endpoint is gated on ``sys.platform == 'win32'`` and rejects with
+// HTTP 400 on macOS / Linux — callers should gate the UI on
+// ``nativeBackends.wsl2Available`` rather than letting the user POST.
+// ---------------------------------------------------------------------------
+
+export interface VllmWslAttempt {
+  phase: string;
+  package: string;
+  ok: boolean;
+  output: string;
+  // Always undefined for vllm-wsl attempts — declared so the shared
+  // ``InstallLogPanel`` reads it on the discriminated union without a
+  // per-job branch. Same shape carrier the LongLive / MTPLX attempts
+  // use.
+  indexUrl?: string;
+}
+
+export interface VllmWslJobState {
+  id: string;
+  phase: "idle" | "preflight" | "installing" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: VllmWslAttempt[];
+  done: boolean;
+}
+
+export async function startVllmWslInstall(): Promise<VllmWslJobState> {
+  return await postJson<VllmWslJobState>("/api/setup/install-vllm-wsl", {}, 15000);
+}
+
+export async function getVllmWslInstallStatus(): Promise<VllmWslJobState> {
+  return await fetchJson<VllmWslJobState>("/api/setup/install-vllm-wsl/status", 10000);
+}
+
+// ---------------------------------------------------------------------------
 // mlx-video Wan install (FU-025) — Apple Silicon only
 // ---------------------------------------------------------------------------
 //

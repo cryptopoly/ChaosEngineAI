@@ -1,14 +1,18 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { GpuBundleJobState, LongLiveJobState, MtplxJobState } from "../api";
+import type { GpuBundleJobState, LongLiveJobState, MtplxJobState, VllmWslJobState } from "../api";
 
-// The panel renders any background install job — GPU bundle, LongLive, or
-// MTPLX. All share the core fields (phase / message / attempts / progress
-// counters / targetDir). Treating the prop as a union keeps all surfaces
-// using one component without duplicating auto-scroll, pip-noise filter, and
-// terminal layout.
-export type InstallJobState = GpuBundleJobState | LongLiveJobState | MtplxJobState;
+// The panel renders any background install job — GPU bundle, LongLive,
+// MTPLX, or WSL vLLM. All share the core fields (phase / message /
+// attempts / progress counters / targetDir). Treating the prop as a
+// union keeps all surfaces using one component without duplicating
+// auto-scroll, pip-noise filter, and terminal layout.
+export type InstallJobState =
+  | GpuBundleJobState
+  | LongLiveJobState
+  | MtplxJobState
+  | VllmWslJobState;
 
 // Optional fields read by the meta line. ``GpuBundleJobState`` has these;
 // ``LongLiveJobState`` doesn't. Centralised here so the meta renderer
@@ -25,7 +29,7 @@ interface InstallLogPanelProps {
   job: InstallJobState | null;
   // Title shown in the collapsed summary. Defaults to the GPU bundle
   // wording so existing call sites don't need to pass it.
-  variant?: "gpu-bundle" | "longlive" | "mtplx";
+  variant?: "gpu-bundle" | "longlive" | "mtplx" | "vllm-wsl";
 }
 
 // Single scrollable terminal rendering the GPU bundle install progress.
@@ -100,11 +104,13 @@ function InstallLogMeta({ job, t }: { job: InstallJobState; t: TFunction }) {
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive" | "mtplx", t: TFunction): string {
+function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive" | "mtplx" | "vllm-wsl", t: TFunction): string {
   const noun = variant === "longlive"
     ? t("installLog.statusNoun.longlive", { defaultValue: "LongLive install" })
     : variant === "mtplx"
     ? t("installLog.statusNoun.mtplx", { defaultValue: "MTPLX install" })
+    : variant === "vllm-wsl"
+    ? t("installLog.statusNoun.vllmWsl", { defaultValue: "vLLM-in-WSL install" })
     : t("installLog.statusNoun.gpuBundle", { defaultValue: "Install" });
   if (job.phase === "error" || job.error) return t("installLog.status.failed", { noun, defaultValue: `${noun} failed — see log` });
   if (job.phase === "done") return t("installLog.status.complete", { noun, defaultValue: `${noun} complete — see log` });

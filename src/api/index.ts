@@ -503,6 +503,7 @@ export {
   getMtplxInstallStatus,
   getMtplxStatus,
   getTorchUpgradeStatus,
+  getVllmWslInstallStatus,
   getWanInstallStatus,
   getWanInventory,
   installCudaTorch,
@@ -513,6 +514,7 @@ export {
   startLongLiveInstall,
   startMtplxInstall,
   startTorchUpgrade,
+  startVllmWslInstall,
   startWanInstall,
 } from "./setup";
 export type {
@@ -535,6 +537,8 @@ export type {
   TorchUpgradeType,
   TorchUpgradeUnavailableReason,
   TurboUpdateInfo,
+  VllmWslAttempt,
+  VllmWslJobState,
   WanConvertStatusFields,
   WanInstallAttempt,
   WanInstallJobState,

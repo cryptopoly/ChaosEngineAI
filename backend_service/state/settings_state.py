@@ -104,6 +104,7 @@ def settings_payload(
         # alongside the override input so users always know where
         # models are actually landing.
         "hfCachePath": str(state.settings.get("hfCachePath") or ""),
+        "favoriteModelRefs": list(state.settings.get("favoriteModelRefs") or []),
     }
 
 
@@ -138,6 +139,9 @@ def update_settings(
             state.settings.get("videoOutputsDirectory") or ""
         )
         next_settings["hfCachePath"] = str(state.settings.get("hfCachePath") or "")
+        next_settings["favoriteModelRefs"] = list(
+            state.settings.get("favoriteModelRefs") or []
+        )
 
         if request.modelDirectories is not None:
             next_settings["modelDirectories"] = _normalize_model_directories(
@@ -233,6 +237,17 @@ def update_settings(
                     detail=f"{label} must be an absolute path or start with ~.",
                 )
             next_settings[field_name] = cleaned
+
+        if request.favoriteModelRefs is not None:
+            seen: set[str] = set()
+            cleaned_favs: list[str] = []
+            for raw_ref in request.favoriteModelRefs:
+                ref = str(raw_ref or "").strip()
+                if not ref or ref in seen:
+                    continue
+                seen.add(ref)
+                cleaned_favs.append(ref)
+            next_settings["favoriteModelRefs"] = cleaned_favs
 
         data_migration: dict[str, Any] | None = None
         restart_required_for_data_dir = False

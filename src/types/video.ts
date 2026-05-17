@@ -48,6 +48,19 @@ export interface VideoModelVariant {
   estimatedGenerationSeconds: number | null;
   onDiskBytes?: number | null;
   onDiskGb?: number | null;
+  /** FU-054: per-file size for GGUF-pinned variants. ``onDiskBytes`` is the
+   * shared repo dir total; ``ggufFileBytes`` is just this quant's
+   * ``ggufFile``. Three Q4/Q6/Q8 rows of the same repo each see the same
+   * ``onDiskBytes`` but distinct ``ggufFileBytes``. */
+  ggufFileBytes?: number | null;
+  ggufFileGb?: number | null;
+  /** FU-054: count of other catalog variants that resolve to the same
+   * on-disk repo. ``> 0`` means deleting this variant's snapshot dir would
+   * also affect siblings — power the "shares storage" badge + scope the
+   * delete confirmation. */
+  sharedRepoSiblings?: number | null;
+  sharedRepoSiblingIds?: string[];
+  sharedRepoKey?: string | null;
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;

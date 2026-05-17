@@ -69,6 +69,24 @@ export interface MyModelsTabProps {
   librarySortDir: "asc" | "desc";
   onLibrarySortKeyChange: (key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") => void;
   onLibrarySortDirChange: (dir: "asc" | "desc") => void;
+  // FU-052 follow-up: starred model refs + toggle handler. ``favoriteModelRefs``
+  // is the persisted list from settings; ``onToggleFavoriteModel`` flips the
+  // membership of a single canonical ref and writes the new list back.
+  favoriteModelRefs?: string[];
+  onToggleFavoriteModel?: (ref: string) => void;
+}
+
+function rowFavoriteRef(row: LibraryRow): string | null {
+  // Canonical ref used to identify a model for favouriting. Prefer the
+  // inferred HF repo (matches what other parts of the UI use to identify
+  // a model), fall back to the matched variant repo, then to the local
+  // path. Empty strings collapse to ``null``.
+  const repo = inferHfRepoFromLocalPath(row.item.path)
+    ?? row.matchedVariant?.repo
+    ?? (row.item.name.includes("/") ? row.item.name : null);
+  if (repo && repo.trim()) return repo.trim();
+  if (row.item.path) return row.item.path;
+  return null;
 }
 
 export function MyModelsTab({
@@ -99,7 +117,10 @@ export function MyModelsTab({
   librarySortDir,
   onLibrarySortKeyChange,
   onLibrarySortDirChange,
+  favoriteModelRefs,
+  onToggleFavoriteModel,
 }: MyModelsTabProps) {
+  const favoriteRefSet = new Set(favoriteModelRefs ?? []);
   const { t } = useTranslation("library");
   function toggleLibrarySort(key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") {
     if (librarySortKey === key) {
@@ -293,6 +314,21 @@ export function MyModelsTab({
   if (strategyFilter) {
     capFilteredLibrary = capFilteredLibrary.filter((row) => modelSupportsStrategy(row, strategyFilter));
   }
+  if (favoriteRefSet.size > 0) {
+    // Lift starred rows to the top. Preserves the user's chosen sort
+    // direction within each band (favourites + non-favourites) so the
+    // sort header indicators still mean what they say.
+    capFilteredLibrary = [
+      ...capFilteredLibrary.filter((row) => {
+        const ref = rowFavoriteRef(row);
+        return ref ? favoriteRefSet.has(ref) : false;
+      }),
+      ...capFilteredLibrary.filter((row) => {
+        const ref = rowFavoriteRef(row);
+        return ref ? !favoriteRefSet.has(ref) : true;
+      }),
+    ];
+  }
   const allLibraryFormats = filteredLibraryRows.map(({ displayFormat }) => displayFormat);
   const allLibraryBackends = filteredLibraryRows.map(({ displayBackend }) => displayBackend);
 
@@ -465,6 +501,21 @@ export function MyModelsTab({
                         <StatusIcon status={rowStatus.kind} label={rowStatus.label} detail={rowStatus.detail} />
                       </span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const favRef = rowFavoriteRef(row);
+                          if (!favRef || !onToggleFavoriteModel) return null;
+                          const isFav = favoriteRefSet.has(favRef);
+                          return (
+                            <IconActionButton
+                              icon={isFav ? "star" : "starOutline"}
+                              label={isFav
+                                ? t("myModels.action.unstarModel", { defaultValue: "Remove from favourites" })
+                                : t("myModels.action.starModel", { defaultValue: "Mark as favourite" })}
+                              className={isFav ? "action-favorite action-favorite--on" : "action-favorite"}
+                              onClick={() => onToggleFavoriteModel(favRef)}
+                            />
+                          );
+                        })()}
                         {hasDownloadOverlay && repo ? (
                           <>
                             {isDownloading ? (

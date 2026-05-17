@@ -545,6 +545,7 @@ export type {
 export {
   fetchDiagnosticsLogTail,
   fetchDiagnosticsSnapshot,
+  fetchStorageTop,
   getModelMoveStatus,
   getStorageSettings,
   reextractRuntime,
@@ -557,6 +558,8 @@ export type {
   ModelMoveJobState,
   ReextractRuntimeResult,
   StorageSettingsSnapshot,
+  StorageTopEntry,
+  StorageTopResponse,
   UpdateStoragePathResult,
 } from "./admin";
 

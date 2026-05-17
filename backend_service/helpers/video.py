@@ -125,11 +125,63 @@ def _video_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
             on_disk_bytes = _snapshot_on_disk_bytes(snapshot_dir)
             enriched["onDiskBytes"] = on_disk_bytes
             enriched["onDiskGb"] = _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None
+            # FU-054: per-file size for GGUF-pinned variants. Three rows
+            # like Wan2.2-TI2V-5B-GGUF Q4_K_M / Q6_K / Q8_0 each report the
+            # same ``onDiskBytes`` for the shared repo dir (~12 GB), which
+            # masks per-quant footprint (3.2 / 3.9 / 5.0 GB). The frontend
+            # prefers ``ggufFileBytes`` over ``onDiskBytes`` when present.
+            gguf_file = str(enriched.get("ggufFile") or "").strip()
+            gguf_repo_id = str(enriched.get("ggufRepo") or "").strip() or repo
+            gguf_file_bytes: int | None = None
+            if gguf_file and gguf_repo_id:
+                gguf_snapshot = _hf_repo_snapshot_dir(gguf_repo_id)
+                if gguf_snapshot is not None:
+                    candidate = Path(gguf_snapshot) / gguf_file
+                    try:
+                        gguf_file_bytes = candidate.stat().st_size if candidate.exists() else None
+                    except OSError:
+                        gguf_file_bytes = None
+            enriched["ggufFileBytes"] = gguf_file_bytes
+            enriched["ggufFileGb"] = _bytes_to_gb(gguf_file_bytes) if gguf_file_bytes else None
             variants.append(enriched)
+        # FU-054: annotate same-repo siblings. Variants that resolve to the
+        # same on-disk repo dir (e.g. three GGUF quants of the same upstream
+        # repo) get ``sharedRepoSiblings`` so the UI can render the
+        # "shares storage with N other variants" badge + power the delete
+        # confirmation scope.
+        _annotate_shared_repo_siblings(variants)
         payload = dict(family)
         payload["variants"] = variants
         families.append(payload)
     return filter_mlx_only_families(families, on_apple_silicon=is_apple_silicon())
+
+
+def _annotate_shared_repo_siblings(variants: list[dict[str, Any]]) -> None:
+    by_group: dict[str, list[dict[str, Any]]] = {}
+    for variant in variants:
+        group_key = (
+            str(variant.get("ggufRepo") or "").strip()
+            or str(variant.get("primaryLocalRepo") or "").strip()
+            or str(variant.get("repo") or "").strip()
+        )
+        if not group_key:
+            continue
+        by_group.setdefault(group_key, []).append(variant)
+    for group_key, group in by_group.items():
+        if len(group) < 2:
+            for variant in group:
+                variant["sharedRepoSiblings"] = 0
+                variant["sharedRepoSiblingIds"] = []
+            continue
+        for variant in group:
+            siblings = [
+                str(other.get("id") or "")
+                for other in group
+                if other is not variant and other.get("id")
+            ]
+            variant["sharedRepoSiblings"] = len(siblings)
+            variant["sharedRepoSiblingIds"] = siblings
+            variant["sharedRepoKey"] = group_key
 
 
 def _find_video_variant(model_id: str) -> dict[str, Any] | None:
@@ -242,7 +294,54 @@ def _video_variant_validation_error(variant: dict[str, Any]) -> str | None:
     text_error = _video_variant_mlx_text_components_validation_error(variant)
     if text_error:
         return text_error
+    distill_error = _distill_transformer_validation_error(variant)
+    if distill_error:
+        return distill_error
     return _video_variant_gguf_validation_error(variant)
+
+
+def _distill_transformer_validation_error(variant: dict[str, Any]) -> str | None:
+    """FU-053: distill variants pin their distinguishing weights via a
+    separate ``distillTransformerRepo`` + high/low-noise filenames (the
+    FU-019 swap mechanism). The base ``repo`` validator is satisfied by
+    the un-distilled base download, so without this check both distill
+    BF16 and distill FP8 catalog variants light up "installed" the
+    moment the base repo lands on disk — even when the distill weights
+    were never fetched. Returns an error string when the variant
+    declares a distill repo but the required safetensors aren't there.
+    """
+    distill_repo = str(variant.get("distillTransformerRepo") or "").strip()
+    if not distill_repo:
+        return None
+    high_file = str(variant.get("distillTransformerHighNoiseFile") or "").strip()
+    low_file = str(variant.get("distillTransformerLowNoiseFile") or "").strip()
+    if not high_file and not low_file:
+        return None
+    snapshot_dir = _hf_repo_snapshot_dir(distill_repo)
+    if snapshot_dir is None:
+        return (
+            f"Distill weights repo {distill_repo} is not downloaded. "
+            f"Download it (both the high-noise and low-noise expert files) "
+            "to mark this variant installed."
+        )
+    snapshot_path = Path(snapshot_dir)
+    missing: list[str] = []
+    for expected in (high_file, low_file):
+        if not expected:
+            continue
+        candidate = snapshot_path / expected
+        try:
+            present = candidate.exists() or candidate.is_symlink()
+        except OSError:
+            present = False
+        if not present:
+            missing.append(expected)
+    if missing:
+        return (
+            f"Distill weights repo {distill_repo} is partially downloaded — "
+            f"missing: {', '.join(missing)}. Re-download the distill expert files."
+        )
+    return None
 
 
 def _video_variant_mlx_text_components_validation_error(variant: dict[str, Any]) -> str | None:

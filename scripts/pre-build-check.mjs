@@ -231,8 +231,8 @@ console.log("[6/8] Upstream dependency check...");
     const localCommit = readFileSync(turboVersionFile, "utf8").split(/\r?\n/)[0]?.trim() ?? "";
     const lsRemote = capture("git", [
       "ls-remote",
-      "https://github.com/johndpope/llama-cpp-turboquant.git",
-      "refs/heads/feature/planarquant-kv-cache",
+      "https://github.com/TheTom/llama-cpp-turboquant.git",
+      "refs/heads/feature/turboquant-kv-cache",
     ]);
     const remoteCommit = lsRemote.stdout.split(/\s+/)[0]?.trim() ?? "";
     if (remoteCommit && localCommit !== remoteCommit) {

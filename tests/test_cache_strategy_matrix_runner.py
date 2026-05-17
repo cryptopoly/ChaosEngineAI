@@ -38,6 +38,9 @@ def _caps(
     available: set[str] | None = None,
     dflash: bool = True,
     ddtree: bool = True,
+    mtplx: bool = True,
+    gguf_mtp: bool = True,
+    vllm: bool = True,
     turbo: bool = True,
     library: set[str] | None = None,
 ) -> "runner.BackendCapabilities":
@@ -45,11 +48,18 @@ def _caps(
         available_strategies=available or {"native", "turboquant", "triattention"},
         dflash_available=dflash,
         ddtree_available=ddtree,
+        mtplx_available=mtplx,
+        gguf_mtp_available=gguf_mtp,
+        vllm_available=vllm,
         has_turbo_binary=turbo,
         library_refs=library or {
             runner.SMALL_MLX,
             runner.MID_MLX_DFLASH_CAPABLE,
+            runner.MID_MLX_MTPLX_CAPABLE,
             runner.SMALL_GGUF,
+            runner.LARGE_GGUF_MTP,
+            runner.VLLM_SMALL,
+            runner.VLLM_MID,
         },
     )
 
@@ -305,7 +315,7 @@ class MatrixDefinitionTests(unittest.TestCase):
 
     def test_matrix_backends_are_supported(self):
         for cell in runner.MATRIX:
-            self.assertIn(cell.backend, ("mlx", "gguf"))
+            self.assertIn(cell.backend, ("mlx", "gguf", "vllm"))
 
 
 if __name__ == "__main__":

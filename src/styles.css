@@ -3122,6 +3122,79 @@ select.text-input {
   color: #0f1215;
 }
 
+.action-icon-button.action-favorite {
+  color: var(--muted-strong);
+}
+
+.action-icon-button.action-favorite:hover {
+  color: #fbbf24;
+}
+
+.action-icon-button.action-favorite.action-favorite--on {
+  color: #fbbf24;
+}
+
+.action-icon-button.action-favorite.action-favorite--on:hover {
+  color: #facc15;
+}
+
+.shared-repo-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  font-size: 0.72em;
+  font-weight: 500;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.storage-top-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.storage-top-head,
+.storage-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) 90px 140px minmax(0, 3fr);
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.storage-top-head {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--muted-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.storage-top-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9em;
+}
+
+.storage-top-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.storage-top-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85em;
+}
+
 .status-icon-pill {
   width: 28px;
   height: 28px;

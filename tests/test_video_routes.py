@@ -212,6 +212,84 @@ class VideoCatalogRouteTests(unittest.TestCase):
                 )
 
 
+class DistillTransformerValidatorTests(unittest.TestCase):
+    """FU-053: distill variants share a base ``repo`` with their non-distill
+    sibling but route their distinguishing weights via
+    ``distillTransformerRepo`` + filenames. The validator must check those
+    files exist, not just the base repo.
+    """
+
+    def test_returns_none_when_variant_has_no_distill_repo(self):
+        from backend_service.helpers.video import _distill_transformer_validation_error
+        self.assertIsNone(
+            _distill_transformer_validation_error(
+                {"repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers"}
+            )
+        )
+
+    def test_flags_missing_distill_snapshot(self):
+        from backend_service.helpers.video import _distill_transformer_validation_error
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["HF_HUB_CACHE"] = tmp
+            error = _distill_transformer_validation_error({
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+            })
+            self.assertIsNotNone(error)
+            self.assertIn("lightx2v/Wan2.2-Distill-Models", error)
+            self.assertIn("not downloaded", error)
+
+    def test_flags_partial_distill_snapshot(self):
+        from backend_service.helpers.video import _distill_transformer_validation_error
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["HF_HUB_CACHE"] = tmp
+            # Stage a partial snapshot: only the high-noise expert present.
+            distill_dir = (
+                Path(tmp)
+                / "models--lightx2v--Wan2.2-Distill-Models"
+                / "snapshots"
+                / "abc123"
+            )
+            distill_dir.mkdir(parents=True)
+            (distill_dir / "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors").write_bytes(b"x")
+            (Path(tmp) / "models--lightx2v--Wan2.2-Distill-Models" / "refs").mkdir()
+            (Path(tmp) / "models--lightx2v--Wan2.2-Distill-Models" / "refs" / "main").write_text("abc123")
+            error = _distill_transformer_validation_error({
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+            })
+            self.assertIsNotNone(error)
+            self.assertIn("partially downloaded", error)
+            self.assertIn("low_noise_lightx2v_4step.safetensors", error)
+
+    def test_returns_none_when_both_distill_files_present(self):
+        from backend_service.helpers.video import _distill_transformer_validation_error
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["HF_HUB_CACHE"] = tmp
+            distill_dir = (
+                Path(tmp)
+                / "models--lightx2v--Wan2.2-Distill-Models"
+                / "snapshots"
+                / "abc123"
+            )
+            distill_dir.mkdir(parents=True)
+            (distill_dir / "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors").write_bytes(b"x")
+            (distill_dir / "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors").write_bytes(b"x")
+            (Path(tmp) / "models--lightx2v--Wan2.2-Distill-Models" / "refs").mkdir()
+            (Path(tmp) / "models--lightx2v--Wan2.2-Distill-Models" / "refs" / "main").write_text("abc123")
+            error = _distill_transformer_validation_error({
+                "repo": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+                "distillTransformerRepo": "lightx2v/Wan2.2-Distill-Models",
+                "distillTransformerHighNoiseFile": "wan2.2_i2v_A14b_high_noise_lightx2v_4step.safetensors",
+                "distillTransformerLowNoiseFile": "wan2.2_i2v_A14b_low_noise_lightx2v_4step.safetensors",
+            })
+            self.assertIsNone(error)
+
+
 class VideoRuntimeRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client, self.tempdir, self.env_snapshot = make_client()

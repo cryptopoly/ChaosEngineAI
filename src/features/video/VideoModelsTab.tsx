@@ -51,7 +51,10 @@ function releaseSortKey(variant: VideoModelVariant): string {
 }
 
 function sizeSortKey(variant: VideoModelVariant): number | null {
-  const candidates = [variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
+  // FU-054: prefer per-file size (``ggufFileGb``) for GGUF-pinned variants
+  // so three quants of the same shared repo dir sort by actual quant
+  // footprint, not by the shared repo total.
+  const candidates = [variant.ggufFileGb, variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
   for (const value of candidates) {
     if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
   }
@@ -403,6 +406,18 @@ export function VideoModelsTab({
                           </div>
                           <span title={sizeTitle || undefined}>
                             {compactModelSizeLabel(primarySizeLabel)}
+                            {(variant.sharedRepoSiblings ?? 0) > 0 && isComplete ? (() => {
+                              const siblingCount = variant.sharedRepoSiblings ?? 0;
+                              const repoLabel = variant.sharedRepoKey ?? variant.repo;
+                              return (
+                                <small
+                                  className="shared-repo-badge"
+                                  title={`Shares storage with ${siblingCount} other variant(s) of ${repoLabel}. Deleting this row removes the entire repo dir, affecting siblings.`}
+                                >
+                                  {`shares storage · +${siblingCount}`}
+                                </small>
+                              );
+                            })() : null}
                           </span>
                           <span className="media-model-memory" title={memoryEstimate?.title ?? t("videoModels.memory.pendingTitle", { defaultValue: "RAM/VRAM estimate pending until model weight size is known." })}>
                             <span>{memory.primary}</span>

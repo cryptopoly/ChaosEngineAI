@@ -126,7 +126,7 @@ echo "[6/9] Upstream dependency check..."
 TURBO_VERSION_FILE="$HOME/.chaosengine/bin/llama-server-turbo.version"
 if [[ -f "$TURBO_VERSION_FILE" ]]; then
   LOCAL_COMMIT=$(head -1 "$TURBO_VERSION_FILE")
-  REMOTE_COMMIT=$(git ls-remote https://github.com/johndpope/llama-cpp-turboquant.git refs/heads/feature/planarquant-kv-cache 2>/dev/null | cut -f1)
+  REMOTE_COMMIT=$(git ls-remote https://github.com/TheTom/llama-cpp-turboquant.git refs/heads/feature/turboquant-kv-cache 2>/dev/null | cut -f1)
   if [[ -n "$REMOTE_COMMIT" ]] && [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
     warn "llama-server-turbo update available (local: ${LOCAL_COMMIT:0:12}, remote: ${REMOTE_COMMIT:0:12})"
   else

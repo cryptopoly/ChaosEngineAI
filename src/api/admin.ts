@@ -118,6 +118,32 @@ export async function reextractRuntime(): Promise<ReextractRuntimeResult> {
   return await postJson<ReextractRuntimeResult>("/api/diagnostics/reextract-runtime", {}, 30000);
 }
 
+export interface StorageTopEntry {
+  path: string;
+  repoLabel: string;
+  sizeBytes: number;
+  sizeGb: number | null;
+  sourceKind: string;
+  lastModified: number;
+}
+
+export interface StorageTopResponse {
+  entries: StorageTopEntry[];
+  totalBytes: number;
+  totalGb: number | null;
+  scannedDirectories: string[];
+}
+
+export async function fetchStorageTop(limit = 20): Promise<StorageTopResponse> {
+  // FU-055: walks every enabled model dir → can take a few seconds on big
+  // HF caches (997 GB across 14 repos on the dev box ≈ 4 s with cycle
+  // protection). 30 s timeout is enough headroom for a TB-scale scan.
+  return await fetchJson<StorageTopResponse>(
+    `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}`,
+    30000,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // HF cache storage settings + background model-move job
 // ---------------------------------------------------------------------------

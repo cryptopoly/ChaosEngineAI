@@ -500,6 +500,8 @@ export {
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
+  getMtplxInstallStatus,
+  getMtplxStatus,
   getTorchUpgradeStatus,
   getWanInstallStatus,
   getWanInventory,
@@ -509,11 +511,9 @@ export {
   refreshCapabilities,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startMtplxInstall,
   startTorchUpgrade,
   startWanInstall,
-  getMtplxStatus,
-  startMtplxInstall,
-  getMtplxInstallStatus,
 } from "./setup";
 export type {
   CudaTorchInstallAttempt,

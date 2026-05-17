@@ -52,8 +52,14 @@ export interface AcceleratorCardProps {
    * compact but failures expose the diagnostic. */
   installOutput?: string | null;
   /** Fired when the user clicks Install / Retry. Parent should call
-   * ``installPipPackage(meta.pipPackage)`` then ``refreshWorkspace()``. */
-  onInstall: (pipPackage: string) => void;
+   * ``installPipPackage(meta.pipPackage)`` then ``refreshWorkspace()``.
+   *
+   * Optional: when omitted, the card renders **read-only** — status
+   * pill + meta only, no action button. Used by discovery surfaces
+   * (the Image Models / Discover tabs) where the install action lives
+   * in a sibling surface (the Image Studio runtime banner) so the
+   * install state stays in one place rather than scattered. */
+  onInstall?: (pipPackage: string) => void;
   /** Optional click handler for the platform-mismatch tooltip — lets
    * the parent surface a "this won't run on your hardware" toast. */
   onPlatformMismatch?: (meta: AcceleratorMeta) => void;
@@ -142,7 +148,14 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
     return null;
   }
 
+  // Read-only mode: when no ``onInstall`` is wired we render the card
+  // as a passive informational element — no Install button, no Retry,
+  // no platform-mismatch toast. The discovery surfaces use this so
+  // they don't accidentally become install dispatchers.
+  const readOnly = onInstall === undefined;
+
   const handleInstall = () => {
+    if (readOnly) return;
     if (!compatible) {
       onPlatformMismatch?.(meta);
       return;
@@ -196,7 +209,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
           {installed ? "✓ " : "🚀 "}
           {meta.shortLabel}
         </span>
-        {!installed && (
+        {!installed && !readOnly && (
           <button
             type="button"
             className="accelerator-card-action accelerator-card-action-pill"
@@ -229,7 +242,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
         <td className="accelerator-card-row-platform">{platformLabel(meta.platformGate)}</td>
         <td className="accelerator-card-row-status">{statusBadge}</td>
         <td className="accelerator-card-row-action">
-          {actionLabel && (
+          {!readOnly && actionLabel && (
             <button
               type="button"
               className="accelerator-card-action"
@@ -280,7 +293,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
         </span>
       </div>
 
-      {actionLabel && (
+      {!readOnly && actionLabel && (
         <div className="accelerator-card-actions">
           <button
             type="button"

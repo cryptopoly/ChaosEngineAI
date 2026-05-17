@@ -174,6 +174,84 @@ export function getAccelerator(id: string): AcceleratorMeta | undefined {
   return ACCELERATOR_CATALOG.find((entry) => entry.id === id);
 }
 
+/** Map a model repo to the accelerators that *apply* to it.
+ *
+ * Pattern-match on the repo slug. Catalog-side metadata (the FU-007
+ * route — per-variant ``recommendedAccelerators: AcceleratorId[]``)
+ * is the eventual home for this mapping, but Phase 3 lands the data
+ * here so the surfaces can ship without a catalog migration. The
+ * patterns reflect upstream model-card scope:
+ *
+ *   - **nunchaku** (FU-023 / nunchaku v1.2.1): FLUX.1 (dev / schnell /
+ *     Tools / Kontext / Krea), SD3.5 (large / medium), Qwen-Image
+ *     (+ 2512), Z-Image (+ Turbo), SANA, PixArt-Σ. NOT SDXL or SD1.5
+ *     — those are UNet pipelines and nunchaku is DiT-only.
+ *   - **sageattention** (FU-016): any CUDA DiT image or video
+ *     pipeline. Includes everything nunchaku covers, plus video DiTs
+ *     (Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi). UNet
+ *     pipelines no-op.
+ *   - **triattention** (FU-003 + FU-002): Wan 2.1 1.3B real-time
+ *     long video via LongLive. Other Wan sizes don't carry the
+ *     LongLive LoRAs yet.
+ *
+ * Returns the accelerator ids in display-priority order — most
+ * impactful first. Empty array = no DiT accelerator applies
+ * (SDXL / SD1.5 / SVD / non-diffusion repos) → render nothing.
+ */
+export function getApplicableAccelerators(repo: string | null | undefined): AcceleratorId[] {
+  if (!repo) return [];
+  const lower = repo.toLowerCase();
+
+  // Image / video DiTs that nunchaku covers (CUDA 4-bit SVDQuant).
+  // Match on case-insensitive substring of the family — works across
+  // the various provider prefixes (black-forest-labs/FLUX.1-dev,
+  // stabilityai/stable-diffusion-3.5-large, Qwen/Qwen-Image).
+  const nunchakuFamilies = [
+    "flux.1",
+    "flux1",          // some HF mirror names drop the dot
+    "stable-diffusion-3.5",
+    "sd3.5",
+    "sd35",
+    "qwen-image",
+    "qwen-image-2512",
+    "z-image",
+    "sana",
+    "pixart-sigma",
+    "pixart-σ",
+  ];
+  const matchesNunchaku = nunchakuFamilies.some((needle) => lower.includes(needle));
+
+  // SageAttention applies to any CUDA DiT — superset of nunchaku +
+  // the video DiTs.
+  const videoFamilies = [
+    "wan2.1",
+    "wan2.2",
+    "wan-2.1",
+    "wan-2.2",
+    "hunyuanvideo",
+    "hunyuan-video",
+    "ltx-video",
+    "ltx-2",
+    "cogvideox",
+    "cogvideo",
+    "mochi",
+  ];
+  const matchesVideo = videoFamilies.some((needle) => lower.includes(needle));
+  const matchesSageAttention = matchesNunchaku || matchesVideo;
+
+  // TriAttention specifically targets Wan 2.1 1.3B for LongLive
+  // real-time long-clip mode; other Wan sizes don't carry the LongLive
+  // LoRAs yet. Keep the match narrow until upstream broadens.
+  const matchesTriAttention = /wan[-.]?2\.1[-_]t2v[-_]1\.3b/i.test(lower);
+
+  const result: AcceleratorId[] = [];
+  if (matchesNunchaku) result.push("nunchaku");
+  if (matchesSageAttention) result.push("sageattention");
+  if (matchesTriAttention) result.push("triattention");
+  return result;
+}
+
+
 /** True when this accelerator's ``platformGate`` is satisfied by the
  * current ``NativeBackendStatus``. The caller can use this to hide
  * irrelevant cards (e.g. dflash-mlx on Windows) or to dim them with an

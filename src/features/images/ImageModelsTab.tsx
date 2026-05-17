@@ -8,6 +8,7 @@ import type {
   ImageModelVariant,
   TabId,
 } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   compactModelSizeLabel,
   compactReleaseLabel,
@@ -17,6 +18,11 @@ import {
   imagePrimarySizeLabel,
   imageSecondarySizeLabel,
 } from "../../utils";
+import { AcceleratorCard } from "../../components/AcceleratorCard";
+import {
+  getAccelerator,
+  getApplicableAccelerators,
+} from "../../components/acceleratorCatalog";
 
 type InstalledImageSort = "name" | "provider" | "tasks" | "size" | "ram" | "date" | "status";
 type SortDir = "asc" | "desc";
@@ -27,6 +33,11 @@ export interface ImageModelsTabProps {
   imageCatalog: ImageModelFamily[];
   activeImageDownloads: Record<string, DownloadStatus>;
   fileRevealLabel: string;
+  /** FU-056 Phase 3: optional capability snapshot used to drive the
+   * accelerator pills next to each variant. ``undefined`` (older
+   * backends or pre-ready state) collapses every pill to its
+   * "available" form rather than crashing. */
+  nativeBackends?: NativeBackendStatus;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -130,6 +141,7 @@ export function ImageModelsTab({
   imageCatalog,
   activeImageDownloads,
   fileRevealLabel,
+  nativeBackends,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -361,6 +373,22 @@ export function ImageModelsTab({
                               {variant.styleTags.slice(0, 4).map((tag) => (
                                 <span key={tag} className="badge subtle">{tag}</span>
                               ))}
+                              {/* FU-056 Phase 3: applicable-accelerator pills.
+                                  Read-only (no install button) — the install
+                                  action lives in the Image Studio runtime
+                                  banner so install state stays in one place. */}
+                              {getApplicableAccelerators(variant.repo).map((acceleratorId) => {
+                                const meta = getAccelerator(acceleratorId);
+                                if (!meta) return null;
+                                return (
+                                  <AcceleratorCard
+                                    key={acceleratorId}
+                                    meta={meta}
+                                    capabilities={nativeBackends ?? null}
+                                    variant="pill"
+                                  />
+                                );
+                              })}
                             </div>
                           </div>
                           <span>{variant.provider}</span>

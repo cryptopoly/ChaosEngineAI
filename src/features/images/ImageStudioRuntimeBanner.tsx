@@ -15,6 +15,8 @@ import type {
   GpuBundleJobState,
 } from "../../api";
 import type { ImageModelVariant, ImageRuntimeStatus } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
+import { ImageStudioBoosters } from "./ImageStudioBoosters";
 
 
 export interface ImageStudioRuntimeBannerProps {
@@ -37,6 +39,10 @@ export interface ImageStudioRuntimeBannerProps {
   installingImageRuntime: boolean;
   gpuBundleJob: GpuBundleJobState | null;
   onInstallImageRuntime: () => void;
+  /** FU-056 Phase 3: capability snapshot for the "Performance
+   * boosters" sub-section. Optional — collapses to the "available"
+   * card state if the backend hasn't probed yet. */
+  nativeBackends?: NativeBackendStatus;
 }
 
 
@@ -62,6 +68,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
     installingImageRuntime,
     gpuBundleJob,
     onInstallImageRuntime,
+    nativeBackends,
   } = props;
 
   return (
@@ -171,6 +178,17 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
           backendOnline={backendOnline}
           onRestartBackend={onRestartServer}
           busy={busy}
+        />
+      ) : null}
+      {/* FU-056 Phase 3: per-model accelerator install affordances.
+        * Renders nothing when no accelerators apply to the variant
+        * (SD1.5 / SDXL / non-DiT) or when real generation isn't
+        * available yet (no point installing FLUX accelerators on a
+        * box that can't even run FLUX). */}
+      {imageRuntimeStatus.realGenerationAvailable ? (
+        <ImageStudioBoosters
+          selectedVariant={selectedImageVariant}
+          nativeBackends={nativeBackends}
         />
       ) : null}
       {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (

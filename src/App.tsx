@@ -1228,6 +1228,7 @@ export default function App() {
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1244,6 +1245,7 @@ export default function App() {
         imageCatalog={imgState.imageCatalog}
         activeImageDownloads={imgState.activeImageDownloads}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1272,6 +1274,7 @@ export default function App() {
         imageBusy={imgState.imageBusy}
         imageBusyLabel={imgState.imageBusyLabel}
         backendOnline={backendOnline}
+        nativeBackends={nativeBackends}
         activeImageDownloads={imgState.activeImageDownloads}
         imagePrompt={imgState.imagePrompt}
         onImagePromptChange={imgState.setImagePrompt}

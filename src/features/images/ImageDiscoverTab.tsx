@@ -13,6 +13,7 @@ import type {
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../../types/image";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   compactModelSizeLabel,
   compactReleaseLabel,
@@ -26,6 +27,11 @@ import {
   imageSecondarySizeLabel,
   isGatedImageAccessError,
 } from "../../utils";
+import { AcceleratorCard } from "../../components/AcceleratorCard";
+import {
+  getAccelerator,
+  getApplicableAccelerators,
+} from "../../components/acceleratorCatalog";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
 type SortDir = "asc" | "desc";
@@ -45,6 +51,10 @@ export interface ImageDiscoverTabProps {
   activeImageDownloads: Record<string, DownloadStatus>;
   selectedImageVariant: ImageModelVariant | null;
   fileRevealLabel: string;
+  /** FU-056 Phase 3: capability snapshot for the accelerator pills
+   * rendered next to each variant. Optional — pre-ready or older
+   * backends collapse pills to their "available" form. */
+  nativeBackends?: NativeBackendStatus;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -211,6 +221,7 @@ export function ImageDiscoverTab({
   activeImageDownloads,
   selectedImageVariant,
   fileRevealLabel,
+  nativeBackends,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -584,6 +595,22 @@ export function ImageDiscoverTab({
                               : tLib("imageDiscover.access.open", { defaultValue: "Open" })}
                           </span>
                         ) : null}
+                        {/* FU-056 Phase 3: read-only accelerator pills.
+                            Click-through to install lives in Image Studio's
+                            runtime banner so install state stays in one
+                            place. */}
+                        {getApplicableAccelerators(variant.repo).map((acceleratorId) => {
+                          const meta = getAccelerator(acceleratorId);
+                          if (!meta) return null;
+                          return (
+                            <AcceleratorCard
+                              key={acceleratorId}
+                              meta={meta}
+                              capabilities={nativeBackends ?? null}
+                              variant="pill"
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                     <span>{variant.provider}</span>

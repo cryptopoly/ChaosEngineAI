@@ -4,6 +4,7 @@ import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
 import type {
+  SystemStats,
   TabId,
   VideoModelFamily,
   VideoModelVariant,
@@ -21,6 +22,8 @@ import {
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
 import { AcceleratorCard } from "../../components/AcceleratorCard";
 import {
@@ -46,6 +49,9 @@ export interface VideoModelsTabProps {
    * Wan / HunyuanVideo / LTX / CogVideoX / Mochi). Optional — older
    * backends collapse pills to the "available" state. */
   nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding MLX-only video
+   * variants (mlx-video / LTX-2 family) on Windows + Linux. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
@@ -166,6 +172,7 @@ export function VideoModelsTab({
   loadedVideoVariant,
   fileRevealLabel,
   nativeBackends,
+  hostSystem,
   onActiveTabChange,
   onOpenVideoStudio,
   onVideoDownload,
@@ -208,6 +215,15 @@ export function VideoModelsTab({
         return { variant, family, downloadState, status, memoryEstimate };
       })
       .filter(({ variant, family, status }) => {
+        // FU-056 follow-up: hide mlx-video / LTX-2 family on Win/Linux.
+        if (
+          !isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          )
+        ) {
+          return false;
+        }
         if (taskFilter !== "all" && !variant.taskSupport.includes(taskFilter)) return false;
         if (statusFilter !== "all" && status !== statusFilter) return false;
         if (!normalizedSearch) return true;
@@ -250,7 +266,7 @@ export function VideoModelsTab({
         if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
         return left.variant.name.localeCompare(right.variant.name);
       });
-  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, sortDir, statusFilter, taskFilter, videoCatalog]);
+  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, sortDir, statusFilter, taskFilter, videoCatalog, hostSystem]);
 
   return (
     <div className="content-grid image-page-grid">

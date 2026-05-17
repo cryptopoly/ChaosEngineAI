@@ -6,6 +6,7 @@ import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons"
 import { Panel } from "../../components/Panel";
 import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
 import type {
+  SystemStats,
   TabId,
   VideoModelVariant,
   VideoRuntimeStatus,
@@ -25,6 +26,8 @@ import {
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
 import { AcceleratorCard } from "../../components/AcceleratorCard";
 import {
@@ -61,6 +64,9 @@ export interface VideoDiscoverTabProps {
    * rendered next to each variant. Optional — older backends collapse
    * pills to the "available" form. */
   nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding mlx-video /
+   * LTX-2 (apple-only) variants on Win/Linux. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   longLiveStatus: VideoRuntimeStatus | null;
   installingLongLive: boolean;
   longLiveJob: LongLiveJobState | null;
@@ -246,6 +252,7 @@ export function VideoDiscoverTab({
   selectedVideoVariant,
   fileRevealLabel,
   nativeBackends,
+  hostSystem,
   longLiveStatus,
   installingLongLive,
   longLiveJob,
@@ -280,6 +287,12 @@ export function VideoDiscoverTab({
           const memoryEstimate = videoDiscoverMemoryEstimate(variant);
           return { variant, status, memoryEstimate };
         })
+        .filter(({ variant }) =>
+          isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          ),
+        )
         .filter(({ status }) => statusFilter === "all" || status === statusFilter)
         .sort((left, right) => {
           if (videoDiscoverSort === "name") {
@@ -317,6 +330,7 @@ export function VideoDiscoverTab({
     [
       activeVideoDownloads,
       combinedVideoDiscoverResults,
+      hostSystem,
       installingLongLive,
       longLiveReady,
       sortDir,

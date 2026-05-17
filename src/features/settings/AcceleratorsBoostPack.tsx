@@ -24,13 +24,12 @@ import type { NativeBackendStatus } from "../../types/server";
  * keyed by ``pipPackage`` — the card itself stays stateless beyond
  * its "log expanded" toggle.
  *
- * The panel intentionally renders **every** entry in
- * ``ACCELERATOR_CATALOG`` regardless of platform (``showIncompatible``
- * is true). The user-experience choice here: this is the diagnostics
- * surface, the user wants visibility into what exists across the
- * ecosystem, not just what their current box can run. Per-feature
- * surfaces will gate by platform so wrong-platform affordances don't
- * appear next to a FLUX model card.
+ * The panel hides entries that can't run on the current host
+ * (``showIncompatible`` is false). Windows / Linux users no longer
+ * see MLX / mlx-video / MTPLX cards they can never install, and
+ * Apple Silicon users no longer see CUDA-only accelerators. Per-FU-056
+ * platform-filtering policy: don't grey out unrecoverable options,
+ * just hide them.
  */
 
 export interface AcceleratorsBoostPackProps {
@@ -186,7 +185,6 @@ export function AcceleratorsBoostPack({ backendOnline }: AcceleratorsBoostPackPr
                 installError={state.error}
                 installOutput={state.output}
                 onInstall={handleInstall}
-                showIncompatible
               />
             );
           })}

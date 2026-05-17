@@ -6,6 +6,7 @@ import type { DownloadStatus } from "../../api";
 import type {
   ImageModelFamily,
   ImageModelVariant,
+  SystemStats,
   TabId,
 } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
@@ -17,6 +18,8 @@ import {
   imageDiscoverMemoryEstimate,
   imagePrimarySizeLabel,
   imageSecondarySizeLabel,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
 import { AcceleratorCard } from "../../components/AcceleratorCard";
 import {
@@ -38,6 +41,10 @@ export interface ImageModelsTabProps {
    * backends or pre-ready state) collapses every pill to its
    * "available" form rather than crashing. */
   nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding MLX-only /
+   * CUDA-only variants on the wrong host. Optional — undefined
+   * passes everything through (early-paint safety). */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -142,6 +149,7 @@ export function ImageModelsTab({
   activeImageDownloads,
   fileRevealLabel,
   nativeBackends,
+  hostSystem,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -180,6 +188,18 @@ export function ImageModelsTab({
         return { variant, family, downloadState, status, memoryEstimate };
       })
       .filter(({ variant, family, status }) => {
+        // FU-056 follow-up: hide variants whose runtime can't run on
+        // this host (mflux on Windows, nunchaku-only on Mac, etc.).
+        // Variants tagged ``"any"`` always pass — that's the bulk of
+        // the catalog (diffusers / sd.cpp / GGUF universal paths).
+        if (
+          !isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          )
+        ) {
+          return false;
+        }
         if (taskFilter !== "all" && !variant.taskSupport.includes(taskFilter)) return false;
         if (statusFilter !== "all" && status !== statusFilter) return false;
         if (!normalizedSearch) return true;
@@ -222,7 +242,7 @@ export function ImageModelsTab({
         if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
         return left.variant.name.localeCompare(right.variant.name);
       });
-  }, [activeImageDownloads, imageCatalog, installedImageVariants, normalizedSearch, sort, sortDir, statusFilter, taskFilter]);
+  }, [activeImageDownloads, imageCatalog, installedImageVariants, normalizedSearch, sort, sortDir, statusFilter, taskFilter, hostSystem]);
 
   return (
     <div className="content-grid image-page-grid">

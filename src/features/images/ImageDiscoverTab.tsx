@@ -6,6 +6,7 @@ import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons"
 import type { DownloadStatus } from "../../api";
 import type {
   ImageModelVariant,
+  SystemStats,
   TabId,
 } from "../../types";
 import type {
@@ -26,6 +27,8 @@ import {
   imagePrimarySizeLabel,
   imageSecondarySizeLabel,
   isGatedImageAccessError,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
 import { AcceleratorCard } from "../../components/AcceleratorCard";
 import {
@@ -55,6 +58,9 @@ export interface ImageDiscoverTabProps {
    * rendered next to each variant. Optional — pre-ready or older
    * backends collapse pills to their "available" form. */
   nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding MLX-only /
+   * CUDA-only variants on the wrong host. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -222,6 +228,7 @@ export function ImageDiscoverTab({
   selectedImageVariant,
   fileRevealLabel,
   nativeBackends,
+  hostSystem,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -243,6 +250,15 @@ export function ImageDiscoverTab({
           const memoryEstimate = imageDiscoverMemoryEstimate(variant);
           return { variant, status, memoryEstimate };
         })
+        .filter(({ variant }) =>
+          // FU-056 follow-up: hide mflux-runtime + LTX-2-style apple-
+          // only variants on Win/Linux, nunchaku-only rows on Mac.
+          // "any"-gated rows pass through (the bulk of the catalog).
+          isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          ),
+        )
         .filter(({ status }) => statusFilter === "all" || status === statusFilter)
         .sort((left, right) => {
           if (imageDiscoverSort === "name") {
@@ -277,7 +293,7 @@ export function ImageDiscoverTab({
           if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
           return left.variant.name.localeCompare(right.variant.name);
         }),
-    [activeImageDownloads, combinedImageDiscoverResults, imageDiscoverSort, sortDir, statusFilter],
+    [activeImageDownloads, combinedImageDiscoverResults, imageDiscoverSort, sortDir, statusFilter, hostSystem],
   );
   const hasActiveFilters = imageDiscoverHasActiveFilters || statusFilter !== "all";
 

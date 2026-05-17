@@ -494,11 +494,15 @@ export {
 } from "./video";
 
 export {
+  checkTorchUpgradeAvailable,
   checkTurboUpdate,
   enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
+  getMtplxInstallStatus,
+  getMtplxStatus,
+  getTorchUpgradeStatus,
   getWanInstallStatus,
   getWanInventory,
   installCudaTorch,
@@ -507,10 +511,9 @@ export {
   refreshCapabilities,
   startGpuBundleInstall,
   startLongLiveInstall,
-  startWanInstall,
-  getMtplxStatus,
   startMtplxInstall,
-  getMtplxInstallStatus,
+  startTorchUpgrade,
+  startWanInstall,
 } from "./setup";
 export type {
   CudaTorchInstallAttempt,
@@ -526,6 +529,11 @@ export type {
   MtplxJobState,
   MtplxStatus,
   PromptEnhanceResult,
+  TorchUpgradeAttempt,
+  TorchUpgradeAvailability,
+  TorchUpgradeJobState,
+  TorchUpgradeType,
+  TorchUpgradeUnavailableReason,
   TurboUpdateInfo,
   WanConvertStatusFields,
   WanInstallAttempt,

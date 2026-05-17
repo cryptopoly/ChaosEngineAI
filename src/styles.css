@@ -7614,6 +7614,101 @@ select.text-input {
   margin-right: 4px;
 }
 
+/* -- Torch upgrade pill -------------------------------------------- */
+/* Compact callout in the Image / Video Studio runtime banner that
+ * surfaces "newer torch wheel is available" without taking over the
+ * whole panel. Visual register: less loud than the .callout.error used
+ * for "GPU acceleration not active", since this is informational
+ * (the user's setup is fine; an upgrade is optional). */
+.torch-upgrade-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  padding: 10px 12px;
+  background: rgba(80, 140, 220, 0.10);
+  border: 1px solid rgba(80, 140, 220, 0.35);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.torch-upgrade-pill-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.torch-upgrade-pill-summary code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  padding: 1px 5px;
+  background: rgba(0, 0, 0, 0.30);
+  border-radius: 3px;
+}
+.torch-upgrade-pill-message {
+  color: var(--muted-text, rgba(255, 255, 255, 0.7));
+  font-size: 0.82rem;
+}
+.torch-upgrade-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.torch-upgrade-badge-patch {
+  background: rgba(80, 180, 100, 0.22);
+  color: #8fd99e;
+}
+.torch-upgrade-badge-minor {
+  background: rgba(220, 170, 80, 0.22);
+  color: #e7c382;
+}
+.torch-upgrade-badge-major {
+  background: rgba(220, 100, 100, 0.25);
+  color: #ec9c9c;
+}
+.torch-upgrade-pill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+.torch-upgrade-pill-details {
+  margin-top: 4px;
+  font-size: 0.8rem;
+}
+.torch-upgrade-pill-details > summary {
+  cursor: pointer;
+  color: var(--muted-text, rgba(255, 255, 255, 0.7));
+  user-select: none;
+}
+.torch-upgrade-pill-details[open] > summary {
+  margin-bottom: 6px;
+}
+.torch-upgrade-pill-pkg-list {
+  margin: 4px 0 8px 18px;
+  padding: 0;
+}
+.torch-upgrade-pill-pkg-list code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.torch-upgrade-pill-terminal {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.30);
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 260px;
+  overflow: auto;
+}
+
 /* -- Diagnostics panel --------------------------------------------- */
 .diagnostics-body {
   display: flex;

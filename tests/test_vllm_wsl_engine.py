@@ -141,10 +141,12 @@ class VllmWslEngineGatesTests(unittest.TestCase):
 
 
 class VllmWslEngineCommandTests(unittest.TestCase):
-    """Argv composition — checks each flag is present and ordered
-    so the WSL command stays valid for the upstream parser."""
+    """Argv composition — the command wraps a bash -c invocation so
+    the venv's bin/ can be prepended to PATH (vLLM's flashinfer JIT
+    needs ninja, which lives in the venv bin). Checks both the wsl
+    wrapper shape AND the inner bash command content."""
 
-    def test_build_command_includes_required_flags(self):
+    def test_build_command_wraps_in_bash_c(self):
         engine = VllmWslEngine(_make_caps())
         command = engine._build_wsl_command(
             model_arg="Qwen/Qwen3.5-7B",
@@ -152,30 +154,62 @@ class VllmWslEngineCommandTests(unittest.TestCase):
             max_model_len=8192,
         )
 
-        # Prefix is the wsl entry-point + arg separator. Without ``--``
-        # the wsl CLI tries to interpret the rest as wsl options.
+        # Outer shape: ``wsl -- bash -c "<inner>"``. The ``--`` is
+        # essential — without it ``wsl`` tries to interpret subsequent
+        # tokens as its own options.
         self.assertEqual(command[0], "wsl")
         self.assertEqual(command[1], "--")
+        self.assertEqual(command[2], "bash")
+        self.assertEqual(command[3], "-c")
+        self.assertEqual(len(command), 5, "expected wsl -- bash -c <inner> shape")
 
-        # The venv-bound Python invocation — relative to the WSL
-        # user's $HOME via the leading ~. ``wsl --`` expands the ~.
-        self.assertIn("~/.chaosengine/vllm-venv/bin/python", command)
-        self.assertIn("-m", command)
-        self.assertIn("vllm.entrypoints.openai.api_server", command)
+    def test_inner_command_exports_path_and_runs_vllm(self):
+        engine = VllmWslEngine(_make_caps())
+        command = engine._build_wsl_command(
+            model_arg="Qwen/Qwen3.5-7B",
+            port=8000,
+            max_model_len=8192,
+        )
+        inner = command[4]
+
+        # PATH prefix: venv bin first, then existing PATH. Without
+        # this prefix the FlashInfer JIT can't find ``ninja`` and
+        # vLLM crashes mid-startup. The PATH value is double-quoted
+        # because the inherited $PATH on WSL contains Windows paths
+        # with spaces (``/mnt/c/Program Files/...``) which would
+        # otherwise word-split.
+        self.assertIn('export PATH="~/.chaosengine/vllm-venv/bin:$PATH"', inner)
+
+        # The vLLM OpenAI server invocation.
+        self.assertIn("~/.chaosengine/vllm-venv/bin/python", inner)
+        self.assertIn("-m vllm.entrypoints.openai.api_server", inner)
 
         # User-driven flags.
-        self.assertIn("--model", command)
-        self.assertIn("Qwen/Qwen3.5-7B", command)
-        self.assertIn("--port", command)
-        self.assertIn("8000", command)
-        self.assertIn("--max-model-len", command)
-        self.assertIn("8192", command)
+        self.assertIn("--model Qwen/Qwen3.5-7B", inner)
+        self.assertIn("--port 8000", inner)
+        self.assertIn("--max-model-len 8192", inner)
+        self.assertIn("--host 127.0.0.1", inner)
+        self.assertIn("--trust-remote-code", inner)
+        # vLLM 0.21+ flashinfer JIT bypasses + eager mode (avoid CUDA
+        # graph JIT). See engine source for the rationale.
+        self.assertIn("VLLM_USE_FLASHINFER_SAMPLER=0", inner)
+        self.assertIn("VLLM_ATTENTION_BACKEND=TORCH_SDPA", inner)
+        self.assertIn("--enforce-eager", inner)
 
-        # Safety: bound to loopback so the model isn't exposed to the
-        # LAN, and ``--trust-remote-code`` covers repos like Qwen3-VL.
-        self.assertIn("--host", command)
-        self.assertIn("127.0.0.1", command)
-        self.assertIn("--trust-remote-code", command)
+    def test_inner_command_quotes_model_arg_with_special_chars(self):
+        # A model path with a space (rare but possible — e.g.
+        # ``/mnt/c/My Models/Qwen3-7B``) must survive the shell parse.
+        engine = VllmWslEngine(_make_caps())
+        command = engine._build_wsl_command(
+            model_arg="/mnt/c/My Models/Qwen3-7B",
+            port=8000,
+            max_model_len=8192,
+        )
+        inner = command[4]
+        # ``shlex.quote`` either single-quotes the whole thing or
+        # escapes the space; either way, the original path must
+        # round-trip through the shell parse.
+        self.assertIn("'/mnt/c/My Models/Qwen3-7B'", inner)
 
 
 class VllmWslEngineLifecycleTests(unittest.TestCase):
@@ -222,10 +256,12 @@ class VllmWslEngineLifecycleTests(unittest.TestCase):
                             context_tokens=8192,
                         )
 
-        # Subprocess was spawned exactly once with the WSL argv.
+        # Subprocess was spawned exactly once with the WSL argv shape.
         popen_mock.assert_called_once()
         spawned_argv = popen_mock.call_args.args[0]
         self.assertEqual(spawned_argv[0], "wsl")
+        self.assertEqual(spawned_argv[2], "bash")
+        self.assertEqual(spawned_argv[3], "-c")
 
         # Health probe was hit.
         http_mock.assert_called()
@@ -273,9 +309,12 @@ class VllmWslEngineLifecycleTests(unittest.TestCase):
                         )
 
         spawned_argv = popen_mock.call_args.args[0]
-        # The model arg should have been translated into the WSL
-        # /mnt/c/... form so vLLM can find the weights from inside WSL.
-        self.assertIn("/mnt/c/Users/Dan/AI_Models/Qwen3-7B", spawned_argv)
+        # The model arg lives inside the bash ``-c`` inner command
+        # (argv[4]) since FU-056 Phase 8 follow-up moved to a wrapped
+        # invocation. Translation to /mnt/c/... must round-trip into
+        # the inner command verbatim so vLLM finds the weights.
+        inner = spawned_argv[4]
+        self.assertIn("/mnt/c/Users/Dan/AI_Models/Qwen3-7B", inner)
 
 
 if __name__ == "__main__":

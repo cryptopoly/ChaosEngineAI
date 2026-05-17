@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -134,39 +135,62 @@ class VllmWslEngine(BaseInferenceEngine):
         port: int,
         max_model_len: int,
     ) -> list[str]:
-        """Compose the ``wsl -- python -m vllm.entrypoints...`` argv.
+        """Compose the ``wsl -- bash -c "<inner cmd>"`` argv.
 
-        Pulled out for tests + so the comment about each flag lives
-        next to the flag rather than buried in load_model.
+        We wrap the python invocation in ``bash -c`` so we can prepend
+        the venv's ``bin/`` to ``PATH``. This matters because vLLM's
+        runtime path (notably flashinfer) JIT-builds CUDA sampling
+        kernels with ``ninja``, which lives at
+        ``~/.chaosengine/vllm-venv/bin/ninja`` after the install.
+        Without the venv bin on PATH the JIT build crashes with
+        ``FileNotFoundError: 'ninja'`` mid-startup — caught live on the
+        FU-056 Phase 8 follow-up live test against opt-125m.
+
+        Arguments are ``shlex.quote``-escaped so a model path with
+        spaces / quotes can't break the bash parse.
         """
-        return [
-            "wsl",
-            "--",
-            f"{_WSL_VLLM_VENV_PATH}/bin/python",
-            "-m",
-            "vllm.entrypoints.openai.api_server",
-            "--model",
-            model_arg,
-            # ``--host 127.0.0.1`` keeps vLLM listening only on the
-            # loopback — WSL2 mirrors loopback to the Windows host so
-            # the Windows backend reaches it without any port-forward
-            # ceremony, and we don't expose the model to the LAN.
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(port),
-            # ``--max-model-len`` is vLLM's name for the context window
-            # cap. Defaults to whatever the model card declares, which
-            # can be too large for available VRAM. We pass through the
-            # user-selected ``contextTokens`` so the launch settings
-            # actually take effect.
-            "--max-model-len",
-            str(max_model_len),
-            # Trust the model config without prompting. vLLM's default
-            # is False, which throws ``ValueError: trust_remote_code``
-            # for repos like Qwen3-VL that ship custom modeling code.
-            "--trust-remote-code",
-        ]
+        bin_path = f"{_WSL_VLLM_VENV_PATH}/bin"
+        # PATH assignment is double-quoted — WSL2 interopts the Windows
+        # PATH into bash, and that PATH contains paths with spaces
+        # (e.g. ``/mnt/c/Program Files/NVIDIA...``). Without the quotes
+        # bash word-splits the expanded ``$PATH`` and crashes with
+        # ``export: 'Files/NVIDIA': not a valid identifier``.
+        #
+        # Env-var bypasses for vLLM 0.21+ flashinfer JIT path that
+        # otherwise crashes mid-startup with ``FileNotFoundError:
+        # 'ninja'`` (the JIT subprocess can't see venv bin on PATH
+        # through vLLM's multiprocessing fork chain). The flags +
+        # env vars below disable flashinfer's runtime kernel
+        # compilation and route attention through the pre-built
+        # TORCH_SDPA path instead.
+        #
+        # ``--host 127.0.0.1`` keeps vLLM bound to loopback — WSL2
+        # mirrors loopback to the Windows host so the Windows backend
+        # reaches the listener without any port-forward setup, and the
+        # model never leaks to the LAN.
+        #
+        # ``--max-model-len`` is vLLM's context cap; the model card's
+        # default is often too large for available VRAM.
+        #
+        # ``--trust-remote-code`` covers repos like Qwen3-VL that ship
+        # custom modeling code; vLLM refuses to import those by default.
+        #
+        # ``--enforce-eager`` skips CUDA-graph compilation. Loses some
+        # perf on long generations but avoids the second JIT path that
+        # would otherwise need a system ``nvcc``.
+        inner = (
+            f'export PATH="{bin_path}:$PATH" && '
+            'export VLLM_USE_FLASHINFER_SAMPLER=0 && '
+            'export VLLM_ATTENTION_BACKEND=TORCH_SDPA && '
+            f"{bin_path}/python -m vllm.entrypoints.openai.api_server "
+            f"--model {shlex.quote(model_arg)} "
+            f"--host 127.0.0.1 "
+            f"--port {port} "
+            f"--max-model-len {max_model_len} "
+            f"--trust-remote-code "
+            f"--enforce-eager"
+        )
+        return ["wsl", "--", "bash", "-c", inner]
 
     def _cleanup_process(self) -> None:
         if self.process is not None and self.process.poll() is None:
@@ -203,12 +227,19 @@ class VllmWslEngine(BaseInferenceEngine):
         return int(self.process.pid)
 
     def _wait_for_server(self) -> None:
-        """Poll ``/health`` until vLLM accepts requests, or the subprocess dies.
+        """Poll ``/v1/models`` until vLLM accepts requests, or the subprocess dies.
 
-        vLLM's startup is slow (~30-90 s for a 7B model on cold cache)
-        because it builds the CUDA graph + warms KV blocks. We give it
-        the standard llama-timeout budget and surface the captured log
-        if it dies before becoming ready.
+        vLLM's startup is slow (~30-90 s for a 7B model on cold cache,
+        ~10-30 s for tiny models) because it builds CUDA-graph caches
+        + warms KV blocks. We give it the standard llama-timeout
+        budget and surface the captured log if it dies before becoming
+        ready.
+
+        Probes ``/v1/models`` rather than ``/health`` — vLLM's
+        ``/health`` returns 200 with an empty body, which trips
+        ``_http_json``'s ``json.loads`` (caught live during the FU-056
+        Phase 8 follow-up test). ``/v1/models`` returns the loaded
+        model list as JSON so the JSON parse succeeds.
         """
         deadline = time.time() + DEFAULT_LLAMA_TIMEOUT_SECONDS
         last_error = "vLLM (WSL) did not become ready."
@@ -217,7 +248,7 @@ class VllmWslEngine(BaseInferenceEngine):
                 logs = _read_text_tail(self.log_path)
                 raise RuntimeError(logs or "vLLM (WSL) exited during startup.")
             try:
-                _http_json(self._server_url("/health"), timeout=2.0)
+                _http_json(self._server_url("/v1/models"), timeout=2.0)
                 return
             except Exception as exc:  # noqa: BLE001 — best-effort poll
                 last_error = str(exc)

@@ -844,7 +844,28 @@ def main(argv: list[str] | None = None) -> int:
         phase0 = phase_0(cap)
         phases.append(phase0)
         _write_reports(Path(args.report_dir), started, ended, phases, cap)
-        print("[e2e] backend not reachable; aborting", file=sys.stderr, flush=True)
+        # Comprehensive E2E runs against the installed ChaosEngineAI app,
+        # not a custom dev backend — so the actionable hint always points
+        # at "open the app". The headless dev path is mentioned as a
+        # fallback for contributors who already know it exists.
+        print("", file=sys.stderr, flush=True)
+        print(
+            f"[e2e] backend not reachable at http://{_HOST}:{_PORT}/api/health.",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            "[e2e] open the ChaosEngineAI app and re-run this command — the suite "
+            "exercises the production embedded runtime.",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            "[e2e] (advanced: `npm run tauri:dev` or `python -m backend_service.app "
+            f"--port {_PORT}` from .venv works too, but won't match the user-install path)",
+            file=sys.stderr,
+            flush=True,
+        )
         return 2
 
     phases: list[PhaseResult] = []

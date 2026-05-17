@@ -473,7 +473,22 @@ def main() -> int:
     try:
         caps = probe_backend(args.port)
     except ConnectionError as exc:
+        # The matrix runner is meant to exercise the installed app's
+        # runtime, the same way ``e2e_test_suite.py`` does. A failure to
+        # reach the backend almost always means "the app isn't open" —
+        # surface that clearly instead of just echoing the ConnectionError.
         print(f"  ! {exc}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(
+            "Open the ChaosEngineAI app and re-run this command — the matrix "
+            "is designed to exercise the production embedded runtime + extras.",
+            file=sys.stderr,
+        )
+        print(
+            f"(advanced: `npm run tauri:dev` or `python -m backend_service.app "
+            f"--port {args.port}` works for dev runs, but won't match the user-install path)",
+            file=sys.stderr,
+        )
         return 3
     print(f"  available strategies: {sorted(caps.available_strategies)}")
     print(f"  dflash={caps.dflash_available} ddtree={caps.ddtree_available} turbo-binary={caps.has_turbo_binary}")

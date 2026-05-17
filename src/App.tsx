@@ -1384,6 +1384,7 @@ export default function App() {
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
         longLiveJob={videoState.longLiveJob}
@@ -1409,6 +1410,7 @@ export default function App() {
         videoBusyLabel={videoState.videoBusyLabel}
         loadedVideoVariant={videoState.loadedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
@@ -1434,6 +1436,7 @@ export default function App() {
         loadedVideoVariant={videoState.loadedVideoVariant}
         videoRuntimeStatus={videoState.videoRuntimeStatus}
         tauriBackend={tauriBackend}
+        nativeBackends={nativeBackends}
         busy={busy}
         busyAction={busyAction}
         videoBusy={videoState.videoBusy}

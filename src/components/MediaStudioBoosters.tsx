@@ -1,22 +1,29 @@
 import { useCallback, useState } from "react";
 
-import { AcceleratorCard } from "../../components/AcceleratorCard";
+import { AcceleratorCard } from "./AcceleratorCard";
 import {
   type AcceleratorId,
   getAccelerator,
   getApplicableAccelerators,
-} from "../../components/acceleratorCatalog";
-import { installPipPackage } from "../../api";
-import type { ImageModelVariant } from "../../types";
-import type { NativeBackendStatus } from "../../types/server";
+} from "./acceleratorCatalog";
+import { installPipPackage } from "../api";
+import type { NativeBackendStatus } from "../types/server";
 
 /**
- * Image Studio "Performance boosters" section (FU-056 Phase 3 / 3d).
+ * Shared "Performance boosters" section (FU-056 Phase 3 + Phase 4).
  *
- * Lives inside ``ImageStudioRuntimeBanner`` between the torch-upgrade
- * pill and the model-load summary. Renders the accelerator cards that
- * apply to the currently-selected variant — typically nunchaku +
- * sageattention on FLUX / SD3.5 / Qwen-Image, nothing on SDXL / SD1.5.
+ * Sits inside ``ImageStudioRuntimeBanner`` and
+ * ``VideoStudioRuntimeBanner`` between the torch-upgrade pill and the
+ * model-load summary. Renders the accelerator cards that apply to the
+ * currently-selected variant — typically nunchaku + sageattention on
+ * FLUX / SD3.5 / Qwen-Image, sageattention on video DiTs, plus
+ * triattention specifically on Wan 2.1 1.3B for the LongLive bonus.
+ *
+ * The component takes a minimal ``{repo, name}`` slice of the variant
+ * rather than a concrete ``ImageModelVariant`` / ``VideoModelVariant``
+ * type — both shapes carry those two fields and the booster logic
+ * doesn't need anything else. Keeps one source of truth for the
+ * install / overlay / re-probe dance.
  *
  * Self-contained install state: clicking "Install" calls
  * ``installPipPackage`` directly, captures the result, and overlays
@@ -25,18 +32,28 @@ import type { NativeBackendStatus } from "../../types/server";
  * without waiting for the next workspace refetch.
  *
  * Renders nothing in two cases:
- *   - ``imageRuntimeStatus.realGenerationAvailable === false`` —
- *     the user can't generate anything yet; accelerators are moot.
- *     (Gated by caller in the runtime banner, not this component.)
- *   - The selected variant has no applicable accelerators
- *     (SD1.5 / SDXL / non-DiT). The whole section folds away rather
- *     than rendering an empty "Performance boosters" header.
+ *   - The selected variant has no applicable accelerators (SD1.5 /
+ *     SDXL / non-DiT). The whole section folds away rather than
+ *     rendering an empty "Performance boosters" header.
+ *   - ``selectedVariant === null`` — same reason.
+ *
+ * Callers should additionally gate the render on
+ * ``runtimeStatus.realGenerationAvailable`` so accelerators don't
+ * surface on a box that can't even run the pipeline yet.
  */
 
-export interface ImageStudioBoostersProps {
+/** Minimal structural shape of a Studio variant. Both
+ * ``ImageModelVariant`` and ``VideoModelVariant`` carry these fields,
+ * so the component accepts either. */
+export interface MediaStudioBoostersVariant {
+  repo: string;
+  name?: string;
+}
+
+export interface MediaStudioBoostersProps {
   /** The variant currently chosen in the Studio drop-down. Determines
    * which accelerators are applicable via ``getApplicableAccelerators``. */
-  selectedVariant: ImageModelVariant | null;
+  selectedVariant: MediaStudioBoostersVariant | null;
   /** Parent-provided capability snapshot — usually
    * ``workspace.runtime.nativeBackends``. ``undefined`` (older
    * backends) collapses every card to its "available" form. */
@@ -55,10 +72,10 @@ const EMPTY_INSTALL_STATE: InstallState = {
   output: null,
 };
 
-export function ImageStudioBoosters({
+export function MediaStudioBoosters({
   selectedVariant,
   nativeBackends,
-}: ImageStudioBoostersProps) {
+}: MediaStudioBoostersProps) {
   // Hold a local capabilities overlay so a fresh install flips the
   // card state immediately. The parent's ``nativeBackends`` is the
   // authoritative source; we just merge install responses on top.
@@ -121,14 +138,14 @@ export function ImageStudioBoosters({
     : (nativeBackends ?? null);
 
   return (
-    <section className="image-studio-boosters">
-      <header className="image-studio-boosters-header">
+    <section className="media-studio-boosters">
+      <header className="media-studio-boosters-header">
         <strong style={{ fontSize: "0.92rem" }}>Performance boosters</strong>
         <span className="muted-text" style={{ fontSize: "0.78rem", marginLeft: 8 }}>
           for {selectedVariant?.name ?? "the selected model"}
         </span>
       </header>
-      <div className="image-studio-boosters-stack" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+      <div className="media-studio-boosters-stack" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
         {applicable.map((acceleratorId) => {
           const meta = getAccelerator(acceleratorId);
           if (!meta) return null;

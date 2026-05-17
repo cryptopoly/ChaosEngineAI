@@ -16,7 +16,7 @@ import type {
 } from "../../api";
 import type { ImageModelVariant, ImageRuntimeStatus } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
-import { ImageStudioBoosters } from "./ImageStudioBoosters";
+import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
 export interface ImageStudioRuntimeBannerProps {
@@ -186,7 +186,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
         * available yet (no point installing FLUX accelerators on a
         * box that can't even run FLUX). */}
       {imageRuntimeStatus.realGenerationAvailable ? (
-        <ImageStudioBoosters
+        <MediaStudioBoosters
           selectedVariant={selectedImageVariant}
           nativeBackends={nativeBackends}
         />

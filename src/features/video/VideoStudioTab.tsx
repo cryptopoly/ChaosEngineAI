@@ -13,6 +13,7 @@ import type {
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   IMAGE_CACHE_STRATEGIES,
   VIDEO_CACHE_STRATEGY_DEFAULT_THRESH,
@@ -51,6 +52,10 @@ export interface VideoStudioTabProps {
   loadedVideoVariant: VideoModelVariant | null;
   videoRuntimeStatus: VideoRuntimeStatus;
   tauriBackend: TauriBackendInfo | null;
+  /** FU-056 Phase 4: capability snapshot for the runtime banner's
+   * "Performance boosters" sub-section. Optional — defaults to
+   * undefined when the parent's workspace probe hasn't reported yet. */
+  nativeBackends?: NativeBackendStatus;
   busy: boolean;
   busyAction: string | null;
   videoBusy: boolean;
@@ -161,6 +166,7 @@ export function VideoStudioTab({
   loadedVideoVariant,
   videoRuntimeStatus,
   tauriBackend,
+  nativeBackends,
   busy,
   busyAction,
   videoBusy,
@@ -692,6 +698,8 @@ export function VideoStudioTab({
           onInstallOutputDeps={() => void handleInstallOutputDeps()}
           onInstallTokenizerDeps={() => void handleInstallTokenizerDeps()}
           onInstallGpuRuntime={() => void handleInstallGpuRuntime()}
+          selectedVideoVariant={selectedVideoVariant}
+          nativeBackends={nativeBackends}
         />
 
         <div className="image-studio-grid video-studio-top-grid" style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr" }}>

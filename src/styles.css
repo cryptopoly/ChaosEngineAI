@@ -4609,6 +4609,50 @@ select.text-input {
   padding: 6px 0;
 }
 
+/* FU-056 Phase 5: inline DFlash install nudge above the prompt
+   textarea. Same visual vocabulary as ``.torch-upgrade-pill`` so the
+   nudge reads as "optional acceleration available" rather than
+   alarming the user. */
+.composer-dflash-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(80, 140, 220, 0.10);
+  border: 1px solid rgba(80, 140, 220, 0.32);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--muted-strong);
+}
+.composer-dflash-hint-icon {
+  font-size: 0.95rem;
+}
+.composer-dflash-hint-text {
+  flex: 1;
+  min-width: 0;
+}
+.composer-dflash-hint-button {
+  appearance: none;
+  border: 1px solid rgba(143, 180, 255, 0.45);
+  background: rgba(80, 140, 220, 0.20);
+  color: var(--accent-strong);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.composer-dflash-hint-button:hover:not(:disabled) {
+  background: rgba(80, 140, 220, 0.32);
+}
+.composer-dflash-hint-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .composer-image-thumb {
   position: relative;
   width: 56px;

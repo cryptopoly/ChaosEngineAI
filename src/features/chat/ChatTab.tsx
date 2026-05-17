@@ -113,6 +113,14 @@ export interface ChatTabProps {
   /** Phase 3.2: cache strategies the system advertises so the chip
    * popover lists matching options. */
   availableCacheStrategies: SystemStats["availableCacheStrategies"];
+  /** FU-056 Phase 5: pieces the composer needs to render the
+   * inline "Install DFlash" hint above the textarea. All optional —
+   * the composer hides the affordance when any are missing. */
+  dflashInfo?: SystemStats["dflash"];
+  loadedModelCanonicalRepo?: string | null;
+  loadedModelName?: string | null;
+  onInstallPackage?: (pipPackage: string) => void;
+  installingPackage?: string | null;
 }
 
 // Avoid an unused-import diagnostic — ChatModelOption is still part of
@@ -168,6 +176,11 @@ export function ChatTab({
   oneTurnOverride,
   onOneTurnOverrideChange,
   availableCacheStrategies,
+  dflashInfo,
+  loadedModelCanonicalRepo,
+  loadedModelName,
+  onInstallPackage,
+  installingPackage,
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
   const modelBusyLabel =
@@ -468,6 +481,11 @@ export function ChatTab({
           runSlashCommand={runSlashCommand}
           handleEffortOff={handleEffortOff}
           handleEffortChange={handleEffortChange}
+          dflashInfo={dflashInfo}
+          loadedModelCanonicalRepo={loadedModelCanonicalRepo}
+          loadedModelName={loadedModelName}
+          onInstallPackage={onInstallPackage}
+          installingPackage={installingPackage}
         />
       </Panel>
     </div>

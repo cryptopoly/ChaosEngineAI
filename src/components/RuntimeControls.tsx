@@ -6,6 +6,7 @@ import { InstallLogPanel } from "./InstallLogPanel";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
+  dflashPackageFor,
   isStrategyCompatible,
   resolveDflashSupport,
   strategyIncompatReason,
@@ -658,18 +659,27 @@ export function RuntimeControls({
             />
             <span>{t("dflash.label", { defaultValue: "DFlash" })}</span>
           </label>
-          {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (
-            <button
-              type="button"
-              className="cache-strategy-install-btn"
-              disabled={installingPackage != null}
-              onClick={() => onInstallPackage("dflash-mlx")}
-            >
-              {installingPackage === "dflash-mlx"
-                ? t("dflash.installing", { defaultValue: "Installing..." })
-                : t("dflash.installButton", { defaultValue: "Install DFlash" })}
-            </button>
-          ) : null}
+          {!dflashInstalled && !isGgufBackend && canInstallDflashForModel && onInstallPackage ? (() => {
+            // FU-056 Phase 5: pick the right pip package by backend.
+            // MLX backend → ``dflash-mlx`` (Apple Silicon git+url);
+            // vLLM backend → ``dflash`` (PyPI CUDA wheel). Previously
+            // hard-coded to ``dflash-mlx`` which silently installed
+            // the wrong package on Windows / Linux CUDA boxes.
+            const pkg = dflashPackageFor(selectedBackend);
+            const inFlight = installingPackage === pkg;
+            return (
+              <button
+                type="button"
+                className="cache-strategy-install-btn"
+                disabled={installingPackage != null}
+                onClick={() => onInstallPackage(pkg)}
+              >
+                {inFlight
+                  ? t("dflash.installing", { defaultValue: "Installing..." })
+                  : t("dflash.installButton", { defaultValue: "Install DFlash" })}
+              </button>
+            );
+          })() : null}
           <button
             type="button"
             className="cache-strategy-info-btn"

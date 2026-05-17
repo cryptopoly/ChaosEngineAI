@@ -7,6 +7,7 @@ import type { ChatSession, ChatThinkingMode, LaunchPreferences, ModelCapabilitie
 import { MidThreadSwapMenu } from "./MidThreadSwapMenu";
 import type { KvStrategyOverride } from "./kvStrategyOverride";
 import type { SlashCommand } from "./slashCommands";
+import { ChatComposerDflashHint } from "./ChatComposerDflashHint";
 
 /**
  * Phase 2.1: extracted from ChatTab.tsx. The composer area — image
@@ -60,6 +61,17 @@ export interface ChatComposerProps {
   runSlashCommand: (cmd: SlashCommand) => void;
   handleEffortOff: () => void;
   handleEffortChange: (level: ReasoningEffortLevel) => void;
+  // FU-056 Phase 5: optional DFlash install nudge. The composer shows
+  // an inline "Install DFlash" hint when (a) the loaded model has a
+  // registered draft, (b) the package isn't installed yet on the
+  // active backend, and (c) the user is on a backend that supports
+  // it. All three props must be present for the hint to render —
+  // omit any to silently hide the affordance.
+  dflashInfo?: SystemStats["dflash"];
+  loadedModelCanonicalRepo?: string | null;
+  loadedModelName?: string | null;
+  onInstallPackage?: (pipPackage: string) => void;
+  installingPackage?: string | null;
 }
 
 export function ChatComposer({
@@ -99,6 +111,11 @@ export function ChatComposer({
   runSlashCommand,
   handleEffortOff,
   handleEffortChange,
+  dflashInfo,
+  loadedModelCanonicalRepo,
+  loadedModelName,
+  onInstallPackage,
+  installingPackage,
 }: ChatComposerProps) {
   // FU-042: chat surface uses the ``chat`` namespace for prompt /
   // affordance copy, falling back to literal English when a key isn't
@@ -153,6 +170,19 @@ export function ChatComposer({
             ))}
           </div>
         ) : null}
+        {/* FU-056 Phase 5: DFlash install nudge above the textarea.
+            Self-gating — renders nothing when conditions aren't met
+            (no draft for this model, package already installed,
+            unsupported backend, missing dispatcher). */}
+        <ChatComposerDflashHint
+          dflashInfo={dflashInfo}
+          loadedModelEngine={loadedModelEngine}
+          loadedModelRef={loadedModelRef}
+          loadedModelCanonicalRepo={loadedModelCanonicalRepo}
+          loadedModelName={loadedModelName}
+          onInstallPackage={onInstallPackage}
+          installingPackage={installingPackage}
+        />
         <textarea
           className="text-area"
           placeholder={

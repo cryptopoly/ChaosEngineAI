@@ -1605,6 +1605,11 @@ export default function App() {
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        loadedModelCanonicalRepo={workspace.runtime.loadedModel?.canonicalRepo ?? null}
+        loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
       />
     );
   } else if (activeTab === "chat-compare") {

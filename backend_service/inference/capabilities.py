@@ -16,6 +16,21 @@ from threading import RLock
 from pathlib import Path
 
 from backend_service.inference._constants import CAPABILITY_CACHE_TTL_SECONDS
+from backend_service.inference.accelerators import (
+    dflash_cuda_available,
+    dflash_cuda_version,
+    dflash_mlx_available,
+    dflash_mlx_version,
+    kvpress_available,
+    kvpress_version,
+    nunchaku_available,
+    nunchaku_version,
+    sageattention_available,
+    sageattention_version,
+    triattention_available,
+    triattention_version,
+    wsl2_available,
+)
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.binaries import (
     _json_subprocess,
@@ -59,6 +74,10 @@ def _initial_backend_capabilities() -> BackendCapabilities:
     llama_server_turbo_path = _resolve_llama_server_turbo()
     llama_cli_path = _resolve_llama_cli()
     mtplx_available, mtplx_python = _detect_mtplx()
+    # FU-056 Phase 1: prime accelerator flags during the placeholder phase
+    # too. The probes are cheap (single ``find_spec`` per package, no
+    # imports) so the UI gets accurate "Install" vs "Installed" state on
+    # first render without waiting for the full MLX subprocess probe.
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=False,
@@ -74,6 +93,19 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         vllmVersion=None,
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
+        nunchakuAvailable=nunchaku_available(),
+        nunchakuVersion=nunchaku_version(),
+        sageattentionAvailable=sageattention_available(),
+        sageattentionVersion=sageattention_version(),
+        dflashMlxAvailable=dflash_mlx_available(),
+        dflashMlxVersion=dflash_mlx_version(),
+        dflashCudaAvailable=dflash_cuda_available(),
+        dflashCudaVersion=dflash_cuda_version(),
+        triattentionAvailable=triattention_available(),
+        triattentionVersion=triattention_version(),
+        kvpressAvailable=kvpress_available(),
+        kvpressVersion=kvpress_version(),
+        wsl2Available=wsl2_available(),
         probing=True,
     )
 
@@ -133,6 +165,20 @@ def _probe_native_backends() -> BackendCapabilities:
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
         ggufMtpAvailable=gguf_mtp_available,
+        # FU-056 Phase 1: per-accelerator import + version probes.
+        nunchakuAvailable=nunchaku_available(),
+        nunchakuVersion=nunchaku_version(),
+        sageattentionAvailable=sageattention_available(),
+        sageattentionVersion=sageattention_version(),
+        dflashMlxAvailable=dflash_mlx_available(),
+        dflashMlxVersion=dflash_mlx_version(),
+        dflashCudaAvailable=dflash_cuda_available(),
+        dflashCudaVersion=dflash_cuda_version(),
+        triattentionAvailable=triattention_available(),
+        triattentionVersion=triattention_version(),
+        kvpressAvailable=kvpress_available(),
+        kvpressVersion=kvpress_version(),
+        wsl2Available=wsl2_available(),
     )
 
 

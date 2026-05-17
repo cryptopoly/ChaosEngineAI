@@ -97,6 +97,26 @@ class BackendCapabilities:
     # help text. The UI keys an MTP affordance for GGUF models off this
     # alongside mtplxAvailable for MLX models.
     ggufMtpAvailable: bool = False
+    # FU-056 Phase 1: CUDA-side accelerator capability flags. The Setup
+    # tab + per-feature install panels gate "Install" vs "Installed" UI
+    # off these. ``dflashMlxAvailable`` and ``dflashCudaAvailable`` are
+    # separate because the two backends live in two pip packages, even
+    # though the user-facing "DFlash" affordance is the same feature on
+    # both platforms. ``wsl2Available`` is Windows-only and seeds the
+    # Phase 8 vLLM-via-WSL bridge — always ``False`` on macOS / Linux.
+    nunchakuAvailable: bool = False
+    nunchakuVersion: str | None = None
+    sageattentionAvailable: bool = False
+    sageattentionVersion: str | None = None
+    dflashMlxAvailable: bool = False
+    dflashMlxVersion: str | None = None
+    dflashCudaAvailable: bool = False
+    dflashCudaVersion: str | None = None
+    triattentionAvailable: bool = False
+    triattentionVersion: str | None = None
+    kvpressAvailable: bool = False
+    kvpressVersion: str | None = None
+    wsl2Available: bool = False
     probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -118,6 +138,19 @@ class BackendCapabilities:
             "mtplxAvailable": self.mtplxAvailable,
             "mtplxPythonPath": self.mtplxPythonPath,
             "ggufMtpAvailable": self.ggufMtpAvailable,
+            "nunchakuAvailable": self.nunchakuAvailable,
+            "nunchakuVersion": self.nunchakuVersion,
+            "sageattentionAvailable": self.sageattentionAvailable,
+            "sageattentionVersion": self.sageattentionVersion,
+            "dflashMlxAvailable": self.dflashMlxAvailable,
+            "dflashMlxVersion": self.dflashMlxVersion,
+            "dflashCudaAvailable": self.dflashCudaAvailable,
+            "dflashCudaVersion": self.dflashCudaVersion,
+            "triattentionAvailable": self.triattentionAvailable,
+            "triattentionVersion": self.triattentionVersion,
+            "kvpressAvailable": self.kvpressAvailable,
+            "kvpressVersion": self.kvpressVersion,
+            "wsl2Available": self.wsl2Available,
             "probing": self.probing,
         }
 

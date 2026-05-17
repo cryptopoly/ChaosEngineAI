@@ -145,5 +145,14 @@ export interface NativeBackendStatus {
   kvpressAvailable?: boolean;
   kvpressVersion?: string | null;
   wsl2Available?: boolean;
+  // FU-056 Phase 8: WSL2 vLLM bridge state. ``wslDistroName`` is the
+  // default-distro name from ``wsl --status`` (e.g. "Ubuntu-24.04"),
+  // ``wslCudaAvailable`` is true iff ``nvidia-smi -L`` works inside
+  // WSL, ``wslVllmAvailable`` is true iff the managed venv at
+  // ``~/.chaosengine/vllm-venv`` can import vllm.
+  wslDistroName?: string | null;
+  wslCudaAvailable?: boolean;
+  wslVllmAvailable?: boolean;
+  wslVllmVersion?: string | null;
   probing?: boolean;
 }

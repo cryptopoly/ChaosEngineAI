@@ -168,6 +168,101 @@ class Wsl2AvailableTests(unittest.TestCase):
                 self.assertFalse(accelerators.wsl2_available())
 
 
+class WslDetailProbeTests(unittest.TestCase):
+    """FU-056 Phase 8: WSL2 + vLLM-bridge detail probes. All four
+    return safely-default values off Windows so the capability layer
+    never throws on a macOS / Linux host."""
+
+    def test_default_distro_off_windows_returns_none(self):
+        with patch.object(accelerators.sys, "platform", "linux"):
+            self.assertIsNone(accelerators.wsl_default_distro())
+
+    def test_default_distro_parses_status_output(self):
+        # ``wsl --status`` emits UTF-16 LE. Synthesize that shape so
+        # the decoder is exercised.
+        status_text = (
+            "Default Distribution: Ubuntu-24.04\r\n"
+            "Default Version: 2\r\n"
+        )
+        fake_result = MagicMock(
+            returncode=0,
+            stdout=status_text.encode("utf-16-le"),
+        )
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertEqual(accelerators.wsl_default_distro(), "Ubuntu-24.04")
+
+    def test_default_distro_returns_none_when_no_default_line(self):
+        fake_result = MagicMock(
+            returncode=0,
+            stdout="Default Version: 2\r\n".encode("utf-16-le"),
+        )
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertIsNone(accelerators.wsl_default_distro())
+
+    def test_default_distro_returns_none_when_wsl_exits_nonzero(self):
+        fake_result = MagicMock(returncode=1, stdout=b"")
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertIsNone(accelerators.wsl_default_distro())
+
+    def test_cuda_available_off_windows_returns_false(self):
+        with patch.object(accelerators.sys, "platform", "darwin"):
+            self.assertFalse(accelerators.wsl_cuda_available())
+
+    def test_cuda_available_true_when_nvidia_smi_lists_gpu(self):
+        fake_result = MagicMock(
+            returncode=0,
+            stdout=b"GPU 0: NVIDIA GeForce RTX 4090 (UUID: GPU-...)\n",
+        )
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertTrue(accelerators.wsl_cuda_available())
+
+    def test_cuda_available_false_when_nvidia_smi_returns_empty(self):
+        fake_result = MagicMock(returncode=0, stdout=b"")
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertFalse(accelerators.wsl_cuda_available())
+
+    def test_cuda_available_false_when_nvidia_smi_missing(self):
+        fake_result = MagicMock(returncode=127, stdout=b"")
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertFalse(accelerators.wsl_cuda_available())
+
+    def test_vllm_available_off_windows_returns_false(self):
+        with patch.object(accelerators.sys, "platform", "linux"):
+            self.assertFalse(accelerators.wsl_vllm_available())
+
+    def test_vllm_available_true_when_import_returns_zero(self):
+        fake_result = MagicMock(returncode=0, stdout=b"", stderr=b"")
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertTrue(accelerators.wsl_vllm_available())
+
+    def test_vllm_available_false_when_import_fails(self):
+        fake_result = MagicMock(returncode=1, stdout=b"", stderr=b"ModuleNotFoundError")
+        with patch.object(accelerators.sys, "platform", "win32"):
+            with patch.object(accelerators.subprocess, "run", return_value=fake_result):
+                self.assertFalse(accelerators.wsl_vllm_available())
+
+    def test_vllm_version_returns_none_when_unavailable(self):
+        with patch.object(accelerators, "wsl_vllm_available", return_value=False):
+            self.assertIsNone(accelerators.wsl_vllm_version())
+
+    def test_vllm_version_reads_stdout_when_available(self):
+        # Two-shot: ``wsl_vllm_available`` runs the import-check
+        # subprocess, then ``wsl_vllm_version`` runs a second subprocess
+        # to read ``__version__``. We stub the version-fetch result.
+        fake_version_result = MagicMock(returncode=0, stdout=b"0.6.3\n", stderr=b"")
+        with patch.object(accelerators, "wsl_vllm_available", return_value=True):
+            with patch.object(accelerators.sys, "platform", "win32"):
+                with patch.object(accelerators.subprocess, "run", return_value=fake_version_result):
+                    self.assertEqual(accelerators.wsl_vllm_version(), "0.6.3")
+
+
 class BackendCapabilitiesToDictTests(unittest.TestCase):
     """The frontend reads accelerator flags via ``/api/health``. Pin
     the serialized payload so a future field rename (or a forgetful

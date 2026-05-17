@@ -199,3 +199,152 @@ def wsl2_available() -> bool:
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return False
     return result.returncode == 0
+
+
+# ---------------------------------------------------------------------------
+# WSL2 vLLM bridge probes (FU-056 Phase 8)
+#
+# vLLM ships no native Windows wheels; the practical path on a Windows +
+# CUDA box is to install vLLM inside a WSL2 Ubuntu distro and run it
+# there. These three probes feed the Setup tab's WSL bridge panel +
+# the future engine-routing layer:
+#
+#   - ``wsl_default_distro()`` → string name reported by ``wsl --status``
+#     ("Ubuntu-24.04" on the dev box). The install + run paths anchor
+#     on this so a user with multiple distros gets predictable
+#     behaviour (always use the default).
+#   - ``wsl_cuda_available()`` → ``nvidia-smi -L`` returns exit 0 from
+#     inside WSL, proving CUDA passthrough works. False on stock WSL
+#     installs without the NVIDIA WSL driver kicker.
+#   - ``wsl_vllm_available()`` / ``wsl_vllm_version()`` → the isolated
+#     venv at ``~/.chaosengine/vllm-venv`` can ``import vllm``.
+#
+# Every probe is gated on ``sys.platform == "win32"`` so macOS / Linux
+# hosts pay zero subprocess cost for these checks (the WSL bridge has
+# no meaning there). The same fallthrough pattern as ``wsl2_available``.
+# ---------------------------------------------------------------------------
+
+# Timeout sized for cold WSL service start. The first call after a
+# Windows reboot can take 3-5 s while LxssManager spins up. After
+# that, subsequent calls return in <100 ms.
+_WSL_PROBE_TIMEOUT_SEC = 5.0
+
+# Persistent isolated venv inside WSL. The path is rooted at the WSL
+# user's $HOME — ``wsl`` resolves the leading ``~`` per-distro. This
+# keeps it out of the Windows filesystem (where CUDA torch on
+# ``/mnt/c/...`` would be 10x slower than on the ext4-backed home).
+_WSL_VLLM_VENV_PATH = "~/.chaosengine/vllm-venv"
+
+
+def _run_wsl(args: list[str], timeout: float = _WSL_PROBE_TIMEOUT_SEC) -> subprocess.CompletedProcess[bytes] | None:
+    """Helper: invoke ``wsl <args>`` with a tight timeout, swallow failures.
+
+    Returns ``None`` when the subprocess can't even start (missing
+    ``wsl.exe``, host isn't Windows, etc.) so callers can branch on
+    ``is None`` rather than re-handling FileNotFoundError everywhere.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        return subprocess.run(
+            ["wsl", *args],
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
+def wsl_default_distro() -> str | None:
+    """Return the WSL default-distro name from ``wsl --status``.
+
+    The line we want looks like ``Default Distribution: Ubuntu-24.04``.
+    Windows emits ``wsl --status`` output as UTF-16 LE with a BOM
+    (a Windows-style legacy), so we decode permissively + filter NUL
+    bytes that survive a flawed decoding.
+    """
+    result = _run_wsl(["--status"])
+    if result is None or result.returncode != 0:
+        return None
+    # ``wsl --status`` output is UTF-16 LE. ``decode("utf-16", errors="ignore")``
+    # handles the BOM cleanly; ``replace("\x00", "")`` is a belt-and-braces
+    # guard for hosts that emit raw UTF-16 without a marker.
+    try:
+        text = result.stdout.decode("utf-16", errors="ignore").replace("\x00", "")
+    except UnicodeDecodeError:
+        text = result.stdout.decode("utf-8", errors="ignore")
+    for line in text.splitlines():
+        normalized = line.strip()
+        if normalized.lower().startswith("default distribution"):
+            # "Default Distribution: Ubuntu-24.04" → "Ubuntu-24.04"
+            _, _, value = normalized.partition(":")
+            distro = value.strip()
+            return distro or None
+    return None
+
+
+def wsl_cuda_available() -> bool:
+    """True when CUDA passthrough into WSL is functional.
+
+    ``nvidia-smi -L`` lists installed GPUs and exits 0 when the NVIDIA
+    WSL driver kicker is present. Without that kicker the binary
+    typically isn't even reachable inside the distro, so this also
+    catches the "user installed WSL but skipped the NVIDIA driver" case.
+    """
+    result = _run_wsl(["--", "nvidia-smi", "-L"])
+    if result is None or result.returncode != 0:
+        return False
+    # A successful nvidia-smi line looks like ``GPU 0: NVIDIA GeForce RTX 4090``.
+    # The ``-L`` output is ASCII so we don't need the UTF-16 dance.
+    return b"GPU " in (result.stdout or b"")
+
+
+def wsl_vllm_available() -> bool:
+    """True when the WSL isolated venv has ``vllm`` importable.
+
+    Runs the import inside the venv's python so we don't accidentally
+    pick up a system-Python install of vllm — only the venv we
+    manage. Same hygiene as the MTPLX detector that checks the
+    dedicated ``~/.chaosengine/mtplx-venv`` path.
+    """
+    result = _run_wsl(
+        [
+            "--",
+            "bash",
+            "-c",
+            (
+                f"test -x {_WSL_VLLM_VENV_PATH}/bin/python && "
+                f"{_WSL_VLLM_VENV_PATH}/bin/python -c 'import vllm' 2>/dev/null"
+            ),
+        ],
+        timeout=8.0,
+    )
+    return result is not None and result.returncode == 0
+
+
+def wsl_vllm_version() -> str | None:
+    """Read ``vllm.__version__`` from the WSL isolated venv, or ``None``.
+
+    Two-shot: skips the import probe if ``wsl_vllm_available()`` already
+    returned False so we don't pay for a duplicate WSL roundtrip on
+    machines where the venv isn't there.
+    """
+    if not wsl_vllm_available():
+        return None
+    result = _run_wsl(
+        [
+            "--",
+            "bash",
+            "-c",
+            (
+                f"{_WSL_VLLM_VENV_PATH}/bin/python -c "
+                "'import vllm; print(getattr(vllm, \"__version__\", \"\"))'"
+            ),
+        ],
+        timeout=8.0,
+    )
+    if result is None or result.returncode != 0:
+        return None
+    version = result.stdout.decode("utf-8", errors="ignore").strip()
+    return version or None

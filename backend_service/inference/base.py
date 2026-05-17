@@ -117,6 +117,16 @@ class BackendCapabilities:
     kvpressAvailable: bool = False
     kvpressVersion: str | None = None
     wsl2Available: bool = False
+    # FU-056 Phase 8: WSL2 vLLM bridge — detail probes used by the Setup
+    # tab's WSL panel and the future engine-routing layer. ``wslDistroName``
+    # is the default-distro name from ``wsl --status`` (e.g. "Ubuntu-24.04"),
+    # ``wslCudaAvailable`` is true iff ``nvidia-smi -L`` works inside WSL,
+    # ``wslVllmAvailable`` is true iff the managed venv at
+    # ``~/.chaosengine/vllm-venv`` can import vllm.
+    wslDistroName: str | None = None
+    wslCudaAvailable: bool = False
+    wslVllmAvailable: bool = False
+    wslVllmVersion: str | None = None
     probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -151,6 +161,10 @@ class BackendCapabilities:
             "kvpressAvailable": self.kvpressAvailable,
             "kvpressVersion": self.kvpressVersion,
             "wsl2Available": self.wsl2Available,
+            "wslDistroName": self.wslDistroName,
+            "wslCudaAvailable": self.wslCudaAvailable,
+            "wslVllmAvailable": self.wslVllmAvailable,
+            "wslVllmVersion": self.wslVllmVersion,
             "probing": self.probing,
         }
 

@@ -30,6 +30,10 @@ from backend_service.inference.accelerators import (
     triattention_available,
     triattention_version,
     wsl2_available,
+    wsl_cuda_available,
+    wsl_default_distro,
+    wsl_vllm_available,
+    wsl_vllm_version,
 )
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.binaries import (
@@ -106,6 +110,10 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         kvpressAvailable=kvpress_available(),
         kvpressVersion=kvpress_version(),
         wsl2Available=wsl2_available(),
+        # FU-056 Phase 8: WSL-detail probes deferred to the full probe
+        # below. They shell out to ``wsl --`` subprocesses which can
+        # take 5-8 s each on a cold service start — too slow for the
+        # placeholder path that primes the first UI render.
         probing=True,
     )
 
@@ -147,6 +155,18 @@ def _probe_native_backends() -> BackendCapabilities:
             or (llama_server_turbo_path and _llama_server_supports(llama_server_turbo_path, "--spec-type"))
         )
 
+    # FU-056 Phase 8: WSL2 + vLLM-bridge probes. ``wsl2_available`` is
+    # cheap (``wsl --status`` returns in <100ms on warm LxssManager);
+    # the three detail probes shell out via ``wsl --`` and can take a
+    # few seconds on a cold service start, so they're gated behind the
+    # ``wsl2_active`` short-circuit to avoid paying that cost on hosts
+    # that have no WSL at all.
+    wsl2_active = wsl2_available()
+    wsl_distro = wsl_default_distro() if wsl2_active else None
+    wsl_cuda = wsl_cuda_available() if wsl2_active else False
+    wsl_vllm = wsl_vllm_available() if wsl2_active else False
+    wsl_vllm_ver = wsl_vllm_version() if wsl2_active and wsl_vllm else None
+
     return BackendCapabilities(
         pythonExecutable=python_executable,
         mlxAvailable=mlx_available,
@@ -178,7 +198,12 @@ def _probe_native_backends() -> BackendCapabilities:
         triattentionVersion=triattention_version(),
         kvpressAvailable=kvpress_available(),
         kvpressVersion=kvpress_version(),
-        wsl2Available=wsl2_available(),
+        # FU-056 Phase 8 WSL bridge state (see note above).
+        wsl2Available=wsl2_active,
+        wslDistroName=wsl_distro,
+        wslCudaAvailable=wsl_cuda,
+        wslVllmAvailable=wsl_vllm,
+        wslVllmVersion=wsl_vllm_ver,
     )
 
 

@@ -32,6 +32,8 @@ interface ChallengePickerModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onConfirm: (selectedKey: string, settings: LaunchPreferences) => void;
   onClose: () => void;
   onInstallPackage: (strategyId: string) => void;
@@ -54,6 +56,7 @@ export function ChallengePickerModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
   onConfirm,
   onClose,
   onInstallPackage,
@@ -107,6 +110,7 @@ export function ChallengePickerModal({
       onInstallMtplx={onInstallMtplx}
       installingMtplx={installingMtplx}
       mtplxJob={mtplxJob}
+      isAppleSilicon={isAppleSilicon}
       onSelectedKeyChange={setDraftKey}
       onSearchChange={setSearch}
       onSettingChange={(key, value) => {

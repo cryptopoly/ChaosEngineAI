@@ -73,6 +73,8 @@ interface CompareViewProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
@@ -350,6 +352,7 @@ export function CompareView({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
   installLogs,
@@ -806,6 +809,7 @@ export function CompareView({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onSelectedKeyChange={setPickerDraftKey}
         onSearchChange={setPickerSearch}
         onSettingChange={(key, value) => {

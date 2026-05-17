@@ -2193,6 +2193,38 @@ select.text-input {
   height: 100%;
 }
 
+/* FU-056 follow-up: Chat empty-state welcome banner. Sits inside the
+   ``.empty-state`` dashed container; gives users on a fresh install
+   a clear CTA to Discover instead of the silent "send a message and
+   the largest MLX model auto-downloads" failure mode. */
+.chat-empty-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 4px;
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+.chat-empty-banner-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.chat-empty-banner-body {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+.chat-empty-banner-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .loading-state-progress {
   display: flex;
   flex-direction: column;

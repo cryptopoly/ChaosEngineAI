@@ -121,6 +121,13 @@ export interface ChatTabProps {
   loadedModelName?: string | null;
   onInstallPackage?: (pipPackage: string) => void;
   installingPackage?: string | null;
+  /** FU-056 follow-up: empty-state banner pieces. Threads the
+   * "library has no chat models?" bit + the two tab-change handlers
+   * so the banner can point users at Discover (fresh install) or
+   * Models (have models, none loaded). */
+  noChatModelsInstalled?: boolean;
+  onBrowseDiscover?: () => void;
+  onOpenModels?: () => void;
 }
 
 // Avoid an unused-import diagnostic — ChatModelOption is still part of
@@ -181,6 +188,9 @@ export function ChatTab({
   loadedModelName,
   onInstallPackage,
   installingPackage,
+  noChatModelsInstalled = false,
+  onBrowseDiscover,
+  onOpenModels,
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
   const modelBusyLabel =
@@ -443,6 +453,10 @@ export function ChatTab({
           onDetailsToggle={onDetailsToggle}
           onCancelGeneration={onCancelGeneration}
           onLoadModel={onLoadModel}
+          noChatModelsInstalled={noChatModelsInstalled}
+          loadedModelRef={loadedModelRef}
+          onBrowseDiscover={onBrowseDiscover}
+          onOpenModels={onOpenModels}
         />
         <ChatComposer
           draftMessage={draftMessage}

@@ -43,6 +43,9 @@ export interface BenchmarkRunTabProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
+   * block hides on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onBenchmarkDraftChange: <K extends keyof BenchmarkRunPayload>(key: K, value: BenchmarkRunPayload[K]) => void;
   onBenchmarkPromptIdChange: (id: string) => void;
   onBenchmarkModelKeyChange: (key: string) => void;
@@ -75,6 +78,7 @@ export function BenchmarkRunTab({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  isAppleSilicon = false,
   onBenchmarkDraftChange,
   onBenchmarkPromptIdChange,
   onBenchmarkModelKeyChange,
@@ -566,6 +570,7 @@ export function BenchmarkRunTab({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onSelectedKeyChange={(key) => {
           onBenchmarkModelKeyChange(key);
         }}

@@ -89,6 +89,7 @@ import {
   compareOptionalNumber,
   serverOriginFromBase,
   isUnsavedEmptySession,
+  isAppleSiliconHost,
 } from "./utils";
 import {
   useWorkspace,
@@ -649,6 +650,12 @@ export default function App() {
 
   // ── Cross-domain derived state ─────────────────────────────
   const nativeBackends = workspace.runtime.nativeBackends;
+  // FU-056 follow-up: derive once, thread to surfaces that gate
+  // Apple-Silicon-only affordances (MTPLX in launch settings, MLX-LM
+  // install panels, mlx-video install rows). Reads platform/arch from
+  // the system probe — falls to ``false`` on early paint before the
+  // probe lands, which is the safe default (don't flash MLX UI).
+  const isAppleSilicon = isAppleSiliconHost(workspace.system);
   const filteredLogs = workspace.logs.filter((entry) => {
     const haystack = `${entry.ts} ${entry.source} ${entry.level} ${entry.message}`.toLowerCase();
     return haystack.includes(logQuery.toLowerCase());
@@ -1610,6 +1617,9 @@ export default function App() {
         loadedModelName={workspace.runtime.loadedModel?.name ?? null}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
+        noChatModelsInstalled={libraryChatOptions.length === 0}
+        onBrowseDiscover={() => setActiveTab("online-models")}
+        onOpenModels={() => setActiveTab("my-models")}
       />
     );
   } else if (activeTab === "chat-compare") {
@@ -1628,6 +1638,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1648,6 +1659,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1728,6 +1740,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onBenchmarkDraftChange={updateBenchmarkDraft}
         onBenchmarkPromptIdChange={setBenchmarkPromptId}
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
@@ -1981,6 +1994,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}
         onLaunchSettingChange={updateLaunchSetting}

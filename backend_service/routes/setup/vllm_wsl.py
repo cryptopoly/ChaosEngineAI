@@ -173,17 +173,21 @@ def _job_worker() -> None:
     job.package_current = _PHASE_LABELS["preflight"]
     job.target_dir = _WSL_VLLM_VENV_PATH
 
-    # Step 1 — preflight. Confirm WSL responds + CUDA passthrough works
-    # before paying for the venv + pip download. Fails fast if the user
-    # tried to install on a box where ``nvidia-smi -L`` doesn't work
-    # inside WSL (the NVIDIA WSL driver kicker hasn't been installed
-    # on the Windows host).
+    # Step 1 — preflight. Two checks bundled into one attempt row so
+    # the user sees a single "checking prerequisites" step rather than
+    # a wall of green ticks for sub-probes:
+    #   (a) CUDA passthrough works (``nvidia-smi -L`` exits 0).
+    #   (b) python3-venv is available — Ubuntu 24.04 ships python3
+    #       without ``ensurepip``, so ``python3 -m venv X`` fails with
+    #       "ensurepip is not available" until ``python3.12-venv`` is
+    #       apt-installed. We surface that clearly because the fix is
+    #       a one-line sudo command outside our process boundary.
     code, output = _run_wsl_step(
         "nvidia-smi -L",
         _STEP_TIMEOUTS_SEC["preflight"],
     )
-    _push_attempt(job, "preflight", ok=(code == 0), output=output)
     if code != 0:
+        _push_attempt(job, "preflight", ok=False, output=output)
         job.phase = "error"
         job.error = (
             "CUDA isn't reachable inside WSL. Install the NVIDIA WSL "
@@ -193,6 +197,38 @@ def _job_worker() -> None:
         job.finished_at = time.time()
         job.done = True
         return
+
+    # python3-venv probe. ``python3 -c 'import ensurepip'`` exits 0 iff
+    # ensurepip is wired (i.e. python3-venv is installed). Cheaper than
+    # actually trying ``python3 -m venv /tmp/x`` and matching stderr.
+    code, venv_output = _run_wsl_step(
+        "python3 -c 'import ensurepip' 2>&1",
+        _STEP_TIMEOUTS_SEC["preflight"],
+    )
+    if code != 0:
+        _push_attempt(
+            job,
+            "preflight",
+            ok=False,
+            output=f"{output}\n\npython3-venv probe:\n{venv_output}",
+        )
+        job.phase = "error"
+        job.error = (
+            "python3-venv isn't installed in WSL. Open a WSL shell and run:\n"
+            "    sudo apt update && sudo apt install -y python3-venv\n"
+            "then retry this installer."
+        )
+        job.message = job.error
+        job.finished_at = time.time()
+        job.done = True
+        return
+
+    _push_attempt(
+        job,
+        "preflight",
+        ok=True,
+        output=f"{output}\n\npython3-venv: OK",
+    )
     _advance(job, 1)
 
     # Step 2 — venv. ``python3 -m venv`` is idempotent: if the dir

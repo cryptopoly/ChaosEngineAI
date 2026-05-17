@@ -576,8 +576,16 @@ def phase_4(cap: Capability) -> PhaseResult:
         model_id = installed[0].get("id") or installed[0].get("repo")
         if not model_id:
             return "skip", "could not resolve installed image model id", {}
+        # Creative-but-deterministic prompt — seed=42 pins output so the SHA
+        # check stays reproducible while the saved PNG is more visually
+        # interesting than "a red circle on white" when humans inspect the
+        # test-results dir. At 256x256 + 4 steps fidelity is muddy; prompt
+        # is for vibes more than correctness, but well-formed CLIP tokens
+        # exercise the prompt encoder + scheduler more thoroughly than a
+        # two-word phrase.
         rc, payload, err = _cli_json(
-            "image-generate", "a red circle on white",
+            "image-generate",
+            "cinematic neon-lit Tokyo alley at midnight, rain reflections on wet pavement, cyberpunk noir, volumetric mist",
             "--model", model_id, "--steps", "4", "--width", "256", "--height", "256",
             "--seed", "42", "--timeout", "1800",
         )
@@ -632,9 +640,13 @@ def phase_5(cap: Capability) -> PhaseResult:
         model_id = installed[0].get("id") or installed[0].get("repo")
         if not model_id:
             return "skip", "could not resolve installed video model id", {}
-        # numFrames ≥ 8 per VideoGenerationRequest schema
+        # numFrames ≥ 8 per VideoGenerationRequest schema. Prompt is
+        # motion-rich + visually interesting at low fidelity (256x256, 4
+        # steps, 8 frames) without exploding the runtime — seed=42 pins
+        # output so the check stays reproducible across runs.
         rc, payload, err = _cli_json(
-            "video-generate", "a slowly turning sphere",
+            "video-generate",
+            "ember-orange phoenix gliding through volcanic ash clouds, slow ascending arc, dramatic backlight",
             "--model", model_id, "--steps", "4", "--frames", "8",
             "--width", "256", "--height", "256", "--seed", "42",
             "--timeout", "3600",

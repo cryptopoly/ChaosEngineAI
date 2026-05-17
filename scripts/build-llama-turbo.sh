@@ -44,14 +44,20 @@ echo "    install:  $INSTALL_DIR"
 echo "    jobs:     $JOBS"
 echo
 
-# Clone or update the source checkout
-if [[ -d "$TURBO_DIR/.git" ]]; then
+# Clone or update the source checkout. Bare ``.git/`` stubs can survive
+# partial /tmp cleanups; ``rev-parse --git-dir`` rejects them so we
+# re-clone instead of hitting ``fatal: not a git repository`` on fetch.
+if [[ -d "$TURBO_DIR/.git" ]] && git -C "$TURBO_DIR" rev-parse --git-dir > /dev/null 2>&1; then
   echo "==> updating existing checkout"
   cd "$TURBO_DIR"
   git fetch --all --prune
   git checkout "$TURBO_BRANCH"
   git reset --hard "origin/$TURBO_BRANCH"
 else
+  if [[ -e "$TURBO_DIR" ]]; then
+    echo "==> stale checkout at $TURBO_DIR — removing before clone"
+    rm -rf "$TURBO_DIR"
+  fi
   echo "==> cloning $TURBO_REPO (branch: $TURBO_BRANCH)"
   git clone --branch "$TURBO_BRANCH" "$TURBO_REPO" "$TURBO_DIR"
   cd "$TURBO_DIR"

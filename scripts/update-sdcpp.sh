@@ -25,8 +25,8 @@ else
   JOBS="${SDCPP_JOBS:-4}"
 fi
 
-if [[ ! -d "$SDCPP_DIR/.git" ]]; then
-  echo "No existing checkout at $SDCPP_DIR — running full build instead."
+if [[ ! -d "$SDCPP_DIR/.git" ]] || ! git -C "$SDCPP_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+  echo "No usable checkout at $SDCPP_DIR — running full build instead."
   exec "$SCRIPT_DIR/build-sdcpp.sh"
 fi
 

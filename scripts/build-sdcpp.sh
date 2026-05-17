@@ -43,7 +43,12 @@ echo
 
 # Clone or update the source checkout — sd.cpp uses git submodules for
 # ggml, so always pass --recurse-submodules / --recursive.
-if [[ -d "$SDCPP_DIR/.git" ]]; then
+#
+# Belt-and-braces check: a bare ``.git/`` directory can survive when /tmp
+# is partially cleaned (macOS only wipes regular files older than 3 days
+# under /tmp/com.apple.launchd.*, not subdirs). The ``rev-parse`` probe
+# rejects the empty stub so we re-clone instead of failing on git fetch.
+if [[ -d "$SDCPP_DIR/.git" ]] && git -C "$SDCPP_DIR" rev-parse --git-dir > /dev/null 2>&1; then
   echo "==> updating existing checkout"
   cd "$SDCPP_DIR"
   git fetch --all --prune
@@ -51,6 +56,10 @@ if [[ -d "$SDCPP_DIR/.git" ]]; then
   git reset --hard "origin/$SDCPP_BRANCH"
   git submodule update --init --recursive
 else
+  if [[ -e "$SDCPP_DIR" ]]; then
+    echo "==> stale checkout at $SDCPP_DIR — removing before clone"
+    rm -rf "$SDCPP_DIR"
+  fi
   echo "==> cloning $SDCPP_REPO (branch: $SDCPP_BRANCH)"
   git clone --recursive --branch "$SDCPP_BRANCH" "$SDCPP_REPO" "$SDCPP_DIR"
   cd "$SDCPP_DIR"

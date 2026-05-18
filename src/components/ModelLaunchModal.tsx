@@ -4,6 +4,8 @@ import { RuntimeControls } from "./RuntimeControls";
 import { number, sizeLabel } from "../utils";
 import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
+import type { MtplxJobState } from "../api";
+import { candidateKeys } from "./runtimeSupport";
 
 /**
  * Phase 2.11: typed capability badges for the picker. Mirrors the
@@ -64,6 +66,13 @@ export interface ModelLaunchModalProps {
   installingPackage: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
   turboInstalled?: boolean;
+  mtplxSystemInfo?: SystemStats["mtplx"];
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
+   * block hides on non-Apple-Silicon hosts where MTPLX can't run. */
+  isAppleSilicon?: boolean;
   onSelectedKeyChange: (key: string) => void;
   onSearchChange: (value: string) => void;
   onSettingChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -90,6 +99,11 @@ export function ModelLaunchModal({
   installingPackage,
   installLogs,
   turboInstalled,
+  mtplxSystemInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
+  isAppleSilicon = false,
   onSelectedKeyChange,
   onSearchChange,
   onSettingChange,
@@ -121,6 +135,14 @@ export function ModelLaunchModal({
   const selectedOption = options.find((option) => option.key === selectedKey) ?? options[0] ?? null;
   const resolvedSelectedKey = selectedOption?.key ?? "";
   const listVisible = showList || !selectedOption || search.length > 0;
+
+  const mtplxModelSupported = (() => {
+    if (!mtplxSystemInfo?.supportedModels?.length) return false;
+    const modelKeys = candidateKeys([selectedOption?.canonicalRepo, selectedOption?.modelRef]);
+    return mtplxSystemInfo.supportedModels.some((ref) =>
+      candidateKeys([ref]).some((k) => modelKeys.includes(k))
+    );
+  })();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -232,6 +254,11 @@ export function ModelLaunchModal({
               selectedCanonicalRepo={selectedOption?.canonicalRepo}
               selectedModelName={selectedOption?.model}
               turboInstalled={turboInstalled}
+              mtplxInfo={mtplxSystemInfo ? { available: mtplxSystemInfo.available, modelSupported: mtplxModelSupported } : undefined}
+              onInstallMtplx={onInstallMtplx}
+              installingMtplx={installingMtplx}
+              mtplxJob={mtplxJob}
+              isAppleSilicon={isAppleSilicon}
               compact
             />
           </div>

@@ -55,8 +55,15 @@ Write-Host "    install:  $InstallDir"
 Write-Host "    jobs:     $Jobs"
 Write-Host ""
 
-# Clone or update the source checkout
+# Clone or update the source checkout. Bare ``.git\`` stubs can survive
+# partial %TEMP% cleanups; ``git rev-parse --git-dir`` rejects them so we
+# re-clone instead of failing on fetch.
+$gitDirOk = $false
 if (Test-Path (Join-Path $TurboDir ".git")) {
+    git -C $TurboDir rev-parse --git-dir 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { $gitDirOk = $true }
+}
+if ($gitDirOk) {
     Write-Host "==> updating existing checkout"
     Push-Location $TurboDir
     git fetch --all --prune
@@ -66,6 +73,10 @@ if (Test-Path (Join-Path $TurboDir ".git")) {
     git reset --hard "origin/$TurboBranch"
     Assert-LastExit "git reset"
 } else {
+    if (Test-Path $TurboDir) {
+        Write-Host "==> stale checkout at $TurboDir — removing before clone"
+        Remove-Item -Recurse -Force $TurboDir
+    }
     Write-Host "==> cloning $TurboRepo (branch: $TurboBranch)"
     git clone --branch $TurboBranch $TurboRepo $TurboDir
     Assert-LastExit "git clone"

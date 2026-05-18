@@ -79,9 +79,29 @@ licence, preserving the original copyright header in the vendored file.
 | Package | Repository | Licence |
 |---------|-----------|---------|
 | `dflash-mlx` | <https://github.com/bstnxbt/dflash-mlx> | MIT |
+| `mtplx` | <https://github.com/youssofal/mtplx> | Apache 2.0 |
 
 These libraries are **not bundled** with ChaosEngineAI. They are
 optional pip dependencies that the user may install independently.
+
+### mtplx (MTP speculative decoding on Apple Silicon)
+
+`mtplx` provides native in-model Multi-Token Prediction speculative
+decoding for models that ship baked-in MTP heads (Qwen3.5/3.6,
+DeepSeek V3/R1, Qwen3-Coder-Next, Youssofal's MTPLX-Optimized
+variants). It bundles a forked ``mlx-mtplx`` runtime that conflicts
+with upstream ``mlx``, so the install lives in an **isolated venv**
+at ``~/.chaosengine/mtplx-venv/`` — never co-installed with our main
+``.venv``. ChaosEngineAI shells out to the ``mtplx start --model X
+--port N`` CLI from ``backend_service/inference/mtplx_engine.py`` and
+proxies via the package's own OpenAI-compatible HTTP server. Not
+bundled in the desktop ``.app``; installed on demand from the Setup
+page on Apple Silicon hosts. See FU-028 in CLAUDE.md.
+
+> **Apache 2.0 licence summary**: free use, modification, and
+> redistribution permitted with attribution preserved. Source:
+> ``~/.chaosengine/mtplx-venv/lib/python*/site-packages/mtplx-*.dist-info/licenses/``
+> (full LICENSE file shipped with the wheel).
 
 ## Optional Apple Silicon Video Runtime
 

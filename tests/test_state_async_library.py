@@ -68,11 +68,15 @@ class AsyncLibraryScanTests(unittest.TestCase):
         self.assertGreaterEqual(len(provider_calls), 1)
 
     def test_workspace_returns_scanning_status_until_scan_finishes(self):
+        # ``_filter_vanished_library_entries`` prunes entries whose path
+        # is gone on disk, so use a real directory under the test tmpdir.
+        on_disk = Path(self.tmp.name) / "slow"
+        on_disk.mkdir(exist_ok=True)
         slow_event = mock.MagicMock()
 
         def slow_scan(directories):
             slow_event.calls += 1
-            return [{"name": "slow/entry", "path": "/tmp/slow"}]
+            return [{"name": "slow/entry", "path": str(on_disk)}]
 
         slow_event.calls = 0
         with mock.patch(

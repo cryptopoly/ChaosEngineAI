@@ -779,15 +779,35 @@ def _watch_parent_and_exit():
 
 
 def main() -> None:
+    import argparse
     import uvicorn
+
+    # CLI args take precedence over env vars which take precedence over
+    # the hardcoded DEFAULT_*. Honoring CHAOSENGINE_PORT lines up with
+    # the env-var the e2e suite + cache-strategy matrix already read,
+    # so a parallel dev backend on port 8877 only needs one variable
+    # set across the whole test surface.
+    parser = argparse.ArgumentParser(description="ChaosEngineAI backend sidecar.")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("CHAOSENGINE_HOST", DEFAULT_HOST),
+        help="Bind address (default: $CHAOSENGINE_HOST or DEFAULT_HOST).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("CHAOSENGINE_PORT", str(DEFAULT_PORT))),
+        help="Bind port (default: $CHAOSENGINE_PORT or DEFAULT_PORT).",
+    )
+    args = parser.parse_args()
 
     # Watch for parent death so we don't orphan ourselves
     _watch_parent_and_exit()
 
     uvicorn.run(
         "backend_service.app:app",
-        host=DEFAULT_HOST,
-        port=DEFAULT_PORT,
+        host=args.host,
+        port=args.port,
         reload=False,
     )
 

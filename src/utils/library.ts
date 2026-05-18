@@ -85,6 +85,16 @@ const IMAGE_LIBRARY_KEYWORDS = [
   "sana sprint",
   "sana_1600m",
   "sana-1600m",
+  // Tracked latest seeds — mirror of ``_IMAGE_MODEL_KEYWORDS`` in
+  // ``backend_service/helpers/model_classifier.py``. Frontend filter is a
+  // belt-and-braces defense — the backend should already mark these as
+  // ``modelType: "image"``, but the keyword scan kicks in when the backend
+  // discovery missed a partial-cache snapshot or the entry is older.
+  "ernie-image",
+  "nucleus-image",
+  "z-image",
+  "hidream",
+  "glm-image",
 ];
 
 export function isChatLibraryItem(item: LibraryItem): boolean {

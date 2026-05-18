@@ -27,9 +27,11 @@ else
   JOBS="${LLAMA_TURBO_JOBS:-4}"
 fi
 
-# If no checkout exists yet, delegate to the full build script.
-if [[ ! -d "$TURBO_DIR/.git" ]]; then
-  echo "No existing checkout at $TURBO_DIR — running full build instead."
+# If no checkout exists yet — OR if ``.git/`` is a hollow stub left by a
+# partial /tmp cleanup — delegate to the full build script which now
+# detects and rm -rf's stale dirs before re-cloning.
+if [[ ! -d "$TURBO_DIR/.git" ]] || ! git -C "$TURBO_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+  echo "No usable checkout at $TURBO_DIR — running full build instead."
   exec "$SCRIPT_DIR/build-llama-turbo.sh"
 fi
 

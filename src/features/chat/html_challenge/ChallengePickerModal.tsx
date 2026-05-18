@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { ModelLaunchModal } from "../../../components/ModelLaunchModal";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../../types";
 import type { ChatModelOption } from "../../../types/chat";
+import type { MtplxJobState } from "../../../api";
 import { compareTargetLabels, type CompareTarget, cloneLaunchSettings, useLaunchPreview } from "../CompareView";
 
 interface ChallengePickerModalProps {
@@ -27,6 +28,12 @@ interface ChallengePickerModalProps {
   installingPackage: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
   turboInstalled?: boolean;
+  mtplxSystemInfo?: SystemStats["mtplx"];
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onConfirm: (selectedKey: string, settings: LaunchPreferences) => void;
   onClose: () => void;
   onInstallPackage: (strategyId: string) => void;
@@ -45,6 +52,11 @@ export function ChallengePickerModal({
   installingPackage,
   installLogs,
   turboInstalled,
+  mtplxSystemInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
+  isAppleSilicon = false,
   onConfirm,
   onClose,
   onInstallPackage,
@@ -94,6 +106,11 @@ export function ChallengePickerModal({
       installingPackage={installingPackage}
       installLogs={installLogs}
       turboInstalled={turboInstalled}
+      mtplxSystemInfo={mtplxSystemInfo}
+      onInstallMtplx={onInstallMtplx}
+      installingMtplx={installingMtplx}
+      mtplxJob={mtplxJob}
+      isAppleSilicon={isAppleSilicon}
       onSelectedKeyChange={setDraftKey}
       onSearchChange={setSearch}
       onSettingChange={(key, value) => {

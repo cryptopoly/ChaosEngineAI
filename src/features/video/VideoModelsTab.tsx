@@ -4,11 +4,13 @@ import { Panel } from "../../components/Panel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
 import type {
+  SystemStats,
   TabId,
   VideoModelFamily,
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   compactModelSizeLabel,
   compactReleaseLabel,
@@ -20,7 +22,14 @@ import {
   videoDownloadStatusForVariant,
   videoPrimarySizeLabel,
   videoSecondarySizeLabel,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
+import { AcceleratorCard } from "../../components/AcceleratorCard";
+import {
+  getAccelerator,
+  getApplicableAccelerators,
+} from "../../components/acceleratorCatalog";
 
 type InstalledVideoSort = "name" | "provider" | "tasks" | "size" | "ram" | "date" | "status";
 type SortDir = "asc" | "desc";
@@ -35,6 +44,14 @@ export interface VideoModelsTabProps {
   videoBusyLabel: string | null;
   loadedVideoVariant: VideoModelVariant | null;
   fileRevealLabel: string;
+  /** FU-056 Phase 4: capability snapshot for the accelerator pills
+   * rendered next to each variant (sageattention + triattention for
+   * Wan / HunyuanVideo / LTX / CogVideoX / Mochi). Optional — older
+   * backends collapse pills to the "available" state. */
+  nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding MLX-only video
+   * variants (mlx-video / LTX-2 family) on Windows + Linux. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
@@ -51,7 +68,10 @@ function releaseSortKey(variant: VideoModelVariant): string {
 }
 
 function sizeSortKey(variant: VideoModelVariant): number | null {
-  const candidates = [variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
+  // FU-054: prefer per-file size (``ggufFileGb``) for GGUF-pinned variants
+  // so three quants of the same shared repo dir sort by actual quant
+  // footprint, not by the shared repo total.
+  const candidates = [variant.ggufFileGb, variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb];
   for (const value of candidates) {
     if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
   }
@@ -151,6 +171,8 @@ export function VideoModelsTab({
   videoBusyLabel,
   loadedVideoVariant,
   fileRevealLabel,
+  nativeBackends,
+  hostSystem,
   onActiveTabChange,
   onOpenVideoStudio,
   onVideoDownload,
@@ -193,6 +215,15 @@ export function VideoModelsTab({
         return { variant, family, downloadState, status, memoryEstimate };
       })
       .filter(({ variant, family, status }) => {
+        // FU-056 follow-up: hide mlx-video / LTX-2 family on Win/Linux.
+        if (
+          !isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          )
+        ) {
+          return false;
+        }
         if (taskFilter !== "all" && !variant.taskSupport.includes(taskFilter)) return false;
         if (statusFilter !== "all" && status !== statusFilter) return false;
         if (!normalizedSearch) return true;
@@ -235,7 +266,7 @@ export function VideoModelsTab({
         if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
         return left.variant.name.localeCompare(right.variant.name);
       });
-  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, sortDir, statusFilter, taskFilter, videoCatalog]);
+  }, [activeVideoDownloads, installedVideoVariants, loadedVideoVariant, normalizedSearch, sort, sortDir, statusFilter, taskFilter, videoCatalog, hostSystem]);
 
   return (
     <div className="content-grid image-page-grid">
@@ -393,6 +424,22 @@ export function VideoModelsTab({
                               {variant.styleTags.slice(0, 4).map((tag) => (
                                 <span key={tag} className="badge subtle">{tag}</span>
                               ))}
+                              {/* FU-056 Phase 4: applicable-accelerator pills.
+                                  Read-only — install action lives in the Video
+                                  Studio runtime banner so install state stays
+                                  in one place. */}
+                              {getApplicableAccelerators(variant.repo).map((acceleratorId) => {
+                                const meta = getAccelerator(acceleratorId);
+                                if (!meta) return null;
+                                return (
+                                  <AcceleratorCard
+                                    key={acceleratorId}
+                                    meta={meta}
+                                    capabilities={nativeBackends ?? null}
+                                    variant="pill"
+                                  />
+                                );
+                              })}
                             </div>
                           </div>
                           <span>{variant.provider}</span>
@@ -403,6 +450,18 @@ export function VideoModelsTab({
                           </div>
                           <span title={sizeTitle || undefined}>
                             {compactModelSizeLabel(primarySizeLabel)}
+                            {(variant.sharedRepoSiblings ?? 0) > 0 && isComplete ? (() => {
+                              const siblingCount = variant.sharedRepoSiblings ?? 0;
+                              const repoLabel = variant.sharedRepoKey ?? variant.repo;
+                              return (
+                                <small
+                                  className="shared-repo-badge"
+                                  title={`Shares storage with ${siblingCount} other variant(s) of ${repoLabel}. Deleting this row removes the entire repo dir, affecting siblings.`}
+                                >
+                                  {`shares storage · +${siblingCount}`}
+                                </small>
+                              );
+                            })() : null}
                           </span>
                           <span className="media-model-memory" title={memoryEstimate?.title ?? t("videoModels.memory.pendingTitle", { defaultValue: "RAM/VRAM estimate pending until model weight size is known." })}>
                             <span>{memory.primary}</span>

@@ -1,6 +1,7 @@
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../../api";
+import type { MtplxJobState } from "../../api";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import {
@@ -8,6 +9,7 @@ import {
   cloneLaunchSettings,
   compareTargetLabels,
   compareTargets,
+  modelUsesMtplx,
   summarizeLaunchSettings,
   type CompareTarget,
 } from "./CompareView";
@@ -80,6 +82,12 @@ interface HtmlChallengeTabProps {
   availableCacheStrategies?: SystemStats["availableCacheStrategies"];
   dflashInfo?: SystemStats["dflash"];
   turboInstalled?: boolean;
+  mtplxSystemInfo?: SystemStats["mtplx"];
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
@@ -97,6 +105,11 @@ export function HtmlChallengeTab({
   availableCacheStrategies,
   dflashInfo,
   turboInstalled,
+  mtplxSystemInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
+  isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
   installLogs,
@@ -924,7 +937,11 @@ export function HtmlChallengeTab({
     // first having to fail / repair. Confirming the picker auto-retries to
     // keep filename + manifest + rendered HTML consistent.
     const canChangeModel = Boolean(manifest && manifestSlot);
-    const settingsSummary = compactSettingsSummary(slot, state, summarizeLaunchSettings);
+    // Bind the option + mtplx context so the summary label reflects which
+    // engine the backend will actually route to.
+    const summarizeForSlot = (settings: ChallengeSlot["settings"]) =>
+      summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo) });
+    const settingsSummary = compactSettingsSummary(slot, state, summarizeForSlot);
 
     return (
       <div key={slot.id} className="html-challenge-card-stack">
@@ -937,7 +954,7 @@ export function HtmlChallengeTab({
             completedChallenge={completedChallenge}
             isLastSlot={slot.id === slots[slots.length - 1]?.id}
             canRemove={slots.length > 2}
-            summary={summarizeLaunchSettings(slot.settings)}
+            summary={summarizeForSlot(slot.settings)}
             onUpdateThinking={updateSlotThinking}
             onUpdateTemperature={updateSlotTemperature}
             onUpdateSeed={updateSlotSeed}
@@ -1120,6 +1137,11 @@ export function HtmlChallengeTab({
         installingPackage={installingPackage ?? null}
         installLogs={installLogs}
         turboInstalled={turboInstalled}
+        mtplxSystemInfo={mtplxSystemInfo}
+        onInstallMtplx={onInstallMtplx}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onConfirm={(selectedKey, newSettings) => {
           if (pickerTarget) {
             const target = pickerTarget;

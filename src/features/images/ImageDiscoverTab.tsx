@@ -6,6 +6,7 @@ import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons"
 import type { DownloadStatus } from "../../api";
 import type {
   ImageModelVariant,
+  SystemStats,
   TabId,
 } from "../../types";
 import type {
@@ -13,6 +14,7 @@ import type {
   ImageDiscoverTaskFilter,
   ImageDiscoverAccessFilter,
 } from "../../types/image";
+import type { NativeBackendStatus } from "../../types/server";
 import {
   compactModelSizeLabel,
   compactReleaseLabel,
@@ -25,7 +27,14 @@ import {
   imagePrimarySizeLabel,
   imageSecondarySizeLabel,
   isGatedImageAccessError,
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
 } from "../../utils";
+import { AcceleratorCard } from "../../components/AcceleratorCard";
+import {
+  getAccelerator,
+  getApplicableAccelerators,
+} from "../../components/acceleratorCatalog";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
 type SortDir = "asc" | "desc";
@@ -45,6 +54,13 @@ export interface ImageDiscoverTabProps {
   activeImageDownloads: Record<string, DownloadStatus>;
   selectedImageVariant: ImageModelVariant | null;
   fileRevealLabel: string;
+  /** FU-056 Phase 3: capability snapshot for the accelerator pills
+   * rendered next to each variant. Optional — pre-ready or older
+   * backends collapse pills to their "available" form. */
+  nativeBackends?: NativeBackendStatus;
+  /** FU-056 follow-up: host platform info for hiding MLX-only /
+   * CUDA-only variants on the wrong host. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onActiveTabChange: (tab: TabId) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onImageDownload: (repo: string) => void;
@@ -211,6 +227,8 @@ export function ImageDiscoverTab({
   activeImageDownloads,
   selectedImageVariant,
   fileRevealLabel,
+  nativeBackends,
+  hostSystem,
   onActiveTabChange,
   onOpenImageStudio,
   onImageDownload,
@@ -232,6 +250,15 @@ export function ImageDiscoverTab({
           const memoryEstimate = imageDiscoverMemoryEstimate(variant);
           return { variant, status, memoryEstimate };
         })
+        .filter(({ variant }) =>
+          // FU-056 follow-up: hide mflux-runtime + LTX-2-style apple-
+          // only variants on Win/Linux, nunchaku-only rows on Mac.
+          // "any"-gated rows pass through (the bulk of the catalog).
+          isVariantCompatibleWithHost(
+            imageOrVideoVariantPlatformGate(variant),
+            hostSystem,
+          ),
+        )
         .filter(({ status }) => statusFilter === "all" || status === statusFilter)
         .sort((left, right) => {
           if (imageDiscoverSort === "name") {
@@ -266,7 +293,7 @@ export function ImageDiscoverTab({
           if (dateDiff !== 0) return sortDir === "desc" ? dateDiff : -dateDiff;
           return left.variant.name.localeCompare(right.variant.name);
         }),
-    [activeImageDownloads, combinedImageDiscoverResults, imageDiscoverSort, sortDir, statusFilter],
+    [activeImageDownloads, combinedImageDiscoverResults, imageDiscoverSort, sortDir, statusFilter, hostSystem],
   );
   const hasActiveFilters = imageDiscoverHasActiveFilters || statusFilter !== "all";
 
@@ -584,6 +611,36 @@ export function ImageDiscoverTab({
                               : tLib("imageDiscover.access.open", { defaultValue: "Open" })}
                           </span>
                         ) : null}
+                        {/* FU-061: tracked-only seeds have no Studio launchable
+                            variant — surface a badge + tooltip so users know
+                            why the download CTA is disabled. */}
+                        {variant.trackedOnly ? (
+                          <span
+                            className="badge muted"
+                            title={tLib("imageDiscover.trackedOnly.tooltip", {
+                              defaultValue:
+                                "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+                            })}
+                          >
+                            {tLib("imageDiscover.trackedOnly.badge", { defaultValue: "Watching upstream" })}
+                          </span>
+                        ) : null}
+                        {/* FU-056 Phase 3: read-only accelerator pills.
+                            Click-through to install lives in Image Studio's
+                            runtime banner so install state stays in one
+                            place. */}
+                        {getApplicableAccelerators(variant.repo).map((acceleratorId) => {
+                          const meta = getAccelerator(acceleratorId);
+                          if (!meta) return null;
+                          return (
+                            <AcceleratorCard
+                              key={acceleratorId}
+                              meta={meta}
+                              capabilities={nativeBackends ?? null}
+                              variant="pill"
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                     <span>{variant.provider}</span>
@@ -615,7 +672,22 @@ export function ImageDiscoverTab({
                     </span>
                     <span>{statusBadge(status, tLib, downloadState)}</span>
                     <div className="media-model-actions">
-                      {isComplete ? (
+                      {variant.trackedOnly ? (
+                        // FU-061: tracked-only variant has no Studio playback path.
+                        // Disable both Generate + Download CTAs and surface a
+                        // tooltip so the user understands why.
+                        <IconActionButton
+                          icon="download"
+                          label={tLib("imageDiscover.action.trackedOnly", {
+                            defaultValue: "Tracked only — not yet launchable",
+                          })}
+                          disabled
+                          title={tLib("imageDiscover.trackedOnly.tooltip", {
+                            defaultValue:
+                              "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+                          })}
+                        />
+                      ) : isComplete ? (
                         <IconActionButton
                           icon="generate"
                           label={tLib("imageDiscover.action.generate", { defaultValue: "Generate" })}

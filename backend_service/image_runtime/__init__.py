@@ -226,11 +226,18 @@ class DiffusersTextToImageEngine:
         # publishes its own ``loading`` phase if it actually has to materialise
         # the pipeline, but we still want a tracker entry from the moment the
         # request lands so the UI's first poll has something to render.
+        # Warm cache: skip the ``loading`` phase entirely and start on
+        # ``encoding`` so the UI doesn't flash "Loading {model}" for a model
+        # that's already resident.
+        warm_cache = self._is_variant_loaded(self._compute_variant_key(config))
         IMAGE_PROGRESS.begin(
             run_label=self._format_run_label(config),
             total_steps=max(1, int(config.steps)),
-            phase=PHASE_LOADING,
-            message=f"Preparing {config.modelName}",
+            phase=PHASE_ENCODING if warm_cache else PHASE_LOADING,
+            message=(
+                f"Reusing {config.modelName}" if warm_cache
+                else f"Preparing {config.modelName}"
+            ),
         )
         try:
             pipeline = self._ensure_pipeline(
@@ -475,6 +482,51 @@ class DiffusersTextToImageEngine:
             self._release_pipeline()
             return self.probe()
 
+    @staticmethod
+    def _build_variant_key(
+        *,
+        repo: str,
+        gguf_file: str | None,
+        lora_repo: str | None,
+        lora_file: str | None,
+        lora_scale: float | None,
+        preview_vae: bool,
+        nunchaku_repo: str | None,
+        nunchaku_file: str | None,
+        fp8_layerwise_casting: bool,
+    ) -> str:
+        variant_parts = [repo]
+        if gguf_file:
+            variant_parts.append(f"gguf={gguf_file}")
+        if lora_repo and lora_file:
+            variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+        if preview_vae:
+            variant_parts.append("preview_vae")
+        if nunchaku_repo:
+            variant_parts.append(
+                f"nunchaku={nunchaku_repo}{'/' + nunchaku_file if nunchaku_file else ''}"
+            )
+        if fp8_layerwise_casting:
+            variant_parts.append("fp8_layerwise")
+        return "::".join(variant_parts)
+
+    def _compute_variant_key(self, config: ImageGenerationConfig) -> str:
+        return self._build_variant_key(
+            repo=config.repo,
+            gguf_file=config.ggufFile,
+            lora_repo=config.loraRepo,
+            lora_file=config.loraFile,
+            lora_scale=config.loraScale,
+            preview_vae=config.previewVae,
+            nunchaku_repo=config.nunchakuRepo,
+            nunchaku_file=config.nunchakuFile,
+            fp8_layerwise_casting=config.fp8LayerwiseCasting,
+        )
+
+    def _is_variant_loaded(self, variant_key: str) -> bool:
+        with self._lock:
+            return self._pipeline is not None and self._loaded_variant_key == variant_key
+
     def _ensure_pipeline(
         self,
         repo: str,
@@ -494,20 +546,17 @@ class DiffusersTextToImageEngine:
             # ``fuse_lora`` mutates the transformer weights in place.
             # ``preview_vae`` joins the same key set so toggling the
             # FU-018 preview-decode knob triggers a clean rebuild.
-            variant_parts = [repo]
-            if gguf_file:
-                variant_parts.append(f"gguf={gguf_file}")
-            if lora_repo and lora_file:
-                variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
-            if preview_vae:
-                variant_parts.append("preview_vae")
-            if nunchaku_repo:
-                variant_parts.append(
-                    f"nunchaku={nunchaku_repo}{'/' + nunchaku_file if nunchaku_file else ''}"
-                )
-            if fp8_layerwise_casting:
-                variant_parts.append("fp8_layerwise")
-            variant_key = "::".join(variant_parts)
+            variant_key = self._build_variant_key(
+                repo=repo,
+                gguf_file=gguf_file,
+                lora_repo=lora_repo,
+                lora_file=lora_file,
+                lora_scale=lora_scale,
+                preview_vae=preview_vae,
+                nunchaku_repo=nunchaku_repo,
+                nunchaku_file=nunchaku_file,
+                fp8_layerwise_casting=fp8_layerwise_casting,
+            )
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 

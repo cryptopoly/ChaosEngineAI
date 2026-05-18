@@ -177,6 +177,52 @@ export async function getLongLiveInstallStatus(): Promise<LongLiveJobState> {
 }
 
 // ---------------------------------------------------------------------------
+// FU-056 Phase 8: vLLM-in-WSL install (Windows hosts only)
+//
+// Same background-job shape as LongLiveJobState so the existing
+// InstallLogPanel renders it without modification. The backend
+// endpoint is gated on ``sys.platform == 'win32'`` and rejects with
+// HTTP 400 on macOS / Linux — callers should gate the UI on
+// ``nativeBackends.wsl2Available`` rather than letting the user POST.
+// ---------------------------------------------------------------------------
+
+export interface VllmWslAttempt {
+  phase: string;
+  package: string;
+  ok: boolean;
+  output: string;
+  // Always undefined for vllm-wsl attempts — declared so the shared
+  // ``InstallLogPanel`` reads it on the discriminated union without a
+  // per-job branch. Same shape carrier the LongLive / MTPLX attempts
+  // use.
+  indexUrl?: string;
+}
+
+export interface VllmWslJobState {
+  id: string;
+  phase: "idle" | "preflight" | "installing" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: VllmWslAttempt[];
+  done: boolean;
+}
+
+export async function startVllmWslInstall(): Promise<VllmWslJobState> {
+  return await postJson<VllmWslJobState>("/api/setup/install-vllm-wsl", {}, 15000);
+}
+
+export async function getVllmWslInstallStatus(): Promise<VllmWslJobState> {
+  return await fetchJson<VllmWslJobState>("/api/setup/install-vllm-wsl/status", 10000);
+}
+
+// ---------------------------------------------------------------------------
 // mlx-video Wan install (FU-025) — Apple Silicon only
 // ---------------------------------------------------------------------------
 //
@@ -270,6 +316,157 @@ export async function getWanInventory(): Promise<WanInventory> {
     "/api/setup/mlx-video-wan/inventory",
     10000,
   );
+}
+
+// ---------------------------------------------------------------------------
+// MTPLX install (feature/mtplx) — isolated venv + forked mlx
+// ---------------------------------------------------------------------------
+//
+// Same background-job shape as LongLiveJobState so the existing
+// InstallLogPanel renders it without modification.
+
+export interface MtplxAttempt {
+  phase?: string;
+  package?: string;
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+// ---------------------------------------------------------------------------
+// Torch upgrade (detection + background job)
+// ---------------------------------------------------------------------------
+//
+// Once a user has a CUDA torch installed, this surface offers a path to a
+// newer torch wheel without re-running the full 2.5 GB GPU bundle install.
+// The detection endpoint is cheap and side-effect-free — safe to call on
+// mount of the runtime banner. The upgrade endpoint kicks off a background
+// job (same pattern as install-gpu-bundle); the shared ``InstallLogPanel``
+// renders the attempts list verbatim.
+
+/** Reasons the detection endpoint may return ``available: false``. */
+export type TorchUpgradeUnavailableReason =
+  | "no-extras"
+  | "apple-silicon"
+  | "torch-not-installed"
+  | "cpu-wheel"
+  | "no-cuda-tag"
+  | "index-query-failed"
+  | "already-latest";
+
+/** Patch / minor / major bump — drives whether ABI-dependent packages need rebuilding. */
+export type TorchUpgradeType = "patch" | "minor" | "major";
+
+export type TorchUpgradeAvailability =
+  | {
+      available: true;
+      current: string;
+      latest: string;
+      upgradeType: TorchUpgradeType;
+      /** Packages already present in extras that will need ``--force-reinstall``
+       * after the torch bump (only populated for minor / major upgrades). */
+      rebuildPackages: string[];
+      indexUrl: string;
+    }
+  | {
+      available: false;
+      reason: TorchUpgradeUnavailableReason;
+      current?: string;
+      latest?: string;
+      indexUrl?: string;
+    };
+
+export interface TorchUpgradeAttempt {
+  phase?: string;
+  package?: string;
+  /** Always undefined for torch upgrade; present so InstallLogPanel can read the
+   * same shape across all install/upgrade jobs without a per-job branch. */
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface MtplxJobState {
+  id: string;
+  phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: MtplxAttempt[];
+  done: boolean;
+}
+
+export interface MtplxStatus {
+  installed: boolean;
+  version: string | null;
+  installedAt: string | null;
+  venvPath: string | null;
+}
+
+export async function getMtplxStatus(): Promise<MtplxStatus> {
+  return await fetchJson<MtplxStatus>("/api/setup/mtplx-status", 8000);
+}
+
+export async function startMtplxInstall(): Promise<MtplxJobState> {
+  return await postJson<MtplxJobState>("/api/setup/install-mtplx", {}, 15000);
+}
+
+export async function getMtplxInstallStatus(): Promise<MtplxJobState> {
+  return await fetchJson<MtplxJobState>("/api/setup/install-mtplx/status", 10000);
+}
+
+export interface TorchUpgradeJobState {
+  id: string;
+  /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */
+  phase: "idle" | "preflight" | "upgrading" | "verifying" | "done" | "error";
+  message: string;
+  currentVersion: string | null;
+  targetVersion: string | null;
+  upgradeType: TorchUpgradeType | null;
+  indexUrl: string | null;
+  rebuildDependents: boolean;
+  rebuiltPackages: string[];
+  /** True when the upgrade failed and the previous torch was restored from
+   * ``.torch-rollback-<version>/``. False on success OR on a restore failure
+   * (in which case the rollback dir stays on disk for manual recovery). */
+  rolledBack: boolean;
+  rollbackPath: string | null;
+  cudaVerified: boolean | null;
+  requiresRestart: boolean;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: TorchUpgradeAttempt[];
+  done: boolean;
+}
+
+export async function checkTorchUpgradeAvailable(): Promise<TorchUpgradeAvailability> {
+  // Detection is fast (one pip index query). 30s covers slow proxies; the
+  // backend itself caps the pip subprocess at 30s and falls through to
+  // ``index-query-failed`` on timeout, so the frontend doesn't have to.
+  return await fetchJson<TorchUpgradeAvailability>("/api/setup/torch-upgrade-available", 35000);
+}
+
+export async function startTorchUpgrade(
+  options: { rebuildDependents?: boolean } = {},
+): Promise<TorchUpgradeJobState> {
+  // Returns quickly — install runs in a backend daemon thread. Poll
+  // ``getTorchUpgradeStatus`` for progress; render via InstallLogPanel.
+  return await postJson<TorchUpgradeJobState>(
+    "/api/setup/upgrade-torch",
+    { rebuildDependents: options.rebuildDependents ?? true },
+    15000,
+  );
+}
+
+export async function getTorchUpgradeStatus(): Promise<TorchUpgradeJobState> {
+  return await fetchJson<TorchUpgradeJobState>("/api/setup/upgrade-torch/status", 10000);
 }
 
 // ---------------------------------------------------------------------------

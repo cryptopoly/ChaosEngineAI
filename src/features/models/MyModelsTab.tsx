@@ -37,6 +37,8 @@ interface StrategyCompatInfo {
   turboInstalled: boolean;
   turboquantMlxAvailable: boolean;
   dflashSupportedModels: string[];
+  mtplxInstalled?: boolean;
+  mtplxSupportedModels?: string[];
 }
 
 export interface MyModelsTabProps {
@@ -67,6 +69,24 @@ export interface MyModelsTabProps {
   librarySortDir: "asc" | "desc";
   onLibrarySortKeyChange: (key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") => void;
   onLibrarySortDirChange: (dir: "asc" | "desc") => void;
+  // FU-052 follow-up: starred model refs + toggle handler. ``favoriteModelRefs``
+  // is the persisted list from settings; ``onToggleFavoriteModel`` flips the
+  // membership of a single canonical ref and writes the new list back.
+  favoriteModelRefs?: string[];
+  onToggleFavoriteModel?: (ref: string) => void;
+}
+
+function rowFavoriteRef(row: LibraryRow): string | null {
+  // Canonical ref used to identify a model for favouriting. Prefer the
+  // inferred HF repo (matches what other parts of the UI use to identify
+  // a model), fall back to the matched variant repo, then to the local
+  // path. Empty strings collapse to ``null``.
+  const repo = inferHfRepoFromLocalPath(row.item.path)
+    ?? row.matchedVariant?.repo
+    ?? (row.item.name.includes("/") ? row.item.name : null);
+  if (repo && repo.trim()) return repo.trim();
+  if (row.item.path) return row.item.path;
+  return null;
 }
 
 export function MyModelsTab({
@@ -97,7 +117,10 @@ export function MyModelsTab({
   librarySortDir,
   onLibrarySortKeyChange,
   onLibrarySortDirChange,
+  favoriteModelRefs,
+  onToggleFavoriteModel,
 }: MyModelsTabProps) {
+  const favoriteRefSet = new Set(favoriteModelRefs ?? []);
   const { t } = useTranslation("library");
   function toggleLibrarySort(key: "name" | "format" | "backend" | "size" | "ram" | "compressed" | "modified" | "context") {
     if (librarySortKey === key) {
@@ -246,6 +269,23 @@ export function MyModelsTab({
       }
       case "turboquant":
         return (isGGUF && !!strategyCompat?.turboInstalled) || (isMLX && !!strategyCompat?.turboquantMlxAvailable);
+      case "mtplx": {
+        // MTPLX needs baked-in MTP heads from training — much stricter than
+        // DFlash (separate drafter). The fuzzy ``matchedVariant.repo`` would
+        // attach unrelated Unsloth/Gemma locals to canonical Qwen entries
+        // that DO carry MTP heads, falsely listing them under MTPLX. Match
+        // on the actual on-disk name only; if a user installs the canonical
+        // ``mlx-community/Qwen3.6-27B-4bit`` the directory name itself
+        // normalises into the registry. Forks/repacks (e.g. ``-UD-MLX-4bit``)
+        // are excluded until explicitly aliased in ``_MTP_ALIASES``.
+        if (!isMLX) return false;
+        if (!strategyCompat?.mtplxSupportedModels?.length) return false;
+        const modelKeys = candidateKeys([modelName]);
+        return strategyCompat.mtplxSupportedModels.some((ref) => {
+          const refKeys = candidateKeys([ref]);
+          return refKeys.some((k) => modelKeys.includes(k));
+        });
+      }
       default:
         return true;
     }
@@ -255,6 +295,7 @@ export function MyModelsTab({
   // ``t()`` at the render site so the chip text follows the active locale.
   const STRATEGY_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
+    { id: "mtplx", label: "MTPLX", color: "#f472b6" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
 
@@ -272,6 +313,21 @@ export function MyModelsTab({
   }
   if (strategyFilter) {
     capFilteredLibrary = capFilteredLibrary.filter((row) => modelSupportsStrategy(row, strategyFilter));
+  }
+  if (favoriteRefSet.size > 0) {
+    // Lift starred rows to the top. Preserves the user's chosen sort
+    // direction within each band (favourites + non-favourites) so the
+    // sort header indicators still mean what they say.
+    capFilteredLibrary = [
+      ...capFilteredLibrary.filter((row) => {
+        const ref = rowFavoriteRef(row);
+        return ref ? favoriteRefSet.has(ref) : false;
+      }),
+      ...capFilteredLibrary.filter((row) => {
+        const ref = rowFavoriteRef(row);
+        return ref ? !favoriteRefSet.has(ref) : true;
+      }),
+    ];
   }
   const allLibraryFormats = filteredLibraryRows.map(({ displayFormat }) => displayFormat);
   const allLibraryBackends = filteredLibraryRows.map(({ displayBackend }) => displayBackend);
@@ -445,6 +501,21 @@ export function MyModelsTab({
                         <StatusIcon status={rowStatus.kind} label={rowStatus.label} detail={rowStatus.detail} />
                       </span>
                       <div className="library-row-actions" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const favRef = rowFavoriteRef(row);
+                          if (!favRef || !onToggleFavoriteModel) return null;
+                          const isFav = favoriteRefSet.has(favRef);
+                          return (
+                            <IconActionButton
+                              icon={isFav ? "star" : "starOutline"}
+                              label={isFav
+                                ? t("myModels.action.unstarModel", { defaultValue: "Remove from favourites" })
+                                : t("myModels.action.starModel", { defaultValue: "Mark as favourite" })}
+                              className={isFav ? "action-favorite action-favorite--on" : "action-favorite"}
+                              onClick={() => onToggleFavoriteModel(favRef)}
+                            />
+                          );
+                        })()}
                         {hasDownloadOverlay && repo ? (
                           <>
                             {isDownloading ? (

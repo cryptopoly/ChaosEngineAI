@@ -1,0 +1,92 @@
+name: Deploy docs
+
+# Builds the MkDocs site from the main ChaosEngineAI repo and syncs the
+# generated ``site/`` directory into the marketing site repo
+# (``cryptopoly/ChaosEngineAI-Site``) under ``docs/`` so it serves at
+# ``https://chaosengineai.com/docs/``. Subdirectory hosting (vs a
+# subdomain or GH Pages on this repo) is chosen for SEO — backlinks
+# accrue to the main domain.
+#
+# Required secret on this repo:
+#   ``SITE_REPO_DEPLOY_KEY`` — an SSH deploy key with write access to
+#   the ChaosEngineAI-Site repo. Generate with ``ssh-keygen -t ed25519``,
+#   add the public half to the Site repo's deploy keys (write enabled),
+#   and the private half here as an Actions secret.
+#
+# Trigger surfaces:
+#   - Push to ``staging`` that touches ``docs/`` or ``mkdocs.yml``.
+#   - Manual ``workflow_dispatch`` for hot-fixes.
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'requirements-docs.txt'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install MkDocs and theme
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-docs.txt
+
+      - name: Build MkDocs site (strict)
+        run: mkdocs build --strict
+
+      - name: Checkout marketing site repo
+        uses: actions/checkout@v4
+        with:
+          repository: cryptopoly/ChaosEngineAI-Site
+          ssh-key: ${{ secrets.SITE_REPO_DEPLOY_KEY }}
+          path: site-repo
+          ref: main
+          persist-credentials: true
+
+      - name: Sync site/ into ChaosEngineAI-Site/docs/
+        run: |
+          # ``--delete`` keeps the deployed docs in lock-step with the
+          # source. Anything removed from docs/ here disappears there.
+          # Excludes preserve unrelated files we'd never want clobbered.
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.gitignore' \
+            site/ site-repo/docs/
+
+      - name: Commit and push to ChaosEngineAI-Site
+        working-directory: site-repo
+        run: |
+          git config user.name "chaosengineai-bot"
+          git config user.email "bot@chaosengineai.com"
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "No docs changes to publish."
+            exit 0
+          fi
+          SOURCE_SHA="${GITHUB_SHA::12}"
+          git commit -m "docs: sync from ChaosEngineAI@${SOURCE_SHA}"
+          git push origin main

@@ -166,6 +166,23 @@ describe("isChatLibraryItem()", () => {
       modelType: "text",
     }))).toBe(false);
   });
+
+  it("excludes tracked-latest image families (ERNIE-Image, Nucleus, Z-Image, HiDream, GLM-Image)", () => {
+    for (const repo of [
+      "baidu/ERNIE-Image",
+      "baidu/ERNIE-Image-Turbo",
+      "NucleusAI/Nucleus-Image",
+      "Tongyi-MAI/Z-Image-Turbo",
+      "HiDream-ai/HiDream-I1-Full",
+      "zai-org/GLM-Image",
+    ]) {
+      expect(isChatLibraryItem(makeItem({
+        name: repo,
+        path: `/hf/models--${repo.replace("/", "--")}/snapshots/1234`,
+        modelType: "text", // simulate stale entry missing the image classification
+      }))).toBe(false);
+    }
+  });
 });
 
 describe("estimateLibraryItemResidentGb()", () => {

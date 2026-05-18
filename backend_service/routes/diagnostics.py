@@ -180,6 +180,84 @@ def diagnostics_log_tail(lines: int = _LOG_TAIL_DEFAULT_LINES) -> dict[str, Any]
     }
 
 
+@router.get("/api/diagnostics/storage-top")
+def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]:
+    """FU-055: top disk consumers across all configured model directories.
+
+    Walks every enabled entry in ``settings.modelDirectories`` to one level
+    deep (each child = one HF repo dir or top-level model dir), sums bytes
+    via ``_path_size_bytes`` which dedupes by inode so the HF
+    ``snapshots/<rev>/ -> blobs/<hash>`` symlink farm counts each blob
+    once. Returns sorted top-N for the Diagnostics tab's in-app Stuff Diver
+    equivalent — surfaces what's actually consuming disk when third-party
+    scanners get tripped up by the HF cache layout.
+    """
+    from backend_service.helpers.discovery import _path_size_bytes
+
+    limit = max(1, min(int(limit or 20), 200))
+    state: ChaosEngineState = request.app.state.chaosengine
+
+    directories = state.settings.get("modelDirectories") or []
+    entries: list[dict[str, Any]] = []
+    for directory in directories:
+        if not directory.get("enabled", True):
+            continue
+        raw_path = str(directory.get("path") or "")
+        if not raw_path:
+            continue
+        root = Path(os.path.expanduser(raw_path)).resolve()
+        try:
+            if not root.is_dir():
+                continue
+        except OSError:
+            continue
+        source_label = str(directory.get("label") or directory.get("id") or "")
+        try:
+            children = list(root.iterdir())
+        except OSError:
+            continue
+        for child in children:
+            try:
+                if not child.is_dir():
+                    continue
+            except OSError:
+                continue
+            try:
+                size_bytes = _path_size_bytes(child)
+            except OSError:
+                size_bytes = 0
+            if size_bytes <= 0:
+                continue
+            repo_label = child.name
+            if repo_label.startswith("models--"):
+                # HF cache layout: ``models--{org}--{repo}`` → ``{org}/{repo}``
+                repo_label = repo_label[len("models--"):].replace("--", "/", 1)
+            try:
+                mtime = child.stat().st_mtime
+            except OSError:
+                mtime = 0.0
+            entries.append({
+                "path": str(child),
+                "repoLabel": repo_label,
+                "sizeBytes": size_bytes,
+                "sizeGb": _bytes_to_gb(size_bytes),
+                "sourceKind": source_label,
+                "lastModified": mtime,
+            })
+
+    entries.sort(key=lambda e: e["sizeBytes"], reverse=True)
+    total_bytes = sum(e["sizeBytes"] for e in entries)
+    return {
+        "entries": entries[:limit],
+        "totalBytes": total_bytes,
+        "totalGb": _bytes_to_gb(total_bytes),
+        "scannedDirectories": [
+            str(Path(os.path.expanduser(d.get("path") or "")).resolve())
+            for d in directories if d.get("enabled", True) and d.get("path")
+        ],
+    }
+
+
 @router.post("/api/diagnostics/reextract-runtime")
 def reextract_runtime(request: Request) -> dict[str, Any]:
     """Delete the ephemeral embedded-runtime extraction cache.

@@ -31,9 +31,16 @@ $TurboDir    = if ($env:LLAMA_TURBO_DIR)    { $env:LLAMA_TURBO_DIR }    else { J
 $InstallDir  = if ($env:CHAOSENGINE_BIN_DIR) { $env:CHAOSENGINE_BIN_DIR } else { Join-Path $HOME ".chaosengine\bin" }
 $VersionFile = Join-Path $InstallDir "llama-server-turbo.version"
 
-# If no checkout exists yet, delegate to the full build script.
-if (-not (Test-Path (Join-Path $TurboDir ".git"))) {
-    Write-Host "No existing checkout at $TurboDir -- running full build instead."
+# If no checkout exists yet — OR ``.git\`` is a hollow stub — delegate to
+# the full build script, which now detects and removes stale dirs before
+# re-cloning.
+$gitDirOk = $false
+if (Test-Path (Join-Path $TurboDir ".git")) {
+    git -C $TurboDir rev-parse --git-dir 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { $gitDirOk = $true }
+}
+if (-not $gitDirOk) {
+    Write-Host "No usable checkout at $TurboDir -- running full build instead."
     & (Join-Path $ScriptDir "build-llama-turbo.ps1")
     exit $LASTEXITCODE
 }

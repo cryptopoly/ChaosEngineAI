@@ -112,10 +112,12 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # family + Qwen-Image + SD3.5 on CUDA. ~3× over NF4 on FLUX.1-dev.
     # CUDA only; Apple Silicon / Linux-CPU installs no-op at runtime
     # because the Nunchaku transformer subclasses fall back to the
-    # stock diffusers transformer when the import fails. v1.2.1 is the
-    # current pin (2026-01-25) — covers FLUX dev/Schnell/Tools/Kontext/
-    # Krea, Qwen-Image + Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
-    "nunchaku": "nunchaku>=1.2.1",
+    # stock diffusers transformer when the import fails. Upstream
+    # versioning reset — current PyPI top is 0.16.x (was 1.2.1 in the
+    # original FU-023 note, but that release was pulled / renumbered).
+    # 0.16.1 covers FLUX dev/Schnell/Tools/Kontext/Krea, Qwen-Image +
+    # Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
+    "nunchaku": "nunchaku>=0.16.0",
     # FU-027 NVIDIA/kvpress — KV cache compression toolkit (Apache 2.0,
     # 26 releases as of v0.5.3 / 2026-04-09). HF transformers + multi-GPU
     # Accelerate hookups. CUDA-side complement to TurboQuant on Apple
@@ -345,12 +347,20 @@ from backend_service.routes.setup.gpu_bundle import (
     _looks_like_dll_lock,
 )
 from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
+from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
+from backend_service.routes.setup.mtplx import router as _mtplx_router
+from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
+from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
 from backend_service.routes.setup.wan_install import router as _wan_install_router
 
 router.include_router(_cuda_torch_router)
 router.include_router(_gpu_bundle_router)
+router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
+router.include_router(_mtplx_router)
+router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
+router.include_router(_vllm_wsl_router)
 router.include_router(_wan_install_router)

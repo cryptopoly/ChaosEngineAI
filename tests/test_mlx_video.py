@@ -20,11 +20,14 @@ from unittest.mock import MagicMock, patch
 
 from backend_service.mlx_video_runtime import (
     MlxVideoEngine,
+    _LTX2_DIM_DIVISOR,
     _SUPPORTED_REPOS,
     _is_mlx_video_repo,
     _ltx2_generation_needs_spatial_upscaler,
     _parse_step_fraction,
     _resolve_entry_point,
+    _snap_ltx2_dimensions,
+    _snap_to_multiple,
     supported_repos,
 )
 from backend_service.video_runtime import (
@@ -89,6 +92,43 @@ class MlxVideoSupportedReposTests(unittest.TestCase):
         self.assertFalse(_is_mlx_video_repo(""))
 
 
+class Ltx2DimensionSnapTests(unittest.TestCase):
+    def test_divisor_is_32(self):
+        self.assertEqual(_LTX2_DIM_DIVISOR, 32)
+
+    def test_snap_to_multiple_rounds_to_nearest(self):
+        self.assertEqual(_snap_to_multiple(432, 32), 448)
+        self.assertEqual(_snap_to_multiple(440, 32), 448)
+        self.assertEqual(_snap_to_multiple(415, 32), 416)
+        self.assertEqual(_snap_to_multiple(417, 32), 416)
+
+    def test_snap_to_multiple_passthrough_when_aligned(self):
+        for value in (512, 640, 768, 1024):
+            self.assertEqual(_snap_to_multiple(value, 32), value)
+
+    def test_snap_ltx2_dimensions_returns_note_when_changed(self):
+        width, height, note = _snap_ltx2_dimensions(768, 432)
+        self.assertEqual((width, height), (768, 448))
+        self.assertIsNotNone(note)
+        self.assertIn("768x432", note)
+        self.assertIn("768x448", note)
+
+    def test_snap_ltx2_dimensions_noop_when_aligned(self):
+        width, height, note = _snap_ltx2_dimensions(768, 480)
+        self.assertEqual((width, height), (768, 480))
+        self.assertIsNone(note)
+
+    def test_snap_ltx2_dimensions_handles_portrait(self):
+        width, height, note = _snap_ltx2_dimensions(432, 768)
+        self.assertEqual((width, height), (448, 768))
+        self.assertIsNotNone(note)
+
+    def test_snap_ltx2_dimensions_handles_21_9_height(self):
+        width, height, note = _snap_ltx2_dimensions(1024, 440)
+        self.assertEqual((width, height), (1024, 448))
+        self.assertIsNotNone(note)
+
+
 class MlxVideoEntryPointTests(unittest.TestCase):
     def test_resolve_entry_point_for_ltx2(self):
         # Real module path under ``mlx_video.models.ltx_2.generate`` —
@@ -148,6 +188,16 @@ class MlxVideoProbeTests(unittest.TestCase):
         self.assertEqual(status.device, "mps")
         self.assertEqual(status.expectedDevice, "mps")
         self.assertIn("LTX-2", status.message)
+
+    def test_probe_populates_device_memory_gb(self):
+        engine = MlxVideoEngine()
+        fake_spec = object()
+        with patch("backend_service.mlx_video_runtime.platform.system", return_value="Darwin"), \
+             patch("backend_service.mlx_video_runtime.platform.machine", return_value="arm64"), \
+             patch("backend_service.mlx_video_runtime.importlib.util.find_spec", return_value=fake_spec), \
+             patch("backend_service.mlx_video_runtime._detect_device_memory_gb", return_value=64.0):
+            status = engine.probe()
+        self.assertEqual(status.deviceMemoryGb, 64.0)
 
 
 def _patch_apple_silicon_with_mlx_video():
@@ -493,9 +543,53 @@ class VideoManagerExposesMlxVideoTests(unittest.TestCase):
         video, runtime = manager.generate(config)
 
         self.assertIs(video, fake_video)
-        fake_engine.generate.assert_called_once_with(config)
+        fake_engine.generate.assert_called_once()
+        called_args, called_kwargs = fake_engine.generate.call_args
+        self.assertEqual(called_args, (config,))
+        self.assertIn("on_progress", called_kwargs)
+        self.assertTrue(callable(called_kwargs["on_progress"]))
         manager._engine.generate.assert_not_called()
         self.assertEqual(runtime["activeEngine"], "mlx-video")
+
+    def test_mlx_on_progress_updates_video_progress(self):
+        """Q2: subprocess stdout fractions feed into VIDEO_PROGRESS.set_step.
+
+        Captures the progress snapshot *during* the simulated generate call
+        because the manager calls ``VIDEO_PROGRESS.finish()`` in ``finally``
+        once generate returns — by which point any state we want to inspect
+        is gone.
+        """
+        from backend_service.progress import VIDEO_PROGRESS
+
+        manager = VideoRuntimeManager()
+        config = _make_config("prince-canuma/LTX-2-distilled")  # default steps=20
+
+        snapshots: list[dict] = []
+
+        def _drive_callback(cfg, *, on_progress):
+            on_progress("diffusing", "step 10/20", 0.5)
+            snapshots.append(dict(VIDEO_PROGRESS.snapshot()))
+            on_progress("diffusing", "info: warming kernels", None)
+            snapshots.append(dict(VIDEO_PROGRESS.snapshot()))
+            return MagicMock()
+
+        fake_engine = MagicMock()
+        fake_engine.probe.return_value = MagicMock(
+            realGenerationAvailable=True,
+            to_dict=lambda: {"activeEngine": "mlx-video"},
+        )
+        fake_engine.generate.side_effect = _drive_callback
+        manager._mlx_video = fake_engine
+        manager._engine = MagicMock()
+
+        manager.generate(config)
+
+        # First snapshot: step pattern → step=10/20, phase=diffusing.
+        self.assertEqual(snapshots[0]["phase"], "diffusing")
+        self.assertEqual(snapshots[0]["step"], 10)
+        self.assertEqual(snapshots[0]["totalSteps"], 20)
+        # Second snapshot: fraction=None must NOT reset the counter.
+        self.assertEqual(snapshots[1]["step"], 10)
 
     def test_manager_falls_back_to_diffusers_when_mlx_video_unavailable(self):
         manager = VideoRuntimeManager()

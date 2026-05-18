@@ -90,6 +90,43 @@ class BackendCapabilities:
     converterAvailable: bool = False
     vllmAvailable: bool = False
     vllmVersion: str | None = None
+    mtplxAvailable: bool = False
+    mtplxPythonPath: str | None = None
+    # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673. Set
+    # when the resolved llama-server binary advertises --spec-type in its
+    # help text. The UI keys an MTP affordance for GGUF models off this
+    # alongside mtplxAvailable for MLX models.
+    ggufMtpAvailable: bool = False
+    # FU-056 Phase 1: CUDA-side accelerator capability flags. The Setup
+    # tab + per-feature install panels gate "Install" vs "Installed" UI
+    # off these. ``dflashMlxAvailable`` and ``dflashCudaAvailable`` are
+    # separate because the two backends live in two pip packages, even
+    # though the user-facing "DFlash" affordance is the same feature on
+    # both platforms. ``wsl2Available`` is Windows-only and seeds the
+    # Phase 8 vLLM-via-WSL bridge — always ``False`` on macOS / Linux.
+    nunchakuAvailable: bool = False
+    nunchakuVersion: str | None = None
+    sageattentionAvailable: bool = False
+    sageattentionVersion: str | None = None
+    dflashMlxAvailable: bool = False
+    dflashMlxVersion: str | None = None
+    dflashCudaAvailable: bool = False
+    dflashCudaVersion: str | None = None
+    triattentionAvailable: bool = False
+    triattentionVersion: str | None = None
+    kvpressAvailable: bool = False
+    kvpressVersion: str | None = None
+    wsl2Available: bool = False
+    # FU-056 Phase 8: WSL2 vLLM bridge — detail probes used by the Setup
+    # tab's WSL panel and the future engine-routing layer. ``wslDistroName``
+    # is the default-distro name from ``wsl --status`` (e.g. "Ubuntu-24.04"),
+    # ``wslCudaAvailable`` is true iff ``nvidia-smi -L`` works inside WSL,
+    # ``wslVllmAvailable`` is true iff the managed venv at
+    # ``~/.chaosengine/vllm-venv`` can import vllm.
+    wslDistroName: str | None = None
+    wslCudaAvailable: bool = False
+    wslVllmAvailable: bool = False
+    wslVllmVersion: str | None = None
     probing: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -108,6 +145,26 @@ class BackendCapabilities:
             "converterAvailable": self.converterAvailable,
             "vllmAvailable": self.vllmAvailable,
             "vllmVersion": self.vllmVersion,
+            "mtplxAvailable": self.mtplxAvailable,
+            "mtplxPythonPath": self.mtplxPythonPath,
+            "ggufMtpAvailable": self.ggufMtpAvailable,
+            "nunchakuAvailable": self.nunchakuAvailable,
+            "nunchakuVersion": self.nunchakuVersion,
+            "sageattentionAvailable": self.sageattentionAvailable,
+            "sageattentionVersion": self.sageattentionVersion,
+            "dflashMlxAvailable": self.dflashMlxAvailable,
+            "dflashMlxVersion": self.dflashMlxVersion,
+            "dflashCudaAvailable": self.dflashCudaAvailable,
+            "dflashCudaVersion": self.dflashCudaVersion,
+            "triattentionAvailable": self.triattentionAvailable,
+            "triattentionVersion": self.triattentionVersion,
+            "kvpressAvailable": self.kvpressAvailable,
+            "kvpressVersion": self.kvpressVersion,
+            "wsl2Available": self.wsl2Available,
+            "wslDistroName": self.wslDistroName,
+            "wslCudaAvailable": self.wslCudaAvailable,
+            "wslVllmAvailable": self.wslVllmAvailable,
+            "wslVllmVersion": self.wslVllmVersion,
             "probing": self.probing,
         }
 

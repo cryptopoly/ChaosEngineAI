@@ -14,8 +14,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LLAMA_DIR="${LLAMA_CPP_DIR:-$(cd "$REPO_ROOT/.." && pwd)/llama.cpp}"
 
-if [[ ! -d "$LLAMA_DIR/.git" ]]; then
-  echo "error: $LLAMA_DIR is not a git checkout of llama.cpp" >&2
+if [[ ! -d "$LLAMA_DIR/.git" ]] || ! git -C "$LLAMA_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+  echo "error: $LLAMA_DIR is not a usable git checkout of llama.cpp" >&2
   echo "Set LLAMA_CPP_DIR to the correct path and re-run." >&2
   exit 1
 fi

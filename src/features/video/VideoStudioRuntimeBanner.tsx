@@ -13,6 +13,7 @@
 import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { TorchUpgradePill } from "../../components/TorchUpgradePill";
 import { WanRuntimeInstaller } from "../../components/WanRuntimeInstaller";
 import type {
   CudaTorchInstallResult,
@@ -20,6 +21,8 @@ import type {
   LongLiveJobState,
 } from "../../api";
 import type { VideoModelVariant, VideoRuntimeStatus } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
+import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
 export interface VideoStudioRuntimeBannerProps {
@@ -61,6 +64,11 @@ export interface VideoStudioRuntimeBannerProps {
   onInstallOutputDeps: () => void;
   onInstallTokenizerDeps: () => void;
   onInstallGpuRuntime: () => void;
+  /** FU-056 Phase 4: capability snapshot + selected variant for the
+   * "Performance boosters" sub-section. Both optional so older
+   * backends + early-render states collapse cleanly. */
+  selectedVideoVariant?: VideoModelVariant | null;
+  nativeBackends?: NativeBackendStatus;
 }
 
 
@@ -100,6 +108,8 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
     onInstallOutputDeps,
     onInstallTokenizerDeps,
     onInstallGpuRuntime,
+    selectedVideoVariant,
+    nativeBackends,
   } = props;
 
   return (
@@ -261,6 +271,26 @@ export function VideoStudioRuntimeBanner(props: VideoStudioRuntimeBannerProps) {
           <span className="badge accent">{t("videoStudioRuntimeBanner.mlxVideoEngineChip", { defaultValue: "Engine: mlx-video" })}</span>
         ) : null}
       </div>
+      {/* Torch upgrade nudge — same self-contained pill as in Image
+        * Studio. Only renders when real generation is working AND the
+        * pip index serves a newer wheel than the one on disk. */}
+      {videoRuntimeStatus.realGenerationAvailable ? (
+        <TorchUpgradePill
+          backendOnline={backendOnline}
+          onRestartBackend={onRestartServer}
+          busy={busy}
+        />
+      ) : null}
+      {/* FU-056 Phase 4: per-model accelerator install affordances.
+        * Same shape as Image Studio's boosters section. Renders nothing
+        * when the variant has no applicable accelerators (e.g. SD-class
+        * UNet repos, non-DiT video) — the section folds away. */}
+      {videoRuntimeStatus.realGenerationAvailable ? (
+        <MediaStudioBoosters
+          selectedVariant={selectedVideoVariant ?? null}
+          nativeBackends={nativeBackends}
+        />
+      ) : null}
       {isLongLiveVariant && longLiveStatus && !longLiveStatus.realGenerationAvailable ? (
         <div className="image-runtime-actions">
           <p className="muted-text">

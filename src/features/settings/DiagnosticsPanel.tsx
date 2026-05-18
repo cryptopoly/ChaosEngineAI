@@ -3,13 +3,17 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
+  fetchStorageTop,
   installCudaTorch,
   installPipPackage,
   reextractRuntime,
   type CudaTorchInstallResult,
   type DiagnosticsSnapshot,
   type InstallResult,
+  type StorageTopResponse,
 } from "../../api";
+import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
+import { WslBridgePanel } from "./WslBridgePanel";
 
 // In-app troubleshooting panel. Surfaces OS, hardware, runtime paths,
 // GPU state, env vars, and the backend log tail without asking users to
@@ -411,11 +415,86 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
           </div>
         </div>
       ) : null}
+      <AcceleratorsBoostPack backendOnline={backendOnline} />
+      <WslBridgePanel backendOnline={backendOnline} />
+      <StorageTopSection backendOnline={backendOnline} />
     </Panel>
   );
 }
 
 // ---- Sub-components -----------------------------------------------
+
+function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
+  // FU-055: in-app top-disk-consumers view. Walks every enabled model dir
+  // and reports the biggest repo dirs, sorted by actual byte size. Closes
+  // the Stuff Diver gap on HF cache symlink layouts.
+  const [data, setData] = useState<StorageTopResponse | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const scan = useCallback(async () => {
+    if (!backendOnline) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const next = await fetchStorageTop(20);
+      setData(next);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, [backendOnline]);
+
+  return (
+    <div className="diagnostics-section">
+      <h3>Disk usage — top 20 model repos</h3>
+      <p className="muted-text" style={{ marginBottom: 8 }}>
+        Walks every enabled model directory and lists the biggest repos on disk.
+        Counts blob bytes once (Hugging Face's ``snapshots/`` are symlinks to
+        ``blobs/`` so naive scanners over-count).
+      </p>
+      <button
+        className="secondary-button"
+        type="button"
+        onClick={() => void scan()}
+        disabled={!backendOnline || busy}
+      >
+        {busy ? "Scanning..." : data ? "Rescan" : "Scan disk usage"}
+      </button>
+      {err ? <p className="muted-text" style={{ color: "#f87171", marginTop: 8 }}>{err}</p> : null}
+      {data ? (
+        <div style={{ marginTop: 12 }}>
+          <p className="muted-text">
+            Total across all enabled directories:{" "}
+            <strong>{data.totalGb !== null ? `${data.totalGb.toFixed(1)} GB` : "—"}</strong>
+            {" · "}
+            {data.entries.length} repos shown / scanned{" "}
+            {data.scannedDirectories.length} root dir(s)
+          </p>
+          <div className="storage-top-table">
+            <div className="storage-top-head">
+              <span>Repo</span>
+              <span>Size</span>
+              <span>Source</span>
+              <span>Path</span>
+            </div>
+            {data.entries.map((entry: import("../../api").StorageTopEntry) => (
+              <div key={entry.path} className="storage-top-row">
+                <span className="mono-text">{entry.repoLabel}</span>
+                <span><strong>{entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "—"}</strong></span>
+                <span className="muted-text">{entry.sourceKind || "—"}</span>
+                <span className="mono-text muted-text storage-top-path" title={entry.path}>
+                  {entry.path}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function DiagnosticsHeader({ snapshot, lastFetchedAt }: { snapshot: DiagnosticsSnapshot; lastFetchedAt: number | null }) {
   const timestamp = lastFetchedAt ? new Date(lastFetchedAt).toLocaleString() : "—";

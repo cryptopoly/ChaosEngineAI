@@ -9,11 +9,14 @@
 import { useTranslation } from "react-i18next";
 import { CudaTorchLogPanel } from "../../components/CudaTorchLogPanel";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
+import { TorchUpgradePill } from "../../components/TorchUpgradePill";
 import type {
   CudaTorchInstallResult,
   GpuBundleJobState,
 } from "../../api";
 import type { ImageModelVariant, ImageRuntimeStatus } from "../../types";
+import type { NativeBackendStatus } from "../../types/server";
+import { MediaStudioBoosters } from "../../components/MediaStudioBoosters";
 
 
 export interface ImageStudioRuntimeBannerProps {
@@ -36,6 +39,10 @@ export interface ImageStudioRuntimeBannerProps {
   installingImageRuntime: boolean;
   gpuBundleJob: GpuBundleJobState | null;
   onInstallImageRuntime: () => void;
+  /** FU-056 Phase 3: capability snapshot for the "Performance
+   * boosters" sub-section. Optional — collapses to the "available"
+   * card state if the backend hasn't probed yet. */
+  nativeBackends?: NativeBackendStatus;
 }
 
 
@@ -61,6 +68,7 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
     installingImageRuntime,
     gpuBundleJob,
     onInstallImageRuntime,
+    nativeBackends,
   } = props;
 
   return (
@@ -160,6 +168,29 @@ export function ImageStudioRuntimeBanner(props: ImageStudioRuntimeBannerProps) {
           return resolved ? <span className="badge muted">Device: {resolved}</span> : null;
         })()}
       </div>
+      {/* Torch upgrade nudge — renders only when real generation is
+        * working (so the user's stable torch install isn't being
+        * second-guessed) AND a newer wheel is on the matching cu{N}
+        * index. The pill probes the backend itself on mount; this
+        * banner just plugs in the restart-backend callback. */}
+      {imageRuntimeStatus.realGenerationAvailable ? (
+        <TorchUpgradePill
+          backendOnline={backendOnline}
+          onRestartBackend={onRestartServer}
+          busy={busy}
+        />
+      ) : null}
+      {/* FU-056 Phase 3: per-model accelerator install affordances.
+        * Renders nothing when no accelerators apply to the variant
+        * (SD1.5 / SDXL / non-DiT) or when real generation isn't
+        * available yet (no point installing FLUX accelerators on a
+        * box that can't even run FLUX). */}
+      {imageRuntimeStatus.realGenerationAvailable ? (
+        <MediaStudioBoosters
+          selectedVariant={selectedImageVariant}
+          nativeBackends={nativeBackends}
+        />
+      ) : null}
       {selectedImageVariant && imageRuntimeStatus.realGenerationAvailable ? (
         <div className="image-runtime-summary">
           <p className="muted-text">

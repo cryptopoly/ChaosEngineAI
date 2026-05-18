@@ -1221,5 +1221,426 @@ class DllLockDetectionTests(unittest.TestCase):
         self.assertFalse(_looks_like_dll_lock(output))
 
 
+class TorchUpgradeHelperUnitTests(unittest.TestCase):
+    """Pure-function tests for the torch-upgrade detection helpers.
+
+    These don't need a TestClient or a backend — they exercise the version
+    parsing, classification, and rollback move/restore primitives in
+    isolation so a regression here surfaces with a fast, focused test.
+    """
+
+    def test_extract_cuda_tag_handles_cuda_variants(self):
+        from backend_service.routes.setup._install_helpers import _extract_cuda_tag
+        self.assertEqual(_extract_cuda_tag("2.6.0+cu124"), "cu124")
+        self.assertEqual(_extract_cuda_tag("2.6.0+cu128"), "cu128")
+        self.assertEqual(_extract_cuda_tag("2.6.1+cu121"), "cu121")
+
+    def test_extract_cuda_tag_returns_none_for_cpu_and_bare(self):
+        from backend_service.routes.setup._install_helpers import _extract_cuda_tag
+        self.assertIsNone(_extract_cuda_tag("2.6.0+cpu"))
+        self.assertIsNone(_extract_cuda_tag("2.6.0"))
+        self.assertIsNone(_extract_cuda_tag(None))
+        self.assertIsNone(_extract_cuda_tag(""))
+        # ROCm / XPU / arbitrary local tags must not be misread as CUDA.
+        self.assertIsNone(_extract_cuda_tag("2.6.0+rocm6.0"))
+
+    def test_index_url_for_cuda_tag(self):
+        from backend_service.routes.setup._install_helpers import _index_url_for_cuda_tag
+        self.assertEqual(
+            _index_url_for_cuda_tag("cu124"),
+            "https://download.pytorch.org/whl/cu124",
+        )
+        self.assertEqual(
+            _index_url_for_cuda_tag("CU128"),  # normalise case
+            "https://download.pytorch.org/whl/cu128",
+        )
+        # Anything that doesn't look like cu<N> must short-circuit.
+        self.assertIsNone(_index_url_for_cuda_tag(None))
+        self.assertIsNone(_index_url_for_cuda_tag("cpu"))
+        self.assertIsNone(_index_url_for_cuda_tag("rocm6.0"))
+
+    def test_parse_version_triple(self):
+        from backend_service.routes.setup._install_helpers import _parse_version_triple
+        self.assertEqual(_parse_version_triple("2.6.0"), (2, 6, 0))
+        self.assertEqual(_parse_version_triple("2.6.1+cu124"), (2, 6, 1))
+        self.assertEqual(_parse_version_triple("2.7"), (2, 7, 0))
+        # Pre-release suffix on patch — strip digits-only.
+        self.assertEqual(_parse_version_triple("2.6.0rc1"), (2, 6, 0))
+        self.assertIsNone(_parse_version_triple("not-a-version"))
+
+    def test_classify_torch_upgrade(self):
+        from backend_service.routes.setup._install_helpers import _classify_torch_upgrade
+        self.assertEqual(_classify_torch_upgrade("2.6.0+cu124", "2.6.1+cu124"), "patch")
+        self.assertEqual(_classify_torch_upgrade("2.6.0+cu124", "2.7.0+cu124"), "minor")
+        self.assertEqual(_classify_torch_upgrade("2.6.0+cu124", "3.0.0+cu124"), "major")
+        # Same version → no upgrade.
+        self.assertIsNone(_classify_torch_upgrade("2.6.0+cu124", "2.6.0+cu124"))
+        # Latest is older → no upgrade (this can happen if the user has a
+        # nightly wheel and the stable index lags).
+        self.assertIsNone(_classify_torch_upgrade("2.7.0+cu124", "2.6.0+cu124"))
+
+    def test_query_latest_torch_version_parses_first_line_shape(self):
+        from backend_service.routes.setup._install_helpers import _query_latest_torch_version
+        # The preferred pip output: ``torch (X.Y.Z+local)`` on the first line.
+        stdout = "torch (2.6.1+cu124)\nAvailable versions: 2.6.1+cu124, 2.6.0+cu124, 2.5.1+cu124\n"
+        with mock.patch(
+            "backend_service.routes.setup._install_helpers.subprocess.run",
+            return_value=mock.Mock(returncode=0, stdout=stdout, stderr=""),
+        ):
+            result = _query_latest_torch_version("/usr/bin/python3", "https://download.pytorch.org/whl/cu124")
+        self.assertEqual(result, "2.6.1+cu124")
+
+    def test_query_latest_torch_version_falls_back_to_available_versions(self):
+        from backend_service.routes.setup._install_helpers import _query_latest_torch_version
+        # Some pip versions omit the leading "torch (...)" header — we must
+        # still extract the first entry from "Available versions: ...".
+        stdout = "Available versions: 2.6.1+cu124, 2.6.0+cu124, 2.5.1+cu124\n"
+        with mock.patch(
+            "backend_service.routes.setup._install_helpers.subprocess.run",
+            return_value=mock.Mock(returncode=0, stdout=stdout, stderr=""),
+        ):
+            result = _query_latest_torch_version("/usr/bin/python3", "https://download.pytorch.org/whl/cu124")
+        self.assertEqual(result, "2.6.1+cu124")
+
+    def test_query_latest_torch_version_returns_none_on_failure(self):
+        from backend_service.routes.setup._install_helpers import _query_latest_torch_version
+        # Non-zero exit → None (network failure, pip API drift, etc.).
+        with mock.patch(
+            "backend_service.routes.setup._install_helpers.subprocess.run",
+            return_value=mock.Mock(returncode=1, stdout="", stderr="ERROR"),
+        ):
+            result = _query_latest_torch_version("/usr/bin/python3", "https://download.pytorch.org/whl/cu124")
+        self.assertIsNone(result)
+
+    def test_abi_dependents_present_finds_top_level_package_dir(self):
+        from backend_service.routes.setup._install_helpers import _abi_dependents_present
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            (extras / "bitsandbytes").mkdir()
+            (extras / "torchao").mkdir()
+            # Unrelated packages should be ignored.
+            (extras / "numpy").mkdir()
+            found = _abi_dependents_present(extras)
+            self.assertIn("bitsandbytes", found)
+            self.assertIn("torchao", found)
+            self.assertNotIn("numpy", found)
+            self.assertNotIn("nunchaku", found)
+
+    def test_abi_dependents_present_finds_dist_info_fallback(self):
+        from backend_service.routes.setup._install_helpers import _abi_dependents_present
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            # No top-level package dir, only the dist-info — covers the
+            # case where pip cleared the package folder but left metadata.
+            (extras / "nunchaku-1.2.1.dist-info").mkdir()
+            (extras / "nunchaku-1.2.1.dist-info" / "METADATA").write_text(
+                "Name: nunchaku\nVersion: 1.2.1\n", encoding="utf-8",
+            )
+            found = _abi_dependents_present(extras)
+            self.assertIn("nunchaku", found)
+
+    def test_move_torch_to_rollback_moves_torch_and_nvidia_dirs(self):
+        from backend_service.routes.setup._install_helpers import _move_torch_to_rollback
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            torch_dir = extras / "torch"
+            torch_dir.mkdir()
+            (torch_dir / "version.py").write_text("__version__ = '2.6.0+cu124'\n")
+            dist_info = extras / "torch-2.6.0+cu124.dist-info"
+            dist_info.mkdir()
+            (extras / "nvidia_cublas_cu12").mkdir()
+            (extras / "diffusers").mkdir()  # Should NOT be moved.
+
+            rollback = _move_torch_to_rollback(extras, "2.6.0+cu124")
+            self.assertIsNotNone(rollback)
+            assert rollback is not None  # mypy
+
+            self.assertTrue(rollback.exists())
+            self.assertTrue(rollback.name.startswith(".torch-rollback-"))
+            self.assertFalse(torch_dir.exists())
+            self.assertFalse(dist_info.exists())
+            self.assertFalse((extras / "nvidia_cublas_cu12").exists())
+            # Unrelated package stays put.
+            self.assertTrue((extras / "diffusers").exists())
+            # Moved entries actually landed in the rollback dir.
+            self.assertTrue((rollback / "torch").exists())
+            self.assertTrue((rollback / "nvidia_cublas_cu12").exists())
+
+    def test_move_torch_to_rollback_returns_none_when_nothing_to_move(self):
+        from backend_service.routes.setup._install_helpers import _move_torch_to_rollback
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            (extras / "diffusers").mkdir()  # Not torch.
+            # No torch dirs present — should return None and NOT leave an
+            # empty rollback dir behind.
+            result = _move_torch_to_rollback(extras, "2.6.0+cu124")
+            self.assertIsNone(result)
+            stubs = [p.name for p in extras.iterdir() if p.name.startswith(".torch-rollback-")]
+            self.assertEqual(stubs, [])
+
+    def test_restore_torch_from_rollback_round_trips(self):
+        from backend_service.routes.setup._install_helpers import (
+            _move_torch_to_rollback,
+            _restore_torch_from_rollback,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            (extras / "torch").mkdir()
+            (extras / "torch" / "version.py").write_text("__version__ = '2.6.0+cu124'\n")
+            (extras / "torch-2.6.0+cu124.dist-info").mkdir()
+            (extras / "nvidia_cublas_cu12").mkdir()
+
+            rollback = _move_torch_to_rollback(extras, "2.6.0+cu124")
+            self.assertIsNotNone(rollback)
+            assert rollback is not None
+
+            # Simulate the new install putting partial files in extras —
+            # restore should wipe these before moving the rollback back.
+            (extras / "torch").mkdir()
+            (extras / "torch" / "stub.py").write_text("# half install\n")
+
+            ok = _restore_torch_from_rollback(extras, rollback)
+            self.assertTrue(ok)
+            self.assertFalse(rollback.exists())
+            # Original version.py is back where it belongs.
+            version_path = extras / "torch" / "version.py"
+            self.assertTrue(version_path.is_file())
+            self.assertIn("2.6.0+cu124", version_path.read_text())
+            self.assertTrue((extras / "torch-2.6.0+cu124.dist-info").exists())
+            self.assertTrue((extras / "nvidia_cublas_cu12").exists())
+
+    def test_cleanup_old_torch_rollbacks_keeps_most_recent(self):
+        import time as _time
+        from backend_service.routes.setup._install_helpers import _cleanup_old_torch_rollbacks
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            # Create three rollback dirs with deterministic mtimes so the
+            # ordering is stable across filesystems.
+            old1 = extras / ".torch-rollback-2.5.0_cu124"
+            old2 = extras / ".torch-rollback-2.5.1_cu124"
+            recent = extras / ".torch-rollback-2.6.0_cu124"
+            for entry in (old1, old2, recent):
+                entry.mkdir()
+            now = _time.time()
+            os.utime(old1, (now - 300, now - 300))
+            os.utime(old2, (now - 200, now - 200))
+            os.utime(recent, (now, now))
+
+            removed = _cleanup_old_torch_rollbacks(extras, keep=1)
+            self.assertIn(old1.name, removed)
+            self.assertIn(old2.name, removed)
+            self.assertNotIn(recent.name, removed)
+            self.assertTrue(recent.exists())
+            self.assertFalse(old1.exists())
+            self.assertFalse(old2.exists())
+
+
+class TorchUpgradeRouteTests(unittest.TestCase):
+    """End-to-end tests for /api/setup/torch-upgrade-available + /upgrade-torch.
+
+    Mocks the extras directory + the pip-index subprocess so we don't need
+    a real torch install or a real PyTorch download index to drive these.
+    """
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        state = ChaosEngineState(
+            system_snapshot_provider=_fake_system_snapshot,
+            settings_path=Path(self.tempdir.name) / "settings.json",
+            benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
+            chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+        )
+        state.runtime = FakeRuntime()
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+
+        self.extras = Path(self.tempdir.name) / "extras"
+        self.extras.mkdir()
+
+        # Reset the upgrade-job singleton — pytest reuses a single process.
+        from backend_service.routes.setup import torch_upgrade as upgrade_module
+        self._upgrade_module = upgrade_module
+        upgrade_module._UPGRADE_JOB = upgrade_module._TorchUpgradeJobState()
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def _install_fake_torch(self, version: str) -> None:
+        """Stand up a fake torch dist-info so _find_installed_torch_version reports it."""
+        dist_info = self.extras / f"torch-{version}.dist-info"
+        dist_info.mkdir(parents=True, exist_ok=True)
+        (dist_info / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: torch\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+        torch_pkg = self.extras / "torch"
+        torch_pkg.mkdir(exist_ok=True)
+        (torch_pkg / "version.py").write_text(f"__version__ = '{version}'\n")
+
+    def test_available_apple_silicon_short_circuits(self):
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=True,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body["available"])
+        self.assertEqual(body["reason"], "apple-silicon")
+
+    def test_available_torch_missing(self):
+        # Extras dir empty → torch-not-installed reason.
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertFalse(body["available"])
+        self.assertEqual(body["reason"], "torch-not-installed")
+
+    def test_available_cpu_wheel(self):
+        self._install_fake_torch("2.6.0+cpu")
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertFalse(body["available"])
+        self.assertEqual(body["reason"], "cpu-wheel")
+        self.assertEqual(body["current"], "2.6.0+cpu")
+
+    def test_available_already_latest(self):
+        self._install_fake_torch("2.6.1+cu124")
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._query_latest_torch_version",
+            return_value="2.6.1+cu124",
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertFalse(body["available"])
+        self.assertEqual(body["reason"], "already-latest")
+        self.assertEqual(body["current"], "2.6.1+cu124")
+        self.assertEqual(body["latest"], "2.6.1+cu124")
+
+    def test_available_happy_path_patch(self):
+        self._install_fake_torch("2.6.0+cu124")
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._query_latest_torch_version",
+            return_value="2.6.1+cu124",
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertTrue(body["available"])
+        self.assertEqual(body["current"], "2.6.0+cu124")
+        self.assertEqual(body["latest"], "2.6.1+cu124")
+        self.assertEqual(body["upgradeType"], "patch")
+        # Patch bumps don't trigger rebuilds — the C++ ABI is stable.
+        self.assertEqual(body["rebuildPackages"], [])
+        self.assertEqual(body["indexUrl"], "https://download.pytorch.org/whl/cu124")
+
+    def test_available_happy_path_minor_lists_rebuild_packages(self):
+        self._install_fake_torch("2.6.0+cu124")
+        # Make bitsandbytes + torchao look installed so the rebuild list
+        # picks them up.
+        (self.extras / "bitsandbytes").mkdir()
+        (self.extras / "torchao").mkdir()
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._query_latest_torch_version",
+            return_value="2.7.0+cu124",
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertTrue(body["available"])
+        self.assertEqual(body["upgradeType"], "minor")
+        self.assertIn("bitsandbytes", body["rebuildPackages"])
+        self.assertIn("torchao", body["rebuildPackages"])
+
+    def test_available_index_query_failed_surfaces_reason(self):
+        self._install_fake_torch("2.6.0+cu124")
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._query_latest_torch_version",
+            return_value=None,
+        ):
+            resp = self.client.get("/api/setup/torch-upgrade-available")
+        body = resp.json()
+        self.assertFalse(body["available"])
+        self.assertEqual(body["reason"], "index-query-failed")
+        # Carries the current version so the UI can render a helpful
+        # "we couldn't reach the pip index for cu124" diagnostic.
+        self.assertEqual(body["current"], "2.6.0+cu124")
+        self.assertEqual(body["indexUrl"], "https://download.pytorch.org/whl/cu124")
+
+    def test_upgrade_apple_silicon_rejected(self):
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=True,
+        ):
+            resp = self.client.post("/api/setup/upgrade-torch", json={"rebuildDependents": True})
+        # Apple Silicon doesn't run CUDA torch; the endpoint must refuse
+        # rather than kick off a doomed pip walk.
+        self.assertEqual(resp.status_code, 400)
+
+    def test_upgrade_status_starts_idle(self):
+        resp = self.client.get("/api/setup/upgrade-torch/status")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["phase"], "idle")
+        self.assertFalse(body["done"])
+        self.assertIsNone(body["currentVersion"])
+        self.assertIsNone(body["targetVersion"])
+
+    def test_upgrade_second_start_while_running_returns_existing(self):
+        # Prime a fake running job in the singleton — the second POST
+        # should return THIS job, not start a parallel one.
+        from backend_service.routes.setup import torch_upgrade as upgrade_module
+        upgrade_module._UPGRADE_JOB.phase = "upgrading"
+        upgrade_module._UPGRADE_JOB.id = "existing-upgrade-id"
+        upgrade_module._UPGRADE_JOB.current_version = "2.6.0+cu124"
+        upgrade_module._UPGRADE_JOB.target_version = "2.6.1+cu124"
+        upgrade_module._UPGRADE_JOB.done = False
+
+        with mock.patch(
+            "backend_service.routes.setup.torch_upgrade._is_apple_silicon", return_value=False,
+        ), mock.patch(
+            "backend_service.routes.setup.torch_upgrade._extras_site_packages",
+            return_value=self.extras,
+        ):
+            resp = self.client.post("/api/setup/upgrade-torch", json={"rebuildDependents": True})
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["id"], "existing-upgrade-id")
+        self.assertEqual(body["phase"], "upgrading")
+        self.assertEqual(body["currentVersion"], "2.6.0+cu124")
+        self.assertEqual(body["targetVersion"], "2.6.1+cu124")
+
+
 if __name__ == "__main__":
     unittest.main()

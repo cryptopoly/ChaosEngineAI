@@ -12,6 +12,32 @@ from backend_service.helpers.preview_vae import (
 )
 
 
+def _autoencoder_tiny_importable() -> tuple[bool, str]:
+    """Probe whether ``diffusers.AutoencoderTiny`` is actually usable.
+
+    ``import diffusers`` can succeed even when the AutoencoderTiny
+    submodule fails to load — this happens on Windows + torch 2.6.0+cu124
+    when ``torchao`` is installed but its C++ extensions don't match the
+    torch ABI (torchao raises during ``diffusers.models.autoencoders``
+    initialisation). The product helper handles this gracefully via the
+    ``except ImportError`` branch in ``preview_vae.py``, but the swap
+    tests below mock ``diffusers.AutoencoderTiny`` directly and so need
+    the symbol to be reachable. Skip cleanly when it isn't.
+    """
+    try:
+        import diffusers  # noqa: F401
+    except ImportError as exc:
+        return False, f"diffusers not available ({exc})"
+    try:
+        from diffusers import AutoencoderTiny  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 — diffusers raises non-ImportError here
+        return False, f"diffusers.AutoencoderTiny unavailable ({type(exc).__name__})"
+    return True, ""
+
+
+_TAESD_OK, _TAESD_SKIP_REASON = _autoencoder_tiny_importable()
+
+
 class ResolvePreviewVaeIdTests(unittest.TestCase):
     def test_flux1_dev_maps_to_taef1(self):
         self.assertEqual(
@@ -166,10 +192,8 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         self.assertIn("vae", note.lower())
 
     def test_swap_failure_falls_back_to_stock(self):
-        try:
-            import diffusers  # noqa: F401
-        except ImportError:
-            self.skipTest("diffusers not available")
+        if not _TAESD_OK:
+            self.skipTest(_TAESD_SKIP_REASON)
 
         original_vae = SimpleNamespace(dtype="fp16")
         pipeline = SimpleNamespace(vae=original_vae)
@@ -189,10 +213,8 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         self.assertIs(pipeline.vae, original_vae)
 
     def test_local_load_succeeds_swaps_vae(self):
-        try:
-            import diffusers  # noqa: F401
-        except ImportError:
-            self.skipTest("diffusers not available")
+        if not _TAESD_OK:
+            self.skipTest(_TAESD_SKIP_REASON)
 
         original_vae = SimpleNamespace(dtype="fp16")
         pipeline = SimpleNamespace(vae=original_vae)
@@ -215,10 +237,8 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         self.assertTrue(first_call.kwargs.get("local_files_only"))
 
     def test_remote_fallback_succeeds_when_local_misses(self):
-        try:
-            import diffusers  # noqa: F401
-        except ImportError:
-            self.skipTest("diffusers not available")
+        if not _TAESD_OK:
+            self.skipTest(_TAESD_SKIP_REASON)
 
         original_vae = SimpleNamespace(dtype="fp16")
         pipeline = SimpleNamespace(vae=original_vae)
@@ -247,10 +267,8 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         ``Input type (MPSHalfType) and weight type (torch.HalfTensor)
         should be the same``. The helper now mirrors the stock VAE's
         device onto the swapped tiny VAE."""
-        try:
-            import diffusers  # noqa: F401
-        except ImportError:
-            self.skipTest("diffusers not available")
+        if not _TAESD_OK:
+            self.skipTest(_TAESD_SKIP_REASON)
 
         original_vae = SimpleNamespace(dtype="fp16", device="mps")
 
@@ -278,10 +296,8 @@ class MaybeApplyPreviewVaeTests(unittest.TestCase):
         self.assertEqual(sentinel.moved_to, "mps")
 
     def test_swap_returns_skip_note_when_device_move_fails(self):
-        try:
-            import diffusers  # noqa: F401
-        except ImportError:
-            self.skipTest("diffusers not available")
+        if not _TAESD_OK:
+            self.skipTest(_TAESD_SKIP_REASON)
 
         original_vae = SimpleNamespace(dtype="fp16", device="cuda:0")
 

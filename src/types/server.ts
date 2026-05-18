@@ -122,5 +122,37 @@ export interface NativeBackendStatus {
   llamaServerPath?: string | null;
   llamaServerTurboPath?: string | null;
   converterAvailable: boolean;
+  // FU-047 + downstream — already on the wire, kept optional so older
+  // backends without these fields don't break the TS contract.
+  vllmAvailable?: boolean;
+  vllmVersion?: string | null;
+  mtplxAvailable?: boolean;
+  mtplxPythonPath?: string | null;
+  ggufMtpAvailable?: boolean;
+  // FU-056 Phase 1 — per-accelerator import probes. Optional so a
+  // backend running an older build than the frontend doesn't crash the
+  // capability-readers; consumers should treat missing as ``false``.
+  nunchakuAvailable?: boolean;
+  nunchakuVersion?: string | null;
+  sageattentionAvailable?: boolean;
+  sageattentionVersion?: string | null;
+  dflashMlxAvailable?: boolean;
+  dflashMlxVersion?: string | null;
+  dflashCudaAvailable?: boolean;
+  dflashCudaVersion?: string | null;
+  triattentionAvailable?: boolean;
+  triattentionVersion?: string | null;
+  kvpressAvailable?: boolean;
+  kvpressVersion?: string | null;
+  wsl2Available?: boolean;
+  // FU-056 Phase 8: WSL2 vLLM bridge state. ``wslDistroName`` is the
+  // default-distro name from ``wsl --status`` (e.g. "Ubuntu-24.04"),
+  // ``wslCudaAvailable`` is true iff ``nvidia-smi -L`` works inside
+  // WSL, ``wslVllmAvailable`` is true iff the managed venv at
+  // ``~/.chaosengine/vllm-venv`` can import vllm.
+  wslDistroName?: string | null;
+  wslCudaAvailable?: boolean;
+  wslVllmAvailable?: boolean;
+  wslVllmVersion?: string | null;
   probing?: boolean;
 }

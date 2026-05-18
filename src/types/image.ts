@@ -42,7 +42,16 @@ export type ImageSamplerId =
 // keys of ``cache_compression`` in the backend. Default ``"none"`` keeps
 // the stock pipeline; ``"fbcache"`` is the cross-platform recommendation
 // for DiT pipelines (FLUX, SD3, Wan, Hunyuan, LTX, CogVideoX, Mochi).
-export type ImageCacheStrategyId = "none" | "fbcache" | "teacache";
+// ``"taylorseer"`` + ``"pab"`` added 2026-05-16 (FU-026 follow-up) — both
+// land via diffusers 0.38 native ``enable_cache`` config, generic across
+// DiTs. ``"magcache"`` + ``"fastercache"`` remain backend-only (CLI / API)
+// until calibration UX exists / a clear differentiator over FBCache lands.
+export type ImageCacheStrategyId =
+  | "none"
+  | "fbcache"
+  | "teacache"
+  | "taylorseer"
+  | "pab";
 
 export interface ImageModelVariant {
   id: string;
@@ -87,6 +96,12 @@ export interface ImageModelVariant {
   onDiskGb?: number | null;
   metadataWarning?: string | null;
   source?: "curated" | "latest" | "experimental";
+  /** True for tracked-latest seeds whose repo isn't in
+   * ``IMAGE_MODEL_FAMILIES`` — i.e. there's no Studio launchable variant
+   * for it. The Discover tab surfaces this as a "Watching upstream" badge
+   * + disabled download CTA so users don't download weights that can't
+   * be used in Studio. Filed under FU-061. */
+  trackedOnly?: boolean;
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;

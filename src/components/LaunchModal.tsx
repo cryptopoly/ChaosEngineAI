@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ModelLaunchModal } from "./ModelLaunchModal";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
+import type { MtplxJobState } from "../api";
 
 export interface PendingLaunch {
   action: "chat" | "server" | "thread";
@@ -23,6 +24,12 @@ export interface LaunchModalProps {
   installingPackage: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
   turboInstalled?: boolean;
+  mtplxSystemInfo?: SystemStats["mtplx"];
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onPendingLaunchChange: (value: PendingLaunch | null | ((prev: PendingLaunch | null) => PendingLaunch | null)) => void;
   onLaunchModelSearchChange: (value: string) => void;
   onLaunchSettingChange: <K extends keyof LaunchPreferences>(key: K, value: LaunchPreferences[K]) => void;
@@ -45,6 +52,11 @@ export function LaunchModal({
   installingPackage,
   installLogs,
   turboInstalled,
+  mtplxSystemInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
+  isAppleSilicon = false,
   onPendingLaunchChange,
   onLaunchModelSearchChange,
   onLaunchSettingChange,
@@ -89,6 +101,11 @@ export function LaunchModal({
       installingPackage={installingPackage}
       installLogs={installLogs}
       turboInstalled={turboInstalled}
+      mtplxSystemInfo={mtplxSystemInfo}
+      onInstallMtplx={onInstallMtplx}
+      installingMtplx={installingMtplx}
+      mtplxJob={mtplxJob}
+      isAppleSilicon={isAppleSilicon}
       onSelectedKeyChange={setSelectedLaunchKey}
       onSearchChange={onLaunchModelSearchChange}
       onSettingChange={onLaunchSettingChange}

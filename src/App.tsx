@@ -89,6 +89,9 @@ import {
   compareOptionalNumber,
   serverOriginFromBase,
   isUnsavedEmptySession,
+  isAppleSiliconHost,
+  isVariantCompatibleWithHost,
+  chatVariantPlatformGate,
 } from "./utils";
 import {
   useWorkspace,
@@ -105,6 +108,7 @@ import {
   useDetailsWindowResize,
   useFileActions,
 } from "./hooks";
+import { useMtplxInstall } from "./hooks/useMtplxInstall";
 
 export default function App() {
   // FU-042: i18n hook — used for the workspace header tab label /
@@ -149,6 +153,11 @@ export default function App() {
   // ── Settings / Server / Preview ────────────────────────────
   const imgState = useImageState(backendOnline, setError, setActiveTab);
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
+  const {
+    mtplxJob,
+    installingMtplx,
+    handleInstallMtplx,
+  } = useMtplxInstall();
 
   const {
     installingCudaTorch,
@@ -237,6 +246,7 @@ export default function App() {
     activeDownloads,
     discoverCapFilter, setDiscoverCapFilter,
     discoverFormatFilter, setDiscoverFormatFilter,
+    discoverAccelFilter, setDiscoverAccelFilter,
     handleDownloadModel,
     handleCancelModelDownload,
     handleDeleteModelDownload,
@@ -362,6 +372,12 @@ export default function App() {
   // Only list models present in the local library — catalog-only entries
   // would let the user pick a model that isn't downloaded yet, which then
   // 500s on Load. Discover tab is the place to pull a new model.
+  //
+  // FU-056 follow-up: also filter by host platform. MLX-backed chat
+  // options (``backend === "mlx"``) only run on Apple Silicon; vLLM
+  // options (``backend === "vllm"``) only on CUDA hosts. Without this
+  // filter, Windows users see MLX rows in every model picker that
+  // would error on load.
   const libraryChatOptions: ChatModelOption[] = chatLibrary
     .filter((item) => !item.broken)
     .map((item) => {
@@ -390,7 +406,13 @@ export default function App() {
         // capability badges per option without re-deriving in each view.
         capabilities: resolveCapabilities(canonicalRepo ?? item.name, matched?.capabilities ?? null),
       };
-    });
+    })
+    .filter((option) =>
+      isVariantCompatibleWithHost(
+        chatVariantPlatformGate(option),
+        workspace.system,
+      ),
+    );
 
   const threadModelOptions = libraryChatOptions;
 
@@ -642,6 +664,12 @@ export default function App() {
 
   // ── Cross-domain derived state ─────────────────────────────
   const nativeBackends = workspace.runtime.nativeBackends;
+  // FU-056 follow-up: derive once, thread to surfaces that gate
+  // Apple-Silicon-only affordances (MTPLX in launch settings, MLX-LM
+  // install panels, mlx-video install rows). Reads platform/arch from
+  // the system probe — falls to ``false`` on early paint before the
+  // probe lands, which is the safe default (don't flash MLX UI).
+  const isAppleSilicon = isAppleSiliconHost(workspace.system);
   const filteredLogs = workspace.logs.filter((entry) => {
     const haystack = `${entry.ts} ${entry.source} ${entry.level} ${entry.message}`.toLowerCase();
     return haystack.includes(logQuery.toLowerCase());
@@ -1127,6 +1155,13 @@ export default function App() {
         onDiscoverCapFilterChange={setDiscoverCapFilter}
         discoverFormatFilter={discoverFormatFilter}
         onDiscoverFormatFilterChange={setDiscoverFormatFilter}
+        discoverAccelFilter={discoverAccelFilter}
+        onDiscoverAccelFilterChange={setDiscoverAccelFilter}
+        accelCompat={{
+          dflashModels: workspace.system.dflash?.supportedModels ?? [],
+          mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
+          turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
+        }}
         expandedFamilyId={expandedFamilyId}
         onExpandedFamilyIdChange={setExpandedFamilyId}
         expandedVariantId={expandedVariantId}
@@ -1167,6 +1202,8 @@ export default function App() {
           turboInstalled: !!workspace.system.llamaServerTurboPath,
           turboquantMlxAvailable: workspace.system.availableCacheStrategies?.some((s) => s.id === "turboquant" && s.available) ?? false,
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
+          mtplxInstalled: workspace.system.mtplx?.available ?? false,
+          mtplxSupportedModels: workspace.system.mtplx?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}
         expandedLibraryPath={expandedLibraryPath}
@@ -1183,6 +1220,16 @@ export default function App() {
         librarySortDir={librarySortDir}
         onLibrarySortKeyChange={setLibrarySortKey}
         onLibrarySortDirChange={setLibrarySortDir}
+        favoriteModelRefs={workspace.settings?.favoriteModelRefs ?? []}
+        onToggleFavoriteModel={(ref) => {
+          const current = workspace.settings?.favoriteModelRefs ?? [];
+          const next = current.includes(ref)
+            ? current.filter((r) => r !== ref)
+            : [...current, ref];
+          void updateSettingsApi({ favoriteModelRefs: next }).then(() => {
+            void refreshWorkspace();
+          });
+        }}
       />
     );
   } else if (activeTab === "image-discover") {
@@ -1202,6 +1249,8 @@ export default function App() {
         activeImageDownloads={imgState.activeImageDownloads}
         selectedImageVariant={imgState.selectedImageVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
+        hostSystem={workspace.system}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1218,6 +1267,8 @@ export default function App() {
         imageCatalog={imgState.imageCatalog}
         activeImageDownloads={imgState.activeImageDownloads}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
+        hostSystem={workspace.system}
         onActiveTabChange={setActiveTab}
         onOpenImageStudio={imgState.openImageStudio}
         onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
@@ -1246,6 +1297,7 @@ export default function App() {
         imageBusy={imgState.imageBusy}
         imageBusyLabel={imgState.imageBusyLabel}
         backendOnline={backendOnline}
+        nativeBackends={nativeBackends}
         activeImageDownloads={imgState.activeImageDownloads}
         imagePrompt={imgState.imagePrompt}
         onImagePromptChange={imgState.setImagePrompt}
@@ -1266,6 +1318,8 @@ export default function App() {
         onImagePreviewVaeChange={imgState.setImagePreviewVae}
         imageFp8LayerwiseCasting={imgState.imageFp8LayerwiseCasting}
         onImageFp8LayerwiseCastingChange={imgState.setImageFp8LayerwiseCasting}
+        isAppleSiliconHost={isAppleSilicon}
+        hostSystem={workspace.system}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1355,6 +1409,8 @@ export default function App() {
         activeVideoDownloads={videoState.activeVideoDownloads}
         selectedVideoVariant={videoState.selectedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
+        hostSystem={workspace.system}
         longLiveStatus={videoState.longLiveStatus}
         installingLongLive={videoState.installingLongLive}
         longLiveJob={videoState.longLiveJob}
@@ -1380,6 +1436,8 @@ export default function App() {
         videoBusyLabel={videoState.videoBusyLabel}
         loadedVideoVariant={videoState.loadedVideoVariant}
         fileRevealLabel={fileRevealLabel}
+        nativeBackends={nativeBackends}
+        hostSystem={workspace.system}
         onActiveTabChange={setActiveTab}
         onOpenVideoStudio={videoState.openVideoStudio}
         onVideoDownload={(repo, modelId) => void videoState.handleVideoDownload(repo, modelId)}
@@ -1395,6 +1453,7 @@ export default function App() {
     content = (
       <VideoStudioTab
         videoCatalog={videoState.videoCatalogWithLatest}
+        hostSystem={workspace.system}
         selectedVideoModelId={videoState.selectedVideoModelId}
         onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}
         selectedVideoVariant={videoState.selectedVideoVariant}
@@ -1405,6 +1464,7 @@ export default function App() {
         loadedVideoVariant={videoState.loadedVideoVariant}
         videoRuntimeStatus={videoState.videoRuntimeStatus}
         tauriBackend={tauriBackend}
+        nativeBackends={nativeBackends}
         busy={busy}
         busyAction={busyAction}
         videoBusy={videoState.videoBusy}
@@ -1569,11 +1629,18 @@ export default function App() {
         onSetError={setError}
         enableTools={chat.enableTools}
         onToggleTools={chat.setEnableTools}
-        onCompareMode={() => setActiveTab("chat-compare")}
         onCancelGeneration={chat.cancelGeneration}
         oneTurnOverride={chat.oneTurnOverride}
         onOneTurnOverrideChange={chat.setOneTurnOverride}
         availableCacheStrategies={workspace.system.availableCacheStrategies}
+        dflashInfo={workspace.system.dflash}
+        loadedModelCanonicalRepo={workspace.runtime.loadedModel?.canonicalRepo ?? null}
+        loadedModelName={workspace.runtime.loadedModel?.name ?? null}
+        onInstallPackage={handleInstallPackage}
+        installingPackage={installingPackage}
+        noChatModelsInstalled={libraryChatOptions.length === 0}
+        onBrowseDiscover={() => setActiveTab("online-models")}
+        onOpenModels={() => setActiveTab("my-models")}
       />
     );
   } else if (activeTab === "chat-compare") {
@@ -1588,6 +1655,11 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1604,6 +1676,11 @@ export default function App() {
         availableCacheStrategies={workspace.system.availableCacheStrategies}
         dflashInfo={workspace.system.dflash}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         installLogs={installLogs}
@@ -1665,6 +1742,7 @@ export default function App() {
             availableCacheStrategies: workspace.system.availableCacheStrategies,
             llamaServerTurboPath: workspace.system.llamaServerTurboPath,
             dflash: workspace.system.dflash,
+            mtplx: workspace.system.mtplx,
           },
         }}
         threadModelOptions={threadModelOptions}
@@ -1680,6 +1758,10 @@ export default function App() {
         showBenchmarkModal={showBenchmarkModal}
         installingPackage={installingPackage}
         installLogs={installLogs}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onBenchmarkDraftChange={updateBenchmarkDraft}
         onBenchmarkPromptIdChange={setBenchmarkPromptId}
         onBenchmarkModelKeyChange={setBenchmarkModelKey}
@@ -1929,6 +2011,11 @@ export default function App() {
         installingPackage={installingPackage}
         installLogs={installLogs}
         turboInstalled={Boolean(workspace.system.llamaServerTurboPath)}
+        mtplxSystemInfo={workspace.system.mtplx}
+        onInstallMtplx={() => void handleInstallMtplx()}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}
         onLaunchSettingChange={updateLaunchSetting}

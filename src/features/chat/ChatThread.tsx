@@ -11,6 +11,7 @@ import { ChatPerfStrip } from "../../components/ChatPerfStrip";
 import { LogprobSummary } from "../../components/LogprobSummary";
 import { SubstrateRoutingBadge } from "../../components/SubstrateRoutingBadge";
 import { ToolCallCard } from "../../components/ToolCallCard";
+import { ChatEmptyStateBanner } from "./ChatEmptyStateBanner";
 import type { ChatSession, ChatMessageVariant, LaunchPreferences, ModelLoadingState, WarmModel } from "../../types";
 import { number } from "../../utils";
 import { VariantPickerButton } from "./VariantPickerButton";
@@ -42,6 +43,15 @@ export interface ChatThreadProps {
   engineLabel: string;
   launchSettings: LaunchPreferences;
   busy: boolean;
+  /** FU-056 follow-up: when true, the empty-state CTA points the
+   * user at Discover. When false (models present), it points at
+   * Models. Always renders inside the empty thread when there are
+   * no messages — so users on a fresh install never see a blank
+   * Chat tab with no path forward. */
+  noChatModelsInstalled?: boolean;
+  loadedModelRef?: string | null;
+  onBrowseDiscover?: () => void;
+  onOpenModels?: () => void;
   onChatFileDrop: (files: FileList) => void;
   onCopyMessage: (text: string) => void;
   onRetryMessage: (index: number) => void;
@@ -94,6 +104,10 @@ export function ChatThread({
   onDetailsToggle,
   onCancelGeneration,
   onLoadModel,
+  noChatModelsInstalled = false,
+  loadedModelRef = null,
+  onBrowseDiscover,
+  onOpenModels,
 }: ChatThreadProps) {
   const { t } = useTranslation("chat");
   return (
@@ -460,7 +474,24 @@ export function ChatThread({
         })
       ) : (
         <div className="empty-state">
-          <p>{t("thread.emptyState", { defaultValue: "Send a message to start the conversation." })}</p>
+          {/* FU-056 follow-up: redirect users with no installed chat
+              model to Discover, and users with no loaded model to
+              Models. The auto-load-largest-MLX-variant behaviour was
+              both confusing on Apple Silicon (15+ GB silent download)
+              and broken on Windows/Linux (MLX backend doesn't exist
+              there). Banner stays visible until a model is loaded, but
+              hides during the active load — the ModelLoadingProgress
+              bubble below conveys state and a "Load Model" CTA next to
+              a live progress bar reads as broken. */}
+          {!loadedModelRef && !serverLoading && onBrowseDiscover && onOpenModels ? (
+            <ChatEmptyStateBanner
+              noChatModelsInstalled={noChatModelsInstalled}
+              onBrowseDiscover={onBrowseDiscover}
+              onOpenModels={onOpenModels}
+            />
+          ) : !loadedModelRef ? null : (
+            <p>{t("thread.emptyState", { defaultValue: "Send a message to start the conversation." })}</p>
+          )}
         </div>
       )}
       {serverLoading ? (

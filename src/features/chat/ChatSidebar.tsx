@@ -19,7 +19,6 @@ export interface ChatSidebarProps {
   onCreateSession: () => void;
   onToggleThreadPin: (session: ChatSession) => void;
   onDeleteSession: (sessionId: string) => void;
-  onCompareMode: () => void;
   onToggleCollapsed: () => void;
 }
 
@@ -33,7 +32,6 @@ export function ChatSidebar({
   onCreateSession,
   onToggleThreadPin,
   onDeleteSession,
-  onCompareMode,
   onToggleCollapsed,
 }: ChatSidebarProps) {
   const { t } = useTranslation("chat");
@@ -48,15 +46,6 @@ export function ChatSidebar({
         <>
           <button className="secondary-button" type="button" onClick={() => void onCreateSession()}>
             {t("sidebar.newThread", { defaultValue: "New thread" })}
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={onCompareMode}
-            title={t("sidebar.compareTooltip", { defaultValue: "Compare two models side-by-side" })}
-            style={{ fontSize: 11 }}
-          >
-            {t("sidebar.compare", { defaultValue: "Compare" })}
           </button>
           <button
             className="secondary-button sidebar-collapse-toggle"

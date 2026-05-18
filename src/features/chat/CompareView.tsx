@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
+import type { MtplxJobState } from "../../api";
+import { candidateKeys } from "../../components/runtimeSupport";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
 import { ReasoningPanel } from "../../components/ReasoningPanel";
@@ -67,6 +69,12 @@ interface CompareViewProps {
   availableCacheStrategies?: SystemStats["availableCacheStrategies"];
   dflashInfo?: SystemStats["dflash"];
   turboInstalled?: boolean;
+  mtplxSystemInfo?: SystemStats["mtplx"];
+  onInstallMtplx?: () => void;
+  installingMtplx?: boolean;
+  mtplxJob?: MtplxJobState | null;
+  /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
+  isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
   installingPackage?: string | null;
   installLogs?: Record<string, StrategyInstallLog>;
@@ -188,12 +196,50 @@ function formatTokenSetting(value: number) {
   return String(value);
 }
 
-export function summarizeLaunchSettings(settings: LaunchPreferences) {
+/**
+ * Returns true when the backend will route this (option, settings) combo
+ * through MtplxEngine — model has baked-in MTP heads + MTPLX venv present
+ * + speculative decoding enabled. Mirrors `_select_engine` in
+ * controller.py so the summary label matches what actually runs.
+ */
+export function modelUsesMtplx(
+  option: { modelRef?: string | null; canonicalRepo?: string | null; label?: string | null; model?: string | null } | null | undefined,
+  settings: LaunchPreferences,
+  mtplxInfo: SystemStats["mtplx"] | undefined,
+): boolean {
+  if (!settings.speculativeDecoding) return false;
+  if (!mtplxInfo?.available) return false;
+  if (!mtplxInfo.supportedModels?.length) return false;
+  const optionKeys = candidateKeys([
+    option?.modelRef,
+    option?.canonicalRepo,
+    option?.model,
+    option?.label,
+  ]);
+  if (optionKeys.length === 0) return false;
+  return mtplxInfo.supportedModels.some((ref) => {
+    const refKeys = candidateKeys([ref]);
+    return refKeys.some((k) => optionKeys.includes(k));
+  });
+}
+
+export function summarizeLaunchSettings(
+  settings: LaunchPreferences,
+  options?: { usesMtplx?: boolean },
+) {
   const cacheLabel = settings.cacheStrategy === "native"
     ? "Native f16"
     : `${settings.cacheStrategy} ${settings.cacheBits}-bit`;
+  // Backend `_select_engine` routes MLX + speculativeDecoding + MTP heads +
+  // mtplxAvailable to MtplxEngine regardless of UI label. The summary must
+  // reflect what will actually run, so the caller computes ``usesMtplx``
+  // from the selected model + mtplxInfo and we honour it here.
   const speculativeLabel = settings.speculativeDecoding
-    ? settings.treeBudget > 0 ? `DDTree ${settings.treeBudget}` : "DFlash"
+    ? options?.usesMtplx
+      ? "MTPLX"
+      : settings.treeBudget > 0
+        ? `DDTree ${settings.treeBudget}`
+        : "DFlash"
     : null;
   return [
     cacheLabel,
@@ -302,6 +348,11 @@ export function CompareView({
   availableCacheStrategies,
   dflashInfo,
   turboInstalled,
+  mtplxSystemInfo,
+  onInstallMtplx,
+  installingMtplx,
+  mtplxJob,
+  isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
   installLogs,
@@ -545,7 +596,7 @@ export function CompareView({
               {option?.sizeGb ? <span className="badge muted">{sizeLabel(option.sizeGb)}</span> : null}
               {option?.contextWindow ? <span className="badge muted">{option.contextWindow}</span> : null}
             </div>
-            <small className="muted-text">{summarizeLaunchSettings(slot.settings)}</small>
+            <small className="muted-text">{summarizeLaunchSettings(slot.settings, { usesMtplx: modelUsesMtplx(option, slot.settings, mtplxSystemInfo) })}</small>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             {slots.length > 2 && slot.id === slots[slots.length - 1]?.id ? (
@@ -627,7 +678,7 @@ export function CompareView({
           {option ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{option.label} · {option.detail}</p> : null}
           {option ? (
             <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
-              {modelState.appliedSummary ?? summarizeLaunchSettings(settings)}
+              {modelState.appliedSummary ?? summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo) })}
             </p>
           ) : null}
           {modelState.loadSeconds > 0 ? (
@@ -754,6 +805,11 @@ export function CompareView({
         installingPackage={installingPackage ?? null}
         installLogs={installLogs}
         turboInstalled={turboInstalled}
+        mtplxSystemInfo={mtplxSystemInfo}
+        onInstallMtplx={onInstallMtplx}
+        installingMtplx={installingMtplx}
+        mtplxJob={mtplxJob}
+        isAppleSilicon={isAppleSilicon}
         onSelectedKeyChange={setPickerDraftKey}
         onSearchChange={setPickerSearch}
         onSettingChange={(key, value) => {

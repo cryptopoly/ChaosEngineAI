@@ -45,7 +45,7 @@ from typing import Any
 DEFAULT_PORT = 8876
 DEFAULT_OUT_DIR = Path.home() / ".chaosengine" / "test-results"
 DEFAULT_PROMPT = "Explain in three sentences why deterministic seeding matters."
-DEFAULT_MAX_TOKENS = 96
+DEFAULT_MAX_TOKENS = 512
 DEFAULT_TEMPERATURE = 0.0  # deterministic — required for output-hash compares
 DEFAULT_SEED = 42
 
@@ -57,10 +57,10 @@ class MatrixCell:
 
     label: str
     model_ref: str
-    backend: str          # ``mlx`` | ``gguf``
+    backend: str          # ``mlx`` | ``gguf`` | ``vllm``
     strategy: str         # ``native`` | ``turboquant`` | ``triattention`` | legacy aliases
     bits: int             # 0 for native, otherwise per-strategy bit count
-    spec_decode: str      # ``none`` | ``dflash`` | ``ddtree``
+    spec_decode: str      # ``none`` | ``dflash`` | ``ddtree`` | ``mtplx`` | ``gguf-mtp``
     tree_budget: int = 0  # only meaningful when spec_decode == ``ddtree``
     quick: bool = True    # included in the ``--quick`` smoke set
 
@@ -68,9 +68,24 @@ class MatrixCell:
 # Smallest-on-disk MLX target so the matrix exercises every code path
 # without burning hours of wall-time. Heavier sweeps (35B-A3B etc.) flip
 # ``quick=False`` and are gated by the absence of the ``--quick`` flag.
-SMALL_MLX = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+#
+# Smoke targets are current-gen Qwen3 (replacing Qwen2.5 in 2026-05) so the
+# plumbing layer exercises a model architecture that's still under active
+# upstream development. Feature-quality cells (DFlash, MTPLX, MTP-GGUF)
+# target the smallest *capability-supported* model rather than the smallest
+# on disk — see ``DRAFT_MODEL_MAP`` (dflash/__init__.py) and ``MTP_MODEL_MAP``
+# (backend_service/inference/_mtp.py) for the gating tables.
+SMALL_MLX = "mlx-community/Qwen3-0.6B-4bit"
 MID_MLX_DFLASH_CAPABLE = "mlx-community/Qwen3-4B-bf16"
-SMALL_GGUF = "lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF"
+MID_MLX_MTPLX_CAPABLE = "mlx-community/Qwen3.5-4B-bf16"
+SMALL_GGUF = "lmstudio-community/Qwen3-0.6B-GGUF"
+LARGE_GGUF_MTP = "ggml-org/Qwen3.6-27B-MTP-GGUF"
+
+# vLLM targets are raw HF safetensors repos (vLLM doesn't consume MLX or GGUF
+# weights). Capability-gated to ``vllmAvailable`` so these all skip cleanly on
+# macOS. All marked ``quick=False`` — the CUDA box runs the full sweep.
+VLLM_SMALL = "Qwen/Qwen3-0.6B"
+VLLM_MID = "Qwen/Qwen3.5-4B"
 
 MATRIX: list[MatrixCell] = [
     # MLX × strategies — every text strategy on the smallest model
@@ -87,11 +102,27 @@ MATRIX: list[MatrixCell] = [
     MatrixCell("dflash spec-dec (Qwen3-4B)", MID_MLX_DFLASH_CAPABLE, "mlx", "native", 0, "dflash", quick=False),
     MatrixCell("ddtree spec-dec budget=16",  MID_MLX_DFLASH_CAPABLE, "mlx", "native", 0, "ddtree", tree_budget=16, quick=False),
 
+    # MTPLX speculative decoding — MTP_MODEL_MAP-supported target via the
+    # standalone MTPLX subprocess engine. Qwen3.5-4B is the smallest entry.
+    MatrixCell("mtplx spec-dec (Qwen3.5-4B)", MID_MLX_MTPLX_CAPABLE, "mlx", "native", 0, "mtplx", quick=False),
+
     # GGUF lane — native is enough to verify the standard binary path.
     # TurboQuant on GGUF needs llama-server-turbo; runner skips when the
     # binary is missing rather than hard-failing.
     MatrixCell("native GGUF (smoke)",     SMALL_GGUF, "gguf", "native",     0, "none"),
     MatrixCell("turboquant GGUF 3-bit",   SMALL_GGUF, "gguf", "turboquant", 3, "none", quick=False),
+
+    # GGUF MTP speculative decoding (FU-047) — llama.cpp ``--spec-type
+    # draft-mtp`` against a model with baked-in MTP heads. Requires
+    # llama-server master ≥ 2026-05-16. 29 GB Q8_0 target so quick=False.
+    MatrixCell("gguf MTP (Qwen3.6-27B)", LARGE_GGUF_MTP, "gguf", "native", 0, "gguf-mtp", quick=False),
+
+    # vLLM lane — CUDA-only. All cells capability-gated; macOS skips cleanly.
+    # Raw HF safetensors targets; vLLM doesn't consume MLX or GGUF weights.
+    MatrixCell("vllm native (Qwen3-0.6B)",       VLLM_SMALL, "vllm", "native",       0, "none",   quick=False),
+    MatrixCell("vllm turboquant (Qwen3-0.6B)",   VLLM_SMALL, "vllm", "turboquant",   3, "none",   quick=False),
+    MatrixCell("vllm triattention (Qwen3-0.6B)", VLLM_SMALL, "vllm", "triattention", 3, "none",   quick=False),
+    MatrixCell("vllm dflash (Qwen3.5-4B)",       VLLM_MID,   "vllm", "native",       0, "dflash", quick=False),
 ]
 
 
@@ -143,6 +174,12 @@ def _stream_inference(path: str, *, port: int, body: dict, timeout: float = 300)
                     payload = json.loads(line[6:])
                     if "token" in payload:
                         full_text += payload["token"]
+                    if "reasoning" in payload:
+                        # Reasoning models (Qwen3, DeepSeek-R1) emit the
+                        # ``<think>...</think>`` block on a separate channel;
+                        # roll it into ``full_text`` so output-hash compares
+                        # cover both reasoning + answer tokens.
+                        full_text += payload["reasoning"]
                     if "error" in payload:
                         raise RuntimeError(f"Inference error: {payload['error']}")
                     if payload.get("done"):
@@ -157,16 +194,27 @@ class BackendCapabilities:
     available_strategies: set[str]
     dflash_available: bool
     ddtree_available: bool
+    mtplx_available: bool
+    gguf_mtp_available: bool
+    vllm_available: bool
     has_turbo_binary: bool
     library_refs: set[str]
+    # FU-056 Phase 9: vLLM-via-WSL bridge availability. On Windows boxes
+    # native vLLM never works (no Windows wheels), but the WSL bridge
+    # gives the same engine class through a subprocess. The matrix
+    # runner treats either as "vllm cells can run" so a Windows + RTX
+    # box isn't permanently locked out of the vLLM lane.
+    wsl_vllm_available: bool = False
 
 
 def probe_backend(port: int) -> BackendCapabilities:
     workspace = _api("GET", "/api/workspace", port=port)
+    health = _api("GET", "/api/health", port=port)
     system = workspace.get("system", {})
     strategies = system.get("availableCacheStrategies") or []
     available = {s["id"] for s in strategies if s.get("available")}
     dflash = system.get("dflash") or {}
+    native_backends = health.get("nativeBackends") or {}
     library = workspace.get("library") or []
     refs: set[str] = set()
     for item in library:
@@ -181,6 +229,17 @@ def probe_backend(port: int) -> BackendCapabilities:
         available_strategies=available,
         dflash_available=bool(dflash.get("available")),
         ddtree_available=bool(dflash.get("ddtreeAvailable")),
+        mtplx_available=bool(native_backends.get("mtplxAvailable")),
+        gguf_mtp_available=bool(native_backends.get("ggufMtpAvailable")),
+        # ``vllmAvailable`` (native) OR ``wslVllmAvailable`` (Windows
+        # bridge) — either route can serve the vllm cells. The runner
+        # doesn't care which path the backend chose; it cares whether
+        # a vllm load will succeed at all.
+        vllm_available=(
+            bool(native_backends.get("vllmAvailable"))
+            or bool(native_backends.get("wslVllmAvailable"))
+        ),
+        wsl_vllm_available=bool(native_backends.get("wslVllmAvailable")),
         has_turbo_binary=bool(system.get("llamaServerTurboPath")),
         library_refs=refs,
     )
@@ -189,6 +248,13 @@ def probe_backend(port: int) -> BackendCapabilities:
 def skip_reason(cell: MatrixCell, caps: BackendCapabilities, *, quick: bool) -> str | None:
     if quick and not cell.quick:
         return "deferred to full run (drop --quick)"
+
+    if cell.backend == "vllm" and not caps.vllm_available:
+        # ``vllm_available`` already considers the WSL bridge (FU-056
+        # Phase 8) — if neither route serves vLLM, the skip reason
+        # depends on the platform so the user gets the right next step.
+        # The runner doesn't know the OS, so name both paths.
+        return "vLLM not available (install via Diagnostics → WSL2 vLLM bridge on Windows, or pip install vllm on Linux+CUDA)"
 
     canonical = {"chaosengine": "turboquant", "rotorquant": "turboquant"}.get(
         cell.strategy, cell.strategy,
@@ -206,6 +272,18 @@ def skip_reason(cell: MatrixCell, caps: BackendCapabilities, *, quick: bool) -> 
             return "DFlash runtime not installed"
         if cell.spec_decode == "ddtree" and not caps.ddtree_available:
             return "DDTree runtime not available"
+
+    if cell.spec_decode == "mtplx":
+        if cell.backend != "mlx":
+            return "MTPLX speculative decoding requires MLX backend"
+        if not caps.mtplx_available:
+            return "MTPLX runtime not installed"
+
+    if cell.spec_decode == "gguf-mtp":
+        if cell.backend != "gguf":
+            return "GGUF MTP requires GGUF backend"
+        if not caps.gguf_mtp_available:
+            return "llama-server lacks --spec-type draft-mtp (FU-047) — upgrade llama.cpp"
 
     if cell.model_ref not in caps.library_refs:
         return f"model not in library ({cell.model_ref})"
@@ -267,8 +345,9 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
     started = time.monotonic()
     try:
         load_resp = _api("POST", "/api/models/load", port=port, body=body, timeout=180)
-        result.actual_strategy = (load_resp.get("loadedModel") or {}).get("cacheStrategy", "")
-        result.runtime_note = (load_resp.get("loadedModel") or {}).get("runtimeNote") or ""
+        loaded = ((load_resp.get("runtime") or {}).get("loadedModel")) or load_resp.get("loadedModel") or {}
+        result.actual_strategy = loaded.get("cacheStrategy", "")
+        result.runtime_note = loaded.get("runtimeNote") or ""
 
         gen_body = {
             "prompt": DEFAULT_PROMPT,
@@ -277,7 +356,7 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
             "seed": DEFAULT_SEED,
             "thinkingMode": "off",
         }
-        text, done = _stream_inference("/api/generate/stream", port=port, body=gen_body, timeout=240)
+        text, done = _stream_inference("/api/chat/generate/stream", port=port, body=gen_body, timeout=240)
         result.duration_seconds = round(time.monotonic() - started, 2)
         result.tokens_per_sec = float(done.get("tokensPerSecond") or 0.0)
         result.output_chars = len(text)
@@ -412,7 +491,22 @@ def main() -> int:
     try:
         caps = probe_backend(args.port)
     except ConnectionError as exc:
+        # The matrix runner is meant to exercise the installed app's
+        # runtime, the same way ``e2e_test_suite.py`` does. A failure to
+        # reach the backend almost always means "the app isn't open" —
+        # surface that clearly instead of just echoing the ConnectionError.
         print(f"  ! {exc}", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(
+            "Open the ChaosEngineAI app and re-run this command — the matrix "
+            "is designed to exercise the production embedded runtime + extras.",
+            file=sys.stderr,
+        )
+        print(
+            f"(advanced: `npm run tauri:dev` or `python -m backend_service.app "
+            f"--port {args.port}` works for dev runs, but won't match the user-install path)",
+            file=sys.stderr,
+        )
         return 3
     print(f"  available strategies: {sorted(caps.available_strategies)}")
     print(f"  dflash={caps.dflash_available} ddtree={caps.ddtree_available} turbo-binary={caps.has_turbo_binary}")

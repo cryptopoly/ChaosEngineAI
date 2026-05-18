@@ -250,6 +250,13 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # locale's CLDR default (12h for en-US, 24h elsewhere) per the
         # FU-042 plan §Q10; explicit ``"12h"`` / ``"24h"`` overrides.
         "clockFormat": "system",
+        # FU-052 follow-up: starred / favourite models pinned by the user
+        # from the Chat → My Models tab. Each entry is a canonical model
+        # ref (the same string surfaced as ``LibraryItem.name`` /
+        # ``ModelVariant.repo``). Persisted so the UI can sort favourites
+        # to the top and so the user has a durable "don't delete this one"
+        # signal across app restarts.
+        "favoriteModelRefs": [],
     }
 
 

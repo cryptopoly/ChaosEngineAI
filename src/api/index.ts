@@ -494,11 +494,16 @@ export {
 } from "./video";
 
 export {
+  checkTorchUpgradeAvailable,
   checkTurboUpdate,
   enhancePromptViaLLM,
   fetchGpuBundleInfo,
   getGpuBundleStatus,
   getLongLiveInstallStatus,
+  getMtplxInstallStatus,
+  getMtplxStatus,
+  getTorchUpgradeStatus,
+  getVllmWslInstallStatus,
   getWanInstallStatus,
   getWanInventory,
   installCudaTorch,
@@ -507,6 +512,9 @@ export {
   refreshCapabilities,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startMtplxInstall,
+  startTorchUpgrade,
+  startVllmWslInstall,
   startWanInstall,
 } from "./setup";
 export type {
@@ -519,8 +527,18 @@ export type {
   InstallResult,
   LongLiveAttempt,
   LongLiveJobState,
+  MtplxAttempt,
+  MtplxJobState,
+  MtplxStatus,
   PromptEnhanceResult,
+  TorchUpgradeAttempt,
+  TorchUpgradeAvailability,
+  TorchUpgradeJobState,
+  TorchUpgradeType,
+  TorchUpgradeUnavailableReason,
   TurboUpdateInfo,
+  VllmWslAttempt,
+  VllmWslJobState,
   WanConvertStatusFields,
   WanInstallAttempt,
   WanInstallJobState,
@@ -531,6 +549,7 @@ export type {
 export {
   fetchDiagnosticsLogTail,
   fetchDiagnosticsSnapshot,
+  fetchStorageTop,
   getModelMoveStatus,
   getStorageSettings,
   reextractRuntime,
@@ -543,6 +562,8 @@ export type {
   ModelMoveJobState,
   ReextractRuntimeResult,
   StorageSettingsSnapshot,
+  StorageTopEntry,
+  StorageTopResponse,
   UpdateStoragePathResult,
 } from "./admin";
 

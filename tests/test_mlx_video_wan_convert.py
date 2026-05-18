@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -324,13 +325,19 @@ class ConvertRootEnvOverrideTests(unittest.TestCase):
         import os as _os
 
         original = _os.environ.get("CHAOSENGINE_MLX_VIDEO_WAN_DIR")
-        _os.environ["CHAOSENGINE_MLX_VIDEO_WAN_DIR"] = "/tmp/chaosengine-wan-override-test"
+        # Build a tempdir-style path so Windows sees ``C:\Users\...\Temp\...``
+        # and POSIX sees ``/tmp/...`` — the implementation does
+        # ``Path(env)`` then ``str(...)`` for the snapshot, which would
+        # otherwise diverge on Windows (backslash) vs the hardcoded
+        # forward-slash literal.
+        override = str(Path(tempfile.gettempdir()) / "chaosengine-wan-override-test")
+        _os.environ["CHAOSENGINE_MLX_VIDEO_WAN_DIR"] = override
         try:
             from backend_service import mlx_video_wan_convert as mod
             importlib.reload(mod)
             self.assertEqual(
                 str(mod.CONVERT_ROOT),
-                "/tmp/chaosengine-wan-override-test",
+                override,
             )
         finally:
             if original is None:

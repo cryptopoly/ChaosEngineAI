@@ -192,6 +192,9 @@ class VLLMEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        samplers: dict[str, Any] | None = None,
+        reasoning_effort: str | None = None,
+        json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         if self._llm is None or self.loaded_model is None:
             raise RuntimeError("No vLLM model is loaded.")
@@ -202,10 +205,36 @@ class VLLMEngine(BaseInferenceEngine):
         prompt_text = self._messages_to_text(messages)
         started = time.perf_counter()
 
-        params = SamplingParams(
-            max_tokens=max_tokens,
-            temperature=max(temperature, 0.01),  # vLLM doesn't allow exactly 0
-        )
+        # Build SamplingParams from base fields + optional Phase 2.2
+        # sampler overrides. vLLM uses ``repetition_penalty`` rather
+        # than llama-server's ``repeat_penalty`` — translate on the way
+        # in. Unknown keys are silently ignored so newer UI knobs don't
+        # break older vLLM builds.
+        params_kwargs: dict[str, Any] = {
+            "max_tokens": max_tokens,
+            "temperature": max(temperature, 0.01),  # vLLM forbids 0
+        }
+        if samplers:
+            _SAMPLER_PASSTHROUGH = (
+                "top_p", "top_k", "min_p", "seed",
+                "frequency_penalty", "presence_penalty",
+            )
+            for key in _SAMPLER_PASSTHROUGH:
+                value = samplers.get(key)
+                if value is not None:
+                    params_kwargs[key] = value
+            # vLLM names the repeat-penalty knob differently.
+            repeat = samplers.get("repeat_penalty")
+            if repeat is not None:
+                params_kwargs["repetition_penalty"] = repeat
+        # reasoning_effort + json_schema are accepted to match the
+        # controller's call shape (parity with LlamaCppEngine) but vLLM
+        # has no in-process equivalent for either in V0 / V1, so they
+        # currently pass through as a no-op. Surfacing this in a
+        # runtimeNote would be nice once the controller exposes one.
+        del reasoning_effort, json_schema
+
+        params = SamplingParams(**params_kwargs)
         outputs = self._llm.generate([prompt_text], params)
         elapsed = max(time.perf_counter() - started, 1e-6)
 

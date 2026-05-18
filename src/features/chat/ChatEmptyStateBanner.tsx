@@ -71,12 +71,12 @@ export function ChatEmptyStateBanner({
       <p className="chat-empty-banner-body">
         {t("emptyBanner.noModelLoaded", {
           defaultValue:
-            "No model is loaded yet. Pick one from Models to start chatting.",
+            "A model needs to be loaded before you can chat. Pick one from your library to bring it into memory.",
         })}
       </p>
       <div className="chat-empty-banner-actions">
         <button type="button" className="secondary-button" onClick={onOpenModels}>
-          {t("emptyBanner.openModels", { defaultValue: "Open Models" })}
+          {t("emptyBanner.loadModel", { defaultValue: "Load Model" })}
         </button>
       </div>
     </div>

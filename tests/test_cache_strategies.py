@@ -1,5 +1,6 @@
 import unittest
 import importlib
+import importlib.util
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,13 @@ from cache_compression.native import NativeStrategy
 from cache_compression.triattention import TriAttentionStrategy
 from cache_compression.turboquant import TurboQuantStrategy
 from turboquant_mlx import _find_pip_turboquant_path
+
+# The two MLX adapter tests below need ``mlx_lm`` + the full
+# ``turboquant_mlx`` package on disk. Both ship only on Apple Silicon
+# (the ``[turboquant]`` extra is Apple-only). Skip cleanly on every
+# other platform so a CUDA/CPU box doesn't blow up at function-scope
+# imports — keeping the rest of the registry checks running.
+_MLX_LM_AVAILABLE = importlib.util.find_spec("mlx_lm") is not None
 
 
 class CacheStrategyRegistryTests(unittest.TestCase):
@@ -189,6 +197,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
             with patch.dict("os.environ", {"CHAOSENGINE_EXTRAS_SITE_PACKAGES": tmp}):
                 self.assertEqual(_find_pip_turboquant_path(), str(package.resolve()))
 
+    @unittest.skipUnless(_MLX_LM_AVAILABLE, "mlx_lm not installed (Apple Silicon only)")
     def test_turboquant_preserves_hybrid_model_arrayscache_slots(self):
         """Hybrid-attention models (Qwen3.5 / Qwen3.6 MoE) mix KV-cache
         layers with ``ArraysCache(size=2)`` slots for linear-attention
@@ -229,6 +238,7 @@ class CacheStrategyRegistryTests(unittest.TestCase):
             self.assertIn(slot_name, ("TurboQuantKVCache", "KVCache", "QuantizedKVCache"),
                 f"Layer {i} (self-attn) got unexpected cache type {slot_name}")
 
+    @unittest.skipUnless(_MLX_LM_AVAILABLE, "mlx_lm not installed (Apple Silicon only)")
     def test_turboquant_handles_model_without_make_cache(self):
         """Plain models (no ``make_cache`` method) should still get a
         full-length cache list — preserving the pre-fix behaviour."""

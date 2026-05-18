@@ -18,6 +18,15 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+# Shared fake-binary + fake-output paths. ``str(Path(...))`` round-trips
+# through the platform's native separator — POSIX on macOS/Linux,
+# backslashes on Windows — so the implementation's ``str(binary)`` /
+# ``str(output_path)`` and the test's expected value stay in sync
+# regardless of OS. Hardcoding ``"/tmp/sd"`` in assertions previously
+# made Windows runs fail with ``'\\tmp\\sd' != '/tmp/sd'``.
+_FAKE_SD_BIN = str(Path("/tmp/sd"))
+_FAKE_OUT_PNG = str(Path("/tmp/out.png"))
+
 from backend_service.image_runtime import (
     GeneratedImage,
     ImageGenerationConfig,
@@ -116,7 +125,7 @@ class SdCppImageEngineProbeTests(unittest.TestCase):
         ):
             probe = engine.probe()
         self.assertTrue(probe["available"])
-        self.assertEqual(probe["binary"], "/tmp/sd")
+        self.assertEqual(probe["binary"], _FAKE_SD_BIN)
 
 
 class SdCppImageEnginePreloadTests(unittest.TestCase):
@@ -189,7 +198,7 @@ class SdCppImageEngineGenerateTests(unittest.TestCase):
             output_path=Path("/tmp/out.png"),
             seed=42,
         )
-        self.assertEqual(args[0], "/tmp/sd")
+        self.assertEqual(args[0], _FAKE_SD_BIN)
         self.assertIn("--diffusion-model", args)
         self.assertIn("/tmp/flux.gguf", args)
         self.assertIn("-p", args)
@@ -203,7 +212,7 @@ class SdCppImageEngineGenerateTests(unittest.TestCase):
         self.assertIn("--seed", args)
         self.assertIn("42", args)
         self.assertIn("-o", args)
-        self.assertIn("/tmp/out.png", args)
+        self.assertIn(_FAKE_OUT_PNG, args)
         # Video-only flags must NOT leak into the image path.
         self.assertNotIn("--video-frames", args)
         self.assertNotIn("--fps", args)

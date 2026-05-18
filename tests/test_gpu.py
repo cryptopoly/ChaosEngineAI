@@ -44,15 +44,29 @@ class GPUMonitorSnapshotTests(unittest.TestCase):
 
 class GPUMonitorNvidiaTests(unittest.TestCase):
     @patch("backend_service.helpers.gpu.subprocess.check_output")
-    def test_nvidia_smi_parsing(self, mock_check_output):
+    @patch.object(GPUMonitor, "_snapshot_torch_cuda", return_value=None)
+    def test_nvidia_smi_parsing(self, _mock_torch_path, mock_check_output):
+        # Match what ``nvidia-smi --query-gpu=name --format=csv,noheader``
+        # actually emits for a consumer card — the marketing name keeps
+        # the "GeForce" prefix. Live-confirmed against an RTX 4090 over
+        # WSL2 GPU passthrough on 2026-05-18. The parser is intentionally
+        # pass-through so the surface matches user expectations on the
+        # Diagnostics tab.
+        #
+        # ``_snapshot_torch_cuda`` is also patched to None so the parser
+        # always falls through to the nvidia-smi codepath we want to
+        # exercise — otherwise on a CUDA host (WSL passthrough, native
+        # Linux + RTX, etc.) torch.cuda short-circuits before
+        # ``subprocess.check_output`` is ever called, and the mock
+        # ``8192`` MB stays unused.
         mock_check_output.return_value = (
-            "NVIDIA RTX 4090, 24576, 8192, 45, 62, 280.5"
+            "NVIDIA GeForce RTX 4090, 24576, 8192, 45, 62, 280.5"
         )
         monitor = GPUMonitor()
         monitor._system = "Linux"  # Force NVIDIA path
         snapshot = monitor._snapshot_nvidia()
 
-        self.assertEqual(snapshot["gpu_name"], "NVIDIA RTX 4090")
+        self.assertEqual(snapshot["gpu_name"], "NVIDIA GeForce RTX 4090")
         self.assertAlmostEqual(snapshot["vram_total_gb"], 24.0, places=0)
         self.assertAlmostEqual(snapshot["vram_used_gb"], 8.0, places=0)
         self.assertEqual(snapshot["utilization_pct"], 45.0)

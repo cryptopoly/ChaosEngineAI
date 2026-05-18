@@ -18,6 +18,12 @@ from pathlib import Path
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.mtplx_engine import MtplxEngine
 
+# The integration fixtures spawn a ``#!/usr/bin/env bash`` wrapper
+# script — POSIX-only. Windows can't honour that shebang, so the whole
+# integration class skips there. MTPLX itself is also macOS-Apple-Silicon
+# in production, so this also covers the "MTPLX runtime unavailable" path.
+_REQUIRES_POSIX = "MTPLX integration fixtures need a POSIX shell"
+
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 _STUB_SCRIPT = _FIXTURES / "stub_mtplx_server.py"
@@ -50,6 +56,7 @@ def _make_capabilities(mtplx_python: str) -> BackendCapabilities:
     )
 
 
+@unittest.skipIf(sys.platform == "win32", _REQUIRES_POSIX)
 class MtplxEngineIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
         import tempfile

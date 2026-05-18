@@ -479,14 +479,17 @@ export function ChatThread({
               Models. The auto-load-largest-MLX-variant behaviour was
               both confusing on Apple Silicon (15+ GB silent download)
               and broken on Windows/Linux (MLX backend doesn't exist
-              there). Banner stays visible until a model is loaded. */}
-          {!loadedModelRef && onBrowseDiscover && onOpenModels ? (
+              there). Banner stays visible until a model is loaded, but
+              hides during the active load — the ModelLoadingProgress
+              bubble below conveys state and a "Load Model" CTA next to
+              a live progress bar reads as broken. */}
+          {!loadedModelRef && !serverLoading && onBrowseDiscover && onOpenModels ? (
             <ChatEmptyStateBanner
               noChatModelsInstalled={noChatModelsInstalled}
               onBrowseDiscover={onBrowseDiscover}
               onOpenModels={onOpenModels}
             />
-          ) : (
+          ) : !loadedModelRef ? null : (
             <p>{t("thread.emptyState", { defaultValue: "Send a message to start the conversation." })}</p>
           )}
         </div>

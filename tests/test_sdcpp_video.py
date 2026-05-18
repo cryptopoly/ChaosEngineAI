@@ -19,6 +19,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+# See ``test_sdcpp_image.py`` for the rationale — keep the expected
+# binary + output path string in sync with what ``str(Path(...))`` produces
+# on the current OS so Windows runs don't fail on backslash conversion.
+_FAKE_SD_BIN = str(Path("/tmp/sd"))
+_FAKE_OUT_MP4 = str(Path("/tmp/out.mp4"))
+
 from backend_service.sdcpp_video_runtime import (
     SdCppVideoEngine,
     _SUPPORTED_REPOS,
@@ -197,7 +203,7 @@ class SdCppEngineGenerateTests(unittest.TestCase):
             output_path=Path("/tmp/out.mp4"),
             seed=42,
         )
-        self.assertEqual(args[0], "/tmp/sd")
+        self.assertEqual(args[0], _FAKE_SD_BIN)
         self.assertIn("--diffusion-model", args)
         self.assertIn("/tmp/wan.gguf", args)
         self.assertIn("-p", args)
@@ -213,7 +219,7 @@ class SdCppEngineGenerateTests(unittest.TestCase):
         self.assertIn("--seed", args)
         self.assertIn("42", args)
         self.assertIn("-o", args)
-        self.assertIn("/tmp/out.mp4", args)
+        self.assertIn(_FAKE_OUT_MP4, args)
         self.assertIn("--video-frames", args)
         self.assertIn("25", args)
         self.assertIn("--fps", args)

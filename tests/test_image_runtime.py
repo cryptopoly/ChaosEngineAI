@@ -763,5 +763,59 @@ class SageAttentionHelperTests(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class WarmCacheVariantKeyTests(unittest.TestCase):
+    """Q3: warm-cache short-circuit for ``generate()`` initial phase."""
+
+    def _make_config(self, **overrides) -> ImageGenerationConfig:
+        defaults = dict(
+            modelId="flux-dev",
+            modelName="FLUX.1 Dev",
+            repo="black-forest-labs/FLUX.1-dev",
+            prompt="a cat",
+            negativePrompt="",
+            width=1024,
+            height=1024,
+            steps=4,
+            guidance=3.5,
+            batchSize=1,
+        )
+        defaults.update(overrides)
+        return ImageGenerationConfig(**defaults)
+
+    def test_variant_key_stable_for_same_config(self):
+        engine = DiffusersTextToImageEngine()
+        key_a = engine._compute_variant_key(self._make_config())
+        key_b = engine._compute_variant_key(self._make_config())
+        self.assertEqual(key_a, key_b)
+
+    def test_variant_key_changes_with_lora(self):
+        engine = DiffusersTextToImageEngine()
+        plain = engine._compute_variant_key(self._make_config())
+        lora = engine._compute_variant_key(self._make_config(
+            loraRepo="ByteDance/Hyper-SD",
+            loraFile="Hyper-FLUX.1-dev-8steps-lora.safetensors",
+            loraScale=0.125,
+        ))
+        self.assertNotEqual(plain, lora)
+
+    def test_is_variant_loaded_false_when_no_pipeline(self):
+        engine = DiffusersTextToImageEngine()
+        self.assertFalse(engine._is_variant_loaded("anything"))
+
+    def test_is_variant_loaded_true_when_keys_match(self):
+        engine = DiffusersTextToImageEngine()
+        config = self._make_config()
+        key = engine._compute_variant_key(config)
+        engine._pipeline = object()
+        engine._loaded_variant_key = key
+        self.assertTrue(engine._is_variant_loaded(key))
+
+    def test_is_variant_loaded_false_on_mismatch(self):
+        engine = DiffusersTextToImageEngine()
+        engine._pipeline = object()
+        engine._loaded_variant_key = "other-key"
+        self.assertFalse(engine._is_variant_loaded("requested-key"))
+
+
 if __name__ == "__main__":
     unittest.main()

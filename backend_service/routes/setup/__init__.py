@@ -112,10 +112,12 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # family + Qwen-Image + SD3.5 on CUDA. ~3× over NF4 on FLUX.1-dev.
     # CUDA only; Apple Silicon / Linux-CPU installs no-op at runtime
     # because the Nunchaku transformer subclasses fall back to the
-    # stock diffusers transformer when the import fails. v1.2.1 is the
-    # current pin (2026-01-25) — covers FLUX dev/Schnell/Tools/Kontext/
-    # Krea, Qwen-Image + Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
-    "nunchaku": "nunchaku>=1.2.1",
+    # stock diffusers transformer when the import fails. Upstream
+    # versioning reset — current PyPI top is 0.16.x (was 1.2.1 in the
+    # original FU-023 note, but that release was pulled / renumbered).
+    # 0.16.1 covers FLUX dev/Schnell/Tools/Kontext/Krea, Qwen-Image +
+    # Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
+    "nunchaku": "nunchaku>=0.16.0",
     # FU-027 NVIDIA/kvpress — KV cache compression toolkit (Apache 2.0,
     # 26 releases as of v0.5.3 / 2026-04-09). HF transformers + multi-GPU
     # Accelerate hookups. CUDA-side complement to TurboQuant on Apple

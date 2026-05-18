@@ -398,6 +398,26 @@ def _image_discover_style_tags(tags: list[str]) -> list[str]:
     return seen[:4]
 
 
+def _is_launchable_image_repo(repo_id: str) -> bool:
+    """True when ``repo_id`` resolves to a Studio-launchable variant.
+
+    Curated families in ``IMAGE_MODEL_FAMILIES`` have explicit runtime
+    routing (flow-match flags, sampler registry, scheduler defaults).
+    Repos seen only via ``LATEST_IMAGE_TRACKED_SEEDS`` or live HF
+    discovery do not — Studio's dropdown is fed by the families list,
+    so those repos would download but never appear there. The frontend
+    uses this flag to surface a "Watching upstream" badge + disable
+    the download CTA with a tooltip explaining why.
+    """
+    if not repo_id:
+        return False
+    for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if str(variant.get("repo") or "") == repo_id:
+                return True
+    return False
+
+
 def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]:
     payloads: list[dict[str, Any]] = []
     for seed in LATEST_IMAGE_TRACKED_SEEDS:
@@ -454,6 +474,7 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "coreWeightsGb": core_weights_gb,
                 "metadataWarning": "Showing ChaosEngineAI tracked latest defaults until live Hugging Face metadata is available.",
                 "source": "latest",
+                "trackedOnly": not _is_launchable_image_repo(repo_id),
             }
         )
     return payloads
@@ -659,6 +680,7 @@ def _latest_image_model_payloads(library: list[dict[str, Any]], limit: int = 10)
             "coreWeightsGb": core_weights_gb,
             "metadataWarning": metadata.get("metadataWarning"),
             "source": "latest",
+            "trackedOnly": not _is_launchable_image_repo(model_id),
         })
 
     candidates.sort(

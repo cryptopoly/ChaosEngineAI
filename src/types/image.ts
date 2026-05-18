@@ -96,6 +96,12 @@ export interface ImageModelVariant {
   onDiskGb?: number | null;
   metadataWarning?: string | null;
   source?: "curated" | "latest" | "experimental";
+  /** True for tracked-latest seeds whose repo isn't in
+   * ``IMAGE_MODEL_FAMILIES`` — i.e. there's no Studio launchable variant
+   * for it. The Discover tab surfaces this as a "Watching upstream" badge
+   * + disabled download CTA so users don't download weights that can't
+   * be used in Studio. Filed under FU-061. */
+  trackedOnly?: boolean;
   familyName?: string | null;
   /** Absolute path to the local HF snapshot, when something is on disk. */
   localPath?: string | null;

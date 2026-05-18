@@ -14,6 +14,11 @@ import type {
   VideoRuntimeStatus,
 } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
+import {
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
+} from "../../utils/platform";
 import {
   IMAGE_CACHE_STRATEGIES,
   VIDEO_CACHE_STRATEGY_DEFAULT_THRESH,
@@ -42,6 +47,10 @@ import {
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
+  /** Filter platform-incompatible variants out of the model dropdown
+   * (FU-056 hide-unrecoverable-options policy). Threaded from App.tsx →
+   * workspace.system. Optional for test harnesses. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   selectedVideoModelId: string;
   onSelectedVideoModelIdChange: (id: string) => void;
   selectedVideoVariant: VideoModelVariant | null;
@@ -156,6 +165,7 @@ export interface VideoStudioTabProps {
 
 export function VideoStudioTab({
   videoCatalog,
+  hostSystem,
   selectedVideoModelId,
   onSelectedVideoModelIdChange,
   selectedVideoVariant,
@@ -323,6 +333,17 @@ export function VideoStudioTab({
         .map((family) => ({
           ...family,
           variants: family.variants.filter((variant) => {
+            // FU-056: hide platform-incompatible variants entirely so
+            // macOS users don't see CUDA-only entries and Win/Linux
+            // users don't see mlx-video / mflux MLX-only entries.
+            if (
+              !isVariantCompatibleWithHost(
+                imageOrVideoVariantPlatformGate(variant),
+                hostSystem,
+              )
+            ) {
+              return false;
+            }
             if (variant.availableLocally) return true;
             if (variant.hasLocalData) return true;
             const downloadState = videoDownloadStatusForVariant(activeVideoDownloads, variant);
@@ -330,7 +351,7 @@ export function VideoStudioTab({
           }),
         }))
         .filter((family) => family.variants.length > 0),
-    [videoCatalog, activeVideoDownloads],
+    [videoCatalog, activeVideoDownloads, hostSystem],
   );
   const hasAnyInstalled = studioFamilies.length > 0;
 
@@ -1247,23 +1268,27 @@ export function VideoStudioTab({
           {/*
             FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada / Hopper /
             Blackwell). Halves transformer VRAM with negligible quality
-            drift. No-op on Apple Silicon / CPU / pre-Ada GPUs — backend
-            checks compute capability + surfaces a runtimeNote.
+            drift. Hidden entirely on Apple Silicon — there's no CUDA
+            path so the toggle would be unreachable. Still rendered on
+            Linux / Windows where the user may or may not have an Ada+
+            GPU; backend silently skips on pre-Ada hardware.
           */}
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={videoFp8LayerwiseCasting}
-              onChange={(event) => onVideoFp8LayerwiseCastingChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("videoStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
-              <InfoTooltip text={t("videoStudio.toggles.fp8Layerwise.tooltip", {
-                defaultValue:
-                  "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX / Qwen-Image. Backend checks GPU compute capability before applying — pre-Ada GPUs lack hardware fp8 and skip with a runtimeNote. Best stacked with the GGUF or Nunchaku quant paths for the smallest VRAM footprint.",
-              })} />
-            </span>
-          </label>
+          {!isAppleSiliconHost ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={videoFp8LayerwiseCasting}
+                onChange={(event) => onVideoFp8LayerwiseCastingChange(event.target.checked)}
+              />
+              <span>
+                <strong>{t("videoStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
+                <InfoTooltip text={t("videoStudio.toggles.fp8Layerwise.tooltip", {
+                  defaultValue:
+                    "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for Wan / LTX / FLUX / Qwen-Image. Backend checks GPU compute capability before applying — pre-Ada GPUs lack hardware fp8 and skip with a runtimeNote. Best stacked with the GGUF or Nunchaku quant paths for the smallest VRAM footprint.",
+                })} />
+              </span>
+            </label>
+          ) : null}
 
           {/*
             FU-015: diffusion cache strategy. First Block Cache works

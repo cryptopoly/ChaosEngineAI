@@ -262,11 +262,18 @@ class DiffusersVideoEngine:
         them without needing real 10+GB video weights on disk.
         """
         config, finalize_notes = self._finalize_config(config)
+        # Warm cache: skip the ``loading`` phase entirely. ``encoding`` flashes
+        # as the initial state so the UI shows the active model name without
+        # implying disk I/O that won't happen.
+        warm_cache = self._is_variant_loaded(self._compute_variant_key(config))
         VIDEO_PROGRESS.begin(
             run_label=self._format_run_label(config),
             total_steps=max(1, int(config.steps)),
-            phase=PHASE_LOADING,
-            message=f"Preparing {config.modelName}",
+            phase=PHASE_ENCODING if warm_cache else PHASE_LOADING,
+            message=(
+                f"Reusing {config.modelName}" if warm_cache
+                else f"Preparing {config.modelName}"
+            ),
         )
         for note in finalize_notes:
             VIDEO_PROGRESS.set_phase(PHASE_LOADING, message=note)
@@ -522,6 +529,56 @@ class DiffusersVideoEngine:
     def _pipeline_class(self, repo: str) -> Any:
         return pipeline_class_for_repo(repo)
 
+    @staticmethod
+    def _build_variant_key(
+        *,
+        repo: str,
+        gguf_file: str | None,
+        use_nf4: bool,
+        lora_repo: str | None,
+        lora_file: str | None,
+        lora_scale: float | None,
+        preview_vae: bool,
+        distill_repo: str | None,
+        distill_high_file: str | None,
+        distill_low_file: str | None,
+        distill_precision: str | None,
+    ) -> str:
+        variant_parts = [repo]
+        if gguf_file:
+            variant_parts.append(f"gguf={gguf_file}")
+        elif use_nf4:
+            variant_parts.append("nf4")
+        if lora_repo and lora_file:
+            variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
+        if preview_vae:
+            variant_parts.append("preview_vae")
+        if distill_repo and distill_high_file and distill_low_file:
+            variant_parts.append(
+                f"distill={distill_repo}/{distill_precision or 'bf16'}/"
+                f"{distill_high_file}/{distill_low_file}"
+            )
+        return "::".join(variant_parts)
+
+    def _compute_variant_key(self, config: VideoGenerationConfig) -> str:
+        return self._build_variant_key(
+            repo=config.repo,
+            gguf_file=config.ggufFile,
+            use_nf4=bool(getattr(config, "useNf4", False)),
+            lora_repo=config.loraRepo,
+            lora_file=config.loraFile,
+            lora_scale=config.loraScale,
+            preview_vae=config.previewVae,
+            distill_repo=config.distillTransformerRepo,
+            distill_high_file=config.distillTransformerHighNoiseFile,
+            distill_low_file=config.distillTransformerLowNoiseFile,
+            distill_precision=config.distillTransformerPrecision,
+        )
+
+    def _is_variant_loaded(self, variant_key: str) -> bool:
+        with self._lock:
+            return self._pipeline is not None and self._loaded_variant_key == variant_key
+
     def _ensure_pipeline(
         self,
         repo: str,
@@ -544,21 +601,19 @@ class DiffusersVideoEngine:
             # joins the same key set so toggling the FU-018 preview-decode
             # knob triggers a clean rebuild. Distilled transformers replace
             # both expert modules outright, so they also key on the variant.
-            variant_parts = [repo]
-            if gguf_file:
-                variant_parts.append(f"gguf={gguf_file}")
-            elif use_nf4:
-                variant_parts.append("nf4")
-            if lora_repo and lora_file:
-                variant_parts.append(f"lora={lora_repo}/{lora_file}@{lora_scale or 1.0}")
-            if preview_vae:
-                variant_parts.append("preview_vae")
-            if distill_repo and distill_high_file and distill_low_file:
-                variant_parts.append(
-                    f"distill={distill_repo}/{distill_precision or 'bf16'}/"
-                    f"{distill_high_file}/{distill_low_file}"
-                )
-            variant_key = "::".join(variant_parts)
+            variant_key = self._build_variant_key(
+                repo=repo,
+                gguf_file=gguf_file,
+                use_nf4=use_nf4,
+                lora_repo=lora_repo,
+                lora_file=lora_file,
+                lora_scale=lora_scale,
+                preview_vae=preview_vae,
+                distill_repo=distill_repo,
+                distill_high_file=distill_high_file,
+                distill_low_file=distill_low_file,
+                distill_precision=distill_precision,
+            )
             if self._pipeline is not None and self._loaded_variant_key == variant_key:
                 return self._pipeline
 
@@ -999,10 +1054,44 @@ class VideoRuntimeManager:
             mlx = self._get_mlx_video()
             status = mlx.probe()
             if status.realGenerationAvailable:
-                with self._lock:
-                    video = mlx.generate(config)
-                    runtime = mlx.probe().to_dict()
-                return video, runtime
+                # Wire mlx-video subprocess stdout into the shared
+                # VIDEO_PROGRESS tracker. Without this the bar sits at
+                # whatever phase the previous diffusers run left it on,
+                # because the mlx-video path never published its own
+                # lifecycle events.
+                total_steps = max(1, int(config.steps))
+                VIDEO_PROGRESS.begin(
+                    run_label=self._engine._format_run_label(config),
+                    total_steps=total_steps,
+                    phase=PHASE_LOADING,
+                    message=f"Preparing {config.modelName}",
+                )
+
+                # Track the last published phase so non-step chatter
+                # doesn't keep calling ``set_phase``, which would reset the
+                # step counter to zero on every line (set_phase is designed
+                # for transitions, not message refreshes).
+                last_phase: list[str] = [PHASE_LOADING]
+
+                def _on_mlx_progress(phase: str, message: str, fraction: float | None) -> None:
+                    mapped = PHASE_DIFFUSING if phase == "diffusing" else PHASE_LOADING
+                    if mapped != last_phase[0]:
+                        VIDEO_PROGRESS.set_phase(mapped, message=message)
+                        last_phase[0] = mapped
+                    else:
+                        VIDEO_PROGRESS.set_message(message)
+                    if fraction is not None:
+                        step = max(0, min(total_steps, int(fraction * total_steps)))
+                        VIDEO_PROGRESS.set_step(step, total=total_steps)
+
+                try:
+                    with self._lock:
+                        video = mlx.generate(config, on_progress=_on_mlx_progress)
+                        runtime = mlx.probe().to_dict()
+                    VIDEO_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+                    return video, runtime
+                finally:
+                    VIDEO_PROGRESS.finish()
             # mlx-video not available (Intel Mac, missing package, etc.) —
             # fall through to diffusers so the supported repo doesn't dead-
             # end. Diffusers won't actually load LTX-2-* (no compatible

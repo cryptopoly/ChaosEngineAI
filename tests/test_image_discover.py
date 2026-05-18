@@ -11,6 +11,7 @@ from backend_service.helpers.images import (
     _clear_image_discover_caches,
     _image_repo_live_metadata,
     _is_latest_image_candidate,
+    _is_launchable_image_repo,
     _tracked_latest_seed_payloads,
 )
 
@@ -143,6 +144,59 @@ class ImageDiscoverLatestTests(unittest.TestCase):
                 self.assertEqual(urlopen.call_count, 2)
                 authed_request = urlopen.call_args_list[1].args[0]
                 self.assertEqual(authed_request.get_header("Authorization"), "Bearer hf_test_token")
+
+
+class TrackedOnlyFlagTests(unittest.TestCase):
+    """FU-061: tracked-only seeds carry a flag the frontend uses to
+    disable the download CTA + render a "Watching upstream" badge."""
+
+    def setUp(self):
+        _clear_image_discover_caches()
+
+    def tearDown(self):
+        _clear_image_discover_caches()
+
+    def test_is_launchable_image_repo_true_for_curated_family(self):
+        # FLUX.1-dev is a real family in IMAGE_MODEL_FAMILIES with runtime
+        # routing — Studio dropdown surfaces a launchable variant.
+        self.assertTrue(_is_launchable_image_repo("black-forest-labs/FLUX.1-dev"))
+        self.assertTrue(_is_launchable_image_repo("stabilityai/stable-diffusion-xl-base-1.0"))
+
+    def test_is_launchable_image_repo_false_for_tracked_only_seed(self):
+        # ERNIE-Image lives only in LATEST_IMAGE_TRACKED_SEEDS — no Studio
+        # launchable variant exists.
+        self.assertFalse(_is_launchable_image_repo("baidu/ERNIE-Image"))
+        self.assertFalse(_is_launchable_image_repo("baidu/ERNIE-Image-Turbo"))
+        self.assertFalse(_is_launchable_image_repo("NucleusAI/Nucleus-Image"))
+
+    def test_is_launchable_image_repo_handles_empty(self):
+        self.assertFalse(_is_launchable_image_repo(""))
+
+    def test_tracked_seed_payload_flags_unlaunchable_repos(self):
+        payloads = _tracked_latest_seed_payloads([])
+        ernie = next(
+            (entry for entry in payloads if entry.get("repo") == "baidu/ERNIE-Image"),
+            None,
+        )
+        self.assertIsNotNone(ernie)
+        self.assertTrue(ernie.get("trackedOnly"))
+
+    def test_tracked_seed_payload_does_not_flag_launchable_repos(self):
+        # If a curated repo (e.g. FLUX.2-dev once it lands in IMAGE_MODEL_FAMILIES)
+        # appears in LATEST_IMAGE_TRACKED_SEEDS, the seed payload should NOT
+        # flag it as trackedOnly — Studio CAN load it via the curated family.
+        payloads = _tracked_latest_seed_payloads([])
+        # Find any seed whose repo IS in IMAGE_MODEL_FAMILIES. Today this set
+        # may be empty (tracked seeds intentionally don't overlap with curated
+        # families) — assertion is conditional so the test stays meaningful as
+        # the catalog evolves.
+        for entry in payloads:
+            repo = str(entry.get("repo") or "")
+            if _is_launchable_image_repo(repo):
+                self.assertFalse(
+                    entry.get("trackedOnly"),
+                    msg=f"{repo} is launchable but seed marked trackedOnly",
+                )
 
 
 if __name__ == "__main__":

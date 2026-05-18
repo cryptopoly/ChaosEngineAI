@@ -44,6 +44,7 @@ from backend_service.video_runtime import (
     GeneratedVideo,
     VideoGenerationConfig,
     VideoRuntimeStatus,
+    _detect_device_memory_gb,
     _resolve_video_seed,
     _resolve_video_python,
 )
@@ -234,6 +235,29 @@ def _ltx2_runtime_note(repo: str) -> str:
     return f"mlx-video subprocess (MLX native, {pipeline} pipeline)"
 
 
+_LTX2_DIM_DIVISOR = 32
+
+
+def _snap_to_multiple(value: int, divisor: int) -> int:
+    if divisor <= 1:
+        return value
+    floor = (value // divisor) * divisor
+    ceil_ = floor + divisor
+    return ceil_ if (value - floor) >= (ceil_ - value) else floor
+
+
+def _snap_ltx2_dimensions(width: int, height: int) -> tuple[int, int, str | None]:
+    snapped_w = _snap_to_multiple(width, _LTX2_DIM_DIVISOR)
+    snapped_h = _snap_to_multiple(height, _LTX2_DIM_DIVISOR)
+    if snapped_w == width and snapped_h == height:
+        return width, height, None
+    note = (
+        f"Snapped resolution {width}x{height} → {snapped_w}x{snapped_h} "
+        f"(LTX-2 mlx-video requires multiples of {_LTX2_DIM_DIVISOR})."
+    )
+    return snapped_w, snapped_h, note
+
+
 def _ltx2_spatial_upscaler_candidates(repo: str) -> tuple[tuple[str, str], ...]:
     version = _ltx2_model_version(repo)
     filename_candidates = tuple(dict.fromkeys(
@@ -387,7 +411,7 @@ def _prepare_ltx2_model_path(repo: str, workspace: Path) -> Path:
 
 
 class _ProgressSink(Protocol):
-    def __call__(self, phase: str, message: str, fraction: float) -> None: ...
+    def __call__(self, phase: str, message: str, fraction: float | None) -> None: ...
 
 
 class MlxVideoEngine:
@@ -435,6 +459,7 @@ class MlxVideoEngine:
                 "the mlx-video Wan conversion step is bundled."
             ),
             loadedModelRepo=self._loaded_repo,
+            deviceMemoryGb=_detect_device_memory_gb("mps"),
         )
 
     def preload(self, repo: str) -> VideoRuntimeStatus:
@@ -490,6 +515,13 @@ class MlxVideoEngine:
             output_path = workspace / "out.mp4"
             resolved_seed = _resolve_video_seed(config.seed)
             run_config = replace(config, seed=resolved_seed)
+            snap_note: str | None = None
+            if not _is_wan_repo(config.repo):
+                snapped_w, snapped_h, snap_note = _snap_ltx2_dimensions(
+                    config.width, config.height
+                )
+                if snap_note:
+                    run_config = replace(run_config, width=snapped_w, height=snapped_h)
             cmd = self._build_cmd(run_config, output_path, resolve_aux_files=True)
             start = time.monotonic()
             self._launch(cmd, workspace, on_progress)
@@ -502,11 +534,12 @@ class MlxVideoEngine:
                 )
             data = output_path.read_bytes()
             is_wan = _is_wan_repo(config.repo)
-            runtime_note = (
+            base_note = (
                 self._wan_runtime_note(config.repo)
                 if is_wan
                 else _ltx2_runtime_note(config.repo)
             )
+            runtime_note = f"{snap_note} {base_note}" if snap_note else base_note
             effective_steps = (
                 config.steps if is_wan
                 else _ltx2_effective_steps(config.repo, config.steps)
@@ -523,8 +556,8 @@ class MlxVideoEngine:
                 durationSeconds=round(elapsed, 2),
                 frameCount=config.numFrames,
                 fps=config.fps,
-                width=config.width,
-                height=config.height,
+                width=run_config.width,
+                height=run_config.height,
                 runtimeLabel=self.runtime_label,
                 runtimeNote=runtime_note,
                 effectiveSteps=effective_steps,
@@ -697,10 +730,12 @@ class MlxVideoEngine:
                 if not on_progress or not stripped:
                     continue
                 fraction = _parse_step_fraction(stripped)
-                if fraction is not None:
-                    on_progress("diffusing", stripped[:120], fraction)
-                else:
-                    on_progress("diffusing", stripped[:120], 0.5)
+                # ``fraction is None`` = non-step output (loader chatter,
+                # warnings, mlx-video bookkeeping). Forward the line as a
+                # status message but leave the step counter untouched —
+                # resetting to a sentinel like 0.5 would make the bar
+                # jitter back to the middle on every non-step line.
+                on_progress("diffusing", stripped[:120], fraction)
         finally:
             return_code = process.wait()
 

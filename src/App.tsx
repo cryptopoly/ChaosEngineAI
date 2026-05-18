@@ -1318,6 +1318,8 @@ export default function App() {
         onImagePreviewVaeChange={imgState.setImagePreviewVae}
         imageFp8LayerwiseCasting={imgState.imageFp8LayerwiseCasting}
         onImageFp8LayerwiseCastingChange={imgState.setImageFp8LayerwiseCasting}
+        isAppleSiliconHost={isAppleSilicon}
+        hostSystem={workspace.system}
         imageRatioId={imgState.imageRatioId}
         imageWidth={imgState.imageWidth}
         onImageWidthChange={imgState.setImageWidth}
@@ -1451,6 +1453,7 @@ export default function App() {
     content = (
       <VideoStudioTab
         videoCatalog={videoState.videoCatalogWithLatest}
+        hostSystem={workspace.system}
         selectedVideoModelId={videoState.selectedVideoModelId}
         onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}
         selectedVideoVariant={videoState.selectedVideoVariant}

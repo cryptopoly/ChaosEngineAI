@@ -368,8 +368,20 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         state.runtime = FakeRuntime()
         self.client = make_test_client(state)
+        # FU-060: tests must not depend on live host memory pressure.
+        # On a busy dev box (parallel pytest + Tauri running) the real
+        # psutil reading legitimately >92% and the image / video gates
+        # refuse generation with 503. Patch the gate input to safe
+        # headroom so every assertion exercises the actual route logic.
+        from unittest import mock as _mock
+        self._memory_patch = _mock.patch(
+            "backend_service.helpers.memory_gate.snapshot_memory_signals",
+            return_value=(64.0, 10.0),  # 64 GB available, 10% pressure
+        )
+        self._memory_patch.start()
 
     def tearDown(self):
+        self._memory_patch.stop()
         self.tempdir.cleanup()
 
     def test_health_reports_runtime_metadata(self):

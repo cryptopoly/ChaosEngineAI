@@ -611,6 +611,20 @@ export function ImageDiscoverTab({
                               : tLib("imageDiscover.access.open", { defaultValue: "Open" })}
                           </span>
                         ) : null}
+                        {/* FU-061: tracked-only seeds have no Studio launchable
+                            variant — surface a badge + tooltip so users know
+                            why the download CTA is disabled. */}
+                        {variant.trackedOnly ? (
+                          <span
+                            className="badge muted"
+                            title={tLib("imageDiscover.trackedOnly.tooltip", {
+                              defaultValue:
+                                "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+                            })}
+                          >
+                            {tLib("imageDiscover.trackedOnly.badge", { defaultValue: "Watching upstream" })}
+                          </span>
+                        ) : null}
                         {/* FU-056 Phase 3: read-only accelerator pills.
                             Click-through to install lives in Image Studio's
                             runtime banner so install state stays in one
@@ -658,7 +672,22 @@ export function ImageDiscoverTab({
                     </span>
                     <span>{statusBadge(status, tLib, downloadState)}</span>
                     <div className="media-model-actions">
-                      {isComplete ? (
+                      {variant.trackedOnly ? (
+                        // FU-061: tracked-only variant has no Studio playback path.
+                        // Disable both Generate + Download CTAs and surface a
+                        // tooltip so the user understands why.
+                        <IconActionButton
+                          icon="download"
+                          label={tLib("imageDiscover.action.trackedOnly", {
+                            defaultValue: "Tracked only — not yet launchable",
+                          })}
+                          disabled
+                          title={tLib("imageDiscover.trackedOnly.tooltip", {
+                            defaultValue:
+                              "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+                          })}
+                        />
+                      ) : isComplete ? (
                         <IconActionButton
                           icon="generate"
                           label={tLib("imageDiscover.action.generate", { defaultValue: "Generate" })}

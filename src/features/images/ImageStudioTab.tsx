@@ -18,12 +18,17 @@ import type {
   TauriBackendInfo,
 } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
+import type { SystemStats } from "../../types/system";
 import {
   sizeLabel,
   downloadProgressLabel,
   formatImageAccessError,
   isGatedImageAccessError,
 } from "../../utils";
+import {
+  imageOrVideoVariantPlatformGate,
+  isVariantCompatibleWithHost,
+} from "../../utils/platform";
 import { assessImageGenerationSafety, imageVariantSizeForMemoryEstimate } from "../../utils/images";
 import {
   IMAGE_RATIO_PRESETS,
@@ -103,6 +108,13 @@ export interface ImageStudioTabProps {
   /** FU-024: opt-in FP8 layerwise casting (CUDA SM 8.9+). */
   imageFp8LayerwiseCasting: boolean;
   onImageFp8LayerwiseCastingChange: (value: boolean) => void;
+  /** Hide CUDA-only controls (FP8 layerwise) on Apple Silicon hosts. */
+  isAppleSiliconHost: boolean;
+  /** Filter platform-incompatible variants out of the model dropdown
+   * (per the FU-056 hide-unrecoverable-options policy). Threaded from
+   * App.tsx → workspace.system. Optional because some test harnesses
+   * mount the component without a full SystemStats. */
+  hostSystem?: Pick<SystemStats, "platform" | "arch">;
   onPreloadImageModel: (variant: ImageModelVariant) => void;
   onUnloadImageModel: (variant?: ImageModelVariant) => void;
   onInstallImageRuntime: () => Promise<InstallResult>;
@@ -193,6 +205,8 @@ export function ImageStudioTab({
   onImagePreviewVaeChange,
   imageFp8LayerwiseCasting,
   onImageFp8LayerwiseCastingChange,
+  isAppleSiliconHost,
+  hostSystem,
   onPreloadImageModel,
   onUnloadImageModel,
   onInstallImageRuntime,
@@ -242,10 +256,25 @@ export function ImageStudioTab({
     return imageCatalog
       .map((family) => ({
         ...family,
-        variants: family.variants.filter((variant) => variant.availableLocally),
+        variants: family.variants.filter((variant) => {
+          if (!variant.availableLocally) return false;
+          // FU-056: hide platform-incompatible variants entirely so
+          // macOS users don't see Nunchaku INT4 (CUDA) etc. and
+          // Win/Linux users don't see mflux (MLX) / sd.cpp MLX-only
+          // entries they can never load.
+          if (
+            !isVariantCompatibleWithHost(
+              imageOrVideoVariantPlatformGate(variant),
+              hostSystem,
+            )
+          ) {
+            return false;
+          }
+          return true;
+        }),
       }))
       .filter((family) => family.variants.length > 0);
-  }, [imageCatalog]);
+  }, [imageCatalog, hostSystem]);
 
   const hasInstalledImageModels = installedCatalog.length > 0;
 
@@ -868,27 +897,31 @@ export function ImageStudioTab({
           {/*
             FU-024: FP8 layerwise casting on CUDA SM 8.9+ (Ada/Hopper/
             Blackwell). Halves transformer VRAM by storing fp8 weights +
-            promoting to bf16 inside the matmul. No-op on Apple Silicon /
-            CPU / pre-Ada GPUs — backend gates and returns a runtimeNote.
+            promoting to bf16 inside the matmul. Hidden entirely on
+            Apple Silicon — there's no CUDA path so the toggle would be
+            unreachable. Still rendered on Linux / Windows where backend
+            checks compute capability + skips on pre-Ada hardware.
           */}
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={imageFp8LayerwiseCasting}
-              onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
-            />
-            <span>
-              <strong>{t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
-              {" "}— {t("imageStudio.toggles.fp8Layerwise.description", {
-                defaultValue:
-                  "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
-              })}
-              <InfoTooltip text={t("imageStudio.toggles.fp8Layerwise.tooltip", {
-                defaultValue:
-                  "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint.",
-              })} />
-            </span>
-          </label>
+          {!isAppleSiliconHost ? (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={imageFp8LayerwiseCasting}
+                onChange={(event) => onImageFp8LayerwiseCastingChange(event.target.checked)}
+              />
+              <span>
+                <strong>{t("imageStudio.toggles.fp8Layerwise.label", { defaultValue: "FP8 layerwise (CUDA Ada+)" })}</strong>
+                {" "}— {t("imageStudio.toggles.fp8Layerwise.description", {
+                  defaultValue:
+                    "store transformer weights in fp8 + promote to bf16 inside the matmul. Halves VRAM with negligible quality drift on modern GPUs. Apple Silicon / pre-Ada GPUs no-op cleanly.",
+                })}
+                <InfoTooltip text={t("imageStudio.toggles.fp8Layerwise.tooltip", {
+                  defaultValue:
+                    "diffusers' enable_layerwise_casting. Family-correct dtype: E5M2 for HunyuanVideo, E4M3 for FLUX / Wan / Qwen-Image / SD3 / LTX. Backend checks GPU compute capability before applying — pre-Ada (SM <8.9) lacks hardware fp8 and skips with a runtimeNote. Best stacked with Nunchaku INT4 for the smallest footprint.",
+                })} />
+              </span>
+            </label>
+          ) : null}
 
           <div className="field-grid image-field-grid">
             <label>

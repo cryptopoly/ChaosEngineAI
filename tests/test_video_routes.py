@@ -453,8 +453,20 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
         self._original_outputs_dir = app_module.VIDEO_OUTPUTS_DIR
         app_module.VIDEO_OUTPUTS_DIR = self.outputs_dir
+        # FU-060: tests must not depend on live host memory pressure.
+        # On a busy dev box (parallel pytest + vitest + Tauri running)
+        # ``psutil.virtual_memory()`` legitimately reports >92% pressure
+        # and the video gate refuses generation with 503. Patch the gate
+        # input to a safe-headroom snapshot so every assertion exercises
+        # the actual route logic, not the host OS state.
+        self._memory_patch = mock.patch(
+            "backend_service.helpers.memory_gate.snapshot_memory_signals",
+            return_value=(64.0, 10.0),  # 64 GB available, 10% pressure
+        )
+        self._memory_patch.start()
 
     def tearDown(self) -> None:
+        self._memory_patch.stop()
         app_module.VIDEO_OUTPUTS_DIR = self._original_outputs_dir
         restore_env(self.env_snapshot)
         self.tempdir.cleanup()

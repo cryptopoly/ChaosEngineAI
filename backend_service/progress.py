@@ -139,6 +139,19 @@ class ProgressTracker:
                 self._total_steps = max(0, int(total))
             self._updated_at = time.time()
 
+    def set_message(self, message: str) -> None:
+        """Update just the status message without resetting step or phase.
+
+        Used by subprocess-driven runtimes (mlx-video) that stream chatter
+        between actual step lines — we want the user to see the chatter
+        without snapping the progress bar back to zero on every line.
+        """
+        with self._lock:
+            if not self._active:
+                return
+            self._message = message
+            self._updated_at = time.time()
+
     def set_thumbnail(self, thumbnail_b64: str | None) -> None:
         """Publish a base64-encoded PNG of the current denoised state for
         the UI to render. Called from ``callback_on_step_end`` after the

@@ -22,6 +22,15 @@ _IMAGE_MODEL_KEYWORDS = (
     "dall-e", "imagen", "kandinsky", "wuerstchen",
     "diffusion-pipe", "qwen-image", "qwen/qwen-image",
     "sana_sprint", "sana-sprint", "sana sprint", "sana_1600m", "sana-1600m",
+    # Tracked latest seeds — keep aligned with the
+    # ``LATEST_IMAGE_TRACKED_SEEDS`` repos in
+    # ``backend_service/catalog/image_models.py`` so newly-tracked
+    # families don't leak into the chat-oriented My Models list.
+    "ernie-image",   # baidu/ERNIE-Image, baidu/ERNIE-Image-Turbo
+    "nucleus-image", # NucleusAI/Nucleus-Image
+    "z-image",       # Tongyi-MAI/Z-Image, Z-Image-Turbo
+    "hidream",       # HiDream-ai/HiDream-I1-Full + siblings
+    "glm-image",     # zai-org/GLM-Image
 )
 
 

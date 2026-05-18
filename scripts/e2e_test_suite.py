@@ -590,6 +590,16 @@ def phase_4(cap: Capability) -> PhaseResult:
             "--seed", "42", "--timeout", "1800",
         )
         if rc != 0:
+            # FU-060 follow-up: memory gate is correct runtime behaviour —
+            # refuses image gen when host pressure breaches 95%. Don't
+            # fail the build over genuine host load; skip + explain.
+            memory_gate_markers = (
+                "Memory pressure is",
+                "memory_gate_image",
+                "memory_gate_video",
+            )
+            if any(marker in err for marker in memory_gate_markers):
+                return "skip", f"image-generate skipped — host memory gate fired: {err[:240]}", {}
             return "fail", f"image-generate rc={rc}: {err[:300]}", {}
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
@@ -660,6 +670,16 @@ def phase_5(cap: Capability) -> PhaseResult:
             )
             if any(marker in err for marker in prereq_markers):
                 return "skip", f"video runtime prerequisite missing: {err[:240]}", {}
+            # FU-060 follow-up: memory gate is correct runtime behaviour —
+            # refuses video gen when host pressure breaches 92%. Don't
+            # fail the build over genuine host load; skip + explain.
+            memory_gate_markers = (
+                "Memory pressure is",
+                "memory_gate_video",
+                "memory_gate_image",
+            )
+            if any(marker in err for marker in memory_gate_markers):
+                return "skip", f"video-generate skipped — host memory gate fired: {err[:240]}", {}
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 

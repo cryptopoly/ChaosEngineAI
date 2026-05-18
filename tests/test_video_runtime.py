@@ -1740,5 +1740,56 @@ class Wan22DistillCatalogTests(unittest.TestCase):
             )
 
 
+class VideoWarmCacheVariantKeyTests(unittest.TestCase):
+    """Q3: warm-cache short-circuit for ``DiffusersVideoEngine.generate()``."""
+
+    def _make_config(self, **overrides) -> VideoGenerationConfig:
+        defaults = dict(
+            modelId="ltx2-distilled",
+            modelName="LTX-Video",
+            repo="Lightricks/LTX-Video",
+            prompt="a cat surfing",
+            negativePrompt="",
+            width=512,
+            height=512,
+            numFrames=33,
+            fps=24,
+            guidance=3.0,
+            steps=30,
+        )
+        defaults.update(overrides)
+        return VideoGenerationConfig(**defaults)
+
+    def test_variant_key_stable_across_calls(self):
+        engine = DiffusersVideoEngine()
+        self.assertEqual(
+            engine._compute_variant_key(self._make_config()),
+            engine._compute_variant_key(self._make_config()),
+        )
+
+    def test_variant_key_changes_with_distill_transformers(self):
+        engine = DiffusersVideoEngine()
+        plain = engine._compute_variant_key(self._make_config())
+        distill = engine._compute_variant_key(self._make_config(
+            distillTransformerRepo="lightx2v/Wan2.2-Distill-Models",
+            distillTransformerHighNoiseFile="high.safetensors",
+            distillTransformerLowNoiseFile="low.safetensors",
+            distillTransformerPrecision="bf16",
+        ))
+        self.assertNotEqual(plain, distill)
+
+    def test_is_variant_loaded_false_when_no_pipeline(self):
+        engine = DiffusersVideoEngine()
+        self.assertFalse(engine._is_variant_loaded("anything"))
+
+    def test_is_variant_loaded_true_when_keys_match(self):
+        engine = DiffusersVideoEngine()
+        config = self._make_config()
+        key = engine._compute_variant_key(config)
+        engine._pipeline = object()
+        engine._loaded_variant_key = key
+        self.assertTrue(engine._is_variant_loaded(key))
+
+
 if __name__ == "__main__":
     unittest.main()

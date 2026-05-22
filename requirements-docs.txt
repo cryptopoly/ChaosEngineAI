@@ -2,6 +2,6 @@
 # Install with: .venv/bin/pip install -r requirements-docs.txt
 # Build the site with: .venv/bin/mkdocs build --strict
 
-mkdocs>=1.6
+mkdocs>=1.6.1
 mkdocs-material>=9.5
 pymdown-extensions>=10.7

@@ -28,7 +28,7 @@ tar = "0.4"
 # complements it for runtime-composed strings that need ICU-style plurals
 # / select / select-ordinal — e.g. updater progress "{n, plural, one {# minute
 # remaining} other {# minutes remaining}}" where ``n`` only exists at runtime.
-rust-i18n = "3"
+rust-i18n = "4"
 fluent-bundle = "0.16"
 unic-langid = "0.9"
 # FU-037 (2026-05-10): ``devtools`` flips on the WebKit inspector in

@@ -70,6 +70,7 @@ import {
 import { ChallengeHistoryCombobox } from "./html_challenge/ChallengeHistoryCombobox";
 import { ChallengeModelCard } from "./html_challenge/ChallengeModelCard";
 import { ChallengePickerModal } from "./html_challenge/ChallengePickerModal";
+import { ChallengePromptLibraryModal } from "./html_challenge/ChallengePromptLibraryModal";
 import { ChallengeSetupPanel } from "./html_challenge/ChallengeSetupPanel";
 import { ChallengeSlotPanel } from "./html_challenge/ChallengeSlotPanel";
 
@@ -120,6 +121,7 @@ export function HtmlChallengeTab({
   const { t } = useTranslation("chat");
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
   const [slots, setSlots] = useState<ChallengeSlot[]>(() => [
     defaultChallengeSlot("a", launchSettings),
     defaultChallengeSlot("b", launchSettings),
@@ -1008,6 +1010,14 @@ export function HtmlChallengeTab({
       {!expandedHtmlSlot ? (
         <section className="panel html-challenge-setup-panel html-challenge-setup-panel--compact">
           <div className="html-challenge-setup-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={busy}
+              onClick={() => setPromptLibraryOpen(true)}
+            >
+              {t("htmlChallenge.actions.browsePrompts", { defaultValue: "Prompt library" })}
+            </button>
             {challenges.length > 0 ? (
               <div className="html-challenge-history-row">
                 <button
@@ -1175,6 +1185,16 @@ export function HtmlChallengeTab({
           setPickerTarget(null);
         }}
         onInstallPackage={installPackage}
+      />
+
+      <ChallengePromptLibraryModal
+        open={promptLibraryOpen}
+        onSelect={(entry) => {
+          setTitle(entry.title);
+          setPrompt(entry.prompt);
+          setPromptLibraryOpen(false);
+        }}
+        onClose={() => setPromptLibraryOpen(false)}
       />
     </div>
   );

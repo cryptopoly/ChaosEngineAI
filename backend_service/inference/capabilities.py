@@ -126,7 +126,12 @@ def _probe_native_backends() -> BackendCapabilities:
 
     code, payload, message = _json_subprocess(
         [python_executable, "-m", "backend_service.mlx_worker", "probe"],
-        timeout=12.0,
+        # FU-068: cold ``mlx_lm + mlx + mlx_vlm`` import has crept to
+        # ~12.4 s on M4 Max / Python 3.11 (measured 2026-05-25 v0.9.3),
+        # blowing the original 12.0 s ceiling and causing intermittent
+        # E2E Phase 1 fails on a freshly-booted backend. Bump to 20 s
+        # for ~60% headroom over today's cold-boot envelope.
+        timeout=20.0,
     )
 
     if payload is None:

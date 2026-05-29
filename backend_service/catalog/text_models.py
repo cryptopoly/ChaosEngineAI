@@ -103,16 +103,20 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Agents", "Long context"],
-        # FU-040 (2026-05-10): dropped ``vision`` from the family-level
-        # capabilities. Qwen3.6-27B (dense, Coder-Next branding) and
-        # Qwen3.6-35B-A3B (MoE) are both text-only — vision lives on a
-        # separate ``Qwen3.6-27B-VL`` variant we do not yet ship. The
-        # stale tag was promoting ``supportsVision: true`` for every
-        # community quant variant, which made ``ChatComposer`` render
-        # the "Attach image" affordance for a model that has no vision
-        # encoder. Add it back here only when an actual VL variant
-        # lands in the catalog.
-        "capabilities": ["reasoning", "coding", "tool-use"],
+        # FU-072 (2026-05-28): restored ``vision``. FU-040 (2026-05-10)
+        # had dropped it believing Qwen3.6 was text-only with vision on a
+        # separate ``Qwen3.6-27B-VL`` we don't ship. Upstream has since
+        # unified the family onto the multimodal ``Qwen3_5ForConditional
+        # Generation`` arch — every Qwen3.6 config.json now carries
+        # ``vision_config`` + ``image_token_id`` + ``vision_start/end``,
+        # mlx-vlm ships ``qwen3_5`` / ``qwen3_5_moe`` model support, and
+        # the ggml-org GGUF packs include an ``mmproj`` sibling. The base
+        # model IS the VL now. The composer "Attach image" button stays
+        # safe regardless: it reads the *runtime* ``supportsVision`` which
+        # ``catalog/capabilities.py`` demotes to False for the MLX worker
+        # (no image path) and gates on actual ``--mmproj`` resolution for
+        # GGUF, so a vision badge never produces a broken button.
+        "capabilities": ["reasoning", "coding", "vision", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.6-27B",
         "variants": [
             {
@@ -124,8 +128,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 54.0,
                 "format": "Transformers",
                 "quantization": "BF16",
-                # FU-040: text-only dense variant (Coder-Next branding).
-                "capabilities": ["reasoning", "coding", "tool-use"],
+                # FU-072: multimodal (vision_config present upstream).
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
                 "note": "Dense 27B Qwen3.6 release with agentic coding tuning. Apache 2.0.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
@@ -141,8 +145,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 28.0,
                 "format": "Transformers",
                 "quantization": "FP8",
-                # FU-040: text-only dense variant.
-                "capabilities": ["reasoning", "coding", "tool-use"],
+                # FU-072: multimodal (vision_config present upstream).
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
                 "note": "FP8 quantization of the 27B dense release for ~30 GB VRAM systems.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
@@ -158,7 +162,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 70.0,
                 "format": "Transformers",
                 "quantization": "BF16",
-                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 "note": "MoE A3B variant — 35B total params, ~3B active per token. Apache 2.0.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
@@ -174,8 +178,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 15.5,
                 "format": "MLX",
                 "quantization": "4-bit",
-                # FU-040: text-only dense variant.
-                "capabilities": ["reasoning", "coding", "tool-use"],
+                # FU-072: multimodal (vision_config present upstream).
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
                 "note": "Community MLX 4-bit conversion for Apple Silicon — fastest local launch path.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -191,7 +195,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 20.0,
                 "format": "MLX",
                 "quantization": "4-bit",
-                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 "note": "MoE 4-bit MLX conversion — sparse activation keeps memory close to a 4B model.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -207,7 +211,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 16.5,
                 "format": "GGUF",
                 "quantization": "Q4_K_M",
-                "capabilities": ["reasoning", "coding", "tool-use"],
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
                 "note": "Community GGUF pack quantized via llama.cpp b8883 for cross-platform llama.cpp runs.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -223,7 +227,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 21.0,
                 "format": "GGUF",
                 "quantization": "Q4_K_M",
-                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 "note": "MoE GGUF (llama.cpp b8814) — runs the 35B sparse model through standard llama-server.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
@@ -244,8 +248,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 29.0,
                 "format": "GGUF",
                 "quantization": "Q8_0",
-                "capabilities": ["reasoning", "coding", "tool-use"],
-                "note": "Baked-in MTP heads. Pair with --spec-type draft-mtp for 1.8-2.2x speedup with zero quality loss.",
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                "note": "Baked-in MTP heads + mmproj sibling for vision. Pair with --spec-type draft-mtp for 1.8-2.2x speedup with zero quality loss.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",
@@ -260,8 +264,44 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 37.0,
                 "format": "GGUF",
                 "quantization": "Q8_0",
-                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
-                "note": "MoE with baked-in MTP heads. --spec-type draft-mtp speedup compounds with the sparse activation savings.",
+                "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
+                "note": "MoE with baked-in MTP heads + mmproj sibling for vision. --spec-type draft-mtp speedup compounds with the sparse activation savings.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-05",
+            },
+            {
+                # FU-064: ggml-org canonical non-MTP companion (2026-05-22).
+                # Same Q8_0 quality bar as the MTP variant but without the
+                # baked-in MTP heads — for users on llama.cpp builds that
+                # predate PR #22673 or who don't want speculative decoding.
+                "id": "ggml-org/Qwen3.6-27B-GGUF",
+                "name": "Qwen3.6 27B GGUF (ggml-org Q8_0)",
+                "repo": "ggml-org/Qwen3.6-27B-GGUF",
+                "link": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF",
+                "paramsB": 27.0,
+                "sizeGb": 29.0,
+                "format": "GGUF",
+                "quantization": "Q8_0",
+                "capabilities": ["reasoning", "coding", "vision", "tool-use"],
+                "note": "ggml-org canonical Q8_0 pack + mmproj sibling for vision. No MTP heads — pick the -MTP-GGUF sibling for speculative decoding.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-05",
+            },
+            {
+                "id": "ggml-org/Qwen3.6-35B-A3B-GGUF",
+                "name": "Qwen3.6 35B A3B GGUF (ggml-org Q8_0)",
+                "repo": "ggml-org/Qwen3.6-35B-A3B-GGUF",
+                "link": "https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF",
+                "paramsB": 35.0,
+                "sizeGb": 37.0,
+                "format": "GGUF",
+                "quantization": "Q8_0",
+                "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
+                "note": "ggml-org canonical Q8_0 MoE pack + mmproj sibling for vision. No MTP heads — pick the -MTP-GGUF sibling for speculative decoding.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",
@@ -288,10 +328,14 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "popularityLabel": "Featured family",
         "likesLabel": "Qwen official",
         "badges": ["Reasoning", "Coding", "Long context"],
-        # FU-040: Qwen3.5 dense + MoE variants are text-only. The
-        # ``vision`` tag at family-level was promoting false positives
-        # in ``supportsVision`` for every community quant variant.
-        "capabilities": ["reasoning", "coding", "tool-use"],
+        # FU-072: Qwen3.5 is multimodal upstream (Qwen3_5ForConditional
+        # Generation + vision_config; mlx-vlm ships qwen3_5 support).
+        # FU-040 had marked the family text-only — now corrected. The
+        # runtime ``supportsVision`` is still demoted per-engine in
+        # catalog/capabilities.py (MLX worker carries no images; GGUF
+        # gates on mmproj), so the family vision tag drives badges only,
+        # never a broken composer button.
+        "capabilities": ["reasoning", "coding", "vision", "tool-use"],
         "defaultVariantId": "Qwen/Qwen3.5-9B",
         "variants": [
             {
@@ -303,8 +347,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 5.1,
                 "format": "Transformers",
                 "quantization": "BF16",
-                "capabilities": ["reasoning", "coding", "tool-use"],
-                "note": "Smaller Qwen 3.5 variant with strong utility for everyday local work.",
+                "capabilities": ["reasoning", "coding", "vision", "video", "tool-use"],
+                "note": "Smaller Qwen 3.5 variant with strong utility for everyday local work. Multimodal (image + video) like its 9B sibling.",
                 "contextWindow": "262K",
                 "launchMode": "convert",
                 "backend": "mlx",
@@ -348,8 +392,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 5.8,
                 "format": "GGUF",
                 "quantization": "Q4_K_M",
-                "capabilities": ["reasoning", "coding", "tool-use"],
-                "note": "Community GGUF pack with ready-made quantizations for quick llama.cpp runs.",
+                "capabilities": ["reasoning", "coding", "vision", "video", "tool-use"],
+                "note": "Community GGUF pack with ready-made quantizations for quick llama.cpp runs. Vision needs the mmproj sibling on disk.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",

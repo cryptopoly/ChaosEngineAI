@@ -4104,6 +4104,132 @@ select.text-input {
   line-height: 1.45;
 }
 
+/* HTML Challenge prompt library picker (Option C: tabs + search + cards) */
+.challenge-prompt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.challenge-prompt-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.challenge-prompt-tab:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.challenge-prompt-tab.active {
+  border-color: var(--accent);
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.challenge-prompt-tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.challenge-prompt-tab.active .challenge-prompt-tab-count {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.challenge-prompt-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.challenge-prompt-search-row .text-input {
+  flex: 1 1 auto;
+}
+
+.challenge-prompt-result-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.challenge-prompt-body {
+  overflow: auto;
+  /* Cap the scroll region so the modal header/tabs/footer stay visible. */
+  max-height: 52vh;
+}
+
+.challenge-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.challenge-prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s, background 0.15s;
+}
+
+.challenge-prompt-card:hover {
+  border-color: var(--accent);
+  background: var(--panel-alt);
+  transform: translateY(-1px);
+}
+
+.challenge-prompt-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.challenge-prompt-card-category {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted-strong);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.challenge-prompt-card-summary {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.challenge-prompt-empty {
+  padding: 24px 0;
+  text-align: center;
+}
+
 .html-challenge-grid {
   display: grid;
   gap: 12px;

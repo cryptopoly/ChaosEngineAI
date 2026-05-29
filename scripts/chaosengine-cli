@@ -346,6 +346,12 @@ def cmd_load(args: argparse.Namespace) -> int:
         "loadedPath": loaded.get("path"),
         "runtimeNote": runtime.get("runtimeNote"),
         "speculativeDecoding": loaded.get("speculativeDecoding"),
+        # Surface the structured spec-dec / vision signals so the E2E
+        # suite can assert genuine engagement (FU-075) rather than
+        # substring-matching the human-readable note.
+        "treeBudget": loaded.get("treeBudget"),
+        "dflashDraftModel": loaded.get("dflashDraftModel"),
+        "visionEnabled": loaded.get("visionEnabled"),
     })
     return 0
 

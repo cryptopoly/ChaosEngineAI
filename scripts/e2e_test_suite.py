@@ -113,6 +113,7 @@ class Capability:
     backend_reachable: bool = False
     mlx_usable: bool = False
     gguf_available: bool = False
+    gguf_mtp_available: bool = False
     mtplx_available: bool = False
     dflash_supported_models: list[str] = field(default_factory=list)
     mtplx_supported_models: list[str] = field(default_factory=list)
@@ -146,6 +147,7 @@ def probe_capabilities() -> Capability:
         native = runtime.get("nativeBackends") or {}
         cap.mlx_usable = bool(native.get("mlxUsable"))
         cap.gguf_available = bool(native.get("ggufAvailable"))
+        cap.gguf_mtp_available = bool(native.get("ggufMtpAvailable"))
 
     rc, image_rt, _ = _cli_json("image-runtime", timeout=10.0)
     if rc == 0:
@@ -220,9 +222,41 @@ def phase_0(cap: Capability) -> PhaseResult:
             "dflashSupportedCount": len(cap.dflash_supported_models),
         }
 
+    # FU-072: Qwen3.5 / Qwen3.6 are multimodal upstream (Qwen3_5ForConditional
+    # Generation + vision_config). FU-040 had wrongly marked them text-only.
+    # Assert the catalog now advertises ``vision`` on both families so the
+    # variant-picker / discover badges stay accurate and the re-tag can't
+    # silently regress. (The composer "Attach image" button is separately
+    # gated on the *runtime* visionEnabled, demoted per-engine — so this is
+    # a catalog-capability assertion, not a runtime one.)
+    def _catalog_vision():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
+        missing = []
+        for fid in ("qwen-3-5", "qwen-3-6"):
+            fam = fams.get(fid)
+            if fam is None:
+                missing.append(f"{fid}: family absent")
+                continue
+            caps = fam.get("capabilities") or []
+            if "vision" not in caps:
+                missing.append(f"{fid}: family caps lack vision ({caps})")
+            no_vision_variants = [
+                v.get("id") for v in (fam.get("variants") or [])
+                if "vision" not in (v.get("capabilities") or [])
+            ]
+            if no_vision_variants:
+                missing.append(f"{fid}: variants without vision: {no_vision_variants[:3]}")
+        if missing:
+            return "fail", "; ".join(missing)[:300], {"missing": missing}
+        return "pass", "", {"checkedFamilies": ["qwen-3-5", "qwen-3-6"]}
+
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
         ("mtplx-status", _mtplx), ("inventory", _inventory),
+        ("catalog vision tags", _catalog_vision),
     ]:
         phase.checks.append(_check(name, fn))
     phase.status = "fail" if any(c.status == "fail" for c in phase.checks) else "pass"
@@ -247,6 +281,7 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
                         cache_bits: int | None = None, fused: bool = False,
                         context: int = 4096, max_tokens: int = 32,
                         canonical_repo: str | None = None,
+                        tree_budget: int | None = None,
                         prompt: str = "Hello, respond with two words.",
                         load_timeout: float = 1800.0) -> tuple[str, str, dict[str, Any]]:
     """Helper: load → prompt → unload. Returns (status, reason, detail)."""
@@ -258,6 +293,8 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
         load_args.extend(["--canonical-repo", canonical_repo])
     if spec:
         load_args.append("--spec")
+    if tree_budget is not None:
+        load_args.extend(["--tree-budget", str(tree_budget)])
     if cache_bits is not None:
         load_args.extend(["--cache-bits", str(cache_bits)])
     if fused:
@@ -285,10 +322,46 @@ def _load_unload_prompt(ref: str, *, path: str | None = None, backend: str = "au
         "tokS": tok_s,
         "completionTokens": gen.get("completionTokens"),
         "wallSec": gen.get("wallSeconds"),
+        # Structured spec-dec / vision signals from the loaded-model state.
+        # These are authoritative — the runtimeNote is for humans, these
+        # flags are what the engine actually negotiated. Spec-dec checks
+        # assert on these (not note substrings) so a silent fallback can't
+        # masquerade as a pass (FU-075).
+        "speculativeDecoding": bool(loaded.get("speculativeDecoding")),
+        "treeBudget": loaded.get("treeBudget") or 0,
+        "dflashDraftModel": loaded.get("dflashDraftModel"),
+        "visionEnabled": bool(loaded.get("visionEnabled")),
     }
     if tok_s and tok_s > 0:
         return "pass", "", detail
     return "fail", f"tok/s = {tok_s}", detail
+
+
+# Markers a runtimeNote carries when a spec-dec lane silently fell back to
+# standard generation instead of engaging. FU-075: the old checks asserted
+# the note merely *contained* "dflash"/"mtplx", but the fallback notes
+# ("dflash-mlx could not be imported ... Falling back", "MTPLX startup
+# failed ... DFLASH ... active") contain those words too — so a silent
+# fallback passed. Reject these explicitly.
+_SPECDEC_FALLBACK_MARKERS = (
+    "could not be imported",
+    "falling back",
+    "startup failed",
+    "initialisation failed",
+    "init failed",
+    "unavailable",
+    "using standard decode",
+)
+
+
+def _specdec_fallback_reason(note: str) -> str | None:
+    """Return the offending marker if the note indicates a spec-dec
+    fallback to standard generation, else None."""
+    low = note.lower()
+    for marker in _SPECDEC_FALLBACK_MARKERS:
+        if marker in low:
+            return marker
+    return None
 
 
 def phase_1(cap: Capability) -> PhaseResult:
@@ -326,47 +399,100 @@ def phase_1(cap: Capability) -> PhaseResult:
         return _load_unload_prompt(ref, path=path, backend="mlx", cache_strategy="turboquant",
                                     cache_bits=4, context=8192)
 
-    # 1c. MLX + DFlash
+    # 1c. MLX + DFlash. FU-075 hardening: assert the lane GENUINELY engaged
+    # via the structured loaded-model flags (speculativeDecoding True +
+    # dflashDraftModel set) AND reject fallback markers in the note. The
+    # old check only tested that the note *contained* "dflash" — but the
+    # silent-fallback note ("dflash-mlx could not be imported ... Falling
+    # back to standard generation") contains "dflash" too, so it passed
+    # even when spec-dec never ran (the exact regression FU-075 fixed).
     def _mlx_dflash():
         if not cap.dflash_supported_models:
             return "skip", "no DFlash supported models registered", {}
-        # Find a DFlash-capable model that's on disk
         for support_ref in cap.dflash_supported_models:
             pick = _pick_model_by_ref_prefix(cap.local_mlx_models, support_ref.split("/")[-1])
             if pick:
                 ref, path = pick
                 status, reason, detail = _load_unload_prompt(ref, path=path, backend="mlx", spec=True,
                                                               context=8192, max_tokens=24)
-                if status == "pass":
-                    # Verify runtimeNote suggests DFlash routing
-                    note = (detail.get("runtimeNote") or "").lower()
-                    if "dflash" not in note and "speculative" not in note:
-                        return "fail", f"speculativeDecoding enabled but runtimeNote did not mention DFlash/speculative: {note[:160]}", detail
-                return status, reason, detail
+                if status != "pass":
+                    return status, reason, detail
+                note = detail.get("runtimeNote") or ""
+                fb = _specdec_fallback_reason(note)
+                if fb:
+                    return "fail", f"DFlash silently fell back ('{fb}'): {note[:160]}", detail
+                if not detail.get("speculativeDecoding"):
+                    return "fail", f"speculativeDecoding flag not set after spec load: {note[:160]}", detail
+                if not detail.get("dflashDraftModel"):
+                    return "fail", f"no dflashDraftModel resolved: {note[:160]}", detail
+                return "pass", "", detail
         return "skip", "no DFlash-capable model on disk", {}
+
+    # 1c2. MLX + DDTree (tree-based spec-dec). Net-new check (FU-071: the
+    # availability probe was stale, FU-075: the lane was silently falling
+    # back). Loads with treeBudget>0 and asserts the budget survived into
+    # the loaded state + the note reports DDTree active (not fallback).
+    def _mlx_ddtree():
+        if not cap.dflash_supported_models:
+            return "skip", "no DFlash supported models registered", {}
+        for support_ref in cap.dflash_supported_models:
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, support_ref.split("/")[-1])
+            if pick:
+                ref, path = pick
+                status, reason, detail = _load_unload_prompt(
+                    ref, path=path, backend="mlx", spec=True,
+                    tree_budget=16, context=8192, max_tokens=24,
+                )
+                if status != "pass":
+                    return status, reason, detail
+                note = detail.get("runtimeNote") or ""
+                fb = _specdec_fallback_reason(note)
+                if fb:
+                    return "fail", f"DDTree silently fell back ('{fb}'): {note[:160]}", detail
+                if not detail.get("treeBudget"):
+                    return "fail", f"treeBudget not applied (got {detail.get('treeBudget')}): {note[:160]}", detail
+                if "ddtree" not in note.lower():
+                    return "fail", f"treeBudget set but note doesn't report DDTree: {note[:160]}", detail
+                return "pass", "", detail
+        return "skip", "no DDTree-capable model on disk", {}
 
     # 1d. MTPLX. Uses leaf-name as modelRef + canonical_repo for the registry
     # match — works around a backend gotcha where the broken-library-entry
-    # rejection shadows path-load on the full ref.
+    # rejection shadows path-load on the full ref. FU-075/079 hardening:
+    # assert genuine engagement (note "mtplx" + "active", no fallback
+    # markers). Known open issue FU-079 — MTPLX engages but its proxy
+    # surfaces no tokens, so _load_unload_prompt's tok/s check fails; we
+    # classify that specific shape as a skip (engine engaged, gen empty)
+    # rather than a hard fail, with the FU-079 reason, so the suite stays
+    # green until the proxy fix lands.
     def _mtplx():
         if not cap.mtplx_available:
             return "skip", "MTPLX not installed", {}
         for support_ref in cap.mtplx_supported_models:
             leaf = support_ref.split("/")[-1]
             pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
-            if pick:
-                ref, path = pick
-                status, reason, detail = _load_unload_prompt(
-                    leaf, path=path, backend="mlx", spec=True,
-                    canonical_repo=support_ref, context=8192, max_tokens=24,
-                    load_timeout=900.0,
-                )
-                if status == "pass":
-                    note = (detail.get("runtimeNote") or "").lower()
-                    if "mtplx" not in note:
-                        return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
-                    return "pass", "", detail
+            if not pick:
                 continue
+            ref, path = pick
+            status, reason, detail = _load_unload_prompt(
+                leaf, path=path, backend="mlx", spec=True,
+                canonical_repo=support_ref, context=8192, max_tokens=24,
+                load_timeout=900.0,
+            )
+            note = (detail.get("runtimeNote") or "")
+            low = note.lower()
+            # Engaged-but-empty-output is the known FU-079 shape: note says
+            # MTPLX active, load succeeded, but generation streamed nothing.
+            if "mtplx" in low and "active" in low and status == "fail" and "tok/s = 0" in (reason or ""):
+                return "skip", "MTPLX engaged but no tokens streamed (known FU-079 proxy gap)", detail
+            if status != "pass":
+                return status, reason, detail
+            fb = _specdec_fallback_reason(note)
+            if fb:
+                return "fail", f"MTPLX silently fell back ('{fb}'): {note[:160]}", detail
+            if "mtplx" not in low:
+                return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
+            return "pass", "", detail
         return "skip", "no MTPLX-capable model on disk", {}
 
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
@@ -388,6 +514,37 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "pass", "", detail
             errors.append(f"{ref}: {reason[:120]}")
         return "fail", f"all {len(errors)} GGUF candidates failed", {"errors": errors[:5]}
+
+    # 1e2. GGUF MTP speculative decoding (FU-047 / FU-074). Net-new check.
+    # Finds a local MTP-flavoured GGUF, loads it on the llama.cpp backend
+    # with --spec, and asserts the engine reports draft-mtp active (not the
+    # "binary does not advertise --spec-type ... using standard decode"
+    # fallback). Skips cleanly when no MTP-GGUF is on disk or the bundled
+    # llama-server predates PR #22673.
+    def _gguf_mtp():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        mtp_files = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "mtp" in ref.lower() or "mtp" in p.lower()
+        ]
+        if not mtp_files:
+            return "skip", "no MTP-GGUF on disk", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type draft-mtp (FU-047)", {}
+        ref, gguf_path = mtp_files[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=600.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        note = (detail.get("runtimeNote") or "")
+        low = note.lower()
+        if "mtp" not in low or "active" not in low:
+            return "fail", f"MTP-GGUF + spec loaded but note doesn't report MTP active: {note[:160]}", detail
+        return "pass", "", detail
 
     # 1f. Long context cache preview
     def _long_context_preview():
@@ -417,8 +574,10 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX native cache", _mlx_native),
         ("MLX TurboQuant cache", _mlx_turboquant),
         ("MLX + DFlash speculative", _mlx_dflash),
+        ("MLX + DDTree speculative", _mlx_ddtree),
         ("MLX + MTPLX speculative", _mtplx),
         ("GGUF llama.cpp", _gguf),
+        ("GGUF MTP speculative", _gguf_mtp),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
     ]:

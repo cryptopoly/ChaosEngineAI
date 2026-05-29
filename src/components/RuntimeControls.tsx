@@ -7,6 +7,7 @@ import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
   dflashPackageFor,
+  isMtpGgufRepo,
   isStrategyCompatible,
   resolveDflashSupport,
   strategyIncompatReason,
@@ -283,6 +284,12 @@ export function RuntimeControls({
   // "ticked" even though MTPLX is what actually runs). Hide DFlash in that
   // case; MTPLX takes precedence.
   const mtplxSupersedesDflash = (mtplxInfo?.modelSupported ?? false) && (mtplxInfo?.available ?? false);
+  // FU-074: GGUF MTP speculative decoding (FU-047 backend, --spec-type
+  // draft-mtp). Separate lane from MLX DFlash/MTPLX — applies only to a
+  // llama.cpp model whose repo carries baked-in MTP heads. The backend
+  // gates `--spec-type` on the same `speculativeDecoding` flag, so this
+  // toggle binds to it too. Shown only for applicable models (FU-034).
+  const ggufMtpModelSupported = isGgufBackend && isMtpGgufRepo(selectedCanonicalRepo ?? selectedModelRef);
   const specActive = settings.speculativeDecoding && dflashAvailable;
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
@@ -322,10 +329,12 @@ export function RuntimeControls({
 
   useEffect(() => {
     if (!settings.speculativeDecoding) return;
-    if (!dflashAvailable) {
+    // FU-074: GGUF MTP keeps speculativeDecoding on via its own lane —
+    // don't let the DFlash-availability guard clear it for those models.
+    if (!dflashAvailable && !ggufMtpModelSupported) {
       onChange("speculativeDecoding", false);
     }
-  }, [dflashAvailable, onChange, settings.speculativeDecoding]);
+  }, [dflashAvailable, ggufMtpModelSupported, onChange, settings.speculativeDecoding]);
 
   useEffect(() => {
     if (!ddtreeAvailable && (settings.treeBudget ?? 0) !== 0) {
@@ -845,6 +854,57 @@ export function RuntimeControls({
                 {mtplxInfo.available
                   ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculativeDecoding is enabled." })
                   : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
+              </span>
+            </div>
+          </div>
+        ) : null}
+        {/* FU-074: GGUF MTP speculative decoding (FU-047 backend). Shown
+            only for a llama.cpp model whose repo carries baked-in MTP
+            heads — the one spec-dec lane available on the GGUF backend
+            (DFlash is MLX/vLLM-only, MTPLX is MLX-only). Binds to the
+            same speculativeDecoding flag the backend reads to emit
+            --spec-type draft-mtp. No cache-strategy lock: GGUF KV cache
+            is orthogonal to MTP draft decode. */}
+        {ggufMtpModelSupported ? (
+          <div className="check-row">
+            <label
+              className="check-row"
+              style={{ margin: 0 }}
+              title={t("ggufMtp.tooltip", {
+                defaultValue: "GGUF MTP speculative decoding: uses the model's baked-in MTP heads via llama.cpp --spec-type draft-mtp for ~1.8-2.2x faster generation with zero quality loss.",
+              })}
+            >
+              <input
+                type="checkbox"
+                checked={settings.speculativeDecoding}
+                onChange={(event) => onChange("speculativeDecoding", event.target.checked)}
+              />
+              <span>{t("ggufMtp.label", { defaultValue: "GGUF MTP" })}</span>
+            </label>
+            <button
+              type="button"
+              className="cache-strategy-info-btn"
+              onClick={() => setExpandedInfo(expandedInfo === "ggufMtp" ? null : "ggufMtp")}
+              title={t("ggufMtp.aboutTitle", { defaultValue: "About GGUF MTP speculative decoding" })}
+            >
+              i
+            </button>
+          </div>
+        ) : null}
+        {expandedInfo === "ggufMtp" && ggufMtpModelSupported ? (
+          <div className="cache-strategy-info">
+            <p>
+              {t("ggufMtp.body", {
+                defaultValue:
+                  "This GGUF ships baked-in Multi-Token Prediction (MTP) heads. llama.cpp runs them via --spec-type draft-mtp (PR #22673) — lossless speculative decoding with no separate draft model.",
+              })}
+            </p>
+            <div className="cache-strategy-meta">
+              <span className="cache-strategy-meta-label">{t("ggufMtp.requiresLabel", { defaultValue: "Requires:" })}</span>
+              <span>
+                {t("ggufMtp.requiresBody", {
+                  defaultValue: "llama-server built from ggml-org/llama.cpp after 2026-05-16. Older binaries fall back to standard decode with a runtime note.",
+                })}
               </span>
             </div>
           </div>

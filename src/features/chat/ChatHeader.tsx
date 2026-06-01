@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { ChatSession, ModelCapabilities, ModelLoadingState } from "../../types";
+import { RagStatusBadge } from "../../components/RagStatusBadge";
 import { downloadExport, type ExportFormat } from "./exportThread";
 
 const CAPABILITY_BADGES: Array<{
@@ -244,6 +245,7 @@ export function ChatHeader({
                 </button>
               </span>
             ))}
+            <RagStatusBadge />
           </div>
         ) : null}
       </div>

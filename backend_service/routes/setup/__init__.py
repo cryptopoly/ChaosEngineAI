@@ -339,6 +339,7 @@ def refresh_capabilities_endpoint(request: Request) -> dict[str, Any]:
 
 
 from backend_service.routes.setup.cuda_torch import router as _cuda_torch_router
+from backend_service.routes.setup.embedding_model import router as _embedding_model_router
 from backend_service.routes.setup.gpu_bundle import (
     _GPU_BUNDLE_JOB,
     _GpuBundleJobState,
@@ -356,6 +357,7 @@ from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
 from backend_service.routes.setup.wan_install import router as _wan_install_router
 
 router.include_router(_cuda_torch_router)
+router.include_router(_embedding_model_router)
 router.include_router(_gpu_bundle_router)
 router.include_router(_llama_server_router)
 router.include_router(_longlive_router)

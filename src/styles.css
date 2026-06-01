@@ -2053,6 +2053,40 @@ select.text-input {
   text-transform: uppercase;
 }
 
+.server-connect-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.server-connect-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  list-style: revert;
+}
+
+.server-connect-sub {
+  margin: 0;
+}
+
+.server-code-block {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0b0f16;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
 .conversion-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -4754,6 +4788,110 @@ select.text-input {
   font-size: 1rem;
   line-height: 1;
   padding: 0;
+}
+
+.rag-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rag-enable-button {
+  padding: 2px 8px;
+  font-size: 0.74rem;
+}
+
+.run-from-hf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.run-from-hf-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.run-from-hf-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.run-from-hf-input-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.run-from-hf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0f16;
+}
+
+.run-from-hf-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.run-from-hf-msg {
+  margin: 0;
+}
+
+.import-models-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.import-models-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.import-models-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-models-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0f16;
+}
+
+.import-models-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.import-models-msg {
+  margin: 0;
 }
 
 .session-document-remove:hover {

@@ -253,10 +253,56 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", "; ".join(missing)[:300], {"missing": missing}
         return "pass", "", {"checkedFamilies": ["qwen-3-5", "qwen-3-6"]}
 
+    # Competitor-parity quick wins (#1 RAG, #3 Ollama-compat, #4 import,
+    # #5 run-any-HF). Read-only liveness/shape smoke — no network, no
+    # model load — so they belong in the fast Phase 0 surface.
+    def _rag_status():
+        rc, payload, err = _cli_json("call", "GET", "/api/rag/status", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"rag status failed: {err[:160]}", {}
+        mode = payload.get("mode")
+        return (
+            ("pass" if mode in ("vector", "lexical") else "fail"),
+            f"mode={mode}",
+            {"mode": mode, "binary": payload.get("binaryAvailable"), "model": payload.get("modelAvailable")},
+        )
+
+    def _ollama_compat():
+        rc, ver, err = _cli_json("call", "GET", "/api/version", timeout=15.0)
+        if rc != 0 or not isinstance(ver, dict) or not ver.get("version"):
+            return "fail", f"ollama /api/version bad: {err[:120]}", {}
+        rc2, tags, err2 = _cli_json("call", "GET", "/api/tags", timeout=15.0)
+        if rc2 != 0 or not isinstance(tags, dict) or "models" not in tags:
+            return "fail", f"ollama /api/tags bad: {err2[:120]}", {}
+        return "pass", "", {"version": ver.get("version"), "tagCount": len(tags.get("models") or [])}
+
+    def _model_import_scan():
+        rc, payload, err = _cli_json("call", "GET", "/api/models/import/scan", timeout=20.0)
+        if rc != 0 or not isinstance(payload, dict) or "ollama" not in payload or "lmstudio" not in payload:
+            return "fail", f"import scan bad: {err[:160]}", {}
+        return "pass", "", {
+            "ollamaAvailable": payload["ollama"].get("available"),
+            "lmstudioAvailable": payload["lmstudio"].get("available"),
+        }
+
+    def _resolve_hf_guard():
+        # Malformed repo must be rejected before any network call — proves
+        # the route is wired without depending on Hugging Face reachability.
+        rc, payload, err = _cli_json(
+            "call", "POST", "/api/models/resolve-hf", "--body", json.dumps({"repo": "noslash"}), timeout=15.0
+        )
+        blob = f"{payload} {err}".lower()
+        ok = ("owner/name" in blob) or ("400" in blob)
+        return ("pass" if ok else "fail"), ("" if ok else f"unexpected: {err[:160]}"), {}
+
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
         ("mtplx-status", _mtplx), ("inventory", _inventory),
         ("catalog vision tags", _catalog_vision),
+        ("rag status (#1)", _rag_status),
+        ("ollama-compat (#3)", _ollama_compat),
+        ("model import scan (#4)", _model_import_scan),
+        ("run-from-hf guard (#5)", _resolve_hf_guard),
     ]:
         phase.checks.append(_check(name, fn))
     phase.status = "fail" if any(c.status == "fail" for c in phase.checks) else "pass"

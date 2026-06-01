@@ -148,3 +148,63 @@ export async function deleteModelPath(path: string): Promise<{ deleted: string; 
 export async function listHubFiles(repo: string): Promise<HubFileListResponse> {
   return await fetchJson<HubFileListResponse>(`/api/models/hub-files?repo=${encodeURIComponent(repo)}`, 15000);
 }
+
+// ---------------------------------------------------------------------------
+// Run any Hugging Face model (#5)
+// ---------------------------------------------------------------------------
+
+export interface ResolvedHfModel {
+  repo: string;
+  ref: string;
+  label: string;
+  backend: "llama.cpp" | "mlx" | "vllm" | "unknown";
+  ggufFile: string | null;
+  contextTokens: number;
+  capabilities: { text: boolean; vision: boolean };
+  sizeBytes: number;
+  totalSizeGb: number;
+  family: string;
+  custom: boolean;
+  warnings: string[];
+}
+
+export async function resolveHfModel(repo: string, file?: string): Promise<ResolvedHfModel> {
+  const result = await postJson<{ resolved: ResolvedHfModel }>(
+    "/api/models/resolve-hf",
+    { repo, file: file ?? null },
+    20000,
+  );
+  return result.resolved;
+}
+
+// ---------------------------------------------------------------------------
+// Import existing Ollama / LM Studio models, no re-download (#4)
+// ---------------------------------------------------------------------------
+
+export interface ImportableModel {
+  name: string;
+  repo: string;
+  source: "ollama" | "lmstudio";
+  path: string;
+  sizeBytes: number;
+  sizeGb: number;
+  format: string;
+}
+
+export interface ImportScanResult {
+  ollama: { available: boolean; dir: string | null; models: ImportableModel[] };
+  lmstudio: { available: boolean; dirs: string[]; models: ImportableModel[] };
+}
+
+export async function scanImportableModels(): Promise<ImportScanResult> {
+  return await fetchJson<ImportScanResult>("/api/models/import/scan", 20000);
+}
+
+export async function importModel(payload: {
+  source: string;
+  path: string;
+  name: string;
+  repo?: string;
+}): Promise<{ imported: { importedPath: string; alreadyImported: boolean }; repo: string; name: string; source: string }> {
+  return await postJson("/api/models/import", payload, 30000);
+}

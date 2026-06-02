@@ -68,10 +68,43 @@ def _build_sampler_overrides(request: Any) -> dict[str, Any]:
     return overrides
 
 
+def _estimate_tokens(text: str) -> int:
+    """Cheap, deliberately CONSERVATIVE token estimate (no tokenizer here).
+
+    Assumes ~3 chars/token vs the ~4 typical for English so the history
+    window UNDER-fills the context rather than risking an overflow the MLX
+    path can't recover from. Code and CJK are denser than English, so
+    erring small protects them too. Off by a constant factor — fine for a
+    safety budget, not for billing.
+    """
+    return (len(text) // 3) + 1
+
+
+def _history_token_budget(
+    *,
+    context_tokens: int,
+    max_tokens: int,
+    system_prompt: str | None,
+    prompt: str | None,
+) -> int:
+    """Token budget left for *prior* history after reserving room for the
+    system prompt, the current user prompt, the generation, and chat-template
+    overhead. Floors at 512 so a single recent turn is always kept.
+    """
+    reserved = (
+        _estimate_tokens(system_prompt or "")
+        + _estimate_tokens(prompt or "")
+        + int(max_tokens or 0)
+        + 512  # chat-template + role-tag + tool-schema overhead headroom
+    )
+    return max(512, int(context_tokens or 0) - reserved)
+
+
 def _build_history_with_reasoning(
     messages: list[dict[str, Any]],
     *,
     preserve_reasoning: bool,
+    token_budget: int | None = None,
 ) -> list[dict[str, Any]]:
     """Project a session's stored messages into the history list passed to the
     inference layer.
@@ -79,10 +112,17 @@ def _build_history_with_reasoning(
     When `preserve_reasoning` is true and an assistant message has a
     `reasoning` field captured by ThinkingTokenFilter on a previous turn,
     the reasoning is re-emitted inside `<think>...</think>` tags ahead of
-    the visible answer. Reasoning-capable models (Qwen3, DeepSeek R1, etc.)
-    consume this naturally on follow-up turns; non-reasoning models will
-    treat it as inline text. Falsy / missing reasoning is skipped, so this
-    is safe to call unconditionally.
+    the visible answer. (Upstream chat templates for Qwen3 / DeepSeek-R1
+    actually strip prior reasoning, so the live chat path now passes
+    `preserve_reasoning=False`; the option is kept for callers that want it.)
+    Falsy / missing reasoning is skipped, so this is safe to call
+    unconditionally.
+
+    When `token_budget` is set, a sliding window keeps every system message
+    plus the NEWEST conversation turns that fit the budget (estimated, no
+    tokenizer), dropping the oldest. This bounds prompt growth across a long
+    chat — preventing silent truncation on llama.cpp and out-of-context
+    errors on MLX. ``None`` disables windowing (unchanged behaviour).
     """
     history: list[dict[str, Any]] = []
     for message in messages:
@@ -97,7 +137,26 @@ def _build_history_with_reasoning(
             if reasoning_str:
                 text = f"<think>\n{reasoning_str}\n</think>\n\n{text}"
         history.append({"role": role, "text": text})
-    return history
+
+    if token_budget is None or token_budget <= 0:
+        return history
+
+    # System messages are always kept; window the conversation tail.
+    system_msgs = [m for m in history if m["role"] == "system"]
+    convo = [m for m in history if m["role"] != "system"]
+    used = sum(_estimate_tokens(m["text"]) for m in system_msgs)
+    kept_tail: list[dict[str, Any]] = []
+    for message in reversed(convo):
+        cost = _estimate_tokens(message["text"])
+        # Always keep the most recent turn even if it alone blows the budget;
+        # dropping the latest context is worse than a small overflow the
+        # engine can still truncate.
+        if kept_tail and used + cost > token_budget:
+            break
+        used += cost
+        kept_tail.append(message)
+    kept_tail.reverse()
+    return system_msgs + kept_tail
 
 
 _TITLE_LEADING_PATTERNS = [

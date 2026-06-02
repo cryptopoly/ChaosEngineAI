@@ -35,6 +35,7 @@ from backend_service.state._helpers import (
     _build_history_with_reasoning,
     _build_sampler_overrides,
     _compose_chat_system_prompt,
+    _history_token_budget,
 )
 
 
@@ -144,7 +145,17 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
 
         history = _build_history_with_reasoning(
             session["messages"],
-            preserve_reasoning=(effective_thinking_mode == "auto"),
+            # Don't replay prior <think> reasoning — upstream chat templates
+            # (Qwen3 / DeepSeek-R1) strip it, and re-feeding it bloats the
+            # prompt every turn. token_budget windows the oldest turns out so
+            # a long chat can't silently overflow the context.
+            preserve_reasoning=False,
+            token_budget=_history_token_budget(
+                context_tokens=desired_context_tokens,
+                max_tokens=request.maxTokens,
+                system_prompt=request.systemPrompt,
+                prompt=request.prompt,
+            ),
         )
         session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
         session["updatedAt"] = state._time_label()
@@ -393,7 +404,17 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
 
         history = _build_history_with_reasoning(
             session["messages"],
-            preserve_reasoning=(effective_thinking_mode == "auto"),
+            # Don't replay prior <think> reasoning — upstream chat templates
+            # (Qwen3 / DeepSeek-R1) strip it, and re-feeding it bloats the
+            # prompt every turn. token_budget windows the oldest turns out so
+            # a long chat can't silently overflow the context.
+            preserve_reasoning=False,
+            token_budget=_history_token_budget(
+                context_tokens=desired_context_tokens,
+                max_tokens=request.maxTokens,
+                system_prompt=request.systemPrompt,
+                prompt=request.prompt,
+            ),
         )
         session["messages"].append({"role": "user", "text": request.prompt, "metrics": None})
         session["updatedAt"] = state._time_label()

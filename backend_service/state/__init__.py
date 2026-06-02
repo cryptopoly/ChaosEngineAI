@@ -35,6 +35,7 @@ from backend_service.state._helpers import (
     _build_sampler_overrides,
     _clean_prompt_for_title,
     _compose_chat_system_prompt,
+    _history_token_budget,
     _legacy_title_from_prompt,
     _normalize_remote_provider_api_base,
     _read_text_tail,

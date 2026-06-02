@@ -268,6 +268,15 @@ class OpenAIChatCompletionRequest(BaseModel):
     presence_penalty: float | None = Field(default=None, ge=-2.0, le=2.0)
     seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
     stop: list[str] | str | None = None
+    # Non-standard but widely-accepted local-server sampler fields. Mapped
+    # into the runtime sampler dict in state/openai_compat.py for parity with
+    # the native chat route (llama-server takes these natively; the MLX worker
+    # consumes min_p + repeat_penalty).
+    min_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    repeat_penalty: float | None = Field(default=None, ge=0.0, le=2.0)
+    mirostat: int | None = Field(default=None, ge=0, le=2)
+    mirostat_tau: float | None = Field(default=None, ge=0.0)
+    mirostat_eta: float | None = Field(default=None, ge=0.0)
     response_format: dict[str, Any] | None = None
 
 

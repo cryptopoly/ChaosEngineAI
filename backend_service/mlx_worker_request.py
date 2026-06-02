@@ -133,7 +133,10 @@ def _build_mlx_sampler(request: dict[str, Any]) -> Any:
     kwargs: dict[str, Any] = {"temp": float(request.get("temperature") or 0.0)}
     samplers = request.get("samplers") or {}
     if isinstance(samplers, dict):
-        for src in ("top_p", "top_k", "min_p"):
+        # XTC (xtc_probability/xtc_threshold) is supported by current
+        # make_sampler and adds creative variety; it survives the signature
+        # filter below on builds that have it and is dropped on older ones.
+        for src in ("top_p", "top_k", "min_p", "xtc_probability", "xtc_threshold"):
             value = samplers.get(src)
             if value is not None:
                 kwargs[src] = value
@@ -145,6 +148,47 @@ def _build_mlx_sampler(request: dict[str, Any]) -> Any:
     except (TypeError, ValueError):
         filtered = {"temp": kwargs["temp"]}
     return make_sampler(**filtered)
+
+
+def _build_mlx_logits_processors(request: dict[str, Any]) -> Any:
+    """Build mlx-lm logits processors (repetition penalty) from the request.
+
+    mlx-lm applies repetition penalty via ``logits_processors``, NOT through
+    ``make_sampler`` — so the UI's ``repeat_penalty`` was silently dropped
+    when only the sampler was wired. Returns None when no (or a no-op 1.0)
+    penalty is requested, so callers can pass ``logits_processors=None`` (the
+    mlx-lm default). Signature-filtered like the sampler for cross-version
+    robustness.
+    """
+    import inspect
+
+    samplers = request.get("samplers") or {}
+    if not isinstance(samplers, dict):
+        return None
+    raw = samplers.get("repeat_penalty", samplers.get("repetition_penalty"))
+    try:
+        penalty = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        penalty = None
+    if penalty is None or abs(penalty - 1.0) < 1e-6:
+        return None
+
+    try:
+        from mlx_lm.sample_utils import make_logits_processors
+
+        kwargs: dict[str, Any] = {"repetition_penalty": penalty}
+        ctx = samplers.get("repeat_penalty_context") or samplers.get("repetition_context_size")
+        if ctx is not None:
+            try:
+                kwargs["repetition_context_size"] = int(ctx)
+            except (TypeError, ValueError):
+                pass
+        sig = inspect.signature(make_logits_processors)
+        allowed = set(sig.parameters.keys())
+        filtered = {k: v for k, v in kwargs.items() if k in allowed}
+        return make_logits_processors(**filtered)
+    except Exception:
+        return None
 
 
 def _sampler_seed(request: dict[str, Any]) -> int | None:

@@ -55,6 +55,30 @@ class ApplySamplerKwargsTests(unittest.TestCase):
         self.assertEqual(payload["mirostat_tau"], 5.0)
         self.assertEqual(payload["mirostat_eta"], 0.1)
 
+    def test_merges_modern_quality_samplers(self):
+        # DRY / XTC / top-n-sigma were added to _LLAMA_SAMPLER_KEYS; they
+        # must now flow through to the llama-server payload.
+        payload: dict = {}
+        _apply_sampler_kwargs(
+            payload,
+            samplers={
+                "dry_multiplier": 0.8,
+                "dry_base": 1.75,
+                "dry_allowed_length": 2,
+                "xtc_probability": 0.5,
+                "xtc_threshold": 0.1,
+                "top_n_sigma": 1.0,
+            },
+            reasoning_effort=None,
+            json_schema=None,
+        )
+        self.assertEqual(payload["dry_multiplier"], 0.8)
+        self.assertEqual(payload["dry_base"], 1.75)
+        self.assertEqual(payload["dry_allowed_length"], 2)
+        self.assertEqual(payload["xtc_probability"], 0.5)
+        self.assertEqual(payload["xtc_threshold"], 0.1)
+        self.assertEqual(payload["top_n_sigma"], 1.0)
+
     def test_none_values_in_samplers_skip_merge(self):
         # The frontend may send the union of fields with most set to null —
         # explicit nulls must not override server defaults.

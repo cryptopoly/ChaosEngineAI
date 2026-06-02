@@ -1350,6 +1350,30 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(runtime_kwargs["samplers"]["stop"], ["END"])
         self.assertIn("properties", runtime_kwargs["json_schema"])
 
+    def test_openai_completion_forwards_extended_samplers(self):
+        # Parity fix: min_p / repeat_penalty / mirostat were dropped on the
+        # /v1 path. They must now reach the runtime sampler dict.
+        response = self.client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 16,
+                "min_p": 0.05,
+                "repeat_penalty": 1.15,
+                "mirostat": 2,
+                "mirostat_tau": 5.0,
+                "mirostat_eta": 0.1,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        samplers = self.client.app.state.chaosengine.runtime.last_generate_kwargs["samplers"]
+        self.assertEqual(samplers["min_p"], 0.05)
+        self.assertEqual(samplers["repeat_penalty"], 1.15)
+        self.assertEqual(samplers["mirostat"], 2)
+        self.assertEqual(samplers["mirostat_tau"], 5.0)
+        self.assertEqual(samplers["mirostat_eta"], 0.1)
+
     def test_openai_completion_omits_sampler_dict_when_none_set(self):
         response = self.client.post(
             "/v1/chat/completions",

@@ -34,6 +34,7 @@ from backend_service.mlx_worker_prompt import (
 )
 from backend_service.mlx_worker_request import (
     _apply_mlx_seed,
+    _build_mlx_logits_processors,
     _build_mlx_sampler,
     _extract_top_logprobs,
     _format_tools_for_prompt,
@@ -125,6 +126,7 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
             prompt_text,
                 max_tokens=int(request.get("maxTokens") or 256),
                 sampler=sampler,
+                logits_processors=_build_mlx_logits_processors(request),
                 prompt_cache=prompt_cache,
         ):
             if response.text:
@@ -349,6 +351,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
             prompt_text,
             max_tokens=int(request.get("maxTokens") or 256),
             sampler=sampler,
+            logits_processors=_build_mlx_logits_processors(request),
             prompt_cache=prompt_cache,
         ):
             if response.text:

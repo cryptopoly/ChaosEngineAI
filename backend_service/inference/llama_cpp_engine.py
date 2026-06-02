@@ -92,6 +92,17 @@ _LLAMA_SAMPLER_KEYS: tuple[str, ...] = (
     "frequency_penalty",
     "presence_penalty",
     "stop",
+    # Modern anti-repetition / quality samplers llama-server supports
+    # natively. Forward-only: builds that don't recognise them ignore the
+    # field, so old binaries are unaffected. DRY beats plain repeat_penalty
+    # at killing verbatim loops; XTC adds creative variety; top-n-sigma is
+    # a temperature-stable truncator.
+    "dry_multiplier",
+    "dry_base",
+    "dry_allowed_length",
+    "xtc_probability",
+    "xtc_threshold",
+    "top_n_sigma",
     # Phase 3.3: per-token confidence info. llama-server returns
     # top-k alternatives with their logprobs in each delta when
     # `logprobs: true` + `top_logprobs: N` are set.
@@ -421,6 +432,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         fit_enabled: bool,
         is_fallback: bool,
         speculative_decoding: bool = False,
+        fused_attention: bool = False,
         canonical_repo: str | None = None,
         model_ref: str = "",
     ) -> tuple[list[str], str | None, bool, str | None]:
@@ -449,6 +461,19 @@ class LlamaCppEngine(BaseInferenceEngine):
             str(max(256, context_tokens)),
             "--jinja",
         ]
+        # Reuse the single slot's KV cache across chat turns: a growing
+        # conversation re-prefills only the new suffix instead of the whole
+        # history (turn-2+ TTFT drops sharply on long chats). Forward-gated
+        # on binary support so older llama-server builds are unaffected.
+        if _llama_server_supports(binary, "--cache-reuse"):
+            command.extend(["--cache-reuse", "256"])
+        # Honour the user's fused-attention toggle. It was plumbed into
+        # load_model + stored on LoadedModelInfo but never emitted as a
+        # flag. Flash attention is a large decode + KV-memory win on Metal
+        # and is required by the quantized KV cache types. Opt-in via the
+        # existing flag so a model/quant combo that dislikes it can disable.
+        if fused_attention and _llama_server_supports(binary, "--flash-attn"):
+            command.extend(["--flash-attn", "on"])
         if _llama_server_supports(binary, "--reasoning-format"):
             command.extend(["--reasoning-format", "deepseek"])
         if _llama_server_supports(binary, "--reasoning"):
@@ -660,6 +685,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 fit_enabled=fit_enabled,
                 is_fallback=is_fallback,
                 speculative_decoding=speculative_decoding,
+                fused_attention=fused_attention,
                 canonical_repo=canonical_repo,
                 model_ref=model_ref,
             )
@@ -791,6 +817,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": False,
+            # Reuse the slot's cached prompt prefix across turns (pairs with
+            # the server's --cache-reuse) so unchanged history isn't reprocessed.
+            "cache_prompt": True,
         }
         if tools:
             payload["tools"] = tools
@@ -884,6 +913,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": True,
+            # Reuse the slot's cached prompt prefix across turns (pairs with
+            # the server's --cache-reuse) so unchanged history isn't reprocessed.
+            "cache_prompt": True,
         }
         if tools:
             payload["tools"] = tools

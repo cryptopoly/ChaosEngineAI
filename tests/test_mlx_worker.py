@@ -875,5 +875,41 @@ class LoadedModelRefDelimitersTests(unittest.TestCase):
         self.assertFalse(worker.is_multimodal)
 
 
+class MlxLogitsProcessorTests(unittest.TestCase):
+    """_build_mlx_logits_processors wires repeat_penalty (mlx-lm applies it
+    via logits_processors, not the sampler — it was being dropped)."""
+
+    def setUp(self):
+        from backend_service.mlx_worker_request import _build_mlx_logits_processors
+
+        self._build = _build_mlx_logits_processors
+
+    def test_none_when_no_samplers(self):
+        self.assertIsNone(self._build({}))
+        self.assertIsNone(self._build({"samplers": None}))
+
+    def test_none_when_penalty_absent_or_neutral(self):
+        self.assertIsNone(self._build({"samplers": {"top_p": 0.9}}))
+        self.assertIsNone(self._build({"samplers": {"repeat_penalty": 1.0}}))
+
+    def test_none_when_penalty_non_numeric(self):
+        self.assertIsNone(self._build({"samplers": {"repeat_penalty": "oops"}}))
+
+    @unittest.skipUnless(
+        __import__("importlib").util.find_spec("mlx_lm") is not None,
+        "mlx-lm not installed",
+    )
+    def test_builds_processors_for_real_penalty(self):
+        result = self._build({"samplers": {"repeat_penalty": 1.3}})
+        self.assertIsNotNone(result)
+        self.assertTrue(len(result) >= 1)
+
+    def test_accepts_repetition_penalty_alias_without_raising(self):
+        try:
+            self._build({"samplers": {"repetition_penalty": 1.2}})
+        except Exception as exc:  # noqa: BLE001
+            self.fail(f"alias parse raised: {exc}")
+
+
 if __name__ == "__main__":
     unittest.main()

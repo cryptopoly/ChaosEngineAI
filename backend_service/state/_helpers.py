@@ -57,6 +57,14 @@ def _build_sampler_overrides(request: Any) -> dict[str, Any]:
         overrides["mirostat"] = mirostat_mode
     _put("mirostat_tau", getattr(request, "mirostatTau", None))
     _put("mirostat_eta", getattr(request, "mirostatEta", None))
+    # Modern samplers (tier 2): XTC (both engines) + DRY (llama only).
+    # Engine-side key names; llama-server forwards them via
+    # _LLAMA_SAMPLER_KEYS, mlx-lm reads xtc_* in _build_mlx_sampler.
+    _put("xtc_probability", getattr(request, "xtcProbability", None))
+    _put("xtc_threshold", getattr(request, "xtcThreshold", None))
+    _put("dry_multiplier", getattr(request, "dryMultiplier", None))
+    _put("dry_base", getattr(request, "dryBase", None))
+    _put("dry_allowed_length", getattr(request, "dryAllowedLength", None))
     # Phase 3.3: when the user enables logprobs on a request the
     # frontend sends a top-k count; map it onto llama-server's
     # `logprobs` + `top_logprobs` parameters so the response delta

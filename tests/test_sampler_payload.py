@@ -155,6 +155,19 @@ class BuildSamplerOverridesTests(unittest.TestCase):
         self.assertEqual(overrides["mirostat_tau"], 5.0)
         self.assertEqual(overrides["mirostat_eta"], 0.1)
 
+    def test_emits_modern_sampler_field_names(self):
+        # XTC + DRY map to llama/mlx engine-side snake_case keys.
+        request = SimpleNamespace(
+            xtcProbability=0.5, xtcThreshold=0.1,
+            dryMultiplier=0.8, dryBase=1.75, dryAllowedLength=2,
+        )
+        overrides = _build_sampler_overrides(request)
+        self.assertEqual(overrides["xtc_probability"], 0.5)
+        self.assertEqual(overrides["xtc_threshold"], 0.1)
+        self.assertEqual(overrides["dry_multiplier"], 0.8)
+        self.assertEqual(overrides["dry_base"], 1.75)
+        self.assertEqual(overrides["dry_allowed_length"], 2)
+
     def test_partial_override_keeps_only_set_fields(self):
         request = SimpleNamespace(
             topP=0.9, topK=None, minP=None, repeatPenalty=None,

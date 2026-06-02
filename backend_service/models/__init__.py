@@ -151,6 +151,14 @@ class GenerateRequest(BaseModel):
     mirostatMode: Literal[0, 1, 2] | None = None
     mirostatTau: float | None = Field(default=None, ge=0.0, le=10.0)
     mirostatEta: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Modern samplers (tier 2). XTC drops top tokens for variety; DRY
+    # penalises repeated multi-token sequences. llama-server applies all;
+    # mlx-lm applies XTC via make_sampler and ignores DRY (llama-only).
+    xtcProbability: float | None = Field(default=None, ge=0.0, le=1.0)
+    xtcThreshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    dryMultiplier: float | None = Field(default=None, ge=0.0, le=4.0)
+    dryBase: float | None = Field(default=None, ge=0.0, le=8.0)
+    dryAllowedLength: int | None = Field(default=None, ge=0, le=64)
     seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
     # Constrained decoding: when set, llama-server enforces a JSON schema
     # via its `response_format: {type: "json_schema", json_schema: {...}}`

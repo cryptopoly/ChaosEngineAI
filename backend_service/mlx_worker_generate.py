@@ -47,6 +47,7 @@ from backend_service.reasoning_split import (
     strip_harmony_boilerplate,
 )
 from backend_service.runaway_guard import RunawayGuard
+from backend_service import mlx_worker_prompt_cache as _prompt_cache
 
 
 if TYPE_CHECKING:
@@ -110,25 +111,32 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
         system_prompt=system_prompt,
     )
     sampler = _build_mlx_sampler(request)
-    prompt_cache, runtime_note = state._make_cache()
-    runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
-    runtime_fields = state._runtime_fields(prompt_cache=prompt_cache)
+    acq = _prompt_cache.acquire(state, prompt_text)
+    prompt_cache = acq.cache
+    prompt_feed = acq.prompt_feed
+    managed = acq.managed
+    runtime_note = _merge_runtime_notes(acq.note, prompt_note)
+    runtime_fields = state._runtime_fields(prompt_cache=acq.fields_cache)
     transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
     runaway_guard = RunawayGuard()
     runaway_stopped = False
+    generated_ids: list[int] = []
     try:
         text_parts: list[str] = []
         last_response = None
         for response in stream_generate(
             state.model,
             state.tokenizer,
-            prompt_text,
+            prompt_feed,
                 max_tokens=int(request.get("maxTokens") or 256),
                 sampler=sampler,
                 logits_processors=_build_mlx_logits_processors(request),
                 prompt_cache=prompt_cache,
         ):
+            _tok = getattr(response, "token", None)
+            if isinstance(_tok, int):
+                generated_ids.append(_tok)
             if response.text:
                 text_parts.append(response.text)
                 try:
@@ -137,8 +145,20 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
                     runaway_stopped = True
                     break
             last_response = response
+        if managed:
+            _prompt_cache.commit(
+                state,
+                cache=prompt_cache,
+                commit_tokens=acq.commit_tokens,
+                generated_ids=generated_ids,
+                model_ref=state._loaded_model_ref,
+            )
     except (ValueError, RuntimeError, TypeError, AttributeError) as exc:
-        _should_retry = (
+        was_managed = managed
+        if managed:
+            _prompt_cache.invalidate(state)
+            managed = False
+        _should_retry = was_managed or (
             prompt_cache is not None
             and _should_retry_cache_failure(exc)
         )
@@ -321,10 +341,13 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         system_prompt=system_prompt,
     )
     sampler = _build_mlx_sampler(request)
-    prompt_cache, runtime_note = state._make_cache()
-    runtime_note = _merge_runtime_notes(runtime_note, prompt_note)
+    acq = _prompt_cache.acquire(state, prompt_text)
+    prompt_cache = acq.cache
+    prompt_feed = acq.prompt_feed
+    managed = acq.managed
+    runtime_note = _merge_runtime_notes(acq.note, prompt_note)
     runtime_note = _merge_runtime_notes(runtime_note, speculative_stream_fallback_note)
-    runtime_fields = state._runtime_fields(prompt_cache=prompt_cache)
+    runtime_fields = state._runtime_fields(prompt_cache=acq.fields_cache)
     transcript_fallback = _plain_chat_fallback_active(prompt_note)
 
     thinking_mode = request.get("thinkingMode") or "off"
@@ -338,6 +361,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     transcript_trimmed = False
     runaway_guard = RunawayGuard()
     runaway_stopped = False
+    generated_ids: list[int] = []
     # Phase 3.3 follow-up: when the request opted into logprobs,
     # extract top-k per token via the helper and forward inline
     # with each text chunk.
@@ -348,12 +372,15 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         for response in mlx_stream_generate(
             state.model,
             state.tokenizer,
-            prompt_text,
+            prompt_feed,
             max_tokens=int(request.get("maxTokens") or 256),
             sampler=sampler,
             logits_processors=_build_mlx_logits_processors(request),
             prompt_cache=prompt_cache,
         ):
+            _tok = getattr(response, "token", None)
+            if isinstance(_tok, int):
+                generated_ids.append(_tok)
             if response.text:
                 # Check for runaway loops before emitting
                 try:
@@ -395,8 +422,20 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
             transcript_trimmed = transcript_trimmed or transcript_filter.stopped
         if visible_text:
             _emit({"ok": True, "chunk": {"text": visible_text}})
+        if managed:
+            _prompt_cache.commit(
+                state,
+                cache=prompt_cache,
+                commit_tokens=acq.commit_tokens,
+                generated_ids=generated_ids,
+                model_ref=state._loaded_model_ref,
+            )
     except (ValueError, RuntimeError, TypeError, AttributeError) as exc:
-        _should_retry = (
+        was_managed = managed
+        if managed:
+            _prompt_cache.invalidate(state)
+            managed = False
+        _should_retry = was_managed or (
             prompt_cache is not None
             and _should_retry_cache_failure(exc)
         )

@@ -15,4 +15,15 @@ DEFAULT_MLX_TIMEOUT_SECONDS = 120.0
 # especially on a first-time pull from Hugging Face. Allow a generous ceiling.
 MLX_LOAD_TIMEOUT_SECONDS = 1800.0
 DEFAULT_LLAMA_TIMEOUT_SECONDS = 120.0
-CAPABILITY_CACHE_TTL_SECONDS = 10.0
+# Native-backend capabilities (mlx/llama-server/vLLM/accelerator presence)
+# only change when the user installs something — and every install path
+# (pip / system pkg / cuda-torch / convert / the /api/setup/refresh-
+# capabilities endpoint) calls refresh_capabilities(force=True), which
+# invalidates this cache immediately. So the TTL only governs ambient
+# staleness, not correctness. The old 10 s value was shorter than a single
+# model load+generate (40-70 s), so load_model's refresh_capabilities()
+# re-probed on *every* load — a blocking 17-31 s mlx_lm+mlx+mlx_vlm import
+# subprocess each time (the creep behind the FU-068 probe-timeout bumps).
+# 300 s comfortably spans back-to-back loads in a session while staying
+# fresh enough for the capability UI; installs force-refresh regardless.
+CAPABILITY_CACHE_TTL_SECONDS = 300.0

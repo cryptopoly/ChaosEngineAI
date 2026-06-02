@@ -33,6 +33,17 @@ def _json_subprocess(
             check=False,
             capture_output=True,
             timeout=timeout,
+            # Own session/process group: these short-lived JSON probes
+            # (mlx_worker probe, GGUF metadata read) must NOT be collateral
+            # of ``app._watch_parent_and_exit``'s killpg(SIGTERM) when the
+            # backend's parent dies. Without this, a non-Tauri launch (e.g.
+            # a bare ``python -m backend_service.app`` whose launch shell
+            # exits) reparents the app, the watchdog fires, and the probe —
+            # sharing the group — dies with "probe exited with code -15"
+            # mid-run. The probe is a few-second transient, so escaping the
+            # parent-death cleanup leaks nothing (the cleanup exists for the
+            # long-lived llama-server children, which are spawned elsewhere).
+            start_new_session=True,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return (-1, None, str(exc))

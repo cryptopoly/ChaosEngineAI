@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
+import { RunFromHuggingFace } from "../../components/RunFromHuggingFace";
+import { ImportModelsPanel } from "../../components/ImportModelsPanel";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import type { ModelStatusKind } from "../../components/ModelActionIcons";
 import type { DownloadStatus } from "../../api";
@@ -740,6 +742,8 @@ export function OnlineModelsTab({
             );
           })}
         </div>
+        <RunFromHuggingFace />
+        <ImportModelsPanel />
         {searchError ? (
           <div className="callout error">
             <p>{searchError}</p>

@@ -47,14 +47,12 @@ class FirstBlockCacheStrategy(CacheStrategy):
         return "First Block Cache"
 
     def is_available(self) -> bool:
-        if importlib.util.find_spec("diffusers") is None:
-            return False
-        try:
-            from diffusers.hooks import apply_first_block_cache  # noqa: F401
-            from diffusers.hooks import FirstBlockCacheConfig  # noqa: F401
-        except Exception:
-            return False
-        return True
+        # FU-080: gate on installed diffusers version via package metadata
+        # (no import) so the startup system-snapshot doesn't drag in
+        # torch. apply_first_block_cache + FirstBlockCacheConfig landed in
+        # diffusers 0.36; the real import stays lazy in apply_diffusers_hook.
+        from cache_compression._diffusers_probe import diffusers_at_least
+        return diffusers_at_least(0, 36)
 
     def availability_badge(self) -> str:
         if self.is_available():

@@ -527,3 +527,48 @@ export async function enhancePromptViaLLM(payload: {
   };
   return await postJson<PromptEnhanceResult>("/api/prompt/enhance", body, 30000);
 }
+
+// ---------------------------------------------------------------------------
+// Out-of-box RAG: embedding-model install + readiness status (#1)
+//
+// Semantic retrieval needs an ``llama-embedding`` binary plus an
+// embedding GGUF. The model is downloaded on demand into
+// ``<dataDir>/embeddings/``; until then retrieval runs on the lexical
+// (TF-IDF + BM25) fallback. ``getRagStatus`` reports which mode is live
+// so the chat document panel can offer the one-click upgrade.
+
+export interface RagStatus {
+  mode: "vector" | "lexical";
+  binaryAvailable: boolean;
+  binaryPath: string | null;
+  modelAvailable: boolean;
+  modelPath: string | null;
+  installed: boolean;
+  recommended: { repo: string; file: string; label: string; sizeLabel: string };
+}
+
+export interface EmbeddingInstallJobState {
+  id: string;
+  phase: "idle" | "downloading" | "verifying" | "done" | "error";
+  message: string;
+  percent: number;
+  targetPath: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  done: boolean;
+}
+
+export async function getRagStatus(): Promise<RagStatus> {
+  return await fetchJson<RagStatus>("/api/rag/status", 10000);
+}
+
+export async function startEmbeddingModelInstall(): Promise<EmbeddingInstallJobState> {
+  // Returns quickly — download runs in a backend daemon thread. Poll
+  // ``getEmbeddingModelInstallStatus`` to follow progress.
+  return await postJson<EmbeddingInstallJobState>("/api/setup/install-embedding-model", {}, 15000);
+}
+
+export async function getEmbeddingModelInstallStatus(): Promise<EmbeddingInstallJobState> {
+  return await fetchJson<EmbeddingInstallJobState>("/api/setup/install-embedding-model/status", 10000);
+}

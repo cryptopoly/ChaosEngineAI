@@ -136,6 +136,40 @@ export function ServerTab({
 
   const loadingRef = serverLoading?.modelRef ?? null;
 
+  // "Connect your app" snippets (#2). Built from the live server URL,
+  // API key, and an active/warm model id so they're copy-paste runnable.
+  const connectKey = apiToken ?? "<chaosengine-api-token>";
+  const connectModel =
+    warmModels.find((m) => m.active)?.ref ?? warmModels[0]?.ref ?? "your-model-id";
+  const ollamaBase = localServerUrl.replace(/\/v1\/?$/, "");
+  const pythonSnippet = `from openai import OpenAI
+
+client = OpenAI(base_url="${localServerUrl}", api_key="${connectKey}")
+resp = client.chat.completions.create(
+    model="${connectModel}",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(resp.choices[0].message.content)`;
+  const jsSnippet = `import OpenAI from "openai";
+
+const client = new OpenAI({ baseURL: "${localServerUrl}", apiKey: "${connectKey}" });
+const resp = await client.chat.completions.create({
+  model: "${connectModel}",
+  messages: [{ role: "user", content: "Hello" }],
+});
+console.log(resp.choices[0].message.content);`;
+  const continueSnippet = `{
+  "models": [
+    {
+      "title": "ChaosEngineAI",
+      "provider": "openai",
+      "model": "${connectModel}",
+      "apiBase": "${localServerUrl}",
+      "apiKey": "${connectKey}"
+    }
+  ]
+}`;
+
   return (
     <div className="content-grid">
       <Panel
@@ -228,6 +262,59 @@ export function ServerTab({
                 </div>
               </div>
             </div>
+
+            <details className="server-connect-panel" open>
+              <summary>{t("serverTab.connect.title", { defaultValue: "Connect your app" })}</summary>
+              <p className="muted-text server-connect-sub">
+                {t("serverTab.connect.subtitle", { defaultValue: "OpenAI-compatible endpoint. Point any OpenAI SDK or compatible app at the base URL below with the API key above." })}
+              </p>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.baseUrl", { defaultValue: "Base URL" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => copyText(localServerUrl)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
+                </div>
+                <p className="mono-text">{localServerUrl}</p>
+              </div>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.python", { defaultValue: "Python · openai" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => copyText(pythonSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
+                </div>
+                <pre className="mono-text server-code-block">{pythonSnippet}</pre>
+              </div>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.javascript", { defaultValue: "JavaScript · openai" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => copyText(jsSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
+                </div>
+                <pre className="mono-text server-code-block">{jsSnippet}</pre>
+              </div>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.continueDev", { defaultValue: "Continue.dev (config)" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => copyText(continueSnippet)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
+                </div>
+                <pre className="mono-text server-code-block">{continueSnippet}</pre>
+              </div>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.openWebui", { defaultValue: "Open WebUI" })}</strong>
+                </div>
+                <p className="muted-text">
+                  {t("serverTab.connect.openWebuiHint", { base: localServerUrl, defaultValue: "Admin → Settings → Connections → OpenAI API. Base URL: {base} — use the API key above." })}
+                </p>
+              </div>
+              <div className="server-command">
+                <div className="server-command-header">
+                  <strong>{t("serverTab.connect.ollamaApps", { defaultValue: "Ollama-compatible apps" })}</strong>
+                  <button className="secondary-button" type="button" onClick={() => copyText(ollamaBase)}>{t("serverTab.copy", { defaultValue: "Copy" })}</button>
+                </div>
+                <p className="muted-text">
+                  {t("serverTab.connect.ollamaHint", { defaultValue: "Set the app's Ollama host / base URL to the address below — native /api endpoints are served alongside /v1." })}
+                </p>
+                <p className="mono-text">{ollamaBase}</p>
+              </div>
+            </details>
 
             {recentOrphanedWorkers.length > 0 && !orphansDismissed ? (
               <div className="callout warning server-warning-callout">

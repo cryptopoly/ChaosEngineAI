@@ -183,6 +183,22 @@ export function resolveDflashSupport({
   };
 }
 
+/**
+ * FU-074: detect a GGUF model with baked-in MTP heads (e.g.
+ * ``ggml-org/Qwen3.6-27B-MTP-GGUF``). These run llama.cpp's native
+ * ``--spec-type draft-mtp`` speculative decoding (FU-047) — a separate
+ * lane from MLX DFlash / MTPLX. Mirrors the backend ``is_mtp_gguf_repo``
+ * heuristic: an MTP-flavoured name on a GGUF repo. The backend does the
+ * authoritative GGUF-header tensor probe at load and falls back to
+ * standard decode with a runtimeNote when the binary lacks
+ * ``--spec-type`` (PR #22673), so showing the toggle never hard-breaks.
+ */
+export function isMtpGgufRepo(repo: string | null | undefined): boolean {
+  if (!repo) return false;
+  const lower = repo.toLowerCase();
+  return lower.includes("mtp") && lower.includes("gguf");
+}
+
 export function sanitizeSpeculativeSelection({
   dflashInfo,
   selectedBackend,

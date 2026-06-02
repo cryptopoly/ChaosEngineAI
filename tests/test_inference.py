@@ -260,6 +260,24 @@ class MtpTensorProbeTests(unittest.TestCase):
             (Path(tmp) / "model.safetensors.index.json").write_text(json.dumps(index))
             self.assertTrue(model_has_mtp_tensors(tmp))
 
+    def test_safetensors_index_with_top_level_mtp_keys(self):
+        """FU-076: Qwen3.5 / Qwen3.6 ship the MTP head as *top-level*
+        ``mtp.layers.*`` / ``mtp.fc.weight`` keys (no leading prefix). The
+        nested ``.mtp.`` / ``model.mtp.`` hints missed these, so MTPLX was
+        never selected for them and they silently routed to DFlash."""
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            index = {
+                "weight_map": {
+                    "model.embed_tokens.weight": "model-00001.safetensors",
+                    "mtp.layers.0.self_attn.q_proj.weight": "model-00002.safetensors",
+                    "mtp.fc.weight": "model-00002.safetensors",
+                }
+            }
+            (Path(tmp) / "model.safetensors.index.json").write_text(json.dumps(index))
+            self.assertTrue(model_has_mtp_tensors(tmp))
+
     def test_safetensors_index_without_mtp_keys(self):
         from backend_service.inference._mtp import model_has_mtp_tensors
 

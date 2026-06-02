@@ -232,7 +232,13 @@ def model_has_mtp_tensors(path: str | None) -> bool | None:
     if weight_map is None:
         return None
     for tensor_name in weight_map.keys():
-        if any(hint in tensor_name for hint in _MTP_TENSOR_HINTS):
+        # FU-076: Qwen3.5 / Qwen3.6 ship the MTP head as *top-level*
+        # ``mtp.layers.*`` / ``mtp.fc.weight`` keys (no leading prefix),
+        # which the nested ``.mtp.`` / ``model.mtp.`` hints miss — that
+        # made ``has_mtp_heads_strict`` return False and silently routed
+        # these models to the DFlash path instead of MtplxEngine. Match a
+        # bare ``mtp.`` prefix as well.
+        if tensor_name.startswith("mtp.") or any(hint in tensor_name for hint in _MTP_TENSOR_HINTS):
             return True
     return False
 

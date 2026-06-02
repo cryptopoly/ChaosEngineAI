@@ -1364,6 +1364,133 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIsNone(runtime_kwargs["samplers"])
         self.assertIsNone(runtime_kwargs["json_schema"])
 
+    # ------------------------------------------------------------------
+    # Ollama-compatible shim (#3) — reuses the OpenAI generation path.
+    # ------------------------------------------------------------------
+
+    def test_ollama_chat_non_stream_autoloads_and_shapes(self):
+        response = self.client.post(
+            "/api/chat",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "Summarize cache compression."}],
+                "stream": False,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["done"])
+        self.assertEqual(body["message"]["role"], "assistant")
+        self.assertTrue(body["message"]["content"])
+        self.assertIn("model", body)
+
+    def test_ollama_chat_stream_emits_ndjson(self):
+        response = self.client.post(
+            "/api/chat",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": True,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("application/x-ndjson"))
+        lines = [ln for ln in response.text.strip().split("\n") if ln.strip()]
+        parsed = [json.loads(ln) for ln in lines]
+        # Every line is a chat object; exactly the last one is terminal.
+        self.assertTrue(all("message" in p for p in parsed))
+        self.assertTrue(parsed[-1]["done"])
+        self.assertFalse(any(p["done"] for p in parsed[:-1]))
+        streamed = "".join(p["message"]["content"] for p in parsed)
+        self.assertTrue(streamed)
+
+    def test_ollama_generate_maps_prompt_and_system(self):
+        response = self.client.post(
+            "/api/generate",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "prompt": "Hello world",
+                "system": "Be terse",
+                "stream": False,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["done"])
+        self.assertTrue(body["response"])
+        kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertEqual(kwargs["prompt"], "Hello world")
+        self.assertEqual(kwargs["system_prompt"], "Be terse")
+
+    def test_ollama_options_map_to_samplers(self):
+        response = self.client.post(
+            "/api/chat",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": False,
+                "options": {
+                    "temperature": 0.1,
+                    "top_p": 0.5,
+                    "top_k": 10,
+                    "seed": 7,
+                    "num_predict": 33,
+                    "stop": "STOP",
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertEqual(kwargs["max_tokens"], 33)
+        self.assertEqual(kwargs["temperature"], 0.1)
+        self.assertEqual(kwargs["samplers"]["top_p"], 0.5)
+        self.assertEqual(kwargs["samplers"]["top_k"], 10)
+        self.assertEqual(kwargs["samplers"]["seed"], 7)
+        self.assertEqual(kwargs["samplers"]["stop"], ["STOP"])
+
+    def test_ollama_format_json_lights_up_constrained_decode(self):
+        response = self.client.post(
+            "/api/chat",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": False,
+                "format": "json",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        kwargs = self.client.app.state.chaosengine.runtime.last_generate_kwargs
+        self.assertIsNotNone(kwargs["json_schema"])
+
+    def test_ollama_tags_lists_loaded_model(self):
+        # Auto-load via a chat call, then the tag list should surface it.
+        self.client.post(
+            "/api/chat",
+            json={
+                "model": "google/gemma-4-E4B-it",
+                "messages": [{"role": "user", "content": "hi"}],
+                "stream": False,
+            },
+        )
+        response = self.client.get("/api/tags")
+        self.assertEqual(response.status_code, 200)
+        names = [m["name"] for m in response.json()["models"]]
+        self.assertIn("google/gemma-4-E4B-it", names)
+
+    def test_ollama_version_returns_string(self):
+        response = self.client.get("/api/version")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json()["version"], str)
+        self.assertTrue(response.json()["version"])
+
+    def test_ollama_embeddings_returns_503_when_no_client(self):
+        # Parity with the /v1 path: no embedding model wired → 503.
+        response = self.client.post(
+            "/api/embeddings",
+            json={"model": "x", "prompt": "hello"},
+        )
+        self.assertEqual(response.status_code, 503)
+
     def test_openai_embeddings_returns_503_when_no_client(self):
         # No embedding model wired in tests → expect a clean 503 with
         # actionable detail rather than a 500.

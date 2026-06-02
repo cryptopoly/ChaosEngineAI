@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
 
 from backend_service.i18n import localized_detail
 from backend_service.models import (
@@ -21,7 +22,9 @@ from backend_service.helpers.huggingface import (
     _search_huggingface_hub,
     _hub_repo_files,
     _find_quantized_variants,
+    _hf_token_value,
 )
+from backend_service.helpers.hf_resolve import resolve_hf_model
 
 router = APIRouter()
 
@@ -222,3 +225,134 @@ def hub_files(request: Request, repo: str = Query(min_length=3, max_length=200))
             status_code=400,
             detail=localized_detail(request, str(exc)),
         ) from exc
+
+
+class ResolveHfRequest(BaseModel):
+    repo: str
+    file: str | None = None
+
+
+def _fetch_hf_config(repo: str) -> dict[str, Any] | None:
+    """Best-effort read of a repo's ``config.json`` (tiny). None on any failure."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    encoded = urllib.parse.quote(repo, safe="/")
+    url = f"https://huggingface.co/{encoded}/resolve/main/config.json"
+    req = urllib.request.Request(url, headers={"User-Agent": "ChaosEngineAI/0.2.0"})
+    token = _hf_token_value()
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, ValueError):
+        return None
+
+
+@router.post("/api/models/resolve-hf")
+def resolve_hf(request: Request, body: ResolveHfRequest) -> dict[str, Any]:
+    """Resolve an arbitrary HF repo into a loadable descriptor (#5).
+
+    Reads the repo's file list + ``config.json`` to classify backend,
+    pick a GGUF file, and infer context + capabilities — so off-catalog
+    models run without fuzzy-matching to the wrong catalog row. The
+    caller loads with ``canonicalRepo=<repo>`` to keep that contract.
+    """
+    repo = (body.repo or "").strip()
+    # Accept a pasted URL as well as a bare ``owner/name``.
+    if repo.startswith("http://") or repo.startswith("https://"):
+        parts = [p for p in repo.split("huggingface.co/", 1)[-1].split("/") if p]
+        repo = "/".join(parts[:2]) if len(parts) >= 2 else repo
+    if "/" not in repo:
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(request, "Repo must be in `owner/name` format."),
+        )
+    try:
+        files_payload = _hub_repo_files(repo)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=localized_detail(request, str(exc))) from exc
+
+    files = files_payload.get("files") or files_payload.get("allFiles") or []
+    config = _fetch_hf_config(repo)
+    descriptor = resolve_hf_model(repo, files=files, config=config, requested_file=body.file)
+    descriptor["totalSizeGb"] = round(descriptor["sizeBytes"] / 1e9, 2)
+    return {"resolved": descriptor}
+
+
+# ---------------------------------------------------------------------------
+# Import existing Ollama / LM Studio models by reference (#4)
+# ---------------------------------------------------------------------------
+
+
+class ImportModelRequest(BaseModel):
+    source: str  # "ollama" | "lmstudio"
+    path: str
+    name: str
+    repo: str | None = None
+
+
+@router.get("/api/models/import/scan")
+def import_scan() -> dict[str, Any]:
+    """Discover importable models in the Ollama blob store + LM Studio cache."""
+    from backend_service.helpers.model_import import scan_importable
+
+    return scan_importable()
+
+
+@router.post("/api/models/import")
+def import_model(request: Request, body: ImportModelRequest) -> dict[str, Any]:
+    """Register an existing model by reference (symlink, no copy)."""
+    from pathlib import Path
+
+    from backend_service.app import DOCUMENTS_DIR
+    from backend_service.helpers.model_import import import_by_reference, imported_dir
+    from backend_service.helpers.settings import _save_settings
+
+    if body.source not in {"ollama", "lmstudio"}:
+        raise HTTPException(status_code=400, detail=localized_detail(request, "Unknown import source."))
+
+    data_dir = DOCUMENTS_DIR.parent
+    try:
+        result = import_by_reference(source=body.source, path=body.path, name=body.name, data_dir=data_dir)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=localized_detail(request, str(exc))) from exc
+    except OSError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(
+                request,
+                f"Could not link the model (symlinks may require elevated privileges on this OS): {exc}",
+            ),
+        ) from exc
+
+    # Register the managed imported dir once so the library scan surfaces
+    # every imported model. The fingerprint-based library cache refreshes
+    # automatically when modelDirectories changes.
+    state = request.app.state.chaosengine
+    imported_root = str(imported_dir(data_dir))
+    with state._lock:
+        dirs = state.settings.setdefault("modelDirectories", [])
+        already = any(
+            str(Path(str(d.get("path") or "")).expanduser()) == imported_root for d in dirs
+        )
+        if not already:
+            dirs.append(
+                {
+                    "path": imported_root,
+                    "label": "Imported models",
+                    "enabled": True,
+                    "id": "imported-models",
+                }
+            )
+            _save_settings(state.settings, state._settings_path)
+            state.add_log("runtime", "info", f"Registered imported-models directory: {imported_root}")
+
+    return {
+        "imported": result,
+        "repo": body.repo or body.name.split(":")[0],
+        "name": body.name,
+        "source": body.source,
+    }

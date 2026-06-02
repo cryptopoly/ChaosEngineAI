@@ -89,7 +89,24 @@ if [[ "${IMPORT_OK}" != "ok" ]]; then
     fail "MTPLX import check failed — installation may be incomplete"
 fi
 
-log "MTPLX ${MTPLX_VERSION} import verified"
+# FU-077: ``import mtplx`` succeeds even when the *server* deps (numpy,
+# safetensors, uvicorn, fastapi, pydantic, mlx-lm, ...) are missing,
+# because they're imported lazily by ``mtplx.server.openai`` — not at
+# package top level. A truncated ``pip install`` therefore passed the
+# old verify but produced a venv whose ``mtplx quickstart`` server died
+# at startup with ModuleNotFoundError, silently falling back to DFlash.
+# Import the server module so an incomplete install fails loudly here.
+SERVER_OK=$("${VENV_DIR}/bin/python" -c "import mtplx.server.openai; print('ok')" 2>/dev/null || echo "fail")
+if [[ "${SERVER_OK}" != "ok" ]]; then
+    log "MTPLX server module import failed — retrying full dependency install"
+    "${VENV_DIR}/bin/pip" install --upgrade --upgrade-strategy eager "${MTPLX_PACKAGE}"
+    SERVER_OK=$("${VENV_DIR}/bin/python" -c "import mtplx.server.openai; print('ok')" 2>/dev/null || echo "fail")
+    if [[ "${SERVER_OK}" != "ok" ]]; then
+        fail "MTPLX server import check failed after retry — server deps incomplete (numpy / safetensors / uvicorn / fastapi / mlx-lm)"
+    fi
+fi
+
+log "MTPLX ${MTPLX_VERSION} import + server module verified"
 
 # ---------------------------------------------------------------------------
 # Write version file

@@ -18,6 +18,7 @@ def register_routes(app: FastAPI) -> None:
     from .settings import router as settings_router
     from .setup import router as setup_router
     from .openai_compat import router as openai_compat_router
+    from .ollama_compat import router as ollama_compat_router
     from .compare import router as compare_router
     from .html_challenges import router as html_challenges_router
     from .metrics import router as metrics_router
@@ -42,6 +43,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(settings_router)
     app.include_router(setup_router)
     app.include_router(openai_compat_router)
+    app.include_router(ollama_compat_router)
     app.include_router(metrics_router)
     app.include_router(plugins_router)
     app.include_router(finetuning_router)

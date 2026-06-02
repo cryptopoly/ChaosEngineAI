@@ -161,6 +161,31 @@ class SkipReasonTests(unittest.TestCase):
         )
 
 
+class ClassifyLoadSkipTests(unittest.TestCase):
+    """FU-070: a catalogued-but-undownloaded model fails at load time, not
+    at the library check (``library_refs`` is catalog-derived). The runner
+    classifies a 'no weights on disk' load error as a skip, not a fail."""
+
+    def test_classifies_missing_gguf_weights_as_skip(self):
+        msg = (
+            "API POST /api/models/load -> 500: Cannot load "
+            "'ggml-org/Qwen3.6-27B-MTP-GGUF': No .gguf, .safetensors, or "
+            "pytorch weights found in HF cache entry."
+        )
+        self.assertEqual(runner.classify_load_skip(msg), "weights not downloaded")
+
+    def test_classifies_hf_cache_entry_phrasing_as_skip(self):
+        msg = "load failed (HTTP 500): no weights found in HF cache entry for repo"
+        self.assertEqual(runner.classify_load_skip(msg), "weights not downloaded")
+
+    def test_genuine_load_error_is_not_a_skip(self):
+        msg = "API POST /api/models/load -> 500: CUDA out of memory"
+        self.assertIsNone(runner.classify_load_skip(msg))
+
+    def test_empty_message_is_not_a_skip(self):
+        self.assertIsNone(runner.classify_load_skip(""))
+
+
 class WriteCsvTests(unittest.TestCase):
     def test_writes_header_and_rows(self):
         results = [

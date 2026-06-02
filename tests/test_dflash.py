@@ -10,6 +10,7 @@ from dflash import (
     is_mlx_available,
     is_vllm_available,
     is_available,
+    is_ddtree_available,
     supported_models,
     availability_info,
 )
@@ -376,6 +377,38 @@ class GenerationResultTests(unittest.TestCase):
         )
         metrics = result.to_metrics()
         self.assertNotIn("dflashAcceptanceRate", metrics)
+
+
+class DDTreeAvailabilityProbeTests(unittest.TestCase):
+    """FU-071: the probe must key off the symbols our code actually imports
+    from ``dflash_mlx.runtime`` (new ``target_ops`` adapter API), not the
+    pre-0.1.5 ``target_forward_with_hidden_states`` that was renamed away."""
+
+    def _probe_with_source(self, source: str) -> bool:
+        spec = SimpleNamespace(origin="/fake/dflash_mlx/runtime.py")
+        with patch("dflash.importlib.util.find_spec", return_value=spec), patch(
+            "dflash.Path"
+        ) as mock_path:
+            mock_path.return_value.read_text.return_value = source
+            return is_ddtree_available()
+
+    def test_modern_runtime_with_target_ops_api_is_available(self):
+        # Mirrors the installed dflash-mlx 0.1.5+ surface.
+        source = "def resolve_target_ops(): ...\nload_draft_bundle\nstream_dflash_generate\n"
+        self.assertTrue(self._probe_with_source(source))
+
+    def test_legacy_only_symbol_is_not_enough(self):
+        # The obsolete pre-0.1.5 symbol on its own must NOT satisfy the probe.
+        source = "target_forward_with_hidden_states\nload_target_bundle\n"
+        self.assertFalse(self._probe_with_source(source))
+
+    def test_missing_resolve_target_ops_is_unavailable(self):
+        source = "load_draft_bundle\nstream_dflash_generate\n"
+        self.assertFalse(self._probe_with_source(source))
+
+    def test_unimportable_runtime_is_unavailable(self):
+        with patch("dflash.importlib.util.find_spec", return_value=None):
+            self.assertFalse(is_ddtree_available())
 
 
 if __name__ == "__main__":

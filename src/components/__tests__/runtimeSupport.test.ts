@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dflashPackageFor,
+  isMtpGgufRepo,
   isStrategyCompatible,
   resolveDflashSupport,
   sanitizeSpeculativeSelection,
@@ -166,5 +167,28 @@ describe("strategy compatibility helpers", () => {
     expect(isStrategyCompatible("rotorquant", "mlx")).toBe(true);
     expect(strategyIncompatReason("chaosengine", "mlx")).toBeNull();
     expect(strategyIncompatReason("rotorquant", "mlx")).toBeNull();
+  });
+});
+
+describe("isMtpGgufRepo()", () => {
+  it("matches MTP-flavoured GGUF repos (drives the FU-074 GGUF-MTP toggle)", () => {
+    expect(isMtpGgufRepo("ggml-org/Qwen3.6-27B-MTP-GGUF")).toBe(true);
+    expect(isMtpGgufRepo("ggml-org/Qwen3.6-35B-A3B-MTP-GGUF")).toBe(true);
+    expect(isMtpGgufRepo("am17an/Qwen3.6-27B-mtp-gguf-preview")).toBe(true);
+  });
+
+  it("rejects non-MTP GGUF and non-GGUF repos", () => {
+    // Plain GGUF without MTP heads — no draft-mtp lane.
+    expect(isMtpGgufRepo("ggml-org/Qwen3.6-27B-GGUF")).toBe(false);
+    expect(isMtpGgufRepo("lmstudio-community/Qwen3.6-27B-GGUF")).toBe(false);
+    // MLX repo (MTP via MTPLX, not the GGUF lane).
+    expect(isMtpGgufRepo("Qwen/Qwen3.5-4B")).toBe(false);
+    expect(isMtpGgufRepo("mlx-community/Qwen3.6-27B-4bit")).toBe(false);
+  });
+
+  it("handles null / empty input", () => {
+    expect(isMtpGgufRepo(null)).toBe(false);
+    expect(isMtpGgufRepo(undefined)).toBe(false);
+    expect(isMtpGgufRepo("")).toBe(false);
   });
 });

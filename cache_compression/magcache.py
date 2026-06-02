@@ -51,13 +51,9 @@ class MagCacheStrategy(CacheStrategy):
         return "MagCache"
 
     def is_available(self) -> bool:
-        if importlib.util.find_spec("diffusers") is None:
-            return False
-        try:
-            _import_config()
-        except Exception:
-            return False
-        return True
+        # FU-080: version metadata only, no diffusers import at startup.
+        from cache_compression._diffusers_probe import diffusers_at_least
+        return diffusers_at_least(0, 38)
 
     def availability_badge(self) -> str:
         return "Ready" if self.is_available() else "Upgrade"

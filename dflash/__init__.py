@@ -234,6 +234,18 @@ def is_ddtree_available() -> bool:
 
     DDTree requires the same dflash_mlx runtime as linear DFlash, plus
     access to ``dflash_mlx.runtime`` primitives for tree verification.
+
+    The required-symbol set mirrors what our code actually imports from
+    ``dflash_mlx.runtime`` (see FU-006): ``resolve_target_ops`` is the
+    per-family adapter entry point ``backend_service/ddtree.py`` calls to
+    reach ``forward_with_hidden_capture`` / ``extract_context_feature`` /
+    ``make_cache`` (these moved off the runtime top level onto a
+    ``target_ops`` object in dflash-mlx 0.1.5); ``load_draft_bundle`` is
+    used by the worker lifecycle; ``stream_dflash_generate`` drives the
+    linear path. The pre-0.1.5 symbol ``target_forward_with_hidden_states``
+    was renamed to ``target_ops.forward_with_hidden_capture`` and must NOT
+    be required here, or the probe wrongly reports DDTree unavailable on
+    every modern dflash-mlx build.
     """
     try:
         runtime_spec = importlib.util.find_spec("dflash_mlx.runtime")
@@ -249,9 +261,9 @@ def is_ddtree_available() -> bool:
     except OSError:
         return True
     required_symbols = (
-        "target_forward_with_hidden_states",
+        "resolve_target_ops",
         "load_draft_bundle",
-        "load_target_bundle",
+        "stream_dflash_generate",
     )
     return all(symbol in source for symbol in required_symbols)
 

@@ -77,7 +77,13 @@ class MatrixCell:
 # (backend_service/inference/_mtp.py) for the gating tables.
 SMALL_MLX = "mlx-community/Qwen3-0.6B-4bit"
 MID_MLX_DFLASH_CAPABLE = "mlx-community/Qwen3-4B-bf16"
-MID_MLX_MTPLX_CAPABLE = "mlx-community/Qwen3.5-4B-bf16"
+# FU-073: was ``mlx-community/Qwen3.5-4B-bf16`` — a VL conversion that
+# carries no MTP heads and isn't in ``MTP_MODEL_MAP`` / ``_MTP_ALIASES``,
+# so the MTPLX cell could never actually exercise MTP. The canonical
+# ``Qwen/Qwen3.5-4B`` is a direct ``MTP_MODEL_MAP`` key (``mtp.*`` tensors
+# present in its safetensors index) and a catalog variant, so MTPLX
+# resolves heads and the cell can run once the repo is on disk.
+MID_MLX_MTPLX_CAPABLE = "Qwen/Qwen3.5-4B"
 SMALL_GGUF = "lmstudio-community/Qwen3-0.6B-GGUF"
 LARGE_GGUF_MTP = "ggml-org/Qwen3.6-27B-MTP-GGUF"
 
@@ -293,6 +299,28 @@ def skip_reason(cell: MatrixCell, caps: BackendCapabilities, *, quick: bool) -> 
 
 # ── Cell execution ───────────────────────────────────────────────────
 
+# Substrings the backend uses when a model's weights aren't actually on
+# disk. ``library_refs`` is built from the *catalog* (every variant repo),
+# so a catalogued-but-undownloaded model (or an interrupted pull that left
+# an empty ``refs/main``-only HF cache dir) passes the ``skip_reason``
+# library check and only fails at load time. That's a missing download, not
+# a product failure — same false-positive class as FU-053 — so we classify
+# it as a skip rather than a fail.
+_WEIGHTS_MISSING_MARKERS = (
+    "weights found in HF cache entry",
+    "No .gguf, .safetensors, or pytorch weights",
+)
+
+
+def classify_load_skip(error_message: str) -> str | None:
+    """Return a skip reason if a load error means the weights aren't on
+    disk, else None (a genuine load failure to surface)."""
+    for marker in _WEIGHTS_MISSING_MARKERS:
+        if marker in error_message:
+            return "weights not downloaded"
+    return None
+
+
 @dataclass
 class CellResult:
     label: str
@@ -307,6 +335,7 @@ class CellResult:
     ok: bool = False
     error: str = ""
     tokens_per_sec: float = 0.0
+    dflash_acceptance: float | None = None
     output_sha: str = ""
     output_chars: int = 0
     actual_strategy: str = ""
@@ -344,7 +373,16 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
 
     started = time.monotonic()
     try:
-        load_resp = _api("POST", "/api/models/load", port=port, body=body, timeout=180)
+        try:
+            load_resp = _api("POST", "/api/models/load", port=port, body=body, timeout=180)
+        except (RuntimeError, ConnectionError, urllib.error.URLError) as load_exc:
+            skip = classify_load_skip(str(load_exc))
+            if skip is None:
+                raise
+            result.skipped = True
+            result.skip_reason = f"{skip} ({cell.model_ref})"
+            result.duration_seconds = round(time.monotonic() - started, 2)
+            return result
         loaded = ((load_resp.get("runtime") or {}).get("loadedModel")) or load_resp.get("loadedModel") or {}
         result.actual_strategy = loaded.get("cacheStrategy", "")
         result.runtime_note = loaded.get("runtimeNote") or ""
@@ -358,7 +396,19 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
         }
         text, done = _stream_inference("/api/chat/generate/stream", port=port, body=gen_body, timeout=240)
         result.duration_seconds = round(time.monotonic() - started, 2)
-        result.tokens_per_sec = float(done.get("tokensPerSecond") or 0.0)
+        # tok/s lives in the streamed done event under
+        # ``assistant.metrics.tokS`` (see state/metrics.py
+        # stream_assistant_metrics_payload), not a top-level
+        # ``tokensPerSecond`` field — reading the wrong key reported
+        # 0.0 tok/s for every cell. ``dflashAcceptanceRate`` (when the
+        # MLX spec-dec path actually engaged) also lives there.
+        _metrics = (done.get("assistant") or {}).get("metrics") or {}
+        result.tokens_per_sec = float(_metrics.get("tokS") or 0.0)
+        result.dflash_acceptance = (
+            float(_metrics["dflashAcceptanceRate"])
+            if _metrics.get("dflashAcceptanceRate") is not None
+            else None
+        )
         result.output_chars = len(text)
         result.output_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
         result.ok = bool(text.strip())
@@ -532,7 +582,11 @@ def main() -> int:
             continue
         result = run_cell(cell, port=args.port)
         if result.ok:
-            print(f"  pass  {result.tokens_per_sec:.1f} tok/s  sha={result.output_sha}  ({result.duration_seconds:.1f}s)")
+            accept = (
+                f"  accept={result.dflash_acceptance:.0f}%"
+                if result.dflash_acceptance is not None else ""
+            )
+            print(f"  pass  {result.tokens_per_sec:.1f} tok/s  sha={result.output_sha}{accept}  ({result.duration_seconds:.1f}s)")
         else:
             print(f"  FAIL  {result.error}")
         results.append(result)

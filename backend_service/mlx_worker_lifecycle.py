@@ -150,13 +150,32 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     state.tree_budget = int(request.get("treeBudget") or 0)
     if state.speculative_decoding and dflash_draft_model:
         try:
-            from dflash_mlx.runtime import configure_full_attention_split, load_draft_bundle
+            # FU-075: dflash-mlx 0.1.5 moved the pre-0.1.5 top-level
+            # ``configure_full_attention_split`` onto the per-family
+            # ``target_ops`` adapter (same FU-006 migration that rewrote
+            # ddtree.py — this file was missed). Importing the old top-level
+            # name raised ImportError, which silently disabled DFlash /
+            # DDTree / MTPLX (every spec-dec path fell back to standard
+            # generation). Use the new ``resolve_target_ops`` entry point;
+            # both it and ``load_draft_bundle`` are still top-level.
+            from dflash_mlx.runtime import load_draft_bundle, resolve_target_ops
             emit_progress("dflash", 96.0, f"Loading DFLASH draft model: {dflash_draft_model}")
             # Reuse the already loaded MLX target model. Loading a second
             # target bundle can duplicate the full model footprint and
             # trigger SIGKILL on large models during DFLASH startup.
             state._dflash_target = state.model
-            configure_full_attention_split(state._dflash_target, enabled=True)
+            # Full-attention split is a hybrid-GDN-only concern upstream
+            # (see runtime.load_target_bundle); pure-attention targets
+            # (Qwen3/3.5/3.6) don't need it. Resolve the adapter and apply
+            # the split only when the family calls for it.
+            target_ops = resolve_target_ops(state._dflash_target)
+            family_fn = getattr(target_ops, "family", None)
+            if (
+                family_fn is not None
+                and family_fn(state._dflash_target) == "hybrid_gdn"
+                and hasattr(target_ops, "configure_full_attention_split")
+            ):
+                target_ops.configure_full_attention_split(state._dflash_target, enabled=True)
             state._dflash_generator, _ = load_draft_bundle(dflash_draft_model, lazy=True)
             dflash_note = f"DFLASH speculative decoding active (draft: {dflash_draft_model})."
         except ImportError as exc:

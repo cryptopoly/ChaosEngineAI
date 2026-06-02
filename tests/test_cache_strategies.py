@@ -617,5 +617,46 @@ class NewStrategiesRegistryTests(unittest.TestCase):
         self.assertIn("fastercache", ids)
 
 
+class StartupImportPurityTests(unittest.TestCase):
+    """FU-080: building the cache-strategy registry (which runs inside the
+    startup system snapshot) must NOT import diffusers / torch — those are
+    multi-second imports that belong on the lazy image/video path, not the
+    backend cold-start path. Run in a clean subprocess so an already-warm
+    ``sys.modules`` in the test runner can't mask a regression."""
+
+    def _modules_after(self, snippet: str) -> set[str]:
+        import subprocess
+        import sys
+        code = (
+            "import sys\n"
+            f"{snippet}\n"
+            "print('\\n'.join(m for m in ('torch', 'diffusers', 'mlx') "
+            "if m in sys.modules))"
+        )
+        out = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return {line for line in out.stdout.split() if line}
+
+    def test_registry_available_does_not_import_torch_or_diffusers(self):
+        pulled = self._modules_after(
+            "from cache_compression import registry\n"
+            "registry.available()\n"
+        )
+        self.assertEqual(
+            pulled, set(),
+            f"cache-strategy registry pulled heavy deps at probe time: {pulled}",
+        )
+
+    def test_app_import_does_not_pull_torch_or_diffusers(self):
+        pulled = self._modules_after("import backend_service.app")
+        self.assertEqual(
+            pulled, set(),
+            f"importing backend_service.app pulled heavy deps: {pulled}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

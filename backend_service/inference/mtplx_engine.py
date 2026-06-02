@@ -174,8 +174,24 @@ class MtplxEngine(BaseInferenceEngine):
         mtplx_bin = self._mtplx_bin()
         self.port = _find_open_port()
 
-        # Prefer local path; fall back to HF repo id (MTPLX will download).
+        # Prefer an explicit local path. FU-078: ``path`` is often None and
+        # ``runtime_target`` is frequently the *repo id* (e.g.
+        # ``Qwen/Qwen3.5-4B``), not a filesystem path. Handing MTPLX a bare
+        # repo id is fatal — its ``quickstart`` looks the id up in its own
+        # registry/cache (not the HF hub cache) and dies with "model is not
+        # available locally. Run: mtplx pull". So whenever the candidate
+        # isn't an existing local directory, resolve the already-downloaded
+        # HF snapshot dir ourselves (no network: local_files_only) so MTPLX
+        # loads the same weights the rest of the app uses.
         model_arg = path or runtime_target or model_ref
+        if not (model_arg and Path(model_arg).exists()):
+            try:
+                from huggingface_hub import snapshot_download
+                model_arg = snapshot_download(model_ref, local_files_only=True)
+            except Exception:
+                # Not in the HF cache — let MTPLX surface its own
+                # "not available locally" error via the repo id.
+                model_arg = model_ref
 
         # Use ``quickstart`` not ``start``. The ``start`` subcommand defaults
         # to MTPLX's interactive onboarding which on first run picks the

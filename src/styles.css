@@ -2053,6 +2053,40 @@ select.text-input {
   text-transform: uppercase;
 }
 
+.server-connect-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.server-connect-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  list-style: revert;
+}
+
+.server-connect-sub {
+  margin: 0;
+}
+
+.server-code-block {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0b0f16;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
 .conversion-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -4104,6 +4138,132 @@ select.text-input {
   line-height: 1.45;
 }
 
+/* HTML Challenge prompt library picker (Option C: tabs + search + cards) */
+.challenge-prompt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.challenge-prompt-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.challenge-prompt-tab:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.challenge-prompt-tab.active {
+  border-color: var(--accent);
+  background: var(--panel-alt);
+  color: var(--text);
+}
+
+.challenge-prompt-tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.challenge-prompt-tab.active .challenge-prompt-tab-count {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.challenge-prompt-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.challenge-prompt-search-row .text-input {
+  flex: 1 1 auto;
+}
+
+.challenge-prompt-result-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.challenge-prompt-body {
+  overflow: auto;
+  /* Cap the scroll region so the modal header/tabs/footer stay visible. */
+  max-height: 52vh;
+}
+
+.challenge-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.challenge-prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s, background 0.15s;
+}
+
+.challenge-prompt-card:hover {
+  border-color: var(--accent);
+  background: var(--panel-alt);
+  transform: translateY(-1px);
+}
+
+.challenge-prompt-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.challenge-prompt-card-category {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted-strong);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.challenge-prompt-card-summary {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.challenge-prompt-empty {
+  padding: 24px 0;
+  text-align: center;
+}
+
 .html-challenge-grid {
   display: grid;
   gap: 12px;
@@ -4628,6 +4788,110 @@ select.text-input {
   font-size: 1rem;
   line-height: 1;
   padding: 0;
+}
+
+.rag-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rag-enable-button {
+  padding: 2px 8px;
+  font-size: 0.74rem;
+}
+
+.run-from-hf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.run-from-hf-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.run-from-hf-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.run-from-hf-input-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.run-from-hf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0f16;
+}
+
+.run-from-hf-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.run-from-hf-msg {
+  margin: 0;
+}
+
+.import-models-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0d131b;
+}
+
+.import-models-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.import-models-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-models-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0f16;
+}
+
+.import-models-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.import-models-msg {
+  margin: 0;
 }
 
 .session-document-remove:hover {

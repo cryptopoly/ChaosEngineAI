@@ -21,6 +21,9 @@ const NUMERIC_KEYS = [
   "seed",
   "mirostatTau",
   "mirostatEta",
+  "xtcProbability",
+  "xtcThreshold",
+  "dryMultiplier",
 ] as const;
 
 function storageKey(sessionId: string): string {
@@ -95,6 +98,9 @@ export function samplerPayload(overrides: SamplerOverrides): Record<string, unkn
   if (overrides.mirostatMode != null) out.mirostatMode = overrides.mirostatMode;
   if (overrides.mirostatTau != null) out.mirostatTau = overrides.mirostatTau;
   if (overrides.mirostatEta != null) out.mirostatEta = overrides.mirostatEta;
+  if (overrides.xtcProbability != null) out.xtcProbability = overrides.xtcProbability;
+  if (overrides.xtcThreshold != null) out.xtcThreshold = overrides.xtcThreshold;
+  if (overrides.dryMultiplier != null) out.dryMultiplier = overrides.dryMultiplier;
   // Phase 2.2: parse raw schema text just-in-time. Mid-type / malformed
   // input drops out silently rather than 400-ing the request — the user
   // sees the in-panel error indicator while typing.

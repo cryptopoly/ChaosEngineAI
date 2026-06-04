@@ -215,6 +215,11 @@ export interface GeneratePayload {
   mirostatMode?: 0 | 1 | 2;
   mirostatTau?: number;
   mirostatEta?: number;
+  // Modern anti-repetition / variety samplers (tier 2). llama-server
+  // applies all; mlx-lm applies XTC via make_sampler and ignores DRY.
+  xtcProbability?: number;
+  xtcThreshold?: number;
+  dryMultiplier?: number;
   jsonSchema?: Record<string, unknown>;
   /**
    * Phase 3.3: when set, asks llama-server to return top-k logprobs
@@ -255,6 +260,9 @@ export interface SamplerOverrides {
   mirostatMode?: 0 | 1 | 2 | null;
   mirostatTau?: number | null;
   mirostatEta?: number | null;
+  xtcProbability?: number | null;
+  xtcThreshold?: number | null;
+  dryMultiplier?: number | null;
   /**
    * Phase 2.2: opt-in constrained decoding. Raw JSON-schema text the
    * user typed in the SamplerPanel. Parsed at send-time and forwarded

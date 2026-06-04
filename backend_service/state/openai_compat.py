@@ -236,6 +236,19 @@ def openai_chat_completion(
         oai_samplers["seed"] = request.seed
     if request.stop is not None:
         oai_samplers["stop"] = request.stop if isinstance(request.stop, list) else [request.stop]
+    # Parity with the native chat route's sampler set: min_p, repeat_penalty,
+    # and mirostat were silently dropped on the /v1 path. llama-server takes
+    # these key names natively; the MLX worker consumes min_p + repeat_penalty.
+    if request.min_p is not None:
+        oai_samplers["min_p"] = request.min_p
+    if request.repeat_penalty is not None:
+        oai_samplers["repeat_penalty"] = request.repeat_penalty
+    if request.mirostat is not None:
+        oai_samplers["mirostat"] = request.mirostat
+    if request.mirostat_tau is not None:
+        oai_samplers["mirostat_tau"] = request.mirostat_tau
+    if request.mirostat_eta is not None:
+        oai_samplers["mirostat_eta"] = request.mirostat_eta
 
     # Phase 2.13: pull a JSON schema out of OpenAI's response_format
     # envelope so the constrained-decode path lights up. Anything

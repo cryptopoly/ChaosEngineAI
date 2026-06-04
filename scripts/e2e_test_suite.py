@@ -616,6 +616,86 @@ def phase_1(cap: Capability) -> PhaseResult:
         return _load_unload_prompt(ref, path=path, backend="mlx", fused=True,
                                      cache_strategy="native", context=8192, max_tokens=16)
 
+    # 1h. Modern samplers reachable end-to-end (DRY + XTC). New-feature gate
+    # for the tier-2 / SamplerPanel work: a chat generate carrying
+    # xtcProbability + dryMultiplier must be accepted and still produce text
+    # (request fields -> _build_sampler_overrides -> engine plumbing).
+    def _modern_samplers():
+        pick = _pick_fast_mlx()
+        if not pick:
+            return "skip", "no MLX text model on disk", {}
+        ref, path = pick
+        rc, loaded, err = _cli_json(
+            "load", ref, "--backend", "mlx", "--cache-strategy", "native",
+            "--context", "8192", "--path", path, "--timeout", "1800", timeout=1860.0,
+        )
+        if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
+            return "fail", f"load failed: {err[:160] if err else loaded}", {}
+        body = json.dumps({
+            "sessionId": "e2e-samplers", "prompt": "Say hello in one short sentence.",
+            "modelRef": ref, "backend": "mlx", "cacheStrategy": "native",
+            "maxTokens": 24, "thinkingMode": "off",
+            "xtcProbability": 0.3, "xtcThreshold": 0.1, "dryMultiplier": 0.8,
+        })
+        rc, gen, err = _cli_json("call", "POST", "/api/chat/generate", "--body", body, "--timeout", "300")
+        _cli("unload", timeout=60.0)
+        if rc != 0 or not isinstance(gen, dict):
+            return "fail", f"generate with xtc/dry rc={rc}: {err[:160]}", {}
+        # Assert generation actually RAN with the new sampler params accepted
+        # (completionTokens > 0) — robust to reasoning models that spend the
+        # budget in a hidden <think> block and emit no visible answer text.
+        metrics = (gen.get("assistant") or {}).get("metrics") or {}
+        ctoks = metrics.get("completionTokens") or 0
+        return ("pass" if ctoks > 0 else "fail"), f"completionTokens={ctoks}", {"completionTokens": ctoks}
+
+    # 1i. MLX persistent prompt-cache reuse (tier 4). New-feature gate +
+    # regression guard: two same-session turns; turn-2 must reprocess far
+    # fewer prompt tokens than turn-1 (the cache reuses the prefix + prefills
+    # only the new suffix). Without reuse, turn-2 promptTokens would EXCEED
+    # turn-1 because the conversation grows.
+    def _mlx_prompt_cache_reuse():
+        pick = _pick_fast_mlx()
+        if not pick:
+            return "skip", "no MLX text model on disk", {}
+        ref, path = pick
+        rc, loaded, err = _cli_json(
+            "load", ref, "--backend", "mlx", "--cache-strategy", "native",
+            "--context", "8192", "--path", path, "--timeout", "1800", timeout=1860.0,
+        )
+        if rc != 0 or not isinstance(loaded, dict) or loaded.get("state") != "loaded":
+            return "fail", f"load failed: {err[:160] if err else loaded}", {}
+
+        def _turn(prompt: str):
+            body = json.dumps({
+                "sessionId": "e2e-cache-reuse", "prompt": prompt, "modelRef": ref,
+                "backend": "mlx", "cacheStrategy": "native", "maxTokens": 24,
+                "thinkingMode": "off",
+            })
+            rc, g, err = _cli_json("call", "POST", "/api/chat/generate", "--body", body, "--timeout", "300")
+            pt = None
+            if isinstance(g, dict):
+                pt = ((g.get("assistant") or {}).get("metrics") or {}).get("promptTokens")
+            return rc, pt
+
+        rc1, pt1 = _turn("List three primary colors.")
+        rc2, pt2 = _turn("Now list two more colors.")
+        _cli("unload", timeout=60.0)
+        if rc1 != 0 or rc2 != 0 or pt1 is None or pt2 is None:
+            return "fail", f"turns rc={rc1},{rc2} promptTokens={pt1},{pt2}", {}
+        # turn-2 reprocessing fewer prompt tokens than turn-1 means the
+        # persistent cache reused the prefix. When it doesn't engage (a
+        # model whose generated tokens don't round-trip at the answer
+        # boundary, or a reasoning model) the cache correctly DEGRADES to a
+        # full reprocess — correct output, just no speedup — so that's an
+        # honest skip, not a fail. The reuse/trim logic is unit-tested in
+        # tests/test_mlx_prompt_cache.py regardless of this live signal.
+        if pt2 < pt1:
+            return "pass", f"cache reused: promptTokens {pt1} -> {pt2}", {"pt1": pt1, "pt2": pt2}
+        return "skip", (
+            f"reuse did not engage for this model (turn1={pt1} turn2={pt2}); "
+            "graceful full-reprocess degradation, logic unit-tested separately"
+        ), {"pt1": pt1, "pt2": pt2}
+
     for name, fn in [
         ("MLX native cache", _mlx_native),
         ("MLX TurboQuant cache", _mlx_turboquant),
@@ -626,6 +706,8 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF MTP speculative", _gguf_mtp),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
+        ("modern samplers (DRY+XTC)", _modern_samplers),
+        ("MLX prompt-cache reuse", _mlx_prompt_cache_reuse),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

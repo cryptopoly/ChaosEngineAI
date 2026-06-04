@@ -658,7 +658,20 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                         if phase_event:
                             yield phase_event
                         full_text += event["token"]
-                        yield f"data: {json.dumps({'token': event['token']})}\n\n"
+                        if _coalesce_tokens:
+                            if not _tok["buf"]:
+                                _tok["started"] = time.perf_counter()
+                            _tok["buf"].append(event["token"])
+                            _tok["chars"] += len(event["token"])
+                            if (
+                                _tok["chars"] >= _COALESCE_CHARS
+                                or time.perf_counter() - _tok["started"] >= _COALESCE_SECS
+                            ):
+                                _f = _flush_tokens()
+                                if _f:
+                                    yield _f
+                        else:
+                            yield f"data: {json.dumps({'token': event['token']})}\n\n"
                         if len(full_text) > runaway_char_budget:
                             runaway_triggered = True
                             cancelled = True
@@ -667,8 +680,14 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                         phase_event = _maybe_emit_generating_phase()
                         if phase_event:
                             yield phase_event
+                        _f = _flush_tokens()
+                        if _f:
+                            yield _f
                         yield f"data: {json.dumps({'toolCallStart': event['tool_call_start']})}\n\n"
                     elif "tool_call_result" in event:
+                        _f = _flush_tokens()
+                        if _f:
+                            yield _f
                         agent_tool_calls.append(event["tool_call_result"])
                         yield f"data: {json.dumps({'toolCallResult': event['tool_call_result']})}\n\n"
                     elif event.get("done"):

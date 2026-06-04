@@ -620,6 +620,24 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
             ttft_seconds = round(time.perf_counter() - gen_start, 3)
             return f"data: {json.dumps({'phase': 'generating', 'ttftSeconds': ttft_seconds})}\n\n"
 
+        # Token coalescing: batch visible token frames so a fast decoder
+        # doesn't pay a json.dumps + SSE frame per token. Flush on size, a
+        # short time window, any non-token event, or stream end. Disabled
+        # when per-token logprobs are requested (they must stay 1:1 aligned).
+        _COALESCE_CHARS = 24
+        _COALESCE_SECS = 0.05
+        _coalesce_tokens = not (request.logprobs and int(request.logprobs) > 0)
+        _tok: dict[str, Any] = {"buf": [], "chars": 0, "started": 0.0}
+
+        def _flush_tokens() -> str:
+            if not _tok["buf"]:
+                return ""
+            merged = "".join(_tok["buf"])
+            _tok["buf"] = []
+            _tok["chars"] = 0
+            _tok["started"] = 0.0
+            return f"data: {json.dumps({'token': merged})}\n\n"
+
         try:
             if enable_tools:
                 from backend_service.agent import run_agent_loop_streaming
@@ -674,16 +692,35 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                         phase_event = _maybe_emit_generating_phase()
                         if phase_event:
                             yield phase_event
+                        _f = _flush_tokens()
+                        if _f:
+                            yield _f
                         full_reasoning += chunk.reasoning
                         yield f"data: {json.dumps({'reasoning': chunk.reasoning})}\n\n"
                     if chunk.reasoning_done:
+                        _f = _flush_tokens()
+                        if _f:
+                            yield _f
                         yield f"data: {json.dumps({'reasoningDone': True})}\n\n"
                     if chunk.text:
                         phase_event = _maybe_emit_generating_phase()
                         if phase_event:
                             yield phase_event
                         full_text += chunk.text
-                        yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+                        if _coalesce_tokens:
+                            if not _tok["buf"]:
+                                _tok["started"] = time.perf_counter()
+                            _tok["buf"].append(chunk.text)
+                            _tok["chars"] += len(chunk.text)
+                            if (
+                                _tok["chars"] >= _COALESCE_CHARS
+                                or time.perf_counter() - _tok["started"] >= _COALESCE_SECS
+                            ):
+                                _f = _flush_tokens()
+                                if _f:
+                                    yield _f
+                        else:
+                            yield f"data: {json.dumps({'token': chunk.text})}\n\n"
                         # Phase 3.3: forward per-token logprobs when
                         # the inference layer captured them.
                         if chunk.token_logprobs:
@@ -751,6 +788,9 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                                             f"{p_avail:.1f} GB, "
                                             f"pressure={p_pressure:.0f}%.",
                                         )
+                                        _f = _flush_tokens()
+                                        if _f:
+                                            yield _f
                                         yield (
                                             "data: "
                                             + json.dumps({
@@ -783,6 +823,9 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                                             "chat", "warning",
                                             f"[{model_tag}] Thermal warning: critical.",
                                         )
+                                        _f = _flush_tokens()
+                                        if _f:
+                                            yield _f
                                         yield (
                                             "data: "
                                             + json.dumps({
@@ -815,10 +858,19 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
                 chaosengine.active_requests = max(0, chaosengine.active_requests - 1)
                 chaosengine.add_log("chat", "error", f"[{model_tag}] Streaming failed: {exc}")
             chaosengine.clear_chat_cancel(session_id_for_cancel)
+            _f = _flush_tokens()
+            if _f:
+                yield _f
             yield f"data: {json.dumps({'error': str(exc)})}\n\n"
             return
         finally:
             chaosengine.clear_chat_cancel(session_id_for_cancel)
+
+        # Flush any tokens still buffered by the coalescer before the
+        # terminal done / cancelled events (covers normal end + all breaks).
+        _f = _flush_tokens()
+        if _f:
+            yield _f
 
         if cancelled:
             yield f"data: {json.dumps({'cancelled': True})}\n\n"

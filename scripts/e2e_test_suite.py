@@ -295,6 +295,25 @@ def phase_0(cap: Capability) -> PhaseResult:
         ok = ("owner/name" in blob) or ("400" in blob)
         return ("pass" if ok else "fail"), ("" if ok else f"unexpected: {err[:160]}"), {}
 
+    # New-feature gate for the frontier families added this release. Asserts
+    # they surface in the live Discover catalog (/api/workspace) with their
+    # full variant set — a shape check, no model load (these are 150 GB+).
+    def _new_model_families():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
+        missing = []
+        for fid in ("deepseek-v4", "glm-5"):
+            fam = fams.get(fid)
+            if fam is None:
+                missing.append(f"{fid}: absent")
+            elif len(fam.get("variants") or []) < 4:
+                missing.append(f"{fid}: only {len(fam.get('variants') or [])} variants")
+        if missing:
+            return "fail", "; ".join(missing)[:200], {"missing": missing}
+        return "pass", "", {"families": ["deepseek-v4", "glm-5"]}
+
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
         ("mtplx-status", _mtplx), ("inventory", _inventory),
@@ -303,6 +322,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("ollama-compat (#3)", _ollama_compat),
         ("model import scan (#4)", _model_import_scan),
         ("run-from-hf guard (#5)", _resolve_hf_guard),
+        ("new model families (DeepSeek V4 / GLM-5)", _new_model_families),
     ]:
         phase.checks.append(_check(name, fn))
     phase.status = "fail" if any(c.status == "fail" for c in phase.checks) else "pass"

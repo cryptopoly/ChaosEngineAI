@@ -37,7 +37,7 @@ unic-langid = "0.9"
 # without rebuilding the app with ``cargo tauri dev``. We pair this
 # with the per-tab ``ErrorBoundary`` so JS exceptions stay recoverable
 # AND inspectable.
-tauri = { version = "~2.11.0", features = ["devtools"] }
+tauri = { version = "~2.11.2", features = ["devtools"] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"

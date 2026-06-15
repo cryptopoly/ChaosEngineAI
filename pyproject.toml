@@ -35,13 +35,13 @@ mlx-lm = [
 # AutoProcessor); without it ``mlx_vlm.load`` raises ImportError on
 # the Qwen2.5-VL family during processor build.
 mlx-vlm = [
-    "mlx-vlm>=0.6.0",
+    "mlx-vlm>=0.6.3",
     "torchvision>=0.20",
 ]
-triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "vllm>=0.22.0"]
+triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "vllm>=0.23.0"]
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "mlx-lm>=0.22.0"]
-turboquant = ["turboquant-mlx-full>=0.6.2"]
-vllm = ["vllm>=0.22.0"]
+turboquant = ["turboquant-mlx-full>=0.8.0"]
+vllm = ["vllm>=0.23.0"]
 dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"]
 dflash = ["dflash>=0.1.0"]
 desktop = [

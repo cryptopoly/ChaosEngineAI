@@ -54,7 +54,7 @@ libc = "0.2"
 # add an explicit dep so we can name the features we need.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
-    "Win32_Foundation",       # HANDLE, CloseHandle
-    "Win32_System_JobObjects", # CreateJobObjectW, SetInformationJobObject,
-                                # AssignProcessToJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+    "Win32_Foundation",         # HANDLE, CloseHandle
+    "Win32_System_JobObjects",  # CreateJobObjectW, SetInformationJobObject, AssignProcessToJobObject
+    "Win32_System_Threading",   # JOBOBJECT_EXTENDED_LIMIT_INFORMATION (gated here in 0.61.2+)
 ] }

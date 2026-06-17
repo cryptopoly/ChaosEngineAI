@@ -485,7 +485,11 @@ def run_agent_loop_streaming(
             # consumed so the assistant bubble doesn't show raw call
             # JSON next to the rendered ToolCallCard (FU-040).
             text = _strip_tool_call_xml(result.text)
-            chunk_size = 4
+            # The final answer is already fully computed (tool-calling turns
+            # are non-streaming), so the old 4-char dribble just added fake
+            # latency + yields. Emit in larger chunks; the SSE layer coalesces
+            # these further and the user sees the answer near-instantly.
+            chunk_size = 48
             for i in range(0, len(text), chunk_size):
                 yield {"token": text[i:i + chunk_size]}
 

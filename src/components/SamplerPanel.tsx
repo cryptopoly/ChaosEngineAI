@@ -195,6 +195,39 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
             onChange={(v) => patch("repeatPenalty", v)}
           />
           <NumericInput
+            label="xtc_probability"
+            hint="XTC: chance to drop top tokens for variety (0 = off)"
+            value={overrides.xtcProbability}
+            min={0}
+            max={1}
+            step={0.05}
+            defaultLabel="off"
+            disabled={disabled}
+            onChange={(v) => patch("xtcProbability", v)}
+          />
+          <NumericInput
+            label="xtc_threshold"
+            hint="XTC: only fires when the top token prob is at least this"
+            value={overrides.xtcThreshold}
+            min={0}
+            max={1}
+            step={0.01}
+            defaultLabel="0.1"
+            disabled={disabled}
+            onChange={(v) => patch("xtcThreshold", v)}
+          />
+          <NumericInput
+            label="dry_multiplier"
+            hint="DRY anti-repetition strength (0 = off; llama.cpp only)"
+            value={overrides.dryMultiplier}
+            min={0}
+            max={4}
+            step={0.1}
+            defaultLabel="off"
+            disabled={disabled}
+            onChange={(v) => patch("dryMultiplier", v)}
+          />
+          <NumericInput
             label="seed"
             hint="Deterministic decode (any non-negative int)"
             value={overrides.seed}

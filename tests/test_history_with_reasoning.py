@@ -9,6 +9,7 @@ tags so reasoning-capable models can pick up the chain across turns.
 import unittest
 
 from backend_service.state import _build_history_with_reasoning
+from backend_service.state._helpers import _estimate_tokens, _history_token_budget
 
 
 class BuildHistoryWithReasoningTests(unittest.TestCase):
@@ -63,6 +64,62 @@ class BuildHistoryWithReasoningTests(unittest.TestCase):
         self.assertEqual([h["role"] for h in history], ["user", "assistant", "user", "assistant"])
         self.assertIn("R1", history[1]["text"])
         self.assertIn("R2", history[3]["text"])
+
+
+class HistoryTokenWindowTests(unittest.TestCase):
+    def test_token_budget_none_keeps_all(self):
+        messages = [{"role": "user", "text": "x" * 300} for _ in range(6)]
+        history = _build_history_with_reasoning(messages, preserve_reasoning=False, token_budget=None)
+        self.assertEqual(len(history), 6)
+
+    def test_windows_oldest_turns_out(self):
+        # Each 30-char text ~= 11 estimated tokens; budget 25 keeps 2 newest.
+        messages = [
+            {"role": "user", "text": "a" * 30},
+            {"role": "assistant", "text": "b" * 30},
+            {"role": "user", "text": "c" * 30},
+            {"role": "assistant", "text": "d" * 30},
+        ]
+        history = _build_history_with_reasoning(messages, preserve_reasoning=False, token_budget=25)
+        self.assertEqual([h["text"] for h in history], ["c" * 30, "d" * 30])
+
+    def test_always_keeps_latest_turn_even_if_over_budget(self):
+        messages = [{"role": "user", "text": "z" * 300}]
+        history = _build_history_with_reasoning(messages, preserve_reasoning=False, token_budget=10)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["text"], "z" * 300)
+
+    def test_system_messages_always_kept(self):
+        messages = [
+            {"role": "system", "text": "s" * 30},
+            {"role": "user", "text": "u" * 300},
+            {"role": "assistant", "text": "a" * 300},
+            {"role": "user", "text": "n" * 9},
+        ]
+        history = _build_history_with_reasoning(messages, preserve_reasoning=False, token_budget=20)
+        roles = [h["role"] for h in history]
+        self.assertIn("system", roles)
+        self.assertEqual(history[-1]["text"], "n" * 9)
+        self.assertNotIn("u" * 300, [h["text"] for h in history])
+
+    def test_estimate_tokens_is_conservative(self):
+        # ~3 chars/token (over-estimates English so the window stays safe).
+        self.assertEqual(_estimate_tokens(""), 1)
+        self.assertEqual(_estimate_tokens("abc"), 2)
+        self.assertEqual(_estimate_tokens("a" * 30), 11)
+
+    def test_history_token_budget_reserves_and_floors(self):
+        budget = _history_token_budget(
+            context_tokens=2000, max_tokens=256, system_prompt="x" * 30, prompt="y" * 30
+        )
+        # 2000 - (11 + 11 + 256 + 512) = 1210
+        self.assertEqual(budget, 1210)
+
+    def test_history_token_budget_floor_512(self):
+        budget = _history_token_budget(
+            context_tokens=100, max_tokens=256, system_prompt=None, prompt=None
+        )
+        self.assertEqual(budget, 512)
 
 
 if __name__ == "__main__":

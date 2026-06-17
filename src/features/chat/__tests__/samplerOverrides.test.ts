@@ -122,6 +122,17 @@ describe("samplerPayload projection", () => {
     expect(samplerPayload({ topP: 0.9, topK: null, seed: null })).toEqual({ topP: 0.9 });
   });
 
+  it("projects modern samplers (xtc + dry)", () => {
+    expect(
+      samplerPayload({ xtcProbability: 0.5, xtcThreshold: 0.1, dryMultiplier: 0.8 }),
+    ).toEqual({ xtcProbability: 0.5, xtcThreshold: 0.1, dryMultiplier: 0.8 });
+  });
+
+  it("round-trips modern samplers through storage", () => {
+    writeSamplerOverrides("sx", { xtcProbability: 0.5, dryMultiplier: 0.8 });
+    expect(readSamplerOverrides("sx")).toEqual({ xtcProbability: 0.5, dryMultiplier: 0.8 });
+  });
+
   it("parses jsonSchemaText into jsonSchema when valid", () => {
     const schemaText = '{"type":"object","properties":{"answer":{"type":"string"}}}';
     expect(samplerPayload({ jsonSchemaText: schemaText })).toEqual({

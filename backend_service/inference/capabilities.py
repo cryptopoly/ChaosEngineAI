@@ -126,12 +126,17 @@ def _probe_native_backends() -> BackendCapabilities:
 
     code, payload, message = _json_subprocess(
         [python_executable, "-m", "backend_service.mlx_worker", "probe"],
-        # FU-068: cold ``mlx_lm + mlx + mlx_vlm`` import has crept to
-        # ~12.4 s on M4 Max / Python 3.11 (measured 2026-05-25 v0.9.3),
-        # blowing the original 12.0 s ceiling and causing intermittent
-        # E2E Phase 1 fails on a freshly-booted backend. Bump to 20 s
-        # for ~60% headroom over today's cold-boot envelope.
-        timeout=20.0,
+        # FU-068: cold ``mlx_lm + mlx + mlx_vlm`` import keeps creeping —
+        # 12.0 s (orig) → 12.4 s (2026-05-25 v0.9.3, → 20 s) → 17.5 s solo
+        # on M4 Max / Python 3.11 (2026-06-02). Under a sustained E2E run
+        # (whole suite ~3x slower from concurrent model loads + thermal
+        # throttle) the probe is re-issued per MLX cell and measured
+        # ~31 s, blowing both the 20 s and 30 s ceilings (different cell
+        # each time). 45 s clears the ~31 s loaded peak with headroom and
+        # is still bounded enough to surface a genuinely wedged worker.
+        # Follow-up: cache the capability probe so it isn't re-run per
+        # load under load (the real inefficiency behind the creep).
+        timeout=45.0,
     )
 
     if payload is None:

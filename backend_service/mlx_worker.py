@@ -59,6 +59,7 @@ from backend_service.mlx_worker_loader import resolve_local_snapshot
 from backend_service import mlx_worker_lifecycle as _lifecycle
 from backend_service import mlx_worker_speculative as _speculative
 from backend_service import mlx_worker_generate as _generate
+from backend_service import mlx_worker_prompt_cache as _prompt_cache
 
 # Phase 1f-4: model + runtime introspection helpers now live in
 # ``backend_service.mlx_worker_diagnostics``. Re-export so existing imports
@@ -127,6 +128,13 @@ class WorkerState:
         # delimiters via ``reasoning_delimiters_for``. Default
         # (``<think>...</think>``) still applies when ``None``.
         self._loaded_model_ref: str | None = None
+        # Tier 4: persistent single-slot prompt cache for native-strategy chat
+        # so follow-up turns prefill only the new suffix. Managed by
+        # backend_service.mlx_worker_prompt_cache; invalidated on any model
+        # load / unload / profile change.
+        self._persist_cache: Any | None = None
+        self._persist_tokens: list[int] = []
+        self._persist_cache_model_ref: str | None = None
 
     def handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
         op = request.get("op")
@@ -148,12 +156,15 @@ class WorkerState:
         raise ValueError(f"Unsupported worker operation: {op}")
 
     def load_model(self, request: dict[str, Any]) -> dict[str, Any]:
+        _prompt_cache.invalidate(self)
         return _lifecycle.load_model(self, request)
 
     def unload_model(self) -> dict[str, Any]:
+        _prompt_cache.invalidate(self)
         return _lifecycle.unload_model(self)
 
     def update_profile(self, request: dict[str, Any]) -> dict[str, Any]:
+        _prompt_cache.invalidate(self)
         return _lifecycle.update_profile(self, request)
 
     def _apply_cache_profile(

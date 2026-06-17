@@ -40,12 +40,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout main repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: pip
@@ -59,7 +59,7 @@ jobs:
         run: mkdocs build --strict
 
       - name: Checkout marketing site repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cryptopoly/ChaosEngineAI-Site
           ssh-key: ${{ secrets.SITE_REPO_DEPLOY_KEY }}

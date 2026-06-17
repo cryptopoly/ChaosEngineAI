@@ -1,6 +1,6 @@
 [package]
 name = "chaosengineai"
-version = "0.9.3"
+version = "0.9.4"
 description = "ChaosEngineAI desktop shell for local AI model inference"
 authors = ["OpenAI Codex"]
 edition = "2021"
@@ -28,7 +28,7 @@ tar = "0.4"
 # complements it for runtime-composed strings that need ICU-style plurals
 # / select / select-ordinal — e.g. updater progress "{n, plural, one {# minute
 # remaining} other {# minutes remaining}}" where ``n`` only exists at runtime.
-rust-i18n = "3"
+rust-i18n = "4"
 fluent-bundle = "0.16"
 unic-langid = "0.9"
 # FU-037 (2026-05-10): ``devtools`` flips on the WebKit inspector in
@@ -37,7 +37,7 @@ unic-langid = "0.9"
 # without rebuilding the app with ``cargo tauri dev``. We pair this
 # with the per-tab ``ErrorBoundary`` so JS exceptions stay recoverable
 # AND inspectable.
-tauri = { version = "~2.11.0", features = ["devtools"] }
+tauri = { version = "~2.11.2", features = ["devtools"] }
 tauri-plugin-dialog = "2.7"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
@@ -54,7 +54,7 @@ libc = "0.2"
 # add an explicit dep so we can name the features we need.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
-    "Win32_Foundation",       # HANDLE, CloseHandle
-    "Win32_System_JobObjects", # CreateJobObjectW, SetInformationJobObject,
-                                # AssignProcessToJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+    "Win32_Foundation",         # HANDLE, CloseHandle
+    "Win32_System_JobObjects",  # CreateJobObjectW, SetInformationJobObject, AssignProcessToJobObject
+    "Win32_System_Threading",   # JOBOBJECT_EXTENDED_LIMIT_INFORMATION (gated here in 0.61.2+)
 ] }

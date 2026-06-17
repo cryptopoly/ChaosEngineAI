@@ -10,6 +10,9 @@ export type TabId =
   | "video-discover"
   | "video-studio"
   | "video-gallery"
+  | "voice-studio"
+  | "voice-models"
+  | "voice-gallery"
   | "conversion"
   | "chat"
   | "chat-compare"
@@ -28,6 +31,7 @@ export type SidebarGroupId =
   | "models"
   | "images"
   | "video"
+  | "voice"
   | "benchmarks"
   | "tools";
 

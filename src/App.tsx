@@ -4,6 +4,7 @@ import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
+  getVoiceRuntime,
   loadModel,
   getWorkspace,
   resolveApiToken,
@@ -51,12 +52,16 @@ import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
 import { VideoModelsTab } from "./features/video/VideoModelsTab";
 import { VideoStudioTab } from "./features/video/VideoStudioTab";
 import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
+import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
+import { VoiceModelsTab } from "./features/voice/VoiceModelsTab";
+import { VoiceGalleryTab } from "./features/voice/VoiceGalleryTab";
 import type {
   ChatSession,
   LibraryItem,
   LoadModelActionResult,
   ModelVariant,
   TabId,
+  VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
 import { tabs } from "./constants";
@@ -131,6 +136,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
@@ -773,6 +779,20 @@ export default function App() {
       cancelled = true;
     };
   }, [backendOnline, tauriBackend?.apiBase, tauriBackend?.apiToken, workspace.server.port]);
+
+  // Voice runtime — one-shot fetch when backend comes online.
+  // Not polled aggressively; user can navigate to Voice Studio to refresh.
+  useEffect(() => {
+    if (!backendOnline) {
+      setVoiceRuntime(null);
+      return;
+    }
+    let cancelled = false;
+    void getVoiceRuntime()
+      .then((rt) => { if (!cancelled) setVoiceRuntime(rt); })
+      .catch(() => { /* backend may not have the voice route yet */ });
+    return () => { cancelled = true; };
+  }, [backendOnline]);
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -1546,6 +1566,27 @@ export default function App() {
         onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
       />
     );
+  } else if (activeTab === "voice-studio") {
+    content = (
+      <VoiceStudioTab
+        voiceRuntime={voiceRuntime}
+        backendOnline={backendOnline}
+        onSendToChat={(text) => {
+          void setActiveTab("chat");
+          // TODO: pre-fill chat composer with text (requires a chat hook prop)
+        }}
+        onTabChange={setActiveTab}
+      />
+    );
+  } else if (activeTab === "voice-models") {
+    content = (
+      <VoiceModelsTab
+        voiceRuntime={voiceRuntime}
+        backendOnline={backendOnline}
+      />
+    );
+  } else if (activeTab === "voice-gallery") {
+    content = <VoiceGalleryTab />;
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab

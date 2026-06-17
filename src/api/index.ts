@@ -618,3 +618,10 @@ export type {
   ResolvedHfModel,
   SearchResults,
 } from "./models";
+
+export {
+  getVoiceRuntime,
+  transcribeAudio,
+  synthesizeSpeech,
+} from "./voice";
+export type { TranscribeResult } from "./voice";

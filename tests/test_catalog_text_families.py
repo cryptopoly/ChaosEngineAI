@@ -23,7 +23,10 @@ class NewTextFamiliesTests(unittest.TestCase):
     def setUp(self):
         self.by_id = {f["id"]: f for f in MODEL_FAMILIES}
 
-    _ALL_NEW_FAMILIES = ("deepseek-v4", "glm-5", "gemma-4", "minimax-m2", "ornith-1")
+    _ALL_NEW_FAMILIES = (
+        "deepseek-v4", "glm-5", "gemma-4", "minimax-m2", "ornith-1",
+        "kimi-k2-6", "llama-4-scout", "minimax-m3", "mistral-large-3",
+    )
 
     def test_all_new_families_present(self):
         for fid in self._ALL_NEW_FAMILIES:
@@ -47,7 +50,8 @@ class NewTextFamiliesTests(unittest.TestCase):
         # configs — must not advertise vision (broken composer affordance if so).
         # Ornith-1.0 inherits Qwen 3.5's vision_config but DeepReinforce ships it
         # text-only (agentic coding), so it must not advertise vision either.
-        for fid in ("deepseek-v4", "glm-5", "minimax-m2", "ornith-1"):
+        # Mistral Large 3 is text-only (the Pixtral line carries Mistral's vision).
+        for fid in ("deepseek-v4", "glm-5", "minimax-m2", "ornith-1", "mistral-large-3"):
             fam = self.by_id[fid]
             self.assertNotIn("vision", fam["capabilities"], f"{fid} family vision tag")
             for v in fam["variants"]:
@@ -59,6 +63,25 @@ class NewTextFamiliesTests(unittest.TestCase):
         self.assertIn("vision", fam["capabilities"])
         for v in fam["variants"]:
             self.assertIn("vision", v["capabilities"], f"gemma-4/{v['id']} missing vision tag")
+
+    def test_multimodal_chat_families_carry_vision(self):
+        # Kimi K2.6 (KimiK25ForConditionalGeneration), Llama 4 Scout
+        # (Llama4ForConditionalGeneration), and MiniMax M3 (minimax_m3_vl) all
+        # ship a functional vision encoder — verified against their live HF
+        # config.json (vision_config present, ConditionalGeneration arch).
+        for fid in ("kimi-k2-6", "llama-4-scout", "minimax-m3"):
+            fam = self.by_id[fid]
+            self.assertIn("vision", fam["capabilities"], f"{fid} family missing vision tag")
+            for v in fam["variants"]:
+                self.assertIn("vision", v["capabilities"], f"{fid}/{v['id']} missing vision tag")
+
+    def test_long_context_chat_families(self):
+        # Verify the headline context windows match the live config.json
+        # max_position_embeddings: Llama 4 Scout = 10M, MiniMax M3 = 1M.
+        for v in self.by_id["llama-4-scout"]["variants"]:
+            self.assertEqual(v["contextWindow"], "10M", f"{v['id']} Scout context wrong")
+        for v in self.by_id["minimax-m3"]["variants"]:
+            self.assertEqual(v["contextWindow"], "1M", f"{v['id']} M3 context wrong")
 
     def test_gemma4_contexts(self):
         # E2B = 128K, 31B = 256K — verify the catalog reflects the config.json values.

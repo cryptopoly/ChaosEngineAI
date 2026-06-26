@@ -23,7 +23,7 @@ class NewTextFamiliesTests(unittest.TestCase):
     def setUp(self):
         self.by_id = {f["id"]: f for f in MODEL_FAMILIES}
 
-    _ALL_NEW_FAMILIES = ("deepseek-v4", "glm-5", "gemma-4", "minimax-m2")
+    _ALL_NEW_FAMILIES = ("deepseek-v4", "glm-5", "gemma-4", "minimax-m2", "ornith-1")
 
     def test_all_new_families_present(self):
         for fid in self._ALL_NEW_FAMILIES:
@@ -45,7 +45,9 @@ class NewTextFamiliesTests(unittest.TestCase):
     def test_text_only_families_have_no_vision(self):
         # DeepSeek V4 / GLM-5 / MiniMax M2 carry no vision_config in their HF
         # configs — must not advertise vision (broken composer affordance if so).
-        for fid in ("deepseek-v4", "glm-5", "minimax-m2"):
+        # Ornith-1.0 inherits Qwen 3.5's vision_config but DeepReinforce ships it
+        # text-only (agentic coding), so it must not advertise vision either.
+        for fid in ("deepseek-v4", "glm-5", "minimax-m2", "ornith-1"):
             fam = self.by_id[fid]
             self.assertNotIn("vision", fam["capabilities"], f"{fid} family vision tag")
             for v in fam["variants"]:

@@ -235,7 +235,12 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", f"workspace fetch failed: {err[:160]}", {}
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
         missing = []
-        for fid in ("qwen-3-5", "qwen-3-6"):
+        # Qwen 3.5/3.6 (FU-072) plus this release's multimodal frontier families:
+        # Kimi K2.6 (KimiK25ForConditionalGeneration), Llama 4 Scout
+        # (Llama4ForConditionalGeneration), MiniMax M3 (minimax_m3_vl) — all
+        # carry a functional vision encoder, verified against live config.json.
+        vision_families = ("qwen-3-5", "qwen-3-6", "kimi-k2-6", "llama-4-scout", "minimax-m3")
+        for fid in vision_families:
             fam = fams.get(fid)
             if fam is None:
                 missing.append(f"{fid}: family absent")
@@ -249,9 +254,15 @@ def phase_0(cap: Capability) -> PhaseResult:
             ]
             if no_vision_variants:
                 missing.append(f"{fid}: variants without vision: {no_vision_variants[:3]}")
+        # Ornith 1.0 inherits Qwen 3.5's vision_config but ships text-only
+        # (agentic coding) — assert it must NOT advertise vision, guarding the
+        # FU-040-class broken-composer-button regression.
+        ornith = fams.get("ornith-1")
+        if ornith is not None and "vision" in (ornith.get("capabilities") or []):
+            missing.append("ornith-1: must be text-only, but advertises vision")
         if missing:
             return "fail", "; ".join(missing)[:300], {"missing": missing}
-        return "pass", "", {"checkedFamilies": ["qwen-3-5", "qwen-3-6"]}
+        return "pass", "", {"checkedFamilies": list(vision_families) + ["ornith-1 (text-only)"]}
 
     # Competitor-parity quick wins (#1 RAG, #3 Ollama-compat, #4 import,
     # #5 run-any-HF). Read-only liveness/shape smoke — no network, no
@@ -298,21 +309,67 @@ def phase_0(cap: Capability) -> PhaseResult:
     # New-feature gate for the frontier families added this release. Asserts
     # they surface in the live Discover catalog (/api/workspace) with their
     # full variant set — a shape check, no model load (these are 150 GB+).
+    # Per-family minimum variant counts keep the assertion honest as the
+    # catalog evolves (Mistral Large 3 ships 2 variants, Ornith 5, etc.).
     def _new_model_families():
         rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
         if rc != 0 or not isinstance(payload, dict):
             return "fail", f"workspace fetch failed: {err[:160]}", {}
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
+        expected = {
+            "deepseek-v4": 4, "glm-5": 4, "minimax-m2": 3,
+            "ornith-1": 5, "kimi-k2-6": 3, "llama-4-scout": 3,
+            "minimax-m3": 3, "mistral-large-3": 2,
+        }
         missing = []
-        for fid in ("deepseek-v4", "glm-5"):
+        for fid, min_variants in expected.items():
             fam = fams.get(fid)
             if fam is None:
                 missing.append(f"{fid}: absent")
-            elif len(fam.get("variants") or []) < 4:
-                missing.append(f"{fid}: only {len(fam.get('variants') or [])} variants")
+            elif len(fam.get("variants") or []) < min_variants:
+                missing.append(f"{fid}: {len(fam.get('variants') or [])}<{min_variants} variants")
         if missing:
-            return "fail", "; ".join(missing)[:200], {"missing": missing}
-        return "pass", "", {"families": ["deepseek-v4", "glm-5"]}
+            return "fail", "; ".join(missing)[:300], {"missing": missing}
+        return "pass", "", {"families": sorted(expected)}
+
+    # Gemma 4 dedup gate: the family must appear exactly once (a prior staging
+    # collision rendered two "Gemma 4" cards) with the full 10-variant union.
+    def _gemma4_single_family():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        gemmas = [f for f in (payload.get("featuredModels") or []) if f.get("id") == "gemma-4"]
+        if len(gemmas) != 1:
+            return "fail", f"expected exactly 1 gemma-4 family, got {len(gemmas)}", {"count": len(gemmas)}
+        nvar = len(gemmas[0].get("variants") or [])
+        if nvar < 10:
+            return "fail", f"gemma-4 has {nvar} variants, expected the 10-variant union", {"variants": nvar}
+        return "pass", "", {"gemma4Variants": nvar}
+
+    # Voice I/O feature gate (new this release). Read-only liveness + shape:
+    # /api/voice/runtime must report STT/TTS availability + the model/voice
+    # catalogs. No transcription/synthesis is run (would need a recorded clip
+    # + a downloaded Whisper/Kokoro model) — this asserts the routes are wired
+    # and the runtime probe returns the documented contract.
+    def _voice_runtime():
+        rc, payload, err = _cli_json("call", "GET", "/api/voice/runtime", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"voice runtime fetch failed: {err[:160]}", {}
+        required = {"sttAvailable", "ttsAvailable", "platform", "sttModels", "ttsVoices"}
+        absent = required - set(payload)
+        if absent:
+            return "fail", f"voice runtime missing keys: {sorted(absent)}", {"keys": sorted(payload)}
+        if not isinstance(payload.get("sttModels"), list) or not payload["sttModels"]:
+            return "fail", "voice runtime sttModels empty/not-a-list", {}
+        if not isinstance(payload.get("ttsVoices"), list) or not payload["ttsVoices"]:
+            return "fail", "voice runtime ttsVoices empty/not-a-list", {}
+        return "pass", "", {
+            "platform": payload.get("platform"),
+            "sttAvailable": payload.get("sttAvailable"),
+            "ttsAvailable": payload.get("ttsAvailable"),
+            "sttModels": len(payload["sttModels"]),
+            "ttsVoices": len(payload["ttsVoices"]),
+        }
 
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
@@ -322,7 +379,9 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("ollama-compat (#3)", _ollama_compat),
         ("model import scan (#4)", _model_import_scan),
         ("run-from-hf guard (#5)", _resolve_hf_guard),
-        ("new model families (DeepSeek V4 / GLM-5)", _new_model_families),
+        ("new model families (frontier + Ornith)", _new_model_families),
+        ("gemma-4 single family (dedup)", _gemma4_single_family),
+        ("voice I/O runtime", _voice_runtime),
     ]:
         phase.checks.append(_check(name, fn))
     phase.status = "fail" if any(c.status == "fail" for c in phase.checks) else "pass"
@@ -862,6 +921,20 @@ def phase_4(cap: Capability) -> PhaseResult:
             return "fail", "catalog fetch failed", {}
         return "pass", "", {"families": len(payload.get("families") or [])}
 
+    # New-feature gate: the image families added this release (Qwen-Image,
+    # Z-Image Turbo, FLUX.2) must surface in the live image catalog with a
+    # diffusers runtime — they were promoted out of FU-061 "watching upstream"
+    # once diffusers 0.38 shipped their pipeline classes. Shape check only.
+    def _new_image_families():
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("families") or [])}
+        missing = [fid for fid in ("qwen-image", "z-image", "flux-2") if fid not in fams]
+        if missing:
+            return "fail", f"image families absent: {missing}", {"present": sorted(fams)}
+        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+
     def _library():
         rc, payload, _ = _cli_json("image-library", timeout=15.0)
         if rc != 0 or not isinstance(payload, dict):
@@ -911,7 +984,11 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
-    for name, fn in [("catalog", _catalog), ("library", _library), ("runtime", _runtime), ("generate", _generate)]:
+    for name, fn in [
+        ("catalog", _catalog),
+        ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("library", _library), ("runtime", _runtime), ("generate", _generate),
+    ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")

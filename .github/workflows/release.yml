@@ -29,7 +29,7 @@ jobs:
     outputs:
       release_id: ${{ steps.find-or-create.outputs.result }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Find or create release
         id: find-or-create
         uses: actions/github-script@v9
@@ -113,7 +113,7 @@ jobs:
     name: Build (${{ matrix.os }})
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'
@@ -304,7 +304,7 @@ jobs:
     needs: [create-release, build]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}

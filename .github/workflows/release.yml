@@ -147,7 +147,7 @@ jobs:
           key: cargo-release-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: cargo-release-${{ matrix.os }}-
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: matrix.platform != 'darwin'
         with:
           python-version: ${{ env.PYTHON_VERSION }}

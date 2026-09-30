@@ -699,6 +699,35 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", f"MTP-GGUF + spec loaded but note doesn't report MTP active: {note[:160]}", detail
         return "pass", "", detail
 
+    # 1e3. llama.cpp speculative lane for a plain GGUF (FU-089). Net-new
+    # check: with --spec on a non-MTP GGUF the engine must pick a drafter
+    # sidecar (dflash-/dspark-/eagle3-/mtp- beside the file) or fall back
+    # to draft-free ngram-mod — and say which in the runtime note. Also
+    # guards the frontend fix where GGUF spec requests were cleared.
+    def _gguf_spec_lane():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        plain = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "mtp" not in ref.lower() and "mtp" not in Path(p).name.lower()
+        ]
+        if not plain:
+            return "skip", "no non-MTP GGUF on disk", {}
+        ref, gguf_path = plain[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=600.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        low = (detail.get("runtimeNote") or "").lower()
+        if "speculative decoding active" not in low:
+            return "fail", f"spec requested but note reports no active lane: {low[:160]}", detail
+        return "pass", "", detail
+
     # 1f. Long context cache preview
     def _long_context_preview():
         pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "Qwen3") \
@@ -755,7 +784,9 @@ def phase_1(cap: Capability) -> PhaseResult:
         ctoks = metrics.get("completionTokens") or 0
         return ("pass" if ctoks > 0 else "fail"), f"completionTokens={ctoks}", {"completionTokens": ctoks}
 
-    # 1i. MLX persistent prompt-cache reuse (tier 4). New-feature gate +
+    # 1i. MLX persistent prompt-cache reuse (tier 4; hybrid models via the
+    # FU-090 recurrent checkpoint — the default Qwen3.6-35B-A3B pick is a
+    # hybrid GDN model, so this now exercises that path). New-feature gate +
     # regression guard: two same-session turns; turn-2 must reprocess far
     # fewer prompt tokens than turn-1 (the cache reuses the prefix + prefills
     # only the new suffix). Without reuse, turn-2 promptTokens would EXCEED
@@ -811,6 +842,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + MTPLX speculative", _mtplx),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
+        ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),
@@ -1340,7 +1372,8 @@ def phase_8(cap: Capability) -> PhaseResult:
         if not runtime_payload.get("sttAvailable"):
             return "skip", "STT backend not installed", {}
         installed = [
-            m for m in (runtime_payload.get("sttModels") or []) if m.get("installed")
+            m for m in (runtime_payload.get("sttModels") or [])
+            if m.get("installed") and m.get("backendInstalled") is not False
         ]
         if not installed:
             return "skip", "no STT model downloaded (won't pull one in a test run)", {}
@@ -1394,8 +1427,46 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "fail", f"gallery delete HTTP {code}", {}
         return "pass", "", {"itemId": item_id}
 
+    # FU-092 regression guard: the STT list must only offer weights this
+    # host's backend can read — never MLX ids on Windows/Linux.
+    def _stt_sources():
+        rows = runtime_payload.get("sttModels") or []
+        if not rows:
+            return "skip", "no STT rows reported", {}
+        plat = runtime_payload.get("platform")
+        wrong = [
+            r.get("id") for r in rows
+            if (plat != "apple_silicon" and str(r.get("id", "")).startswith("mlx-community/"))
+            or (plat == "apple_silicon" and r.get("backend") == "faster-whisper")
+        ]
+        if wrong:
+            return "fail", f"STT rows not runnable on {plat}: {wrong}", {}
+        return "pass", "", {"platform": plat, "rows": [r.get("id") for r in rows]}
+
+    def _stt_rejects_unknown_model():
+        boundary = "----chaosengine-e2e-voice-bad"
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="audio"; filename="clip.wav"\r\n'
+            "Content-Type: audio/wav\r\n\r\n"
+        ).encode("utf-8") + _silence_wav() + (
+            f"\r\n--{boundary}\r\n"
+            'Content-Disposition: form-data; name="model"\r\n\r\n'
+            "/etc/passwd\r\n"
+            f"--{boundary}--\r\n"
+        ).encode("utf-8")
+        code, _resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=body,
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=30.0,
+        )
+        if code == 404:
+            return "skip", "voice routes not present in this build", {}
+        return ("pass", "", {}) if code == 400 else ("fail", f"expected 400, got {code}", {})
+
     for name, fn in [
-        ("voice-runtime", _runtime), ("synthesize smoke", _synthesize),
+        ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
+        ("stt rejects unknown model", _stt_rejects_unknown_model),
+        ("synthesize smoke", _synthesize),
         ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),
     ]:
         phase.checks.append(_check(name, fn))

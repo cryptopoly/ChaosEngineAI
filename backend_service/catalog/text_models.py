@@ -202,9 +202,11 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         # (only ``transformers_version`` differs — checked 2026-09-28), so
         # every Qwen3.6-27B runtime path applies unchanged. Qwen3.8-Flash-
         # Next (qwen4_exp) is deliberately absent: it needs mlx-vlm >= 0.6.17
-        # or llama.cpp >= b10660, neither of which the app ships yet. The
-        # z-lab drafter is DFlash2-only, which the pinned dflash-mlx can't
-        # load (FU-057), so there is no DRAFT_MODEL_MAP entry either.
+        # or llama.cpp >= b10660 (update-llama-cpp.sh now pins b11277, but
+        # the MLX side still lacks it). The z-lab drafter is DFlash2-only:
+        # the pinned dflash-mlx can't load it (FU-057), so it lives in
+        # dflash.DFLASH2_DRAFT_MODEL_MAP for vLLM only; GGUF users get it
+        # through the ggml-org pack's dflash- sidecar (FU-089).
         "id": "qwen-3-8",
         "name": "Qwen 3.8",
         "provider": "Qwen",
@@ -283,7 +285,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "Q8_0",
                 "ggufFile": "Qwen3.8-27B-Q8_0.gguf",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
-                "note": "Canonical ggml-org Q8_0. The repo's mtp-/dflash- drafter sidecars aren't wired yet, so it runs standard decode.",
+                "note": "Canonical ggml-org Q8_0. Its mtp-/dflash- drafter sidecars download with it; turn on Speculative decoding to use them (needs a current llama-server — scripts/update-llama-cpp.sh).",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",

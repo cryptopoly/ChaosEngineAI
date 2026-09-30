@@ -58,6 +58,22 @@ class HelperTests(unittest.TestCase):
         patterns = text_gguf.text_repo_allow_patterns(_QWEN_REPO)
         self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 17)
 
+    def test_allow_patterns_add_one_sidecar_per_kind(self) -> None:
+        # FU-089: the drafter closest to the pinned quant rides along;
+        # other precisions of the same drafter don't.
+        files = [
+            {"path": "Qwen3.6-27B-Q4_K_M.gguf", "sizeBytes": 16},
+            {"path": "Qwen3.6-27B-Q8_0.gguf", "sizeBytes": 29},
+            {"path": "dflash-Qwen3.6-27B-Q4_K_M.gguf", "sizeBytes": 2},
+            {"path": "dflash-Qwen3.6-27B-BF16.gguf", "sizeBytes": 4},
+            {"path": "mtp-Qwen3.6-27B-Q8_0.gguf", "sizeBytes": 1},
+        ]
+        patterns = text_gguf.text_repo_allow_patterns(_QWEN_REPO, files)
+        self.assertIn("dflash-Qwen3.6-27B-Q4_K_M.gguf", patterns)
+        self.assertIn("mtp-Qwen3.6-27B-Q8_0.gguf", patterns)
+        self.assertNotIn("dflash-Qwen3.6-27B-BF16.gguf", patterns)
+        self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 16 + 2 + 1)
+
     def test_repo_id_from_path(self) -> None:
         self.assertEqual(
             text_gguf.repo_id_from_path(

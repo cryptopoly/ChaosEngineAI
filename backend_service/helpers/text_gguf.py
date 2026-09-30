@@ -40,17 +40,113 @@ def gguf_file_pattern(gguf_file: str) -> str:
     return f"{gguf_file[: match.start()]}-*-of-{match.group(2)}.gguf"
 
 
-def text_repo_allow_patterns(repo_id: str) -> list[str] | None:
+# Speculative-decoding sidecars ggml-org packs ship beside the main GGUF
+# (llama.cpp ``common/download.cpp``: ``find_best_{mtp,dspark,dflash,eagle3}``).
+# Order = llama.cpp's own preference when it infers the type from a draft
+# repo (``common/arg.cpp``): an MTP head first, DSpark over DFlash (its
+# sidecar carries the extra Markov head), EAGLE-3 last. DFlash 2 drafters
+# are ``dflash-`` files — llama.cpp tells them apart by GGUF metadata.
+SPEC_SIDECAR_TYPES: tuple[tuple[str, str], ...] = (
+    ("mtp-", "draft-mtp"),
+    ("dspark-", "draft-dspark"),
+    ("dflash-", "draft-dflash"),
+    ("eagle3-", "draft-eagle3"),
+)
+
+_SIDECAR_PREFIXES = tuple(prefix for prefix, _ in SPEC_SIDECAR_TYPES)
+_QUANT_TAG_RE = re.compile(r"[-.]([A-Z0-9_]+)$", re.IGNORECASE)
+
+
+def is_aux_gguf(name: str) -> bool:
+    """True for projector / imatrix / spec-dec sidecar files — never the
+    model itself (mirrors llama.cpp's ``gguf_filename_is_model``).
+
+    Sidecar prefixes match case-sensitively, exactly like llama.cpp: a
+    main model with baked-in heads such as ``Qwen3.6-27B-MTP-Q8_0.gguf``
+    is a model, not an ``mtp-`` sidecar.
+    """
+    base = Path(name).name
+    lower = base.lower()
+    if "mmproj" in lower or "imatrix" in lower:
+        return True
+    return any(prefix in base for prefix in _SIDECAR_PREFIXES)
+
+
+def _quant_bits(name: str) -> int:
+    """llama.cpp's ``extract_quant_bits``: first number in the quant tag."""
+    stem = Path(name).name
+    if stem.lower().endswith(".gguf"):
+        stem = stem[: -len(".gguf")]
+    match = _SHARD_RE.search(Path(name).name)
+    if match is not None:
+        stem = Path(name).name[: match.start()]
+    tag = _QUANT_TAG_RE.search(stem)
+    if tag is None:
+        return 0
+    digits = re.search(r"\d+", tag.group(1))
+    return int(digits.group(0)) if digits else 0
+
+
+def _best_sidecar(names: list[str], prefix: str, model_name: str) -> str | None:
+    """Pick the sidecar whose quant is closest to the model's (first shard)."""
+    model_bits = _quant_bits(model_name)
+    candidates = [
+        n for n in names
+        if prefix in Path(n).name and n.lower().endswith(".gguf")
+    ]
+    if not candidates:
+        return None
+    first_shards = [
+        n for n in candidates
+        if (m := _SHARD_RE.search(Path(n).name)) is None or m.group(1) == "00001"
+    ]
+    return min(first_shards or candidates, key=lambda n: (abs(_quant_bits(n) - model_bits), n))
+
+
+def resolve_spec_sidecar(model_gguf_path: str | None) -> tuple[str, str] | None:
+    """``(spec_type, sidecar_path)`` for a draft sidecar next to the model.
+
+    Scans only the model file's own directory (same reasoning as the
+    mmproj resolver: a neighbouring repo's drafter would mismatch the
+    target and crash llama-server).
+    """
+    if not model_gguf_path:
+        return None
+    main = Path(model_gguf_path)
+    if not main.is_file():
+        return None
+    try:
+        names = [entry.name for entry in main.parent.iterdir() if entry.is_file()]
+    except OSError:
+        return None
+    for prefix, spec_type in SPEC_SIDECAR_TYPES:
+        best = _best_sidecar(names, prefix, main.name)
+        if best is not None:
+            return spec_type, str(main.parent / best)
+    return None
+
+
+def text_repo_allow_patterns(repo_id: str, files: Iterable[dict] | None = None) -> list[str] | None:
     """``snapshot_download`` allowlist for a pinned text GGUF repo.
 
     ``None`` for unpinned repos so the caller downloads them in full.
     ``*mmproj*.gguf`` keeps the vision projector the llama.cpp engine
-    wires via ``--mmproj`` (FU-072).
+    wires via ``--mmproj`` (FU-072). When the Hub file list is supplied,
+    the best-matching spec-dec sidecar of each kind (FU-089) rides along
+    so speculative decoding works offline — one quant each, not every
+    precision the repo ships.
     """
     gguf_file = pinned_gguf_file(repo_id)
     if gguf_file is None:
         return None
-    return [gguf_file_pattern(gguf_file), "*mmproj*.gguf", "*.md", "LICENSE*"]
+    patterns = [gguf_file_pattern(gguf_file), "*mmproj*.gguf", "*.md", "LICENSE*"]
+    if files is not None:
+        names = [str(entry.get("path") or "") for entry in files]
+        for prefix, _spec_type in SPEC_SIDECAR_TYPES:
+            best = _best_sidecar(names, prefix, gguf_file)
+            if best is not None:
+                patterns.append(gguf_file_pattern(best))
+    return patterns
 
 
 def matched_size_bytes(files: Iterable[dict], patterns: list[str]) -> int:

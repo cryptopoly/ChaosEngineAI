@@ -71,6 +71,16 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "moonshotai/Kimi-K2.6": "z-lab/Kimi-K2.6-DFlash",
 }
 
+# DFlash 2 drafters (z-lab / Inco AI, 2026-08; drafters Apache-2.0).
+# Kept apart from DRAFT_MODEL_MAP because only vLLM >=0.28 runs them —
+# the pinned dflash-mlx predates DFlash 2 and would fail to load the
+# candidate-path selector (FU-057). ``get_draft_model(...,
+# allow_dflash2=True)`` is the vLLM engine's opt-in. GGUF users get
+# DFlash 2 via the ``dflash-`` sidecar in ggml-org packs instead.
+DFLASH2_DRAFT_MODEL_MAP: dict[str, str] = {
+    "Qwen/Qwen3.8-27B": "z-lab/Qwen3.8-27B-DFlash2",
+}
+
 # Additional aliases that map community / MLX repos to the same drafts.
 _ALIASES: dict[str, str] = {
     "mlx-community/Qwen3-4B-bf16": "Qwen/Qwen3-4B",
@@ -158,8 +168,14 @@ def _normalize_ref(model_ref: str) -> str:
     return ref
 
 
-def get_draft_model(target_ref: str) -> str | None:
-    """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``."""
+def get_draft_model(target_ref: str, *, allow_dflash2: bool = False) -> str | None:
+    """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``.
+
+    ``allow_dflash2`` also consults ``DFLASH2_DRAFT_MODEL_MAP`` (vLLM
+    only); an exact DFlash 2 match wins there since it's the faster draft.
+    """
+    if allow_dflash2 and target_ref in DFLASH2_DRAFT_MODEL_MAP:
+        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
     # 1. Exact match
     if target_ref in DRAFT_MODEL_MAP:
         return DRAFT_MODEL_MAP[target_ref]
@@ -313,10 +329,15 @@ def is_ddtree_available() -> bool:
 
 def availability_info() -> dict[str, Any]:
     """Return a JSON-friendly dict for the frontend system stats."""
+    vllm_ok = is_vllm_available()
+    models = supported_models()
+    if vllm_ok:
+        # DFlash 2-only targets are runnable only through vLLM.
+        models = sorted(set(models) | set(DFLASH2_DRAFT_MODEL_MAP))
     return {
-        "available": is_available(),
+        "available": is_mlx_available() or vllm_ok,
         "mlxAvailable": is_mlx_available(),
-        "vllmAvailable": is_vllm_available(),
+        "vllmAvailable": vllm_ok,
         "ddtreeAvailable": is_ddtree_available(),
-        "supportedModels": supported_models(),
+        "supportedModels": models,
     }

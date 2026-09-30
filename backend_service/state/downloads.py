@@ -114,7 +114,10 @@ def start_download(
     # progress bar against what will actually land on disk.
     text_patterns = None if allow_patterns else text_repo_allow_patterns(repo)
     if text_patterns:
-        pinned_bytes = matched_size_bytes(_hub_repo_files(repo).get("files") or [], text_patterns)
+        hub_files = _hub_repo_files(repo).get("files") or []
+        # Re-derive with the file list so spec-dec sidecars are included.
+        text_patterns = text_repo_allow_patterns(repo, hub_files) or text_patterns
+        pinned_bytes = matched_size_bytes(hub_files, text_patterns)
         if pinned_bytes > 0:
             total_gb = _bytes_to_gb(pinned_bytes)
 

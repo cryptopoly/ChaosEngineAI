@@ -195,6 +195,12 @@ export function resolveDflashSupport({
  * standard decode with a runtimeNote when the binary lacks
  * ``--spec-type`` (PR #22673), so showing the toggle never hard-breaks.
  */
+export function isGgufBackendId(backend: string | null | undefined): boolean {
+  if (!backend) return false;
+  const lower = backend.toLowerCase();
+  return lower.includes("gguf") || lower.includes("llama");
+}
+
 export function isMtpGgufRepo(repo: string | null | undefined): boolean {
   if (!repo) return false;
   const lower = repo.toLowerCase();
@@ -229,6 +235,15 @@ export function sanitizeSpeculativeSelection({
     canonicalRepo,
     modelName,
   });
+  // llama.cpp has its own speculative lane (baked-in MTP heads, an
+  // mtp- / dflash- / dspark- / eagle3- drafter file beside the GGUF, or the
+  // draft-free ngram-mod lookup — FU-089), chosen server-side with a
+  // runtime-note fallback. DFlash support is irrelevant there, so keep the
+  // user's choice instead of clearing it (it used to be cleared, which
+  // silently disabled the FU-074 GGUF MTP toggle). No DDTree on GGUF.
+  if (isGgufBackendId(selectedBackend)) {
+    return { speculativeDecoding, treeBudget: 0, support };
+  }
   if (!speculativeDecoding || support.enabled) {
     return {
       speculativeDecoding,

@@ -151,6 +151,21 @@ describe("sanitizeSpeculativeSelection()", () => {
     expect(result.treeBudget).toBe(0);
     expect(result.support.enabled).toBe(false);
   });
+
+  it("keeps the llama.cpp speculative lane on for GGUF models (FU-089)", () => {
+    // Regression: GGUF was run through the DFlash check and always
+    // cleared, so the GGUF MTP toggle never reached the backend.
+    const result = sanitizeSpeculativeSelection({
+      dflashInfo,
+      selectedBackend: "gguf",
+      canonicalRepo: "ggml-org/Qwen3.6-27B-MTP-GGUF",
+      modelName: "Qwen3.6-27B-MTP-GGUF",
+      speculativeDecoding: true,
+      treeBudget: 64,
+    });
+    expect(result.speculativeDecoding).toBe(true);
+    expect(result.treeBudget).toBe(0);
+  });
 });
 
 describe("strategy compatibility helpers", () => {

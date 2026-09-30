@@ -441,3 +441,31 @@ class DDTreeAvailabilityProbeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DFlash2DraftMapTests(unittest.TestCase):
+    """FU-089: DFlash 2 drafters are vLLM-only (pinned dflash-mlx predates them)."""
+
+    def test_vllm_opt_in_resolves_dflash2_draft(self):
+        from dflash import get_draft_model
+
+        self.assertEqual(
+            get_draft_model("Qwen/Qwen3.8-27B", allow_dflash2=True),
+            "z-lab/Qwen3.8-27B-DFlash2",
+        )
+
+    def test_mlx_default_never_gets_a_dflash2_draft(self):
+        from dflash import get_draft_model
+
+        self.assertIsNone(get_draft_model("Qwen/Qwen3.8-27B"))
+        self.assertIsNone(get_draft_model("mlx-community/Qwen3.8-27B-4bit"))
+
+    def test_availability_lists_dflash2_targets_only_with_vllm(self):
+        import dflash
+
+        with patch("dflash.is_vllm_available", return_value=False), \
+             patch("dflash.is_mlx_available", return_value=True):
+            self.assertNotIn("Qwen/Qwen3.8-27B", dflash.availability_info()["supportedModels"])
+        with patch("dflash.is_vllm_available", return_value=True), \
+             patch("dflash.is_mlx_available", return_value=False):
+            self.assertIn("Qwen/Qwen3.8-27B", dflash.availability_info()["supportedModels"])

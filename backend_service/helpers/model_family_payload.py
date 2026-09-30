@@ -40,7 +40,14 @@ def _reveal_path_in_file_manager(path: Path) -> None:
 
 def _estimate_runtime_memory_gb(params_b: float, quantization: str) -> float:
     lowered = quantization.lower()
-    if "q4" in lowered or "4-bit" in lowered:
+    # 1-bit (GGUF Q1_0) and 2-bit / ternary builds (e.g. Bonsai) must not
+    # fall through to the full-precision factor — a 27B at 1-bit is ~4 GB
+    # of weights, not ~28.
+    if "1-bit" in lowered or "q1_" in lowered:
+        quant_factor = 0.15
+    elif "2-bit" in lowered or "q2_" in lowered or "ternary" in lowered:
+        quant_factor = 0.32
+    elif "q4" in lowered or "4-bit" in lowered:
         quant_factor = 0.72
     elif "fp8" in lowered or "8" in lowered:
         quant_factor = 0.82

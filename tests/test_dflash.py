@@ -28,7 +28,7 @@ class DraftModelLookupTests(unittest.TestCase):
     def test_exact_match_llama(self):
         self.assertEqual(
             get_draft_model("meta-llama/Llama-3.1-8B-Instruct"),
-            "z-lab/Llama-3.1-8B-Instruct-DFlash",
+            "z-lab/LLaMA3.1-8B-Instruct-DFlash-UltraChat",
         )
 
     def test_explicit_alias_mlx_community(self):
@@ -50,8 +50,8 @@ class DraftModelLookupTests(unittest.TestCase):
 
     def test_fuzzy_match_community_prefix_strip(self):
         # Community prefix stripped, then model name matched
-        result = get_draft_model("mlx-community/Qwen3.5-7B-bf16")
-        self.assertEqual(result, "z-lab/Qwen3.5-7B-DFlash")
+        result = get_draft_model("mlx-community/Qwen3.5-9B-bf16")
+        self.assertEqual(result, "z-lab/Qwen3.5-9B-DFlash")
 
     def test_lmstudio_community_prefix_fuzzy_match(self):
         """lmstudio-community GGUF repos should match via prefix stripping."""
@@ -171,6 +171,28 @@ class DraftModelLookupTests(unittest.TestCase):
             get_draft_model("mlx-community/Qwen3.6-27B-4bit"),
             "z-lab/Qwen3-Coder-Next-DFlash",
         )
+
+    def test_qwen36_27b_dense_drafter(self):
+        """The dense 27B got its own drafter (2026-04); the FU-041 note
+        that it "has no drafter" is superseded."""
+        for ref in ("Qwen/Qwen3.6-27B", "mlx-community/Qwen3.6-27B-4bit"):
+            self.assertEqual(get_draft_model(ref), "z-lab/Qwen3.6-27B-DFlash", ref)
+
+    def test_gpt_oss_uses_openai_org_and_lowercase_drafters(self):
+        self.assertEqual(get_draft_model("openai/gpt-oss-20b"), "z-lab/gpt-oss-20b-DFlash")
+        self.assertEqual(get_draft_model("mlx-community/gpt-oss-120B-4bit"), "z-lab/gpt-oss-120b-DFlash")
+
+    def test_gemma4_12b_drafter(self):
+        self.assertEqual(get_draft_model("google/gemma-4-12B-it"), "z-lab/gemma4-12B-it-DFlash")
+
+    def test_every_drafter_is_a_z_lab_repo(self):
+        from dflash import DRAFT_MODEL_MAP, _ALIASES
+
+        for target, draft in DRAFT_MODEL_MAP.items():
+            self.assertTrue(draft.startswith("z-lab/"), target)
+        # Every alias must land on a real map key, never dangle.
+        for alias, canonical in _ALIASES.items():
+            self.assertIn(canonical, DRAFT_MODEL_MAP, alias)
 
 
 class ModelResolutionTests(unittest.TestCase):

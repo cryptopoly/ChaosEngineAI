@@ -8,7 +8,10 @@
  *
  *   - ``pipPackage`` — argument to ``POST /api/setup/install-package``.
  *     Must match a key in the backend's ``_INSTALLABLE_PIP_PACKAGES``
- *     allow-list ([backend_service/routes/setup/__init__.py]).
+ *     allow-list ([backend_service/routes/setup/__init__.py]) — or in
+ *     ``_MANUAL_INSTALL_MESSAGES`` for packages with no usable PyPI
+ *     release (nunchaku, sageattention), where the endpoint answers 400
+ *     with build/wheel instructions that the Install button surfaces.
  *   - ``capabilityField`` / ``versionField`` — the ``NativeBackendStatus``
  *     keys to read for installed state + display version. Wired in
  *     FU-056 Phase 1 on the backend.

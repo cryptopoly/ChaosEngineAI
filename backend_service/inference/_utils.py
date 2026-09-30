@@ -107,7 +107,8 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
     When a user loads an HF-cache GGUF repo, the path points to the repo
     directory (e.g. ``models--lmstudio-community--Qwen3.5-9B-GGUF``), not a
     specific file.  We scan for the best .gguf file inside it, excluding
-    vision projectors (mmproj) and picking the largest non-projector file.
+    vision projectors (mmproj): the catalog's pinned ``ggufFile`` when it is
+    on disk, else the largest non-projector file (first shard if split).
     """
     for candidate in (path, runtime_target):
         if not candidate:
@@ -122,7 +123,9 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
             # Filter out vision projector files
             model_files = [f for f in gguf_files if "mmproj" not in f.name.lower()]
             if model_files:
-                return str(model_files[0])
+                from backend_service.helpers.text_gguf import pick_model_gguf  # noqa: PLC0415
+
+                return str(pick_model_gguf(p, model_files))
     return None
 
 

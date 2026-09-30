@@ -623,5 +623,12 @@ export {
   getVoiceRuntime,
   transcribeAudio,
   synthesizeSpeech,
+  getVoiceGallery,
+  saveGalleryTranscript,
+  saveGalleryAudio,
+  deleteGalleryItem,
+  getGalleryAudio,
+  startKokoroDownload,
+  getKokoroDownloadStatus,
 } from "./voice";
-export type { TranscribeResult } from "./voice";
+export type { TranscribeResult, VoiceGalleryItem, KokoroDownloadStatus } from "./voice";

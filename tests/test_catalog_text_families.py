@@ -26,6 +26,8 @@ class NewTextFamiliesTests(unittest.TestCase):
     _ALL_NEW_FAMILIES = (
         "deepseek-v4", "glm-5", "gemma-4", "minimax-m2", "ornith-1",
         "kimi-k2-6", "llama-4-scout", "minimax-m3", "mistral-large-3",
+        # 2026-09 additions.
+        "qwen-3-8", "bonsai", "nemotron-3-5-lightning", "minicpm-5",
     )
 
     def test_all_new_families_present(self):
@@ -51,11 +53,54 @@ class NewTextFamiliesTests(unittest.TestCase):
         # Ornith-1.0 inherits Qwen 3.5's vision_config but DeepReinforce ships it
         # text-only (agentic coding), so it must not advertise vision either.
         # Mistral Large 3 is text-only (the Pixtral line carries Mistral's vision).
-        for fid in ("deepseek-v4", "glm-5", "minimax-m2", "ornith-1", "mistral-large-3"):
+        for fid in (
+            "deepseek-v4", "glm-5", "minimax-m2", "ornith-1", "mistral-large-3",
+            "nemotron-3-5-lightning", "minicpm-5",
+        ):
             fam = self.by_id[fid]
             self.assertNotIn("vision", fam["capabilities"], f"{fid} family vision tag")
             for v in fam["variants"]:
                 self.assertNotIn("vision", v["capabilities"], f"{fid}/{v['id']} vision tag")
+
+    def test_qwen38_is_multimodal_like_qwen36(self):
+        # Qwen3.8-27B ships Qwen3.6-27B's Qwen3_5ForConditionalGeneration
+        # config (vision_config included) — same FU-072 vision policy.
+        for v in self.by_id["qwen-3-8"]["variants"]:
+            self.assertIn("vision", v["capabilities"], v["id"])
+
+    def test_bonsai_lists_only_stock_runtime_formats(self):
+        # Bonsai 2 (PrismML fork / mlx-vlm >= 0.7.2), MLX 1-bit (mlx-vlm
+        # kernels) and Q2_0-g64 GGUF (llama.cpp >= b9994) can't run on the
+        # shipped runtimes — keep them out until they can.
+        for v in self.by_id["bonsai"]["variants"]:
+            self.assertNotIn("Bonsai-2-", v["repo"], v["id"])
+            self.assertNotIn("1bit", v["repo"], v["id"])
+            if v["format"] == "GGUF":
+                self.assertIn("Q1_0", v["ggufFile"], v["id"])
+            else:
+                self.assertEqual(v["format"], "MLX", v["id"])
+                self.assertIn("2bit", v["repo"], v["id"])
+
+    def test_low_bit_memory_estimate(self):
+        # 1-bit / ternary labels used to fall through to the full-precision
+        # factor, so Bonsai 27B advertised ~28.6 GB (measured peak: 7.9 GB).
+        from backend_service.helpers.model_family_payload import _estimate_runtime_memory_gb
+
+        for v in self.by_id["bonsai"]["variants"]:
+            estimate = _estimate_runtime_memory_gb(v["paramsB"], v["quantization"])
+            full = _estimate_runtime_memory_gb(v["paramsB"], "BF16")
+            self.assertLess(estimate, full, f"{v['id']}: {estimate} GB vs {full} GB full-precision")
+        self.assertLess(_estimate_runtime_memory_gb(27.0, "2-bit (ternary)"), 12.0)
+        self.assertGreater(
+            _estimate_runtime_memory_gb(27.0, "2-bit (ternary)"),
+            _estimate_runtime_memory_gb(27.0, "Q1_0 (1-bit)"),
+        )
+
+    def test_multi_quant_gguf_rows_in_new_families_are_pinned(self):
+        for fid in ("qwen-3-8", "bonsai", "nemotron-3-5-lightning", "minicpm-5"):
+            for v in self.by_id[fid]["variants"]:
+                if v["format"] == "GGUF":
+                    self.assertTrue(v.get("ggufFile"), f"{fid}/{v['id']} needs a ggufFile pin")
 
     def test_gemma4_carries_vision_capability(self):
         # All Gemma 4 sizes are multimodal (Gemma4ForConditionalGeneration + vision_config).

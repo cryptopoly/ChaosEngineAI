@@ -146,10 +146,11 @@ fi
 # old binary in release builds).
 PYPROJECT_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' pyproject.toml | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
 STAGE_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' scripts/stage-runtime.mjs | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
-if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" ]]; then
-  warn "dflash-mlx pin sync — could not extract commit hashes from both files"
-elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
-  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12}. Sync both to the same commit."
+SETUP_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' backend_service/routes/setup/__init__.py | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" || -z "$SETUP_PIN" ]]; then
+  warn "dflash-mlx pin sync — could not extract commit hashes from all three files"
+elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" || "$PYPROJECT_PIN" != "$SETUP_PIN" ]]; then
+  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12} routes/setup=${SETUP_PIN:0:12}. Sync all three to the same commit."
 else
   pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
 fi

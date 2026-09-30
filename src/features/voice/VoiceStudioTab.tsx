@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel } from "../../components/Panel";
-import { transcribeAudio, synthesizeSpeech } from "../../api";
+import { transcribeAudio, synthesizeSpeech, saveGalleryTranscript, saveGalleryAudio } from "../../api";
 import type { TabId, VoiceRuntime, SttModel, TtsVoice } from "../../types";
 
 export interface VoiceStudioTabProps {
@@ -16,6 +16,15 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Prefer a model that won't trigger a surprise download: catalog default
+ * if installed, else the first installed model, else fall back to the
+ * catalog default (Studio shows a download hint in that case). */
+export function pickDefaultSttModel(models: SttModel[]): SttModel | undefined {
+  const catalogDefault = models.find((m) => m.default);
+  if (catalogDefault?.installed) return catalogDefault;
+  return models.find((m) => m.installed) ?? catalogDefault ?? models[0];
 }
 
 export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: VoiceStudioTabProps) {
@@ -38,12 +47,15 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsError, setTtsError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const activeAudioUrl = useRef<string | null>(null);
+  const [saveTranscriptLabel, setSaveTranscriptLabel] = useState("Save");
+  const [saveAudioLabel, setSaveAudioLabel] = useState("Save");
 
   // Seed selectors from runtime
   useEffect(() => {
     if (voiceRuntime) {
-      const defaultModel = voiceRuntime.sttModels.find((m: SttModel) => m.default);
+      const defaultModel = pickDefaultSttModel(voiceRuntime.sttModels);
       if (defaultModel && !selectedSttModel) {
         setSelectedSttModel(defaultModel.id);
       }
@@ -133,6 +145,14 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
     });
   }, [transcript]);
 
+  const handleSaveTranscript = useCallback(() => {
+    if (!transcript) return;
+    void saveGalleryTranscript(transcript).then(() => {
+      setSaveTranscriptLabel("Saved");
+      setTimeout(() => setSaveTranscriptLabel("Save"), 2000);
+    });
+  }, [transcript]);
+
   // ── TTS handlers ───────────────────────────────────────────────────────────
 
   const handleSynthesize = useCallback(async () => {
@@ -143,12 +163,14 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
       URL.revokeObjectURL(activeAudioUrl.current);
       activeAudioUrl.current = null;
       setAudioUrl(null);
+      setAudioBlob(null);
     }
     try {
       const blob = await synthesizeSpeech(ttsText, selectedVoice || "af_heart", speed);
       const url = URL.createObjectURL(blob);
       activeAudioUrl.current = url;
       setAudioUrl(url);
+      setAudioBlob(blob);
     } catch (err) {
       setTtsError(err instanceof Error ? err.message : "Synthesis failed.");
     } finally {
@@ -156,11 +178,20 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
     }
   }, [ttsText, selectedVoice, speed]);
 
+  const handleSaveAudio = useCallback(() => {
+    if (!audioBlob) return;
+    void saveGalleryAudio(ttsText, selectedVoice || "af_heart", audioBlob).then(() => {
+      setSaveAudioLabel("Saved");
+      setTimeout(() => setSaveAudioLabel("Save"), 2000);
+    });
+  }, [audioBlob, ttsText, selectedVoice]);
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const sttModels = voiceRuntime?.sttModels ?? [];
   const ttsVoices = voiceRuntime?.ttsVoices ?? [];
   const sttDisabled = !backendOnline || recordingState === "transcribing";
+  const selectedSttModelMeta = sttModels.find((m: SttModel) => m.id === selectedSttModel);
 
   let recordLabel = "Record";
   if (recordingState === "recording") recordLabel = `Stop  ${formatDuration(recordingSeconds)}`;
@@ -190,6 +221,11 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
                   </option>
                 ))}
               </select>
+              {selectedSttModelMeta && !selectedSttModelMeta.installed && (
+                <p className="muted-text" style={{ fontSize: "0.75rem", marginTop: 4 }}>
+                  Downloads {selectedSttModelMeta.sizeGb} GB on first use.
+                </p>
+              )}
             </div>
           )}
 
@@ -251,6 +287,14 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
               disabled={!transcript}
             >
               Send to Chat
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleSaveTranscript}
+              disabled={!transcript}
+            >
+              {saveTranscriptLabel}
             </button>
           </div>
         </div>
@@ -321,11 +365,22 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
               {ttsLoading ? "Generating…" : "Generate"}
             </button>
           </div>
+          {voiceRuntime?.ttsAvailable && voiceRuntime.ttsModelInstalled === false && (
+            <p className="muted-text" style={{ fontSize: "0.75rem", marginTop: 6 }}>
+              Downloads the Kokoro voice model (~350 MB) on first use — pre-download it
+              from the Voice Models tab to skip the wait.
+            </p>
+          )}
 
           {audioUrl && (
             <div style={{ marginTop: 12 }}>
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <audio controls src={audioUrl} style={{ width: "100%" }} />
+              <div className="button-row" style={{ marginTop: 8 }}>
+                <button type="button" className="secondary-button" onClick={handleSaveAudio}>
+                  {saveAudioLabel}
+                </button>
+              </div>
             </div>
           )}
         </div>

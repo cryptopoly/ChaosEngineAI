@@ -204,3 +204,56 @@ hosts. See FU-009 in CLAUDE.md.
 - **Licence:** MIT / Apache-2.0 dual
 - **Usage:** BCP-47 language tag parsing for `fluent-bundle`. Listed
   explicitly as a transitive dep with permissive licensing.
+
+---
+
+## Voice I/O (STT + TTS backends)
+
+Installed on demand via the Voice Models tab (Setup install allowlist);
+not bundled with the app.
+
+### mlx-whisper (Apple Silicon STT)
+
+- **Upstream:** <https://github.com/ml-explore/mlx-examples>
+- **Licence:** MIT
+- **Usage:** Whisper speech-to-text on MLX. Loaded by
+  `backend_service/voice_runtime.py` for `/api/voice/transcribe`.
+
+### faster-whisper (cross-platform STT)
+
+- **Upstream:** <https://github.com/SYSTRAN/faster-whisper>
+- **Licence:** MIT
+- **Usage:** CTranslate2 Whisper backend for Windows / Linux hosts.
+
+### mlx-audio (Apple Silicon TTS)
+
+- **Upstream:** <https://github.com/Blaizzy/mlx-audio>
+- **Licence:** MIT
+- **Usage:** Kokoro text-to-speech on MLX. Loaded by
+  `backend_service/voice_runtime.py` for `/api/voice/synthesize`.
+
+### kokoro-onnx (cross-platform TTS)
+
+- **Upstream:** <https://github.com/thewh1teagle/kokoro-onnx>
+- **Licence:** MIT
+- **Usage:** ONNX Kokoro backend for Windows / Linux hosts.
+
+### misaki (G2P text processing for Kokoro)
+
+- **Upstream:** <https://github.com/hexgrad/misaki>
+- **Licence:** Apache-2.0
+- **Usage:** Grapheme-to-phoneme front-end mlx-audio's Kokoro pipeline
+  requires but does not declare. Installed as `misaki[en]`.
+
+### Japanese G2P chain (jf_* voices)
+
+Installed individually instead of `misaki[ja]` — see the comment in
+`backend_service/routes/setup/__init__.py` for the unidic-lite rationale.
+
+- **fugashi** — <https://github.com/polm/fugashi> — MIT AND BSD-3-Clause
+- **jaconv** — <https://github.com/ikegami-yukino/jaconv> — MIT
+- **mojimoji** — <https://github.com/studio-ousia/mojimoji> — Apache-2.0
+- **pyopenjtalk** — <https://github.com/r9y9/pyopenjtalk> — MIT (bundles
+  OpenJTalk components under their modified-BSD licence)
+- **unidic-lite** — <https://github.com/polm/unidic-lite> — MIT wrapper
+  (bundled UniDic dictionary data under the BSD-style UniDic licence)

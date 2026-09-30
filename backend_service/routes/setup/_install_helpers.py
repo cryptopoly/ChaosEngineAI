@@ -255,11 +255,16 @@ def _extras_site_packages() -> Path | None:
 # fix: pip then picks the wheel whose metadata matches the newly-installed
 # torch. Patch bumps (2.6.0 → 2.6.1) keep the ABI stable, so the rebuild
 # is only triggered on minor / major upgrades.
+#
+# The rebuild reinstalls by bare PyPI name, so only packages whose PyPI
+# release IS the ABI-linked build belong here. ``nunchaku`` (PyPI name is
+# an unrelated project — the rebuild would overwrite a real SVDQuant
+# install with it) and ``sageattention`` (PyPI tops out at the Triton-only
+# 1.0.6, so the rebuild would downgrade a source-built 2.x) are excluded;
+# both need a manual reinstall matched to the new torch.
 _TORCH_ABI_DEPENDENT_PACKAGES: tuple[str, ...] = (
     "bitsandbytes",
     "torchao",
-    "nunchaku",
-    "sageattention",
 )
 
 

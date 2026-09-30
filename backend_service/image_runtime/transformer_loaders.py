@@ -238,10 +238,13 @@ def try_load_nunchaku_transformer(
     Returns ``(transformer, note)`` matching the NF4 / GGUF helper
     contract — ``None`` transformer means the caller should fall back.
     """
-    if importlib.util.find_spec("nunchaku") is None:
+    from backend_service.inference.accelerators import nunchaku_available  # noqa: PLC0415
+
+    if not nunchaku_available():
         return None, (
-            "Nunchaku package not installed — install it from the Setup "
-            "page to enable SVDQuant 4-bit on CUDA. Falling back to "
+            "Nunchaku (SVDQuant) not installed — install the wheel matching "
+            "your torch/CUDA from the Nunchaku GitHub releases (the PyPI "
+            "'nunchaku' package is an unrelated project). Falling back to "
             "the standard transformer."
         )
     cls_name = _nunchaku_transformer_class_for_repo(repo)
@@ -254,8 +257,8 @@ def try_load_nunchaku_transformer(
         import nunchaku  # type: ignore
     except ImportError as exc:
         return None, (
-            f"Nunchaku import failed ({exc}). Install nunchaku>=1.2.1 "
-            "from the Setup page."
+            f"Nunchaku import failed ({exc}). Reinstall the Nunchaku wheel "
+            "matching your torch/CUDA versions."
         )
     cls = getattr(nunchaku, cls_name, None)
     if cls is None:

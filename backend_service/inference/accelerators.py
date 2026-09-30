@@ -40,6 +40,7 @@ import importlib
 import importlib.util
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _spec_exists(module_name: str) -> bool:
@@ -80,11 +81,26 @@ def _safe_version(module_name: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def nunchaku_available() -> bool:
-    return _spec_exists("nunchaku")
+    """True only for the SVDQuant Nunchaku, not its PyPI namesake.
+
+    ``pip install nunchaku`` pulls an unrelated piecewise-linear-
+    segmentation library that also imports as ``nunchaku``, so bare
+    importability is a false positive. The SVDQuant package ships a
+    ``models/`` subpackage — check for it on disk instead of importing,
+    since the real ``__init__`` pulls torch + the CUDA extension.
+    """
+    if not _spec_exists("nunchaku"):
+        return False
+    try:
+        spec = importlib.util.find_spec("nunchaku")
+    except (ImportError, ValueError):
+        return False
+    locations = getattr(spec, "submodule_search_locations", None) or []
+    return any((Path(location) / "models").is_dir() for location in locations)
 
 
 def nunchaku_version() -> str | None:
-    return _safe_version("nunchaku")
+    return _safe_version("nunchaku") if nunchaku_available() else None
 
 
 # ---------------------------------------------------------------------------

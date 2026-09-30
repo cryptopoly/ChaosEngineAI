@@ -320,15 +320,20 @@ console.log("[6/8] Upstream dependency check...");
   const pinRe = /dflash-mlx\.git@([a-f0-9]+)/;
   const pyprojectPath = path.join(REPO_ROOT, "pyproject.toml");
   const stageRuntimePath = path.join(REPO_ROOT, "scripts", "stage-runtime.mjs");
+  // The Setup tab's in-app installer (routes/setup allowlist) is a third
+  // copy — it lagged on f825ffb until 2026-09 and silently disabled DFlash.
+  const setupPath = path.join(REPO_ROOT, "backend_service", "routes", "setup", "__init__.py");
   const pyprojectMatch = readFileSync(pyprojectPath, "utf8").match(pinRe);
   const stageMatch = readFileSync(stageRuntimePath, "utf8").match(pinRe);
-  if (!pyprojectMatch || !stageMatch) {
-    warn("dflash-mlx pin sync — could not extract commit hashes from both files");
-  } else if (pyprojectMatch[1] !== stageMatch[1]) {
+  const setupMatch = readFileSync(setupPath, "utf8").match(pinRe);
+  if (!pyprojectMatch || !stageMatch || !setupMatch) {
+    warn("dflash-mlx pin sync — could not extract commit hashes from all three files");
+  } else if (pyprojectMatch[1] !== stageMatch[1] || pyprojectMatch[1] !== setupMatch[1]) {
     fail(
       `dflash-mlx pin drift — pyproject.toml=${pyprojectMatch[1].slice(0, 12)} ` +
-        `stage-runtime.mjs=${stageMatch[1].slice(0, 12)}. ` +
-        `Sync both to the same commit to avoid release-build regressions.`,
+        `stage-runtime.mjs=${stageMatch[1].slice(0, 12)} ` +
+        `routes/setup=${setupMatch[1].slice(0, 12)}. ` +
+        `Sync all three to the same commit to avoid release-build regressions.`,
     );
   } else {
     pass(`dflash-mlx pin sync (${pyprojectMatch[1].slice(0, 12)})`);

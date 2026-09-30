@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
@@ -782,17 +782,20 @@ export default function App() {
 
   // Voice runtime — one-shot fetch when backend comes online.
   // Not polled aggressively; user can navigate to Voice Studio to refresh.
+  const refreshVoiceRuntime = useCallback(() => {
+    if (!backendOnline) return;
+    void getVoiceRuntime()
+      .then((rt) => setVoiceRuntime(rt))
+      .catch(() => {});
+  }, [backendOnline]);
+
   useEffect(() => {
     if (!backendOnline) {
       setVoiceRuntime(null);
       return;
     }
-    let cancelled = false;
-    void getVoiceRuntime()
-      .then((rt) => { if (!cancelled) setVoiceRuntime(rt); })
-      .catch(() => { /* backend may not have the voice route yet */ });
-    return () => { cancelled = true; };
-  }, [backendOnline]);
+    refreshVoiceRuntime();
+  }, [backendOnline, refreshVoiceRuntime]);
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -1572,8 +1575,9 @@ export default function App() {
         voiceRuntime={voiceRuntime}
         backendOnline={backendOnline}
         onSendToChat={(text) => {
+          // Append rather than overwrite so a half-typed draft survives.
+          setDraftMessage((current) => (current.trim() ? `${current}\n${text}` : text));
           void setActiveTab("chat");
-          // TODO: pre-fill chat composer with text (requires a chat hook prop)
         }}
         onTabChange={setActiveTab}
       />
@@ -1583,10 +1587,11 @@ export default function App() {
       <VoiceModelsTab
         voiceRuntime={voiceRuntime}
         backendOnline={backendOnline}
+        onRefreshVoiceRuntime={refreshVoiceRuntime}
       />
     );
   } else if (activeTab === "voice-gallery") {
-    content = <VoiceGalleryTab />;
+    content = <VoiceGalleryTab backendOnline={backendOnline} />;
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab

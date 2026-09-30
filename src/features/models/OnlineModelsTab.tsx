@@ -214,6 +214,16 @@ export function OnlineModelsTab({
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
 
+  function familyReleaseTimestamp(family: ModelFamily): number {
+    let latest = 0;
+    for (const variant of family.variants) {
+      if (!variant.releaseDate) continue;
+      const parsed = Date.parse(variant.releaseDate);
+      if (!Number.isNaN(parsed) && parsed > latest) latest = parsed;
+    }
+    return latest;
+  }
+
   function familyMatchesAccel(family: ModelFamily, accel: string): boolean {
     const allRepos = family.variants.map((v) => v.repo);
     switch (accel) {
@@ -251,6 +261,9 @@ export function OnlineModelsTab({
   if (discoverAccelFilter) {
     filteredResults = filteredResults.filter((f) => familyMatchesAccel(f, discoverAccelFilter!));
   }
+  filteredResults = [...filteredResults].sort(
+    (left, right) => familyReleaseTimestamp(right) - familyReleaseTimestamp(left),
+  );
   const filteredHubResults = [...hubResults]
     .filter((model) => {
       if (discoverFormatFilter && model.format !== discoverFormatFilter) return false;

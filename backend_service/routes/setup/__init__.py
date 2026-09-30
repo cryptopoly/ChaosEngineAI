@@ -32,7 +32,9 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "turboquant-mlx": "turboquant-mlx-full",
     # Not published on PyPI — install from git. Pairs with mlx_lm on macOS
     # or vllm on Linux/CUDA (see the cache_compression.triattention adapter).
-    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git",
+    # Same commit as the pyproject ``[triattention]`` extras (FU-031) —
+    # unpinned HEAD made in-app installs non-reproducible.
+    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2",
     "vllm": "vllm",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
@@ -40,8 +42,11 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # The upstream removed all tags in April 2026, so we pin to a specific
     # commit on main instead — v0.1.4 no longer resolves and fresh clones
     # failed with "pathspec 'v0.1.4' did not match any file(s) known to
-    # git". Bump the pin when we validate a newer main SHA.
-    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
+    # git". Bump the pin when we validate a newer main SHA. Must match the
+    # pyproject / stage-runtime pin (FU-033 check covers this file too):
+    # it lagged on f825ffb (v0.1.4.1, no ``resolve_target_ops``) so an
+    # in-app install silently disabled DFlash — the FU-075 symptom.
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
     "dflash": "dflash",
     # Video output encoding — diffusers can produce frames without these,
     # but exporting mp4/gif requires imageio + the ffmpeg plugin. The Video
@@ -99,25 +104,17 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # ~12 GB on M-series Macs. Roughly half the memory saving of NF4
     # but twice the platform reach.
     "torchao": "torchao",
-    # SageAttention CUDA fast-attention kernels. Wired through
-    # ``backend_service/helpers/attention_backend.py`` (FU-016). Pin to 2.2.0
-    # (SageAttention2++) — PyPI's default resolves to the stale 1.0.6
-    # (2024-11) which lacks the SA2++ kernels. SageAttention3 lives on the
-    # ``sageattention3_blackwell`` branch (Blackwell SM10.0 only) and is
-    # not yet on PyPI; install path here always pulls the released SA2++
-    # kernels regardless of GPU generation. No-op on macOS / CPU / non-DiT
-    # pipelines — the helper guards before invoking.
-    "sageattention": "sageattention==2.2.0",
-    # FU-023 Nunchaku / SVDQuant — 4-bit weight quantization for FLUX
-    # family + Qwen-Image + SD3.5 on CUDA. ~3× over NF4 on FLUX.1-dev.
-    # CUDA only; Apple Silicon / Linux-CPU installs no-op at runtime
-    # because the Nunchaku transformer subclasses fall back to the
-    # stock diffusers transformer when the import fails. Upstream
-    # versioning reset — current PyPI top is 0.16.x (was 1.2.1 in the
-    # original FU-023 note, but that release was pulled / renumbered).
-    # 0.16.1 covers FLUX dev/Schnell/Tools/Kontext/Krea, Qwen-Image +
-    # Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
-    "nunchaku": "nunchaku>=0.16.0",
+    # SageAttention (FU-016) is deliberately NOT here: the ``==2.2.0`` pin
+    # it used never resolved — PyPI tops out at the Triton-only 1.0.6
+    # (2024-11), which diffusers' ``sage`` backend rejects, and SA2 ships
+    # only as a CUDA source build. Routed to ``_MANUAL_INSTALL_MESSAGES``
+    # so the button explains the build instead of failing inside pip.
+    # FU-023 Nunchaku / SVDQuant is deliberately NOT here: PyPI's
+    # ``nunchaku`` is an unrelated piecewise-linear-segmentation library
+    # (the FU-059 "version reset" was that other project). The SVDQuant
+    # package ships torch/CUDA/Python-specific wheels from its GitHub
+    # releases only, so it gets a manual-install message instead — see
+    # ``_MANUAL_INSTALL_MESSAGES``.
     # FU-027 NVIDIA/kvpress — KV cache compression toolkit (Apache 2.0,
     # 26 releases as of v0.5.3 / 2026-04-09). HF transformers + multi-GPU
     # Accelerate hookups. CUDA-side complement to TurboQuant on Apple
@@ -144,9 +141,45 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # gates this package on Apple Silicon — installer hides it elsewhere.
     # See FU-009 in CLAUDE.md.
     "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
+    # Voice / STT backends
+    "mlx-whisper": "mlx-whisper",
+    "faster-whisper": "faster-whisper",
+    # Voice / TTS backends. mlx-audio's Kokoro pipeline requires misaki
+    # (G2P text processing) but doesn't declare it — and swallows the
+    # ImportError at generate time, yielding empty output. The voice
+    # install flow installs both.
+    "mlx-audio": "mlx-audio",
+    "misaki": "misaki[en]",
+    # Japanese voice (jf_*) G2P chain. Deliberately NOT ``misaki[ja]`` —
+    # that extra pulls the full ``unidic`` package, which ships without
+    # dictionary data (needs a separate 500 MB ``python -m unidic
+    # download``), and fugashi prefers it over unidic-lite whenever both
+    # are importable — silently breaking Japanese TTS. The individual
+    # pieces with unidic-lite (bundled dictionary) work out of the box.
+    "fugashi": "fugashi",
+    "jaconv": "jaconv",
+    "mojimoji": "mojimoji",
+    "pyopenjtalk": "pyopenjtalk",
+    "unidic-lite": "unidic-lite",
+    "kokoro-onnx": "kokoro-onnx",
 }
 
-_MANUAL_INSTALL_MESSAGES: dict[str, str] = {}
+_MANUAL_INSTALL_MESSAGES: dict[str, str] = {
+    "nunchaku": (
+        "Nunchaku (SVDQuant) is not installable from PyPI — the PyPI package "
+        "named 'nunchaku' is an unrelated project. Download the wheel that "
+        "matches your torch, CUDA and Python versions from the Nunchaku "
+        "GitHub releases page and install it with: {python} -m pip install "
+        "<path-to-wheel>"
+    ),
+    "sageattention": (
+        "SageAttention 2 is not published on PyPI (PyPI only has the older "
+        "1.0.x line, which the diffusers 'sage' backend does not accept). "
+        "Build it from the SageAttention GitHub repository with the CUDA "
+        "toolkit installed: {python} -m pip install --no-build-isolation "
+        "<path-to-SageAttention-checkout>"
+    ),
+}
 
 def _workspace_root() -> Path:
     from backend_service.app import WORKSPACE_ROOT

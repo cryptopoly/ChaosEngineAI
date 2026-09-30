@@ -61,7 +61,11 @@ function main() {
   pruneBundledProjectArtifacts();
 
   ensureDir(backendDest);
-  for (const relativePath of ["backend_service", "cache_compression", "turboquant_mlx"]) {
+  // ``dflash`` is the in-repo DFlash integration package (drafter map +
+  // availability probes). It was missing from this list since the initial
+  // release, so packaged builds hit an ImportError on every
+  // ``from dflash import ...`` and silently never engaged DFlash / DDTree.
+  for (const relativePath of ["backend_service", "cache_compression", "dflash", "turboquant_mlx"]) {
     copyTree(path.join(workspaceRoot, relativePath), path.join(backendDest, relativePath));
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
@@ -245,6 +249,8 @@ function validateBundledProjectImports(pythonBinary) {
   const script = [
     "import json",
     "from cache_compression import registry",
+    // Fails loudly if the ``dflash`` package wasn't staged (see above).
+    "from dflash import DRAFT_MODEL_MAP, get_draft_model",
     "print(json.dumps([entry['id'] for entry in registry.available()]))",
   ].join("\n");
 
@@ -253,8 +259,11 @@ function validateBundledProjectImports(pythonBinary) {
     PYTHONPATH: [backendDest, sitePackagesDest].join(path.delimiter),
   };
 
+  // cwd = backendDest, not workspaceRoot: ``python -c`` puts the cwd first
+  // on sys.path, so running from the repo let the source tree mask any
+  // package missing from the staged backend.
   const payload = execFileSync(pythonBinary, ["-c", script], {
-    cwd: workspaceRoot,
+    cwd: backendDest,
     encoding: "utf8",
     env,
   }).trim();

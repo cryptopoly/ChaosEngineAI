@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install MTPLX into an isolated venv at ~/.chaosengine/mtplx-venv/.
 #
-# Requires native arm64 Python 3.10+ (MTPLX's forked mlx won't build under
+# Requires native arm64 Python 3.11+ (MTPLX's forked mlx won't build under
 # Rosetta). The script prints structured progress lines so the backend job
 # worker can parse phase transitions:
 #
@@ -28,7 +28,7 @@ phase() { echo "PHASE:$1"; }
 fail() { echo "FAIL:$*"; exit 1; }
 
 # ---------------------------------------------------------------------------
-# Preflight — verify native arm64 Python 3.10+
+# Preflight — verify native arm64 Python 3.11+ (mtplx requires-python >=3.11)
 # ---------------------------------------------------------------------------
 
 phase "preflight"
@@ -43,8 +43,8 @@ fi
 PY_VER=$(${PYTHON} -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>/dev/null || true)
 PY_MAJ=$(echo "${PY_VER}" | cut -d. -f1)
 PY_MIN=$(echo "${PY_VER}" | cut -d. -f2)
-if [[ "${PY_MAJ}" -lt 3 ]] || { [[ "${PY_MAJ}" -eq 3 ]] && [[ "${PY_MIN}" -lt 10 ]]; }; then
-    fail "MTPLX requires Python 3.10+ (got: ${PY_VER})"
+if [[ "${PY_MAJ}" -lt 3 ]] || { [[ "${PY_MAJ}" -eq 3 ]] && [[ "${PY_MIN}" -lt 11 ]]; }; then
+    fail "MTPLX requires Python 3.11+ (got: ${PY_VER})"
 fi
 
 log "Python ${PY_VER} (arm64) — OK"

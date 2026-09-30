@@ -10,7 +10,9 @@ UI gating that downstream phases depend on.
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from backend_service.inference import accelerators
@@ -73,9 +75,31 @@ class PerAcceleratorAvailabilityTests(unittest.TestCase):
     ``find_spec`` keeps the test independent of how the real probes
     are implemented underneath."""
 
-    def test_nunchaku_available_true(self):
-        with patch.object(accelerators, "_spec_exists", return_value=True):
-            self.assertTrue(accelerators.nunchaku_available())
+    def _fake_nunchaku_spec(self, root: Path, *, svdquant: bool):
+        pkg = root / "nunchaku"
+        pkg.mkdir()
+        if svdquant:
+            (pkg / "models").mkdir()
+        return MagicMock(submodule_search_locations=[str(pkg)])
+
+    def test_nunchaku_available_true_for_svdquant_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = self._fake_nunchaku_spec(Path(tmp), svdquant=True)
+            with patch.object(accelerators, "_spec_exists", return_value=True), \
+                 patch.object(accelerators.importlib.util, "find_spec", return_value=spec):
+                self.assertTrue(accelerators.nunchaku_available())
+
+    def test_nunchaku_available_false_for_pypi_namesake(self):
+        """PyPI 'nunchaku' is an unrelated segmentation library that also
+        imports as ``nunchaku`` — it has no ``models/`` subpackage."""
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = self._fake_nunchaku_spec(Path(tmp), svdquant=False)
+            with patch.object(accelerators, "_spec_exists", return_value=True), \
+                 patch.object(accelerators.importlib.util, "find_spec", return_value=spec), \
+                 patch.object(accelerators, "_safe_version", return_value="0.16.1") as version:
+                self.assertFalse(accelerators.nunchaku_available())
+                self.assertIsNone(accelerators.nunchaku_version())
+            version.assert_not_called()
 
     def test_nunchaku_available_false(self):
         with patch.object(accelerators, "_spec_exists", return_value=False):

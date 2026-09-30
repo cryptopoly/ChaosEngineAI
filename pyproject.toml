@@ -38,10 +38,10 @@ mlx-vlm = [
     "mlx-vlm>=0.6.3",
     "torchvision>=0.20",
 ]
-triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "vllm>=0.23.0"]
+triattention = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "vllm>=0.24.0"]
 triattention-mlx = ["triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2", "mlx-lm>=0.22.0"]
 turboquant = ["turboquant-mlx-full>=0.11.0"]
-vllm = ["vllm>=0.23.0"]
+vllm = ["vllm>=0.24.0"]
 dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956"]
 dflash = ["dflash>=0.1.0"]
 desktop = [
@@ -62,7 +62,10 @@ desktop = [
 ]
 images = [
     "accelerate>=0.34.0",
-    "diffusers>=0.38.0",
+    # 0.40 floor: fixes a path-traversal / out-of-directory file read via
+    # sharded checkpoint index files (diffusers #14182) — snapshots are
+    # user data, so this matters for us.
+    "diffusers>=0.40.0",
     "huggingface-hub>=0.26.0",
     "pillow>=10.4.0",
     "safetensors>=0.4.5",
@@ -80,9 +83,10 @@ images = [
 #      (post-FU-026) — all four configs ship in diffusers 0.38 core and
 #      attach via ``pipeline.transformer.enable_cache(config)``. No extra
 #      pip dep beyond diffusers.
-# Pin diffusers >=0.38 so the full cache-hooks set is available.
+# Pin diffusers >=0.38 so the full cache-hooks set is available (floor is
+# 0.40 for the #14182 path-traversal fix — see ``images`` above).
 diffusion-accel = [
-    "diffusers>=0.38.0",
+    "diffusers>=0.40.0",
 ]
 # Apple Silicon MLX video runtime (Blaizzy/mlx-video) — MIT. Covers Wan2.1
 # (1.3B/14B), Wan2.2 (T2V-14B, TI2V-5B, I2V-14B), LTX-2 (19B) with T2V, I2V,

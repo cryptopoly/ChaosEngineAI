@@ -31,6 +31,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -239,7 +240,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         # Kimi K2.6 (KimiK25ForConditionalGeneration), Llama 4 Scout
         # (Llama4ForConditionalGeneration), MiniMax M3 (minimax_m3_vl) — all
         # carry a functional vision encoder, verified against live config.json.
-        vision_families = ("qwen-3-5", "qwen-3-6", "kimi-k2-6", "llama-4-scout", "minimax-m3")
+        vision_families = ("qwen-3-5", "qwen-3-6", "qwen-3-8", "kimi-k2-6", "llama-4-scout", "minimax-m3")
         for fid in vision_families:
             fam = fams.get(fid)
             if fam is None:
@@ -318,8 +319,10 @@ def phase_0(cap: Capability) -> PhaseResult:
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
         expected = {
             "deepseek-v4": 4, "glm-5": 4, "minimax-m2": 3,
-            "ornith-1": 5, "kimi-k2-6": 3, "llama-4-scout": 3,
+            "ornith-1": 9, "kimi-k2-6": 3, "llama-4-scout": 3,
             "minimax-m3": 3, "mistral-large-3": 2,
+            # 2026-09 additions (FU-088).
+            "qwen-3-8": 6, "bonsai": 7, "nemotron-3-5-lightning": 5, "minicpm-5": 3,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -331,6 +334,30 @@ def phase_0(cap: Capability) -> PhaseResult:
         if missing:
             return "fail", "; ".join(missing)[:300], {"missing": missing}
         return "pass", "", {"families": sorted(expected)}
+
+    # FU-087: every GGUF row in a multi-quant repo must pin its file, or a
+    # download pulls every quant (tens of GB to terabytes) and the loader
+    # runs the largest. Rows in single-file repos may omit the pin, so this
+    # checks the pin reaches the payload for the known multi-quant repos.
+    def _gguf_pins():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        variants = {
+            v.get("repo"): v
+            for f in (payload.get("featuredModels") or [])
+            for v in (f.get("variants") or [])
+        }
+        must_pin = (
+            "lmstudio-community/Qwen3.6-27B-GGUF", "lmstudio-community/Qwen3.8-27B-GGUF",
+            "ggml-org/Qwen3.8-27B-GGUF", "unsloth/GLM-5.1-GGUF",
+            "unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
+        )
+        unpinned = [repo for repo in must_pin if not (variants.get(repo) or {}).get("ggufFile")]
+        if unpinned:
+            return "fail", f"GGUF rows missing ggufFile: {unpinned}", {"unpinned": unpinned}
+        pinned = sum(1 for v in variants.values() if v.get("ggufFile"))
+        return "pass", "", {"pinnedRows": pinned}
 
     # Gemma 4 dedup gate: the family must appear exactly once (a prior staging
     # collision rendered two "Gemma 4" cards) with the full 10-variant union.
@@ -380,6 +407,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("model import scan (#4)", _model_import_scan),
         ("run-from-hf guard (#5)", _resolve_hf_guard),
         ("new model families (frontier + Ornith)", _new_model_families),
+        ("text GGUF file pins (FU-087)", _gguf_pins),
         ("gemma-4 single family (dedup)", _gemma4_single_family),
         ("voice I/O runtime", _voice_runtime),
     ]:
@@ -1214,13 +1242,178 @@ def phase_7(cap: Capability) -> PhaseResult:
 
 
 # ---------------------------------------------------------------------------
+# Phase 8 — Voice I/O (STT + TTS + gallery)
+# ---------------------------------------------------------------------------
+
+
+def _voice_http(
+    method: str,
+    path: str,
+    *,
+    body: bytes | None = None,
+    content_type: str | None = None,
+    timeout: float = 120.0,
+) -> tuple[int, bytes]:
+    """Direct HTTP against the backend with bearer auth.
+
+    The generic CLI ``call`` dispatcher JSON-decodes responses and can't
+    send multipart bodies, so the voice checks (raw WAV responses, file
+    uploads) talk to the backend directly. Auth token comes from the
+    exempt ``/api/auth/session`` route — same handshake the frontend uses.
+    """
+    base = f"http://{_HOST}:{_PORT}"
+    token: str | None = None
+    try:
+        with urllib.request.urlopen(f"{base}/api/auth/session", timeout=5.0) as resp:
+            token = (json.loads(resp.read().decode("utf-8")) or {}).get("apiToken")
+    except Exception:
+        pass
+    request = urllib.request.Request(f"{base}{path}", data=body, method=method)
+    if content_type:
+        request.add_header("Content-Type", content_type)
+    if token:
+        request.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read()
+
+
+def _silence_wav(seconds: float = 0.4, sample_rate: int = 16000) -> bytes:
+    """Minimal valid mono 16-bit PCM WAV of silence (stdlib only)."""
+    import io
+    import wave
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        wav.writeframes(b"\x00\x00" * int(sample_rate * seconds))
+    return buffer.getvalue()
+
+
+def phase_8(cap: Capability) -> PhaseResult:
+    phase = PhaseResult(phase=8, name="Voice I/O")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 8", "skip", reason="backend not reachable"))
+        return phase
+
+    runtime_payload: dict[str, Any] = {}
+    synth_result: dict[str, bytes | None] = {"wav": None}
+
+    def _runtime():
+        code, body = _voice_http("GET", "/api/voice/runtime", timeout=20.0)
+        if code == 404:
+            return "skip", "voice routes not present in this build", {}
+        if code != 200:
+            return "fail", f"voice runtime HTTP {code}", {}
+        runtime_payload.update(json.loads(body.decode("utf-8")))
+        return "pass", "", {
+            "sttAvailable": runtime_payload.get("sttAvailable"),
+            "ttsAvailable": runtime_payload.get("ttsAvailable"),
+            "ttsModelInstalled": runtime_payload.get("ttsModelInstalled"),
+        }
+
+    def _synthesize():
+        if not runtime_payload.get("ttsAvailable"):
+            return "skip", "TTS backend not installed", {}
+        if runtime_payload.get("ttsModelInstalled") is False:
+            return "skip", "Kokoro model not downloaded (won't pull 350 MB in a test run)", {}
+        payload = json.dumps(
+            {"text": "End to end voice check.", "voice": "af_heart", "speed": 1.0}
+        ).encode("utf-8")
+        code, body = _voice_http(
+            "POST", "/api/voice/synthesize", body=payload,
+            content_type="application/json", timeout=180.0,
+        )
+        if code != 200:
+            return "fail", f"synthesize HTTP {code}: {body[:160]!r}", {}
+        if body[:4] != b"RIFF":
+            return "fail", "synthesize response is not a WAV (no RIFF magic)", {}
+        synth_result["wav"] = body
+        return "pass", "", {"wavBytes": len(body)}
+
+    def _transcribe():
+        if not runtime_payload.get("sttAvailable"):
+            return "skip", "STT backend not installed", {}
+        installed = [
+            m for m in (runtime_payload.get("sttModels") or []) if m.get("installed")
+        ]
+        if not installed:
+            return "skip", "no STT model downloaded (won't pull one in a test run)", {}
+        wav = synth_result["wav"] or _silence_wav()
+        boundary = "----chaosengine-e2e-voice"
+        body = b"".join([
+            (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="audio"; filename="clip.wav"\r\n'
+                "Content-Type: audio/wav\r\n\r\n"
+            ).encode("utf-8"),
+            wav,
+            (
+                f"\r\n--{boundary}\r\n"
+                'Content-Disposition: form-data; name="model"\r\n\r\n'
+                f"{installed[0]['id']}\r\n"
+                f"--{boundary}--\r\n"
+            ).encode("utf-8"),
+        ])
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=body,
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=300.0,
+        )
+        if code != 200:
+            return "fail", f"transcribe HTTP {code}: {resp[:160]!r}", {}
+        payload = json.loads(resp.decode("utf-8"))
+        if "text" not in payload:
+            return "fail", "transcribe response missing 'text' key", {}
+        return "pass", "", {
+            "transcript": str(payload["text"])[:60],
+            "usedSynthesizedClip": synth_result["wav"] is not None,
+        }
+
+    def _gallery():
+        payload = json.dumps({"text": "e2e voice gallery check"}).encode("utf-8")
+        code, body = _voice_http(
+            "POST", "/api/voice/gallery/transcript", body=payload,
+            content_type="application/json", timeout=15.0,
+        )
+        if code != 200:
+            return "fail", f"gallery save HTTP {code}", {}
+        item_id = json.loads(body.decode("utf-8")).get("id")
+        code, body = _voice_http("GET", "/api/voice/gallery", timeout=15.0)
+        if code != 200:
+            return "fail", f"gallery list HTTP {code}", {}
+        ids = [item.get("id") for item in json.loads(body.decode("utf-8")).get("items", [])]
+        if item_id not in ids:
+            return "fail", "saved item missing from gallery listing", {}
+        code, _body = _voice_http("DELETE", f"/api/voice/gallery/{item_id}", timeout=15.0)
+        if code != 200:
+            return "fail", f"gallery delete HTTP {code}", {}
+        return "pass", "", {"itemId": item_id}
+
+    for name, fn in [
+        ("voice-runtime", _runtime), ("synthesize smoke", _synthesize),
+        ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),
+    ]:
+        phase.checks.append(_check(name, fn))
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else (
+        "skip" if all(c.status == "skip" for c in phase.checks) else "pass"
+    )
+    return phase
+
+
+# ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
 
 
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
-    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7,
+    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8,
 }
 
 
@@ -1283,7 +1476,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.smoke:
         # Compare (Phase 2) and full Chat sweep (Phase 1) are heavyweight —
         # both need real model loads. Smoke proves the surface without those.
-        wanted = [0, 3, 4, 5, 6, 7]
+        wanted = [0, 3, 4, 5, 6, 7, 8]
     else:
         wanted = sorted(PHASES.keys())
 

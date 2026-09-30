@@ -140,6 +140,12 @@ class SetupRouteTests(unittest.TestCase):
     # Pip package install
     # ------------------------------------------------------------------
 
+    def test_manual_install_packages_answer_400_with_instructions(self):
+        for package in ("nunchaku", "sageattention"):
+            response = self.client.post("/api/setup/install-package", json={"package": package})
+            self.assertEqual(response.status_code, 400, package)
+            self.assertIn("GitHub", str(response.json()["detail"]), package)
+
     def test_install_pip_rejects_unknown_package(self):
         resp = self.client.post("/api/setup/install-package", json={"package": "evil-package"})
         self.assertEqual(resp.status_code, 400)
@@ -1332,12 +1338,37 @@ class TorchUpgradeHelperUnitTests(unittest.TestCase):
             extras = Path(tmp)
             # No top-level package dir, only the dist-info — covers the
             # case where pip cleared the package folder but left metadata.
-            (extras / "nunchaku-1.2.1.dist-info").mkdir()
-            (extras / "nunchaku-1.2.1.dist-info" / "METADATA").write_text(
-                "Name: nunchaku\nVersion: 1.2.1\n", encoding="utf-8",
+            (extras / "bitsandbytes-0.45.0.dist-info").mkdir()
+            (extras / "bitsandbytes-0.45.0.dist-info" / "METADATA").write_text(
+                "Name: bitsandbytes\nVersion: 0.45.0\n", encoding="utf-8",
             )
             found = _abi_dependents_present(extras)
-            self.assertIn("nunchaku", found)
+            self.assertIn("bitsandbytes", found)
+
+    def test_nunchaku_is_manual_install_not_pypi(self):
+        """PyPI 'nunchaku' is an unrelated project — the allowlist must not
+        install it; the endpoint answers with manual wheel instructions."""
+        from backend_service.routes.setup import (
+            _INSTALLABLE_PIP_PACKAGES,
+            _MANUAL_INSTALL_MESSAGES,
+        )
+        self.assertNotIn("nunchaku", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("unrelated project", _MANUAL_INSTALL_MESSAGES["nunchaku"])
+        self.assertIn("{python}", _MANUAL_INSTALL_MESSAGES["nunchaku"])
+        # sageattention==2.2.0 never resolved on PyPI (max is 1.0.6).
+        self.assertNotIn("sageattention", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("{python}", _MANUAL_INSTALL_MESSAGES["sageattention"])
+
+    def test_abi_rebuild_never_reinstalls_nunchaku_or_sageattention_from_pypi(self):
+        """The rebuild reinstalls by bare PyPI name. PyPI 'nunchaku' is an
+        unrelated project and PyPI 'sageattention' tops out at 1.0.6, so a
+        rebuild would clobber a real SVDQuant / SageAttention-2 install."""
+        from backend_service.routes.setup._install_helpers import _abi_dependents_present
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            (extras / "nunchaku").mkdir()
+            (extras / "sageattention").mkdir()
+            self.assertEqual(_abi_dependents_present(extras), [])
 
     def test_move_torch_to_rollback_moves_torch_and_nvidia_dirs(self):
         from backend_service.routes.setup._install_helpers import _move_torch_to_rollback

@@ -27,32 +27,42 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "Qwen/Qwen3-4B": "z-lab/Qwen3-4B-DFlash-b16",
     "Qwen/Qwen3-8B": "z-lab/Qwen3-8B-DFlash-b16",
     # ----- Qwen3-Coder family -----
-    "Qwen/Qwen3-Coder-4B": "z-lab/Qwen3-Coder-4B-DFlash",
-    "Qwen/Qwen3-Coder-8B": "z-lab/Qwen3-Coder-8B-DFlash",
+    # 2026-09-28: dropped Qwen3-Coder-4B / -8B and Qwen3.5-7B / -14B —
+    # none of those drafter repos exist on the Hub (the API 401s for an
+    # unauthenticated caller, the signature of a missing repo; gated
+    # repos answer 200), so a match only produced a failed download.
     "Qwen/Qwen3-Coder-30B-A3B": "z-lab/Qwen3-Coder-30B-A3B-DFlash",
     "Qwen/Qwen3-Coder-Next": "z-lab/Qwen3-Coder-Next-DFlash",
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": "z-lab/Qwen3.5-4B-DFlash",
-    "Qwen/Qwen3.5-7B": "z-lab/Qwen3.5-7B-DFlash",
     "Qwen/Qwen3.5-9B": "z-lab/Qwen3.5-9B-DFlash",
-    "Qwen/Qwen3.5-14B": "z-lab/Qwen3.5-14B-DFlash",
     "Qwen/Qwen3.5-27B": "z-lab/Qwen3.5-27B-DFlash",
     "Qwen/Qwen3.5-35B-A3B": "z-lab/Qwen3.5-35B-A3B-DFlash",
     # 2026-05-10: z-lab published a 122B-A10B drafter for the largest
     # Qwen3.5 MoE checkpoint. Same naming pattern as the smaller A3B.
     "Qwen/Qwen3.5-122B-A10B": "z-lab/Qwen3.5-122B-A10B-DFlash",
     # ----- Qwen3.6 family -----
+    # Dense 27B drafter (2026-04-23, MIT). Same DFlashDraftModel config
+    # shape as the Qwen3-4B drafter the matrix validates; upstream
+    # dflash-mlx benchmarks it at 2.78-3.06x on Qwen3.6-27B-4bit.
+    "Qwen/Qwen3.6-27B": "z-lab/Qwen3.6-27B-DFlash",
     "Qwen/Qwen3.6-35B-A3B": "z-lab/Qwen3.6-35B-A3B-DFlash",
     # ----- Gemma 4 family (added 2026-05-10) -----
     # dflash-mlx 0.1.5 commit 05cc456 added the Gemma4 backend; z-lab
     # ships matched draft checkpoints for both flagship variants.
     "google/gemma-4-31B-it": "z-lab/gemma-4-31B-it-DFlash",
     "google/gemma-4-26B-A4B-it": "z-lab/gemma-4-26B-A4B-it-DFlash",
+    # 12B drafter (2026-06); z-lab names it ``gemma4-`` not ``gemma-4-``.
+    "google/gemma-4-12B-it": "z-lab/gemma4-12B-it-DFlash",
     # ----- LLaMA family -----
-    "meta-llama/Llama-3.1-8B-Instruct": "z-lab/Llama-3.1-8B-Instruct-DFlash",
+    # ``Llama-3.1-8B-Instruct-DFlash`` never existed publicly; the
+    # published drafter is the UltraChat-trained one.
+    "meta-llama/Llama-3.1-8B-Instruct": "z-lab/LLaMA3.1-8B-Instruct-DFlash-UltraChat",
     # ----- gpt-oss family -----
-    "gpt-oss/gpt-oss-20B": "z-lab/gpt-oss-20B-DFlash",
-    "gpt-oss/gpt-oss-120B": "z-lab/gpt-oss-120B-DFlash",
+    # Real target org is ``openai`` and the drafter repos are lowercase
+    # (the old ``-20B`` / ``-120B`` ids only resolved via a 307 redirect).
+    "openai/gpt-oss-20b": "z-lab/gpt-oss-20b-DFlash",
+    "openai/gpt-oss-120b": "z-lab/gpt-oss-120b-DFlash",
     # ----- MiniMax family (preview drafts, added 2026-05-10) -----
     "MiniMaxAI/MiniMax-M2.5": "z-lab/MiniMax-M2.5-DFlash",
     "MiniMaxAI/MiniMax-M2.7": "z-lab/MiniMax-M2.7-DFlash",
@@ -81,12 +91,13 @@ _ALIASES: dict[str, str] = {
     # Inspecting the local config.json under ~/AI_Models/
     # lmstudio-community/Qwen3-Coder-Next-MLX-4bit confirms the latter.
     # Coder-Next uses ``z-lab/Qwen3-Coder-Next-DFlash``; the dense
-    # 27B-4bit has no drafter today and stays unaliased.
+    # 27B-4bit gets its own ``z-lab/Qwen3.6-27B-DFlash`` (aliased below).
     "lmstudio-community/Qwen3-Coder-Next-MLX-4bit-Instruct": "Qwen/Qwen3-Coder-Next",
     "mlx-community/Qwen3.5-4B-bf16": "Qwen/Qwen3.5-4B",
-    "mlx-community/Qwen3.5-7B-bf16": "Qwen/Qwen3.5-7B",
-    "mlx-community/Qwen3.5-14B-bf16": "Qwen/Qwen3.5-14B",
     "mlx-community/Qwen3.5-27B-bf16": "Qwen/Qwen3.5-27B",
+    "mlx-community/Qwen3.6-27B-4bit": "Qwen/Qwen3.6-27B",
+    "mlx-community/Qwen3.6-27B-8bit": "Qwen/Qwen3.6-27B",
+    "mlx-community/Qwen3.6-27B-bf16": "Qwen/Qwen3.6-27B",
     "mlx-community/Qwen3.6-35B-A3B-bf16": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-4bit": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-8bit": "Qwen/Qwen3.6-35B-A3B",
@@ -113,12 +124,12 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit": "meta-llama/Llama-3.1-8B-Instruct",
     "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit": "meta-llama/Llama-3.1-8B-Instruct",
     # ----- gpt-oss -----
-    "mlx-community/gpt-oss-20B-bf16": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-20B-4bit": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-20B-8bit": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-120B-bf16": "gpt-oss/gpt-oss-120B",
-    "mlx-community/gpt-oss-120B-4bit": "gpt-oss/gpt-oss-120B",
-    "mlx-community/gpt-oss-120B-8bit": "gpt-oss/gpt-oss-120B",
+    "mlx-community/gpt-oss-20B-bf16": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-20B-4bit": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-20B-8bit": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-120B-bf16": "openai/gpt-oss-120b",
+    "mlx-community/gpt-oss-120B-4bit": "openai/gpt-oss-120b",
+    "mlx-community/gpt-oss-120B-8bit": "openai/gpt-oss-120b",
     # ----- Kimi -----
     "mlx-community/Kimi-K2.5-bf16": "moonshotai/Kimi-K2.5",
     "mlx-community/Kimi-K2.5-4bit": "moonshotai/Kimi-K2.5",

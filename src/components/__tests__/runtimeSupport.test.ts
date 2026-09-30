@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dflashPackageFor,
+  isMemorySaverStrategy,
   isMtpGgufRepo,
   isStrategyCompatible,
   resolveDflashSupport,
@@ -182,6 +183,27 @@ describe("strategy compatibility helpers", () => {
     expect(isStrategyCompatible("rotorquant", "mlx")).toBe(true);
     expect(strategyIncompatReason("chaosengine", "mlx")).toBeNull();
     expect(strategyIncompatReason("rotorquant", "mlx")).toBeNull();
+  });
+});
+
+describe("isMemorySaverStrategy()", () => {
+  it("labels TurboQuant a memory saver, by id or display name", () => {
+    expect(isMemorySaverStrategy("turboquant")).toBe(true);
+    expect(isMemorySaverStrategy("TurboQuant")).toBe(true);
+  });
+
+  it("follows the legacy aliases that coerce to TurboQuant", () => {
+    expect(isMemorySaverStrategy("chaosengine")).toBe(true);
+    expect(isMemorySaverStrategy("rotorquant")).toBe(true);
+  });
+
+  it("is false for every other strategy and for missing ids", () => {
+    expect(isMemorySaverStrategy("native")).toBe(false);
+    expect(isMemorySaverStrategy("triattention")).toBe(false);
+    expect(isMemorySaverStrategy("fbcache")).toBe(false);
+    expect(isMemorySaverStrategy("")).toBe(false);
+    expect(isMemorySaverStrategy(null)).toBe(false);
+    expect(isMemorySaverStrategy(undefined)).toBe(false);
   });
 });
 

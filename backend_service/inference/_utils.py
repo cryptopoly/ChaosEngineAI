@@ -86,6 +86,39 @@ def _http_json(
         return json.loads(response.read().decode("utf-8"))
 
 
+# Variables that redirect a child Python's imports or dynamic libraries.
+# The Tauri launcher exports several of them for the *embedded* runtime
+# (``src-tauri/src/runtime.rs``: PYTHONHOME, PYTHONPATH incl. the extras
+# dir, DYLD_*). An interpreter from an isolated venv that inherited them
+# would import the app's own mlx / numpy instead of its pinned ones and
+# could load mismatched dylibs — defeating the point of the venv.
+_IMPORT_REDIRECTING_ENV: tuple[str, ...] = (
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "VIRTUAL_ENV",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FALLBACK_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "LD_LIBRARY_PATH",
+    "CHAOSENGINE_EMBEDDED_RUNTIME",
+)
+
+
+def _isolated_child_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Environment for a subprocess that runs from its own venv.
+
+    A copy of ``os.environ`` without the import-redirecting variables above,
+    plus ``extra``. Everything else (PATH, HOME, HF_HOME, proxy settings,
+    ``TENSORFOLD_MEMORY_LIMIT_GB``) is inherited so user configuration still
+    reaches the child.
+    """
+    env = {key: value for key, value in os.environ.items() if key not in _IMPORT_REDIRECTING_ENV}
+    if extra:
+        env.update(extra)
+    return env
+
+
 def _find_open_port() -> int:
     """Bind ephemeral port + return the chosen number for downstream subprocess use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

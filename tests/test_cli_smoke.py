@@ -88,6 +88,9 @@ class CLIParserTests(unittest.TestCase):
             ["mtplx-install"],
             ["mtplx-install", "--wait"],
             ["mtplx-status"],
+            ["tensorfold-install"],
+            ["tensorfold-install", "--wait"],
+            ["tensorfold-status"],
             ["call", "GET", "/api/health"],
             ["call", "POST", "/api/models/load", "--body", "{}"],
             ["routes"],
@@ -395,6 +398,43 @@ class CLIUnloadTests(unittest.TestCase):
                 rc = cli.main(["unload", "some/ref"])
         self.assertEqual(rc, 0)
         self.assertEqual(captured["body"], {"ref": "some/ref"})
+
+
+class CLITensorFoldTests(unittest.TestCase):
+    def test_tensorfold_status_passthrough(self) -> None:
+        body = {"installed": True, "version": "0.5.0", "supported": True, "venvPath": "/Users/x/.chaosengine/tensorfold-venv"}
+        resp = _FakeResp(json.dumps(body).encode("utf-8"))
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({"/api/setup/tensorfold-status": resp})):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["tensorfold-status"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["version"], "0.5.0")
+
+    def test_tensorfold_install_no_wait_returns_the_job(self) -> None:
+        body = {"id": "tensorfold-install", "phase": "preflight", "done": False}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/install-tensorfold": _FakeResp(json.dumps(body).encode("utf-8")),
+            "/api/setup/install-tensorfold/status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["tensorfold-install"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["id"], "tensorfold-install")
+
+    def test_status_summary_carries_the_tensorfold_block(self) -> None:
+        workspace_body = {
+            "runtime": {"state": "idle"},
+            "system": {"tensorfold": {"available": True, "supportedModels": ["Vontra/Qwen3.8-27B-MLX-4bit"]}},
+            "library": [],
+        }
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({"/api/workspace": _FakeResp(json.dumps(workspace_body).encode("utf-8"))})):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["status"])
+        self.assertEqual(rc, 0)
+        self.assertTrue(json.loads(out.getvalue())["system"]["tensorfold"]["available"])
 
 
 class CLIMtplxTests(unittest.TestCase):

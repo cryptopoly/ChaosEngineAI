@@ -68,6 +68,27 @@ failure. The `RuntimeController` catches that and falls back to
 
 See [MTPLX deep dive](../features/mtplx.md).
 
+### TensorFold — `TensorFoldEngine`
+
+Apple Silicon only, gated on `tensorfoldAvailable`. Spawns
+`tensorfold serve <model dir>` from the isolated venv at
+`~/.chaosengine/tensorfold-venv/` and proxies `/v1/chat/completions` through
+it, the same shape as `MtplxEngine`. Every speculative draft is verified
+against the target model, so replies are identical to serial decoding.
+
+It does two jobs: an accelerator for checkpoints stock MLX also loads (chosen
+when speculative decoding is requested), and the only runtime for families
+`mlx-lm` has no architecture for (always chosen). The venv exists because
+TensorFold pins `mlx` / `mlx-lm` ranges of its own, and the child runs with a
+scrubbed environment so the packaged app's `PYTHONHOME` / `DYLD_*` don't leak
+in.
+
+Fallback contract: a startup failure falls back to `MLXWorkerEngine` for models
+stock MLX can also load; for TensorFold-only families the error reaches the
+user.
+
+See [TensorFold deep dive](../features/tensorfold.md).
+
 ### vLLM — `VLLMEngine`
 
 Linux + CUDA only, gated on `vllmAvailable`. Loads vLLM's `LLM` class

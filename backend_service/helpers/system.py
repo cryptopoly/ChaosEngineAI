@@ -150,6 +150,22 @@ def _build_system_snapshot(
         supported_models = list(MTP_MODEL_MAP.keys()) + list(_MTP_ALIASES.keys())
         return {"available": available, "supportedModels": supported_models}
 
+    def _get_tensorfold_info():
+        from backend_service.inference._tensorfold import (
+            exclusive_repos,
+            min_memory_gb_by_repo,
+            supported_repos,
+        )
+        from backend_service.inference.capabilities import _detect_tensorfold
+        available, _python, version = _detect_tensorfold()
+        return {
+            "available": available,
+            "version": version,
+            "supportedModels": supported_repos(),
+            "exclusiveModels": exclusive_repos(),
+            "minMemoryGb": min_memory_gb_by_repo(),
+        }
+
     def _get_dflash_info():
         try:
             from dflash import availability_info
@@ -181,6 +197,7 @@ def _build_system_snapshot(
         "availableCacheStrategies": _get_cache_strategies(),
         "dflash": _get_dflash_info(),
         "mtplx": _get_mtplx_info(),
+        "tensorfold": _get_tensorfold_info(),
         "vllmAvailable": native.get("vllmAvailable", False),
         "vllmVersion": native.get("vllmVersion"),
         "mlxAvailable": native["mlxAvailable"],

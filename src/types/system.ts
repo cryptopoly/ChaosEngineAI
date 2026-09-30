@@ -84,6 +84,16 @@ export interface SystemStats {
     available: boolean;
     supportedModels: string[];
   };
+  // TensorFold engine (exact speculative decoding, Apple Silicon). The repo
+  // lists come from the backend registry so the launch settings and the
+  // engine agree on which checkpoints are served and which are exclusive.
+  tensorfold?: {
+    available: boolean;
+    version?: string | null;
+    supportedModels: string[];
+    exclusiveModels: string[];
+    minMemoryGb?: Record<string, number>;
+  };
   runningLlmProcesses: Array<{
     pid: number;
     name: string;

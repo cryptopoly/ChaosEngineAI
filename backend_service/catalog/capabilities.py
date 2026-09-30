@@ -194,7 +194,9 @@ def resolve_capabilities(
     # demotion is kept as belt-and-braces for any caller that forgets
     # to thread `vision_enabled` through.
     engine_normalised = (engine or "").strip().lower()
-    if engine_normalised in {"mlx", "mlx_worker", "turboquant"}:
+    # TensorFold reads images only with its ``--vision`` server flag, which
+    # the engine does not pass yet, so it demotes vision like the MLX worker.
+    if engine_normalised in {"mlx", "mlx_worker", "turboquant", "tensorfold"}:
         caps.supportsVision = False
     if not vision_enabled:
         caps.supportsVision = False

@@ -2,7 +2,7 @@
 """ChaosEngineAI end-to-end test suite.
 
 Drives the CLI sequentially through phased scenarios covering every major
-app surface: chat (MLX + GGUF + cache strategies + DFlash + MTPLX),
+app surface: chat (MLX + GGUF + cache strategies + DFlash + MTPLX + TensorFold),
 chat compare, HTML challenge, image studio, video studio, setup probes,
 diagnostics. Emits a JSON + Markdown report under ``~/.chaosengine/test-results/``.
 
@@ -116,6 +116,9 @@ class Capability:
     gguf_available: bool = False
     gguf_mtp_available: bool = False
     mtplx_available: bool = False
+    tensorfold_available: bool = False
+    tensorfold_models: list[str] = field(default_factory=list)
+    tensorfold_exclusive: list[str] = field(default_factory=list)
     dflash_supported_models: list[str] = field(default_factory=list)
     mtplx_supported_models: list[str] = field(default_factory=list)
     image_runtime_ready: bool = False
@@ -141,6 +144,10 @@ def probe_capabilities() -> Capability:
         dflash_info = system.get("dflash") or {}
         cap.mtplx_available = bool(mtplx_info.get("available"))
         cap.mtplx_supported_models = mtplx_info.get("supportedModels") or []
+        tensorfold_info = system.get("tensorfold") or {}
+        cap.tensorfold_available = bool(tensorfold_info.get("available"))
+        cap.tensorfold_models = tensorfold_info.get("supportedModels") or []
+        cap.tensorfold_exclusive = tensorfold_info.get("exclusiveModels") or []
         cap.dflash_supported_models = dflash_info.get("supportedModels") or []
 
     rc, runtime, _ = _cli_json("runtime", timeout=10.0)
@@ -214,11 +221,52 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", "mtplx-status failed", {}
         return "pass", "", payload
 
+    def _tensorfold():
+        rc, payload, _ = _cli_json("tensorfold-status")
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", "tensorfold-status failed", {}
+        for key in ("installed", "supported"):
+            if key not in payload:
+                return "fail", f"tensorfold-status missing '{key}'", payload
+        return "pass", "", payload
+
+    # FU-093 feature gate: the TensorFold registry (served by the backend)
+    # and the Discover catalog must describe the same checkpoints — every
+    # exclusive one is listed with backend "tensorfold" (nothing else can
+    # load it), and every tested one has a catalog row.
+    def _catalog_tensorfold():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        info = (payload.get("system") or {}).get("tensorfold") or {}
+        supported = info.get("supportedModels") or []
+        exclusive = info.get("exclusiveModels") or []
+        if not supported:
+            return "fail", "system.tensorfold.supportedModels empty", {"info": info}
+        variants = {
+            v.get("repo"): v
+            for f in (payload.get("featuredModels") or [])
+            for v in (f.get("variants") or [])
+        }
+        problems = []
+        for repo in supported:
+            if repo not in variants:
+                problems.append(f"{repo}: no catalog row")
+        for repo in exclusive:
+            backend = (variants.get(repo) or {}).get("backend")
+            if repo in variants and backend != "tensorfold":
+                problems.append(f"{repo}: exclusive but catalog backend is {backend!r}")
+        if problems:
+            return "fail", "; ".join(problems)[:300], {"problems": problems}
+        return "pass", "", {"supported": len(supported), "exclusive": len(exclusive)}
+
     def _inventory():
         return "pass", "", {
             "mlxModels": len(cap.local_mlx_models),
             "ggufFiles": len(cap.local_gguf_files),
             "mtplxAvailable": cap.mtplx_available,
+            "tensorfoldAvailable": cap.tensorfold_available,
+            "tensorfoldSupportedCount": len(cap.tensorfold_models),
             "mtplxSupportedCount": len(cap.mtplx_supported_models),
             "dflashSupportedCount": len(cap.dflash_supported_models),
         }
@@ -249,9 +297,13 @@ def phase_0(cap: Capability) -> PhaseResult:
             caps = fam.get("capabilities") or []
             if "vision" not in caps:
                 missing.append(f"{fid}: family caps lack vision ({caps})")
+            # Qwen3.8 Flash Next is a separate (Qwen4-preview) architecture
+            # whose vision support is unverified — only the 27B rows are held
+            # to the policy.
             no_vision_variants = [
                 v.get("id") for v in (fam.get("variants") or [])
                 if "vision" not in (v.get("capabilities") or [])
+                and "Flash-Next" not in str(v.get("id"))
             ]
             if no_vision_variants:
                 missing.append(f"{fid}: variants without vision: {no_vision_variants[:3]}")
@@ -322,7 +374,9 @@ def phase_0(cap: Capability) -> PhaseResult:
             "ornith-1": 9, "kimi-k2-6": 3, "llama-4-scout": 3,
             "minimax-m3": 3, "mistral-large-3": 2,
             # 2026-09 additions (FU-088).
-            "qwen-3-8": 6, "bonsai": 7, "nemotron-3-5-lightning": 5, "minicpm-5": 3,
+            "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 6, "minicpm-5": 3,
+            # FU-093: TensorFold-served checkpoints.
+            "glm-5-3-flash": 1,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -400,8 +454,10 @@ def phase_0(cap: Capability) -> PhaseResult:
 
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
-        ("mtplx-status", _mtplx), ("inventory", _inventory),
+        ("mtplx-status", _mtplx), ("tensorfold-status", _tensorfold),
+        ("inventory", _inventory),
         ("catalog vision tags", _catalog_vision),
+        ("tensorfold catalog vs registry (FU-093)", _catalog_tensorfold),
         ("rag status (#1)", _rag_status),
         ("ollama-compat (#3)", _ollama_compat),
         ("model import scan (#4)", _model_import_scan),
@@ -518,7 +574,7 @@ def _specdec_fallback_reason(note: str) -> str | None:
 
 
 def phase_1(cap: Capability) -> PhaseResult:
-    phase = PhaseResult(phase=1, name="Chat (MLX + GGUF + cache + DFlash + MTPLX)")
+    phase = PhaseResult(phase=1, name="Chat (MLX + GGUF + cache + DFlash + MTPLX + TensorFold)")
     if not cap.backend_reachable:
         phase.status = "skip"
         phase.checks.append(CheckResult("phase 1", "skip", reason="backend not reachable"))
@@ -647,6 +703,37 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "fail", f"MTPLX expected but runtimeNote was: {note[:160]}", detail
             return "pass", "", detail
         return "skip", "no MTPLX-capable model on disk", {}
+
+    # 1d2. TensorFold (FU-093). Exact speculative decoding through the
+    # isolated tensorfold-venv engine. The spec-dec toggle routes a tested
+    # checkpoint to TensorFoldEngine, so assert the load really reports
+    # engine == "tensorfold" (a startup failure falls back to standard MLX,
+    # which still streams text and would otherwise pass) and that drafting
+    # was requested. Skips when TensorFold isn't installed or no checkpoint
+    # it serves is on disk — the smallest one is tried first.
+    def _tensorfold_engine():
+        if not cap.tensorfold_available:
+            return "skip", "TensorFold not installed", {}
+        for repo in cap.tensorfold_models:
+            leaf = repo.split("/")[-1]
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
+            if not pick:
+                continue
+            ref, path = pick
+            status, reason, detail = _load_unload_prompt(
+                leaf, path=path, backend="mlx", spec=True,
+                canonical_repo=repo, context=8192, max_tokens=24,
+                load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, reason, detail
+            note = (detail.get("runtimeNote") or "")
+            if detail.get("engine") != "tensorfold":
+                return "fail", f"TensorFold expected but engine was {detail.get('engine')!r}: {note[:160]}", detail
+            if not detail.get("speculativeDecoding"):
+                return "fail", f"TensorFold loaded without speculative decoding: {note[:160]}", detail
+            return "pass", "", detail
+        return "skip", "no TensorFold-served checkpoint on disk", {}
 
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
@@ -840,6 +927,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + DFlash speculative", _mlx_dflash),
         ("MLX + DDTree speculative", _mlx_ddtree),
         ("MLX + MTPLX speculative", _mtplx),
+        ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
@@ -1149,6 +1237,7 @@ def phase_6(cap: Capability) -> PhaseResult:
 
     probes = [
         ("mtplx-status", "mtplx-status"),
+        ("tensorfold-status", "tensorfold-status"),
         ("longlive-status", "longlive-status"),
         ("wan-status", "wan-status"),
         ("wan-inventory", "wan-inventory"),

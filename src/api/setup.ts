@@ -421,6 +421,59 @@ export async function getMtplxInstallStatus(): Promise<MtplxJobState> {
   return await fetchJson<MtplxJobState>("/api/setup/install-mtplx/status", 10000);
 }
 
+// ---------------------------------------------------------------------------
+// TensorFold install — isolated venv (pinned mlx / mlx-lm), Apple Silicon only
+// ---------------------------------------------------------------------------
+//
+// Same background-job shape as MtplxJobState, so InstallLogPanel renders it
+// unchanged.
+
+export interface TensorfoldAttempt {
+  phase?: string;
+  package?: string;
+  indexUrl?: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface TensorfoldJobState {
+  id: string;
+  phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: TensorfoldAttempt[];
+  done: boolean;
+}
+
+export interface TensorfoldStatus {
+  installed: boolean;
+  version: string | null;
+  installedAt: string | null;
+  ref: string | null;
+  venvPath: string | null;
+  /** False off Apple Silicon: the Mac engine cannot run there. */
+  supported: boolean;
+}
+
+export async function getTensorfoldStatus(): Promise<TensorfoldStatus> {
+  return await fetchJson<TensorfoldStatus>("/api/setup/tensorfold-status", 8000);
+}
+
+export async function startTensorfoldInstall(): Promise<TensorfoldJobState> {
+  return await postJson<TensorfoldJobState>("/api/setup/install-tensorfold", {}, 15000);
+}
+
+export async function getTensorfoldInstallStatus(): Promise<TensorfoldJobState> {
+  return await fetchJson<TensorfoldJobState>("/api/setup/install-tensorfold/status", 10000);
+}
+
 export interface TorchUpgradeJobState {
   id: string;
   /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */

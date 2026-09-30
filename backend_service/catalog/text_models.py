@@ -93,6 +93,26 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-05",
             },
             {
+                "id": "mlx-community/gemma-4-26b-a4b-it-4bit",
+                "name": "Gemma 4 26B A4B MLX 4-bit",
+                "repo": "mlx-community/gemma-4-26b-a4b-it-4bit",
+                "link": "https://huggingface.co/mlx-community/gemma-4-26b-a4b-it-4bit",
+                "paramsB": 26.0,
+                "sizeGb": 15.5,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["vision", "reasoning", "coding", "agents", "tool-use"],
+                "note": (
+                    "4-bit community MLX conversion — the checkpoint TensorFold is tested with. Runs on "
+                    "standard MLX; with TensorFold installed, ticking speculative decoding in the launch "
+                    "settings gives exact drafts with the optional z-lab DFlash draft model. Size is approximate."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2025-05",
+            },
+            {
                 "id": "mlx-community/gemma-4-26b-a4b-it-5bit",
                 "name": "Gemma 4 26B A4B MLX 5-bit",
                 "repo": "mlx-community/gemma-4-26b-a4b-it-5bit",
@@ -201,9 +221,14 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         # Qwen3.8-27B's config.json matches Qwen3.6-27B's field for field
         # (only ``transformers_version`` differs — checked 2026-09-28), so
         # every Qwen3.6-27B runtime path applies unchanged. Qwen3.8-Flash-
-        # Next (qwen4_exp) is deliberately absent: it needs mlx-vlm >= 0.6.17
-        # or llama.cpp >= b10660 (update-llama-cpp.sh now pins b11277, but
-        # the MLX side still lacks it). The z-lab drafter is DFlash2-only:
+        # Next (qwen4_exp) needs mlx-vlm >= 0.6.17 or llama.cpp >= b10660 to
+        # load, which neither shipped MLX path provides; the only route is the
+        # TensorFold engine (inference/tensorfold_engine.py), so its one row
+        # below carries backend "tensorfold". The two Vontra rows are the
+        # TensorFold-tested checkpoints; their repo names, sizes and memory
+        # figures come from TensorFold's checkpoint documentation (the Hub
+        # was not reachable when they were added) — re-check them on the
+        # first real download. The z-lab drafter is DFlash2-only:
         # the pinned dflash-mlx can't load it (FU-057), so it lives in
         # dflash.DFLASH2_DRAFT_MODEL_MAP for vLLM only; GGUF users get it
         # through the ggml-org pack's dflash- sidecar (FU-089).
@@ -240,6 +265,47 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "launchMode": "direct",
                 "backend": "mlx",
                 "releaseDate": "2026-08",
+            },
+            {
+                "id": "Vontra/Qwen3.8-27B-MLX-4bit",
+                "name": "Qwen3.8 27B MLX 4-bit (MTP head)",
+                "repo": "Vontra/Qwen3.8-27B-MLX-4bit",
+                "link": "https://huggingface.co/Vontra/Qwen3.8-27B-MLX-4bit",
+                "paramsB": 27.0,
+                "sizeGb": 16.5,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+                "note": (
+                    "TensorFold's Qwen3.8 conversion. Runs on standard MLX like the community 4-bit; "
+                    "with TensorFold installed, ticking speculative decoding in the launch settings decodes "
+                    "with exact drafts (MTP head + z-lab DFlash2 draft model) — replies identical to serial decoding."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-08",
+            },
+            {
+                "id": "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+                "name": "Qwen3.8 Flash Next MLX 4-bit (TensorFold)",
+                "repo": "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+                "link": "https://huggingface.co/Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+                "paramsB": 0.0,
+                "sizeGb": 113.2,
+                "estimatedMemoryGb": 118.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "note": (
+                    "Qwen4-architecture preview (Gated DeltaNet, sparse attention, MoE, hashed n-gram "
+                    "embeddings) with an MTP head. Runs only on the TensorFold engine, on a Mac with at "
+                    "least 128 GB of memory (105.4 GiB of weights; part of them memory-mapped). Install "
+                    "TensorFold from the launch settings."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "tensorfold",
             },
             {
                 "id": "mlx-community/Qwen3.8-27B-8bit",
@@ -327,7 +393,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "readme": [
             "Qwen3.8-27B keeps Qwen3.6-27B's exact architecture, so it runs on the same MLX, llama.cpp and vLLM paths.",
             "Native image and video input, 262K context, and a built-in MTP head.",
-            "Qwen3.8-Flash-Next (the Qwen4-architecture preview) is not listed yet — it needs newer MLX and llama.cpp runtimes than the app ships.",
+            "Qwen3.8-Flash-Next (the Qwen4-architecture preview) needs newer MLX and llama.cpp runtimes than the app ships, so it runs only on the TensorFold engine, on Macs with 128 GB or more.",
         ],
     },
     {
@@ -337,14 +403,17 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         #   MLX 2-bit      -> stock mlx-lm; ternary weights stored as affine
         #                     bits=2 (ran Ternary-Bonsai-27B + -4B)
         # Left out: Q2_0-g64 GGUF (needs llama.cpp >= b9994), MLX 1-bit
-        # (needs mlx-vlm 1-bit kernels), and Bonsai 2 (PQ2_0 / PTQ1_0 GGUF
-        # need the PrismML llama.cpp fork; its MLX pack is model_type
-        # prism_hadamard_qwen35, mlx-vlm >= 0.7.2 only).
+        # (needs mlx-vlm 1-bit kernels). Bonsai 2's GGUFs (PQ2_0 / PTQ1_0)
+        # need the PrismML llama.cpp fork, and its MLX pack is model_type
+        # prism_hadamard_qwen35 (mlx-vlm >= 0.7.2 only) — but TensorFold
+        # serves that MLX pack natively, so it is listed with backend
+        # "tensorfold" (the only route; size and memory figures from
+        # TensorFold's documentation, not checked against the Hub).
         "id": "bonsai",
         "name": "Bonsai",
         "provider": "PrismML",
         "headline": "End-to-end 1-bit and ternary LLMs — a 27B model in 4-9 GB.",
-        "summary": "PrismML's 1-bit (Q1_0) and ternary builds: Qwen3.6-27B-based Bonsai 27B plus Qwen3-based 1.7B / 4B / 8B. Apache 2.0.",
+        "summary": "PrismML's 1-bit (Q1_0) and ternary builds: Qwen3.6-27B-based Bonsai 27B, Qwen3.8-based Bonsai 2, plus Qwen3-based 1.7B / 4B / 8B. Apache 2.0.",
         "description": (
             "Bonsai models are low-bit end to end rather than post-hoc quants: every weight matrix is "
             "1-bit ({-1,+1}, GGUF Q1_0) or ternary ({-1,0,+1}, stored as MLX 2-bit). Bonsai 27B is "
@@ -373,6 +442,26 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "launchMode": "direct",
                 "backend": "mlx",
                 "releaseDate": "2026-07",
+            },
+            {
+                "id": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+                "name": "Ternary Bonsai 2 27B MLX (TensorFold)",
+                "repo": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+                "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+                "paramsB": 27.0,
+                "sizeGb": 8.0,
+                "estimatedMemoryGb": 20.0,
+                "format": "MLX",
+                "quantization": "2-bit (ternary)",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": (
+                    "Qwen3.8-based ternary pack (rotated 2-bit, model_type prism_hadamard_qwen35) that only the "
+                    "TensorFold engine reads; install it from the launch settings. Needs a Mac with at least "
+                    "32 GB of memory (about 20 GiB of budget with the z-lab DFlash2 draft model). Size is approximate."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "tensorfold",
             },
             {
                 "id": "lmstudio-community/Bonsai-27B-GGUF",
@@ -479,7 +568,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             "Bonsai models are 1-bit or ternary end to end, not post-hoc quants of an FP16 model.",
             "Bonsai 27B keeps Qwen3.6-27B's hybrid architecture, 262K context and vision in 3.8 GB (1-bit GGUF) or 8.5 GB (ternary MLX).",
             "The 1.7B / 4B / 8B builds are Qwen3-based, text-only, and fit entry-level laptops.",
-            "Bonsai 2 (Qwen3.8-27B base) isn't listed yet: its GGUFs need PrismML's llama.cpp fork and its MLX pack a newer mlx-vlm.",
+            "Bonsai 2 (Qwen3.8-27B base) runs only on the TensorFold engine: its GGUFs need PrismML's llama.cpp fork and its MLX pack a newer mlx-vlm.",
         ],
     },
     {
@@ -938,6 +1027,26 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "agents", "tool-use"],
                 "note": "nemotron_h in stock mlx-lm. 3B active, so decode is fast on a 24-32 GB Mac.",
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-08",
+            },
+            {
+                "id": "Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
+                "name": "Nemotron 3.5 Lightning MLX 4-bit (MTP head)",
+                "repo": "Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
+                "link": "https://huggingface.co/Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
+                "paramsB": 30.0,
+                "sizeGb": 19.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "agents", "tool-use"],
+                "note": (
+                    "TensorFold's conversion, which keeps the MTP head the community conversions strip. "
+                    "Runs on standard MLX; with TensorFold installed, ticking speculative decoding drafts with "
+                    "the MTP head (exact speculative decoding). Size is approximate."
+                ),
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "mlx",
@@ -1499,10 +1608,15 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use"],
-                "note": "MoE 284B / ~13B active. 4-bit MLX needs ~160 GB unified memory (M3/M4 Ultra). MTP head enables speculative decoding.",
+                "estimatedMemoryGb": 165.0,
+                "note": (
+                    "MoE 284B / ~13B active. Stock mlx-lm cannot load deepseek_v4; this 4-bit checkpoint runs on "
+                    "the TensorFold engine, which needs a Mac with 256 GB of memory (about 151 GiB stays "
+                    "resident). Drafts with the Vontra DSpark head (10.7 GB, fetched on first load)."
+                ),
                 "contextWindow": "1M",
                 "launchMode": "direct",
-                "backend": "mlx",
+                "backend": "tensorfold",
                 "releaseDate": "2026-04",
             },
             {
@@ -1652,6 +1766,59 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             "GLM-5 is Z.ai / Tsinghua's frontier sparse-MoE family (GlmMoeDsa, 256 experts / 8 active), strong on agentic coding.",
             "GLM-5.1 is the refined release; unsloth + mlx-community publish GGUF and MXFP4 quants.",
             "Frontier-scale: a 4-bit GGUF is ~515 GB, so this family targets clusters and very-high-end workstations.",
+        ],
+    },
+    {
+        # GLM-5.3-Flash (``glm5_next``) — no shipped runtime loads it except
+        # TensorFold's Mac engine, which serves Vontra's MLX 4-bit + MTP
+        # conversion on a 256 GB Mac. Everything here (repo name, ~170 GiB of
+        # weights, the 256 GB requirement, MTP drafting) comes from
+        # TensorFold's GLM-5.3-Flash recipe; the Hub was not reachable when the
+        # row was added, so parameter count and context window are left
+        # unstated (the recipe only shows 262,144-token contexts being accepted,
+        # hence "256K") — re-check on the first real download.
+        "id": "glm-5-3-flash",
+        "name": "GLM-5.3-Flash",
+        "provider": "Z.ai",
+        "headline": "Z.ai's Flash-tier GLM — runs locally only on the TensorFold engine, on 256 GB Macs.",
+        "summary": "GLM-5.3-Flash (glm5_next): MTP-drafted MoE served by TensorFold on a 256 GB Mac; about 170 GiB of 4-bit weights.",
+        "description": (
+            "GLM-5.3-Flash is a sparse Mixture-of-Experts model on Z.ai's glm5_next architecture with a built-in "
+            "MTP head. No MLX or llama.cpp path the app ships can load it; TensorFold's Mac engine reads Vontra's "
+            "4-bit conversion (about 170 GiB of weights) on a Mac with 256 GB of memory and verifies every MTP "
+            "draft exactly, so replies match serial decoding."
+        ),
+        "updatedLabel": "Tracked via TensorFold",
+        "popularityLabel": "Workstation class",
+        "likesLabel": "Z.ai",
+        "badges": ["Reasoning", "Coding", "Agents", "256 GB Mac"],
+        "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+        "defaultVariantId": "Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
+        "variants": [
+            {
+                "id": "Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
+                "name": "GLM-5.3-Flash MLX 4-bit (TensorFold)",
+                "repo": "Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
+                "link": "https://huggingface.co/Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
+                "paramsB": 0.0,
+                "sizeGb": 181.7,
+                "estimatedMemoryGb": 185.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "note": (
+                    "Runs only on the TensorFold engine, on a Mac with 256 GB of memory (169.2 GiB of weights). "
+                    "Drafts with the checkpoint's MTP head. Install TensorFold from the launch settings."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "tensorfold",
+            },
+        ],
+        "readme": [
+            "GLM-5.3-Flash is Z.ai's Flash-tier sparse-MoE model on the glm5_next architecture, with an MTP head for speculative decoding.",
+            "It loads only through the TensorFold engine, and only on Macs with 256 GB of memory — the 4-bit weights alone are about 170 GiB.",
+            "TensorFold verifies every draft against the target model, so speculative decoding changes speed, not output.",
         ],
     },
     {

@@ -80,7 +80,12 @@ def _model_family_payloads(system_stats: dict[str, Any], library: list[dict[str,
     for family in MODEL_FAMILIES:
         variants: list[dict[str, Any]] = []
         for variant in family["variants"]:
-            runtime_memory = _estimate_runtime_memory_gb(variant["paramsB"], variant["quantization"])
+            # A row may state its own figure: the parameter-count formula is
+            # meaningless when the total is unknown (``paramsB`` 0) or the
+            # weights are mapped rather than resident.
+            runtime_memory = float(variant.get("estimatedMemoryGb") or 0) or _estimate_runtime_memory_gb(
+                variant["paramsB"], variant["quantization"]
+            )
             variants.append(
                 {
                     **variant,

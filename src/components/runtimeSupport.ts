@@ -1,4 +1,5 @@
 import type { SystemStats } from "../types";
+import { resolveTensorfoldSupport } from "./tensorfoldSupport";
 
 const COMMUNITY_PREFIXES = ["mlx-community/", "lmstudio-community/", "thebloke/", "bartowski/"];
 const QUANT_SUFFIXES = /[-_](?:bf16|fp16|f16|\d+bit|q\d(?:_[a-z0-9]+)*|gguf|mlx|instruct)$/i;
@@ -17,8 +18,22 @@ export function canonicalStrategyId(strategyId: string): string {
   return LEGACY_STRATEGY_ALIASES[strategyId] ?? strategyId;
 }
 
+/**
+ * Cache strategies that exist to shrink the KV cache, not to speed generation
+ * up. TurboQuant stores the cache in 1-4 bits so long contexts fit in less
+ * memory; measured decode is slower than Native (FU-066). Surfaces that list
+ * strategies use this to label it a memory saver instead of implying it is an
+ * acceleration option. Legacy ids are coerced first, like everywhere else.
+ */
+export function isMemorySaverStrategy(strategyId: string | null | undefined): boolean {
+  if (!strategyId) return false;
+  return canonicalStrategyId(strategyId.toLowerCase()) === "turboquant";
+}
+
 export const STRATEGY_ENGINE_SUPPORT: Record<string, string[]> = {
-  native: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
+  // TensorFold keeps its own KV caches (exact drafts roll them back), so only
+  // the native strategy applies to it.
+  native: ["mlx", "gguf", "llama.cpp", "vllm", "tensorfold", "auto"],
   triattention: ["vllm"],
   turboquant: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
 };
@@ -209,6 +224,7 @@ export function isMtpGgufRepo(repo: string | null | undefined): boolean {
 
 export function sanitizeSpeculativeSelection({
   dflashInfo,
+  tensorfoldInfo,
   selectedBackend,
   modelRef,
   canonicalRepo,
@@ -217,6 +233,7 @@ export function sanitizeSpeculativeSelection({
   treeBudget,
 }: {
   dflashInfo?: SystemStats["dflash"];
+  tensorfoldInfo?: SystemStats["tensorfold"];
   selectedBackend?: string | null;
   modelRef?: string | null;
   canonicalRepo?: string | null;
@@ -242,6 +259,13 @@ export function sanitizeSpeculativeSelection({
   // user's choice instead of clearing it (it used to be cleared, which
   // silently disabled the FU-074 GGUF MTP toggle). No DDTree on GGUF.
   if (isGgufBackendId(selectedBackend)) {
+    return { speculativeDecoding, treeBudget: 0, support };
+  }
+  // A checkpoint TensorFold serves keeps the user's choice too: the backend
+  // routes it to TensorFold (exact drafts from the MTP head / draft model)
+  // or falls back to standard decoding, so DFlash support is irrelevant.
+  // DDTree is a DFlash feature and never applies there.
+  if (resolveTensorfoldSupport(tensorfoldInfo, [canonicalRepo, modelRef])) {
     return { speculativeDecoding, treeBudget: 0, support };
   }
   if (!speculativeDecoding || support.enabled) {

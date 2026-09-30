@@ -80,6 +80,7 @@ licence, preserving the original copyright header in the vendored file.
 |---------|-----------|---------|
 | `dflash-mlx` | <https://github.com/bstnxbt/dflash-mlx> | MIT |
 | `mtplx` | <https://github.com/youssofal/mtplx> | Apache 2.0 |
+| `tensorfold` | <https://github.com/ashhart/TensorFold> | MIT |
 
 These libraries are **not bundled** with ChaosEngineAI. They are
 optional pip dependencies that the user may install independently.
@@ -102,6 +103,23 @@ page on Apple Silicon hosts. See FU-028 in CLAUDE.md.
 > redistribution permitted with attribution preserved. Source:
 > ``~/.chaosengine/mtplx-venv/lib/python*/site-packages/mtplx-*.dist-info/licenses/``
 > (full LICENSE file shipped with the wheel).
+
+### tensorfold (exact speculative decoding on Apple Silicon)
+
+`tensorfold` is a local OpenAI-compatible inference server with per-family
+kernels whose speculative drafts are verified exactly against the target
+model, so drafted replies are identical to serial decoding. It pins its own
+``mlx`` / ``mlx-lm`` ranges, so the install lives in an **isolated venv** at
+``~/.chaosengine/tensorfold-venv/`` — never co-installed with our main
+``.venv``. ChaosEngineAI shells out to ``tensorfold serve <model dir>`` from
+``backend_service/inference/tensorfold_engine.py`` and proxies via the
+package's own HTTP server. Not bundled in the desktop ``.app``; installed on
+demand from the launch settings or the Setup page on Apple Silicon hosts.
+
+> **MIT licence summary**: free use, modification, and redistribution
+> permitted provided the copyright and permission notice are preserved.
+> Source: ``~/.chaosengine/tensorfold-venv/lib/python*/site-packages/tensorfold-*.dist-info/``
+> (the LICENSE file shipped with the package).
 
 ## Optional Apple Silicon Video Runtime
 

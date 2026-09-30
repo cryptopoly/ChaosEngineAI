@@ -34,7 +34,7 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # or vllm on Linux/CUDA (see the cache_compression.triattention adapter).
     # Same commit as the pyproject ``[triattention]`` extras (FU-031) —
     # unpinned HEAD made in-app installs non-reproducible.
-    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2",
+    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git@a4bc3c8f709db60f016ef42c3feb290fd0c00c1b",
     # Floor matches the pyproject ``[vllm]`` extra: 0.28 carries native
     # DFlash / DFlash 2 (FU-089, FU-091), so a DFlash "install" on a box
     # with an older vLLM upgrades in place instead of "already satisfied".
@@ -403,6 +403,7 @@ from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
 from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
+from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
 from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
@@ -414,6 +415,7 @@ router.include_router(_gpu_bundle_router)
 router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
 router.include_router(_mtplx_router)
+router.include_router(_tensorfold_router)
 router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
 router.include_router(_vllm_wsl_router)

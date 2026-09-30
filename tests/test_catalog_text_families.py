@@ -28,6 +28,7 @@ class NewTextFamiliesTests(unittest.TestCase):
         "kimi-k2-6", "llama-4-scout", "minimax-m3", "mistral-large-3",
         # 2026-09 additions.
         "qwen-3-8", "bonsai", "nemotron-3-5-lightning", "minicpm-5",
+        "glm-5-3-flash",
     )
 
     def test_all_new_families_present(self):
@@ -44,7 +45,7 @@ class NewTextFamiliesTests(unittest.TestCase):
             for v in fam["variants"]:
                 self.assertEqual(_REQUIRED_VARIANT_FIELDS - set(v), set(), f"{fid}/{v['id']} variant fields")
                 self.assertEqual(v["link"], f"https://huggingface.co/{v['repo']}", f"{fid}/{v['id']} link")
-                self.assertIn(v["backend"], ("mlx", "llama.cpp", "vllm"))
+                self.assertIn(v["backend"], ("mlx", "llama.cpp", "vllm", "tensorfold"))
                 self.assertIn(v["launchMode"], ("direct", "convert"))
 
     def test_text_only_families_have_no_vision(self):
@@ -55,7 +56,7 @@ class NewTextFamiliesTests(unittest.TestCase):
         # Mistral Large 3 is text-only (the Pixtral line carries Mistral's vision).
         for fid in (
             "deepseek-v4", "glm-5", "minimax-m2", "ornith-1", "mistral-large-3",
-            "nemotron-3-5-lightning", "minicpm-5",
+            "nemotron-3-5-lightning", "minicpm-5", "glm-5-3-flash",
         ):
             fam = self.by_id[fid]
             self.assertNotIn("vision", fam["capabilities"], f"{fid} family vision tag")
@@ -65,15 +66,24 @@ class NewTextFamiliesTests(unittest.TestCase):
     def test_qwen38_is_multimodal_like_qwen36(self):
         # Qwen3.8-27B ships Qwen3.6-27B's Qwen3_5ForConditionalGeneration
         # config (vision_config included) — same FU-072 vision policy.
+        # Flash Next is a different (Qwen4-preview) architecture whose vision
+        # support is unverified, so only the 27B rows are held to this.
         for v in self.by_id["qwen-3-8"]["variants"]:
+            if "Flash-Next" in v["repo"]:
+                self.assertNotIn("vision", v["capabilities"], v["id"])
+                continue
             self.assertIn("vision", v["capabilities"], v["id"])
 
     def test_bonsai_lists_only_stock_runtime_formats(self):
         # Bonsai 2 (PrismML fork / mlx-vlm >= 0.7.2), MLX 1-bit (mlx-vlm
         # kernels) and Q2_0-g64 GGUF (llama.cpp >= b9994) can't run on the
-        # shipped runtimes — keep them out until they can.
+        # shipped runtimes — keep them out until they can. The one exception
+        # is Bonsai 2's MLX pack, which the TensorFold engine reads.
         for v in self.by_id["bonsai"]["variants"]:
-            self.assertNotIn("Bonsai-2-", v["repo"], v["id"])
+            if "Bonsai-2-" in v["repo"]:
+                self.assertEqual(v["backend"], "tensorfold", v["id"])
+                self.assertEqual(v["format"], "MLX", v["id"])
+                continue
             self.assertNotIn("1bit", v["repo"], v["id"])
             if v["format"] == "GGUF":
                 self.assertIn("Q1_0", v["ggufFile"], v["id"])
@@ -143,6 +153,64 @@ class NewTextFamiliesTests(unittest.TestCase):
         fam = self.by_id["minimax-m2"]
         for v in fam["variants"]:
             self.assertEqual(v["contextWindow"], "200K", f"minimax-m2/{v['id']} context wrong")
+
+    def _variants(self):
+        return {v["repo"]: v for f in MODEL_FAMILIES for v in f["variants"]}
+
+    def test_tensorfold_rows_match_the_engine_registry(self):
+        # The catalog and ``inference/_tensorfold.py`` describe the same set of
+        # checkpoints: every one the registry calls exclusive must be listed with
+        # the tensorfold backend (nothing else can load it), and a tensorfold
+        # row must name a checkpoint the registry knows.
+        from backend_service.inference._tensorfold import exclusive_repos, supported_repos
+
+        variants = self._variants()
+        for repo in exclusive_repos():
+            self.assertIn(repo, variants, f"{repo} is exclusive to TensorFold but not in the catalog")
+            self.assertEqual(variants[repo]["backend"], "tensorfold", repo)
+        for repo, variant in variants.items():
+            if variant["backend"] == "tensorfold":
+                self.assertIn(repo, supported_repos(), f"{repo} is a tensorfold row the engine does not serve")
+
+    def test_every_tensorfold_tested_checkpoint_is_listed(self):
+        from backend_service.inference._tensorfold import supported_repos
+
+        variants = self._variants()
+        for repo in supported_repos():
+            self.assertIn(repo, variants, f"{repo} is TensorFold-tested but has no catalog row")
+
+    def test_non_exclusive_tensorfold_checkpoints_keep_a_standard_runtime(self):
+        # Native / community conversions also load on stock MLX, so their rows
+        # must not claim the tensorfold backend (which would hide them from a
+        # Mac without TensorFold installed).
+        from backend_service.inference._tensorfold import exclusive_repos, supported_repos
+
+        variants = self._variants()
+        for repo in set(supported_repos()) - set(exclusive_repos()):
+            self.assertEqual(variants[repo]["backend"], "mlx", repo)
+
+    def test_rows_with_unknown_parameter_counts_state_their_memory(self):
+        # paramsB 0 means "unknown"; the parameter-count formula would then
+        # advertise ~1.6 GB for a 113 GB checkpoint.
+        from backend_service.helpers.discovery import _model_family_payloads
+
+        payloads = _model_family_payloads({"totalMemoryGb": 64, "availableMemoryGb": 32}, [])
+        by_repo = {v["repo"]: v for f in payloads for v in f["variants"]}
+        for repo, variant in self._variants().items():
+            if variant["paramsB"] == 0:
+                self.assertGreater(variant.get("estimatedMemoryGb", 0), variant["sizeGb"], repo)
+                self.assertEqual(by_repo[repo]["estimatedMemoryGb"], variant["estimatedMemoryGb"], repo)
+        # an explicit figure wins over the formula; rows without one still use it
+        self.assertEqual(by_repo["Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP"]["estimatedMemoryGb"], 118.0)
+        self.assertEqual(by_repo["mlx-community/Qwen3.8-27B-4bit"]["estimatedMemoryGb"], 21.0)
+
+    def test_tensorfold_rows_state_their_memory_requirement(self):
+        from backend_service.inference._tensorfold import min_memory_gb_by_repo
+
+        variants = self._variants()
+        for repo, gb in min_memory_gb_by_repo().items():
+            note = variants[repo]["note"]
+            self.assertIn(f"{gb} GB", note, f"{repo} note should state the {gb} GB Mac requirement")
 
     def test_new_families_surface_in_discover_payloads(self):
         from backend_service.helpers.discovery import _model_family_payloads

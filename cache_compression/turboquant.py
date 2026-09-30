@@ -3,6 +3,12 @@
 TurboQuant provides PolarQuant KV cache compression with fused Metal
 kernels for MLX on Apple Silicon, and cache-type flags for llama.cpp.
 
+Role: a memory saver, not a speed option. It stores the KV cache in 1-4
+bits so long contexts fit in less RAM, and decode is slower than the
+native cache (see FU-066 in CLAUDE.md for measurements). On MLX it also
+bypasses prompt-cache reuse and is locked out while speculative decoding
+is active, so pick it for a context that will not otherwise fit.
+
 Install: ``./.venv/bin/python3 -m pip install turboquant-mlx-full``
 (the package ships on PyPI as ``turboquant-mlx-full`` but imports as
 ``turboquant_mlx``; upstream development tracks

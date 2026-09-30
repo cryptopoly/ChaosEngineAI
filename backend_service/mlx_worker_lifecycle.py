@@ -344,4 +344,12 @@ def apply_triattention_mlx_compressor(state: WorkerState) -> str | None:
             f"TriAttention apply_mlx_compressor raised "
             f"({type(exc).__name__}: {exc}); using native cache."
         )
-    return f"TriAttention MLX compressor applied (kv_budget={state.kv_budget})."
+    # ``apply_triattention_mlx`` only attaches the compressor to the model; the
+    # upstream MLX port expects the caller's decode loop to invoke it
+    # (``triattention_generate_step``), and mlx-lm's generation never does. A
+    # tiny-model smoke at both the old and current pins shows identical tokens
+    # and an uncompressed KV cache, so say so rather than imply compression.
+    return (
+        f"TriAttention compressor attached (kv_budget={state.kv_budget}), but MLX generation does not "
+        "invoke it yet: replies and KV cache are the same as native."
+    )

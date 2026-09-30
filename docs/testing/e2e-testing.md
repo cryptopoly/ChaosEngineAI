@@ -18,14 +18,14 @@ or no FLUX weights are on disk.
 
 | Phase | Surface | What it proves |
 |-------|---------|----------------|
-| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash registries populated. |
-| 1 | Chat — text generation | MLX + GGUF backends both produce tokens. Cache strategies (Native f16, TurboQuant). Speculative decoding paths (DFlash, MTPLX) route correctly per `runtimeNote`. `cache-preview` returns sane numbers at 32k+ context. `--fused-attention` honoured. |
+| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash/TensorFold registries populated, and every TensorFold catalog row agrees with the registry (exclusive families are tagged for the TensorFold backend). |
+| 1 | Chat — text generation | MLX + GGUF backends both produce tokens. Cache strategies (Native f16, TurboQuant). Speculative decoding paths (DFlash, MTPLX, TensorFold) route correctly per `runtimeNote` / engine. `cache-preview` returns sane numbers at 32k+ context. `--fused-attention` honoured. |
 | 2 | Chat Compare | `/api/chat/compare` accepts two-slot payload and returns 200. |
 | 3 | HTML Challenge | List + create + delete round-trip. Skipped when no MLX text model on disk. |
 | 4 | Image Studio | Catalog, library, runtime probes pass. If a model is installed, runs a 4-step 256×256 generation and confirms the artifact lands. |
 | 5 | Video Studio | Same shape as Phase 4 — catalog, library, mlx-runtime probes. Generation runs against any installed video model. |
-| 6 | Setup probes (read-only) | `mtplx-status`, `longlive-status`, `wan-status/inventory`, `gpu-bundle-info/status`, `turbo-update-check`. Destructive install actions are intentionally NOT run (too slow + side-effecty for a routine suite). |
-| 7 | Diagnostics + cleanup | `diagnostics-snapshot` + `log-tail` return data. No orphan MLX / llama-server / MTPLX subprocesses left dangling. Runtime returns to `idle` or `loaded` (not `error`). |
+| 6 | Setup probes (read-only) | `mtplx-status`, `tensorfold-status`, `longlive-status`, `wan-status/inventory`, `gpu-bundle-info/status`, `turbo-update-check`. Destructive install actions are intentionally NOT run (too slow + side-effecty for a routine suite). |
+| 7 | Diagnostics + cleanup | `diagnostics-snapshot` + `log-tail` return data. No orphan MLX / llama-server / MTPLX / TensorFold subprocesses left dangling. Runtime returns to `idle` or `loaded` (not `error`). |
 
 ## Pass criteria
 
@@ -34,6 +34,9 @@ Concrete, not "feels right":
 - HTTP status codes assert 200 (or 2 in the suite's exit for the call-level
   check).
 - For Phase 1 generation checks: `tokS > 0` AND a completion was produced.
+- The TensorFold check asserts the loaded engine really is `tensorfold`
+  (a silent fallback to standard MLX still produces text, so the token check
+  alone would not catch it).
 - DFlash / MTPLX checks additionally assert the expected token appears
   in `runtimeNote` (`"dflash"` / `"speculative"` / `"mtplx"`). A pass for
   "speculativeDecoding=true" alone is **not** sufficient — backend must
@@ -50,7 +53,7 @@ A check returns `skip` (not `fail`) when:
 - A backend dependency isn't present (e.g. no `llama-server` binary, no
   installed image-generation pipeline).
 - A capability the user has explicitly not installed (MTPLX venv missing,
-  DFlash pip package missing) and the check needs it.
+  TensorFold venv missing, DFlash pip package missing) and the check needs it.
 
 `skip` is the suite's way of saying *"can't tell — environment doesn't
 have what this check needs."* It's safe; only `fail` raises a regression
@@ -151,7 +154,7 @@ Use the E2E suite when:
   registry, setup install endpoints).
 - Bumping an upstream dependency that touches model load paths
   (`mlx-lm`, `llama.cpp`, `diffusers`, `mlx-video`, `dflash-mlx`,
-  `turboquant-mlx-full`, `mtplx`).
+  `turboquant-mlx-full`, `mtplx`, `tensorfold`).
 - Verifying a UX bug fix that depends on backend behaviour — the suite
   catches whether the *backend* did what the UI claims.
 

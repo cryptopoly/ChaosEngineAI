@@ -155,6 +155,18 @@ else
   pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
 fi
 
+# TriAttention pin sync: the two pyproject extras and the Setup tab's
+# installer allowlist must name one upstream commit (mirrors the .mjs probe).
+TRI_PINS=$(grep -ohE 'WeianMao/triattention\.git@[a-f0-9]+' pyproject.toml backend_service/routes/setup/__init__.py | sed -E 's/.*@//' | sort -u)
+TRI_COUNT=$(printf '%s\n' "$TRI_PINS" | grep -c . || true)
+if [[ "$TRI_COUNT" -eq 0 ]]; then
+  warn "triattention pin sync — no pinned commit found in pyproject.toml / routes/setup"
+elif [[ "$TRI_COUNT" -gt 1 ]]; then
+  fail "triattention pin drift — found $(printf '%s' "$TRI_PINS" | tr '\n' ' ') across pyproject.toml and routes/setup. Sync them to one commit."
+else
+  pass "triattention pin sync (${TRI_PINS:0:12})"
+fi
+
 # App version sync across the 4 manifests. v0.9.0 release shipped with
 # pyproject.toml at 0.8.0 because nothing enforced cross-file sync.
 PKG_VERSION=$(grep -E '"version"' package.json | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')

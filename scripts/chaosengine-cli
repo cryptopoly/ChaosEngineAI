@@ -10,6 +10,7 @@ Two layers:
 
   2. Typed shortcuts — ergonomic subcommands for common workflows:
      load / unload / prompt / bench / status / mtplx-install / mtplx-status
+     tensorfold-install / tensorfold-status
      download / convert / search / hub-search / list-weights
      session-create / session-delete / session-fork / session-variant
      server-start / server-stop / server-status / server-logs
@@ -290,6 +291,7 @@ def cmd_status(args: argparse.Namespace) -> int:
             "totalMemoryGb": system.get("totalMemoryGb"),
             "availableMemoryGb": system.get("availableMemoryGb"),
             "mtplx": system.get("mtplx"),
+            "tensorfold": system.get("tensorfold"),
             "dflash": system.get("dflash"),
         },
         "libraryCount": len(workspace.get("library") or []),
@@ -812,6 +814,19 @@ def cmd_mtplx_install(args: argparse.Namespace) -> int:
 
 def cmd_mtplx_status(args: argparse.Namespace) -> int:
     _ok(_hit_get(args, "/api/setup/mtplx-status", timeout=10.0))
+    return 0
+
+
+def cmd_tensorfold_install(args: argparse.Namespace) -> int:
+    _hit_post(args, "/api/setup/install-tensorfold", body={}, timeout=30.0)
+    if not args.wait:
+        _ok(_hit_get(args, "/api/setup/install-tensorfold/status", timeout=10.0))
+        return 0
+    return _poll_install(args, "/api/setup/install-tensorfold/status", label="tensorfold")
+
+
+def cmd_tensorfold_status(args: argparse.Namespace) -> int:
+    _ok(_hit_get(args, "/api/setup/tensorfold-status", timeout=10.0))
     return 0
 
 
@@ -1574,6 +1589,8 @@ def build_parser() -> argparse.ArgumentParser:
     # -- Setup --
     s = sub.add_parser("mtplx-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_mtplx_install)
     sub.add_parser("mtplx-status").set_defaults(func=cmd_mtplx_status)
+    s = sub.add_parser("tensorfold-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_tensorfold_install)
+    sub.add_parser("tensorfold-status").set_defaults(func=cmd_tensorfold_status)
     s = sub.add_parser("longlive-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_longlive_install)
     sub.add_parser("longlive-status").set_defaults(func=cmd_longlive_status)
     s = sub.add_parser("wan-install"); s.add_argument("--repo", default=None); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_wan_install)

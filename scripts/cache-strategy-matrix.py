@@ -60,7 +60,7 @@ class MatrixCell:
     backend: str          # ``mlx`` | ``gguf`` | ``vllm``
     strategy: str         # ``native`` | ``turboquant`` | ``triattention`` | legacy aliases
     bits: int             # 0 for native, otherwise per-strategy bit count
-    spec_decode: str      # ``none`` | ``dflash`` | ``ddtree`` | ``mtplx`` | ``gguf-mtp``
+    spec_decode: str      # ``none`` | ``dflash`` | ``ddtree`` | ``mtplx`` | ``tensorfold`` | ``gguf-mtp``
     tree_budget: int = 0  # only meaningful when spec_decode == ``ddtree``
     quick: bool = True    # included in the ``--quick`` smoke set
 
@@ -84,6 +84,10 @@ MID_MLX_DFLASH_CAPABLE = "mlx-community/Qwen3-4B-bf16"
 # present in its safetensors index) and a catalog variant, so MTPLX
 # resolves heads and the cell can run once the repo is on disk.
 MID_MLX_MTPLX_CAPABLE = "Qwen/Qwen3.5-4B"
+# FU-093: the smallest checkpoint TensorFold's Mac engine is tested with
+# (Vontra's Qwen3.8-27B MLX 4-bit, ~16 GB) — ``RuntimeController`` routes it
+# to ``TensorFoldEngine`` whenever speculative decoding is requested.
+MID_MLX_TENSORFOLD = "Vontra/Qwen3.8-27B-MLX-4bit"
 SMALL_GGUF = "lmstudio-community/Qwen3-0.6B-GGUF"
 LARGE_GGUF_MTP = "ggml-org/Qwen3.6-27B-MTP-GGUF"
 
@@ -111,6 +115,11 @@ MATRIX: list[MatrixCell] = [
     # MTPLX speculative decoding — MTP_MODEL_MAP-supported target via the
     # standalone MTPLX subprocess engine. Qwen3.5-4B is the smallest entry.
     MatrixCell("mtplx spec-dec (Qwen3.5-4B)", MID_MLX_MTPLX_CAPABLE, "mlx", "native", 0, "mtplx", quick=False),
+
+    # TensorFold (FU-093) — exact speculative decoding through the isolated
+    # tensorfold-venv engine; the cell asserts the load really reports
+    # ``engine == "tensorfold"`` (a silent fallback to standard MLX fails).
+    MatrixCell("tensorfold spec-dec (Qwen3.8-27B)", MID_MLX_TENSORFOLD, "mlx", "native", 0, "tensorfold", quick=False),
 
     # GGUF lane — native is enough to verify the standard binary path.
     # TurboQuant on GGUF needs llama-server-turbo; runner skips when the
@@ -211,6 +220,7 @@ class BackendCapabilities:
     # runner treats either as "vllm cells can run" so a Windows + RTX
     # box isn't permanently locked out of the vLLM lane.
     wsl_vllm_available: bool = False
+    tensorfold_available: bool = False
 
 
 def probe_backend(port: int) -> BackendCapabilities:
@@ -246,6 +256,7 @@ def probe_backend(port: int) -> BackendCapabilities:
             or bool(native_backends.get("wslVllmAvailable"))
         ),
         wsl_vllm_available=bool(native_backends.get("wslVllmAvailable")),
+        tensorfold_available=bool(native_backends.get("tensorfoldAvailable")),
         has_turbo_binary=bool(system.get("llamaServerTurboPath")),
         library_refs=refs,
     )
@@ -284,6 +295,12 @@ def skip_reason(cell: MatrixCell, caps: BackendCapabilities, *, quick: bool) -> 
             return "MTPLX speculative decoding requires MLX backend"
         if not caps.mtplx_available:
             return "MTPLX runtime not installed"
+
+    if cell.spec_decode == "tensorfold":
+        if cell.backend != "mlx":
+            return "TensorFold speculative decoding requires the MLX backend (Apple Silicon)"
+        if not caps.tensorfold_available:
+            return "TensorFold runtime not installed"
 
     if cell.spec_decode == "gguf-mtp":
         if cell.backend != "gguf":
@@ -386,6 +403,15 @@ def run_cell(cell: MatrixCell, *, port: int) -> CellResult:
         loaded = ((load_resp.get("runtime") or {}).get("loadedModel")) or load_resp.get("loadedModel") or {}
         result.actual_strategy = loaded.get("cacheStrategy", "")
         result.runtime_note = loaded.get("runtimeNote") or ""
+        if cell.spec_decode == "tensorfold" and loaded.get("engine") != "tensorfold":
+            # A standard-MLX fallback would still produce text and pass the
+            # non-empty check, so assert the engine the load actually chose.
+            result.error = (
+                f"TensorFold expected but engine was {loaded.get('engine')!r}: "
+                f"{result.runtime_note[:120]}"
+            )
+            result.duration_seconds = round(time.monotonic() - started, 2)
+            return result
 
         gen_body = {
             "prompt": DEFAULT_PROMPT,

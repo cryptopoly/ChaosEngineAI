@@ -3,6 +3,7 @@ import { ModelLaunchModal } from "./ModelLaunchModal";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog, SystemStats } from "../types";
 import type { ChatModelOption } from "../types/chat";
 import type { MtplxJobState } from "../api";
+import type { TensorfoldLaunchControls } from "./tensorfoldSupport";
 
 export interface PendingLaunch {
   action: "chat" | "server" | "thread";
@@ -28,6 +29,7 @@ export interface LaunchModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
   onPendingLaunchChange: (value: PendingLaunch | null | ((prev: PendingLaunch | null) => PendingLaunch | null)) => void;
@@ -56,6 +58,7 @@ export function LaunchModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onPendingLaunchChange,
   onLaunchModelSearchChange,
@@ -105,6 +108,7 @@ export function LaunchModal({
       onInstallMtplx={onInstallMtplx}
       installingMtplx={installingMtplx}
       mtplxJob={mtplxJob}
+      tensorfold={tensorfold}
       isAppleSilicon={isAppleSilicon}
       onSelectedKeyChange={setSelectedLaunchKey}
       onSearchChange={onLaunchModelSearchChange}

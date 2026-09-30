@@ -67,10 +67,15 @@ def voice_models(request: Request) -> dict[str, Any]:
 async def transcribe(
     request: Request,
     audio: UploadFile,
-    model: str = Form(default="mlx-community/whisper-large-v3-turbo-q4"),
+    # Empty → the platform default (Parakeet / Whisper Turbo on Apple
+    # Silicon, the CTranslate2 Whisper Turbo elsewhere).
+    model: str = Form(default=""),
 ) -> dict[str, Any]:
     """Accept an audio file upload and return the transcript."""
-    from backend_service.voice_runtime import transcribe_audio  # noqa: PLC0415
+    from backend_service.voice_runtime import (  # noqa: PLC0415
+        UnknownSttModelError,
+        transcribe_audio,
+    )
 
     audio_bytes = await audio.read()
     if not audio_bytes:
@@ -81,6 +86,8 @@ async def transcribe(
     start = time.monotonic()
     try:
         text = transcribe_audio(audio_bytes, mime_type, model)
+    except UnknownSttModelError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:

@@ -224,6 +224,17 @@ not bundled with the app.
 - **Upstream:** <https://github.com/SYSTRAN/faster-whisper>
 - **Licence:** MIT
 - **Usage:** CTranslate2 Whisper backend for Windows / Linux hosts.
+  Weights: `mobiuslabsgmbh/faster-whisper-large-v3-turbo` and
+  `Systran/faster-whisper-{small,base}` (MIT) — the same repos
+  faster-whisper resolves its own size tokens to.
+
+### parakeet-mlx (Apple Silicon STT)
+
+- **Upstream:** <https://github.com/senstella/parakeet-mlx>
+- **Licence:** Apache 2.0
+- **Usage:** NVIDIA Parakeet TDT speech-to-text on MLX — the fast default
+  STT lane on Apple Silicon. Weights: `mlx-community/parakeet-tdt-0.6b-v3`
+  (NVIDIA Parakeet TDT 0.6B v3, CC-BY-4.0 — attribution: NVIDIA).
 
 ### mlx-audio (Apple Silicon TTS)
 

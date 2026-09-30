@@ -51,7 +51,7 @@ class CapabilitiesTests(unittest.TestCase):
 
     def test_install_packages_apple_silicon(self) -> None:
         with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"):
-            self.assertEqual(voice_runtime._stt_install_packages(), ["mlx-whisper"])
+            self.assertEqual(voice_runtime._stt_install_packages(), ["mlx-whisper", "parakeet-mlx"])
             tts = voice_runtime._tts_install_packages()
         self.assertEqual(tts[0], "mlx-audio")
         self.assertIn("misaki", tts)
@@ -161,14 +161,14 @@ class TranscribeAudioTests(unittest.TestCase):
         with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"), \
              mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n == "mlx_whisper"), \
              mock.patch.dict(sys.modules, {"mlx_whisper": fake_whisper}):
-            text = voice_runtime.transcribe_audio(b"fake-audio", "audio/wav", "some/model")
+            text = voice_runtime.transcribe_audio(b"fake-audio", "audio/wav", "mlx-community/whisper-base-mlx")
         self.assertEqual(text, "hi there")
 
     def test_no_backend_raises(self) -> None:
         with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"), \
              mock.patch.object(voice_runtime, "_is_available", return_value=False):
             with self.assertRaises(RuntimeError):
-                voice_runtime.transcribe_audio(b"fake-audio", "audio/wav", "some/model")
+                voice_runtime.transcribe_audio(b"fake-audio", "audio/wav", "mlx-community/whisper-base-mlx")
 
 
 # ---------------------------------------------------------------------------
@@ -569,11 +569,27 @@ class HfSnapshotPathTests(unittest.TestCase):
 
     def test_list_stt_models_installed_flags(self) -> None:
         _make_snapshot(self.hub, "mlx-community/whisper-small-mlx")
-        models = {m["id"]: m for m in voice_runtime.list_stt_models()}
+        with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"):
+            models = {m["id"]: m for m in voice_runtime.list_stt_models()}
         self.assertTrue(models["mlx-community/whisper-small-mlx"]["installed"])
         self.assertFalse(models["mlx-community/whisper-base-mlx"]["installed"])
-        # The catalog constant must stay untouched by the per-call flags.
-        self.assertTrue(all(entry["installed"] is False for entry in voice_runtime._STT_MODELS))
+
+    def test_non_apple_rows_are_ctranslate2_repos(self) -> None:
+        # FU-092: Windows/Linux must never be offered MLX weights.
+        _make_snapshot(self.hub, "Systran/faster-whisper-small")
+        with mock.patch.object(voice_runtime, "_platform", return_value="linux"):
+            models = {m["id"]: m for m in voice_runtime.list_stt_models()}
+        self.assertEqual(
+            set(models),
+            {
+                "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+                "Systran/faster-whisper-small",
+                "Systran/faster-whisper-base",
+            },
+        )
+        self.assertTrue(models["Systran/faster-whisper-small"]["installed"])
+        self.assertTrue(all(m["backend"] == "faster-whisper" for m in models.values()))
+        self.assertTrue(models["mobiuslabsgmbh/faster-whisper-large-v3-turbo"]["default"])
 
 
 class CatalogInvariantTests(unittest.TestCase):
@@ -690,13 +706,13 @@ class TranscribeAudioEdgeTests(unittest.TestCase):
         fake = self._fake_mlx_whisper(seen, ValueError("decode failed"))
         with p1, p2, mock.patch.dict(sys.modules, {"mlx_whisper": fake}):
             with self.assertRaises(ValueError):
-                voice_runtime.transcribe_audio(b"payload", "audio/wav", "m")
+                voice_runtime.transcribe_audio(b"payload", "audio/wav", "mlx-community/whisper-base-mlx")
         self.assertFalse(Path(str(seen["path"])).exists())
 
     def test_missing_text_returns_empty_string(self) -> None:
         p1, p2 = self._apple()
         with p1, p2, mock.patch.dict(sys.modules, {"mlx_whisper": self._fake_mlx_whisper({}, {"text": None})}):
-            self.assertEqual(voice_runtime.transcribe_audio(b"x", "audio/wav", "m"), "")
+            self.assertEqual(voice_runtime.transcribe_audio(b"x", "audio/wav", "mlx-community/whisper-base-mlx"), "")
 
     def test_faster_whisper_path_joins_segments(self) -> None:
         seen: dict[str, object] = {}
@@ -721,7 +737,9 @@ class TranscribeAudioEdgeTests(unittest.TestCase):
             text = voice_runtime.transcribe_audio(b"x", "audio/webm", "small")
         # Regression: " ".join doubled the separator ("hello  world").
         self.assertEqual(text, "hello world")
-        self.assertEqual(seen["model"], "small")
+        # FU-092: the size token resolves to the CTranslate2 repo
+        # faster-whisper itself maps "small" to — never an MLX id.
+        self.assertEqual(seen["model"], "Systran/faster-whisper-small")
         self.assertEqual(seen["device"], "auto")
 
 
@@ -930,7 +948,7 @@ class VoiceRouteEdgeTests(unittest.TestCase):
     def test_models_endpoint_shape(self) -> None:
         payload = self.client.get("/api/voice/models").json()
         self.assertEqual(set(payload), {"sttModels", "ttsVoices"})
-        self.assertEqual(len(payload["sttModels"]), len(voice_runtime._STT_MODELS))
+        self.assertEqual(len(payload["sttModels"]), len(voice_runtime.list_stt_models()))
         self.assertIn("af_heart", {v["id"] for v in payload["ttsVoices"]})
 
     def test_transcribe_forwards_mime_and_model(self) -> None:
@@ -942,10 +960,21 @@ class VoiceRouteEdgeTests(unittest.TestCase):
             )
         fn.assert_called_once_with(b"bytes", "audio/ogg", "mlx-community/whisper-small-mlx")
 
-    def test_transcribe_defaults_to_turbo_model(self) -> None:
+    def test_transcribe_defaults_to_platform_default(self) -> None:
+        # Empty model → voice_runtime picks the platform default.
         with mock.patch.object(voice_runtime, "transcribe_audio", return_value="ok") as fn:
             self.client.post("/api/voice/transcribe", files={"audio": ("a.wav", b"b", "audio/wav")})
-        self.assertEqual(fn.call_args.args[2], "mlx-community/whisper-large-v3-turbo-q4")
+        self.assertEqual(fn.call_args.args[2], "")
+
+    def test_transcribe_rejects_unknown_model(self) -> None:
+        # The id reaches loaders that also accept filesystem paths, so it
+        # must be a catalog id — anything else is a 400, not a load.
+        response = self.client.post(
+            "/api/voice/transcribe",
+            files={"audio": ("a.wav", b"b", "audio/wav")},
+            data={"model": "/etc/passwd"},
+        )
+        self.assertEqual(response.status_code, 400)
 
     def test_transcribe_error_mapping(self) -> None:
         for exc, status in ((RuntimeError("no backend"), 503), (ValueError("bad audio"), 500)):
@@ -1010,3 +1039,91 @@ class VoiceRouteEdgeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SttModelResolutionTests(unittest.TestCase):
+    """FU-092 + Parakeet: catalog ids map onto the backend the host runs."""
+
+    def setUp(self) -> None:
+        voice_runtime.release_stt_model()
+        self._snap = mock.patch.object(voice_runtime, "_hf_snapshot_path", return_value=None)
+        self._snap.start()
+
+    def tearDown(self) -> None:
+        self._snap.stop()
+        voice_runtime.release_stt_model()
+
+    def _resolve(self, plat: str, available: set[str], model_id: str | None):
+        with mock.patch.object(voice_runtime, "_platform", return_value=plat), \
+             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n in available):
+            return voice_runtime.resolve_stt_model(model_id)
+
+    def test_mlx_id_on_linux_maps_to_ctranslate2_sibling(self) -> None:
+        # The exact FU-092 failure: an MLX id reaching faster-whisper.
+        self.assertEqual(
+            self._resolve("linux", {"faster_whisper"}, "mlx-community/whisper-large-v3-turbo-q4"),
+            ("faster-whisper", "mobiuslabsgmbh/faster-whisper-large-v3-turbo"),
+        )
+
+    def test_ctranslate2_id_on_apple_maps_to_mlx_sibling(self) -> None:
+        self.assertEqual(
+            self._resolve("apple_silicon", {"mlx_whisper"}, "Systran/faster-whisper-base"),
+            ("mlx-whisper", "mlx-community/whisper-base-mlx"),
+        )
+
+    def test_default_prefers_parakeet_when_installed(self) -> None:
+        self.assertEqual(
+            self._resolve("apple_silicon", {"mlx_whisper", "parakeet_mlx"}, ""),
+            ("parakeet-mlx", "mlx-community/parakeet-tdt-0.6b-v3"),
+        )
+
+    def test_default_is_whisper_turbo_without_parakeet(self) -> None:
+        self.assertEqual(
+            self._resolve("apple_silicon", {"mlx_whisper"}, None),
+            ("mlx-whisper", "mlx-community/whisper-large-v3-turbo-q4"),
+        )
+
+    def test_parakeet_rejected_off_apple(self) -> None:
+        with self.assertRaises(RuntimeError):
+            self._resolve("windows", {"faster_whisper"}, "mlx-community/parakeet-tdt-0.6b-v3")
+
+    def test_unknown_and_path_ids_rejected(self) -> None:
+        for bad in ("some/model", "/tmp/evil", "..\\x"):
+            with self.assertRaises(voice_runtime.UnknownSttModelError):
+                self._resolve("linux", {"faster_whisper"}, bad)
+
+    def test_exactly_one_default_row_per_platform(self) -> None:
+        for plat, avail in (
+            ("apple_silicon", {"mlx_whisper"}),
+            ("apple_silicon", {"mlx_whisper", "parakeet_mlx"}),
+            ("linux", {"faster_whisper"}),
+        ):
+            with mock.patch.object(voice_runtime, "_platform", return_value=plat), \
+                 mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n, a=avail: n in a):
+                rows = voice_runtime.list_stt_models()
+            self.assertEqual(sum(1 for r in rows if r["default"]), 1, (plat, avail))
+
+    def test_parakeet_transcribe_loads_once_and_reuses(self) -> None:
+        loads: list[str] = []
+
+        class FakeResult:
+            text = "  bonjour  "
+
+        class FakeModel:
+            def transcribe(self, path: str) -> FakeResult:
+                self.path = path
+                return FakeResult()
+
+        def from_pretrained(source: str) -> FakeModel:
+            loads.append(source)
+            return FakeModel()
+
+        fake = types.ModuleType("parakeet_mlx")
+        fake.from_pretrained = from_pretrained
+        with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"), \
+             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n in {"parakeet_mlx", "mlx_whisper"}), \
+             mock.patch.dict(sys.modules, {"parakeet_mlx": fake}):
+            first = voice_runtime.transcribe_audio(b"x", "audio/webm", "mlx-community/parakeet-tdt-0.6b-v3")
+            second = voice_runtime.transcribe_audio(b"y", "audio/webm", "")
+        self.assertEqual((first, second), ("bonjour", "bonjour"))
+        self.assertEqual(loads, ["mlx-community/parakeet-tdt-0.6b-v3"])

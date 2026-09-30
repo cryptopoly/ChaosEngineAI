@@ -144,6 +144,10 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # Voice / STT backends
     "mlx-whisper": "mlx-whisper",
     "faster-whisper": "faster-whisper",
+    # Parakeet TDT on Apple Silicon (senstella/parakeet-mlx, Apache-2.0).
+    # Floor at the release whose from_pretrained / transcribe surface
+    # voice_runtime targets.
+    "parakeet-mlx": "parakeet-mlx>=0.5.2",
     # Voice / TTS backends. mlx-audio's Kokoro pipeline requires misaki
     # (G2P text processing) but doesn't declare it — and swallows the
     # ImportError at generate time, yielding empty output. The voice

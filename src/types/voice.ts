@@ -4,6 +4,12 @@ export interface SttModel {
   sizeGb: number;
   installed: boolean;
   default: boolean;
+  /** STT backend that runs this row ("parakeet-mlx" | "mlx-whisper" |
+   * "faster-whisper"). Absent on the TTS voice-model card. */
+  backend?: string;
+  /** False when the row's backend package isn't installed yet (e.g.
+   * Parakeet on a Mac that only has mlx-whisper). */
+  backendInstalled?: boolean;
 }
 
 export interface TtsVoice {

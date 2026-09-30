@@ -21,7 +21,11 @@ function formatDuration(seconds: number): string {
 /** Prefer a model that won't trigger a surprise download: catalog default
  * if installed, else the first installed model, else fall back to the
  * catalog default (Studio shows a download hint in that case). */
-export function pickDefaultSttModel(models: SttModel[]): SttModel | undefined {
+export function pickDefaultSttModel(allModels: SttModel[]): SttModel | undefined {
+  // Rows whose backend package is missing (Parakeet before parakeet-mlx
+  // is installed) can't transcribe yet — never pick them by default.
+  const runnable = allModels.filter((m) => m.backendInstalled !== false);
+  const models = runnable.length > 0 ? runnable : allModels;
   const catalogDefault = models.find((m) => m.default);
   if (catalogDefault?.installed) return catalogDefault;
   return models.find((m) => m.installed) ?? catalogDefault ?? models[0];
@@ -97,7 +101,9 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: Vo
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const formData = new FormData();
         formData.append("audio", blob, "recording.webm");
-        formData.append("model", selectedSttModel || "mlx-community/whisper-large-v3-turbo-q4");
+        // Empty → backend picks the platform default (the model ids differ
+        // between Apple Silicon and Windows/Linux, so never hardcode one).
+        if (selectedSttModel) formData.append("model", selectedSttModel);
         try {
           const result = await transcribeAudio(formData);
           setTranscript(result.text);

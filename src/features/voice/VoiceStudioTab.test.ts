@@ -14,6 +14,14 @@ function makeModel(overrides: Partial<SttModel>): SttModel {
 }
 
 describe("pickDefaultSttModel", () => {
+  it("skips rows whose backend package is not installed", () => {
+    const models = [
+      makeModel({ id: "parakeet", installed: true, backend: "parakeet-mlx", backendInstalled: false }),
+      makeModel({ id: "turbo", default: true, installed: true, backend: "mlx-whisper", backendInstalled: true }),
+    ];
+    expect(pickDefaultSttModel(models)?.id).toBe("turbo");
+  });
+
   it("prefers the catalog default when it is installed", () => {
     const models = [
       makeModel({ id: "a", installed: true }),

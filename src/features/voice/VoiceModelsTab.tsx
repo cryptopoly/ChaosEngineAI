@@ -114,7 +114,9 @@ function ModelDownloadCard({ model, onInstalled }: { model: SttModel; onInstalle
       </div>
       <div className="image-library-stats" style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span>{model.sizeGb} GB</span>
-        {!model.installed && (
+        {model.backendInstalled === false && model.backend ? (
+          <InstallButton packageKeys={[model.backend]} label={model.backend} onDone={onInstalled} />
+        ) : !model.installed && (
           downloading ? (
             <span className="muted-text">{Math.round((status?.progress ?? 0) * 100)}%</span>
           ) : (

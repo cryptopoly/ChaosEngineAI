@@ -1,10 +1,11 @@
-"""Voice I/O runtime — STT via mlx-whisper / faster-whisper, TTS via mlx-audio / kokoro-onnx."""
+"""Voice I/O runtime — STT via parakeet-mlx / mlx-whisper / faster-whisper, TTS via mlx-audio / kokoro-onnx."""
 
 from __future__ import annotations
 
 import importlib.util
 import platform
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -33,29 +34,67 @@ def _platform() -> str:
 # Model / voice catalogs
 # ---------------------------------------------------------------------------
 
-_STT_MODELS = [
+# Speech-to-text catalog. Each entry is one *logical* model with a
+# per-backend weight source, because the backends cannot read each
+# other's formats: mlx-whisper loads MLX safetensors, faster-whisper
+# loads CTranslate2 conversions, parakeet-mlx loads its own MLX port.
+# ``list_stt_models`` projects this onto the rows the current platform
+# can actually run (FU-092: non-Apple hosts used to be handed MLX ids).
+#
+# CTranslate2 sources (FU-092 decision): exactly the repos faster-whisper
+# itself resolves its size tokens to (``faster_whisper.utils._MODELS`` in
+# 1.2.1 — ``large-v3-turbo`` → mobiuslabsgmbh, ``small`` / ``base`` →
+# Systran, the faster-whisper maintainers). Pinning the ids explicitly
+# instead of passing the size token lets the Models tab download and
+# report "installed" through the normal HF-cache machinery, while
+# trusting nothing the library doesn't already trust.
+_STT_MODELS: list[dict[str, Any]] = [
     {
-        "id": "mlx-community/whisper-large-v3-turbo-q4",
-        "name": "Whisper Large v3 Turbo (Q4)",
-        "sizeGb": 0.8,
-        "installed": False,
+        "key": "parakeet-tdt-v3",
+        "name": "Parakeet TDT 0.6B v3 (25 European languages)",
+        "default": False,
+        # Apple Silicon only — parakeet-mlx (Apache-2.0). NVIDIA's
+        # checkpoint (CC-BY-4.0), MLX port by mlx-community. Roughly 2x
+        # Whisper Turbo's speed on M-series; no CJK coverage, so Whisper
+        # stays in the list for everything else.
+        "sources": {"parakeet-mlx": ("mlx-community/parakeet-tdt-0.6b-v3", 2.5)},
+    },
+    {
+        "key": "whisper-large-v3-turbo",
+        "name": "Whisper Large v3 Turbo",
         "default": True,
+        "sources": {
+            "mlx-whisper": ("mlx-community/whisper-large-v3-turbo-q4", 0.8),
+            "faster-whisper": ("mobiuslabsgmbh/faster-whisper-large-v3-turbo", 1.6),
+        },
+        "aliases": ("large-v3-turbo", "turbo"),
     },
     {
-        "id": "mlx-community/whisper-small-mlx",
+        "key": "whisper-small",
         "name": "Whisper Small",
-        "sizeGb": 0.24,
-        "installed": False,
         "default": False,
+        "sources": {
+            "mlx-whisper": ("mlx-community/whisper-small-mlx", 0.24),
+            "faster-whisper": ("Systran/faster-whisper-small", 0.48),
+        },
+        "aliases": ("small",),
     },
     {
-        "id": "mlx-community/whisper-base-mlx",
+        "key": "whisper-base",
         "name": "Whisper Base",
-        "sizeGb": 0.07,
-        "installed": False,
         "default": False,
+        "sources": {
+            "mlx-whisper": ("mlx-community/whisper-base-mlx", 0.07),
+            "faster-whisper": ("Systran/faster-whisper-base", 0.15),
+        },
+        "aliases": ("base",),
     },
 ]
+
+
+class UnknownSttModelError(ValueError):
+    """The requested STT model id isn't in the catalog (HTTP 400)."""
+
 
 _TTS_VOICES = [
     {"id": "af_heart", "name": "American Female (Heart)", "language": "en-US"},
@@ -86,7 +125,11 @@ def _tts_available() -> bool:
 
 def _stt_install_packages() -> list[str]:
     """Return pip package keys for the platform-appropriate STT backend."""
-    return ["mlx-whisper"] if _platform() == "apple_silicon" else ["faster-whisper"]
+    if _platform() == "apple_silicon":
+        # Parakeet rides along: it's the fast default when present, and
+        # mlx-whisper covers the languages Parakeet doesn't.
+        return ["mlx-whisper", "parakeet-mlx"]
+    return ["faster-whisper"]
 
 
 def _tts_install_packages() -> list[str]:
@@ -113,6 +156,8 @@ def _tts_install_packages() -> list[str]:
 
 def _stt_backend() -> str | None:
     plat = _platform()
+    if plat == "apple_silicon" and _is_available("parakeet_mlx") and _is_available("mlx_whisper"):
+        return "parakeet-mlx + mlx-whisper"
     if plat == "apple_silicon" and _is_available("mlx_whisper"):
         return "mlx-whisper"
     if _is_available("faster_whisper"):
@@ -193,27 +238,129 @@ def get_voice_capabilities() -> dict[str, Any]:
     }
 
 
+def _platform_stt_backends() -> tuple[str, ...]:
+    """Backends this host can run, in preference order."""
+    if _platform() == "apple_silicon":
+        return ("parakeet-mlx", "mlx-whisper")
+    return ("faster-whisper",)
+
+
+_BACKEND_MODULES = {
+    "parakeet-mlx": "parakeet_mlx",
+    "mlx-whisper": "mlx_whisper",
+    "faster-whisper": "faster_whisper",
+}
+
+
 def list_stt_models() -> list[dict[str, Any]]:
-    """Return STT model list with installed flags."""
+    """Return the STT rows this platform can run, with installed flags.
+
+    One row per (logical model, backend the platform supports). On Apple
+    Silicon Parakeet becomes the default once parakeet-mlx is installed —
+    it's the faster lane; otherwise the catalog default (Whisper Turbo)
+    stays default.
+    """
+    backends = _platform_stt_backends()
+    parakeet_ready = "parakeet-mlx" in backends and _is_available("parakeet_mlx")
     models = []
     for entry in _STT_MODELS:
-        row = dict(entry)
-        row["installed"] = _hf_snapshot_path(entry["id"]) is not None
-        models.append(row)
+        for backend in backends:
+            source = entry["sources"].get(backend)
+            if source is None:
+                continue
+            repo, size_gb = source
+            if parakeet_ready:
+                is_default = backend == "parakeet-mlx"
+            else:
+                is_default = bool(entry["default"]) and backend != "parakeet-mlx"
+            models.append({
+                "id": repo,
+                "name": entry["name"],
+                "sizeGb": size_gb,
+                "installed": _hf_snapshot_path(repo) is not None,
+                "default": is_default,
+                "backend": backend,
+                "backendInstalled": _is_available(_BACKEND_MODULES[backend]),
+            })
+            break
     return models
+
+
+def resolve_stt_model(model_id: str | None) -> tuple[str, str]:
+    """Map a requested model id onto ``(backend, repo)`` for this host.
+
+    Accepts any catalog id (from either platform — a transcript request
+    carrying the MLX id on Linux is translated to the CTranslate2
+    sibling, and vice versa), a faster-whisper size token, or empty for
+    the platform default. Anything else raises ``UnknownSttModelError``:
+    the id reaches ``from_pretrained`` / ``WhisperModel``, which also
+    accept local filesystem paths, so it must never be free-form.
+    """
+    rows = list_stt_models()
+    requested = (model_id or "").strip()
+    if not requested:
+        chosen = next((r for r in rows if r["default"] and r["backendInstalled"]), None)
+        chosen = chosen or next((r for r in rows if r["backendInstalled"]), None) or (rows[0] if rows else None)
+        if chosen is None:
+            raise RuntimeError("No speech-to-text model is available on this platform.")
+        return chosen["backend"], chosen["id"]
+
+    entry = next(
+        (
+            e for e in _STT_MODELS
+            if requested == e["key"]
+            or requested in e.get("aliases", ())
+            or any(requested == src[0] for src in e["sources"].values())
+        ),
+        None,
+    )
+    if entry is None:
+        raise UnknownSttModelError(f"Unknown speech-to-text model '{requested}'.")
+    for backend in _platform_stt_backends():
+        source = entry["sources"].get(backend)
+        if source is not None:
+            return backend, source[0]
+    raise RuntimeError(f"{entry['name']} is not supported on this platform.")
+
+
+# Single-slot cache for the loaded STT model. mlx-whisper keeps its own
+# ModelHolder; Parakeet (~1.2 GB in bf16) and faster-whisper would
+# otherwise reload from disk on every utterance, which costs more than
+# the transcription itself. Keyed on the loader too, so swapping the
+# backend module (tests, reinstall) never serves a stale object.
+_STT_CACHE_LOCK = threading.Lock()
+_STT_CACHE: dict[str, Any] = {"key": None, "model": None}
+
+
+def _cached_stt_model(key: tuple[Any, ...], load: Any) -> Any:
+    with _STT_CACHE_LOCK:
+        if _STT_CACHE["key"] != key:
+            # Drop the old model before loading the next one so two
+            # models are never resident at once.
+            _STT_CACHE["key"] = None
+            _STT_CACHE["model"] = None
+            _STT_CACHE["model"] = load()
+            _STT_CACHE["key"] = key
+        return _STT_CACHE["model"]
+
+
+def release_stt_model() -> None:
+    with _STT_CACHE_LOCK:
+        _STT_CACHE["key"] = None
+        _STT_CACHE["model"] = None
 
 
 def list_tts_voices() -> list[dict[str, Any]]:
     return list(_TTS_VOICES)
 
 
-def transcribe_audio(audio_bytes: bytes, mime_type: str, model_id: str) -> str:
+def transcribe_audio(audio_bytes: bytes, mime_type: str, model_id: str | None) -> str:
     """Run STT on raw audio bytes and return the transcript text.
 
     Writes audio to a tempfile, transcribes it, then cleans up.
     Heavy deps are lazy-imported inside this function.
     """
-    plat = _platform()
+    backend, repo = resolve_stt_model(model_id)
     suffix = _mime_to_suffix(mime_type)
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -221,27 +368,45 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str, model_id: str) -> str:
         tmp_path = Path(tmp.name)
 
     try:
-        if plat == "apple_silicon" and _is_available("mlx_whisper"):
+        if backend == "parakeet-mlx":
+            if not _is_available("parakeet_mlx"):
+                raise RuntimeError(
+                    "Parakeet needs the parakeet-mlx package. Install it from Voice → Models."
+                )
+            from parakeet_mlx import from_pretrained  # type: ignore[import-untyped]
+
+            # A local snapshot dir skips the network round-trip
+            # from_pretrained otherwise makes through hf_hub_download.
+            source = str(_hf_snapshot_path(repo) or repo)
+            model = _cached_stt_model(("parakeet", source, from_pretrained), lambda: from_pretrained(source))
+            result = model.transcribe(str(tmp_path))
+            return (getattr(result, "text", "") or "").strip()
+
+        if backend == "mlx-whisper":
+            if not _is_available("mlx_whisper"):
+                raise RuntimeError(
+                    "No STT backend available. Install mlx-whisper from Voice → Models."
+                )
             import mlx_whisper  # type: ignore[import-untyped]
 
-            result = mlx_whisper.transcribe(str(tmp_path), path_or_hf_repo=model_id)
+            result = mlx_whisper.transcribe(str(tmp_path), path_or_hf_repo=repo)
             return (result.get("text") or "").strip()
 
-        if _is_available("faster_whisper"):
-            from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+        if not _is_available("faster_whisper"):
+            raise RuntimeError(
+                "No STT backend available. Install faster-whisper from Voice → Models."
+            )
+        from faster_whisper import WhisperModel  # type: ignore[import-untyped]
 
-            # Accept either a bare size token (small, base …) or a full repo id.
-            model_size = model_id.split("/")[-1] if "/" in model_id else model_id
-            model = WhisperModel(model_size, device="auto", compute_type="auto")
-            segments, _ = model.transcribe(str(tmp_path))
-            # Segment texts carry their own leading space (and none for
-            # CJK) — concatenate like Whisper's own ``text`` field does.
-            return "".join(seg.text for seg in segments).strip()
-
-        raise RuntimeError(
-            "No STT backend available. Install mlx-whisper (Apple Silicon) or "
-            "faster-whisper (other platforms)."
+        source = str(_hf_snapshot_path(repo) or repo)
+        model = _cached_stt_model(
+            ("faster-whisper", source, WhisperModel),
+            lambda: WhisperModel(source, device="auto", compute_type="auto"),
         )
+        segments, _ = model.transcribe(str(tmp_path))
+        # Segment texts carry their own leading space (and none for
+        # CJK) — concatenate like Whisper's own ``text`` field does.
+        return "".join(seg.text for seg in segments).strip()
     finally:
         try:
             tmp_path.unlink()

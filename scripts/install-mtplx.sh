@@ -17,7 +17,9 @@ set -euo pipefail
 VENV_DIR="${HOME}/.chaosengine/mtplx-venv"
 BIN_DIR="${HOME}/.chaosengine/bin"
 VERSION_FILE="${BIN_DIR}/mtplx.version"
-MTPLX_PACKAGE="mtplx"
+# Floor: 2.12 is the release whose OpenAI surface MtplxEngine targets
+# (reasoning_content deltas, chat_template_kwargs, per-model Turbo profile).
+MTPLX_PACKAGE="mtplx>=2.12.0"
 
 # ---------------------------------------------------------------------------
 # Helpers

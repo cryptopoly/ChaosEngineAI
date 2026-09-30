@@ -231,6 +231,57 @@ class MtplxEngineIntegrationTests(unittest.TestCase):
         finally:
             engine.unload_model()
 
+    def _load(self, engine: MtplxEngine) -> None:
+        engine.load_model(
+            model_ref="Qwen/Qwen3.5-7B",
+            model_name="Qwen3.5-7B",
+            canonical_repo="Qwen/Qwen3.5-7B",
+            source="catalog",
+            backend="mtplx",
+            path=None,
+            runtime_target=None,
+            cache_strategy="native",
+            cache_bits=0,
+            fp16_layers=0,
+            fused_attention=False,
+            fit_model_in_memory=True,
+            context_tokens=8192,
+        )
+
+    def test_stream_surfaces_reasoning_content_deltas(self) -> None:
+        """FU-079: MTPLX 2.x sends thinking as ``reasoning_content``; it
+        used to be dropped, leaving thinking-model replies empty."""
+        engine = self._make_engine()
+        try:
+            self._load(engine)
+            chunks = list(engine.stream_generate(
+                prompt="Hello", history=[], system_prompt=None,
+                max_tokens=32, temperature=0.7, thinking_mode="auto",
+            ))
+        finally:
+            engine.unload_model()
+        reasoning = "".join(c.reasoning for c in chunks if c.reasoning)
+        text = "".join(c.text for c in chunks if c.text)
+        self.assertEqual(reasoning, "planning a reply")
+        self.assertIn("hi", text)
+        done_markers = [i for i, c in enumerate(chunks) if c.reasoning_done]
+        first_text = next(i for i, c in enumerate(chunks) if c.text)
+        self.assertEqual(len(done_markers), 1)
+        self.assertLess(done_markers[0], first_text)
+
+    def test_stream_thinking_off_disables_template_thinking(self) -> None:
+        engine = self._make_engine()
+        try:
+            self._load(engine)
+            chunks = list(engine.stream_generate(
+                prompt="Hello", history=[], system_prompt=None,
+                max_tokens=32, temperature=0.7, thinking_mode="off",
+            ))
+        finally:
+            engine.unload_model()
+        self.assertFalse(any(c.reasoning for c in chunks))
+        self.assertIn("hi", "".join(c.text for c in chunks if c.text))
+
     def test_generate_after_unload_raises(self) -> None:
         engine = self._make_engine()
         try:

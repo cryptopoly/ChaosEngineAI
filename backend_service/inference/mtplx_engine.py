@@ -207,13 +207,12 @@ class MtplxEngine(BaseInferenceEngine):
         from backend_service.inference._mtp import get_mtp_draft_n
 
         draft_depth = get_mtp_draft_n(canonical_repo or model_ref) or 3
-        # ``--profile performance-cold --max`` is MTPLX's burst mode per
-        # the upstream README: skips the thermal throttling of the default
-        # ``sustained`` profile and gives full clocks to the first
-        # generation. Worth it for interactive chat where the user is
-        # waiting on the first response, not running a 24-hour batch.
-        # Live bench: sustained profile @ N=3 averaged 27.2 tok/s on M5;
-        # burst profile gets the model closer to its theoretical peak.
+        # No ``--profile``: since MTPLX 2.x the per-model default is the
+        # fast path (Turbo — NAX verify kernels + compiled verify — for the
+        # quantized 27B / 9B flagships, Sustained elsewhere). The
+        # ``performance-cold --max`` Burst mode we used to force is now
+        # upstream's legacy short-context benchmark mode and pins the fans
+        # at 100 %; it also bypassed Turbo, where the 2.12 decode gains are.
         command = [
             mtplx_bin,
             "quickstart",
@@ -222,8 +221,6 @@ class MtplxEngine(BaseInferenceEngine):
             "--host", "127.0.0.1",
             "--mtp",
             "--depth", str(draft_depth),
-            "--profile", "performance-cold",
-            "--max",
             "--yes",
         ]
 
@@ -251,9 +248,13 @@ class MtplxEngine(BaseInferenceEngine):
         from backend_service.inference._mtp import get_mtp_draft_n
         draft_n = get_mtp_draft_n(canonical_repo or model_ref) or 1
 
+        # MTPLX's NOTICE (Apache-2.0 §4(d)) requires an in-product
+        # "Powered by MTPLX" credit; the runtime note is shown with the
+        # loaded model.
         runtime_note = (
             f"MTPLX MTP speculative decoding active "
-            f"(draft tokens: {draft_n}, model: {model_name})."
+            f"(draft tokens: {draft_n}, model: {model_name}). "
+            "Powered by MTPLX — https://github.com/youssofal/MTPLX"
         )
 
         self.loaded_model = LoadedModelInfo(
@@ -393,6 +394,11 @@ class MtplxEngine(BaseInferenceEngine):
         }
         if tools:
             payload["tools"] = tools
+        if (thinking_mode or "off") == "off":
+            # Qwen3.5+/3.6 chat templates think by default; honour the
+            # user's "off" instead of spending the budget on hidden
+            # reasoning (MTPLX forwards chat_template_kwargs to the template).
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
 
         url = self._server_url("/v1/chat/completions")
         data = json.dumps(payload).encode("utf-8")
@@ -414,6 +420,7 @@ class MtplxEngine(BaseInferenceEngine):
         runtime_note = self.loaded_model.runtimeNote
         think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
+        reasoning_open = False
 
         try:
             for raw_line in resp:
@@ -429,7 +436,22 @@ class MtplxEngine(BaseInferenceEngine):
                     continue
                 choice = (chunk.get("choices") or [{}])[0]
                 delta = choice.get("delta") or {}
+                # FU-079: MTPLX's reasoning parser (qwen3 by default) moves
+                # the <think> block out of ``content`` into
+                # ``reasoning_content``. Reading only ``content`` dropped it,
+                # so a thinking model that spent its budget reasoning
+                # produced an empty reply despite real tok/s.
+                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                if reasoning:
+                    if first_token_time is None:
+                        first_token_time = time.perf_counter()
+                    completion_tokens += 1
+                    reasoning_open = True
+                    yield StreamChunk(reasoning=str(reasoning))
                 content = delta.get("content")
+                if content and reasoning_open:
+                    reasoning_open = False
+                    yield StreamChunk(reasoning_done=True)
                 if content:
                     split = think_filter.feed(str(content))
                     if split.reasoning:
@@ -449,6 +471,8 @@ class MtplxEngine(BaseInferenceEngine):
                 if usage:
                     prompt_tokens = int(usage.get("prompt_tokens") or 0)
                     completion_tokens = int(usage.get("completion_tokens") or completion_tokens)
+            if reasoning_open:
+                yield StreamChunk(reasoning_done=True)
             flushed = think_filter.flush()
             if flushed.reasoning:
                 yield StreamChunk(reasoning=flushed.reasoning)

@@ -16,8 +16,8 @@ describe("dflashPackageFor()", () => {
   });
 
   it("returns dflash for the vLLM CUDA backend", () => {
-    expect(dflashPackageFor("vllm")).toBe("dflash");
-    expect(dflashPackageFor("VLLM")).toBe("dflash");
+    expect(dflashPackageFor("vllm")).toBe("vllm");
+    expect(dflashPackageFor("VLLM")).toBe("vllm");
   });
 
   it("defaults to dflash-mlx for null / unknown backends", () => {

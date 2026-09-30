@@ -19,7 +19,7 @@ import type { SystemStats } from "../../types";
  *     (MLX or vLLM — not GGUF / llama.cpp).
  *
  * Click installs the right pip package for the backend
- * (``dflash-mlx`` on MLX, ``dflash`` on vLLM/CUDA) via the parent's
+ * (``dflash-mlx`` on MLX, a vLLM >=0.28 upgrade on CUDA) via the parent's
  * ``onInstallPackage`` callback. After install the parent
  * refreshes capabilities, ``dflashInfo.available`` flips ``true``,
  * and the hint folds away — no manual dismissal needed.
@@ -36,7 +36,7 @@ export interface ChatComposerDflashHintProps {
   /** Active engine string (``"mlx"`` / ``"vllm"`` / ``"gguf"`` /
    * ``"llama.cpp"``). Drives both the visibility gate (GGUF hides
    * the hint entirely — DFlash isn't supported there) and the pip
-   * package picker (vLLM → ``dflash``, MLX → ``dflash-mlx``). */
+   * package picker (vLLM → ``vllm``, MLX → ``dflash-mlx``). */
   loadedModelEngine?: string | null;
   /** Currently-loaded model identifiers. Any of the three are
    * matched against ``dflashInfo.supportedModels`` via the
@@ -44,7 +44,7 @@ export interface ChatComposerDflashHintProps {
   loadedModelRef?: string | null;
   loadedModelCanonicalRepo?: string | null;
   loadedModelName?: string | null;
-  /** Dispatcher — called with ``"dflash-mlx"`` or ``"dflash"`` per
+  /** Dispatcher — called with ``"dflash-mlx"`` or ``"vllm"`` per
    * ``dflashPackageFor(loadedModelEngine)``. Parent owns the install
    * lifecycle (same pattern as the Studio runtime banners). */
   onInstallPackage?: (pipPackage: string) => void;

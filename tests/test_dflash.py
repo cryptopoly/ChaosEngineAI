@@ -230,18 +230,24 @@ class AvailabilityDetectionTests(unittest.TestCase):
     def test_mlx_unavailable_when_missing(self, mock_find_spec):
         self.assertFalse(is_mlx_available())
 
-    @patch("dflash.importlib.util.find_spec")
-    def test_vllm_available_when_dflash_model_exists(self, mock_find_spec):
-        def find_spec_side_effect(name):
-            if name == "dflash.model":
-                return SimpleNamespace(name="dflash.model")
-            return None
-        mock_find_spec.side_effect = find_spec_side_effect
-        self.assertTrue(is_vllm_available())
+    # FU-091: the CUDA lane is vLLM's built-in DFlash method, gated on
+    # the installed vLLM version — not the PyPI ``dflash`` package.
+    def test_vllm_available_at_min_version(self):
+        for raw in ("0.28.0", "0.30.0", "0.28.1.dev12+gabc", "1.0.0"):
+            with patch("dflash.vllm_version", return_value=raw):
+                self.assertTrue(is_vllm_available(), raw)
 
-    @patch("dflash.importlib.util.find_spec", return_value=None)
-    def test_vllm_unavailable_when_missing(self, mock_find_spec):
-        self.assertFalse(is_vllm_available())
+    def test_vllm_unavailable_below_min_or_missing(self):
+        for raw in ("0.27.9", "0.24.0", None, "garbage"):
+            with patch("dflash.vllm_version", return_value=raw):
+                self.assertFalse(is_vllm_available(), raw)
+
+    def test_vllm_probe_ignores_pypi_dflash_package(self):
+        # Even if something named ``dflash.model`` resolved, only vLLM's
+        # version decides — the old probe keyed on that submodule.
+        with patch("dflash.importlib.util.find_spec", return_value=SimpleNamespace(name="dflash.model")), \
+             patch("dflash.vllm_version", return_value=None):
+            self.assertFalse(is_vllm_available())
 
     @patch("dflash.is_mlx_available", return_value=True)
     @patch("dflash.is_vllm_available", return_value=False)

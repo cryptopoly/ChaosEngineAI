@@ -52,7 +52,7 @@ file.
 | Package | Repository | Licence |
 |---|---|---|
 | `dflash-mlx` | [bstnxbt/dflash-mlx](https://github.com/bstnxbt/dflash-mlx) | MIT |
-| `dflash` (CUDA) | upstream of `dflash-mlx` | MIT |
+| vLLM built-in DFlash (CUDA) | `vllm>=0.28` — replaces the PyPI `dflash` package | Apache-2.0 |
 | `mtplx` | [youssofal/mtplx](https://github.com/youssofal/mtplx) | Apache 2.0 |
 
 `mtplx` ships a forked `mlx-mtplx` runtime that conflicts with upstream

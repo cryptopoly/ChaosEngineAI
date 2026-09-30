@@ -218,16 +218,48 @@ def is_mlx_available() -> bool:
     return _spec_exists("dflash_mlx")
 
 
-def is_vllm_available() -> bool:
-    """True when ``dflash`` (the PyTorch/CUDA package) is importable."""
-    # The PyTorch package installs as ``dflash`` but we need to check
-    # for the *model* submodule, not this ChaosEngineAI integration module.
-    # We check for ``dflash.model`` which is the core PyTorch implementation.
+# vLLM serves DFlash natively via ``speculative_config={"method":
+# "dflash"}``; 0.28 is the release that also carries DFlash 2's
+# candidate-path selector (vllm-project/vllm#52816). Below that we don't
+# claim the lane.
+VLLM_DFLASH_MIN_VERSION: tuple[int, int] = (0, 28)
+
+
+def vllm_version() -> str | None:
+    """Installed vLLM version from package metadata (never imports vllm)."""
     try:
-        spec = importlib.util.find_spec("dflash.model")
-        return spec is not None
-    except (ModuleNotFoundError, ValueError):
+        from importlib.metadata import PackageNotFoundError, version
+    except ImportError:  # pragma: no cover - stdlib on 3.8+
+        return None
+    try:
+        return version("vllm")
+    except PackageNotFoundError:
+        return None
+    except Exception:
+        return None
+
+
+def _version_tuple(raw: str) -> tuple[int, int] | None:
+    match = re.match(r"(\d+)\.(\d+)", raw.strip())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def is_vllm_available() -> bool:
+    """True when the installed vLLM can serve DFlash drafts.
+
+    FU-091: this used to probe ``dflash.model`` — the PyPI ``dflash``
+    package, whose top-level module has the same name as this one. This
+    module always wins on ``sys.path``, so the probe could never pass,
+    and vLLM doesn't use that package anyway. Gate on vLLM's own version
+    instead (metadata only, so no torch import on the startup path).
+    """
+    raw = vllm_version()
+    if raw is None:
         return False
+    parsed = _version_tuple(raw)
+    return parsed is not None and parsed >= VLLM_DFLASH_MIN_VERSION
 
 
 def is_available() -> bool:

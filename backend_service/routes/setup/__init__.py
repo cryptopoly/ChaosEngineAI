@@ -35,7 +35,10 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # Same commit as the pyproject ``[triattention]`` extras (FU-031) —
     # unpinned HEAD made in-app installs non-reproducible.
     "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git@c3744ee6a50522a1559a577f85aef2b165a344f2",
-    "vllm": "vllm",
+    # Floor matches the pyproject ``[vllm]`` extra: 0.28 carries native
+    # DFlash / DFlash 2 (FU-089, FU-091), so a DFlash "install" on a box
+    # with an older vLLM upgrades in place instead of "already satisfied".
+    "vllm": "vllm>=0.28.0",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
     # PyPI build is stale at 0.1.0; the up-to-date code lives on GitHub.
@@ -47,7 +50,13 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # it lagged on f825ffb (v0.1.4.1, no ``resolve_target_ops``) so an
     # in-app install silently disabled DFlash — the FU-075 symptom.
     "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
-    "dflash": "dflash",
+    # FU-091: no ``"dflash"`` entry. PyPI ``dflash`` (z-lab's DFlash 2
+    # research package) installs a top-level ``dflash`` module that
+    # collides with our in-repo ``dflash/`` registry, pins tqdm /
+    # datasets / requests to exact versions in the shared extras dir,
+    # and isn't what serves DFlash on CUDA anyway — vLLM >=0.28 does
+    # (``speculative_config={"method": "dflash"}``). See
+    # ``_MANUAL_INSTALL_MESSAGES["dflash"]``.
     # Video output encoding — diffusers can produce frames without these,
     # but exporting mp4/gif requires imageio + the ffmpeg plugin. The Video
     # Studio surfaces a one-click installer when they're missing.
@@ -169,6 +178,12 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {
+    "dflash": (
+        "DFlash on CUDA runs inside vLLM 0.28 or newer — there is nothing "
+        "separate to install. Install or upgrade vLLM ({python} -m pip "
+        "install 'vllm>=0.28'), then enable speculative decoding when "
+        "loading a model that has a DFlash draft."
+    ),
     "nunchaku": (
         "Nunchaku (SVDQuant) is not installable from PyPI — the PyPI package "
         "named 'nunchaku' is an unrelated project. Download the wheel that "

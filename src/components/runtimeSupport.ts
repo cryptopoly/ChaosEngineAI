@@ -45,8 +45,10 @@ export function isStrategyCompatible(strategyId: string, backend: string | null 
  * package for unknown backends — the install will fail loudly if
  * the host doesn't match, which is better than silent no-ops.
  */
-export function dflashPackageFor(backend: string | null | undefined): "dflash-mlx" | "dflash" {
-  if (backend && backend.toLowerCase().includes("vllm")) return "dflash";
+export function dflashPackageFor(backend: string | null | undefined): "dflash-mlx" | "vllm" {
+  // FU-091: vLLM >=0.28 serves DFlash natively — "installing DFlash" on
+  // CUDA means upgrading vLLM, not the colliding PyPI ``dflash`` package.
+  if (backend && backend.toLowerCase().includes("vllm")) return "vllm";
   return "dflash-mlx";
 }
 

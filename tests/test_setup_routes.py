@@ -225,10 +225,18 @@ class SetupRouteTests(unittest.TestCase):
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
             mock_run.return_value = mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution")
-            resp = self.client.post("/api/setup/install-package", json={"package": "dflash"})
+            resp = self.client.post("/api/setup/install-package", json={"package": "vllm"})
         body = resp.json()
         self.assertFalse(body["ok"])
         self.assertIn("No matching distribution", body["output"])
+
+    def test_install_dflash_points_at_vllm_instead_of_pypi_package(self):
+        """FU-091: PyPI ``dflash`` collides with our ``dflash/`` module."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            resp = self.client.post("/api/setup/install-package", json={"package": "dflash"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("vLLM", resp.json()["detail"]["message"])
+        mock_run.assert_not_called()
 
     def test_install_pip_accepts_imageio(self):
         """Video Studio installs this directly when the mp4 encoder is missing."""

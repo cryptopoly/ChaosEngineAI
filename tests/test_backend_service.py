@@ -2475,6 +2475,35 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(runtime_target, "/tmp/test-model.gguf")
         self.assertEqual(resolved_backend, "llama.cpp")
 
+    def test_local_model_directory_wins_over_catalog_repo_id(self):
+        """A catalogued model already on disk must load from its directory;
+        the repo id would make the MLX worker download it again."""
+        model_dir = Path(self.tempdir.name) / "AI_Models" / "prism-ml" / "Ternary-Bonsai-27B-mlx-2bit"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}", encoding="utf-8")
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, str(model_dir))
+
+        # Without a usable directory the catalog repo id is still the target.
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir / "missing"),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, "prism-ml/Ternary-Bonsai-27B-mlx-2bit")
+
     def test_recursive_discovery_finds_nested_model_directories(self):
         models_root = Path(self.tempdir.name) / "AI_Models"
         nested_model = models_root / "publisher" / "family" / "variant"

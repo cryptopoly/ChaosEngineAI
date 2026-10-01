@@ -640,7 +640,13 @@ class ChaosEngineState:
             return runtime_target, resolved_backend
 
         if catalog_entry is not None:
-            runtime_target = _hf_repo_from_link(catalog_entry.get("link")) or runtime_target or model_ref
+            if path and (Path(path).expanduser() / "config.json").is_file():
+                # A model directory already on disk loads from there. Handing
+                # the worker the catalog repo id instead would download the
+                # whole model again whenever the Hugging Face cache lacks it.
+                runtime_target = path
+            else:
+                runtime_target = _hf_repo_from_link(catalog_entry.get("link")) or runtime_target or model_ref
             if backend == "auto":
                 resolved_backend = "llama.cpp" if catalog_entry.get("format") == "GGUF" else "mlx"
         elif library_entry is not None:

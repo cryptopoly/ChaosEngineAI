@@ -2244,8 +2244,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         for preview in by_bits.values():
             self.assertLess(preview["speedRatio"], 0.3)
             self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
-        ratios = [by_bits[bits]["speedRatio"] for bits in (1, 2, 3, 4)]
-        self.assertEqual(ratios, sorted(ratios))
+        # Measured decode is flat across bit widths, so no ordering is asserted.
 
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(

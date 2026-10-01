@@ -17,17 +17,17 @@ def _estimate_baseline_tok_s(system_stats: dict[str, Any]) -> float:
 def _strategy_speed_map(strategy: str) -> dict[int, float]:
     """Speed ratio maps by strategy and bit count (fraction of baseline FP16 speed).
 
-    TurboQuant is a memory saver, not a speed option. Its 3-bit ratio is
-    measured: Qwen3-4B-bf16 on an M4 Max, 160-token decode, Native 25.7-29.7
-    tok/s against 5.6 tok/s on turboquant-mlx-full 0.28.0 (7.4 on 0.3.0), so
-    about 0.20 (0.27) at a short prompt (FU-066). The other bit widths keep the
-    old table's shape scaled to that point and are unmeasured, as is long
-    context; ``scripts/calibrate-cache-speed.py`` produces measured numbers to
-    replace this row. The TriAttention row is an unmeasured estimate.
+    TurboQuant is a memory saver, not a speed option. Measured with
+    ``scripts/calibrate-cache-speed.py`` on Qwen3-4B-bf16, M4 Max
+    (2026-10-01): Native 54.3 / 50.1 tok/s at 512 / 4096 prompt tokens against
+    9.8-10.7 / 6.4-6.5 for 2-4 bits, so 0.18-0.20 at short context and 0.13 at
+    4K. The map holds the median of the two; 1 bit is unmeasured and kept at
+    the 2-bit level. Decode is flat across bit widths, so the ratios are too.
+    The TriAttention row is an unmeasured estimate.
     """
     maps: dict[str, dict[int, float]] = {
         "triattention": {1: 0.48, 2: 0.56, 3: 0.63, 4: 0.70},
-        "turboquant":   {1: 0.15, 2: 0.17, 3: 0.20, 4: 0.22},
+        "turboquant":   {1: 0.16, 2: 0.16, 3: 0.15, 4: 0.16},
     }
     return maps.get(strategy, {1: 0.45, 2: 0.53, 3: 0.59, 4: 0.68})
 

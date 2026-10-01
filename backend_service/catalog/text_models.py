@@ -226,9 +226,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         # TensorFold engine (inference/tensorfold_engine.py), so its one row
         # below carries backend "tensorfold". The two Vontra rows are the
         # TensorFold-tested checkpoints; their repo names, sizes and memory
-        # figures come from TensorFold's checkpoint documentation (the Hub
-        # was not reachable when they were added) — re-check them on the
-        # first real download. The z-lab drafter is DFlash2-only:
+        # figures come from TensorFold's checkpoint documentation; repo ids
+        # and sizes were verified against the Hub on 2026-10-01. The z-lab drafter is DFlash2-only:
         # the pinned dflash-mlx can't load it (FU-057), so it lives in
         # dflash.DFLASH2_DRAFT_MODEL_MAP for vLLM only; GGUF users get it
         # through the ggml-org pack's dflash- sidecar (FU-089).
@@ -272,7 +271,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "Vontra/Qwen3.8-27B-MLX-4bit",
                 "link": "https://huggingface.co/Vontra/Qwen3.8-27B-MLX-4bit",
                 "paramsB": 27.0,
-                "sizeGb": 16.5,
+                "sizeGb": 16.1,
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
@@ -449,7 +448,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
                 "paramsB": 27.0,
-                "sizeGb": 8.0,
+                "sizeGb": 8.6,
                 "estimatedMemoryGb": 20.0,
                 "format": "MLX",
                 "quantization": "2-bit (ternary)",
@@ -1038,7 +1037,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
                 "link": "https://huggingface.co/Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
                 "paramsB": 30.0,
-                "sizeGb": 19.0,
+                "sizeGb": 18.5,
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "agents", "tool-use"],
@@ -1604,7 +1603,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "mlx-community/DeepSeek-V4-Flash-4bit",
                 "link": "https://huggingface.co/mlx-community/DeepSeek-V4-Flash-4bit",
                 "paramsB": 284.0,
-                "sizeGb": 154.0,
+                "sizeGb": 151.5,
                 "format": "MLX",
                 "quantization": "4-bit",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use"],

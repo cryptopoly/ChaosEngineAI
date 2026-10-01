@@ -52,6 +52,12 @@ class TensorFoldFamily:
     exclusive: bool = False
     # Minimum Mac unified memory TensorFold's docs state, for the UI.
     min_memory_gb: int | None = None
+    # True when TensorFold's ``--vision`` reads images for this family's tested
+    # checkpoint (docs/vision.md: dense Qwen3.5/3.8 checkpoints that ship their
+    # vision tower). Matching is by exact repo id, so this holds for every
+    # checkpoint that can match the family; revisit if a text-only conversion
+    # of the same family is ever added.
+    vision: bool = False
 
 
 TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
@@ -61,6 +67,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         model_types=("qwen3_5",),
         tested_repos=("Vontra/Qwen3.8-27B-MLX-4bit",),
         drafter="z-lab/Qwen3.8-27B-DFlash2",
+        vision=True,
     ),
     TensorFoldFamily(
         key="qwen3_8_flash_next",
@@ -133,6 +140,34 @@ def supported_repos() -> list[str]:
     return [repo for family in TENSORFOLD_FAMILIES for repo in family.tested_repos]
 
 
+def vision_repos() -> list[str]:
+    """Tested checkpoints whose images TensorFold can read (needs the vision extra)."""
+    return [repo for family in TENSORFOLD_FAMILIES if family.vision for repo in family.tested_repos]
+
+
+# Optional pip extras the installer can add to the TensorFold venv, and what
+# each one turns on. ``vision`` brings Pillow / transformers / mlx-vlm;
+# ``grammar`` brings xgrammar, which pulls in torch.
+OPTIONAL_EXTRAS: tuple[str, ...] = ("vision", "grammar")
+
+
+def read_install_extras(version_file: Path) -> tuple[str, ...]:
+    """The extras the installer recorded on the version file's fourth line.
+
+    ``install-tensorfold.sh`` writes ``extras=vision,grammar`` there after its
+    import checks pass, so this is a file read, not a probe of the venv. A
+    missing file, an older three-line file, or unknown names yield no extras.
+    """
+    try:
+        lines = version_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return ()
+    if len(lines) < 4 or not lines[3].startswith("extras="):
+        return ()
+    recorded = {name.strip() for name in lines[3][len("extras="):].split(",")}
+    return tuple(extra for extra in OPTIONAL_EXTRAS if extra in recorded)
+
+
 def exclusive_repos() -> list[str]:
     """Tested checkpoints of families no other shipped engine can load."""
     return [
@@ -174,6 +209,10 @@ class TensorFoldMatch:
     @property
     def tier(self) -> str:
         return "exclusive" if self.family.exclusive else "tested"
+
+    @property
+    def supports_vision(self) -> bool:
+        return self.family.vision
 
 
 def _repo_from_path(path: str | None) -> str | None:

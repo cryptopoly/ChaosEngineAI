@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TensorfoldJobState } from "../api";
+import type { TensorfoldExtra, TensorfoldJobState } from "../api";
 import { InstallLogPanel } from "./InstallLogPanel";
 import {
+  canAddTensorfoldExtra,
+  tensorfoldHasExtra,
   tensorfoldMemoryShortfall,
   type TensorfoldLaunchInfo,
 } from "./tensorfoldSupport";
@@ -12,7 +14,8 @@ interface TensorfoldLaunchControlProps {
   /** The shared speculative-decoding launch flag the backend reads. */
   speculativeDecoding: boolean;
   onSpeculativeChange: (enabled: boolean) => void;
-  onInstall?: () => void;
+  /** Install TensorFold, or add optional ``extras`` to the existing install. */
+  onInstall?: (extras?: TensorfoldExtra[]) => void;
   installing?: boolean;
   job?: TensorfoldJobState | null;
   totalMemoryGb?: number;
@@ -27,6 +30,10 @@ interface TensorfoldLaunchControlProps {
  * the same ``speculativeDecoding`` flag DFlash / MTPLX use; the backend
  * picks the lane, so this block replaces those toggles whenever TensorFold
  * is installed rather than showing two boxes for one flag.
+ *
+ * Image input and structured output are optional extras installed into
+ * TensorFold's own environment. Installing an extra is the opt-in: the engine
+ * turns the feature on whenever the extra is present and the model supports it.
  */
 export function TensorfoldLaunchControl({
   launch,
@@ -83,12 +90,33 @@ export function TensorfoldLaunchControl({
             type="button"
             className="cache-strategy-install-btn"
             disabled={installing}
-            onClick={onInstall}
+            onClick={() => onInstall()}
           >
             {installing
               ? t("tensorfold.installing", { defaultValue: "Installing..." })
               : t("tensorfold.installButton", { defaultValue: "Install TensorFold" })}
           </button>
+        ) : null}
+        {canAddTensorfoldExtra(launch, "vision") && onInstall ? (
+          <button
+            type="button"
+            className="cache-strategy-install-btn"
+            disabled={installing}
+            onClick={() => onInstall(["vision"])}
+            title={t("tensorfold.addVisionTitle", {
+              defaultValue:
+                "Let this model read attached images (experimental). Adds Pillow, transformers and mlx-vlm to TensorFold's own environment.",
+            })}
+          >
+            {installing
+              ? t("tensorfold.installing", { defaultValue: "Installing..." })
+              : t("tensorfold.addVision", { defaultValue: "Add image support" })}
+          </button>
+        ) : null}
+        {available && support.vision && tensorfoldHasExtra(launch, "vision") ? (
+          <span className="muted-text" style={{ fontSize: "0.85em" }}>
+            {t("tensorfold.imageInputOn", { defaultValue: "image input on (experimental)" })}
+          </span>
         ) : null}
         <button
           type="button"
@@ -155,6 +183,55 @@ export function TensorfoldLaunchControl({
                   })}
             </span>
           </div>
+          {available ? (
+            <>
+              {support.vision ? (
+                <div className="cache-strategy-meta">
+                  <span className="cache-strategy-meta-label">
+                    {t("tensorfold.visionLabel", { defaultValue: "Image input:" })}
+                  </span>
+                  <span>
+                    {tensorfoldHasExtra(launch, "vision")
+                      ? t("tensorfold.visionInstalled", {
+                          defaultValue:
+                            "Installed (experimental) — attach images in chat while TensorFold is ticked. A request with images starts from a fresh KV cache.",
+                        })
+                      : t("tensorfold.visionNotInstalled", {
+                          defaultValue:
+                            "Not installed. Reads images with the model's own vision tower. Adds Pillow, transformers and mlx-vlm; TensorFold's authors still mark it experimental.",
+                        })}
+                  </span>
+                </div>
+              ) : null}
+              <div className="cache-strategy-meta">
+                <span className="cache-strategy-meta-label">
+                  {t("tensorfold.grammarLabel", { defaultValue: "Structured output:" })}
+                </span>
+                <span>
+                  {tensorfoldHasExtra(launch, "grammar")
+                    ? t("tensorfold.grammarInstalled", {
+                        defaultValue: "Installed — a JSON schema set in the sampler panel is enforced.",
+                      })
+                    : t("tensorfold.grammarNotInstalled", {
+                        defaultValue:
+                          "Not installed. Needed to enforce a JSON schema; without it such requests are refused. Adds PyTorch, which is a large download.",
+                      })}
+                </span>
+                {canAddTensorfoldExtra(launch, "grammar") && onInstall ? (
+                  <button
+                    type="button"
+                    className="cache-strategy-install-btn"
+                    disabled={installing}
+                    onClick={() => onInstall(["grammar"])}
+                  >
+                    {installing
+                      ? t("tensorfold.installing", { defaultValue: "Installing..." })
+                      : t("tensorfold.addGrammar", { defaultValue: "Add structured output" })}
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
           {exclusive ? (
             <div className="cache-strategy-meta">
               <span className="cache-strategy-meta-label">{t("tensorfold.exclusiveLabel", { defaultValue: "Note:" })}</span>

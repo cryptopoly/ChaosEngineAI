@@ -423,6 +423,21 @@ class CLITensorFoldTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(json.loads(out.getvalue())["id"], "tensorfold-install")
 
+    def test_tensorfold_install_sends_the_requested_extras(self) -> None:
+        bodies: list[dict] = []
+        job = _FakeResp(json.dumps({"id": "tensorfold-install", "phase": "preflight", "done": False}).encode("utf-8"))
+
+        def _opener(req, timeout=None):  # noqa: ARG001
+            if req.data is not None:
+                bodies.append(json.loads(req.data.decode("utf-8")))
+            return job
+
+        for argv in (["tensorfold-install"], ["tensorfold-install", "--extras", "vision, grammar"]):
+            with mock.patch.object(cli.urllib.request, "urlopen", _opener):
+                with mock.patch.object(sys, "stdout", io.StringIO()):
+                    self.assertEqual(cli.main(argv), 0)
+        self.assertEqual(bodies, [{"extras": []}, {"extras": ["vision", "grammar"]}])
+
     def test_status_summary_carries_the_tensorfold_block(self) -> None:
         workspace_body = {
             "runtime": {"state": "idle"},

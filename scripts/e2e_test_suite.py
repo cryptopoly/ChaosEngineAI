@@ -119,6 +119,8 @@ class Capability:
     tensorfold_available: bool = False
     tensorfold_models: list[str] = field(default_factory=list)
     tensorfold_exclusive: list[str] = field(default_factory=list)
+    tensorfold_extras: list[str] = field(default_factory=list)
+    tensorfold_vision_models: list[str] = field(default_factory=list)
     dflash_supported_models: list[str] = field(default_factory=list)
     mtplx_supported_models: list[str] = field(default_factory=list)
     image_runtime_ready: bool = False
@@ -148,6 +150,8 @@ def probe_capabilities() -> Capability:
         cap.tensorfold_available = bool(tensorfold_info.get("available"))
         cap.tensorfold_models = tensorfold_info.get("supportedModels") or []
         cap.tensorfold_exclusive = tensorfold_info.get("exclusiveModels") or []
+        cap.tensorfold_extras = tensorfold_info.get("extras") or []
+        cap.tensorfold_vision_models = tensorfold_info.get("visionModels") or []
         cap.dflash_supported_models = dflash_info.get("supportedModels") or []
 
     rc, runtime, _ = _cli_json("runtime", timeout=10.0)
@@ -225,9 +229,11 @@ def phase_0(cap: Capability) -> PhaseResult:
         rc, payload, _ = _cli_json("tensorfold-status")
         if rc != 0 or not isinstance(payload, dict):
             return "fail", "tensorfold-status failed", {}
-        for key in ("installed", "supported"):
+        for key in ("installed", "supported", "extras"):
             if key not in payload:
                 return "fail", f"tensorfold-status missing '{key}'", payload
+        if not isinstance(payload["extras"], list):
+            return "fail", "tensorfold-status 'extras' is not a list", payload
         return "pass", "", payload
 
     # FU-093 feature gate: the TensorFold registry (served by the backend)
@@ -256,9 +262,21 @@ def phase_0(cap: Capability) -> PhaseResult:
             backend = (variants.get(repo) or {}).get("backend")
             if repo in variants and backend != "tensorfold":
                 problems.append(f"{repo}: exclusive but catalog backend is {backend!r}")
+        # Image input (the optional ``vision`` extra): every checkpoint the
+        # backend says can read images must be a served one whose catalog row
+        # carries the vision capability, or the composer would never offer it.
+        for repo in info.get("visionModels") or []:
+            if repo not in supported:
+                problems.append(f"{repo}: vision model is not in supportedModels")
+            elif repo in variants and "vision" not in (variants[repo].get("capabilities") or []):
+                problems.append(f"{repo}: vision model's catalog row lacks the vision tag")
         if problems:
             return "fail", "; ".join(problems)[:300], {"problems": problems}
-        return "pass", "", {"supported": len(supported), "exclusive": len(exclusive)}
+        return "pass", "", {
+            "supported": len(supported),
+            "exclusive": len(exclusive),
+            "vision": len(info.get("visionModels") or []),
+        }
 
     def _inventory():
         return "pass", "", {
@@ -732,6 +750,15 @@ def phase_1(cap: Capability) -> PhaseResult:
                 return "fail", f"TensorFold expected but engine was {detail.get('engine')!r}: {note[:160]}", detail
             if not detail.get("speculativeDecoding"):
                 return "fail", f"TensorFold loaded without speculative decoding: {note[:160]}", detail
+            # With the vision extra installed, a checkpoint that reads images
+            # must come up with image input on (the composer's "Attach image"
+            # follows this flag); without it, never.
+            wants_vision = "vision" in cap.tensorfold_extras and repo in cap.tensorfold_vision_models
+            if bool(detail.get("visionEnabled")) != wants_vision:
+                return "fail", (
+                    f"TensorFold vision expected {wants_vision} but visionEnabled was "
+                    f"{detail.get('visionEnabled')!r}: {note[:120]}"
+                ), detail
             return "pass", "", detail
         return "skip", "no TensorFold-served checkpoint on disk", {}
 

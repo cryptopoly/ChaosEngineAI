@@ -2228,6 +2228,25 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(args[3], "org/video-model")
         self.assertEqual(json.loads(args[4]), patterns)
 
+    def test_turboquant_preview_is_a_memory_saver_not_a_speed_up(self):
+        """Measured decode is several times slower than Native (FU-066), so the
+        estimate must not promise anything near Native speed."""
+        common = dict(
+            fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            context_tokens=8192, params_b=7.0, system_stats=fake_system_snapshot(),
+        )
+        native = compute_cache_preview(bits=0, strategy="native", **common)
+        by_bits = {
+            bits: compute_cache_preview(bits=bits, strategy="turboquant", **common)
+            for bits in (1, 2, 3, 4)
+        }
+        self.assertEqual(native["speedRatio"], 1.0)
+        for preview in by_bits.values():
+            self.assertLess(preview["speedRatio"], 0.3)
+            self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
+        ratios = [by_bits[bits]["speedRatio"] for bits in (1, 2, 3, 4)]
+        self.assertEqual(ratios, sorted(ratios))
+
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(
             bits=3,

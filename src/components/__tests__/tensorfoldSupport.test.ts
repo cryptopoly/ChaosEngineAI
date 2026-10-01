@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canAddTensorfoldExtra,
   isTensorfoldRepo,
   resolveTensorfoldSupport,
+  tensorfoldHasExtra,
   tensorfoldEngaged,
   tensorfoldLaunchInfoFor,
   tensorfoldMemoryShortfall,
@@ -25,6 +27,8 @@ function makeInfo(overrides: Partial<TensorfoldInfo> = {}): TensorfoldInfo {
     version: "0.5.0",
     supportedModels: [DENSE, FLASH, GEMMA],
     exclusiveModels: [FLASH],
+    visionModels: [DENSE],
+    extras: [],
     minMemoryGb: { [FLASH]: 128 },
     ...overrides,
   };
@@ -53,9 +57,16 @@ describe("resolveTensorfoldSupport()", () => {
 
   it("splits exclusive from tested checkpoints and carries the memory floor", () => {
     const flash = resolveTensorfoldSupport(makeInfo(), [FLASH]);
-    expect(flash).toEqual({ tier: "exclusive", repo: FLASH, minMemoryGb: 128 });
+    expect(flash).toEqual({ tier: "exclusive", repo: FLASH, minMemoryGb: 128, vision: false });
     const dense = resolveTensorfoldSupport(makeInfo(), [DENSE]);
-    expect(dense).toEqual({ tier: "tested", repo: DENSE, minMemoryGb: null });
+    expect(dense).toEqual({ tier: "tested", repo: DENSE, minMemoryGb: null, vision: true });
+  });
+
+  it("marks only the checkpoints with a vision tower as able to read images", () => {
+    expect(resolveTensorfoldSupport(makeInfo(), [DENSE])?.vision).toBe(true);
+    expect(resolveTensorfoldSupport(makeInfo(), [GEMMA])?.vision).toBe(false);
+    // An older backend that does not publish visionModels offers no image input.
+    expect(resolveTensorfoldSupport(makeInfo({ visionModels: undefined }), [DENSE])?.vision).toBe(false);
   });
 });
 
@@ -114,6 +125,45 @@ describe("tensorfoldLaunchInfoFor()", () => {
     expect(launch?.support.repo).toBe(DENSE);
     const installed = tensorfoldLaunchInfoFor({ info: makeInfo() }, [DENSE]);
     expect(installed).toMatchObject({ available: true, version: "0.5.0" });
+  });
+
+  it("carries the installed extras, defaulting to none for an older backend", () => {
+    const withExtras = tensorfoldLaunchInfoFor({ info: makeInfo({ extras: ["vision"] }) }, [DENSE]);
+    expect(withExtras?.extras).toEqual(["vision"]);
+    const legacy = tensorfoldLaunchInfoFor({ info: makeInfo({ extras: undefined }) }, [DENSE]);
+    expect(legacy?.extras).toEqual([]);
+  });
+});
+
+describe("optional extras (image input, structured output)", () => {
+  const launch = (infoOverrides: Partial<TensorfoldInfo>, repo = DENSE) => {
+    const result = tensorfoldLaunchInfoFor({ info: makeInfo(infoOverrides) }, [repo]);
+    if (!result) throw new Error("expected a launch info");
+    return result;
+  };
+
+  it("reports which extras are already installed", () => {
+    expect(tensorfoldHasExtra(launch({ extras: ["vision"] }), "vision")).toBe(true);
+    expect(tensorfoldHasExtra(launch({ extras: ["vision"] }), "grammar")).toBe(false);
+    expect(tensorfoldHasExtra(null, "vision")).toBe(false);
+  });
+
+  it("offers image support only for a checkpoint with a vision tower", () => {
+    expect(canAddTensorfoldExtra(launch({}), "vision")).toBe(true);
+    expect(canAddTensorfoldExtra(launch({}, GEMMA), "vision")).toBe(false);
+    expect(canAddTensorfoldExtra(launch({}, FLASH), "vision")).toBe(false);
+  });
+
+  it("offers structured output for any served checkpoint", () => {
+    expect(canAddTensorfoldExtra(launch({}, GEMMA), "grammar")).toBe(true);
+    expect(canAddTensorfoldExtra(launch({}, FLASH), "grammar")).toBe(true);
+  });
+
+  it("offers nothing that is already installed, or before TensorFold itself is", () => {
+    expect(canAddTensorfoldExtra(launch({ extras: ["vision", "grammar"] }), "vision")).toBe(false);
+    expect(canAddTensorfoldExtra(launch({ extras: ["vision", "grammar"] }), "grammar")).toBe(false);
+    expect(canAddTensorfoldExtra(launch({ available: false, version: null }), "vision")).toBe(false);
+    expect(canAddTensorfoldExtra(null, "grammar")).toBe(false);
   });
 });
 

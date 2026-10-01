@@ -380,7 +380,7 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         list(engine.stream_generate(**self._generate_kwargs(thinking_mode="auto", reasoning_effort="medium")))
         self.assertEqual(self._requests()[-1]["reasoning_effort"], "medium")
 
-    def test_images_are_ignored_with_a_note(self) -> None:
+    def test_images_are_ignored_with_an_install_hint_without_the_vision_extra(self) -> None:
         engine = self._engine()
         self._load(engine)
         chunks = list(engine.stream_generate(**self._generate_kwargs(images=["AAAA"])))
@@ -469,7 +469,38 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         self.assertIn("990", result.runtimeNote or "")
         self.assertEqual([r["max_tokens"] for r in self._requests()], [5000, 990])
 
-    def test_structured_output_refusal_reaches_the_caller(self) -> None:
+    def test_schema_is_refused_before_the_server_without_the_grammar_extra(self) -> None:
+        engine = self._engine()
+        self._load(engine)
+        for call in (
+            lambda: list(engine.stream_generate(**self._generate_kwargs(json_schema={"type": "object"}))),
+            lambda: engine.generate(**self._generate_kwargs(json_schema={"type": "object"})),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                call()
+            self.assertIn("TensorFold section of the launch settings", str(ctx.exception))
+            # The server's own refusal would tell the user to run pip; this one
+            # never reaches it.
+            self.assertNotIn("pip", str(ctx.exception))
+        self.assertFalse(self.record.exists() and self._requests())
+
+    def test_schema_is_sent_when_the_grammar_extra_is_installed(self) -> None:
+        self.capabilities.tensorfoldExtras = ("grammar",)
+        engine = self._engine()
+        with mock.patch.dict(os.environ, {"STUB_TENSORFOLD_GRAMMAR": "1"}):
+            self._load(engine)
+            schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
+            chunks = list(engine.stream_generate(**self._generate_kwargs(json_schema=schema)))
+            result = engine.generate(**self._generate_kwargs(json_schema=schema))
+        self.assertEqual("".join(chunk.text for chunk in chunks if chunk.text), "stub-tensorfold says hi")
+        self.assertEqual(result.text, "stub-tensorfold says hi")
+        for request in self._requests():
+            self.assertEqual(request["response_format"]["json_schema"]["schema"], schema)
+
+    def test_server_side_grammar_refusal_still_reaches_the_caller(self) -> None:
+        # The extra is recorded as installed but the server cannot compile or
+        # run the grammar (a broken venv): its reason must not be swallowed.
+        self.capabilities.tensorfoldExtras = ("grammar",)
         engine = self._engine()
         self._load(engine)
         with self.assertRaises(RuntimeError) as ctx:
@@ -478,6 +509,71 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         with self.assertRaises(RuntimeError) as ctx:
             engine.generate(**self._generate_kwargs(json_schema={"type": "object"}))
         self.assertIn("xgrammar", str(ctx.exception))
+
+    # ------------------------------------------------------------------
+    # image input (the optional ``vision`` extra)
+    # ------------------------------------------------------------------
+
+    def test_vision_extra_starts_the_server_with_vision_and_sends_images(self) -> None:
+        self.capabilities.tensorfoldExtras = ("vision",)
+        engine = self._engine()
+        info = self._load(engine)
+        argv = self._started()["argv"]
+        self.assertIn("--vision", argv)
+        self.assertNotIn("--vision-urls", argv)
+        self.assertTrue(info.visionEnabled)
+        self.assertIn("Image input is on", info.runtimeNote or "")
+        # The capability resolver now lets the composer offer "Attach image".
+        self.assertTrue(info.to_dict()["capabilities"]["supportsVision"])
+
+        chunks = list(engine.stream_generate(**self._generate_kwargs(prompt="What is this?", images=["QUJD"])))
+        self.assertNotIn("image was ignored", chunks[-1].runtime_note or "")
+        engine.generate(**self._generate_kwargs(prompt="And this?", images=["data:image/jpeg;base64,REVG"]))
+        first, second = self._requests()[-2:]
+        self.assertEqual(
+            first["messages"][-1]["content"],
+            [
+                {"type": "text", "text": "What is this?"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,QUJD", "detail": "auto"}},
+            ],
+        )
+        # A caller that already sent a data URL keeps its own media type.
+        self.assertEqual(second["messages"][-1]["content"][1]["image_url"]["url"], "data:image/jpeg;base64,REVG")
+
+    def test_no_vision_flag_without_the_extra_and_the_composer_stays_off(self) -> None:
+        engine = self._engine()
+        info = self._load(engine)
+        self.assertNotIn("--vision", self._started()["argv"])
+        self.assertFalse(info.visionEnabled)
+        self.assertFalse(info.to_dict()["capabilities"]["supportsVision"])
+
+    def test_vision_extra_does_not_enable_images_for_a_checkpoint_without_a_vision_tower(self) -> None:
+        self.capabilities.tensorfoldExtras = ("vision",)
+        gemma_repo = self.tmp / "library" / f"models--{_GEMMA_REPO.replace('/', '--')}"
+        _write_checkpoint(gemma_repo / "snapshots" / "rev1", model_type="gemma4")
+        engine = self._engine()
+        info = self._load(
+            engine,
+            model_ref=_GEMMA_REPO,
+            canonical_repo=_GEMMA_REPO,
+            runtime_target=_GEMMA_REPO,
+            path=str(gemma_repo),
+        )
+        self.assertNotIn("--vision", self._started()["argv"])
+        self.assertFalse(info.visionEnabled)
+        chunks = list(engine.stream_generate(**self._generate_kwargs(images=["QUJD"])))
+        self.assertIn("cannot read images for this model", chunks[-1].runtime_note or "")
+        self.assertNotIn("image_url", json.dumps(self._requests()[-1]))
+
+    def test_images_ride_only_with_a_real_user_prompt(self) -> None:
+        # The agent loop's follow-up iterations send an empty prompt; images
+        # must not be bolted onto the tool-result turn.
+        self.capabilities.tensorfoldExtras = ("vision",)
+        engine = self._engine()
+        self._load(engine)
+        history = [{"role": "tool", "text": "result", "tool_call_id": "c1"}]
+        engine.generate(**self._generate_kwargs(prompt="", history=history, images=["QUJD"]))
+        self.assertNotIn("image_url", json.dumps(self._requests()[-1]))
 
     # ------------------------------------------------------------------
     # lifecycle

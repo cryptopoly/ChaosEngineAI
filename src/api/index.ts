@@ -540,6 +540,7 @@ export type {
   PromptEnhanceResult,
   RagStatus,
   TensorfoldAttempt,
+  TensorfoldExtra,
   TensorfoldJobState,
   TensorfoldStatus,
   TorchUpgradeAttempt,

@@ -98,6 +98,8 @@ def _is_installed() -> bool:
 
 def _job_worker() -> None:
     """Run install-mtplx.sh and stream output into job state."""
+    from backend_service.inference._utils import _isolated_child_env
+
     job = _JOB
     phase_buffer: list[str] = []
     phase_index = 0
@@ -124,12 +126,15 @@ def _job_worker() -> None:
         job.percent = round((phase_index - 1) / _TOTAL_PHASES * 100, 1)
 
     try:
+        # The packaged app exports PYTHONHOME / PYTHONPATH / DYLD_* for its
+        # embedded runtime; the installer builds a venv and must not see them.
         proc = subprocess.Popen(
             ["bash", str(_INSTALL_SCRIPT)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            env=_isolated_child_env(),
         )
 
         for raw_line in proc.stdout:  # type: ignore[union-attr]

@@ -3,6 +3,7 @@ import {
   getTensorfoldInstallStatus,
   getTensorfoldStatus,
   startTensorfoldInstall,
+  type TensorfoldExtra,
   type TensorfoldJobState,
   type TensorfoldStatus,
 } from "../api";
@@ -13,14 +14,16 @@ export interface UseTensorfoldInstallReturn {
   tensorfoldJob: TensorfoldJobState | null;
   tensorfoldStatus: TensorfoldStatus | null;
   installingTensorfold: boolean;
-  handleInstallTensorfold: () => Promise<void>;
+  handleInstallTensorfold: (extras?: TensorfoldExtra[]) => Promise<void>;
   refreshTensorfoldStatus: () => Promise<void>;
 }
 
 /**
  * Install flow for the TensorFold engine: POST starts the background job,
  * the hook polls it, and `onInstalled` runs once it finishes so the caller
- * can re-read the capability flags the launch settings gate on.
+ * can re-read the capability flags the launch settings gate on. Passing
+ * `extras` adds optional pieces (image input, structured output) to an
+ * existing install instead of reinstalling it.
  */
 export function useTensorfoldInstall(onInstalled?: () => void | Promise<void>): UseTensorfoldInstallReturn {
   const [tensorfoldJob, setTensorfoldJob] = useState<TensorfoldJobState | null>(null);
@@ -67,10 +70,10 @@ export function useTensorfoldInstall(onInstalled?: () => void | Promise<void>): 
     }, POLL_INTERVAL_MS);
   }, [stopPoll]);
 
-  const handleInstallTensorfold = useCallback(async () => {
+  const handleInstallTensorfold = useCallback(async (extras: TensorfoldExtra[] = []) => {
     setInstallingTensorfold(true);
     try {
-      const initialState = await startTensorfoldInstall();
+      const initialState = await startTensorfoldInstall(extras);
       setTensorfoldJob(initialState);
       startPoll();
     } catch (err) {

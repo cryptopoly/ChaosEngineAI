@@ -818,7 +818,10 @@ def cmd_mtplx_status(args: argparse.Namespace) -> int:
 
 
 def cmd_tensorfold_install(args: argparse.Namespace) -> int:
-    _hit_post(args, "/api/setup/install-tensorfold", body={}, timeout=30.0)
+    # ``--extras vision,grammar`` adds image input / structured output to the
+    # install; the backend rejects anything else.
+    extras = [part.strip() for part in (args.extras or "").split(",") if part.strip()]
+    _hit_post(args, "/api/setup/install-tensorfold", body={"extras": extras}, timeout=30.0)
     if not args.wait:
         _ok(_hit_get(args, "/api/setup/install-tensorfold/status", timeout=10.0))
         return 0
@@ -1589,7 +1592,7 @@ def build_parser() -> argparse.ArgumentParser:
     # -- Setup --
     s = sub.add_parser("mtplx-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=600.0); s.set_defaults(func=cmd_mtplx_install)
     sub.add_parser("mtplx-status").set_defaults(func=cmd_mtplx_status)
-    s = sub.add_parser("tensorfold-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_tensorfold_install)
+    s = sub.add_parser("tensorfold-install"); s.add_argument("--extras", default="", help="Comma-separated optional extras: vision (image input), grammar (structured output)"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=900.0); s.set_defaults(func=cmd_tensorfold_install)
     sub.add_parser("tensorfold-status").set_defaults(func=cmd_tensorfold_status)
     s = sub.add_parser("longlive-install"); s.add_argument("--wait", action="store_true"); s.add_argument("--timeout", type=float, default=1800.0); s.set_defaults(func=cmd_longlive_install)
     sub.add_parser("longlive-status").set_defaults(func=cmd_longlive_status)

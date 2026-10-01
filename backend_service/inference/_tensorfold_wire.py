@@ -70,10 +70,22 @@ def _structured_calls(raw: Any) -> list[dict[str, Any]]:
     return calls
 
 
+def _image_part(image: str) -> dict[str, Any]:
+    """An OpenAI ``image_url`` part for one attached image.
+
+    The chat composer stores raw base64 of whatever file was chosen. TensorFold
+    decodes the bytes itself (JPEG, PNG or WebP) and ignores the media type in
+    the URL, so one prefix serves them all.
+    """
+    url = image if image.startswith("data:") else f"data:image/png;base64,{image}"
+    return {"type": "image_url", "image_url": {"url": url, "detail": "auto"}}
+
+
 def build_messages(
     system_prompt: str | None,
     history: list[dict[str, Any]],
     prompt: str,
+    images: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Chat history → server messages, keeping tool calls structured.
 
@@ -83,6 +95,8 @@ def build_messages(
     from those turns so a call is never shown to the model twice. The agent
     loop sends an empty ``prompt`` on its follow-up iterations (the last
     history entry is the tool result), so an empty prompt adds no user turn.
+    ``images`` (base64, only when the server was started with ``--vision``)
+    ride on that final user turn, after its text, like the llama.cpp engine.
     """
     messages: list[dict[str, Any]] = []
     if system_prompt:
@@ -101,7 +115,12 @@ def build_messages(
         elif role == "tool" and message.get("tool_call_id"):
             entry["tool_call_id"] = str(message["tool_call_id"])
         messages.append(entry)
-    if prompt:
+    if prompt and images:
+        messages.append({
+            "role": "user",
+            "content": [{"type": "text", "text": prompt}, *(_image_part(image) for image in images)],
+        })
+    elif prompt:
         messages.append({"role": "user", "content": prompt})
     return messages
 

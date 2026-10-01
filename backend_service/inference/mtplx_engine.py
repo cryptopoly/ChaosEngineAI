@@ -40,6 +40,7 @@ from backend_service.inference._utils import (
     _append_runtime_note,
     _find_open_port,
     _http_json,
+    _isolated_child_env,
     _normalize_message_content,
     _now_label,
     _read_text_tail,
@@ -231,12 +232,15 @@ class MtplxEngine(BaseInferenceEngine):
         self.log_path = Path(temp_log.name)
         self.log_handle = self.log_path.open("a", encoding="utf-8")
 
+        # The packaged app exports PYTHONHOME / PYTHONPATH / DYLD_* for its
+        # embedded runtime; the venv's interpreter must not inherit them.
         self.process = subprocess.Popen(
             command,
             cwd=str(WORKSPACE_ROOT),
             stdout=self.log_handle,
             stderr=self.log_handle,
             text=True,
+            env=_isolated_child_env(),
         )
 
         try:

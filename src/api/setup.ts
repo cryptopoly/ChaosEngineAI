@@ -436,6 +436,12 @@ export interface TensorfoldAttempt {
   output: string;
 }
 
+/**
+ * Optional pieces the installer can add to the TensorFold venv: ``vision``
+ * (image input) and ``grammar`` (structured output, which brings PyTorch).
+ */
+export type TensorfoldExtra = "vision" | "grammar";
+
 export interface TensorfoldJobState {
   id: string;
   phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
@@ -450,6 +456,8 @@ export interface TensorfoldJobState {
   finishedAt: number;
   attempts: TensorfoldAttempt[];
   done: boolean;
+  /** Extras this run was asked to add. */
+  extras?: TensorfoldExtra[];
 }
 
 export interface TensorfoldStatus {
@@ -458,6 +466,8 @@ export interface TensorfoldStatus {
   installedAt: string | null;
   ref: string | null;
   venvPath: string | null;
+  /** Optional extras installed alongside TensorFold. */
+  extras?: TensorfoldExtra[];
   /** False off Apple Silicon: the Mac engine cannot run there. */
   supported: boolean;
 }
@@ -466,8 +476,9 @@ export async function getTensorfoldStatus(): Promise<TensorfoldStatus> {
   return await fetchJson<TensorfoldStatus>("/api/setup/tensorfold-status", 8000);
 }
 
-export async function startTensorfoldInstall(): Promise<TensorfoldJobState> {
-  return await postJson<TensorfoldJobState>("/api/setup/install-tensorfold", {}, 15000);
+/** Install TensorFold, or add ``extras`` to an existing install (nothing already installed is removed). */
+export async function startTensorfoldInstall(extras: TensorfoldExtra[] = []): Promise<TensorfoldJobState> {
+  return await postJson<TensorfoldJobState>("/api/setup/install-tensorfold", { extras }, 15000);
 }
 
 export async function getTensorfoldInstallStatus(): Promise<TensorfoldJobState> {

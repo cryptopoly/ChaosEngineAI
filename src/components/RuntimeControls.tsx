@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
-import type { MtplxJobState, TensorfoldJobState } from "../api";
+import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api";
 import { InstallLogPanel } from "./InstallLogPanel";
 import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
 import { tensorfoldEngaged, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
@@ -155,7 +155,7 @@ interface RuntimeControlsProps {
    * omitted when the model is not one TensorFold serves (no control is
    * shown — there is nothing an install could do for it). */
   tensorfoldInfo?: TensorfoldLaunchInfo | null;
-  onInstallTensorfold?: () => void;
+  onInstallTensorfold?: (extras?: TensorfoldExtra[]) => void;
   installingTensorfold?: boolean;
   tensorfoldJob?: TensorfoldJobState | null;
   /** FU-056 follow-up: pass ``isAppleSilicon=true`` to surface the

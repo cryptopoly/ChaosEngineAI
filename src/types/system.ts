@@ -90,8 +90,12 @@ export interface SystemStats {
   tensorfold?: {
     available: boolean;
     version?: string | null;
+    /** Optional extras installed in the TensorFold venv ("vision", "grammar"). */
+    extras?: string[];
     supportedModels: string[];
     exclusiveModels: string[];
+    /** Checkpoints whose images TensorFold can read once the vision extra is installed. */
+    visionModels?: string[];
     minMemoryGb?: Record<string, number>;
   };
   runningLlmProcesses: Array<{

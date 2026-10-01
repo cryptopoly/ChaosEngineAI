@@ -8,6 +8,10 @@ running state instead of starting another.
 Phases driven by ``scripts/install-tensorfold.sh`` ``PHASE:`` markers:
   idle → preflight → creating-venv → installing → verifying → done | error
 
+The POST body may name optional extras (``{"extras": ["vision"]}``): image
+input and structured output. The installer adds them to the existing install
+instead of replacing it, and records them on the version file.
+
 ``/api/setup/tensorfold-status`` is a lightweight probe (version file + venv
 files, no subprocess). The launch settings use it to decide between the
 TensorFold toggle and its install button.
@@ -24,7 +28,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from backend_service.inference._tensorfold import OPTIONAL_EXTRAS, read_install_extras
 
 router = APIRouter()
 
@@ -58,6 +65,7 @@ class _TensorfoldJobState:
     finished_at: float = 0.0
     attempts: list[dict[str, Any]] = field(default_factory=list)
     done: bool = False
+    extras: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +82,7 @@ class _TensorfoldJobState:
             "finishedAt": self.finished_at,
             "attempts": list(self.attempts),
             "done": self.done,
+            "extras": list(self.extras),
         }
 
 
@@ -105,7 +114,7 @@ def _apple_silicon() -> bool:
     return sys.platform == "darwin" and platform.machine() == "arm64"
 
 
-def _job_worker() -> None:
+def _job_worker(extras: list[str]) -> None:
     """Run install-tensorfold.sh and stream its output into the job state."""
     from backend_service.inference._utils import _isolated_child_env
 
@@ -145,7 +154,7 @@ def _job_worker() -> None:
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            env=_isolated_child_env(),
+            env=_isolated_child_env({"TENSORFOLD_EXTRAS": ",".join(extras)} if extras else None),
         )
 
         for raw_line in proc.stdout:  # type: ignore[union-attr]
@@ -206,15 +215,29 @@ def tensorfold_status() -> dict[str, Any]:
         "installedAt": installed_at if installed else None,
         "ref": ref if installed else None,
         "venvPath": str(_TENSORFOLD_VENV_DIR) if installed else None,
+        # Optional extras on this install ("vision", "grammar").
+        "extras": list(read_install_extras(_TENSORFOLD_VERSION_FILE)) if installed else [],
         # The Mac engine needs Apple Silicon; the UI hides the whole
         # affordance elsewhere, this lets a caller explain why.
         "supported": _apple_silicon(),
     }
 
 
+class InstallTensorfoldRequest(BaseModel):
+    # Optional extras to add: any of ``OPTIONAL_EXTRAS``. Empty = the base install.
+    extras: list[str] = Field(default_factory=list)
+
+
 @router.post("/api/setup/install-tensorfold")
-def start_tensorfold_install() -> dict[str, Any]:
+def start_tensorfold_install(body: InstallTensorfoldRequest | None = None) -> dict[str, Any]:
     """Start the TensorFold install job. Returns immediately; poll the status endpoint."""
+    extras = [extra for extra in OPTIONAL_EXTRAS if body is not None and extra in body.extras]
+    unknown = sorted(set(body.extras) - set(OPTIONAL_EXTRAS)) if body is not None else []
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown TensorFold extra(s): {', '.join(unknown)}. Known: {', '.join(OPTIONAL_EXTRAS)}.",
+        )
     with _JOB_LOCK:
         if _JOB.phase not in ("idle", "done", "error"):
             return _JOB.to_dict()
@@ -223,8 +246,9 @@ def start_tensorfold_install() -> dict[str, Any]:
         _JOB.started_at = time.time()
         _JOB.target_dir = str(_TENSORFOLD_VENV_DIR)
         _JOB.package_current = _PHASE_LABELS["preflight"]
+        _JOB.extras = extras
 
-    thread = threading.Thread(target=_job_worker, daemon=True)
+    thread = threading.Thread(target=_job_worker, args=(extras,), daemon=True)
     thread.start()
     return _JOB.to_dict()
 

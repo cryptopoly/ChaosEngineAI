@@ -11,6 +11,11 @@
 #
 # Apple Silicon only (the Mac engine); requires native arm64 Python 3.11-3.13.
 #
+# Optional extras (TENSORFOLD_EXTRAS=vision,grammar): "vision" adds image input
+# (Pillow, transformers, mlx-vlm); "grammar" adds structured output (xgrammar,
+# which brings torch). They are added to whatever the install already has, so
+# asking for one never removes another.
+#
 # Structured progress lines, parsed by routes/setup/tensorfold.py:
 #   PHASE:<name>   emitted before each phase starts
 #   OK             emitted on clean exit
@@ -40,6 +45,37 @@ TENSORFOLD_SOURCE="${TENSORFOLD_SOURCE:-https://github.com/ashhart/TensorFold/ar
 log() { echo "$*"; }
 phase() { echo "PHASE:$1"; }
 fail() { echo "FAIL:$*"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Optional extras: what was asked for, merged with what is already installed
+# ---------------------------------------------------------------------------
+
+KNOWN_EXTRAS="vision grammar"
+REQUESTED_EXTRAS="${TENSORFOLD_EXTRAS:-}"
+
+extras_has() { [[ ",$1," == *",$2,"* ]]; }
+
+for requested in ${REQUESTED_EXTRAS//,/ }; do
+    case " ${KNOWN_EXTRAS} " in
+        *" ${requested} "*) ;;
+        *) fail "Unknown TensorFold extra '${requested}' (known: ${KNOWN_EXTRAS})." ;;
+    esac
+done
+
+# The version file's third line is the pinned ref, the fourth "extras=a,b".
+PREVIOUS_REF=""
+PREVIOUS_EXTRAS=""
+if [[ -f "${VERSION_FILE}" ]]; then
+    PREVIOUS_REF="$(sed -n '3p' "${VERSION_FILE}" | tr -d '[:space:]')"
+    PREVIOUS_EXTRAS="$(sed -n '4p' "${VERSION_FILE}" | sed 's/^extras=//' | tr -d '[:space:]')"
+fi
+
+EXTRAS=""
+for extra in ${KNOWN_EXTRAS}; do
+    if extras_has "${PREVIOUS_EXTRAS}" "${extra}" || extras_has "${REQUESTED_EXTRAS}" "${extra}"; then
+        EXTRAS="${EXTRAS:+${EXTRAS},}${extra}"
+    fi
+done
 
 # ---------------------------------------------------------------------------
 # Preflight: macOS on Apple Silicon, and a usable Python
@@ -81,8 +117,18 @@ PY_VER="$("${PYTHON_BIN}" -c "import sys; print('%d.%d' % sys.version_info[:2])"
 log "Python ${PY_VER} (arm64) at ${PYTHON_BIN}: OK"
 mkdir -p "${BIN_DIR}"
 
-# A half-finished install must never read as installed.
-rm -f "${VERSION_FILE}"
+# Adding extras to the same pinned build keeps the existing venv; any other
+# install rebuilds it so the result is never a mixture of two builds.
+REUSE_VENV=0
+if [[ -n "${REQUESTED_EXTRAS}" && -f "${VERSION_FILE}" && "${PREVIOUS_REF}" == "${TENSORFOLD_REF}" \
+        && -x "${VENV_DIR}/bin/python" && -x "${VENV_DIR}/bin/tensorfold" ]]; then
+    REUSE_VENV=1
+fi
+
+if [[ "${REUSE_VENV}" -eq 0 ]]; then
+    # A half-finished install must never read as installed.
+    rm -f "${VERSION_FILE}"
+fi
 
 # ---------------------------------------------------------------------------
 # Isolated venv
@@ -90,15 +136,19 @@ rm -f "${VERSION_FILE}"
 
 phase "creating-venv"
 
-if [[ -d "${VENV_DIR}" ]]; then
-    log "Removing existing venv at ${VENV_DIR}"
-    rm -rf "${VENV_DIR}"
-fi
+if [[ "${REUSE_VENV}" -eq 1 ]]; then
+    log "Reusing the existing venv at ${VENV_DIR} (adding: ${REQUESTED_EXTRAS})"
+else
+    if [[ -d "${VENV_DIR}" ]]; then
+        log "Removing existing venv at ${VENV_DIR}"
+        rm -rf "${VENV_DIR}"
+    fi
 
-log "Creating venv at ${VENV_DIR}"
-"${PYTHON_BIN}" -m venv "${VENV_DIR}"
-log "Upgrading pip"
-"${VENV_DIR}/bin/pip" install --quiet --upgrade pip
+    log "Creating venv at ${VENV_DIR}"
+    "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+    log "Upgrading pip"
+    "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
+fi
 
 # ---------------------------------------------------------------------------
 # Install (pulls the pinned mlx / mlx-lm it was tested against)
@@ -106,9 +156,18 @@ log "Upgrading pip"
 
 phase "installing"
 
-log "Installing TensorFold @ ${TENSORFOLD_REF}"
+if [[ -n "${EXTRAS}" ]]; then
+    case "${TENSORFOLD_SOURCE}" in
+        http://*|https://*) INSTALL_SPEC="tensorfold[${EXTRAS}] @ ${TENSORFOLD_SOURCE}" ;;
+        *) INSTALL_SPEC="${TENSORFOLD_SOURCE}[${EXTRAS}]" ;;
+    esac
+else
+    INSTALL_SPEC="${TENSORFOLD_SOURCE}"
+fi
+
+log "Installing TensorFold @ ${TENSORFOLD_REF}${EXTRAS:+ with extras: ${EXTRAS}}"
 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_INPUT=1 \
-    "${VENV_DIR}/bin/pip" install --upgrade "${TENSORFOLD_SOURCE}"
+    "${VENV_DIR}/bin/pip" install --upgrade "${INSTALL_SPEC}"
 
 # ---------------------------------------------------------------------------
 # Verify: imports, then the CLI itself
@@ -128,7 +187,16 @@ if ! "${VENV_DIR}/bin/tensorfold" --version >/dev/null 2>&1; then
     fail "The tensorfold command does not run after install."
 fi
 
-log "TensorFold ${TENSORFOLD_VERSION} import + CLI verified"
+if extras_has "${EXTRAS}" vision \
+        && ! "${VENV_DIR}/bin/python" -c "import PIL, transformers, mlx_vlm" >/dev/null 2>&1; then
+    fail "TensorFold's image-input extra did not install correctly (Pillow / transformers / mlx-vlm failed to import)."
+fi
+if extras_has "${EXTRAS}" grammar \
+        && ! "${VENV_DIR}/bin/python" -c "import xgrammar" >/dev/null 2>&1; then
+    fail "TensorFold's structured-output extra did not install correctly (xgrammar failed to import)."
+fi
+
+log "TensorFold ${TENSORFOLD_VERSION} import + CLI verified${EXTRAS:+ (extras: ${EXTRAS})}"
 
 # ---------------------------------------------------------------------------
 # Version file (its presence is what marks the install usable)
@@ -138,6 +206,7 @@ log "TensorFold ${TENSORFOLD_VERSION} import + CLI verified"
     echo "${TENSORFOLD_VERSION}"
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "${TENSORFOLD_REF}"
+    echo "extras=${EXTRAS}"
 } > "${VERSION_FILE}"
 
 log "Version file written to ${VERSION_FILE}"

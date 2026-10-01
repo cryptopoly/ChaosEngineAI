@@ -57,6 +57,19 @@ class RegistryInvariantTests(unittest.TestCase):
             if family.drafter_args:
                 self.assertTrue(family.drafter, family.key)
 
+    def test_vision_is_only_claimed_for_the_dense_qwen_checkpoint(self) -> None:
+        # docs/vision.md: dense Qwen3.5/3.8 checkpoints that ship a vision tower.
+        self.assertEqual(tf.vision_repos(), ["Vontra/Qwen3.8-27B-MLX-4bit"])
+        match = tf.match_model(canonical_repo="Vontra/Qwen3.8-27B-MLX-4bit")
+        self.assertTrue(match is not None and match.supports_vision)
+        gemma = tf.match_model(canonical_repo="mlx-community/gemma-4-26b-a4b-it-4bit")
+        self.assertTrue(gemma is not None and not gemma.supports_vision)
+        for family in tf.TENSORFOLD_FAMILIES:
+            if family.vision:
+                # a family whose only runtime is TensorFold has no stock-MLX
+                # fallback to compare image answers against
+                self.assertFalse(family.exclusive, family.key)
+
     def test_listings(self) -> None:
         self.assertIn("mlx-community/gemma-4-26b-a4b-it-4bit", tf.supported_repos())
         self.assertIn("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", tf.exclusive_repos())
@@ -258,6 +271,30 @@ class ChildEnvironmentTests(unittest.TestCase):
             self.assertEqual(os.environ["PYTHONPATH"], "/keep")
 
 
+class InstallExtrasTests(unittest.TestCase):
+    """``install-tensorfold.sh`` records the optional extras on the version file."""
+
+    def _file(self, text: str) -> Path:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        return _write(directory / "tensorfold.version", text)
+
+    def test_reads_the_fourth_line_in_registry_order(self) -> None:
+        path = self._file("0.5.0\nnow\nabc\nextras=grammar,vision\n")
+        self.assertEqual(tf.read_install_extras(path), ("vision", "grammar"))
+
+    def test_older_three_line_files_have_no_extras(self) -> None:
+        self.assertEqual(tf.read_install_extras(self._file("0.5.0\nnow\nabc\n")), ())
+
+    def test_empty_and_unknown_extras_are_ignored(self) -> None:
+        self.assertEqual(tf.read_install_extras(self._file("0.5.0\nnow\nabc\nextras=\n")), ())
+        self.assertEqual(tf.read_install_extras(self._file("0.5.0\nnow\nabc\nextras=bogus, vision\n")), ("vision",))
+        self.assertEqual(tf.read_install_extras(self._file("0.5.0\nnow\nabc\nnot-extras\n")), ())
+
+    def test_missing_file_has_no_extras(self) -> None:
+        self.assertEqual(tf.read_install_extras(Path("/nonexistent/tensorfold.version")), ())
+
+
 class BuildMessagesTests(unittest.TestCase):
     def test_plain_conversation(self) -> None:
         messages = wire.build_messages(
@@ -296,6 +333,29 @@ class BuildMessagesTests(unittest.TestCase):
                 {"id": "c2", "type": "function", "function": {"name": "b", "arguments": "{}"}},
             ],
         )
+
+    def test_images_follow_the_prompt_text_on_the_final_user_turn(self) -> None:
+        messages = wire.build_messages(
+            None, [{"role": "user", "text": "earlier"}], "look", ["QUJD", "data:image/webp;base64,REVG"],
+        )
+        self.assertEqual(messages[0], {"role": "user", "content": "earlier"})
+        self.assertEqual(
+            messages[1]["content"],
+            [
+                {"type": "text", "text": "look"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,QUJD", "detail": "auto"}},
+                {"type": "image_url", "image_url": {"url": "data:image/webp;base64,REVG", "detail": "auto"}},
+            ],
+        )
+
+    def test_images_without_a_prompt_are_not_sent(self) -> None:
+        history = [{"role": "tool", "text": "r", "tool_call_id": "c1"}]
+        self.assertEqual(wire.build_messages(None, history, "", ["QUJD"]),
+                         [{"role": "tool", "content": "r", "tool_call_id": "c1"}])
+
+    def test_no_images_keeps_a_plain_string_turn(self) -> None:
+        self.assertEqual(wire.build_messages(None, [], "hi", None), [{"role": "user", "content": "hi"}])
+        self.assertEqual(wire.build_messages(None, [], "hi", []), [{"role": "user", "content": "hi"}])
 
     def test_content_parts_are_flattened(self) -> None:
         [message] = wire.build_messages(None, [{"role": "user", "text": [{"type": "text", "text": "a"}, {"text": "b"}]}], "")

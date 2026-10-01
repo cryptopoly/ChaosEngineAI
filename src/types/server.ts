@@ -131,6 +131,7 @@ export interface NativeBackendStatus {
   tensorfoldAvailable?: boolean;
   tensorfoldPythonPath?: string | null;
   tensorfoldVersion?: string | null;
+  tensorfoldExtras?: string[];
   ggufMtpAvailable?: boolean;
   // FU-056 Phase 1 — per-accelerator import probes. Optional so a
   // backend running an older build than the frontend doesn't crash the

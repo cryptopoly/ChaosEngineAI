@@ -88,6 +88,13 @@ def _detect_tensorfold() -> tuple[bool, str | None, str | None]:
     return True, str(python), version
 
 
+def _detect_tensorfold_extras() -> tuple[str, ...]:
+    """The optional extras recorded for the TensorFold install (a file read)."""
+    from backend_service.inference._tensorfold import read_install_extras
+
+    return read_install_extras(_TENSORFOLD_VERSION_FILE)
+
+
 def _initial_backend_capabilities() -> BackendCapabilities:
     """Cheap capability placeholder used while the real probe runs.
 
@@ -124,6 +131,7 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         tensorfoldAvailable=tensorfold_available,
         tensorfoldPythonPath=tensorfold_python,
         tensorfoldVersion=tensorfold_version,
+        tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
         nunchakuAvailable=nunchaku_available(),
         nunchakuVersion=nunchaku_version(),
         sageattentionAvailable=sageattention_available(),
@@ -225,6 +233,7 @@ def _probe_native_backends() -> BackendCapabilities:
         tensorfoldAvailable=tensorfold_available,
         tensorfoldPythonPath=tensorfold_python,
         tensorfoldVersion=tensorfold_version,
+        tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
         ggufMtpAvailable=gguf_mtp_available,
         # FU-056 Phase 1: per-accelerator import + version probes.
         nunchakuAvailable=nunchaku_available(),
@@ -281,3 +290,6 @@ def refresh_install_detection() -> None:
             capabilities.tensorfoldPythonPath,
             capabilities.tensorfoldVersion,
         ) = _detect_tensorfold()
+        capabilities.tensorfoldExtras = (
+            _detect_tensorfold_extras() if capabilities.tensorfoldAvailable else ()
+        )

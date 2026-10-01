@@ -14,6 +14,12 @@
 
 set -euo pipefail
 
+# The packaged app exports variables for its embedded Python runtime; a venv
+# interpreter that inherited them would import the app's packages instead of
+# its own.
+unset PYTHONHOME PYTHONPATH PYTHONSTARTUP VIRTUAL_ENV \
+    DYLD_LIBRARY_PATH DYLD_FALLBACK_LIBRARY_PATH DYLD_INSERT_LIBRARIES || true
+
 VENV_DIR="${HOME}/.chaosengine/mtplx-venv"
 BIN_DIR="${HOME}/.chaosengine/bin"
 VERSION_FILE="${BIN_DIR}/mtplx.version"

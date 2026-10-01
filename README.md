@@ -399,7 +399,7 @@ An optional Apple Silicon engine built on [`TensorFold`](https://github.com/ashh
 
 **Install:** One-click "Install TensorFold" in the launch settings or the Setup tab, or `./scripts/chaosengine-cli tensorfold-install`. TensorFold pins its own `mlx` / `mlx-lm` versions, so the installer provisions an isolated environment at `~/.chaosengine/tensorfold-venv/`.
 
-**Routing:** An explicit TensorFold backend, a TensorFold-only model, or a tested checkpoint with speculative decoding on (and TensorFold installed) goes through `TensorFoldEngine`; it outranks MTPLX and DFlash. If it fails to start, models stock MLX can also load fall back to standard MLX. Full details: [docs/features/tensorfold.md](docs/features/tensorfold.md).
+**Routing:** An explicit TensorFold backend, a TensorFold-only model, or a tested checkpoint with speculative decoding on (and TensorFold installed) goes through `TensorFoldEngine`; it outranks MTPLX and DFlash. If it fails to start, models stock MLX can also load fall back to standard MLX. Two optional extras add image input (experimental; `Vontra/Qwen3.8-27B-MLX-4bit`) and structured output (JSON-schema enforcement) from the launch settings or `chaosengine-cli tensorfold-install --extras`. Full details: [docs/features/tensorfold.md](docs/features/tensorfold.md).
 
 ---
 

@@ -446,7 +446,7 @@ export default function App() {
 
   const tensorfoldControls: TensorfoldLaunchControls = {
     info: workspace.system.tensorfold,
-    onInstall: () => void handleInstallTensorfold(),
+    onInstall: (extras) => void handleInstallTensorfold(extras),
     installing: installingTensorfold,
     job: tensorfoldJob,
   };

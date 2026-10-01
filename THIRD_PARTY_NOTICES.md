@@ -121,6 +121,13 @@ demand from the launch settings or the Setup page on Apple Silicon hosts.
 > Source: ``~/.chaosengine/tensorfold-venv/lib/python*/site-packages/tensorfold-*.dist-info/``
 > (the LICENSE file shipped with the package).
 
+Two optional TensorFold extras can be added on demand from the launch settings
+or ``chaosengine-cli tensorfold-install --extras``. They are installed into the
+same isolated venv and are never bundled: ``vision`` (image input) brings
+Pillow (HPND, a permissive MIT-style licence), ``transformers`` (Apache 2.0) and
+``mlx-vlm`` (MIT); ``grammar`` (structured output) brings ``xgrammar``
+(Apache 2.0) and, through it, PyTorch (BSD-3-Clause).
+
 ## Optional Apple Silicon Video Runtime
 
 | Package | Repository | Licence |

@@ -100,6 +100,7 @@ prefer the production-app path above.
 | [`tests/test_agent.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_agent.py) | Tool-call parser + dispatch. |
 | [`tests/test_tensorfold_registry.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_registry.py), [`_routing`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_routing.py), [`_setup`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_setup.py) | TensorFold family registry, controller routing + fallback, installer + status endpoints. |
 | [`tests/test_tensorfold_engine_integration.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_engine_integration.py) | `TensorFoldEngine` against a stub `tensorfold serve` (`tests/fixtures/stub_tensorfold_server.py`): load, stream, reasoning, tool calls, errors, cleanup. |
+| [`tests/test_calibrate_cache_speed.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_calibrate_cache_speed.py) | Speed-ratio maths behind `scripts/calibrate-cache-speed.py`. |
 | [`tests/test_cache_strategy_matrix_runner.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_cache_strategy_matrix_runner.py) | Cross-strategy sweep runner. |
 | [`src/**/*.test.ts`](https://github.com/cryptopoly/ChaosEngineAI/tree/staging/src) | Frontend unit tests. |
 | [`scripts/e2e_test_suite.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/scripts/e2e_test_suite.py) | End-to-end suite. |

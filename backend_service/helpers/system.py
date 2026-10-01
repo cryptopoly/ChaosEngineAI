@@ -155,14 +155,20 @@ def _build_system_snapshot(
             exclusive_repos,
             min_memory_gb_by_repo,
             supported_repos,
+            vision_repos,
         )
-        from backend_service.inference.capabilities import _detect_tensorfold
+        from backend_service.inference.capabilities import (
+            _detect_tensorfold,
+            _detect_tensorfold_extras,
+        )
         available, _python, version = _detect_tensorfold()
         return {
             "available": available,
             "version": version,
+            "extras": list(_detect_tensorfold_extras()) if available else [],
             "supportedModels": supported_repos(),
             "exclusiveModels": exclusive_repos(),
+            "visionModels": vision_repos(),
             "minMemoryGb": min_memory_gb_by_repo(),
         }
 

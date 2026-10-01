@@ -98,6 +98,9 @@ class BackendCapabilities:
     tensorfoldAvailable: bool = False
     tensorfoldPythonPath: str | None = None
     tensorfoldVersion: str | None = None
+    # Optional pip extras installed in that venv: "vision" (image input) and
+    # "grammar" (structured output). Read from the installer's version file.
+    tensorfoldExtras: tuple[str, ...] = ()
     # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673. Set
     # when the resolved llama-server binary advertises --spec-type in its
     # help text. The UI keys an MTP affordance for GGUF models off this
@@ -156,6 +159,7 @@ class BackendCapabilities:
             "tensorfoldAvailable": self.tensorfoldAvailable,
             "tensorfoldPythonPath": self.tensorfoldPythonPath,
             "tensorfoldVersion": self.tensorfoldVersion,
+            "tensorfoldExtras": list(self.tensorfoldExtras),
             "ggufMtpAvailable": self.ggufMtpAvailable,
             "nunchakuAvailable": self.nunchakuAvailable,
             "nunchakuVersion": self.nunchakuVersion,

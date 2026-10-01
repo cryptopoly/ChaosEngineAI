@@ -114,6 +114,7 @@ def build_serve_command(
     drafts: bool,
     drafter_dir: Path | None = None,
     drafter_args: tuple[str, ...] = (),
+    vision: bool = False,
 ) -> list[str]:
     """The ``tensorfold serve`` argv (list form: no shell, nothing to quote)."""
     command = [
@@ -128,6 +129,10 @@ def build_serve_command(
     ]
     if context:
         command += ["--context", str(context)]
+    if vision:
+        # Image input for the checkpoint's vision tower; data URLs only (no
+        # ``--vision-urls``: the server never fetches a URL on a client's behalf).
+        command.append("--vision")
     if not drafts:
         command.append("--no-drafts")
     elif drafter_dir is not None:
@@ -173,6 +178,11 @@ class TensorFoldEngine(BaseInferenceEngine):
         self.port: int | None = None
         self.log_path: Path | None = None
         self.log_handle: Any = None
+        # What the running server was started with. ``_image_note`` says why
+        # images are ignored when ``_vision`` is off.
+        self._vision = False
+        self._grammar = False
+        self._image_note: str | None = None
 
     # ------------------------------------------------------------------
     # Process lifecycle
@@ -213,6 +223,9 @@ class TensorFoldEngine(BaseInferenceEngine):
                     pass
         self.process = None
         self.port = None
+        self._vision = False
+        self._grammar = False
+        self._image_note = None
         if self.log_handle is not None:
             try:
                 self.log_handle.close()
@@ -355,6 +368,19 @@ class TensorFoldEngine(BaseInferenceEngine):
         if window and context > window:
             context = window
 
+        # Image input needs the vision extra in the venv and a checkpoint whose
+        # vision tower TensorFold reads; installing the extra is the opt-in.
+        extras = self.capabilities.tensorfoldExtras
+        vision = bool(family is not None and family.vision and "vision" in extras)
+        image_note: str | None = None
+        if not vision:
+            image_note = (
+                "TensorFold's image support is not installed, so the attached image was ignored. "
+                "Add it from the TensorFold section of the launch settings, then load the model again."
+                if family is not None and family.vision
+                else "TensorFold cannot read images for this model, so the attached image was ignored."
+            )
+
         self.port = _find_open_port()
         command = build_serve_command(
             binary,
@@ -365,6 +391,7 @@ class TensorFoldEngine(BaseInferenceEngine):
             drafts=drafts,
             drafter_dir=drafter_dir,
             drafter_args=family.drafter_args if family is not None else (),
+            vision=vision,
         )
 
         temp_log = tempfile.NamedTemporaryFile(prefix="chaosengine-tensorfold-", suffix=".log", delete=False)
@@ -403,11 +430,16 @@ class TensorFoldEngine(BaseInferenceEngine):
             self._cleanup_process()
             raise
 
+        self._vision = vision
+        self._grammar = "grammar" in extras
+        self._image_note = image_note
+
         runtime_note = self._describe_load(
             drafts=drafts,
             drafter_repo=family.drafter if family is not None and drafter_dir is not None else None,
             drafter_note=drafter_note,
             match=match,
+            vision=vision,
         )
         if context and context != context_tokens:
             runtime_note = _append_runtime_note(
@@ -435,6 +467,7 @@ class TensorFoldEngine(BaseInferenceEngine):
             runtimeNote=runtime_note,
             speculativeDecoding=drafts,
             dflashDraftModel=family.drafter if family is not None and drafter_dir is not None else None,
+            visionEnabled=vision,
         )
         return self.loaded_model
 
@@ -445,6 +478,7 @@ class TensorFoldEngine(BaseInferenceEngine):
         drafter_repo: str | None,
         drafter_note: str | None,
         match: TensorFoldMatch | None,
+        vision: bool = False,
     ) -> str:
         if not drafts:
             note = "TensorFold serial decoding (speculative drafts turned off)."
@@ -460,6 +494,11 @@ class TensorFoldEngine(BaseInferenceEngine):
             )
         if drafter_note:
             note = _append_runtime_note(note, drafter_note)
+        if vision:
+            note = _append_runtime_note(
+                note,
+                "Image input is on (experimental): a request with images starts from a fresh KV cache.",
+            )
         if match is None or match.repo is None:
             note = _append_runtime_note(
                 note,
@@ -475,6 +514,20 @@ class TensorFoldEngine(BaseInferenceEngine):
     # ------------------------------------------------------------------
     # Requests
     # ------------------------------------------------------------------
+
+    def _require_grammar_for(self, json_schema: dict[str, Any] | None) -> None:
+        """Refuse a schema-constrained request the server cannot enforce.
+
+        Structured output needs xgrammar in the TensorFold venv. Ignoring the
+        schema would hand a caller that parses the reply (JSON mode over the
+        API) free-form text, so the request fails with the in-app fix instead.
+        """
+        if json_schema and not self._grammar:
+            raise RuntimeError(
+                "Structured output (a JSON schema) needs TensorFold's grammar support, which is not "
+                "installed. Add it from the TensorFold section of the launch settings (it installs "
+                "PyTorch), then load the model again."
+            )
 
     def _require_ready(self) -> LoadedModelInfo:
         if self.loaded_model is None:
@@ -501,11 +554,12 @@ class TensorFoldEngine(BaseInferenceEngine):
         except urllib.error.URLError as exc:
             raise RuntimeError(str(exc.reason)) from exc
 
-    @staticmethod
-    def _request_notes(images: list[str] | None, samplers: dict[str, Any] | None) -> list[str]:
+    def _request_notes(self, images: list[str] | None, samplers: dict[str, Any] | None) -> list[str]:
         notes: list[str] = []
-        if images:
-            notes.append("TensorFold does not read images yet, so the attached image was ignored.")
+        if images and not self._vision:
+            notes.append(
+                self._image_note or "TensorFold cannot read images for this model, so the attached image was ignored."
+            )
         sampler_note = unsupported_sampler_note(samplers)
         if sampler_note:
             notes.append(sampler_note)
@@ -526,11 +580,12 @@ class TensorFoldEngine(BaseInferenceEngine):
         json_schema: dict[str, Any] | None = None,
     ) -> GenerationResult:
         loaded = self._require_ready()
+        self._require_grammar_for(json_schema)
         # Non-streaming turns (the agent loop, benchmarks, compare) have no
         # place to show reasoning, so thinking stays off for them.
         payload = build_payload(
             model=loaded.ref,
-            messages=build_messages(system_prompt, history, prompt),
+            messages=build_messages(system_prompt, history, prompt, images if self._vision else None),
             max_tokens=max_tokens,
             temperature=temperature,
             stream=False,
@@ -621,9 +676,10 @@ class TensorFoldEngine(BaseInferenceEngine):
         json_schema: dict[str, Any] | None = None,
     ) -> Iterator[StreamChunk]:
         loaded = self._require_ready()
+        self._require_grammar_for(json_schema)
         payload = build_payload(
             model=loaded.ref,
-            messages=build_messages(system_prompt, history, prompt),
+            messages=build_messages(system_prompt, history, prompt, images if self._vision else None),
             max_tokens=max_tokens,
             temperature=temperature,
             stream=True,

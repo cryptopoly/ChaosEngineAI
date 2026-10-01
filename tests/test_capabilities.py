@@ -113,6 +113,19 @@ class ResolveCapabilitiesTests(unittest.TestCase):
         )
         self.assertFalse(caps.supportsVision)
 
+    def test_tensorfold_engine_keeps_vision_only_when_started_with_vision(self):
+        # TensorFold reads images when its server runs with --vision, and the
+        # engine reports that as vision_enabled. Without it the composer must
+        # not offer "Attach image".
+        on = resolve_capabilities(
+            "Vontra/Qwen3.8-27B-MLX-4bit", None, engine="tensorfold", vision_enabled=True,
+        )
+        off = resolve_capabilities(
+            "Vontra/Qwen3.8-27B-MLX-4bit", None, engine="tensorfold", vision_enabled=False,
+        )
+        self.assertTrue(on.supportsVision)
+        self.assertFalse(off.supportsVision)
+
     def test_llama_cpp_engine_keeps_vision_when_runtime_enabled(self):
         # llama.cpp accepts image_url parts natively when an mmproj is
         # loaded — vision_enabled=True simulates that runtime state.

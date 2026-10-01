@@ -18,7 +18,7 @@ or no FLUX weights are on disk.
 
 | Phase | Surface | What it proves |
 |-------|---------|----------------|
-| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash/TensorFold registries populated, and every TensorFold catalog row agrees with the registry (exclusive families are tagged for the TensorFold backend). |
+| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash/TensorFold registries populated, and every TensorFold catalog row agrees with the registry (exclusive families are tagged for the TensorFold backend; checkpoints that can read images carry the vision tag). |
 | 1 | Chat — text generation | MLX + GGUF backends both produce tokens. Cache strategies (Native f16, TurboQuant). Speculative decoding paths (DFlash, MTPLX, TensorFold) route correctly per `runtimeNote` / engine. `cache-preview` returns sane numbers at 32k+ context. `--fused-attention` honoured. |
 | 2 | Chat Compare | `/api/chat/compare` accepts two-slot payload and returns 200. |
 | 3 | HTML Challenge | List + create + delete round-trip. Skipped when no MLX text model on disk. |
@@ -36,7 +36,8 @@ Concrete, not "feels right":
 - For Phase 1 generation checks: `tokS > 0` AND a completion was produced.
 - The TensorFold check asserts the loaded engine really is `tensorfold`
   (a silent fallback to standard MLX still produces text, so the token check
-  alone would not catch it).
+  alone would not catch it), and that image input is on exactly when the
+  `vision` extra is installed and the checkpoint has a vision tower.
 - DFlash / MTPLX checks additionally assert the expected token appears
   in `runtimeNote` (`"dflash"` / `"speculative"` / `"mtplx"`). A pass for
   "speculativeDecoding=true" alone is **not** sufficient — backend must

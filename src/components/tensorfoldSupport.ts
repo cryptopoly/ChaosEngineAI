@@ -1,4 +1,4 @@
-import type { TensorfoldJobState } from "../api";
+import type { TensorfoldExtra, TensorfoldJobState } from "../api";
 import type { SystemStats } from "../types";
 
 /**
@@ -28,6 +28,8 @@ export interface TensorfoldModelSupport {
   repo: string;
   /** Unified memory the checkpoint's docs call for, when they state one. */
   minMemoryGb: number | null;
+  /** TensorFold can read images for this checkpoint once the vision extra is installed. */
+  vision: boolean;
 }
 
 /**
@@ -36,7 +38,8 @@ export interface TensorfoldModelSupport {
  */
 export interface TensorfoldLaunchControls {
   info?: SystemStats["tensorfold"];
-  onInstall?: () => void;
+  /** Install TensorFold, or add optional ``extras`` to the existing install. */
+  onInstall?: (extras?: TensorfoldExtra[]) => void;
   installing?: boolean;
   job?: TensorfoldJobState | null;
 }
@@ -48,13 +51,20 @@ export function tensorfoldLaunchInfoFor(
 ): TensorfoldLaunchInfo | null {
   const support = resolveTensorfoldSupport(controls?.info, candidates);
   if (!controls?.info || !support) return null;
-  return { available: controls.info.available, version: controls.info.version, support };
+  return {
+    available: controls.info.available,
+    version: controls.info.version,
+    extras: controls.info.extras ?? [],
+    support,
+  };
 }
 
 /** Launch-settings wiring the ``RuntimeControls`` TensorFold block reads. */
 export interface TensorfoldLaunchInfo {
   available: boolean;
   version?: string | null;
+  /** Optional extras already installed ("vision", "grammar"). */
+  extras: string[];
   support: TensorfoldModelSupport;
 }
 
@@ -79,7 +89,29 @@ export function resolveTensorfoldSupport(
     tier: exclusive ? "exclusive" : "tested",
     repo,
     minMemoryGb: info.minMemoryGb?.[repo] ?? null,
+    vision: (info.visionModels ?? []).some((entry) => entry.toLowerCase() === repo.toLowerCase()),
   };
+}
+
+/** Whether an optional extra is already in the TensorFold install. */
+export function tensorfoldHasExtra(
+  launch: Pick<TensorfoldLaunchInfo, "extras"> | null | undefined,
+  extra: TensorfoldExtra,
+): boolean {
+  return launch?.extras.includes(extra) ?? false;
+}
+
+/**
+ * Whether the launch settings should offer to add ``extra``: TensorFold itself
+ * is installed (the base install has its own button), the extra is not, and —
+ * for image input — the selected checkpoint has a vision tower to read.
+ */
+export function canAddTensorfoldExtra(
+  launch: Pick<TensorfoldLaunchInfo, "available" | "extras" | "support"> | null | undefined,
+  extra: TensorfoldExtra,
+): boolean {
+  if (!launch?.available || tensorfoldHasExtra(launch, extra)) return false;
+  return extra === "grammar" || launch.support.vision;
 }
 
 /** True when a model of this support level needs more memory than the Mac has. */

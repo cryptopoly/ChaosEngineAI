@@ -33,6 +33,16 @@ _CONTEXT_WINDOW = 1000
 _STATE: dict = {"name": "stub", "drafts": True}
 
 
+def _has_image(body: dict) -> bool:
+    for message in body.get("messages") or []:
+        content = message.get("content")
+        if isinstance(content, list) and any(
+            isinstance(part, dict) and part.get("type") == "image_url" for part in content
+        ):
+            return True
+    return False
+
+
 def _record(payload: dict) -> None:
     path = os.environ.get("STUB_TENSORFOLD_RECORD")
     if not path:
@@ -103,8 +113,10 @@ class _Handler(BaseHTTPRequestHandler):
                 f"{max(0, _CONTEXT_WINDOW - limit)} prompt tokens or request at most "
                 f"{_CONTEXT_WINDOW - 10} reply tokens, including chat template and thinking tokens."
             )
+        if _has_image(body) and not _STATE.get("vision"):
+            return "image input is off on this server; start it with --vision"
         response_format = body.get("response_format")
-        if response_format:
+        if response_format and os.environ.get("STUB_TENSORFOLD_GRAMMAR") != "1":
             return "response_format needs xgrammar, which this build does not include"
         return None
 
@@ -250,6 +262,7 @@ def _serve(args: argparse.Namespace) -> None:
     # ``--drafter none`` only drops the external draft model; a checkpoint's own
     # MTP head still drafts. Only ``--no-drafts`` is the serial reference.
     _STATE["drafts"] = not args.no_drafts
+    _STATE["vision"] = args.vision
     record = os.environ.get("STUB_TENSORFOLD_RECORD")
     if record:
         with open(record + ".start", "w", encoding="utf-8") as handle:
@@ -292,6 +305,8 @@ def main() -> None:
     serve.add_argument("--no-update-check", action="store_true")
     serve.add_argument("--context", type=int, default=None)
     serve.add_argument("--no-drafts", action="store_true")
+    serve.add_argument("--vision", action="store_true")
+    serve.add_argument("--vision-urls", action="store_true")
     serve.add_argument("--drafter", default=None)
     serve.add_argument("--drafter-bits", type=int, default=4)
     serve.add_argument("--fail-mode", default=None)

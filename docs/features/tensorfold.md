@@ -98,6 +98,53 @@ Headless install:
 Set `TENSORFOLD_REF=<commit|tag>` to try a newer build, or `TENSORFOLD_SOURCE`
 to install from a local checkout or an internal mirror.
 
+## Optional extras: image input and structured output
+
+Two features need extra packages, so they are opt-in. Installing the extra *is*
+the opt-in: the engine turns the feature on whenever the extra is present and
+the model supports it.
+
+| Extra | Turns on | Adds to the TensorFold venv |
+|---|---|---|
+| `vision` | Image input (experimental) | Pillow, transformers, mlx-vlm |
+| `grammar` | Structured output (a JSON schema is enforced) | xgrammar, which brings PyTorch |
+
+Add one from the **TensorFold** block in the launch settings ("Add image
+support", or the "Structured output" row in its info panel), or from the CLI:
+
+```bash
+./scripts/chaosengine-cli tensorfold-install --extras vision --wait
+./scripts/chaosengine-cli tensorfold-install --extras grammar --wait
+```
+
+Adding an extra installs into the existing venv and keeps what is already
+there: asking for `grammar` later does not remove `vision`, and reinstalling
+TensorFold keeps your extras. The installer records them on the fourth line of
+`tensorfold.version` (`extras=vision,grammar`), which is what the app reads.
+Reload the model after adding one.
+
+**Image input.** Only checkpoints that ship a vision tower can read images; today
+that is `Vontra/Qwen3.8-27B-MLX-4bit` (the registry's `vision` flag). With the
+extra installed the server starts with `--vision`, the model reports image
+support, and the chat composer offers *Attach image*. TensorFold has to be what
+serves the model, so for this checkpoint keep TensorFold ticked in the launch
+settings. Limits worth knowing:
+
+- JPEG, PNG or WebP only, up to four images per request (10 MiB each); anything
+  else is refused with TensorFold's own reason.
+- Images ride on the current message only; a follow-up turn does not resend
+  earlier images.
+- A request with images starts from a fresh KV cache (no prefix reuse for that
+  turn); plain-text turns keep their prefix caching.
+- TensorFold's authors still call image input experimental and publish no
+  throughput numbers for it.
+
+**Structured output.** With the `grammar` extra, a JSON schema set in the
+sampler panel (or sent as `response_format` to the app's OpenAI-compatible
+API) is enforced during decoding, and drafting stays on. Without it, such a
+request is **refused** with a message pointing at the install, rather than
+returning free-form text to a caller that expects JSON.
+
 ## Why an isolated venv
 
 TensorFold pins `mlx >=0.32.2,<0.32.4` and `mlx-lm >=0.31.3,<0.32`, which can
@@ -145,9 +192,9 @@ spawns `tensorfold serve <model dir>` on a local port and proxies
 - **Apple Silicon only.** The Mac engine is the only one wired up here.
 - **Alpha software.** The pin is an exact commit; the registry and the
   installer move together when it is bumped.
-- **No vision or structured output yet.** TensorFold's `--vision` and grammar
-  extras are not installed, so image input and JSON-schema output are not
-  offered on this lane.
+- **Image input and structured output are opt-in extras** (above); without them
+  the lane refuses a JSON schema and ignores attached images, with a note saying
+  how to add support.
 - **Native cache only**, as above.
 - **Big models need big Macs.** The TensorFold-only families list their minimum
   memory, and the launch modal warns when the Mac has less.

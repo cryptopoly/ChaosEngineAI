@@ -5,6 +5,7 @@ snapshot payload the launch settings read."""
 from __future__ import annotations
 
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -62,6 +63,36 @@ class DetectTensorFoldTests(unittest.TestCase):
         self.assertTrue(available)
         self.assertEqual(python, str(self.venv / "bin" / "python"))
         self.assertEqual(version, "0.5.0")
+
+    def test_extras_come_from_the_version_file(self) -> None:
+        _install(self.venv, self.version_file)
+        self.assertEqual(caps_module._detect_tensorfold_extras(), ())
+        self.version_file.write_text("0.5.0\nnow\nabc123\nextras=vision,grammar\n")
+        self.assertEqual(caps_module._detect_tensorfold_extras(), ("vision", "grammar"))
+
+    def test_refresh_also_updates_the_extras(self) -> None:
+        for thread in threading.enumerate():
+            if thread.name == "chaosengine-capability-probe":
+                thread.join(timeout=120)
+        cached = BackendCapabilities(pythonExecutable=sys.executable, mlxAvailable=True, mlxLmAvailable=True, mlxUsable=True)
+        with mock.patch.object(caps_module, "_capability_cache", (time.time(), cached)):
+            _install(self.venv, self.version_file)
+            self.version_file.write_text("0.5.0\nnow\nabc123\nextras=vision\n")
+            caps_module.refresh_install_detection()
+        self.assertEqual(cached.tensorfoldExtras, ("vision",))
+        self.assertEqual(cached.to_dict()["tensorfoldExtras"], ["vision"])
+
+    def test_extras_are_not_reported_when_the_install_is_gone(self) -> None:
+        self.version_file.parent.mkdir(parents=True)
+        self.version_file.write_text("0.5.0\nnow\nabc123\nextras=vision\n")  # no venv
+        for thread in threading.enumerate():
+            if thread.name == "chaosengine-capability-probe":
+                thread.join(timeout=120)
+        cached = BackendCapabilities(pythonExecutable=sys.executable, mlxAvailable=True, mlxLmAvailable=True, mlxUsable=True)
+        with mock.patch.object(caps_module, "_capability_cache", (time.time(), cached)):
+            caps_module.refresh_install_detection()
+        self.assertFalse(cached.tensorfoldAvailable)
+        self.assertEqual(cached.tensorfoldExtras, ())
 
     def test_refresh_updates_the_cached_capabilities_in_place(self) -> None:
         # Importing the app starts the background capability probe, which
@@ -141,6 +172,45 @@ class TensorFoldSetupRouteTests(unittest.TestCase):
         self.assertEqual(status["version"], "0.5.0")
         self.assertEqual(status["ref"], "abc123")
         self.assertEqual(status["venvPath"], str(self.venv))
+
+    def test_status_reports_the_installed_extras(self) -> None:
+        _install(self.venv, self.version_file)
+        self.assertEqual(self.client.get("/api/setup/tensorfold-status").json()["extras"], [])
+        self.version_file.write_text("0.5.0\nnow\nabc123\nextras=vision,grammar\n")
+        self.assertEqual(self.client.get("/api/setup/tensorfold-status").json()["extras"], ["vision", "grammar"])
+
+    def test_unknown_extra_is_rejected_without_starting_a_job(self) -> None:
+        response = self.client.post("/api/setup/install-tensorfold", json={"extras": ["vision", "bogus"]})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("bogus", response.json()["detail"])
+        self.assertEqual(self.client.get("/api/setup/install-tensorfold/status").json()["phase"], "idle")
+
+    @unittest.skipIf(sys.platform == "win32", "install scripts run under bash")
+    def test_requested_extras_reach_the_install_script_in_registry_order(self) -> None:
+        out = self.tmp / "extras.txt"
+        self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
+        with mock.patch.dict(os.environ):
+            os.environ.pop("TENSORFOLD_EXTRAS", None)
+            started = self.client.post("/api/setup/install-tensorfold", json={"extras": ["grammar", "vision", "vision"]}).json()
+            self.assertEqual(started["extras"], ["vision", "grammar"])
+            self._wait_for_job()
+        self.assertEqual(out.read_text().strip(), "[vision,grammar]")
+
+    @unittest.skipIf(sys.platform == "win32", "install scripts run under bash")
+    def test_no_extras_leaves_the_variable_unset(self) -> None:
+        out = self.tmp / "extras.txt"
+        self._script(f'echo PHASE:preflight\necho "[${{TENSORFOLD_EXTRAS-unset}}]" > "{out}"\necho OK\n')
+        with mock.patch.dict(os.environ):
+            os.environ.pop("TENSORFOLD_EXTRAS", None)
+            for body in (None, {}, {"extras": []}):
+                started = (
+                    self.client.post("/api/setup/install-tensorfold")
+                    if body is None
+                    else self.client.post("/api/setup/install-tensorfold", json=body)
+                ).json()
+                self.assertEqual(started["extras"], [])
+                self._wait_for_job()
+                self.assertEqual(out.read_text().strip(), "[unset]")
 
     @unittest.skipIf(sys.platform == "win32", "install scripts run under bash")
     def test_install_job_follows_the_script_phases(self) -> None:
@@ -222,6 +292,10 @@ class TensorFoldSnapshotTests(unittest.TestCase):
         self.assertIn("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP", info["exclusiveModels"])
         self.assertNotIn("mlx-community/gemma-4-26b-a4b-it-4bit", info["exclusiveModels"])
         self.assertEqual(info["minMemoryGb"]["Vontra/GLM-5.3-Flash-MLX-4bit-MTP"], 256)
+        # Only the dense Qwen checkpoint reads images; the list is what the
+        # launch settings use to offer image support.
+        self.assertEqual(info["visionModels"], ["Vontra/Qwen3.8-27B-MLX-4bit"])
+        self.assertIsInstance(info["extras"], list)
 
     def test_capability_payload_carries_the_install_fields(self) -> None:
         payload = BackendCapabilities(
@@ -256,6 +330,29 @@ class InstallScriptTests(unittest.TestCase):
         self.assertRegex(text, r'TENSORFOLD_REF="\$\{TENSORFOLD_REF:-[0-9a-f]{40}\}"')
         if sys.platform != "win32":
             self.assertTrue(os.access(script, os.X_OK))
+
+
+    @unittest.skipIf(sys.platform in {"darwin", "win32"}, "asserts the non-Mac refusal")
+    def test_extras_are_validated_before_the_platform_check_is_reached(self) -> None:
+        import subprocess
+
+        script = Path(__file__).parents[1] / "scripts" / "install-tensorfold.sh"
+        with tempfile.TemporaryDirectory() as home:
+            result = subprocess.run(
+                ["bash", str(script)], capture_output=True, text=True, timeout=60,
+                env={**os.environ, "HOME": home, "TENSORFOLD_EXTRAS": "vision,bogus"},
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("FAIL:Unknown TensorFold extra 'bogus'", result.stdout)
+        self.assertNotIn("PHASE:", result.stdout)
+
+    def test_script_and_registry_agree_on_the_extras(self) -> None:
+        from backend_service.inference._tensorfold import OPTIONAL_EXTRAS
+
+        text = (Path(__file__).parents[1] / "scripts" / "install-tensorfold.sh").read_text()
+        match = re.search(r'^KNOWN_EXTRAS="([^"]*)"', text, re.MULTILINE)
+        self.assertIsNotNone(match)
+        self.assertEqual(tuple(match.group(1).split()), OPTIONAL_EXTRAS)
 
 
 if __name__ == "__main__":

@@ -98,8 +98,12 @@ does not fit", not as a way to go faster:
   `turboquant-mlx-full` 0.3.0 and 5.6 tok/s on 0.28.0. Output stayed coherent
   on both. That is a short-context, single-model measurement (FU-066 in
   `CLAUDE.md`), so the gap at long context is not yet characterised — but the
-  direction is not in doubt, and the launch-modal estimate already assumes a
-  speed ratio below 1.
+  direction is not in doubt. The launch-modal estimate uses 0.20× Native speed
+  at 3-bit (0.15 / 0.17 / 0.22 at 1 / 2 / 4 bits, scaled from that one point).
+  To replace those with measured numbers for your Mac and model, run
+  `scripts/calibrate-cache-speed.py`: it loads Native and then TurboQuant at each
+  bit width, times a fixed-length reply after prompts of several sizes, and
+  prints a line to paste into `_strategy_speed_map`.
 - **No chat-history cache reuse on MLX.** Native keeps a persistent prompt
   cache between turns, so a follow-up only prefills the new message. The
   compressed caches do not, so every turn re-processes the whole conversation.

@@ -85,6 +85,26 @@ class GateImageGenerationTests(unittest.TestCase):
         self.assertEqual(result["code"], "memory_gate_image_high_pressure")
 
 
+class GateImageModelSizeTests(unittest.TestCase):
+    def test_refuses_a_model_larger_than_free_memory(self):
+        # Qwen-Image (57 GB) on a 64 GB Mac: the OS kills the backend mid-load.
+        result = gate_image_generation(
+            available_gb=58.0, pressure_percent=30.0, model_gb=57.0, model_name="Qwen-Image",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_image_model_too_large")
+        self.assertIn("Qwen-Image", result["message"])
+        self.assertIn("58.0", result["message"])
+
+    def test_passes_a_model_that_fits(self):
+        self.assertIsNone(gate_image_generation(
+            available_gb=40.0, pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
+        ))
+
+    def test_no_size_means_no_size_check(self):
+        self.assertIsNone(gate_image_generation(available_gb=8.0, pressure_percent=30.0))
+
+
 class GateVideoGenerationTests(unittest.TestCase):
     def test_passes_when_memory_is_healthy(self):
         result = gate_video_generation(available_gb=18.0, pressure_percent=40.0)

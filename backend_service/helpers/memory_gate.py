@@ -42,6 +42,9 @@ CHAT_MAX_PRESSURE_PERCENT = 98.0
 # decode). The gate is a backstop — refuses when the host is already
 # strained enough that an OOM during inference would wedge the laptop.
 IMAGE_MIN_AVAILABLE_GB = 4.0
+# Weights are mapped into memory twice while a pipeline loads, so a model
+# needs more free memory than its on-disk size.
+IMAGE_MODEL_HEADROOM = 1.1
 IMAGE_MAX_PRESSURE_PERCENT = 95.0
 
 # Video gen working set scales with frame count + resolution. Strictest
@@ -93,13 +96,30 @@ def gate_image_generation(
     *,
     min_available_gb: float = IMAGE_MIN_AVAILABLE_GB,
     max_pressure_percent: float = IMAGE_MAX_PRESSURE_PERCENT,
+    model_gb: float | None = None,
+    model_name: str | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
 
     Image inference can OOM swap-thrash for minutes before recovering, so
     we require materially more headroom than chat. Same shape as
     `gate_chat_generation` so call sites can render the message uniformly.
+
+    ``model_gb`` is the weight size of a model that is not resident yet. A
+    model larger than free memory is killed by the OS mid-load, which takes
+    the whole backend down with it, so it is refused up front instead.
     """
+    if model_gb and available_gb < model_gb * IMAGE_MODEL_HEADROOM:
+        label = model_name or "This image model"
+        return {
+            "code": "memory_gate_image_model_too_large",
+            "message": (
+                f"{label} needs about {model_gb * IMAGE_MODEL_HEADROOM:.0f} GB "
+                f"of free memory to load, but only {available_gb:.1f} GB is "
+                "available. Close other apps, or pick a smaller or quantized "
+                "image model."
+            ),
+        }
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_image_low_available",

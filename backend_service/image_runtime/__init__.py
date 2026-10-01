@@ -150,6 +150,10 @@ class DiffusersTextToImageEngine:
         # capabilities mid-batch. Reset on each pipeline load.
         self._load_notes: list[str] = []
 
+    @property
+    def loaded_repo(self) -> str | None:
+        return self._loaded_repo
+
     def probe(self) -> ImageRuntimeStatus:
         # Deliberately does NOT ``import torch`` — that would load
         # torch/lib/*.dll into the backend process handle table, and on
@@ -944,6 +948,11 @@ class ImageRuntimeManager:
         # at generate time.
         from backend_service.sdcpp_image_runtime import SdCppImageEngine
         self._sdcpp = SdCppImageEngine()
+
+    @property
+    def loaded_repo(self) -> str | None:
+        """Repo of the pipeline currently resident in memory, if any."""
+        return self._diffusers.loaded_repo
 
     def capabilities(self) -> dict[str, Any]:
         return self._diffusers.probe().to_dict()

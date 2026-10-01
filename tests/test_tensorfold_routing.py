@@ -202,8 +202,16 @@ class StartupFallbackTests(unittest.TestCase):
     def test_no_fallback_when_the_apps_mlx_is_unusable(self) -> None:
         controller = _controller(tensorfold=True, mlx=False)
         controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "boom"))
-        with self.assertRaises(RuntimeError):
-            self._load(controller, _NATIVE)
+        # The app's MLX is unusable, so the fallback worker must not be tried.
+        # ``load_model`` re-probes capabilities, so pin the probe too: on a Mac
+        # the real one reports a working MLX and the fallback would run.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine") as worker:
+            with self.assertRaises(RuntimeError):
+                self._load(controller, _NATIVE)
+        worker.assert_not_called()
 
     def test_an_explicit_request_for_an_unlisted_model_falls_back_too(self) -> None:
         controller = _controller(tensorfold=True)

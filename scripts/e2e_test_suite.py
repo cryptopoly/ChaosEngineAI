@@ -1108,6 +1108,15 @@ def phase_4(cap: Capability) -> PhaseResult:
         missing = [fid for fid in ("qwen-image", "z-image", "flux-2") if fid not in fams]
         if missing:
             return "fail", f"image families absent: {missing}", {"present": sorted(fams)}
+        # Qwen-Image-2.1 ships as a stable-diffusion.cpp variant of the qwen-image
+        # family (FU-096): assert it is listed and routed to the sd.cpp engine.
+        q21 = next(
+            (v for v in (fams.get("qwen-image") or {}).get("variants", [])
+             if v.get("id") == "leejet/Qwen-Image-2.1-GGUF-q4k"),
+            None,
+        )
+        if q21 is None or q21.get("engine") != "sdcpp":
+            return "fail", f"Qwen-Image-2.1 sd.cpp variant missing or mis-routed: {q21 and q21.get('engine')}", {}
         return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
 
     def _library():
@@ -1128,6 +1137,9 @@ def phase_4(cap: Capability) -> PhaseResult:
         installed = [m for m in models if m.get("availableLocally") or m.get("hasLocalData")]
         if not installed:
             return "skip", "no image model installed locally", {}
+        # Smallest diffusers model first: the smoke must not pick a model that
+        # needs more memory than the host has (Qwen-Image is 57 GB).
+        installed.sort(key=lambda m: (m.get("engine") == "sdcpp", float(m.get("sizeGb") or 1e9)))
         model_id = installed[0].get("id") or installed[0].get("repo")
         if not model_id:
             return "skip", "could not resolve installed image model id", {}

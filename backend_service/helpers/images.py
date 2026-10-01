@@ -767,6 +767,11 @@ def _image_repo_allow_patterns(repo_id: str) -> list[str] | None:
     known = _image_download_repo_ids()
     if repo_id not in known:
         return None
+    from backend_service.helpers.image_validation import _sdcpp_gguf_files
+
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        return [*gguf_files, "*.md", "LICENSE*"]
     return list(_IMAGE_DIFFUSERS_ALLOW_PATTERNS)
 
 

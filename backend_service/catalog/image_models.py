@@ -467,6 +467,48 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 6.0,
                 "releaseDate": "2026-03",
             },
+            {
+                # Qwen-Image-2.1 (Sep 2026): 7B DiT + Qwen3-VL-8B encoder, text-to-image
+                # and editing, native RGBA. Runs through stable-diffusion.cpp so it works
+                # on Apple Silicon, CUDA and CPU; the diffusers pipeline
+                # (QwenImage21Pipeline) is not in a released diffusers yet. The variant's
+                # repo is the GGUF repo: the 33 GB base snapshot is not needed.
+                "id": "leejet/Qwen-Image-2.1-GGUF-q4k",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · sd.cpp Q4_K",
+                "provider": "Alibaba Qwen · leejet",
+                "repo": "leejet/Qwen-Image-2.1-GGUF",
+                "engine": "sdcpp",
+                "ggufRepo": "leejet/Qwen-Image-2.1-GGUF",
+                "ggufFile": "qwen_image_2.1-Q4_K.gguf",
+                "sdcppAux": {
+                    "--vae": {
+                        "repo": "Comfy-Org/Qwen-Image-2.1",
+                        "file": "vae/qwen_image_2.1_vae_bf16.safetensors",
+                    },
+                    "--llm": {
+                        "repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+                        "file": "Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+                    },
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["photoreal", "typography", "detailed", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 4.2,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "7B Qwen-Image-2.1 as a 4-bit GGUF through stable-diffusion.cpp. The first "
+                    "run also fetches the Qwen3-VL-8B text encoder (5 GB) and the VAE (0.7 GB). "
+                    "Qwen Research licence: non-commercial use only. Slow on Apple Silicon "
+                    "(about 13 s per step); fast on CUDA."
+                ),
+                "estimatedGenerationSeconds": 520.0,
+                "releaseDate": "2026-09",
+            },
         ],
     },
     {
@@ -544,30 +586,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
 ]
 
 LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
-    {
-        "repo": "Qwen/Qwen-Image-2.1",
-        "name": "Qwen-Image-2.1",
-        "provider": "Alibaba Qwen",
-        "styleTags": ["general", "typography", "editing", "transparency"],
-        "taskSupport": ["txt2img", "img2img"],
-        "sizeGb": 33.1,
-        "runtimeFootprintGb": 34.0,
-        "runtimeFootprintMpsGb": 46.0,
-        "runtimeFootprintCpuGb": 40.0,
-        "coreWeightsGb": 33.1,
-        "repoSizeGb": 33.1,
-        "recommendedResolution": "1024x1024",
-        "note": (
-            "7B single-stream DiT with a Qwen3-VL-8B text encoder: text-to-image, "
-            "multi-reference editing and transparent (RGBA) output up to 2K. "
-            "Qwen Research licence, non-commercial use only. Needs a diffusers "
-            "release with QwenImage21Pipeline (not in 0.40.0)."
-        ),
-        "gated": False,
-        "pipelineTag": "text-to-image",
-        "updatedLabel": "Tracked latest",
-        "releaseDate": "2026-09",
-    },
     {
         "repo": "baidu/ERNIE-Image",
         "name": "ERNIE-Image",

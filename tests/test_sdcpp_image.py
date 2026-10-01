@@ -12,6 +12,7 @@ Mirrors ``test_sdcpp_video.py``. Covers:
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import unittest
 from pathlib import Path
@@ -234,6 +235,36 @@ class SdCppImageEngineGenerateTests(unittest.TestCase):
         )
         self.assertIn("--negative-prompt", args)
         self.assertIn("blurry, low quality", args)
+
+    def test_companion_files_and_extra_args_reach_the_command_line(self):
+        engine = SdCppImageEngine()
+        config = dataclasses.replace(
+            _make_config(
+                "leejet/Qwen-Image-2.1-GGUF",
+                gguf_repo="leejet/Qwen-Image-2.1-GGUF",
+                gguf_file="qwen_image_2.1-Q4_K.gguf",
+            ),
+            sdcppAux={
+                "--vae": {"repo": "Comfy-Org/Qwen-Image-2.1", "file": "vae/v.safetensors"},
+                "--llm": {"repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF", "file": "t.gguf"},
+            },
+            sdcppArgs=["--sampling-method", "euler", "--fa"],
+        )
+        with patch("huggingface_hub.hf_hub_download", side_effect=lambda repo_id, filename: f"/cache/{filename}"):
+            aux = engine._resolve_aux_paths(config)
+        self.assertEqual(aux, {"--vae": "/cache/vae/v.safetensors", "--llm": "/cache/t.gguf"})
+        args = engine._build_cli_args(
+            binary=Path("/tmp/sd"), config=config, model_path="/tmp/m.gguf",
+            output_path=Path("/tmp/x.png"), seed=1, aux_paths=aux,
+        )
+        self.assertEqual(args[args.index("--vae") + 1], "/cache/vae/v.safetensors")
+        self.assertEqual(args[args.index("--llm") + 1], "/cache/t.gguf")
+        self.assertEqual(args[-3:], ["--sampling-method", "euler", "--fa"])
+
+    def test_a_companion_file_without_a_repo_is_refused(self):
+        config = dataclasses.replace(_make_config(), sdcppAux={"--vae": {"file": "v.safetensors"}})
+        with self.assertRaises(RuntimeError):
+            SdCppImageEngine()._resolve_aux_paths(config)
 
     def test_run_subprocess_streams_progress_and_returns_bytes(self):
         import tempfile
@@ -538,3 +569,42 @@ class SdCppImageCatalogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QwenImage21CatalogTests(unittest.TestCase):
+    """The Qwen-Image-2.1 variant is a GGUF repo, not a diffusers snapshot."""
+
+    def _variant(self):
+        from backend_service.catalog import IMAGE_MODEL_FAMILIES
+
+        return next(
+            v for f in IMAGE_MODEL_FAMILIES for v in f["variants"]
+            if v["id"] == "leejet/Qwen-Image-2.1-GGUF-q4k"
+        )
+
+    def test_variant_routes_to_sdcpp_with_its_companion_files(self):
+        variant = self._variant()
+        self.assertEqual(variant["engine"], "sdcpp")
+        self.assertIn(variant["repo"], _SUPPORTED_REPOS)
+        self.assertEqual(set(variant["sdcppAux"]), {"--vae", "--llm"})
+
+    def test_download_fetches_only_the_gguf_file(self):
+        from backend_service.helpers.images import _image_repo_allow_patterns
+
+        patterns = _image_repo_allow_patterns("leejet/Qwen-Image-2.1-GGUF")
+        self.assertIn("qwen_image_2.1-Q4_K.gguf", patterns)
+        self.assertNotIn("transformer/**", patterns)
+
+    def test_installed_means_the_gguf_file_is_on_disk(self):
+        import tempfile
+
+        from backend_service.helpers import image_validation as iv
+
+        variant = self._variant()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(iv, "_hf_repo_snapshot_dir", return_value=Path(tmp)):
+                self.assertFalse(iv._image_variant_available_locally(variant, []))
+                self.assertIsNotNone(iv._image_download_validation_error(variant["repo"]))
+                (Path(tmp) / variant["ggufFile"]).write_bytes(b"gguf")
+                self.assertTrue(iv._image_variant_available_locally(variant, []))
+                self.assertIsNone(iv._image_download_validation_error(variant["repo"]))

@@ -61,6 +61,7 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "stabilityai/stable-diffusion-2-1",
     "Qwen/Qwen-Image",
     "Qwen/Qwen-Image-2512",
+    "leejet/Qwen-Image-2.1-GGUF",
     "Tongyi-MAI/Z-Image",
     "Tongyi-MAI/Z-Image-Turbo",
 })
@@ -185,12 +186,14 @@ class SdCppImageEngine:
             with tempfile.TemporaryDirectory(prefix="chaosengine-sdcpp-img-") as tmpdir:
                 output_path = Path(tmpdir) / f"sdcpp-{seed}.png"
                 model_path = self._resolve_gguf_path(config)
+                aux_paths = self._resolve_aux_paths(config)
                 args = self._build_cli_args(
                     binary=binary,
                     config=config,
                     model_path=model_path,
                     output_path=output_path,
                     seed=seed,
+                    aux_paths=aux_paths,
                 )
                 output_bytes = self._run_subprocess(
                     args=args,
@@ -244,6 +247,27 @@ class SdCppImageEngine:
             filename=config.ggufFile,
         )
 
+    def _resolve_aux_paths(self, config: ImageGenerationConfig) -> dict[str, str]:
+        """Materialise the companion files (text encoder, VAE) a model needs.
+
+        Returns ``{cli flag: local path}`` in the catalog's order. Files come
+        from the Hugging Face cache and download on first use.
+        """
+        resolved: dict[str, str] = {}
+        for flag, source in (config.sdcppAux or {}).items():
+            repo = source.get("repo")
+            filename = source.get("file")
+            if not repo or not filename:
+                raise RuntimeError(f"sd.cpp companion file for {flag} needs a repo and a file name.")
+            try:
+                from huggingface_hub import hf_hub_download  # type: ignore
+            except ImportError as exc:
+                raise RuntimeError(
+                    f"huggingface_hub is required to resolve {flag}: {exc}"
+                ) from exc
+            resolved[flag] = hf_hub_download(repo_id=repo, filename=filename)
+        return resolved
+
     def _build_cli_args(
         self,
         *,
@@ -252,6 +276,7 @@ class SdCppImageEngine:
         model_path: str,
         output_path: Path,
         seed: int,
+        aux_paths: dict[str, str] | None = None,
     ) -> list[str]:
         """Map an ``ImageGenerationConfig`` onto sd.cpp's CLI flags.
 
@@ -278,8 +303,11 @@ class SdCppImageEngine:
             "-o",
             str(output_path),
         ]
+        for flag, path in (aux_paths or {}).items():
+            args.extend([flag, path])
         if config.negativePrompt:
             args.extend(["--negative-prompt", config.negativePrompt])
+        args.extend(config.sdcppArgs or [])
         return args
 
     def _run_subprocess(

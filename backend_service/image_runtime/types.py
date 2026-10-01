@@ -77,6 +77,11 @@ class ImageGenerationConfig:
     # the same model can coexist without stomping on each other.
     ggufRepo: str | None = None
     ggufFile: str | None = None
+    # stable-diffusion.cpp only: companion files the model needs beside the
+    # transformer, as ``{cli flag: {"repo": ..., "file": ...}}`` (for example
+    # ``--llm`` for the text encoder and ``--vae``), plus extra CLI arguments.
+    sdcppAux: dict[str, dict[str, str]] | None = None
+    sdcppArgs: list[str] | None = None
     # Runtime selector. Default (None / "diffusers") uses the
     # cross-platform diffusers pipeline; "mflux" routes to the native
     # Apple Silicon MLX path for FLUX, which is noticeably faster on

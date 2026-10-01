@@ -41,7 +41,8 @@ class ImageDiscoverLatestTests(unittest.TestCase):
         payloads = _tracked_latest_seed_payloads([])
         repos = [str(item.get("repo") or "") for item in payloads]
 
-        self.assertEqual(payloads[0].get("releaseDate"), "2026-04")
+        self.assertEqual(payloads[0].get("releaseDate"), "2026-09")
+        self.assertIn("Qwen/Qwen-Image-2.1", repos)
         self.assertIn("baidu/ERNIE-Image", repos)
         self.assertIn("black-forest-labs/FLUX.2-dev", repos)
         self.assertIn("Qwen/Qwen-Image-Edit-2511", repos)

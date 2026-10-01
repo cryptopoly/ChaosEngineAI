@@ -545,6 +545,30 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
 
 LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
     {
+        "repo": "Qwen/Qwen-Image-2.1",
+        "name": "Qwen-Image-2.1",
+        "provider": "Alibaba Qwen",
+        "styleTags": ["general", "typography", "editing", "transparency"],
+        "taskSupport": ["txt2img", "img2img"],
+        "sizeGb": 33.1,
+        "runtimeFootprintGb": 34.0,
+        "runtimeFootprintMpsGb": 46.0,
+        "runtimeFootprintCpuGb": 40.0,
+        "coreWeightsGb": 33.1,
+        "repoSizeGb": 33.1,
+        "recommendedResolution": "1024x1024",
+        "note": (
+            "7B single-stream DiT with a Qwen3-VL-8B text encoder: text-to-image, "
+            "multi-reference editing and transparent (RGBA) output up to 2K. "
+            "Qwen Research licence, non-commercial use only. Needs a diffusers "
+            "release with QwenImage21Pipeline (not in 0.40.0)."
+        ),
+        "gated": False,
+        "pipelineTag": "text-to-image",
+        "updatedLabel": "Tracked latest",
+        "releaseDate": "2026-09",
+    },
+    {
         "repo": "baidu/ERNIE-Image",
         "name": "ERNIE-Image",
         "provider": "Baidu",

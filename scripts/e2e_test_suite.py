@@ -1152,6 +1152,8 @@ def phase_4(cap: Capability) -> PhaseResult:
                 "Memory pressure is",
                 "memory_gate_image",
                 "memory_gate_video",
+                # Model larger than free memory (e.g. Qwen-Image on a 64 GB Mac).
+                "of free memory to load",
             )
             if any(marker in err for marker in memory_gate_markers):
                 return "skip", f"image-generate skipped — host memory gate fired: {err[:240]}", {}

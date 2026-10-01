@@ -626,15 +626,11 @@ class DiffusersVideoEngine:
                 self._release_pipeline()
 
             import torch  # type: ignore
-            from huggingface_hub import snapshot_download  # type: ignore
+            from backend_service.helpers.hf_local import local_snapshot_path
 
             pipeline_cls = self._pipeline_class(repo)
 
-            local_path = snapshot_download(
-                repo_id=repo,
-                local_files_only=True,
-                resume_download=True,
-            )
+            local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
             validation_error = validate_local_diffusers_snapshot(local_root, repo)
             if validation_error is not None:

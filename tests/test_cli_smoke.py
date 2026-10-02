@@ -91,6 +91,9 @@ class CLIParserTests(unittest.TestCase):
             ["tensorfold-install"],
             ["tensorfold-install", "--wait"],
             ["tensorfold-status"],
+            ["mflux-install"],
+            ["mflux-install", "--wait"],
+            ["mflux-status"],
             ["call", "GET", "/api/health"],
             ["call", "POST", "/api/models/load", "--body", "{}"],
             ["routes"],
@@ -398,6 +401,31 @@ class CLIUnloadTests(unittest.TestCase):
                 rc = cli.main(["unload", "some/ref"])
         self.assertEqual(rc, 0)
         self.assertEqual(captured["body"], {"ref": "some/ref"})
+
+
+class CLIMfluxTests(unittest.TestCase):
+    def test_mflux_status_passthrough(self) -> None:
+        body = {"installed": True, "version": "0.20.0", "supported": True}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/mflux-status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["mflux-status"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["version"], "0.20.0")
+
+    def test_mflux_install_no_wait_returns_the_job(self) -> None:
+        body = {"id": "mflux-install", "phase": "preflight", "done": False}
+        out = io.StringIO()
+        with mock.patch.object(cli.urllib.request, "urlopen", _mock_urlopen({
+            "/api/setup/install-mflux": _FakeResp(json.dumps(body).encode("utf-8")),
+            "/api/setup/install-mflux/status": _FakeResp(json.dumps(body).encode("utf-8")),
+        })):
+            with mock.patch.object(sys, "stdout", out):
+                rc = cli.main(["mflux-install"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(json.loads(out.getvalue())["id"], "mflux-install")
 
 
 class CLITensorFoldTests(unittest.TestCase):

@@ -390,6 +390,7 @@ def _generate_image_artifacts(
             ggufFile=(variant.get("ggufFile") or None),
             sdcppAux=(variant.get("sdcppAux") or None),
             sdcppArgs=(variant.get("sdcppArgs") or None),
+            mfluxQuantize=(variant.get("mfluxQuantize") or None),
             runtime=(variant.get("engine") or None),
             cacheStrategy=request.cacheStrategy,
             cacheRelL1Thresh=request.cacheRelL1Thresh,

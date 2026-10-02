@@ -521,27 +521,6 @@ class MfluxEngineTests(unittest.TestCase):
         )
         self.assertIsNone(_mflux_name_for_repo("stabilityai/stable-diffusion-3.5-medium"))
 
-    def test_probe_reports_unavailable_without_mflux_package(self):
-        from unittest import mock
-
-        from backend_service.image_runtime import MfluxImageEngine
-        import backend_service.image_runtime as img_mod
-
-        engine = MfluxImageEngine()
-        real_find_spec = img_mod.importlib.util.find_spec
-
-        def fake_find_spec(name, *args, **kwargs):
-            if name == "mflux":
-                return None
-            return real_find_spec(name, *args, **kwargs)
-
-        with mock.patch.object(img_mod.platform, "system", return_value="Darwin"), \
-             mock.patch.object(img_mod.platform, "machine", return_value="arm64"), \
-             mock.patch.object(img_mod.importlib.util, "find_spec", side_effect=fake_find_spec):
-            probe = engine.probe()
-        self.assertFalse(probe["available"])
-        self.assertIn("mflux", probe["reason"])
-
     def test_probe_reports_unavailable_on_non_apple(self):
         from unittest import mock
 
@@ -564,8 +543,10 @@ class MfluxEngineTests(unittest.TestCase):
             if v.get("engine") == "mflux"
         ]
         self.assertGreaterEqual(len(mflux_variants), 2)
+        from backend_service.image_runtime.mflux_engine import mflux_family_for_repo
+
         for variant in mflux_variants:
-            self.assertIn("flux", variant["repo"].lower())
+            self.assertIsNotNone(mflux_family_for_repo(variant["repo"]), variant["id"])
 
 
 class SdxlVaeFp16FixTests(unittest.TestCase):

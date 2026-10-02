@@ -22,7 +22,7 @@ How it runs:
 | Lane | State | Notes |
 |---|---|---|
 | stable-diffusion.cpp | **Shipped** (FU-096) | GGUF 4.2 GB (Q4_K) + Qwen3-VL-8B Q4_K_M + VAE. Metal: ~13 s/step (525 s for 1024² / 40 steps). CUDA path is the same code, not run yet. |
-| mflux 0.20 | Open | MLX-native. Upstream measures ~1.5 s/step and ~46 GB peak on an M5 Max (`-q 8` to shrink). Needs the mflux engine rewritten for the 0.20 API. |
+| mflux 0.20 | **Shipped** (FU-096) | MLX-native, own venv. Upstream: ~1.5 s/step on an M5 Max. Measured on an M4 Max: 375 s for 1024² / 40 steps (~7.5 s/step), peak ~29 GB. |
 | diffusers | Blocked | `QwenImage21Pipeline` exists only on diffusers git main; PyPI latest is 0.40.0 (2026-08-20). Needs `transformers>=5.17`. |
 
 ### Other current image models

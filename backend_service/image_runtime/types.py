@@ -82,6 +82,9 @@ class ImageGenerationConfig:
     # ``--llm`` for the text encoder and ``--vae``), plus extra CLI arguments.
     sdcppAux: dict[str, dict[str, str]] | None = None
     sdcppArgs: list[str] | None = None
+    # mflux only: weight quantization bits (3-8) applied while loading, to fit
+    # smaller Macs. ``None`` runs the checkpoint as published.
+    mfluxQuantize: int | None = None
     # Runtime selector. Default (None / "diffusers") uses the
     # cross-platform diffusers pipeline; "mflux" routes to the native
     # Apple Silicon MLX path for FLUX, which is noticeably faster on

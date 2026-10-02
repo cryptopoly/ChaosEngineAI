@@ -318,7 +318,7 @@ class SdCppImageEngine:
         output_path: Path,
     ) -> bytes:
         """Spawn ``sd``, stream stdout into ``IMAGE_PROGRESS``, read result."""
-        from backend_service.progress import IMAGE_PROGRESS
+        from backend_service.progress import IMAGE_PROGRESS, GenerationCancelled
 
         proc = subprocess.Popen(
             args,
@@ -352,7 +352,7 @@ class SdCppImageEngine:
                         proc.wait(timeout=5)
                     except subprocess.TimeoutExpired:
                         proc.kill()
-                    raise RuntimeError("sd.cpp generation cancelled by user.")
+                    raise GenerationCancelled("Image generation cancelled by user")
 
             rc = proc.wait()
         except KeyboardInterrupt:

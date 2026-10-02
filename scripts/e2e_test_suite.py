@@ -1117,6 +1117,18 @@ def phase_4(cap: Capability) -> PhaseResult:
         )
         if q21 is None or q21.get("engine") != "sdcpp":
             return "fail", f"Qwen-Image-2.1 sd.cpp variant missing or mis-routed: {q21 and q21.get('engine')}", {}
+        # FU-096: the MLX variants run through the mflux engine (own venv).
+        wanted_mflux = {
+            "Qwen/Qwen-Image-2.1-mflux": "qwen-image",
+            "black-forest-labs/FLUX.2-klein-4B-mflux": "flux-2",
+        }
+        for variant_id, family_id in wanted_mflux.items():
+            found = next(
+                (v for v in (fams.get(family_id) or {}).get("variants", []) if v.get("id") == variant_id),
+                None,
+            )
+            if found is None or found.get("engine") != "mflux":
+                return "fail", f"{variant_id} missing or not routed to mflux", {}
         return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
 
     def _library():
@@ -1173,10 +1185,40 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
+    # FU-096: the mflux engine end to end (own venv, one process per image).
+    # Skips when the engine is not installed or its checkpoint is not on disk.
+    def _generate_mflux():
+        rc, status, _ = _cli_json("mflux-status", timeout=15.0)
+        if rc != 0 or not isinstance(status, dict):
+            return "fail", "mflux-status failed", {}
+        if not status.get("supported"):
+            return "skip", "mflux needs Apple Silicon", {}
+        if not status.get("installed"):
+            return "skip", "mflux engine not installed", {}
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        model_id = "black-forest-labs/FLUX.2-klein-4B-mflux"
+        if model_id not in installed:
+            return "skip", "FLUX.2 klein 4B not downloaded", {}
+        rc, payload, err = _cli_json(
+            "image-generate", "a red fox in the snow, golden hour",
+            "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "900",
+        )
+        if rc != 0:
+            if "of free memory to load" in err or "Memory pressure is" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            return "fail", f"mflux image-generate rc={rc}: {err[:300]}", {}
+        text = str(payload)
+        if "mflux" not in text:
+            return "fail", f"expected an mflux run, got: {text[:200]}", {}
+        _cli("image-unload", timeout=30.0)
+        return "pass", "", {"modelId": model_id}
+
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
+        ("generate via mflux (FU-096)", _generate_mflux),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -1279,6 +1321,7 @@ def phase_6(cap: Capability) -> PhaseResult:
     probes = [
         ("mtplx-status", "mtplx-status"),
         ("tensorfold-status", "tensorfold-status"),
+        ("mflux-status", "mflux-status"),
         ("longlive-status", "longlive-status"),
         ("wan-status", "wan-status"),
         ("wan-inventory", "wan-inventory"),

@@ -742,6 +742,7 @@ _IMAGE_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "tokenizer/**",
     "tokenizer_2/**",
     "tokenizer_3/**",
+    "processor/**",
     "transformer/**",
     "transformer_2/**",
     "unet/**",

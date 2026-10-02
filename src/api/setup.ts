@@ -485,6 +485,48 @@ export async function getTensorfoldInstallStatus(): Promise<TensorfoldJobState> 
   return await fetchJson<TensorfoldJobState>("/api/setup/install-tensorfold/status", 10000);
 }
 
+// ---- mflux (MLX image engine, its own venv) ----
+
+export interface MfluxJobState {
+  id: string;
+  phase: "idle" | "preflight" | "creating-venv" | "installing" | "verifying" | "done" | "error";
+  message: string;
+  packageCurrent: string | null;
+  packageIndex: number;
+  packageTotal: number;
+  percent: number;
+  targetDir: string | null;
+  error: string | null;
+  startedAt: number;
+  finishedAt: number;
+  attempts: TensorfoldAttempt[];
+  done: boolean;
+}
+
+export interface MfluxStatus {
+  installed: boolean;
+  version: string | null;
+  installedAt: string | null;
+  pinned: string | null;
+  venvPath: string | null;
+  /** False off Apple Silicon: the MLX engine cannot run there. */
+  supported: boolean;
+  /** Catalog repos the engine has a command for. */
+  repos: string[];
+}
+
+export async function getMfluxStatus(): Promise<MfluxStatus> {
+  return await fetchJson<MfluxStatus>("/api/setup/mflux-status", 8000);
+}
+
+export async function startMfluxInstall(): Promise<MfluxJobState> {
+  return await postJson<MfluxJobState>("/api/setup/install-mflux", {}, 15000);
+}
+
+export async function getMfluxInstallStatus(): Promise<MfluxJobState> {
+  return await fetchJson<MfluxJobState>("/api/setup/install-mflux/status", 10000);
+}
+
 export interface TorchUpgradeJobState {
   id: string;
   /** Lifecycle: idle (no run yet) -> preflight -> upgrading -> verifying -> done | error */

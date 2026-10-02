@@ -932,6 +932,15 @@ class DiffusersTextToImageEngine:
 
 
 
+# Repos that have no released diffusers pipeline: when their own engine fails
+# there is nothing to fall back to, and the placeholder engine would answer
+# with a fake picture instead of the error.
+_NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
+    "Qwen/Qwen-Image-2.1",
+    "leejet/Qwen-Image-2.1-GGUF",
+})
+
+
 class ImageRuntimeManager:
     def __init__(self) -> None:
         self._lock = RLock()
@@ -979,7 +988,11 @@ class ImageRuntimeManager:
                     status["activeEngine"] = "mflux"
                     status["message"] = "Generated via mflux (MLX native)."
                     return images, status
+                except GenerationCancelled:
+                    raise
                 except Exception as exc:
+                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                        raise
                     status = self._diffusers.probe()
                     note = (
                         f"mflux failed ({type(exc).__name__}: {exc}) — "
@@ -990,6 +1003,8 @@ class ImageRuntimeManager:
                 else:
                     _mflux_fallback_note = None
             else:
+                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    raise RuntimeError(probe.get("reason") or "mflux unavailable")
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:
             _mflux_fallback_note = None
@@ -1009,7 +1024,11 @@ class ImageRuntimeManager:
                     status["activeEngine"] = "sd.cpp"
                     status["message"] = "Generated via stable-diffusion.cpp subprocess."
                     return images, status
+                except GenerationCancelled:
+                    raise
                 except Exception as exc:
+                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                        raise
                     _sdcpp_fallback_note = (
                         f"sd.cpp failed ({type(exc).__name__}: {exc}) — "
                         "falling back to diffusers."
@@ -1017,6 +1036,8 @@ class ImageRuntimeManager:
                 else:
                     _sdcpp_fallback_note = None
             else:
+                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    raise RuntimeError(probe.get("reason") or "sd.cpp unavailable")
                 _sdcpp_fallback_note = probe.get("reason") or "sd.cpp unavailable"
             # Combine mflux + sdcpp fallback notes if both fired (rare but
             # possible if a variant lists ``engine="sdcpp"`` AND the user

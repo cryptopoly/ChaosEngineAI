@@ -468,6 +468,55 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2026-03",
             },
             {
+                # Qwen-Image-2.1 through mflux on MLX (Apple Silicon): the fast lane.
+                # The sd.cpp variant below is the cross-platform one.
+                "id": "Qwen/Qwen-Image-2.1-mflux",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · mflux (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1",
+                "engine": "mflux",
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 33.1,
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. 7B Qwen-Image-2.1 on MLX: about 30 GB peak and about 6 minutes "
+                    "for a 1024x1024 image on an M4 Max (faster on M5). Qwen Research licence: "
+                    "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 340.0,
+                "releaseDate": "2026-09",
+            },
+            {
+                "id": "Qwen/Qwen-Image-2.1-mflux-q8",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · mflux 8-bit (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1",
+                "engine": "mflux",
+                "mfluxQuantize": 8,
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 26.0,
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. The transformer is quantized to 8 bits while loading, "
+                    "which fits a 32 GB Mac (the 17.5 GB text encoder stays in bf16). Shares the "
+                    "33 GB download with the bf16 variant. Qwen Research licence: non-commercial use only."
+                ),
+                "estimatedGenerationSeconds": 340.0,
+                "releaseDate": "2026-09",
+            },
+            {
                 # Qwen-Image-2.1 (Sep 2026): 7B DiT + Qwen3-VL-8B encoder, text-to-image
                 # and editing, native RGBA. Runs through stable-diffusion.cpp so it works
                 # on Apple Silicon, CUDA and CPU; the diffusers pipeline
@@ -563,6 +612,27 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "1024x1024",
                 "note": "Distilled 4B FLUX.2 — the accessible entry point, fits consumer GPUs and 32 GB Macs.",
                 "estimatedGenerationSeconds": 5.5,
+                "releaseDate": "2025-11",
+            },
+            {
+                "id": "black-forest-labs/FLUX.2-klein-4B-mflux",
+                "familyId": "flux-2",
+                "name": "FLUX.2 Klein 4B · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/FLUX.2-klein-4B",
+                "engine": "mflux",
+                "link": "https://github.com/filipstrand/mflux",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "general", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 16.0,
+                "defaultSteps": 4,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only — the same distilled 4B model through mflux on MLX "
+                    "(about 18 GB peak). Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 26.0,
                 "releaseDate": "2025-11",
             },
             {

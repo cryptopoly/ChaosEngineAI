@@ -200,6 +200,23 @@ class SetupRouteTests(unittest.TestCase):
             f"mlx-video spec must point to Blaizzy git URL: {cmd}",
         )
 
+    def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
+        """mlx-video's unbounded mlx-vlm dependency resolves to a release that
+        needs mlx >=0.32; the install pins the generation the app runs on."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("mlx>=0.31.2,<0.32", cmd)
+        self.assertIn("mlx-vlm>=0.6.3,<0.6.5", cmd)
+
+    def test_other_packages_get_no_companion_pins(self):
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "dflash-mlx"})
+        self.assertFalse(any(arg.startswith("mlx>=") for arg in mock_run.call_args[0][0]))
+
     def test_cleanup_mlx_video_shadow_metadata_keeps_blaizzy_dist(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

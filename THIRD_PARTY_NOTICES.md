@@ -128,6 +128,29 @@ Pillow (HPND, a permissive MIT-style licence), ``transformers`` (Apache 2.0) and
 ``mlx-vlm`` (MIT); ``grammar`` (structured output) brings ``xgrammar``
 (Apache 2.0) and, through it, PyTorch (BSD-3-Clause).
 
+## Optional Apple Silicon Image Runtime
+
+| Package | Repository | Licence |
+|---------|-----------|---------|
+| `mflux` | <https://github.com/filipstrand/mflux> | MIT |
+
+`mflux` runs image models (Qwen-Image-2.1, FLUX.1, FLUX.2, Z-Image, ...) natively
+on MLX. It pins ``mlx >=0.32`` and ``torch >=2.13``, newer than the stack the
+app runs, so it installs into an **isolated venv** at
+``~/.chaosengine/mflux-venv/`` and is never co-installed with the main
+``.venv``. ChaosEngineAI shells out to its ``mflux-generate-*`` commands from
+``backend_service/image_runtime/mflux_engine.py``, one process per image. Not
+bundled in the desktop ``.app``; installed on demand from the Image Studio
+(``scripts/install-mflux.sh``) or with ``chaosengine-cli mflux-install``.
+
+> **MIT licence summary**: free use, modification, and redistribution
+> permitted provided the copyright and permission notice are preserved.
+> Source: ``~/.chaosengine/mflux-venv/lib/python*/site-packages/mflux-*.dist-info/``
+> (the LICENSE file shipped with the package).
+
+The weights it runs keep their own licences. In particular Qwen-Image-2.1 is
+under the Qwen Research Licence (non-commercial use only).
+
 ## Optional Apple Silicon Video Runtime
 
 | Package | Repository | Licence |

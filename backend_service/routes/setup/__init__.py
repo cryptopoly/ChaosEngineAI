@@ -131,12 +131,9 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # — installable here so the Setup tab can pre-stage the wheel before
     # the integration code goes live.
     "kvpress": "kvpress>=0.5.3",
-    # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
-    # of diffusers+MPS, which is noticeably faster and doesn't hit the
-    # MPS fp16-black-image edge cases. Apple Silicon only — installer
-    # should hide this package on other platforms (handled upstream in
-    # the capability check).
-    "mflux": "mflux",
+    # mflux is NOT installable here: it pins mlx >=0.32 and torch >=2.13, which
+    # would replace the mlx the rest of the app runs on. It installs into its
+    # own venv through ``routes/setup/mflux.py`` — see ``_MANUAL_INSTALL_MESSAGES``.
     # Apple Silicon MLX video runtime (Blaizzy/mlx-video, MIT). Subprocess
     # wrapper in backend_service.mlx_video_runtime routes Wan2.1/2.2/LTX-2
     #
@@ -178,6 +175,11 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
 }
 
 _MANUAL_INSTALL_MESSAGES: dict[str, str] = {
+    "mflux": (
+        "mflux installs into its own environment because it needs a newer mlx "
+        "and torch than the app. Use Install in the Image Studio, or run "
+        "'chaosengine-cli mflux-install'."
+    ),
     "dflash": (
         "DFlash on CUDA runs inside vLLM 0.28 or newer — there is nothing "
         "separate to install. Install or upgrade vLLM ({python} -m pip "
@@ -218,6 +220,16 @@ def _installable_system_packages(python_executable: str) -> dict[str, list[str]]
         "llama-server-turbo": [str(_workspace_root() / "scripts" / "build-llama-turbo.sh")],
         "longlive": [python_executable, "-m", "backend_service.longlive_installer"],
     }
+
+
+# Packages whose own dependencies are unbounded and would otherwise drag a newer
+# MLX generation into the extras overlay. mlx-video requires "mlx-vlm" with no
+# upper bound; mlx-vlm 0.6.5 and later need mlx >=0.32, newer than the mlx the
+# app ships (0.31), and the mixed result broke image and video generation.
+# 0.6.4 is the last mlx-vlm that runs on mlx 0.31.
+_COMPANION_PINS: dict[str, tuple[str, ...]] = {
+    "mlx-video": ("mlx>=0.31.2,<0.32", "mlx-vlm>=0.6.3,<0.6.5"),
+}
 
 
 class InstallPackageRequest(BaseModel):
@@ -267,6 +279,7 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     if body.package == "mlx-video":
         cmd.append("--force-reinstall")
     cmd.append(pip_name)
+    cmd.extend(_COMPANION_PINS.get(body.package, ()))
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
     cleaned_mlx_metadata: list[str] = []
     if body.package == "mlx-video" and extras_dir is not None:
@@ -402,6 +415,7 @@ from backend_service.routes.setup.gpu_bundle import (
 from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
 from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
+from backend_service.routes.setup.mflux import router as _mflux_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
 from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
@@ -414,6 +428,7 @@ router.include_router(_embedding_model_router)
 router.include_router(_gpu_bundle_router)
 router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
+router.include_router(_mflux_router)
 router.include_router(_mtplx_router)
 router.include_router(_tensorfold_router)
 router.include_router(_torch_upgrade_router)

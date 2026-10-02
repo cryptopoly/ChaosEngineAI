@@ -178,6 +178,32 @@ def gate_video_generation(
     return None
 
 
+def _macos_reclaimable_gb(total_bytes: int) -> float | None:
+    """Memory macOS itself counts as available to apps, in GB (None elsewhere).
+
+    ``psutil``'s "available" leaves out file cache that sits in the active list,
+    so after a large model download or read it can report 28 GB free on a 64 GB
+    Mac that the OS would hand over without a swap. ``kern.memorystatus_level``
+    is the percentage the OS uses for its own memory-pressure decisions.
+    """
+    import subprocess
+    import sys
+
+    if sys.platform != "darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "kern.memorystatus_level"],
+            capture_output=True, text=True, timeout=2, check=True,
+        )
+        level = float(result.stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if not 0.0 < level <= 100.0:
+        return None
+    return total_bytes * level / 100.0 / (1024 ** 3)
+
+
 def snapshot_memory_signals() -> tuple[float, float]:
     """Read current available-RAM + pressure-percent signals.
 
@@ -197,6 +223,7 @@ def snapshot_memory_signals() -> tuple[float, float]:
     used = memory.used
     available = memory.available
     available_gb = available / (1024 ** 3)
+    available_gb = max(available_gb, _macos_reclaimable_gb(total) or 0.0)
 
     # Compressed pages are macOS-specific and not always available; fall
     # back to plain used+swap when the read fails so non-Apple platforms

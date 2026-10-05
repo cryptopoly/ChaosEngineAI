@@ -16,7 +16,7 @@ use std::os::unix::process::CommandExt;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -48,6 +48,14 @@ use crate::settings::{
 use crate::{BackendManager, BackendRuntimeInfo, BACKEND_POLL_INTERVAL, BACKEND_START_TIMEOUT,
     DEFAULT_BACKEND_PORT, open_log_file, read_log_tail};
 
+/// What the window shows when the sidecar is gone before it served requests.
+fn exited_message(status: ExitStatus, log_tail: &str) -> String {
+    if log_tail.is_empty() {
+        format!("The backend sidecar exited with status {status}.")
+    } else {
+        format!("The backend sidecar exited with status {status}. {log_tail}")
+    }
+}
 
 impl BackendManager {
     pub(crate) fn bootstrap(&self, app: &AppHandle) {
@@ -87,6 +95,7 @@ impl BackendManager {
             let (selected_port, port_warning) = select_backend_port(preferred_port, allow_remote_connections);
             inner.info.port = selected_port;
             inner.info.api_base = format!("http://127.0.0.1:{}", inner.info.port);
+            inner.startup_note_soft = port_warning.is_some();
             inner.info.startup_error = port_warning;
             port = inner.info.port;
 
@@ -96,6 +105,7 @@ impl BackendManager {
                 match resolve_workspace_root(app) {
                     Some(path) => path,
                     None => {
+                        inner.startup_note_soft = false;
                         inner.info.startup_error =
                             Some("Could not locate the ChaosEngineAI backend workspace.".to_string());
                         return;
@@ -110,6 +120,7 @@ impl BackendManager {
                     Some(path) => path,
                     None => {
                         inner.info.workspace_root = Some(workspace_root.display().to_string());
+                        inner.startup_note_soft = false;
                         inner.info.startup_error =
                             Some("Could not find a Python runtime for the backend sidecar.".to_string());
                         return;
@@ -308,6 +319,7 @@ impl BackendManager {
                 Err(error) => {
                     clear_managed_backend_lease(app);
                     inner.info.process_running = false;
+                    inner.startup_note_soft = false;
                     inner.info.startup_error = Some(format!("Failed to start the backend sidecar: {error}"));
                     return;
                 }
@@ -316,7 +328,9 @@ impl BackendManager {
             log_path = log_candidate;
         }
 
-        let started = wait_for_port(port, BACKEND_START_TIMEOUT, BACKEND_POLL_INTERVAL);
+        let started = wait_for_port(port, BACKEND_START_TIMEOUT, BACKEND_POLL_INTERVAL, || {
+            self.sidecar_running()
+        });
 
         let mut inner = self.inner.lock().expect("backend lock poisoned");
         inner.info.started = started;
@@ -326,11 +340,34 @@ impl BackendManager {
         }
 
         let detail = read_log_tail(&log_path);
+        let exit_status = inner
+            .child
+            .as_mut()
+            .and_then(|child| child.try_wait().ok().flatten());
+        if let Some(status) = exit_status {
+            // The sidecar died before it ever answered: say so now rather than
+            // letting the window spin until the deadline.
+            inner.info.process_running = false;
+            inner.startup_note_soft = false;
+            inner.info.startup_error = Some(exited_message(status, &detail));
+            return;
+        }
+        // Alive but silent: a slow cold start, not a failure. runtime_info()
+        // drops this note once the port answers.
+        inner.startup_note_soft = true;
         inner.info.startup_error = Some(if detail.is_empty() {
-            "The backend sidecar did not become ready in time.".to_string()
+            "The backend sidecar has not answered yet and may still be starting.".to_string()
         } else {
-            format!("The backend sidecar did not become ready in time. {detail}")
+            format!("The backend sidecar has not answered yet and may still be starting. {detail}")
         });
+    }
+
+    fn sidecar_running(&self) -> bool {
+        let mut inner = self.inner.lock().expect("backend lock poisoned");
+        match inner.child.as_mut() {
+            Some(child) => matches!(child.try_wait(), Ok(None)),
+            None => false,
+        }
     }
 
     pub(crate) fn runtime_info(&self) -> BackendRuntimeInfo {
@@ -342,21 +379,22 @@ impl BackendManager {
                 Ok(Some(status)) => {
                     inner.info.process_running = false;
                     inner.info.started = false;
-                    if inner.info.startup_error.is_none() {
+                    if inner.info.startup_error.is_none() || inner.startup_note_soft {
                         let tail = log_path
                             .as_ref()
                             .map(|path| read_log_tail(path))
                             .unwrap_or_default();
-                        inner.info.startup_error = Some(if tail.is_empty() {
-                            format!("The backend sidecar exited with status {status}.")
-                        } else {
-                            format!("The backend sidecar exited with status {status}. {tail}")
-                        });
+                        inner.startup_note_soft = false;
+                        inner.info.startup_error = Some(exited_message(status, &tail));
                     }
                 }
                 Ok(None) => {
                     inner.info.process_running = true;
                     inner.info.started = port_responding(inner.info.port);
+                    if inner.info.started && inner.startup_note_soft {
+                        inner.startup_note_soft = false;
+                        inner.info.startup_error = None;
+                    }
                     if inner.info.started && inner.info.api_token.is_none() {
                         inner.info.api_token = fetch_backend_api_token(inner.info.port);
                     }
@@ -397,6 +435,7 @@ impl BackendManager {
         inner.info.process_running = false;
         inner.info.started = false;
         inner.info.startup_error = None;
+        inner.startup_note_soft = false;
         // The Python sidecar generates a fresh API token on each startup.
         // Wipe our cached copy now so the next runtime_info call re-fetches
         // instead of handing the frontend a token that no longer unlocks
@@ -467,5 +506,111 @@ impl BackendManager {
             let effective_token = api_token.or_else(|| fetch_backend_api_token(port));
             let _ = request_backend_shutdown(port, effective_token.as_deref());
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use crate::ManagedBackend;
+    use std::net::TcpListener;
+    use std::process::Child;
+    use std::sync::Mutex;
+
+    fn manager(child: Option<Child>, note: Option<&str>, soft: bool, port: u16) -> BackendManager {
+        let mut inner = ManagedBackend::default();
+        inner.child = child;
+        inner.info.port = port;
+        inner.info.managed_by_tauri = true;
+        inner.info.process_running = true;
+        inner.info.startup_error = note.map(str::to_string);
+        inner.startup_note_soft = soft;
+        BackendManager { inner: Mutex::new(inner) }
+    }
+
+    fn exited_child(code: i32) -> Child {
+        let mut child = Command::new("sh")
+            .args(["-c", &format!("exit {code}")])
+            .spawn()
+            .expect("spawn sh");
+        child.wait().expect("wait for sh");
+        child
+    }
+
+    fn stop(manager: &BackendManager) {
+        if let Some(mut child) = manager.inner.lock().expect("lock").child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+
+    #[test]
+    fn exited_message_names_the_status_and_appends_the_log_tail() {
+        let status = exited_child(3).try_wait().expect("try_wait").expect("exit status");
+        let bare = exited_message(status, "");
+        assert!(bare.contains("exit status: 3"), "{bare}");
+        assert!(bare.ends_with('.'), "{bare}");
+        assert!(exited_message(status, "boom").ends_with(" boom"));
+    }
+
+    #[test]
+    fn sidecar_running_follows_the_child() {
+        assert!(!manager(None, None, false, 1).sidecar_running());
+        assert!(!manager(Some(exited_child(0)), None, false, 1).sidecar_running());
+        let alive = manager(Some(Command::new("sleep").arg("30").spawn().expect("spawn sleep")), None, false, 1);
+        assert!(alive.sidecar_running());
+        stop(&alive);
+    }
+
+    #[test]
+    fn runtime_info_replaces_a_soft_note_with_the_crash() {
+        let manager = manager(Some(exited_child(1)), Some("slow start"), true, 1);
+        let info = manager.runtime_info();
+        assert!(!info.process_running);
+        let message = info.startup_error.expect("a crash message");
+        assert!(message.contains("exited with status"), "{message}");
+        assert!(!manager.inner.lock().expect("lock").startup_note_soft);
+    }
+
+    #[test]
+    fn runtime_info_keeps_a_real_failure_over_a_later_poll() {
+        let manager = manager(Some(exited_child(1)), Some("Failed to start the backend sidecar: denied"), false, 1);
+        let info = manager.runtime_info();
+        assert_eq!(info.startup_error.as_deref(), Some("Failed to start the backend sidecar: denied"));
+    }
+
+    #[test]
+    fn runtime_info_clears_a_soft_note_once_the_port_answers() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind");
+        let port = listener.local_addr().expect("local addr").port();
+        let manager = manager(
+            Some(Command::new("sleep").arg("30").spawn().expect("spawn sleep")),
+            Some("slow start"),
+            true,
+            port,
+        );
+        // A cached token keeps runtime_info from asking the listener for one.
+        manager.inner.lock().expect("lock").info.api_token = Some("token".to_string());
+        let info = manager.runtime_info();
+        stop(&manager);
+        drop(listener);
+        assert!(info.started);
+        assert_eq!(info.startup_error, None);
+    }
+
+    #[test]
+    fn runtime_info_keeps_a_soft_note_while_the_port_is_silent() {
+        let free = TcpListener::bind(("127.0.0.1", 0)).expect("bind").local_addr().expect("local addr").port();
+        let manager = manager(
+            Some(Command::new("sleep").arg("30").spawn().expect("spawn sleep")),
+            Some("slow start"),
+            true,
+            free,
+        );
+        let info = manager.runtime_info();
+        stop(&manager);
+        assert!(info.process_running);
+        assert!(!info.started);
+        assert_eq!(info.startup_error.as_deref(), Some("slow start"));
     }
 }

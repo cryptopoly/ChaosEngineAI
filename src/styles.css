@@ -2300,6 +2300,18 @@ select.text-input {
   font-variant-numeric: tabular-nums;
 }
 
+/* Backend log tail / failure text: several lines, keep the line breaks. */
+.loading-state-log {
+  max-width: 640px;
+  max-height: 220px;
+  overflow: auto;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, "SF Mono", ui-monospace, Menlo, Consolas, monospace);
+  font-size: 12px;
+}
+
 .loading-state-spinner {
   width: 28px;
   height: 28px;

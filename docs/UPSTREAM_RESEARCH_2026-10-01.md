@@ -53,9 +53,11 @@ How it runs:
 
 ## Findings from the same pass
 
-- Wan 2.2 TI2V 5B renders over-saturated, burnt colours on MPS for both the
-  GGUF and bf16 variants, at 832×480 and at 1280×704. A fp32 VAE changes
-  nothing. Cause unknown; prefer LTX for video acceptance testing.
+- Wan 2.2 TI2V 5B rendered over-saturated, burnt colours on MPS for both the
+  GGUF and bf16 variants, at 832×480 and at 1280×704. **Fixed 2026-10-05:** the
+  cause is diffusers' UniPC scheduler, which is numerically unstable on MPS (the
+  error roughly doubles each step), not the VAE, the dtype or the guidance — see
+  FU-102 in CLAUDE.md. The video runtime now uses flow-match Euler on MPS.
 - The older sd.cpp FLUX / SD3 image variants pass no companion files
   (`--vae`, `--clip_l`, `--t5xxl`), so they likely fail; the new `sdcppAux`
   catalog field is the fix (FU-096 e).

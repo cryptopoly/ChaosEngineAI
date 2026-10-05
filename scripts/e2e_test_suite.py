@@ -1131,6 +1131,30 @@ def phase_4(cap: Capability) -> PhaseResult:
                 return "fail", f"{variant_id} missing or not routed to mflux", {}
         return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
 
+    # FU-096 (e): the FLUX.1 sd.cpp variants point at sd.cpp's own GGUF repos
+    # (the city96 Q4_K_M names they used to carry do not exist on the Hub) and
+    # download the GGUF only.
+    def _flux_sdcpp_catalog():
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        variants = {
+            v.get("id"): v
+            for f in (payload.get("families") or [])
+            for v in f.get("variants", [])
+        }
+        for variant_id in ("leejet/FLUX.1-schnell-gguf-q4k", "leejet/FLUX.1-dev-gguf-q4k"):
+            variant = variants.get(variant_id)
+            if variant is None or variant.get("engine") != "sdcpp":
+                return "fail", f"{variant_id} missing or not routed to sd.cpp", {}
+            if variant.get("repo") != variant.get("ggufRepo") or not str(variant.get("ggufFile") or "").endswith(".gguf"):
+                return "fail", f"{variant_id} does not pin its own GGUF repo and file", {}
+        missing_on_hub = {"flux1-schnell-Q4_K_M.gguf", "flux1-dev-Q4_K_M.gguf"}
+        dead = [vid for vid, v in variants.items() if v.get("ggufFile") in missing_on_hub]
+        if dead:
+            return "fail", f"FLUX variants still pin a Q4_K_M file the Hub does not have: {dead}", {}
+        return "pass", "", {}
+
     def _library():
         rc, payload, _ = _cli_json("image-library", timeout=15.0)
         if rc != 0 or not isinstance(payload, dict):
@@ -1214,11 +1238,37 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id}
 
+    # FU-096 (e): FLUX.1 schnell through sd.cpp with its T5 / CLIP-L / VAE companion
+    # files. Skips when the GGUF is not on disk or the engine is unavailable.
+    def _generate_flux_sdcpp():
+        model_id = "leejet/FLUX.1-schnell-gguf-q4k"
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        if model_id not in installed:
+            return "skip", "FLUX.1 schnell sd.cpp GGUF not downloaded", {}
+        rc, payload, err = _cli_json(
+            "image-generate", "a red fox in the snow, golden hour",
+            "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "1200",
+        )
+        if rc != 0:
+            if "of free memory to load" in err or "Memory pressure is" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            if "sd.cpp" in err and ("binary" in err or "not found" in err or "unavailable" in err):
+                return "skip", f"sd.cpp engine unavailable: {err[:200]}", {}
+            return "fail", f"sd.cpp image-generate rc={rc}: {err[:300]}", {}
+        text = str(payload)
+        if "sd.cpp" not in text and "stable-diffusion.cpp" not in text:
+            return "fail", f"expected an sd.cpp run, got: {text[:200]}", {}
+        _cli("image-unload", timeout=30.0)
+        return "pass", "", {"modelId": model_id}
+
     for name, fn in [
         ("catalog", _catalog),
         ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
         ("library", _library), ("runtime", _runtime), ("generate", _generate),
         ("generate via mflux (FU-096)", _generate_mflux),
+        ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

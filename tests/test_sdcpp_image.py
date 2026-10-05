@@ -608,3 +608,106 @@ class QwenImage21CatalogTests(unittest.TestCase):
                 (Path(tmp) / variant["ggufFile"]).write_bytes(b"gguf")
                 self.assertTrue(iv._image_variant_available_locally(variant, []))
                 self.assertIsNone(iv._image_download_validation_error(variant["repo"]))
+
+
+class Flux1GuidanceTests(unittest.TestCase):
+    """FLUX.1 gets its guidance through ``--guidance``; CFG stays off."""
+
+    def _args(self, repo: str) -> list[str]:
+        return SdCppImageEngine()._build_cli_args(
+            binary=Path("/tmp/sd"),
+            config=_make_config(repo, gguf_repo=repo, gguf_file="flux1-dev-q4_k.gguf"),
+            model_path="/tmp/flux.gguf",
+            output_path=Path("/tmp/out.png"),
+            seed=1,
+        )
+
+    def test_flux_guidance_is_the_distilled_guidance_not_cfg(self):
+        args = self._args("leejet/FLUX.1-dev-gguf")
+        self.assertEqual(args[args.index("--cfg-scale") + 1], "1")
+        self.assertEqual(args[args.index("--guidance") + 1], "3.5")
+
+    def test_other_models_keep_their_cfg_scale(self):
+        args = self._args("leejet/Qwen-Image-2.1-GGUF")
+        self.assertEqual(args[args.index("--cfg-scale") + 1], "3.5")
+        self.assertNotIn("--guidance", args)
+
+
+class Flux1SdcppCatalogTests(unittest.TestCase):
+    """The FLUX.1 sd.cpp variants are GGUF repos with their companion files."""
+
+    IDS = ("leejet/FLUX.1-schnell-gguf-q4k", "leejet/FLUX.1-dev-gguf-q4k")
+
+    def _variants(self):
+        from backend_service.catalog import IMAGE_MODEL_FAMILIES
+
+        found = {
+            v["id"]: v for f in IMAGE_MODEL_FAMILIES for v in f["variants"] if v["id"] in self.IDS
+        }
+        self.assertEqual(set(found), set(self.IDS))
+        return found
+
+    def test_variants_are_gguf_repos_that_the_engine_accepts(self):
+        for variant in self._variants().values():
+            self.assertEqual(variant["engine"], "sdcpp")
+            self.assertEqual(variant["repo"], variant["ggufRepo"])
+            self.assertIn(variant["repo"], _SUPPORTED_REPOS)
+            self.assertTrue(variant["ggufFile"].endswith(".gguf"))
+
+    def test_variants_carry_the_three_companion_files(self):
+        for variant in self._variants().values():
+            self.assertEqual(set(variant["sdcppAux"]), {"--vae", "--clip_l", "--t5xxl"})
+
+    def test_a_failed_run_is_an_error_not_a_diffusers_fallback(self):
+        from backend_service.image_runtime import _NO_DIFFUSERS_PIPELINE
+
+        for variant in self._variants().values():
+            self.assertIn(variant["repo"], _NO_DIFFUSERS_PIPELINE)
+
+    def test_download_fetches_only_the_gguf_file(self):
+        from backend_service.helpers.images import _image_repo_allow_patterns
+
+        for variant in self._variants().values():
+            patterns = _image_repo_allow_patterns(variant["repo"])
+            self.assertIn(variant["ggufFile"], patterns)
+            self.assertNotIn("transformer/**", patterns)
+
+    def test_no_catalog_row_still_names_a_quant_the_hub_does_not_have(self):
+        # city96 publishes Q4_K_S (not Q4_K_M) for FLUX.1 and lower-case "14b"
+        # Wan file names; these rows 404ed on download before.
+        from backend_service.catalog import IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES
+
+        names = {
+            v["ggufFile"]
+            for families in (IMAGE_MODEL_FAMILIES, VIDEO_MODEL_FAMILIES)
+            for f in families
+            for v in f["variants"]
+            if v.get("ggufFile")
+        }
+        for dead in (
+            "flux1-schnell-Q4_K_M.gguf",
+            "flux1-dev-Q4_K_M.gguf",
+            "wan2.1-t2v-14B-Q4_K_M.gguf",
+            "wan2.1-t2v-14B-Q6_K.gguf",
+            "wan2.1-t2v-14B-Q8_0.gguf",
+        ):
+            self.assertNotIn(dead, names)
+
+
+class Flux1GuidanceDefaultsTests(unittest.TestCase):
+    """The FLUX.1 guidance default is the distilled guidance, not a CFG scale."""
+
+    def _variant(self, variant_id: str):
+        from backend_service.catalog import IMAGE_MODEL_FAMILIES
+
+        return next(v for f in IMAGE_MODEL_FAMILIES for v in f["variants"] if v["id"] == variant_id)
+
+    def test_dev_defaults_to_the_recommended_guidance_and_steps(self):
+        variant = self._variant("leejet/FLUX.1-dev-gguf-q4k")
+        self.assertEqual(variant["cfgOverride"], 3.5)
+        self.assertEqual(variant["defaultSteps"], 28)
+
+    def test_schnell_takes_no_guidance_and_four_steps(self):
+        variant = self._variant("leejet/FLUX.1-schnell-gguf-q4k")
+        self.assertEqual(variant["cfgOverride"], 0.0)
+        self.assertEqual(variant["defaultSteps"], 4)

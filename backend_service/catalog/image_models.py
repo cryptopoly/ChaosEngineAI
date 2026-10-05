@@ -87,26 +87,37 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # FU-008 image subset: sd.cpp engine routes via the
                 # ``sd`` binary built by ``./scripts/build-sdcpp.sh``.
                 # Cross-platform — Metal on Apple Silicon, CUDA on
-                # Linux/Windows. Pairs the city96 GGUF transformer with
-                # the binary's text-encoder + VAE handling so the user
-                # avoids the diffusers Python overhead entirely.
-                "id": "black-forest-labs/FLUX.1-schnell-sdcpp-q4km",
+                # Linux/Windows. Pairs sd.cpp's own Q4_K GGUF transformer
+                # (leejet) with the T5 / CLIP-L / VAE companion files the
+                # binary needs (``sdcppAux``), so the user avoids the
+                # diffusers Python overhead entirely. The GGUF repo is the
+                # variant's repo, so a download fetches the GGUF only.
+                "id": "leejet/FLUX.1-schnell-gguf-q4k",
                 "familyId": "flux-fast",
-                "name": "FLUX.1 Schnell · sd.cpp Q4_K_M",
+                "name": "FLUX.1 Schnell · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-schnell",
+                "repo": "leejet/FLUX.1-schnell-gguf",
                 "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-schnell-gguf",
-                "ggufFile": "flux1-schnell-Q4_K_M.gguf",
+                "ggufRepo": "leejet/FLUX.1-schnell-gguf",
+                "ggufFile": "flux1-schnell-q4_k.gguf",
+                "sdcppAux": {
+                    "--vae": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "ae.safetensors"},
+                    "--clip_l": {"repo": "comfyanonymous/flux_text_encoders", "file": "clip_l.safetensors"},
+                    "--t5xxl": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "t5xxl-Q8_0.gguf"},
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "cfgOverride": 0.0,
+                "defaultSteps": 4,
                 "link": "https://github.com/leejet/stable-diffusion.cpp",
                 "runtime": "stable-diffusion.cpp (subprocess)",
                 "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 6.8,
+                "sizeGb": 6.9,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
+                    "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
+                    "(0.6 GB together) download on the first run. Apache 2.0."
                 ),
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2026-05",
@@ -194,23 +205,33 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-09",
             },
             {
-                "id": "black-forest-labs/FLUX.1-dev-sdcpp-q4km",
+                "id": "leejet/FLUX.1-dev-gguf-q4k",
                 "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · sd.cpp Q4_K_M",
+                "name": "FLUX.1 Dev · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-dev",
+                "repo": "leejet/FLUX.1-dev-gguf",
                 "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-dev-gguf",
-                "ggufFile": "flux1-dev-Q4_K_M.gguf",
+                "ggufRepo": "leejet/FLUX.1-dev-gguf",
+                "ggufFile": "flux1-dev-q4_k.gguf",
+                "sdcppAux": {
+                    "--vae": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "ae.safetensors"},
+                    "--clip_l": {"repo": "comfyanonymous/flux_text_encoders", "file": "clip_l.safetensors"},
+                    "--t5xxl": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "t5xxl-Q8_0.gguf"},
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "cfgOverride": 3.5,
+                "defaultSteps": 28,
                 "link": "https://github.com/leejet/stable-diffusion.cpp",
                 "runtime": "stable-diffusion.cpp (subprocess)",
                 "styleTags": ["general", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 7.2,
+                "sizeGb": 6.9,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
+                    "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
+                    "(0.6 GB together) download on the first run. FLUX.1 Dev licence: "
+                    "non-commercial."
                 ),
                 "estimatedGenerationSeconds": 6.0,
                 "releaseDate": "2026-05",

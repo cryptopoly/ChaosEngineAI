@@ -923,6 +923,8 @@ class DiffusersTextToImageEngine:
 _NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
     "Qwen/Qwen-Image-2.1",
     "leejet/Qwen-Image-2.1-GGUF",
+    "leejet/FLUX.1-schnell-gguf",
+    "leejet/FLUX.1-dev-gguf",
 })
 
 

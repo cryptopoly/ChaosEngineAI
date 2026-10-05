@@ -1298,8 +1298,55 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
+    # FU-102: diffusers' UniPC scheduler diverges on MPS and Wan came out burnt
+    # (over 55 % of the pixels clipped to white). Apple Silicon only; skips when
+    # Wan 2.2 TI2V 5B is not downloaded or ffmpeg is not available.
+    def _wan_not_burnt():
+        import platform
+        import tempfile
+
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "the UniPC divergence is specific to MPS (Apple Silicon)", {}
+        model_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        rc, lib, _ = _cli_json("video-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        if model_id not in installed:
+            return "skip", "Wan 2.2 TI2V 5B not downloaded", {}
+        try:
+            import imageio_ffmpeg  # type: ignore
+            import numpy as np  # type: ignore
+            from PIL import Image  # type: ignore
+        except ImportError as exc:
+            return "skip", f"needs imageio-ffmpeg, numpy and Pillow in the test environment: {exc}", {}
+        rc, payload, err = _cli_json(
+            "video-generate", "a calm lake at sunrise, soft pastel colors, gentle ripples, realistic",
+            "--model", model_id, "--width", "640", "--height", "352", "--frames", "9",
+            "--seed", "7", "--timeout", "2400",
+        )
+        if rc != 0:
+            if "Memory pressure is" in err or "memory_gate" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            return "fail", f"video-generate rc={rc}: {err[:300]}", {}
+        path = ((payload or {}).get("artifact") or {}).get("videoPath")
+        if not path:
+            return "fail", "video-generate returned no videoPath", {}
+        frame_path = Path(tempfile.mkdtemp(prefix="ce-wan-")) / "frame.png"
+        done = subprocess.run(
+            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", path,
+             "-vf", "select=eq(n\\,4)", "-vframes", "1", str(frame_path)],
+            capture_output=True, text=True, timeout=120,
+        )
+        if done.returncode != 0 or not frame_path.exists():
+            return "fail", f"could not read a frame from {path}: {done.stderr[:200]}", {}
+        pixels = np.asarray(Image.open(frame_path).convert("RGB"))
+        clipped = float((pixels >= 250).mean())
+        if clipped > 0.20:
+            return "fail", f"{clipped:.0%} of the pixels are clipped to white (a healthy frame is under 5 %)", {}
+        return "pass", "", {"clippedShare": round(clipped, 4)}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
-                      ("mlx-runtime", _mlx_runtime), ("generate", _generate)]:
+                      ("mlx-runtime", _mlx_runtime), ("generate", _generate),
+                      ("Wan TI2V is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")

@@ -29,3 +29,12 @@ class LocalSnapshotPathTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FetchFileTests(unittest.TestCase):
+    def test_fetch_file_downloads_the_one_file_and_returns_its_path(self):
+        from backend_service.helpers.hf_local import fetch_file
+
+        with mock.patch("huggingface_hub.hf_hub_download", return_value="/cache/lora.safetensors") as download:
+            self.assertEqual(fetch_file("owner/repo", "lora.safetensors"), "/cache/lora.safetensors")
+        download.assert_called_once_with(repo_id="owner/repo", filename="lora.safetensors")

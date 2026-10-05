@@ -71,7 +71,7 @@ class ImageGenerationConfig:
     qualityPreset: str | None = None
     sampler: str | None = None
     # GGUF quantization: when set, the transformer is loaded from a single
-    # .gguf file (e.g. city96/FLUX.1-dev-gguf / flux1-dev-Q4_K_M.gguf) while
+    # .gguf file (e.g. city96/FLUX.1-dev-gguf / flux1-dev-Q4_K_S.gguf) while
     # the VAE and text encoders come from the base ``repo`` snapshot. The
     # pipeline cache keys on (repo, ggufFile) so multiple quant levels of
     # the same model can coexist without stomping on each other.

@@ -234,7 +234,7 @@ class PipelineRegistryTests(unittest.TestCase):
             "THUDM/CogVideoX-5b",
             # FU-019 catalog refresh: CogVideoX 1.5 5B routes via the same
             # CogVideoXPipeline class as the 5B base.
-            "THUDM/CogVideoX-1.5-5b",
+            "THUDM/CogVideoX1.5-5B",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():

@@ -282,14 +282,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-02",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q4km",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q4km",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q4_K_M",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q4_K_M.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q4_K_M.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "fast", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -305,14 +305,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-03",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q6k",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q6k",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q6_K",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q6_K.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q6_K.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "fast", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -327,14 +327,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2025-03",
             },
             {
-                "id": "city96/Wan2.1-T2V-1.3B-gguf-q8",
+                "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q8",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q8_0",
-                "provider": "Alibaba · city96",
+                "provider": "Alibaba · samuelchristlie",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "ggufRepo": "city96/Wan2.1-T2V-1.3B-gguf",
-                "ggufFile": "wan2.1-t2v-1.3B-Q8_0.gguf",
-                "link": "https://huggingface.co/city96/Wan2.1-T2V-1.3B-gguf",
+                "ggufRepo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+                "ggufFile": "Wan2.1-T2V-1.3B-Q8_0.gguf",
+                "link": "https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "small", "gguf"],
                 "taskSupport": ["txt2video"],
@@ -355,14 +355,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q4_K_M.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q4_K_M.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                # ~7 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE — fits
-                # comfortably on a 24 GB RTX 4090 with VAE headroom.
-                "sizeGb": 21.0,
+                # 10.1 GB GGUF transformer + ~14 GB shared UMT5-XXL/VAE — fits
+                # a 24 GB RTX 4090 with the text encoder offloaded.
+                "sizeGb": 24.1,
                 "runtimeFootprintGb": 18.0,
                 "runtimeFootprintMpsGb": 27.0,
                 "recommendedResolution": "832x480",
@@ -379,12 +379,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q6_K.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q6_K.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 24.0,
+                "sizeGb": 26.5,
                 "runtimeFootprintGb": 21.0,
                 "runtimeFootprintMpsGb": 30.0,
                 "recommendedResolution": "832x480",
@@ -401,12 +401,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Alibaba · city96",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
                 "ggufRepo": "city96/Wan2.1-T2V-14B-gguf",
-                "ggufFile": "wan2.1-t2v-14B-Q8_0.gguf",
+                "ggufFile": "wan2.1-t2v-14b-Q8_0.gguf",
                 "link": "https://huggingface.co/city96/Wan2.1-T2V-14B-gguf",
                 "runtime": "diffusers WanPipeline + GGUF transformer",
                 "styleTags": ["general", "quality", "motion", "gguf"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 28.0,
+                "sizeGb": 29.9,
                 "runtimeFootprintGb": 25.0,
                 "runtimeFootprintMpsGb": 34.0,
                 "recommendedResolution": "832x480",
@@ -416,7 +416,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "availableLocally": False,
                 "releaseDate": "2025-03",
             },
-            # FU-019 distill LoRAs. lightx2v's CausVid LoRAs collapse
+            # FU-019 distill LoRAs. The CausVid LoRAs collapse
             # the 30-step base schedule to 4 steps, CFG-free. Wall-time
             # win is ~7-8× before any caching strategy stacks on top.
             # Keep the full-fat Wan 2.1 1.3B / 14B variants above for
@@ -425,14 +425,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers-causvid",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · CausVid (4-step)",
-                "provider": "Alibaba · lightx2v",
+                "provider": "Alibaba · CausVid (Kijai)",
                 "repo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-                "loraRepo": "lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
-                "loraFile": "wan21_t2v_1.3b_causvid_lora.safetensors",
+                "loraRepo": "Kijai/WanVideo_comfy",
+                "loraFile": "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors",
                 "loraScale": 1.0,
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
-                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-1.3B-CausVid-LoRA",
+                "link": "https://huggingface.co/Kijai/WanVideo_comfy",
                 "runtime": "diffusers WanPipeline + CausVid LoRA",
                 "styleTags": ["general", "fast", "small", "lora"],
                 "taskSupport": ["txt2video"],
@@ -442,9 +442,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 4.0,
                 "note": (
-                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 1.3B. "
+                    "CausVid distillation LoRA fused into Wan 2.1 1.3B. "
                     "Runs at 4 steps, CFG-free — roughly 7-8× faster than the "
-                    "base 30-step schedule on the same hardware."
+                    "base 30-step schedule on the same hardware. The 0.1 GB LoRA "
+                    "downloads on the first run. CausVid is CC BY-NC 4.0 "
+                    "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 9.0,
                 "availableLocally": False,
@@ -454,14 +456,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers-causvid",
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · CausVid (4-step)",
-                "provider": "Alibaba · lightx2v",
+                "provider": "Alibaba · CausVid (Kijai)",
                 "repo": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
-                "loraRepo": "lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
-                "loraFile": "wan21_t2v_14b_causvid_lora.safetensors",
+                "loraRepo": "Kijai/WanVideo_comfy",
+                "loraFile": "Wan21_CausVid_14B_T2V_lora_rank32.safetensors",
                 "loraScale": 1.0,
                 "defaultSteps": 4,
                 "cfgOverride": 1.0,
-                "link": "https://huggingface.co/lightx2v/Wan2.1-T2V-14B-CausVid-LoRA",
+                "link": "https://huggingface.co/Kijai/WanVideo_comfy",
                 "runtime": "diffusers WanPipeline + CausVid LoRA",
                 "styleTags": ["general", "quality", "motion", "lora"],
                 "taskSupport": ["txt2video"],
@@ -470,9 +472,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "recommendedResolution": "832x480",
                 "defaultDurationSeconds": 5.0,
                 "note": (
-                    "lightx2v CausVid distillation LoRA fused into Wan 2.1 14B. "
+                    "CausVid distillation LoRA fused into Wan 2.1 14B. "
                     "Runs at 4 steps, CFG-free — quality holds close to the base "
-                    "30-step Wan 2.1 14B at a fraction of the wall time."
+                    "30-step Wan 2.1 14B at a fraction of the wall time. The 0.3 GB "
+                    "LoRA downloads on the first run. CausVid is CC BY-NC 4.0 "
+                    "(non-commercial)."
                 ),
                 "estimatedGenerationSeconds": 24.0,
                 "availableLocally": False,
@@ -863,12 +867,12 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             # CogVideoXPipeline class, so PIPELINE_REGISTRY only needs the
             # repo id added.
             {
-                "id": "THUDM/CogVideoX-1.5-5b",
+                "id": "THUDM/CogVideoX1.5-5B",
                 "familyId": "cogvideox",
                 "name": "CogVideoX 1.5 · 5B",
                 "provider": "THUDM",
-                "repo": "THUDM/CogVideoX-1.5-5b",
-                "link": "https://huggingface.co/THUDM/CogVideoX-1.5-5b",
+                "repo": "THUDM/CogVideoX1.5-5B",
+                "link": "https://huggingface.co/THUDM/CogVideoX1.5-5B",
                 "runtime": "diffusers CogVideoXPipeline",
                 "styleTags": ["general", "quality", "balanced", "refreshed"],
                 "taskSupport": ["txt2video"],

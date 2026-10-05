@@ -10,6 +10,7 @@ import time
 import gc
 import secrets
 
+from backend_service.helpers.lora import fuse_catalog_lora
 from backend_service.helpers.gpu import (
     nvidia_gpu_present as _nvidia_gpu_present,
     torch_install_warning as _torch_install_warning,
@@ -783,24 +784,8 @@ class DiffusersTextToImageEngine:
             # transformer itself).
             if lora_repo and lora_file:
                 try:
-                    pipeline.load_lora_weights(
-                        lora_repo,
-                        weight_name=lora_file,
-                        local_files_only=True,
-                    )
-                    effective_scale = (
-                        float(lora_scale) if lora_scale is not None else 1.0
-                    )
-                    pipeline.fuse_lora(lora_scale=effective_scale)
-                    try:
-                        pipeline.unload_lora_weights()
-                    except Exception:
-                        # Best-effort cleanup — older diffusers don't
-                        # always succeed at unloading after fuse, and
-                        # the fused transformer is correct either way.
-                        pass
                     self._load_notes.append(
-                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                        fuse_catalog_lora(pipeline, lora_repo, lora_file, lora_scale)
                     )
                 except Exception as exc:  # noqa: BLE001 — non-fatal
                     self._load_notes.append(

@@ -54,7 +54,7 @@ _RUNTIME_LABEL = "stable-diffusion.cpp"
 # the binary supports image families too, but those route through
 # image_runtime (FU-008 image side, separate engine).
 #
-# Wan 2.1 GGUF (city96/Wan2.1-T2V-{1.3B,14B}-gguf) and Wan 2.2 GGUF
+# Wan 2.1 GGUF (city96/Wan2.1-T2V-14B-gguf, samuelchristlie/Wan2.1-T2V-1.3B-GGUF) and Wan 2.2 GGUF
 # (QuantStack/Wan2.2-T2V-A14B-GGUF) are the immediate targets — those
 # unlock the Mac Metal video path that diffusers MPS cannot serve.
 _SUPPORTED_REPOS: frozenset[str] = frozenset({

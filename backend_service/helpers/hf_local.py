@@ -1,4 +1,4 @@
-"""Resolve a Hugging Face repo to its cached snapshot without touching the network."""
+"""Hugging Face cache helpers: open a cached snapshot offline, fetch one file."""
 
 from __future__ import annotations
 
@@ -23,3 +23,15 @@ def local_snapshot_path(repo_id: str, **kwargs: Any) -> str:
         if type(exc).__name__ == "IncompleteSnapshotError" and snapshot_path:
             return str(snapshot_path)
         raise
+
+
+def fetch_file(repo_id: str, filename: str) -> str:
+    """Make sure one file of ``repo_id`` is in the Hugging Face cache and return its path.
+
+    A cache hit costs no network. The image and video runtimes load catalog LoRAs
+    with ``local_files_only=True``, but no download step fetches them ahead of
+    time, so the first run does it here (a LoRA is 0.1 to 0.7 GB).
+    """
+    from huggingface_hub import hf_hub_download  # type: ignore
+
+    return hf_hub_download(repo_id=repo_id, filename=filename)

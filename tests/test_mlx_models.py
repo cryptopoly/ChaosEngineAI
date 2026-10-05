@@ -273,6 +273,27 @@ class PromptBuilderForwardsSwitchesTests(unittest.TestCase):
         _build_prompt_text(tokenizer, history=[], prompt="Hallo", system_prompt=None)
         self.assertEqual(tokenizer.calls, [{"tokenize": False, "add_generation_prompt": True}])
 
+    def test_tool_results_reach_the_model_as_tool_response_turns(self) -> None:
+        # The agent loop returns results as ``tool`` messages; dropping them made
+        # the model repeat the same call until the loop gave up.
+        seen: list[list[dict]] = []
+
+        class _Tok:
+            def apply_chat_template(self, messages, **kwargs):
+                seen.append(messages)
+                return "rendered"
+
+        history = [
+            {"role": "user", "text": "2025 mal 12?"},
+            {"role": "assistant", "text": '<tool_call>{"name": "calculator"}</tool_call>'},
+            {"role": "tool", "text": "2025 * 12 = 24300", "name": "calculator"},
+        ]
+        _build_prompt_text(_Tok(), history=history, prompt="", system_prompt=None)
+        rendered = seen[0]
+        self.assertEqual(rendered[-1]["role"], "user")
+        self.assertIn("<tool_response>\n2025 * 12 = 24300\n</tool_response>", rendered[-1]["content"])
+        self.assertEqual([m["role"] for m in rendered].count("assistant"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

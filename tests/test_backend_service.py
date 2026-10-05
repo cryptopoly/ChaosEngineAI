@@ -1015,6 +1015,37 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+
+    def test_generate_with_tools_enabled_returns_the_agent_answer(self):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        agent_result = SimpleNamespace(
+            text="Das Ergebnis ist 24300.",
+            iterations=2,
+            total_prompt_tokens=40,
+            total_completion_tokens=12,
+            tool_calls=[
+                SimpleNamespace(
+                    tool_call_id="c1", tool_name="calculator", arguments={"expression": "2025*12"},
+                    result="24300", elapsed_seconds=0.01, render_as=None, data=None,
+                )
+            ],
+        )
+        with mock.patch("backend_service.agent.run_agent_loop", return_value=agent_result):
+            response = self.client.post(
+                "/api/chat/generate",
+                json={"prompt": "2025 mal 12?", "enableTools": True, "availableTools": ["calculator"], "maxTokens": 64},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        assistant = response.json()["assistant"]
+        self.assertEqual(assistant["text"], "Das Ergebnis ist 24300.")
+        self.assertEqual(assistant["metrics"]["completionTokens"], 12)
+        self.assertEqual(assistant["metrics"]["toolCalls"][0]["name"], "calculator")
     def test_model_load_rejects_models_not_on_disk(self):
         """Regression: previously a load request for a model not in the library
         would fall through to llama-server's HuggingFace auto-fetch, which on

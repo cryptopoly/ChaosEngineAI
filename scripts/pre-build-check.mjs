@@ -406,6 +406,13 @@ console.log("[6/8] Upstream dependency check...");
   } else {
     pass(`app version sync (${distinct[0]})`);
   }
+  // Lock files too (package-lock.json, Cargo.lock).
+  const lockCheck = spawnSync(process.execPath, [path.join(REPO_ROOT, "scripts", "check-version-sync.mjs")], { encoding: "utf8" });
+  if (lockCheck.status === 0) {
+    pass("app version sync incl. lock files");
+  } else {
+    fail((lockCheck.stderr || lockCheck.stdout || "version check failed").trim());
+  }
 }
 console.log();
 

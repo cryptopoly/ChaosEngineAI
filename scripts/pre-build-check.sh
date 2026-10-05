@@ -180,6 +180,13 @@ elif [[ "$PKG_VERSION" != "$PY_VERSION" || "$PKG_VERSION" != "$CARGO_VERSION" ||
 else
   pass "app version sync ($PKG_VERSION)"
 fi
+# Lock files too (package-lock.json, Cargo.lock): a stale one ships a build
+# whose own version differs from the manifests.
+if VERSION_SYNC_OUT=$(node scripts/check-version-sync.mjs 2>&1); then
+  pass "app version sync incl. lock files"
+else
+  fail "$VERSION_SYNC_OUT"
+fi
 echo
 
 # ------------------------------------------------------------------

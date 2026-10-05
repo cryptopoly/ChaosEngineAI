@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 from starlette.responses import StreamingResponse
 
+from backend_service.inference.base import GenerationResult
 from backend_service.models import GenerateRequest, LoadModelRequest
 from backend_service.state._helpers import (
     _build_history_with_reasoning,
@@ -225,18 +226,19 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                 images=request.images,
                 available_tools=request.availableTools,
             )
-            # Synthesize a GenerationResult-like object for metrics
-            class _AgentResultProxy:
-                text = agent_result.text
-                finishReason = "stop"
-                promptTokens = agent_result.total_prompt_tokens
-                completionTokens = agent_result.total_completion_tokens
-                totalTokens = agent_result.total_prompt_tokens + agent_result.total_completion_tokens
-                tokS = 0.0
-                runtimeNote = f"Agent loop: {agent_result.iterations} iterations, {len(agent_result.tool_calls)} tool calls"
-                responseSeconds = 0.0
-                tool_calls = None
-            result = _AgentResultProxy()
+            # A real GenerationResult, so ``assistant_metrics_payload`` can call
+            # ``to_metrics()``; a bare stand-in object made every non-streaming
+            # request with tools enabled answer 500.
+            result = GenerationResult(
+                text=agent_result.text,
+                finishReason="stop",
+                promptTokens=agent_result.total_prompt_tokens,
+                completionTokens=agent_result.total_completion_tokens,
+                totalTokens=agent_result.total_prompt_tokens + agent_result.total_completion_tokens,
+                tokS=0.0,
+                responseSeconds=0.0,
+                runtimeNote=f"Agent loop: {agent_result.iterations} iterations, {len(agent_result.tool_calls)} tool calls",
+            )
             tool_call_payloads = [
                 {
                     "id": tc.tool_call_id,

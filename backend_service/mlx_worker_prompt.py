@@ -170,6 +170,14 @@ def _build_prompt_text(
         messages.append({"role": "system", "content": system_prompt})
     for message in history:
         role = message.get("role")
+        if role == "tool":
+            # The agent loop feeds tool results back as ``tool`` messages. They
+            # used to be dropped here, so the model never saw a result and called
+            # the same tool again until the loop gave up. Chat templates render a
+            # tool turn as a user turn wrapping the result in <tool_response>.
+            result_text = _normalize_message_content(message.get("text", ""))
+            messages.append({"role": "user", "content": f"<tool_response>\n{result_text}\n</tool_response>"})
+            continue
         if role not in {"system", "user", "assistant"}:
             continue
         messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})

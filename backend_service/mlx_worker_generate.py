@@ -31,6 +31,7 @@ from backend_service.mlx_worker_prompt import (
     _plain_chat_fallback_active,
     _should_retry_cache_failure,
     _trim_transcript_continuation,
+    chat_template_switches,
 )
 from backend_service.mlx_worker_request import (
     _apply_mlx_seed,
@@ -109,6 +110,7 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
     sampler = _build_mlx_sampler(request)
     acq = _prompt_cache.acquire(state, prompt_text)
@@ -339,6 +341,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
     sampler = _build_mlx_sampler(request)
     acq = _prompt_cache.acquire(state, prompt_text)

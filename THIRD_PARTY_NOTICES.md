@@ -188,6 +188,18 @@ hosts. See FU-009 in CLAUDE.md.
   DFlash. No upstream code is bundled verbatim; this is a re-implementation
   of the published algorithm.
 
+### Kolibri 1 architecture for mlx-lm (vendored)
+
+- **Upstream:** the community port proposed in
+  <https://github.com/ml-explore/mlx-lm/pull/1945>, itself ported from Aleph Alpha's
+  vLLM plugin <https://github.com/Aleph-Alpha/aleph-alpha-inference>
+- **Licence:** Apache 2.0 (SPDX header kept in the file)
+- **Location:** `backend_service/mlx_models/kolibri1.py`, copied unmodified
+- **Usage:** mlx-lm ships no `kolibri1` architecture yet, so `mlx_lm.load` reads this
+  file through its `model_file` hook for Kolibri 1 checkpoints. It is no longer used
+  once an mlx-lm release carries the architecture. The weights keep their own
+  licence (Apache 2.0, Aleph Alpha).
+
 ## Internationalization (FU-042)
 
 ### i18next (frontend i18n framework)

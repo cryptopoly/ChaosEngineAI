@@ -395,6 +395,8 @@ def phase_0(cap: Capability) -> PhaseResult:
             "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 6, "minicpm-5": 3,
             # FU-093: TensorFold-served checkpoints.
             "glm-5-3-flash": 1,
+            # FU-103: Kolibri 1 (Aleph Alpha), community MLX builds.
+            "kolibri-1": 3,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -762,6 +764,21 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "pass", "", detail
         return "skip", "no TensorFold-served checkpoint on disk", {}
 
+    # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
+    # worker loads the one vendored in backend_service/mlx_models; a load that
+    # fails on an unknown model type is the regression this guards. Asks for a
+    # German answer with thinking off (reasoning_effort "none"). Skips when no
+    # Kolibri MLX build is on disk (they are 25-44 GB).
+    def _kolibri():
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "kolibri-1")
+        if not pick:
+            return "skip", "no Kolibri-1 MLX build on disk", {}
+        ref, path = pick
+        return _load_unload_prompt(
+            ref, path=path, backend="mlx", context=4096, max_tokens=24,
+            prompt="Antworte mit zwei Wörtern: Hallo!", load_timeout=1800.0,
+        )
+
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
     def _gguf():
@@ -955,6 +972,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + DDTree speculative", _mlx_ddtree),
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
+        ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),

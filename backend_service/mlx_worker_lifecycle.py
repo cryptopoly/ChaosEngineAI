@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from backend_service.mlx_models import vendored_model_config
 from backend_service.mlx_worker_cache import make_mlx_cache
 from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
 from backend_service.mlx_worker_io import emit_progress
@@ -136,7 +137,13 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
                 state.config = {}
             state.is_multimodal = True
         else:
-            state.model, state.tokenizer, state.config = load(local_path, return_config=True)
+            load_kwargs: dict[str, Any] = {"return_config": True}
+            # Architectures mlx-lm does not ship yet (Kolibri 1) load from a
+            # vendored file; everything else keeps the plain call.
+            vendored = vendored_model_config(local_path)
+            if vendored:
+                load_kwargs["model_config"] = vendored
+            state.model, state.tokenizer, state.config = load(local_path, **load_kwargs)
             state.processor = None
             state.is_multimodal = False
         state._loaded_model_ref = target

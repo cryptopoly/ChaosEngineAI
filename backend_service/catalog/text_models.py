@@ -1197,6 +1197,95 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "kolibri-1",
+        "name": "Kolibri 1",
+        "provider": "Aleph Alpha",
+        "headline": "Germany's sovereign open-weight reasoning MoE — German and English, Apache 2.0.",
+        "summary": "Oct 2026 Kolibri-1: 78B mixture-of-experts with 3.5B active per token, 24% German training data, 256K context.",
+        "description": (
+            "Kolibri 1 is Aleph Alpha's October 2026 open-weight reasoning model: 78B parameters in 50 MoE "
+            "layers (384 experts, 6 routed plus 1 shared, about 3.5B active per token), a 4:1 mix of "
+            "sliding-window and global attention, and a tokenizer tuned to German word structure. It handles "
+            "German and English only. Reasoning effort (none, low, medium, high) is set per request and tool "
+            "calls use the Hermes format. Apache 2.0. The MLX builds here are community conversions of the "
+            "official FP8 weights."
+        ),
+        "updatedLabel": "Released Oct 2026",
+        "popularityLabel": "New release",
+        "likesLabel": "Aleph Alpha · community MLX",
+        "badges": ["German", "Reasoning", "Tool use", "Apache 2.0"],
+        "capabilities": ["reasoning", "coding", "tool-use"],
+        "defaultVariantId": "velaia/Kolibri-1-MLX-4bit",
+        "variants": [
+            {
+                "id": "velaia/Kolibri-1-MLX-4bit",
+                "name": "Kolibri 1 MLX 4-bit",
+                "repo": "velaia/Kolibri-1-MLX-4bit",
+                "link": "https://huggingface.co/velaia/Kolibri-1-MLX-4bit",
+                "paramsB": 78.1,
+                "sizeGb": 44.3,
+                "estimatedMemoryGb": 48.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": (
+                    "Unofficial MLX conversion of the official FP8 weights (experts and attention 4-bit, "
+                    "embeddings and head 8-bit). Needs a 64 GB Mac: about 48 GB peak at a 4K-token prompt. "
+                    "The converter reports 52-56 tok/s on an M1 Max."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "velaia/Kolibri-1-MLX-3bit",
+                "name": "Kolibri 1 MLX 3-bit",
+                "repo": "velaia/Kolibri-1-MLX-3bit",
+                "link": "https://huggingface.co/velaia/Kolibri-1-MLX-3bit",
+                "paramsB": 78.1,
+                "sizeGb": 34.9,
+                "estimatedMemoryGb": 39.0,
+                "format": "MLX",
+                "quantization": "3-bit",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": (
+                    "Same conversion with 3-bit experts; the converter's perplexity check is close to 4-bit. "
+                    "Fits a 48 GB Mac after raising the GPU memory limit "
+                    "(sudo sysctl iogpu.wired_limit_mb=40960, resets on reboot)."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "velaia/Kolibri-1-MLX-2bit",
+                "name": "Kolibri 1 MLX 2-bit",
+                "repo": "velaia/Kolibri-1-MLX-2bit",
+                "link": "https://huggingface.co/velaia/Kolibri-1-MLX-2bit",
+                "paramsB": 78.1,
+                "sizeGb": 25.5,
+                "estimatedMemoryGb": 30.0,
+                "format": "MLX",
+                "quantization": "2-bit",
+                "capabilities": ["reasoning", "coding", "tool-use"],
+                "note": "2-bit experts for 36 GB Macs; expect a visible quality drop against 3- and 4-bit.",
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+        ],
+        "readme": [
+            "Kolibri 1 is Aleph Alpha's open-weight reasoning model for German and English: 78B total, 3.46B active per token, Apache 2.0.",
+            "The Thinking control in the chat composer drives it: Off turns reasoning off, Low / Med / High set the effort in the chat template.",
+            "mlx-lm has no kolibri1 architecture yet (ml-explore/mlx-lm#1945), so ChaosEngineAI carries the model code itself and these builds load on Apple Silicon today.",
+            "No GGUF or CUDA build is offered yet: llama.cpp has no kolibri1 support, and vLLM needs Aleph Alpha's plugin plus about 78 GB of GPU memory.",
+            "The MLX builds are unofficial conversions of Aleph Alpha's FP8 weights by a community member; the quality figures in their cards are theirs, and the benchmark scores in Aleph Alpha's own card are vendor-run.",
+        ],
+    },
+    {
         "id": "devstral-small",
         "name": "Devstral Small",
         "provider": "Mistral AI",

@@ -44,6 +44,17 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 > EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
+### stable-diffusion.cpp
+
+- **Repository:** <https://github.com/leejet/stable-diffusion.cpp>
+- **Licence:** MIT
+- **Copyright:** Copyright (c) 2023 leejet
+- **Binary:** `sd` (built from `sd-cli` by `scripts/build-sdcpp.sh`; staged into the
+  desktop bundle when it is present at build time)
+- **Usage:** Cross-platform image and video generation lane (FLUX.1, Qwen-Image-2.1
+  and the Wan GGUF rows). The MIT permission notice above applies to it, with the
+  copyright holder named here.
+
 ---
 
 ## Optional Third-Party Cache Strategies

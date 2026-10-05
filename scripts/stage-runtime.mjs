@@ -35,6 +35,14 @@ const binDest = path.join(stageRoot, "bin");
 const manifestDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.manifest.json`);
 const archiveDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.tar.gz`);
 
+// Installers the Setup tab runs as ``bash <backend>/scripts/<name>``. Each route
+// under backend_service/routes/setup resolves its script next to
+// ``backend_service`` (``parents[3]``), so a packaged build must stage them
+// there; without them every one of those Install buttons failed in a release
+// build with "No such file". tests/test_stage_runtime_scripts.py keeps this
+// list in step with the routes.
+const BUNDLED_INSTALL_SCRIPTS = ["install-mflux.sh", "install-mtplx.sh", "install-tensorfold.sh"];
+
 main();
 
 function main() {
@@ -70,6 +78,9 @@ function main() {
   }
   for (const relativeFile of ["README.md", "pyproject.toml"]) {
     copyFile(path.join(workspaceRoot, relativeFile), path.join(backendDest, relativeFile));
+  }
+  for (const script of BUNDLED_INSTALL_SCRIPTS) {
+    copyFile(path.join(workspaceRoot, "scripts", script), path.join(backendDest, "scripts", script));
   }
 
   const bundledOptionalPackages = stageOptionalRuntimePackages(pythonInfo.executable);

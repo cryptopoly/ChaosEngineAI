@@ -22,6 +22,7 @@ from backend_service.routes.setup._install_helpers import (
     _read_python_version,
     _run_pip_install,
     _site_packages_for,
+    _write_mlx_constraint,
     _write_torch_constraint,
 )
 
@@ -278,6 +279,10 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     # the git source replaces whatever name-collides on disk.
     if body.package == "mlx-video":
         cmd.append("--force-reinstall")
+    # Whatever the package, the overlay must stay on the app's mlx series.
+    mlx_constraint = _write_mlx_constraint(extras_dir) if extras_dir is not None else None
+    if mlx_constraint is not None:
+        cmd.extend(["-c", str(mlx_constraint)])
     cmd.append(pip_name)
     cmd.extend(_COMPANION_PINS.get(body.package, ()))
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")

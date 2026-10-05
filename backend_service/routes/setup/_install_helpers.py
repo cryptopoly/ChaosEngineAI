@@ -12,9 +12,11 @@ Extracted from ``routes/setup/__init__.py`` as part of the v0.8.0 refactor.
 
 from __future__ import annotations
 
+import importlib.metadata
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -230,6 +232,41 @@ def _cleanup_mlx_video_shadow_metadata(extras_dir: Path) -> list[str]:
         shutil.rmtree(dist_info, ignore_errors=True)
         removed.append(dist_info.name)
     return removed
+
+
+def _app_mlx_series(extras_dir: Path) -> tuple[int, int] | None:
+    """``(major, minor)`` of the mlx the app itself runs on, or ``None`` without MLX.
+
+    The extras directory is skipped: it is on ``sys.path`` too, and a polluted
+    overlay must not redefine what "the app's mlx" is.
+    """
+    skip = os.path.realpath(extras_dir)
+    paths = [entry for entry in sys.path if entry and os.path.realpath(entry) != skip]
+    for dist in importlib.metadata.distributions(path=paths):
+        if (dist.metadata["Name"] or "").lower() != "mlx":
+            continue
+        triple = _parse_version_triple(dist.version)
+        return (triple[0], triple[1]) if triple else None
+    return None
+
+
+def _write_mlx_constraint(extras_dir: Path) -> Path | None:
+    """Pin mlx to the app's own series so an overlay install cannot swap it.
+
+    ``pip install --target`` resolves each package on its own, and many MLX
+    packages (mlx-audio, mlx-vlm, ...) accept any newer mlx, so the overlay
+    ended up with mlx 0.32 next to the app's mlx-metal 0.31 and image / video
+    generation broke. A constraint costs nothing for packages that do not
+    depend on mlx. Returns ``None`` where the app has no MLX (Windows, Linux).
+    """
+    series = _app_mlx_series(extras_dir)
+    if series is None:
+        return None
+    major, minor = series
+    spec = f">={major}.{minor},<{major}.{minor + 1}"
+    path = extras_dir / ".chaosengine-mlx-constraints.txt"
+    path.write_text(f"mlx{spec}\nmlx-metal{spec}\n", encoding="utf-8")
+    return path
 
 
 def _extras_site_packages() -> Path | None:

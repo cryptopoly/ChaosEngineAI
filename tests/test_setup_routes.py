@@ -211,6 +211,27 @@ class SetupRouteTests(unittest.TestCase):
         self.assertIn("mlx>=0.31.2,<0.32", cmd)
         self.assertIn("mlx-vlm>=0.6.3,<0.6.5", cmd)
 
+    def test_every_overlay_install_passes_the_mlx_constraint_file(self):
+        """Any package can have an unbounded mlx dependency (mlx-audio does),
+        so the constraint goes on every install, not only mlx-video's."""
+        constraint = Path("/tmp/x-extras") / ".chaosengine-mlx-constraints.txt"
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.routes.setup._write_mlx_constraint", return_value=constraint):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "mlx-audio"})
+        cmd = mock_run.call_args[0][0]
+        self.assertEqual(cmd[cmd.index("-c") + 1], str(constraint))
+        self.assertLess(cmd.index("-c"), cmd.index("mlx-audio"))
+
+    def test_hosts_without_mlx_get_no_constraint(self):
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.routes.setup._write_mlx_constraint", return_value=None):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "faster-whisper"})
+        self.assertNotIn("-c", mock_run.call_args[0][0])
+
     def test_other_packages_get_no_companion_pins(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
             mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
@@ -1700,3 +1721,56 @@ class TorchUpgradeRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _write_dist(site: Path, name: str, version: str) -> None:
+    dist = site / f"{name}-{version}.dist-info"
+    dist.mkdir(parents=True)
+    (dist / "METADATA").write_text(f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n", encoding="utf-8")
+
+
+class MlxSeriesConstraintTests(unittest.TestCase):
+    """An overlay install must not bring an mlx newer than the app's (FU-098)."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.base = self.root / "base-site-packages"
+        self.extras = self.root / "extras" / "site-packages"
+        self.base.mkdir()
+        self.extras.mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _with_sys_path(self, *entries: Path):
+        return mock.patch.object(sys, "path", [str(entry) for entry in entries])
+
+    def test_the_constraint_follows_the_apps_own_mlx(self):
+        from backend_service.routes.setup._install_helpers import _write_mlx_constraint
+
+        _write_dist(self.base, "mlx", "0.31.2")
+        with self._with_sys_path(self.extras, self.base):
+            path = _write_mlx_constraint(self.extras)
+
+        self.assertEqual(path, self.extras / ".chaosengine-mlx-constraints.txt")
+        self.assertEqual(
+            path.read_text(encoding="utf-8").splitlines(),
+            ["mlx>=0.31,<0.32", "mlx-metal>=0.31,<0.32"],
+        )
+
+    def test_a_polluted_overlay_does_not_redefine_the_apps_mlx(self):
+        from backend_service.routes.setup._install_helpers import _app_mlx_series
+
+        _write_dist(self.base, "mlx", "0.31.2")
+        _write_dist(self.extras, "mlx", "0.32.3")
+        with self._with_sys_path(self.extras, self.base):
+            self.assertEqual(_app_mlx_series(self.extras), (0, 31))
+
+    def test_no_constraint_where_the_app_has_no_mlx(self):
+        from backend_service.routes.setup._install_helpers import _write_mlx_constraint
+
+        _write_dist(self.base, "numpy", "2.0.0")
+        with self._with_sys_path(self.extras, self.base):
+            self.assertIsNone(_write_mlx_constraint(self.extras))
+        self.assertFalse((self.extras / ".chaosengine-mlx-constraints.txt").exists())

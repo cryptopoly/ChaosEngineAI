@@ -12,7 +12,7 @@ import type { SystemStats } from "../types";
  * The three checks here are the ones that actually gate UI today:
  *
  *   - ``isAppleSiliconHost`` — Darwin + arm64. MLX, MLX-LM, MLX-VLM,
- *     mlx-video, mflux, MTPLX, dflash-mlx, turboquant-mlx-full all
+ *     mlx-video, mflux, MTPLX, TensorFold, dflash-mlx, turboquant-mlx-full all
  *     need Apple Silicon hardware (the MLX framework is closed to
  *     Metal-backed unified-memory devices). UI install prompts for
  *     any of these are noise + an install attempt would silently no-op
@@ -145,7 +145,7 @@ interface VariantLikeChat {
  */
 export function chatVariantPlatformGate(variant: VariantLikeChat): PlatformGate {
   const backend = normalize(variant.backend ?? "");
-  if (backend === "mlx" || backend === "mlx-lm" || backend === "mtplx") {
+  if (backend === "mlx" || backend === "mlx-lm" || backend === "mtplx" || backend === "tensorfold") {
     return "apple-silicon";
   }
   if (backend === "vllm") {

@@ -338,6 +338,93 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     return str(candidates[0])
 
 
+def _speculative_args(
+    binary: str | None,
+    *,
+    resolved_gguf: str | None,
+    path: str | None,
+    repo: str,
+) -> tuple[list[str], str | None]:
+    """llama-server speculative-decoding flags for a GGUF load.
+
+    Preference order (FU-047 / FU-089):
+
+    1. Baked-in MTP heads in the model itself → ``draft-mtp``.
+    2. A drafter sidecar beside the GGUF → ``-md <file>`` + its type,
+       in llama.cpp's own order (mtp- > dspark- > dflash- > eagle3-).
+       DFlash 2 drafters are ``dflash-`` files; llama.cpp detects v2
+       from the file's metadata, so the flags are the same.
+    3. Nothing to draft with → ``ngram-mod``: draft-free n-gram lookup,
+       lossless, ~16 MB, pays off on repetitive text (code edits,
+       summaries, reasoning echoed in the answer).
+
+    Each type is gated on the binary listing it in ``--help``; an older
+    llama-server gets standard decode plus a note, never a startup error.
+    """
+    from backend_service.helpers.text_gguf import resolve_spec_sidecar  # noqa: PLC0415
+    from backend_service.inference._mtp import (  # noqa: PLC0415
+        get_mtp_draft_n,
+        is_mtp_gguf_repo,
+        model_has_mtp_tensors,
+    )
+
+    if not _llama_server_supports(binary, "--spec-type"):
+        return [], (
+            "Speculative decoding needs a newer llama-server (no --spec-type in "
+            "the installed binary; run scripts/update-llama-cpp.sh). Using "
+            "standard decode."
+        )
+
+    def supports(spec_type: str) -> bool:
+        return _llama_server_supports(binary, spec_type)
+
+    # 1. Baked-in MTP heads. Authoritative check peeks the GGUF tensors
+    # when a local path is supplied; repo-name aliases otherwise.
+    tensor_probe = model_has_mtp_tensors(path)
+    has_mtp_tensors = tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo)
+    if has_mtp_tensors and supports("draft-mtp"):
+        n_max = get_mtp_draft_n(repo) or 2
+        return ["--spec-type", "draft-mtp", "--spec-draft-n-max", str(n_max)], (
+            f"MTP speculative decoding active (draft-mtp, spec-draft-n-max={n_max}). "
+            "Prompt-processing speed may dip slightly vs. standard decode due to "
+            "D2H embedding transfers (per upstream PR #22673)."
+        )
+
+    # 2. Drafter sidecar beside the model file.
+    sidecar = resolve_spec_sidecar(resolved_gguf)
+    if sidecar is not None:
+        spec_type, sidecar_path = sidecar
+        if supports(spec_type):
+            args = ["--model-draft", sidecar_path, "--spec-type", spec_type]
+            if spec_type == "draft-mtp":
+                args += ["--spec-draft-n-max", str(get_mtp_draft_n(repo) or 2)]
+            elif spec_type in ("draft-dflash", "draft-dspark"):
+                # Block drafters: ask for a full block; llama.cpp clamps to
+                # the drafter's trained block size (15 for a b16 DFlash).
+                args += ["--spec-draft-n-max", "15"]
+            return args, (
+                f"Speculative decoding active ({spec_type} with drafter "
+                f"{Path(sidecar_path).name})."
+            )
+        sidecar_note = (
+            f"Found drafter {Path(sidecar_path).name} but the installed "
+            f"llama-server has no {spec_type}; run scripts/update-llama-cpp.sh."
+        )
+    else:
+        sidecar_note = None
+
+    # 3. Draft-free n-gram lookup.
+    if supports("ngram-mod"):
+        note = (
+            "Speculative decoding active (ngram-mod: no draft model; speeds up "
+            "repetitive output such as code edits and summaries)."
+        )
+        return ["--spec-type", "ngram-mod"], f"{sidecar_note} {note}" if sidecar_note else note
+
+    fallback = "No speculative-decoding mode available for this model; using standard decode."
+    return [], f"{sidecar_note} {fallback}" if sidecar_note else fallback
+
+
 def _gguf_startup_fallback_note(strategy_name: str) -> str:
     return (
         f"GGUF startup failed with {strategy_name} cache, so ChaosEngineAI retried "
@@ -547,56 +634,16 @@ class LlamaCppEngine(BaseInferenceEngine):
             if mmproj_path:
                 command.extend(["--mmproj", mmproj_path])
 
-        # FU-047: GGUF MTP speculative decoding via llama.cpp PR #22673.
-        # Emit ``--spec-type draft-mtp --spec-draft-n-max N`` when the
-        # requested model is a known MTP-GGUF mirror AND the binary
-        # advertises ``--spec-type`` in its help text. Fall back to
-        # standard decode with a runtimeNote when either prerequisite
-        # is missing — never error.
         if speculative_decoding:
-            from backend_service.inference._mtp import (
-                get_mtp_draft_n,
-                is_mtp_gguf_repo,
-                model_has_mtp_tensors,
+            spec_args, spec_note = _speculative_args(
+                binary,
+                resolved_gguf=resolved_gguf,
+                path=path,
+                repo=canonical_repo or runtime_target or model_ref or path or "",
             )
-            repo_for_mtp = canonical_repo or runtime_target or model_ref or path or ""
-            # Authoritative MTP check: peek the GGUF header for
-            # ``mtp_decoder`` / ``mtp_emb`` tensors when a local path
-            # is supplied. Falls back to name-alias matching for repo-
-            # only loads. Catches new MTP-GGUF mirrors we haven't
-            # enumerated; rejects non-MTP GGUFs that happen to match
-            # the heuristic by name.
-            tensor_probe = model_has_mtp_tensors(path)
-            has_mtp_tensors = (
-                tensor_probe if tensor_probe is not None else is_mtp_gguf_repo(repo_for_mtp)
-            )
-            if has_mtp_tensors:
-                if _llama_server_supports(binary, "--spec-type"):
-                    n_max = get_mtp_draft_n(repo_for_mtp) or 2
-                    command.extend([
-                        "--spec-type", "draft-mtp",
-                        "--spec-draft-n-max", str(n_max),
-                    ])
-                    mtp_note = (
-                        f"MTP speculative decoding active "
-                        f"(draft-mtp, spec-draft-n-max={n_max}). "
-                        f"Prompt-processing speed may dip slightly vs. standard "
-                        f"decode due to D2H embedding transfers (per upstream PR #22673)."
-                    )
-                    runtime_note = (
-                        f"{runtime_note} {mtp_note}".strip()
-                        if runtime_note else mtp_note
-                    )
-                else:
-                    note = (
-                        "MTP speculative decoding requires llama-server built "
-                        "from ggml-org/llama.cpp master after 2026-05-16 (PR #22673). "
-                        "The installed binary does not advertise --spec-type; "
-                        "using standard decode."
-                    )
-                    runtime_note = (
-                        f"{runtime_note} {note}".strip() if runtime_note else note
-                    )
+            command.extend(spec_args)
+            if spec_note:
+                runtime_note = f"{runtime_note} {spec_note}".strip() if runtime_note else spec_note
 
         return command, runtime_note, fell_back_to_native, mmproj_path
 

@@ -10,6 +10,7 @@ import time
 import gc
 import secrets
 
+from backend_service.helpers.lora import fuse_catalog_lora
 from backend_service.helpers.gpu import (
     nvidia_gpu_present as _nvidia_gpu_present,
     torch_install_warning as _torch_install_warning,
@@ -149,6 +150,10 @@ class DiffusersTextToImageEngine:
         # pipeline so the user sees what was applied without polling
         # capabilities mid-batch. Reset on each pipeline load.
         self._load_notes: list[str] = []
+
+    @property
+    def loaded_repo(self) -> str | None:
+        return self._loaded_repo
 
     def probe(self) -> ImageRuntimeStatus:
         # Deliberately does NOT ``import torch`` — that would load
@@ -570,13 +575,9 @@ class DiffusersTextToImageEngine:
 
             import torch  # type: ignore
             from diffusers import AutoPipelineForText2Image  # type: ignore
-            from huggingface_hub import snapshot_download  # type: ignore
+            from backend_service.helpers.hf_local import local_snapshot_path
 
-            local_path = snapshot_download(
-                repo_id=repo,
-                local_files_only=True,
-                resume_download=True,
-            )
+            local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
             validation_error = validate_local_diffusers_snapshot(local_root, repo)
             if validation_error is not None:
@@ -783,24 +784,8 @@ class DiffusersTextToImageEngine:
             # transformer itself).
             if lora_repo and lora_file:
                 try:
-                    pipeline.load_lora_weights(
-                        lora_repo,
-                        weight_name=lora_file,
-                        local_files_only=True,
-                    )
-                    effective_scale = (
-                        float(lora_scale) if lora_scale is not None else 1.0
-                    )
-                    pipeline.fuse_lora(lora_scale=effective_scale)
-                    try:
-                        pipeline.unload_lora_weights()
-                    except Exception:
-                        # Best-effort cleanup — older diffusers don't
-                        # always succeed at unloading after fuse, and
-                        # the fused transformer is correct either way.
-                        pass
                     self._load_notes.append(
-                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                        fuse_catalog_lora(pipeline, lora_repo, lora_file, lora_scale)
                     )
                 except Exception as exc:  # noqa: BLE001 — non-fatal
                     self._load_notes.append(
@@ -932,6 +917,17 @@ class DiffusersTextToImageEngine:
 
 
 
+# Repos that have no released diffusers pipeline: when their own engine fails
+# there is nothing to fall back to, and the placeholder engine would answer
+# with a fake picture instead of the error.
+_NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
+    "Qwen/Qwen-Image-2.1",
+    "leejet/Qwen-Image-2.1-GGUF",
+    "leejet/FLUX.1-schnell-gguf",
+    "leejet/FLUX.1-dev-gguf",
+})
+
+
 class ImageRuntimeManager:
     def __init__(self) -> None:
         self._lock = RLock()
@@ -944,6 +940,11 @@ class ImageRuntimeManager:
         # at generate time.
         from backend_service.sdcpp_image_runtime import SdCppImageEngine
         self._sdcpp = SdCppImageEngine()
+
+    @property
+    def loaded_repo(self) -> str | None:
+        """Repo of the pipeline currently resident in memory, if any."""
+        return self._diffusers.loaded_repo
 
     def capabilities(self) -> dict[str, Any]:
         return self._diffusers.probe().to_dict()
@@ -974,7 +975,11 @@ class ImageRuntimeManager:
                     status["activeEngine"] = "mflux"
                     status["message"] = "Generated via mflux (MLX native)."
                     return images, status
+                except GenerationCancelled:
+                    raise
                 except Exception as exc:
+                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                        raise
                     status = self._diffusers.probe()
                     note = (
                         f"mflux failed ({type(exc).__name__}: {exc}) — "
@@ -985,6 +990,8 @@ class ImageRuntimeManager:
                 else:
                     _mflux_fallback_note = None
             else:
+                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    raise RuntimeError(probe.get("reason") or "mflux unavailable")
                 _mflux_fallback_note = probe.get("reason") or "mflux unavailable"
         else:
             _mflux_fallback_note = None
@@ -1004,7 +1011,11 @@ class ImageRuntimeManager:
                     status["activeEngine"] = "sd.cpp"
                     status["message"] = "Generated via stable-diffusion.cpp subprocess."
                     return images, status
+                except GenerationCancelled:
+                    raise
                 except Exception as exc:
+                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                        raise
                     _sdcpp_fallback_note = (
                         f"sd.cpp failed ({type(exc).__name__}: {exc}) — "
                         "falling back to diffusers."
@@ -1012,6 +1023,8 @@ class ImageRuntimeManager:
                 else:
                     _sdcpp_fallback_note = None
             else:
+                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    raise RuntimeError(probe.get("reason") or "sd.cpp unavailable")
                 _sdcpp_fallback_note = probe.get("reason") or "sd.cpp unavailable"
             # Combine mflux + sdcpp fallback notes if both fired (rare but
             # possible if a variant lists ``engine="sdcpp"`` AND the user

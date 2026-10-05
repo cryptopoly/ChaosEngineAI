@@ -85,6 +85,26 @@ class GateImageGenerationTests(unittest.TestCase):
         self.assertEqual(result["code"], "memory_gate_image_high_pressure")
 
 
+class GateImageModelSizeTests(unittest.TestCase):
+    def test_refuses_a_model_larger_than_free_memory(self):
+        # Qwen-Image (57 GB) on a 64 GB Mac: the OS kills the backend mid-load.
+        result = gate_image_generation(
+            available_gb=58.0, pressure_percent=30.0, model_gb=57.0, model_name="Qwen-Image",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "memory_gate_image_model_too_large")
+        self.assertIn("Qwen-Image", result["message"])
+        self.assertIn("58.0", result["message"])
+
+    def test_passes_a_model_that_fits(self):
+        self.assertIsNone(gate_image_generation(
+            available_gb=40.0, pressure_percent=30.0, model_gb=23.8, model_name="FLUX.1 Dev",
+        ))
+
+    def test_no_size_means_no_size_check(self):
+        self.assertIsNone(gate_image_generation(available_gb=8.0, pressure_percent=30.0))
+
+
 class GateVideoGenerationTests(unittest.TestCase):
     def test_passes_when_memory_is_healthy(self):
         result = gate_video_generation(available_gb=18.0, pressure_percent=40.0)
@@ -105,3 +125,38 @@ class GateVideoGenerationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MacosReclaimableMemoryTests(unittest.TestCase):
+    """psutil's "available" misses active file cache; the OS's own level does not."""
+
+    def _run(self, *, platform: str, stdout: str = "87\n", returncode: int = 0):
+        from unittest import mock
+
+        from backend_service.helpers import memory_gate
+
+        completed = mock.Mock(stdout=stdout, returncode=returncode)
+        with mock.patch("sys.platform", platform), \
+                mock.patch("subprocess.run", return_value=completed):
+            return memory_gate._macos_reclaimable_gb(64 * 1024 ** 3)
+
+    def test_uses_the_os_level_on_macos(self):
+        self.assertAlmostEqual(self._run(platform="darwin"), 64 * 0.87, places=3)
+
+    def test_is_none_off_macos(self):
+        self.assertIsNone(self._run(platform="linux"))
+
+    def test_ignores_an_unreadable_level(self):
+        self.assertIsNone(self._run(platform="darwin", stdout="not a number"))
+        self.assertIsNone(self._run(platform="darwin", stdout="0\n"))
+
+    def test_snapshot_never_reports_less_than_psutil(self):
+        from unittest import mock
+
+        from backend_service.helpers import memory_gate
+
+        with mock.patch.object(memory_gate, "_macos_reclaimable_gb", return_value=10.0):
+            available_gb, _ = memory_gate.snapshot_memory_signals()
+        import psutil
+
+        self.assertGreaterEqual(available_gb, round(psutil.virtual_memory().available / 1024 ** 3, 1) - 1.0)

@@ -1,18 +1,29 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { GpuBundleJobState, LongLiveJobState, MtplxJobState, VllmWslJobState } from "../api";
+import type {
+  GpuBundleJobState,
+  LongLiveJobState,
+  MfluxJobState,
+  MtplxJobState,
+  TensorfoldJobState,
+  VllmWslJobState,
+} from "../api";
 
 // The panel renders any background install job — GPU bundle, LongLive,
-// MTPLX, or WSL vLLM. All share the core fields (phase / message /
+// MTPLX, TensorFold, or WSL vLLM. All share the core fields (phase / message /
 // attempts / progress counters / targetDir). Treating the prop as a
 // union keeps all surfaces using one component without duplicating
 // auto-scroll, pip-noise filter, and terminal layout.
 export type InstallJobState =
   | GpuBundleJobState
   | LongLiveJobState
+  | MfluxJobState
   | MtplxJobState
+  | TensorfoldJobState
   | VllmWslJobState;
+
+type InstallLogVariant = "gpu-bundle" | "longlive" | "mflux" | "mtplx" | "tensorfold" | "vllm-wsl";
 
 // Optional fields read by the meta line. ``GpuBundleJobState`` has these;
 // ``LongLiveJobState`` doesn't. Centralised here so the meta renderer
@@ -29,7 +40,7 @@ interface InstallLogPanelProps {
   job: InstallJobState | null;
   // Title shown in the collapsed summary. Defaults to the GPU bundle
   // wording so existing call sites don't need to pass it.
-  variant?: "gpu-bundle" | "longlive" | "mtplx" | "vllm-wsl";
+  variant?: InstallLogVariant;
 }
 
 // Single scrollable terminal rendering the GPU bundle install progress.
@@ -104,18 +115,28 @@ function InstallLogMeta({ job, t }: { job: InstallJobState; t: TFunction }) {
   return <div className="install-log-meta">{fragments.join(" · ")}</div>;
 }
 
-function formatStatusLabel(job: InstallJobState, variant: "gpu-bundle" | "longlive" | "mtplx" | "vllm-wsl", t: TFunction): string {
+function formatStatusLabel(job: InstallJobState, variant: InstallLogVariant, t: TFunction): string {
   const noun = variant === "longlive"
     ? t("installLog.statusNoun.longlive", { defaultValue: "LongLive install" })
     : variant === "mtplx"
     ? t("installLog.statusNoun.mtplx", { defaultValue: "MTPLX install" })
+    : variant === "tensorfold"
+    ? t("installLog.statusNoun.tensorfold", { defaultValue: "TensorFold install" })
+    : variant === "mflux"
+    ? t("installLog.statusNoun.mflux", { defaultValue: "mflux install" })
     : variant === "vllm-wsl"
     ? t("installLog.statusNoun.vllmWsl", { defaultValue: "vLLM-in-WSL install" })
     : t("installLog.statusNoun.gpuBundle", { defaultValue: "Install" });
   if (job.phase === "error" || job.error) return t("installLog.status.failed", { noun, defaultValue: `${noun} failed — see log` });
   if (job.phase === "done") return t("installLog.status.complete", { noun, defaultValue: `${noun} complete — see log` });
   if (job.phase === "preflight") return t("installLog.status.starting", { noun, defaultValue: `${noun} starting…` });
-  if (job.phase === "verifying") return t("installLog.status.verifyingCuda", { defaultValue: "Verifying CUDA…" });
+  if (job.phase === "verifying") {
+    // The CUDA check only applies to the GPU installs; the Apple Silicon
+    // engines verify their own imports.
+    return variant === "mtplx" || variant === "tensorfold" || variant === "mflux"
+      ? t("installLog.status.verifying", { defaultValue: "Verifying install…" })
+      : t("installLog.status.verifyingCuda", { defaultValue: "Verifying CUDA…" });
+  }
   return t("installLog.status.inProgress", { noun, defaultValue: `${noun} in progress` });
 }
 

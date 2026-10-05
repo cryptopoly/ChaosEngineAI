@@ -2,7 +2,7 @@
 """ChaosEngineAI end-to-end test suite.
 
 Drives the CLI sequentially through phased scenarios covering every major
-app surface: chat (MLX + GGUF + cache strategies + DFlash + MTPLX),
+app surface: chat (MLX + GGUF + cache strategies + DFlash + MTPLX + TensorFold),
 chat compare, HTML challenge, image studio, video studio, setup probes,
 diagnostics. Emits a JSON + Markdown report under ``~/.chaosengine/test-results/``.
 
@@ -31,6 +31,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -115,6 +116,11 @@ class Capability:
     gguf_available: bool = False
     gguf_mtp_available: bool = False
     mtplx_available: bool = False
+    tensorfold_available: bool = False
+    tensorfold_models: list[str] = field(default_factory=list)
+    tensorfold_exclusive: list[str] = field(default_factory=list)
+    tensorfold_extras: list[str] = field(default_factory=list)
+    tensorfold_vision_models: list[str] = field(default_factory=list)
     dflash_supported_models: list[str] = field(default_factory=list)
     mtplx_supported_models: list[str] = field(default_factory=list)
     image_runtime_ready: bool = False
@@ -140,6 +146,12 @@ def probe_capabilities() -> Capability:
         dflash_info = system.get("dflash") or {}
         cap.mtplx_available = bool(mtplx_info.get("available"))
         cap.mtplx_supported_models = mtplx_info.get("supportedModels") or []
+        tensorfold_info = system.get("tensorfold") or {}
+        cap.tensorfold_available = bool(tensorfold_info.get("available"))
+        cap.tensorfold_models = tensorfold_info.get("supportedModels") or []
+        cap.tensorfold_exclusive = tensorfold_info.get("exclusiveModels") or []
+        cap.tensorfold_extras = tensorfold_info.get("extras") or []
+        cap.tensorfold_vision_models = tensorfold_info.get("visionModels") or []
         cap.dflash_supported_models = dflash_info.get("supportedModels") or []
 
     rc, runtime, _ = _cli_json("runtime", timeout=10.0)
@@ -213,11 +225,66 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", "mtplx-status failed", {}
         return "pass", "", payload
 
+    def _tensorfold():
+        rc, payload, _ = _cli_json("tensorfold-status")
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", "tensorfold-status failed", {}
+        for key in ("installed", "supported", "extras"):
+            if key not in payload:
+                return "fail", f"tensorfold-status missing '{key}'", payload
+        if not isinstance(payload["extras"], list):
+            return "fail", "tensorfold-status 'extras' is not a list", payload
+        return "pass", "", payload
+
+    # FU-093 feature gate: the TensorFold registry (served by the backend)
+    # and the Discover catalog must describe the same checkpoints — every
+    # exclusive one is listed with backend "tensorfold" (nothing else can
+    # load it), and every tested one has a catalog row.
+    def _catalog_tensorfold():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        info = (payload.get("system") or {}).get("tensorfold") or {}
+        supported = info.get("supportedModels") or []
+        exclusive = info.get("exclusiveModels") or []
+        if not supported:
+            return "fail", "system.tensorfold.supportedModels empty", {"info": info}
+        variants = {
+            v.get("repo"): v
+            for f in (payload.get("featuredModels") or [])
+            for v in (f.get("variants") or [])
+        }
+        problems = []
+        for repo in supported:
+            if repo not in variants:
+                problems.append(f"{repo}: no catalog row")
+        for repo in exclusive:
+            backend = (variants.get(repo) or {}).get("backend")
+            if repo in variants and backend != "tensorfold":
+                problems.append(f"{repo}: exclusive but catalog backend is {backend!r}")
+        # Image input (the optional ``vision`` extra): every checkpoint the
+        # backend says can read images must be a served one whose catalog row
+        # carries the vision capability, or the composer would never offer it.
+        for repo in info.get("visionModels") or []:
+            if repo not in supported:
+                problems.append(f"{repo}: vision model is not in supportedModels")
+            elif repo in variants and "vision" not in (variants[repo].get("capabilities") or []):
+                problems.append(f"{repo}: vision model's catalog row lacks the vision tag")
+        if problems:
+            return "fail", "; ".join(problems)[:300], {"problems": problems}
+        return "pass", "", {
+            "supported": len(supported),
+            "exclusive": len(exclusive),
+            "vision": len(info.get("visionModels") or []),
+        }
+
     def _inventory():
         return "pass", "", {
             "mlxModels": len(cap.local_mlx_models),
             "ggufFiles": len(cap.local_gguf_files),
             "mtplxAvailable": cap.mtplx_available,
+            "tensorfoldAvailable": cap.tensorfold_available,
+            "tensorfoldSupportedCount": len(cap.tensorfold_models),
             "mtplxSupportedCount": len(cap.mtplx_supported_models),
             "dflashSupportedCount": len(cap.dflash_supported_models),
         }
@@ -235,7 +302,12 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", f"workspace fetch failed: {err[:160]}", {}
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
         missing = []
-        for fid in ("qwen-3-5", "qwen-3-6"):
+        # Qwen 3.5/3.6 (FU-072) plus this release's multimodal frontier families:
+        # Kimi K2.6 (KimiK25ForConditionalGeneration), Llama 4 Scout
+        # (Llama4ForConditionalGeneration), MiniMax M3 (minimax_m3_vl) — all
+        # carry a functional vision encoder, verified against live config.json.
+        vision_families = ("qwen-3-5", "qwen-3-6", "qwen-3-8", "kimi-k2-6", "llama-4-scout", "minimax-m3")
+        for fid in vision_families:
             fam = fams.get(fid)
             if fam is None:
                 missing.append(f"{fid}: family absent")
@@ -243,15 +315,25 @@ def phase_0(cap: Capability) -> PhaseResult:
             caps = fam.get("capabilities") or []
             if "vision" not in caps:
                 missing.append(f"{fid}: family caps lack vision ({caps})")
+            # Qwen3.8 Flash Next is a separate (Qwen4-preview) architecture
+            # whose vision support is unverified — only the 27B rows are held
+            # to the policy.
             no_vision_variants = [
                 v.get("id") for v in (fam.get("variants") or [])
                 if "vision" not in (v.get("capabilities") or [])
+                and "Flash-Next" not in str(v.get("id"))
             ]
             if no_vision_variants:
                 missing.append(f"{fid}: variants without vision: {no_vision_variants[:3]}")
+        # Ornith 1.0 inherits Qwen 3.5's vision_config but ships text-only
+        # (agentic coding) — assert it must NOT advertise vision, guarding the
+        # FU-040-class broken-composer-button regression.
+        ornith = fams.get("ornith-1")
+        if ornith is not None and "vision" in (ornith.get("capabilities") or []):
+            missing.append("ornith-1: must be text-only, but advertises vision")
         if missing:
             return "fail", "; ".join(missing)[:300], {"missing": missing}
-        return "pass", "", {"checkedFamilies": ["qwen-3-5", "qwen-3-6"]}
+        return "pass", "", {"checkedFamilies": list(vision_families) + ["ornith-1 (text-only)"]}
 
     # Competitor-parity quick wins (#1 RAG, #3 Ollama-compat, #4 import,
     # #5 run-any-HF). Read-only liveness/shape smoke — no network, no
@@ -298,31 +380,112 @@ def phase_0(cap: Capability) -> PhaseResult:
     # New-feature gate for the frontier families added this release. Asserts
     # they surface in the live Discover catalog (/api/workspace) with their
     # full variant set — a shape check, no model load (these are 150 GB+).
+    # Per-family minimum variant counts keep the assertion honest as the
+    # catalog evolves (Mistral Large 3 ships 2 variants, Ornith 5, etc.).
     def _new_model_families():
         rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
         if rc != 0 or not isinstance(payload, dict):
             return "fail", f"workspace fetch failed: {err[:160]}", {}
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
+        expected = {
+            "deepseek-v4": 4, "glm-5": 4, "minimax-m2": 3,
+            "ornith-1": 9, "kimi-k2-6": 3, "llama-4-scout": 3,
+            "minimax-m3": 3, "mistral-large-3": 2,
+            # 2026-09 additions (FU-088).
+            "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 6, "minicpm-5": 3,
+            # FU-093: TensorFold-served checkpoints.
+            "glm-5-3-flash": 1,
+            # FU-103: Kolibri 1 (Aleph Alpha), community MLX builds.
+            "kolibri-1": 3,
+        }
         missing = []
-        for fid in ("deepseek-v4", "glm-5"):
+        for fid, min_variants in expected.items():
             fam = fams.get(fid)
             if fam is None:
                 missing.append(f"{fid}: absent")
-            elif len(fam.get("variants") or []) < 4:
-                missing.append(f"{fid}: only {len(fam.get('variants') or [])} variants")
+            elif len(fam.get("variants") or []) < min_variants:
+                missing.append(f"{fid}: {len(fam.get('variants') or [])}<{min_variants} variants")
         if missing:
-            return "fail", "; ".join(missing)[:200], {"missing": missing}
-        return "pass", "", {"families": ["deepseek-v4", "glm-5"]}
+            return "fail", "; ".join(missing)[:300], {"missing": missing}
+        return "pass", "", {"families": sorted(expected)}
+
+    # FU-087: every GGUF row in a multi-quant repo must pin its file, or a
+    # download pulls every quant (tens of GB to terabytes) and the loader
+    # runs the largest. Rows in single-file repos may omit the pin, so this
+    # checks the pin reaches the payload for the known multi-quant repos.
+    def _gguf_pins():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        variants = {
+            v.get("repo"): v
+            for f in (payload.get("featuredModels") or [])
+            for v in (f.get("variants") or [])
+        }
+        must_pin = (
+            "lmstudio-community/Qwen3.6-27B-GGUF", "lmstudio-community/Qwen3.8-27B-GGUF",
+            "ggml-org/Qwen3.8-27B-GGUF", "unsloth/GLM-5.1-GGUF",
+            "unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
+        )
+        unpinned = [repo for repo in must_pin if not (variants.get(repo) or {}).get("ggufFile")]
+        if unpinned:
+            return "fail", f"GGUF rows missing ggufFile: {unpinned}", {"unpinned": unpinned}
+        pinned = sum(1 for v in variants.values() if v.get("ggufFile"))
+        return "pass", "", {"pinnedRows": pinned}
+
+    # Gemma 4 dedup gate: the family must appear exactly once (a prior staging
+    # collision rendered two "Gemma 4" cards) with the full 10-variant union.
+    def _gemma4_single_family():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        gemmas = [f for f in (payload.get("featuredModels") or []) if f.get("id") == "gemma-4"]
+        if len(gemmas) != 1:
+            return "fail", f"expected exactly 1 gemma-4 family, got {len(gemmas)}", {"count": len(gemmas)}
+        nvar = len(gemmas[0].get("variants") or [])
+        if nvar < 10:
+            return "fail", f"gemma-4 has {nvar} variants, expected the 10-variant union", {"variants": nvar}
+        return "pass", "", {"gemma4Variants": nvar}
+
+    # Voice I/O feature gate (new this release). Read-only liveness + shape:
+    # /api/voice/runtime must report STT/TTS availability + the model/voice
+    # catalogs. No transcription/synthesis is run (would need a recorded clip
+    # + a downloaded Whisper/Kokoro model) — this asserts the routes are wired
+    # and the runtime probe returns the documented contract.
+    def _voice_runtime():
+        rc, payload, err = _cli_json("call", "GET", "/api/voice/runtime", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"voice runtime fetch failed: {err[:160]}", {}
+        required = {"sttAvailable", "ttsAvailable", "platform", "sttModels", "ttsVoices"}
+        absent = required - set(payload)
+        if absent:
+            return "fail", f"voice runtime missing keys: {sorted(absent)}", {"keys": sorted(payload)}
+        if not isinstance(payload.get("sttModels"), list) or not payload["sttModels"]:
+            return "fail", "voice runtime sttModels empty/not-a-list", {}
+        if not isinstance(payload.get("ttsVoices"), list) or not payload["ttsVoices"]:
+            return "fail", "voice runtime ttsVoices empty/not-a-list", {}
+        return "pass", "", {
+            "platform": payload.get("platform"),
+            "sttAvailable": payload.get("sttAvailable"),
+            "ttsAvailable": payload.get("ttsAvailable"),
+            "sttModels": len(payload["sttModels"]),
+            "ttsVoices": len(payload["ttsVoices"]),
+        }
 
     for name, fn in [
         ("health", _health), ("routes", _routes), ("gpu-status", _gpu),
-        ("mtplx-status", _mtplx), ("inventory", _inventory),
+        ("mtplx-status", _mtplx), ("tensorfold-status", _tensorfold),
+        ("inventory", _inventory),
         ("catalog vision tags", _catalog_vision),
+        ("tensorfold catalog vs registry (FU-093)", _catalog_tensorfold),
         ("rag status (#1)", _rag_status),
         ("ollama-compat (#3)", _ollama_compat),
         ("model import scan (#4)", _model_import_scan),
         ("run-from-hf guard (#5)", _resolve_hf_guard),
-        ("new model families (DeepSeek V4 / GLM-5)", _new_model_families),
+        ("new model families (frontier + Ornith)", _new_model_families),
+        ("text GGUF file pins (FU-087)", _gguf_pins),
+        ("gemma-4 single family (dedup)", _gemma4_single_family),
+        ("voice I/O runtime", _voice_runtime),
     ]:
         phase.checks.append(_check(name, fn))
     phase.status = "fail" if any(c.status == "fail" for c in phase.checks) else "pass"
@@ -431,7 +594,7 @@ def _specdec_fallback_reason(note: str) -> str | None:
 
 
 def phase_1(cap: Capability) -> PhaseResult:
-    phase = PhaseResult(phase=1, name="Chat (MLX + GGUF + cache + DFlash + MTPLX)")
+    phase = PhaseResult(phase=1, name="Chat (MLX + GGUF + cache + DFlash + MTPLX + TensorFold)")
     if not cap.backend_reachable:
         phase.status = "skip"
         phase.checks.append(CheckResult("phase 1", "skip", reason="backend not reachable"))
@@ -561,6 +724,61 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "pass", "", detail
         return "skip", "no MTPLX-capable model on disk", {}
 
+    # 1d2. TensorFold (FU-093). Exact speculative decoding through the
+    # isolated tensorfold-venv engine. The spec-dec toggle routes a tested
+    # checkpoint to TensorFoldEngine, so assert the load really reports
+    # engine == "tensorfold" (a startup failure falls back to standard MLX,
+    # which still streams text and would otherwise pass) and that drafting
+    # was requested. Skips when TensorFold isn't installed or no checkpoint
+    # it serves is on disk — the smallest one is tried first.
+    def _tensorfold_engine():
+        if not cap.tensorfold_available:
+            return "skip", "TensorFold not installed", {}
+        for repo in cap.tensorfold_models:
+            leaf = repo.split("/")[-1]
+            pick = _pick_model_by_ref_prefix(cap.local_mlx_models, leaf)
+            if not pick:
+                continue
+            ref, path = pick
+            status, reason, detail = _load_unload_prompt(
+                leaf, path=path, backend="mlx", spec=True,
+                canonical_repo=repo, context=8192, max_tokens=24,
+                load_timeout=1800.0,
+            )
+            if status != "pass":
+                return status, reason, detail
+            note = (detail.get("runtimeNote") or "")
+            if detail.get("engine") != "tensorfold":
+                return "fail", f"TensorFold expected but engine was {detail.get('engine')!r}: {note[:160]}", detail
+            if not detail.get("speculativeDecoding"):
+                return "fail", f"TensorFold loaded without speculative decoding: {note[:160]}", detail
+            # With the vision extra installed, a checkpoint that reads images
+            # must come up with image input on (the composer's "Attach image"
+            # follows this flag); without it, never.
+            wants_vision = "vision" in cap.tensorfold_extras and repo in cap.tensorfold_vision_models
+            if bool(detail.get("visionEnabled")) != wants_vision:
+                return "fail", (
+                    f"TensorFold vision expected {wants_vision} but visionEnabled was "
+                    f"{detail.get('visionEnabled')!r}: {note[:120]}"
+                ), detail
+            return "pass", "", detail
+        return "skip", "no TensorFold-served checkpoint on disk", {}
+
+    # 1d3. Kolibri 1 (FU-103). mlx-lm ships no ``kolibri1`` architecture, so the
+    # worker loads the one vendored in backend_service/mlx_models; a load that
+    # fails on an unknown model type is the regression this guards. Asks for a
+    # German answer with thinking off (reasoning_effort "none"). Skips when no
+    # Kolibri MLX build is on disk (they are 25-44 GB).
+    def _kolibri():
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "kolibri-1")
+        if not pick:
+            return "skip", "no Kolibri-1 MLX build on disk", {}
+        ref, path = pick
+        return _load_unload_prompt(
+            ref, path=path, backend="mlx", context=4096, max_tokens=24,
+            prompt="Antworte mit zwei Wörtern: Hallo!", load_timeout=1800.0,
+        )
+
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
     def _gguf():
@@ -610,6 +828,35 @@ def phase_1(cap: Capability) -> PhaseResult:
         low = note.lower()
         if "mtp" not in low or "active" not in low:
             return "fail", f"MTP-GGUF + spec loaded but note doesn't report MTP active: {note[:160]}", detail
+        return "pass", "", detail
+
+    # 1e3. llama.cpp speculative lane for a plain GGUF (FU-089). Net-new
+    # check: with --spec on a non-MTP GGUF the engine must pick a drafter
+    # sidecar (dflash-/dspark-/eagle3-/mtp- beside the file) or fall back
+    # to draft-free ngram-mod — and say which in the runtime note. Also
+    # guards the frontend fix where GGUF spec requests were cleared.
+    def _gguf_spec_lane():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        if not cap.gguf_mtp_available:
+            return "skip", "llama-server lacks --spec-type (run scripts/update-llama-cpp.sh)", {}
+        plain = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if "mtp" not in ref.lower() and "mtp" not in Path(p).name.lower()
+        ]
+        if not plain:
+            return "skip", "no non-MTP GGUF on disk", {}
+        ref, gguf_path = plain[0]
+        status, reason, detail = _load_unload_prompt(
+            ref, path=gguf_path, backend="gguf", spec=True,
+            cache_strategy="native", context=4096, max_tokens=24,
+            load_timeout=600.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        low = (detail.get("runtimeNote") or "").lower()
+        if "speculative decoding active" not in low:
+            return "fail", f"spec requested but note reports no active lane: {low[:160]}", detail
         return "pass", "", detail
 
     # 1f. Long context cache preview
@@ -668,7 +915,9 @@ def phase_1(cap: Capability) -> PhaseResult:
         ctoks = metrics.get("completionTokens") or 0
         return ("pass" if ctoks > 0 else "fail"), f"completionTokens={ctoks}", {"completionTokens": ctoks}
 
-    # 1i. MLX persistent prompt-cache reuse (tier 4). New-feature gate +
+    # 1i. MLX persistent prompt-cache reuse (tier 4; hybrid models via the
+    # FU-090 recurrent checkpoint — the default Qwen3.6-35B-A3B pick is a
+    # hybrid GDN model, so this now exercises that path). New-feature gate +
     # regression guard: two same-session turns; turn-2 must reprocess far
     # fewer prompt tokens than turn-1 (the cache reuses the prefix + prefills
     # only the new suffix). Without reuse, turn-2 promptTokens would EXCEED
@@ -722,8 +971,11 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + DFlash speculative", _mlx_dflash),
         ("MLX + DDTree speculative", _mlx_ddtree),
         ("MLX + MTPLX speculative", _mtplx),
+        ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
+        ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
+        ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),
@@ -862,6 +1114,65 @@ def phase_4(cap: Capability) -> PhaseResult:
             return "fail", "catalog fetch failed", {}
         return "pass", "", {"families": len(payload.get("families") or [])}
 
+    # New-feature gate: the image families added this release (Qwen-Image,
+    # Z-Image Turbo, FLUX.2) must surface in the live image catalog with a
+    # diffusers runtime — they were promoted out of FU-061 "watching upstream"
+    # once diffusers 0.38 shipped their pipeline classes. Shape check only.
+    def _new_image_families():
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        fams = {f.get("id"): f for f in (payload.get("families") or [])}
+        missing = [fid for fid in ("qwen-image", "z-image", "flux-2") if fid not in fams]
+        if missing:
+            return "fail", f"image families absent: {missing}", {"present": sorted(fams)}
+        # Qwen-Image-2.1 ships as a stable-diffusion.cpp variant of the qwen-image
+        # family (FU-096): assert it is listed and routed to the sd.cpp engine.
+        q21 = next(
+            (v for v in (fams.get("qwen-image") or {}).get("variants", [])
+             if v.get("id") == "leejet/Qwen-Image-2.1-GGUF-q4k"),
+            None,
+        )
+        if q21 is None or q21.get("engine") != "sdcpp":
+            return "fail", f"Qwen-Image-2.1 sd.cpp variant missing or mis-routed: {q21 and q21.get('engine')}", {}
+        # FU-096: the MLX variants run through the mflux engine (own venv).
+        wanted_mflux = {
+            "Qwen/Qwen-Image-2.1-mflux": "qwen-image",
+            "black-forest-labs/FLUX.2-klein-4B-mflux": "flux-2",
+        }
+        for variant_id, family_id in wanted_mflux.items():
+            found = next(
+                (v for v in (fams.get(family_id) or {}).get("variants", []) if v.get("id") == variant_id),
+                None,
+            )
+            if found is None or found.get("engine") != "mflux":
+                return "fail", f"{variant_id} missing or not routed to mflux", {}
+        return "pass", "", {"families": ["qwen-image", "z-image", "flux-2"]}
+
+    # FU-096 (e): the FLUX.1 sd.cpp variants point at sd.cpp's own GGUF repos
+    # (the city96 Q4_K_M names they used to carry do not exist on the Hub) and
+    # download the GGUF only.
+    def _flux_sdcpp_catalog():
+        rc, payload, err = _cli_json("image-catalog", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"catalog fetch failed: {err[:160]}", {}
+        variants = {
+            v.get("id"): v
+            for f in (payload.get("families") or [])
+            for v in f.get("variants", [])
+        }
+        for variant_id in ("leejet/FLUX.1-schnell-gguf-q4k", "leejet/FLUX.1-dev-gguf-q4k"):
+            variant = variants.get(variant_id)
+            if variant is None or variant.get("engine") != "sdcpp":
+                return "fail", f"{variant_id} missing or not routed to sd.cpp", {}
+            if variant.get("repo") != variant.get("ggufRepo") or not str(variant.get("ggufFile") or "").endswith(".gguf"):
+                return "fail", f"{variant_id} does not pin its own GGUF repo and file", {}
+        missing_on_hub = {"flux1-schnell-Q4_K_M.gguf", "flux1-dev-Q4_K_M.gguf"}
+        dead = [vid for vid, v in variants.items() if v.get("ggufFile") in missing_on_hub]
+        if dead:
+            return "fail", f"FLUX variants still pin a Q4_K_M file the Hub does not have: {dead}", {}
+        return "pass", "", {}
+
     def _library():
         rc, payload, _ = _cli_json("image-library", timeout=15.0)
         if rc != 0 or not isinstance(payload, dict):
@@ -880,6 +1191,9 @@ def phase_4(cap: Capability) -> PhaseResult:
         installed = [m for m in models if m.get("availableLocally") or m.get("hasLocalData")]
         if not installed:
             return "skip", "no image model installed locally", {}
+        # Smallest diffusers model first: the smoke must not pick a model that
+        # needs more memory than the host has (Qwen-Image is 57 GB).
+        installed.sort(key=lambda m: (m.get("engine") == "sdcpp", float(m.get("sizeGb") or 1e9)))
         model_id = installed[0].get("id") or installed[0].get("repo")
         if not model_id:
             return "skip", "could not resolve installed image model id", {}
@@ -904,6 +1218,8 @@ def phase_4(cap: Capability) -> PhaseResult:
                 "Memory pressure is",
                 "memory_gate_image",
                 "memory_gate_video",
+                # Model larger than free memory (e.g. Qwen-Image on a 64 GB Mac).
+                "of free memory to load",
             )
             if any(marker in err for marker in memory_gate_markers):
                 return "skip", f"image-generate skipped — host memory gate fired: {err[:240]}", {}
@@ -911,7 +1227,67 @@ def phase_4(cap: Capability) -> PhaseResult:
         _cli("image-unload", timeout=30.0)
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
-    for name, fn in [("catalog", _catalog), ("library", _library), ("runtime", _runtime), ("generate", _generate)]:
+    # FU-096: the mflux engine end to end (own venv, one process per image).
+    # Skips when the engine is not installed or its checkpoint is not on disk.
+    def _generate_mflux():
+        rc, status, _ = _cli_json("mflux-status", timeout=15.0)
+        if rc != 0 or not isinstance(status, dict):
+            return "fail", "mflux-status failed", {}
+        if not status.get("supported"):
+            return "skip", "mflux needs Apple Silicon", {}
+        if not status.get("installed"):
+            return "skip", "mflux engine not installed", {}
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        model_id = "black-forest-labs/FLUX.2-klein-4B-mflux"
+        if model_id not in installed:
+            return "skip", "FLUX.2 klein 4B not downloaded", {}
+        rc, payload, err = _cli_json(
+            "image-generate", "a red fox in the snow, golden hour",
+            "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "900",
+        )
+        if rc != 0:
+            if "of free memory to load" in err or "Memory pressure is" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            return "fail", f"mflux image-generate rc={rc}: {err[:300]}", {}
+        text = str(payload)
+        if "mflux" not in text:
+            return "fail", f"expected an mflux run, got: {text[:200]}", {}
+        _cli("image-unload", timeout=30.0)
+        return "pass", "", {"modelId": model_id}
+
+    # FU-096 (e): FLUX.1 schnell through sd.cpp with its T5 / CLIP-L / VAE companion
+    # files. Skips when the GGUF is not on disk or the engine is unavailable.
+    def _generate_flux_sdcpp():
+        model_id = "leejet/FLUX.1-schnell-gguf-q4k"
+        rc, lib, _ = _cli_json("image-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        if model_id not in installed:
+            return "skip", "FLUX.1 schnell sd.cpp GGUF not downloaded", {}
+        rc, payload, err = _cli_json(
+            "image-generate", "a red fox in the snow, golden hour",
+            "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "1200",
+        )
+        if rc != 0:
+            if "of free memory to load" in err or "Memory pressure is" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            if "sd.cpp" in err and ("binary" in err or "not found" in err or "unavailable" in err):
+                return "skip", f"sd.cpp engine unavailable: {err[:200]}", {}
+            return "fail", f"sd.cpp image-generate rc={rc}: {err[:300]}", {}
+        text = str(payload)
+        if "sd.cpp" not in text and "stable-diffusion.cpp" not in text:
+            return "fail", f"expected an sd.cpp run, got: {text[:200]}", {}
+        _cli("image-unload", timeout=30.0)
+        return "pass", "", {"modelId": model_id}
+
+    for name, fn in [
+        ("catalog", _catalog),
+        ("new image families (Qwen-Image / Z-Image / FLUX.2)", _new_image_families),
+        ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
+        ("library", _library), ("runtime", _runtime), ("generate", _generate),
+        ("generate via mflux (FU-096)", _generate_mflux),
+        ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
+    ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
@@ -990,8 +1366,55 @@ def phase_5(cap: Capability) -> PhaseResult:
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
 
+    # FU-102: diffusers' UniPC scheduler diverges on MPS and Wan came out burnt
+    # (over 55 % of the pixels clipped to white). Apple Silicon only; skips when
+    # Wan 2.2 TI2V 5B is not downloaded or ffmpeg is not available.
+    def _wan_not_burnt():
+        import platform
+        import tempfile
+
+        if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+            return "skip", "the UniPC divergence is specific to MPS (Apple Silicon)", {}
+        model_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        rc, lib, _ = _cli_json("video-library", timeout=15.0)
+        installed = {m.get("id") for m in ((lib or {}).get("models") or []) if m.get("availableLocally")}
+        if model_id not in installed:
+            return "skip", "Wan 2.2 TI2V 5B not downloaded", {}
+        try:
+            import imageio_ffmpeg  # type: ignore
+            import numpy as np  # type: ignore
+            from PIL import Image  # type: ignore
+        except ImportError as exc:
+            return "skip", f"needs imageio-ffmpeg, numpy and Pillow in the test environment: {exc}", {}
+        rc, payload, err = _cli_json(
+            "video-generate", "a calm lake at sunrise, soft pastel colors, gentle ripples, realistic",
+            "--model", model_id, "--width", "640", "--height", "352", "--frames", "9",
+            "--seed", "7", "--timeout", "2400",
+        )
+        if rc != 0:
+            if "Memory pressure is" in err or "memory_gate" in err:
+                return "skip", f"host memory gate fired: {err[:200]}", {}
+            return "fail", f"video-generate rc={rc}: {err[:300]}", {}
+        path = ((payload or {}).get("artifact") or {}).get("videoPath")
+        if not path:
+            return "fail", "video-generate returned no videoPath", {}
+        frame_path = Path(tempfile.mkdtemp(prefix="ce-wan-")) / "frame.png"
+        done = subprocess.run(
+            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", path,
+             "-vf", "select=eq(n\\,4)", "-vframes", "1", str(frame_path)],
+            capture_output=True, text=True, timeout=120,
+        )
+        if done.returncode != 0 or not frame_path.exists():
+            return "fail", f"could not read a frame from {path}: {done.stderr[:200]}", {}
+        pixels = np.asarray(Image.open(frame_path).convert("RGB"))
+        clipped = float((pixels >= 250).mean())
+        if clipped > 0.20:
+            return "fail", f"{clipped:.0%} of the pixels are clipped to white (a healthy frame is under 5 %)", {}
+        return "pass", "", {"clippedShare": round(clipped, 4)}
+
     for name, fn in [("catalog", _catalog), ("library", _library),
-                      ("mlx-runtime", _mlx_runtime), ("generate", _generate)]:
+                      ("mlx-runtime", _mlx_runtime), ("generate", _generate),
+                      ("Wan TI2V is not burnt on MPS (FU-102)", _wan_not_burnt)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
@@ -1012,6 +1435,8 @@ def phase_6(cap: Capability) -> PhaseResult:
 
     probes = [
         ("mtplx-status", "mtplx-status"),
+        ("tensorfold-status", "tensorfold-status"),
+        ("mflux-status", "mflux-status"),
         ("longlive-status", "longlive-status"),
         ("wan-status", "wan-status"),
         ("wan-inventory", "wan-inventory"),
@@ -1137,13 +1562,217 @@ def phase_7(cap: Capability) -> PhaseResult:
 
 
 # ---------------------------------------------------------------------------
+# Phase 8 — Voice I/O (STT + TTS + gallery)
+# ---------------------------------------------------------------------------
+
+
+def _voice_http(
+    method: str,
+    path: str,
+    *,
+    body: bytes | None = None,
+    content_type: str | None = None,
+    timeout: float = 120.0,
+) -> tuple[int, bytes]:
+    """Direct HTTP against the backend with bearer auth.
+
+    The generic CLI ``call`` dispatcher JSON-decodes responses and can't
+    send multipart bodies, so the voice checks (raw WAV responses, file
+    uploads) talk to the backend directly. Auth token comes from the
+    exempt ``/api/auth/session`` route — same handshake the frontend uses.
+    """
+    base = f"http://{_HOST}:{_PORT}"
+    token: str | None = None
+    try:
+        with urllib.request.urlopen(f"{base}/api/auth/session", timeout=5.0) as resp:
+            token = (json.loads(resp.read().decode("utf-8")) or {}).get("apiToken")
+    except Exception:
+        pass
+    request = urllib.request.Request(f"{base}{path}", data=body, method=method)
+    if content_type:
+        request.add_header("Content-Type", content_type)
+    if token:
+        request.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read()
+
+
+def _silence_wav(seconds: float = 0.4, sample_rate: int = 16000) -> bytes:
+    """Minimal valid mono 16-bit PCM WAV of silence (stdlib only)."""
+    import io
+    import wave
+
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        wav.writeframes(b"\x00\x00" * int(sample_rate * seconds))
+    return buffer.getvalue()
+
+
+def phase_8(cap: Capability) -> PhaseResult:
+    phase = PhaseResult(phase=8, name="Voice I/O")
+    if not cap.backend_reachable:
+        phase.status = "skip"
+        phase.checks.append(CheckResult("phase 8", "skip", reason="backend not reachable"))
+        return phase
+
+    runtime_payload: dict[str, Any] = {}
+    synth_result: dict[str, bytes | None] = {"wav": None}
+
+    def _runtime():
+        code, body = _voice_http("GET", "/api/voice/runtime", timeout=20.0)
+        if code == 404:
+            return "skip", "voice routes not present in this build", {}
+        if code != 200:
+            return "fail", f"voice runtime HTTP {code}", {}
+        runtime_payload.update(json.loads(body.decode("utf-8")))
+        return "pass", "", {
+            "sttAvailable": runtime_payload.get("sttAvailable"),
+            "ttsAvailable": runtime_payload.get("ttsAvailable"),
+            "ttsModelInstalled": runtime_payload.get("ttsModelInstalled"),
+        }
+
+    def _synthesize():
+        if not runtime_payload.get("ttsAvailable"):
+            return "skip", "TTS backend not installed", {}
+        if runtime_payload.get("ttsModelInstalled") is False:
+            return "skip", "Kokoro model not downloaded (won't pull 350 MB in a test run)", {}
+        payload = json.dumps(
+            {"text": "End to end voice check.", "voice": "af_heart", "speed": 1.0}
+        ).encode("utf-8")
+        code, body = _voice_http(
+            "POST", "/api/voice/synthesize", body=payload,
+            content_type="application/json", timeout=180.0,
+        )
+        if code != 200:
+            return "fail", f"synthesize HTTP {code}: {body[:160]!r}", {}
+        if body[:4] != b"RIFF":
+            return "fail", "synthesize response is not a WAV (no RIFF magic)", {}
+        synth_result["wav"] = body
+        return "pass", "", {"wavBytes": len(body)}
+
+    def _transcribe():
+        if not runtime_payload.get("sttAvailable"):
+            return "skip", "STT backend not installed", {}
+        installed = [
+            m for m in (runtime_payload.get("sttModels") or [])
+            if m.get("installed") and m.get("backendInstalled") is not False
+        ]
+        if not installed:
+            return "skip", "no STT model downloaded (won't pull one in a test run)", {}
+        wav = synth_result["wav"] or _silence_wav()
+        boundary = "----chaosengine-e2e-voice"
+        body = b"".join([
+            (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="audio"; filename="clip.wav"\r\n'
+                "Content-Type: audio/wav\r\n\r\n"
+            ).encode("utf-8"),
+            wav,
+            (
+                f"\r\n--{boundary}\r\n"
+                'Content-Disposition: form-data; name="model"\r\n\r\n'
+                f"{installed[0]['id']}\r\n"
+                f"--{boundary}--\r\n"
+            ).encode("utf-8"),
+        ])
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=body,
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=300.0,
+        )
+        if code != 200:
+            return "fail", f"transcribe HTTP {code}: {resp[:160]!r}", {}
+        payload = json.loads(resp.decode("utf-8"))
+        if "text" not in payload:
+            return "fail", "transcribe response missing 'text' key", {}
+        return "pass", "", {
+            "transcript": str(payload["text"])[:60],
+            "usedSynthesizedClip": synth_result["wav"] is not None,
+        }
+
+    def _gallery():
+        payload = json.dumps({"text": "e2e voice gallery check"}).encode("utf-8")
+        code, body = _voice_http(
+            "POST", "/api/voice/gallery/transcript", body=payload,
+            content_type="application/json", timeout=15.0,
+        )
+        if code != 200:
+            return "fail", f"gallery save HTTP {code}", {}
+        item_id = json.loads(body.decode("utf-8")).get("id")
+        code, body = _voice_http("GET", "/api/voice/gallery", timeout=15.0)
+        if code != 200:
+            return "fail", f"gallery list HTTP {code}", {}
+        ids = [item.get("id") for item in json.loads(body.decode("utf-8")).get("items", [])]
+        if item_id not in ids:
+            return "fail", "saved item missing from gallery listing", {}
+        code, _body = _voice_http("DELETE", f"/api/voice/gallery/{item_id}", timeout=15.0)
+        if code != 200:
+            return "fail", f"gallery delete HTTP {code}", {}
+        return "pass", "", {"itemId": item_id}
+
+    # FU-092 regression guard: the STT list must only offer weights this
+    # host's backend can read — never MLX ids on Windows/Linux.
+    def _stt_sources():
+        rows = runtime_payload.get("sttModels") or []
+        if not rows:
+            return "skip", "no STT rows reported", {}
+        plat = runtime_payload.get("platform")
+        wrong = [
+            r.get("id") for r in rows
+            if (plat != "apple_silicon" and str(r.get("id", "")).startswith("mlx-community/"))
+            or (plat == "apple_silicon" and r.get("backend") == "faster-whisper")
+        ]
+        if wrong:
+            return "fail", f"STT rows not runnable on {plat}: {wrong}", {}
+        return "pass", "", {"platform": plat, "rows": [r.get("id") for r in rows]}
+
+    def _stt_rejects_unknown_model():
+        boundary = "----chaosengine-e2e-voice-bad"
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="audio"; filename="clip.wav"\r\n'
+            "Content-Type: audio/wav\r\n\r\n"
+        ).encode("utf-8") + _silence_wav() + (
+            f"\r\n--{boundary}\r\n"
+            'Content-Disposition: form-data; name="model"\r\n\r\n'
+            "/etc/passwd\r\n"
+            f"--{boundary}--\r\n"
+        ).encode("utf-8")
+        code, _resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=body,
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=30.0,
+        )
+        if code == 404:
+            return "skip", "voice routes not present in this build", {}
+        return ("pass", "", {}) if code == 400 else ("fail", f"expected 400, got {code}", {})
+
+    for name, fn in [
+        ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
+        ("stt rejects unknown model", _stt_rejects_unknown_model),
+        ("synthesize smoke", _synthesize),
+        ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),
+    ]:
+        phase.checks.append(_check(name, fn))
+    fails = [c for c in phase.checks if c.status == "fail"]
+    phase.status = "fail" if fails else (
+        "skip" if all(c.status == "skip" for c in phase.checks) else "pass"
+    )
+    return phase
+
+
+# ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
 
 
 PHASES = {
     0: phase_0, 1: phase_1, 2: phase_2, 3: phase_3,
-    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7,
+    4: phase_4, 5: phase_5, 6: phase_6, 7: phase_7, 8: phase_8,
 }
 
 
@@ -1206,7 +1835,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.smoke:
         # Compare (Phase 2) and full Chat sweep (Phase 1) are heavyweight —
         # both need real model loads. Smoke proves the surface without those.
-        wanted = [0, 3, 4, 5, 6, 7]
+        wanted = [0, 3, 4, 5, 6, 7, 8]
     else:
         wanted = sorted(PHASES.keys())
 

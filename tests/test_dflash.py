@@ -28,7 +28,7 @@ class DraftModelLookupTests(unittest.TestCase):
     def test_exact_match_llama(self):
         self.assertEqual(
             get_draft_model("meta-llama/Llama-3.1-8B-Instruct"),
-            "z-lab/Llama-3.1-8B-Instruct-DFlash",
+            "z-lab/LLaMA3.1-8B-Instruct-DFlash-UltraChat",
         )
 
     def test_explicit_alias_mlx_community(self):
@@ -50,8 +50,8 @@ class DraftModelLookupTests(unittest.TestCase):
 
     def test_fuzzy_match_community_prefix_strip(self):
         # Community prefix stripped, then model name matched
-        result = get_draft_model("mlx-community/Qwen3.5-7B-bf16")
-        self.assertEqual(result, "z-lab/Qwen3.5-7B-DFlash")
+        result = get_draft_model("mlx-community/Qwen3.5-9B-bf16")
+        self.assertEqual(result, "z-lab/Qwen3.5-9B-DFlash")
 
     def test_lmstudio_community_prefix_fuzzy_match(self):
         """lmstudio-community GGUF repos should match via prefix stripping."""
@@ -172,6 +172,28 @@ class DraftModelLookupTests(unittest.TestCase):
             "z-lab/Qwen3-Coder-Next-DFlash",
         )
 
+    def test_qwen36_27b_dense_drafter(self):
+        """The dense 27B got its own drafter (2026-04); the FU-041 note
+        that it "has no drafter" is superseded."""
+        for ref in ("Qwen/Qwen3.6-27B", "mlx-community/Qwen3.6-27B-4bit"):
+            self.assertEqual(get_draft_model(ref), "z-lab/Qwen3.6-27B-DFlash", ref)
+
+    def test_gpt_oss_uses_openai_org_and_lowercase_drafters(self):
+        self.assertEqual(get_draft_model("openai/gpt-oss-20b"), "z-lab/gpt-oss-20b-DFlash")
+        self.assertEqual(get_draft_model("mlx-community/gpt-oss-120B-4bit"), "z-lab/gpt-oss-120b-DFlash")
+
+    def test_gemma4_12b_drafter(self):
+        self.assertEqual(get_draft_model("google/gemma-4-12B-it"), "z-lab/gemma4-12B-it-DFlash")
+
+    def test_every_drafter_is_a_z_lab_repo(self):
+        from dflash import DRAFT_MODEL_MAP, _ALIASES
+
+        for target, draft in DRAFT_MODEL_MAP.items():
+            self.assertTrue(draft.startswith("z-lab/"), target)
+        # Every alias must land on a real map key, never dangle.
+        for alias, canonical in _ALIASES.items():
+            self.assertIn(canonical, DRAFT_MODEL_MAP, alias)
+
 
 class ModelResolutionTests(unittest.TestCase):
     def test_resolve_dflash_target_prefers_canonical_repo(self):
@@ -208,18 +230,24 @@ class AvailabilityDetectionTests(unittest.TestCase):
     def test_mlx_unavailable_when_missing(self, mock_find_spec):
         self.assertFalse(is_mlx_available())
 
-    @patch("dflash.importlib.util.find_spec")
-    def test_vllm_available_when_dflash_model_exists(self, mock_find_spec):
-        def find_spec_side_effect(name):
-            if name == "dflash.model":
-                return SimpleNamespace(name="dflash.model")
-            return None
-        mock_find_spec.side_effect = find_spec_side_effect
-        self.assertTrue(is_vllm_available())
+    # FU-091: the CUDA lane is vLLM's built-in DFlash method, gated on
+    # the installed vLLM version — not the PyPI ``dflash`` package.
+    def test_vllm_available_at_min_version(self):
+        for raw in ("0.28.0", "0.30.0", "0.28.1.dev12+gabc", "1.0.0"):
+            with patch("dflash.vllm_version", return_value=raw):
+                self.assertTrue(is_vllm_available(), raw)
 
-    @patch("dflash.importlib.util.find_spec", return_value=None)
-    def test_vllm_unavailable_when_missing(self, mock_find_spec):
-        self.assertFalse(is_vllm_available())
+    def test_vllm_unavailable_below_min_or_missing(self):
+        for raw in ("0.27.9", "0.24.0", None, "garbage"):
+            with patch("dflash.vllm_version", return_value=raw):
+                self.assertFalse(is_vllm_available(), raw)
+
+    def test_vllm_probe_ignores_pypi_dflash_package(self):
+        # Even if something named ``dflash.model`` resolved, only vLLM's
+        # version decides — the old probe keyed on that submodule.
+        with patch("dflash.importlib.util.find_spec", return_value=SimpleNamespace(name="dflash.model")), \
+             patch("dflash.vllm_version", return_value=None):
+            self.assertFalse(is_vllm_available())
 
     @patch("dflash.is_mlx_available", return_value=True)
     @patch("dflash.is_vllm_available", return_value=False)
@@ -413,3 +441,31 @@ class DDTreeAvailabilityProbeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DFlash2DraftMapTests(unittest.TestCase):
+    """FU-089: DFlash 2 drafters are vLLM-only (pinned dflash-mlx predates them)."""
+
+    def test_vllm_opt_in_resolves_dflash2_draft(self):
+        from dflash import get_draft_model
+
+        self.assertEqual(
+            get_draft_model("Qwen/Qwen3.8-27B", allow_dflash2=True),
+            "z-lab/Qwen3.8-27B-DFlash2",
+        )
+
+    def test_mlx_default_never_gets_a_dflash2_draft(self):
+        from dflash import get_draft_model
+
+        self.assertIsNone(get_draft_model("Qwen/Qwen3.8-27B"))
+        self.assertIsNone(get_draft_model("mlx-community/Qwen3.8-27B-4bit"))
+
+    def test_availability_lists_dflash2_targets_only_with_vllm(self):
+        import dflash
+
+        with patch("dflash.is_vllm_available", return_value=False), \
+             patch("dflash.is_mlx_available", return_value=True):
+            self.assertNotIn("Qwen/Qwen3.8-27B", dflash.availability_info()["supportedModels"])
+        with patch("dflash.is_vllm_available", return_value=True), \
+             patch("dflash.is_mlx_available", return_value=False):
+            self.assertIn("Qwen/Qwen3.8-27B", dflash.availability_info()["supportedModels"])

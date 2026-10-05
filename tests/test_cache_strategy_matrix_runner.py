@@ -42,6 +42,7 @@ def _caps(
     gguf_mtp: bool = True,
     vllm: bool = True,
     turbo: bool = True,
+    tensorfold: bool = True,
     library: set[str] | None = None,
 ) -> "runner.BackendCapabilities":
     return runner.BackendCapabilities(
@@ -51,17 +52,48 @@ def _caps(
         mtplx_available=mtplx,
         gguf_mtp_available=gguf_mtp,
         vllm_available=vllm,
+        tensorfold_available=tensorfold,
         has_turbo_binary=turbo,
         library_refs=library or {
             runner.SMALL_MLX,
             runner.MID_MLX_DFLASH_CAPABLE,
             runner.MID_MLX_MTPLX_CAPABLE,
+            runner.MID_MLX_TENSORFOLD,
             runner.SMALL_GGUF,
             runner.LARGE_GGUF_MTP,
             runner.VLLM_SMALL,
             runner.VLLM_MID,
         },
     )
+
+
+class RunCellTensorFoldTests(unittest.TestCase):
+    """The TensorFold cell must fail when the load silently fell back."""
+
+    def _cell(self):
+        return runner.MatrixCell(
+            "tf", runner.MID_MLX_TENSORFOLD, "mlx", "native", 0, "tensorfold", quick=False,
+        )
+
+    def test_fallback_to_standard_mlx_is_a_failure(self):
+        load = {"runtime": {"loadedModel": {"engine": "mlx", "cacheStrategy": "native", "runtimeNote": "TensorFold startup failed (x); using standard MLX."}}}
+        with mock.patch.object(runner, "_api", return_value=load), \
+                mock.patch.object(runner, "_stream_inference") as stream:
+            result = runner.run_cell(self._cell(), port=1)
+        stream.assert_not_called()
+        self.assertFalse(result.ok)
+        self.assertIn("TensorFold expected", result.error)
+        self.assertIn("'mlx'", result.error)
+
+    def test_engaged_tensorfold_runs_the_prompt(self):
+        load = {"runtime": {"loadedModel": {"engine": "tensorfold", "cacheStrategy": "native", "runtimeNote": "TensorFold exact speculative decoding"}}}
+        done = {"assistant": {"metrics": {"tokS": 31.5, "dflashAcceptanceRate": 2.5}}}
+        with mock.patch.object(runner, "_api", return_value=load), \
+                mock.patch.object(runner, "_stream_inference", return_value=("hello there", done)):
+            result = runner.run_cell(self._cell(), port=1)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.tokens_per_sec, 31.5)
+        self.assertEqual(result.dflash_acceptance, 2.5)
 
 
 class SkipReasonTests(unittest.TestCase):
@@ -129,6 +161,28 @@ class SkipReasonTests(unittest.TestCase):
             runner.skip_reason(cell, _caps(ddtree=False), quick=False),
             "DDTree runtime not available",
         )
+
+    def test_skips_tensorfold_when_runtime_missing(self):
+        cell = runner.MatrixCell(
+            "tf", runner.MID_MLX_TENSORFOLD, "mlx", "native", 0, "tensorfold", quick=False,
+        )
+        self.assertEqual(
+            runner.skip_reason(cell, _caps(tensorfold=False), quick=False),
+            "TensorFold runtime not installed",
+        )
+        self.assertIsNone(runner.skip_reason(cell, _caps(tensorfold=True), quick=False))
+
+    def test_tensorfold_cell_needs_the_mlx_backend(self):
+        cell = runner.MatrixCell(
+            "tf gguf", runner.SMALL_GGUF, "gguf", "native", 0, "tensorfold", quick=False,
+        )
+        self.assertIn("MLX backend", runner.skip_reason(cell, _caps(), quick=False))
+
+    def test_matrix_carries_a_tensorfold_cell(self):
+        cells = [c for c in runner.MATRIX if c.spec_decode == "tensorfold"]
+        self.assertEqual(len(cells), 1)
+        self.assertEqual(cells[0].model_ref, runner.MID_MLX_TENSORFOLD)
+        self.assertFalse(cells[0].quick)  # 16 GB model: full sweeps only
 
     def test_skips_when_model_not_in_library(self):
         cell = runner.MatrixCell(

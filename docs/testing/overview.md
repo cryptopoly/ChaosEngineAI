@@ -20,7 +20,7 @@ release.
 | Editing a pure-function helper | `pytest tests/<file>::TestClass` for that module. |
 | Touching a FastAPI route | `pytest tests/test_backend_service.py` + the route's specific test. |
 | Touching `inference/controller.py` or an engine adapter | Full `pytest tests/` + `./scripts/e2e_test_suite.py --phases 0,1,7`. |
-| Bumping `mlx-lm`, `llama.cpp`, `diffusers`, `dflash-mlx`, `turboquant-mlx-full`, or `mtplx` | Full `pytest tests/` + full `./scripts/e2e_test_suite.py`. |
+| Bumping `mlx-lm`, `llama.cpp`, `diffusers`, `dflash-mlx`, `turboquant-mlx-full`, `mtplx`, or `tensorfold` | Full `pytest tests/` + full `./scripts/e2e_test_suite.py`. |
 | Changing TypeScript | `npm test` + `npx tsc --noEmit`. |
 | Cutting a release | Everything — see [Pre-build check](pre-build-check.md). |
 
@@ -98,6 +98,9 @@ prefer the production-app path above.
 | [`tests/test_cache_strategies.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_cache_strategies.py) | Cache strategy registry + flags. |
 | [`tests/test_dflash.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_dflash.py) | DFlash draft model registry. |
 | [`tests/test_agent.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_agent.py) | Tool-call parser + dispatch. |
+| [`tests/test_tensorfold_registry.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_registry.py), [`_routing`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_routing.py), [`_setup`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_setup.py) | TensorFold family registry, controller routing + fallback, installer + status endpoints. |
+| [`tests/test_tensorfold_engine_integration.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_tensorfold_engine_integration.py) | `TensorFoldEngine` against a stub `tensorfold serve` (`tests/fixtures/stub_tensorfold_server.py`): load, stream, reasoning, tool calls, errors, cleanup. |
+| [`tests/test_calibrate_cache_speed.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_calibrate_cache_speed.py) | Speed-ratio maths behind `scripts/calibrate-cache-speed.py`. |
 | [`tests/test_cache_strategy_matrix_runner.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/tests/test_cache_strategy_matrix_runner.py) | Cross-strategy sweep runner. |
 | [`src/**/*.test.ts`](https://github.com/cryptopoly/ChaosEngineAI/tree/staging/src) | Frontend unit tests. |
 | [`scripts/e2e_test_suite.py`](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/scripts/e2e_test_suite.py) | End-to-end suite. |
@@ -127,8 +130,10 @@ reports `skip` (not `fail`) and the suite stays green.
 ## What unit tests don't cover
 
 - **Real subprocess interactions.** MLX worker IPC, `llama-server`
-  startup, MTPLX subprocess routing — all mocked in pytest. The E2E
-  suite covers the real paths.
+  startup, MTPLX subprocess routing — all mocked in pytest. (TensorFold is
+  the exception: its engine tests talk to a real stub server process over
+  HTTP, but the stub is not the real engine.) The E2E suite covers the real
+  paths.
 - **Real GPU.** Capabilities probes are mocked; the E2E suite exercises
   actual hardware.
 - **Real Hugging Face downloads.** Stubbed in pytest; the E2E suite

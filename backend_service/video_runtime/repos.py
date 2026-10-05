@@ -38,7 +38,7 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # weights and a higher training resolution.
     "THUDM/CogVideoX-2b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
     "THUDM/CogVideoX-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
-    "THUDM/CogVideoX-1.5-5b": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
+    "THUDM/CogVideoX1.5-5B": {"class_name": "CogVideoXPipeline", "task": "txt2video"},
 }
 
 
@@ -109,7 +109,7 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
     "THUDM/CogVideoX-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
     # CogVideoX 1.5 5B inherits the 5B defaults — refreshed weights but
     # the same step / CFG sweet spot per upstream model card.
-    "THUDM/CogVideoX-1.5-5b": {"steps": 50, "guidance": 7.0, "scheduler": None},
+    "THUDM/CogVideoX1.5-5B": {"steps": 50, "guidance": 7.0, "scheduler": None},
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in

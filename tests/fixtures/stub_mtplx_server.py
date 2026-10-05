@@ -84,6 +84,19 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
+        # MTPLX 2.x splits a thinking model's <think> block into
+        # ``reasoning_content`` deltas (FU-079). Emit them unless the
+        # request turned thinking off, and echo the kwargs for assertions.
+        kwargs = payload.get("chat_template_kwargs") or {}
+        if kwargs.get("enable_thinking") is not False:
+            for chunk in ("planning", " a reply"):
+                data = json.dumps({
+                    "id": "stub-mtplx-1",
+                    "model": payload.get("model", "stub"),
+                    "choices": [{"index": 0, "delta": {"reasoning_content": chunk}, "finish_reason": None}],
+                })
+                self.wfile.write(f"data: {data}\n\n".encode("utf-8"))
+                self.wfile.flush()
         for chunk in _FAKE_STREAM_CHUNKS:
             data = json.dumps({
                 "id": "stub-mtplx-1",

@@ -511,7 +511,11 @@ export function useImageState(
       if (seed !== null && !imageUseRandomSeed && !overrides) {
         setImageSeedInput(String(seed));
       }
-      setError(null);
+      if (response.artifacts.length === 0) {
+        setError("Generation completed but returned no image. Check the backend log for this run and try again.");
+      } else {
+        setError(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Image generation failed.";
       // The backend returns HTTPException(409, detail="cancelled") when the

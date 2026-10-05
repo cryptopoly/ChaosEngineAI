@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "アダマール回転による KV 量子化。品質低下を最小限に抑え 2–4 倍圧縮。"
+      "description": "メモリ節約: アダマール回転による KV 量子化。キャッシュが 2–4 倍小さくなり、長いチャットを少ない RAM に収められます。生成はネイティブより遅くなります。"
     },
     "triattention": {
       "name": "TriAttention",

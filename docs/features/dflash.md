@@ -22,7 +22,10 @@ guarantees output is identical to standard generation).
   to commit `fada1eb` (HEAD as of 2026-05-10) which adds the Gemma 4 backend,
   v0.1.5 serving surface, live server metrics, prefix-cache survival test
   gate, branchless Metal kernels, and fused draft KV projections.
-- **`dflash`** — Linux + CUDA, vLLM-based.
+- **vLLM ≥ 0.28** — Linux + CUDA. DFlash (and DFlash 2) are built into
+  vLLM's `speculative_config`, so there is no separate package. The PyPI
+  `dflash` package is *not* used: its module name collides with the app's
+  own `dflash` draft registry.
 
 Both report through the same capability probe (`dflashAvailable`); install
 the right one for your platform.
@@ -104,7 +107,7 @@ DFlash is **not bundled** — install it manually for your platform:
 .venv/bin/pip install dflash-mlx
 
 # Linux + CUDA
-.venv/bin/pip install dflash
+.venv/bin/pip install 'vllm>=0.28'
 ```
 
 Or use the Setup tab's "Install DFlash" action when it appears. The

@@ -14,9 +14,12 @@ platform.
 │   ├── llama-server-turbo        TurboQuant fork (built by scripts/build-llama-turbo.sh)
 │   ├── llama-cli-turbo           CLI companion (same fork)
 │   ├── sd                        stable-diffusion.cpp (built by scripts/build-sdcpp.sh)
-│   └── mtplx.version             Version marker written by the MTPLX installer
+│   ├── mtplx.version             Version marker written by the MTPLX installer
+│   └── tensorfold.version        Version marker written by the TensorFold installer
 ├── mtplx-venv/                   Isolated venv for MTPLX (Apple Silicon)
 │   └── bin/                      mtplx executable + forked mlx
+├── tensorfold-venv/              Isolated venv for TensorFold (Apple Silicon)
+│   └── bin/                      tensorfold executable + its pinned mlx / mlx-lm
 ├── mlx-video-wan/                Converted Wan 2.1 / 2.2 checkpoints
 │   ├── wan-2-1-t2v-1-3b/         (one subdir per converted Wan repo)
 │   └── wan-2-2-ti2v-5b/

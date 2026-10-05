@@ -335,9 +335,9 @@ def _resolve_local_snapshot(repo_or_path: str) -> Path | None:
     if candidate.exists():
         return candidate
     try:
-        from huggingface_hub import snapshot_download  # type: ignore
+        from backend_service.helpers.hf_local import local_snapshot_path
 
-        return Path(snapshot_download(repo_id=repo_or_path, local_files_only=True))
+        return Path(local_snapshot_path(repo_or_path))
     except Exception:
         return None
 

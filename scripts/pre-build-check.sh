@@ -146,12 +146,25 @@ fi
 # old binary in release builds).
 PYPROJECT_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' pyproject.toml | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
 STAGE_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' scripts/stage-runtime.mjs | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
-if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" ]]; then
-  warn "dflash-mlx pin sync — could not extract commit hashes from both files"
-elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" ]]; then
-  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12}. Sync both to the same commit."
+SETUP_PIN=$(grep -E 'dflash-mlx\.git@[a-f0-9]+' backend_service/routes/setup/__init__.py | head -1 | sed -E 's/.*dflash-mlx\.git@([a-f0-9]+).*/\1/')
+if [[ -z "$PYPROJECT_PIN" || -z "$STAGE_PIN" || -z "$SETUP_PIN" ]]; then
+  warn "dflash-mlx pin sync — could not extract commit hashes from all three files"
+elif [[ "$PYPROJECT_PIN" != "$STAGE_PIN" || "$PYPROJECT_PIN" != "$SETUP_PIN" ]]; then
+  fail "dflash-mlx pin drift — pyproject.toml=${PYPROJECT_PIN:0:12} stage-runtime.mjs=${STAGE_PIN:0:12} routes/setup=${SETUP_PIN:0:12}. Sync all three to the same commit."
 else
   pass "dflash-mlx pin sync (${PYPROJECT_PIN:0:12})"
+fi
+
+# TriAttention pin sync: the two pyproject extras and the Setup tab's
+# installer allowlist must name one upstream commit (mirrors the .mjs probe).
+TRI_PINS=$(grep -ohE 'WeianMao/triattention\.git@[a-f0-9]+' pyproject.toml backend_service/routes/setup/__init__.py | sed -E 's/.*@//' | sort -u)
+TRI_COUNT=$(printf '%s\n' "$TRI_PINS" | grep -c . || true)
+if [[ "$TRI_COUNT" -eq 0 ]]; then
+  warn "triattention pin sync — no pinned commit found in pyproject.toml / routes/setup"
+elif [[ "$TRI_COUNT" -gt 1 ]]; then
+  fail "triattention pin drift — found $(printf '%s' "$TRI_PINS" | tr '\n' ' ') across pyproject.toml and routes/setup. Sync them to one commit."
+else
+  pass "triattention pin sync (${TRI_PINS:0:12})"
 fi
 
 # App version sync across the 4 manifests. v0.9.0 release shipped with
@@ -166,6 +179,13 @@ elif [[ "$PKG_VERSION" != "$PY_VERSION" || "$PKG_VERSION" != "$CARGO_VERSION" ||
   fail "app version drift — package.json=$PKG_VERSION pyproject.toml=$PY_VERSION Cargo.toml=$CARGO_VERSION tauri.conf.json=$TAURI_VERSION. Bump all four to the same string."
 else
   pass "app version sync ($PKG_VERSION)"
+fi
+# Lock files too (package-lock.json, Cargo.lock): a stale one ships a build
+# whose own version differs from the manifests.
+if VERSION_SYNC_OUT=$(node scripts/check-version-sync.mjs 2>&1); then
+  pass "app version sync incl. lock files"
+else
+  fail "$VERSION_SYNC_OUT"
 fi
 echo
 

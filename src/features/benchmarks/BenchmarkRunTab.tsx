@@ -10,6 +10,7 @@ import { BenchmarkGauge } from "../../components/BenchmarkGauge";
 import type { BenchmarkResult, BenchmarkRunPayload, LibraryItem, PreviewMetrics, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import type { MtplxJobState } from "../../api";
+import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
 
@@ -43,6 +44,7 @@ export interface BenchmarkRunTabProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
    * block hides on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
@@ -78,6 +80,7 @@ export function BenchmarkRunTab({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onBenchmarkDraftChange,
   onBenchmarkPromptIdChange,
@@ -570,6 +573,7 @@ export function BenchmarkRunTab({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfold}
         isAppleSilicon={isAppleSilicon}
         onSelectedKeyChange={(key) => {
           onBenchmarkModelKeyChange(key);

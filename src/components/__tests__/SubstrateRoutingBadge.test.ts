@@ -39,12 +39,39 @@ describe("SubstrateRoutingBadge buildChips", () => {
     expect(chips.find((c) => c.key === "cache")?.label).toBe("TurboQuant 4-bit");
   });
 
+  it("calls the TurboQuant cache a memory saver in the chip tooltip", () => {
+    const chips = buildChips(makeMetrics({ cacheStrategy: "TurboQuant", cacheBits: 4 }));
+    const title = chips.find((c) => c.key === "cache")?.title ?? "";
+    expect(title).toContain("memory saver");
+    expect(title).toContain("slower generation");
+  });
+
+  it("keeps the plain cache tooltip for the native strategy", () => {
+    const chips = buildChips(makeMetrics({ cacheStrategy: "native", cacheLabel: "Native f16" }));
+    const title = chips.find((c) => c.key === "cache")?.title ?? "";
+    expect(title).toBe("KV cache strategy (Native f16)");
+  });
+
   it("emits speculative-decoding chip with tree budget when on", () => {
     const chips = buildChips(makeMetrics({
       speculativeDecoding: true,
       treeBudget: 128,
     }));
     expect(chips.find((c) => c.key === "spec")?.label).toBe("DDTree 128");
+  });
+
+  it("does not call TensorFold's exact drafts a DDTree", () => {
+    const chips = buildChips(makeMetrics({
+      backend: "tensorfold",
+      engineLabel: "TensorFold (exact speculative decoding)",
+      speculativeDecoding: true,
+      treeBudget: 0,
+      dflashAcceptanceRate: 2.0,
+    }));
+    const spec = chips.find((c) => c.key === "spec");
+    expect(spec?.label).toBe("Exact drafts");
+    expect(spec?.title).toContain("verified against the target model");
+    expect(chips.find((c) => c.key === "accept")?.label).toBe("2.0 avg accepted");
   });
 
   it("emits accepted-rate chip alongside DDTree when set", () => {

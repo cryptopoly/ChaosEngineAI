@@ -30,6 +30,14 @@ jobs:
       release_id: ${{ steps.find-or-create.outputs.result }}
     steps:
       - uses: actions/checkout@v6
+      # The updater compares the app's own version (tauri.conf.json) with the
+      # version in latest.json, which comes from this tag. A mismatch makes every
+      # install offer the release it already has (v0.9.4 shipped 0.9.3 files), so
+      # stop before a release is created or anything is built.
+      - name: Check the tag matches the app version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: node scripts/check-version-sync.mjs --tag "$RELEASE_TAG"
       - name: Find or create release
         id: find-or-create
         uses: actions/github-script@v9

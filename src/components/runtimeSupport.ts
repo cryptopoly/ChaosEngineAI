@@ -1,4 +1,5 @@
 import type { SystemStats } from "../types";
+import { resolveTensorfoldSupport } from "./tensorfoldSupport";
 
 const COMMUNITY_PREFIXES = ["mlx-community/", "lmstudio-community/", "thebloke/", "bartowski/"];
 const QUANT_SUFFIXES = /[-_](?:bf16|fp16|f16|\d+bit|q\d(?:_[a-z0-9]+)*|gguf|mlx|instruct)$/i;
@@ -17,8 +18,22 @@ export function canonicalStrategyId(strategyId: string): string {
   return LEGACY_STRATEGY_ALIASES[strategyId] ?? strategyId;
 }
 
+/**
+ * Cache strategies that exist to shrink the KV cache, not to speed generation
+ * up. TurboQuant stores the cache in 1-4 bits so long contexts fit in less
+ * memory; measured decode is slower than Native (FU-066). Surfaces that list
+ * strategies use this to label it a memory saver instead of implying it is an
+ * acceleration option. Legacy ids are coerced first, like everywhere else.
+ */
+export function isMemorySaverStrategy(strategyId: string | null | undefined): boolean {
+  if (!strategyId) return false;
+  return canonicalStrategyId(strategyId.toLowerCase()) === "turboquant";
+}
+
 export const STRATEGY_ENGINE_SUPPORT: Record<string, string[]> = {
-  native: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
+  // TensorFold keeps its own KV caches (exact drafts roll them back), so only
+  // the native strategy applies to it.
+  native: ["mlx", "gguf", "llama.cpp", "vllm", "tensorfold", "auto"],
   triattention: ["vllm"],
   turboquant: ["mlx", "gguf", "llama.cpp", "vllm", "auto"],
 };
@@ -45,8 +60,10 @@ export function isStrategyCompatible(strategyId: string, backend: string | null 
  * package for unknown backends — the install will fail loudly if
  * the host doesn't match, which is better than silent no-ops.
  */
-export function dflashPackageFor(backend: string | null | undefined): "dflash-mlx" | "dflash" {
-  if (backend && backend.toLowerCase().includes("vllm")) return "dflash";
+export function dflashPackageFor(backend: string | null | undefined): "dflash-mlx" | "vllm" {
+  // FU-091: vLLM >=0.28 serves DFlash natively — "installing DFlash" on
+  // CUDA means upgrading vLLM, not the colliding PyPI ``dflash`` package.
+  if (backend && backend.toLowerCase().includes("vllm")) return "vllm";
   return "dflash-mlx";
 }
 
@@ -193,6 +210,12 @@ export function resolveDflashSupport({
  * standard decode with a runtimeNote when the binary lacks
  * ``--spec-type`` (PR #22673), so showing the toggle never hard-breaks.
  */
+export function isGgufBackendId(backend: string | null | undefined): boolean {
+  if (!backend) return false;
+  const lower = backend.toLowerCase();
+  return lower.includes("gguf") || lower.includes("llama");
+}
+
 export function isMtpGgufRepo(repo: string | null | undefined): boolean {
   if (!repo) return false;
   const lower = repo.toLowerCase();
@@ -201,6 +224,7 @@ export function isMtpGgufRepo(repo: string | null | undefined): boolean {
 
 export function sanitizeSpeculativeSelection({
   dflashInfo,
+  tensorfoldInfo,
   selectedBackend,
   modelRef,
   canonicalRepo,
@@ -209,6 +233,7 @@ export function sanitizeSpeculativeSelection({
   treeBudget,
 }: {
   dflashInfo?: SystemStats["dflash"];
+  tensorfoldInfo?: SystemStats["tensorfold"];
   selectedBackend?: string | null;
   modelRef?: string | null;
   canonicalRepo?: string | null;
@@ -227,6 +252,22 @@ export function sanitizeSpeculativeSelection({
     canonicalRepo,
     modelName,
   });
+  // llama.cpp has its own speculative lane (baked-in MTP heads, an
+  // mtp- / dflash- / dspark- / eagle3- drafter file beside the GGUF, or the
+  // draft-free ngram-mod lookup — FU-089), chosen server-side with a
+  // runtime-note fallback. DFlash support is irrelevant there, so keep the
+  // user's choice instead of clearing it (it used to be cleared, which
+  // silently disabled the FU-074 GGUF MTP toggle). No DDTree on GGUF.
+  if (isGgufBackendId(selectedBackend)) {
+    return { speculativeDecoding, treeBudget: 0, support };
+  }
+  // A checkpoint TensorFold serves keeps the user's choice too: the backend
+  // routes it to TensorFold (exact drafts from the MTP head / draft model)
+  // or falls back to standard decoding, so DFlash support is irrelevant.
+  // DDTree is a DFlash feature and never applies there.
+  if (resolveTensorfoldSupport(tensorfoldInfo, [canonicalRepo, modelRef])) {
+    return { speculativeDecoding, treeBudget: 0, support };
+  }
   if (!speculativeDecoding || support.enabled) {
     return {
       speculativeDecoding,

@@ -37,12 +37,25 @@ pub fn port_responding(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
 
-pub fn wait_for_port(port: u16, timeout: Duration, poll_interval: Duration) -> bool {
+/// Wait for the backend on `port` to answer `/api/health`.
+///
+/// `keep_waiting` is asked between polls and ends the wait early when it
+/// returns false (the sidecar already exited), instead of polling a dead
+/// process until the deadline.
+pub fn wait_for_port(
+    port: u16,
+    timeout: Duration,
+    poll_interval: Duration,
+    mut keep_waiting: impl FnMut() -> bool,
+) -> bool {
     let deadline = Instant::now() + timeout;
     // Phase 1: wait for TCP port to accept connections (fast check).
     while Instant::now() < deadline {
         if port_responding(port) {
             break;
+        }
+        if !keep_waiting() {
+            return false;
         }
         thread::sleep(poll_interval);
     }
@@ -51,6 +64,9 @@ pub fn wait_for_port(port: u16, timeout: Duration, poll_interval: Duration) -> b
     while Instant::now() < deadline {
         if probe_chaosengine_backend(port).is_some() {
             return true;
+        }
+        if !keep_waiting() {
+            return false;
         }
         thread::sleep(poll_interval);
     }
@@ -115,4 +131,53 @@ pub fn request_backend_shutdown(port: u16, api_token: Option<&str>) -> bool {
         thread::sleep(Duration::from_millis(150));
     }
     !port_responding(port)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+
+    fn free_port() -> u16 {
+        TcpListener::bind(("127.0.0.1", 0))
+            .expect("bind an ephemeral port")
+            .local_addr()
+            .expect("local addr")
+            .port()
+    }
+
+    #[test]
+    fn wait_for_port_gives_up_at_once_when_the_caller_says_stop() {
+        let started = Instant::now();
+        let ready = wait_for_port(free_port(), Duration::from_secs(10), Duration::from_millis(20), || false);
+        assert!(!ready);
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn wait_for_port_times_out_when_nothing_listens() {
+        let ready = wait_for_port(free_port(), Duration::from_millis(150), Duration::from_millis(20), || true);
+        assert!(!ready);
+    }
+
+    #[test]
+    fn wait_for_port_returns_once_health_answers() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind");
+        let port = listener.local_addr().expect("local addr").port();
+        thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { return };
+                let mut buffer = [0u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let body = r#"{"status":"ok"}"#;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+            }
+        });
+        assert!(wait_for_port(port, Duration::from_secs(5), Duration::from_millis(20), || true));
+    }
 }

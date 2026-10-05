@@ -86,6 +86,39 @@ def _http_json(
         return json.loads(response.read().decode("utf-8"))
 
 
+# Variables that redirect a child Python's imports or dynamic libraries.
+# The Tauri launcher exports several of them for the *embedded* runtime
+# (``src-tauri/src/runtime.rs``: PYTHONHOME, PYTHONPATH incl. the extras
+# dir, DYLD_*). An interpreter from an isolated venv that inherited them
+# would import the app's own mlx / numpy instead of its pinned ones and
+# could load mismatched dylibs — defeating the point of the venv.
+_IMPORT_REDIRECTING_ENV: tuple[str, ...] = (
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "VIRTUAL_ENV",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FALLBACK_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "LD_LIBRARY_PATH",
+    "CHAOSENGINE_EMBEDDED_RUNTIME",
+)
+
+
+def _isolated_child_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Environment for a subprocess that runs from its own venv.
+
+    A copy of ``os.environ`` without the import-redirecting variables above,
+    plus ``extra``. Everything else (PATH, HOME, HF_HOME, proxy settings,
+    ``TENSORFOLD_MEMORY_LIMIT_GB``) is inherited so user configuration still
+    reaches the child.
+    """
+    env = {key: value for key, value in os.environ.items() if key not in _IMPORT_REDIRECTING_ENV}
+    if extra:
+        env.update(extra)
+    return env
+
+
 def _find_open_port() -> int:
     """Bind ephemeral port + return the chosen number for downstream subprocess use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -107,22 +140,28 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
     When a user loads an HF-cache GGUF repo, the path points to the repo
     directory (e.g. ``models--lmstudio-community--Qwen3.5-9B-GGUF``), not a
     specific file.  We scan for the best .gguf file inside it, excluding
-    vision projectors (mmproj) and picking the largest non-projector file.
+    vision projectors (mmproj): the catalog's pinned ``ggufFile`` when it is
+    on disk, else the largest non-projector file (first shard if split).
     """
     for candidate in (path, runtime_target):
         if not candidate:
             continue
         p = Path(candidate)
+        from backend_service.helpers.text_gguf import is_aux_gguf, pick_model_gguf  # noqa: PLC0415
+
         if p.is_file() and p.suffix.lower() == ".gguf":
-            if "mmproj" in p.name.lower():
+            if is_aux_gguf(p.name):
                 continue
             return str(p)
         if p.is_dir():
             gguf_files = sorted(p.rglob("*.gguf"), key=lambda f: f.stat().st_size, reverse=True)
-            # Filter out vision projector files
-            model_files = [f for f in gguf_files if "mmproj" not in f.name.lower()]
+            # Filter out vision projectors and spec-dec sidecars (mtp- /
+            # dflash- / dspark- / eagle3-): a large drafter must never be
+            # loaded as the model.
+            model_files = [f for f in gguf_files if not is_aux_gguf(f.name)]
             if model_files:
-                return str(model_files[0])
+
+                return str(pick_model_gguf(p, model_files))
     return None
 
 

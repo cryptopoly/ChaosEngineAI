@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dflashPackageFor,
+  isMemorySaverStrategy,
   isMtpGgufRepo,
   isStrategyCompatible,
   resolveDflashSupport,
@@ -16,8 +17,8 @@ describe("dflashPackageFor()", () => {
   });
 
   it("returns dflash for the vLLM CUDA backend", () => {
-    expect(dflashPackageFor("vllm")).toBe("dflash");
-    expect(dflashPackageFor("VLLM")).toBe("dflash");
+    expect(dflashPackageFor("vllm")).toBe("vllm");
+    expect(dflashPackageFor("VLLM")).toBe("vllm");
   });
 
   it("defaults to dflash-mlx for null / unknown backends", () => {
@@ -151,6 +152,21 @@ describe("sanitizeSpeculativeSelection()", () => {
     expect(result.treeBudget).toBe(0);
     expect(result.support.enabled).toBe(false);
   });
+
+  it("keeps the llama.cpp speculative lane on for GGUF models (FU-089)", () => {
+    // Regression: GGUF was run through the DFlash check and always
+    // cleared, so the GGUF MTP toggle never reached the backend.
+    const result = sanitizeSpeculativeSelection({
+      dflashInfo,
+      selectedBackend: "gguf",
+      canonicalRepo: "ggml-org/Qwen3.6-27B-MTP-GGUF",
+      modelName: "Qwen3.6-27B-MTP-GGUF",
+      speculativeDecoding: true,
+      treeBudget: 64,
+    });
+    expect(result.speculativeDecoding).toBe(true);
+    expect(result.treeBudget).toBe(0);
+  });
 });
 
 describe("strategy compatibility helpers", () => {
@@ -167,6 +183,27 @@ describe("strategy compatibility helpers", () => {
     expect(isStrategyCompatible("rotorquant", "mlx")).toBe(true);
     expect(strategyIncompatReason("chaosengine", "mlx")).toBeNull();
     expect(strategyIncompatReason("rotorquant", "mlx")).toBeNull();
+  });
+});
+
+describe("isMemorySaverStrategy()", () => {
+  it("labels TurboQuant a memory saver, by id or display name", () => {
+    expect(isMemorySaverStrategy("turboquant")).toBe(true);
+    expect(isMemorySaverStrategy("TurboQuant")).toBe(true);
+  });
+
+  it("follows the legacy aliases that coerce to TurboQuant", () => {
+    expect(isMemorySaverStrategy("chaosengine")).toBe(true);
+    expect(isMemorySaverStrategy("rotorquant")).toBe(true);
+  });
+
+  it("is false for every other strategy and for missing ids", () => {
+    expect(isMemorySaverStrategy("native")).toBe(false);
+    expect(isMemorySaverStrategy("triattention")).toBe(false);
+    expect(isMemorySaverStrategy("fbcache")).toBe(false);
+    expect(isMemorySaverStrategy("")).toBe(false);
+    expect(isMemorySaverStrategy(null)).toBe(false);
+    expect(isMemorySaverStrategy(undefined)).toBe(false);
   });
 });
 

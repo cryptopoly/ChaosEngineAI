@@ -22,7 +22,8 @@ import {
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { CapabilityStrip } from "../../components/CapabilityStrip";
-import { candidateKeys } from "../../components/runtimeSupport";
+import { candidateKeys, isMemorySaverStrategy } from "../../components/runtimeSupport";
+import { isTensorfoldRepo } from "../../components/tensorfoldSupport";
 
 export interface OnlineModelsTabProps {
   searchResults: ModelFamily[];
@@ -39,6 +40,8 @@ export interface OnlineModelsTabProps {
   accelCompat?: {
     dflashModels: string[];
     mtplxModels: string[];
+    /** Exact repo ids TensorFold serves (``system.tensorfold.supportedModels``). */
+    tensorfoldModels?: string[];
     turboInstalled: boolean;
   };
   expandedFamilyId: string | null;
@@ -207,12 +210,23 @@ export function OnlineModelsTab({
     );
   }
 
-  // Acceleration filter: DFlash / MTPLX / TurboQuant
+  // Acceleration filter: DFlash / MTPLX / TensorFold / TurboQuant
   const ACCEL_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
     { id: "mtplx", label: "MTPLX", color: "#f472b6" },
+    { id: "tensorfold", label: "TensorFold", color: "#34d399" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
+
+  function familyReleaseTimestamp(family: ModelFamily): number {
+    let latest = 0;
+    for (const variant of family.variants) {
+      if (!variant.releaseDate) continue;
+      const parsed = Date.parse(variant.releaseDate);
+      if (!Number.isNaN(parsed) && parsed > latest) latest = parsed;
+    }
+    return latest;
+  }
 
   function familyMatchesAccel(family: ModelFamily, accel: string): boolean {
     const allRepos = family.variants.map((v) => v.repo);
@@ -231,6 +245,10 @@ export function OnlineModelsTab({
           return supported.some((ref) => candidateKeys([ref]).some((k) => repoKeys.includes(k)));
         });
       }
+      case "tensorfold":
+        // Exact repo ids, not the fuzzy name match above: TensorFold is
+        // tested with specific conversions.
+        return isTensorfoldRepo(accelCompat?.tensorfoldModels, allRepos);
       case "turboquant":
         return family.variants.some((v) => v.format === "GGUF");
       default:
@@ -251,6 +269,9 @@ export function OnlineModelsTab({
   if (discoverAccelFilter) {
     filteredResults = filteredResults.filter((f) => familyMatchesAccel(f, discoverAccelFilter!));
   }
+  filteredResults = [...filteredResults].sort(
+    (left, right) => familyReleaseTimestamp(right) - familyReleaseTimestamp(left),
+  );
   const filteredHubResults = [...hubResults]
     .filter((model) => {
       if (discoverFormatFilter && model.format !== discoverFormatFilter) return false;
@@ -728,16 +749,31 @@ export function OnlineModelsTab({
           </button>
           {ACCEL_FILTERS.map((af) => {
             const count = searchResults.filter((f) => familyMatchesAccel(f, af.id)).length;
+            // TurboQuant shrinks the KV cache; it does not speed anything up,
+            // so its chip says so instead of sitting bare among the
+            // acceleration options.
+            const isMemorySaver = isMemorySaverStrategy(af.id);
+            const chipLabel = isMemorySaver
+              ? t("onlineModels.accelFilter.memorySaverLabel", { defaultValue: "{label} · memory saver", label: af.label })
+              : af.label;
+            const tooltip = isMemorySaver
+              ? t("onlineModels.accelFilter.memorySaverTooltip", {
+                  defaultValue:
+                    "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})",
+                  label: af.label,
+                  count,
+                })
+              : t("onlineModels.accelFilter.tooltip", { label: af.label, count, defaultValue: `Show ${af.label}-compatible models (${count})` });
             return (
               <button
                 key={af.id}
                 className={`cap-filter-btn${discoverAccelFilter === af.id ? " cap-filter-btn--active" : ""}`}
                 type="button"
                 onClick={() => onDiscoverAccelFilterChange?.(discoverAccelFilter === af.id ? null : af.id)}
-                title={t("onlineModels.accelFilter.tooltip", { label: af.label, count, defaultValue: `Show ${af.label}-compatible models (${count})` })}
+                title={tooltip}
                 style={(discoverAccelFilter ?? null) === af.id ? { borderColor: af.color, color: af.color, background: `${af.color}15` } : undefined}
               >
-                {af.label}{count > 0 ? ` (${count})` : ""}
+                {chipLabel}{count > 0 ? ` (${count})` : ""}
               </button>
             );
           })}

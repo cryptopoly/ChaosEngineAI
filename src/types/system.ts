@@ -10,6 +10,9 @@ export type TabId =
   | "video-discover"
   | "video-studio"
   | "video-gallery"
+  | "voice-studio"
+  | "voice-models"
+  | "voice-gallery"
   | "conversion"
   | "chat"
   | "chat-compare"
@@ -28,6 +31,7 @@ export type SidebarGroupId =
   | "models"
   | "images"
   | "video"
+  | "voice"
   | "benchmarks"
   | "tools";
 
@@ -79,6 +83,20 @@ export interface SystemStats {
   mtplx?: {
     available: boolean;
     supportedModels: string[];
+  };
+  // TensorFold engine (exact speculative decoding, Apple Silicon). The repo
+  // lists come from the backend registry so the launch settings and the
+  // engine agree on which checkpoints are served and which are exclusive.
+  tensorfold?: {
+    available: boolean;
+    version?: string | null;
+    /** Optional extras installed in the TensorFold venv ("vision", "grammar"). */
+    extras?: string[];
+    supportedModels: string[];
+    exclusiveModels: string[];
+    /** Checkpoints whose images TensorFold can read once the vision extra is installed. */
+    visionModels?: string[];
+    minMemoryGb?: Record<string, number>;
   };
   runningLlmProcesses: Array<{
     pid: number;

@@ -26,6 +26,21 @@ UNet pipelines (SD 1.5, SDXL) don't accept the diffusion caches — the
 strategy raises `NotImplementedError` and the backend surfaces that as a
 `runtimeNote` so the UI can grey out the unsupported choice.
 
+## Which one should I pick?
+
+For text models, the cache strategy decides **how much memory the conversation
+uses**, not how fast it generates. Start from Native and only move off it when
+memory forces you to.
+
+| You want… | Pick | Why |
+|---|---|---|
+| The fastest generation, chat-history cache reuse, speculative decoding | **Native** | No compression work on the hot path, and it is the only strategy the MLX speculative-decoding engines (DFlash, DDTree, MTPLX) and TensorFold work with. |
+| A long context that will not fit in memory | **TurboQuant** (*memory saver*) | Stores the KV cache in 1–4 bits, about 4–5× smaller at 3-bit. You pay for it in generation speed. |
+| A vLLM server on Linux + CUDA with a fixed KV budget | **TriAttention** | Hooks into vLLM's scheduler. Not useful on Apple Silicon today (see below). |
+
+The launch modal and the chat composer label TurboQuant a **memory saver** for
+this reason, and the **Models** and **Discover** filters tag it the same way.
+
 ## Legacy aliases
 
 FU-030 removed the `chaosengine` and `rotorquant` strategy slots. Persisted
@@ -73,6 +88,32 @@ backends share the strategy id:
 Bit range: 1 - 4. Default: 3. Layer-adaptive fp16-layer count is
 configurable from the launch modal.
 
+### A memory saver, not a speed option
+
+TurboQuant trades speed for memory. Treat it as the answer to "this context
+does not fit", not as a way to go faster:
+
+- **Slower decode.** On an M4 Max with `Qwen3-4B-bf16` and a 160-token decode,
+  Native ran at 25.7–29.7 tok/s; TurboQuant at 3-bit ran at 7.4 tok/s on
+  `turboquant-mlx-full` 0.3.0 and 5.6 tok/s on 0.28.0. Output stayed coherent
+  on both. That is a short-context, single-model measurement (FU-066 in
+  `CLAUDE.md`), so the gap at long context is not yet characterised — but the
+  direction is not in doubt. The launch-modal estimate uses 0.20× Native speed
+  at 3-bit (0.15 / 0.17 / 0.22 at 1 / 2 / 4 bits, scaled from that one point).
+  To replace those with measured numbers for your Mac and model, run
+  `scripts/calibrate-cache-speed.py`: it loads Native and then TurboQuant at each
+  bit width, times a fixed-length reply after prompts of several sizes, and
+  prints a line to paste into `_strategy_speed_map`.
+- **No chat-history cache reuse on MLX.** Native keeps a persistent prompt
+  cache between turns, so a follow-up only prefills the new message. The
+  compressed caches do not, so every turn re-processes the whole conversation.
+- **Not combinable with MLX speculative decoding.** DFlash, DDTree, MTPLX and
+  TensorFold all need the native cache; the launch modal locks the strategy to
+  Native while one of them is on. (GGUF MTP is the exception: llama.cpp's KV
+  cache type is independent of the draft path.)
+- **GGUF needs the fork.** The llama.cpp path uses `llama-server-turbo`; without
+  it the strategy is hidden for GGUF models rather than shown disabled.
+
 ## TriAttention
 
 KV cache compression integrated into vLLM's scheduler. **Linux + CUDA
@@ -80,11 +121,21 @@ only** — the upstream package wires into vLLM's request batching, which
 isn't packaged for macOS.
 
 The strategy's `apply_vllm_patches()` hook is called by `VLLMEngine.load_model()`
-before constructing the `LLM` instance. There's also a TriAttention-MLX
-direct path (`apply_triattention_mlx`) used inside `WorkerState._apply_cache_profile`
-when `cacheStrategy == "triattention"` on Apple Silicon — this gives a
-norm-only norm-scored compressor with a configurable `kvBudget` (default
-2048 tokens), but it's not the full Triattention experience.
+before constructing the `LLM` instance.
+
+**On Apple Silicon it does nothing yet.** The MLX worker can attach
+TriAttention's MLX compressor to the model (`apply_triattention_mlx`, with a
+`kvBudget` defaulting to 2048 tokens), but the upstream port expects the
+caller's decode loop to invoke it, and mlx-lm's generation loop never does.
+A smoke test against a tiny model at both the old and the current pin produced
+identical tokens and an uncompressed KV cache. The worker's runtime note says
+so ("compressor attached … but MLX generation does not invoke it yet"), and the
+launch modal hides the strategy on MLX. Wiring a TriAttention-aware generation
+step into the worker is the open work.
+
+The `triattention` extras are pinned to an exact commit in `pyproject.toml`
+(mirrored in `backend_service/routes/setup/__init__.py`); the pre-build check
+fails if the two drift apart.
 
 Bit range: 1 - 4. Default: 3.
 
@@ -122,4 +173,5 @@ heads) and returns baseline + optimised bytes per strategy. The MLX worker
 - [DFlash](dflash.md) — speculative decoding currently requires native
   cache.
 - [MTPLX](mtplx.md) — same restriction.
+- [TensorFold](tensorfold.md) — same restriction; it manages its own KV cache.
 - [Fused attention](fused-attention.md) — orthogonal performance knob.

@@ -120,7 +120,9 @@ class VLLMEngine(BaseInferenceEngine):
                 from dflash import get_draft_model, is_vllm_available as dflash_vllm_ok
                 if dflash_vllm_ok():
                     draft_model = get_draft_model(
-                        dflash_target_ref or model_ref
+                        dflash_target_ref or model_ref,
+                        # vLLM >=0.28 runs DFlash 2 drafters (FU-089).
+                        allow_dflash2=True,
                     )
                     if draft_model:
                         llm_kwargs["speculative_config"] = {

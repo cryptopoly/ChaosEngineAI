@@ -217,11 +217,14 @@ print('OK')
   }
 }
 // FU-056 Phase 9: catalog ↔ backend invariant. Every accelerator the
-// frontend catalog promises must have (a) a matching pip-package
-// alias in the backend's _INSTALLABLE_PIP_PACKAGES allow-list, and
-// (b) a capability flag on BackendCapabilities so the UI can render
-// "Installed ✓" state. Probe walks the frontend TS source for the
-// catalog rows and cross-checks both surfaces from the backend side.
+// frontend catalog promises must have (a) a matching entry in the
+// backend's _INSTALLABLE_PIP_PACKAGES allow-list — or in
+// _MANUAL_INSTALL_MESSAGES for packages with no usable PyPI release
+// (nunchaku, sageattention; FU-086), where the Install button shows
+// build instructions — and (b) a capability flag on BackendCapabilities
+// so the UI can render "Installed ✓" state. Probe walks the frontend TS
+// source for the catalog rows and cross-checks both surfaces from the
+// backend side.
 {
   const catalogPath = path.join(
     REPO_ROOT,
@@ -246,19 +249,22 @@ print('OK')
 
     const probe = `
 import sys
-from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES
+from backend_service.routes.setup import _INSTALLABLE_PIP_PACKAGES, _MANUAL_INSTALL_MESSAGES
 from backend_service.inference.base import BackendCapabilities
 
 # Frontend catalog rows the pre-build script extracted from TS.
 PIP_PKGS = ${JSON.stringify(pipMatches)}
 CAP_FIELDS = ${JSON.stringify(capMatches)}
 
-missing_pip = [p for p in PIP_PKGS if p not in _INSTALLABLE_PIP_PACKAGES]
+missing_pip = [
+    p for p in PIP_PKGS
+    if p not in _INSTALLABLE_PIP_PACKAGES and p not in _MANUAL_INSTALL_MESSAGES
+]
 caps_fields = set(BackendCapabilities.__dataclass_fields__.keys())
 missing_cap = [c for c in CAP_FIELDS if c not in caps_fields]
 
 if missing_pip:
-    print(f"INVALID: catalog pipPackage(s) missing from _INSTALLABLE_PIP_PACKAGES: {missing_pip}")
+    print(f"INVALID: catalog pipPackage(s) missing from _INSTALLABLE_PIP_PACKAGES / _MANUAL_INSTALL_MESSAGES: {missing_pip}")
 if missing_cap:
     print(f"INVALID: catalog capabilityField(s) missing from BackendCapabilities: {missing_cap}")
 if not (missing_pip or missing_cap):
@@ -320,18 +326,43 @@ console.log("[6/8] Upstream dependency check...");
   const pinRe = /dflash-mlx\.git@([a-f0-9]+)/;
   const pyprojectPath = path.join(REPO_ROOT, "pyproject.toml");
   const stageRuntimePath = path.join(REPO_ROOT, "scripts", "stage-runtime.mjs");
+  // The Setup tab's in-app installer (routes/setup allowlist) is a third
+  // copy — it lagged on f825ffb until 2026-09 and silently disabled DFlash.
+  const setupPath = path.join(REPO_ROOT, "backend_service", "routes", "setup", "__init__.py");
   const pyprojectMatch = readFileSync(pyprojectPath, "utf8").match(pinRe);
   const stageMatch = readFileSync(stageRuntimePath, "utf8").match(pinRe);
-  if (!pyprojectMatch || !stageMatch) {
-    warn("dflash-mlx pin sync — could not extract commit hashes from both files");
-  } else if (pyprojectMatch[1] !== stageMatch[1]) {
+  const setupMatch = readFileSync(setupPath, "utf8").match(pinRe);
+  if (!pyprojectMatch || !stageMatch || !setupMatch) {
+    warn("dflash-mlx pin sync — could not extract commit hashes from all three files");
+  } else if (pyprojectMatch[1] !== stageMatch[1] || pyprojectMatch[1] !== setupMatch[1]) {
     fail(
       `dflash-mlx pin drift — pyproject.toml=${pyprojectMatch[1].slice(0, 12)} ` +
-        `stage-runtime.mjs=${stageMatch[1].slice(0, 12)}. ` +
-        `Sync both to the same commit to avoid release-build regressions.`,
+        `stage-runtime.mjs=${stageMatch[1].slice(0, 12)} ` +
+        `routes/setup=${setupMatch[1].slice(0, 12)}. ` +
+        `Sync all three to the same commit to avoid release-build regressions.`,
     );
   } else {
     pass(`dflash-mlx pin sync (${pyprojectMatch[1].slice(0, 12)})`);
+  }
+
+  // TriAttention pin sync. The ``[triattention]`` and ``[triattention-mlx]``
+  // extras and the Setup tab's in-app installer allowlist each carry the
+  // upstream commit; a stale copy would install different code depending on
+  // which path the user took.
+  const triRe = /WeianMao\/triattention\.git@([a-f0-9]+)/g;
+  const triPins = new Set();
+  for (const file of [pyprojectPath, setupPath]) {
+    for (const match of readFileSync(file, "utf8").matchAll(triRe)) triPins.add(match[1]);
+  }
+  if (triPins.size === 0) {
+    warn("triattention pin sync — no pinned commit found in pyproject.toml / routes/setup");
+  } else if (triPins.size > 1) {
+    fail(
+      `triattention pin drift — found ${[...triPins].map((pin) => pin.slice(0, 12)).join(", ")} ` +
+        `across pyproject.toml and routes/setup. Sync them to one commit.`,
+    );
+  } else {
+    pass(`triattention pin sync (${[...triPins][0].slice(0, 12)})`);
   }
 
   // App version sync across the 4 manifests. The v0.9.0 release shipped
@@ -374,6 +405,13 @@ console.log("[6/8] Upstream dependency check...");
     fail(`app version drift across manifests — ${detail}. Bump all four to the same string.`);
   } else {
     pass(`app version sync (${distinct[0]})`);
+  }
+  // Lock files too (package-lock.json, Cargo.lock).
+  const lockCheck = spawnSync(process.execPath, [path.join(REPO_ROOT, "scripts", "check-version-sync.mjs")], { encoding: "utf8" });
+  if (lockCheck.status === 0) {
+    pass("app version sync incl. lock files");
+  } else {
+    fail((lockCheck.stderr || lockCheck.stdout || "version check failed").trim());
   }
 }
 console.log();

@@ -42,6 +42,9 @@ CHAT_MAX_PRESSURE_PERCENT = 98.0
 # decode). The gate is a backstop — refuses when the host is already
 # strained enough that an OOM during inference would wedge the laptop.
 IMAGE_MIN_AVAILABLE_GB = 4.0
+# Weights are mapped into memory twice while a pipeline loads, so a model
+# needs more free memory than its on-disk size.
+IMAGE_MODEL_HEADROOM = 1.1
 IMAGE_MAX_PRESSURE_PERCENT = 95.0
 
 # Video gen working set scales with frame count + resolution. Strictest
@@ -93,13 +96,30 @@ def gate_image_generation(
     *,
     min_available_gb: float = IMAGE_MIN_AVAILABLE_GB,
     max_pressure_percent: float = IMAGE_MAX_PRESSURE_PERCENT,
+    model_gb: float | None = None,
+    model_name: str | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for image generation. Returns refusal or None.
 
     Image inference can OOM swap-thrash for minutes before recovering, so
     we require materially more headroom than chat. Same shape as
     `gate_chat_generation` so call sites can render the message uniformly.
+
+    ``model_gb`` is the weight size of a model that is not resident yet. A
+    model larger than free memory is killed by the OS mid-load, which takes
+    the whole backend down with it, so it is refused up front instead.
     """
+    if model_gb and available_gb < model_gb * IMAGE_MODEL_HEADROOM:
+        label = model_name or "This image model"
+        return {
+            "code": "memory_gate_image_model_too_large",
+            "message": (
+                f"{label} needs about {model_gb * IMAGE_MODEL_HEADROOM:.0f} GB "
+                f"of free memory to load, but only {available_gb:.1f} GB is "
+                "available. Close other apps, or pick a smaller or quantized "
+                "image model."
+            ),
+        }
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_image_low_available",
@@ -158,6 +178,32 @@ def gate_video_generation(
     return None
 
 
+def _macos_reclaimable_gb(total_bytes: int) -> float | None:
+    """Memory macOS itself counts as available to apps, in GB (None elsewhere).
+
+    ``psutil``'s "available" leaves out file cache that sits in the active list,
+    so after a large model download or read it can report 28 GB free on a 64 GB
+    Mac that the OS would hand over without a swap. ``kern.memorystatus_level``
+    is the percentage the OS uses for its own memory-pressure decisions.
+    """
+    import subprocess
+    import sys
+
+    if sys.platform != "darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "kern.memorystatus_level"],
+            capture_output=True, text=True, timeout=2, check=True,
+        )
+        level = float(result.stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if not 0.0 < level <= 100.0:
+        return None
+    return total_bytes * level / 100.0 / (1024 ** 3)
+
+
 def snapshot_memory_signals() -> tuple[float, float]:
     """Read current available-RAM + pressure-percent signals.
 
@@ -177,6 +223,7 @@ def snapshot_memory_signals() -> tuple[float, float]:
     used = memory.used
     available = memory.available
     available_gb = available / (1024 ** 3)
+    available_gb = max(available_gb, _macos_reclaimable_gb(total) or 0.0)
 
     # Compressed pages are macOS-specific and not always available; fall
     # back to plain used+swap when the read fails so non-Apple platforms

@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.helpers.gpu import nvidia_gpu_present, torch_install_warning
+from backend_service.helpers.lora import fuse_catalog_lora
 from backend_service.image_runtime import validate_local_diffusers_snapshot
 from backend_service.progress import (
     GenerationCancelled,
@@ -626,15 +627,11 @@ class DiffusersVideoEngine:
                 self._release_pipeline()
 
             import torch  # type: ignore
-            from huggingface_hub import snapshot_download  # type: ignore
+            from backend_service.helpers.hf_local import local_snapshot_path
 
             pipeline_cls = self._pipeline_class(repo)
 
-            local_path = snapshot_download(
-                repo_id=repo,
-                local_files_only=True,
-                resume_download=True,
-            )
+            local_path = local_snapshot_path(repo, resume_download=True)
             local_root = Path(local_path)
             validation_error = validate_local_diffusers_snapshot(local_root, repo)
             if validation_error is not None:
@@ -750,21 +747,8 @@ class DiffusersVideoEngine:
 
             if lora_repo and lora_file and not distill_active:
                 try:
-                    pipeline.load_lora_weights(
-                        lora_repo,
-                        weight_name=lora_file,
-                        local_files_only=True,
-                    )
-                    effective_scale = (
-                        float(lora_scale) if lora_scale is not None else 1.0
-                    )
-                    pipeline.fuse_lora(lora_scale=effective_scale)
-                    try:
-                        pipeline.unload_lora_weights()
-                    except Exception:
-                        pass
                     self._load_notes.append(
-                        f"LoRA: {lora_repo}/{lora_file} @ scale {effective_scale:.3f}"
+                        fuse_catalog_lora(pipeline, lora_repo, lora_file, lora_scale)
                     )
                 except Exception as exc:  # noqa: BLE001 — non-fatal
                     self._load_notes.append(

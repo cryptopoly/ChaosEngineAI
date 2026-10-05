@@ -72,7 +72,9 @@ def start_download(
         _friendly_hf_download_error,
         _hf_repo_downloaded_bytes,
         _hf_repo_preflight_size_gb,
+        _hub_repo_files,
     )
+    from backend_service.helpers.text_gguf import matched_size_bytes, text_repo_allow_patterns
 
     if not _HF_REPO_PATTERN.match(repo):
         raise HTTPException(
@@ -108,6 +110,16 @@ def start_download(
         return failed_status
     if isinstance(preflight_total_gb, (int, float)) and preflight_total_gb > 0:
         total_gb = float(preflight_total_gb)
+    # A pinned text GGUF fetches one quant, not the whole repo — size the
+    # progress bar against what will actually land on disk.
+    text_patterns = None if allow_patterns else text_repo_allow_patterns(repo)
+    if text_patterns:
+        hub_files = _hub_repo_files(repo).get("files") or []
+        # Re-derive with the file list so spec-dec sidecars are included.
+        text_patterns = text_repo_allow_patterns(repo, hub_files) or text_patterns
+        pinned_bytes = matched_size_bytes(hub_files, text_patterns)
+        if pinned_bytes > 0:
+            total_gb = _bytes_to_gb(pinned_bytes)
 
     initial_progress = 0.0
     if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
@@ -179,11 +191,13 @@ def start_download(
             with open(process_log_path, "w", encoding="utf-8", errors="replace") as process_log:
                 # Diffusers repos (image + video) get a component-folder
                 # allowlist so we skip legacy single-file checkpoints the
-                # pipelines never load. Both helpers return None for repos
-                # outside their catalog, so only one ever applies.
+                # pipelines never load; pinned text GGUFs fetch one quant.
+                # Each helper returns None for repos outside its catalog,
+                # so only one ever applies.
                 effective_allow_patterns = allow_patterns or (
                     _video_repo_allow_patterns(repo)
                     or _image_repo_allow_patterns(repo)
+                    or text_patterns
                 )
                 process = _spawn_snapshot_download(
                     repo,

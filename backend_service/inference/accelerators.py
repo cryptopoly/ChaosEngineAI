@@ -11,10 +11,9 @@ Setup tab + per-feature install panels expose:
 - **sageattention** — fast attention kernels for DiT pipelines on CUDA
   (FU-016). Stacks multiplicatively with FBCache / Nunchaku. No-op on
   Apple Silicon and on UNet pipelines.
-- **dflash CUDA** — PyTorch/CUDA half of the speculative decoding family
-  (FU-031, FU-048). ``dflash.is_vllm_available()`` already exists in the
-  local ``dflash/__init__.py`` wrapper and inspects the ``dflash.model``
-  submodule, so we delegate to it rather than re-detecting here.
+- **dflash CUDA** — CUDA half of the speculative decoding family
+  (FU-031, FU-048). Served natively by vLLM >=0.28; detection delegates
+  to ``dflash.is_vllm_available()`` (vLLM package metadata — FU-091).
 - **triattention** — vLLM compressor used by FU-003 LongLive on CUDA
   and FU-002 on Apple Silicon. The pip name + import name agree
   (``triattention``).
@@ -40,6 +39,7 @@ import importlib
 import importlib.util
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _spec_exists(module_name: str) -> bool:
@@ -80,11 +80,26 @@ def _safe_version(module_name: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 def nunchaku_available() -> bool:
-    return _spec_exists("nunchaku")
+    """True only for the SVDQuant Nunchaku, not its PyPI namesake.
+
+    ``pip install nunchaku`` pulls an unrelated piecewise-linear-
+    segmentation library that also imports as ``nunchaku``, so bare
+    importability is a false positive. The SVDQuant package ships a
+    ``models/`` subpackage — check for it on disk instead of importing,
+    since the real ``__init__`` pulls torch + the CUDA extension.
+    """
+    if not _spec_exists("nunchaku"):
+        return False
+    try:
+        spec = importlib.util.find_spec("nunchaku")
+    except (ImportError, ValueError):
+        return False
+    locations = getattr(spec, "submodule_search_locations", None) or []
+    return any((Path(location) / "models").is_dir() for location in locations)
 
 
 def nunchaku_version() -> str | None:
-    return _safe_version("nunchaku")
+    return _safe_version("nunchaku") if nunchaku_available() else None
 
 
 # ---------------------------------------------------------------------------
@@ -102,11 +117,9 @@ def sageattention_version() -> str | None:
 # ---------------------------------------------------------------------------
 # DFlash — FU-031 (MLX side) + FU-048 (CUDA side)
 #
-# Two flags here because the two backends live in two separate pip
-# packages with two import names (``dflash_mlx`` for Apple Silicon,
-# ``dflash.model`` for CUDA). The shared ``dflash`` integration module
-# already exposes detection helpers; reuse them so the wrapping stays
-# in one place if the upstream package layout changes.
+# Two flags: ``dflash_mlx`` (Apple Silicon) and vLLM's built-in DFlash
+# method (CUDA). The shared ``dflash`` integration module owns both
+# detection helpers so the wrapping stays in one place.
 # ---------------------------------------------------------------------------
 
 def dflash_mlx_available() -> bool:
@@ -122,12 +135,12 @@ def dflash_mlx_available() -> bool:
 
 
 def dflash_cuda_available() -> bool:
-    """``dflash`` PyPI package (CUDA) — the PyTorch/CUDA draft runner.
+    """DFlash on CUDA — served by vLLM >=0.28 natively (FU-091).
 
-    Uses the integration module's existing helper, which checks for the
-    ``dflash.model`` submodule specifically (the local ``dflash/`` wrapper
-    in this repo shadows the bare ``dflash`` import, so the submodule
-    check is what disambiguates "real upstream package" from "our shim").
+    Delegates to ``dflash.is_vllm_available``, which reads vLLM's
+    package metadata. The PyPI ``dflash`` package is deliberately not
+    consulted: its top-level module collides with our ``dflash/``
+    registry and vLLM doesn't need it.
     """
     try:
         from dflash import is_vllm_available
@@ -144,13 +157,14 @@ def dflash_mlx_version() -> str | None:
 
 
 def dflash_cuda_version() -> str | None:
-    """The CUDA wheel exposes its version via ``dflash.model.__version__``
-    when installed, but our local wrapper ``dflash/__init__.py`` shadows
-    the bare name. Probe the submodule path the upstream package owns.
-    """
+    """The vLLM version serving DFlash, or None when the lane is off."""
     if not dflash_cuda_available():
         return None
-    return _safe_version("dflash.model")
+    try:
+        from dflash import vllm_version
+    except ImportError:
+        return None
+    return vllm_version()
 
 
 # ---------------------------------------------------------------------------

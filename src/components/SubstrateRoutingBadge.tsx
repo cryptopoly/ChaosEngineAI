@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { GenerationMetrics } from "../types";
 import type { TFunction } from "i18next";
+import { isMemorySaverStrategy } from "./runtimeSupport";
 
 /**
  * Phase 3.4: Substrate routing inspector — concise per-turn badge
@@ -11,7 +12,7 @@ import type { TFunction } from "i18next";
  * via inference.py / mlx_worker.py. Rendering it inline (above the
  * collapsible Model Details fold-out) makes the substrate visible
  * by default — operators can tell at a glance whether the turn went
- * through MLX vs llama.cpp, ChaosEngine vs TurboQuant, and how well
+ * through MLX vs llama.cpp, native vs TurboQuant, and how well
  * speculative decoding is doing.
  *
  * No badge renders when metrics is missing entirely; partial metrics
@@ -60,7 +61,7 @@ function buildChips(metrics: GenerationMetrics, t: TFunction | typeof defaultTra
     });
   }
 
-  // Cache strategy + bits, e.g. "ChaosEngine bf16" or "TurboQuant 4-bit".
+  // Cache strategy + bits, e.g. "Native f16" or "TurboQuant 4-bit".
   const cacheLabel = metrics.cacheLabel
     || (metrics.cacheStrategy
       ? metrics.cacheBits
@@ -71,10 +72,15 @@ function buildChips(metrics: GenerationMetrics, t: TFunction | typeof defaultTra
     chips.push({
       key: "cache",
       label: String(cacheLabel),
-      title: t("substrateRoutingBadge.cacheTitle", {
-        defaultValue: "KV cache strategy ({label})",
-        label: cacheLabel,
-      }),
+      title: isMemorySaverStrategy(metrics.cacheStrategy)
+        ? t("substrateRoutingBadge.cacheTitleMemorySaver", {
+            defaultValue: "KV cache strategy ({label}) — a memory saver: a much smaller cache for long chats, at the cost of slower generation",
+            label: cacheLabel,
+          })
+        : t("substrateRoutingBadge.cacheTitle", {
+            defaultValue: "KV cache strategy ({label})",
+            label: cacheLabel,
+          }),
       tone: "default",
     });
   }
@@ -83,15 +89,24 @@ function buildChips(metrics: GenerationMetrics, t: TFunction | typeof defaultTra
   // users know how aggressively DDTree was drafting.
   if (metrics.speculativeDecoding) {
     const budget = metrics.treeBudget;
+    // TensorFold drafts are chains verified exactly against the target, not
+    // a DDTree — don't call them one.
+    const exactDrafts = /tensorfold/i.test(`${metrics.backend ?? ""} ${metrics.engineLabel ?? ""}`);
     chips.push({
       key: "spec",
-      label: budget && budget > 0
+      label: exactDrafts
+        ? t("substrateRoutingBadge.specLabelExact", { defaultValue: "Exact drafts" })
+        : budget && budget > 0
         ? t("substrateRoutingBadge.specLabelWithBudget", {
             defaultValue: "DDTree {budget}",
             budget,
           })
         : t("substrateRoutingBadge.specLabel", { defaultValue: "DDTree" }),
-      title: budget
+      title: exactDrafts
+        ? t("substrateRoutingBadge.specTitleExact", {
+            defaultValue: "Speculative decoding active — every draft is verified against the target model, so the reply matches serial decoding",
+          })
+        : budget
         ? t("substrateRoutingBadge.specTitleWithBudget", {
             defaultValue: "Tree-based speculative decoding active (budget {budget} draft tokens per step)",
             budget,

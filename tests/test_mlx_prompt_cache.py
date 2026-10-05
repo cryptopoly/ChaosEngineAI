@@ -178,3 +178,102 @@ class CommitInvalidateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+try:  # Real-MLX checks run wherever mlx + mlx-lm import (CPU builds too).
+    import mlx.core as _mx  # noqa: F401
+    from mlx_lm.models import qwen3_next as _qwen3_next
+    _HAVE_MLX = True
+except Exception:  # noqa: BLE001
+    _HAVE_MLX = False
+
+
+class _RealState:
+    """Worker-state stand-in around a real (tiny, random) mlx-lm model."""
+
+    def __init__(self, model, tokens_by_text):
+        self.model = model
+        self.tokenizer = self
+        self._tokens_by_text = tokens_by_text
+        self._loaded_model_ref = "tiny-hybrid"
+        self._persist_cache = None
+        self._persist_tokens = []
+        self._persist_cache_model_ref = None
+
+    def _make_cache(self):
+        return None, None
+
+    def encode(self, text):
+        return list(self._tokens_by_text[text])
+
+
+@unittest.skipUnless(_HAVE_MLX, "mlx / mlx-lm not installed")
+class HybridCheckpointTests(unittest.TestCase):
+    """FU-090: hybrid (GDN + attention) caches reuse history via a
+    recurrent-state checkpoint, with output identical to a full prefill."""
+
+    def _model(self):
+        import mlx.core as mx
+
+        mx.random.seed(0)
+        args = _qwen3_next.ModelArgs(
+            model_type="qwen3_next", hidden_size=64, num_hidden_layers=4,
+            intermediate_size=128, num_attention_heads=4, linear_num_value_heads=4,
+            linear_num_key_heads=2, linear_key_head_dim=16, linear_value_head_dim=16,
+            linear_conv_kernel_dim=4, num_experts=4, num_experts_per_tok=2,
+            decoder_sparse_step=1, shared_expert_intermediate_size=64,
+            mlp_only_layers=[], moe_intermediate_size=32, rms_norm_eps=1e-6,
+            vocab_size=97, num_key_value_heads=2, rope_theta=10000.0,
+            partial_rotary_factor=0.25, max_position_embeddings=512, head_dim=16,
+            full_attention_interval=2,
+        )
+        model = _qwen3_next.Model(args)
+        mx.eval(model.parameters())
+        return model
+
+    def _last_logits(self, model, cache, feed):
+        import mlx.core as mx
+
+        out = model(mx.array(feed)[None], cache=cache)
+        mx.eval(out)
+        return out[0, -1]
+
+    def test_second_turn_restores_checkpoint_and_matches_full_prefill(self):
+        import mlx.core as mx
+        from mlx_lm.models.cache import make_prompt_cache
+
+        model = self._model()
+        turn1 = [5, 9, 13, 2, 40, 41, 7, 8, 3]
+        generated = [60, 61, 62]
+        turn2 = turn1 + [60, 61, 70, 71, 72, 11]  # re-rendered history diverges after 2 gen tokens
+        state = _RealState(model, {"t1": turn1, "t2": turn2})
+
+        acq1 = pc.acquire(state, "t1")
+        self.assertTrue(acq1.managed)
+        self.assertEqual(acq1.prompt_feed, turn1[-1:])  # prefilled all but the last
+        # Simulate generation: last prompt token + generated tokens enter the cache.
+        self._last_logits(model, acq1.cache, acq1.prompt_feed + generated)
+        pc.commit(state, cache=acq1.cache, commit_tokens=acq1.commit_tokens,
+                  generated_ids=generated, model_ref="tiny-hybrid")
+        self.assertEqual(state._persist_snapshot[0], len(turn1) - 1)
+
+        acq2 = pc.acquire(state, "t2")
+        self.assertIs(acq2.cache, acq1.cache)  # reused, not rebuilt
+        self.assertEqual(acq2.prompt_feed, turn2[-1:])
+        reused = self._last_logits(model, acq2.cache, acq2.prompt_feed)
+
+        reference = self._last_logits(model, make_prompt_cache(model), turn2)
+        self.assertTrue(mx.allclose(reused, reference, atol=1e-4).item())
+
+    def test_no_checkpoint_reuse_when_prefix_short_of_boundary(self):
+        model = self._model()
+        turn1 = [5, 9, 13, 2, 40, 41, 7, 8, 3]
+        turn2 = [5, 9, 99, 98, 97]  # diverges before the checkpoint
+        state = _RealState(model, {"t1": turn1, "t2": turn2})
+        acq1 = pc.acquire(state, "t1")
+        self._last_logits(model, acq1.cache, acq1.prompt_feed)
+        pc.commit(state, cache=acq1.cache, commit_tokens=acq1.commit_tokens,
+                  generated_ids=[], model_ref="tiny-hybrid")
+        acq2 = pc.acquire(state, "t2")
+        self.assertIsNot(acq2.cache, acq1.cache)  # fresh cache, full prefill
+        self.assertEqual(acq2.prompt_feed, turn2[-1:])

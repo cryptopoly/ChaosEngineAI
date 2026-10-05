@@ -285,20 +285,37 @@ class _FakeTokenizer:
 
 
 class DFlashCompatibilityTests(unittest.TestCase):
-    def test_load_model_uses_dflash_runtime_bundle_api(self):
-        worker = WorkerState()
-        fake_model = SimpleNamespace(layers=[object(), object()])
-        fake_tokenizer = _FakeTokenizer()
+    @staticmethod
+    def _fake_dflash_modules(fake_model, fake_tokenizer, target_ops):
+        # FU-075: the worker imports ``load_draft_bundle`` + ``resolve_target_ops``
+        # from ``dflash_mlx.runtime`` (the pre-0.1.5 top-level
+        # ``configure_full_attention_split`` moved onto the per-family
+        # ``target_ops`` adapter). The fake runtime mirrors that surface.
         fake_runtime = SimpleNamespace(
-            configure_full_attention_split=Mock(),
+            resolve_target_ops=Mock(return_value=target_ops),
             load_draft_bundle=Mock(return_value=("draft_bundle", {"config": True})),
         )
         fake_pkg = SimpleNamespace(runtime=fake_runtime)
         fake_mlx_lm = SimpleNamespace(
             load=lambda *args, **kwargs: (fake_model, fake_tokenizer, {"num_hidden_layers": 2, "num_attention_heads": 2, "hidden_size": 8}),
         )
+        modules = {"mlx_lm": fake_mlx_lm, "dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}
+        return fake_runtime, modules
 
-        with patch.dict("sys.modules", {"mlx_lm": fake_mlx_lm, "dflash_mlx": fake_pkg, "dflash_mlx.runtime": fake_runtime}):
+    def test_load_model_uses_dflash_runtime_bundle_api(self):
+        # Pure-attention target (Qwen3.5): the draft bundle loads + speculative
+        # decoding engages, but configure_full_attention_split must be SKIPPED
+        # (FU-075 gates it to hybrid_gdn families only).
+        worker = WorkerState()
+        fake_model = SimpleNamespace(layers=[object(), object()])
+        fake_tokenizer = _FakeTokenizer()
+        target_ops = SimpleNamespace(
+            family=Mock(return_value="pure_attention"),
+            configure_full_attention_split=Mock(),
+        )
+        fake_runtime, modules = self._fake_dflash_modules(fake_model, fake_tokenizer, target_ops)
+
+        with patch.dict("sys.modules", modules):
             result = worker.load_model(
                 {
                     "target": "/tmp/model",
@@ -315,11 +332,38 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertEqual(worker._dflash_generator, "draft_bundle")
         self.assertIs(worker._ddtree_target, fake_model)
         self.assertEqual(worker._ddtree_draft, "draft_bundle")
-        fake_runtime.configure_full_attention_split.assert_called_once_with(fake_model, enabled=True)
+        fake_runtime.resolve_target_ops.assert_called_once_with(fake_model)
+        target_ops.configure_full_attention_split.assert_not_called()
         fake_runtime.load_draft_bundle.assert_called_once_with(
             "z-lab/Qwen3.5-35B-A3B-DFlash",
             lazy=True,
         )
+
+    def test_load_model_applies_full_attention_split_for_hybrid_gdn(self):
+        # hybrid_gdn target (e.g. Qwen3-Next GDN): configure_full_attention_split
+        # MUST be invoked on the resolved target_ops adapter (FU-075 split path).
+        worker = WorkerState()
+        fake_model = SimpleNamespace(layers=[object(), object()])
+        fake_tokenizer = _FakeTokenizer()
+        target_ops = SimpleNamespace(
+            family=Mock(return_value="hybrid_gdn"),
+            configure_full_attention_split=Mock(),
+        )
+        fake_runtime, modules = self._fake_dflash_modules(fake_model, fake_tokenizer, target_ops)
+
+        with patch.dict("sys.modules", modules):
+            result = worker.load_model(
+                {
+                    "target": "/tmp/model",
+                    "speculativeDecoding": True,
+                    "dflashDraftModel": "z-lab/Qwen3-Next-DFlash",
+                    "treeBudget": 0,
+                }
+            )
+
+        self.assertTrue(result["speculativeDecoding"])
+        target_ops.configure_full_attention_split.assert_called_once_with(fake_model, enabled=True)
+        fake_runtime.load_draft_bundle.assert_called_once_with("z-lab/Qwen3-Next-DFlash", lazy=True)
 
     def test_generate_dflash_uses_runtime_summary_shape(self):
         worker = WorkerState()

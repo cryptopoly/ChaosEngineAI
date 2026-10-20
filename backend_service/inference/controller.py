@@ -282,14 +282,7 @@ class RuntimeController:
             except Exception:
                 pass
             return
-        active_bytes = max(
-            self._model_resident_bytes(self.loaded_model),
-            self._engine_resident_bytes(self.engine),
-        )
-        self._evict_warm_pool(
-            incoming_bytes=active_bytes,
-        )
-        if not self._can_keep_warm_model(active_bytes, required_free_bytes=required_free_bytes):
+        if not self._make_room_keeping_active(required_free_bytes):
             try:
                 self.engine.unload_model()
             except Exception:
@@ -748,64 +741,55 @@ class RuntimeController:
         except Exception:
             return 0
 
-    def _warm_pool_resident_bytes(self) -> int:
-        return sum(
-            max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
-            for engine, info in self._warm_pool.values()
-        )
+    def _memory_budget_bytes(self) -> int | None:
+        """Free memory after OS headroom, in bytes; ``None`` when it can't be read.
 
-    def _memory_budget_bytes(self) -> int:
-        """Bytes available for warm-pool weights, after OS headroom.
-
-        Returns 0 when psutil isn't usable; callers must fall back to the
-        count-based MAX_WARM_MODELS cap in that case.
+        Models already loaded (active or warm) are part of used memory, so
+        this is what a new load can still take without unloading anything.
+        Uses the same macOS-corrected available figure as the memory gates.
         """
         try:
             import psutil
 
-            available = int(psutil.virtual_memory().available)
+            from backend_service.helpers.memory_gate import available_memory_gb
+
+            memory = psutil.virtual_memory()
+            available = int(available_memory_gb(memory.total, memory.available) * 1024 ** 3)
         except Exception:
-            return 0
+            return None
         return max(0, available - self.WARM_POOL_MEMORY_HEADROOM_BYTES)
 
-    def _pop_oldest_warm_entry(self) -> None:
+    def _pop_oldest_warm_entry(self) -> int:
+        """Unload the oldest warm model; return roughly how many bytes that frees."""
         if not self._warm_pool:
-            return
+            return 0
         oldest_key = next(iter(self._warm_pool))
-        old_engine, _ = self._warm_pool.pop(oldest_key)
+        old_engine, old_info = self._warm_pool.pop(oldest_key)
+        freed = max(self._model_resident_bytes(old_info), self._engine_resident_bytes(old_engine))
         try:
             old_engine.unload_model()
         except Exception:
             pass
+        return freed
 
-    def _can_keep_warm_model(self, incoming_bytes: int, *, required_free_bytes: int = 0) -> bool:
-        budget = self._memory_budget_bytes()
-        if budget <= 0:
-            return True
-        if required_free_bytes > budget:
-            return False
-        return self._warm_pool_resident_bytes() + incoming_bytes <= budget
+    def _make_room_keeping_active(self, required_free_bytes: int) -> bool:
+        """Evict warm models until the incoming load fits; False if the active one must go too.
 
-    def _evict_warm_pool(self, *, incoming_bytes: int = 0) -> None:
-        """Make room for an incoming entry in the warm pool.
-
-        First applies the count cap (MAX_WARM_MODELS) so a flapping budget
-        can never grow the pool unboundedly. Then, if ``psutil`` reports a
-        live memory budget, evicts oldest entries until the pool plus the
-        incoming model fits within ``available - headroom``.
-
-        ``incoming_bytes`` is the resident-byte estimate for the model
-        about to enter the pool (typically the model being parked from
-        active to warm). Passing 0 still triggers the count cap.
+        Applies the count cap first (MAX_WARM_MODELS, leaving a slot for the
+        model being parked). Then, while the incoming model needs more than is
+        free, unloads the oldest warm model and counts what it frees. Loaded
+        models are already in used memory, so they are counted once; the old
+        check compared them against free memory, which counts them twice and
+        dropped warm models far too eagerly.
         """
         while len(self._warm_pool) >= self.MAX_WARM_MODELS:
             self._pop_oldest_warm_entry()
-
-        budget = self._memory_budget_bytes()
-        if budget <= 0:
-            return
-        while self._warm_pool and self._warm_pool_resident_bytes() + incoming_bytes > budget:
-            self._pop_oldest_warm_entry()
+        free = self._memory_budget_bytes()
+        if free is None:
+            return True
+        while self._warm_pool and free < required_free_bytes:
+            free += self._pop_oldest_warm_entry()
+        return free >= required_free_bytes
 
     def load_model(
         self,

@@ -729,6 +729,42 @@ class RuntimeControllerWarmPoolTests(unittest.TestCase):
         self.assertEqual(engine_a.unload_calls, 1)
         self.assertEqual(controller._warm_pool, {})
 
+    def test_loaded_models_are_not_counted_twice_against_free_memory(self):
+        # 20 GB free after headroom, a 10 GB incoming model, a 25 GB model
+        # being parked. The old check compared the parked model (25) with free
+        # memory (20), which already excludes it, and unloaded it.
+        controller = self._controller()
+        engine_a = DummyEngine("A")
+        engine_b = DummyEngine("B")
+        controller._select_engine = mock.Mock(side_effect=[engine_a, engine_b])
+        self._load(controller, "model-a", context_tokens=8192)
+        with (
+            mock.patch.object(RuntimeController, "_target_resident_bytes", return_value=10),
+            mock.patch.object(RuntimeController, "_model_resident_bytes", return_value=25),
+            mock.patch.object(controller, "_memory_budget_bytes", return_value=20),
+        ):
+            self._load(controller, "model-b", context_tokens=8192)
+        self.assertEqual(engine_a.unload_calls, 0)
+        self.assertEqual(len(controller._warm_pool), 1)
+
+    def test_evicting_a_warm_model_counts_the_memory_it_frees(self):
+        controller = self._controller()
+        controller.MAX_WARM_MODELS = 3
+        engines = [DummyEngine(name) for name in ("A", "B", "C")]
+        controller._select_engine = mock.Mock(side_effect=engines)
+        self._load(controller, "model-a", context_tokens=8192)
+        self._load(controller, "model-b", context_tokens=8192)
+        # A is warm, B active. C needs 20; 12 free; evicting A frees 10 -> 22: keep B.
+        with (
+            mock.patch.object(RuntimeController, "_target_resident_bytes", return_value=20),
+            mock.patch.object(RuntimeController, "_model_resident_bytes", return_value=10),
+            mock.patch.object(controller, "_memory_budget_bytes", return_value=12),
+        ):
+            self._load(controller, "model-c", context_tokens=8192)
+        self.assertEqual(engines[0].unload_calls, 1)
+        self.assertEqual(engines[1].unload_calls, 0)
+        self.assertEqual(len(controller._warm_pool), 1)
+
     def test_clear_warm_pool_unloads_every_parked_engine(self):
         controller = self._controller()
         engine_a = DummyEngine("A")

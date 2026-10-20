@@ -14,9 +14,13 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 - **Kolibri 1** (Aleph Alpha, 78B MoE, German and English) on MLX via a vendored architecture; reasoning effort follows the Thinking control.
 - New catalog families: Kimi K2.6, Llama 4 Scout, MiniMax M3, Mistral Large 3, Ornith 1, Qwen 3.8, Bonsai, Nemotron 3.5 Lightning, MiniCPM 5.
 - `scripts/audit-catalog-repos.py` checks every Hub repo and pinned file in the catalogs.
+- Disk usage rows expand into their contents and each has a Delete button behind a confirmation; the shared Hugging Face `blobs` store is protected (FU-109).
+- Settings splits Diagnostics into Diagnostics, Accelerators and Disk usage tabs, so the Boost Pack and the disk scan no longer fall off screen when the snapshot refreshes.
 
 ### Fixed
 
+- Chat > My Models listed 3D tool parts, encoders, voice models and bare weight files as chat models; discovery now marks them `other` and the Chat filter hides them (FU-108).
+- Release bundles shipped without `llama-server` because upstream's "latest" llama.cpp release no longer carries binaries; the build now fetches pinned tag b11277 (FU-107).
 - Linux AppImage backend killed right after startup; loading screen never showed the error (FU-100).
 - ModelScope-named and symlinked model folders were not listed (FU-101).
 - Wan video rendered burnt on Apple Silicon: UniPC diverges on MPS, now flow-match Euler (FU-102).
@@ -33,6 +37,7 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 ### Changed
 
 - TurboQuant is presented as a memory saver; its speed estimate uses measured M4 Max ratios (FU-095).
+- In-range frontend dependency bumps (Tauri JS packages kept in step with the Rust side, vite, vitest, katex).
 - Bundled llama.cpp build script pins tag b11277; vLLM floor raised to 0.28; diffusers floor 0.40; `turboquant-mlx-full` floor 0.11.
 - CUDA DFlash uses vLLM's built-in method; the PyPI `dflash` package is no longer installed (FU-091).
 

@@ -573,6 +573,7 @@ export type {
 export {
   fetchDiagnosticsLogTail,
   fetchDiagnosticsSnapshot,
+  fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,
   getStorageSettings,

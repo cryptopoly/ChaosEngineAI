@@ -96,8 +96,13 @@ def _build_system_snapshot(
     except OSError:
         swap_used = 0
         swap_total = 0
+    from backend_service.helpers.memory_gate import (
+        available_memory_gb as _available_memory_gb,
+        pressure_percent_from_available,
+    )
+
     total_memory_gb = _bytes_to_gb(memory.total)
-    available_memory_gb = _bytes_to_gb(memory.available)
+    available_memory_gb = round(_available_memory_gb(memory.total, memory.available), 1)
     used_memory_gb = _bytes_to_gb(memory.used)
     swap_used_gb = _bytes_to_gb(swap_used)
     swap_total_gb = _bytes_to_gb(swap_total)
@@ -132,11 +137,11 @@ def _build_system_snapshot(
         gpu_vram_total_gb = gpu_vram_total_gb_raw
 
 
-    # Memory pressure: used + compressed + swap as a fraction of total
-    pressure_numerator = used_memory_gb + compressed_memory_gb + swap_used_gb
-    memory_pressure_percent = (
-        round(min(100.0, (pressure_numerator / total_memory_gb) * 100), 1)
-        if total_memory_gb > 0 else 0.0
+    # Memory pressure: the share of memory that is not available. Swap is not
+    # counted; see ``helpers/memory_gate.py``. The memory gates use the same
+    # figure, so the dashboard and a refusal never disagree.
+    memory_pressure_percent = round(
+        pressure_percent_from_available(total_memory_gb, available_memory_gb), 1,
     )
 
     def _get_cache_strategies():

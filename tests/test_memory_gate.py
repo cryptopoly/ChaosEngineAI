@@ -160,3 +160,53 @@ class MacosReclaimableMemoryTests(unittest.TestCase):
         import psutil
 
         self.assertGreaterEqual(available_gb, round(psutil.virtual_memory().available / 1024 ** 3, 1) - 1.0)
+
+
+class PressureSignalTests(unittest.TestCase):
+    """Pressure comes from available memory; swap must not count as in use."""
+
+    GB = 1024 ** 3
+
+    def _signals(self, *, total_gb, available_gb, swap_used_gb, macos_level_gb=None):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        from backend_service.helpers import memory_gate
+
+        vm = SimpleNamespace(total=int(total_gb * self.GB), available=int(available_gb * self.GB), used=0)
+        swap = SimpleNamespace(used=int(swap_used_gb * self.GB), total=int(64 * self.GB))
+        with mock.patch("psutil.virtual_memory", return_value=vm), \
+                mock.patch("psutil.swap_memory", return_value=swap), \
+                mock.patch.object(memory_gate, "_macos_reclaimable_gb", return_value=macos_level_gb):
+            return memory_gate.snapshot_memory_signals()
+
+    def test_lingering_swap_does_not_raise_pressure(self):
+        # Live reading from a 64 GB Mac whose OS rated pressure normal: the old
+        # formula (used + compressed + swap) gave 100% once a 33 GB model loaded.
+        available, pressure = self._signals(total_gb=64, available_gb=34.4, swap_used_gb=11.6)
+        self.assertEqual(available, 34.4)
+        self.assertAlmostEqual(pressure, 46.25, delta=0.1)
+
+    def test_macos_level_raises_available_and_lowers_pressure(self):
+        available, pressure = self._signals(
+            total_gb=64, available_gb=34.4, swap_used_gb=11.6, macos_level_gb=64 * 0.85,
+        )
+        self.assertEqual(available, 54.4)
+        self.assertAlmostEqual(pressure, 15.0, places=1)
+
+    def test_a_large_loaded_model_still_lets_chat_through(self):
+        # 33 GB model resident, 20 GB still available, 12 GB swap: proceed.
+        available, pressure = self._signals(total_gb=64, available_gb=20.0, swap_used_gb=12.0)
+        self.assertIsNone(gate_chat_generation(available, pressure))
+
+    def test_nearly_out_of_memory_is_still_refused(self):
+        available, pressure = self._signals(total_gb=64, available_gb=0.6, swap_used_gb=0)
+        self.assertIsNotNone(gate_chat_generation(available, pressure))
+        self.assertIsNotNone(gate_video_generation(available, pressure))
+
+    def test_pressure_helper_bounds(self):
+        from backend_service.helpers.memory_gate import pressure_percent_from_available
+
+        self.assertEqual(pressure_percent_from_available(0, 5), 0.0)
+        self.assertEqual(pressure_percent_from_available(64, 80), 0.0)
+        self.assertEqual(pressure_percent_from_available(64, 0), 100.0)

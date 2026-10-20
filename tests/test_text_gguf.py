@@ -188,6 +188,14 @@ class DownloadTests(unittest.TestCase):
         self.assertIsNone(spawn.call_args.kwargs["allow_patterns"])
 
 
+    def test_worker_downloads_without_unused_shards(self) -> None:
+        pruned = (["transformer/model-00001-of-00003.safetensors"], 4 * 1024 ** 3, 10 * 1024 ** 3)
+        with mock.patch("backend_service.helpers.shard_index.pruned_allow_patterns", return_value=pruned):
+            spawn = self._start("nobody/sharded-repo", [])
+        self.assertEqual(spawn.call_args.kwargs["allow_patterns"], pruned[0])
+        self.assertEqual(self.state._downloads["nobody/sharded-repo"]["totalGb"], 4.0)
+
+
 class CatalogPinInvariantTests(unittest.TestCase):
     def test_pins_are_main_weight_first_shards(self) -> None:
         pinned = [v for f in MODEL_FAMILIES for v in f["variants"] if v.get("ggufFile")]

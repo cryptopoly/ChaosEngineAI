@@ -298,42 +298,10 @@ _HUB_TIMEOUT_SECONDS = 5.0
 
 
 def _fetch_hub_config(repo: str) -> dict[str, Any] | None:
-    """``config.json`` of a Hub repo, read over HTTP.
+    """``config.json`` of a Hub repo, read over HTTP (not into the HF cache)."""
+    from backend_service.helpers.hub_http import fetch_hub_json
 
-    Deliberately not ``hf_hub_download``: that would create a cache entry
-    holding only ``config.json``, which the library scan and the "installed"
-    checks would then see as a partly downloaded model.
-    """
-    import os
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
-    endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
-    url = f"{endpoint}/{urllib.parse.quote(repo, safe='/')}/resolve/main/config.json"
-    headers = {"User-Agent": "ChaosEngineAI"}
-    try:
-        from huggingface_hub import get_token
-
-        token = get_token()
-    except Exception:
-        token = None
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    try:
-        import ssl
-
-        import certifi  # what huggingface_hub's own client trusts; python.org builds ship no CA bundle
-
-        context = ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        context = None
-    try:
-        request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=_HUB_TIMEOUT_SECONDS, context=context) as resp:
-            data = json.loads(resp.read(2_000_000).decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError):
-        return None
+    data = fetch_hub_json(repo, "config.json", timeout=_HUB_TIMEOUT_SECONDS, max_bytes=2_000_000)
     return data if isinstance(data, dict) else None
 
 

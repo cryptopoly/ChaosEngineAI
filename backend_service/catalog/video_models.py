@@ -187,14 +187,14 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mlx-video (MLX native)",
                 "styleTags": ["general", "fast", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
-                "sizeGb": 87.2,
+                "sizeGb": 49.2,
                 # Hub sizes 2026-10-20: 19B transformer is 38 GB bf16; the Gemma 3 12B text
                 # encoder (49 GB fp32 on disk, cast to bf16 on load) runs and is freed before
                 # the transformer loads, so the peak is the denoise phase. Not measured live.
                 "runtimeFootprintGb": 48.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
-                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it). This repo also carries a second, unused set of transformer shards (about 38 GB) that the download currently includes.",
+                "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it).",
                 # Same fixed 8 + 3 sampler shape as LTX-2 distilled with the
                 # 2.3 weight refresh; wall time tracks the LTX-2 distilled
                 # entry within measurement noise.

@@ -88,7 +88,6 @@ import {
   syncRuntime,
   settingsDraftFromWorkspace,
   parseContextK,
-  estimateArchFromParams,
   estimateParamsBFromDisk,
   previewModelControls,
   samePreviewModel,
@@ -849,10 +848,13 @@ export default function App() {
   // that absolutely don't fit. Also pushed paramsB=0 cases through.
   const previewVariantPath = previewVariant ? findLibraryItemForVariant(chatLibrary, previewVariant)?.path ?? null : null;
   useEffect(() => {
-    if (!previewVariant?.paramsB) return;
+    // While the launch modal is open it owns the preview (effect below);
+    // closing it re-runs this so the tab's own model comes back.
+    if (pendingLaunch || !previewVariant?.paramsB) return;
     const next = previewModelControls(previewVariant.paramsB, previewVariantPath, previewVariant.repo);
     setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
-  }, [previewVariant?.paramsB, previewVariant?.repo, previewVariantPath, setPreviewControls]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingLaunch === null, previewVariant?.paramsB, previewVariant?.repo, previewVariantPath, setPreviewControls]);
 
   // Sync serverModelKey when options change
   useEffect(() => {
@@ -929,13 +931,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, benchmarkOption?.key, conversionSource?.path, conversionVariant?.id]);
 
-  // Launch modal: re-anchor preview to selected model
+  // Launch modal: re-anchor preview to the model the modal has selected.
+  // Mirrors LaunchModal's own option list and default (the first option when
+  // nothing is preselected); Discover's Chat / Server buttons preselect a
+  // ``catalog:`` key that only exists in the full option list.
+  const launchModalOpen = pendingLaunch !== null;
   useEffect(() => {
     if (!pendingLaunch) return;
     const key = pendingLaunch.preselectedKey;
-    if (!key) return;
-    const options = libraryChatOptions.length > 0 ? libraryChatOptions : threadModelOptions;
-    const opt = options.find((o) => o.key === key);
+    const preselectedIsCatalog = key?.startsWith("catalog:") ?? false;
+    const options = preselectedIsCatalog || libraryChatOptions.length === 0 ? threadModelOptions : libraryChatOptions;
+    const opt = key
+      ? options.find((o) => o.key === key) ?? threadModelOptions.find((o) => o.key === key)
+      : options[0];
     if (!opt) return;
     let paramsB = opt.paramsB ?? 0;
     if (!paramsB && opt.sizeGb) {
@@ -943,13 +951,11 @@ export default function App() {
       paramsB = estimateParamsBFromDisk(opt.sizeGb, bpw);
     }
     if (!paramsB) return;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
-      return { ...current, paramsB, ...arch };
-    });
+    const repo = opt.canonicalRepo ?? (opt.modelRef.includes("/") ? opt.modelRef : null);
+    const next = previewModelControls(paramsB, opt.path ?? null, repo);
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingLaunch?.preselectedKey, libraryChatOptions, threadModelOptions]);
+  }, [launchModalOpen, pendingLaunch?.preselectedKey, libraryChatOptions, threadModelOptions]);
 
   // ── Cross-domain handlers ──────────────────────────────────
 

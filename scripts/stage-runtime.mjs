@@ -43,6 +43,14 @@ const archiveDest = path.join(embeddedResourcesRoot, `runtime-${platformTag}.tar
 // list in step with the routes.
 const BUNDLED_INSTALL_SCRIPTS = ["install-mflux.sh", "install-mtplx.sh", "install-tensorfold.sh"];
 
+// The llama.cpp release whose prebuilt binaries are bundled. Pinned (not
+// "latest") and kept equal to LLAMA_CPP_REF in scripts/update-llama-cpp.sh, which
+// tests/test_stage_runtime_scripts.py checks. The v0.9.8 build asked GitHub for
+// the repository's "latest" release, which had become a `v0.7.0` entry holding
+// only nightly-tag.txt, so no platform's release bundle got a llama-server.
+// Override with CHAOSENGINE_LLAMA_CPP_TAG.
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11277";
+
 main();
 
 function main() {
@@ -517,7 +525,7 @@ function attemptPrebuiltLlamaDownload() {
 
   let release;
   try {
-    release = fetchLatestLlamaRelease();
+    release = fetchLlamaRelease(LLAMA_CPP_TAG);
   } catch (err) {
     return { ok: false, reason: `github api fetch failed: ${shortError(err)}` };
   }
@@ -591,7 +599,7 @@ function attemptPrebuiltLlamaDownload() {
   return { ok: true, binDir: cacheBinDir, source: `downloaded ${tag}` };
 }
 
-function fetchLatestLlamaRelease() {
+function fetchLlamaRelease(tag) {
   const payload = execFileSync(
     "curl",
     [
@@ -600,7 +608,7 @@ function fetchLatestLlamaRelease() {
       "User-Agent: ChaosEngineAI-build",
       "-H",
       "Accept: application/vnd.github+json",
-      "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest",
+      `https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/${encodeURIComponent(tag)}`,
     ],
     { encoding: "utf8" },
   );
@@ -641,10 +649,11 @@ function pickLlamaAsset(assets, platformKey) {
     "macos-x64": [
       /^llama-.*-bin-macos-x64(?:-[\w]+)?\.(?:zip|tar\.gz)$/i,
     ],
+    // Linux assets moved from .zip to .tar.gz upstream; accept both.
     "linux-x64": [
-      /^llama-.*-bin-ubuntu-vulkan-x64\.zip$/i,
-      /^llama-.*-bin-ubuntu-x64\.zip$/i,
-      /^llama-.*-bin-linux-x64\.zip$/i,
+      /^llama-.*-bin-ubuntu-vulkan-x64\.(?:zip|tar\.gz)$/i,
+      /^llama-.*-bin-ubuntu-x64\.(?:zip|tar\.gz)$/i,
+      /^llama-.*-bin-linux-x64\.(?:zip|tar\.gz)$/i,
     ],
   };
   for (const pattern of preferencePatterns[platformKey] || []) {

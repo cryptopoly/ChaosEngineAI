@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query, Request
@@ -7,6 +9,44 @@ from fastapi import APIRouter, Query, Request
 from backend_service.app import _build_system_snapshot, compute_cache_preview
 
 router = APIRouter()
+
+
+def _model_arch(request: Request, model_path: str | None, model_repo: str | None):
+    """Real attention layout of a local model, or None to fall back to the estimate.
+
+    ``model_path`` must sit inside an enabled model directory or the Hugging
+    Face cache, so the endpoint never reads files elsewhere on disk.
+    ``model_repo`` is resolved to its downloaded snapshot, if there is one.
+    """
+    from backend_service.helpers.hf_cache_paths import _hf_hub_cache_root, _hf_repo_snapshot_dir
+    from backend_service.helpers.model_arch import read_kv_architecture
+
+    if model_path:
+        try:
+            target = Path(os.path.expanduser(model_path)).resolve()
+        except (OSError, RuntimeError):
+            target = None
+        if target is not None:
+            roots: list[Path] = [_hf_hub_cache_root()]
+            for directory in request.app.state.chaosengine.settings.get("modelDirectories") or []:
+                raw = str(directory.get("path") or "")
+                if directory.get("enabled", True) and raw:
+                    roots.append(Path(os.path.expanduser(raw)))
+            for root in roots:
+                try:
+                    resolved_root = root.resolve()
+                except (OSError, RuntimeError):
+                    continue
+                if target == resolved_root or resolved_root in target.parents:
+                    found = read_kv_architecture(model_path)
+                    if found is not None:
+                        return found
+                    break
+    if model_repo and "/" in model_repo and ".." not in model_repo:
+        snapshot = _hf_repo_snapshot_dir(model_repo)
+        if snapshot is not None:
+            return read_kv_architecture(snapshot)
+    return None
 
 
 @router.get("/api/cache/preview")
@@ -18,9 +58,11 @@ def cache_preview(
     num_heads: int = Query(32, ge=1, le=256),
     num_kv_heads: int = Query(0, ge=0, le=256),
     hidden_size: int = Query(4096, ge=256, le=32768),
-    context_tokens: int = Query(8192, ge=256, le=262144),
+    context_tokens: int = Query(8192, ge=256, le=4_194_304),
     params_b: float = Query(7.0, ge=0.5, le=1000.0),
     strategy: str = Query("native"),
+    model_path: str | None = Query(None, max_length=4096),
+    model_repo: str | None = Query(None, max_length=256),
 ) -> dict[str, Any]:
     system_stats = _build_system_snapshot(capabilities=request.app.state.chaosengine.runtime.capabilities)
     return compute_cache_preview(
@@ -34,4 +76,5 @@ def cache_preview(
         params_b=params_b,
         system_stats=system_stats,
         strategy=strategy,
+        arch=_model_arch(request, model_path, model_repo),
     )

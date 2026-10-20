@@ -353,6 +353,10 @@ export async function getCachePreview(options: {
   contextTokens: number;
   paramsB: number;
   strategy?: string;
+  /** Local model folder or file; the backend reads its real attention layout. */
+  modelPath?: string | null;
+  /** Hugging Face repo id; used when the repo is already downloaded. */
+  modelRepo?: string | null;
 }): Promise<PreviewMetrics> {
   const search = new URLSearchParams({
     bits: String(options.bits),
@@ -368,6 +372,12 @@ export async function getCachePreview(options: {
   }
   if (options.strategy) {
     search.set("strategy", options.strategy);
+  }
+  if (options.modelPath) {
+    search.set("model_path", options.modelPath);
+  }
+  if (options.modelRepo) {
+    search.set("model_repo", options.modelRepo);
   }
 
   try {
@@ -389,6 +399,7 @@ export async function getCachePreview(options: {
       speedRatio: 0,
       qualityPercent: 0,
       diskSizeGb: 0,
+      archSource: "estimate",
       summary: "Cache preview unavailable \u2014 connect the backend to calculate machine-specific estimates.",
     };
   }

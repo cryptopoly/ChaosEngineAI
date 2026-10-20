@@ -90,6 +90,8 @@ import {
   parseContextK,
   estimateArchFromParams,
   estimateParamsBFromDisk,
+  previewModelControls,
+  samePreviewModel,
   detectBitsPerWeight,
   compareOptionalNumber,
   serverOriginFromBase,
@@ -664,6 +666,8 @@ export default function App() {
       contextTokens: workspace.settings.launchPreferences.contextTokens,
       paramsB: workspace.preview.paramsB,
       strategy: workspace.settings.launchPreferences.cacheStrategy,
+      modelPath: null,
+      modelRepo: null,
     });
     setActiveChatId(workspace.chatSessions[0]?.id ?? "");
     setThreadTitleDraft(workspace.chatSessions[0]?.title ?? "");
@@ -843,23 +847,12 @@ export default function App() {
   // to ~0 bytes (kv_elements = num_layers * num_kv_heads * head_dim *
   // ctx — anything * 0 = 0) and made "Fits Easily" fire on models
   // that absolutely don't fit. Also pushed paramsB=0 cases through.
+  const previewVariantPath = previewVariant ? findLibraryItemForVariant(chatLibrary, previewVariant)?.path ?? null : null;
   useEffect(() => {
     if (!previewVariant?.paramsB) return;
-    const paramsB = previewVariant.paramsB;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (
-        current.paramsB === paramsB
-        && current.numLayers === arch.numLayers
-        && current.numHeads === arch.numHeads
-        && current.numKvHeads === arch.numKvHeads
-        && current.hiddenSize === arch.hiddenSize
-      ) {
-        return current;
-      }
-      return { ...current, paramsB, ...arch };
-    });
-  }, [previewVariant?.paramsB, setPreviewControls]);
+    const next = previewModelControls(previewVariant.paramsB, previewVariantPath, previewVariant.repo);
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
+  }, [previewVariant?.paramsB, previewVariant?.repo, previewVariantPath, setPreviewControls]);
 
   // Sync serverModelKey when options change
   useEffect(() => {
@@ -912,24 +905,27 @@ export default function App() {
   // Re-anchor previewControls when benchmark/conversion model changes
   useEffect(() => {
     let label = "", sizeGb = 0, paramsB = 0;
+    let modelPath: string | null = null;
+    let modelRepo: string | null = null;
     if (activeTab === "benchmarks" && benchmarkOption) {
       label = `${benchmarkOption.label} ${benchmarkOption.format ?? ""} ${benchmarkOption.quantization ?? ""}`;
       sizeGb = benchmarkOption.sizeGb ?? 0;
       paramsB = benchmarkOption.paramsB ?? 0;
+      modelPath = benchmarkOption.path ?? null;
+      modelRepo = benchmarkOption.canonicalRepo ?? null;
     } else if (activeTab === "conversion" && conversionSource) {
       label = `${conversionSource.name} ${conversionSource.format ?? ""}`;
       sizeGb = conversionSource.sizeGb ?? 0;
       paramsB = conversionVariant?.paramsB ?? 0;
+      modelPath = conversionSource.path;
+      modelRepo = conversionVariant?.repo ?? null;
     } else {
       return;
     }
     if (!paramsB && sizeGb) paramsB = estimateParamsBFromDisk(sizeGb, detectBitsPerWeight(label));
     if (!paramsB) return;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
-      return { ...current, paramsB, ...arch };
-    });
+    const next = previewModelControls(paramsB, modelPath, modelRepo);
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, benchmarkOption?.key, conversionSource?.path, conversionVariant?.id]);
 

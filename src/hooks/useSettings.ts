@@ -52,6 +52,8 @@ export function useSettings(
     contextTokens: emptyLaunchPreferences.contextTokens,
     paramsB: emptyPreview.paramsB,
     strategy: emptyLaunchPreferences.cacheStrategy,
+    modelPath: null as string | null,
+    modelRepo: null as string | null,
   });
   const [dataDirRestartPrompt, setDataDirRestartPrompt] = useState<DataDirRestartPrompt | null>(null);
   const [newDirectoryLabel, setNewDirectoryLabel] = useState("");

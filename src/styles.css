@@ -5394,6 +5394,11 @@ select.text-input {
   padding: 0 4px;
 }
 
+.perf-preview__source {
+  margin: 4px 0 0;
+  font-size: 0.8em;
+}
+
 .perf-preview__footer {
   display: flex;
   align-items: center;

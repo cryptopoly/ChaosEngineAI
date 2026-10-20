@@ -54,7 +54,14 @@ def compute_cache_preview(
     system_stats: dict[str, Any] | None = None,
     strategy: str = "native",
     build_system_snapshot=None,
+    arch=None,
 ) -> dict[str, Any]:
+    """Cache size, speed and quality preview for one launch configuration.
+
+    ``arch`` is the model's real attention layout (``helpers.model_arch``).
+    When given, the f16 cache is sized from it and a compressed strategy keeps
+    its own ratio; otherwise the layer / head arguments are an estimate.
+    """
     from cache_compression import registry as _cache_registry
 
     num_layers = max(1, num_layers)
@@ -89,6 +96,16 @@ def compute_cache_preview(
 
         quality_map = _strategy_quality_base(strategy)
         quality_percent = min(99.5, quality_map.get(clamped_bits, 94.0) + min(fp16_layers, 8) * 0.35)
+
+    if arch is not None:
+        # Real layout: size the f16 cache from it and keep the strategy's own
+        # compression ratio from the nominal estimate above.
+        ratio = (optimized_bytes / baseline_bytes) if baseline_bytes else 1.0
+        baseline_bytes = arch.cache_bytes(context_tokens)
+        optimized_bytes = int(baseline_bytes * ratio)
+        num_layers = arch.num_layers
+        if arch.kv_heads:
+            num_kv_heads = arch.kv_heads
 
     if system_stats is None and build_system_snapshot is not None:
         preview_system = build_system_snapshot()
@@ -132,4 +149,7 @@ def compute_cache_preview(
         "qualityPercent": round(quality_percent, 1),
         "diskSizeGb": disk_size_gb,
         "summary": summary,
+        # "config" / "gguf" when the cache was sized from the model's own
+        # files, "estimate" when it was guessed from the parameter count.
+        "archSource": arch.source if arch is not None else "estimate",
     }

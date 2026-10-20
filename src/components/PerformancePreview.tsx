@@ -163,6 +163,17 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
         </div>
       </div>
 
+      <p className="perf-preview__source muted-text">
+        {preview.archSource === "config" || preview.archSource === "gguf"
+          ? t("performancePreview.sourceModel", {
+              defaultValue: "Cache sized from the model's own {source}.",
+              source: preview.archSource === "gguf" ? "GGUF header" : "config",
+            })
+          : t("performancePreview.sourceEstimate", {
+              defaultValue: "Rough cache estimate from the parameter count; it gets exact once the model is downloaded.",
+            })}
+      </p>
+
       <div className="perf-preview__footer">
         <span className="perf-preview__stat">{t("performancePreview.diskStat", {
           defaultValue: "Disk: {value} GB",

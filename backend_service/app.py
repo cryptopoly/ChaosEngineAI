@@ -238,6 +238,7 @@ def compute_cache_preview(
     params_b: float = 7.0,
     system_stats: dict[str, Any] | None = None,
     strategy: str = "native",
+    arch=None,
 ) -> dict[str, Any]:
     return compute_cache_preview_impl(
         bits=bits,
@@ -251,6 +252,7 @@ def compute_cache_preview(
         system_stats=system_stats,
         strategy=strategy,
         build_system_snapshot=_build_system_snapshot,
+        arch=arch,
     )
 
 

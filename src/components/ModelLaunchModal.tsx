@@ -128,6 +128,17 @@ export function ModelLaunchModal({
     setShowList(!collapseOnOpen);
   }, [open, collapseOnOpen]);
 
+  // The slider already caps at the model's own context window, but the stored
+  // setting kept an earlier, larger value, so the memory estimate below was
+  // computed for (say) 262K tokens on a 32K model and warned about RAM wrongly.
+  useEffect(() => {
+    if (!open) return;
+    const maxContext = (options.find((option) => option.key === selectedKey) ?? options[0])?.maxContext;
+    if (maxContext && settings.contextTokens > maxContext) {
+      onSettingChange("contextTokens", maxContext);
+    }
+  }, [open, options, selectedKey, settings.contextTokens, onSettingChange]);
+
   if (!open) return null;
 
   const searchLower = search.toLowerCase();

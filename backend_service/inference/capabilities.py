@@ -173,6 +173,15 @@ def _probe_native_backends() -> BackendCapabilities:
         # load under load (the real inefficiency behind the creep).
         timeout=45.0,
     )
+    if code < -1 and payload is None:
+        # Killed by a signal (-15 = SIGTERM) rather than failing: something
+        # outside the probe ended it, and the result is cached for the whole
+        # session, so one stray kill at launch would otherwise turn MLX off
+        # until the app restarts. -1 is the timeout sentinel and is not retried.
+        code, payload, message = _json_subprocess(
+            [python_executable, "-m", "backend_service.mlx_worker", "probe"],
+            timeout=45.0,
+        )
 
     if payload is None:
         payload = {}

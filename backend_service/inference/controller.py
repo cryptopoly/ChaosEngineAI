@@ -625,6 +625,11 @@ class RuntimeController:
                 ):
                     return MtplxEngine(self.capabilities)
                 return MLXWorkerEngine(self.capabilities)
+            # The probe result is cached for the session; re-run it once before
+            # refusing, so a probe that was killed at launch does not block
+            # every MLX model until the app restarts.
+            if self.refresh_capabilities(force=True).mlxUsable:
+                return MLXWorkerEngine(self.capabilities)
             reason = self.capabilities.mlxMessage or "MLX is not available in this environment"
             raise RuntimeError(
                 f"MLX backend requested but unavailable: {reason}. "

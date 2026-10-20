@@ -561,7 +561,28 @@ function estimateVideoRequestPeakGb(opts: {
  * - LTX-Video (baseFootprint 2 GB) at 768×512 × 41 frames on 32 GB:
  *   stays "safe" — small model, proven to run on consumer Macs.
  */
-export function assessVideoGenerationSafety(opts: {
+/** Note appended to a warning when a loaded chat model is part of the pressure. */
+export function residentModelNote(otherResidentGb: number | null | undefined): string | null {
+  if (!otherResidentGb || otherResidentGb < 0.5) return null;
+  return i18next.t("studio:residentChatModelNote", {
+    defaultValue: "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",
+    gb: otherResidentGb >= 10 ? otherResidentGb.toFixed(0) : otherResidentGb.toFixed(1),
+  });
+}
+
+/** Device budget left for this run once other loaded models are counted. */
+export function budgetAfterResidentModels(budgetGb: number, otherResidentGb: number | null | undefined): number {
+  const other = otherResidentGb && otherResidentGb > 0 ? otherResidentGb : 0;
+  return Math.max(budgetGb * 0.1, budgetGb - other);
+}
+
+export function assessVideoGenerationSafety(opts: Parameters<typeof assessVideoGenerationSafetyForBudget>[0]): VideoGenerationSafety {
+  const result = assessVideoGenerationSafetyForBudget(opts);
+  const note = result.reason ? residentModelNote(opts.otherResidentGb) : null;
+  return note ? { ...result, reason: `${result.reason} ${note}` } : result;
+}
+
+function assessVideoGenerationSafetyForBudget(opts: {
   width: number;
   height: number;
   numFrames: number;
@@ -588,6 +609,9 @@ export function assessVideoGenerationSafety(opts: {
    * ``VideoGenerationConfig``. Ignored on MPS (Apple Silicon —
    * bitsandbytes has no Metal kernels) and CPU. */
   useNf4?: boolean | null;
+  /** GB already held by loaded chat models (runtime status
+   * ``residentModelGb``); the video run cannot use that memory. */
+  otherResidentGb?: number | null;
 }): VideoGenerationSafety {
   const {
     width,
@@ -633,7 +657,9 @@ export function assessVideoGenerationSafety(opts: {
     deviceMemoryGb != null && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
       ? deviceMemoryGb
       : fallbackMemory;
-  const budgetGb = effectiveMemoryBudgetGb(totalMemoryGb, effectiveDevice);
+  const budgetGb = budgetAfterResidentModels(
+    effectiveMemoryBudgetGb(totalMemoryGb, effectiveDevice), opts.otherResidentGb,
+  );
 
   const baseFootprint =
     baseModelFootprintGb != null

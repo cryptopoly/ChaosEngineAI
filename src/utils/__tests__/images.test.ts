@@ -288,3 +288,23 @@ describe("assessImageGenerationSafety() for mflux and sd.cpp", () => {
     expect(at(2048)).toBeGreaterThan(at(1024));
   });
 });
+
+describe("assessImageGenerationSafety() with a chat model loaded", () => {
+  const base = {
+    width: 1024, height: 1024, device: "mps", deviceMemoryGb: 64,
+    baseModelFootprintGb: 33.1, runtimeFootprintMpsGb: 30.0,
+    repo: "Qwen/Qwen-Image-2.1", engine: "mflux",
+  } as const;
+
+  it("counts the memory a loaded chat model already holds", () => {
+    const alone = assessImageGenerationSafety(base);
+    const withChat = assessImageGenerationSafety({ ...base, otherResidentGb: 33 });
+    expect(alone.riskLevel).not.toBe("danger");
+    expect(withChat.riskLevel).toBe("danger");
+    expect(withChat.reason).toContain("chat model holds about 33 GB");
+  });
+
+  it("ignores an empty chat slot", () => {
+    expect(assessImageGenerationSafety({ ...base, otherResidentGb: 0 })).toEqual(assessImageGenerationSafety(base));
+  });
+});

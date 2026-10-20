@@ -47,6 +47,8 @@ import {
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
+  /** GB held by loaded chat models; the memory estimate counts it. */
+  residentChatModelGb?: number;
   /** Filter platform-incompatible variants out of the model dropdown
    * (FU-056 hide-unrecoverable-options policy). Threaded from App.tsx →
    * workspace.system. Optional for test harnesses. */
@@ -166,6 +168,7 @@ export interface VideoStudioTabProps {
 export function VideoStudioTab({
   videoCatalog,
   hostSystem,
+  residentChatModelGb,
   selectedVideoModelId,
   onSelectedVideoModelIdChange,
   selectedVideoVariant,
@@ -559,8 +562,10 @@ export function VideoStudioTab({
         runtimeFootprintCpuGb: selectedVideoVariant?.runtimeFootprintCpuGb,
         repo: selectedVideoVariant?.repo,
         useNf4: videoUseNf4 && !selectedVideoVariant?.ggufFile,
+        otherResidentGb: residentChatModelGb,
       }),
     [
+      residentChatModelGb,
       videoWidth,
       videoHeight,
       videoNumFrames,

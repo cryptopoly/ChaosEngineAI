@@ -1357,6 +1357,7 @@ export default function App() {
     content = (
       <ImageStudioTab
         imageCatalog={imgState.imageCatalogWithLatest}
+        residentChatModelGb={workspace.runtime.residentModelGb}
         selectedImageModelId={imgState.selectedImageModelId}
         onSelectedImageModelIdChange={imgState.setSelectedImageModelId}
         selectedImageVariant={imgState.selectedImageVariant}
@@ -1528,6 +1529,7 @@ export default function App() {
     content = (
       <VideoStudioTab
         videoCatalog={videoState.videoCatalogWithLatest}
+        residentChatModelGb={workspace.runtime.residentModelGb}
         hostSystem={workspace.system}
         selectedVideoModelId={videoState.selectedVideoModelId}
         onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}

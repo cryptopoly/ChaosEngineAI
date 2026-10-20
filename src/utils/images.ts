@@ -1,7 +1,7 @@
 import i18next from "i18next";
 import type { ImageModelFamily, ImageModelVariant, ImageOutputArtifact } from "../types";
 import type { ImageDiscoverTaskFilter, ImageDiscoverAccessFilter, ImageGalleryOrientationFilter } from "../types/image";
-import { inferDeviceFromHostPlatform } from "./videos";
+import { budgetAfterResidentModels, inferDeviceFromHostPlatform, residentModelNote } from "./videos";
 
 export function flattenImageVariants(families: ImageModelFamily[]): ImageModelVariant[] {
   return families.flatMap((family) => family.variants);
@@ -362,7 +362,13 @@ function runtimeFootprintForDevice(opts: {
  * - FLUX standard at 2048×2048 on 64 GB MPS: danger from attention peak.
  * - HiDream (47 GB) at 1024×1024 on 64 GB MPS: caution.
  */
-export function assessImageGenerationSafety(opts: {
+export function assessImageGenerationSafety(opts: Parameters<typeof assessImageGenerationSafetyForBudget>[0]): ImageGenerationSafety {
+  const result = assessImageGenerationSafetyForBudget(opts);
+  const note = result.reason ? residentModelNote(opts.otherResidentGb) : null;
+  return note ? { ...result, reason: `${result.reason} ${note}` } : result;
+}
+
+function assessImageGenerationSafetyForBudget(opts: {
   width: number;
   height: number;
   device: string | null | undefined;
@@ -376,6 +382,8 @@ export function assessImageGenerationSafety(opts: {
   ggufFile?: string | null;
   /** Variant ``engine`` from the catalog (``mflux`` / ``sdcpp``); absent for diffusers. */
   engine?: string | null;
+  /** GB already held by loaded chat models (runtime status ``residentModelGb``). */
+  otherResidentGb?: number | null;
 }): ImageGenerationSafety {
   const {
     width,
@@ -422,7 +430,7 @@ export function assessImageGenerationSafety(opts: {
     deviceMemoryGb != null && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
       ? deviceMemoryGb
       : fallback;
-  const budgetGb = effectiveBudgetGb(totalMemoryGb, effectiveDevice);
+  const budgetGb = budgetAfterResidentModels(effectiveBudgetGb(totalMemoryGb, effectiveDevice), opts.otherResidentGb);
 
   const baseFootprint =
     baseModelFootprintGb != null && Number.isFinite(baseModelFootprintGb) && baseModelFootprintGb > 0

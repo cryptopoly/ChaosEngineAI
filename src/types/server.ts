@@ -95,6 +95,8 @@ export interface RuntimeStatus {
   engineLabel: string;
   loadedModel: LoadedModel | null;
   warmModels?: WarmModel[];
+  /** GB held by the active and warm chat models. */
+  residentModelGb?: number;
   supportsGeneration: boolean;
   serverReady: boolean;
   activeRequests: number;

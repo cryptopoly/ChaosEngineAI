@@ -13,6 +13,8 @@ RuntimeController``) keep working without churn.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import json
 import os
 import subprocess
@@ -108,6 +110,13 @@ from backend_service.inference.simple_engines import (
 from backend_service.inference._mtp import has_mtp_heads, has_mtp_heads_strict
 from backend_service.inference._tensorfold import TensorFoldMatch, match_model
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
+
+
+@lru_cache(maxsize=32)
+def _cached_path_size_bytes(path: str) -> int:
+    """Size of a loaded model's files. Cached: the runtime status (polled every
+    few seconds) reports it, and a loaded model's files do not change."""
+    return _path_size_bytes(path)
 
 
 class RuntimeController:
@@ -714,7 +723,7 @@ class RuntimeController:
         whole file ends up resident once warm. For catalog/no-path entries
         we fall back to 0 (no useful estimate, treat as memory-free).
         """
-        return _path_size_bytes(info.path) if info.path else 0
+        return _cached_path_size_bytes(info.path) if info.path else 0
 
     @staticmethod
     def _target_resident_bytes(*, path: str | None, runtime_target: str | None) -> int:
@@ -1355,6 +1364,9 @@ class RuntimeController:
             "engineLabel": self.engine.engine_label,
             "loadedModel": self.loaded_model.to_dict() if self.loaded_model is not None else None,
             "warmModels": self.warm_models(),
+            # Memory held by the active and warm chat models, so the image and
+            # video estimates can count it.
+            "residentModelGb": round(self.reclaimable_model_bytes() / 1024 ** 3, 1),
             "supportsGeneration": True,
             "serverReady": self.loaded_model is not None,
             "activeRequests": active_requests,

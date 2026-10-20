@@ -331,6 +331,7 @@ export function ImageStudioTab({
         runtimeFootprintCpuGb: selectedImageVariant?.runtimeFootprintCpuGb,
         repo: selectedImageVariant?.repo,
         ggufFile: selectedImageVariant?.ggufFile,
+        engine: selectedImageVariant?.engine,
       }),
     [
       imageWidth,
@@ -340,6 +341,7 @@ export function ImageStudioTab({
       imageRuntimeStatus.deviceMemoryGb,
       selectedImageVariant?.repo,
       selectedImageVariant?.ggufFile,
+      selectedImageVariant?.engine,
       selectedImageVariant?.sizeGb,
       selectedImageVariant?.coreWeightsGb,
       selectedImageVariant?.onDiskGb,

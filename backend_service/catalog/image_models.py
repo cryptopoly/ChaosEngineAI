@@ -113,6 +113,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.9,
+                "runtimeFootprintGb": 14.0,  # 6.9 GB GGUF + 5.2 GB T5 Q8 + 0.6 GB CLIP-L / VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
@@ -226,6 +227,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.9,
+                "runtimeFootprintGb": 14.0,  # 6.9 GB GGUF + 5.2 GB T5 Q8 + 0.6 GB CLIP-L / VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
@@ -502,6 +504,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 33.1,
+                "runtimeFootprintMpsGb": 30.0,  # measured: 28.7-29.9 GB peak at 1024² / 40 steps on an M4 Max (FU-096)
                 "defaultSteps": 40,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
@@ -569,6 +572,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "typography", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 4.2,
+                "runtimeFootprintGb": 11.0,  # 4.2 GB GGUF + 5.0 GB Qwen3-VL-8B Q4_K_M + 0.7 GB VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "7B Qwen-Image-2.1 as a 4-bit GGUF through stable-diffusion.cpp. The first "

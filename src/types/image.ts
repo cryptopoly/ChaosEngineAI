@@ -61,6 +61,9 @@ export interface ImageModelVariant {
   repo: string;
   ggufRepo?: string | null;
   ggufFile?: string | null;
+  /** ``mflux`` or ``sdcpp`` for variants that run outside the diffusers
+   * pipeline; absent for diffusers. */
+  engine?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];

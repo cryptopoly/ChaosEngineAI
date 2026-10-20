@@ -246,3 +246,45 @@ describe("compareDiscoverVariants()", () => {
       .toEqual(["large", "small", "unknown"]);
   });
 });
+
+describe("assessImageGenerationSafety() for mflux and sd.cpp", () => {
+  it("keeps Qwen-Image-2.1 on mflux on the GPU and sizes it from the measured peak", () => {
+    // Measured: 28.7-29.9 GB peak at 1024² on a 64 GB M4 Max. The diffusers
+    // rules used to treat every "qwen-image" repo as CPU and reported danger.
+    const result = assessImageGenerationSafety({
+      width: 1024, height: 1024, device: "mps", deviceMemoryGb: 64,
+      baseModelFootprintGb: 33.1, runtimeFootprintMpsGb: 30.0,
+      repo: "Qwen/Qwen-Image-2.1", engine: "mflux",
+    });
+    expect(result.effectiveDevice).toBe("mps");
+    expect(result.estimatedPeakGb).toBeCloseTo(30, 1);
+    expect(result.riskLevel).not.toBe("danger");
+  });
+
+  it("does not add the diffusers FLUX text-encoder allowance to an sd.cpp GGUF", () => {
+    const result = assessImageGenerationSafety({
+      width: 1024, height: 1024, device: "mps", deviceMemoryGb: 64,
+      baseModelFootprintGb: 6.9, runtimeFootprintGb: 14.0,
+      repo: "leejet/FLUX.1-schnell-gguf", ggufFile: "flux1-schnell-q4_k.gguf", engine: "sdcpp",
+    });
+    expect(result.estimatedPeakGb).toBeCloseTo(14, 1);
+    expect(result.riskLevel).toBe("safe");
+  });
+
+  it("still applies the diffusers rules when no engine is given", () => {
+    const result = assessImageGenerationSafety({
+      width: 1024, height: 1024, device: "mps", deviceMemoryGb: 64,
+      baseModelFootprintGb: 6.9, repo: "city96/FLUX.1-schnell-gguf", ggufFile: "flux1-schnell-Q4_K_S.gguf",
+    });
+    expect(result.modelFootprintGb).toBeCloseTo(6.9 + 34.5, 1);
+  });
+
+  it("grows the fused-attention estimate with pixel count", () => {
+    const at = (size: number) => assessImageGenerationSafety({
+      width: size, height: size, device: "mps", deviceMemoryGb: 64,
+      baseModelFootprintGb: 16, repo: "black-forest-labs/FLUX.2-klein-4B", engine: "mflux",
+    }).estimatedPeakGb;
+    expect(at(1024)).toBeCloseTo(16, 1);
+    expect(at(2048)).toBeGreaterThan(at(1024));
+  });
+});

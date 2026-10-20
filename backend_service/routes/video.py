@@ -147,6 +147,45 @@ def cancel_video_generation(request: Request) -> dict[str, Any]:
     return {"cancelled": signalled}
 
 
+def _video_memory_gate(request: Request, variant: dict[str, Any], action: str) -> None:
+    """Refuse video work the host cannot hold. Run after idle image weights are freed.
+
+    Phase 2.0.5-H: a hung diffusion loop on a memory-starved Apple Silicon
+    machine can swap-thrash the host for minutes. A model that is not
+    resident yet must also fit in free memory, as for images. Gate failures
+    (psutil errors) never block; they are logged and skipped.
+    """
+    state = request.app.state.chaosengine
+    try:
+        from backend_service.helpers.memory_gate import (
+            gate_video_generation,
+            model_memory_gb,
+            snapshot_memory_signals,
+        )
+
+        try:
+            loaded_repo = str(state.video_runtime.capabilities().get("loadedModelRepo") or "")
+        except Exception:
+            loaded_repo = ""
+        available_gb, pressure_percent = snapshot_memory_signals()
+        refusal = gate_video_generation(
+            available_gb,
+            pressure_percent,
+            model_gb=None if loaded_repo == variant.get("repo") else model_memory_gb(variant),
+            model_name=variant.get("name"),
+        )
+    except Exception as gate_exc:
+        state.add_log("video", "warning", f"Memory gate skipped: {gate_exc}")
+        return
+    if refusal is not None:
+        state.add_log(
+            "video", "warning",
+            f"Memory gate refused {action}: {refusal['code']} "
+            f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
+        )
+        raise HTTPException(status_code=503, detail=localized_detail(request, refusal["message"]))
+
+
 @router.post("/api/video/preload")
 def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
@@ -165,6 +204,7 @@ def preload_video_model(request: Request, body: VideoRuntimePreloadRequest) -> d
         raise HTTPException(status_code=409, detail=localized_detail(request, detail))
 
     _unload_idle_image_runtime_for_video(request, "video preload")
+    _video_memory_gate(request, variant, "video preload")
     try:
         runtime = state.video_runtime.preload(variant["repo"])
     except RuntimeError as exc:
@@ -327,36 +367,13 @@ def generate_video(request: Request, body: VideoGenerationRequest) -> dict[str, 
             status_code=404,
             detail=f"Unknown video model '{body.modelId}'. The model isn't in the curated catalog.",
         )
-    # Phase 2.0.5-H: pre-flight memory gate. Video gen has the highest
-    # working set of the three flows — a hung diffusion loop on a memory-
-    # starved Apple Silicon machine can swap-thrash the host for minutes.
-    # Refuse early when the floor is breached; gate exceptions never block.
-    try:
-        from backend_service.helpers.memory_gate import (
-            gate_video_generation,
-            snapshot_memory_signals,
-        )
-
-        available_gb, pressure_percent = snapshot_memory_signals()
-        refusal = gate_video_generation(available_gb, pressure_percent)
-        if refusal is not None:
-            state.add_log(
-                "video", "warning",
-                f"Memory gate refused video gen: {refusal['code']} "
-                f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
-            )
-            raise HTTPException(status_code=503, detail=refusal["message"])
-    except HTTPException:
-        raise
-    except Exception as gate_exc:
-        state.add_log("video", "warning", f"Memory gate skipped: {gate_exc}")
-
     if not _video_variant_available_locally(variant):
         validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
 
     _unload_idle_image_runtime_for_video(request, "video generation")
+    _video_memory_gate(request, variant, "video generation")
     try:
         artifact, runtime = _generate_video_artifact(body, variant, state.video_runtime)
     except GenerationCancelled:

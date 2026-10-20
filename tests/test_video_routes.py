@@ -604,6 +604,51 @@ class VideoGenerateRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         state.image_runtime.unload.assert_called_once_with()
 
+    def _stub_video_generate(self):
+        state = self.client.app.state.chaosengine
+        state.video_runtime.generate = mock.MagicMock(  # type: ignore[method-assign]
+            return_value=(
+                self._fake_generated_video(),
+                {"activeEngine": "diffusers", "realGenerationAvailable": True, "message": "Ready",
+                 "missingDependencies": [], "loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
+            )
+        )
+        return state
+
+    def test_memory_gate_runs_after_the_idle_image_model_is_unloaded(self):
+        # Memory is short only while the idle image model is still loaded.
+        state = self._stub_video_generate()
+        state.image_runtime = mock.MagicMock()
+        state.image_runtime.capabilities.return_value = {"loadedModelRepo": "black-forest-labs/FLUX.1-schnell"}
+        state.image_runtime.unload.return_value = {"loadedModelRepo": None}
+
+        def signals():
+            return (40.0, 30.0) if state.image_runtime.unload.called else (3.0, 95.0)
+
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", side_effect=signals), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def test_refuses_a_model_larger_than_free_memory(self):
+        state = self._stub_video_generate()
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 30.0)), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertIn("needs about", response.json()["detail"]["message"])
+        state.video_runtime.generate.assert_not_called()
+
+    def test_a_resident_model_skips_the_size_check(self):
+        state = self._stub_video_generate()
+        state.video_runtime.capabilities = mock.MagicMock(  # type: ignore[method-assign]
+            return_value={"loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"},
+        )
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 30.0)), \
+                mock.patch.object(video_routes, "_video_variant_available_locally", return_value=True):
+            response = self.client.post("/api/video/generate", json=self._payload())
+        self.assertEqual(response.status_code, 200, response.text)
+
     def test_generate_rejects_while_image_generation_active(self):
         from backend_service.progress import IMAGE_PROGRESS
 

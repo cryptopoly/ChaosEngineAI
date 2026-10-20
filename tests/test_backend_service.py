@@ -1235,6 +1235,29 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         state.video_runtime.unload.assert_called_once_with()
 
+    def test_image_memory_gate_runs_after_the_idle_video_model_is_unloaded(self):
+        state = self.client.app.state.chaosengine
+        unload = mock.Mock(return_value={"loadedModelRepo": None})
+        state.video_runtime = SimpleNamespace(
+            capabilities=mock.Mock(return_value={"loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}),
+            unload=unload,
+        )
+
+        def signals():
+            return (60.0, 20.0) if unload.called else (2.0, 97.0)
+
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", side_effect=signals), \
+                mock.patch(
+                    "backend_service.routes.images._generate_image_artifacts",
+                    return_value=([], {"activeEngine": "diffusers"}),
+                ):
+            response = self.client.post(
+                "/api/images/generate",
+                json={"modelId": "black-forest-labs/FLUX.1-schnell", "prompt": "x", "width": 512,
+                      "height": 512, "steps": 4, "guidance": 3.5},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+
     def test_image_generate_rejects_while_video_generation_active(self):
         from backend_service.progress import VIDEO_PROGRESS
 

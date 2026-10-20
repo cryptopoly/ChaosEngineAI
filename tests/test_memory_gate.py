@@ -210,3 +210,25 @@ class PressureSignalTests(unittest.TestCase):
         self.assertEqual(pressure_percent_from_available(0, 5), 0.0)
         self.assertEqual(pressure_percent_from_available(64, 80), 0.0)
         self.assertEqual(pressure_percent_from_available(64, 0), 100.0)
+
+
+class ModelMemoryTests(unittest.TestCase):
+    def test_apple_silicon_prefers_the_mps_runtime_footprint(self):
+        from backend_service.helpers.memory_gate import model_memory_gb
+
+        row = {"sizeGb": 16.4, "runtimeFootprintGb": 14.0, "runtimeFootprintMpsGb": 23.0}
+        self.assertEqual(model_memory_gb(row, apple_silicon=True), 23.0)
+        self.assertEqual(model_memory_gb({"sizeGb": 6.9, "runtimeFootprintGb": 14.0}, apple_silicon=True), 14.0)
+
+    def test_elsewhere_the_larger_of_download_and_footprint(self):
+        from backend_service.helpers.memory_gate import model_memory_gb
+
+        self.assertEqual(model_memory_gb({"sizeGb": 6.9, "runtimeFootprintGb": 14.0}, apple_silicon=False), 14.0)
+        self.assertEqual(model_memory_gb({"sizeGb": 45.0, "runtimeFootprintGb": 39.0}, apple_silicon=False), 45.0)
+        self.assertIsNone(model_memory_gb({}, apple_silicon=False))
+
+    def test_video_model_too_large_is_refused(self):
+        result = gate_video_generation(available_gb=30.0, pressure_percent=40.0, model_gb=48.0, model_name="LTX-2.3")
+        self.assertEqual(result["code"], "memory_gate_video_model_too_large")
+        self.assertIn("LTX-2.3", result["message"])
+        self.assertIsNone(gate_video_generation(available_gb=50.0, pressure_percent=40.0, model_gb=48.0))

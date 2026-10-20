@@ -53,6 +53,31 @@ IMAGE_MAX_PRESSURE_PERCENT = 95.0
 # swap-thrash for minutes before recovering.
 VIDEO_MIN_AVAILABLE_GB = 6.0
 VIDEO_MAX_PRESSURE_PERCENT = 92.0
+# Video rows carry a runtime footprint that is already the generation peak.
+VIDEO_MODEL_HEADROOM = 1.0
+
+
+def model_memory_gb(variant: dict[str, Any], *, apple_silicon: bool | None = None) -> float | None:
+    """Memory an image / video catalog variant needs once loaded, in GB.
+
+    On Apple Silicon the catalog's MPS runtime footprint (or the generic one)
+    is the measured or estimated peak. Elsewhere the weights pass through
+    system RAM on their way to the GPU, so the larger of the download size
+    and the runtime footprint is used. ``None`` when the row has neither.
+    """
+    if apple_silicon is None:
+        import platform
+
+        apple_silicon = platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")
+
+    def number(key: str) -> float | None:
+        value = variant.get(key)
+        return float(value) if isinstance(value, (int, float)) and value > 0 else None
+
+    if apple_silicon:
+        return number("runtimeFootprintMpsGb") or number("runtimeFootprintGb") or number("sizeGb")
+    candidates = [v for v in (number("sizeGb"), number("runtimeFootprintGb")) if v]
+    return max(candidates) if candidates else None
 
 
 def gate_chat_generation(
@@ -149,6 +174,8 @@ def gate_video_generation(
     *,
     min_available_gb: float = VIDEO_MIN_AVAILABLE_GB,
     max_pressure_percent: float = VIDEO_MAX_PRESSURE_PERCENT,
+    model_gb: float | None = None,
+    model_name: str | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for video generation. Returns refusal or None.
 
@@ -156,7 +183,21 @@ def gate_video_generation(
     is the strictest of the three gates. A hung diffusion loop on a memory
     -starved Apple Silicon machine has historically taken the whole host
     down — this gate is the cheapest possible defence.
+
+    ``model_gb`` is the peak memory of a model that is not resident yet; one
+    that does not fit is refused before loading, as for images.
     """
+    if model_gb and available_gb < model_gb * VIDEO_MODEL_HEADROOM:
+        label = model_name or "This video model"
+        return {
+            "code": "memory_gate_video_model_too_large",
+            "message": (
+                f"{label} needs about {model_gb * VIDEO_MODEL_HEADROOM:.0f} GB "
+                f"of free memory to run, but only {available_gb:.1f} GB is "
+                "available. Close other apps or unload the chat model, or pick "
+                "a smaller or quantized video model."
+            ),
+        }
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_video_low_available",

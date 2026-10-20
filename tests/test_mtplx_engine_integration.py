@@ -9,11 +9,13 @@ minimal surface ``MtplxEngine`` talks to.
 
 from __future__ import annotations
 
+import os
 import stat
 import sys
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend_service.inference.base import BackendCapabilities
 from backend_service.inference.mtplx_engine import MtplxEngine
@@ -29,17 +31,25 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 _STUB_SCRIPT = _FIXTURES / "stub_mtplx_server.py"
 
 
-def _make_mtplx_wrapper(tmp_path: Path, *, fail_mode: str | None = None) -> Path:
+def _make_mtplx_wrapper(
+    tmp_path: Path,
+    *,
+    fail_mode: str | None = None,
+    env_dump: Path | None = None,
+) -> Path:
     """Write an executable wrapper that mimics ``mtplx`` CLI.
 
     MtplxEngine spawns ``[bin, "start", "--model", X, "--port", N]`` — so the
-    wrapper just forwards argv into the python stub.
+    wrapper just forwards argv into the python stub. With ``env_dump`` it first
+    records the environment it was started with, so a test can assert on what
+    the engine handed the child.
     """
     wrapper = tmp_path / "mtplx"
     extra = f' --fail-mode {fail_mode}' if fail_mode else ""
+    dump = f'env > "{env_dump}"\n        ' if env_dump else ""
     wrapper.write_text(textwrap.dedent(f"""\
         #!/usr/bin/env bash
-        exec {sys.executable} {_STUB_SCRIPT} "$@"{extra}
+        {dump}exec {sys.executable} {_STUB_SCRIPT} "$@"{extra}
         """))
     wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return wrapper
@@ -109,6 +119,50 @@ class MtplxEngineIntegrationTests(unittest.TestCase):
         finally:
             engine.unload_model()
         self.assertIsNone(engine.process_pid())
+
+    def test_child_env_drops_import_redirecting_variables(self) -> None:
+        """The packaged app exports PYTHONHOME / PYTHONPATH / DYLD_* for its own
+        runtime; MTPLX runs from its own venv, so the child must not inherit them
+        (real MTPLX is macOS-only, but this is plain subprocess behaviour)."""
+        dump = self.tmp_path / "child-env.txt"
+        wrapper = _make_mtplx_wrapper(self.tmp_path, env_dump=dump)
+        engine = MtplxEngine(self.capabilities)
+        engine._mtplx_bin = lambda: str(wrapper)  # type: ignore[method-assign]
+        poisoned = {
+            "PYTHONHOME": "/app/runtime",
+            "PYTHONPATH": "/app/runtime/site-packages",
+            "DYLD_LIBRARY_PATH": "/app/runtime/lib",
+            "DYLD_FALLBACK_LIBRARY_PATH": "/app/runtime/lib",
+            "CHAOSENGINE_USER_SETTING": "kept",
+        }
+        try:
+            with mock.patch.dict(os.environ, poisoned):
+                engine.load_model(
+                    model_ref="Qwen/Qwen3.5-7B",
+                    model_name="Qwen3.5-7B",
+                    canonical_repo="Qwen/Qwen3.5-7B",
+                    source="catalog",
+                    backend="mtplx",
+                    path=None,
+                    runtime_target=None,
+                    cache_strategy="native",
+                    cache_bits=0,
+                    fp16_layers=0,
+                    fused_attention=False,
+                    fit_model_in_memory=True,
+                    context_tokens=8192,
+                    speculative_decoding=True,
+                )
+        finally:
+            engine.unload_model()
+        child_env = dict(
+            line.split("=", 1) for line in dump.read_text().splitlines() if "=" in line
+        )
+        for name in ("PYTHONHOME", "PYTHONPATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
+            self.assertNotIn(name, child_env)
+        # Everything else still reaches the child (PATH, HOME, user settings).
+        self.assertEqual(child_env.get("CHAOSENGINE_USER_SETTING"), "kept")
+        self.assertIn("PATH", child_env)
 
     def test_load_model_raises_when_capability_missing(self) -> None:
         caps = BackendCapabilities(pythonExecutable=sys.executable, mlxAvailable=True, mlxLmAvailable=True, mlxUsable=True, mtplxAvailable=False)
@@ -230,6 +284,57 @@ class MtplxEngineIntegrationTests(unittest.TestCase):
             self.assertGreater(done_chunk.completion_tokens, 0)
         finally:
             engine.unload_model()
+
+    def _load(self, engine: MtplxEngine) -> None:
+        engine.load_model(
+            model_ref="Qwen/Qwen3.5-7B",
+            model_name="Qwen3.5-7B",
+            canonical_repo="Qwen/Qwen3.5-7B",
+            source="catalog",
+            backend="mtplx",
+            path=None,
+            runtime_target=None,
+            cache_strategy="native",
+            cache_bits=0,
+            fp16_layers=0,
+            fused_attention=False,
+            fit_model_in_memory=True,
+            context_tokens=8192,
+        )
+
+    def test_stream_surfaces_reasoning_content_deltas(self) -> None:
+        """FU-079: MTPLX 2.x sends thinking as ``reasoning_content``; it
+        used to be dropped, leaving thinking-model replies empty."""
+        engine = self._make_engine()
+        try:
+            self._load(engine)
+            chunks = list(engine.stream_generate(
+                prompt="Hello", history=[], system_prompt=None,
+                max_tokens=32, temperature=0.7, thinking_mode="auto",
+            ))
+        finally:
+            engine.unload_model()
+        reasoning = "".join(c.reasoning for c in chunks if c.reasoning)
+        text = "".join(c.text for c in chunks if c.text)
+        self.assertEqual(reasoning, "planning a reply")
+        self.assertIn("hi", text)
+        done_markers = [i for i, c in enumerate(chunks) if c.reasoning_done]
+        first_text = next(i for i, c in enumerate(chunks) if c.text)
+        self.assertEqual(len(done_markers), 1)
+        self.assertLess(done_markers[0], first_text)
+
+    def test_stream_thinking_off_disables_template_thinking(self) -> None:
+        engine = self._make_engine()
+        try:
+            self._load(engine)
+            chunks = list(engine.stream_generate(
+                prompt="Hello", history=[], system_prompt=None,
+                max_tokens=32, temperature=0.7, thinking_mode="off",
+            ))
+        finally:
+            engine.unload_model()
+        self.assertFalse(any(c.reasoning for c in chunks))
+        self.assertIn("hi", "".join(c.text for c in chunks if c.text))
 
     def test_generate_after_unload_raises(self) -> None:
         engine = self._make_engine()

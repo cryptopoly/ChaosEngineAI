@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard-rotation KV quantization. 2–4× compression with minimal quality loss."
+      "description": "Memory saver: Hadamard-rotation KV quantization. 2–4× smaller cache so long chats fit in less RAM; generation is slower than Native."
     },
     "triattention": {
       "name": "TriAttention",

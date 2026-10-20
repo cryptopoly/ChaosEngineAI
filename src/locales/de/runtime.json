@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard-Rotation KV-Quantisierung. 2–4× Kompression bei minimalem Qualitätsverlust."
+      "description": "Speicherspar-Modus: Hadamard-Rotation KV-Quantisierung. 2–4× kleinerer Cache, damit lange Chats in weniger RAM passen; die Generierung ist langsamer als bei Nativ."
     },
     "triattention": {
       "name": "TriAttention",

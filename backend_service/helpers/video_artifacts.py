@@ -70,11 +70,17 @@ def _save_video_artifact(artifact: dict[str, Any], video_outputs_dir: Path) -> d
     if isinstance(video_bytes, str):
         video_bytes = base64.b64decode(video_bytes.encode("ascii"))
     if isinstance(video_bytes, (bytes, bytearray)):
+        if not video_bytes:
+            raise ValueError(
+                f"Cannot persist video artifact '{artifact_id}': the runtime "
+                "returned zero video bytes. The engine likely failed silently "
+                "— check the backend log for this generation."
+            )
         video_path.write_bytes(bytes(video_bytes))
     else:
         raise ValueError(
-            "Cannot persist video artifact: no raw bytes supplied. "
-            "Pass `videoBytes` as bytes from the generation pipeline."
+            f"Cannot persist video artifact '{artifact_id}': no raw bytes "
+            "supplied. Pass `videoBytes` as bytes from the generation pipeline."
         )
 
     persisted = {

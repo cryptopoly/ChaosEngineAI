@@ -2300,6 +2300,18 @@ select.text-input {
   font-variant-numeric: tabular-nums;
 }
 
+/* Backend log tail / failure text: several lines, keep the line breaks. */
+.loading-state-log {
+  max-width: 640px;
+  max-height: 220px;
+  overflow: auto;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, "SF Mono", ui-monospace, Menlo, Consolas, monospace);
+  font-size: 12px;
+}
+
 .loading-state-spinner {
   width: 28px;
   height: 28px;
@@ -5570,6 +5582,19 @@ select.text-input {
 .cache-strategy-card-name {
   font-weight: 600;
   flex: 1;
+}
+
+/* Role tag next to a strategy name (e.g. TurboQuant = "Memory saver"). Muted
+   and sentence-case so it reads as a description, unlike the status badge. */
+.cache-strategy-role {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+  white-space: nowrap;
 }
 
 .cache-strategy-badge {
@@ -9292,6 +9317,13 @@ tr.accelerator-card-row.accelerator-card-incompatible {
   font-size: 12px;
   color: var(--text);
   font-weight: 500;
+}
+
+.kv-chip__strategy-role {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #60a5fa;
 }
 
 .kv-chip__strategy-flag {

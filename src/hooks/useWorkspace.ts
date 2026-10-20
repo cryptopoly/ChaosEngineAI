@@ -153,7 +153,7 @@ export function useWorkspace() {
           const [healthOnline, payload, runtimeInfo] = await Promise.all([
             checkBackend(),
             getWorkspace(),
-            getTauriBackendInfo(),
+            getTauriBackendInfo(true),
           ]);
           if (cancelled) return;
           setBackendOnline(healthOnline || Boolean(payload));
@@ -167,9 +167,11 @@ export function useWorkspace() {
             // Poll tauri backend info even while the FastAPI sidecar
             // is still booting — it's served by the Rust shell so it
             // comes online ~immediately and exposes startupError when
-            // the sidecar fails to spawn at all.
+            // the sidecar fails to spawn at all. ``force`` matters: the
+            // first reply is cached, and without a fresh read the splash
+            // never learns that the sidecar died.
             try {
-              const runtimeInfo = await getTauriBackendInfo();
+              const runtimeInfo = await getTauriBackendInfo(true);
               if (!cancelled) setTauriBackend(runtimeInfo);
             } catch {
               /* tauri command not ready yet */

@@ -140,6 +140,12 @@ class SetupRouteTests(unittest.TestCase):
     # Pip package install
     # ------------------------------------------------------------------
 
+    def test_manual_install_packages_answer_400_with_instructions(self):
+        for package in ("nunchaku", "sageattention"):
+            response = self.client.post("/api/setup/install-package", json={"package": package})
+            self.assertEqual(response.status_code, 400, package)
+            self.assertIn("GitHub", str(response.json()["detail"]), package)
+
     def test_install_pip_rejects_unknown_package(self):
         resp = self.client.post("/api/setup/install-package", json={"package": "evil-package"})
         self.assertEqual(resp.status_code, 400)
@@ -194,6 +200,44 @@ class SetupRouteTests(unittest.TestCase):
             f"mlx-video spec must point to Blaizzy git URL: {cmd}",
         )
 
+    def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
+        """mlx-video's unbounded mlx-vlm dependency resolves to a release that
+        needs mlx >=0.32; the install pins the generation the app runs on."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("mlx>=0.31.2,<0.32", cmd)
+        self.assertIn("mlx-vlm>=0.6.3,<0.6.5", cmd)
+
+    def test_every_overlay_install_passes_the_mlx_constraint_file(self):
+        """Any package can have an unbounded mlx dependency (mlx-audio does),
+        so the constraint goes on every install, not only mlx-video's."""
+        constraint = Path("/tmp/x-extras") / ".chaosengine-mlx-constraints.txt"
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.routes.setup._write_mlx_constraint", return_value=constraint):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "mlx-audio"})
+        cmd = mock_run.call_args[0][0]
+        self.assertEqual(cmd[cmd.index("-c") + 1], str(constraint))
+        self.assertLess(cmd.index("-c"), cmd.index("mlx-audio"))
+
+    def test_hosts_without_mlx_get_no_constraint(self):
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.routes.setup._write_mlx_constraint", return_value=None):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "faster-whisper"})
+        self.assertNotIn("-c", mock_run.call_args[0][0])
+
+    def test_other_packages_get_no_companion_pins(self):
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "dflash-mlx"})
+        self.assertFalse(any(arg.startswith("mlx>=") for arg in mock_run.call_args[0][0]))
+
     def test_cleanup_mlx_video_shadow_metadata_keeps_blaizzy_dist(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -219,10 +263,18 @@ class SetupRouteTests(unittest.TestCase):
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
             mock_run.return_value = mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution")
-            resp = self.client.post("/api/setup/install-package", json={"package": "dflash"})
+            resp = self.client.post("/api/setup/install-package", json={"package": "vllm"})
         body = resp.json()
         self.assertFalse(body["ok"])
         self.assertIn("No matching distribution", body["output"])
+
+    def test_install_dflash_points_at_vllm_instead_of_pypi_package(self):
+        """FU-091: PyPI ``dflash`` collides with our ``dflash/`` module."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+            resp = self.client.post("/api/setup/install-package", json={"package": "dflash"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("vLLM", resp.json()["detail"]["message"])
+        mock_run.assert_not_called()
 
     def test_install_pip_accepts_imageio(self):
         """Video Studio installs this directly when the mp4 encoder is missing."""
@@ -1332,12 +1384,37 @@ class TorchUpgradeHelperUnitTests(unittest.TestCase):
             extras = Path(tmp)
             # No top-level package dir, only the dist-info — covers the
             # case where pip cleared the package folder but left metadata.
-            (extras / "nunchaku-1.2.1.dist-info").mkdir()
-            (extras / "nunchaku-1.2.1.dist-info" / "METADATA").write_text(
-                "Name: nunchaku\nVersion: 1.2.1\n", encoding="utf-8",
+            (extras / "bitsandbytes-0.45.0.dist-info").mkdir()
+            (extras / "bitsandbytes-0.45.0.dist-info" / "METADATA").write_text(
+                "Name: bitsandbytes\nVersion: 0.45.0\n", encoding="utf-8",
             )
             found = _abi_dependents_present(extras)
-            self.assertIn("nunchaku", found)
+            self.assertIn("bitsandbytes", found)
+
+    def test_nunchaku_is_manual_install_not_pypi(self):
+        """PyPI 'nunchaku' is an unrelated project — the allowlist must not
+        install it; the endpoint answers with manual wheel instructions."""
+        from backend_service.routes.setup import (
+            _INSTALLABLE_PIP_PACKAGES,
+            _MANUAL_INSTALL_MESSAGES,
+        )
+        self.assertNotIn("nunchaku", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("unrelated project", _MANUAL_INSTALL_MESSAGES["nunchaku"])
+        self.assertIn("{python}", _MANUAL_INSTALL_MESSAGES["nunchaku"])
+        # sageattention==2.2.0 never resolved on PyPI (max is 1.0.6).
+        self.assertNotIn("sageattention", _INSTALLABLE_PIP_PACKAGES)
+        self.assertIn("{python}", _MANUAL_INSTALL_MESSAGES["sageattention"])
+
+    def test_abi_rebuild_never_reinstalls_nunchaku_or_sageattention_from_pypi(self):
+        """The rebuild reinstalls by bare PyPI name. PyPI 'nunchaku' is an
+        unrelated project and PyPI 'sageattention' tops out at 1.0.6, so a
+        rebuild would clobber a real SVDQuant / SageAttention-2 install."""
+        from backend_service.routes.setup._install_helpers import _abi_dependents_present
+        with tempfile.TemporaryDirectory() as tmp:
+            extras = Path(tmp)
+            (extras / "nunchaku").mkdir()
+            (extras / "sageattention").mkdir()
+            self.assertEqual(_abi_dependents_present(extras), [])
 
     def test_move_torch_to_rollback_moves_torch_and_nvidia_dirs(self):
         from backend_service.routes.setup._install_helpers import _move_torch_to_rollback
@@ -1644,3 +1721,56 @@ class TorchUpgradeRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _write_dist(site: Path, name: str, version: str) -> None:
+    dist = site / f"{name}-{version}.dist-info"
+    dist.mkdir(parents=True)
+    (dist / "METADATA").write_text(f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n", encoding="utf-8")
+
+
+class MlxSeriesConstraintTests(unittest.TestCase):
+    """An overlay install must not bring an mlx newer than the app's (FU-098)."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.base = self.root / "base-site-packages"
+        self.extras = self.root / "extras" / "site-packages"
+        self.base.mkdir()
+        self.extras.mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _with_sys_path(self, *entries: Path):
+        return mock.patch.object(sys, "path", [str(entry) for entry in entries])
+
+    def test_the_constraint_follows_the_apps_own_mlx(self):
+        from backend_service.routes.setup._install_helpers import _write_mlx_constraint
+
+        _write_dist(self.base, "mlx", "0.31.2")
+        with self._with_sys_path(self.extras, self.base):
+            path = _write_mlx_constraint(self.extras)
+
+        self.assertEqual(path, self.extras / ".chaosengine-mlx-constraints.txt")
+        self.assertEqual(
+            path.read_text(encoding="utf-8").splitlines(),
+            ["mlx>=0.31,<0.32", "mlx-metal>=0.31,<0.32"],
+        )
+
+    def test_a_polluted_overlay_does_not_redefine_the_apps_mlx(self):
+        from backend_service.routes.setup._install_helpers import _app_mlx_series
+
+        _write_dist(self.base, "mlx", "0.31.2")
+        _write_dist(self.extras, "mlx", "0.32.3")
+        with self._with_sys_path(self.extras, self.base):
+            self.assertEqual(_app_mlx_series(self.extras), (0, 31))
+
+    def test_no_constraint_where_the_app_has_no_mlx(self):
+        from backend_service.routes.setup._install_helpers import _write_mlx_constraint
+
+        _write_dist(self.base, "numpy", "2.0.0")
+        with self._with_sys_path(self.extras, self.base):
+            self.assertIsNone(_write_mlx_constraint(self.extras))
+        self.assertFalse((self.extras / ".chaosengine-mlx-constraints.txt").exists())

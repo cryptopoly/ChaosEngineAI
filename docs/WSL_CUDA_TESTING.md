@@ -275,7 +275,7 @@ backend on :8877 with vllm wheel + Qwen3-0.6B staged):
 | **vllm native (Qwen3-0.6B)** | **PASS** — SHA `d18c2b8cb410`, runtimeNote=`Applied Native f16 vLLM patches` |
 | vllm turboquant | SKIP — strategy unavailable (no CUDA TurboQuant adapter shipped today) |
 | vllm triattention | SKIP — strategy unavailable (TriAttention CUDA needs `[triattention]` extra w/ vllm >=0.21) |
-| vllm dflash | SKIP — `[dflash]` extra not installed |
+| vllm dflash | SKIP — needs vLLM >=0.28 (native DFlash; FU-091) |
 
 The vLLM native cell is the canary — once that's green, the CUDA path
 (driver → libcuda → vllm → backend) is healthy end-to-end. The other

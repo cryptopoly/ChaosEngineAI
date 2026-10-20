@@ -106,6 +106,8 @@ from backend_service.inference.simple_engines import (
     RemoteOpenAIEngine,
 )
 from backend_service.inference._mtp import has_mtp_heads, has_mtp_heads_strict
+from backend_service.inference._tensorfold import TensorFoldMatch, match_model
+from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
 
 class RuntimeController:
@@ -342,7 +344,8 @@ class RuntimeController:
             is_mlx_worker = "backend_service.mlx_worker" in cmdline or "mlx_worker" in cmdline
             is_llama = "llama-server" in name or "llama-server" in cmdline
             is_mtplx = "mtplx" in name or "/mtplx-venv/" in cmdline or " mtplx " in f" {cmdline} " or cmdline.endswith(" mtplx")
-            if not (is_mlx_worker or is_llama or is_mtplx):
+            is_tensorfold = "/tensorfold-venv/" in cmdline
+            if not (is_mlx_worker or is_llama or is_mtplx or is_tensorfold):
                 continue
             if child.pid in tracked:
                 continue
@@ -358,6 +361,8 @@ class RuntimeController:
                 kind, label = "mlx_worker", "MLX worker"
             elif is_mtplx:
                 kind, label = "mtplx", "MTPLX server"
+            elif is_tensorfold:
+                kind, label = "tensorfold", "TensorFold server"
             else:
                 kind, label = "llama_server", "llama-server"
             record = {
@@ -479,6 +484,106 @@ class RuntimeController:
             self.engine.capabilities = self.capabilities
         return self.capabilities
 
+    def _tensorfold_match(
+        self,
+        *,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+    ) -> TensorFoldMatch | None:
+        return match_model(
+            canonical_repo=canonical_repo,
+            model_ref=model_ref,
+            runtime_target=runtime_target,
+            path=path,
+        )
+
+    def _select_tensorfold(
+        self,
+        *,
+        hint: str,
+        target: str | None,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+        speculative_decoding: bool = False,
+    ) -> BaseInferenceEngine | None:
+        """The TensorFold engine when the request asks for it, or when the model needs it.
+
+        An explicit ``tensorfold`` backend always gets the engine. Families
+        no other engine we ship can load ("exclusive") always get it, and an
+        uninstalled TensorFold becomes an install prompt instead of a stack
+        trace. Checkpoints TensorFold is merely tested with ("tested", see
+        ``TensorFoldMatch.tier``) get it when speculative decoding is asked
+        for and it is installed — the same rule that picks MTPLX — and load
+        on standard MLX otherwise, so the launch toggle is the A/B switch.
+        """
+        if hint == "tensorfold":
+            if _looks_like_gguf(target):
+                raise RuntimeError(
+                    "TensorFold serves MLX (safetensors) checkpoints, not GGUF files. "
+                    "Use the llama.cpp backend for this model."
+                )
+            if not self.capabilities.tensorfoldAvailable:
+                raise RuntimeError(
+                    "TensorFold backend requested but not installed. "
+                    "Install it from the launch settings or the Setup tab."
+                )
+            return TensorFoldEngine(self.capabilities)
+        if hint not in {"mlx", "auto"} or _looks_like_gguf(target):
+            return None
+        match = self._tensorfold_match(
+            model_ref=model_ref,
+            canonical_repo=canonical_repo,
+            runtime_target=runtime_target,
+            path=path,
+        )
+        if match is None:
+            return None
+        if self.capabilities.tensorfoldAvailable and (match.tier == "exclusive" or speculative_decoding):
+            return TensorFoldEngine(self.capabilities)
+        if match.tier == "exclusive":
+            needs = (
+                f" It needs a Mac with at least {match.family.min_memory_gb} GB of memory."
+                if match.family.min_memory_gb
+                else ""
+            )
+            raise RuntimeError(
+                f"{match.family.title} runs only on TensorFold, which is not installed. "
+                f"Install it from the launch settings or the Setup tab, then load the model again.{needs}"
+            )
+        return None
+
+    def _startup_fallback_label(
+        self,
+        engine: BaseInferenceEngine,
+        *,
+        model_ref: str,
+        canonical_repo: str | None,
+        runtime_target: str | None,
+        path: str | None,
+    ) -> str | None:
+        """Which engine's startup failure should fall back to standard MLX, if any.
+
+        MTPLX always can (it is an accelerator over a model MLX also loads).
+        TensorFold can except for exclusive families, which standard MLX
+        cannot load at all — there the error must reach the user.
+        """
+        if isinstance(engine, MtplxEngine):
+            return "MTPLX"
+        if isinstance(engine, TensorFoldEngine) and self.capabilities.mlxUsable:
+            match = self._tensorfold_match(
+                model_ref=model_ref,
+                canonical_repo=canonical_repo,
+                runtime_target=runtime_target,
+                path=path,
+            )
+            if match is None or match.tier != "exclusive":
+                return "TensorFold"
+        return None
+
     def _select_engine(
         self,
         *,
@@ -494,6 +599,17 @@ class RuntimeController:
 
         if hint in {"remote", "openai", "cloud"}:
             return RemoteOpenAIEngine(self.capabilities)
+        tensorfold = self._select_tensorfold(
+            hint=hint,
+            target=target,
+            model_ref=model_ref,
+            canonical_repo=canonical_repo,
+            runtime_target=runtime_target,
+            path=path,
+            speculative_decoding=speculative_decoding,
+        )
+        if tensorfold is not None:
+            return tensorfold
         if hint == "mlx":
             if self.capabilities.mlxUsable:
                 # ``has_mtp_heads_strict`` peeks the on-disk safetensors
@@ -776,6 +892,12 @@ class RuntimeController:
             speculative_decoding=speculative_decoding,
         )
 
+        if isinstance(selected_engine, TensorFoldEngine):
+            # TensorFold sizes its memory budget from physical RAM and its
+            # models run to 100+ GB, so nothing else may stay resident.
+            keep_warm_previous = False
+            self.clear_warm_pool()
+
         # Never keep multiple warm copies of the same logical model under
         # different runtime profiles; that just burns extra RAM.
         self._purge_warm_entries_for_identity(requested_identity)
@@ -806,9 +928,17 @@ class RuntimeController:
         )
         try:
             loaded = self.engine.load_model(**_load_kwargs)
-        except RuntimeError as _mtplx_exc:
-            # MtplxEngine startup failure → fall back to standard MLX worker.
-            if isinstance(self.engine, MtplxEngine):
+        except RuntimeError as _startup_exc:
+            # An accelerator engine's startup failure → fall back to the
+            # standard MLX worker (see ``_startup_fallback_label``).
+            fallback_from = self._startup_fallback_label(
+                self.engine,
+                model_ref=model_ref,
+                canonical_repo=canonical_repo,
+                runtime_target=runtime_target,
+                path=path,
+            )
+            if fallback_from is not None:
                 fallback = MLXWorkerEngine(self.capabilities)
                 self.engine = fallback
                 _load_kwargs["backend"] = fallback.engine_name
@@ -816,7 +946,7 @@ class RuntimeController:
                     loaded = self.engine.load_model(**_load_kwargs)
                     loaded.runtimeNote = _append_runtime_note(
                         loaded.runtimeNote,
-                        f"MTPLX startup failed ({_mtplx_exc}); using standard MLX.",
+                        f"{fallback_from} startup failed ({_startup_exc}); using standard MLX.",
                     )
                 except Exception:
                     self.loaded_model = None

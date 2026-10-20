@@ -54,7 +54,10 @@ router = APIRouter()
 # rather than pressing on and installing diffusers against no torch.
 _GPU_BUNDLE_PACKAGES: list[tuple[str, str]] = [
     ("torch", "torch>=2.4.0"),
-    ("diffusers", "diffusers>=0.30.0"),
+    # 0.40 floor: path-traversal fix for sharded checkpoint index files
+    # (diffusers #14182). A floor (not just "latest") so re-running the
+    # bundle upgrades an older install already sitting in extras.
+    ("diffusers", "diffusers>=0.40.0"),
     ("accelerate", "accelerate>=0.34.0"),
     ("transformers", "transformers>=4.44.0"),
     ("safetensors", "safetensors>=0.4.5"),

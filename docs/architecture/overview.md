@@ -51,7 +51,7 @@ inference engines run in **separate subprocesses** so a wedged generation
 never takes the whole FastAPI parent down with it:
 
 - The MLX worker speaks JSON-RPC over a pipe to the parent.
-- `llama-server` and `MTPLX` run as HTTP servers on dynamic local ports;
+- `llama-server`, `MTPLX` and `TensorFold` run as HTTP servers on dynamic local ports;
   the parent proxies requests.
 - Each subprocess is supervised by the parent; if it dies the parent
   surfaces the death cleanly and lets the user retry.
@@ -72,6 +72,8 @@ backend_service/
 │   ├── controller.py         RuntimeController (~1207 LOC) — the orchestrator
 │   ├── base.py               Engine interface + types
 │   ├── _mtp.py               MTP model registry
+│   ├── _tensorfold.py        TensorFold model registry + routing helpers
+│   ├── _tensorfold_wire.py   TensorFold request/stream translation
 │   ├── capabilities.py       Backend probe (mlx, gguf, vllm, mtplx)
 │   ├── binaries.py           Binary path resolution + bundled bin dir
 │   ├── conversion.py         MLX conversion helpers
@@ -79,6 +81,7 @@ backend_service/
 │   ├── llama_cpp_engine.py   GGUF / llama-server adapter
 │   ├── mlx_engine.py         In-proc MLX engine (rarely used)
 │   ├── mtplx_engine.py       MTPLX subprocess adapter
+│   ├── tensorfold_engine.py  TensorFold subprocess adapter
 │   └── simple_engines.py     RemoteOpenAIEngine + MockInferenceEngine
 ├── state/
 │   ├── __init__.py           ChaosEngineState facade (860 LOC — was 4418)
@@ -131,7 +134,7 @@ Every API surface lives in its own file under `backend_service/routes/`:
 | `prompts.py` | `/api/prompts/*`, `/api/prompt/enhance` |
 | `server.py` | `/api/server/*` |
 | `settings.py` | `/api/settings/*` |
-| `setup/` | `/api/setup/*` — submodules per installer (mtplx, longlive, wan, gpu_bundle, cuda_torch, turbo) |
+| `setup/` | `/api/setup/*` — submodules per installer (mtplx, tensorfold, longlive, wan, gpu_bundle, cuda_torch, turbo) |
 | `storage.py` | `/api/settings/storage/*` |
 | `video.py` | `/api/video/*` |
 | `workspaces.py` | `/api/workspaces/*` |

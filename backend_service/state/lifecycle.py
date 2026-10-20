@@ -133,7 +133,9 @@ def load_model(
         effective_cache_strategy = request.cacheStrategy
         effective_cache_bits = request.cacheBits
         effective_fp16_layers = request.fp16Layers
-        if speculative_decoding:
+        if speculative_decoding or resolved_backend == "tensorfold":
+            # TensorFold manages its own KV caches too (exact drafts roll
+            # them back), so compression strategies never apply to it.
             effective_cache_strategy = "native"
             effective_cache_bits = 0
             effective_fp16_layers = 0

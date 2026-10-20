@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import { RichMarkdown } from "../../components/RichMarkdown";
 import { apiFetch, getCachePreview } from "../../api";
 import type { MtplxJobState } from "../../api";
+import {
+  tensorfoldEngaged,
+  tensorfoldLaunchInfoFor,
+  type TensorfoldLaunchControls,
+} from "../../components/tensorfoldSupport";
 import { candidateKeys } from "../../components/runtimeSupport";
 import { ModelLaunchModal } from "../../components/ModelLaunchModal";
 import { Panel } from "../../components/Panel";
@@ -73,6 +78,7 @@ interface CompareViewProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
@@ -223,9 +229,24 @@ export function modelUsesMtplx(
   });
 }
 
+/**
+ * True when the backend will route this (option, settings) combo through
+ * TensorFold: it is installed and the checkpoint is either exclusive to it
+ * or served with speculative decoding ticked. Mirrors
+ * ``RuntimeController._select_tensorfold``; TensorFold outranks MTPLX.
+ */
+export function modelUsesTensorfold(
+  option: { modelRef?: string | null; canonicalRepo?: string | null } | null | undefined,
+  settings: LaunchPreferences,
+  tensorfold: TensorfoldLaunchControls | undefined,
+): boolean {
+  const launch = tensorfoldLaunchInfoFor(tensorfold, [option?.canonicalRepo, option?.modelRef]);
+  return tensorfoldEngaged(launch, settings.speculativeDecoding);
+}
+
 export function summarizeLaunchSettings(
   settings: LaunchPreferences,
-  options?: { usesMtplx?: boolean },
+  options?: { usesMtplx?: boolean; usesTensorfold?: boolean },
 ) {
   const cacheLabel = settings.cacheStrategy === "native"
     ? "Native f16"
@@ -235,11 +256,13 @@ export function summarizeLaunchSettings(
   // reflect what will actually run, so the caller computes ``usesMtplx``
   // from the selected model + mtplxInfo and we honour it here.
   const speculativeLabel = settings.speculativeDecoding
-    ? options?.usesMtplx
-      ? "MTPLX"
-      : settings.treeBudget > 0
-        ? `DDTree ${settings.treeBudget}`
-        : "DFlash"
+    ? options?.usesTensorfold
+      ? "TensorFold"
+      : options?.usesMtplx
+        ? "MTPLX"
+        : settings.treeBudget > 0
+          ? `DDTree ${settings.treeBudget}`
+          : "DFlash"
     : null;
   return [
     cacheLabel,
@@ -352,6 +375,7 @@ export function CompareView({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
@@ -596,7 +620,7 @@ export function CompareView({
               {option?.sizeGb ? <span className="badge muted">{sizeLabel(option.sizeGb)}</span> : null}
               {option?.contextWindow ? <span className="badge muted">{option.contextWindow}</span> : null}
             </div>
-            <small className="muted-text">{summarizeLaunchSettings(slot.settings, { usesMtplx: modelUsesMtplx(option, slot.settings, mtplxSystemInfo) })}</small>
+            <small className="muted-text">{summarizeLaunchSettings(slot.settings, { usesMtplx: modelUsesMtplx(option, slot.settings, mtplxSystemInfo), usesTensorfold: modelUsesTensorfold(option, slot.settings, tensorfold) })}</small>
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             {slots.length > 2 && slot.id === slots[slots.length - 1]?.id ? (
@@ -678,7 +702,7 @@ export function CompareView({
           {option ? <p className="muted-text" style={{ fontSize: 11, margin: "0 0 6px" }}>{option.label} · {option.detail}</p> : null}
           {option ? (
             <p className="muted-text" style={{ fontSize: 11, margin: "0 0 10px" }}>
-              {modelState.appliedSummary ?? summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo) })}
+              {modelState.appliedSummary ?? summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo), usesTensorfold: modelUsesTensorfold(option, settings, tensorfold) })}
             </p>
           ) : null}
           {modelState.loadSeconds > 0 ? (
@@ -809,6 +833,7 @@ export function CompareView({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfold}
         isAppleSilicon={isAppleSilicon}
         onSelectedKeyChange={setPickerDraftKey}
         onSearchChange={setPickerSearch}

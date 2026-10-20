@@ -20,7 +20,8 @@ import {
 } from "../../utils";
 import { CAPABILITY_META } from "../../constants";
 import { CapabilityStrip } from "../../components/CapabilityStrip";
-import { candidateKeys } from "../../components/runtimeSupport";
+import { candidateKeys, isMemorySaverStrategy } from "../../components/runtimeSupport";
+import { isTensorfoldRepo } from "../../components/tensorfoldSupport";
 
 export interface LibraryRow {
   item: LibraryItem;
@@ -39,6 +40,8 @@ interface StrategyCompatInfo {
   dflashSupportedModels: string[];
   mtplxInstalled?: boolean;
   mtplxSupportedModels?: string[];
+  /** Exact repo ids TensorFold serves (``system.tensorfold.supportedModels``). */
+  tensorfoldSupportedModels?: string[];
 }
 
 export interface MyModelsTabProps {
@@ -286,6 +289,15 @@ export function MyModelsTab({
           return refKeys.some((k) => modelKeys.includes(k));
         });
       }
+      case "tensorfold":
+        // MLX checkpoints only, matched by exact repo id (TensorFold is tested
+        // with specific conversions, unlike the fuzzy DFlash / MTPLX keys).
+        if (isGGUF) return false;
+        return isTensorfoldRepo(strategyCompat?.tensorfoldSupportedModels, [
+          row.matchedVariant?.repo,
+          row.item.name,
+          inferHfRepoFromLocalPath(row.item.path),
+        ]);
       default:
         return true;
     }
@@ -296,6 +308,7 @@ export function MyModelsTab({
   const STRATEGY_FILTERS = [
     { id: "dflash", label: "DFlash", color: "#a78bfa" },
     { id: "mtplx", label: "MTPLX", color: "#f472b6" },
+    { id: "tensorfold", label: "TensorFold", color: "#34d399" },
     { id: "turboquant", label: "TurboQuant", color: "#60a5fa" },
   ];
 
@@ -371,7 +384,18 @@ export function MyModelsTab({
               // match — speculative-decode drafts are pinned per family,
               // so users land on "0" often unless they have a base
               // Qwen3 / Llama-3.1 / gpt-oss / Kimi model.
-              const tooltip = sf.id === "dflash" && count === 0
+              const isMemorySaver = isMemorySaverStrategy(sf.id);
+              const chipLabel = isMemorySaver
+                ? t("myModels.strategy.memorySaverLabel", { defaultValue: "{label} · memory saver", label: sf.label })
+                : sf.label;
+              const tooltip = isMemorySaver
+                ? t("myModels.strategy.memorySaverTooltip", {
+                    defaultValue:
+                      "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})",
+                    label: sf.label,
+                    count,
+                  })
+                : sf.id === "dflash" && count === 0
                 ? t("myModels.strategy.dflashEmptyTooltip", {
                     defaultValue:
                       "DFlash speculative-decode drafts only exist for specific base models: "
@@ -393,7 +417,7 @@ export function MyModelsTab({
                   title={tooltip}
                   style={strategyFilter === sf.id ? { borderColor: sf.color, color: sf.color, background: `${sf.color}15` } : undefined}
                 >
-                  {t("myModels.strategy.chip", { defaultValue: "{label} ({count})", label: sf.label, count })}
+                  {t("myModels.strategy.chip", { defaultValue: "{label} ({count})", label: chipLabel, count })}
                 </button>
               );
             })}

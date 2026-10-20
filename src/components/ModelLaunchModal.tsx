@@ -6,6 +6,7 @@ import type { LaunchPreferences, ModelCapabilities, PreviewMetrics, StrategyInst
 import type { ChatModelOption } from "../types/chat";
 import type { MtplxJobState } from "../api";
 import { candidateKeys } from "./runtimeSupport";
+import { tensorfoldLaunchInfoFor, type TensorfoldLaunchControls } from "./tensorfoldSupport";
 
 /**
  * Phase 2.11: typed capability badges for the picker. Mirrors the
@@ -70,6 +71,9 @@ export interface ModelLaunchModalProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  /** TensorFold engine state; the launch settings show its block for the
+   * selected checkpoint only when TensorFold serves it. */
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: forwarded to ``RuntimeControls`` so the MTPLX
    * block hides on non-Apple-Silicon hosts where MTPLX can't run. */
   isAppleSilicon?: boolean;
@@ -103,6 +107,7 @@ export function ModelLaunchModal({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onSelectedKeyChange,
   onSearchChange,
@@ -135,6 +140,11 @@ export function ModelLaunchModal({
   const selectedOption = options.find((option) => option.key === selectedKey) ?? options[0] ?? null;
   const resolvedSelectedKey = selectedOption?.key ?? "";
   const listVisible = showList || !selectedOption || search.length > 0;
+
+  const tensorfoldLaunch = tensorfoldLaunchInfoFor(tensorfold, [
+    selectedOption?.canonicalRepo,
+    selectedOption?.modelRef,
+  ]);
 
   const mtplxModelSupported = (() => {
     if (!mtplxSystemInfo?.supportedModels?.length) return false;
@@ -258,6 +268,10 @@ export function ModelLaunchModal({
               onInstallMtplx={onInstallMtplx}
               installingMtplx={installingMtplx}
               mtplxJob={mtplxJob}
+              tensorfoldInfo={tensorfoldLaunch}
+              onInstallTensorfold={tensorfold?.onInstall}
+              installingTensorfold={tensorfold?.installing}
+              tensorfoldJob={tensorfold?.job}
               isAppleSilicon={isAppleSilicon}
               compact
             />

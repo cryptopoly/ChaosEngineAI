@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
   convertModel,
   deleteSessionDocument,
+  getVoiceRuntime,
   loadModel,
   getWorkspace,
   resolveApiToken,
@@ -51,12 +52,16 @@ import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
 import { VideoModelsTab } from "./features/video/VideoModelsTab";
 import { VideoStudioTab } from "./features/video/VideoStudioTab";
 import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
+import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
+import { VoiceModelsTab } from "./features/voice/VoiceModelsTab";
+import { VoiceGalleryTab } from "./features/voice/VoiceGalleryTab";
 import type {
   ChatSession,
   LibraryItem,
   LoadModelActionResult,
   ModelVariant,
   TabId,
+  VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
 import { tabs } from "./constants";
@@ -109,6 +114,8 @@ import {
   useFileActions,
 } from "./hooks";
 import { useMtplxInstall } from "./hooks/useMtplxInstall";
+import { useTensorfoldInstall } from "./hooks/useTensorfoldInstall";
+import type { TensorfoldLaunchControls } from "./components/tensorfoldSupport";
 
 export default function App() {
   // FU-042: i18n hook — used for the workspace header tab label /
@@ -131,6 +138,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
@@ -158,6 +166,15 @@ export default function App() {
     installingMtplx,
     handleInstallMtplx,
   } = useMtplxInstall();
+  // TensorFold engine install. A finished install re-reads the workspace so
+  // the launch settings see ``system.tensorfold.available`` at once.
+  const {
+    tensorfoldJob,
+    installingTensorfold,
+    handleInstallTensorfold,
+  } = useTensorfoldInstall(async () => {
+    await refreshWorkspace();
+  });
 
   const {
     installingCudaTorch,
@@ -427,6 +444,13 @@ export default function App() {
       : `${workspace.runtime.loadedModel.cacheStrategy} ${workspace.runtime.loadedModel.cacheBits}-bit ${workspace.runtime.loadedModel.fp16Layers}+${workspace.runtime.loadedModel.fp16Layers}`
     : launchCacheLabel;
 
+  const tensorfoldControls: TensorfoldLaunchControls = {
+    info: workspace.system.tensorfold,
+    onInstall: (extras) => void handleInstallTensorfold(extras),
+    installing: installingTensorfold,
+    job: tensorfoldJob,
+  };
+
   function sanitizeSpeculativeForModel(params: {
     backend: string;
     modelRef: string;
@@ -437,6 +461,7 @@ export default function App() {
   }) {
     return sanitizeSpeculativeSelection({
       dflashInfo: workspace.system.dflash,
+      tensorfoldInfo: workspace.system.tensorfold,
       selectedBackend: params.backend,
       modelRef: params.modelRef,
       canonicalRepo: params.canonicalRepo ?? null,
@@ -773,6 +798,23 @@ export default function App() {
       cancelled = true;
     };
   }, [backendOnline, tauriBackend?.apiBase, tauriBackend?.apiToken, workspace.server.port]);
+
+  // Voice runtime — one-shot fetch when backend comes online.
+  // Not polled aggressively; user can navigate to Voice Studio to refresh.
+  const refreshVoiceRuntime = useCallback(() => {
+    if (!backendOnline) return;
+    void getVoiceRuntime()
+      .then((rt) => setVoiceRuntime(rt))
+      .catch(() => {});
+  }, [backendOnline]);
+
+  useEffect(() => {
+    if (!backendOnline) {
+      setVoiceRuntime(null);
+      return;
+    }
+    refreshVoiceRuntime();
+  }, [backendOnline, refreshVoiceRuntime]);
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -1160,6 +1202,7 @@ export default function App() {
         accelCompat={{
           dflashModels: workspace.system.dflash?.supportedModels ?? [],
           mtplxModels: workspace.system.mtplx?.supportedModels ?? [],
+          tensorfoldModels: workspace.system.tensorfold?.supportedModels ?? [],
           turboInstalled: Boolean(workspace.system.llamaServerTurboPath),
         }}
         expandedFamilyId={expandedFamilyId}
@@ -1204,6 +1247,7 @@ export default function App() {
           dflashSupportedModels: workspace.system.dflash?.supportedModels ?? [],
           mtplxInstalled: workspace.system.mtplx?.available ?? false,
           mtplxSupportedModels: workspace.system.mtplx?.supportedModels ?? [],
+          tensorfoldSupportedModels: workspace.system.tensorfold?.supportedModels ?? [],
         }}
         activeDownloads={activeDownloads}
         expandedLibraryPath={expandedLibraryPath}
@@ -1546,6 +1590,29 @@ export default function App() {
         onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
       />
     );
+  } else if (activeTab === "voice-studio") {
+    content = (
+      <VoiceStudioTab
+        voiceRuntime={voiceRuntime}
+        backendOnline={backendOnline}
+        onSendToChat={(text) => {
+          // Append rather than overwrite so a half-typed draft survives.
+          setDraftMessage((current) => (current.trim() ? `${current}\n${text}` : text));
+          void setActiveTab("chat");
+        }}
+        onTabChange={setActiveTab}
+      />
+    );
+  } else if (activeTab === "voice-models") {
+    content = (
+      <VoiceModelsTab
+        voiceRuntime={voiceRuntime}
+        backendOnline={backendOnline}
+        onRefreshVoiceRuntime={refreshVoiceRuntime}
+      />
+    );
+  } else if (activeTab === "voice-gallery") {
+    content = <VoiceGalleryTab backendOnline={backendOnline} />;
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab
@@ -1659,6 +1726,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfoldControls}
         isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
@@ -1680,6 +1748,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfoldControls}
         isAppleSilicon={isAppleSilicon}
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
@@ -1761,6 +1830,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfoldControls}
         isAppleSilicon={isAppleSilicon}
         onBenchmarkDraftChange={updateBenchmarkDraft}
         onBenchmarkPromptIdChange={setBenchmarkPromptId}
@@ -2015,6 +2085,7 @@ export default function App() {
         onInstallMtplx={() => void handleInstallMtplx()}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfoldControls}
         isAppleSilicon={isAppleSilicon}
         onPendingLaunchChange={setPendingLaunch}
         onLaunchModelSearchChange={setLaunchModelSearch}

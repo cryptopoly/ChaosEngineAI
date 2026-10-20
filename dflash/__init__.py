@@ -27,38 +27,58 @@ DRAFT_MODEL_MAP: dict[str, str] = {
     "Qwen/Qwen3-4B": "z-lab/Qwen3-4B-DFlash-b16",
     "Qwen/Qwen3-8B": "z-lab/Qwen3-8B-DFlash-b16",
     # ----- Qwen3-Coder family -----
-    "Qwen/Qwen3-Coder-4B": "z-lab/Qwen3-Coder-4B-DFlash",
-    "Qwen/Qwen3-Coder-8B": "z-lab/Qwen3-Coder-8B-DFlash",
+    # 2026-09-28: dropped Qwen3-Coder-4B / -8B and Qwen3.5-7B / -14B —
+    # none of those drafter repos exist on the Hub (the API 401s for an
+    # unauthenticated caller, the signature of a missing repo; gated
+    # repos answer 200), so a match only produced a failed download.
     "Qwen/Qwen3-Coder-30B-A3B": "z-lab/Qwen3-Coder-30B-A3B-DFlash",
     "Qwen/Qwen3-Coder-Next": "z-lab/Qwen3-Coder-Next-DFlash",
     # ----- Qwen3.5 family -----
     "Qwen/Qwen3.5-4B": "z-lab/Qwen3.5-4B-DFlash",
-    "Qwen/Qwen3.5-7B": "z-lab/Qwen3.5-7B-DFlash",
     "Qwen/Qwen3.5-9B": "z-lab/Qwen3.5-9B-DFlash",
-    "Qwen/Qwen3.5-14B": "z-lab/Qwen3.5-14B-DFlash",
     "Qwen/Qwen3.5-27B": "z-lab/Qwen3.5-27B-DFlash",
     "Qwen/Qwen3.5-35B-A3B": "z-lab/Qwen3.5-35B-A3B-DFlash",
     # 2026-05-10: z-lab published a 122B-A10B drafter for the largest
     # Qwen3.5 MoE checkpoint. Same naming pattern as the smaller A3B.
     "Qwen/Qwen3.5-122B-A10B": "z-lab/Qwen3.5-122B-A10B-DFlash",
     # ----- Qwen3.6 family -----
+    # Dense 27B drafter (2026-04-23, MIT). Same DFlashDraftModel config
+    # shape as the Qwen3-4B drafter the matrix validates; upstream
+    # dflash-mlx benchmarks it at 2.78-3.06x on Qwen3.6-27B-4bit.
+    "Qwen/Qwen3.6-27B": "z-lab/Qwen3.6-27B-DFlash",
     "Qwen/Qwen3.6-35B-A3B": "z-lab/Qwen3.6-35B-A3B-DFlash",
     # ----- Gemma 4 family (added 2026-05-10) -----
     # dflash-mlx 0.1.5 commit 05cc456 added the Gemma4 backend; z-lab
     # ships matched draft checkpoints for both flagship variants.
     "google/gemma-4-31B-it": "z-lab/gemma-4-31B-it-DFlash",
     "google/gemma-4-26B-A4B-it": "z-lab/gemma-4-26B-A4B-it-DFlash",
+    # 12B drafter (2026-06); z-lab names it ``gemma4-`` not ``gemma-4-``.
+    "google/gemma-4-12B-it": "z-lab/gemma4-12B-it-DFlash",
     # ----- LLaMA family -----
-    "meta-llama/Llama-3.1-8B-Instruct": "z-lab/Llama-3.1-8B-Instruct-DFlash",
+    # ``Llama-3.1-8B-Instruct-DFlash`` never existed publicly; the
+    # published drafter is the UltraChat-trained one.
+    "meta-llama/Llama-3.1-8B-Instruct": "z-lab/LLaMA3.1-8B-Instruct-DFlash-UltraChat",
     # ----- gpt-oss family -----
-    "gpt-oss/gpt-oss-20B": "z-lab/gpt-oss-20B-DFlash",
-    "gpt-oss/gpt-oss-120B": "z-lab/gpt-oss-120B-DFlash",
+    # Real target org is ``openai`` and the drafter repos are lowercase
+    # (the old ``-20B`` / ``-120B`` ids only resolved via a 307 redirect).
+    "openai/gpt-oss-20b": "z-lab/gpt-oss-20b-DFlash",
+    "openai/gpt-oss-120b": "z-lab/gpt-oss-120b-DFlash",
     # ----- MiniMax family (preview drafts, added 2026-05-10) -----
     "MiniMaxAI/MiniMax-M2.5": "z-lab/MiniMax-M2.5-DFlash",
     "MiniMaxAI/MiniMax-M2.7": "z-lab/MiniMax-M2.7-DFlash",
     # ----- Kimi -----
     "moonshotai/Kimi-K2.5": "z-lab/Kimi-K2.5-DFlash",
     "moonshotai/Kimi-K2.6": "z-lab/Kimi-K2.6-DFlash",
+}
+
+# DFlash 2 drafters (z-lab / Inco AI, 2026-08; drafters Apache-2.0).
+# Kept apart from DRAFT_MODEL_MAP because only vLLM >=0.28 runs them —
+# the pinned dflash-mlx predates DFlash 2 and would fail to load the
+# candidate-path selector (FU-057). ``get_draft_model(...,
+# allow_dflash2=True)`` is the vLLM engine's opt-in. GGUF users get
+# DFlash 2 via the ``dflash-`` sidecar in ggml-org packs instead.
+DFLASH2_DRAFT_MODEL_MAP: dict[str, str] = {
+    "Qwen/Qwen3.8-27B": "z-lab/Qwen3.8-27B-DFlash2",
 }
 
 # Additional aliases that map community / MLX repos to the same drafts.
@@ -81,12 +101,13 @@ _ALIASES: dict[str, str] = {
     # Inspecting the local config.json under ~/AI_Models/
     # lmstudio-community/Qwen3-Coder-Next-MLX-4bit confirms the latter.
     # Coder-Next uses ``z-lab/Qwen3-Coder-Next-DFlash``; the dense
-    # 27B-4bit has no drafter today and stays unaliased.
+    # 27B-4bit gets its own ``z-lab/Qwen3.6-27B-DFlash`` (aliased below).
     "lmstudio-community/Qwen3-Coder-Next-MLX-4bit-Instruct": "Qwen/Qwen3-Coder-Next",
     "mlx-community/Qwen3.5-4B-bf16": "Qwen/Qwen3.5-4B",
-    "mlx-community/Qwen3.5-7B-bf16": "Qwen/Qwen3.5-7B",
-    "mlx-community/Qwen3.5-14B-bf16": "Qwen/Qwen3.5-14B",
     "mlx-community/Qwen3.5-27B-bf16": "Qwen/Qwen3.5-27B",
+    "mlx-community/Qwen3.6-27B-4bit": "Qwen/Qwen3.6-27B",
+    "mlx-community/Qwen3.6-27B-8bit": "Qwen/Qwen3.6-27B",
+    "mlx-community/Qwen3.6-27B-bf16": "Qwen/Qwen3.6-27B",
     "mlx-community/Qwen3.6-35B-A3B-bf16": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-4bit": "Qwen/Qwen3.6-35B-A3B",
     "mlx-community/Qwen3.6-35B-A3B-8bit": "Qwen/Qwen3.6-35B-A3B",
@@ -113,12 +134,12 @@ _ALIASES: dict[str, str] = {
     "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit": "meta-llama/Llama-3.1-8B-Instruct",
     "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit": "meta-llama/Llama-3.1-8B-Instruct",
     # ----- gpt-oss -----
-    "mlx-community/gpt-oss-20B-bf16": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-20B-4bit": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-20B-8bit": "gpt-oss/gpt-oss-20B",
-    "mlx-community/gpt-oss-120B-bf16": "gpt-oss/gpt-oss-120B",
-    "mlx-community/gpt-oss-120B-4bit": "gpt-oss/gpt-oss-120B",
-    "mlx-community/gpt-oss-120B-8bit": "gpt-oss/gpt-oss-120B",
+    "mlx-community/gpt-oss-20B-bf16": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-20B-4bit": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-20B-8bit": "openai/gpt-oss-20b",
+    "mlx-community/gpt-oss-120B-bf16": "openai/gpt-oss-120b",
+    "mlx-community/gpt-oss-120B-4bit": "openai/gpt-oss-120b",
+    "mlx-community/gpt-oss-120B-8bit": "openai/gpt-oss-120b",
     # ----- Kimi -----
     "mlx-community/Kimi-K2.5-bf16": "moonshotai/Kimi-K2.5",
     "mlx-community/Kimi-K2.5-4bit": "moonshotai/Kimi-K2.5",
@@ -147,8 +168,14 @@ def _normalize_ref(model_ref: str) -> str:
     return ref
 
 
-def get_draft_model(target_ref: str) -> str | None:
-    """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``."""
+def get_draft_model(target_ref: str, *, allow_dflash2: bool = False) -> str | None:
+    """Return the DFLASH draft model checkpoint for *target_ref*, or ``None``.
+
+    ``allow_dflash2`` also consults ``DFLASH2_DRAFT_MODEL_MAP`` (vLLM
+    only); an exact DFlash 2 match wins there since it's the faster draft.
+    """
+    if allow_dflash2 and target_ref in DFLASH2_DRAFT_MODEL_MAP:
+        return DFLASH2_DRAFT_MODEL_MAP[target_ref]
     # 1. Exact match
     if target_ref in DRAFT_MODEL_MAP:
         return DRAFT_MODEL_MAP[target_ref]
@@ -207,16 +234,48 @@ def is_mlx_available() -> bool:
     return _spec_exists("dflash_mlx")
 
 
-def is_vllm_available() -> bool:
-    """True when ``dflash`` (the PyTorch/CUDA package) is importable."""
-    # The PyTorch package installs as ``dflash`` but we need to check
-    # for the *model* submodule, not this ChaosEngineAI integration module.
-    # We check for ``dflash.model`` which is the core PyTorch implementation.
+# vLLM serves DFlash natively via ``speculative_config={"method":
+# "dflash"}``; 0.28 is the release that also carries DFlash 2's
+# candidate-path selector (vllm-project/vllm#52816). Below that we don't
+# claim the lane.
+VLLM_DFLASH_MIN_VERSION: tuple[int, int] = (0, 28)
+
+
+def vllm_version() -> str | None:
+    """Installed vLLM version from package metadata (never imports vllm)."""
     try:
-        spec = importlib.util.find_spec("dflash.model")
-        return spec is not None
-    except (ModuleNotFoundError, ValueError):
+        from importlib.metadata import PackageNotFoundError, version
+    except ImportError:  # pragma: no cover - stdlib on 3.8+
+        return None
+    try:
+        return version("vllm")
+    except PackageNotFoundError:
+        return None
+    except Exception:
+        return None
+
+
+def _version_tuple(raw: str) -> tuple[int, int] | None:
+    match = re.match(r"(\d+)\.(\d+)", raw.strip())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def is_vllm_available() -> bool:
+    """True when the installed vLLM can serve DFlash drafts.
+
+    FU-091: this used to probe ``dflash.model`` — the PyPI ``dflash``
+    package, whose top-level module has the same name as this one. This
+    module always wins on ``sys.path``, so the probe could never pass,
+    and vLLM doesn't use that package anyway. Gate on vLLM's own version
+    instead (metadata only, so no torch import on the startup path).
+    """
+    raw = vllm_version()
+    if raw is None:
         return False
+    parsed = _version_tuple(raw)
+    return parsed is not None and parsed >= VLLM_DFLASH_MIN_VERSION
 
 
 def is_available() -> bool:
@@ -270,10 +329,15 @@ def is_ddtree_available() -> bool:
 
 def availability_info() -> dict[str, Any]:
     """Return a JSON-friendly dict for the frontend system stats."""
+    vllm_ok = is_vllm_available()
+    models = supported_models()
+    if vllm_ok:
+        # DFlash 2-only targets are runnable only through vLLM.
+        models = sorted(set(models) | set(DFLASH2_DRAFT_MODEL_MAP))
     return {
-        "available": is_available(),
+        "available": is_mlx_available() or vllm_ok,
         "mlxAvailable": is_mlx_available(),
-        "vllmAvailable": is_vllm_available(),
+        "vllmAvailable": vllm_ok,
         "ddtreeAvailable": is_ddtree_available(),
-        "supportedModels": supported_models(),
+        "supportedModels": models,
     }

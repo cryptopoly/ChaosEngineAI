@@ -112,7 +112,7 @@ export function getCacheFitStatus(
         `${cacheKindHint} at this context is ~${cacheGbStr} GB, larger than the `
         + `${vramGbStr} GB of GPU VRAM available. llama.cpp will spill to system RAM `
         + "(slow PCIe transfers per token) or fail to allocate. Lower context, drop "
-        + "FP16 layers, or pick a compressed strategy (RotorQuant / TurboQuant) so "
+        + "FP16 layers, or pick the TurboQuant memory saver so "
         + "the cache fits in VRAM."
       ),
     };

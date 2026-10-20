@@ -135,6 +135,10 @@ class WorkerState:
         self._persist_cache: Any | None = None
         self._persist_tokens: list[int] = []
         self._persist_cache_model_ref: str | None = None
+        # FU-090 hybrid-model checkpoint: (boundary_tokens, per-layer
+        # recurrent state). Pending = taken this turn, promoted on commit.
+        self._persist_snapshot: tuple[int, list[Any]] | None = None
+        self._persist_snapshot_pending: tuple[int, list[Any]] | None = None
 
     def handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
         op = request.get("op")

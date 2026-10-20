@@ -232,9 +232,23 @@ def _detect_model_quantization(path: Path, fmt: str, *, name_hint: str = "") -> 
     return _quantization_label_from_text(text_hint)
 
 
+# ModelScope stores a repo's dots as three underscores in its cache folder
+# names (``Qwen3.5-9B`` becomes ``Qwen3___5-9B``), which hides the model family
+# from every name-based check downstream.
+_MODELSCOPE_DOT = re.compile(r"(?<=[A-Za-z0-9])___(?=[A-Za-z0-9])")
+
+
+def _directory_model_name(directory_name: str) -> str:
+    return _MODELSCOPE_DOT.sub(".", directory_name)
+
+
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     source_kind = "HF cache" if path.name.startswith("models--") else "Directory"
-    name = path.name.replace("models--", "").replace("--", "/") if source_kind == "HF cache" else path.name
+    name = (
+        path.name.replace("models--", "").replace("--", "/")
+        if source_kind == "HF cache"
+        else _directory_model_name(path.name)
+    )
     if source_kind == "HF cache":
         detected_format = _detect_storage_format(path, name_hint=name)
         return (name, detected_format, source_kind) if detected_format != "unknown" else (name, "Transformers", source_kind)
@@ -323,9 +337,17 @@ def _iter_discovered_models(root: Path, *, max_depth: int = 8) -> list[tuple[Pat
     # the detector to produce phantom "broken" HF cache duplicates (lock
     # dirs contain no weights).
     skip_names = {"blobs", "refs", ".locks", ".cache", ".git", "__pycache__", ".venv", "node_modules"}
+    # Model folders are often symlinks into another drive. Follow them, but
+    # walk each real directory once so a link back up the tree cannot loop.
+    visited: set[str] = set()
 
-    for current_root, dirnames, filenames in os.walk(root):
+    for current_root, dirnames, filenames in os.walk(root, followlinks=True):
         current = Path(current_root)
+        real_current = os.path.realpath(current_root)
+        if real_current in visited:
+            dirnames[:] = []
+            continue
+        visited.add(real_current)
         depth = _relative_depth(current, root)
         if depth > max_depth:
             dirnames[:] = []

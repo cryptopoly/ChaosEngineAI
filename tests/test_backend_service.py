@@ -1015,6 +1015,37 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+
+    def test_generate_with_tools_enabled_returns_the_agent_answer(self):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        agent_result = SimpleNamespace(
+            text="Das Ergebnis ist 24300.",
+            iterations=2,
+            total_prompt_tokens=40,
+            total_completion_tokens=12,
+            tool_calls=[
+                SimpleNamespace(
+                    tool_call_id="c1", tool_name="calculator", arguments={"expression": "2025*12"},
+                    result="24300", elapsed_seconds=0.01, render_as=None, data=None,
+                )
+            ],
+        )
+        with mock.patch("backend_service.agent.run_agent_loop", return_value=agent_result):
+            response = self.client.post(
+                "/api/chat/generate",
+                json={"prompt": "2025 mal 12?", "enableTools": True, "availableTools": ["calculator"], "maxTokens": 64},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        assistant = response.json()["assistant"]
+        self.assertEqual(assistant["text"], "Das Ergebnis ist 24300.")
+        self.assertEqual(assistant["metrics"]["completionTokens"], 12)
+        self.assertEqual(assistant["metrics"]["toolCalls"][0]["name"], "calculator")
     def test_model_load_rejects_models_not_on_disk(self):
         """Regression: previously a load request for a model not in the library
         would fall through to llama-server's HuggingFace auto-fetch, which on
@@ -2228,6 +2259,24 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(args[3], "org/video-model")
         self.assertEqual(json.loads(args[4]), patterns)
 
+    def test_turboquant_preview_is_a_memory_saver_not_a_speed_up(self):
+        """Measured decode is several times slower than Native (FU-066), so the
+        estimate must not promise anything near Native speed."""
+        common = dict(
+            fp16_layers=0, num_layers=32, num_heads=32, hidden_size=4096,
+            context_tokens=8192, params_b=7.0, system_stats=fake_system_snapshot(),
+        )
+        native = compute_cache_preview(bits=0, strategy="native", **common)
+        by_bits = {
+            bits: compute_cache_preview(bits=bits, strategy="turboquant", **common)
+            for bits in (1, 2, 3, 4)
+        }
+        self.assertEqual(native["speedRatio"], 1.0)
+        for preview in by_bits.values():
+            self.assertLess(preview["speedRatio"], 0.3)
+            self.assertLess(preview["estimatedTokS"], native["estimatedTokS"])
+        # Measured decode is flat across bit widths, so no ordering is asserted.
+
     def test_preview_math_reduces_cache_size(self):
         preview = compute_cache_preview(
             bits=3,
@@ -2456,6 +2505,35 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(runtime_target, "/tmp/test-model.gguf")
         self.assertEqual(resolved_backend, "llama.cpp")
+
+    def test_local_model_directory_wins_over_catalog_repo_id(self):
+        """A catalogued model already on disk must load from its directory;
+        the repo id would make the MLX worker download it again."""
+        model_dir = Path(self.tempdir.name) / "AI_Models" / "prism-ml" / "Ternary-Bonsai-27B-mlx-2bit"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}", encoding="utf-8")
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, str(model_dir))
+
+        # Without a usable directory the catalog repo id is still the target.
+        runtime_target, _ = state._resolve_model_target(
+            model_ref="prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            path=str(model_dir / "missing"),
+            backend="mlx",
+        )
+        self.assertEqual(runtime_target, "prism-ml/Ternary-Bonsai-27B-mlx-2bit")
 
     def test_recursive_discovery_finds_nested_model_directories(self):
         models_root = Path(self.tempdir.name) / "AI_Models"

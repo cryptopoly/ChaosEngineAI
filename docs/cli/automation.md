@@ -125,8 +125,8 @@ done
 
 ## Long-running installers
 
-`mtplx-install`, `longlive-install`, `wan-install`, and `gpu-bundle-install`
-are background jobs. The POST endpoint kicks them off and returns
+`mtplx-install`, `tensorfold-install`, `longlive-install`, `wan-install`, and
+`gpu-bundle-install` are background jobs. The POST endpoint kicks them off and returns
 immediately with a job ID; the GET endpoint streams progress.
 
 ```bash
@@ -144,7 +144,7 @@ done
 ## Orphan cleanup
 
 The backend tracks subprocess children (MLX worker, `llama-server`,
-MTPLX). On clean shutdown they're killed; on a crash they may leak. The
+MTPLX, TensorFold). On clean shutdown they're killed; on a crash they may leak. The
 diagnostics snapshot reports `recentOrphanedWorkers` — Phase 7 of the
 E2E suite asserts it's empty. To check from a script:
 

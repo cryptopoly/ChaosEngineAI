@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.9.8 - 2026-10
+
+First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in [RELEASE_NOTES_v0.9.8.md](RELEASE_NOTES_v0.9.8.md). This file has no entries for v0.9.3 and v0.9.4; their notes are on the GitHub releases page.
+
+### Added
+
+- **Voice I/O** sidebar group: speech-to-text and text-to-speech with Studio, Models and Gallery tabs; per-platform STT sources and Parakeet on Apple Silicon.
+- **TensorFold** exact speculative-decoding lane (Apple Silicon) with optional vision and structured-output extras.
+- **llama.cpp speculative lanes**: DFlash 2, EAGLE-3, ngram-mod, chosen from the drafter files beside a GGUF.
+- **mflux** image engine (Apple Silicon, isolated environment): Qwen-Image-2.1, FLUX.2 klein, FLUX.1.
+- **stable-diffusion.cpp** variants for Qwen-Image-2.1 and FLUX.1 with companion files and live progress.
+- **Kolibri 1** (Aleph Alpha, 78B MoE, German and English) on MLX via a vendored architecture; reasoning effort follows the Thinking control.
+- New catalog families: Kimi K2.6, Llama 4 Scout, MiniMax M3, Mistral Large 3, Ornith 1, Qwen 3.8, Bonsai, Nemotron 3.5 Lightning, MiniCPM 5.
+- `scripts/audit-catalog-repos.py` checks every Hub repo and pinned file in the catalogs.
+
+### Fixed
+
+- Linux AppImage backend killed right after startup; loading screen never showed the error (FU-100).
+- ModelScope-named and symlinked model folders were not listed (FU-101).
+- Wan video rendered burnt on Apple Silicon: UniPC diverges on MPS, now flow-match Euler (FU-102).
+- 13 catalog rows pointed at Hub repos or files that do not exist; LoRA variants never downloaded their LoRA (FU-099).
+- GGUF rows downloaded every quant in the repo and loaded the largest (FU-087).
+- Release bundle shipped no `dflash` package (FU-085) and no Setup installer scripts (FU-104).
+- Setup installs of MLX-stack packages polluted the extras overlay (FU-098).
+- MTPLX reasoning deltas were dropped (FU-079); hybrid-model chat history was re-read every turn (FU-090).
+- Cached snapshots with deliberately skipped files opened as the placeholder image engine (FU-097).
+- Tool results were dropped on MLX so models repeated the same call; non-streaming chat with tools answered 500 (FU-105).
+- Release tag could differ from the app version, so installs were offered the release they already had (FU-106); the release workflow now fails early on a mismatch.
+- Image models larger than free memory are refused before loading; the memory check counts macOS-reclaimable memory.
+
+### Changed
+
+- TurboQuant is presented as a memory saver; its speed estimate uses measured M4 Max ratios (FU-095).
+- Bundled llama.cpp build script pins tag b11277; vLLM floor raised to 0.28; diffusers floor 0.40; `turboquant-mlx-full` floor 0.11.
+- CUDA DFlash uses vLLM's built-in method; the PyPI `dflash` package is no longer installed (FU-091).
+
+### Upgrade notes
+
+- No breaking changes; settings, sessions and APIs carry forward.
+- Not bundled in release builds (as before): `sd` (stable-diffusion.cpp) and `llama-server-turbo`.
+- v0.9.4 was built as 0.9.3, so current installs kept being offered it. The release workflow now fails before building when the tag and the app version differ (FU-106).
+
 ## v0.9.2 - 2026-05-16
 
 ### Added

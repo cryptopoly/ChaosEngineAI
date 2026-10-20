@@ -22,6 +22,7 @@ from backend_service.routes.setup._install_helpers import (
     _read_python_version,
     _run_pip_install,
     _site_packages_for,
+    _write_mlx_constraint,
     _write_torch_constraint,
 )
 
@@ -32,17 +33,31 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     "turboquant-mlx": "turboquant-mlx-full",
     # Not published on PyPI — install from git. Pairs with mlx_lm on macOS
     # or vllm on Linux/CUDA (see the cache_compression.triattention adapter).
-    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git",
-    "vllm": "vllm",
+    # Same commit as the pyproject ``[triattention]`` extras (FU-031) —
+    # unpinned HEAD made in-app installs non-reproducible.
+    "triattention": "triattention @ git+https://github.com/WeianMao/triattention.git@a4bc3c8f709db60f016ef42c3feb290fd0c00c1b",
+    # Floor matches the pyproject ``[vllm]`` extra: 0.28 carries native
+    # DFlash / DFlash 2 (FU-089, FU-091), so a DFlash "install" on a box
+    # with an older vLLM upgrades in place instead of "already satisfied".
+    "vllm": "vllm>=0.28.0",
     "mlx": "mlx",
     "mlx-lm": "mlx-lm",
     # PyPI build is stale at 0.1.0; the up-to-date code lives on GitHub.
     # The upstream removed all tags in April 2026, so we pin to a specific
     # commit on main instead — v0.1.4 no longer resolves and fresh clones
     # failed with "pathspec 'v0.1.4' did not match any file(s) known to
-    # git". Bump the pin when we validate a newer main SHA.
-    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@f825ffb268e50d531e8b6524413b0847334a14dd",
-    "dflash": "dflash",
+    # git". Bump the pin when we validate a newer main SHA. Must match the
+    # pyproject / stage-runtime pin (FU-033 check covers this file too):
+    # it lagged on f825ffb (v0.1.4.1, no ``resolve_target_ops``) so an
+    # in-app install silently disabled DFlash — the FU-075 symptom.
+    "dflash-mlx": "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1eb2b75cd1c875ca6547b6518783fd3d2956",
+    # FU-091: no ``"dflash"`` entry. PyPI ``dflash`` (z-lab's DFlash 2
+    # research package) installs a top-level ``dflash`` module that
+    # collides with our in-repo ``dflash/`` registry, pins tqdm /
+    # datasets / requests to exact versions in the shared extras dir,
+    # and isn't what serves DFlash on CUDA anyway — vLLM >=0.28 does
+    # (``speculative_config={"method": "dflash"}``). See
+    # ``_MANUAL_INSTALL_MESSAGES["dflash"]``.
     # Video output encoding — diffusers can produce frames without these,
     # but exporting mp4/gif requires imageio + the ffmpeg plugin. The Video
     # Studio surfaces a one-click installer when they're missing.
@@ -99,25 +114,17 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # ~12 GB on M-series Macs. Roughly half the memory saving of NF4
     # but twice the platform reach.
     "torchao": "torchao",
-    # SageAttention CUDA fast-attention kernels. Wired through
-    # ``backend_service/helpers/attention_backend.py`` (FU-016). Pin to 2.2.0
-    # (SageAttention2++) — PyPI's default resolves to the stale 1.0.6
-    # (2024-11) which lacks the SA2++ kernels. SageAttention3 lives on the
-    # ``sageattention3_blackwell`` branch (Blackwell SM10.0 only) and is
-    # not yet on PyPI; install path here always pulls the released SA2++
-    # kernels regardless of GPU generation. No-op on macOS / CPU / non-DiT
-    # pipelines — the helper guards before invoking.
-    "sageattention": "sageattention==2.2.0",
-    # FU-023 Nunchaku / SVDQuant — 4-bit weight quantization for FLUX
-    # family + Qwen-Image + SD3.5 on CUDA. ~3× over NF4 on FLUX.1-dev.
-    # CUDA only; Apple Silicon / Linux-CPU installs no-op at runtime
-    # because the Nunchaku transformer subclasses fall back to the
-    # stock diffusers transformer when the import fails. Upstream
-    # versioning reset — current PyPI top is 0.16.x (was 1.2.1 in the
-    # original FU-023 note, but that release was pulled / renumbered).
-    # 0.16.1 covers FLUX dev/Schnell/Tools/Kontext/Krea, Qwen-Image +
-    # Qwen-Image-Edit, Z-Image-Turbo, SANA, PixArt-Σ.
-    "nunchaku": "nunchaku>=0.16.0",
+    # SageAttention (FU-016) is deliberately NOT here: the ``==2.2.0`` pin
+    # it used never resolved — PyPI tops out at the Triton-only 1.0.6
+    # (2024-11), which diffusers' ``sage`` backend rejects, and SA2 ships
+    # only as a CUDA source build. Routed to ``_MANUAL_INSTALL_MESSAGES``
+    # so the button explains the build instead of failing inside pip.
+    # FU-023 Nunchaku / SVDQuant is deliberately NOT here: PyPI's
+    # ``nunchaku`` is an unrelated piecewise-linear-segmentation library
+    # (the FU-059 "version reset" was that other project). The SVDQuant
+    # package ships torch/CUDA/Python-specific wheels from its GitHub
+    # releases only, so it gets a manual-install message instead — see
+    # ``_MANUAL_INSTALL_MESSAGES``.
     # FU-027 NVIDIA/kvpress — KV cache compression toolkit (Apache 2.0,
     # 26 releases as of v0.5.3 / 2026-04-09). HF transformers + multi-GPU
     # Accelerate hookups. CUDA-side complement to TurboQuant on Apple
@@ -125,12 +132,9 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # — installable here so the Setup tab can pre-stage the wheel before
     # the integration code goes live.
     "kvpress": "kvpress>=0.5.3",
-    # Native Apple Silicon FLUX runtime. mflux uses MLX directly instead
-    # of diffusers+MPS, which is noticeably faster and doesn't hit the
-    # MPS fp16-black-image edge cases. Apple Silicon only — installer
-    # should hide this package on other platforms (handled upstream in
-    # the capability check).
-    "mflux": "mflux",
+    # mflux is NOT installable here: it pins mlx >=0.32 and torch >=2.13, which
+    # would replace the mlx the rest of the app runs on. It installs into its
+    # own venv through ``routes/setup/mflux.py`` — see ``_MANUAL_INSTALL_MESSAGES``.
     # Apple Silicon MLX video runtime (Blaizzy/mlx-video, MIT). Subprocess
     # wrapper in backend_service.mlx_video_runtime routes Wan2.1/2.2/LTX-2
     #
@@ -144,9 +148,60 @@ _INSTALLABLE_PIP_PACKAGES: dict[str, str] = {
     # gates this package on Apple Silicon — installer hides it elsewhere.
     # See FU-009 in CLAUDE.md.
     "mlx-video": "mlx-video @ git+https://github.com/Blaizzy/mlx-video.git",
+    # Voice / STT backends
+    "mlx-whisper": "mlx-whisper",
+    "faster-whisper": "faster-whisper",
+    # Parakeet TDT on Apple Silicon (senstella/parakeet-mlx, Apache-2.0).
+    # Floor at the release whose from_pretrained / transcribe surface
+    # voice_runtime targets.
+    "parakeet-mlx": "parakeet-mlx>=0.5.2",
+    # Voice / TTS backends. mlx-audio's Kokoro pipeline requires misaki
+    # (G2P text processing) but doesn't declare it — and swallows the
+    # ImportError at generate time, yielding empty output. The voice
+    # install flow installs both.
+    "mlx-audio": "mlx-audio",
+    "misaki": "misaki[en]",
+    # Japanese voice (jf_*) G2P chain. Deliberately NOT ``misaki[ja]`` —
+    # that extra pulls the full ``unidic`` package, which ships without
+    # dictionary data (needs a separate 500 MB ``python -m unidic
+    # download``), and fugashi prefers it over unidic-lite whenever both
+    # are importable — silently breaking Japanese TTS. The individual
+    # pieces with unidic-lite (bundled dictionary) work out of the box.
+    "fugashi": "fugashi",
+    "jaconv": "jaconv",
+    "mojimoji": "mojimoji",
+    "pyopenjtalk": "pyopenjtalk",
+    "unidic-lite": "unidic-lite",
+    "kokoro-onnx": "kokoro-onnx",
 }
 
-_MANUAL_INSTALL_MESSAGES: dict[str, str] = {}
+_MANUAL_INSTALL_MESSAGES: dict[str, str] = {
+    "mflux": (
+        "mflux installs into its own environment because it needs a newer mlx "
+        "and torch than the app. Use Install in the Image Studio, or run "
+        "'chaosengine-cli mflux-install'."
+    ),
+    "dflash": (
+        "DFlash on CUDA runs inside vLLM 0.28 or newer — there is nothing "
+        "separate to install. Install or upgrade vLLM ({python} -m pip "
+        "install 'vllm>=0.28'), then enable speculative decoding when "
+        "loading a model that has a DFlash draft."
+    ),
+    "nunchaku": (
+        "Nunchaku (SVDQuant) is not installable from PyPI — the PyPI package "
+        "named 'nunchaku' is an unrelated project. Download the wheel that "
+        "matches your torch, CUDA and Python versions from the Nunchaku "
+        "GitHub releases page and install it with: {python} -m pip install "
+        "<path-to-wheel>"
+    ),
+    "sageattention": (
+        "SageAttention 2 is not published on PyPI (PyPI only has the older "
+        "1.0.x line, which the diffusers 'sage' backend does not accept). "
+        "Build it from the SageAttention GitHub repository with the CUDA "
+        "toolkit installed: {python} -m pip install --no-build-isolation "
+        "<path-to-SageAttention-checkout>"
+    ),
+}
 
 def _workspace_root() -> Path:
     from backend_service.app import WORKSPACE_ROOT
@@ -166,6 +221,16 @@ def _installable_system_packages(python_executable: str) -> dict[str, list[str]]
         "llama-server-turbo": [str(_workspace_root() / "scripts" / "build-llama-turbo.sh")],
         "longlive": [python_executable, "-m", "backend_service.longlive_installer"],
     }
+
+
+# Packages whose own dependencies are unbounded and would otherwise drag a newer
+# MLX generation into the extras overlay. mlx-video requires "mlx-vlm" with no
+# upper bound; mlx-vlm 0.6.5 and later need mlx >=0.32, newer than the mlx the
+# app ships (0.31), and the mixed result broke image and video generation.
+# 0.6.4 is the last mlx-vlm that runs on mlx 0.31.
+_COMPANION_PINS: dict[str, tuple[str, ...]] = {
+    "mlx-video": ("mlx>=0.31.2,<0.32", "mlx-vlm>=0.6.3,<0.6.5"),
+}
 
 
 class InstallPackageRequest(BaseModel):
@@ -214,7 +279,12 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     # the git source replaces whatever name-collides on disk.
     if body.package == "mlx-video":
         cmd.append("--force-reinstall")
+    # Whatever the package, the overlay must stay on the app's mlx series.
+    mlx_constraint = _write_mlx_constraint(extras_dir) if extras_dir is not None else None
+    if mlx_constraint is not None:
+        cmd.extend(["-c", str(mlx_constraint)])
     cmd.append(pip_name)
+    cmd.extend(_COMPANION_PINS.get(body.package, ()))
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")
     cleaned_mlx_metadata: list[str] = []
     if body.package == "mlx-video" and extras_dir is not None:
@@ -350,7 +420,9 @@ from backend_service.routes.setup.gpu_bundle import (
 from backend_service.routes.setup.gpu_bundle import router as _gpu_bundle_router
 from backend_service.routes.setup.llama_server import router as _llama_server_router
 from backend_service.routes.setup.longlive import router as _longlive_router
+from backend_service.routes.setup.mflux import router as _mflux_router
 from backend_service.routes.setup.mtplx import router as _mtplx_router
+from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
 from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
@@ -361,7 +433,9 @@ router.include_router(_embedding_model_router)
 router.include_router(_gpu_bundle_router)
 router.include_router(_llama_server_router)
 router.include_router(_longlive_router)
+router.include_router(_mflux_router)
 router.include_router(_mtplx_router)
+router.include_router(_tensorfold_router)
 router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
 router.include_router(_vllm_wsl_router)

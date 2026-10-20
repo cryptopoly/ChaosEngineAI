@@ -56,7 +56,14 @@ export async function getTauriBackendInfo(force = false): Promise<TauriBackendIn
   if (!tauriBackendInfoPromise) {
     tauriBackendInfoPromise = invoke<TauriBackendInfo>("backend_runtime_info").catch(() => null);
   }
-  return tauriBackendInfoPromise;
+  const info = await tauriBackendInfoPromise;
+  // The shell can move the sidecar to another port after its first reply (the
+  // preferred one was taken, or it had not read the saved one yet). Keep the
+  // cached API base in step so later requests do not keep hitting the old one.
+  if (force && info?.apiBase && apiBasePromise && !import.meta.env.VITE_CHAOSENGINE_API_BASE) {
+    apiBasePromise = Promise.resolve(info.apiBase);
+  }
+  return info;
 }
 
 export async function resolveApiBase(): Promise<string> {
@@ -504,6 +511,10 @@ export {
   getMtplxStatus,
   getEmbeddingModelInstallStatus,
   getRagStatus,
+  getMfluxInstallStatus,
+  getMfluxStatus,
+  getTensorfoldInstallStatus,
+  getTensorfoldStatus,
   getTorchUpgradeStatus,
   getVllmWslInstallStatus,
   getWanInstallStatus,
@@ -515,7 +526,9 @@ export {
   startEmbeddingModelInstall,
   startGpuBundleInstall,
   startLongLiveInstall,
+  startMfluxInstall,
   startMtplxInstall,
+  startTensorfoldInstall,
   startTorchUpgrade,
   startVllmWslInstall,
   startWanInstall,
@@ -536,6 +549,12 @@ export type {
   MtplxStatus,
   PromptEnhanceResult,
   RagStatus,
+  TensorfoldAttempt,
+  TensorfoldExtra,
+  MfluxJobState,
+  MfluxStatus,
+  TensorfoldJobState,
+  TensorfoldStatus,
   TorchUpgradeAttempt,
   TorchUpgradeAvailability,
   TorchUpgradeJobState,
@@ -618,3 +637,17 @@ export type {
   ResolvedHfModel,
   SearchResults,
 } from "./models";
+
+export {
+  getVoiceRuntime,
+  transcribeAudio,
+  synthesizeSpeech,
+  getVoiceGallery,
+  saveGalleryTranscript,
+  saveGalleryAudio,
+  deleteGalleryItem,
+  getGalleryAudio,
+  startKokoroDownload,
+  getKokoroDownloadStatus,
+} from "./voice";
+export type { TranscribeResult, VoiceGalleryItem, KokoroDownloadStatus } from "./voice";

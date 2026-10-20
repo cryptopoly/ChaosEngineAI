@@ -4,6 +4,7 @@ import { Panel } from "../../components/Panel";
 import { InfoTooltip } from "../../components/InfoTooltip";
 import { ImageOutputCard } from "../../components/ImageOutputCard";
 import { PromptEnhanceButton } from "../../components/PromptEnhanceButton";
+import { MfluxEngineBanner } from "../../components/MfluxEngineBanner";
 import { ImageStudioRuntimeBanner } from "./ImageStudioRuntimeBanner";
 import type { CudaTorchInstallResult, DownloadStatus, GpuBundleJobState, InstallResult } from "../../api";
 import type {
@@ -545,6 +546,10 @@ export function ImageStudioTab({
               )}
             </select>
           </label>
+
+          <MfluxEngineBanner
+            modelNeedsMflux={Boolean(selectedImageVariant?.runtime?.toLowerCase().includes("mflux"))}
+          />
 
           {!hasInstalledImageModels ? (
             <div className="callout image-callout">

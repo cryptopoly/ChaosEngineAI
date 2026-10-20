@@ -31,20 +31,20 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-08",
             },
             {
-                "id": "black-forest-labs/FLUX.1-schnell-gguf-q4km",
+                "id": "black-forest-labs/FLUX.1-schnell-gguf-q4ks",
                 "familyId": "flux-fast",
-                "name": "FLUX.1 Schnell · GGUF Q4_K_M",
+                "name": "FLUX.1 Schnell · GGUF Q4_K_S",
                 "provider": "Black Forest Labs · city96",
                 "repo": "black-forest-labs/FLUX.1-schnell",
                 "ggufRepo": "city96/FLUX.1-schnell-gguf",
-                "ggufFile": "flux1-schnell-Q4_K_M.gguf",
+                "ggufFile": "flux1-schnell-Q4_K_S.gguf",
                 "link": "https://huggingface.co/city96/FLUX.1-schnell-gguf",
                 "runtime": "Stub diffusion pipeline",
                 "styleTags": ["photoreal", "general", "fast", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.8,
                 "recommendedResolution": "1024x1024",
-                "note": "GGUF Q4_K_M — quantizes the FLUX transformer; the full diffusers pipeline still carries the base text encoders/VAE in memory.",
+                "note": "GGUF Q4_K_S — quantizes the FLUX transformer; the full diffusers pipeline still carries the base text encoders/VAE in memory.",
                 "estimatedGenerationSeconds": 5.2,
                 "releaseDate": "2024-09",
             },
@@ -87,26 +87,37 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # FU-008 image subset: sd.cpp engine routes via the
                 # ``sd`` binary built by ``./scripts/build-sdcpp.sh``.
                 # Cross-platform — Metal on Apple Silicon, CUDA on
-                # Linux/Windows. Pairs the city96 GGUF transformer with
-                # the binary's text-encoder + VAE handling so the user
-                # avoids the diffusers Python overhead entirely.
-                "id": "black-forest-labs/FLUX.1-schnell-sdcpp-q4km",
+                # Linux/Windows. Pairs sd.cpp's own Q4_K GGUF transformer
+                # (leejet) with the T5 / CLIP-L / VAE companion files the
+                # binary needs (``sdcppAux``), so the user avoids the
+                # diffusers Python overhead entirely. The GGUF repo is the
+                # variant's repo, so a download fetches the GGUF only.
+                "id": "leejet/FLUX.1-schnell-gguf-q4k",
                 "familyId": "flux-fast",
-                "name": "FLUX.1 Schnell · sd.cpp Q4_K_M",
+                "name": "FLUX.1 Schnell · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-schnell",
+                "repo": "leejet/FLUX.1-schnell-gguf",
                 "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-schnell-gguf",
-                "ggufFile": "flux1-schnell-Q4_K_M.gguf",
+                "ggufRepo": "leejet/FLUX.1-schnell-gguf",
+                "ggufFile": "flux1-schnell-q4_k.gguf",
+                "sdcppAux": {
+                    "--vae": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "ae.safetensors"},
+                    "--clip_l": {"repo": "comfyanonymous/flux_text_encoders", "file": "clip_l.safetensors"},
+                    "--t5xxl": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "t5xxl-Q8_0.gguf"},
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "cfgOverride": 0.0,
+                "defaultSteps": 4,
                 "link": "https://github.com/leejet/stable-diffusion.cpp",
                 "runtime": "stable-diffusion.cpp (subprocess)",
                 "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 6.8,
+                "sizeGb": 6.9,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
+                    "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
+                    "(0.6 GB together) download on the first run. Apache 2.0."
                 ),
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2026-05",
@@ -140,20 +151,20 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-08",
             },
             {
-                "id": "black-forest-labs/FLUX.1-dev-gguf-q4km",
+                "id": "black-forest-labs/FLUX.1-dev-gguf-q4ks",
                 "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · GGUF Q4_K_M",
+                "name": "FLUX.1 Dev · GGUF Q4_K_S",
                 "provider": "Black Forest Labs · city96",
                 "repo": "black-forest-labs/FLUX.1-dev",
                 "ggufRepo": "city96/FLUX.1-dev-gguf",
-                "ggufFile": "flux1-dev-Q4_K_M.gguf",
+                "ggufFile": "flux1-dev-Q4_K_S.gguf",
                 "link": "https://huggingface.co/city96/FLUX.1-dev-gguf",
                 "runtime": "Stub diffusion pipeline",
                 "styleTags": ["general", "detailed", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.8,
                 "recommendedResolution": "1024x1024",
-                "note": "GGUF Q4_K_M — quantizes the FLUX Dev transformer; expect the full diffusers pipeline to remain memory-heavy from text encoders/VAE.",
+                "note": "GGUF Q4_K_S — quantizes the FLUX Dev transformer; expect the full diffusers pipeline to remain memory-heavy from text encoders/VAE.",
                 "estimatedGenerationSeconds": 9.0,
                 "releaseDate": "2024-09",
             },
@@ -194,23 +205,33 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2024-09",
             },
             {
-                "id": "black-forest-labs/FLUX.1-dev-sdcpp-q4km",
+                "id": "leejet/FLUX.1-dev-gguf-q4k",
                 "familyId": "flux-dev",
-                "name": "FLUX.1 Dev · sd.cpp Q4_K_M",
+                "name": "FLUX.1 Dev · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
-                "repo": "black-forest-labs/FLUX.1-dev",
+                "repo": "leejet/FLUX.1-dev-gguf",
                 "engine": "sdcpp",
-                "ggufRepo": "city96/FLUX.1-dev-gguf",
-                "ggufFile": "flux1-dev-Q4_K_M.gguf",
+                "ggufRepo": "leejet/FLUX.1-dev-gguf",
+                "ggufFile": "flux1-dev-q4_k.gguf",
+                "sdcppAux": {
+                    "--vae": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "ae.safetensors"},
+                    "--clip_l": {"repo": "comfyanonymous/flux_text_encoders", "file": "clip_l.safetensors"},
+                    "--t5xxl": {"repo": "second-state/FLUX.1-schnell-GGUF", "file": "t5xxl-Q8_0.gguf"},
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "cfgOverride": 3.5,
+                "defaultSteps": 28,
                 "link": "https://github.com/leejet/stable-diffusion.cpp",
                 "runtime": "stable-diffusion.cpp (subprocess)",
                 "styleTags": ["general", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 7.2,
+                "sizeGb": 6.9,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Cross-platform GGUF runtime via sd.cpp subprocess. "
-                    "Build the binary with ./scripts/build-sdcpp.sh first."
+                    "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
+                    "6.9 GB transformer; the T5 text encoder (5.2 GB), CLIP-L and VAE "
+                    "(0.6 GB together) download on the first run. FLUX.1 Dev licence: "
+                    "non-commercial."
                 ),
                 "estimatedGenerationSeconds": 6.0,
                 "releaseDate": "2026-05",
@@ -422,6 +443,235 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 7.4,
                 "releaseDate": "2023-07",
             }
+        ],
+    },
+    {
+        "id": "qwen-image",
+        "name": "Qwen-Image",
+        "provider": "Alibaba Qwen",
+        "headline": "Best-in-class text rendering and precise editing — native 2K, day-0 diffusers.",
+        "summary": "Qwen-Image — Alibaba's 20B MMDiT foundation model. Professional typography, 1k-token prompt instructions, native 2K resolution.",
+        "updatedLabel": "Diffusers QwenImagePipeline",
+        "badges": ["Typography", "2K", "Detailed"],
+        "defaultVariantId": "Qwen/Qwen-Image",
+        "variants": [
+            {
+                "id": "Qwen/Qwen-Image",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image",
+                "provider": "Alibaba Qwen",
+                "repo": "Qwen/Qwen-Image",
+                "link": "https://huggingface.co/Qwen/Qwen-Image",
+                "runtime": "diffusers QwenImagePipeline",
+                "styleTags": ["photoreal", "typography", "detailed", "general"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 57.0,
+                "recommendedResolution": "1328x1328",
+                "note": "20B MMDiT with best-in-class complex text rendering. Native 2K; flow-matching scheduler locked by the pipeline.",
+                "estimatedGenerationSeconds": 18.0,
+                "releaseDate": "2026-02",
+            },
+            {
+                "id": "lightx2v/Qwen-Image-Lightning",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image · Lightning (8-step)",
+                "provider": "Alibaba Qwen · lightx2v",
+                "repo": "Qwen/Qwen-Image",
+                "loraRepo": "lightx2v/Qwen-Image-Lightning",
+                "link": "https://huggingface.co/lightx2v/Qwen-Image-Lightning",
+                "runtime": "diffusers QwenImagePipeline",
+                "styleTags": ["photoreal", "typography", "fast"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 57.0,
+                "recommendedResolution": "1328x1328",
+                "note": "Lightning distill LoRA fused onto Qwen-Image — 8-step generation at ~CFG 1.0 for fast iteration.",
+                "estimatedGenerationSeconds": 6.0,
+                "releaseDate": "2026-03",
+            },
+            {
+                # Qwen-Image-2.1 through mflux on MLX (Apple Silicon): the fast lane.
+                # The sd.cpp variant below is the cross-platform one.
+                "id": "Qwen/Qwen-Image-2.1-mflux",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · mflux (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1",
+                "engine": "mflux",
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 33.1,
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. 7B Qwen-Image-2.1 on MLX: about 30 GB peak and about 6 minutes "
+                    "for a 1024x1024 image on an M4 Max (faster on M5). Qwen Research licence: "
+                    "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 340.0,
+                "releaseDate": "2026-09",
+            },
+            {
+                "id": "Qwen/Qwen-Image-2.1-mflux-q8",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · mflux 8-bit (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1",
+                "engine": "mflux",
+                "mfluxQuantize": 8,
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 26.0,
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. The transformer is quantized to 8 bits while loading, "
+                    "which fits a 32 GB Mac (the 17.5 GB text encoder stays in bf16). Shares the "
+                    "33 GB download with the bf16 variant. Qwen Research licence: non-commercial use only."
+                ),
+                "estimatedGenerationSeconds": 340.0,
+                "releaseDate": "2026-09",
+            },
+            {
+                # Qwen-Image-2.1 (Sep 2026): 7B DiT + Qwen3-VL-8B encoder, text-to-image
+                # and editing, native RGBA. Runs through stable-diffusion.cpp so it works
+                # on Apple Silicon, CUDA and CPU; the diffusers pipeline
+                # (QwenImage21Pipeline) is not in a released diffusers yet. The variant's
+                # repo is the GGUF repo: the 33 GB base snapshot is not needed.
+                "id": "leejet/Qwen-Image-2.1-GGUF-q4k",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 · sd.cpp Q4_K",
+                "provider": "Alibaba Qwen · leejet",
+                "repo": "leejet/Qwen-Image-2.1-GGUF",
+                "engine": "sdcpp",
+                "ggufRepo": "leejet/Qwen-Image-2.1-GGUF",
+                "ggufFile": "qwen_image_2.1-Q4_K.gguf",
+                "sdcppAux": {
+                    "--vae": {
+                        "repo": "Comfy-Org/Qwen-Image-2.1",
+                        "file": "vae/qwen_image_2.1_vae_bf16.safetensors",
+                    },
+                    "--llm": {
+                        "repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+                        "file": "Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+                    },
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "defaultSteps": 40,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["photoreal", "typography", "detailed", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 4.2,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "7B Qwen-Image-2.1 as a 4-bit GGUF through stable-diffusion.cpp. The first "
+                    "run also fetches the Qwen3-VL-8B text encoder (5 GB) and the VAE (0.7 GB). "
+                    "Qwen Research licence: non-commercial use only. Slow on Apple Silicon "
+                    "(about 13 s per step); fast on CUDA."
+                ),
+                "estimatedGenerationSeconds": 520.0,
+                "releaseDate": "2026-09",
+            },
+        ],
+    },
+    {
+        "id": "z-image",
+        "name": "Z-Image Turbo",
+        "provider": "Alibaba Tongyi",
+        "headline": "Small, fast, photoreal — few-step realism that beats much larger models on skin detail.",
+        "summary": "Z-Image Turbo — Tongyi's efficient turbo diffusion model. Smaller and faster than FLUX/Qwen-Image, tuned for realism.",
+        "updatedLabel": "Diffusers ZImagePipeline",
+        "badges": ["Fast", "Photoreal", "Efficient"],
+        "defaultVariantId": "Tongyi-MAI/Z-Image-Turbo",
+        "variants": [
+            {
+                "id": "Tongyi-MAI/Z-Image-Turbo",
+                "familyId": "z-image",
+                "name": "Z-Image Turbo",
+                "provider": "Alibaba Tongyi",
+                "repo": "Tongyi-MAI/Z-Image-Turbo",
+                "link": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo",
+                "runtime": "diffusers ZImagePipeline",
+                "styleTags": ["photoreal", "fast", "general"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 33.0,
+                "recommendedResolution": "1024x1024",
+                "note": "Turbo few-step model tuned for realism — arguably better skin detail than FLUX.1 / Qwen-Image at a fraction of the steps.",
+                "estimatedGenerationSeconds": 3.5,
+                "releaseDate": "2026-02",
+            },
+        ],
+    },
+    {
+        "id": "flux-2",
+        "name": "FLUX.2 Dev",
+        "provider": "Black Forest Labs",
+        "headline": "Production-grade FLUX successor — up to 10 reference images, strong identity preservation.",
+        "summary": "FLUX.2 — Black Forest Labs' next-gen flow-matching model. Multi-reference (up to 10 images), character/product/style consistency.",
+        "updatedLabel": "Diffusers Flux2Pipeline",
+        "badges": ["Photoreal", "Multi-reference", "Detailed"],
+        "defaultVariantId": "black-forest-labs/FLUX.2-klein-4B",
+        "variants": [
+            {
+                "id": "black-forest-labs/FLUX.2-klein-4B",
+                "familyId": "flux-2",
+                "name": "FLUX.2 Klein 4B",
+                "provider": "Black Forest Labs",
+                "repo": "black-forest-labs/FLUX.2-klein-4B",
+                "link": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+                "runtime": "diffusers Flux2Pipeline",
+                "styleTags": ["photoreal", "general", "fast"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 16.0,
+                "recommendedResolution": "1024x1024",
+                "note": "Distilled 4B FLUX.2 — the accessible entry point, fits consumer GPUs and 32 GB Macs.",
+                "estimatedGenerationSeconds": 5.5,
+                "releaseDate": "2025-11",
+            },
+            {
+                "id": "black-forest-labs/FLUX.2-klein-4B-mflux",
+                "familyId": "flux-2",
+                "name": "FLUX.2 Klein 4B · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/FLUX.2-klein-4B",
+                "engine": "mflux",
+                "link": "https://github.com/filipstrand/mflux",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "general", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 16.0,
+                "defaultSteps": 4,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only — the same distilled 4B model through mflux on MLX "
+                    "(about 18 GB peak). Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 26.0,
+                "releaseDate": "2025-11",
+            },
+            {
+                "id": "black-forest-labs/FLUX.2-dev",
+                "familyId": "flux-2",
+                "name": "FLUX.2 Dev",
+                "provider": "Black Forest Labs",
+                "repo": "black-forest-labs/FLUX.2-dev",
+                "link": "https://huggingface.co/black-forest-labs/FLUX.2-dev",
+                "runtime": "diffusers Flux2Pipeline",
+                "styleTags": ["photoreal", "detailed", "multi-reference"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 64.0,
+                "recommendedResolution": "1024x1024",
+                "note": "Full 32B FLUX.2 (gated — accept BFL's licence on HF). Up to 10 reference images for character/product/style consistency.",
+                "estimatedGenerationSeconds": 22.0,
+                "releaseDate": "2025-11",
+            },
         ],
     },
 ]

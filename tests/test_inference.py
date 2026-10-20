@@ -141,7 +141,7 @@ class LlamaCppCommandTests(unittest.TestCase):
             )
 
         self.assertNotIn("--spec-type", command)
-        self.assertIn("requires llama-server", runtime_note or "")
+        self.assertIn("newer llama-server", runtime_note or "")
 
     def test_build_command_skips_mtp_for_non_mtp_repo(self):
         engine = LlamaCppEngine(self._capabilities())
@@ -163,8 +163,93 @@ class LlamaCppCommandTests(unittest.TestCase):
                 model_ref="lmstudio-community/Qwen3.6-27B-GGUF",
             )
 
-        # Standard non-MTP GGUF — no spec-type flag even when speculativeDecoding=True
-        self.assertNotIn("--spec-type", command)
+        # Standard non-MTP GGUF with no drafter beside it — FU-089 falls
+        # back to draft-free ngram-mod rather than a draft-mtp head.
+        idx = command.index("--spec-type")
+        self.assertEqual(command[idx + 1], "ngram-mod")
+        self.assertNotIn("--model-draft", command)
+
+    # ----- FU-089: drafter sidecars (DFlash / DFlash 2 / EAGLE-3 / MTP) -----
+
+    def _build_with_dir(self, files: list[str], main: str, supports=lambda _b, _o: True):
+        import tempfile
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for name in files:
+            Path(tmp.name, name).write_bytes(b"x")
+        engine = LlamaCppEngine(self._capabilities())
+        with (
+            mock.patch("backend_service.inference._find_open_port", return_value=9999),
+            mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", side_effect=supports),
+        ):
+            command, note, _, _ = engine._build_command(
+                path=str(Path(tmp.name, main)),
+                runtime_target="ggml-org/Qwen3.8-27B-GGUF",
+                cache_strategy="native",
+                cache_bits=0,
+                context_tokens=8192,
+                fit_enabled=True,
+                is_fallback=False,
+                speculative_decoding=True,
+                canonical_repo="ggml-org/Qwen3.8-27B-GGUF",
+                model_ref="ggml-org/Qwen3.8-27B-GGUF",
+            )
+        return command, note, tmp.name
+
+    def test_dflash_sidecar_wired_with_block_draft(self):
+        command, note, root = self._build_with_dir(
+            ["Qwen3.8-27B-Q8_0.gguf", "dflash-Qwen3.8-27B-Q8_0.gguf", "dflash-Qwen3.8-27B-BF16.gguf"],
+            "Qwen3.8-27B-Q8_0.gguf",
+        )
+        self.assertEqual(command[command.index("--model") + 1], str(Path(root, "Qwen3.8-27B-Q8_0.gguf")))
+        # Closest quant to the model (Q8_0), not the BF16 one.
+        self.assertEqual(command[command.index("--model-draft") + 1], str(Path(root, "dflash-Qwen3.8-27B-Q8_0.gguf")))
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-dflash")
+        self.assertEqual(command[command.index("--spec-draft-n-max") + 1], "15")
+        self.assertIn("draft-dflash", note or "")
+
+    def test_mtp_sidecar_outranks_dflash(self):
+        command, _note, root = self._build_with_dir(
+            ["M-Q4_K_M.gguf", "dflash-M-Q4_K_M.gguf", "mtp-M-Q4_K_M.gguf"],
+            "M-Q4_K_M.gguf",
+        )
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-mtp")
+        self.assertEqual(command[command.index("--model-draft") + 1], str(Path(root, "mtp-M-Q4_K_M.gguf")))
+
+    def test_eagle3_sidecar(self):
+        command, _note, _root = self._build_with_dir(["M-Q4_K_M.gguf", "eagle3-M.gguf"], "M-Q4_K_M.gguf")
+        self.assertEqual(command[command.index("--spec-type") + 1], "draft-eagle3")
+
+    def test_sidecar_unsupported_by_binary_falls_back_to_ngram(self):
+        def supports(_b, option):
+            return option != "draft-dflash"
+
+        command, note, _root = self._build_with_dir(
+            ["M-Q8_0.gguf", "dflash-M-Q8_0.gguf"], "M-Q8_0.gguf", supports=supports
+        )
+        self.assertEqual(command[command.index("--spec-type") + 1], "ngram-mod")
+        self.assertNotIn("--model-draft", command)
+        self.assertIn("update-llama-cpp", note or "")
+
+    def test_directory_load_never_picks_a_sidecar_as_the_model(self):
+        import tempfile
+        from backend_service.inference._utils import _resolve_gguf_path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "M-Q4_K_M.gguf").write_bytes(b"x" * 10)
+            Path(tmp, "dflash-M-BF16.gguf").write_bytes(b"x" * 100)  # larger
+            Path(tmp, "M-mmproj-F16.gguf").write_bytes(b"x" * 50)
+            self.assertEqual(_resolve_gguf_path(tmp, None), str(Path(tmp, "M-Q4_K_M.gguf")))
+
+    def test_baked_in_mtp_model_name_is_not_a_sidecar(self):
+        # llama.cpp matches sidecar prefixes case-sensitively; the MTP
+        # model file itself must still count as a model.
+        from backend_service.helpers.text_gguf import is_aux_gguf
+
+        self.assertFalse(is_aux_gguf("Qwen3.6-27B-MTP-Q8_0.gguf"))
+        self.assertTrue(is_aux_gguf("mtp-Qwen3.8-27B-Q8_0.gguf"))
+        self.assertTrue(is_aux_gguf("mmproj-F16.gguf"))
 
 
 class MtpGgufDetectionTests(unittest.TestCase):

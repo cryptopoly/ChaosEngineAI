@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Quantification KV à rotation Hadamard. Compression 2–4× avec perte de qualité minimale."
+      "description": "Économiseur de mémoire : quantification KV à rotation Hadamard. Cache 2–4× plus petit pour faire tenir de longues conversations dans moins de RAM ; la génération est plus lente qu'avec Natif."
     },
     "triattention": {
       "name": "TriAttention",

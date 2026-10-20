@@ -86,6 +86,7 @@ nav:
       - usage/benchmarks.md
   - Features:
       - features/mtplx.md
+      - features/tensorfold.md
       - features/dflash.md
       - features/cache-strategies.md
       - features/fused-attention.md

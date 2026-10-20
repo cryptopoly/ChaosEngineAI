@@ -32,8 +32,8 @@ ChaosEngineAI is a desktop control plane for running large language models local
 
 - **One app, the whole pipeline.** Discover models, download them, convert to MLX, load into a warm pool, serve over an OpenAI-compatible API, chat, benchmark, and generate images and video.
 - **Real local performance.** First-class support for `llama.cpp` GGUF and Apple Silicon MLX for LLMs, plus local Stable Diffusion for image generation, plus diffusion DiT video models (Wan 2.1/2.2, LTX-Video 2.0/2.3, HunyuanVideo, CogVideoX, Mochi) via diffusers, mlx-video on Apple Silicon, and stable-diffusion.cpp scaffolding for cross-platform.
-- **Pluggable cache compression.** Native f16 cache out of the box, with KV cache compression strategies — [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/). Install supported backends into the repo-local runtime, restart, and they appear in the UI.
-- **Speculative decoding.** DFlash, DDTree, and MTPLX accelerate generation by 1.8-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates. MTPLX adds native Multi-Token Prediction for models that were trained with MTP heads (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).
+- **Pluggable cache compression.** Native f16 cache out of the box, with KV cache compression strategies — [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/), a memory saver for contexts that would not otherwise fit. Install supported backends into the repo-local runtime, restart, and they appear in the UI.
+- **Speculative decoding.** DFlash, DDTree, MTPLX, and TensorFold accelerate generation by 1.8-5x with zero quality loss. A small draft model proposes tokens; the target verifies them in one forward pass. DDTree extends this with tree-structured candidate exploration for even higher acceptance rates. MTPLX adds native Multi-Token Prediction for models that were trained with MTP heads (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).
 - **Hybrid local + remote workflows.** Scan multiple local model directories, convert Hugging Face checkpoints to MLX, or point the app at remote OpenAI-compatible providers when you want a cloud fallback.
 - **Per-chat runtime profiles.** Each chat session remembers the exact model, cache strategy, quantization bits, context length, and speculative decoding settings used — switch between configurations without losing track.
 - **Prompting + evaluation.** Built-in prompt templates, side-by-side compare mode, and benchmark modes for throughput, perplexity, and task accuracy keep experimentation in one place.
@@ -84,6 +84,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🔮 **DFlash speculative decoding** for 3-5x faster generation with zero quality loss (Qwen3, Qwen3.5, LLaMA 3.1, gpt-oss, Kimi families)
 - 🌳 **DDTree** tree-based speculative decoding — explores multiple draft paths in parallel for higher acceptance rates
 - 🪄 **MTPLX** Multi-Token Prediction speculative decoding (Apple Silicon) — 1.8-2.2× speedup with zero quality loss for trained-with-MTP models (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next, Youssofal MTPLX-Optimized variants)
+- 🧵 **TensorFold** exact speculative decoding (Apple Silicon) — every draft is verified against the target, so replies match serial decoding; also the only runtime for architectures stock MLX cannot load (Qwen3.8 Flash Next, GLM-5.3-Flash, DeepSeek-V4-Flash, Ternary Bonsai 2)
 - 🔧 **Agent tools** — web search, calculator, code executor, and file reader for tool-augmented conversations
 - 🎓 **Fine-tuning** with LoRA adapter support for MLX models
 - 🧩 **Plugin system** with 5 extension types: cache strategies, inference engines, tools, model sources, and post-processors
@@ -342,9 +343,9 @@ ChaosEngineAI uses a pluggable cache strategy system. Out of the box, models run
 
 | Backend | Install | Bits | Platforms | Description |
 |---|---|---|---|---|
-| **Native f16** | Built-in | — | All | Full-precision KV cache. Maximum quality, no compression. |
-| **[TriAttention](https://github.com/WeianMao/triattention)** | `./.venv/bin/python3 -m pip install triattention vllm` | 1-4 | Linux + CUDA only (via vLLM) | Transparent KV cache compression integrated into vLLM's scheduler. Not supported on macOS. |
-| **[TurboQuant](https://pypi.org/project/turboquant-mlx-full/)** | `./.venv/bin/python3 -m pip install turboquant-mlx-full` (Apple Silicon) or `scripts/build-llama-turbo.sh` (CUDA / Metal via llama.cpp fork) | 1-4 (MLX) / turbo2/3/4 (llama.cpp) | Apple Silicon (MLX), CUDA + Metal (llama.cpp fork) | Hadamard / Walsh-Hadamard rotation-based KV cache compression. The MLX path uses `turboquant-mlx-full` for native MLX caches; the llama.cpp path uses the forked `llama-server-turbo` binary built by `scripts/build-llama-turbo.sh`. |
+| **Native f16** | Built-in | — | All | Full-precision KV cache. Maximum quality and speed, no compression. The default, and the one speculative decoding works with. |
+| **[TriAttention](https://github.com/WeianMao/triattention)** | `./.venv/bin/python3 -m pip install triattention vllm` | 1-4 | Linux + CUDA only (via vLLM) | KV cache compression integrated into vLLM's scheduler. Not supported on macOS (the MLX hook is attached but mlx-lm's generation loop never calls it, so it has no effect there). |
+| **[TurboQuant](https://pypi.org/project/turboquant-mlx-full/)** | `./.venv/bin/python3 -m pip install turboquant-mlx-full` (Apple Silicon) or `scripts/build-llama-turbo.sh` (CUDA / Metal via llama.cpp fork) | 1-4 (MLX) / turbo2/3/4 (llama.cpp) | Apple Silicon (MLX), CUDA + Metal (llama.cpp fork) | **Memory saver, not a speed option.** Hadamard / Walsh-Hadamard rotation-based KV cache compression: a much smaller cache for long contexts, at the cost of slower generation (and, on MLX, no chat-history cache reuse and no speculative decoding). The MLX path uses `turboquant-mlx-full` for native MLX caches; the llama.cpp path uses the forked `llama-server-turbo` binary built by `scripts/build-llama-turbo.sh`. |
 | **[TeaCache](https://github.com/ali-vilab/TeaCache)** | Built-in (vendored `teacache_forward` patches under `cache_compression/_teacache_patches/`) | n/a (rel_l1_thresh) | Diffusion DiT (FLUX, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Diffusion-side cache that skips redundant forward passes between adjacent timesteps. Default `rel_l1_thresh=0.4`. |
 | **[FBCache](https://github.com/huggingface/diffusers)** | Built-in (diffusers 0.36+ `apply_first_block_cache` hook) | n/a (threshold) | Diffusion DiT (FLUX, SD3.5, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Model-agnostic first-block cache for DiTs. Default threshold 0.12. |
 | **TaylorSeer** | Built-in (diffusers 0.38+ `TaylorSeerCacheConfig`) | n/a | Diffusion DiT (FLUX, Wan, HunyuanVideo, LTX-Video, CogVideoX, Mochi) | Taylor-series predictor caches skipped forward passes. Surfaced in Image + Video Studio pickers. |
@@ -389,6 +390,16 @@ Native MTP speculative decoding for Apple Silicon, powered by the [`mtplx`](http
 **Install:** One-click "Install MTPLX" button in the Setup tab. Because `mtplx` ships its own forked `mlx` and can't share the main backend `.venv`, the installer provisions an isolated environment at `~/.chaosengine/mtplx-venv/`.
 
 **Routing:** When speculative decoding is enabled and the loaded model has MTP heads, the backend's `_select_engine` auto-routes through MTPLX. If the MTPLX venv is missing or the model is not in the registry, the backend falls back to DFlash, then to standard MLX generation.
+
+### TensorFold (exact speculative decoding)
+
+An optional Apple Silicon engine built on [`TensorFold`](https://github.com/ashhart/TensorFold) (MIT, alpha). It runs a model family with per-family kernels and drafts several tokens per step from the model's own MTP head and, for some families, a small draft model. Every draft is verified against the target model, so the reply is byte-identical to one-token-at-a-time decoding.
+
+**Two roles:** for checkpoints stock MLX also loads (Qwen3.8 27B, Nemotron 3.5 Lightning, Gemma 4) it is an accelerator you switch on with the speculative-decoding toggle. For families `mlx-lm` has no architecture for (Qwen3.8 Flash Next, GLM-5.3-Flash, DeepSeek-V4-Flash, Ternary Bonsai 2) it is the only runtime, so those models always run on it. The registry lives in `backend_service/inference/_tensorfold.py` and matches exact repo ids.
+
+**Install:** One-click "Install TensorFold" in the launch settings or the Setup tab, or `./scripts/chaosengine-cli tensorfold-install`. TensorFold pins its own `mlx` / `mlx-lm` versions, so the installer provisions an isolated environment at `~/.chaosengine/tensorfold-venv/`.
+
+**Routing:** An explicit TensorFold backend, a TensorFold-only model, or a tested checkpoint with speculative decoding on (and TensorFold installed) goes through `TensorFoldEngine`; it outranks MTPLX and DFlash. If it fails to start, models stock MLX can also load fall back to standard MLX. Two optional extras add image input (experimental; `Vontra/Qwen3.8-27B-MLX-4bit`) and structured output (JSON-schema enforcement) from the launch settings or `chaosengine-cli tensorfold-install --extras`. Full details: [docs/features/tensorfold.md](docs/features/tensorfold.md).
 
 ---
 
@@ -449,7 +460,7 @@ That writes the local app + DMG to `releases/macos/`.
 
 Every feature in the desktop app is also reachable from the terminal via `scripts/chaosengine-cli` — a Python 3 wrapper (stdlib only, zero new dependencies) that talks to the same FastAPI backend the Tauri shell uses. It covers 100% of the 125 backend routes through a generic `call <METHOD> <PATH>` dispatcher plus 95 ergonomic typed shortcuts.
 
-**Subcommand categories:** `serve`, `status`, `load`, `unload`, `prompt`, `bench`, `mtplx-install`, `mtplx-status`, `image-generate`, `video-generate`, `session-*`, `setup-*`, `diagnostics-*`, and more. JSON is written to stdout, errors to stderr — composable with `jq` or any other pipeline tool.
+**Subcommand categories:** `serve`, `status`, `load`, `unload`, `prompt`, `bench`, `mtplx-install`, `mtplx-status`, `tensorfold-install`, `tensorfold-status`, `image-generate`, `video-generate`, `session-*`, `setup-*`, `diagnostics-*`, and more. JSON is written to stdout, errors to stderr — composable with `jq` or any other pipeline tool.
 
 The backend on port 8876 must be running (either via the Tauri app or `./scripts/chaosengine-cli serve`).
 

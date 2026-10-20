@@ -10,3 +10,4 @@ export * from "./server";
 export * from "./settings";
 export * from "./system";
 export * from "./video";
+export * from "./voice";

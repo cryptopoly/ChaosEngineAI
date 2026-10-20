@@ -19,7 +19,7 @@ export interface ModelVariant {
   estimatedCompressedMemoryGb: number | null;
   availableLocally: boolean;
   launchMode: ModelLaunchMode;
-  backend: "mlx" | "llama.cpp" | "auto";
+  backend: "mlx" | "llama.cpp" | "vllm" | "tensorfold" | "auto";
   maxContext?: number | null;
   releaseDate?: string | null;
   releaseLabel?: string | null;

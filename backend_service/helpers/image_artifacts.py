@@ -129,6 +129,12 @@ def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> d
         image_bytes = base64.b64decode(image_bytes.encode("ascii"))
 
     if isinstance(image_bytes, (bytes, bytearray)):
+        if not image_bytes:
+            raise ValueError(
+                f"Cannot persist image artifact '{artifact_id}': the runtime "
+                "returned zero image bytes. The engine likely failed silently "
+                "— check the backend log for this generation."
+            )
         image_path.write_bytes(bytes(image_bytes))
     elif preview_url.startswith("data:image/svg+xml"):
         image_path.write_text(
@@ -137,9 +143,18 @@ def _save_image_artifact(artifact: dict[str, Any], image_outputs_dir: Path) -> d
         )
     elif ";base64," in preview_url:
         encoded = preview_url.split(";base64,", 1)[1]
-        image_path.write_bytes(base64.b64decode(encoded.encode("ascii")))
+        decoded = base64.b64decode(encoded.encode("ascii"))
+        if not decoded:
+            raise ValueError(
+                f"Cannot persist image artifact '{artifact_id}': decoded "
+                "preview data was empty."
+            )
+        image_path.write_bytes(decoded)
     else:
-        image_path.write_text("", encoding="utf-8")
+        raise ValueError(
+            f"Cannot persist image artifact '{artifact_id}': no image bytes "
+            "or preview data supplied by the generation pipeline."
+        )
 
     persisted = {
         **artifact,

@@ -31,15 +31,38 @@ def _is_image_repo(repo_id: str) -> bool:
     )
 
 
+def _sdcpp_gguf_files(repo_id: str) -> list[str]:
+    """GGUF files of the stable-diffusion.cpp variants that live in ``repo_id``.
+
+    Those repos hold bare GGUF files, not a diffusers pipeline, so "installed"
+    means one of the files is on disk.
+    """
+    return [
+        str(variant["ggufFile"])
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if variant.get("engine") == "sdcpp"
+        and variant.get("ggufFile")
+        and str(variant.get("repo") or "") == repo_id
+        and str(variant.get("ggufRepo") or "") == repo_id
+    ]
+
+
 def _image_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
         return False
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        return any((Path(snapshot_dir) / name).is_file() for name in gguf_files)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
 
 
 def _image_variant_available_locally(variant: dict[str, Any], library: list[dict[str, Any]]) -> bool:
     repo = str(variant.get("repo") or "")
+    if variant.get("engine") == "sdcpp" and variant.get("ggufFile") and str(variant.get("ggufRepo") or "") == repo:
+        snapshot_dir = _hf_repo_snapshot_dir(repo)
+        return snapshot_dir is not None and (Path(snapshot_dir) / str(variant["ggufFile"])).is_file()
     if repo and _image_repo_runtime_ready(repo):
         return True
 
@@ -73,6 +96,11 @@ def _image_download_validation_error(repo_id: str) -> str | None:
             f"Download did not produce a local snapshot for {repo_id}. "
             "Retry the download and make sure the backend can access Hugging Face."
         )
+    gguf_files = _sdcpp_gguf_files(repo_id)
+    if gguf_files:
+        if any((Path(snapshot_dir) / name).is_file() for name in gguf_files):
+            return None
+        return f"Download finished but none of {', '.join(gguf_files)} is in the snapshot of {repo_id}."
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
 
 

@@ -129,6 +129,38 @@ def finalize_config(
     )
 
 
+def _is_mps(pipeline: Any) -> bool:
+    return getattr(getattr(pipeline, "device", None), "type", None) == "mps"
+
+
+def _use_flow_euler_for_unipc_on_mps(pipeline: Any) -> str | None:
+    """Swap a flow-matching UniPC scheduler for flow-match Euler on MPS.
+
+    Diffusers' UniPC solver is numerically unstable on MPS: fed the same inputs
+    it follows the CPU trajectory for the first step and then drifts, the error
+    roughly doubling every step. Wan's final latents come out several times too
+    large (std about 3.4 where a healthy run is about 0.9) and decode as a burnt,
+    over-saturated picture. Stepping the scheduler on CPU, or using Euler, fixes
+    it. Only flow-prediction configs (Wan) are known to be affected.
+    """
+    scheduler = getattr(pipeline, "scheduler", None)
+    config = getattr(scheduler, "config", None)
+    if config is None or config.get("prediction_type") != "flow_prediction":
+        return None
+    try:
+        euler_cls = getattr(importlib.import_module("diffusers"), "FlowMatchEulerDiscreteScheduler", None)
+    except Exception:
+        return None
+    if euler_cls is None:
+        return None
+    shift = float(config.get("flow_shift") or 1.0)
+    pipeline.scheduler = euler_cls(
+        num_train_timesteps=int(config.get("num_train_timesteps") or 1000),
+        shift=shift,
+    )
+    return f"UniPC is unstable on MPS; using flow-match Euler (shift {shift:g}) instead."
+
+
 def swap_scheduler(pipeline: Any, scheduler_id: str | None) -> str | None:
     """Replace the pipeline's scheduler with the requested class.
 
@@ -142,6 +174,12 @@ def swap_scheduler(pipeline: Any, scheduler_id: str | None) -> str | None:
     if cls_name is None:
         return None
     current_cls = type(getattr(pipeline, "scheduler", None)).__name__
+    if cls_name == "UniPCMultistepScheduler" and _is_mps(pipeline):
+        if current_cls == "FlowMatchEulerDiscreteScheduler":
+            return None  # already swapped on an earlier run of this pipeline
+        note = _use_flow_euler_for_unipc_on_mps(pipeline)
+        if note is not None:
+            return note
     if current_cls == cls_name:
         return None
     try:

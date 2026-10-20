@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from backend_service.mlx_models import vendored_model_config
 from backend_service.mlx_worker_cache import make_mlx_cache
 from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
 from backend_service.mlx_worker_io import emit_progress
@@ -136,7 +137,13 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
                 state.config = {}
             state.is_multimodal = True
         else:
-            state.model, state.tokenizer, state.config = load(local_path, return_config=True)
+            load_kwargs: dict[str, Any] = {"return_config": True}
+            # Architectures mlx-lm does not ship yet (Kolibri 1) load from a
+            # vendored file; everything else keeps the plain call.
+            vendored = vendored_model_config(local_path)
+            if vendored:
+                load_kwargs["model_config"] = vendored
+            state.model, state.tokenizer, state.config = load(local_path, **load_kwargs)
             state.processor = None
             state.is_multimodal = False
         state._loaded_model_ref = target
@@ -344,4 +351,12 @@ def apply_triattention_mlx_compressor(state: WorkerState) -> str | None:
             f"TriAttention apply_mlx_compressor raised "
             f"({type(exc).__name__}: {exc}); using native cache."
         )
-    return f"TriAttention MLX compressor applied (kv_budget={state.kv_budget})."
+    # ``apply_triattention_mlx`` only attaches the compressor to the model; the
+    # upstream MLX port expects the caller's decode loop to invoke it
+    # (``triattention_generate_step``), and mlx-lm's generation never does. A
+    # tiny-model smoke at both the old and current pins shows identical tokens
+    # and an uncompressed KV cache, so say so rather than imply compression.
+    return (
+        f"TriAttention compressor attached (kv_budget={state.kv_budget}), but MLX generation does not "
+        "invoke it yet: replies and KV cache are the same as native."
+    )

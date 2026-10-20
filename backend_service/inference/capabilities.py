@@ -47,6 +47,8 @@ from backend_service.inference.binaries import (
 
 _MTPLX_VENV = Path.home() / ".chaosengine" / "mtplx-venv"
 _MTPLX_VERSION_FILE = Path.home() / ".chaosengine" / "bin" / "mtplx.version"
+_TENSORFOLD_VENV = Path.home() / ".chaosengine" / "tensorfold-venv"
+_TENSORFOLD_VERSION_FILE = Path.home() / ".chaosengine" / "bin" / "tensorfold.version"
 
 _capability_cache: tuple[float, BackendCapabilities] | None = None
 _capability_lock = RLock()
@@ -65,6 +67,34 @@ def _detect_mtplx() -> tuple[bool, str | None]:
     return False, None
 
 
+def _detect_tensorfold() -> tuple[bool, str | None, str | None]:
+    """Return (available, python_path, version) for the TensorFold venv.
+
+    Same cheap file-existence contract as ``_detect_mtplx``: the version file
+    is written by ``install-tensorfold.sh`` only after its import and CLI
+    checks passed, so version file + venv python + the ``tensorfold`` script
+    together confirm a usable install without spawning anything.
+    """
+    python = _TENSORFOLD_VENV / "bin" / "python"
+    script = _TENSORFOLD_VENV / "bin" / "tensorfold"
+    if not (_TENSORFOLD_VERSION_FILE.exists() and python.exists() and script.exists()):
+        return False, None, None
+    version: str | None = None
+    try:
+        lines = _TENSORFOLD_VERSION_FILE.read_text(encoding="utf-8").strip().splitlines()
+        version = lines[0].strip() if lines and lines[0].strip() else None
+    except OSError:
+        version = None
+    return True, str(python), version
+
+
+def _detect_tensorfold_extras() -> tuple[str, ...]:
+    """The optional extras recorded for the TensorFold install (a file read)."""
+    from backend_service.inference._tensorfold import read_install_extras
+
+    return read_install_extras(_TENSORFOLD_VERSION_FILE)
+
+
 def _initial_backend_capabilities() -> BackendCapabilities:
     """Cheap capability placeholder used while the real probe runs.
 
@@ -78,6 +108,7 @@ def _initial_backend_capabilities() -> BackendCapabilities:
     llama_server_turbo_path = _resolve_llama_server_turbo()
     llama_cli_path = _resolve_llama_cli()
     mtplx_available, mtplx_python = _detect_mtplx()
+    tensorfold_available, tensorfold_python, tensorfold_version = _detect_tensorfold()
     # FU-056 Phase 1: prime accelerator flags during the placeholder phase
     # too. The probes are cheap (single ``find_spec`` per package, no
     # imports) so the UI gets accurate "Install" vs "Installed" state on
@@ -97,6 +128,10 @@ def _initial_backend_capabilities() -> BackendCapabilities:
         vllmVersion=None,
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
+        tensorfoldAvailable=tensorfold_available,
+        tensorfoldPythonPath=tensorfold_python,
+        tensorfoldVersion=tensorfold_version,
+        tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
         nunchakuAvailable=nunchaku_available(),
         nunchakuVersion=nunchaku_version(),
         sageattentionAvailable=sageattention_available(),
@@ -152,6 +187,7 @@ def _probe_native_backends() -> BackendCapabilities:
     from backend_service.vllm_engine import _vllm_importable, _vllm_version
 
     mtplx_available, mtplx_python = _detect_mtplx()
+    tensorfold_available, tensorfold_python, tensorfold_version = _detect_tensorfold()
 
     # FU-047: detect whether the resolved llama-server advertises
     # --spec-type (PR #22673 merged 2026-05-16). Probe the standard
@@ -194,6 +230,10 @@ def _probe_native_backends() -> BackendCapabilities:
         vllmVersion=_vllm_version(),
         mtplxAvailable=mtplx_available,
         mtplxPythonPath=mtplx_python,
+        tensorfoldAvailable=tensorfold_available,
+        tensorfoldPythonPath=tensorfold_python,
+        tensorfoldVersion=tensorfold_version,
+        tensorfoldExtras=_detect_tensorfold_extras() if tensorfold_available else (),
         ggufMtpAvailable=gguf_mtp_available,
         # FU-056 Phase 1: per-accelerator import + version probes.
         nunchakuAvailable=nunchaku_available(),
@@ -229,3 +269,27 @@ def get_backend_capabilities(*, force: bool = False) -> BackendCapabilities:
         capabilities = _probe_native_backends()
         _capability_cache = (now, capabilities)
         return capabilities
+
+
+def refresh_install_detection() -> None:
+    """Re-read the cheap install probes into the cached capabilities.
+
+    The MTPLX and TensorFold probes are file-existence checks, so an install
+    job can make the running backend see its result immediately instead of
+    waiting out ``CAPABILITY_CACHE_TTL_SECONDS`` (or paying for the slow
+    full native-backend re-probe). The cached object is shared with the
+    ``RuntimeController``, so updating it in place reaches both.
+    """
+    with _capability_lock:
+        if _capability_cache is None:
+            return
+        _cached_at, capabilities = _capability_cache
+        capabilities.mtplxAvailable, capabilities.mtplxPythonPath = _detect_mtplx()
+        (
+            capabilities.tensorfoldAvailable,
+            capabilities.tensorfoldPythonPath,
+            capabilities.tensorfoldVersion,
+        ) = _detect_tensorfold()
+        capabilities.tensorfoldExtras = (
+            _detect_tensorfold_extras() if capabilities.tensorfoldAvailable else ()
+        )

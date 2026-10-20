@@ -123,12 +123,36 @@ def _should_retry_cache_failure(exc: BaseException) -> bool:
     )
 
 
+_NONE_LEVEL_RE = re.compile(r"""reasoning_effort\s*==\s*['"]none['"]""")
+
+
+def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str, Any]:
+    """Extra ``apply_chat_template`` arguments for templates that define a reasoning level.
+
+    A template that mentions ``reasoning_effort`` (Kolibri 1, gpt-oss) gets the
+    effort the user picked; the composer sends it only while Thinking is on. A
+    template that also defines a ``none`` level (Kolibri 1) gets it while
+    Thinking is off. Without it such a model reasons at its default, high, effort
+    whatever the toggle says.
+    """
+    template = getattr(tokenizer, "chat_template", None)
+    if not isinstance(template, str) or "reasoning_effort" not in template:
+        return {}
+    effort = request.get("reasoningEffort")
+    if effort in {"low", "medium", "high"}:
+        return {"reasoning_effort": effort}
+    if (request.get("thinkingMode") or "off") == "off" and _NONE_LEVEL_RE.search(template):
+        return {"reasoning_effort": "none"}
+    return {}
+
+
 def _build_prompt_text(
     tokenizer: Any,
     history: list[dict[str, Any]],
     prompt: str,
     system_prompt: str | None,
     model_ref: str | None = None,
+    template_kwargs: dict[str, Any] | None = None,
 ) -> tuple[str, str | None]:
     # Phase 3.8: detect chat-template quirks at render time and apply
     # the matching auto-fix. Today: Gemma family rejects the system role
@@ -146,6 +170,14 @@ def _build_prompt_text(
         messages.append({"role": "system", "content": system_prompt})
     for message in history:
         role = message.get("role")
+        if role == "tool":
+            # The agent loop feeds tool results back as ``tool`` messages. They
+            # used to be dropped here, so the model never saw a result and called
+            # the same tool again until the loop gave up. Chat templates render a
+            # tool turn as a user turn wrapping the result in <tool_response>.
+            result_text = _normalize_message_content(message.get("text", ""))
+            messages.append({"role": "user", "content": f"<tool_response>\n{result_text}\n</tool_response>"})
+            continue
         if role not in {"system", "user", "assistant"}:
             continue
         messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
@@ -159,14 +191,15 @@ def _build_prompt_text(
         template_note = report.to_runtime_note()
 
     apply_template = getattr(tokenizer, "apply_chat_template", None)
+    extra = template_kwargs or {}
     if callable(apply_template):
         try:
-            rendered = apply_template(messages, tokenize=False, add_generation_prompt=True)
+            rendered = apply_template(messages, tokenize=False, add_generation_prompt=True, **extra)
             if isinstance(rendered, str):
                 return rendered, template_note
         except TypeError:
             try:
-                rendered = apply_template(messages, add_generation_prompt=True)
+                rendered = apply_template(messages, add_generation_prompt=True, **extra)
                 if isinstance(rendered, str):
                     return rendered, template_note
                 if isinstance(rendered, list):

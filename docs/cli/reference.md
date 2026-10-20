@@ -238,9 +238,12 @@ Install + capability refresh endpoints
 | GET | `/api/setup/install-mtplx/status` | Mtplx Install Status |
 | POST | `/api/setup/install-package` | Install Pip Package |
 | POST | `/api/setup/install-system-package` | Install System Package |
+| POST | `/api/setup/install-tensorfold` | Start Tensorfold Install |
+| GET | `/api/setup/install-tensorfold/status` | Tensorfold Install Status |
 | GET | `/api/setup/mlx-video-wan/inventory` | Mlx Video Wan Inventory |
 | GET | `/api/setup/mtplx-status` | Mtplx Status |
 | POST | `/api/setup/refresh-capabilities` | Refresh Capabilities Endpoint |
+| GET | `/api/setup/tensorfold-status` | Tensorfold Status |
 | GET | `/api/setup/turbo-update-check` | Turbo Update Check |
 
 ### /api/system

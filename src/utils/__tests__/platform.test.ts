@@ -127,6 +127,8 @@ describe("imageOrVideoVariantPlatformGate", () => {
 describe("chatVariantPlatformGate", () => {
   it("mlx backend → apple-silicon", () => {
     expect(chatVariantPlatformGate({ backend: "mlx" })).toBe("apple-silicon");
+    // TensorFold's Mac engine is Apple-Silicon-only too
+    expect(chatVariantPlatformGate({ backend: "tensorfold" })).toBe("apple-silicon");
     expect(chatVariantPlatformGate({ backend: "MLX" })).toBe("apple-silicon");
   });
 

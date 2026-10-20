@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard 회전 KV 양자화. 품질 손실을 최소화하면서 2–4배 압축."
+      "description": "메모리 절약: Hadamard 회전 KV 양자화. 캐시가 2–4배 작아져 긴 채팅이 더 적은 RAM에 들어갑니다. 생성 속도는 네이티브보다 느립니다."
     },
     "triattention": {
       "name": "TriAttention",

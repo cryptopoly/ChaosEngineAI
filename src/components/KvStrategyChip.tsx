@@ -3,12 +3,13 @@ import { useTranslation } from "react-i18next";
 import type { SystemStats } from "../types";
 import type { KvStrategyOverride } from "../features/chat/kvStrategyOverride";
 import { filterTextStrategies } from "./kvStrategyFilter";
+import { isMemorySaverStrategy } from "./runtimeSupport";
 
 /**
  * Phase 3.2: per-turn KV strategy chip for the composer.
  *
- * Lets the user change cache strategy (TurboQuant / ChaosEngine /
- * Native f16, etc.) and bit width without touching launch settings.
+ * Lets the user change cache strategy (TurboQuant / Native f16, etc.)
+ * and bit width without touching launch settings.
  * The chip shows the *effective* strategy — either the override or
  * the session default — and clicking it opens a popover with the
  * available strategies plus a clear-override action.
@@ -136,6 +137,16 @@ export function KvStrategyChip({
                 <div className="kv-chip__strategy-row">
                   <span className="kv-chip__strategy-name">
                     {strategy.name}
+                    {isMemorySaverStrategy(strategy.id) ? (
+                      <small
+                        className="kv-chip__strategy-role"
+                        title={t("kvChip.memorySaverTitle", {
+                          defaultValue: "Shrinks the KV cache so long chats fit in less memory. Generation is slower than Native.",
+                        })}
+                      >
+                        {t("kvChip.memorySaver", { defaultValue: "memory saver" })}
+                      </small>
+                    ) : null}
                     {!strategy.available ? (
                       <small
                         className="kv-chip__strategy-flag"

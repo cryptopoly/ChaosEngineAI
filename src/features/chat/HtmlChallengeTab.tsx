@@ -2,6 +2,7 @@ import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState }
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../../api";
 import type { MtplxJobState } from "../../api";
+import type { TensorfoldLaunchControls } from "../../components/tensorfoldSupport";
 import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../types";
 import type { ChatModelOption } from "../../types/chat";
 import {
@@ -10,6 +11,7 @@ import {
   compareTargetLabels,
   compareTargets,
   modelUsesMtplx,
+  modelUsesTensorfold,
   summarizeLaunchSettings,
   type CompareTarget,
 } from "./CompareView";
@@ -87,6 +89,7 @@ interface HtmlChallengeTabProps {
   onInstallMtplx?: () => void;
   installingMtplx?: boolean;
   mtplxJob?: MtplxJobState | null;
+  tensorfold?: TensorfoldLaunchControls;
   /** FU-056 follow-up: hide MTPLX block on non-Apple-Silicon hosts. */
   isAppleSilicon?: boolean;
   onInstallPackage?: (strategyId: string) => void;
@@ -110,6 +113,7 @@ export function HtmlChallengeTab({
   onInstallMtplx,
   installingMtplx,
   mtplxJob,
+  tensorfold,
   isAppleSilicon = false,
   onInstallPackage,
   installingPackage,
@@ -942,7 +946,10 @@ export function HtmlChallengeTab({
     // Bind the option + mtplx context so the summary label reflects which
     // engine the backend will actually route to.
     const summarizeForSlot = (settings: ChallengeSlot["settings"]) =>
-      summarizeLaunchSettings(settings, { usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo) });
+      summarizeLaunchSettings(settings, {
+        usesMtplx: modelUsesMtplx(option, settings, mtplxSystemInfo),
+        usesTensorfold: modelUsesTensorfold(option, settings, tensorfold),
+      });
     const settingsSummary = compactSettingsSummary(slot, state, summarizeForSlot);
 
     return (
@@ -1151,6 +1158,7 @@ export function HtmlChallengeTab({
         onInstallMtplx={onInstallMtplx}
         installingMtplx={installingMtplx}
         mtplxJob={mtplxJob}
+        tensorfold={tensorfold}
         isAppleSilicon={isAppleSilicon}
         onConfirm={(selectedKey, newSettings) => {
           if (pickerTarget) {

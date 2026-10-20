@@ -20,7 +20,7 @@
     },
     "turboquant": {
       "name": "TurboQuant",
-      "description": "Hadamard 旋转 KV 量化。2–4 倍压缩,质量损失极小。"
+      "description": "节省内存：Hadamard 旋转 KV 量化。缓存缩小 2–4 倍,长对话占用更少内存。生成速度比原生慢。"
     },
     "triattention": {
       "name": "TriAttention",

@@ -125,6 +125,8 @@ export interface StorageTopEntry {
   sizeGb: number | null;
   sourceKind: string;
   lastModified: number;
+  expandable?: boolean;
+  deletable?: boolean;
 }
 
 export interface StorageTopResponse {
@@ -142,6 +144,14 @@ export async function fetchStorageTop(limit = 20): Promise<StorageTopResponse> {
     `/api/diagnostics/storage-top?limit=${encodeURIComponent(limit)}`,
     30000,
   );
+}
+
+export async function fetchStorageChildren(path: string): Promise<StorageTopEntry[]> {
+  const res = await fetchJson<{ entries: StorageTopEntry[] }>(
+    `/api/diagnostics/storage-children?path=${encodeURIComponent(path)}`,
+    30000,
+  );
+  return res.entries;
 }
 
 // ---------------------------------------------------------------------------

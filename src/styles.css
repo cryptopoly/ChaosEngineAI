@@ -3242,7 +3242,7 @@ select.text-input {
 .storage-top-head,
 .storage-top-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) 90px 140px minmax(0, 3fr);
+  grid-template-columns: minmax(0, 2fr) 90px 140px minmax(0, 3fr) 76px;
   gap: 12px;
   align-items: center;
   padding: 8px 12px;
@@ -3264,6 +3264,22 @@ select.text-input {
 
 .storage-top-row:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+
+.storage-top-toggle {
+  display: inline-block;
+  width: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.storage-top-delete {
+  padding: 2px 8px;
+  font-size: 0.85em;
 }
 
 .storage-top-path {

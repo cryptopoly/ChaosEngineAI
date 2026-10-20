@@ -180,6 +180,39 @@ def diagnostics_log_tail(lines: int = _LOG_TAIL_DEFAULT_LINES) -> dict[str, Any]
     }
 
 
+def _storage_entry(child: Path, source_label: str, *, dirs_only: bool) -> dict[str, Any] | None:
+    """One Disk usage row for ``child``, or None when it is empty or unreadable."""
+    from backend_service.helpers.discovery import _path_size_bytes
+
+    try:
+        is_dir = child.is_dir()
+        if dirs_only and not is_dir:
+            return None
+        size_bytes = _path_size_bytes(child)
+        mtime = child.stat().st_mtime
+    except OSError:
+        return None
+    if size_bytes <= 0:
+        return None
+    repo_label = child.name
+    if repo_label.startswith("models--"):
+        # HF cache layout: ``models--{org}--{repo}`` -> ``{org}/{repo}``
+        repo_label = repo_label[len("models--"):].replace("--", "/", 1)
+    return {
+        "path": str(child),
+        "repoLabel": repo_label,
+        "sizeBytes": size_bytes,
+        "sizeGb": _bytes_to_gb(size_bytes),
+        "sourceKind": source_label,
+        "lastModified": mtime,
+        # A Hugging Face repo dir is snapshots + blobs, not worth drilling into.
+        "expandable": is_dir and not child.name.startswith("models--"),
+        # ``hub/blobs`` is the Hugging Face store shared by many repos; removing
+        # it, or anything inside it, breaks every repo whose snapshot links in.
+        "deletable": "blobs" not in child.parts,
+    }
+
+
 @router.get("/api/diagnostics/storage-top")
 def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]:
     """FU-055: top disk consumers across all configured model directories.
@@ -192,8 +225,6 @@ def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]
     equivalent — surfaces what's actually consuming disk when third-party
     scanners get tripped up by the HF cache layout.
     """
-    from backend_service.helpers.discovery import _path_size_bytes
-
     limit = max(1, min(int(limit or 20), 200))
     state: ChaosEngineState = request.app.state.chaosengine
 
@@ -217,33 +248,9 @@ def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]
         except OSError:
             continue
         for child in children:
-            try:
-                if not child.is_dir():
-                    continue
-            except OSError:
-                continue
-            try:
-                size_bytes = _path_size_bytes(child)
-            except OSError:
-                size_bytes = 0
-            if size_bytes <= 0:
-                continue
-            repo_label = child.name
-            if repo_label.startswith("models--"):
-                # HF cache layout: ``models--{org}--{repo}`` → ``{org}/{repo}``
-                repo_label = repo_label[len("models--"):].replace("--", "/", 1)
-            try:
-                mtime = child.stat().st_mtime
-            except OSError:
-                mtime = 0.0
-            entries.append({
-                "path": str(child),
-                "repoLabel": repo_label,
-                "sizeBytes": size_bytes,
-                "sizeGb": _bytes_to_gb(size_bytes),
-                "sourceKind": source_label,
-                "lastModified": mtime,
-            })
+            entry = _storage_entry(child, source_label, dirs_only=True)
+            if entry is not None:
+                entries.append(entry)
 
     entries.sort(key=lambda e: e["sizeBytes"], reverse=True)
     total_bytes = sum(e["sizeBytes"] for e in entries)
@@ -256,6 +263,34 @@ def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]
             for d in directories if d.get("enabled", True) and d.get("path")
         ],
     }
+
+
+@router.get("/api/diagnostics/storage-children")
+def diagnostics_storage_children(request: Request, path: str) -> dict[str, Any]:
+    """Direct children of one folder from the Disk usage table, biggest first.
+
+    ``path`` must sit inside an enabled model directory; anything else is
+    refused so the endpoint cannot be used to list arbitrary folders.
+    """
+    state: ChaosEngineState = request.app.state.chaosengine
+    target = Path(os.path.expanduser(path)).resolve()
+    for directory in state.settings.get("modelDirectories") or []:
+        raw_path = str(directory.get("path") or "")
+        if not directory.get("enabled", True) or not raw_path:
+            continue
+        root = Path(os.path.expanduser(raw_path)).resolve()
+        if target == root or root in target.parents:
+            source_label = str(directory.get("label") or directory.get("id") or "")
+            break
+    else:
+        raise HTTPException(status_code=403, detail="Path is outside the configured model directories.")
+    try:
+        children = list(target.iterdir())
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail=f"Cannot read folder: {exc.strerror or exc}") from exc
+    entries = [e for e in (_storage_entry(c, source_label, dirs_only=False) for c in children) if e]
+    entries.sort(key=lambda e: e["sizeBytes"], reverse=True)
+    return {"path": str(target), "entries": entries[:200]}
 
 
 @router.post("/api/diagnostics/reextract-runtime")

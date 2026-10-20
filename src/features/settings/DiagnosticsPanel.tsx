@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
+  deleteModelPath,
+  fetchStorageChildren,
   fetchStorageTop,
   installCudaTorch,
   installPipPackage,
@@ -10,6 +12,7 @@ import {
   type CudaTorchInstallResult,
   type DiagnosticsSnapshot,
   type InstallResult,
+  type StorageTopEntry,
   type StorageTopResponse,
 } from "../../api";
 import { AcceleratorsBoostPack } from "./AcceleratorsBoostPack";
@@ -456,11 +459,13 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
   const [data, setData] = useState<StorageTopResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [freedBytes, setFreedBytes] = useState(0);
 
   const scan = useCallback(async () => {
     if (!backendOnline) return;
     setBusy(true);
     setErr(null);
+    setFreedBytes(0);
     try {
       const next = await fetchStorageTop(20);
       setData(next);
@@ -496,6 +501,12 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
             {" · "}
             {data.entries.length} repos shown / scanned{" "}
             {data.scannedDirectories.length} root dir(s)
+            {freedBytes > 0 ? (
+              <>
+                {" · "}
+                <strong>{(freedBytes / 1e9).toFixed(1)} GB freed since scan</strong>
+              </>
+            ) : null}
           </p>
           <div className="storage-top-table">
             <div className="storage-top-head">
@@ -503,21 +514,121 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
               <span>Size</span>
               <span>Source</span>
               <span>Path</span>
+              <span />
             </div>
-            {data.entries.map((entry: import("../../api").StorageTopEntry) => (
-              <div key={entry.path} className="storage-top-row">
-                <span className="mono-text">{entry.repoLabel}</span>
-                <span><strong>{entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "—"}</strong></span>
-                <span className="muted-text">{entry.sourceKind || "—"}</span>
-                <span className="mono-text muted-text storage-top-path" title={entry.path}>
-                  {entry.path}
-                </span>
-              </div>
+            {data.entries.map((entry) => (
+              <StorageRow
+                key={entry.path}
+                entry={entry}
+                depth={0}
+                onDeleted={(removed) => setFreedBytes((n) => n + removed.sizeBytes)}
+              />
             ))}
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function StorageRow({
+  entry,
+  depth,
+  onDeleted,
+}: {
+  entry: StorageTopEntry;
+  depth: number;
+  onDeleted: (entry: StorageTopEntry) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [gone, setGone] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [children, setChildren] = useState<StorageTopEntry[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || children !== null) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      setChildren(await fetchStorageChildren(entry.path));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const remove = async () => {
+    const size = entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "unknown size";
+    const confirmed = window.confirm(
+      `Permanently delete ${entry.path} (${size})?\n\nThis removes it from disk and cannot be undone.`,
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    setErr(null);
+    try {
+      await deleteModelPath(entry.path);
+      setGone(true);
+      onDeleted(entry);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (gone) return null;
+
+  return (
+    <>
+      <div className="storage-top-row">
+        <span className="mono-text" style={{ paddingLeft: depth * 16 }}>
+          {entry.expandable ? (
+            <button
+              type="button"
+              className="storage-top-toggle"
+              onClick={() => void toggle()}
+              aria-expanded={open}
+              aria-label={open ? `Collapse ${entry.repoLabel}` : `Expand ${entry.repoLabel}`}
+            >
+              {open ? "▾" : "▸"}
+            </button>
+          ) : (
+            <span className="storage-top-toggle" aria-hidden="true" />
+          )}
+          {entry.repoLabel}
+        </span>
+        <span><strong>{entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "—"}</strong></span>
+        <span className="muted-text">{entry.sourceKind || "—"}</span>
+        <span className="mono-text muted-text storage-top-path" title={entry.path}>
+          {entry.path}
+        </span>
+        {entry.deletable === false ? (
+          <span className="muted-text" title="Shared Hugging Face store: many repos link into it">shared</span>
+        ) : (
+          <button
+            type="button"
+            className="secondary-button storage-top-delete"
+            onClick={() => void remove()}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        )}
+      </div>
+      {open && loading ? <div className="storage-top-row muted-text">Reading…</div> : null}
+      {open && err ? <div className="storage-top-row" style={{ color: "#f87171" }}>{err}</div> : null}
+      {open && children?.map((child) => (
+        <StorageRow key={child.path} entry={child} depth={depth + 1} onDeleted={onDeleted} />
+      ))}
+      {open && children?.length === 0 ? (
+        <div className="storage-top-row muted-text" style={{ paddingLeft: 12 + (depth + 1) * 16 }}>Empty</div>
+      ) : null}
+    </>
   );
 }
 

@@ -1266,7 +1266,7 @@ def phase_4(cap: Capability) -> PhaseResult:
             "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "900",
         )
         if rc != 0:
-            if "of free memory to load" in err or "Memory pressure is" in err:
+            if _is_memory_refusal(err):
                 return "skip", f"host memory gate fired: {err[:200]}", {}
             return "fail", f"mflux image-generate rc={rc}: {err[:300]}", {}
         text = str(payload)
@@ -1288,7 +1288,7 @@ def phase_4(cap: Capability) -> PhaseResult:
             "--model", model_id, "--width", "512", "--height", "512", "--seed", "42", "--timeout", "1200",
         )
         if rc != 0:
-            if "of free memory to load" in err or "Memory pressure is" in err:
+            if _is_memory_refusal(err):
                 return "skip", f"host memory gate fired: {err[:200]}", {}
             if "sd.cpp" in err and ("binary" in err or "not found" in err or "unavailable" in err):
                 return "skip", f"sd.cpp engine unavailable: {err[:200]}", {}
@@ -1316,6 +1316,20 @@ def phase_4(cap: Capability) -> PhaseResult:
 # ---------------------------------------------------------------------------
 # Phase 5 — Video Studio
 # ---------------------------------------------------------------------------
+
+
+# Wording of the backend's memory refusals (helpers/memory_gate.py). They are
+# correct behaviour on a busy or small host, so checks skip rather than fail.
+_MEMORY_REFUSAL_MARKERS = (
+    "Memory pressure is",
+    "memory_gate_",
+    "of free memory to",
+    "of RAM available",
+)
+
+
+def _is_memory_refusal(err: str) -> bool:
+    return any(marker in err for marker in _MEMORY_REFUSAL_MARKERS)
 
 
 def phase_5(cap: Capability) -> PhaseResult:
@@ -1373,14 +1387,10 @@ def phase_5(cap: Capability) -> PhaseResult:
             if any(marker in err for marker in prereq_markers):
                 return "skip", f"video runtime prerequisite missing: {err[:240]}", {}
             # FU-060 follow-up: memory gate is correct runtime behaviour —
-            # refuses video gen when host pressure breaches 92%. Don't
-            # fail the build over genuine host load; skip + explain.
-            memory_gate_markers = (
-                "Memory pressure is",
-                "memory_gate_video",
-                "memory_gate_image",
-            )
-            if any(marker in err for marker in memory_gate_markers):
+            # it refuses video gen when the host is short of memory or the
+            # model does not fit. Don't fail the build over genuine host
+            # load; skip + explain.
+            if _is_memory_refusal(err):
                 return "skip", f"video-generate skipped — host memory gate fired: {err[:240]}", {}
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         return "pass", "", {"modelId": model_id, "keys": sorted((payload or {}).keys())[:10] if isinstance(payload, dict) else None}
@@ -1411,7 +1421,7 @@ def phase_5(cap: Capability) -> PhaseResult:
             "--seed", "7", "--timeout", "2400",
         )
         if rc != 0:
-            if "Memory pressure is" in err or "memory_gate" in err:
+            if _is_memory_refusal(err):
                 return "skip", f"host memory gate fired: {err[:200]}", {}
             return "fail", f"video-generate rc={rc}: {err[:300]}", {}
         path = ((payload or {}).get("artifact") or {}).get("videoPath")

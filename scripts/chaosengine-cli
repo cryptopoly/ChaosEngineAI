@@ -969,13 +969,21 @@ def cmd_metrics_gpu(args: argparse.Namespace) -> int:
 
 
 def cmd_cache_preview(args: argparse.Namespace) -> int:
-    query = f"?ref={urllib.parse.quote(args.ref)}"
+    # ``ref`` is a local model folder / GGUF file or a Hugging Face repo id; the
+    # backend reads the model's real attention layout from either. The route's
+    # parameter names are snake_case (``context_tokens`` / ``strategy`` / ``bits``).
+    params: dict[str, Any] = {}
+    if os.path.exists(os.path.expanduser(args.ref)):
+        params["model_path"] = os.path.abspath(os.path.expanduser(args.ref))
+    else:
+        params["model_repo"] = args.ref
     if args.context is not None:
-        query += f"&context={args.context}"
+        params["context_tokens"] = args.context
     if args.cache_strategy:
-        query += f"&cacheStrategy={urllib.parse.quote(args.cache_strategy)}"
+        params["strategy"] = args.cache_strategy
     if args.cache_bits is not None:
-        query += f"&cacheBits={args.cache_bits}"
+        params["bits"] = args.cache_bits
+    query = "?" + urllib.parse.urlencode(params)
     code, payload = _request("GET", f"{_base_url(args)}/api/cache/preview{query}", timeout=15.0)
     if code != 200:
         _die(f"cache-preview failed: {payload}")

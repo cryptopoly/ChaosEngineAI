@@ -133,17 +133,18 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "fast", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 93.1,
-                # Hub sizes 2026-10-20: 19B transformer is 38 GB bf16; the Gemma 3 12B text
-                # encoder (49 GB fp32 on disk, cast to bf16 on load) runs and is freed before
-                # the transformer loads, so the peak is the denoise phase. Not measured live.
-                "runtimeFootprintGb": 48.0,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Distilled LTX-2 — fastest MLX path for previews. Use the dev variant for final fidelity.",
                 # Distilled is 8 + 3 fixed sampler passes with CFG off; STG is
                 # ignored. Real-world wall time on M4 Max at 768×512 / 4 s
                 # lands around 90 s including model load.
-                "estimatedGenerationSeconds": 90.0,
+                "estimatedGenerationSeconds": 1130.0,  # same sampler as LTX-2.3 distilled (measured there)
                 "availableLocally": False,
                 "releaseDate": "2026-01",
             },
@@ -158,10 +159,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "quality", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 93.1,
-                # Hub sizes 2026-10-20: 19B transformer is 38 GB bf16; the Gemma 3 12B text
-                # encoder (49 GB fp32 on disk, cast to bf16 on load) runs and is freed before
-                # the transformer loads, so the peak is the denoise phase. Not measured live.
-                "runtimeFootprintGb": 48.0,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "Full LTX-2 dev weights — higher fidelity, longer sampling than distilled.",
@@ -188,17 +190,18 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "fast", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 49.2,
-                # Hub sizes 2026-10-20: 19B transformer is 38 GB bf16; the Gemma 3 12B text
-                # encoder (49 GB fp32 on disk, cast to bf16 on load) runs and is freed before
-                # the transformer loads, so the peak is the denoise phase. Not measured live.
-                "runtimeFootprintGb": 48.0,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 distilled — refreshed fast preview path with sharper texture detail vs LTX-2. Use the dev variant for final fidelity. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it).",
                 # Same fixed 8 + 3 sampler shape as LTX-2 distilled with the
                 # 2.3 weight refresh; wall time tracks the LTX-2 distilled
                 # entry within measurement noise.
-                "estimatedGenerationSeconds": 100.0,
+                "estimatedGenerationSeconds": 1130.0,  # measured with the footprint above (34 s/frame)
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -214,10 +217,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "quality", "motion", "mlx"],
                 "taskSupport": ["txt2video"],
                 "sizeGb": 49.2,
-                # Hub sizes 2026-10-20: 19B transformer is 38 GB bf16; the Gemma 3 12B text
-                # encoder (49 GB fp32 on disk, cast to bf16 on load) runs and is freed before
-                # the transformer loads, so the peak is the denoise phase. Not measured live.
-                "runtimeFootprintGb": 48.0,
+                # Measured 2026-10-21 on LTX-2.3 distilled (M4 Max 64 GB, 768x512, 33 frames,
+                # 8 steps): mlx-video's own peak 37.2 GB, process footprint 40.0 GB. All four
+                # rows share the 19B transformer (38 GB bf16) and the Gemma 3 12B text
+                # encoder, which is freed before the transformer loads.
+                "runtimeFootprintGb": 40.0,
                 "recommendedResolution": "768x512",
                 "defaultDurationSeconds": 4.0,
                 "note": "LTX-2.3 dev — quality tier; full sampler steps for best output. Apple Silicon native via MLX. Install mlx-video from Setup → GPU runtime bundle to enable. Also needs the shared 49 GB text encoder from LTX-2 distilled (downloaded with it).",

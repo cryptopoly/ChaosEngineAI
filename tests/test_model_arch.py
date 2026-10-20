@@ -140,7 +140,9 @@ class GgufTests(unittest.TestCase):
             self.assertIsNone(read_kv_architecture(path))
 
 
-class PreviewRouteTests(unittest.TestCase):
+class _RouteFixture(unittest.TestCase):
+    """Backend with one model directory holding a Kolibri config; no tests of its own."""
+
     def setUp(self):
         from backend_service.app import create_app
         from backend_service.state import ChaosEngineState
@@ -178,6 +180,8 @@ class PreviewRouteTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         return resp.json()
 
+
+class PreviewRouteTests(_RouteFixture):
     def test_model_path_sizes_the_cache_from_the_config(self):
         guessed = self._preview()
         real = self._preview(model_path=str(self.models / "kolibri"))
@@ -243,7 +247,7 @@ class HubArchitectureTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 1)
 
 
-class PreviewRouteHubTests(PreviewRouteTests):
+class PreviewRouteHubTests(_RouteFixture):
     def test_repo_not_on_disk_is_read_from_the_hub(self):
         from unittest import mock
 
@@ -266,3 +270,36 @@ class PreviewRouteHubTests(PreviewRouteTests):
             for bad in ("../etc", "a/b/c", "no-slash", "a/..", "/abs"):
                 self.assertEqual(self._preview(model_repo=bad)["archSource"], "estimate")
         hub.assert_not_called()
+
+
+class MemoryCheckRouteTests(_RouteFixture):
+    """/api/models/memory-check: advisory verdict before a chat load."""
+
+    def _check(self, *, free_gb: float, reclaimable_gb: float = 0.0, **params):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        vm = SimpleNamespace(total=64 * 1024 ** 3, available=int(free_gb * 1024 ** 3))
+        self.client.app.state.chaosengine.runtime.reclaimable_model_bytes = (
+            lambda: int(reclaimable_gb * 1024 ** 3)
+        )
+        base = {"weights_gb": 33.0, "context_tokens": K32, "model_path": str(self.models / "kolibri")}
+        with mock.patch("psutil.virtual_memory", return_value=vm), \
+                mock.patch("backend_service.helpers.memory_gate._macos_reclaimable_gb", return_value=None):
+            resp = self.client.get("/api/models/memory-check", params={**base, **params})
+        self.assertEqual(resp.status_code, 200, resp.text)
+        return resp.json()
+
+    def test_fits(self):
+        body = self._check(free_gb=50)
+        self.assertEqual(body["verdict"], "fits")
+        self.assertEqual(body["archSource"], "config")
+        self.assertIsNone(body["message"])
+
+    def test_may_not_fit_explains_why(self):
+        body = self._check(free_gb=20)
+        self.assertEqual(body["verdict"], "may_not_fit")
+        self.assertIn("needs about", body["message"])
+
+    def test_memory_held_by_the_loaded_model_counts_as_available(self):
+        self.assertEqual(self._check(free_gb=20, reclaimable_gb=30)["verdict"], "fits")

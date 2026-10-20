@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
+  checkModelMemory,
   convertModel,
   deleteSessionDocument,
   getVoiceRuntime,
@@ -1114,6 +1115,31 @@ export default function App() {
     if (!pendingLaunch) return;
     const option = threadModelOptions.find((o) => o.key === selectedKey);
     if (!option) return;
+    // Advisory memory check: ask before loading a model that may not fit,
+    // never refuse. A failed check never blocks the load.
+    if (option.sizeGb && option.sizeGb > 0) {
+      const contextTokens = option.maxContext
+        ? Math.min(launchSettings.contextTokens, option.maxContext)
+        : launchSettings.contextTokens;
+      const check = await checkModelMemory({
+        weightsGb: option.sizeGb,
+        contextTokens,
+        bits: launchSettings.cacheBits,
+        fp16Layers: launchSettings.fp16Layers,
+        strategy: launchSettings.cacheStrategy,
+        paramsB: option.paramsB ?? previewControls.paramsB,
+        numLayers: previewControls.numLayers,
+        numHeads: previewControls.numHeads,
+        numKvHeads: previewControls.numKvHeads,
+        hiddenSize: previewControls.hiddenSize,
+        modelPath: option.path ?? null,
+        modelRepo: option.canonicalRepo ?? (option.modelRef.includes("/") ? option.modelRef : null),
+      });
+      if (check?.verdict === "may_not_fit" && check.message) {
+        const proceed = window.confirm(`${check.message}\n\nLoad it anyway?`);
+        if (!proceed) return;
+      }
+    }
     const { action } = pendingLaunch;
     setPendingLaunch(null);
     setError(null);

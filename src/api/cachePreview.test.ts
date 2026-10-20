@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   isTauri: vi.fn(() => false),
 }));
 
-import { getCachePreview } from "./index";
+import { checkModelMemory, getCachePreview } from "./index";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -50,5 +50,25 @@ describe("getCachePreview", () => {
     const url = previewUrl(fetchMock);
     expect(url.searchParams.has("model_path")).toBe(false);
     expect(url.searchParams.has("model_repo")).toBe(false);
+  });
+});
+
+describe("checkModelMemory", () => {
+  it("sends the load inputs and returns null when the check fails", async () => {
+    const fetchMock = stubFetch();
+    await checkModelMemory({
+      weightsGb: 33, contextTokens: 32768, bits: 0, fp16Layers: 0, strategy: "native", paramsB: 78,
+      numLayers: 80, numHeads: 64, numKvHeads: 8, hiddenSize: 8192, modelRepo: "velaia/Kolibri-1-MLX-3bit",
+    });
+    const call = fetchMock.mock.calls.find(([url]) => String(url).includes("/api/models/memory-check"));
+    const url = new URL(String(call?.[0]));
+    expect(url.searchParams.get("weights_gb")).toBe("33");
+    expect(url.searchParams.get("model_repo")).toBe("velaia/Kolibri-1-MLX-3bit");
+
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    expect(await checkModelMemory({
+      weightsGb: 1, contextTokens: 1024, bits: 0, fp16Layers: 0, strategy: "native", paramsB: 1,
+      numLayers: 1, numHeads: 1, numKvHeads: 1, hiddenSize: 256,
+    })).toBeNull();
   });
 });

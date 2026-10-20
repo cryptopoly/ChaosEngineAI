@@ -343,6 +343,54 @@ export async function updateSettings(payload: UpdateSettingsPayload): Promise<Se
 
 
 
+export interface ModelMemoryCheck {
+  verdict: "fits" | "tight" | "may_not_fit";
+  neededGb: number;
+  availableGb: number;
+  freeGb: number;
+  reclaimableGb: number;
+  cacheGb: number;
+  archSource: string;
+  message: string | null;
+}
+
+/** Advisory load-time check: will this chat model fit in the memory that is
+ * free or can be freed right now? ``null`` when the check itself fails. */
+export async function checkModelMemory(options: {
+  weightsGb: number;
+  contextTokens: number;
+  bits: number;
+  fp16Layers: number;
+  strategy: string;
+  paramsB: number;
+  numLayers: number;
+  numHeads: number;
+  numKvHeads: number;
+  hiddenSize: number;
+  modelPath?: string | null;
+  modelRepo?: string | null;
+}): Promise<ModelMemoryCheck | null> {
+  const search = new URLSearchParams({
+    weights_gb: String(options.weightsGb),
+    context_tokens: String(options.contextTokens),
+    bits: String(options.bits),
+    fp16_layers: String(options.fp16Layers),
+    strategy: options.strategy,
+    params_b: String(Math.max(0.5, options.paramsB)),
+    num_layers: String(options.numLayers),
+    num_heads: String(options.numHeads),
+    num_kv_heads: String(options.numKvHeads),
+    hidden_size: String(options.hiddenSize),
+  });
+  if (options.modelPath) search.set("model_path", options.modelPath);
+  if (options.modelRepo) search.set("model_repo", options.modelRepo);
+  try {
+    return await fetchJson<ModelMemoryCheck>(`/api/models/memory-check?${search.toString()}`, 15000);
+  } catch {
+    return null;
+  }
+}
+
 export async function getCachePreview(options: {
   bits: number;
   fp16Layers: number;

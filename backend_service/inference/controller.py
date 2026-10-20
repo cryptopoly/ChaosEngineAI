@@ -759,6 +759,20 @@ class RuntimeController:
             return None
         return max(0, available - self.WARM_POOL_MEMORY_HEADROOM_BYTES)
 
+    def reclaimable_model_bytes(self) -> int:
+        """Memory held by the active and warm chat models that a new load can take back.
+
+        Loading another model parks or unloads the active one and evicts warm
+        ones as needed (see ``_make_room_keeping_active``), so for a load-time
+        memory check their memory counts as available.
+        """
+        total = 0
+        if self.loaded_model is not None:
+            total += max(self._model_resident_bytes(self.loaded_model), self._engine_resident_bytes(self.engine))
+        for engine, info in self._warm_pool.values():
+            total += max(self._model_resident_bytes(info), self._engine_resident_bytes(engine))
+        return total
+
     def _pop_oldest_warm_entry(self) -> int:
         """Unload the oldest warm model; return roughly how many bytes that frees."""
         if not self._warm_pool:

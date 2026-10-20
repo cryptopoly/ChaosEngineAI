@@ -1,7 +1,7 @@
 import { useState, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
-import { DiagnosticsPanel } from "./DiagnosticsPanel";
+import { AcceleratorsPanel, DiagnosticsPanel, DiskUsagePanel } from "./DiagnosticsPanel";
 import { LanguagePanel } from "./LanguagePanel";
 import { ModelStoragePanel } from "./ModelStoragePanel";
 import type { SettingsDraft } from "../../types/chat";
@@ -50,7 +50,7 @@ export interface SettingsTabProps {
 // ``sidebarMode`` preference with a side-menu variant for collapsible users
 // but it felt clunky at the viewport widths this app runs at — tabs always,
 // for Settings only.)
-type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | "diagnostics";
+type SettingsSectionId = "general" | "storage" | "providers" | "integrations" | "diagnostics" | "accelerators" | "disk";
 
 interface SettingsSectionDef {
   id: SettingsSectionId;
@@ -64,6 +64,8 @@ const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   { id: "providers", labelKey: "settingsTab.sections.providers", labelDefault: "Providers" },
   { id: "integrations", labelKey: "settingsTab.sections.integrations", labelDefault: "Integrations" },
   { id: "diagnostics", labelKey: "settingsTab.sections.diagnostics", labelDefault: "Diagnostics" },
+  { id: "accelerators", labelKey: "settingsTab.sections.accelerators", labelDefault: "Accelerators" },
+  { id: "disk", labelKey: "settingsTab.sections.disk", labelDefault: "Disk usage" },
 ];
 
 export function SettingsTab({
@@ -629,7 +631,11 @@ export function SettingsTab({
           ? providerPanels
           : activeSection === "integrations"
             ? integrationPanels
-            : diagnosticsPanels;
+            : activeSection === "accelerators"
+              ? <AcceleratorsPanel backendOnline={backendOnline} />
+              : activeSection === "disk"
+                ? <DiskUsagePanel backendOnline={backendOnline} />
+                : diagnosticsPanels;
 
   // Horizontal sub-tab bar, always — the vertical side-menu variant we
   // tried originally felt clunky at the viewport widths this app runs at

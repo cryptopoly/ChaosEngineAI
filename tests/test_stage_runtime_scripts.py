@@ -45,5 +45,20 @@ class InstallScriptStagingTests(unittest.TestCase):
             self.assertTrue((ROOT / "scripts" / name).is_file(), name)
 
 
+class BundledLlamaCppTests(unittest.TestCase):
+    def test_the_bundled_llama_cpp_tag_matches_the_update_script_pin(self) -> None:
+        stage = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        update = (ROOT / "scripts" / "update-llama-cpp.sh").read_text(encoding="utf-8")
+        staged = re.search(r'LLAMA_CPP_TAG = process\.env\.CHAOSENGINE_LLAMA_CPP_TAG \|\| "(b\d+)"', stage)
+        pinned = re.search(r'LLAMA_CPP_REF="\$\{LLAMA_CPP_REF:-(b\d+)\}"', update)
+        self.assertTrue(staged and pinned, "could not read one of the llama.cpp pins")
+        self.assertEqual(staged.group(1), pinned.group(1))
+
+    def test_the_release_is_fetched_by_tag_not_as_latest(self) -> None:
+        stage = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        self.assertNotIn("releases/latest", stage)
+        self.assertIn("releases/tags/", stage)
+
+
 if __name__ == "__main__":
     unittest.main()

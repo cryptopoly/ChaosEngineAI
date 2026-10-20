@@ -433,6 +433,24 @@ def phase_0(cap: Capability) -> PhaseResult:
         pinned = sum(1 for v in variants.values() if v.get("ggufFile"))
         return "pass", "", {"pinnedRows": pinned}
 
+    # Chat library gate: checkpoints that cannot chat (3D generator parts,
+    # encoders, voice models, bare weight files) are modelType "other", so the
+    # Chat tab's My Models lists only chat models. A bare .safetensors file or
+    # a Trellis / TripoSG path that comes back as "text" is the regression.
+    def _library_chat_only():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=30.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        text_items = [i for i in (payload.get("library") or []) if (i.get("modelType") or "text") == "text"]
+        leaked = [
+            i.get("name") for i in text_items
+            if (i.get("sourceKind") == "File" and str(i.get("format")).upper() == "SAFETENSORS")
+            or any(k in str(i.get("path", "")).lower() for k in ("trellis", "triposg", "hunyuan3d"))
+        ]
+        if leaked:
+            return "fail", f"non-chat models listed as chat: {leaked[:5]}", {"leaked": leaked}
+        return "pass", "", {"chatModels": len(text_items)}
+
     # Gemma 4 dedup gate: the family must appear exactly once (a prior staging
     # collision rendered two "Gemma 4" cards) with the full 10-variant union.
     def _gemma4_single_family():
@@ -485,6 +503,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("new model families (frontier + Ornith)", _new_model_families),
         ("text GGUF file pins (FU-087)", _gguf_pins),
         ("gemma-4 single family (dedup)", _gemma4_single_family),
+        ("library lists chat models only", _library_chat_only),
         ("voice I/O runtime", _voice_runtime),
     ]:
         phase.checks.append(_check(name, fn))

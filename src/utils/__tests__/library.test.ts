@@ -141,6 +141,7 @@ describe("isChatLibraryItem()", () => {
     expect(isChatLibraryItem(makeItem({ name: "Flux", path: "/models/Flux", modelType: "image" }))).toBe(false);
     expect(isChatLibraryItem(makeItem({ name: "LTX-Video", path: "/models/LTX-Video", modelType: "video" }))).toBe(false);
     expect(isChatLibraryItem(makeItem({ name: "Qwen-Draft", path: "/models/Qwen-Draft", modelType: "draft" }))).toBe(false);
+    expect(isChatLibraryItem(makeItem({ name: "dinov3-encoder", path: "/models/dinov3.safetensors", modelType: "other" }))).toBe(false);
   });
 
   it("filters legacy cached LTX-2 entries without modelType", () => {

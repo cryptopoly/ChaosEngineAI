@@ -21,6 +21,7 @@ from backend_service.helpers.model_classifier import (
     _VIDEO_MODEL_KEYWORDS,
     _looks_like_draft_model,
     _looks_like_image_model,
+    _looks_like_non_chat_model,
     _looks_like_video_model,
 )
 from backend_service.helpers.model_family_payload import (
@@ -171,6 +172,20 @@ def _read_model_config(path: Path) -> dict[str, Any] | None:
         except Exception:
             continue
     return None
+
+
+def _has_chat_template(path: Path) -> bool:
+    """True when the model folder ships a chat template (a sign it answers chat)."""
+    for directory in _candidate_model_dirs(path):
+        try:
+            if (directory / "chat_template.jinja").exists() or (directory / "chat_template.json").exists():
+                return True
+            tokenizer_config = directory / "tokenizer_config.json"
+            if tokenizer_config.exists() and '"chat_template"' in tokenizer_config.read_text(encoding="utf-8"):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def _model_has_files(path: Path, pattern: str) -> bool:
@@ -421,6 +436,11 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                     model_type = "image"
                 elif _looks_like_draft_model(name):
                     model_type = "draft"
+                elif _looks_like_non_chat_model(
+                    child, name, file_format, source_kind, _read_model_config(child), _has_chat_template(child)
+                ):
+                    # 3D generators, encoders, voice models, bare weight files.
+                    model_type = "other"
                 else:
                     model_type = "text"
                 items.append(

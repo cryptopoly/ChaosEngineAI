@@ -49,7 +49,7 @@ export function inferHfRepoFromLocalPath(path: string | null | undefined): strin
   return repo || null;
 }
 
-const CHAT_EXCLUDED_MODEL_TYPES = new Set(["image", "video", "draft"]);
+const CHAT_EXCLUDED_MODEL_TYPES = new Set(["image", "video", "draft", "other"]);
 
 const VIDEO_LIBRARY_KEYWORDS = [
   "hunyuanvideo",

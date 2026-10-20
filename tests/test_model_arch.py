@@ -210,3 +210,66 @@ class PreviewRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HubArchitectureTests(unittest.TestCase):
+    """Models not downloaded yet: config from the Hub, base model for GGUF repos."""
+
+    def setUp(self):
+        from backend_service.helpers import model_arch
+
+        self.model_arch = model_arch
+        model_arch._HUB_CACHE.clear()
+
+    def test_config_repo(self):
+        from unittest import mock
+
+        with mock.patch.object(self.model_arch, "_fetch_hub_config", return_value=QWEN3_1_7B), \
+                mock.patch.object(self.model_arch, "_hub_base_models") as card:
+            arch = self.model_arch.hub_kv_architecture("Qwen/Qwen3-1.7B")
+        self.assertEqual(arch.source, "hub")
+        self.assertEqual(arch.full_layers, 28)
+        card.assert_not_called()  # the card is only read when the repo has no config
+
+    def test_gguf_repo_uses_its_base_model(self):
+        from unittest import mock
+
+        configs = {"Qwen/Qwen3.8-27B": QWEN38}
+        with mock.patch.object(self.model_arch, "_fetch_hub_config", side_effect=configs.get), \
+                mock.patch.object(self.model_arch, "_hub_base_models", return_value=["Qwen/Qwen3.8-27B"]):
+            arch = self.model_arch.hub_kv_architecture("someone/Qwen3.8-27B-GGUF")
+        self.assertEqual(arch.full_layers, 16)
+
+    def test_failures_are_cached(self):
+        from unittest import mock
+
+        with mock.patch.object(self.model_arch, "_fetch_hub_config", return_value=None) as fetch, \
+                mock.patch.object(self.model_arch, "_hub_base_models", return_value=[]):
+            self.assertIsNone(self.model_arch.hub_kv_architecture("gated/model"))
+            self.assertIsNone(self.model_arch.hub_kv_architecture("gated/model"))
+        self.assertEqual(fetch.call_count, 1)
+
+
+class PreviewRouteHubTests(PreviewRouteTests):
+    def test_repo_not_on_disk_is_read_from_the_hub(self):
+        from unittest import mock
+
+        from backend_service.helpers import model_arch
+
+        model_arch._HUB_CACHE.clear()
+        with mock.patch("backend_service.helpers.hf_cache_paths._hf_repo_snapshot_dir", return_value=None), \
+                mock.patch.object(model_arch, "_fetch_hub_config", return_value=KOLIBRI), \
+                mock.patch.object(model_arch, "_hub_base_models", return_value=[]):
+            body = self._preview(model_repo="Aleph-Alpha/Kolibri-1")
+        self.assertEqual(body["archSource"], "hub")
+        self.assertLess(body["baselineCacheGb"], 0.8)
+
+    def test_malformed_repo_ids_are_ignored(self):
+        from unittest import mock
+
+        from backend_service.helpers import model_arch
+
+        with mock.patch.object(model_arch, "hub_kv_architecture") as hub:
+            for bad in ("../etc", "a/b/c", "no-slash", "a/..", "/abs"):
+                self.assertEqual(self._preview(model_repo=bad)["archSource"], "estimate")
+        hub.assert_not_called()

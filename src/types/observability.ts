@@ -36,5 +36,5 @@ export interface PreviewMetrics {
   summary: string;
   /** Where the cache size came from: the model's own config / GGUF header,
    * or an estimate from its parameter count. */
-  archSource?: "config" | "gguf" | "estimate";
+  archSource?: "config" | "gguf" | "hub" | "estimate";
 }

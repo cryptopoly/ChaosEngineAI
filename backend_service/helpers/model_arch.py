@@ -285,3 +285,102 @@ def read_kv_architecture(path: str | Path) -> KvArchitecture | None:
     except OSError:
         return None
     return _read_cached(str(target), mtime)
+
+
+# ---------------------------------------------------------------------------
+# Hugging Face Hub (models that are not downloaded yet)
+# ---------------------------------------------------------------------------
+
+_HUB_CACHE: dict[str, tuple[float, KvArchitecture | None]] = {}
+_HUB_TTL_SECONDS = 6 * 3600
+_HUB_FAILURE_TTL_SECONDS = 15 * 60
+_HUB_TIMEOUT_SECONDS = 5.0
+
+
+def _fetch_hub_config(repo: str) -> dict[str, Any] | None:
+    """``config.json`` of a Hub repo, read over HTTP.
+
+    Deliberately not ``hf_hub_download``: that would create a cache entry
+    holding only ``config.json``, which the library scan and the "installed"
+    checks would then see as a partly downloaded model.
+    """
+    import os
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
+    url = f"{endpoint}/{urllib.parse.quote(repo, safe='/')}/resolve/main/config.json"
+    headers = {"User-Agent": "ChaosEngineAI"}
+    try:
+        from huggingface_hub import get_token
+
+        token = get_token()
+    except Exception:
+        token = None
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        import ssl
+
+        import certifi  # what huggingface_hub's own client trusts; python.org builds ship no CA bundle
+
+        context = ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        context = None
+    try:
+        request = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(request, timeout=_HUB_TIMEOUT_SECONDS, context=context) as resp:
+            data = json.loads(resp.read(2_000_000).decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _hub_base_models(repo: str) -> list[str]:
+    """``base_model`` from a repo's model card (GGUF repos ship no config.json)."""
+    try:
+        from huggingface_hub import HfApi
+
+        card = HfApi().model_info(repo, timeout=_HUB_TIMEOUT_SECONDS).card_data
+    except Exception:
+        return []
+    base = card.get("base_model") if card else None
+    if isinstance(base, str):
+        return [base]
+    return [b for b in base if isinstance(b, str)] if isinstance(base, list) else []
+
+
+def hub_kv_architecture(repo: str) -> KvArchitecture | None:
+    """Attention layout of a Hub repo that is not on disk, from its config.
+
+    A GGUF repo has no ``config.json``; its model card's ``base_model`` is
+    tried instead. Results (including failures, for a shorter time) are kept
+    in memory so the launch preview does not hit the network on every change.
+    """
+    import time
+
+    now = time.time()
+    cached = _HUB_CACHE.get(repo)
+    if cached is not None:
+        stored_at, value = cached
+        if now - stored_at < (_HUB_TTL_SECONDS if value is not None else _HUB_FAILURE_TTL_SECONDS):
+            return value
+
+    found: KvArchitecture | None = None
+    import itertools
+
+    for candidate in itertools.chain([repo], _hub_base_models_if_needed(repo)):
+        config = _fetch_hub_config(candidate)
+        if config is not None:
+            found = architecture_from_config(config)
+            if found is not None:
+                found = KvArchitecture(**{**found.__dict__, "source": "hub"})
+                break
+    _HUB_CACHE[repo] = (now, found)
+    return found
+
+
+def _hub_base_models_if_needed(repo: str):
+    """Lazily yields base models, so the card is only fetched when the repo has no config."""
+    yield from _hub_base_models(repo)

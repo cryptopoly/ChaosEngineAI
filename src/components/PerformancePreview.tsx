@@ -169,6 +169,10 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
               defaultValue: "Cache sized from the model's own {source}.",
               source: preview.archSource === "gguf" ? "GGUF header" : "config",
             })
+          : preview.archSource === "hub"
+          ? t("performancePreview.sourceHub", {
+              defaultValue: "Cache sized from the model's config on Hugging Face.",
+            })
           : t("performancePreview.sourceEstimate", {
               defaultValue: "Rough cache estimate from the parameter count; it gets exact once the model is downloaded.",
             })}

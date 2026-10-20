@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ from fastapi import APIRouter, Query, Request
 from backend_service.app import _build_system_snapshot, compute_cache_preview
 
 router = APIRouter()
+
+_REPO_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 def _model_arch(request: Request, model_path: str | None, model_repo: str | None):
@@ -19,7 +22,7 @@ def _model_arch(request: Request, model_path: str | None, model_repo: str | None
     ``model_repo`` is resolved to its downloaded snapshot, if there is one.
     """
     from backend_service.helpers.hf_cache_paths import _hf_hub_cache_root, _hf_repo_snapshot_dir
-    from backend_service.helpers.model_arch import read_kv_architecture
+    from backend_service.helpers.model_arch import hub_kv_architecture, read_kv_architecture
 
     if model_path:
         try:
@@ -42,10 +45,12 @@ def _model_arch(request: Request, model_path: str | None, model_repo: str | None
                     if found is not None:
                         return found
                     break
-    if model_repo and "/" in model_repo and ".." not in model_repo:
+    if model_repo and _REPO_ID.fullmatch(model_repo):
         snapshot = _hf_repo_snapshot_dir(model_repo)
-        if snapshot is not None:
-            return read_kv_architecture(snapshot)
+        found = read_kv_architecture(snapshot) if snapshot is not None else None
+        # Not downloaded yet: read its config from the Hub, so the estimate is
+        # exact while the user is still deciding whether to download.
+        return found or hub_kv_architecture(model_repo)
     return None
 
 

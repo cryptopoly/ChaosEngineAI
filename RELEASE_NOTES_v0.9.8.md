@@ -33,13 +33,19 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 
 A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Models and Gallery tabs. Whisper and Parakeet (Apple Silicon) or faster-whisper (Windows and Linux) for transcription, Kokoro for speech.
 
+### Chat and Settings
+
+- **Chat > My Models lists chat models only.** 3D tool parts, text encoders, voice models and bare weight files used to show up as chat models (35 of 45 entries on one Mac). They are now classified from what is on disk, so only real chat models appear. The library re-scans once on first launch.
+- **Settings > Diagnostics is split into three tabs**: Diagnostics (the system snapshot and runtime tools), Accelerators (the Boost Pack and the Windows WSL bridge) and Disk usage (the top 20 model repos). Refreshing the snapshot no longer pushes the install buttons and the disk scan off screen.
+- **Disk usage rows expand and can be deleted.** Click a folder to see what is inside it, as deep as you like, and remove a repo, folder or file with the Delete button (a confirmation shows the path and size first). The shared Hugging Face `blobs` store is marked "shared" and cannot be deleted from here, because many repos link into it.
+
 ### Fixes
 
 - **Linux AppImage** stuck on "Still loading": the backend was killed as soon as the app finished starting it, and the loading screen never showed the error. Both fixed; the log path now appears on the loading screen. Not yet tested on Fedora.
 - **Local GGUF folders** from ModelScope (`Qwen3___5` style names) and symlinked model folders are now listed.
 - **GGUF downloads** fetch only the quant a catalog row names, not every quant in the repo (one 16 GB row used to pull 68 GB).
 - **Dead catalog links**: 13 catalog rows pointed at Hugging Face repos or files that do not exist, so their Download button failed. All repaired, and a new audit script checks every row.
-- **Release builds** now include the `dflash` package, so DFlash and DDTree actually engage in the packaged app, and the Setup installers for MTPLX, TensorFold and mflux.
+- **Release builds** now include the `dflash` package, so DFlash and DDTree actually engage in the packaged app, and the Setup installers for MTPLX, TensorFold and mflux. They also bundle a pinned llama.cpp build (b11277), so GGUF models work out of the box; upstream's "latest" release had stopped carrying the binaries.
 - **Tool use on Apple Silicon (MLX)** no longer loops: tool results were never passed back to the model, so it repeated the same call until the iteration cap. The non-streaming chat API with tools enabled no longer answers 500.
 - Installing optional packages from Setup no longer pulls a newer MLX over the one the app runs.
 - Models whose download skipped some files on purpose no longer open as a placeholder image engine.

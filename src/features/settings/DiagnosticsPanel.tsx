@@ -415,8 +415,33 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
           </div>
         </div>
       ) : null}
+    </Panel>
+  );
+}
+
+// Settings > Accelerators. The Boost Pack and the WSL bridge used to sit at
+// the bottom of the Diagnostics panel, below the system snapshot; refreshing
+// the snapshot grew that panel and pushed them off screen with no way to scroll
+// to them, so they now have their own tab.
+export function AcceleratorsPanel({ backendOnline }: { backendOnline: boolean }) {
+  return (
+    <Panel
+      title="Accelerators"
+      subtitle="Optional speed-ups for image, video and chat inference, and the Windows WSL bridge."
+    >
       <AcceleratorsBoostPack backendOnline={backendOnline} />
       <WslBridgePanel backendOnline={backendOnline} />
+    </Panel>
+  );
+}
+
+// Settings > Disk usage (FU-055), for the same reason.
+export function DiskUsagePanel({ backendOnline }: { backendOnline: boolean }) {
+  return (
+    <Panel
+      title="Disk usage"
+      subtitle="Which model repos take the space, so you know what to delete."
+    >
       <StorageTopSection backendOnline={backendOnline} />
     </Panel>
   );
@@ -448,7 +473,7 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
 
   return (
     <div className="diagnostics-section">
-      <h3>Disk usage — top 20 model repos</h3>
+      <h3>Top 20 model repos</h3>
       <p className="muted-text" style={{ marginBottom: 8 }}>
         Walks every enabled model directory and lists the biggest repos on disk.
         Counts blob bytes once (Hugging Face's ``snapshots/`` are symlinks to

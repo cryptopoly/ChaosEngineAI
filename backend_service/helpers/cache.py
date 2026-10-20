@@ -18,9 +18,10 @@ from backend_service.helpers.formatting import _bytes_to_gb
 _DECODE_BANDWIDTH_EFFICIENCY = 0.84
 _TOKEN_OVERHEAD_SECONDS_DENSE = 0.002
 _TOKEN_OVERHEAD_SECONDS_MOE = 0.006
-# KV cache read per token, sized at a typical conversation length rather
-# than the full window (a turn rarely starts with the window already full).
-_TYPICAL_KV_TOKENS = 8192
+# KV cache read per token, sized at a typical chat turn rather than the
+# full window. 2K keeps small models honest: Ternary Bonsai 4B measured 213
+# tok/s (catalog smoke run) against 234 estimated here, but 144 at 8K.
+_TYPICAL_KV_TOKENS = 2048
 
 
 def estimate_decode_tok_s(

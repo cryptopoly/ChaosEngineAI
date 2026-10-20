@@ -357,6 +357,8 @@ export async function getCachePreview(options: {
   modelPath?: string | null;
   /** Hugging Face repo id; used when the repo is already downloaded. */
   modelRepo?: string | null;
+  /** Weights size on disk, for the bandwidth-based speed estimate. */
+  weightsGb?: number | null;
 }): Promise<PreviewMetrics> {
   const search = new URLSearchParams({
     bits: String(options.bits),
@@ -378,6 +380,9 @@ export async function getCachePreview(options: {
   }
   if (options.modelRepo) {
     search.set("model_repo", options.modelRepo);
+  }
+  if (options.weightsGb && options.weightsGb > 0) {
+    search.set("weights_gb", String(options.weightsGb));
   }
 
   try {

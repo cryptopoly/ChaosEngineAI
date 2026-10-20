@@ -54,6 +54,7 @@ export function useSettings(
     strategy: emptyLaunchPreferences.cacheStrategy,
     modelPath: null as string | null,
     modelRepo: null as string | null,
+    weightsGb: null as number | null,
   });
   const [dataDirRestartPrompt, setDataDirRestartPrompt] = useState<DataDirRestartPrompt | null>(null);
   const [newDirectoryLabel, setNewDirectoryLabel] = useState("");

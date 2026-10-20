@@ -35,6 +35,9 @@ class KvArchitecture:
     # layer instead of per-head keys and values; this is its width.
     latent_dim: int = 0
     source: str = "config"
+    # Share of the weights read for each generated token: 1.0 for a dense
+    # model, the active-parameter share for a mixture of experts.
+    active_fraction: float = 1.0
 
     def bytes_per_token_per_layer(self, bytes_per_element: int = 2) -> int:
         if self.latent_dim:
@@ -85,6 +88,39 @@ def _layer_counts_from_config(cfg: dict[str, Any], num_layers: int) -> tuple[int
     return None
 
 
+def _moe_active_fraction(
+    *,
+    hidden: int | None,
+    layers: int,
+    attn_params_per_layer: int,
+    experts: int | None,
+    experts_used: int | None,
+    expert_ffn: int | None,
+    shared_ffn: int,
+    dense_ffn: int,
+    dense_ffn_layers: int,
+    vocab: int | None,
+    tied: bool,
+) -> float:
+    """Active / total parameters of a mixture-of-experts stack (1.0 if dense).
+
+    Counts the matmul weights that decide memory traffic: attention, routed
+    and shared experts, any dense MLP, and the output head. Embedding lookups
+    read one row per token, so the input embedding counts towards the total
+    only.
+    """
+    if not hidden or not experts or not experts_used or not expert_ffn or experts_used >= experts:
+        return 1.0
+    per_expert = 3 * hidden * expert_ffn
+    shared = 3 * hidden * shared_ffn
+    dense = 3 * hidden * dense_ffn
+    head = hidden * (vocab or 0)
+    common = layers * attn_params_per_layer + layers * shared + dense_ffn_layers * dense + head
+    total = common + layers * experts * per_expert + (0 if tied else head)
+    active = common + layers * experts_used * per_expert
+    return max(0.01, min(1.0, active / total)) if total else 1.0
+
+
 def architecture_from_config(config: dict[str, Any]) -> KvArchitecture | None:
     cfg = config.get("text_config") if isinstance(config.get("text_config"), dict) else config
     model_type = str(cfg.get("model_type") or config.get("model_type") or "")
@@ -107,15 +143,43 @@ def architecture_from_config(config: dict[str, Any]) -> KvArchitecture | None:
     if sliding and not window:
         full, sliding = full + sliding, 0
 
+    experts = _int(cfg.get("num_experts") or cfg.get("num_local_experts") or cfg.get("n_routed_experts"))
+    experts_used = _int(cfg.get("num_experts_per_tok") or cfg.get("top_k_experts") or cfg.get("moe_topk"))
+    expert_ffn = _int(cfg.get("moe_intermediate_size") or cfg.get("expert_intermediate_size"))
+    shared_ffn = _int(cfg.get("shared_expert_intermediate_size")) or (
+        (_int(cfg.get("n_shared_experts")) or 0) * (expert_ffn or 0)
+    )
+    dense_layers = _int(cfg.get("first_k_dense_replace")) or 0
+    if cfg.get("enable_moe_block") and _int(cfg.get("intermediate_size")):
+        dense_layers = num_layers  # Gemma 4: a dense MLP beside the experts in every layer
+    q_dim = (heads or 0) * (head_dim or 0)
+    kv_dim = (kv_heads or 0) * (head_dim or 0)
+    active_fraction = _moe_active_fraction(
+        hidden=hidden,
+        layers=num_layers,
+        attn_params_per_layer=(hidden or 0) * (2 * q_dim + 2 * kv_dim),
+        experts=experts,
+        experts_used=experts_used,
+        expert_ffn=expert_ffn,
+        shared_ffn=shared_ffn or 0,
+        dense_ffn=_int(cfg.get("intermediate_size")) or 0,
+        dense_ffn_layers=dense_layers,
+        vocab=_int(cfg.get("vocab_size")),
+        tied=bool(cfg.get("tie_word_embeddings")),
+    )
+
     if kv_lora_rank:
         return KvArchitecture(
             num_layers, full, sliding, window, 1, 0, 0,
-            latent_dim=kv_lora_rank + (rope_dim or 0), source="config",
+            latent_dim=kv_lora_rank + (rope_dim or 0), source="config", active_fraction=active_fraction,
         )
     if not kv_heads or not head_dim:
         return None
     value_dim = _int(cfg.get("v_head_dim")) or head_dim
-    return KvArchitecture(num_layers, full, sliding, window, kv_heads, head_dim, value_dim, source="config")
+    return KvArchitecture(
+        num_layers, full, sliding, window, kv_heads, head_dim, value_dim,
+        source="config", active_fraction=active_fraction,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -229,13 +293,35 @@ def architecture_from_gguf_metadata(meta: dict[str, Any]) -> KvArchitecture | No
             full = attn_count // every
             sliding = attn_count - full
 
+    shared_count = _int(key("expert_shared_count")) or 0
+    expert_ffn = _int(key("expert_feed_forward_length"))
+    active_fraction = _moe_active_fraction(
+        hidden=hidden,
+        layers=num_layers,
+        attn_params_per_layer=(hidden or 0) * ((heads or 0) * key_dim * 2 + kv_heads * (key_dim + value_dim)),
+        experts=_int(key("expert_count")),
+        experts_used=_int(key("expert_used_count")),
+        expert_ffn=expert_ffn,
+        shared_ffn=_int(key("expert_shared_feed_forward_length")) or shared_count * (expert_ffn or 0),
+        dense_ffn=_int(key("feed_forward_length")) or 0,
+        dense_ffn_layers=_int(key("leading_dense_block_count")) or 0,
+        vocab=_int(key("vocab_size")),
+        tied=False,
+    )
+
     kv_lora_rank = _int(key("attention.kv_lora_rank"))
     if kv_lora_rank:
         rope_dim = _int(key("rope.dimension_count")) or 0
-        return KvArchitecture(num_layers, full, sliding, window, 1, 0, 0, latent_dim=kv_lora_rank + rope_dim, source="gguf")
+        return KvArchitecture(
+            num_layers, full, sliding, window, 1, 0, 0,
+            latent_dim=kv_lora_rank + rope_dim, source="gguf", active_fraction=active_fraction,
+        )
     if not key_dim:
         return None
-    return KvArchitecture(num_layers, full, sliding, window, kv_heads, key_dim, value_dim, source="gguf")
+    return KvArchitecture(
+        num_layers, full, sliding, window, kv_heads, key_dim, value_dim,
+        source="gguf", active_fraction=active_fraction,
+    )
 
 
 # ---------------------------------------------------------------------------

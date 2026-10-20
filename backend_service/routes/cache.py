@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query, Request
 
-from backend_service.app import _build_system_snapshot, compute_cache_preview
+from backend_service.app import compute_cache_preview
 
 router = APIRouter()
 
@@ -68,8 +68,18 @@ def cache_preview(
     strategy: str = Query("native"),
     model_path: str | None = Query(None, max_length=4096),
     model_repo: str | None = Query(None, max_length=256),
+    weights_gb: float | None = Query(None, gt=0, le=4000),
 ) -> dict[str, Any]:
-    system_stats = _build_system_snapshot(capabilities=request.app.state.chaosengine.runtime.capabilities)
+    from backend_service.helpers.speed_history import measured_decode_tok_s
+
+    state = request.app.state.chaosengine
+    measured = measured_decode_tok_s(
+        state.chat_sessions,
+        state.benchmark_runs,
+        model_path=model_path,
+        model_repo=model_repo,
+        strategy="native" if bits <= 0 else strategy,
+    )
     return compute_cache_preview(
         bits=bits,
         fp16_layers=fp16_layers,
@@ -79,7 +89,8 @@ def cache_preview(
         hidden_size=hidden_size,
         context_tokens=context_tokens,
         params_b=params_b,
-        system_stats=system_stats,
         strategy=strategy,
         arch=_model_arch(request, model_path, model_repo),
+        weights_gb=weights_gb,
+        measured_tok_s=measured,
     )

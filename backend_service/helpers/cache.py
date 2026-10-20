@@ -3,15 +3,38 @@ from __future__ import annotations
 
 from typing import Any
 
-import psutil
-
 from backend_service.helpers.formatting import _bytes_to_gb
 
 
-def _estimate_baseline_tok_s(system_stats: dict[str, Any]) -> float:
-    cpu_count = psutil.cpu_count(logical=False) or psutil.cpu_count() or 8
-    baseline = 15.0 + cpu_count * 1.1 + system_stats["totalMemoryGb"] * 0.5
-    return round(baseline, 1)
+# Decode reads the active weights (and the KV cache) once per token, so its
+# speed is bandwidth / bytes per token, plus a fixed per-token cost (kernel
+# launches, sampling; larger for mixture-of-experts routing). Fitted on an M4
+# Max (546 GB/s) against this machine's median chat speeds, 2026-10-20
+# (measured / estimate, tok/s): Qwen3-4B bf16 52 / 51, Qwen3-0.6B 4-bit
+# 346 / 350, Qwen3-0.6B GGUF 311 / 325, Qwen2.5-0.5B 4-bit 467 / 382,
+# Bonsai 1.7B Q1_0 328 / 375, Ternary Bonsai 27B 42 / 49, Qwen3.6-35B-A3B
+# 4-bit 94 / 109, Gemma 4 26B-A4B bf16 52 / 43. Within about 20% except the
+# smallest models, where per-token overhead dominates.
+_DECODE_BANDWIDTH_EFFICIENCY = 0.84
+_TOKEN_OVERHEAD_SECONDS_DENSE = 0.002
+_TOKEN_OVERHEAD_SECONDS_MOE = 0.006
+# KV cache read per token, sized at a typical conversation length rather
+# than the full window (a turn rarely starts with the window already full).
+_TYPICAL_KV_TOKENS = 8192
+
+
+def estimate_decode_tok_s(
+    *,
+    weights_gb: float,
+    active_fraction: float,
+    kv_bytes_per_token_read: float,
+    bandwidth_gbps: float,
+) -> float:
+    """Tokens per second for single-stream decode with the native cache."""
+    bytes_per_token = weights_gb * 1e9 * max(0.01, min(1.0, active_fraction)) + kv_bytes_per_token_read
+    overhead = _TOKEN_OVERHEAD_SECONDS_MOE if active_fraction < 0.9 else _TOKEN_OVERHEAD_SECONDS_DENSE
+    seconds = bytes_per_token / (_DECODE_BANDWIDTH_EFFICIENCY * bandwidth_gbps * 1e9) + overhead
+    return 1.0 / seconds
 
 
 def _strategy_speed_map(strategy: str) -> dict[int, float]:
@@ -55,12 +78,21 @@ def compute_cache_preview(
     strategy: str = "native",
     build_system_snapshot=None,
     arch=None,
+    weights_gb: float | None = None,
+    measured_tok_s: float | None = None,
 ) -> dict[str, Any]:
     """Cache size, speed and quality preview for one launch configuration.
 
     ``arch`` is the model's real attention layout (``helpers.model_arch``).
     When given, the f16 cache is sized from it and a compressed strategy keeps
     its own ratio; otherwise the layer / head arguments are an estimate.
+
+    ``system_stats`` / ``build_system_snapshot`` are accepted for older
+    callers and no longer used.
+
+    Speed: ``measured_tok_s`` (this machine's own history for the model) wins;
+    otherwise it is estimated from memory bandwidth and the bytes read per
+    token (``weights_gb`` on disk, scaled by the active-parameter share).
     """
     from cache_compression import registry as _cache_registry
 
@@ -107,13 +139,27 @@ def compute_cache_preview(
         if arch.kv_heads:
             num_kv_heads = arch.kv_heads
 
-    if system_stats is None and build_system_snapshot is not None:
-        preview_system = build_system_snapshot()
+    from backend_service.helpers.bandwidth import memory_bandwidth
+
+    bandwidth_gbps, bandwidth_label, bandwidth_known = memory_bandwidth()
+    kv_tokens = min(context_tokens, _TYPICAL_KV_TOKENS)
+    kv_read = (
+        arch.cache_bytes(kv_tokens)
+        if arch is not None
+        else baseline_bytes * kv_tokens / max(context_tokens, 1)
+    )
+    if measured_tok_s and measured_tok_s > 0:
+        baseline_tok_s = measured_tok_s
+        speed_source = "measured"
     else:
-        preview_system = system_stats or {}
-    baseline_tok_s = _estimate_baseline_tok_s(preview_system)
-    model_scale = min(1.55, max(0.2, (7.0 / max(params_b, 1.0)) ** 0.38))
-    baseline_tok_s *= model_scale
+        baseline_tok_s = estimate_decode_tok_s(
+            # Without the file size, assume a 4-bit build (~0.56 GB per billion).
+            weights_gb=weights_gb if weights_gb and weights_gb > 0 else params_b * 0.56,
+            active_fraction=arch.active_fraction if arch is not None else 1.0,
+            kv_bytes_per_token_read=kv_read,
+            bandwidth_gbps=bandwidth_gbps,
+        )
+        speed_source = "estimate"
     estimated_tok_s = round(baseline_tok_s * speed_ratio, 1)
 
     # Estimate on-disk size: BF16 models are ~2 bytes/param, 4-bit quant ~0.5 bytes/param.
@@ -152,4 +198,10 @@ def compute_cache_preview(
         # "config" / "gguf" when the cache was sized from the model's own
         # files, "estimate" when it was guessed from the parameter count.
         "archSource": arch.source if arch is not None else "estimate",
+        # "measured" when the speed comes from this machine's own runs of the
+        # model, "estimate" when it comes from memory bandwidth.
+        "speedSource": speed_source,
+        "bandwidthGbps": bandwidth_gbps,
+        "bandwidthLabel": bandwidth_label,
+        "bandwidthKnown": bandwidth_known,
     }

@@ -167,15 +167,8 @@ class PreviewRouteTests(unittest.TestCase):
         state.settings["modelDirectories"] = [{"id": "m", "path": str(self.models), "enabled": True}]
         self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
         self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
-        from unittest import mock
-
-        self._snapshot = mock.patch(
-            "backend_service.routes.cache._build_system_snapshot", return_value={"totalMemoryGb": 64.0},
-        )
-        self._snapshot.start()
 
     def tearDown(self):
-        self._snapshot.stop()
         self.tmp.cleanup()
 
     def _preview(self, **params):

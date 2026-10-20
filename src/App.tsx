@@ -667,6 +667,7 @@ export default function App() {
       strategy: workspace.settings.launchPreferences.cacheStrategy,
       modelPath: null,
       modelRepo: null,
+      weightsGb: null,
     });
     setActiveChatId(workspace.chatSessions[0]?.id ?? "");
     setThreadTitleDraft(workspace.chatSessions[0]?.title ?? "");
@@ -851,10 +852,12 @@ export default function App() {
     // While the launch modal is open it owns the preview (effect below);
     // closing it re-runs this so the tab's own model comes back.
     if (pendingLaunch || !previewVariant?.paramsB) return;
-    const next = previewModelControls(previewVariant.paramsB, previewVariantPath, previewVariant.repo);
+    const next = previewModelControls(
+      previewVariant.paramsB, previewVariantPath, previewVariant.repo, previewVariant.sizeGb,
+    );
     setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingLaunch === null, previewVariant?.paramsB, previewVariant?.repo, previewVariantPath, setPreviewControls]);
+  }, [pendingLaunch === null, previewVariant?.paramsB, previewVariant?.repo, previewVariant?.sizeGb, previewVariantPath, setPreviewControls]);
 
   // Sync serverModelKey when options change
   useEffect(() => {
@@ -926,7 +929,7 @@ export default function App() {
     }
     if (!paramsB && sizeGb) paramsB = estimateParamsBFromDisk(sizeGb, detectBitsPerWeight(label));
     if (!paramsB) return;
-    const next = previewModelControls(paramsB, modelPath, modelRepo);
+    const next = previewModelControls(paramsB, modelPath, modelRepo, sizeGb);
     setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, benchmarkOption?.key, conversionSource?.path, conversionVariant?.id]);
@@ -952,7 +955,7 @@ export default function App() {
     }
     if (!paramsB) return;
     const repo = opt.canonicalRepo ?? (opt.modelRef.includes("/") ? opt.modelRef : null);
-    const next = previewModelControls(paramsB, opt.path ?? null, repo);
+    const next = previewModelControls(paramsB, opt.path ?? null, repo, opt.sizeGb);
     setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [launchModalOpen, pendingLaunch?.preselectedKey, libraryChatOptions, threadModelOptions]);

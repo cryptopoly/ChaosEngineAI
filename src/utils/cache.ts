@@ -30,6 +30,8 @@ export interface PreviewModelControls {
   numKvHeads: number;
   modelPath: string | null;
   modelRepo: string | null;
+  /** Size of the model's weights on disk; drives the speed estimate. */
+  weightsGb: number | null;
 }
 
 /** Preview inputs for one model. The layer / head numbers are the fallback
@@ -39,8 +41,15 @@ export function previewModelControls(
   paramsB: number,
   modelPath?: string | null,
   modelRepo?: string | null,
+  weightsGb?: number | null,
 ): PreviewModelControls {
-  return { paramsB, ...estimateArchFromParams(paramsB), modelPath: modelPath ?? null, modelRepo: modelRepo ?? null };
+  return {
+    paramsB,
+    ...estimateArchFromParams(paramsB),
+    modelPath: modelPath ?? null,
+    modelRepo: modelRepo ?? null,
+    weightsGb: weightsGb && weightsGb > 0 ? weightsGb : null,
+  };
 }
 
 export function samePreviewModel(current: PreviewModelControls, next: PreviewModelControls): boolean {
@@ -52,6 +61,7 @@ export function samePreviewModel(current: PreviewModelControls, next: PreviewMod
     && current.hiddenSize === next.hiddenSize
     && current.modelPath === next.modelPath
     && current.modelRepo === next.modelRepo
+    && current.weightsGb === next.weightsGb
   );
 }
 

@@ -35,8 +35,11 @@ function previewUrl(fetchMock: ReturnType<typeof stubFetch>): URL {
 describe("getCachePreview", () => {
   it("sends the model path and repo so the backend can read the real layout", async () => {
     const fetchMock = stubFetch();
-    await getCachePreview({ ...base, modelPath: "/models/bonsai", modelRepo: "prism-ml/Bonsai-1.7B-gguf" });
+    await getCachePreview({
+      ...base, modelPath: "/models/bonsai", modelRepo: "prism-ml/Bonsai-1.7B-gguf", weightsGb: 0.25,
+    });
     const url = previewUrl(fetchMock);
+    expect(url.searchParams.get("weights_gb")).toBe("0.25");
     expect(url.searchParams.get("model_path")).toBe("/models/bonsai");
     expect(url.searchParams.get("model_repo")).toBe("prism-ml/Bonsai-1.7B-gguf");
   });

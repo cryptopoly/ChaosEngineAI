@@ -87,6 +87,11 @@ def strip_harmony_boilerplate(text: str) -> str:
     return cleaned.strip()
 
 
+def prompt_opens_reasoning(prompt_text: str | None, open_tag: str) -> bool:
+    """True when the rendered prompt ends with the reasoning open tag."""
+    return bool(prompt_text) and prompt_text.rstrip().endswith(open_tag)
+
+
 def reasoning_delimiters_for(model_ref: str | None) -> tuple[str, str]:
     """Resolve the reasoning open/close tag pair for a given model reference.
 
@@ -297,6 +302,7 @@ class ThinkingTokenFilter:
         open_tag: str = _THINK_OPEN,
         close_tag: str = _THINK_CLOSE,
         max_reasoning_chars: int | None = 32_000,
+        starts_inside_reasoning: bool = False,
     ) -> None:
         # `open_tag` / `close_tag` let downstream callers override the XML
         # delimiters per model family — see `reasoning_delimiters_for()`.
@@ -326,6 +332,12 @@ class ThinkingTokenFilter:
         self._max_reasoning_chars = max_reasoning_chars
         self._reasoning_emitted = 0
         self._reasoning_capped = False
+        # Some chat templates end the generation prompt with the open tag
+        # (LFM2.5 always; Qwen3.5/3.6 with thinking on), so the reply begins
+        # inside the reasoning block and only the close tag ever appears.
+        if starts_inside_reasoning:
+            self._inside_xml_think = True
+            self._startup_done = True
 
     def feed(self, text: str) -> ThinkingStreamResult:
         self._buffer += text

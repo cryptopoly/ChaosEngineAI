@@ -44,6 +44,7 @@ from backend_service.mlx_worker_request import (
 from backend_service.reasoning_split import (
     RAW_REASONING_HEADING_RE,
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -209,6 +210,7 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
     )
     filter_result = think_filter.feed(raw_text)
     flushed = think_filter.flush()
@@ -359,6 +361,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
     )
     transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
     transcript_trimmed = False
@@ -455,6 +458,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                 detect_raw_reasoning=(thinking_mode != "off"),
                 open_tag=_open_tag,
                 close_tag=_close_tag,
+                starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
             )
             transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
             transcript_trimmed = False

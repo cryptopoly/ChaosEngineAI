@@ -28,6 +28,7 @@ from backend_service.mlx_worker_prompt import (
 from backend_service.mlx_worker_request import _format_tools_for_prompt
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -120,6 +121,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
             detect_raw_reasoning=(thinking_mode != "off"),
             open_tag=_open_tag,
             close_tag=_close_tag,
+            starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
         )
         result = think_filter.feed(text)
         flushed = think_filter.flush()
@@ -236,6 +238,7 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
             detect_raw_reasoning=(thinking_mode != "off"),
             open_tag=_open_tag,
             close_tag=_close_tag,
+            starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
         )
         filter_result = think_filter.feed(text)
         flushed = think_filter.flush()

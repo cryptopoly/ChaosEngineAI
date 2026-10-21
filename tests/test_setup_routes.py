@@ -201,15 +201,18 @@ class SetupRouteTests(unittest.TestCase):
         )
 
     def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
-        """mlx-video's unbounded mlx-vlm dependency resolves to a release that
-        needs mlx >=0.32; the install pins the generation the app runs on."""
+        """mlx-video's unbounded mlx-vlm dependency is held to the app's mlx
+        series by the constraint file, not by a fixed version that goes stale
+        when the app's mlx moves."""
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
-             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")):
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.routes.setup._write_mlx_constraint", return_value=Path("/tmp/x-extras/c.txt")):
             mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
             self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
         cmd = mock_run.call_args[0][0]
-        self.assertIn("mlx>=0.31.2,<0.32", cmd)
-        self.assertIn("mlx-vlm>=0.6.3,<0.6.5", cmd)
+        self.assertIn("mlx-vlm>=0.6.3", cmd)
+        self.assertEqual(cmd[cmd.index("-c") + 1], "/tmp/x-extras/c.txt")
+        self.assertFalse(any(arg.startswith("mlx>=") or arg.startswith("mlx<") for arg in cmd), cmd)
 
     def test_every_overlay_install_passes_the_mlx_constraint_file(self):
         """Any package can have an unbounded mlx dependency (mlx-audio does),

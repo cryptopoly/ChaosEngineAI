@@ -223,13 +223,14 @@ def _installable_system_packages(python_executable: str) -> dict[str, list[str]]
     }
 
 
-# Packages whose own dependencies are unbounded and would otherwise drag a newer
-# MLX generation into the extras overlay. mlx-video requires "mlx-vlm" with no
-# upper bound; mlx-vlm 0.6.5 and later need mlx >=0.32, newer than the mlx the
-# app ships (0.31), and the mixed result broke image and video generation.
-# 0.6.4 is the last mlx-vlm that runs on mlx 0.31.
+# Extra requirements installed with a package. mlx-video requires "mlx-vlm"
+# with no bound at all; the floor keeps an older mlx-vlm out. The upper end
+# needs no pin here: every overlay install carries the mlx constraint file
+# (_write_mlx_constraint), so the resolver picks the newest mlx-vlm that runs
+# on the app's own mlx series (0.6.4 on mlx 0.31, 0.7.x on 0.32). A fixed
+# "mlx<0.32" pin here broke the install once the app moved to mlx 0.32.
 _COMPANION_PINS: dict[str, tuple[str, ...]] = {
-    "mlx-video": ("mlx>=0.31.2,<0.32", "mlx-vlm>=0.6.3,<0.6.5"),
+    "mlx-video": ("mlx-vlm>=0.6.3",),
 }
 
 

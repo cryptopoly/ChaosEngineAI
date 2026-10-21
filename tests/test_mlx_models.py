@@ -255,6 +255,19 @@ class ChatTemplateSwitchesTests(unittest.TestCase):
     def test_thinking_on_without_an_effort_keeps_the_template_default(self) -> None:
         self.assertEqual(chat_template_switches(_tok(KOLIBRI_TEMPLATE), {"thinkingMode": "auto"}), {})
 
+    def test_enable_thinking_follows_the_thinking_toggle(self) -> None:
+        qwen = "{%- if enable_thinking is defined and enable_thinking is false %}<think>\n\n</think>{% endif %}"
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "off"}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "auto"}), {"enable_thinking": True})
+
+    def test_both_switches_reach_a_template_that_reads_both(self) -> None:
+        both = KOLIBRI_TEMPLATE + "{%- elif enable_thinking is defined and enable_thinking is false -%}"
+        self.assertEqual(
+            chat_template_switches(_tok(both), {"thinkingMode": "off"}),
+            {"enable_thinking": False, "reasoning_effort": "none"},
+        )
+
     def test_other_templates_get_nothing(self) -> None:
         request = {"thinkingMode": "auto", "reasoningEffort": "high"}
         self.assertEqual(chat_template_switches(_tok("{{ messages }}"), request), {})

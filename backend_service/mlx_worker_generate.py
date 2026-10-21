@@ -267,6 +267,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state.tree_budget > 0 and state._ddtree_draft is not None:
         try:
             result = state._generate_ddtree(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({
@@ -300,6 +303,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state._dflash_generator is not None:
         try:
             result = state._generate_dflash(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({

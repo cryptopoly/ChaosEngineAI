@@ -50,7 +50,7 @@ const BUNDLED_INSTALL_SCRIPTS = ["install-mflux.sh", "install-mtplx.sh", "instal
 // the repository's "latest" release, which had become a `v0.7.0` entry holding
 // only nightly-tag.txt, so no platform's release bundle got a llama-server.
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
-const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11277";
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11786";
 
 main();
 

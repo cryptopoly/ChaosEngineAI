@@ -1318,6 +1318,27 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "backend": "mlx",
                 "releaseDate": "2026-10",
             },
+            {
+                "id": "bartowski/Kolibri-1-GGUF-q3km",
+                "name": "Kolibri 1 GGUF Q3_K_M",
+                "repo": "bartowski/Kolibri-1-GGUF",
+                "link": "https://huggingface.co/bartowski/Kolibri-1-GGUF",
+                "paramsB": 78.0,
+                "sizeGb": 37.6,
+                "format": "GGUF",
+                "quantization": "Q3_K_M",
+                "ggufFile": "Kolibri-1-Q3_K_M.gguf",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": (
+                    "llama.cpp build of Kolibri 1 (kolibri1 is in the bundled llama.cpp from b11786), so it "
+                    "also runs on Windows and Linux. The repo has quants from IQ1_S (17.6 GB) to Q8_0 (83 GB). "
+                    "Apache 2.0."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
         ],
         "readme": [
             "Kolibri 1 is Aleph Alpha's open-weight reasoning model for German and English: 78B total, 3.46B active per token, Apache 2.0.",

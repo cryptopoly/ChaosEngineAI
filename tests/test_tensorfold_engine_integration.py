@@ -65,6 +65,16 @@ class TensorFoldEngineIntegrationTests(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
         os.environ.pop("HUGGINGFACE_HUB_CACHE", None)
+        # No real downloads: a test that starts the engine without a draft
+        # model in the temp cache would otherwise fetch the real one from the
+        # Hub (and hang on a slow line). Tests about downloading patch this
+        # again with their own fake.
+        offline = mock.patch(
+            "huggingface_hub.snapshot_download",
+            side_effect=OSError("network disabled in tests"),
+        )
+        offline.start()
+        self.addCleanup(offline.stop)
 
         self.capabilities = BackendCapabilities(
             pythonExecutable=sys.executable,

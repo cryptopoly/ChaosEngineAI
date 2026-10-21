@@ -817,6 +817,26 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "backend": "llama.cpp",
                 "releaseDate": "2026-05",
             },
+            {
+                "id": "TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
+                "name": "Qwen3.6 35B-A3B MLX 4-bit MTP (TensorFold)",
+                "repo": "TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
+                "link": "https://huggingface.co/TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
+                "paramsB": 35.0,
+                "sizeGb": 20.9,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "note": (
+                    "TensorFold's checkpoint with the model's MTP layer (mtp-4bit.safetensors). With TensorFold "
+                    "installed and speculative decoding ticked, it drafts with that layer and replies exactly as "
+                    "plain decoding would; otherwise it loads on stock mlx-lm. Apache 2.0."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
         ],
         "readme": [
             "Qwen 3.6 is the April 2026 follow-up to Qwen 3.5, with two open-weight releases: a dense 27B and a 35B-A3B MoE.",

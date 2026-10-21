@@ -826,7 +826,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 20.9,
                 "format": "MLX",
                 "quantization": "4-bit",
-                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
                 "note": (
                     "TensorFold's checkpoint with the model's MTP layer (mtp-4bit.safetensors). With TensorFold "
                     "installed and speculative decoding ticked, it drafts with that layer and replies exactly as "

@@ -101,7 +101,7 @@ class SynthesizeSpeechTests(unittest.TestCase):
             voice_runtime, "_platform", return_value="apple_silicon"
         )
         self._available = mock.patch.object(
-            voice_runtime, "_is_available", side_effect=lambda name: name == "mlx_audio"
+            voice_runtime, "_is_available", side_effect=lambda name: name in ("mlx_audio", "misaki")
         )
         self._platform.start()
         self._available.start()
@@ -498,9 +498,18 @@ class BackendSelectionTests(unittest.TestCase):
             return fn()
 
     def test_apple_silicon_prefers_mlx_backends(self) -> None:
-        avail = {"mlx_whisper", "mlx_audio", "faster_whisper", "kokoro_onnx"}
+        avail = {"mlx_whisper", "mlx_audio", "misaki", "faster_whisper", "kokoro_onnx"}
         self.assertEqual(self._run("apple_silicon", avail, voice_runtime._stt_backend), "mlx-whisper")
         self.assertEqual(self._run("apple_silicon", avail, voice_runtime._tts_backend), "mlx-audio")
+
+    def test_mlx_audio_without_misaki_is_not_a_tts_backend(self) -> None:
+        # mlx-vlm 0.7 installs mlx-audio on its own; without misaki every
+        # synthesis would end with no output file.
+        self.assertIsNone(self._run("apple_silicon", {"mlx_audio"}, voice_runtime._tts_backend))
+        self.assertFalse(self._run("apple_silicon", {"mlx_audio"}, voice_runtime._tts_available))
+        self.assertEqual(
+            self._run("apple_silicon", {"mlx_audio", "kokoro_onnx"}, voice_runtime._tts_backend), "kokoro-onnx",
+        )
 
     def test_apple_silicon_falls_back_to_portable_backends(self) -> None:
         avail = {"faster_whisper", "kokoro_onnx"}
@@ -632,7 +641,7 @@ class SynthesizeSpeechEdgeTests(unittest.TestCase):
             (Path(str(kwargs["output_path"])) / "tts.wav").write_bytes(b"x")
 
         with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"), \
-             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n == "mlx_audio"), \
+             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n in ("mlx_audio", "misaki")), \
              _FakeMlxAudio(fake_generate):
             voice_runtime.synthesize_speech("hello", voice, 1.25)
         return calls

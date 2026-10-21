@@ -388,15 +388,20 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", f"workspace fetch failed: {err[:160]}", {}
         fams = {f.get("id"): f for f in (payload.get("featuredModels") or [])}
         expected = {
-            "deepseek-v4": 4, "glm-5": 4, "minimax-m2": 3,
+            # deepseek-v4 keeps only the TensorFold-served 4-bit row; the rows no
+            # shipped runtime could load were dropped (FU-112).
+            "deepseek-v4": 1, "glm-5": 4, "minimax-m2": 3,
             "ornith-1": 9, "kimi-k2-6": 3, "llama-4-scout": 3,
             "minimax-m3": 3, "mistral-large-3": 2,
             # 2026-09 additions (FU-088).
             "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 6, "minicpm-5": 3,
             # FU-093: TensorFold-served checkpoints.
             "glm-5-3-flash": 1,
-            # FU-103: Kolibri 1 (Aleph Alpha), community MLX builds.
-            "kolibri-1": 3,
+            # FU-103: Kolibri 1 (Aleph Alpha), three community MLX builds plus
+            # the llama.cpp Q3_K_M row.
+            "kolibri-1": 4,
+            # 2026-10: LFM2.5 (MLX 4/8-bit + GGUF) and Muse Glimmer GGUF.
+            "lfm-2-5": 3, "muse-glimmer": 1,
         }
         missing = []
         for fid, min_variants in expected.items():

@@ -260,7 +260,7 @@ def _directory_model_name(directory_name: str) -> str:
 def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     source_kind = "HF cache" if path.name.startswith("models--") else "Directory"
     name = (
-        path.name.replace("models--", "").replace("--", "/")
+        path.name.removeprefix("models--").replace("--", "/", 1)
         if source_kind == "HF cache"
         else _directory_model_name(path.name)
     )

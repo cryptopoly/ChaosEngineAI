@@ -132,3 +132,15 @@ class PartialBlobTests(unittest.TestCase):
         self.assertTrue(self._broken()[0])
         self._link("Model-Q4_K_M-00002-of-00002.gguf")
         self.assertEqual(self._broken(), (False, None))
+
+
+class HfCacheNameTests(unittest.TestCase):
+    def test_org_ending_in_models_keeps_its_name(self) -> None:
+        from backend_service.helpers.discovery import _detect_directory_model
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--meta-models--Muse-Glimmer-30B-GGUF"
+            _write_gguf(repo / "snapshots" / "abc" / "Muse-Q4_K_M.gguf")
+            detected = _detect_directory_model(repo)
+        self.assertIsNotNone(detected)
+        self.assertEqual(detected[0], "meta-models/Muse-Glimmer-30B-GGUF")

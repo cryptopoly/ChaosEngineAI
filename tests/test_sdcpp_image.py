@@ -711,3 +711,13 @@ class Flux1GuidanceDefaultsTests(unittest.TestCase):
         variant = self._variant("leejet/FLUX.1-schnell-gguf-q4k")
         self.assertEqual(variant["cfgOverride"], 0.0)
         self.assertEqual(variant["defaultSteps"], 4)
+
+
+def tearDownModule():
+    # Some tests drive the sd.cpp output parser directly; its ``set_phase``
+    # calls start a progress run that only ``generate`` would finish, which
+    # left IMAGE_PROGRESS "active" and made later video-route tests refuse
+    # with "An image generation is still running".
+    from backend_service.progress import IMAGE_PROGRESS
+
+    IMAGE_PROGRESS.finish()

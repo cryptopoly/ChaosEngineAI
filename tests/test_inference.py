@@ -503,6 +503,29 @@ class LlamaCppFallbackMetadataTests(unittest.TestCase):
 
         self.assertEqual(loaded.cacheStrategy, "turboquant")
 
+    def test_loaded_model_reports_speculative_decoding_from_the_command(self):
+        """Speed history skips speculative runs, so the flag must be accurate."""
+        for command, expected in (
+            (["llama-server", "--spec-type", "draft-dflash"], True),
+            (["llama-server"], False),
+        ):
+            engine = LlamaCppEngine(self._capabilities())
+            fake_process = mock.Mock()
+            fake_process.poll.return_value = None
+            with (
+                mock.patch.object(engine, "_build_command", return_value=(command, None, False, None)),
+                mock.patch.object(engine, "_wait_for_server", return_value=None),
+                mock.patch.object(engine, "_cleanup_process"),
+                mock.patch("backend_service.inference.subprocess.Popen", return_value=fake_process),
+            ):
+                loaded = engine.load_model(
+                    model_ref="m", model_name="M", canonical_repo=None, source="library",
+                    backend="llama.cpp", path=None, runtime_target="org/m-GGUF",
+                    cache_strategy="native", cache_bits=0, fp16_layers=0, fused_attention=False,
+                    fit_model_in_memory=True, context_tokens=4096, speculative_decoding=True,
+                )
+            self.assertEqual(loaded.speculativeDecoding, expected, command)
+
     def test_successful_gguf_load_reports_fp16_layers_as_ignored(self):
         engine = LlamaCppEngine(self._capabilities())
 
@@ -1011,3 +1034,46 @@ class CacheTypeValidationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LlamaStreamReasoningTests(unittest.TestCase):
+    """llama-server's parsed reasoning channel reaches the chat stream."""
+
+    def _stream(self, deltas):
+        engine = LlamaCppEngine(BackendCapabilities(
+            pythonExecutable="python", mlxAvailable=False, mlxLmAvailable=False, mlxUsable=False,
+            ggufAvailable=True, llamaServerPath="/bin/llama-server",
+        ))
+        engine.port = 1
+        engine.process = mock.Mock(poll=mock.Mock(return_value=None))
+        engine.loaded_model = LoadedModelInfo(
+            ref="org/model", name="m", backend="llama.cpp", source="library", engine="llama.cpp",
+            cacheStrategy="native", cacheBits=0, fp16Layers=0, fusedAttention=False,
+            fitModelInMemory=True, contextTokens=4096, loadedAt="now",
+        )
+        lines = [f"data: {json.dumps({'choices': [{'delta': d}]})}\n".encode() for d in deltas]
+        lines.append(b"data: [DONE]\n")
+        response = mock.MagicMock()
+        response.__iter__.return_value = iter(lines)
+        with mock.patch("urllib.request.urlopen", return_value=response):
+            return list(engine.stream_generate(
+                prompt="hi", history=[], system_prompt=None, max_tokens=50, temperature=0.2,
+            ))
+
+    def test_reasoning_content_streams_then_closes_before_the_answer(self):
+        chunks = self._stream([
+            {"reasoning_content": "Plan the "}, {"reasoning_content": "greeting."},
+            {"content": "Hello"}, {"content": " there."},
+        ])
+        self.assertEqual("".join(c.reasoning or "" for c in chunks), "Plan the greeting.")
+        self.assertEqual("".join(c.text or "" for c in chunks), "Hello there.")
+        done_at = next(i for i, c in enumerate(chunks) if c.reasoning_done)
+        first_text = next(i for i, c in enumerate(chunks) if c.text)
+        self.assertLess(done_at, first_text)
+        # Two reasoning deltas plus the text pieces the filter emitted.
+        self.assertGreaterEqual(chunks[-1].completion_tokens, 3)
+
+    def test_reasoning_only_reply_still_counts_and_closes(self):
+        chunks = self._stream([{"reasoning_content": "thinking"}, {"reasoning_content": " more"}])
+        self.assertTrue(any(c.reasoning_done for c in chunks))
+        self.assertEqual(chunks[-1].completion_tokens, 2)

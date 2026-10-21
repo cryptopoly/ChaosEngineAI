@@ -808,6 +808,9 @@ class LlamaCppEngine(BaseInferenceEngine):
             runtimeTarget=runtime_target or path,
             runtimeNote=runtime_note,
             visionEnabled=attempt_mmproj_path is not None,
+            # Drafter sidecar, baked-in MTP or ngram-mod: whatever
+            # _speculative_args emitted is what the server is running.
+            speculativeDecoding="--spec-type" in command,
         )
         return self.loaded_model
 
@@ -994,6 +997,10 @@ class LlamaCppEngine(BaseInferenceEngine):
             runtime_note = _append_runtime_note(runtime_note, template_fix_note)
         think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
         runaway_guard = RepeatedLineGuard()
+        # llama-server parses <think> blocks into ``reasoning_content`` itself
+        # (--reasoning-format deepseek), and some models reason even with
+        # --reasoning off. Track whether that channel still needs closing.
+        server_reasoning_open = False
         try:
             for raw_line in resp:
                 line = raw_line.decode("utf-8", errors="ignore").strip()
@@ -1009,6 +1016,16 @@ class LlamaCppEngine(BaseInferenceEngine):
                 choice = (chunk.get("choices") or [{}])[0]
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
+                reasoning_content = delta.get("reasoning_content")
+                if reasoning_content:
+                    if first_token_time is None:
+                        first_token_time = time.perf_counter()
+                    completion_tokens += 1
+                    server_reasoning_open = True
+                    yield StreamChunk(reasoning=str(reasoning_content))
+                if content and server_reasoning_open:
+                    server_reasoning_open = False
+                    yield StreamChunk(reasoning_done=True)
                 # Phase 3.3: extract per-token logprobs when llama-server
                 # returns them. The `logprobs.content` field is a list of
                 # token entries with top_logprobs alternatives.
@@ -1050,6 +1067,8 @@ class LlamaCppEngine(BaseInferenceEngine):
                 if usage:
                     prompt_tokens = int(usage.get("prompt_tokens") or 0)
                     completion_tokens = int(usage.get("completion_tokens") or completion_tokens)
+            if server_reasoning_open:
+                yield StreamChunk(reasoning_done=True)
             flushed = think_filter.flush()
             if flushed.reasoning:
                 yield StreamChunk(reasoning=flushed.reasoning)

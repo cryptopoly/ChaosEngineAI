@@ -645,6 +645,11 @@ class ChaosEngineState:
                 # the worker the catalog repo id instead would download the
                 # whole model again whenever the Hugging Face cache lacks it.
                 runtime_target = path
+            elif library_entry is not None and library_entry.get("format") == "GGUF" and library_entry.get("path"):
+                # A downloaded GGUF loads from its folder, so the catalog's
+                # pinned quant and any drafter sidecar next to it are used;
+                # a bare repo id leaves the quant choice to llama-server.
+                runtime_target = library_entry["path"]
             else:
                 runtime_target = _hf_repo_from_link(catalog_entry.get("link")) or runtime_target or model_ref
             if backend == "auto":

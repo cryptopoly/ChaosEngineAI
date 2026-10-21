@@ -2558,6 +2558,27 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self.assertEqual(runtime_target, "prism-ml/Ternary-Bonsai-27B-mlx-2bit")
 
+    def test_downloaded_catalog_gguf_loads_from_its_cache_folder(self):
+        """A catalog launch without a path still uses the downloaded GGUF, so
+        the pinned quant and a drafter sidecar next to it are found."""
+        repo_dir = "/cache/models--meta-models--Muse-Glimmer-30B-GGUF"
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [{
+                "name": "meta-models/Muse-Glimmer-30B-GGUF", "path": repo_dir, "format": "GGUF",
+                "sourceKind": "HF cache", "sizeGb": 19.8, "actions": ["Run Chat"],
+            }],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, backend = state._resolve_model_target(
+            model_ref="meta-models/Muse-Glimmer-30B-GGUF", path=None, backend="auto",
+        )
+        self.assertEqual(runtime_target, repo_dir)
+        self.assertEqual(backend, "llama.cpp")
+
     def test_recursive_discovery_finds_nested_model_directories(self):
         models_root = Path(self.tempdir.name) / "AI_Models"
         nested_model = models_root / "publisher" / "family" / "variant"

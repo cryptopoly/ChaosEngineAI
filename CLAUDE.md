@@ -107,6 +107,7 @@ Check for updates to external repos we build from or depend on:
 - [ ] The release bundle's `runtime-*.manifest.json` has `llamaServer` set and an empty `warnings` list (a null `llamaServer` means the prebuilt download failed; FU-107)
 - [ ] The runtime archive stages the Setup installers: `tar -tzf src-tauri/resources/embedded/runtime-*.tar.gz | grep backend/scripts` lists `install-mflux.sh`, `install-mtplx.sh` and `install-tensorfold.sh` (FU-104)
 - [ ] `src-tauri/src/lib.rs` sets `CHAOSENGINE_LLAMA_SERVER_TURBO` env var
+- [ ] `release-constraints.txt` matches the tested environment: after any dependency upgrade, rerun `.venv/bin/python scripts/freeze-release-constraints.py` and commit the file (release builds install with `-c release-constraints.txt`; without it v0.9.8 shipped huggingface_hub 2.2 / mlx 0.32 / transformers 5.20 against a 1.33 / 0.31 / 5.5 test environment)
 
 ### 6. Localization (i18n)
 - [ ] `npm run i18n:validate` passes — every locale parity check + ICU syntax compile + orphan key scan

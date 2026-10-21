@@ -62,3 +62,27 @@ class BundledLlamaCppTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReleaseConstraintsTests(unittest.TestCase):
+    """Release builds install the versions the app is tested with, not "newest today"."""
+
+    def test_every_release_venv_install_uses_the_constraints(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        installs = [line for line in workflow.splitlines() if re.search(r"pip install (?!--upgrade pip)", line)]
+        self.assertTrue(installs)
+        for line in installs:
+            self.assertIn("-c release-constraints.txt", line, line.strip())
+
+    def test_the_bundle_step_applies_them_too(self) -> None:
+        stage = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        self.assertIn('"-c", releaseConstraintsPath', stage)
+
+    def test_core_packages_are_pinned(self) -> None:
+        pins = {
+            line.split("==", 1)[0].lower().replace("_", "-")
+            for line in (ROOT / "release-constraints.txt").read_text(encoding="utf-8").splitlines()
+            if "==" in line and not line.startswith("#")
+        }
+        for name in ("mlx", "mlx-lm", "huggingface-hub", "transformers", "fastapi", "uvicorn"):
+            self.assertIn(name, pins)

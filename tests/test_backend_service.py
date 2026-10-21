@@ -2902,6 +2902,43 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, msg=response.text)
 
+    def test_model_load_rechecks_a_broken_verdict_from_a_scan_mid_download(self):
+        # The library scan ran while shard 2 was still downloading; it has
+        # finished since, so the load must not be refused on the old verdict.
+        repo = Path(self.tempdir.name) / "hf-cache" / "models--owner--sharded"
+        snap = repo / "snapshots" / "abc"
+        snap.mkdir(parents=True)
+        for index in (1, 2):
+            (snap / f"model-0000{index}-of-00002.safetensors").write_bytes(b"x")
+
+        self.client.app.state.chaosengine._library_provider = lambda: [
+            {
+                "name": "owner/sharded",
+                "path": str(repo),
+                "format": "MLX",
+                "sourceKind": "HF cache",
+                "backend": "mlx",
+                "sizeGb": 0.01,
+                "actions": ["Run Chat"],
+                "broken": True,
+                "brokenReason": "Incomplete sharded safetensors checkpoint: found 1 of 2 shard files.",
+            }
+        ]
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "owner/sharded",
+                "modelName": "Owner Sharded",
+                "source": "library",
+                "backend": "mock",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+
     def test_model_load_still_rejects_broken_entry_when_path_does_not_exist(self):
         # Bug 2 negative: the path-trust escape hatch must require the
         # supplied path actually exist on disk. A request that points at

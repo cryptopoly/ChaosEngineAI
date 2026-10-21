@@ -183,13 +183,29 @@ class KolibriTinyModelTests(unittest.TestCase):
         mx.save_safetensors(str(directory / "model.safetensors"), dict(tree_flatten(model.parameters())))
 
         with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
-            hook = mlx_models.vendored_model_config(directory)
-        self.assertIsNotNone(hook)
-        loaded, config = load_model(directory, model_config=hook)
+            kwargs = mlx_models.vendored_load_kwargs(directory, load_model)
+        self.assertIn("model_config", kwargs)
+        loaded, config = load_model(directory, **kwargs)
         self.assertEqual(config["model_type"], "kolibri1")
 
         tokens = mx.array([[1, 2, 3, 4, 5, 6]])
         np.testing.assert_allclose(np.array(loaded(tokens)), np.array(model(tokens)), rtol=1e-5, atol=1e-5)
+
+    def test_load_kwargs_trust_only_our_file_and_only_where_supported(self) -> None:
+        directory = _snapshot(TINY)
+
+        def new_load(path, model_config=None, trust_remote_code=False): ...
+
+        def old_load(path, model_config=None): ...
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            new = mlx_models.vendored_load_kwargs(directory, new_load)
+            old = mlx_models.vendored_load_kwargs(directory, old_load)
+            plain = mlx_models.vendored_load_kwargs(_snapshot({"model_type": "qwen3"}), new_load)
+        self.assertTrue(new["trust_remote_code"])
+        self.assertEqual(new["model_config"]["model_file"], str(mlx_models._VENDORED["kolibri1"]))
+        self.assertNotIn("trust_remote_code", old)
+        self.assertEqual(plain, {})
 
     def test_sanitize_stacks_the_experts_and_renames_the_router_bias(self) -> None:
         mx = self.mx

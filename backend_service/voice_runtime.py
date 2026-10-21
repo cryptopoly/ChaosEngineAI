@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import platform
+import shutil
+import sys
 import tempfile
 import threading
 from pathlib import Path
@@ -124,6 +126,33 @@ def _mlx_audio_tts_ready() -> bool:
     error, so every synthesis then ended with no output file.
     """
     return _is_available("mlx_audio") and _is_available("misaki")
+
+
+# espeak-ng keeps its data path in a fixed buffer (about 160 characters). A
+# longer one is dropped silently, espeak falls back to the path baked in at
+# build time and then exits the process, taking the backend with it.
+_ESPEAK_PATH_LIMIT = 140
+
+
+def _ensure_short_espeak_data_path() -> None:
+    """Point misaki's espeak fallback at a short copy of its data when needed.
+
+    Must run before ``misaki.espeak`` is imported, which reads the path once.
+    """
+    try:
+        import espeakng_loader  # type: ignore[import-untyped]
+    except ImportError:
+        return
+    source = Path(espeakng_loader.get_data_path())
+    if len(str(source)) < _ESPEAK_PATH_LIMIT or not source.is_dir():
+        return
+    short = Path.home() / ".chaosengine" / "espeak-ng-data"
+    if not (short / "phontab").is_file():
+        shutil.copytree(source, short, dirs_exist_ok=True)
+    espeakng_loader.get_data_path = lambda: str(short)
+    misaki_espeak = sys.modules.get("misaki.espeak")
+    if misaki_espeak is not None:  # imported already: update the wrapper too
+        misaki_espeak.EspeakWrapper.set_data_path(str(short))
 
 
 def _tts_available() -> bool:
@@ -438,6 +467,7 @@ def synthesize_speech(text: str, voice: str, speed: float) -> bytes:
     plat = _platform()
 
     if plat == "apple_silicon" and _mlx_audio_tts_ready():
+        _ensure_short_espeak_data_path()
         from mlx_audio.tts.generate import generate_audio  # type: ignore[import-untyped]
 
         # Kokoro convention: the voice id's first letter is its language

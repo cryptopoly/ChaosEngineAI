@@ -1136,3 +1136,30 @@ class SttModelResolutionTests(unittest.TestCase):
             second = voice_runtime.transcribe_audio(b"y", "audio/webm", "")
         self.assertEqual((first, second), ("bonjour", "bonjour"))
         self.assertEqual(loads, ["mlx-community/parakeet-tdt-0.6b-v3"])
+
+
+class EspeakDataPathTests(unittest.TestCase):
+    """espeak-ng exits the process on a data path it silently dropped as too long."""
+
+    def _loader(self, path: Path):
+        return types.SimpleNamespace(get_data_path=lambda: str(path))
+
+    def test_long_path_is_replaced_by_a_short_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            long_dir = Path(tmp) / ("x" * 150) / "espeak-ng-data"
+            long_dir.mkdir(parents=True)
+            (long_dir / "phontab").write_bytes(b"data")
+            home = Path(tmp) / "home"
+            loader = self._loader(long_dir)
+            with mock.patch.dict(sys.modules, {"espeakng_loader": loader}), \
+                 mock.patch.object(voice_runtime.Path, "home", return_value=home):
+                voice_runtime._ensure_short_espeak_data_path()
+            self.assertEqual(loader.get_data_path(), str(home / ".chaosengine" / "espeak-ng-data"))
+            self.assertTrue((home / ".chaosengine" / "espeak-ng-data" / "phontab").is_file())
+
+    def test_short_path_is_left_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            loader = self._loader(Path(tmp))
+            with mock.patch.dict(sys.modules, {"espeakng_loader": loader}):
+                voice_runtime._ensure_short_espeak_data_path()
+            self.assertEqual(loader.get_data_path(), tmp)

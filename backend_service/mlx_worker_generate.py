@@ -319,7 +319,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                     "tokS": result.get("tokS", 0.0),
                     "promptTokS": result.get("promptTokS", 0.0),
                     "peakMemoryGb": result.get("peakMemoryGb", 0.0),
-                    "runtimeNote": result.get("runtimeNote"),
+                    "runtimeNote": _merge_runtime_notes(speculative_stream_fallback_note, result.get("runtimeNote")),
                     "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
                     "cacheStrategy": result.get("cacheStrategy"),
                     "cacheBits": result.get("cacheBits"),

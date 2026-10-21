@@ -326,12 +326,14 @@ class DFlashCompatibilityTests(unittest.TestCase):
             )
 
         self.assertTrue(result["speculativeDecoding"])
-        self.assertEqual(result["treeBudget"], 64)
+        # DDTree tree verification is unfinished on MLX: the tree budget is
+        # dropped and linear DFlash runs, with a note saying so.
+        self.assertEqual(result["treeBudget"], 0)
+        self.assertIn("DDTree", result.get("note") or "")
         self.assertEqual(result["dflashDraftModel"], "z-lab/Qwen3.5-35B-A3B-DFlash")
         self.assertIs(worker._dflash_target, fake_model)
         self.assertEqual(worker._dflash_generator, "draft_bundle")
-        self.assertIs(worker._ddtree_target, fake_model)
-        self.assertEqual(worker._ddtree_draft, "draft_bundle")
+        self.assertIsNone(worker._ddtree_draft)
         fake_runtime.resolve_target_ops.assert_called_once_with(fake_model)
         target_ops.configure_full_attention_split.assert_not_called()
         fake_runtime.load_draft_bundle.assert_called_once_with(

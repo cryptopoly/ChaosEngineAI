@@ -338,6 +338,10 @@ def availability_info() -> dict[str, Any]:
         "available": is_mlx_available() or vllm_ok,
         "mlxAvailable": is_mlx_available(),
         "vllmAvailable": vllm_ok,
-        "ddtreeAvailable": is_ddtree_available(),
+        # The MLX worker ignores tree budgets until the DDTree port feeds its
+        # tree position ids to the model, so the UI must not offer one.
+        # is_ddtree_available() still reports whether the runtime has the
+        # primitives, for when that lands.
+        "ddtreeAvailable": False,
         "supportedModels": models,
     }

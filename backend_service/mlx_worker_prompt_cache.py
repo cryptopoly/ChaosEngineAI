@@ -107,8 +107,10 @@ def _snapshot(cache: list[Any]) -> list[list[Any] | None]:
     for layer in cache:
         if _is_recurrent_layer(layer):
             # ``mx.array(a)`` copies, so later in-place updates to the live
-            # state can't leak into the checkpoint.
-            snap.append([None if a is None else mx.array(a) for a in layer.state])
+            # state can't leak into the checkpoint. ``layer.cache`` holds the
+            # arrays in every mlx-lm release; ``layer.state`` became a
+            # (cache, left_padding, lengths) tuple in 0.32.
+            snap.append([None if a is None else mx.array(a) for a in layer.cache])
         else:
             snap.append(None)
     mx.eval([a for layer in snap if layer for a in layer if a is not None])
@@ -123,7 +125,7 @@ def _restore(cache: list[Any], snap: list[list[Any] | None], boundary: int, pers
         if saved is not None:
             if not _is_recurrent_layer(layer):
                 return False
-            layer.state = list(saved)
+            layer.cache = list(saved)
             continue
         offset = getattr(layer, "offset", None)
         current = offset if isinstance(offset, int) else persist_len

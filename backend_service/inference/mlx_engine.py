@@ -188,6 +188,7 @@ class MLXWorkerEngine(BaseInferenceEngine):
             speculativeDecoding=actual_speculative,
             dflashDraftModel=actual_draft_model,
             treeBudget=actual_tree_budget,
+            visionEnabled=bool(result.get("multimodal")),
         )
         return self.loaded_model
 

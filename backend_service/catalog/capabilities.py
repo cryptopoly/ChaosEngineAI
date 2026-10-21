@@ -187,17 +187,14 @@ def resolve_capabilities(
             setattr(caps, flag, True)
     caps.tags = tuple(sorted(seen))
 
-    # Engine-side reality check + runtime-side proof: strip vision
-    # unless the runtime explicitly says mmproj is loaded. Today no
-    # path sets this True so the typed flag is always False — exactly
-    # the right behaviour to prevent silent image drop. The MLX-engine
-    # demotion is kept as belt-and-braces for any caller that forgets
-    # to thread `vision_enabled` through.
+    # Engine-side reality check + runtime-side proof: strip vision unless the
+    # runtime says it can read images. llama.cpp sets vision_enabled when an
+    # mmproj is loaded, the MLX worker when it loaded the model through
+    # mlx-vlm, TensorFold when its server runs with ``--vision``; a text-only
+    # load leaves it False, so the composer never offers an attachment the
+    # model would not see.
     engine_normalised = (engine or "").strip().lower()
-    # TensorFold is deliberately not demoted by engine: it reads images when
-    # it was started with ``--vision``, and then reports ``vision_enabled``
-    # (the ``not vision_enabled`` demotion below covers every other load).
-    if engine_normalised in {"mlx", "mlx_worker", "turboquant"}:
+    if engine_normalised == "turboquant":
         caps.supportsVision = False
     if not vision_enabled:
         caps.supportsVision = False

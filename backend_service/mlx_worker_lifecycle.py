@@ -229,6 +229,8 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "treeBudget": state.tree_budget if state.speculative_decoding and state._dflash_generator is not None else 0,
+        # Loaded through mlx-vlm, so the generate paths accept images.
+        "multimodal": bool(state.is_multimodal),
         "note": _merge_runtime_notes(profile_note, dflash_note),
     }
 

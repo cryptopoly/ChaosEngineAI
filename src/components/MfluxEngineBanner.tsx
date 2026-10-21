@@ -25,17 +25,27 @@ export function MfluxEngineBanner({ modelNeedsMflux, onInstalled }: MfluxEngineB
     if (modelNeedsMflux) void refreshMfluxStatus();
   }, [modelNeedsMflux, refreshMfluxStatus]);
 
-  if (!modelNeedsMflux || !mfluxStatus || !mfluxStatus.supported || mfluxStatus.installed) return null;
+  const outdated = Boolean(mfluxStatus?.installed && mfluxStatus.outdated);
+  if (!modelNeedsMflux || !mfluxStatus || !mfluxStatus.supported || (mfluxStatus.installed && !outdated)) return null;
 
   const failed = mfluxJob?.phase === "error";
   return (
     <div className="callout image-callout">
       <p>
-        {t("image.mflux.notInstalled", {
-          defaultValue:
-            "This model runs on the mflux MLX engine, which is not installed yet. It installs into its own " +
-            "environment (about 1.3 GB) and does not change the app's packages.",
-        })}
+        {outdated
+          ? t("image.mflux.outdated", {
+              defaultValue:
+                "The mflux engine installed here ({installed}) is older than this app expects ({required}), " +
+                "so newer models such as FLUX 3 and Qwen-Image-2.1 Turbo will not run. Updating reinstalls " +
+                "it in its own environment.",
+              installed: mfluxStatus.version ?? "unknown",
+              required: mfluxStatus.requiredVersion ?? "",
+            })
+          : t("image.mflux.notInstalled", {
+              defaultValue:
+                "This model runs on the mflux MLX engine, which is not installed yet. It installs into its own " +
+                "environment (about 1.3 GB) and does not change the app's packages.",
+            })}
       </p>
       {failed && mfluxJob?.error ? <p className="error-text">{mfluxJob.error}</p> : null}
       <div className="button-row">
@@ -49,7 +59,9 @@ export function MfluxEngineBanner({ modelNeedsMflux, onInstalled }: MfluxEngineB
             ? t("image.mflux.installing", { defaultValue: "Installing…" })
             : failed
               ? t("image.mflux.retry", { defaultValue: "Retry install" })
-              : t("image.mflux.install", { defaultValue: "Install mflux engine" })}
+              : outdated
+                ? t("image.mflux.update", { defaultValue: "Update mflux engine" })
+                : t("image.mflux.install", { defaultValue: "Install mflux engine" })}
         </button>
       </div>
       {mfluxJob && mfluxJob.phase !== "idle" && mfluxJob.phase !== "done" ? (

@@ -544,6 +544,31 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2026-09",
             },
             {
+                "id": "Qwen/Qwen-Image-2.1-Turbo-mflux",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 Turbo · mflux (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1-Turbo",
+                "engine": "mflux",
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 32.4,
+                # Same 7B architecture as Qwen-Image-2.1 (measured 30 GB peak there).
+                "runtimeFootprintMpsGb": 30.0,
+                "defaultSteps": 8,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. The 8-step distilled Qwen-Image-2.1 (released 2026-10-09): "
+                    "same quality class in 8 steps instead of 40, no CFG. Qwen Research licence: "
+                    "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 75.0,
+                "releaseDate": "2026-10",
+            },
+            {
                 # Qwen-Image-2.1 (Sep 2026): 7B DiT + Qwen3-VL-8B encoder, text-to-image
                 # and editing, native RGBA. Runs through stable-diffusion.cpp so it works
                 # on Apple Silicon, CUDA and CPU; the diffusers pipeline
@@ -678,6 +703,66 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Full 32B FLUX.2 (gated — accept BFL's licence on HF). Up to 10 reference images for character/product/style consistency.",
                 "estimatedGenerationSeconds": 22.0,
                 "releaseDate": "2025-11",
+            },
+        ],
+    },
+    {
+        "id": "flux-3",
+        "name": "FLUX 3 Image Klein",
+        "provider": "Black Forest Labs",
+        "headline": "Black Forest Labs' third-generation compact image model: text-to-image and editing with up to ten references.",
+        "summary": (
+            "FLUX 3 Image Klein (released 2026-10-13): a distilled checkpoint for fast generation and an "
+            "undistilled Base for guided generation and fine-tuning. Gated on Hugging Face under the FLUX "
+            "Kommunity licence: accept it on the model page before downloading."
+        ),
+        "updatedLabel": "Oct 2026",
+        "badges": ["New", "Gated"],
+        "defaultVariantId": "black-forest-labs/flux-3-image-klein-mflux",
+        "variants": [
+            {
+                "id": "black-forest-labs/flux-3-image-klein-mflux",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/flux-3-image-klein",
+                "engine": "mflux",
+                "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "general", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                # transformer 11.1 + text encoder 8.9 + VAE 0.3 GB: the folders mflux loads.
+                "sizeGb": 20.3,
+                "defaultSteps": 16,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. Distilled: 16 steps, no guidance. Gated: accept the FLUX "
+                    "Kommunity licence on Hugging Face first. Needs the mflux engine, installed from "
+                    "the Image Studio."
+                ),
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "black-forest-labs/flux-3-image-klein-base-mflux",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein Base · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/flux-3-image-klein-base",
+                "engine": "mflux",
+                "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein-base",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 20.3,
+                "defaultSteps": 50,
+                "cfgOverride": 3.5,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. Undistilled Base: 50 steps with guidance 3.5, slower but "
+                    "steerable and the one to fine-tune. Gated: accept the FLUX Kommunity licence "
+                    "on Hugging Face first."
+                ),
+                "releaseDate": "2026-10",
             },
         ],
     },

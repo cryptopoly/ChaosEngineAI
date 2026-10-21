@@ -48,6 +48,34 @@ def _sdcpp_gguf_files(repo_id: str) -> list[str]:
     ]
 
 
+# The folders mflux loads (its own allow-list in each model's weight
+# definition). FLUX 3 ships ``modular_model_index.json`` instead of the
+# ``model_index.json`` a diffusers snapshot has, so the diffusers check
+# would never call it installed.
+_MFLUX_COMPONENT_DIRS = ("transformer", "text_encoder", "vae")
+
+
+def _mflux_only_repo(repo_id: str) -> bool:
+    """True when every catalog variant of ``repo_id`` runs on mflux."""
+    engines = [
+        variant.get("engine")
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("repo") or "") == repo_id
+    ]
+    return bool(engines) and all(engine == "mflux" for engine in engines)
+
+
+def _mflux_snapshot_error(snapshot_dir: Path, repo_id: str) -> str | None:
+    missing = [
+        name for name in _MFLUX_COMPONENT_DIRS
+        if not any((snapshot_dir / name).glob("*.safetensors"))
+    ]
+    if not missing:
+        return None
+    return f"The snapshot of {repo_id} has no weights in: {', '.join(missing)}. Retry the download."
+
+
 def _image_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
@@ -55,6 +83,8 @@ def _image_repo_runtime_ready(repo_id: str) -> bool:
     gguf_files = _sdcpp_gguf_files(repo_id)
     if gguf_files:
         return any((Path(snapshot_dir) / name).is_file() for name in gguf_files)
+    if _mflux_only_repo(repo_id):
+        return _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
 
 
@@ -100,6 +130,8 @@ def _image_download_validation_error(repo_id: str) -> str | None:
         if any((Path(snapshot_dir) / name).is_file() for name in gguf_files):
             return None
         return f"Download finished but none of {', '.join(gguf_files)} is in the snapshot of {repo_id}."
+    if _mflux_only_repo(repo_id):
+        return _mflux_snapshot_error(Path(snapshot_dir), repo_id)
     return validate_local_diffusers_snapshot(snapshot_dir, repo_id)
 
 

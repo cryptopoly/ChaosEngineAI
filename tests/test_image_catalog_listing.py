@@ -48,3 +48,25 @@ class CatalogShapeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MfluxOnlyRepoTests(unittest.TestCase):
+    """FLUX 3 ships modular_model_index.json, so mflux-only repos are checked by their folders."""
+
+    def test_flux3_counts_as_installed_from_its_weight_folders(self):
+        import tempfile
+        from pathlib import Path
+
+        self.assertTrue(iv._mflux_only_repo("black-forest-labs/flux-3-image-klein"))
+        self.assertTrue(iv._mflux_only_repo("Qwen/Qwen-Image-2.1"))
+        # Klein 4B also has a diffusers row, so it keeps the diffusers check.
+        self.assertFalse(iv._mflux_only_repo("black-forest-labs/FLUX.2-klein-4B"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("transformer", "text_encoder"):
+                (root / name).mkdir()
+                (root / name / "model.safetensors").write_bytes(b"x")
+            self.assertIn("vae", iv._mflux_snapshot_error(root, "x/y"))
+            (root / "vae").mkdir()
+            (root / "vae" / "model.safetensors").write_bytes(b"x")
+            self.assertIsNone(iv._mflux_snapshot_error(root, "x/y"))

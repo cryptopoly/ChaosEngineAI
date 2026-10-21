@@ -16,11 +16,21 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 - `scripts/audit-catalog-repos.py` checks every Hub repo and pinned file in the catalogs.
 - Disk usage rows expand into their contents and each has a Delete button behind a confirmation; the shared Hugging Face `blobs` store is protected (FU-109).
 - Settings splits Diagnostics into Diagnostics, Accelerators and Disk usage tabs, so the Boost Pack and the disk scan no longer fall off screen when the snapshot refreshes.
+- New models: LFM2.5 24B-A2B (MLX 4/8-bit and GGUF), Muse Glimmer 30B GGUF (vision, DFlash 2 sidecar), Kolibri 1 GGUF Q3_K_M, Qwen3.8 Flash Next GGUF, Qwen3.6 35B-A3B MTP through TensorFold, Qwen-Image-2.1 Turbo and FLUX 3 Image Klein through mflux.
+- Image input for MLX vision models loaded through mlx-vlm (Gemma 4 on Apple Silicon).
+- Memory and speed estimates rebuilt for chat, image and video: real KV-cache layout per architecture, memory pressure from available memory, decode speed from this machine's history or its memory bandwidth, an advisory check before a chat model loads, and engine-aware image and video estimates (FU-110).
+- `release-constraints.txt` pins every package in release builds to the tested versions.
 
 ### Fixed
 
 - Chat > My Models listed 3D tool parts, encoders, voice models and bare weight files as chat models; discovery now marks them `other` and the Chat filter hides them (FU-108).
-- Release bundles shipped without `llama-server` because upstream's "latest" llama.cpp release no longer carries binaries; the build now fetches pinned tag b11277 (FU-107).
+- Release bundles shipped without `llama-server` because upstream's "latest" llama.cpp release no longer carries binaries; the build now fetches a pinned tag (FU-107).
+- MLX DFlash never ran: since dflash-mlx 0.1.5 every reply fell back to standard decoding while the note said DFlash was active. Qwen3-4B now decodes at 113-138 tok/s against 53 (FU-112).
+- Thinking Off was ignored by Qwen3-family models on MLX, and by the DFlash and DDTree paths for every model (FU-112).
+- GGUF replies from models that reason with reasoning off came back empty; catalog launches skipped the pinned quant and drafter sidecars; GGUF speculative runs were recorded as plain decoding (FU-114).
+- An abandoned MLX reply was read as the answer to the next request ("invalid result payload") (FU-114).
+- LFM2.5's reasoning leaked into the answer on MLX; a cancelled quant, a scan taken mid-download or an org name ending in "models" stopped a downloaded model from loading (FU-114).
+- Text-to-speech reported ready when mlx-audio arrived without its misaki front-end, and produced no audio; a long espeak data path could exit the backend.
 - Linux AppImage backend killed right after startup; loading screen never showed the error (FU-100).
 - ModelScope-named and symlinked model folders were not listed (FU-101).
 - Wan video rendered burnt on Apple Silicon: UniPC diverges on MPS, now flow-match Euler (FU-102).
@@ -36,7 +46,11 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 
 ### Changed
 
+- MLX stack for releases: mlx 0.32.4, mlx-lm 0.32.2, transformers 5.20.2; Setup installs resolve mlx-vlm 0.7.9 and diffusers 0.41.0 (FU-113).
+- llama.cpp b11786 (adds Kolibri 1), TensorFold 0.6.6, mflux 0.23.0.
+- MLX DDTree is no longer offered: its tree verification was never finished. A tree budget runs linear DFlash (FU-112).
 - TurboQuant is presented as a memory saver; its speed estimate uses measured M4 Max ratios (FU-095).
+- Removed the DeepSeek-V4 8-bit, BF16 and Pro MLX rows, which no shipped runtime could load; the 4-bit row runs through TensorFold.
 - In-range frontend dependency bumps (Tauri JS packages kept in step with the Rust side, vite, vitest, katex).
 - Bundled llama.cpp build script pins tag b11277; vLLM floor raised to 0.28; diffusers floor 0.40; `turboquant-mlx-full` floor 0.11.
 - CUDA DFlash uses vLLM's built-in method; the PyPI `dflash` package is no longer installed (FU-091).

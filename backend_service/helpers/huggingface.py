@@ -46,6 +46,12 @@ _TEXT_DISCOVER_PIPELINES = {
 _HF_QUERY_URL_HOSTS = {"huggingface.co", "www.huggingface.co", "hf.co", "www.hf.co"}
 
 
+
+def _hub_ssl_context():
+    from backend_service.helpers.hub_http import ssl_context
+
+    return ssl_context()
+
 def _hf_token_value() -> str:
     return str(os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or "").strip()
 
@@ -156,7 +162,7 @@ def _search_huggingface_hub(query: str, library: list[dict[str, Any]], limit: in
         token = _hf_token_value()
         if token:
             req.add_header("Authorization", f"Bearer {token}")
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=8, context=_hub_ssl_context()) as resp:
             data = json.loads(resp.read().decode())
     except Exception:
         return []
@@ -292,7 +298,7 @@ def _hub_repo_files(repo_id: str) -> dict[str, Any]:
         req = urllib.request.Request(url, headers={"User-Agent": "ChaosEngineAI/0.2.0"})
         if token:
             req.add_header("Authorization", f"Bearer {token}")
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10, context=_hub_ssl_context()) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.HTTPError as exc:
         status = getattr(exc, "code", None)
@@ -480,7 +486,7 @@ def _find_quantized_variants(repo_id: str, limit: int = 12) -> list[dict[str, An
             req = urllib.request.Request(
                 url, headers={"User-Agent": "ChaosEngineAI/0.2.0"},
             )
-            with urllib.request.urlopen(req, timeout=8) as resp:
+            with urllib.request.urlopen(req, timeout=8, context=_hub_ssl_context()) as resp:
                 data = json.loads(resp.read().decode())
         except Exception:
             continue

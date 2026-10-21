@@ -14,6 +14,23 @@ import urllib.request
 from typing import Any
 
 
+def ssl_context():
+    """TLS context trusting certifi's bundle (what huggingface_hub uses).
+
+    python.org builds of Python ship no CA bundle until "Install
+    Certificates" is run, so plain urllib calls to the Hub fail there.
+    None (urllib's default) when certifi is missing.
+    """
+    try:
+        import ssl
+
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return None
+
+
 def fetch_hub_json(repo: str, filename: str, *, timeout: float = 5.0, max_bytes: int = 20_000_000) -> Any | None:
     """Parsed JSON of ``filename`` at the head of ``repo``, or None on any failure."""
     endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
@@ -31,16 +48,8 @@ def fetch_hub_json(repo: str, filename: str, *, timeout: float = 5.0, max_bytes:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     try:
-        import ssl
-
-        import certifi  # what huggingface_hub's own client trusts; python.org builds ship no CA bundle
-
-        context: ssl.SSLContext | None = ssl.create_default_context(cafile=certifi.where())
-    except Exception:
-        context = None
-    try:
         request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=timeout, context=context) as resp:
+        with urllib.request.urlopen(request, timeout=timeout, context=ssl_context()) as resp:
             return json.loads(resp.read(max_bytes).decode("utf-8"))
     except (urllib.error.URLError, OSError, ValueError):
         return None

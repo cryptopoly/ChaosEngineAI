@@ -612,7 +612,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         Discover panel can render them as alternate variants."""
         # urlopen is called once per mirror author — return the same
         # payload for all of them; only city96's contains real matches.
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=city96" in req.full_url:
                 return fake_urlopen_json([
                     {
@@ -646,7 +646,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
     def test_quantized_variants_detects_nf4_from_repo_name(self, urlopen_mock):
         """NF4 mirrors sometimes ship without a tag — fall back to
         matching ``nf4`` / ``bnb`` in the repo id so those still surface."""
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=QuantStack" in req.full_url:
                 return fake_urlopen_json([
                     {

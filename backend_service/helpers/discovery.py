@@ -274,6 +274,33 @@ def _detect_directory_model(path: Path) -> tuple[str, str, str] | None:
     return None
 
 
+_GGUF_SPLIT_RE = re.compile(r"^(?P<stem>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.gguf$")
+
+
+def _snapshot_has_complete_weights(repo_dir: Path) -> bool:
+    """True when a snapshot of this HF cache entry holds a loadable weight set.
+
+    Snapshot files are links created only once their blob has finished, so a
+    linked weight is complete. A split GGUF counts only with every part linked;
+    sharded safetensors are checked separately against their index.
+    """
+    splits: dict[tuple[Path, str, int], set[int]] = {}
+    for entry in (repo_dir / "snapshots").rglob("*"):
+        name = entry.name
+        if not entry.is_file():  # follows the link, so a dangling one is skipped
+            continue
+        if name.endswith(".safetensors") or (name.startswith("pytorch_model") and name.endswith(".bin")):
+            return True
+        if not name.endswith(".gguf") or "mmproj" in name.lower():
+            continue
+        match = _GGUF_SPLIT_RE.match(name)
+        if not match:
+            return True
+        key = (entry.parent, match["stem"], int(match["total"]))
+        splits.setdefault(key, set()).add(int(match["index"]))
+    return any(len(parts) == total for (_, _, total), parts in splits.items())
+
+
 def _detect_broken_library_item(child: Path, file_format: str, source_kind: str | None = None) -> tuple[bool, str | None]:
     """Return (broken, reason) for a discovered library item.
 
@@ -303,7 +330,10 @@ def _detect_broken_library_item(child: Path, file_format: str, source_kind: str 
         # because the format slot says "HF cache".
         if source == "hf cache":
             try:
-                if any((child / "blobs").glob("*.incomplete")):
+                # A partial blob only matters when the snapshot has no complete
+                # weights of its own: a cancelled pull of another quant in the
+                # same repo leaves partials that never link into a snapshot.
+                if any((child / "blobs").glob("*.incomplete")) and not _snapshot_has_complete_weights(child):
                     return (True, "Hugging Face download is incomplete: partial blob files are still present.")
             except OSError:
                 pass

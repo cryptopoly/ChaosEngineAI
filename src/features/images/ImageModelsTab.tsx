@@ -419,6 +419,21 @@ export function ImageModelsTab({
                           </div>
                           <span title={sizeTitle || undefined}>
                             {compactModelSizeLabel(primarySizeLabel)}
+                            {(variant.sharedRepoSiblings ?? 0) > 0 && isComplete ? (
+                              <small
+                                className="shared-repo-badge"
+                                title={t("imageModels.sharedRepoTitle", {
+                                  defaultValue: "Uses the same download as {count} other variant(s) of {repo}. Deleting this row removes those files too.",
+                                  count: variant.sharedRepoSiblings ?? 0,
+                                  repo: variant.sharedRepoKey ?? variant.repo,
+                                })}
+                              >
+                                {t("imageModels.sharedRepo", {
+                                  defaultValue: "shares storage · +{count}",
+                                  count: variant.sharedRepoSiblings ?? 0,
+                                })}
+                              </small>
+                            ) : null}
                           </span>
                           <span className="media-model-memory" title={memoryEstimate?.title ?? t("imageModels.memory.pendingTitle", { defaultValue: "RAM/VRAM estimate pending until model weight size is known." })}>
                             <span>{memory.primary}</span>

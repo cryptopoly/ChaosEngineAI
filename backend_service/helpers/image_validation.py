@@ -74,11 +74,10 @@ def _image_variant_available_locally(variant: dict[str, Any], library: list[dict
     compact_candidates = {candidate.split("/")[-1] for candidate in candidates if candidate}
     for item in library:
         name = str(item.get("name") or "").lower()
-        if not (
-            name in candidates
-            or any(candidate and candidate in name for candidate in candidates)
-            or any(candidate and candidate in name for candidate in compact_candidates)
-        ):
+        # Whole names only: a substring test made a Qwen/Qwen-Image-2.1
+        # snapshot count as Qwen/Qwen-Image (and its Lightning variant)
+        # installed after the user had deleted it.
+        if not (name in candidates or name.split("/")[-1] in compact_candidates):
             continue
         item_path = Path(str(item.get("path") or "")).expanduser()
         for directory in _candidate_model_dirs(item_path):

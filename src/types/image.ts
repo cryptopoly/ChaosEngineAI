@@ -64,6 +64,10 @@ export interface ImageModelVariant {
   /** ``mflux`` or ``sdcpp`` for variants that run outside the diffusers
    * pipeline; absent for diffusers. */
   engine?: string | null;
+  /** Other catalog variants that use the same download (see Video). */
+  sharedRepoSiblings?: number | null;
+  sharedRepoSiblingIds?: string[];
+  sharedRepoKey?: string | null;
   link: string;
   runtime: string;
   styleTags: string[];

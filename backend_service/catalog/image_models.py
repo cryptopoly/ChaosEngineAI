@@ -123,6 +123,28 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2026-05",
             },
+            {
+                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
+                "familyId": "flux-fast",
+                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
+                "provider": "Black Forest Labs · MIT-Han-Lab",
+                "repo": "black-forest-labs/FLUX.1-schnell",
+                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
+                "defaultSteps": 4,
+                "cfgOverride": 0.0,
+                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
+                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
+                "styleTags": ["general", "fast", "cuda", "int4"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.7,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
+                    "4090 with quality near the bf16 baseline. CUDA only."
+                ),
+                "estimatedGenerationSeconds": 0.7,
+                "releaseDate": "2026-01",
+            },
         ],
     },
     {
@@ -339,28 +361,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 1.4,
                 "releaseDate": "2026-01",
             },
-            {
-                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
-                "familyId": "flux-schnell",
-                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
-                "provider": "Black Forest Labs · MIT-Han-Lab",
-                "repo": "black-forest-labs/FLUX.1-schnell",
-                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
-                "defaultSteps": 4,
-                "cfgOverride": 0.0,
-                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
-                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
-                "styleTags": ["general", "fast", "cuda", "int4"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
-                    "4090 with quality near the bf16 baseline. CUDA only."
-                ),
-                "estimatedGenerationSeconds": 0.7,
-                "releaseDate": "2026-01",
-            },
         ],
     },
     {
@@ -528,7 +528,10 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mflux (MLX native)",
                 "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 26.0,
+                "sizeGb": 33.1,  # same download as the bf16 row: mflux quantizes while loading
+                # Not measured: the bf16 row's measured 30 GB peak less the ~7 GB an 8-bit
+                # 7B transformer saves.
+                "runtimeFootprintMpsGb": 23.0,
                 "defaultSteps": 40,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
@@ -615,7 +618,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
     },
     {
         "id": "flux-2",
-        "name": "FLUX.2 Dev",
+        "name": "FLUX.2",
         "provider": "Black Forest Labs",
         "headline": "Production-grade FLUX successor — up to 10 reference images, strong identity preservation.",
         "summary": "FLUX.2 — Black Forest Labs' next-gen flow-matching model. Multi-reference (up to 10 images), character/product/style consistency.",

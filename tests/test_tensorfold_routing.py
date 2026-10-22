@@ -302,3 +302,17 @@ class OrphanPruningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ColdStartNoteTests(unittest.TestCase):
+    def test_loading_progress_says_a_cold_start_takes_minutes(self) -> None:
+        from backend_service.inference import tensorfold_engine as tf
+
+        engine = tf.TensorFoldEngine.__new__(tf.TensorFoldEngine)
+        engine.process = None
+        engine.log_path = None
+        messages: list[str] = []
+        with mock.patch.object(tf, "_http_json", return_value={"status": "ok"}), \
+                mock.patch.object(tf.TensorFoldEngine, "_server_url", return_value="http://127.0.0.1:1/health"):
+            engine._wait_for_server("m", lambda payload: messages.append(str(payload.get("message") or payload)))
+        self.assertTrue(any("cold start can take a few minutes" in m for m in messages), messages)

@@ -21,7 +21,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock, RLock, Thread
+from threading import Event, Lock, RLock, Thread
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -169,6 +169,12 @@ class RuntimeController:
         # first was still loading, replace ``self.engine`` and orphan the first
         # engine's process (a 21 GB TensorFold worker kept running, starving the next model).
         self._load_lock = RLock()
+        # Newest request wins: a load for another model aborts the one in flight,
+        # a repeat of the same request waits for it, and unload cancels any load.
+        self._latest_load_key: str | None = None
+        self._inflight_load_key: str | None = None
+        self._loaded_key: str | None = None
+        self._load_aborted = Event()
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
@@ -904,8 +910,63 @@ class RuntimeController:
             free += self._pop_oldest_warm_entry()
         return free >= required_free_bytes
 
-    @_one_load_at_a_time
-    def load_model(
+    def load_model(self, **kwargs: Any) -> LoadedModelInfo:
+        key = self._warm_pool_key(
+            model_ref=kwargs["model_ref"],
+            runtime_target=kwargs.get("runtime_target"),
+            path=kwargs.get("path"),
+            cache_strategy=kwargs.get("cache_strategy", "native"),
+            cache_bits=kwargs.get("cache_bits", 0),
+            fp16_layers=kwargs.get("fp16_layers", 0),
+            fused_attention=kwargs.get("fused_attention", False),
+            fit_model_in_memory=kwargs.get("fit_model_in_memory", True),
+            context_tokens=kwargs.get("context_tokens", 8192),
+            speculative_decoding=kwargs.get("speculative_decoding", False),
+        )
+        self._latest_load_key = key
+        waited = False
+        if not self._load_lock.acquire(timeout=0.2):
+            waited = True
+            if self._inflight_load_key not in (None, key):
+                self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            if self._latest_load_key != key:
+                raise RuntimeError("A newer load request replaced this one.")
+            # A repeat of the request that just finished loading is already served;
+            # a request that did not have to wait is a deliberate reload.
+            if waited and self.loaded_model is not None and self._loaded_key == key:
+                return self.loaded_model
+            self._load_aborted.clear()
+            self._inflight_load_key = key
+            try:
+                loaded = self._load_model_locked(**kwargs)
+            finally:
+                self._inflight_load_key = None
+            self._loaded_key = key
+            return loaded
+        finally:
+            self._load_lock.release()
+
+    def _abort_inflight_load(self) -> None:
+        """Make the load in flight fail now by ending its engine's process."""
+        self._load_aborted.set()
+        engine = self.engine
+        pid = engine.process_pid() if engine is not None else None
+        if pid:
+            try:
+                import psutil
+
+                psutil.Process(int(pid)).kill()
+                return
+            except Exception:  # noqa: BLE001 - already gone
+                pass
+        try:
+            engine.unload_model()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _load_model_locked(
         self,
         *,
         model_ref: str,
@@ -1032,6 +1093,13 @@ class RuntimeController:
         try:
             loaded = self.engine.load_model(**_load_kwargs)
         except RuntimeError as _startup_exc:
+            if self._load_aborted.is_set():
+                self.loaded_model = None
+                self.runtime_note = None
+                self._loading_progress = None
+                self._loading_log_tail = []
+                self.prune_stale_backend_children()
+                raise RuntimeError("Model load cancelled.") from _startup_exc
             # An accelerator engine's startup failure → fall back to the
             # standard MLX worker (see ``_startup_fallback_label``).
             fallback_from = self._startup_fallback_label(
@@ -1110,12 +1178,19 @@ class RuntimeController:
     def loading_progress(self) -> tuple[dict[str, Any] | None, list[str]]:
         return self._loading_progress, list(self._loading_log_tail)
 
-    @_one_load_at_a_time
     def unload_model(self) -> None:
-        self.engine.unload_model()
-        self.loaded_model = None
-        self.runtime_note = None
-        self.prune_stale_backend_children()
+        self._latest_load_key = None  # queued loads give up instead of reloading
+        if not self._load_lock.acquire(timeout=0.2):
+            self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            self.engine.unload_model()
+            self.loaded_model = None
+            self._loaded_key = None
+            self.runtime_note = None
+            self.prune_stale_backend_children()
+        finally:
+            self._load_lock.release()
 
     def generate(
         self,

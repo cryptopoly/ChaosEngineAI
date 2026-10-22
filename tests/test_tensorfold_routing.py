@@ -382,3 +382,52 @@ class StopProcessTests(unittest.TestCase):
             result = controller.stop_idle()
         self.assertEqual(result["warmEvicted"], 1)
         prune.assert_called_with(grace_seconds=0.0)
+
+
+class SupersedeAndCancelTests(unittest.TestCase):
+    """A newer load replaces the one in flight, a repeat waits for it, and unload cancels it."""
+
+    class _SlowEngine(_LoadedByStub):
+        def __init__(self, label: str) -> None:
+            super().__init__(label)
+            self.started = __import__("threading").Event()
+            self.release = __import__("threading").Event()
+
+        def load_model(self, **kwargs):
+            self.started.set()
+            if not self.release.wait(timeout=5):
+                raise RuntimeError("never released")
+            if getattr(self, "killed", False):
+                raise RuntimeError("worker exited unexpectedly")
+            return super().load_model(**kwargs)
+
+        def unload_model(self) -> None:
+            self.killed = True
+            self.release.set()
+            super().unload_model()
+
+    def _kwargs(self, repo: str) -> dict:
+        return dict(model_ref=repo, model_name=repo, canonical_repo=repo, source="library", backend="mlx",
+                    path=None, runtime_target=repo)
+
+    def test_unload_cancels_a_load_in_flight(self) -> None:
+        import threading
+
+        controller = _controller(tensorfold=True)
+        slow = self._SlowEngine("slow")
+        controller._select_engine = mock.Mock(return_value=slow)
+        outcome: list = []
+        loader = threading.Thread(target=lambda: outcome.append(self._attempt(controller, "acme/Big")), daemon=True)
+        loader.start()
+        self.assertTrue(slow.started.wait(timeout=2))
+        controller.unload_model()  # must not wait for the load
+        loader.join(timeout=3)
+        self.assertFalse(loader.is_alive())
+        self.assertIsNone(controller.loaded_model)
+        self.assertIn("cancelled", str(outcome[0]).lower())
+
+    def _attempt(self, controller, repo):
+        try:
+            return controller.load_model(**self._kwargs(repo))
+        except RuntimeError as exc:
+            return exc

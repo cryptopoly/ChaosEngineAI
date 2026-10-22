@@ -149,27 +149,26 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
               </div>
             ) : null}
           </div>
-          {onStopIdleProcesses && (warmModels.length > 0 || system.runningLlmProcesses.some(isStopCandidate)) ? (
-            <div className="process-actions">
-              <button
-                type="button"
-                className="secondary-button small-button"
-                title={t("liveStats.processes.stopIdleHint", {
-                  defaultValue: "Unload parked models and stop every model process that is not serving the loaded model.",
-                })}
-                onClick={() => void onStopIdleProcesses()}
-              >
-                {t("liveStats.processes.stopIdle", { defaultValue: "Stop idle processes" })}
-              </button>
-            </div>
-          ) : null}
           <div className="data-table compact-table process-table">
             <div className="table-row table-head">
               <span>{t("liveStats.processes.name")}</span>
               <span>{t("liveStats.processes.owner")}</span>
               <span>{t("liveStats.processes.memory")}</span>
               <span>{t("liveStats.processes.cpu")}</span>
-              <span />
+              <span>
+                {onStopIdleProcesses && (warmModels.length > 0 || system.runningLlmProcesses.some(isStopCandidate)) ? (
+                  <button
+                    type="button"
+                    className="secondary-button small-button"
+                    title={t("liveStats.processes.stopIdleHint", {
+                      defaultValue: "Unload parked models and stop every model process that is not serving the loaded model.",
+                    })}
+                    onClick={() => void onStopIdleProcesses()}
+                  >
+                    {t("liveStats.processes.stopIdle", { defaultValue: "Stop idle" })}
+                  </button>
+                ) : null}
+              </span>
             </div>
             <div className="data-table-body">
               {system.runningLlmProcesses.length ? (

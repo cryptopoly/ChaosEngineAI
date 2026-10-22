@@ -1196,14 +1196,12 @@ strong {
   font-variant-numeric: tabular-nums;
 }
 
-.process-table .table-row {
-  grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr) 90px 70px 64px;
+.process-table .table-row > span:last-child {
+  text-align: right;
 }
 
-.process-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+.process-table .table-row {
+  grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr) 90px 70px 84px;
 }
 
 .process-name-cell {

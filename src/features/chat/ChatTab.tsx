@@ -462,6 +462,7 @@ export function ChatTab({
           draftMessage={draftMessage}
           pendingImages={pendingImages}
           loadedModelRef={loadedModelRef}
+          modelLoading={modelBusyLabel !== null}
           loadedModelCapabilities={loadedModelCapabilities ?? null}
           thinkingMode={thinkingMode}
           reasoningEffort={reasoningEffort}

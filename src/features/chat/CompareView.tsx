@@ -28,6 +28,7 @@ import {
   resolvedSpeculativeMode,
   runtimeOutcomeWarning,
 } from "./runtimeDetails";
+import { newStickyScroll, stickToBottom, updateStickyScroll, type StickyScroll } from "../../utils/stickyScroll";
 
 export const compareTargets = ["a", "b", "c", "d"] as const;
 export type CompareTarget = typeof compareTargets[number];
@@ -395,6 +396,7 @@ export function CompareView({
   const [pickerDraftSettings, setPickerDraftSettings] = useState<LaunchPreferences>(() => cloneLaunchSettings(launchSettings));
   const [resultAtBottom, setResultAtBottom] = useState<Record<CompareTarget, boolean>>(emptyAtBottom);
   const abortRef = useRef<AbortController | null>(null);
+  const resultSticky = useRef<Record<string, StickyScroll>>({});
   const resultRefs = useRef<Record<CompareTarget, HTMLDivElement | null>>({
     a: null,
     b: null,
@@ -429,7 +431,7 @@ export function CompareView({
 
   useEffect(() => {
     const handles = slots
-      .filter((slot) => resultAtBottom[slot.id])
+      .filter((slot) => resultSticky.current[slot.id]?.stuck ?? true)
       .map((slot) => requestAnimationFrame(() => scrollResultToBottom(slot.id)));
     return () => handles.forEach((handle) => cancelAnimationFrame(handle));
     // modelStates changes on each streamed token; that is intentional so
@@ -458,14 +460,15 @@ export function CompareView({
   function handleResultScroll(target: CompareTarget) {
     const element = resultRefs.current[target];
     if (!element) return;
-    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 32;
-    setResultAtBottom((current) => ({ ...current, [target]: atBottom }));
+    const sticky = (resultSticky.current[target] ??= newStickyScroll());
+    const atBottom = updateStickyScroll(element, sticky);
+    setResultAtBottom((current) => current[target] === atBottom ? current : { ...current, [target]: atBottom });
   }
 
   function scrollResultToBottom(target: CompareTarget) {
     const element = resultRefs.current[target];
     if (!element) return;
-    element.scrollTop = element.scrollHeight;
+    stickToBottom(element, (resultSticky.current[target] ??= newStickyScroll()));
     setResultAtBottom((current) => current[target] ? current : { ...current, [target]: true });
   }
 

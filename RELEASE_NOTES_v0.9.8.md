@@ -17,13 +17,14 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
   - A new llama.cpp Q3_K_M build (37.6 GB) also runs on Windows and Linux.
   - The Thinking control sets its reasoning level.
 - **LFM2.5 24B-A2B** (Liquid AI): MLX 4-bit and 8-bit, and a GGUF build. About 100 tokens per second (MLX 4-bit) and 140 (GGUF) on an M4 Max.
+- **Flint** (Recursive, Apache 2.0): a 39.8B coding-agent mixture-of-experts model with 2.5B active per token and a 256K context. Runs through llama.cpp: the official INT4 GGUF (26 GB, Apple Silicon with 48 GB or more) and a community Q4_K_M for Windows and Linux. About 112 tokens per second on an M4 Max, with reasoning and tool calls working.
 - **Muse Glimmer 30B** GGUF, with image input and its DFlash 2 drafter: 29 tokens per second against 19.5 without the drafter.
 - **Qwen3.8 Flash Next** GGUF (111 GB, for machines with 128 GB or more) and **Qwen3.6 35B-A3B with MTP** through TensorFold.
 - Also new since 0.9.4: **Kimi K2.6**, **Llama 4 Scout**, **MiniMax M3**, **Mistral Large 3**, **Ornith 1**, **Qwen 3.8**, **Bonsai** (1-bit and ternary builds that fit a 27B model in 4 to 9 GB), **Nemotron 3.5 Lightning** and **MiniCPM 5**.
 
 **Image**
 - **Qwen-Image-2.1 Turbo** through mflux: 1024x1024 in about 95 seconds on an M4 Max (8 steps).
-- **FLUX 3 Image Klein** (distilled and base) through mflux. Black Forest Labs' licence must be accepted on Hugging Face before the first download.
+- **FLUX 3 Image Klein** (distilled and base) through mflux: 1024x1024 in about 83 seconds on an M4 Max (16 steps, 23.5 GB peak). Black Forest Labs' licence must be accepted on Hugging Face for each repo, and your token needs read access to gated repos.
 - **Qwen-Image-2.1** (7B) on Apple Silicon through MLX, with a stable-diffusion.cpp variant for other platforms. Qwen-Image-2.1 and its Turbo are under the Qwen Research licence (non-commercial).
 - **FLUX.2 klein 4B**, plus Qwen-Image, Z-Image Turbo and FLUX.1 through the diffusers lane.
 
@@ -78,7 +79,7 @@ A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Mod
 
 - stable-diffusion.cpp and `llama-server-turbo` are not bundled in the release build. The sd.cpp image variants need the `sd` binary built from a source checkout.
 - MLX models that are multimodal but load as text only (Qwen 3.5 / 3.6 / 3.8 on MLX) do not see images yet.
-- Not tested on real hardware: the Linux fix on Fedora, sd.cpp FLUX on CUDA, the CausVid LoRA on a real Wan pipeline, FLUX 3 Klein (its licence was not accepted on the test machine), Qwen3.8 Flash Next GGUF (needs more memory than the test machine has).
+- Not tested on real hardware: the Linux fix on Fedora, sd.cpp FLUX on CUDA, the CausVid LoRA on a real Wan pipeline, Qwen3.8 Flash Next GGUF (needs more memory than the test machine has).
 - The CausVid LoRA is CC BY-NC; Qwen-Image-2.1 and its Turbo are non-commercial.
 - Kolibri 1 chat history is re-read each turn once it passes about 500 tokens.
 

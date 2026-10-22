@@ -63,7 +63,7 @@ jobs:
       - name: cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
       - name: Python venv + install
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           python -m venv .venv
           ${{ matrix.venv-activate }}
@@ -76,7 +76,7 @@ jobs:
           # assertion fails.
           pip install -e ".[desktop,dev,images]"
       - name: Python tests with coverage
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           ${{ matrix.venv-activate }}
           python -m pytest tests/ -v --tb=short \

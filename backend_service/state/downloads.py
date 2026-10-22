@@ -121,6 +121,15 @@ def start_download(
         if pinned_bytes > 0:
             total_gb = _bytes_to_gb(pinned_bytes)
 
+    # The files this download fetches: progress counts only those, not other
+    # quants of the repo that an earlier download left in the cache.
+    scope_patterns = (
+        allow_patterns
+        or _video_repo_allow_patterns(repo)
+        or _image_repo_allow_patterns(repo)
+        or text_patterns
+    )
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
     initial_progress = 0.0
     if isinstance(total_gb, (int, float)) and total_gb > 0 and downloaded_gb > 0:
         initial_progress = min(0.99, downloaded_gb / float(total_gb))
@@ -150,7 +159,7 @@ def start_download(
 
         def _progress_worker() -> None:
             while not stop_progress.wait(1.0):
-                downloaded_bytes = _hf_repo_downloaded_bytes(repo)
+                downloaded_bytes = _hf_repo_downloaded_bytes(repo, scope_patterns)
                 downloaded_gb_local = _bytes_to_gb(downloaded_bytes)
                 with state._lock:
                     current = state._downloads.get(repo)
@@ -254,7 +263,7 @@ def start_download(
                     return
                 cancelled = state._download_cancel.get(repo, False)
             if cancelled:
-                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+                downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
                 with state._lock:
                     current = state._downloads.get(repo)
                     if current is None or state._download_tokens.get(repo) != download_token:
@@ -292,7 +301,7 @@ def start_download(
                     state._downloads[repo]["error"] = validation_error
                     state.add_log("library", "error", validation_error)
                 return
-            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+            downloaded_gb_local = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
             with state._lock:
                 if state._download_tokens.get(repo) != download_token:
                     return
@@ -437,7 +446,14 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
         except Exception:
             pass
 
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
+    from backend_service.helpers.text_gguf import text_repo_allow_patterns
+
+    scope_patterns = (
+        _video_repo_allow_patterns(repo)
+        or _image_repo_allow_patterns(repo)
+        or text_repo_allow_patterns(repo)
+    )
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns))
     with state._lock:
         current = state._downloads.get(repo)
         if current is None:

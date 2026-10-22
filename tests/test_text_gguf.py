@@ -222,3 +222,31 @@ class CatalogPinInvariantTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DownloadedBytesScopeTests(unittest.TestCase):
+    """Progress counts only the files a pinned download fetches."""
+
+    def test_other_quants_in_the_cache_do_not_inflate_progress(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from backend_service.helpers import hf_cache_paths
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_dir = Path(tmp) / "models--acme--Model-GGUF"
+            snapshot = repo_dir / "snapshots" / "abc"
+            blobs = repo_dir / "blobs"
+            snapshot.mkdir(parents=True)
+            blobs.mkdir()
+            for name, size in {"Model-Q8_0.gguf": 100, "Model-Q4_K_M.gguf": 400}.items():
+                blob = blobs / f"sha-{name}"
+                blob.write_bytes(b"x" * size)
+                (snapshot / name).symlink_to(blob)
+            (blobs / "partial.incomplete").write_bytes(b"x" * 7)
+            with mock.patch.object(hf_cache_paths, "_hf_repo_cache_dir", return_value=repo_dir):
+                whole = hf_cache_paths._hf_repo_downloaded_bytes("acme/Model-GGUF")
+                scoped = hf_cache_paths._hf_repo_downloaded_bytes("acme/Model-GGUF", ["Model-Q8_0.gguf"])
+        self.assertEqual(whole, 507)
+        self.assertEqual(scoped, 107)  # the pinned file plus the in-progress blob

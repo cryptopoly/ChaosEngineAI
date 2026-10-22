@@ -484,3 +484,36 @@ class ErrorParsingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StockMlxStillLoadsTests(unittest.TestCase):
+    """An "exclusive" family stops being exclusive once the app's mlx-lm ships it."""
+
+    def _checkpoint(self, model_type: str):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": model_type}), encoding="utf-8")
+        return directory
+
+    def test_exclusive_when_mlx_lm_lacks_the_architecture(self) -> None:
+        from unittest import mock
+
+        from backend_service.inference import _tensorfold
+
+        with mock.patch.object(_tensorfold, "_stock_mlx_loads", return_value=False):
+            match = _tensorfold.match_model(model_dir=self._checkpoint("prism_hadamard_qwen35"))
+        self.assertIsNotNone(match)
+        self.assertEqual(match.tier, "exclusive")
+
+    def test_not_exclusive_when_mlx_lm_ships_it(self) -> None:
+        from unittest import mock
+
+        from backend_service.inference import _tensorfold
+
+        with mock.patch.object(_tensorfold, "_stock_mlx_loads", return_value=True):
+            match = _tensorfold.match_model(model_dir=self._checkpoint("prism_hadamard_qwen35"))
+        self.assertIsNone(match)

@@ -112,6 +112,13 @@ def ensure_extras_on_sys_path() -> list[Path]:
 # brings mlx without mlx-lm) would run the new mlx-lm on the old mlx.
 _BUNDLED_CORE = ("mlx", "mlx-metal", "mlx-lm")
 
+# Packages transformers / mlx-lm import in lock-step with each other. Successive
+# ``pip install --target`` runs into the overlay layer several versions of these
+# on top of one another (huggingface-hub 1.12 files under a 2.2 dist-info), so
+# the overlay is not just stale, it is a mix. Unless the overlay holds exactly
+# the bundled version, every copy of the package goes and the bundled one runs.
+_LOCKSTEP_CORE = ("huggingface-hub", "transformers", "tokenizers", "safetensors", "hf-xet")
+
 
 def _normalise(name: str) -> str:
     return name.lower().replace("_", "-").replace(".", "-")
@@ -161,12 +168,16 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
     root = extras_dir.resolve()
     moved: list[str] = []
     emptied: set[Path] = set()
-    for name in _BUNDLED_CORE:
+    for name in _BUNDLED_CORE + _LOCKSTEP_CORE:
         want = bundled.get(name)
         if want is None:
             continue
-        for version, info in overlay.get(name, []):
-            if version == want:
+        copies = overlay.get(name, [])
+        # A lock-step package that is clean (one copy, the bundled version) stays;
+        # anything else is moved whole, including a copy that matches the bundle.
+        move_all = name in _LOCKSTEP_CORE and (len(copies) > 1 or any(v != want for v, _ in copies))
+        for version, info in copies:
+            if version == want and not move_all:
                 continue
             target = extras_dir.parent / "stale-core" / f"{name}-{version}"
             try:
@@ -192,6 +203,12 @@ def quarantine_stale_core_packages(extras_dir: Path, bundled_dirs: list[Path]) -
     # the overlay root; rmdir refuses any folder that still holds files.
     for folder in sorted(emptied, key=lambda p: len(p.parts), reverse=True):
         while folder != root and root in folder.parents:
+            try:
+                leftovers = [child for child in folder.iterdir() if child.name != "__pycache__"]
+                if not leftovers:
+                    shutil.rmtree(folder / "__pycache__", ignore_errors=True)
+            except OSError:
+                break
             try:
                 folder.rmdir()
             except OSError:

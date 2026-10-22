@@ -54,6 +54,37 @@ class QuarantineTests(unittest.TestCase):
         self.assertFalse(any(self.extras.glob("mlx-0.31.2.dist-info")))
         self.assertFalse((self.extras / "mlx").exists())  # emptied folders go too
 
+    def test_a_mixed_huggingface_hub_overlay_is_moved_whole(self) -> None:
+        # Two pip --target runs left 1.12.2 and 2.2.0 dist-infos over one set of files;
+        # transformers then sees hub 1.12.2 and refuses to import.
+        _install(self.bundled, "huggingface-hub", "2.2.0", ["huggingface_hub/__init__.py"])
+        _install(self.extras, "huggingface-hub", "1.12.2", ["huggingface_hub/__init__.py", "huggingface_hub/old.py"])
+        _install(self.extras, "huggingface-hub", "2.2.0", ["huggingface_hub/__init__.py", "huggingface_hub/new.py"])
+        (self.extras / "huggingface_hub" / "__pycache__").mkdir()
+        (self.extras / "huggingface_hub" / "__pycache__" / "x.pyc").write_text("", encoding="utf-8")
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(sorted(moved), ["huggingface-hub 1.12.2", "huggingface-hub 2.2.0"])
+        self.assertFalse((self.extras / "huggingface_hub").exists())
+        self.assertFalse(any(self.extras.glob("huggingface_hub-*.dist-info")))
+
+    def test_a_clean_lockstep_package_stays(self) -> None:
+        _install(self.bundled, "transformers", "5.20.2", ["transformers/__init__.py"])
+        _install(self.extras, "transformers", "5.20.2", ["transformers/__init__.py"])
+
+        self.assertEqual(runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled]), [])
+        self.assertTrue((self.extras / "transformers" / "__init__.py").exists())
+
+    def test_an_older_lockstep_package_is_moved_and_the_bundle_runs(self) -> None:
+        _install(self.bundled, "transformers", "5.20.2", ["transformers/__init__.py"])
+        _install(self.extras, "transformers", "5.7.0", ["transformers/__init__.py"])
+
+        moved = runtime_paths.quarantine_stale_core_packages(self.extras, [self.bundled])
+
+        self.assertEqual(moved, ["transformers 5.7.0"])
+        self.assertFalse((self.extras / "transformers").exists())
+
     def test_matching_versions_and_unrelated_packages_stay(self) -> None:
         _install(self.extras, "mlx", "0.32.4", ["mlx/__init__.py"])
         _install(self.extras, "mlx-vlm", "0.4.4", ["mlx_vlm/__init__.py"])

@@ -290,10 +290,25 @@ def match_model(
             return TensorFoldMatch(family=family, repo=repo, matched_by="repo")
 
     directory = model_dir or _directory_candidate(path, runtime_target)
-    family = _EXCLUSIVE_MODEL_TYPES.get(read_model_type(directory) or "")
+    model_type = read_model_type(directory) or ""
+    family = _EXCLUSIVE_MODEL_TYPES.get(model_type)
+    # "Exclusive" means stock MLX cannot load the architecture. mlx-lm 0.32 ships
+    # prism_hadamard_qwen35, so a small Ternary Bonsai 2 loads there, and
+    # TensorFold itself refuses every checkpoint but the 27B.
+    if family is not None and _stock_mlx_loads(model_type):
+        family = None
     if family is not None:
         return TensorFoldMatch(family=family, repo=None, matched_by="config")
     return None
+
+
+def _stock_mlx_loads(model_type: str) -> bool:
+    import importlib.util
+
+    try:
+        return importlib.util.find_spec(f"mlx_lm.models.{model_type}") is not None
+    except (ImportError, ValueError):
+        return False
 
 
 def _directory_candidate(*candidates: str | None) -> Path | None:

@@ -35,7 +35,7 @@ const sources = [
     "src-tauri/Cargo.lock",
     () => {
       const name = read("src-tauri/Cargo.toml").match(/^name\s*=\s*"([^"]+)"/m)?.[1];
-      const block = read("src-tauri/Cargo.lock").match(new RegExp(`name = "${name}"\\nversion = "([^"]+)"`));
+      const block = read("src-tauri/Cargo.lock").match(new RegExp(`name = "${name}"\\r?\\nversion = "([^"]+)"`));
       return block?.[1];
     },
   ],

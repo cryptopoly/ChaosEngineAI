@@ -137,6 +137,7 @@ def _fake_command(directory: Path, body: str) -> Path:
     return script
 
 
+@unittest.skipIf(os.name == "nt", "the engine runs shell-script stand-ins; mflux is Apple Silicon only")
 class RunTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -244,6 +245,7 @@ class ManagerFallbackTests(unittest.TestCase):
         self.assertIn("mflux failed", status["message"])
 
 
+@unittest.skipIf(os.name == "nt", "the installer is a bash script; mflux is Apple Silicon only")
 class SetupRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

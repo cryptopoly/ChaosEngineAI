@@ -367,8 +367,16 @@ class VideoRuntimeRouteTests(unittest.TestCase):
 class VideoPreloadRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client, self.tempdir, self.env_snapshot = make_client()
+        # Same as the generate tests (FU-060): preload runs the memory gate, and a
+        # small CI runner would refuse a 10 GB model before the route logic runs.
+        self._memory_patch = mock.patch(
+            "backend_service.helpers.memory_gate.snapshot_memory_signals",
+            return_value=(64.0, 10.0),
+        )
+        self._memory_patch.start()
 
     def tearDown(self) -> None:
+        self._memory_patch.stop()
         restore_env(self.env_snapshot)
         self.tempdir.cleanup()
 

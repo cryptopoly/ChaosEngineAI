@@ -224,6 +224,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@unittest.skipIf(__import__("os").name == "nt", "needs symlinks")
 class DownloadedBytesScopeTests(unittest.TestCase):
     """Progress counts only the files a pinned download fetches."""
 

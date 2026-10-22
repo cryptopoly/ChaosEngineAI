@@ -211,7 +211,7 @@ class SetupRouteTests(unittest.TestCase):
             self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
         cmd = mock_run.call_args[0][0]
         self.assertIn("mlx-vlm>=0.6.3", cmd)
-        self.assertEqual(cmd[cmd.index("-c") + 1], "/tmp/x-extras/c.txt")
+        self.assertEqual(Path(cmd[cmd.index("-c") + 1]), Path("/tmp/x-extras/c.txt"))
         self.assertFalse(any(arg.startswith("mlx>=") or arg.startswith("mlx<") for arg in cmd), cmd)
 
     def test_every_overlay_install_passes_the_mlx_constraint_file(self):

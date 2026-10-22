@@ -98,7 +98,7 @@ class SdCppImageResolveBinaryTests(unittest.TestCase):
 
     def test_returns_env_path_when_set(self):
         with patch.dict(os.environ, {}, clear=False):
-            tmp = Path("/tmp/sdcpp-img-test-binary")
+            tmp = Path(__import__("tempfile").gettempdir()) / "sdcpp-img-test-binary"
             tmp.write_text("")
             try:
                 os.environ["CHAOSENGINE_SDCPP_BIN"] = str(tmp)

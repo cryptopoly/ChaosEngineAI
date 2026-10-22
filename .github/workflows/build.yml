@@ -63,11 +63,11 @@ jobs:
       - name: cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
       - name: Python venv + install
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           python -m venv .venv
           ${{ matrix.venv-activate }}
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
           # tests/test_video_runtime.py needs because probe() does a real
           # ``import torch`` after the mocked _find_missing returns. Without
@@ -76,7 +76,7 @@ jobs:
           # assertion fails.
           pip install -e ".[desktop,dev,images]"
       - name: Python tests with coverage
-        shell: ${{ matrix.shell }}
+        shell: bash
         run: |
           ${{ matrix.venv-activate }}
           python -m pytest tests/ -v --tb=short \

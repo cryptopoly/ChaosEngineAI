@@ -7,6 +7,7 @@ the cache's positional contents, and any uncertainty falls back to a fresh
 full prefill.
 """
 
+import importlib.util
 import unittest
 from unittest import mock
 
@@ -59,6 +60,7 @@ class AcquireCompressionTests(unittest.TestCase):
         self.assertIsNone(acq.commit_tokens)
 
 
+@unittest.skipUnless(importlib.util.find_spec("mlx_lm"), "mlx-lm is not installed")
 class AcquireNativeTests(unittest.TestCase):
     def _patches(self, *, can_trim=True, trim=lambda c, n: n, fresh_label="fresh"):
         return (

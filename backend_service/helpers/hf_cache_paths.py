@@ -38,10 +38,18 @@ def _hf_repo_cache_dir(repo_id: str) -> Path:
     return _hf_hub_cache_root() / f"models--{repo_id.replace('/', '--')}"
 
 
-def _hf_repo_downloaded_bytes(repo_id: str) -> int:
+def _hf_repo_downloaded_bytes(repo_id: str, allow_patterns: list[str] | None = None) -> int:
+    """Bytes of ``repo_id`` in the cache.
+
+    With ``allow_patterns`` (a download that fetches only some files), count
+    just the snapshot files those patterns select plus in-progress blobs, so a
+    repo that also holds other quants does not show more than its own total.
+    """
     from backend_service.helpers.discovery import _path_size_bytes
 
     cache_dir = _hf_repo_cache_dir(repo_id)
+    if allow_patterns:
+        return _matching_cache_bytes(cache_dir, allow_patterns)
     try:
         if not cache_dir.exists():
             return 0
@@ -51,6 +59,36 @@ def _hf_repo_downloaded_bytes(repo_id: str) -> int:
         return _path_size_bytes(cache_dir)
     except OSError:
         return 0
+
+
+def _matching_cache_bytes(cache_dir: Path, allow_patterns: list[str]) -> int:
+    import fnmatch
+
+    seen: set[str] = set()
+    total = 0
+    snapshots = cache_dir / "snapshots"
+    try:
+        for entry in snapshots.rglob("*"):
+            relative = entry.relative_to(snapshots).as_posix().split("/", 1)
+            name = relative[1] if len(relative) > 1 else relative[0]
+            if not any(fnmatch.fnmatch(name, pattern) for pattern in allow_patterns):
+                continue
+            try:
+                real = entry.resolve()
+                if not real.is_file() or str(real) in seen:
+                    continue
+                seen.add(str(real))
+                total += real.stat().st_size
+            except OSError:
+                continue
+        for blob in (cache_dir / "blobs").glob("*.incomplete"):
+            try:
+                total += blob.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        return total
+    return total
 
 
 def _hf_repo_snapshot_dir(repo_id: str) -> Path | None:

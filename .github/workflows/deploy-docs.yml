@@ -36,6 +36,10 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Runs once the deploy key exists: add the SITE_REPO_DEPLOY_KEY secret, then set the
+    # repository variable SITE_DEPLOY_ENABLED to true. Until then the job is skipped
+    # instead of failing on the push to ChaosEngineAI-Site.
+    if: vars.SITE_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

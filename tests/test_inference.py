@@ -1077,3 +1077,33 @@ class LlamaStreamReasoningTests(unittest.TestCase):
         chunks = self._stream([{"reasoning_content": "thinking"}, {"reasoning_content": " more"}])
         self.assertTrue(any(c.reasoning_done for c in chunks))
         self.assertEqual(chunks[-1].completion_tokens, 2)
+
+
+class ModelWeightsBytesTests(unittest.TestCase):
+    """A multi-quant GGUF folder counts as the one file that loads (warm pool, image/video gates)."""
+
+    def test_gguf_folder_counts_the_loaded_quant_only(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "models--acme--Model-GGUF" / "snapshots" / "abc"
+            folder.mkdir(parents=True)
+            (folder / "Model-BF16.gguf").write_bytes(b"x" * 480)
+            (folder / "Model-Q4_K_M.gguf").write_bytes(b"x" * 150)
+            self.assertEqual(_model_weights_bytes(str(folder)), 480)  # no catalog pin: the largest loads
+
+    def test_a_folder_with_safetensors_is_sized_whole(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "model"
+            folder.mkdir()
+            (folder / "model.safetensors").write_bytes(b"x" * 300)
+            (folder / "extra.gguf").write_bytes(b"x" * 100)
+            self.assertEqual(_model_weights_bytes(str(folder)), 400)

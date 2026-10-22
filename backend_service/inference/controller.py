@@ -112,11 +112,31 @@ from backend_service.inference._tensorfold import TensorFoldMatch, match_model
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
 
+def _model_weights_bytes(path: str) -> int:
+    """Bytes a model occupies when loaded, as opposed to bytes in its folder.
+
+    A GGUF repo folder usually holds several quants (a 24B model's BF16, F16 and
+    Q8_0 are 148 GB together) but one file loads, so count that file. Folders
+    that also carry safetensors are sized whole: their loader reads those.
+    """
+    try:
+        folder = Path(path)
+        if folder.is_dir() and not any(folder.rglob("*.safetensors")):
+            from backend_service.helpers.text_gguf import gguf_load_bytes  # noqa: PLC0415
+
+            loaded = gguf_load_bytes(folder)
+            if loaded:
+                return loaded
+    except OSError:
+        pass
+    return _path_size_bytes(path)
+
+
 @lru_cache(maxsize=32)
 def _cached_path_size_bytes(path: str) -> int:
     """Size of a loaded model's files. Cached: the runtime status (polled every
     few seconds) reports it, and a loaded model's files do not change."""
-    return _path_size_bytes(path)
+    return _model_weights_bytes(path)
 
 
 class RuntimeController:
@@ -730,7 +750,7 @@ class RuntimeController:
         for candidate in (path, runtime_target):
             if not candidate:
                 continue
-            size = _path_size_bytes(candidate)
+            size = _model_weights_bytes(candidate)
             if size > 0:
                 return size
         return 0

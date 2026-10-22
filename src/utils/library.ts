@@ -232,7 +232,8 @@ export function estimateLibraryItemResidentGb(
   item: LibraryItem,
   matchedVariant?: ModelVariant | null,
 ): number | null {
-  const sizeGb = Number.isFinite(item.sizeGb) && item.sizeGb > 0 ? item.sizeGb : null;
+  const weightsGb = item.loadSizeGb ?? item.sizeGb;
+  const sizeGb = Number.isFinite(weightsGb) && weightsGb > 0 ? weightsGb : null;
   if (sizeGb == null) {
     const fallback = matchedVariant?.estimatedMemoryGb;
     return fallback != null && Number.isFinite(fallback) ? fallback : null;
@@ -253,7 +254,8 @@ export function estimateLibraryItemCompressedGb(
   item: LibraryItem,
   matchedVariant?: ModelVariant | null,
 ): number | null {
-  const sizeGb = Number.isFinite(item.sizeGb) && item.sizeGb > 0 ? item.sizeGb : null;
+  const weightsGb = item.loadSizeGb ?? item.sizeGb;
+  const sizeGb = Number.isFinite(weightsGb) && weightsGb > 0 ? weightsGb : null;
   if (sizeGb == null) {
     const fallback = matchedVariant?.estimatedCompressedMemoryGb;
     return fallback != null && Number.isFinite(fallback) ? fallback : null;

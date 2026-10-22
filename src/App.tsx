@@ -9,6 +9,8 @@ import {
   loadModel,
   getWorkspace,
   resolveApiToken,
+  stopIdleModelProcesses,
+  stopModelProcess,
   updateSession,
   updateSettings as updateSettingsApi,
 } from "./api";
@@ -407,7 +409,7 @@ export default function App() {
       return {
         key: `library:${item.path}`,
         label: item.name,
-        detail: `${displayFormat} / ${number(item.sizeGb)} GB`,
+        detail: `${displayFormat} / ${number(item.loadSizeGb ?? item.sizeGb)} GB`,
         group: "Local library",
         model: item.name,
         modelRef: item.name,
@@ -416,7 +418,7 @@ export default function App() {
         path: item.path,
         backend: libraryItemBackend(item, matched),
         paramsB: matched?.paramsB,
-        sizeGb: item.sizeGb,
+        sizeGb: item.loadSizeGb ?? item.sizeGb,
         contextWindow: matched?.contextWindow,
         format: displayFormat,
         quantization: displayQuantization ?? undefined,
@@ -1215,6 +1217,22 @@ export default function App() {
     runtime={workspace.runtime}
     activity={workspace.activity}
     backendOnline={backendOnline}
+    onStopProcess={async (pid) => {
+      try {
+        await stopModelProcess(pid);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop that process.");
+      }
+      await refreshWorkspace();
+    }}
+    onStopIdleProcesses={async () => {
+      try {
+        await stopIdleModelProcesses();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop idle processes.");
+      }
+      await refreshWorkspace();
+    }}
   />;
   if (activeTab === "online-models") {
     content = (

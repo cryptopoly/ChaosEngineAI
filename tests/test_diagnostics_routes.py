@@ -269,3 +269,52 @@ class StorageChildrenTests(unittest.TestCase):
         for path in (str(self.outside), str(self.models / ".." / "outside")):
             resp = self.client.get("/api/diagnostics/storage-children", params={"path": path})
             self.assertEqual(resp.status_code, 403, path)
+
+
+class StopProcessRouteTests(unittest.TestCase):
+    """The Dashboard Stop buttons: contract of the two endpoints."""
+
+    class _Runtime(FakeRuntime):
+        def stop_process(self, pid):
+            if pid == 1:
+                raise ValueError("That process serves the loaded model. Unload the model instead.")
+            return {"pid": pid, "action": "terminated"}
+
+        def stop_idle(self):
+            return {"warmEvicted": 2, "orphansStopped": 1}
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        state = ChaosEngineState(
+            system_snapshot_provider=_fake_system_snapshot,
+            library_provider=lambda: [],
+            settings_path=Path(self.tempdir.name) / "settings.json",
+            benchmarks_path=Path(self.tempdir.name) / "benchmarks.json",
+            chat_sessions_path=Path(self.tempdir.name) / "chats.json",
+            library_cache_path=Path(self.tempdir.name) / "library_cache.json",
+        )
+        state.runtime = self._Runtime()
+        self.client = TestClient(create_app(state=state, api_token=TEST_API_TOKEN))
+        self.client.headers.update({"Authorization": f"Bearer {TEST_API_TOKEN}"})
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def test_stop_a_process(self):
+        resp = self.client.post("/api/models/processes/stop", json={"pid": 4321})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["action"], "terminated")
+
+    def test_the_loaded_models_process_is_a_conflict(self):
+        resp = self.client.post("/api/models/processes/stop", json={"pid": 1})
+        self.assertEqual(resp.status_code, 409)
+        self.assertIn("Unload the model", resp.json()["detail"])
+
+    def test_pid_must_be_an_integer(self):
+        for bad in ("12", None, True):
+            self.assertEqual(self.client.post("/api/models/processes/stop", json={"pid": bad}).status_code, 400)
+
+    def test_stop_idle(self):
+        resp = self.client.post("/api/models/processes/stop-idle")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"warmEvicted": 2, "orphansStopped": 1})

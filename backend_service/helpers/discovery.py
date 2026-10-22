@@ -197,6 +197,14 @@ def _model_has_files(path: Path, pattern: str) -> bool:
 
 
 
+def _gguf_load_size_gb(directory: Path) -> float | None:
+    """Size of the one GGUF that loads from a multi-quant repo folder."""
+    from backend_service.helpers.text_gguf import gguf_load_bytes
+
+    size = gguf_load_bytes(directory)
+    return round(size / 1_000_000_000, 2) if size else None
+
+
 def _detect_storage_format(path: Path, *, name_hint: str = "") -> str:
     lowered_hint = f"{name_hint} {path}".lower()
     if path.is_file() and path.suffix.lower() == ".gguf":
@@ -483,6 +491,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                         "backend": backend,
                         "modelType": model_type,
                         "sizeGb": _du_size_gb(child),
+                        "loadSizeGb": _gguf_load_size_gb(child) if file_format == "GGUF" and child.is_dir() else None,
                         "lastModified": time.strftime("%Y-%m-%d %H:%M", time.localtime(child.stat().st_mtime)),
                         "actions": ["Run Chat", "Run Server", "Cache Preview", "Delete"],
                         "directoryId": directory_id,

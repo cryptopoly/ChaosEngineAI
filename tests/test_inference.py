@@ -1077,3 +1077,68 @@ class LlamaStreamReasoningTests(unittest.TestCase):
         chunks = self._stream([{"reasoning_content": "thinking"}, {"reasoning_content": " more"}])
         self.assertTrue(any(c.reasoning_done for c in chunks))
         self.assertEqual(chunks[-1].completion_tokens, 2)
+
+
+class ModelWeightsBytesTests(unittest.TestCase):
+    """A multi-quant GGUF folder counts as the one file that loads (warm pool, image/video gates)."""
+
+    def test_gguf_folder_counts_the_loaded_quant_only(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "models--acme--Model-GGUF" / "snapshots" / "abc"
+            folder.mkdir(parents=True)
+            (folder / "Model-BF16.gguf").write_bytes(b"x" * 480)
+            (folder / "Model-Q4_K_M.gguf").write_bytes(b"x" * 150)
+            self.assertEqual(_model_weights_bytes(str(folder)), 480)  # no catalog pin: the largest loads
+
+    def test_a_folder_with_safetensors_is_sized_whole(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference.controller import _model_weights_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "model"
+            folder.mkdir()
+            (folder / "model.safetensors").write_bytes(b"x" * 300)
+            (folder / "extra.gguf").write_bytes(b"x" * 100)
+            self.assertEqual(_model_weights_bytes(str(folder)), 400)
+
+
+class MtpProbeOnHubFolderTests(unittest.TestCase):
+    """The probe must see through a Hugging Face cache folder, not fall back to a name match."""
+
+    def test_repo_folder_resolves_to_its_snapshot(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import has_mtp_heads_strict, model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--mlx-community--Qwen3-4B-bf16"
+            snap = repo / "snapshots" / "abc"
+            snap.mkdir(parents=True)
+            (snap / "model.safetensors.index.json").write_text(
+                json.dumps({"weight_map": {"model.layers.0.mlp.up_proj.weight": "a.safetensors"}}), encoding="utf-8"
+            )
+            self.assertIs(model_has_mtp_tensors(str(repo)), False)
+            # a catalog name that carries MTP heads must not win over what is on disk
+            self.assertFalse(has_mtp_heads_strict("Qwen/Qwen3.5-4B", str(repo)))
+
+    def test_single_file_checkpoint_header_is_read(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp)
+            header = json.dumps({"mtp.fc.weight": {"dtype": "F16"}}).encode()
+            (model / "model.safetensors").write_bytes(len(header).to_bytes(8, "little") + header)
+            self.assertIs(model_has_mtp_tensors(str(model)), True)

@@ -119,6 +119,20 @@ export function useWorkspace() {
     return () => clearTimeout(timer);
   }, []);
 
+  // The backend answers the first workspace request while its library scan is
+  // still running (a few seconds to a minute on a big model folder) with an
+  // empty list and ``libraryStatus: "scanning"``. Nothing refetched afterwards,
+  // so a window opened right after launch showed "No models found" until the
+  // user reloaded it. Poll until the scan finishes.
+  useEffect(() => {
+    if (workspace.libraryStatus !== "scanning") return undefined;
+    const timer = setInterval(() => {
+      void refreshWorkspace().catch(() => undefined);
+    }, 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace.libraryStatus]);
+
   // Initial workspace load — retry until the backend is ready.
   //
   // The Tauri sidecar now bootstraps on a background thread so the window

@@ -633,6 +633,11 @@ export function RuntimeControls({
       </div>
 
       <div className="toggle-column">
+        {/* Only llama.cpp acts on these two. MLX and vLLM record Fit in memory
+            without using it, and Fused attention only reaches an MLX cache
+            strategy that is not Native, so showing them elsewhere offered
+            switches that did nothing. */}
+        {isGgufBackend ? (<>
         <div className="check-row">
           <label className="check-row" style={{ margin: 0 }}>
             <input
@@ -661,6 +666,8 @@ export function RuntimeControls({
             </p>
           </div>
         ) : null}
+        </>) : null}
+        {isGgufBackend || settings.cacheStrategy !== "native" ? (<>
         <div className="check-row">
           <label className="check-row" style={{ margin: 0 }}>
             <input
@@ -689,6 +696,7 @@ export function RuntimeControls({
             </p>
           </div>
         ) : null}
+        </>) : null}
         {/* FU-034 (2026-05-10): hide the DFlash toggle entirely when the
             selected model has no draft in DRAFT_MODEL_MAP, or when the
             engine is GGUF (DFlash requires MLX/vLLM). Both cases give

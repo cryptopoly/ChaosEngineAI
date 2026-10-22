@@ -78,7 +78,7 @@ export function TensorfoldLaunchControl({
             disabled={!available}
             onChange={(event) => onSpeculativeChange(event.target.checked)}
           />
-          <span>{t("tensorfold.label", { defaultValue: "TensorFold" })}</span>
+          <span>{t("tensorfold.label", { defaultValue: "TensorFold (DFlash 2 / MTP drafting)" })}</span>
         </label>
         {exclusive ? (
           <span className="muted-text" style={{ fontSize: "0.85em" }}>

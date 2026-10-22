@@ -692,6 +692,8 @@ export {
   runBenchmark,
   searchHubModels,
   searchModels,
+  stopIdleModelProcesses,
+  stopModelProcess,
   unloadModel,
 } from "./models";
 export type {

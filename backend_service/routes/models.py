@@ -138,6 +138,30 @@ async def unload_model(request: Request) -> dict[str, Any]:
     return {"runtime": runtime}
 
 
+@router.post("/api/models/processes/stop")
+def stop_model_process(request: Request, body: dict[str, Any]) -> dict[str, Any]:
+    """Stop one leftover model process (not the loaded model's)."""
+    pid = body.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool):
+        raise HTTPException(status_code=400, detail="pid must be an integer.")
+    state = request.app.state.chaosengine
+    try:
+        result = state.runtime.stop_process(pid)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    state.add_log("runtime", "info", f"Stopped model process {pid} ({result['action']}).")
+    return result
+
+
+@router.post("/api/models/processes/stop-idle")
+def stop_idle_model_processes(request: Request) -> dict[str, Any]:
+    """Evict parked warm models and stop model processes nothing is using."""
+    state = request.app.state.chaosengine
+    result = state.runtime.stop_idle()
+    state.add_log("runtime", "info", f"Stopped idle model processes: {result}.")
+    return result
+
+
 @router.post("/api/models/convert")
 def convert_model(request: Request, body: ConvertModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine

@@ -73,6 +73,14 @@ export async function unloadModel(ref?: string): Promise<RuntimeStatus> {
   return result.runtime;
 }
 
+export async function stopModelProcess(pid: number): Promise<{ pid: number; action: string }> {
+  return await postJson<{ pid: number; action: string }>("/api/models/processes/stop", { pid });
+}
+
+export async function stopIdleModelProcesses(): Promise<{ warmEvicted: number; orphansStopped: number }> {
+  return await postJson<{ warmEvicted: number; orphansStopped: number }>("/api/models/processes/stop-idle");
+}
+
 // ---------------------------------------------------------------------------
 // Downloads (text models — image / video have their own clusters)
 // ---------------------------------------------------------------------------

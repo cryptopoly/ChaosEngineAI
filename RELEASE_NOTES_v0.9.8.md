@@ -4,6 +4,8 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 
 ### Highlights
 
+- **Many new models.** Chat: Flint (a 40B coding-agent model, about 112 tokens per second on an M4 Max), Kolibri 1, LFM2.5 24B-A2B, Muse Glimmer 30B, Qwen 3.8, Bonsai, Kimi K2.6, Llama 4 Scout, MiniMax M3, Mistral Large 3 and more. Image: FLUX 3 Image Klein and Qwen-Image-2.1 on Apple Silicon through the new isolated mflux engine.
+- **Voice in and out.** A new Voice group with speech-to-text (Whisper, Parakeet, faster-whisper) and text-to-speech (Kokoro).
 - **DFlash on Apple Silicon finally runs.** Since dflash-mlx 0.1.5, every DFlash reply had quietly fallen back to normal decoding while the load note still said DFlash was active. Fixed: Qwen3-4B now writes at 113 to 138 tokens per second against 53 without it, with identical output.
 - **Newer MLX underneath.** Releases now ship mlx 0.32, mlx-lm 0.32 and transformers 5.20. Setup installs resolve mlx-vlm 0.7.10 and diffusers 0.41. Current Gemma 4 conversions load (the old mlx-vlm could not read them), and every release build pins the exact versions it was tested with.
 - **Images in chat on Apple Silicon.** Vision models loaded through mlx-vlm (Gemma 4) now see attached images. Before, the image was always dropped.

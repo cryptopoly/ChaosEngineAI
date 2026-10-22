@@ -199,6 +199,24 @@ def start_download(
                     or _image_repo_allow_patterns(repo)
                     or text_patterns
                 )
+                # Leave out stale shard sets no index file uses (38 GB on
+                # LTX-2.3 distilled). Any failure keeps the patterns as they are.
+                try:
+                    from backend_service.helpers.shard_index import pruned_allow_patterns
+
+                    pruned = pruned_allow_patterns(repo, effective_allow_patterns)
+                except Exception:
+                    pruned = None
+                if pruned is not None:
+                    effective_allow_patterns, kept_bytes, skipped_bytes = pruned
+                    with state._lock:
+                        current = state._downloads.get(repo)
+                        if current is not None and state._download_tokens.get(repo) == download_token:
+                            current["totalGb"] = _bytes_to_gb(kept_bytes)
+                    state.add_log(
+                        "library", "info",
+                        f"Skipping {_bytes_to_gb(skipped_bytes):.1f} GB of weight shards no index uses in {repo}.",
+                    )
                 process = _spawn_snapshot_download(
                     repo,
                     env,

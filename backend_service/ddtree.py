@@ -279,8 +279,7 @@ def generate_ddtree_mlx(
     # instance carries every per-architecture entry point we need —
     # forward+capture, embed, text_model, lm_head, make_cache,
     # extract_context_feature. ``ContextOnlyDraftKVCache`` moved to
-    # ``dflash_mlx.model``; ``create_attention_mask`` is upstream
-    # mlx-lm. ``trim_cache_to`` was removed entirely — the replacement
+    # ``dflash_mlx.model``. ``trim_cache_to`` was removed entirely — the replacement
     # is a thin local helper that calls each entry's own ``.trim()`` /
     # ``.rollback()`` / ``.crop()`` based on what the cache type
     # exposes.
@@ -290,7 +289,6 @@ def generate_ddtree_mlx(
         resolve_target_ops,
     )
     from dflash_mlx.model import ContextOnlyDraftKVCache
-    from mlx_lm.models.base import create_attention_mask
 
     target_ops = resolve_target_ops(target_model)
 
@@ -332,8 +330,11 @@ def generate_ddtree_mlx(
 
     # Caches
     target_cache = target_ops.make_cache(target_model, enable_speculative_linear_cache=False)
+    # Since dflash-mlx 0.1.5 the draft cache keeps only sink + window context
+    # positions, so 0 / 0 kept nothing and every draft call failed on an empty
+    # context. Use the sizes upstream's own decode loop uses.
     draft_cache = [
-        ContextOnlyDraftKVCache(sink_size=0, window_size=0)
+        ContextOnlyDraftKVCache(sink_size=64, window_size=1024)
         for _ in range(len(draft_model.layers))
     ]
     capture_layer_ids = {int(lid) + 1 for lid in draft_model.target_layer_ids}
@@ -458,7 +459,7 @@ def generate_ddtree_mlx(
             # Python list, which is a major bottleneck for large vocabularies
             # (150K+ tokens for Qwen models).
             mx.eval(draft_logits)
-            draft_logits_np = np.array(draft_logits[0], dtype=np.float32)
+            draft_logits_np = np.array(draft_logits[0].astype(mx.float32))  # numpy cannot read bf16
 
             node_token_ids, node_depths, parents, child_maps, visibility = \
                 build_ddtree_tree(draft_logits_np, effective_budget)
@@ -483,30 +484,12 @@ def generate_ddtree_mlx(
             if 0 in capture_layer_ids:
                 captured_hidden[0] = h
 
-            # Get the cache's current prefix length for mask construction.
-            # ``create_attention_mask`` lives in mlx_lm upstream (dflash-mlx
-            # 0.1.5 dropped the runtime re-export).
-            causal_mask = create_attention_mask(h, target_cache[0] if target_cache else None)
-
-            # Replace the tree portion of the causal mask with our tree mask
-            if causal_mask is not None:
-                # causal_mask shape: (1, 1, tree_len, past + tree_len)
-                # We need to override the tree-to-tree block with visibility
-                vis_block = mx.where(
-                    mx.array(visibility)[None, None],
-                    mx.zeros_like(tree_mask[:, :, :tree_len, -tree_len:]),
-                    mx.array(-1e9),
-                )
-                # Build combined mask: keep causal for prefix, use tree for tree block
-                combined = causal_mask.astype(mx.float32)
-                # Zero out the tree-to-tree portion and replace with visibility
-                prefix_len = combined.shape[-1] - tree_len
-                combined_np = np.array(combined.tolist(), dtype=np.float32)
-                vis_np = np.where(visibility, 0.0, -1e9).astype(np.float32)
-                combined_np[0, 0, :tree_len, prefix_len:prefix_len + tree_len] = vis_np
-                full_mask = mx.array(combined_np)
-            else:
-                full_mask = tree_mask
+            # ``tree_mask`` already covers the whole key range of a
+            # full-attention cache: every past position plus the tree's
+            # ancestor visibility. The old merge with mlx-lm's causal mask
+            # broke once create_attention_mask started returning "causal" (a
+            # string) or a boolean mask. Boolean also matches bf16 attention.
+            full_mask = tree_mask == 0
 
             # Run through target model layers with tree mask
             for i, layer in enumerate(inner.layers):

@@ -56,3 +56,20 @@ if _INSERTED and os.environ.get("CHAOSENGINE_TEST_TRACE_EXTRAS"):
         file=sys.stderr,
         flush=True,
     )
+
+
+# Keep downloads hermetic: the download worker asks the Hub which shards an
+# index file uses (``helpers.shard_index``). Tests that start downloads must
+# not make that network call; tests of the pruning itself inject their own
+# file listing.
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_hub_shard_listing(monkeypatch):
+    from backend_service.helpers import shard_index
+
+    def _offline(repo):
+        raise RuntimeError("Hub listing disabled in tests")
+
+    monkeypatch.setattr(shard_index, "_list_hub_files", _offline)

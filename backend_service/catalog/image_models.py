@@ -113,6 +113,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "fast", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.9,
+                "runtimeFootprintGb": 14.0,  # 6.9 GB GGUF + 5.2 GB T5 Q8 + 0.6 GB CLIP-L / VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
@@ -121,6 +122,28 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ),
                 "estimatedGenerationSeconds": 4.5,
                 "releaseDate": "2026-05",
+            },
+            {
+                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
+                "familyId": "flux-fast",
+                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
+                "provider": "Black Forest Labs · MIT-Han-Lab",
+                "repo": "black-forest-labs/FLUX.1-schnell",
+                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
+                "defaultSteps": 4,
+                "cfgOverride": 0.0,
+                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
+                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
+                "styleTags": ["general", "fast", "cuda", "int4"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.7,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
+                    "4090 with quality near the bf16 baseline. CUDA only."
+                ),
+                "estimatedGenerationSeconds": 0.7,
+                "releaseDate": "2026-01",
             },
         ],
     },
@@ -226,6 +249,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.9,
+                "runtimeFootprintGb": 14.0,  # 6.9 GB GGUF + 5.2 GB T5 Q8 + 0.6 GB CLIP-L / VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Cross-platform GGUF runtime via sd.cpp subprocess. The download is the "
@@ -335,28 +359,6 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "automatically on Apple Silicon and CPU."
                 ),
                 "estimatedGenerationSeconds": 1.4,
-                "releaseDate": "2026-01",
-            },
-            {
-                "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
-                "familyId": "flux-schnell",
-                "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
-                "provider": "Black Forest Labs · MIT-Han-Lab",
-                "repo": "black-forest-labs/FLUX.1-schnell",
-                "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
-                "defaultSteps": 4,
-                "cfgOverride": 0.0,
-                "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
-                "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
-                "styleTags": ["general", "fast", "cuda", "int4"],
-                "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
-                "recommendedResolution": "1024x1024",
-                "note": (
-                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
-                    "4090 with quality near the bf16 baseline. CUDA only."
-                ),
-                "estimatedGenerationSeconds": 0.7,
                 "releaseDate": "2026-01",
             },
         ],
@@ -502,6 +504,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 33.1,
+                "runtimeFootprintMpsGb": 30.0,  # measured: 28.7-29.9 GB peak at 1024² / 40 steps on an M4 Max (FU-096)
                 "defaultSteps": 40,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
@@ -525,7 +528,10 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "mflux (MLX native)",
                 "styleTags": ["photoreal", "typography", "detailed", "apple-silicon"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 26.0,
+                "sizeGb": 33.1,  # same download as the bf16 row: mflux quantizes while loading
+                # Not measured: the bf16 row's measured 30 GB peak less the ~7 GB an 8-bit
+                # 7B transformer saves.
+                "runtimeFootprintMpsGb": 23.0,
                 "defaultSteps": 40,
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
@@ -536,6 +542,31 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 ),
                 "estimatedGenerationSeconds": 340.0,
                 "releaseDate": "2026-09",
+            },
+            {
+                "id": "Qwen/Qwen-Image-2.1-Turbo-mflux",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 Turbo · mflux (MLX)",
+                "provider": "Alibaba Qwen · mflux",
+                "repo": "Qwen/Qwen-Image-2.1-Turbo",
+                "engine": "mflux",
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "typography", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 32.4,
+                # Same 7B architecture as Qwen-Image-2.1 (measured 30 GB peak there).
+                "runtimeFootprintMpsGb": 30.0,
+                "defaultSteps": 8,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. The 8-step distilled Qwen-Image-2.1 (released 2026-10-09): "
+                    "same quality class in 8 steps instead of 40, no CFG. Qwen Research licence: "
+                    "non-commercial use only. Needs the mflux engine, installed from the Image Studio."
+                ),
+                "estimatedGenerationSeconds": 75.0,
+                "releaseDate": "2026-10",
             },
             {
                 # Qwen-Image-2.1 (Sep 2026): 7B DiT + Qwen3-VL-8B encoder, text-to-image
@@ -569,6 +600,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "typography", "detailed", "gguf", "cross-platform"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 4.2,
+                "runtimeFootprintGb": 11.0,  # 4.2 GB GGUF + 5.0 GB Qwen3-VL-8B Q4_K_M + 0.7 GB VAE + compute buffers (file sizes; peak not measured)
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "7B Qwen-Image-2.1 as a 4-bit GGUF through stable-diffusion.cpp. The first "
@@ -611,7 +643,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
     },
     {
         "id": "flux-2",
-        "name": "FLUX.2 Dev",
+        "name": "FLUX.2",
         "provider": "Black Forest Labs",
         "headline": "Production-grade FLUX successor — up to 10 reference images, strong identity preservation.",
         "summary": "FLUX.2 — Black Forest Labs' next-gen flow-matching model. Multi-reference (up to 10 images), character/product/style consistency.",
@@ -671,6 +703,66 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "note": "Full 32B FLUX.2 (gated — accept BFL's licence on HF). Up to 10 reference images for character/product/style consistency.",
                 "estimatedGenerationSeconds": 22.0,
                 "releaseDate": "2025-11",
+            },
+        ],
+    },
+    {
+        "id": "flux-3",
+        "name": "FLUX 3 Image Klein",
+        "provider": "Black Forest Labs",
+        "headline": "Black Forest Labs' third-generation compact image model: text-to-image and editing with up to ten references.",
+        "summary": (
+            "FLUX 3 Image Klein (released 2026-10-13): a distilled checkpoint for fast generation and an "
+            "undistilled Base for guided generation and fine-tuning. Gated on Hugging Face under the FLUX "
+            "Kommunity licence: accept it on the model page before downloading."
+        ),
+        "updatedLabel": "Oct 2026",
+        "badges": ["New", "Gated"],
+        "defaultVariantId": "black-forest-labs/flux-3-image-klein-mflux",
+        "variants": [
+            {
+                "id": "black-forest-labs/flux-3-image-klein-mflux",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/flux-3-image-klein",
+                "engine": "mflux",
+                "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "general", "fast", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                # transformer 11.1 + text encoder 8.9 + VAE 0.3 GB: the folders mflux loads.
+                "sizeGb": 20.3,
+                "defaultSteps": 16,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. Distilled: 16 steps, no guidance. Gated: accept the FLUX "
+                    "Kommunity licence on Hugging Face first. Needs the mflux engine, installed from "
+                    "the Image Studio."
+                ),
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "black-forest-labs/flux-3-image-klein-base-mflux",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein Base · mflux (MLX)",
+                "provider": "Black Forest Labs · mflux",
+                "repo": "black-forest-labs/flux-3-image-klein-base",
+                "engine": "mflux",
+                "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein-base",
+                "runtime": "mflux (MLX native)",
+                "styleTags": ["photoreal", "detailed", "apple-silicon"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 20.3,
+                "defaultSteps": 50,
+                "cfgOverride": 3.5,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "Apple Silicon only. Undistilled Base: 50 steps with guidance 3.5, slower but "
+                    "steerable and the one to fine-tune. Gated: accept the FLUX Kommunity licence "
+                    "on Hugging Face first."
+                ),
+                "releaseDate": "2026-10",
             },
         ],
     },

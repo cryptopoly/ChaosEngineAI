@@ -326,12 +326,14 @@ class DFlashCompatibilityTests(unittest.TestCase):
             )
 
         self.assertTrue(result["speculativeDecoding"])
-        self.assertEqual(result["treeBudget"], 64)
+        # DDTree tree verification is unfinished on MLX: the tree budget is
+        # dropped and linear DFlash runs, with a note saying so.
+        self.assertEqual(result["treeBudget"], 0)
+        self.assertIn("DDTree", result.get("note") or "")
         self.assertEqual(result["dflashDraftModel"], "z-lab/Qwen3.5-35B-A3B-DFlash")
         self.assertIs(worker._dflash_target, fake_model)
         self.assertEqual(worker._dflash_generator, "draft_bundle")
-        self.assertIs(worker._ddtree_target, fake_model)
-        self.assertEqual(worker._ddtree_draft, "draft_bundle")
+        self.assertIsNone(worker._ddtree_draft)
         fake_runtime.resolve_target_ops.assert_called_once_with(fake_model)
         target_ops.configure_full_attention_split.assert_not_called()
         fake_runtime.load_draft_bundle.assert_called_once_with(
@@ -403,6 +405,49 @@ class DFlashCompatibilityTests(unittest.TestCase):
         self.assertEqual(result["dflashAcceptanceRate"], 2.0)
         self.assertGreater(result["tokS"], 0)
         self.assertIn("DFLASH speculative decoding", result["runtimeNote"])
+
+    def test_generate_dflash_passes_a_runtime_context(self):
+        """dflash-mlx 0.1.5+ raises without ``runtime_context``; a fake that
+        accepted any kwargs hid that every DFlash reply fell back."""
+        worker = WorkerState()
+        worker.model = "standard_target"
+        worker.tokenizer = _FakeTokenizer()
+        worker._dflash_generator = "draft_bundle"
+        seen: dict = {}
+
+        def _strict_stream(**kwargs):
+            if kwargs.get("runtime_context") is None:
+                raise ValueError("runtime_context is required")
+            seen.update(kwargs)
+            yield {"event": "summary", "generated_token_ids": [10], "generation_tokens": 1,
+                   "prompt_token_count": 3, "elapsed_us": 1_000_000, "cycles_completed": 1}
+
+        fake_runtime = SimpleNamespace(stream_dflash_generate=_strict_stream)
+        fake_context = SimpleNamespace(build_offline_runtime_context=lambda **kw: ("ctx", kw))
+        modules = {
+            "dflash_mlx": SimpleNamespace(runtime=fake_runtime),
+            "dflash_mlx.runtime": fake_runtime,
+            "dflash_mlx.runtime_context": fake_context,
+        }
+        with patch.dict("sys.modules", modules):
+            worker._generate_dflash({"prompt": "hello", "maxTokens": 16})
+
+        self.assertEqual(seen["runtime_context"], ("ctx", {"target_fa_window": 0}))
+
+    def test_generate_dflash_supplies_every_required_argument_of_the_installed_release(self):
+        try:
+            from dflash_mlx.engine.spec_epoch import stream_dflash_generate_impl
+        except ImportError:
+            self.skipTest("dflash-mlx not installed")
+        import inspect
+
+        required = {
+            name for name, param in inspect.signature(stream_dflash_generate_impl).parameters.items()
+            if param.default is inspect.Parameter.empty
+        }
+        passed = {"target_model", "tokenizer", "draft_model", "prompt", "max_new_tokens",
+                  "use_chat_template", "stop_token_ids", "prompt_tokens_override", "runtime_context"}
+        self.assertLessEqual(required, passed, "dflash-mlx needs arguments the worker does not pass (FU-057)")
 
     def test_stream_generate_notes_speculative_fallback_when_dflash_stream_path_fails(self):
         worker = WorkerState()

@@ -13,14 +13,16 @@ controller, the engine and the system-stats payload can all consult it:
 * ``TENSORFOLD_FAMILIES`` — the families TensorFold serves on MLX, their
   ``config.json`` ``model_type`` values, the checkpoints its docs name as
   tested, and each family's optional external draft model. A family needs a
-  ``load()`` in its TensorFold package to be listed: Qwen3.6-35B-A3B
-  (``qwen3_5_moe``) ships only a CUDA engine, so it is deliberately absent.
+  ``load()`` in its TensorFold package to be listed (Qwen3.6-35B-A3B gained
+  its Mac engine in 0.6.5).
 * ``match_model`` — which family (if any) a model belongs to, and how it
   should be routed (see :class:`TensorFoldMatch`).
 * ``resolve_model_dir`` / ``native_context_window`` — locate the local
   snapshot the server is started on, without ever touching the network.
 
-Every fact below is taken from TensorFold's own source at v0.5.0
+Every fact below is taken from TensorFold's own source at v0.6.6, the last
+release of the Python engine (1.x is a native binary with a different model
+set; see FU-111)
 (``src/tensorfold/families/*/__init__.py`` ``MODEL_TYPES`` / ``MODELS`` /
 ``DRAFTER``) and its recipe book; re-check it when the pin in
 ``scripts/install-tensorfold.sh`` moves.
@@ -40,7 +42,8 @@ class TensorFoldFamily:
     title: str
     # ``config.json`` ``model_type`` values the family serves.
     model_types: tuple[str, ...]
-    # Checkpoints TensorFold's docs name as tested on MLX.
+    # Checkpoints TensorFold's docs name as tested on MLX, under the ids our
+    # catalog lists.
     tested_repos: tuple[str, ...]
     # Optional external draft model the Mac engine can draft with.
     drafter: str | None = None
@@ -58,6 +61,10 @@ class TensorFoldFamily:
     # checkpoint that can match the family; revisit if a text-only conversion
     # of the same family is ever added.
     vision: bool = False
+    # Other ids of the same checkpoints: 0.6.3 moved Vontra/<name> to
+    # TensorFold/<name> (the old ids redirect), so a model downloaded under
+    # either name matches. Used for matching only, never listed.
+    repo_aliases: tuple[str, ...] = ()
 
 
 TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
@@ -66,14 +73,16 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         title="Qwen3.8 dense",
         model_types=("qwen3_5",),
         tested_repos=("Vontra/Qwen3.8-27B-MLX-4bit",),
+        repo_aliases=("TensorFold/Qwen3.8-27B-MLX-4bit",),
         drafter="z-lab/Qwen3.8-27B-DFlash2",
         vision=True,
     ),
     TensorFoldFamily(
         key="qwen3_8_flash_next",
         title="Qwen3.8 Flash Next",
-        model_types=("qwen4_exp",),
+        model_types=("qwen4_exp", "qwen3_8_flash_next"),
         tested_repos=("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",),
+        repo_aliases=("TensorFold/Qwen3.8-Flash-Next-MLX-4bit-MTP",),
         exclusive=True,
         min_memory_gb=128,
     ),
@@ -82,6 +91,15 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         title="Nemotron 3.5 Lightning",
         model_types=("nemotron_h",),
         tested_repos=("Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",),
+        repo_aliases=("TensorFold/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",),
+    ),
+    TensorFoldFamily(
+        # New in 0.6.5: drafts with the checkpoint's own MTP layer
+        # (mtp-4bit.safetensors), so no external draft model.
+        key="qwen3_6_moe",
+        title="Qwen3.6 MoE",
+        model_types=("qwen3_5_moe",),
+        tested_repos=("TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",),
     ),
     TensorFoldFamily(
         key="gemma4",
@@ -96,6 +114,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         title="GLM-5.3-Flash",
         model_types=("glm5_next",),
         tested_repos=("Vontra/GLM-5.3-Flash-MLX-4bit-MTP",),
+        repo_aliases=("TensorFold/GLM-5.3-Flash-MLX-4bit-MTP",),
         # The optional incoai DFlash2 drafter is CUDA-only and carries
         # non-commercial terms; the Mac engine drafts with the MTP layer.
         exclusive=True,
@@ -106,7 +125,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
         title="DeepSeek-V4-Flash",
         model_types=("deepseek_v4",),
         tested_repos=("mlx-community/DeepSeek-V4-Flash-4bit",),
-        drafter="Vontra/DeepSeek-V4-Flash-DSpark-MLX",
+        drafter="TensorFold/DeepSeek-V4-Flash-DSpark-MLX",
         exclusive=True,
         min_memory_gb=256,
     ),
@@ -124,7 +143,7 @@ TENSORFOLD_FAMILIES: tuple[TensorFoldFamily, ...] = (
 _REPO_INDEX: dict[str, TensorFoldFamily] = {
     repo.lower(): family
     for family in TENSORFOLD_FAMILIES
-    for repo in family.tested_repos
+    for repo in (*family.tested_repos, *family.repo_aliases)
 }
 
 _EXCLUSIVE_MODEL_TYPES: dict[str, TensorFoldFamily] = {

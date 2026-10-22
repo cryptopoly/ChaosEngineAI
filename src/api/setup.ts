@@ -513,6 +513,9 @@ export interface MfluxStatus {
   supported: boolean;
   /** Catalog repos the engine has a command for. */
   repos: string[];
+  /** The mflux release this app expects; an older install is ``outdated``. */
+  requiredVersion?: string;
+  outdated?: boolean;
 }
 
 export async function getMfluxStatus(): Promise<MfluxStatus> {

@@ -101,7 +101,7 @@ class SynthesizeSpeechTests(unittest.TestCase):
             voice_runtime, "_platform", return_value="apple_silicon"
         )
         self._available = mock.patch.object(
-            voice_runtime, "_is_available", side_effect=lambda name: name == "mlx_audio"
+            voice_runtime, "_is_available", side_effect=lambda name: name in ("mlx_audio", "misaki")
         )
         self._platform.start()
         self._available.start()
@@ -498,9 +498,18 @@ class BackendSelectionTests(unittest.TestCase):
             return fn()
 
     def test_apple_silicon_prefers_mlx_backends(self) -> None:
-        avail = {"mlx_whisper", "mlx_audio", "faster_whisper", "kokoro_onnx"}
+        avail = {"mlx_whisper", "mlx_audio", "misaki", "faster_whisper", "kokoro_onnx"}
         self.assertEqual(self._run("apple_silicon", avail, voice_runtime._stt_backend), "mlx-whisper")
         self.assertEqual(self._run("apple_silicon", avail, voice_runtime._tts_backend), "mlx-audio")
+
+    def test_mlx_audio_without_misaki_is_not_a_tts_backend(self) -> None:
+        # mlx-vlm 0.7 installs mlx-audio on its own; without misaki every
+        # synthesis would end with no output file.
+        self.assertIsNone(self._run("apple_silicon", {"mlx_audio"}, voice_runtime._tts_backend))
+        self.assertFalse(self._run("apple_silicon", {"mlx_audio"}, voice_runtime._tts_available))
+        self.assertEqual(
+            self._run("apple_silicon", {"mlx_audio", "kokoro_onnx"}, voice_runtime._tts_backend), "kokoro-onnx",
+        )
 
     def test_apple_silicon_falls_back_to_portable_backends(self) -> None:
         avail = {"faster_whisper", "kokoro_onnx"}
@@ -632,7 +641,7 @@ class SynthesizeSpeechEdgeTests(unittest.TestCase):
             (Path(str(kwargs["output_path"])) / "tts.wav").write_bytes(b"x")
 
         with mock.patch.object(voice_runtime, "_platform", return_value="apple_silicon"), \
-             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n == "mlx_audio"), \
+             mock.patch.object(voice_runtime, "_is_available", side_effect=lambda n: n in ("mlx_audio", "misaki")), \
              _FakeMlxAudio(fake_generate):
             voice_runtime.synthesize_speech("hello", voice, 1.25)
         return calls
@@ -1127,3 +1136,30 @@ class SttModelResolutionTests(unittest.TestCase):
             second = voice_runtime.transcribe_audio(b"y", "audio/webm", "")
         self.assertEqual((first, second), ("bonjour", "bonjour"))
         self.assertEqual(loads, ["mlx-community/parakeet-tdt-0.6b-v3"])
+
+
+class EspeakDataPathTests(unittest.TestCase):
+    """espeak-ng exits the process on a data path it silently dropped as too long."""
+
+    def _loader(self, path: Path):
+        return types.SimpleNamespace(get_data_path=lambda: str(path))
+
+    def test_long_path_is_replaced_by_a_short_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            long_dir = Path(tmp) / ("x" * 150) / "espeak-ng-data"
+            long_dir.mkdir(parents=True)
+            (long_dir / "phontab").write_bytes(b"data")
+            home = Path(tmp) / "home"
+            loader = self._loader(long_dir)
+            with mock.patch.dict(sys.modules, {"espeakng_loader": loader}), \
+                 mock.patch.object(voice_runtime.Path, "home", return_value=home):
+                voice_runtime._ensure_short_espeak_data_path()
+            self.assertEqual(loader.get_data_path(), str(home / ".chaosengine" / "espeak-ng-data"))
+            self.assertTrue((home / ".chaosengine" / "espeak-ng-data" / "phontab").is_file())
+
+    def test_short_path_is_left_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            loader = self._loader(Path(tmp))
+            with mock.patch.dict(sys.modules, {"espeakng_loader": loader}):
+                voice_runtime._ensure_short_espeak_data_path()
+            self.assertEqual(loader.get_data_path(), tmp)

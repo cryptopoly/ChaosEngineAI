@@ -14,6 +14,7 @@ const strict = mode === "release";
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptRoot, "..");
 const workspaceRoot = projectRoot;
+const releaseConstraintsPath = path.join(workspaceRoot, "release-constraints.txt");
 const tauriRoot = path.join(projectRoot, "src-tauri");
 const resourcesRoot = path.join(tauriRoot, "resources");
 const embeddedResourcesRoot = path.join(resourcesRoot, "embedded");
@@ -49,7 +50,7 @@ const BUNDLED_INSTALL_SCRIPTS = ["install-mflux.sh", "install-mtplx.sh", "instal
 // the repository's "latest" release, which had become a `v0.7.0` entry holding
 // only nightly-tag.txt, so no platform's release bundle got a llama-server.
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
-const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11277";
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b11810";
 
 main();
 
@@ -373,6 +374,8 @@ function stageOptionalRuntimePackages(pythonBinary) {
           "--no-compile",
           "--upgrade",
           "--target", sitePackagesDest,
+          // Same versions the app is tested with (scripts/freeze-release-constraints.py).
+          ...(fs.existsSync(releaseConstraintsPath) ? ["-c", releaseConstraintsPath] : []),
           pipName,
         ],
         {

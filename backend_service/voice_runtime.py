@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import platform
+import shutil
+import sys
 import tempfile
 import threading
 from pathlib import Path
@@ -116,10 +118,47 @@ def _stt_available() -> bool:
     return _is_available("faster_whisper")
 
 
+def _mlx_audio_tts_ready() -> bool:
+    """mlx-audio can speak only with misaki, its Kokoro text front-end.
+
+    mlx-vlm 0.7 depends on mlx-audio, so mlx-audio can be present without the
+    voice pack; mlx-audio 0.6 made misaki optional and swallows the import
+    error, so every synthesis then ended with no output file.
+    """
+    return _is_available("mlx_audio") and _is_available("misaki")
+
+
+# espeak-ng keeps its data path in a fixed buffer (about 160 characters). A
+# longer one is dropped silently, espeak falls back to the path baked in at
+# build time and then exits the process, taking the backend with it.
+_ESPEAK_PATH_LIMIT = 140
+
+
+def _ensure_short_espeak_data_path() -> None:
+    """Point misaki's espeak fallback at a short copy of its data when needed.
+
+    Must run before ``misaki.espeak`` is imported, which reads the path once.
+    """
+    try:
+        import espeakng_loader  # type: ignore[import-untyped]
+    except ImportError:
+        return
+    source = Path(espeakng_loader.get_data_path())
+    if len(str(source)) < _ESPEAK_PATH_LIMIT or not source.is_dir():
+        return
+    short = Path.home() / ".chaosengine" / "espeak-ng-data"
+    if not (short / "phontab").is_file():
+        shutil.copytree(source, short, dirs_exist_ok=True)
+    espeakng_loader.get_data_path = lambda: str(short)
+    misaki_espeak = sys.modules.get("misaki.espeak")
+    if misaki_espeak is not None:  # imported already: update the wrapper too
+        misaki_espeak.EspeakWrapper.set_data_path(str(short))
+
+
 def _tts_available() -> bool:
     plat = _platform()
     if plat == "apple_silicon":
-        return _is_available("mlx_audio")
+        return _mlx_audio_tts_ready()
     return _is_available("kokoro_onnx")
 
 
@@ -167,7 +206,7 @@ def _stt_backend() -> str | None:
 
 def _tts_backend() -> str | None:
     plat = _platform()
-    if plat == "apple_silicon" and _is_available("mlx_audio"):
+    if plat == "apple_silicon" and _mlx_audio_tts_ready():
         return "mlx-audio"
     if _is_available("kokoro_onnx"):
         return "kokoro-onnx"
@@ -427,7 +466,8 @@ def synthesize_speech(text: str, voice: str, speed: float) -> bytes:
     """
     plat = _platform()
 
-    if plat == "apple_silicon" and _is_available("mlx_audio"):
+    if plat == "apple_silicon" and _mlx_audio_tts_ready():
+        _ensure_short_espeak_data_path()
         from mlx_audio.tts.generate import generate_audio  # type: ignore[import-untyped]
 
         # Kokoro convention: the voice id's first letter is its language
@@ -470,6 +510,6 @@ def synthesize_speech(text: str, voice: str, speed: float) -> bytes:
         return voice_kokoro_onnx.synthesize(text, voice, speed)
 
     raise RuntimeError(
-        "No TTS backend available. Install mlx-audio (Apple Silicon) or "
-        "kokoro-onnx (other platforms)."
+        "No TTS backend available. Install the voice pack: mlx-audio and "
+        "misaki on Apple Silicon, kokoro-onnx on other platforms."
     )

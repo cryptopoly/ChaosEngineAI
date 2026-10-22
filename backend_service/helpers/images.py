@@ -174,6 +174,12 @@ def _image_model_payloads(library: list[dict[str, Any]]) -> list[dict[str, Any]]
                     "onDiskGb": _bytes_to_gb(on_disk_bytes) if on_disk_bytes else None,
                 }
             )
+        # Variants that use the same download (FLUX.2 Klein 4B for diffusers
+        # and mflux, the FLUX.1 Dev LoRA rows) are flagged, as in Video, so the
+        # Models tab says deleting one removes files the others use.
+        from backend_service.helpers.video import _annotate_shared_repo_siblings
+
+        _annotate_shared_repo_siblings(variants)
         families.append(
             {
                 **family,

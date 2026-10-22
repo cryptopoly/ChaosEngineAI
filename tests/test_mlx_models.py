@@ -99,6 +99,43 @@ class VendoredModelConfigTests(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_MLX, "needs mlx-lm")
+class NeedsVlmRuntimeTests(unittest.TestCase):
+    """Architectures only mlx-vlm ships pick the mlx-vlm loader."""
+
+    def _checkpoint(self, model_type: str) -> Path:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": model_type}), encoding="utf-8")
+        return directory
+
+    def _ships(self, lm: set[str], vlm: set[str]):
+        def find_spec(name: str):
+            package, _, model_type = name.rpartition(".")
+            shipped = lm if package == "mlx_lm.models" else vlm
+            return object() if model_type in shipped else None
+
+        return mock.patch.object(mlx_models.importlib.util, "find_spec", side_effect=find_spec)
+
+    def test_listed_type_only_mlx_vlm_ships(self) -> None:
+        with self._ships(lm=set(), vlm={"flint"}):
+            self.assertTrue(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_stays_on_mlx_lm_once_it_ships_the_type(self) -> None:
+        with self._ships(lm={"flint"}, vlm={"flint"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_old_mlx_vlm_without_the_type_keeps_the_old_loader(self) -> None:
+        with self._ships(lm=set(), vlm=set()):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_unlisted_type_is_left_alone(self) -> None:
+        with self._ships(lm=set(), vlm={"gemma4"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("gemma4")))
+
+    def test_missing_or_broken_config_is_false(self) -> None:
+        self.assertFalse(mlx_models.needs_vlm_runtime(Path(tempfile.mkdtemp())))
+
+
 class KolibriTinyModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -183,13 +220,29 @@ class KolibriTinyModelTests(unittest.TestCase):
         mx.save_safetensors(str(directory / "model.safetensors"), dict(tree_flatten(model.parameters())))
 
         with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
-            hook = mlx_models.vendored_model_config(directory)
-        self.assertIsNotNone(hook)
-        loaded, config = load_model(directory, model_config=hook)
+            kwargs = mlx_models.vendored_load_kwargs(directory, load_model)
+        self.assertIn("model_config", kwargs)
+        loaded, config = load_model(directory, **kwargs)
         self.assertEqual(config["model_type"], "kolibri1")
 
         tokens = mx.array([[1, 2, 3, 4, 5, 6]])
         np.testing.assert_allclose(np.array(loaded(tokens)), np.array(model(tokens)), rtol=1e-5, atol=1e-5)
+
+    def test_load_kwargs_trust_only_our_file_and_only_where_supported(self) -> None:
+        directory = _snapshot(TINY)
+
+        def new_load(path, model_config=None, trust_remote_code=False): ...
+
+        def old_load(path, model_config=None): ...
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            new = mlx_models.vendored_load_kwargs(directory, new_load)
+            old = mlx_models.vendored_load_kwargs(directory, old_load)
+            plain = mlx_models.vendored_load_kwargs(_snapshot({"model_type": "qwen3"}), new_load)
+        self.assertTrue(new["trust_remote_code"])
+        self.assertEqual(new["model_config"]["model_file"], str(mlx_models._VENDORED["kolibri1"]))
+        self.assertNotIn("trust_remote_code", old)
+        self.assertEqual(plain, {})
 
     def test_sanitize_stacks_the_experts_and_renames_the_router_bias(self) -> None:
         mx = self.mx
@@ -238,6 +291,19 @@ class ChatTemplateSwitchesTests(unittest.TestCase):
 
     def test_thinking_on_without_an_effort_keeps_the_template_default(self) -> None:
         self.assertEqual(chat_template_switches(_tok(KOLIBRI_TEMPLATE), {"thinkingMode": "auto"}), {})
+
+    def test_enable_thinking_follows_the_thinking_toggle(self) -> None:
+        qwen = "{%- if enable_thinking is defined and enable_thinking is false %}<think>\n\n</think>{% endif %}"
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "off"}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {}), {"enable_thinking": False})
+        self.assertEqual(chat_template_switches(_tok(qwen), {"thinkingMode": "auto"}), {"enable_thinking": True})
+
+    def test_both_switches_reach_a_template_that_reads_both(self) -> None:
+        both = KOLIBRI_TEMPLATE + "{%- elif enable_thinking is defined and enable_thinking is false -%}"
+        self.assertEqual(
+            chat_template_switches(_tok(both), {"thinkingMode": "off"}),
+            {"enable_thinking": False, "reasoning_effort": "none"},
+        )
 
     def test_other_templates_get_nothing(self) -> None:
         request = {"thinkingMode": "auto", "reasoningEffort": "high"}

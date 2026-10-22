@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from backend_service.mlx_models import vendored_model_config
+from backend_service.mlx_models import needs_vlm_runtime, vendored_load_kwargs
 from backend_service.mlx_worker_cache import make_mlx_cache
 from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
 from backend_service.mlx_worker_io import emit_progress
@@ -105,7 +105,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     # runtimeNote so the user gets a clear "install mlx-vlm" hint.
     from backend_service.helpers.chat_template import is_multimodal_family
     multimodal_note: str | None = None
-    use_multimodal = is_multimodal_family(target)
+    use_multimodal = is_multimodal_family(target) or needs_vlm_runtime(local_path)
     try:
         # Reject quantisation formats that MLX cannot dequantize.
         _reject_unsupported_quant(local_path)
@@ -136,16 +136,16 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else:
                 state.config = {}
             state.is_multimodal = True
+            state.has_vision = bool((state.config or {}).get("vision_config"))
         else:
             load_kwargs: dict[str, Any] = {"return_config": True}
             # Architectures mlx-lm does not ship yet (Kolibri 1) load from a
             # vendored file; everything else keeps the plain call.
-            vendored = vendored_model_config(local_path)
-            if vendored:
-                load_kwargs["model_config"] = vendored
+            load_kwargs.update(vendored_load_kwargs(local_path, load))
             state.model, state.tokenizer, state.config = load(local_path, **load_kwargs)
             state.processor = None
             state.is_multimodal = False
+            state.has_vision = False
         state._loaded_model_ref = target
     finally:
         load_done.set()
@@ -192,18 +192,18 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             dflash_note = f"DFLASH initialisation failed: {exc}. Falling back to standard generation."
             state.speculative_decoding = False
 
-        # Load DDTree components when tree budget is set
+        # The MLX DDTree port never fed its tree position ids to the model, so
+        # tree nodes verified at the wrong RoPE positions; it only ever ran by
+        # raising and falling back. Until that is finished, a tree budget runs
+        # linear DFlash and says so.
         if state.speculative_decoding and state.tree_budget > 0:
-            try:
-                emit_progress("ddtree", 97.0, "Preparing DDTree runtime")
-                state._ddtree_target = state._dflash_target
-                state._ddtree_draft = state._dflash_generator
-                dflash_note = f"DDTree speculative decoding active (budget={state.tree_budget}, draft: {dflash_draft_model})."
-            except Exception as exc:
-                dflash_note = f"DDTree init failed ({exc}). Using linear DFLASH."
-                state.tree_budget = 0
-                state._ddtree_draft = None
-                state._ddtree_target = None
+            dflash_note = (
+                f"DFLASH speculative decoding active (draft: {dflash_draft_model}). "
+                "DDTree tree verification is not available on MLX yet, so the tree budget is ignored."
+            )
+            state.tree_budget = 0
+            state._ddtree_draft = None
+            state._ddtree_target = None
 
     profile_note = state._apply_cache_profile(
         cache_strategy=requested_cache_strategy,
@@ -231,6 +231,8 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "treeBudget": state.tree_budget if state.speculative_decoding and state._dflash_generator is not None else 0,
+        # Loaded through mlx-vlm, so the generate paths accept images.
+        "multimodal": bool(state.has_vision),
         "note": _merge_runtime_notes(profile_note, dflash_note),
     }
 
@@ -240,6 +242,7 @@ def unload_model(state: WorkerState) -> dict[str, Any]:
     state.tokenizer = None
     state.processor = None
     state.is_multimodal = False
+    state.has_vision = False
     state._loaded_model_ref = None
     state._dflash_generator = None
     state._dflash_target = None

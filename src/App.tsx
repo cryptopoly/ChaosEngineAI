@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useTranslation } from "react-i18next";
 import {
   checkBackend,
+  checkModelMemory,
   convertModel,
   deleteSessionDocument,
   getVoiceRuntime,
@@ -88,8 +89,9 @@ import {
   syncRuntime,
   settingsDraftFromWorkspace,
   parseContextK,
-  estimateArchFromParams,
   estimateParamsBFromDisk,
+  previewModelControls,
+  samePreviewModel,
   detectBitsPerWeight,
   compareOptionalNumber,
   serverOriginFromBase,
@@ -664,6 +666,9 @@ export default function App() {
       contextTokens: workspace.settings.launchPreferences.contextTokens,
       paramsB: workspace.preview.paramsB,
       strategy: workspace.settings.launchPreferences.cacheStrategy,
+      modelPath: null,
+      modelRepo: null,
+      weightsGb: null,
     });
     setActiveChatId(workspace.chatSessions[0]?.id ?? "");
     setThreadTitleDraft(workspace.chatSessions[0]?.title ?? "");
@@ -843,23 +848,17 @@ export default function App() {
   // to ~0 bytes (kv_elements = num_layers * num_kv_heads * head_dim *
   // ctx — anything * 0 = 0) and made "Fits Easily" fire on models
   // that absolutely don't fit. Also pushed paramsB=0 cases through.
+  const previewVariantPath = previewVariant ? findLibraryItemForVariant(chatLibrary, previewVariant)?.path ?? null : null;
   useEffect(() => {
-    if (!previewVariant?.paramsB) return;
-    const paramsB = previewVariant.paramsB;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (
-        current.paramsB === paramsB
-        && current.numLayers === arch.numLayers
-        && current.numHeads === arch.numHeads
-        && current.numKvHeads === arch.numKvHeads
-        && current.hiddenSize === arch.hiddenSize
-      ) {
-        return current;
-      }
-      return { ...current, paramsB, ...arch };
-    });
-  }, [previewVariant?.paramsB, setPreviewControls]);
+    // While the launch modal is open it owns the preview (effect below);
+    // closing it re-runs this so the tab's own model comes back.
+    if (pendingLaunch || !previewVariant?.paramsB) return;
+    const next = previewModelControls(
+      previewVariant.paramsB, previewVariantPath, previewVariant.repo, previewVariant.sizeGb,
+    );
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingLaunch === null, previewVariant?.paramsB, previewVariant?.repo, previewVariant?.sizeGb, previewVariantPath, setPreviewControls]);
 
   // Sync serverModelKey when options change
   useEffect(() => {
@@ -912,34 +911,43 @@ export default function App() {
   // Re-anchor previewControls when benchmark/conversion model changes
   useEffect(() => {
     let label = "", sizeGb = 0, paramsB = 0;
+    let modelPath: string | null = null;
+    let modelRepo: string | null = null;
     if (activeTab === "benchmarks" && benchmarkOption) {
       label = `${benchmarkOption.label} ${benchmarkOption.format ?? ""} ${benchmarkOption.quantization ?? ""}`;
       sizeGb = benchmarkOption.sizeGb ?? 0;
       paramsB = benchmarkOption.paramsB ?? 0;
+      modelPath = benchmarkOption.path ?? null;
+      modelRepo = benchmarkOption.canonicalRepo ?? null;
     } else if (activeTab === "conversion" && conversionSource) {
       label = `${conversionSource.name} ${conversionSource.format ?? ""}`;
       sizeGb = conversionSource.sizeGb ?? 0;
       paramsB = conversionVariant?.paramsB ?? 0;
+      modelPath = conversionSource.path;
+      modelRepo = conversionVariant?.repo ?? null;
     } else {
       return;
     }
     if (!paramsB && sizeGb) paramsB = estimateParamsBFromDisk(sizeGb, detectBitsPerWeight(label));
     if (!paramsB) return;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
-      return { ...current, paramsB, ...arch };
-    });
+    const next = previewModelControls(paramsB, modelPath, modelRepo, sizeGb);
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, benchmarkOption?.key, conversionSource?.path, conversionVariant?.id]);
 
-  // Launch modal: re-anchor preview to selected model
+  // Launch modal: re-anchor preview to the model the modal has selected.
+  // Mirrors LaunchModal's own option list and default (the first option when
+  // nothing is preselected); Discover's Chat / Server buttons preselect a
+  // ``catalog:`` key that only exists in the full option list.
+  const launchModalOpen = pendingLaunch !== null;
   useEffect(() => {
     if (!pendingLaunch) return;
     const key = pendingLaunch.preselectedKey;
-    if (!key) return;
-    const options = libraryChatOptions.length > 0 ? libraryChatOptions : threadModelOptions;
-    const opt = options.find((o) => o.key === key);
+    const preselectedIsCatalog = key?.startsWith("catalog:") ?? false;
+    const options = preselectedIsCatalog || libraryChatOptions.length === 0 ? threadModelOptions : libraryChatOptions;
+    const opt = key
+      ? options.find((o) => o.key === key) ?? threadModelOptions.find((o) => o.key === key)
+      : options[0];
     if (!opt) return;
     let paramsB = opt.paramsB ?? 0;
     if (!paramsB && opt.sizeGb) {
@@ -947,13 +955,11 @@ export default function App() {
       paramsB = estimateParamsBFromDisk(opt.sizeGb, bpw);
     }
     if (!paramsB) return;
-    const arch = estimateArchFromParams(paramsB);
-    setPreviewControls((current) => {
-      if (current.paramsB === paramsB && current.numLayers === arch.numLayers && current.numHeads === arch.numHeads && current.numKvHeads === arch.numKvHeads && current.hiddenSize === arch.hiddenSize) return current;
-      return { ...current, paramsB, ...arch };
-    });
+    const repo = opt.canonicalRepo ?? (opt.modelRef.includes("/") ? opt.modelRef : null);
+    const next = previewModelControls(paramsB, opt.path ?? null, repo, opt.sizeGb);
+    setPreviewControls((current) => (samePreviewModel(current, next) ? current : { ...current, ...next }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingLaunch?.preselectedKey, libraryChatOptions, threadModelOptions]);
+  }, [launchModalOpen, pendingLaunch?.preselectedKey, libraryChatOptions, threadModelOptions]);
 
   // ── Cross-domain handlers ──────────────────────────────────
 
@@ -1109,6 +1115,31 @@ export default function App() {
     if (!pendingLaunch) return;
     const option = threadModelOptions.find((o) => o.key === selectedKey);
     if (!option) return;
+    // Advisory memory check: ask before loading a model that may not fit,
+    // never refuse. A failed check never blocks the load.
+    if (option.sizeGb && option.sizeGb > 0) {
+      const contextTokens = option.maxContext
+        ? Math.min(launchSettings.contextTokens, option.maxContext)
+        : launchSettings.contextTokens;
+      const check = await checkModelMemory({
+        weightsGb: option.sizeGb,
+        contextTokens,
+        bits: launchSettings.cacheBits,
+        fp16Layers: launchSettings.fp16Layers,
+        strategy: launchSettings.cacheStrategy,
+        paramsB: option.paramsB ?? previewControls.paramsB,
+        numLayers: previewControls.numLayers,
+        numHeads: previewControls.numHeads,
+        numKvHeads: previewControls.numKvHeads,
+        hiddenSize: previewControls.hiddenSize,
+        modelPath: option.path ?? null,
+        modelRepo: option.canonicalRepo ?? (option.modelRef.includes("/") ? option.modelRef : null),
+      });
+      if (check?.verdict === "may_not_fit" && check.message) {
+        const proceed = window.confirm(`${check.message}\n\nLoad it anyway?`);
+        if (!proceed) return;
+      }
+    }
     const { action } = pendingLaunch;
     setPendingLaunch(null);
     setError(null);
@@ -1326,6 +1357,7 @@ export default function App() {
     content = (
       <ImageStudioTab
         imageCatalog={imgState.imageCatalogWithLatest}
+        residentChatModelGb={workspace.runtime.residentModelGb}
         selectedImageModelId={imgState.selectedImageModelId}
         onSelectedImageModelIdChange={imgState.setSelectedImageModelId}
         selectedImageVariant={imgState.selectedImageVariant}
@@ -1497,6 +1529,7 @@ export default function App() {
     content = (
       <VideoStudioTab
         videoCatalog={videoState.videoCatalogWithLatest}
+        residentChatModelGb={workspace.runtime.residentModelGb}
         hostSystem={workspace.system}
         selectedVideoModelId={videoState.selectedVideoModelId}
         onSelectedVideoModelIdChange={videoState.setSelectedVideoModelId}

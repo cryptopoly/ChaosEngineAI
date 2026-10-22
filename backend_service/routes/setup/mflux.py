@@ -26,9 +26,11 @@ from typing import Any
 from fastapi import APIRouter
 
 from backend_service.image_runtime.mflux_engine import (
+    MFLUX_REQUIRED_VERSION,
     MFLUX_VENV_DIR,
     MFLUX_VERSION_FILE,
     is_installed,
+    mflux_version_is_outdated,
     supported_repos,
 )
 
@@ -189,6 +191,10 @@ def mflux_status() -> dict[str, Any]:
         "version": version if installed else None,
         "installedAt": installed_at if installed else None,
         "pinned": pinned if installed else None,
+        # An install older than the release the app expects lacks newer
+        # models; the Image Studio offers to update it.
+        "requiredVersion": MFLUX_REQUIRED_VERSION,
+        "outdated": installed and mflux_version_is_outdated(version),
         "venvPath": str(MFLUX_VENV_DIR) if installed else None,
         "supported": _apple_silicon(),
         # Catalog repos the engine can run (checkpoints it has a command for).

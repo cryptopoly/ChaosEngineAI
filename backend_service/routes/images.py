@@ -251,56 +251,40 @@ def generate_image(request: Request, body: ImageGenerationRequest) -> dict[str, 
             ),
         )
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
+    # Free an idle video model first, so the memory it held counts as free
+    # in the gate below.
+    _unload_idle_video_runtime_for_image(request, "image generation")
     # Phase 2.0.5-H: pre-flight memory gate. Refuse before invoking the
     # diffusion pipeline if the host is already memory-starved — image
     # gen on a swap-thrashing laptop typically takes minutes to recover
-    # and can wedge the desktop entirely. Gate failure (psutil error)
-    # never blocks legitimate work; logged + skipped.
+    # and can wedge the desktop entirely. A model that is not resident yet
+    # must also fit in free memory. Gate failure (psutil error) never
+    # blocks legitimate work; logged + skipped.
+    refusal = None
     try:
         from backend_service.helpers.memory_gate import (
             gate_image_generation,
+            model_memory_gb,
             snapshot_memory_signals,
         )
 
+        resident = variant.get("repo") == getattr(state.image_runtime, "loaded_repo", None)
         available_gb, pressure_percent = snapshot_memory_signals()
-        refusal = gate_image_generation(available_gb, pressure_percent)
-        if refusal is not None:
-            state.add_log(
-                "images", "warning",
-                f"Memory gate refused image gen: {refusal['code']} "
-                f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
-            )
-            raise HTTPException(
-                status_code=503,
-                detail=localized_detail(request, refusal["message"]),
-            )
-    except HTTPException:
-        raise
+        refusal = gate_image_generation(
+            available_gb,
+            pressure_percent,
+            model_gb=None if resident else model_memory_gb(variant),
+            model_name=variant.get("name"),
+        )
     except Exception as gate_exc:
         state.add_log("images", "warning", f"Memory gate skipped: {gate_exc}")
-    _unload_idle_video_runtime_for_image(request, "image generation")
-    # A model that is not resident yet must fit in free memory. Checked after
-    # the idle video model is unloaded so the memory it held counts as free.
-    if variant.get("repo") != getattr(state.image_runtime, "loaded_repo", None):
-        try:
-            from backend_service.helpers.memory_gate import (
-                gate_image_generation,
-                snapshot_memory_signals,
-            )
-
-            available_gb, pressure_percent = snapshot_memory_signals()
-            refusal = gate_image_generation(
-                available_gb,
-                pressure_percent,
-                model_gb=variant.get("sizeGb"),
-                model_name=variant.get("name"),
-            )
-        except Exception as gate_exc:
-            refusal = None
-            state.add_log("images", "warning", f"Model size gate skipped: {gate_exc}")
-        if refusal is not None:
-            state.add_log("images", "warning", f"Memory gate refused image gen: {refusal['code']} (avail={available_gb:.1f} GB).")
-            raise HTTPException(status_code=503, detail=localized_detail(request, refusal["message"]))
+    if refusal is not None:
+        state.add_log(
+            "images", "warning",
+            f"Memory gate refused image gen: {refusal['code']} "
+            f"(avail={available_gb:.1f} GB, pressure={pressure_percent:.0f}%).",
+        )
+        raise HTTPException(status_code=503, detail=localized_detail(request, refusal["message"]))
     try:
         artifacts, runtime = _generate_image_artifacts(body, variant, state.image_runtime)
     except GenerationCancelled:

@@ -289,9 +289,15 @@ export function useVideoState(
     }))
     .filter((family) => family.variants.length > 0);
 
+  // Same rule as images: a tracked entry the curated catalog already lists
+  // must not show twice.
+  const curatedVideoRepos = new Set(
+    videoCatalog.flatMap((family) => family.variants.map((variant) => variant.repo.toLowerCase())),
+  );
   const filteredLatestVideoDiscoverResults = latestVideoDiscoverResults.filter(
     (variant) =>
-      videoVariantMatchesDiscoverFilters(variant, videoDiscoverTaskFilter)
+      !curatedVideoRepos.has(variant.repo.toLowerCase())
+      && videoVariantMatchesDiscoverFilters(variant, videoDiscoverTaskFilter)
       && videoDiscoverVariantMatchesQuery(variant, videoDiscoverSearchQuery),
   );
 

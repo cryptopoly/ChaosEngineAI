@@ -127,7 +127,10 @@ _NONE_LEVEL_RE = re.compile(r"""reasoning_effort\s*==\s*['"]none['"]""")
 
 
 def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str, Any]:
-    """Extra ``apply_chat_template`` arguments for templates that define a reasoning level.
+    """Extra ``apply_chat_template`` arguments for templates with a reasoning switch.
+
+    A template that reads ``enable_thinking`` (the Qwen3 family) gets it from the
+    Thinking toggle.
 
     A template that mentions ``reasoning_effort`` (Kolibri 1, gpt-oss) gets the
     effort the user picked; the composer sends it only while Thinking is on. A
@@ -136,14 +139,21 @@ def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str,
     whatever the toggle says.
     """
     template = getattr(tokenizer, "chat_template", None)
-    if not isinstance(template, str) or "reasoning_effort" not in template:
+    if not isinstance(template, str):
         return {}
-    effort = request.get("reasoningEffort")
-    if effort in {"low", "medium", "high"}:
-        return {"reasoning_effort": effort}
-    if (request.get("thinkingMode") or "off") == "off" and _NONE_LEVEL_RE.search(template):
-        return {"reasoning_effort": "none"}
-    return {}
+    thinking_off = (request.get("thinkingMode") or "off") == "off"
+    switches: dict[str, Any] = {}
+    # Qwen3 / 3.5 / 3.6 / 3.8 and others gate reasoning on enable_thinking and
+    # reason by default, so Thinking Off has to say so explicitly.
+    if "enable_thinking" in template:
+        switches["enable_thinking"] = not thinking_off
+    if "reasoning_effort" in template:
+        effort = request.get("reasoningEffort")
+        if effort in {"low", "medium", "high"}:
+            switches["reasoning_effort"] = effort
+        elif thinking_off and _NONE_LEVEL_RE.search(template):
+            switches["reasoning_effort"] = "none"
+    return switches
 
 
 def _build_prompt_text(

@@ -93,3 +93,54 @@ class DiscoveryLayoutTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PartialBlobTests(unittest.TestCase):
+    """Partial blobs from another file must not hide a complete snapshot."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name) / "models--org--Model-GGUF"
+        self.snap = self.repo / "snapshots" / "abc"
+        self.blobs = self.repo / "blobs"
+        self.snap.mkdir(parents=True)
+        self.blobs.mkdir()
+        (self.blobs / "deadbeef.1234.incomplete").write_bytes(b"x")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _link(self, name: str) -> None:
+        blob = _write_gguf(self.blobs / f"{name}.blob")
+        (self.snap / name).symlink_to(blob)
+
+    def _broken(self) -> tuple[bool, str | None]:
+        from backend_service.helpers.discovery import _detect_broken_library_item
+
+        return _detect_broken_library_item(self.repo, "GGUF", "HF cache")
+
+    def test_complete_quant_beside_a_cancelled_one_loads(self) -> None:
+        self._link("Model-Q4_K_M.gguf")
+        self.assertEqual(self._broken(), (False, None))
+
+    def test_only_a_projector_still_counts_as_incomplete(self) -> None:
+        self._link("mmproj-Model-f16.gguf")
+        self.assertTrue(self._broken()[0])
+
+    def test_split_gguf_needs_every_part(self) -> None:
+        self._link("Model-Q4_K_M-00001-of-00002.gguf")
+        self.assertTrue(self._broken()[0])
+        self._link("Model-Q4_K_M-00002-of-00002.gguf")
+        self.assertEqual(self._broken(), (False, None))
+
+
+class HfCacheNameTests(unittest.TestCase):
+    def test_org_ending_in_models_keeps_its_name(self) -> None:
+        from backend_service.helpers.discovery import _detect_directory_model
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--meta-models--Muse-Glimmer-30B-GGUF"
+            _write_gguf(repo / "snapshots" / "abc" / "Muse-Q4_K_M.gguf")
+            detected = _detect_directory_model(repo)
+        self.assertIsNotNone(detected)
+        self.assertEqual(detected[0], "meta-models/Muse-Glimmer-30B-GGUF")

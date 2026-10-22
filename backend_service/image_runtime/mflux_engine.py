@@ -40,6 +40,25 @@ _STEP_RE = re.compile(r"\|\s*(\d+)/(\d+)\s*\[")
 _PEAK_RE = re.compile(r"Peak MLX memory:\s*([\d.]+)\s*GB", re.IGNORECASE)
 
 
+# The release scripts/install-mflux.sh installs (``MFLUX_VERSION``). An older
+# install lacks the newer commands and model names (FLUX 3, Qwen-Image-2.1
+# Turbo need 0.23), so the setup status reports it as outdated.
+MFLUX_REQUIRED_VERSION = "0.23.0"
+
+
+def mflux_version_is_outdated(version: str | None) -> bool:
+    if not version:
+        return False
+
+    def parts(text: str) -> tuple[int, ...]:
+        return tuple(int(p) for p in re.findall(r"\d+", text)[:3])
+
+    try:
+        return parts(version) < parts(MFLUX_REQUIRED_VERSION)
+    except ValueError:
+        return False
+
+
 @dataclass(frozen=True)
 class MfluxFamily:
     """How to run one model: its command, ``--model`` name and flag support."""
@@ -51,7 +70,7 @@ class MfluxFamily:
     takes_negative_prompt: bool = False
 
 
-# Command names and flags read from mflux 0.20.0 (``--help`` of each command);
+# Command names and flags read from mflux 0.23.0 (``--help`` of each command);
 # re-check them when ``scripts/install-mflux.sh`` moves ``MFLUX_VERSION``.
 _FAMILIES: dict[str, MfluxFamily] = {
     "black-forest-labs/FLUX.1-schnell": MfluxFamily("mflux-generate", "schnell"),
@@ -60,6 +79,12 @@ _FAMILIES: dict[str, MfluxFamily] = {
     "Qwen/Qwen-Image-2.1": MfluxFamily(
         "mflux-generate-qwen-2.1", "qwen-image-2.1", takes_guidance=False, takes_negative_prompt=True
     ),
+    # The 8-step distilled checkpoint; it samples without CFG (mflux 0.23).
+    "Qwen/Qwen-Image-2.1-Turbo": MfluxFamily("mflux-generate-qwen-2.1", "qwen-image-2.1-turbo", takes_guidance=False),
+    # FLUX 3 Image Klein (mflux 0.23): the distilled checkpoint takes no
+    # guidance (16 steps by default); Base is guided (50 steps, 3.5).
+    "black-forest-labs/flux-3-image-klein": MfluxFamily("mflux-generate-flux3", "flux3-image-klein", takes_guidance=False),
+    "black-forest-labs/flux-3-image-klein-base": MfluxFamily("mflux-generate-flux3", "flux3-image-klein-base"),
 }
 
 

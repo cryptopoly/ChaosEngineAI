@@ -14,8 +14,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
-from backend_service.runtime_paths import ensure_extras_on_sys_path
+from backend_service.runtime_paths import ensure_extras_on_sys_path, guard_overlay_against_bundle
 
+guard_overlay_against_bundle()
 ensure_extras_on_sys_path()
 
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
@@ -238,6 +239,9 @@ def compute_cache_preview(
     params_b: float = 7.0,
     system_stats: dict[str, Any] | None = None,
     strategy: str = "native",
+    arch=None,
+    weights_gb: float | None = None,
+    measured_tok_s: float | None = None,
 ) -> dict[str, Any]:
     return compute_cache_preview_impl(
         bits=bits,
@@ -251,6 +255,9 @@ def compute_cache_preview(
         system_stats=system_stats,
         strategy=strategy,
         build_system_snapshot=_build_system_snapshot,
+        arch=arch,
+        weights_gb=weights_gb,
+        measured_tok_s=measured_tok_s,
     )
 
 

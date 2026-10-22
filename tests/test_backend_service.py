@@ -612,7 +612,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         Discover panel can render them as alternate variants."""
         # urlopen is called once per mirror author — return the same
         # payload for all of them; only city96's contains real matches.
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=city96" in req.full_url:
                 return fake_urlopen_json([
                     {
@@ -646,7 +646,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
     def test_quantized_variants_detects_nf4_from_repo_name(self, urlopen_mock):
         """NF4 mirrors sometimes ship without a tag — fall back to
         matching ``nf4`` / ``bnb`` in the repo id so those still surface."""
-        def _fake_urlopen(req, timeout=8):
+        def _fake_urlopen(req, timeout=8, **_kwargs):
             if "author=QuantStack" in req.full_url:
                 return fake_urlopen_json([
                     {
@@ -1234,6 +1234,29 @@ class ChaosEngineBackendTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.text)
         state.video_runtime.unload.assert_called_once_with()
+
+    def test_image_memory_gate_runs_after_the_idle_video_model_is_unloaded(self):
+        state = self.client.app.state.chaosengine
+        unload = mock.Mock(return_value={"loadedModelRepo": None})
+        state.video_runtime = SimpleNamespace(
+            capabilities=mock.Mock(return_value={"loadedModelRepo": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"}),
+            unload=unload,
+        )
+
+        def signals():
+            return (60.0, 20.0) if unload.called else (2.0, 97.0)
+
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", side_effect=signals), \
+                mock.patch(
+                    "backend_service.routes.images._generate_image_artifacts",
+                    return_value=([], {"activeEngine": "diffusers"}),
+                ):
+            response = self.client.post(
+                "/api/images/generate",
+                json={"modelId": "black-forest-labs/FLUX.1-schnell", "prompt": "x", "width": 512,
+                      "height": 512, "steps": 4, "guidance": 3.5},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
 
     def test_image_generate_rejects_while_video_generation_active(self):
         from backend_service.progress import VIDEO_PROGRESS
@@ -2535,6 +2558,27 @@ class ChaosEngineBackendTests(unittest.TestCase):
         )
         self.assertEqual(runtime_target, "prism-ml/Ternary-Bonsai-27B-mlx-2bit")
 
+    def test_downloaded_catalog_gguf_loads_from_its_cache_folder(self):
+        """A catalog launch without a path still uses the downloaded GGUF, so
+        the pinned quant and a drafter sidecar next to it are found."""
+        repo_dir = "/cache/models--meta-models--Muse-Glimmer-30B-GGUF"
+        state = ChaosEngineState(
+            system_snapshot_provider=fake_system_snapshot,
+            library_provider=lambda: [{
+                "name": "meta-models/Muse-Glimmer-30B-GGUF", "path": repo_dir, "format": "GGUF",
+                "sourceKind": "HF cache", "sizeGb": 19.8, "actions": ["Run Chat"],
+            }],
+            settings_path=self.settings_path,
+            benchmarks_path=self.benchmarks_path,
+            chat_sessions_path=self.chat_sessions_path,
+        )
+
+        runtime_target, backend = state._resolve_model_target(
+            model_ref="meta-models/Muse-Glimmer-30B-GGUF", path=None, backend="auto",
+        )
+        self.assertEqual(runtime_target, repo_dir)
+        self.assertEqual(backend, "llama.cpp")
+
     def test_recursive_discovery_finds_nested_model_directories(self):
         models_root = Path(self.tempdir.name) / "AI_Models"
         nested_model = models_root / "publisher" / "family" / "variant"
@@ -2870,6 +2914,43 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 "modelRef": "owner/name",
                 "modelName": "Owner Name",
                 "path": str(real),
+                "source": "library",
+                "backend": "mock",
+                "cacheBits": 0,
+                "fp16Layers": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, msg=response.text)
+
+    def test_model_load_rechecks_a_broken_verdict_from_a_scan_mid_download(self):
+        # The library scan ran while shard 2 was still downloading; it has
+        # finished since, so the load must not be refused on the old verdict.
+        repo = Path(self.tempdir.name) / "hf-cache" / "models--owner--sharded"
+        snap = repo / "snapshots" / "abc"
+        snap.mkdir(parents=True)
+        for index in (1, 2):
+            (snap / f"model-0000{index}-of-00002.safetensors").write_bytes(b"x")
+
+        self.client.app.state.chaosengine._library_provider = lambda: [
+            {
+                "name": "owner/sharded",
+                "path": str(repo),
+                "format": "MLX",
+                "sourceKind": "HF cache",
+                "backend": "mlx",
+                "sizeGb": 0.01,
+                "actions": ["Run Chat"],
+                "broken": True,
+                "brokenReason": "Incomplete sharded safetensors checkpoint: found 1 of 2 shard files.",
+            }
+        ]
+
+        response = self.client.post(
+            "/api/models/load",
+            json={
+                "modelRef": "owner/sharded",
+                "modelName": "Owner Sharded",
                 "source": "library",
                 "backend": "mock",
                 "cacheBits": 0,

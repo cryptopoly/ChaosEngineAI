@@ -33,11 +33,11 @@ VENV_DIR="${HOME}/.chaosengine/tensorfold-venv"
 BIN_DIR="${HOME}/.chaosengine/bin"
 VERSION_FILE="${BIN_DIR}/tensorfold.version"
 
-# Pinned to v0.5.0. Bump together with the facts recorded in
+# Pinned to v0.6.6 (the last Python release; 1.x is a native binary). Bump together with the facts recorded in
 # backend_service/inference/_tensorfold.py (model families, tested repos,
 # drafters) after re-reading TensorFold's families/*/__init__.py. Override with
 # TENSORFOLD_REF=<commit|tag> to try a newer build.
-TENSORFOLD_REF="${TENSORFOLD_REF:-9cd52ab4daba68ddd09be89be8f23ad43175e821}"
+TENSORFOLD_REF="${TENSORFOLD_REF:-cb2ebf0540f42604e2759b2ddef497861e928248}"  # v0.6.6, the last Python release
 # TENSORFOLD_SOURCE overrides where pip installs from (a checkout or an
 # internal mirror); the archive URL is the default.
 TENSORFOLD_SOURCE="${TENSORFOLD_SOURCE:-https://github.com/ashhart/TensorFold/archive/${TENSORFOLD_REF}.tar.gz}"

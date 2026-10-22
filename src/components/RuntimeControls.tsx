@@ -784,7 +784,7 @@ export function RuntimeControls({
             </div>
             <div className="cache-strategy-meta">
               <span className="cache-strategy-meta-label">DDTree:</span>
-              <span>{ddtreeAvailable ? "Available" : "Not available in the current dflash runtime."}</span>
+              <span>{ddtreeAvailable ? "Available" : "Not available yet; linear DFlash runs instead."}</span>
             </div>
             {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
@@ -800,7 +800,7 @@ export function RuntimeControls({
         {showDflashInstallTerminal && !mtplxSupersedesDflash ? (
           <StrategyInstallTerminal label="DFlash" log={dflashInstallLog} />
         ) : null}
-        {settings.speculativeDecoding && dflashAvailable && !mtplxSupersedesDflash ? (
+        {settings.speculativeDecoding && dflashAvailable && ddtreeAvailable && !mtplxSupersedesDflash ? (
           <div className="slider-row" style={{ marginTop: 6 }}>
             <label className="slider-label" title="DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.">
               Tree budget (DDTree)

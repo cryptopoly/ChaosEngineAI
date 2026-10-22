@@ -720,10 +720,11 @@ class CLITypedShortcutTests(unittest.TestCase):
                     "--context", "32768", "--cache-strategy", "turboquant", "--cache-bits", "4",
                 ])
         self.assertEqual(rc, 0)
-        self.assertIn("ref=Qwen", captured["url"])
-        self.assertIn("context=32768", captured["url"])
-        self.assertIn("cacheStrategy=turboquant", captured["url"])
-        self.assertIn("cacheBits=4", captured["url"])
+        # The route's own parameter names (see CLICachePreviewTests).
+        self.assertIn("model_repo=Qwen%2FQwen3.5-7B", captured["url"])
+        self.assertIn("context_tokens=32768", captured["url"])
+        self.assertIn("strategy=turboquant", captured["url"])
+        self.assertIn("bits=4", captured["url"])
 
     def test_settings_patch_sends_patch_method(self) -> None:
         captured: dict[str, Any] = {}
@@ -967,3 +968,45 @@ class CLIMiscTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CLICachePreviewTests(unittest.TestCase):
+    """``cache-preview`` must send the route's own parameter names.
+
+    It used to send ``ref`` / ``context`` / ``cacheStrategy`` / ``cacheBits``,
+    which the route ignores, so every call returned the default 7B / 8K preview.
+    """
+
+    def _query(self, argv: list[str]) -> dict[str, list[str]]:
+        import urllib.parse
+
+        captured: dict[str, Any] = {}
+
+        def _opener(req, timeout=None):  # noqa: ARG001
+            captured["url"] = req.full_url
+            return _FakeResp(json.dumps({"archSource": "config"}).encode("utf-8"))
+
+        with mock.patch.object(cli.urllib.request, "urlopen", _opener):
+            with mock.patch.object(sys, "stdout", io.StringIO()):
+                self.assertEqual(cli.main(argv), 0)
+        return urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+
+    def test_repo_id_and_options(self) -> None:
+        query = self._query([
+            "cache-preview", "velaia/Kolibri-1-MLX-3bit",
+            "--context", "32768", "--cache-strategy", "turboquant", "--cache-bits", "3",
+        ])
+        self.assertEqual(query["model_repo"], ["velaia/Kolibri-1-MLX-3bit"])
+        self.assertEqual(query["context_tokens"], ["32768"])
+        self.assertEqual(query["strategy"], ["turboquant"])
+        self.assertEqual(query["bits"], ["3"])
+
+    def test_local_path_is_sent_as_model_path(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            query = self._query(["cache-preview", tmp])
+        import os
+
+        self.assertEqual(query["model_path"], [os.path.abspath(tmp)])
+        self.assertNotIn("model_repo", query)

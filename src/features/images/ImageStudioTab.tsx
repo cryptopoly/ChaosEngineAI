@@ -43,6 +43,8 @@ import {
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
+  /** GB held by loaded chat models; the memory estimate counts it. */
+  residentChatModelGb?: number;
   selectedImageModelId: string;
   onSelectedImageModelIdChange: (id: string) => void;
   selectedImageVariant: ImageModelVariant | null;
@@ -224,6 +226,7 @@ export function ImageStudioTab({
   onVaryImageSeed,
   onRevealPath,
   onDeleteImageArtifact,
+  residentChatModelGb,
 }: ImageStudioTabProps) {
   const { t } = useTranslation("studio");
   const [installingImageRuntime, setInstallingImageRuntime] = useState(false);
@@ -331,8 +334,11 @@ export function ImageStudioTab({
         runtimeFootprintCpuGb: selectedImageVariant?.runtimeFootprintCpuGb,
         repo: selectedImageVariant?.repo,
         ggufFile: selectedImageVariant?.ggufFile,
+        engine: selectedImageVariant?.engine,
+        otherResidentGb: residentChatModelGb,
       }),
     [
+      residentChatModelGb,
       imageWidth,
       imageHeight,
       imageRuntimeStatus.device,
@@ -340,6 +346,7 @@ export function ImageStudioTab({
       imageRuntimeStatus.deviceMemoryGb,
       selectedImageVariant?.repo,
       selectedImageVariant?.ggufFile,
+      selectedImageVariant?.engine,
       selectedImageVariant?.sizeGb,
       selectedImageVariant?.coreWeightsGb,
       selectedImageVariant?.onDiskGb,

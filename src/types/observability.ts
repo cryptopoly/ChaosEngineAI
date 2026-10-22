@@ -34,4 +34,12 @@ export interface PreviewMetrics {
   qualityPercent: number;
   diskSizeGb: number;
   summary: string;
+  /** Where the cache size came from: the model's own config / GGUF header,
+   * or an estimate from its parameter count. */
+  archSource?: "config" | "gguf" | "hub" | "estimate";
+  /** "measured": this machine's own past runs of the model; "estimate": from memory bandwidth. */
+  speedSource?: "measured" | "estimate";
+  bandwidthGbps?: number;
+  bandwidthLabel?: string;
+  bandwidthKnown?: boolean;
 }

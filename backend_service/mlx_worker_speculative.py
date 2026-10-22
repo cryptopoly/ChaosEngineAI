@@ -24,10 +24,12 @@ from typing import TYPE_CHECKING, Any
 from backend_service.mlx_worker_prompt import (
     _build_prompt_text,
     _merge_runtime_notes,
+    chat_template_switches,
 )
 from backend_service.mlx_worker_request import _format_tools_for_prompt
 from backend_service.reasoning_split import (
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -41,6 +43,17 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     """Generate using DFLASH speculative decoding."""
     from dflash_mlx.runtime import stream_dflash_generate
 
+    # dflash-mlx 0.1.5 made ``runtime_context`` required; without it every
+    # call raised and the stream path fell back to standard decoding. Build
+    # the same offline context upstream's own ``generate`` uses (defaults).
+    context_kwargs: dict[str, Any] = {}
+    try:
+        from dflash_mlx.runtime_context import build_offline_runtime_context
+    except ImportError:  # releases before 0.1.5 take no context
+        pass
+    else:
+        context_kwargs["runtime_context"] = build_offline_runtime_context(target_fa_window=0)
+
     # Build prompt text
     system_prompt = request.get("systemPrompt")
     tools_block = _format_tools_for_prompt(request.get("tools"))
@@ -52,6 +65,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
 
     prompt_tokens = state.tokenizer.encode(prompt_text)
@@ -82,6 +96,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         use_chat_template=False,
         stop_token_ids=eos_token_ids,
         prompt_tokens_override=prompt_tokens,
+        **context_kwargs,
     ):
         if event.get("event") == "summary":
             summary = dict(event)
@@ -114,15 +129,18 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.
     thinking_mode = request.get("thinkingMode") or "off"
+    reasoning = ""
     if text:
         _open_tag, _close_tag = reasoning_delimiters_for(state._loaded_model_ref)
         think_filter = ThinkingTokenFilter(
             detect_raw_reasoning=(thinking_mode != "off"),
             open_tag=_open_tag,
             close_tag=_close_tag,
+            starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
         )
         result = think_filter.feed(text)
         flushed = think_filter.flush()
+        reasoning = f"{result.reasoning}{flushed.reasoning}".strip()
         text = strip_harmony_boilerplate(f"{result.text}{flushed.text}".strip())
     if not text:
         text = "Generation completed without decoded text."
@@ -178,6 +196,7 @@ def generate_dflash(state: WorkerState, request: dict[str, Any]) -> dict[str, An
 
     return {
         "text": text,
+        "reasoning": reasoning,
         "finishReason": "stop",
         "promptTokens": prompt_token_count,
         "completionTokens": output_tokens,
@@ -207,6 +226,7 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
         history=list(request.get("history") or []),
         prompt=str(request.get("prompt") or ""),
         system_prompt=system_prompt,
+        template_kwargs=chat_template_switches(state.tokenizer, request),
     )
 
     # Tokenize prompt
@@ -230,15 +250,18 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
     # Respect thinkingMode: only strip raw reasoning patterns when thinking
     # is enabled. XML <think> tags are always processed regardless.
     thinking_mode = request.get("thinkingMode") or "off"
+    reasoning = ""
     if text:
         _open_tag, _close_tag = reasoning_delimiters_for(state._loaded_model_ref)
         think_filter = ThinkingTokenFilter(
             detect_raw_reasoning=(thinking_mode != "off"),
             open_tag=_open_tag,
             close_tag=_close_tag,
+            starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
         )
         filter_result = think_filter.feed(text)
         flushed = think_filter.flush()
+        reasoning = f"{filter_result.reasoning}{flushed.reasoning}".strip()
         text = strip_harmony_boilerplate(f"{filter_result.text}{flushed.text}".strip())
     if not text:
         text = "Generation completed without decoded text."
@@ -256,6 +279,7 @@ def generate_ddtree(state: WorkerState, request: dict[str, Any]) -> dict[str, An
 
     return {
         "text": text,
+        "reasoning": reasoning,
         "finishReason": "stop",
         "promptTokens": len(prompt_tokens),
         "completionTokens": output_tokens,

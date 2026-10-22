@@ -44,6 +44,7 @@ from backend_service.mlx_worker_request import (
 from backend_service.reasoning_split import (
     RAW_REASONING_HEADING_RE,
     ThinkingTokenFilter,
+    prompt_opens_reasoning,
     reasoning_delimiters_for,
     strip_harmony_boilerplate,
 )
@@ -209,6 +210,7 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
     )
     filter_result = think_filter.feed(raw_text)
     flushed = think_filter.flush()
@@ -265,6 +267,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state.tree_budget > 0 and state._ddtree_draft is not None:
         try:
             result = state._generate_ddtree(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({
@@ -298,6 +303,9 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
     if state.speculative_decoding and state._dflash_generator is not None:
         try:
             result = state._generate_dflash(request)
+            if result.get("reasoning"):
+                _emit({"ok": True, "chunk": {"reasoning": result["reasoning"]}})
+                _emit({"ok": True, "chunk": {"reasoningDone": True}})
             if result.get("text"):
                 _emit({"ok": True, "chunk": {"text": result["text"]}})
             _emit({
@@ -311,7 +319,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                     "tokS": result.get("tokS", 0.0),
                     "promptTokS": result.get("promptTokS", 0.0),
                     "peakMemoryGb": result.get("peakMemoryGb", 0.0),
-                    "runtimeNote": result.get("runtimeNote"),
+                    "runtimeNote": _merge_runtime_notes(speculative_stream_fallback_note, result.get("runtimeNote")),
                     "dflashAcceptanceRate": result.get("dflashAcceptanceRate"),
                     "cacheStrategy": result.get("cacheStrategy"),
                     "cacheBits": result.get("cacheBits"),
@@ -359,6 +367,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
+        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
     )
     transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
     transcript_trimmed = False
@@ -455,6 +464,7 @@ def stream_generate(state: WorkerState, request: dict[str, Any]) -> None:
                 detect_raw_reasoning=(thinking_mode != "off"),
                 open_tag=_open_tag,
                 close_tag=_close_tag,
+                starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
             )
             transcript_filter = TranscriptLoopFilter() if transcript_fallback else None
             transcript_trimmed = False

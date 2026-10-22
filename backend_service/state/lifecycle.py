@@ -78,6 +78,16 @@ def load_model(
                 f"Model '{model_ref_str}' isn't downloaded on this machine. "
                 "Open the Discover tab and download it first, then try loading again."
             )
+        if library_entry is not None and library_entry.get("broken") and library_entry.get("path"):
+            # The verdict comes from the last library scan, which may have run
+            # mid-download; check the disk again before refusing the load.
+            from backend_service.helpers.discovery import _detect_broken_library_item
+
+            still_broken, _reason = _detect_broken_library_item(
+                Path(library_entry["path"]), library_entry.get("format") or "", library_entry.get("sourceKind"),
+            )
+            if not still_broken:
+                library_entry = {**library_entry, "broken": False, "brokenReason": None}
         if library_entry is not None and library_entry.get("broken"):
             # When the caller passed an explicit ``request.path`` that
             # exists on disk, trust them — the broken library entry

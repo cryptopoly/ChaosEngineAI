@@ -6,6 +6,8 @@ import {
   detectBitsPerWeight,
   compareOptionalNumber,
   getCacheFitStatus,
+  previewModelControls,
+  samePreviewModel,
 } from "../cache";
 
 describe("parseContextK()", () => {
@@ -34,8 +36,10 @@ describe("parseContextK()", () => {
 describe("estimateArchFromParams()", () => {
   it("returns plausible arch for small models", () => {
     const arch = estimateArchFromParams(1);
-    expect(arch.numLayers).toBe(22);
+    expect(arch.numLayers).toBe(28);
     expect(arch.hiddenSize).toBe(2048);
+    // Grouped-query attention, not one KV head per query head.
+    expect(arch.numKvHeads).toBe(8);
   });
 
   it("returns plausible arch for 8B models", () => {
@@ -127,5 +131,20 @@ describe("getCacheFitStatus()", () => {
     const status = getCacheFitStatus(10, 20, 128, 0);
     expect(status.label).toBe("Fits easily");
     expect(status.advice).toBeNull();
+  });
+});
+
+describe("previewModelControls()", () => {
+  it("carries the model path and repo next to the fallback guess", () => {
+    const controls = previewModelControls(1.7, "/models/bonsai", "prism-ml/Bonsai-1.7B-gguf");
+    expect(controls.modelPath).toBe("/models/bonsai");
+    expect(controls.modelRepo).toBe("prism-ml/Bonsai-1.7B-gguf");
+    expect(controls.numKvHeads).toBe(8);
+  });
+
+  it("treats a different path as a different model", () => {
+    const a = previewModelControls(1.7, "/models/a", null);
+    expect(samePreviewModel(a, previewModelControls(1.7, "/models/a", null))).toBe(true);
+    expect(samePreviewModel(a, previewModelControls(1.7, "/models/b", null))).toBe(false);
   });
 });

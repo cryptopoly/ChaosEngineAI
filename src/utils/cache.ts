@@ -9,15 +9,60 @@ export function parseContextK(ctx: string | undefined | null): number {
 }
 
 export function estimateArchFromParams(paramsB: number): { numLayers: number; hiddenSize: number; numHeads: number; numKvHeads: number } {
-  // Modern 7B+ models standardize on Grouped Query Attention with 8 KV heads.
-  // Sub-4B models often still use Multi-Head Attention (kv = full heads).
-  if (paramsB <= 1.5) return { numLayers: 22, hiddenSize: 2048, numHeads: 32, numKvHeads: 32 };
-  if (paramsB <= 4) return { numLayers: 26, hiddenSize: 3072, numHeads: 24, numKvHeads: 24 };
+  // Fallback only: the backend sizes the cache from the model's own config or
+  // GGUF header whenever the files are on disk. Current models of every size
+  // use grouped-query attention with 8 or fewer KV heads; the small buckets
+  // follow Qwen3 1.7B / 4B rather than the older multi-head layouts.
+  if (paramsB <= 1.5) return { numLayers: 28, hiddenSize: 2048, numHeads: 16, numKvHeads: 8 };
+  if (paramsB <= 4) return { numLayers: 36, hiddenSize: 2560, numHeads: 20, numKvHeads: 8 };
   if (paramsB <= 9) return { numLayers: 32, hiddenSize: 4096, numHeads: 32, numKvHeads: 8 };
   if (paramsB <= 16) return { numLayers: 40, hiddenSize: 5120, numHeads: 40, numKvHeads: 8 };
   if (paramsB <= 35) return { numLayers: 60, hiddenSize: 6656, numHeads: 52, numKvHeads: 8 };
   if (paramsB <= 50) return { numLayers: 64, hiddenSize: 7168, numHeads: 56, numKvHeads: 8 };
   return { numLayers: 80, hiddenSize: 8192, numHeads: 64, numKvHeads: 8 };
+}
+
+export interface PreviewModelControls {
+  paramsB: number;
+  numLayers: number;
+  hiddenSize: number;
+  numHeads: number;
+  numKvHeads: number;
+  modelPath: string | null;
+  modelRepo: string | null;
+  /** Size of the model's weights on disk; drives the speed estimate. */
+  weightsGb: number | null;
+}
+
+/** Preview inputs for one model. The layer / head numbers are the fallback
+ * guess; ``modelPath`` / ``modelRepo`` let the backend replace them with the
+ * model's real attention layout when its files are on disk. */
+export function previewModelControls(
+  paramsB: number,
+  modelPath?: string | null,
+  modelRepo?: string | null,
+  weightsGb?: number | null,
+): PreviewModelControls {
+  return {
+    paramsB,
+    ...estimateArchFromParams(paramsB),
+    modelPath: modelPath ?? null,
+    modelRepo: modelRepo ?? null,
+    weightsGb: weightsGb && weightsGb > 0 ? weightsGb : null,
+  };
+}
+
+export function samePreviewModel(current: PreviewModelControls, next: PreviewModelControls): boolean {
+  return (
+    current.paramsB === next.paramsB
+    && current.numLayers === next.numLayers
+    && current.numHeads === next.numHeads
+    && current.numKvHeads === next.numKvHeads
+    && current.hiddenSize === next.hiddenSize
+    && current.modelPath === next.modelPath
+    && current.modelRepo === next.modelRepo
+    && current.weightsGb === next.weightsGb
+  );
 }
 
 export function estimateParamsBFromDisk(diskGb: number, bitsPerWeight: number): number {

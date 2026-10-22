@@ -324,3 +324,23 @@ class SetupRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MfluxRequiredVersionTests(unittest.TestCase):
+    def test_constant_matches_the_installer(self):
+        import re
+        from pathlib import Path
+
+        from backend_service.image_runtime.mflux_engine import MFLUX_REQUIRED_VERSION
+
+        script = (Path(__file__).resolve().parents[1] / "scripts" / "install-mflux.sh").read_text()
+        pinned = re.search(r'MFLUX_VERSION="\$\{MFLUX_VERSION:-([\d.]+)\}"', script).group(1)
+        self.assertEqual(pinned, MFLUX_REQUIRED_VERSION)
+
+    def test_outdated(self):
+        from backend_service.image_runtime.mflux_engine import mflux_version_is_outdated
+
+        self.assertTrue(mflux_version_is_outdated("0.20.0"))
+        self.assertFalse(mflux_version_is_outdated("0.23.0"))
+        self.assertFalse(mflux_version_is_outdated("0.24.1"))
+        self.assertFalse(mflux_version_is_outdated(None))

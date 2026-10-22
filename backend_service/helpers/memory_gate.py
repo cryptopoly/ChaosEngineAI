@@ -10,12 +10,13 @@ Decision factors:
   * `available_gb` — `psutil.virtual_memory().available`, the kernel's own
     estimate of memory that can be allocated without forcing major GC or
     swap, which is the right measure on every supported OS.
-  * `pressure_percent` — same formula the system snapshot exposes
-    (used + compressed + swap), which captures real pressure on macOS where
-    `available` underreports compressed pages.
+  * `pressure_percent` — the share of memory that is not available, from the
+    same available figure. Swap is left out on purpose: macOS and Linux keep
+    pages in swap long after the memory is free again, so counting swap as
+    "in use" reported 100% pressure on a Mac the OS itself rated normal.
 
-If both signals trip the floor, refuse with a structured message the UI can
-render verbatim. Callers receive `None` on success or a dict with `code`
+If either signal trips its limit, refuse with a structured message the UI
+can render verbatim. Callers receive `None` on success or a dict with `code`
 and `message`.
 """
 
@@ -52,6 +53,31 @@ IMAGE_MAX_PRESSURE_PERCENT = 95.0
 # swap-thrash for minutes before recovering.
 VIDEO_MIN_AVAILABLE_GB = 6.0
 VIDEO_MAX_PRESSURE_PERCENT = 92.0
+# Video rows carry a runtime footprint that is already the generation peak.
+VIDEO_MODEL_HEADROOM = 1.0
+
+
+def model_memory_gb(variant: dict[str, Any], *, apple_silicon: bool | None = None) -> float | None:
+    """Memory an image / video catalog variant needs once loaded, in GB.
+
+    On Apple Silicon the catalog's MPS runtime footprint (or the generic one)
+    is the measured or estimated peak. Elsewhere the weights pass through
+    system RAM on their way to the GPU, so the larger of the download size
+    and the runtime footprint is used. ``None`` when the row has neither.
+    """
+    if apple_silicon is None:
+        import platform
+
+        apple_silicon = platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")
+
+    def number(key: str) -> float | None:
+        value = variant.get(key)
+        return float(value) if isinstance(value, (int, float)) and value > 0 else None
+
+    if apple_silicon:
+        return number("runtimeFootprintMpsGb") or number("runtimeFootprintGb") or number("sizeGb")
+    candidates = [v for v in (number("sizeGb"), number("runtimeFootprintGb")) if v]
+    return max(candidates) if candidates else None
 
 
 def gate_chat_generation(
@@ -148,6 +174,8 @@ def gate_video_generation(
     *,
     min_available_gb: float = VIDEO_MIN_AVAILABLE_GB,
     max_pressure_percent: float = VIDEO_MAX_PRESSURE_PERCENT,
+    model_gb: float | None = None,
+    model_name: str | None = None,
 ) -> dict[str, Any] | None:
     """Pre-flight check for video generation. Returns refusal or None.
 
@@ -155,7 +183,21 @@ def gate_video_generation(
     is the strictest of the three gates. A hung diffusion loop on a memory
     -starved Apple Silicon machine has historically taken the whole host
     down — this gate is the cheapest possible defence.
+
+    ``model_gb`` is the peak memory of a model that is not resident yet; one
+    that does not fit is refused before loading, as for images.
     """
+    if model_gb and available_gb < model_gb * VIDEO_MODEL_HEADROOM:
+        label = model_name or "This video model"
+        return {
+            "code": "memory_gate_video_model_too_large",
+            "message": (
+                f"{label} needs about {model_gb * VIDEO_MODEL_HEADROOM:.0f} GB "
+                f"of free memory to run, but only {available_gb:.1f} GB is "
+                "available. Close other apps or unload the chat model, or pick "
+                "a smaller or quantized video model."
+            ),
+        }
     if available_gb < min_available_gb:
         return {
             "code": "memory_gate_video_low_available",
@@ -204,46 +246,33 @@ def _macos_reclaimable_gb(total_bytes: int) -> float | None:
     return total_bytes * level / 100.0 / (1024 ** 3)
 
 
+def available_memory_gb(total_bytes: int, psutil_available_bytes: int) -> float:
+    """Memory a new allocation can get without swapping, in GB.
+
+    The larger of psutil's figure and the level macOS uses for its own
+    memory-pressure decisions (see ``_macos_reclaimable_gb``).
+    """
+    available_gb = psutil_available_bytes / (1024 ** 3)
+    return max(available_gb, _macos_reclaimable_gb(total_bytes) or 0.0)
+
+
+def pressure_percent_from_available(total_gb: float, available_gb: float) -> float:
+    """Percent of memory that is not available. 0 when the total is unknown."""
+    if total_gb <= 0:
+        return 0.0
+    return min(100.0, max(0.0, (1.0 - available_gb / total_gb) * 100.0))
+
+
 def snapshot_memory_signals() -> tuple[float, float]:
     """Read current available-RAM + pressure-percent signals.
 
-    Mirrors the formulas in `helpers/system.system_snapshot` but is cheaper
-    to call repeatedly — no model catalog refresh, no GPU probing. Suitable
-    for the per-request gate.
+    Same figures the system snapshot exposes, but cheaper to call
+    repeatedly — no model catalog refresh, no GPU probing. Suitable for the
+    per-request gate.
     """
     import psutil
 
     memory = psutil.virtual_memory()
-    try:
-        swap = psutil.swap_memory()
-        swap_used = swap.used
-    except OSError:
-        swap_used = 0
-    total = memory.total
-    used = memory.used
-    available = memory.available
-    available_gb = available / (1024 ** 3)
-    available_gb = max(available_gb, _macos_reclaimable_gb(total) or 0.0)
-
-    # Compressed pages are macOS-specific and not always available; fall
-    # back to plain used+swap when the read fails so non-Apple platforms
-    # still get a sensible pressure number.
-    compressed_used = 0
-    try:
-        from backend_service.helpers.system import _get_compressed_memory_gb
-
-        compressed_used = _get_compressed_memory_gb() * (1024 ** 3)
-    except Exception:
-        compressed_used = 0
-
-    swap_used_gb = swap_used / (1024 ** 3)
-    used_gb = used / (1024 ** 3)
-    compressed_used_gb = compressed_used / (1024 ** 3)
-    pressure_numerator = used_gb + compressed_used_gb + swap_used_gb
-    total_gb = total / (1024 ** 3)
-    pressure_percent = (
-        min(100.0, (pressure_numerator / total_gb) * 100)
-        if total_gb > 0
-        else 0.0
-    )
-    return round(available_gb, 1), round(pressure_percent, 1)
+    available_gb = available_memory_gb(memory.total, memory.available)
+    total_gb = memory.total / (1024 ** 3)
+    return round(available_gb, 1), round(pressure_percent_from_available(total_gb, available_gb), 1)

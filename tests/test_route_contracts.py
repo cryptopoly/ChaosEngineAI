@@ -18,7 +18,6 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 from fastapi.testclient import TestClient
 
@@ -104,18 +103,14 @@ class BenchmarkRouteTests(_RouteContractCase):
 
 class CachePreviewRouteTests(_RouteContractCase):
     def test_cache_preview_default_params_returns_shape(self):
-        # ``_build_system_snapshot`` reaches into runtime capabilities for
-        # mlx/llama/vllm flags. The minimal FakeRuntime doesn't carry those
-        # — patch the snapshot helper to the canned fixture so the cache
-        # math has everything it needs.
-        with mock.patch(
-            "backend_service.routes.cache._build_system_snapshot",
-            return_value=_fake_system_snapshot(),
-        ):
-            resp = self.client.get("/api/cache/preview")
+        # The preview no longer builds a system snapshot (speed comes from
+        # memory bandwidth or measured history), so no runtime stub is needed.
+        resp = self.client.get("/api/cache/preview")
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertIsInstance(body, dict)
+        self.assertEqual(body["archSource"], "estimate")
+        self.assertIn(body["speedSource"], {"estimate", "measured"})
 
     def test_cache_preview_rejects_out_of_range_bits(self):
         resp = self.client.get("/api/cache/preview", params={"bits": 99})

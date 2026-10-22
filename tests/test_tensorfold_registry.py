@@ -118,11 +118,22 @@ class MatchModelTests(unittest.TestCase):
         self.assertIsNone(tf.match_model(canonical_repo="mlx-community/Llama-3.2-3B-Instruct-4bit"))
         self.assertIsNone(tf.match_model())
 
-    def test_cuda_only_families_are_not_listed(self) -> None:
-        # Qwen3.6-35B-A3B has a CUDA engine only; routing it to TensorFold on a Mac
-        # would fail at serve. Its model_type is shared with stock mlx-lm anyway.
-        self.assertIsNone(tf.match_model(canonical_repo="Vontra/Qwen3.6-35B-A3B-MLX-4bit-MTP"))
-        self.assertNotIn("qwen3_5_moe", {t for f in tf.TENSORFOLD_FAMILIES for t in f.model_types})
+    def test_qwen36_moe_matches_only_its_mtp_checkpoint(self) -> None:
+        # 0.6.5 gave Qwen3.6-35B-A3B a Mac engine that drafts with the
+        # checkpoint's MTP layer. Its model_type is shared with stock mlx-lm,
+        # so only the tested checkpoint matches and the family is not exclusive.
+        match = tf.match_model(canonical_repo="TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.family.key, "qwen3_6_moe")
+        self.assertIsNone(tf.match_model(canonical_repo="mlx-community/Qwen3.6-35B-A3B-4bit"))
+
+    def test_renamed_tensorfold_org_ids_match_too(self) -> None:
+        # 0.6.3 moved Vontra/<name> to TensorFold/<name>; a download under
+        # either id must route the same way, but only one id is listed.
+        old = tf.match_model(canonical_repo="Vontra/Qwen3.8-27B-MLX-4bit")
+        new = tf.match_model(canonical_repo="TensorFold/Qwen3.8-27B-MLX-4bit")
+        self.assertEqual(old.family.key, new.family.key)
+        self.assertNotIn("TensorFold/Qwen3.8-27B-MLX-4bit", tf.supported_repos())
 
     def test_config_identifies_exclusive_families_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -336,3 +336,49 @@ class OneLoadAtATimeTests(unittest.TestCase):
             controller._load_lock.release()
         worker.join(timeout=2)
         self.assertTrue(finished.is_set())
+
+
+class StopProcessTests(unittest.TestCase):
+    """The Stop buttons act on leftovers only and never on the loaded model or other programs."""
+
+    def _engine(self, pid: int):
+        engine = _LoadedByStub("e")
+        engine.process_pid = lambda: pid  # type: ignore[method-assign]
+        return engine
+
+    def test_the_loaded_models_process_is_refused(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(4242)  # type: ignore[assignment]
+        with self.assertRaises(ValueError) as ctx:
+            controller.stop_process(4242)
+        self.assertIn("Unload the model", str(ctx.exception))
+
+    def test_a_warm_model_is_evicted_through_its_engine(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        warm = self._engine(5151)
+        controller._warm_pool["k"] = (warm, mock.Mock(name="info"))  # type: ignore[assignment]
+        controller._warm_pool["k"][1].name = "Parked model"
+        with mock.patch.object(controller, "prune_stale_backend_children"):
+            result = controller.stop_process(5151)
+        self.assertEqual(result["action"], "unloaded")
+        self.assertEqual(warm.unloads, 1)
+        self.assertNotIn("k", controller._warm_pool)
+
+    def test_a_process_this_backend_did_not_start_is_refused(self) -> None:
+        import os
+
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        # the test runner itself: a real process, but not a model process under the backend
+        with self.assertRaises(ValueError):
+            controller.stop_process(os.getpid())
+
+    def test_stop_idle_clears_the_warm_pool_and_prunes_without_a_grace_window(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        controller._warm_pool["k"] = (self._engine(7), mock.Mock())  # type: ignore[assignment]
+        with mock.patch.object(controller, "prune_stale_backend_children") as prune:
+            result = controller.stop_idle()
+        self.assertEqual(result["warmEvicted"], 1)
+        prune.assert_called_with(grace_seconds=0.0)

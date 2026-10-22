@@ -354,7 +354,8 @@ class RuntimeController:
     # pure noise.
     ORPHAN_DETECTION_GRACE_SECONDS = 3.0
 
-    def prune_stale_backend_children(self) -> None:
+    def prune_stale_backend_children(self, grace_seconds: float | None = None) -> None:
+        grace = self.ORPHAN_DETECTION_GRACE_SECONDS if grace_seconds is None else grace_seconds
         tracked = self._tracked_process_pids()
         try:
             import psutil
@@ -389,7 +390,7 @@ class RuntimeController:
             # every time an engine was swapped in or out, so a normal
             # model-change session produced 5-10 "orphans" purely from
             # timing races.
-            if now_wall - create_time < self.ORPHAN_DETECTION_GRACE_SECONDS:
+            if now_wall - create_time < grace:
                 continue
 
             if is_mlx_worker:
@@ -424,6 +425,62 @@ class RuntimeController:
             self._recent_orphaned_workers = (pruned + self._recent_orphaned_workers)[:8]
 
         self._expire_orphan_records()
+
+    _OWNED_PROCESS_MARKERS = ("mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/")
+
+    def stop_process(self, pid: int) -> dict[str, Any]:
+        """Stop one process this app started that is not serving the loaded model.
+
+        The loaded model's process is refused (unload the model instead), a parked
+        warm model is evicted properly, and anything that is not a model process
+        under this backend is refused, so the button cannot touch other programs.
+        """
+        active = self.engine.process_pid() if self.engine else None
+        if active and int(active) == pid:
+            raise ValueError("That process serves the loaded model. Unload the model instead.")
+        with self._pool_lock:
+            warm_key = next(
+                (key for key, (engine, _info) in self._warm_pool.items() if engine.process_pid() == pid),
+                None,
+            )
+            warm = self._warm_pool.pop(warm_key) if warm_key is not None else None
+        if warm is not None:
+            try:
+                warm[0].unload_model()
+            except Exception:
+                pass
+            self.prune_stale_backend_children(grace_seconds=0.0)
+            return {"pid": pid, "action": "unloaded", "label": warm[1].name}
+        try:
+            import psutil
+
+            process = psutil.Process(pid)
+            owned = process.parent() is not None and any(
+                parent.pid == os.getpid() for parent in [process.parent(), *process.parents()]
+            )
+            cmdline = " ".join(process.cmdline()).lower()
+        except Exception as exc:  # noqa: BLE001 - gone, or not ours to read
+            raise ValueError("That process is no longer running.") from exc
+        if not owned or not any(marker in cmdline for marker in self._OWNED_PROCESS_MARKERS):
+            raise ValueError("That is not a model process started by ChaosEngineAI.")
+        try:
+            process.terminate()
+            process.wait(timeout=3)
+            action = "terminated"
+        except Exception:  # noqa: BLE001
+            try:
+                process.kill()
+                action = "killed"
+            except Exception:  # noqa: BLE001
+                action = "kill_failed"
+        return {"pid": pid, "action": action}
+
+    def stop_idle(self) -> dict[str, Any]:
+        """Evict every parked warm model and stop every model process nothing is using."""
+        before = len(self._recent_orphaned_workers)
+        evicted = self.clear_warm_pool()
+        self.prune_stale_backend_children(grace_seconds=0.0)
+        return {"warmEvicted": evicted, "orphansStopped": max(0, len(self._recent_orphaned_workers) - before)}
 
     def _expire_orphan_records(self) -> None:
         if not self._recent_orphaned_workers:

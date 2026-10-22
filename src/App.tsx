@@ -9,6 +9,8 @@ import {
   loadModel,
   getWorkspace,
   resolveApiToken,
+  stopIdleModelProcesses,
+  stopModelProcess,
   updateSession,
   updateSettings as updateSettingsApi,
 } from "./api";
@@ -1215,6 +1217,22 @@ export default function App() {
     runtime={workspace.runtime}
     activity={workspace.activity}
     backendOnline={backendOnline}
+    onStopProcess={async (pid) => {
+      try {
+        await stopModelProcess(pid);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop that process.");
+      }
+      await refreshWorkspace();
+    }}
+    onStopIdleProcesses={async () => {
+      try {
+        await stopIdleModelProcesses();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop idle processes.");
+      }
+      await refreshWorkspace();
+    }}
   />;
   if (activeTab === "online-models") {
     content = (

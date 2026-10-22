@@ -1107,3 +1107,38 @@ class ModelWeightsBytesTests(unittest.TestCase):
             (folder / "model.safetensors").write_bytes(b"x" * 300)
             (folder / "extra.gguf").write_bytes(b"x" * 100)
             self.assertEqual(_model_weights_bytes(str(folder)), 400)
+
+
+class MtpProbeOnHubFolderTests(unittest.TestCase):
+    """The probe must see through a Hugging Face cache folder, not fall back to a name match."""
+
+    def test_repo_folder_resolves_to_its_snapshot(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import has_mtp_heads_strict, model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--mlx-community--Qwen3-4B-bf16"
+            snap = repo / "snapshots" / "abc"
+            snap.mkdir(parents=True)
+            (snap / "model.safetensors.index.json").write_text(
+                json.dumps({"weight_map": {"model.layers.0.mlp.up_proj.weight": "a.safetensors"}}), encoding="utf-8"
+            )
+            self.assertIs(model_has_mtp_tensors(str(repo)), False)
+            # a catalog name that carries MTP heads must not win over what is on disk
+            self.assertFalse(has_mtp_heads_strict("Qwen/Qwen3.5-4B", str(repo)))
+
+    def test_single_file_checkpoint_header_is_read(self) -> None:
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.inference._mtp import model_has_mtp_tensors
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp)
+            header = json.dumps({"mtp.fc.weight": {"dtype": "F16"}}).encode()
+            (model / "model.safetensors").write_bytes(len(header).to_bytes(8, "little") + header)
+            self.assertIs(model_has_mtp_tensors(str(model)), True)

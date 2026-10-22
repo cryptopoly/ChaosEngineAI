@@ -13,7 +13,7 @@ RuntimeController``) keep working without churn.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, wraps
 
 import json
 import os
@@ -21,7 +21,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock, RLock, Thread
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -139,6 +139,15 @@ def _cached_path_size_bytes(path: str) -> int:
     return _model_weights_bytes(path)
 
 
+def _one_load_at_a_time(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._load_lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
 class RuntimeController:
     # Hard upper bound on the warm pool independently of memory accounting —
     # if psutil isn't available we still want a sane cap.
@@ -156,6 +165,10 @@ class RuntimeController:
         # Warm pool: keeps previously loaded engines alive for instant switch-back
         self._warm_pool: dict[str, tuple[BaseInferenceEngine, LoadedModelInfo]] = {}
         self._pool_lock = Lock()
+        # One load or unload at a time: a second request used to start while the
+        # first was still loading, replace ``self.engine`` and orphan the first
+        # engine's process (a 21 GB TensorFold worker kept running, starving the next model).
+        self._load_lock = RLock()
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
@@ -834,6 +847,7 @@ class RuntimeController:
             free += self._pop_oldest_warm_entry()
         return free >= required_free_bytes
 
+    @_one_load_at_a_time
     def load_model(
         self,
         *,
@@ -1039,6 +1053,7 @@ class RuntimeController:
     def loading_progress(self) -> tuple[dict[str, Any] | None, list[str]]:
         return self._loading_progress, list(self._loading_log_tail)
 
+    @_one_load_at_a_time
     def unload_model(self) -> None:
         self.engine.unload_model()
         self.loaded_model = None

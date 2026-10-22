@@ -316,3 +316,23 @@ class ColdStartNoteTests(unittest.TestCase):
                 mock.patch.object(tf.TensorFoldEngine, "_server_url", return_value="http://127.0.0.1:1/health"):
             engine._wait_for_server("m", lambda payload: messages.append(str(payload.get("message") or payload)))
         self.assertTrue(any("cold start can take a few minutes" in m for m in messages), messages)
+
+
+class OneLoadAtATimeTests(unittest.TestCase):
+    def test_a_second_request_waits_for_the_load_in_flight(self) -> None:
+        import threading
+        import time
+
+        controller = _controller(tensorfold=True)
+        controller.engine = _LoadedByStub("current")  # type: ignore[assignment]
+        finished = threading.Event()
+        controller._load_lock.acquire()  # stands in for a model load that is still running
+        try:
+            worker = threading.Thread(target=lambda: (controller.unload_model(), finished.set()), daemon=True)
+            worker.start()
+            time.sleep(0.2)
+            self.assertFalse(finished.is_set(), "unload ran while a load held the lock")
+        finally:
+            controller._load_lock.release()
+        worker.join(timeout=2)
+        self.assertTrue(finished.is_set())

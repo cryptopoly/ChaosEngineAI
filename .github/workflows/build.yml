@@ -67,7 +67,7 @@ jobs:
         run: |
           python -m venv .venv
           ${{ matrix.venv-activate }}
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           # [images] brings torch+diffusers+accelerate+pillow+safetensors, which
           # tests/test_video_runtime.py needs because probe() does a real
           # ``import torch`` after the mocked _find_missing returns. Without

@@ -184,7 +184,12 @@ class StartupFallbackTests(unittest.TestCase):
         controller = _controller(tensorfold=True)
         controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "Metal exploded"))
         fallback = _LoadedByStub("standard MLX")
-        with mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
+        # ``load_model`` re-probes capabilities; pin the probe so a host without mlx
+        # (CI on Linux) still sees the usable MLX these tests set up.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
             loaded = self._load(controller, _NATIVE)
         self.assertIs(controller.engine, fallback)
         self.assertIn("TensorFold startup failed (Metal exploded); using standard MLX.", loaded.runtimeNote or "")
@@ -217,7 +222,12 @@ class StartupFallbackTests(unittest.TestCase):
         controller = _controller(tensorfold=True)
         controller._select_engine = mock.Mock(return_value=_real_tensorfold_engine_that_fails(controller, "unsupported model_type"))
         fallback = _LoadedByStub("standard MLX")
-        with mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
+        # ``load_model`` re-probes capabilities; pin the probe so a host without mlx
+        # (CI on Linux) still sees the usable MLX these tests set up.
+        with mock.patch(
+            "backend_service.inference.controller.get_backend_capabilities",
+            return_value=controller.capabilities,
+        ), mock.patch("backend_service.inference.controller.MLXWorkerEngine", return_value=fallback):
             loaded = self._load(controller, _COMMUNITY)
         self.assertIn("using standard MLX", loaded.runtimeNote or "")
 

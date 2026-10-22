@@ -139,7 +139,10 @@ class NeedsVlmRuntimeTests(unittest.TestCase):
 class KolibriTinyModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        import mlx.core as mx
+        try:
+            import mlx.core as mx
+        except ImportError:
+            raise unittest.SkipTest("mlx is not installed")
 
         cls.mx = mx
         path = Path(mlx_models.__file__).with_name("kolibri1.py")

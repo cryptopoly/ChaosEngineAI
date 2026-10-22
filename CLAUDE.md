@@ -85,7 +85,7 @@ Check for updates to external repos we build from or depend on:
 
 | Dependency | Repo | Branch | Check Command |
 |-----------|------|--------|---------------|
-| llama.cpp (standard) | `ggml-org/llama.cpp` | tag `b11786` (adds `kolibri1`, `glm5-next`, `muse-spark`; pinned in [scripts/update-llama-cpp.sh](scripts/update-llama-cpp.sh) `LLAMA_CPP_REF`) | `git ls-remote --tags https://github.com/ggml-org/llama.cpp 'refs/tags/b1*' \| sort -t/ -k3 -V \| tail -1` |
+| llama.cpp (standard) | `ggml-org/llama.cpp` | tag `b11810` (adds `kolibri1`, `flint`, `glm5-next`, `muse-spark`; pinned in [scripts/update-llama-cpp.sh](scripts/update-llama-cpp.sh) `LLAMA_CPP_REF`) | `git ls-remote --tags https://github.com/ggml-org/llama.cpp 'refs/tags/b1*' \| sort -t/ -k3 -V \| tail -1` |
 | llama-server-turbo | `TheTom/llama-cpp-turboquant` | `feature/turboquant-kv-cache` | `git ls-remote https://github.com/TheTom/llama-cpp-turboquant.git refs/heads/feature/turboquant-kv-cache` |
 | dflash-mlx | `bstnxbt/dflash-mlx` | `main` pinned to commit `fada1eb` (= v0.1.5.1; tags restored upstream, latest v0.1.10 — see FU-057) | `git ls-remote --tags https://github.com/bstnxbt/dflash-mlx.git` |
 | turboquant-mlx-full | `manjunathshiva/turboquant-mlx` | — | `.venv/bin/pip index versions turboquant-mlx-full 2>/dev/null` |

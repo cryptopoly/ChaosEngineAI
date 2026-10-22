@@ -1349,6 +1349,75 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "flint",
+        "name": "Flint",
+        "provider": "Recursive",
+        "headline": "Coding-agent MoE: 39.8B total, 2.5B active, 256K context, Apache 2.0.",
+        "summary": "Oct 2026 Flint: reasoning and tool use for investigating repos, fixing bugs and writing tests.",
+        "description": (
+            "Flint is Recursive's October 2026 open-weight mixture-of-experts model for coding agents: 49 layers "
+            "(2 dense, 47 MoE with 256 experts and 6 routed per token), 35 sliding-window and 14 full-attention "
+            "layers, 262,144-token context. Recursive reports 54.9% on Terminal-Bench 2.1 and 74.2% on "
+            "SWE-bench Verified (vendor-run). Recommended sampling: temperature 1.0, top-p 0.95, top-k 20; "
+            "give hard problems at least 32K output tokens. Apache 2.0."
+        ),
+        "updatedLabel": "Released Oct 2026",
+        "popularityLabel": "New release",
+        "likesLabel": "Recursive official",
+        "badges": ["Coding", "Agents", "Reasoning", "Tool use", "Apache 2.0"],
+        "capabilities": ["coding", "agents", "reasoning", "tool-use"],
+        "defaultVariantId": "RecursiveSI/flint-int4-gguf",
+        "variants": [
+            {
+                "id": "RecursiveSI/flint-int4-gguf",
+                "name": "Flint INT4 GGUF (official)",
+                "repo": "RecursiveSI/flint-int4-gguf",
+                "link": "https://huggingface.co/RecursiveSI/flint-int4-gguf",
+                "paramsB": 39.8,
+                "sizeGb": 26.0,
+                "estimatedMemoryGb": 40.0,
+                "format": "GGUF",
+                "quantization": "Q4_1",
+                "ggufFile": "flint-int4-q4_1.gguf",
+                "capabilities": ["coding", "agents", "reasoning", "tool-use"],
+                "note": (
+                    "Recursive's own Q4_1 export of the trained INT4 codes, built for Apple Silicon with Metal (48 GB or more of unified memory). Needs llama.cpp b11810 or newer, which ships with this release. Only this quant downloads."
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "bartowski/RecursiveSI_flint-GGUF-q4km",
+                "name": "Flint GGUF Q4_K_M",
+                "repo": "bartowski/RecursiveSI_flint-GGUF",
+                "link": "https://huggingface.co/bartowski/RecursiveSI_flint-GGUF",
+                "paramsB": 39.8,
+                "sizeGb": 25.3,
+                "estimatedMemoryGb": 40.0,
+                "format": "GGUF",
+                "quantization": "Q4_K_M",
+                "ggufFile": "RecursiveSI_flint-Q4_K_M.gguf",
+                "capabilities": ["coding", "agents", "reasoning", "tool-use"],
+                "note": (
+                    'Community K-quant build for Windows and Linux (CUDA or CPU) as well as Macs. The repo has quants from IQ2_XXS (12 GB) to Q8_0 (42 GB). Not tested on CUDA here.'
+                ),
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-10",
+            },
+        ],
+        "readme": [
+            "Flint is Recursive's coding-agent model: 39.8B total, about 2.5B active per token, Apache 2.0.",
+            "These rows run through llama.cpp (b11810 or newer). Reasoning arrives on the separate reasoning channel; keep it in the history.",
+            "No MLX row yet: mlx-lm has no flint architecture (ml-explore/mlx-lm#1998 is open). The official MLX INT4 build (22.6 GB) is meant for Recursive's own rec engine.",
+            "The BF16 checkpoint (80 GB) needs Recursive's SGLang kit and one H200 or B300 class GPU; it is not listed.",
+            "Benchmark scores in the model card are vendor-run.",
+        ],
+    },
+    {
         "id": "devstral-small",
         "name": "Devstral Small",
         "provider": "Mistral AI",

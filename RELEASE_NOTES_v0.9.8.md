@@ -32,7 +32,7 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 - **DFlash** (Apple Silicon) fixed, as above.
 - **Thinking Off now works** for Qwen 3 / 3.5 / 3.6 / 3.8 on Apple Silicon. Before, they reasoned anyway and spent the reply budget on it.
 - **TensorFold 0.6.6** (Apple Silicon): exact speculative decoding with no change in output. Install it from the launch settings.
-- **llama.cpp b11786** bundled: DFlash 2, EAGLE-3 and draft-free `ngram-mod`, picked automatically from the drafter files next to a GGUF.
+- **llama.cpp b11810** bundled: DFlash 2, EAGLE-3 and draft-free `ngram-mod`, picked automatically from the drafter files next to a GGUF.
 - **MTPLX 2.12**: reasoning now streams correctly.
 - **Hybrid models** (Qwen 3.5 / 3.6 / 3.8, Qwen3-Next, Nemotron-H, Mamba) reuse the chat history between turns instead of re-reading the whole conversation.
 - **TurboQuant** is labelled a memory saver, not a speed option.

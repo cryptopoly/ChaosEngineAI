@@ -251,3 +251,36 @@ class DownloadedBytesScopeTests(unittest.TestCase):
                 scoped = hf_cache_paths._hf_repo_downloaded_bytes("acme/Model-GGUF", ["Model-Q8_0.gguf"])
         self.assertEqual(whole, 507)
         self.assertEqual(scoped, 107)  # the pinned file plus the in-progress blob
+
+
+class LoadSizeTests(unittest.TestCase):
+    """A repo folder with many quants is sized by the one file that loads."""
+
+    def test_only_the_loaded_quant_counts(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.helpers.text_gguf import gguf_load_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--acme--Model-GGUF" / "snapshots" / "abc"
+            repo.mkdir(parents=True)
+            (repo / "Model-BF16.gguf").write_bytes(b"x" * 480)
+            (repo / "Model-Q8_0.gguf").write_bytes(b"x" * 255)
+            (repo / "Model-Q4_K_M.gguf").write_bytes(b"x" * 150)
+            (repo / "mmproj-Model.gguf").write_bytes(b"x" * 900)
+            # no catalog pin for this repo: the largest model file loads
+            self.assertEqual(gguf_load_bytes(repo), 480)
+
+    def test_split_shards_are_summed(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        from backend_service.helpers.text_gguf import gguf_load_bytes
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "models--acme--Big-GGUF" / "snapshots" / "abc"
+            repo.mkdir(parents=True)
+            (repo / "Big-00001-of-00002.gguf").write_bytes(b"x" * 100)
+            (repo / "Big-00002-of-00002.gguf").write_bytes(b"x" * 300)
+            self.assertEqual(gguf_load_bytes(repo), 400)

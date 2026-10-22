@@ -407,7 +407,7 @@ export default function App() {
       return {
         key: `library:${item.path}`,
         label: item.name,
-        detail: `${displayFormat} / ${number(item.sizeGb)} GB`,
+        detail: `${displayFormat} / ${number(item.loadSizeGb ?? item.sizeGb)} GB`,
         group: "Local library",
         model: item.name,
         modelRef: item.name,
@@ -416,7 +416,7 @@ export default function App() {
         path: item.path,
         backend: libraryItemBackend(item, matched),
         paramsB: matched?.paramsB,
-        sizeGb: item.sizeGb,
+        sizeGb: item.loadSizeGb ?? item.sizeGb,
         contextWindow: matched?.contextWindow,
         format: displayFormat,
         quantization: displayQuantization ?? undefined,

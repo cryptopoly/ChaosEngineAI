@@ -192,3 +192,27 @@ def pick_model_gguf(directory: Path, model_files: list[Path]) -> Path:
         if first.exists():
             return first
     return chosen
+
+
+def gguf_load_bytes(directory: Path) -> int | None:
+    """Bytes of the GGUF llama.cpp would load from ``directory`` (all shards), or None.
+
+    A repo folder can hold many quants (a 24B model's BF16, F16, Q8_0 ... is 150 GB
+    on disk), but one file loads, so memory estimates must use that file.
+    """
+    try:
+        files = [f for f in directory.rglob("*.gguf") if not is_aux_gguf(f.name)]
+        if not files:
+            return None
+        files.sort(key=lambda f: f.stat().st_size, reverse=True)
+        chosen = pick_model_gguf(directory, files)
+        total = chosen.stat().st_size
+        match = _SHARD_RE.search(chosen.name)
+        if match:
+            stem = chosen.name[: match.start()]
+            for shard in chosen.parent.glob(f"{stem}-*-of-{match.group(2)}.gguf"):
+                if shard != chosen:
+                    total += shard.stat().st_size
+        return total
+    except OSError:
+        return None

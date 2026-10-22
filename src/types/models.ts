@@ -51,6 +51,8 @@ export interface LibraryItem {
   backend?: string | null;
   modelType?: string | null;
   sizeGb: number;
+  /** Size of the one GGUF that loads when the folder holds several quants. */
+  loadSizeGb?: number | null;
   lastModified: string;
   actions: string[];
   directoryId?: string;

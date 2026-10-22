@@ -9,7 +9,7 @@ Worktree `/Users/dan/ChaosEngineAI-ram`, branch `fix/ram-estimates`, 47 commits 
 
 ## Next, in order
 1. Big-model support beyond 64 GB Macs: DGX Spark, Windows / Linux CUDA, A100-class. Add rows with correct sizes where a runtime can load them (Kolibri Q4/Q8 GGUF, Qwen-Image-2.1 diffusers lane on diffusers 0.41, vLLM rows), and check estimates / gates do not refuse large-memory hosts.
-2. Optional: route `qwen4_exp`, `glm5_next`, `deepseek_v4`, `muse_glimmer`, `bonsai` to mlx-vlm 0.7.9 (FU-113).
+2. Done 2026-10-22 (FU-116): vlm-only types route to mlx-vlm 0.7.10.
 3. Ask the user, then push, open the PR into staging, merge, re-tag v0.9.8 and rebuild the draft release.
 4. After merge: upgrade the dev `.venv` with `.venv/bin/pip install -c release-constraints.txt mlx mlx-lm mlx-vlm transformers diffusers`.
 

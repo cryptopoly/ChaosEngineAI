@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from backend_service.mlx_models import vendored_load_kwargs
+from backend_service.mlx_models import needs_vlm_runtime, vendored_load_kwargs
 from backend_service.mlx_worker_cache import make_mlx_cache
 from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
 from backend_service.mlx_worker_io import emit_progress
@@ -105,7 +105,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
     # runtimeNote so the user gets a clear "install mlx-vlm" hint.
     from backend_service.helpers.chat_template import is_multimodal_family
     multimodal_note: str | None = None
-    use_multimodal = is_multimodal_family(target)
+    use_multimodal = is_multimodal_family(target) or needs_vlm_runtime(local_path)
     try:
         # Reject quantisation formats that MLX cannot dequantize.
         _reject_unsupported_quant(local_path)
@@ -136,6 +136,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             else:
                 state.config = {}
             state.is_multimodal = True
+            state.has_vision = bool((state.config or {}).get("vision_config"))
         else:
             load_kwargs: dict[str, Any] = {"return_config": True}
             # Architectures mlx-lm does not ship yet (Kolibri 1) load from a
@@ -144,6 +145,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
             state.model, state.tokenizer, state.config = load(local_path, **load_kwargs)
             state.processor = None
             state.is_multimodal = False
+            state.has_vision = False
         state._loaded_model_ref = target
     finally:
         load_done.set()
@@ -230,7 +232,7 @@ def load_model(state: WorkerState, request: dict[str, Any]) -> dict[str, Any]:
         ),
         "treeBudget": state.tree_budget if state.speculative_decoding and state._dflash_generator is not None else 0,
         # Loaded through mlx-vlm, so the generate paths accept images.
-        "multimodal": bool(state.is_multimodal),
+        "multimodal": bool(state.has_vision),
         "note": _merge_runtime_notes(profile_note, dflash_note),
     }
 
@@ -240,6 +242,7 @@ def unload_model(state: WorkerState) -> dict[str, Any]:
     state.tokenizer = None
     state.processor = None
     state.is_multimodal = False
+    state.has_vision = False
     state._loaded_model_ref = None
     state._dflash_generator = None
     state._dflash_target = None

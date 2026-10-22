@@ -46,7 +46,7 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 
 ### Changed
 
-- MLX stack for releases: mlx 0.32.4, mlx-lm 0.32.2, transformers 5.20.2; Setup installs resolve mlx-vlm 0.7.9 and diffusers 0.41.0 (FU-113).
+- MLX stack for releases: mlx 0.32.4, mlx-lm 0.32.2, transformers 5.20.2; Setup installs resolve mlx-vlm 0.7.10 and diffusers 0.41.0 (FU-113); checkpoints whose architecture only mlx-vlm ships (Flint, Qwen3.8 Flash Next, GLM-5.3 Flash, DeepSeek-V4, Bonsai) load through it.
 - llama.cpp b11810 (adds Kolibri 1 and Flint), Flint catalog rows (GGUF), TensorFold 0.6.6, mflux 0.23.0.
 - MLX DDTree is no longer offered: its tree verification was never finished. A tree budget runs linear DFlash (FU-112).
 - TurboQuant is presented as a memory saver; its speed estimate uses measured M4 Max ratios (FU-095).

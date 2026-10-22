@@ -5,7 +5,7 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 ### Highlights
 
 - **DFlash on Apple Silicon finally runs.** Since dflash-mlx 0.1.5, every DFlash reply had quietly fallen back to normal decoding while the load note still said DFlash was active. Fixed: Qwen3-4B now writes at 113 to 138 tokens per second against 53 without it, with identical output.
-- **Newer MLX underneath.** Releases now ship mlx 0.32, mlx-lm 0.32 and transformers 5.20. Setup installs resolve mlx-vlm 0.7.9 and diffusers 0.41. Current Gemma 4 conversions load (the old mlx-vlm could not read them), and every release build pins the exact versions it was tested with.
+- **Newer MLX underneath.** Releases now ship mlx 0.32, mlx-lm 0.32 and transformers 5.20. Setup installs resolve mlx-vlm 0.7.10 and diffusers 0.41. Current Gemma 4 conversions load (the old mlx-vlm could not read them), and every release build pins the exact versions it was tested with.
 - **Images in chat on Apple Silicon.** Vision models loaded through mlx-vlm (Gemma 4) now see attached images. Before, the image was always dropped.
 - **Honest memory and speed estimates.** The launch screen works out the real KV-cache size for each model's architecture and estimates speed from your own past runs or your machine's memory bandwidth. It warns before you load a chat model that may not fit. Image and video estimates know which engine they run on and count a chat model that is already loaded.
 

@@ -99,6 +99,43 @@ class VendoredModelConfigTests(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_MLX, "needs mlx-lm")
+class NeedsVlmRuntimeTests(unittest.TestCase):
+    """Architectures only mlx-vlm ships pick the mlx-vlm loader."""
+
+    def _checkpoint(self, model_type: str) -> Path:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": model_type}), encoding="utf-8")
+        return directory
+
+    def _ships(self, lm: set[str], vlm: set[str]):
+        def find_spec(name: str):
+            package, _, model_type = name.rpartition(".")
+            shipped = lm if package == "mlx_lm.models" else vlm
+            return object() if model_type in shipped else None
+
+        return mock.patch.object(mlx_models.importlib.util, "find_spec", side_effect=find_spec)
+
+    def test_listed_type_only_mlx_vlm_ships(self) -> None:
+        with self._ships(lm=set(), vlm={"flint"}):
+            self.assertTrue(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_stays_on_mlx_lm_once_it_ships_the_type(self) -> None:
+        with self._ships(lm={"flint"}, vlm={"flint"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_old_mlx_vlm_without_the_type_keeps_the_old_loader(self) -> None:
+        with self._ships(lm=set(), vlm=set()):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("flint")))
+
+    def test_unlisted_type_is_left_alone(self) -> None:
+        with self._ships(lm=set(), vlm={"gemma4"}):
+            self.assertFalse(mlx_models.needs_vlm_runtime(self._checkpoint("gemma4")))
+
+    def test_missing_or_broken_config_is_false(self) -> None:
+        self.assertFalse(mlx_models.needs_vlm_runtime(Path(tempfile.mkdtemp())))
+
+
 class KolibriTinyModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

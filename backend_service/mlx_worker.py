@@ -105,6 +105,8 @@ class WorkerState:
         # ``None`` / ``False`` for plain text-only mlx-lm models.
         self.processor = None
         self.is_multimodal = False
+        # True only when the loaded model takes images (its config has a vision tower).
+        self.has_vision = False
         self.config: dict[str, Any] | None = None
         self.cache_strategy = "native"
         self.cache_bits = 0

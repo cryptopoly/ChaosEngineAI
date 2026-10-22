@@ -1412,7 +1412,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "readme": [
             "Flint is Recursive's coding-agent model: 39.8B total, about 2.5B active per token, Apache 2.0.",
             "These rows run through llama.cpp (b11810 or newer). Reasoning arrives on the separate reasoning channel; keep it in the history.",
-            "No MLX row yet: mlx-lm has no flint architecture (ml-explore/mlx-lm#1998 is open). The official MLX INT4 build (22.6 GB) is meant for Recursive's own rec engine.",
+            "No MLX row: Recursive's official MLX INT4 (22.6 GB) stores its embeddings in a layout only their rec engine reads, and mlx-vlm 0.7.10 loads only BF16 Flint (80 GB). Stock mlx-lm lacks the architecture (ml-explore/mlx-lm#1998 is open).",
             "The BF16 checkpoint (80 GB) needs Recursive's SGLang kit and one H200 or B300 class GPU; it is not listed.",
             "Benchmark scores in the model card are vendor-run.",
         ],

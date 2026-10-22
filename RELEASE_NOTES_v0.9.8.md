@@ -68,6 +68,11 @@ A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Mod
 - **Dead catalog links** repaired; an audit script checks every row.
 - **Release builds** include the `dflash` package, the Setup installers and a pinned llama.cpp build, so GGUF models work out of the box.
 - **Tool use on Apple Silicon** no longer loops.
+- **MLX probe**: one stray kill of the startup check at launch no longer turns MLX off until you restart; it is retried once. The launch screen's context setting is capped at the model's own window, so a stored 262K no longer triggers a false memory warning on a 32K model.
+- **Hub listings** work on Python installs without a certificate bundle (Discover came back empty there).
+- **Downloads** skip weight shards that no index file uses, and the Gemma 4 entries are merged into one family.
+- **Image and video** refuse a model larger than free memory before loading it, and unload idle models first so the check sees real headroom.
+- **Models that only mlx-vlm can load** (Flint, Qwen3.8 Flash Next, GLM-5.3 Flash, DeepSeek-V4, Bonsai) now load through it when mlx-lm lacks the architecture. Flint's official MLX build still cannot load; use the GGUF.
 - The memory check counts memory macOS can reclaim, so large models are no longer refused with plenty free.
 
 ### Removed

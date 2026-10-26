@@ -280,56 +280,72 @@ hosts. See FU-009 in CLAUDE.md.
 
 ## Voice I/O (STT + TTS backends)
 
-Installed on demand via the Voice Models tab (Setup install allowlist);
-not bundled with the app.
+Installed on demand by "Install voice pack" (Voice > Models) into a separate
+environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
+`backend_service/voice_worker.py`.
 
 ### mlx-whisper (Apple Silicon STT)
 
 - **Upstream:** <https://github.com/ml-explore/mlx-examples>
 - **Licence:** MIT
-- **Usage:** Whisper speech-to-text on MLX. Loaded by
-  `backend_service/voice_runtime.py` for `/api/voice/transcribe`.
-
-### faster-whisper (cross-platform STT)
-
-- **Upstream:** <https://github.com/SYSTRAN/faster-whisper>
-- **Licence:** MIT
-- **Usage:** CTranslate2 Whisper backend for Windows / Linux hosts.
-  Weights: `mobiuslabsgmbh/faster-whisper-large-v3-turbo` and
-  `Systran/faster-whisper-{small,base}` (MIT) — the same repos
-  faster-whisper resolves its own size tokens to.
+- **Usage:** Whisper speech-to-text on MLX.
 
 ### parakeet-mlx (Apple Silicon STT)
 
 - **Upstream:** <https://github.com/senstella/parakeet-mlx>
 - **Licence:** Apache 2.0
-- **Usage:** NVIDIA Parakeet TDT speech-to-text on MLX — the fast default
-  STT lane on Apple Silicon. Weights: `mlx-community/parakeet-tdt-0.6b-v3`
-  (NVIDIA Parakeet TDT 0.6B v3, CC-BY-4.0 — attribution: NVIDIA).
+- **Usage:** NVIDIA Parakeet TDT speech-to-text on MLX, the default on Apple
+  Silicon. Weights: `mlx-community/parakeet-tdt-0.6b-v3` (NVIDIA Parakeet TDT
+  0.6B v3, CC-BY-4.0, attribution: NVIDIA).
+
+### faster-whisper (Windows / Linux STT)
+
+- **Upstream:** <https://github.com/SYSTRAN/faster-whisper>
+- **Licence:** MIT
+- **Usage:** CTranslate2 Whisper. Weights:
+  `mobiuslabsgmbh/faster-whisper-large-v3-turbo` and
+  `Systran/faster-whisper-{small,base}` (MIT), the repos faster-whisper itself
+  maps its size names to. On a machine with an NVIDIA GPU the install also adds
+  NVIDIA's `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels from PyPI
+  (NVIDIA proprietary licence; downloaded by the user's machine, never
+  redistributed by us).
 
 ### mlx-audio (Apple Silicon TTS)
 
 - **Upstream:** <https://github.com/Blaizzy/mlx-audio>
 - **Licence:** MIT
-- **Usage:** Kokoro text-to-speech on MLX. Loaded by
-  `backend_service/voice_runtime.py` for `/api/voice/synthesize`.
+- **Usage:** Kokoro text-to-speech on MLX. Weights: `prince-canuma/Kokoro-82M`
+  (Kokoro-82M by hexgrad, Apache-2.0).
 
-### kokoro-onnx (cross-platform TTS)
+### kokoro-onnx (Windows / Linux TTS)
 
 - **Upstream:** <https://github.com/thewh1teagle/kokoro-onnx>
 - **Licence:** MIT
-- **Usage:** ONNX Kokoro backend for Windows / Linux hosts.
+- **Usage:** ONNX Kokoro; model and voice files from the project's GitHub
+  release (Kokoro-82M, Apache-2.0).
 
-### misaki (G2P text processing for Kokoro)
+### misaki and spaCy (text front-end for Kokoro on MLX)
 
-- **Upstream:** <https://github.com/hexgrad/misaki>
-- **Licence:** Apache-2.0
-- **Usage:** Grapheme-to-phoneme front-end mlx-audio's Kokoro pipeline
-  requires but does not declare. Installed as `misaki[en]`.
+- **misaki** — <https://github.com/hexgrad/misaki> — Apache-2.0. Installed as
+  `misaki[en]`; `misaki[zh]` with the optional Mandarin Chinese voices.
+- **spaCy** — <https://github.com/explosion/spaCy> — MIT, with its
+  `en_core_web_sm` 3.8.0 model (MIT), installed with the voice pack so misaki
+  never downloads it at run time.
+- **espeak-ng** (through `espeakng-loader`) — GPL-3.0-or-later; a separate
+  library used for languages misaki has no rules for. Installed on the user's
+  machine by the voice pack, not shipped by us.
 
-### Japanese G2P chain (jf_* voices)
+### PyAV (audio decoding)
 
-Installed individually instead of `misaki[ja]` — see the comment in
+- **Upstream:** <https://github.com/PyAV-Org/PyAV>
+- **Licence:** BSD-3-Clause; its wheels bundle FFmpeg libraries under the
+  LGPL-2.1-or-later.
+- **Usage:** Decodes recordings and dropped audio / video files, so no
+  `ffmpeg` command is needed.
+
+### Japanese G2P chain (jf_* voices, Setup page only)
+
+Installed individually from the Setup page, instead of `misaki[ja]` — see the comment in
 `backend_service/routes/setup/__init__.py` for the unidic-lite rationale.
 
 - **fugashi** — <https://github.com/polm/fugashi> — MIT AND BSD-3-Clause

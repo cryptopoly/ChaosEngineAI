@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Voice I/O**: a mic in the chat composer (click or hold to talk, optional auto-send), read-aloud on every reply with an auto-read setting, Voice Studio (record or drop audio and video files, editable transcripts with timestamps, TXT/SRT/VTT export; speech with download) and Voice Models (one-click voice pack, model picker, 54 voices in 9 languages with previews). Runs on this computer only: Parakeet / Whisper and Kokoro on MLX on Apple Silicon; faster-whisper (CUDA when available) and kokoro-onnx on Windows and Linux.
+
+### Fixed
+
+- Thinking High on Qwen3.8 failed with "name 'TranscriptLoopFilter' is not defined"; an effort level a model's template rejects is now mapped to the nearest one it accepts.
+- The chat header has an Unload button, which reads "Cancel load" while a model is loading.
+
 ## v0.9.8 - 2026-10
 
 First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in [RELEASE_NOTES_v0.9.8.md](RELEASE_NOTES_v0.9.8.md). This file has no entries for v0.9.3 and v0.9.4; their notes are on the GitHub releases page.

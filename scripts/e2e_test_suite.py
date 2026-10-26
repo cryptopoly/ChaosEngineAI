@@ -26,6 +26,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import subprocess
@@ -1785,8 +1786,40 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "skip", "voice routes not present in this build", {}
         return ("pass", "", {}) if code == 400 else ("fail", f"expected 400, got {code}", {})
 
+    def _speak_stream():
+        if not runtime_payload.get("ttsAvailable"):
+            return "skip", "TTS backend not installed", {}
+        payload = json.dumps({"text": "First sentence. Second sentence.", "voice": "af_heart"}).encode("utf-8")
+        code, body = _voice_http(
+            "POST", "/api/voice/speak/stream", body=payload,
+            content_type="application/json", timeout=180.0,
+        )
+        if code != 200:
+            return "fail", f"speak stream HTTP {code}", {}
+        events = [json.loads(line) for line in body.decode("utf-8").splitlines() if line.strip()]
+        sentences = [e for e in events if "audio" in e]
+        if any("error" in e for e in events):
+            return "fail", f"speak stream error: {events}", {}
+        if len(sentences) != 2 or events[-1] != {"done": True}:
+            return "fail", f"expected 2 sentences then done, got {len(sentences)}", {}
+        if base64.b64decode(sentences[0]["audio"])[:4] != b"RIFF":
+            return "fail", "speak stream audio is not a WAV", {}
+        return "pass", "", {"sentences": len(sentences)}
+
+    def _settings_roundtrip():
+        code, body = _voice_http("GET", "/api/voice/settings", timeout=15.0)
+        if code != 200:
+            return "fail", f"settings HTTP {code}", {}
+        before = json.loads(body.decode("utf-8"))
+        payload = json.dumps({"speed": before.get("speed", 1.0)}).encode("utf-8")
+        code, body = _voice_http("POST", "/api/voice/settings", body=payload, content_type="application/json", timeout=15.0)
+        if code != 200:
+            return "fail", f"settings save HTTP {code}", {}
+        return "pass", "", {"keys": sorted(json.loads(body.decode("utf-8")))}
+
     for name, fn in [
         ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
+        ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),
         ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),

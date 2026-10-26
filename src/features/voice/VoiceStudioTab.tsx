@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
-import { transcribeAudio, synthesizeSpeech, saveGalleryTranscript, saveGalleryAudio } from "../../api";
-import type { TabId, VoiceRuntime, SttModel, TtsVoice } from "../../types";
+import { saveGalleryAudio, saveGalleryTranscript, synthesizeSpeech, transcribeBlob, type TranscribeResult } from "../../api";
+import type { SttModel, TabId, TtsVoice, VoiceRuntime } from "../../types";
+import {
+  downloadBlob,
+  formatClock,
+  formatTimestamp,
+  micErrorMessage,
+  startMicCapture,
+  toSrt,
+  toVtt,
+  type MicCapture,
+} from "./audio";
+import { speechPlayer, useSpeechPlayer } from "./speechPlayer";
+import { useVoice } from "./VoiceContext";
+import { VOICE_LANGUAGES } from "./VoiceModelsTab";
 
 export interface VoiceStudioTabProps {
   voiceRuntime: VoiceRuntime | null;
@@ -10,387 +24,415 @@ export interface VoiceStudioTabProps {
   onTabChange: (tab: TabId) => void;
 }
 
-type RecordingState = "idle" | "recording" | "transcribing";
+const ACCEPTED_FILES = "audio/*,video/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.webm,.mp4,.mov,.mkv,.m4v,.aiff,.caf";
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+/** Prefer a downloaded model, then the recommended one. */
+export function pickDefaultSttModel(models: SttModel[], preferred?: string): SttModel | undefined {
+  const runnable = models.filter((m) => m.backendInstalled !== false);
+  const pool = runnable.length > 0 ? runnable : models;
+  const chosen = preferred ? pool.find((m) => m.id === preferred || m.key === preferred) : undefined;
+  if (chosen) return chosen;
+  const recommended = pool.find((m) => m.default);
+  if (recommended?.installed) return recommended;
+  return pool.find((m) => m.installed) ?? recommended ?? pool[0];
 }
 
-/** Prefer a model that won't trigger a surprise download: catalog default
- * if installed, else the first installed model, else fall back to the
- * catalog default (Studio shows a download hint in that case). */
-export function pickDefaultSttModel(allModels: SttModel[]): SttModel | undefined {
-  // Rows whose backend package is missing (Parakeet before parakeet-mlx
-  // is installed) can't transcribe yet — never pick them by default.
-  const runnable = allModels.filter((m) => m.backendInstalled !== false);
-  const models = runnable.length > 0 ? runnable : allModels;
-  const catalogDefault = models.find((m) => m.default);
-  if (catalogDefault?.installed) return catalogDefault;
-  return models.find((m) => m.installed) ?? catalogDefault ?? models[0];
+function useFlash(initial: string): [string, (label: string) => void] {
+  const [label, setLabel] = useState(initial);
+  const flash = useCallback(
+    (next: string) => {
+      setLabel(next);
+      window.setTimeout(() => setLabel(initial), 2000);
+    },
+    [initial],
+  );
+  return [label, flash];
 }
 
-export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat }: VoiceStudioTabProps) {
-  // ── STT state ──────────────────────────────────────────────────────────────
-  const [recordingState, setRecordingState] = useState<RecordingState>("idle");
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [transcript, setTranscript] = useState("");
-  const [transcribeError, setTranscribeError] = useState<string | null>(null);
-  const [selectedSttModel, setSelectedSttModel] = useState<string>("");
-  const [copyLabel, setCopyLabel] = useState("Copy");
+function TranscribePanel({ runtime, onSendToChat }: { runtime: VoiceRuntime; onSendToChat: (text: string) => void }) {
+  const { t } = useTranslation("studio");
+  const { settings, platform } = useVoice();
+  const [model, setModel] = useState("");
+  const [language, setLanguage] = useState(settings.language);
+  const [state, setState] = useState<"idle" | "recording" | "transcribing">("idle");
+  const [level, setLevel] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+  const [source, setSource] = useState<string | null>(null);
+  const [result, setResult] = useState<TranscribeResult | null>(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [copyLabel, flashCopy] = useFlash(t("voice.copy", { defaultValue: "Copy" }));
+  const [saveLabel, flashSave] = useFlash(t("voice.save", { defaultValue: "Save to gallery" }));
+  const captureRef = useRef<MicCapture | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // ── TTS state ──────────────────────────────────────────────────────────────
-  const [ttsText, setTtsText] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState<string>("");
-  const [speed, setSpeed] = useState(1.0);
-  const [ttsLoading, setTtsLoading] = useState(false);
-  const [ttsError, setTtsError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const activeAudioUrl = useRef<string | null>(null);
-  const [saveTranscriptLabel, setSaveTranscriptLabel] = useState("Save");
-  const [saveAudioLabel, setSaveAudioLabel] = useState("Save");
-
-  // Seed selectors from runtime
   useEffect(() => {
-    if (voiceRuntime) {
-      const defaultModel = pickDefaultSttModel(voiceRuntime.sttModels);
-      if (defaultModel && !selectedSttModel) {
-        setSelectedSttModel(defaultModel.id);
-      }
-      if (voiceRuntime.ttsVoices.length > 0 && !selectedVoice) {
-        setSelectedVoice(voiceRuntime.ttsVoices[0].id);
-      }
-    }
-  }, [voiceRuntime, selectedSttModel, selectedVoice]);
+    if (!model) setModel(pickDefaultSttModel(runtime.sttModels, settings.sttModel)?.id ?? "");
+  }, [model, runtime.sttModels, settings.sttModel]);
 
-  // Clean up blob URL on unmount
   useEffect(() => {
-    return () => {
-      if (activeAudioUrl.current) {
-        URL.revokeObjectURL(activeAudioUrl.current);
+    if (state !== "recording") return;
+    const started = Date.now();
+    const timer = window.setInterval(() => setSeconds((Date.now() - started) / 1000), 250);
+    return () => window.clearInterval(timer);
+  }, [state]);
+
+  useEffect(
+    () => () => {
+      captureRef.current?.cancel();
+      abortRef.current?.abort();
+    },
+    [],
+  );
+
+  const run = useCallback(
+    async (blob: Blob, filename: string) => {
+      setState("transcribing");
+      setError(null);
+      setSource(filename);
+      abortRef.current = new AbortController();
+      try {
+        const next = await transcribeBlob(blob, filename, {
+          model: model || undefined,
+          language: language || undefined,
+          signal: abortRef.current.signal,
+        });
+        setResult(next);
+        setText(next.text);
+      } catch (err) {
+        if (!abortRef.current?.signal.aborted) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setState("idle");
+        setSeconds(0);
+        abortRef.current = null;
       }
-    };
-  }, []);
+    },
+    [language, model],
+  );
 
-  // ── STT handlers ───────────────────────────────────────────────────────────
+  const stopRecording = useCallback(async () => {
+    const capture = captureRef.current;
+    captureRef.current = null;
+    if (!capture) return;
+    setLevel(0);
+    const wav = await capture.stop();
+    await run(wav, "recording.wav");
+  }, [run]);
 
-  const startRecording = useCallback(async () => {
-    setTranscribeError(null);
+  const record = async () => {
+    if (state === "recording") {
+      await stopRecording();
+      return;
+    }
+    setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        setRecordingState("transcribing");
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const formData = new FormData();
-        formData.append("audio", blob, "recording.webm");
-        // Empty → backend picks the platform default (the model ids differ
-        // between Apple Silicon and Windows/Linux, so never hardcode one).
-        if (selectedSttModel) formData.append("model", selectedSttModel);
-        try {
-          const result = await transcribeAudio(formData);
-          setTranscript(result.text);
-        } catch (err) {
-          setTranscribeError(err instanceof Error ? err.message : "Transcription failed.");
-        } finally {
-          setRecordingState("idle");
-          setRecordingSeconds(0);
-        }
-      };
-
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setRecordingState("recording");
-      setRecordingSeconds(0);
-      timerRef.current = setInterval(() => {
-        setRecordingSeconds((s) => s + 1);
-      }, 1000);
+      captureRef.current = await startMicCapture({ onLevel: setLevel, onLimit: () => void stopRecording() });
+      setState("recording");
     } catch (err) {
-      setTranscribeError(
-        err instanceof Error ? err.message : "Could not access microphone.",
-      );
+      setError(micErrorMessage(err, platform));
     }
-  }, [selectedSttModel]);
+  };
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-  }, []);
+  const onFiles = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file) void run(file, file.name);
+  };
 
-  const handleRecordClick = useCallback(() => {
-    if (recordingState === "idle") {
-      void startRecording();
-    } else if (recordingState === "recording") {
-      stopRecording();
-    }
-  }, [recordingState, startRecording, stopRecording]);
+  const segments = result?.segments ?? [];
+  const baseName = (source ?? "transcript").replace(/\.[^.]+$/, "");
 
-  const handleCopy = useCallback(() => {
-    if (!transcript) return;
-    void navigator.clipboard.writeText(transcript).then(() => {
-      setCopyLabel("Copied");
-      setTimeout(() => setCopyLabel("Copy"), 2000);
-    });
-  }, [transcript]);
+  return (
+    <Panel
+      title={t("voice.transcribe.title", { defaultValue: "Transcribe" })}
+      subtitle={t("voice.transcribe.subtitle", { defaultValue: "Record, or drop an audio or video file" })}
+    >
+      <div className="voice-studio">
+        <div className="voice-studio__row">
+          <label className="voice-settings__field">
+            <span>{t("voice.transcribe.model", { defaultValue: "Model" })}</span>
+            <select className="text-input" value={model} onChange={(e) => setModel(e.target.value)} disabled={state !== "idle"}>
+              {runtime.sttModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                  {m.installed ? "" : ` (${m.sizeGb} GB download)`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="voice-settings__field">
+            <span>{t("voice.transcribe.language", { defaultValue: "Language" })}</span>
+            <select className="text-input" value={language} onChange={(e) => setLanguage(e.target.value)} disabled={state !== "idle"}>
+              {VOICE_LANGUAGES.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-  const handleSaveTranscript = useCallback(() => {
-    if (!transcript) return;
-    void saveGalleryTranscript(transcript).then(() => {
-      setSaveTranscriptLabel("Saved");
-      setTimeout(() => setSaveTranscriptLabel("Save"), 2000);
-    });
-  }, [transcript]);
+        <div
+          className={`voice-drop${dragging ? " voice-drop--active" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (state === "idle") onFiles(e.dataTransfer.files);
+          }}
+        >
+          <button
+            type="button"
+            className={`voice-record${state === "recording" ? " voice-record--active" : ""}`}
+            onClick={() => void record()}
+            disabled={state === "transcribing"}
+            aria-label={state === "recording" ? t("voice.stopRecording", { defaultValue: "Stop recording" }) : t("voice.record", { defaultValue: "Record" })}
+          >
+            <span className="voice-record__dot" />
+          </button>
+          <div className="voice-drop__text">
+            {state === "recording" ? (
+              <>
+                <strong>{formatClock(seconds)}</strong>
+                <span className="voice-level">
+                  <span className="voice-level__fill" style={{ transform: `scaleX(${0.05 + level * 0.95})` }} />
+                </span>
+              </>
+            ) : state === "transcribing" ? (
+              <span>
+                {t("voice.transcribing", { defaultValue: "Transcribing" })} {source}…{" "}
+                <button type="button" className="link-button" onClick={() => abortRef.current?.abort()}>
+                  {t("voice.cancel", { defaultValue: "Cancel" })}
+                </button>
+              </span>
+            ) : (
+              <span>
+                {t("voice.transcribe.hint", { defaultValue: "Click the button to record, or drop a file here." })}{" "}
+                <button type="button" className="link-button" onClick={() => fileInput.current?.click()}>
+                  {t("voice.transcribe.choose", { defaultValue: "Choose a file" })}
+                </button>
+              </span>
+            )}
+          </div>
+          <input ref={fileInput} type="file" accept={ACCEPTED_FILES} hidden onChange={(e) => onFiles(e.target.files)} />
+        </div>
 
-  // ── TTS handlers ───────────────────────────────────────────────────────────
+        {error ? (
+          <p className="voice-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
-  const handleSynthesize = useCallback(async () => {
-    if (!ttsText.trim()) return;
-    setTtsLoading(true);
-    setTtsError(null);
-    if (activeAudioUrl.current) {
-      URL.revokeObjectURL(activeAudioUrl.current);
-      activeAudioUrl.current = null;
-      setAudioUrl(null);
-      setAudioBlob(null);
-    }
+        {result ? (
+          <p className="muted-text voice-studio__meta">
+            {result.durationS != null ? `${formatClock(result.durationS)} · ` : ""}
+            {result.language ? `${result.language} · ` : ""}
+            {result.seconds != null ? t("voice.transcribe.took", { defaultValue: "transcribed in {{s}} s", s: result.seconds.toFixed(1) }) : ""}
+          </p>
+        ) : null}
+        <textarea
+          className="text-input voice-textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t("voice.transcribe.placeholder", { defaultValue: "The transcript appears here. You can edit it." })}
+        />
+        {segments.length > 1 ? (
+          <details className="voice-segments">
+            <summary>{t("voice.transcribe.segments", { defaultValue: "Timestamps ({{n}})", n: segments.length })}</summary>
+            <ol>
+              {segments.map((segment, index) => (
+                <li key={index}>
+                  <code>{formatTimestamp(segment.start).slice(0, 8)}</code> {segment.text}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+        <div className="button-row">
+          <button type="button" className="primary-button" disabled={!text.trim()} onClick={() => onSendToChat(text)}>
+            {t("voice.sendToChat", { defaultValue: "Send to chat" })}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!text.trim()}
+            onClick={() => void navigator.clipboard.writeText(text).then(() => flashCopy(t("voice.copied", { defaultValue: "Copied" })))}
+          >
+            {copyLabel}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!text.trim()}
+            onClick={() => void saveGalleryTranscript(text).then(() => flashSave(t("voice.saved", { defaultValue: "Saved" })))}
+          >
+            {saveLabel}
+          </button>
+          <button type="button" className="secondary-button" disabled={!text.trim()} onClick={() => downloadBlob(new Blob([text], { type: "text/plain" }), `${baseName}.txt`)}>
+            TXT
+          </button>
+          <button type="button" className="secondary-button" disabled={segments.length === 0} onClick={() => downloadBlob(new Blob([toSrt(segments)], { type: "application/x-subrip" }), `${baseName}.srt`)}>
+            SRT
+          </button>
+          <button type="button" className="secondary-button" disabled={segments.length === 0} onClick={() => downloadBlob(new Blob([toVtt(segments)], { type: "text/vtt" }), `${baseName}.vtt`)}>
+            VTT
+          </button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function SpeakPanel({ runtime }: { runtime: VoiceRuntime }) {
+  const { t } = useTranslation("studio");
+  const { settings } = useVoice();
+  const player = useSpeechPlayer();
+  const [text, setText] = useState("");
+  const [voice, setVoice] = useState(settings.ttsVoice);
+  const [speed, setSpeed] = useState(settings.speed);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [audio, setAudio] = useState<{ url: string; blob: Blob } | null>(null);
+  const [saveLabel, flashSave] = useFlash(t("voice.save", { defaultValue: "Save to gallery" }));
+
+  useEffect(() => () => {
+    if (audio) URL.revokeObjectURL(audio.url);
+  }, [audio]);
+
+  const voices = runtime.ttsVoices.filter((v: TtsVoice) => v.available !== false);
+  const languages = [...new Set(voices.map((v) => v.languageLabel ?? v.language))];
+  const reading = player.ownerId === "studio" && player.status !== "idle";
+
+  const generate = async () => {
+    setBusy(true);
+    setError(null);
     try {
-      const blob = await synthesizeSpeech(ttsText, selectedVoice || "af_heart", speed);
-      const url = URL.createObjectURL(blob);
-      activeAudioUrl.current = url;
-      setAudioUrl(url);
-      setAudioBlob(blob);
+      const blob = await synthesizeSpeech(text, voice, speed);
+      setAudio({ url: URL.createObjectURL(blob), blob });
     } catch (err) {
-      setTtsError(err instanceof Error ? err.message : "Synthesis failed.");
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setTtsLoading(false);
+      setBusy(false);
     }
-  }, [ttsText, selectedVoice, speed]);
+  };
 
-  const handleSaveAudio = useCallback(() => {
-    if (!audioBlob) return;
-    void saveGalleryAudio(ttsText, selectedVoice || "af_heart", audioBlob).then(() => {
-      setSaveAudioLabel("Saved");
-      setTimeout(() => setSaveAudioLabel("Save"), 2000);
-    });
-  }, [audioBlob, ttsText, selectedVoice]);
+  return (
+    <Panel title={t("voice.speak.title", { defaultValue: "Speak" })} subtitle={t("voice.speak.subtitle", { defaultValue: "Turn text into speech" })}>
+      <div className="voice-studio">
+        <textarea
+          className="text-input voice-textarea"
+          value={text}
+          maxLength={20000}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t("voice.speak.placeholder", { defaultValue: "Type or paste text. Markdown and code are tidied up before speaking." })}
+        />
+        <div className="voice-studio__row">
+          <label className="voice-settings__field">
+            <span>{t("voice.speak.voice", { defaultValue: "Voice" })}</span>
+            <select className="text-input" value={voice} onChange={(e) => setVoice(e.target.value)}>
+              {languages.map((language) => (
+                <optgroup key={language} label={language}>
+                  {voices
+                    .filter((v) => (v.languageLabel ?? v.language) === language)
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} ({v.gender === "male" ? "M" : "F"})
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label className="voice-settings__field">
+            <span>
+              {t("voice.speak.speed", { defaultValue: "Speed" })} ({speed.toFixed(1)}×)
+            </span>
+            <input type="range" min={0.5} max={2} step={0.1} value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} />
+          </label>
+        </div>
+        {error ? (
+          <p className="voice-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="button-row">
+          <button type="button" className="primary-button" disabled={!text.trim() || busy} onClick={() => void generate()}>
+            {busy ? t("voice.speak.generating", { defaultValue: "Generating…" }) : t("voice.speak.generate", { defaultValue: "Generate audio" })}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!text.trim()}
+            onClick={() => (reading ? speechPlayer.stop() : void speechPlayer.play("studio", text, voice, speed))}
+          >
+            {reading ? t("voice.stop", { defaultValue: "Stop" }) : t("voice.speak.readNow", { defaultValue: "Read aloud now" })}
+          </button>
+        </div>
+        {audio ? (
+          <div className="voice-studio__result">
+            <audio controls src={audio.url} />
+            <div className="button-row">
+              <button type="button" className="secondary-button" onClick={() => downloadBlob(audio.blob, "speech.wav")}>
+                {t("voice.speak.download", { defaultValue: "Download WAV" })}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void saveGalleryAudio(text, voice, audio.blob).then(() => flashSave(t("voice.saved", { defaultValue: "Saved" })))}
+              >
+                {saveLabel}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </Panel>
+  );
+}
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat, onTabChange }: VoiceStudioTabProps) {
+  const { t } = useTranslation("studio");
 
-  const sttModels = voiceRuntime?.sttModels ?? [];
-  const ttsVoices = voiceRuntime?.ttsVoices ?? [];
-  const sttDisabled = !backendOnline || recordingState === "transcribing";
-  const selectedSttModelMeta = sttModels.find((m: SttModel) => m.id === selectedSttModel);
+  if (!backendOnline || !voiceRuntime) {
+    return (
+      <div className="content-grid image-page-grid">
+        <Panel title={t("voice.studio.title", { defaultValue: "Voice Studio" })} className="span-2">
+          <div className="empty-state">
+            <p className="muted-text">{t("voice.offline", { defaultValue: "Waiting for the backend…" })}</p>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
-  let recordLabel = "Record";
-  if (recordingState === "recording") recordLabel = `Stop  ${formatDuration(recordingSeconds)}`;
-  if (recordingState === "transcribing") recordLabel = "Transcribing…";
+  if (!voiceRuntime.installed) {
+    return (
+      <div className="content-grid image-page-grid">
+        <Panel title={t("voice.studio.title", { defaultValue: "Voice Studio" })} className="span-2">
+          <div className="empty-state">
+            <p className="muted-text">
+              {t("voice.studio.needsPack", {
+                defaultValue: "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+              })}
+            </p>
+            <button type="button" className="primary-button" onClick={() => onTabChange("voice-models")}>
+              {t("voice.studio.openModels", { defaultValue: "Open Voice Models" })}
+            </button>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   return (
     <div className="content-grid image-page-grid">
-      {/* ── STT Panel ─────────────────────────────────────────────────────── */}
-      <Panel title="Transcribe" subtitle="Record audio and convert to text">
-        <div className="voice-studio-stt">
-          {/* Model selector */}
-          {sttModels.length > 0 && (
-            <div className="form-row">
-              <label htmlFor="stt-model-select" className="form-label">
-                STT Model
-              </label>
-              <select
-                id="stt-model-select"
-                className="select-input"
-                value={selectedSttModel}
-                onChange={(e) => setSelectedSttModel(e.target.value)}
-                disabled={recordingState !== "idle"}
-              >
-                {sttModels.map((m: SttModel) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}{m.installed ? "" : " (not installed)"}
-                  </option>
-                ))}
-              </select>
-              {selectedSttModelMeta && !selectedSttModelMeta.installed && (
-                <p className="muted-text" style={{ fontSize: "0.75rem", marginTop: 4 }}>
-                  Downloads {selectedSttModelMeta.sizeGb} GB on first use.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Record button */}
-          <div className="voice-record-row">
-            <button
-              type="button"
-              className={`voice-record-button${recordingState === "recording" ? " voice-record-button--active" : ""}`}
-              onClick={handleRecordClick}
-              disabled={sttDisabled}
-              aria-label={recordLabel}
-            >
-              <span className="voice-record-dot" aria-hidden="true" />
-            </button>
-            <span className="voice-record-label">
-              {recordingState === "idle" && "Click to record"}
-              {recordingState === "recording" && `Recording… ${formatDuration(recordingSeconds)}`}
-              {recordingState === "transcribing" && "Transcribing…"}
-            </span>
-          </div>
-
-          {transcribeError && (
-            <p className="error-text" style={{ marginTop: 8 }}>{transcribeError}</p>
-          )}
-
-          {/* Transcript output */}
-          <div className="form-row" style={{ marginTop: 12 }}>
-            <label className="form-label">
-              Transcript
-              {transcript && (
-                <span className="muted-text" style={{ marginLeft: 8, fontWeight: "normal" }}>
-                  {transcript.length} chars
-                </span>
-              )}
-            </label>
-            <textarea
-              className="prompt-textarea"
-              style={{ minHeight: 120 }}
-              readOnly
-              value={transcript}
-              placeholder="Transcript will appear here after recording…"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="button-row" style={{ marginTop: 8 }}>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleCopy}
-              disabled={!transcript}
-            >
-              {copyLabel}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onSendToChat(transcript)}
-              disabled={!transcript}
-            >
-              Send to Chat
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleSaveTranscript}
-              disabled={!transcript}
-            >
-              {saveTranscriptLabel}
-            </button>
-          </div>
-        </div>
-      </Panel>
-
-      {/* ── TTS Panel ─────────────────────────────────────────────────────── */}
-      <Panel title="Speak" subtitle="Convert text to speech">
-        <div className="voice-studio-tts">
-          <div className="form-row">
-            <label htmlFor="tts-text" className="form-label">Text</label>
-            <textarea
-              id="tts-text"
-              className="prompt-textarea"
-              style={{ minHeight: 100 }}
-              placeholder="Enter text to synthesize…"
-              value={ttsText}
-              onChange={(e) => setTtsText(e.target.value)}
-            />
-          </div>
-
-          {/* Voice selector */}
-          {ttsVoices.length > 0 && (
-            <div className="form-row">
-              <label htmlFor="tts-voice-select" className="form-label">Voice</label>
-              <select
-                id="tts-voice-select"
-                className="select-input"
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
-              >
-                {ttsVoices.map((v: TtsVoice) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Speed slider */}
-          <div className="form-row">
-            <label htmlFor="tts-speed" className="form-label">
-              Speed <span className="muted-text">({speed.toFixed(1)}×)</span>
-            </label>
-            <input
-              id="tts-speed"
-              type="range"
-              min={0.5}
-              max={2.0}
-              step={0.1}
-              value={speed}
-              onChange={(e) => setSpeed(parseFloat(e.target.value))}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          {ttsError && (
-            <p className="error-text" style={{ marginTop: 4 }}>{ttsError}</p>
-          )}
-
-          <div className="button-row" style={{ marginTop: 8 }}>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => void handleSynthesize()}
-              disabled={!ttsText.trim() || ttsLoading || !backendOnline}
-            >
-              {ttsLoading ? "Generating…" : "Generate"}
-            </button>
-          </div>
-          {voiceRuntime?.ttsAvailable && voiceRuntime.ttsModelInstalled === false && (
-            <p className="muted-text" style={{ fontSize: "0.75rem", marginTop: 6 }}>
-              Downloads the Kokoro voice model (~350 MB) on first use — pre-download it
-              from the Voice Models tab to skip the wait.
-            </p>
-          )}
-
-          {audioUrl && (
-            <div style={{ marginTop: 12 }}>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <audio controls src={audioUrl} style={{ width: "100%" }} />
-              <div className="button-row" style={{ marginTop: 8 }}>
-                <button type="button" className="secondary-button" onClick={handleSaveAudio}>
-                  {saveAudioLabel}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Panel>
+      <TranscribePanel runtime={voiceRuntime} onSendToChat={onSendToChat} />
+      <SpeakPanel runtime={voiceRuntime} />
     </div>
   );
 }

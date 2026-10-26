@@ -715,7 +715,13 @@ export {
   saveGalleryAudio,
   deleteGalleryItem,
   getGalleryAudio,
-  startKokoroDownload,
-  getKokoroDownloadStatus,
+  transcribeBlob,
+  speakStream,
+  getVoiceSettings,
+  saveVoiceSettings,
+  startVoiceInstall,
+  getVoiceInstallStatus,
+  cancelVoiceInstall,
+  stopVoiceWorker,
 } from "./voice";
-export type { TranscribeResult, VoiceGalleryItem, KokoroDownloadStatus } from "./voice";
+export type { TranscribeResult, VoiceGalleryItem, SpokenSentence } from "./voice";

@@ -1,37 +1,81 @@
 export interface SttModel {
+  /** Hugging Face repo the model loads from on this machine. */
   id: string;
+  /** Catalog key, the same on every platform. */
+  key?: string;
   name: string;
+  languages?: string;
   sizeGb: number;
   installed: boolean;
   default: boolean;
-  /** STT backend that runs this row ("parakeet-mlx" | "mlx-whisper" |
-   * "faster-whisper"). Absent on the TTS voice-model card. */
+  /** "parakeet-mlx" | "mlx-whisper" | "faster-whisper". */
   backend?: string;
-  /** False when the row's backend package isn't installed yet (e.g.
-   * Parakeet on a Mac that only has mlx-whisper). */
+  /** False until the voice pack is installed. */
   backendInstalled?: boolean;
 }
 
 export interface TtsVoice {
   id: string;
   name: string;
+  gender?: "female" | "male";
   language: string;
+  languageLabel?: string;
+  /** False when this machine needs an extra install for the language. */
+  available?: boolean;
+}
+
+export interface VoiceSettings {
+  sttModel: string;
+  language: string;
+  ttsVoice: string;
+  speed: number;
+  autoSend: boolean;
+  autoRead: boolean;
+  idleUnloadMinutes: number;
+}
+
+export interface VoiceInstallJob {
+  phase: string;
+  phaseLabel: string;
+  phaseIndex: number;
+  phaseTotal: number;
+  percent: number;
+  message: string;
+  error: string | null;
+  log: string[];
+  running: boolean;
+  extras: string[];
+}
+
+export interface VoiceExtra {
+  id: string;
+  label: string;
+  installed: boolean;
 }
 
 export interface VoiceRuntime {
+  platform: string;
+  /** "mlx" on Apple Silicon, "portable" on Windows / Linux / Intel Macs. */
+  lane: "mlx" | "portable";
+  /** The voice pack (its own Python environment) is installed. */
+  installed: boolean;
   sttAvailable: boolean;
   ttsAvailable: boolean;
-  platform: string;
+  ttsModelInstalled: boolean;
   sttBackend: string | null;
   ttsBackend: string | null;
+  cuda: boolean;
+  nvidiaGpu: boolean;
+  extras: VoiceExtra[];
+  workerPid: number | null;
+  install: VoiceInstallJob;
   sttModels: SttModel[];
   ttsVoices: TtsVoice[];
-  /** Pip package keys to pass to install-package when backend is missing. */
-  sttInstallPackages: string[] | null;
-  ttsInstallPackages: string[] | null;
-  /** Voice-model data TTS loads: HF repo id on Apple Silicon (downloadable
-   * via the standard model machinery), null elsewhere (kokoro-onnx GitHub
-   * release files, downloaded via the /api/voice/kokoro endpoints). */
-  ttsModelRepo: string | null;
-  ttsModelInstalled: boolean;
+  settings: VoiceSettings;
+}
+
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
 }

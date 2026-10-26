@@ -4,8 +4,8 @@
  * Re-exported from ``./index`` alongside the other domain modules.
  */
 
-import { apiFetch, deleteJson, fetchJson, postJson } from "./index";
-import type { VoiceRuntime } from "../types";
+import { apiFetch, deleteJson, fetchJson, postJson, readErrorDetail } from "./index";
+import type { TranscriptSegment, VoiceInstallJob, VoiceRuntime, VoiceSettings } from "../types";
 
 export async function getVoiceRuntime(): Promise<VoiceRuntime> {
   return await fetchJson<VoiceRuntime>("/api/voice/runtime", 20000);
@@ -13,19 +13,36 @@ export async function getVoiceRuntime(): Promise<VoiceRuntime> {
 
 export interface TranscribeResult {
   text: string;
-  duration_s: number;
+  language: string | null;
+  segments: TranscriptSegment[];
+  durationS: number | null;
+  model: string;
+  seconds: number | null;
 }
 
-export async function transcribeAudio(formData: FormData): Promise<TranscribeResult> {
+export async function transcribeAudio(formData: FormData, signal?: AbortSignal): Promise<TranscribeResult> {
   const response = await apiFetch("/api/voice/transcribe", {
     method: "POST",
     body: formData,
+    signal,
   });
   if (!response.ok) {
-    const text = await response.text().catch(() => `Status ${response.status}`);
-    throw new Error(text || `Transcription failed with status ${response.status}`);
+    throw new Error(await readErrorDetail(response, `Transcription failed with status ${response.status}`));
   }
   return (await response.json()) as TranscribeResult;
+}
+
+/** Transcribe one recorded or chosen file with the user's model and language. */
+export async function transcribeBlob(
+  blob: Blob,
+  filename: string,
+  options: { model?: string; language?: string; signal?: AbortSignal } = {},
+): Promise<TranscribeResult> {
+  const form = new FormData();
+  form.append("audio", blob, filename);
+  if (options.model) form.append("model", options.model);
+  if (options.language) form.append("language", options.language);
+  return await transcribeAudio(form, options.signal);
 }
 
 export async function synthesizeSpeech(text: string, voice: string, speed: number): Promise<Blob> {
@@ -39,6 +56,80 @@ export async function synthesizeSpeech(text: string, voice: string, speed: numbe
     throw new Error(errText || `Synthesis failed with status ${response.status}`);
   }
   return await response.blob();
+}
+
+export interface SpokenSentence {
+  index: number;
+  total: number;
+  text: string;
+  /** Base64 WAV. */
+  audio: string;
+  durationS: number;
+}
+
+/**
+ * Read text aloud: the backend cleans markdown, splits sentences and sends
+ * each one as soon as it is synthesized. ``onSentence`` sees them in order.
+ */
+export async function speakStream(
+  text: string,
+  voice: string,
+  speed: number,
+  onSentence: (sentence: SpokenSentence) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await apiFetch("/api/voice/speak/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice, speed }),
+    signal,
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(await readErrorDetail(response, `Read aloud failed with status ${response.status}`));
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let newline = buffer.indexOf("\n");
+    while (newline >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      newline = buffer.indexOf("\n");
+      if (!line) continue;
+      const event = JSON.parse(line) as Partial<SpokenSentence> & { error?: string; done?: boolean };
+      if (event.error) throw new Error(event.error);
+      if (event.done) return;
+      onSentence(event as SpokenSentence);
+    }
+  }
+}
+
+export async function getVoiceSettings(): Promise<VoiceSettings> {
+  return await fetchJson<VoiceSettings>("/api/voice/settings", 15000);
+}
+
+export async function saveVoiceSettings(patch: Partial<VoiceSettings>): Promise<VoiceSettings> {
+  return await postJson<VoiceSettings>("/api/voice/settings", patch);
+}
+
+export async function startVoiceInstall(extras: string[] = []): Promise<VoiceInstallJob> {
+  return await postJson<VoiceInstallJob>("/api/voice/install", { extras });
+}
+
+export async function getVoiceInstallStatus(): Promise<VoiceInstallJob> {
+  return await fetchJson<VoiceInstallJob>("/api/voice/install/status", 15000);
+}
+
+export async function cancelVoiceInstall(): Promise<VoiceInstallJob> {
+  return await postJson<VoiceInstallJob>("/api/voice/install/cancel", {});
+}
+
+export async function stopVoiceWorker(): Promise<void> {
+  await postJson<{ stopped: boolean }>("/api/voice/worker/stop", {});
 }
 
 export interface VoiceGalleryItem {
@@ -72,22 +163,6 @@ export async function saveGalleryAudio(text: string, voice: string, audio: Blob)
 
 export async function deleteGalleryItem(id: string): Promise<{ deleted: boolean }> {
   return await deleteJson<{ deleted: boolean }>(`/api/voice/gallery/${id}`);
-}
-
-export interface KokoroDownloadStatus {
-  state: "idle" | "downloading" | "completed" | "failed";
-  progress: number;
-  error: string | null;
-  installed?: boolean;
-}
-
-/** Start the kokoro-onnx voice-file download (non-Apple TTS lane). */
-export async function startKokoroDownload(): Promise<KokoroDownloadStatus> {
-  return await postJson<KokoroDownloadStatus>("/api/voice/kokoro/download", {});
-}
-
-export async function getKokoroDownloadStatus(): Promise<KokoroDownloadStatus> {
-  return await fetchJson<KokoroDownloadStatus>("/api/voice/kokoro/download/status", 15000);
 }
 
 export async function getGalleryAudio(id: string): Promise<Blob> {

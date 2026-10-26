@@ -33,6 +33,7 @@ function GalleryCard({ item, onDeleted }: { item: VoiceGalleryItem; onDeleted: (
   }
 
   async function handleDelete() {
+    if (!window.confirm("Delete this item from the gallery? This cannot be undone.")) return;
     await deleteGalleryItem(item.id);
     onDeleted(item.id);
   }

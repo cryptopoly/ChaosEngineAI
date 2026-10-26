@@ -8,10 +8,11 @@ vi.mock("@tauri-apps/api/core", () => ({
 import {
   deleteGalleryItem,
   getGalleryAudio,
-  getKokoroDownloadStatus,
   getVoiceGallery,
   saveGalleryAudio,
-  startKokoroDownload,
+  speakStream,
+  startVoiceInstall,
+  saveVoiceSettings,
   synthesizeSpeech,
   transcribeAudio,
 } from "./voice";
@@ -130,19 +131,47 @@ describe("voice api client", () => {
     await expect(getGalleryAudio("1_aaaaaaaa")).rejects.toThrow("status 404");
   });
 
-  it("starts and polls the kokoro-onnx voice-file download", async () => {
-    const fetchMock = stubFetch((url) => ({
-      ok: true,
-      json: async () =>
-        url.endsWith("/status")
-          ? { state: "completed", progress: 1, error: null, installed: true }
-          : { state: "downloading", progress: 0, error: null },
-    }));
+  it("reads the read-aloud stream sentence by sentence, across chunk boundaries", async () => {
+    const lines = [
+      JSON.stringify({ index: 0, total: 2, text: "One.", audio: "AAA=", durationS: 1 }),
+      JSON.stringify({ index: 1, total: 2, text: "Two.", audio: "BBB=", durationS: 1 }),
+      JSON.stringify({ done: true }),
+    ].join("\n") + "\n";
+    const encoder = new TextEncoder();
+    const chunks = [lines.slice(0, 25), lines.slice(25, 90), lines.slice(90)];
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    const fetchMock = stubFetch(() => ({ ok: true, body }));
+    const seen: string[] = [];
+    await speakStream("One. Two.", "af_heart", 1, (s) => seen.push(s.text));
+    expect(seen).toEqual(["One.", "Two."]);
+    expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/speak/stream").body))).toEqual({
+      text: "One. Two.",
+      voice: "af_heart",
+      speed: 1,
+    });
+  });
 
-    await expect(startKokoroDownload()).resolves.toMatchObject({ state: "downloading" });
-    await expect(getKokoroDownloadStatus()).resolves.toMatchObject({ state: "completed", installed: true });
+  it("raises an error sent inside the read-aloud stream", async () => {
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(JSON.stringify({ error: "no voice", index: 0 }) + "\n"));
+        controller.close();
+      },
+    });
+    stubFetch(() => ({ ok: true, body }));
+    await expect(speakStream("Hi.", "af_heart", 1, () => {})).rejects.toThrow("no voice");
+  });
 
-    const startInit = requestTo(fetchMock, "/api/voice/kokoro/download");
-    expect(startInit.method).toBe("POST");
+  it("posts voice settings and install extras", async () => {
+    const fetchMock = stubFetch(() => ({ ok: true, json: async () => ({}) }));
+    await saveVoiceSettings({ autoRead: true });
+    await startVoiceInstall(["chinese"]);
+    expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/settings").body))).toEqual({ autoRead: true });
+    expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/install").body))).toEqual({ extras: ["chinese"] });
   });
 });

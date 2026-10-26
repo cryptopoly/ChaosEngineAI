@@ -6,6 +6,7 @@ import {
   convertModel,
   deleteSessionDocument,
   getVoiceRuntime,
+  saveVoiceSettings,
   loadModel,
   getWorkspace,
   resolveApiToken,
@@ -58,6 +59,7 @@ import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
 import { VoiceModelsTab } from "./features/voice/VoiceModelsTab";
 import { VoiceGalleryTab } from "./features/voice/VoiceGalleryTab";
+import { VoiceProvider, type VoiceContextValue } from "./features/voice/VoiceContext";
 import type {
   ChatSession,
   LibraryItem,
@@ -823,6 +825,20 @@ export default function App() {
     }
     refreshVoiceRuntime();
   }, [backendOnline, refreshVoiceRuntime]);
+
+  const voiceContext = useMemo<VoiceContextValue>(
+    () => ({
+      runtime: voiceRuntime,
+      platform: workspace.system.platform,
+      refresh: refreshVoiceRuntime,
+      saveSettings: async (patch) => {
+        const settings = await saveVoiceSettings(patch);
+        setVoiceRuntime((current) => (current ? { ...current, settings } : current));
+      },
+      openVoiceModels: () => void setActiveTab("voice-models"),
+    }),
+    [voiceRuntime, workspace.system.platform, refreshVoiceRuntime, setActiveTab],
+  );
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -2121,7 +2137,7 @@ export default function App() {
             // is the active tab id so switching tabs unmounts the
             // boundary and gives the user a clean recovery path.
             <ErrorBoundary key={activeTab} scope={tabs.find((tab) => tab.id === activeTab)?.label ?? activeTab}>
-              {content}
+              <VoiceProvider value={voiceContext}>{content}</VoiceProvider>
             </ErrorBoundary>
           )}
         </div>

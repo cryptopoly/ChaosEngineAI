@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ChatSession, ChatThinkingMode, ModelCapabilities, ModelLoadingState, LaunchPreferences, SamplerOverrides, SystemStats, WarmModel } from "../../types";
@@ -14,6 +14,9 @@ import type { ChatModelOption } from "../../types/chat";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatThread } from "./ChatThread";
+import { SpeechPlayerBar } from "../voice/ReadAloud";
+import { speechPlayer } from "../voice/speechPlayer";
+import { useVoice } from "../voice/VoiceContext";
 import { ChatComposer } from "./ChatComposer";
 import { readSamplerOverrides, writeSamplerOverrides } from "./samplerOverrides";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
@@ -97,7 +100,7 @@ export interface ChatTabProps {
   /** Phase 3.6: run the message through a critique pass. */
   onDelveMessage: (messageIndex: number) => void;
   onDetailsToggle: (opened: boolean) => void;
-  onSendMessage: () => void;
+  onSendMessage: (overrideText?: string) => void;
   onSetError: (msg: string | null) => void;
   onUnloadModel: () => void;
   enableTools: boolean;
@@ -195,6 +198,21 @@ export function ChatTab({
   onOpenModels,
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
+  const voice = useVoice();
+
+  // Auto-read: speak a reply once it has finished streaming.
+  const busyBeforeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const wasBusy = busyBeforeRef.current;
+    busyBeforeRef.current = chatBusySessionId;
+    if (!voice.settings.autoRead || !voice.runtime?.ttsAvailable) return;
+    if (!wasBusy || chatBusySessionId !== null || !activeChat || wasBusy !== activeChat.id) return;
+    const index = activeChat.messages.length - 1;
+    const last = activeChat.messages[index];
+    if (last?.role === "assistant" && last.text.trim()) {
+      void speechPlayer.play(`${activeChat.id}-${index}`, last.text, voice.settings.ttsVoice, voice.settings.speed);
+    }
+  }, [activeChat, chatBusySessionId, voice.runtime?.ttsAvailable, voice.settings]);
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
       ? busyAction
@@ -461,6 +479,7 @@ export function ChatTab({
           onBrowseDiscover={onBrowseDiscover}
           onOpenModels={onOpenModels}
         />
+        <SpeechPlayerBar />
         <ChatComposer
           draftMessage={draftMessage}
           pendingImages={pendingImages}

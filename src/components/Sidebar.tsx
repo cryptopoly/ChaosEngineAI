@@ -85,7 +85,6 @@ export function Sidebar({
     () =>
       allTabs.filter((tab) => {
         if (tab.id === "conversion" && platform && platform !== "Darwin") return false;
-        if (tab.group === "voice") return false;
         return true;
       }),
     [platform],

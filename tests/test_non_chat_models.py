@@ -95,3 +95,20 @@ class NonChatClassificationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Fp8CompressedTensorsOnMacTests(unittest.TestCase):
+    def test_fp8_checkpoint_is_unsupported_on_a_mac_only(self) -> None:
+        from unittest import mock
+
+        from backend_service.helpers import quantization
+
+        config = {"quantization_config": {"quant_method": "compressed-tensors", "format": "float-quantized"}}
+        with mock.patch.object(quantization.sys, "platform", "darwin"):
+            self.assertIn("NVIDIA", quantization._unsupported_mlx_quantization_reason(config) or "")
+        with mock.patch.object(quantization.sys, "platform", "linux"):
+            self.assertIsNone(quantization._unsupported_mlx_quantization_reason(config))
+        with mock.patch.object(quantization.sys, "platform", "darwin"):
+            self.assertIsNone(quantization._unsupported_mlx_quantization_reason(
+                {"quantization_config": {"quant_method": "compressed-tensors", "format": "pack-quantized"}}
+            ))

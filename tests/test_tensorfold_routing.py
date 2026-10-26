@@ -302,3 +302,132 @@ class OrphanPruningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ColdStartNoteTests(unittest.TestCase):
+    def test_loading_progress_says_a_cold_start_takes_minutes(self) -> None:
+        from backend_service.inference import tensorfold_engine as tf
+
+        engine = tf.TensorFoldEngine.__new__(tf.TensorFoldEngine)
+        engine.process = None
+        engine.log_path = None
+        messages: list[str] = []
+        with mock.patch.object(tf, "_http_json", return_value={"status": "ok"}), \
+                mock.patch.object(tf.TensorFoldEngine, "_server_url", return_value="http://127.0.0.1:1/health"):
+            engine._wait_for_server("m", lambda payload: messages.append(str(payload.get("message") or payload)))
+        self.assertTrue(any("cold start can take a few minutes" in m for m in messages), messages)
+
+
+class OneLoadAtATimeTests(unittest.TestCase):
+    def test_a_second_request_waits_for_the_load_in_flight(self) -> None:
+        import threading
+        import time
+
+        controller = _controller(tensorfold=True)
+        controller.engine = _LoadedByStub("current")  # type: ignore[assignment]
+        finished = threading.Event()
+        controller._load_lock.acquire()  # stands in for a model load that is still running
+        try:
+            worker = threading.Thread(target=lambda: (controller.unload_model(), finished.set()), daemon=True)
+            worker.start()
+            time.sleep(0.2)
+            self.assertFalse(finished.is_set(), "unload ran while a load held the lock")
+        finally:
+            controller._load_lock.release()
+        worker.join(timeout=2)
+        self.assertTrue(finished.is_set())
+
+
+class StopProcessTests(unittest.TestCase):
+    """The Stop buttons act on leftovers only and never on the loaded model or other programs."""
+
+    def _engine(self, pid: int):
+        engine = _LoadedByStub("e")
+        engine.process_pid = lambda: pid  # type: ignore[method-assign]
+        return engine
+
+    def test_the_loaded_models_process_is_refused(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(4242)  # type: ignore[assignment]
+        with self.assertRaises(ValueError) as ctx:
+            controller.stop_process(4242)
+        self.assertIn("Unload the model", str(ctx.exception))
+
+    def test_a_warm_model_is_evicted_through_its_engine(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        warm = self._engine(5151)
+        controller._warm_pool["k"] = (warm, mock.Mock(name="info"))  # type: ignore[assignment]
+        controller._warm_pool["k"][1].name = "Parked model"
+        with mock.patch.object(controller, "prune_stale_backend_children"):
+            result = controller.stop_process(5151)
+        self.assertEqual(result["action"], "unloaded")
+        self.assertEqual(warm.unloads, 1)
+        self.assertNotIn("k", controller._warm_pool)
+
+    def test_a_process_this_backend_did_not_start_is_refused(self) -> None:
+        import os
+
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        # the test runner itself: a real process, but not a model process under the backend
+        with self.assertRaises(ValueError):
+            controller.stop_process(os.getpid())
+
+    def test_stop_idle_clears_the_warm_pool_and_prunes_without_a_grace_window(self) -> None:
+        controller = _controller(tensorfold=True)
+        controller.engine = self._engine(1)  # type: ignore[assignment]
+        controller._warm_pool["k"] = (self._engine(7), mock.Mock())  # type: ignore[assignment]
+        with mock.patch.object(controller, "prune_stale_backend_children") as prune:
+            result = controller.stop_idle()
+        self.assertEqual(result["warmEvicted"], 1)
+        prune.assert_called_with(grace_seconds=0.0)
+
+
+class SupersedeAndCancelTests(unittest.TestCase):
+    """A newer load replaces the one in flight, a repeat waits for it, and unload cancels it."""
+
+    class _SlowEngine(_LoadedByStub):
+        def __init__(self, label: str) -> None:
+            super().__init__(label)
+            self.started = __import__("threading").Event()
+            self.release = __import__("threading").Event()
+
+        def load_model(self, **kwargs):
+            self.started.set()
+            if not self.release.wait(timeout=5):
+                raise RuntimeError("never released")
+            if getattr(self, "killed", False):
+                raise RuntimeError("worker exited unexpectedly")
+            return super().load_model(**kwargs)
+
+        def unload_model(self) -> None:
+            self.killed = True
+            self.release.set()
+            super().unload_model()
+
+    def _kwargs(self, repo: str) -> dict:
+        return dict(model_ref=repo, model_name=repo, canonical_repo=repo, source="library", backend="mlx",
+                    path=None, runtime_target=repo)
+
+    def test_unload_cancels_a_load_in_flight(self) -> None:
+        import threading
+
+        controller = _controller(tensorfold=True)
+        slow = self._SlowEngine("slow")
+        controller._select_engine = mock.Mock(return_value=slow)
+        outcome: list = []
+        loader = threading.Thread(target=lambda: outcome.append(self._attempt(controller, "acme/Big")), daemon=True)
+        loader.start()
+        self.assertTrue(slow.started.wait(timeout=2))
+        controller.unload_model()  # must not wait for the load
+        loader.join(timeout=3)
+        self.assertFalse(loader.is_alive())
+        self.assertIsNone(controller.loaded_model)
+        self.assertIn("cancelled", str(outcome[0]).lower())
+
+    def _attempt(self, controller, repo):
+        try:
+            return controller.load_model(**self._kwargs(repo))
+        except RuntimeError as exc:
+            return exc

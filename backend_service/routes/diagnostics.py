@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -198,8 +199,10 @@ def _storage_entry(child: Path, source_label: str, *, dirs_only: bool) -> dict[s
     if repo_label.startswith("models--"):
         # HF cache layout: ``models--{org}--{repo}`` -> ``{org}/{repo}``
         repo_label = repo_label[len("models--"):].replace("--", "/", 1)
+    hf_repo = repo_label if child.name.startswith("models--") and "/" in repo_label else None
     return {
         "path": str(child),
+        "hfRepo": hf_repo,
         "repoLabel": repo_label,
         "sizeBytes": size_bytes,
         "sizeGb": _bytes_to_gb(size_bytes),
@@ -265,6 +268,97 @@ def diagnostics_storage_top(request: Request, limit: int = 20) -> dict[str, Any]
     }
 
 
+def _shared_blobs_by_repo(blobs_root: Path, source_label: str) -> list[dict[str, Any]]:
+    """Group the shared Hugging Face blob store by the repo each blob belongs to.
+
+    huggingface_hub 1.x keeps one ``<hash>`` file plus a ``<hash>.refs`` note
+    per blob, sharded under two-letter folders; the note names the repo
+    (``models--org--name/blobs/<hash>``) that fetched it. A blob several repos
+    share is counted once, under the first repo listed.
+    """
+    groups: dict[str, dict[str, Any]] = {}
+    try:
+        shards = [d for d in blobs_root.iterdir() if d.is_dir()]
+    except OSError:
+        return []
+    for shard in shards:
+        try:
+            files = list(shard.iterdir())
+        except OSError:
+            continue
+        for blob in files:
+            if blob.suffix == ".refs" or not blob.is_file():
+                continue
+            try:
+                size = blob.stat().st_size
+                refs = [
+                    line.split("/", 1)[0]
+                    for line in blob.with_name(blob.name + ".refs").read_text().splitlines()
+                    if line.strip()
+                ]
+            except OSError:
+                continue
+            repo_dir = refs[0] if refs else "unreferenced"
+            kind, _, rest = repo_dir.partition("--")
+            label = rest.replace("--", "/", 1) if kind in {"models", "datasets", "spaces"} and rest else repo_dir
+            group = groups.setdefault(label, {"size": 0, "mtime": 0.0, "files": 0, "shared": 0, "kind": kind})
+            group["size"] += size
+            group["files"] += 1
+            group["shared"] += 1 if len(set(refs)) > 1 else 0
+            group["mtime"] = max(group["mtime"], blob.stat().st_mtime)
+    return [
+        {
+            "path": str(blobs_root),
+            "repoLabel": f"{label} ({g['files']} file{'s' if g['files'] != 1 else ''})",
+            "sizeBytes": g["size"],
+            "sizeGb": _bytes_to_gb(g["size"]),
+            "sourceKind": source_label,
+            "lastModified": g["mtime"],
+            "expandable": False,
+            "deletable": g["kind"] == "models" and "/" in label,
+            "hfRepo": label if g["kind"] == "models" and "/" in label else None,
+        }
+        for label, g in groups.items()
+    ]
+
+
+class DeleteHfRepoRequest(BaseModel):
+    repo: str = Field(min_length=3, max_length=256, pattern=r"^[\w.\-]+/[\w.\-]+$")
+
+
+@router.post("/api/diagnostics/hf-repo/delete")
+def diagnostics_delete_hf_repo(request: Request, body: DeleteHfRepoRequest) -> dict[str, Any]:
+    """Remove one cached Hugging Face model repo, including blobs in the shared store.
+
+    Goes through huggingface_hub's cache API so a blob another repo links to is
+    kept and only this repo's own files are freed. Unloads the model first when
+    it is the one loaded.
+    """
+    from backend_service.helpers.hf_cache_paths import _hf_hub_cache_root
+
+    state: ChaosEngineState = request.app.state.chaosengine
+    try:
+        from huggingface_hub import scan_cache_dir
+
+        info = scan_cache_dir(_hf_hub_cache_root())
+    except Exception as exc:  # noqa: BLE001 - cache layout errors come in many types
+        raise HTTPException(status_code=500, detail=f"Cannot read the Hugging Face cache: {exc}") from exc
+    repo = next((r for r in info.repos if r.repo_type == "model" and r.repo_id == body.repo), None)
+    if repo is None:
+        raise HTTPException(status_code=404, detail=f"{body.repo} is not in the Hugging Face cache.")
+    loaded = getattr(state.runtime, "loaded_model", None)
+    if loaded and body.repo in {getattr(loaded, "ref", None), getattr(loaded, "canonicalRepo", None)}:
+        state.runtime.unload_model()
+    plan = info.delete_revisions(*[rev.commit_hash for rev in repo.revisions])
+    freed = int(plan.expected_freed_size)
+    try:
+        plan.execute()
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete {body.repo}: {exc}") from exc
+    state.add_log("library", "info", f"Deleted cached repo {body.repo} ({freed} bytes).")
+    return {"deleted": body.repo, "freedBytes": freed, "library": state._library(force=True)}
+
+
 @router.get("/api/diagnostics/storage-children")
 def diagnostics_storage_children(request: Request, path: str) -> dict[str, Any]:
     """Direct children of one folder from the Disk usage table, biggest first.
@@ -284,6 +378,10 @@ def diagnostics_storage_children(request: Request, path: str) -> dict[str, Any]:
             break
     else:
         raise HTTPException(status_code=403, detail="Path is outside the configured model directories.")
+    if (target / ".huggingface-shared-blobs").exists():
+        grouped = _shared_blobs_by_repo(target, source_label)
+        grouped.sort(key=lambda e: e["sizeBytes"], reverse=True)
+        return {"path": str(target), "entries": grouped[:200]}
     try:
         children = list(target.iterdir())
     except OSError as exc:

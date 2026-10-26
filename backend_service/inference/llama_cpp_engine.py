@@ -156,6 +156,7 @@ def _apply_sampler_kwargs(
     samplers: dict[str, Any] | None,
     reasoning_effort: str | None,
     json_schema: dict[str, Any] | None,
+    thinking_mode: str | None = None,
 ) -> None:
     """Merge Phase 2.2 sampler overrides into a chat-completions payload.
 
@@ -172,6 +173,11 @@ def _apply_sampler_kwargs(
             payload[key] = value
     if reasoning_effort:
         payload["reasoning_effort"] = reasoning_effort
+    if thinking_mode is not None:
+        # Templates that gate reasoning on ``enable_thinking`` (Qwen3 family,
+        # LFM2.5, ...) reason by default; the server-wide ``--reasoning off``
+        # does not reach every one, so say it per request.
+        payload["chat_template_kwargs"] = {"enable_thinking": thinking_mode != "off"}
     if json_schema:
         payload["response_format"] = {
             "type": "json_schema",
@@ -974,6 +980,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             samplers=samplers,
             reasoning_effort=reasoning_effort,
             json_schema=json_schema,
+            thinking_mode=thinking_mode,
         )
         url = self._server_url("/v1/chat/completions")
         data = json.dumps(payload).encode("utf-8")

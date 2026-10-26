@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
   fetchDiagnosticsSnapshot,
+  deleteHfRepo,
   deleteModelPath,
   fetchStorageChildren,
   fetchStorageTop,
@@ -565,13 +566,14 @@ function StorageRow({
   const remove = async () => {
     const size = entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "unknown size";
     const confirmed = window.confirm(
-      `Permanently delete ${entry.path} (${size})?\n\nThis removes it from disk and cannot be undone.`,
+      `Permanently delete ${entry.hfRepo ?? entry.path} (${size})?\n\nThis removes it from disk and cannot be undone.`,
     );
     if (!confirmed) return;
     setDeleting(true);
     setErr(null);
     try {
-      await deleteModelPath(entry.path);
+      if (entry.hfRepo) await deleteHfRepo(entry.hfRepo);
+      else await deleteModelPath(entry.path);
       setGone(true);
       onDeleted(entry);
     } catch (e) {

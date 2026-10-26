@@ -179,3 +179,20 @@ class BuildSamplerOverridesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThinkingSwitchTests(unittest.TestCase):
+    def test_thinking_off_sends_enable_thinking_false(self):
+        payload: dict = {}
+        _apply_sampler_kwargs(payload, samplers=None, reasoning_effort=None, json_schema=None, thinking_mode="off")
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
+
+    def test_thinking_on_sends_enable_thinking_true(self):
+        payload: dict = {}
+        _apply_sampler_kwargs(payload, samplers=None, reasoning_effort=None, json_schema=None, thinking_mode="auto")
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": True})
+
+    def test_unset_leaves_payload_alone(self):
+        payload: dict = {}
+        _apply_sampler_kwargs(payload, samplers=None, reasoning_effort=None, json_schema=None)
+        self.assertNotIn("chat_template_kwargs", payload)

@@ -25,6 +25,8 @@ export interface ChatComposerProps {
   draftMessage: string;
   pendingImages: string[];
   loadedModelRef: string | undefined;
+  /** A model is loading or reloading; sending would hit the previous model. */
+  modelLoading?: boolean;
   loadedModelCapabilities?: ModelCapabilities | null;
   thinkingMode: ChatThinkingMode;
   reasoningEffort: ReasoningEffortLevel;
@@ -78,6 +80,7 @@ export function ChatComposer({
   draftMessage,
   pendingImages,
   loadedModelRef,
+  modelLoading = false,
   loadedModelCapabilities,
   thinkingMode,
   reasoningEffort,
@@ -240,7 +243,7 @@ export function ChatComposer({
               event.preventDefault();
               // Mirror the Send button's disabled state — no-op when no
               // model is loaded so users don't trigger a confusing 500.
-              if (!loadedModelRef) return;
+              if (!loadedModelRef || modelLoading) return;
               void onSendMessage();
             }
           }}
@@ -412,9 +415,13 @@ export function ChatComposer({
               className="primary-button"
               type="button"
               onClick={() => void onSendMessage()}
-              disabled={!loadedModelRef}
+              disabled={!loadedModelRef || modelLoading}
               title={
-                !loadedModelRef
+                modelLoading
+                  ? t("composer.sendLoadingTooltip", {
+                      defaultValue: "Wait for the model to finish loading",
+                    })
+                  : !loadedModelRef
                   ? t("composer.sendDisabledTooltip", {
                       defaultValue: "Load a model first to send messages",
                     })

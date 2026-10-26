@@ -637,6 +637,7 @@ export type {
 export {
   fetchDiagnosticsLogTail,
   fetchDiagnosticsSnapshot,
+  deleteHfRepo,
   fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,
@@ -692,6 +693,8 @@ export {
   runBenchmark,
   searchHubModels,
   searchModels,
+  stopIdleModelProcesses,
+  stopModelProcess,
   unloadModel,
 } from "./models";
 export type {

@@ -7,6 +7,7 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 - **DFlash on Apple Silicon finally runs.** Since dflash-mlx 0.1.5, every DFlash reply had quietly fallen back to normal decoding while the load note still said DFlash was active. Fixed: Qwen3-4B now writes at 113 to 138 tokens per second against 53 without it, with identical output.
 - **Newer MLX underneath.** Releases now ship mlx 0.32, mlx-lm 0.32 and transformers 5.20. Setup installs resolve mlx-vlm 0.7.10 and diffusers 0.41. Current Gemma 4 conversions load (the old mlx-vlm could not read them), and every release build pins the exact versions it was tested with.
 - **Images in chat on Apple Silicon.** Vision models loaded through mlx-vlm (Gemma 4) now see attached images. Before, the image was always dropped.
+- **Models stop loading when you ask.** Unload cancels a load in flight, and picking a different model replaces the one that is loading instead of queueing behind it. The Dashboard lists leftover model processes with a Stop button each and a Stop idle button, so a stuck worker can no longer hold 20 GB of memory with no way out. Send is disabled while a model loads, so a message can no longer go to the previous model.
 - **Honest memory and speed estimates.** The launch screen works out the real KV-cache size for each model's architecture and estimates speed from your own past runs or your machine's memory bandwidth. It warns before you load a chat model that may not fit. Image and video estimates know which engine they run on and count a chat model that is already loaded.
 
 ### New models
@@ -31,7 +32,7 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 ### Faster generation
 
 - **DFlash** (Apple Silicon) fixed, as above.
-- **Thinking Off now works** for Qwen 3 / 3.5 / 3.6 / 3.8 on Apple Silicon. Before, they reasoned anyway and spent the reply budget on it.
+- **Thinking Off now works** for Qwen 3 / 3.5 / 3.6 / 3.8 on Apple Silicon, and the switch is sent to llama.cpp models too. Before, they reasoned anyway and spent the reply budget on it.
 - **TensorFold 0.6.6** (Apple Silicon): exact speculative decoding with no change in output. Install it from the launch settings.
 - **llama.cpp b11810** bundled: DFlash 2, EAGLE-3 and draft-free `ngram-mod`, picked automatically from the drafter files next to a GGUF.
 - **MTPLX 2.12**: reasoning now streams correctly.
@@ -54,7 +55,9 @@ A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Mod
 
 - **Chat > My Models lists chat models only.** 3D tool parts, text encoders, voice models and bare weight files no longer show up as chat models.
 - **Settings > Diagnostics is split into three tabs**: Diagnostics, Accelerators and Disk usage.
-- **Disk usage rows expand and can be deleted.** The shared Hugging Face `blobs` store is protected.
+- **Disk usage rows expand and can be deleted.** The shared Hugging Face `blobs` store is now broken down by repo, and any cached repo can be deleted from there; blobs another repo still uses are kept.
+- **Streaming follows the bottom.** In Chat, Compare and the HTML challenge the view now stays with the newest text until you scroll up. Before, one long chunk made it stop following, and Latest had to be pressed again and again.
+- **Multi-quant GGUF repos show the size of the one file that loads**, not the whole folder, in the library and the memory bar. A model that fits no longer looks too big to run.
 
 ### Fixes
 
@@ -68,6 +71,10 @@ A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Mod
 - **Dead catalog links** repaired; an audit script checks every row.
 - **Release builds** include the `dflash` package, the Setup installers and a pinned llama.cpp build, so GGUF models work out of the box.
 - **Tool use on Apple Silicon** no longer loops.
+- **Loading** a model no longer hangs forever when a second load is requested: repeated requests for the same model share one load.
+- **My Models and the chat picker** no longer come up empty while the first library scan is still running.
+- **MTPLX** is no longer chosen for models without an MTP head, and the TensorFold toggle names DFlash 2 and MTP drafting. A cold TensorFold start says it can take a few minutes.
+- **Extras overlay**: an older huggingface-hub or transformers left by a Setup install can no longer shadow the ones the app ships.
 - **MLX probe**: one stray kill of the startup check at launch no longer turns MLX off until you restart; it is retried once. The launch screen's context setting is capped at the model's own window, so a stored 262K no longer triggers a false memory warning on a 32K model.
 - **Hub listings** work on Python installs without a certificate bundle (Discover came back empty there).
 - **Downloads** skip weight shards that no index file uses, and the Gemma 4 entries are merged into one family.

@@ -13,7 +13,7 @@ RuntimeController``) keep working without churn.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import lru_cache, wraps
 
 import json
 import os
@@ -21,7 +21,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Event, Lock, RLock, Thread
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -112,11 +112,40 @@ from backend_service.inference._tensorfold import TensorFoldMatch, match_model
 from backend_service.inference.tensorfold_engine import TensorFoldEngine
 
 
+def _model_weights_bytes(path: str) -> int:
+    """Bytes a model occupies when loaded, as opposed to bytes in its folder.
+
+    A GGUF repo folder usually holds several quants (a 24B model's BF16, F16 and
+    Q8_0 are 148 GB together) but one file loads, so count that file. Folders
+    that also carry safetensors are sized whole: their loader reads those.
+    """
+    try:
+        folder = Path(path)
+        if folder.is_dir() and not any(folder.rglob("*.safetensors")):
+            from backend_service.helpers.text_gguf import gguf_load_bytes  # noqa: PLC0415
+
+            loaded = gguf_load_bytes(folder)
+            if loaded:
+                return loaded
+    except OSError:
+        pass
+    return _path_size_bytes(path)
+
+
 @lru_cache(maxsize=32)
 def _cached_path_size_bytes(path: str) -> int:
     """Size of a loaded model's files. Cached: the runtime status (polled every
     few seconds) reports it, and a loaded model's files do not change."""
-    return _path_size_bytes(path)
+    return _model_weights_bytes(path)
+
+
+def _one_load_at_a_time(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._load_lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class RuntimeController:
@@ -136,6 +165,16 @@ class RuntimeController:
         # Warm pool: keeps previously loaded engines alive for instant switch-back
         self._warm_pool: dict[str, tuple[BaseInferenceEngine, LoadedModelInfo]] = {}
         self._pool_lock = Lock()
+        # One load or unload at a time: a second request used to start while the
+        # first was still loading, replace ``self.engine`` and orphan the first
+        # engine's process (a 21 GB TensorFold worker kept running, starving the next model).
+        self._load_lock = RLock()
+        # Newest request wins: a load for another model aborts the one in flight,
+        # a repeat of the same request waits for it, and unload cancels any load.
+        self._latest_load_key: str | None = None
+        self._inflight_load_key: str | None = None
+        self._loaded_key: str | None = None
+        self._load_aborted = Event()
         self._loading_progress: dict[str, Any] | None = None
         self._loading_log_tail: list[str] = []
         self._recent_orphaned_workers: list[dict[str, Any]] = []
@@ -321,7 +360,8 @@ class RuntimeController:
     # pure noise.
     ORPHAN_DETECTION_GRACE_SECONDS = 3.0
 
-    def prune_stale_backend_children(self) -> None:
+    def prune_stale_backend_children(self, grace_seconds: float | None = None) -> None:
+        grace = self.ORPHAN_DETECTION_GRACE_SECONDS if grace_seconds is None else grace_seconds
         tracked = self._tracked_process_pids()
         try:
             import psutil
@@ -356,7 +396,7 @@ class RuntimeController:
             # every time an engine was swapped in or out, so a normal
             # model-change session produced 5-10 "orphans" purely from
             # timing races.
-            if now_wall - create_time < self.ORPHAN_DETECTION_GRACE_SECONDS:
+            if now_wall - create_time < grace:
                 continue
 
             if is_mlx_worker:
@@ -391,6 +431,62 @@ class RuntimeController:
             self._recent_orphaned_workers = (pruned + self._recent_orphaned_workers)[:8]
 
         self._expire_orphan_records()
+
+    _OWNED_PROCESS_MARKERS = ("mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/")
+
+    def stop_process(self, pid: int) -> dict[str, Any]:
+        """Stop one process this app started that is not serving the loaded model.
+
+        The loaded model's process is refused (unload the model instead), a parked
+        warm model is evicted properly, and anything that is not a model process
+        under this backend is refused, so the button cannot touch other programs.
+        """
+        active = self.engine.process_pid() if self.engine else None
+        if active and int(active) == pid:
+            raise ValueError("That process serves the loaded model. Unload the model instead.")
+        with self._pool_lock:
+            warm_key = next(
+                (key for key, (engine, _info) in self._warm_pool.items() if engine.process_pid() == pid),
+                None,
+            )
+            warm = self._warm_pool.pop(warm_key) if warm_key is not None else None
+        if warm is not None:
+            try:
+                warm[0].unload_model()
+            except Exception:
+                pass
+            self.prune_stale_backend_children(grace_seconds=0.0)
+            return {"pid": pid, "action": "unloaded", "label": warm[1].name}
+        try:
+            import psutil
+
+            process = psutil.Process(pid)
+            owned = process.parent() is not None and any(
+                parent.pid == os.getpid() for parent in [process.parent(), *process.parents()]
+            )
+            cmdline = " ".join(process.cmdline()).lower()
+        except Exception as exc:  # noqa: BLE001 - gone, or not ours to read
+            raise ValueError("That process is no longer running.") from exc
+        if not owned or not any(marker in cmdline for marker in self._OWNED_PROCESS_MARKERS):
+            raise ValueError("That is not a model process started by ChaosEngineAI.")
+        try:
+            process.terminate()
+            process.wait(timeout=3)
+            action = "terminated"
+        except Exception:  # noqa: BLE001
+            try:
+                process.kill()
+                action = "killed"
+            except Exception:  # noqa: BLE001
+                action = "kill_failed"
+        return {"pid": pid, "action": action}
+
+    def stop_idle(self) -> dict[str, Any]:
+        """Evict every parked warm model and stop every model process nothing is using."""
+        before = len(self._recent_orphaned_workers)
+        evicted = self.clear_warm_pool()
+        self.prune_stale_backend_children(grace_seconds=0.0)
+        return {"warmEvicted": evicted, "orphansStopped": max(0, len(self._recent_orphaned_workers) - before)}
 
     def _expire_orphan_records(self) -> None:
         if not self._recent_orphaned_workers:
@@ -730,7 +826,7 @@ class RuntimeController:
         for candidate in (path, runtime_target):
             if not candidate:
                 continue
-            size = _path_size_bytes(candidate)
+            size = _model_weights_bytes(candidate)
             if size > 0:
                 return size
         return 0
@@ -814,7 +910,63 @@ class RuntimeController:
             free += self._pop_oldest_warm_entry()
         return free >= required_free_bytes
 
-    def load_model(
+    def load_model(self, **kwargs: Any) -> LoadedModelInfo:
+        key = self._warm_pool_key(
+            model_ref=kwargs["model_ref"],
+            runtime_target=kwargs.get("runtime_target"),
+            path=kwargs.get("path"),
+            cache_strategy=kwargs.get("cache_strategy", "native"),
+            cache_bits=kwargs.get("cache_bits", 0),
+            fp16_layers=kwargs.get("fp16_layers", 0),
+            fused_attention=kwargs.get("fused_attention", False),
+            fit_model_in_memory=kwargs.get("fit_model_in_memory", True),
+            context_tokens=kwargs.get("context_tokens", 8192),
+            speculative_decoding=kwargs.get("speculative_decoding", False),
+        )
+        self._latest_load_key = key
+        waited = False
+        if not self._load_lock.acquire(timeout=0.2):
+            waited = True
+            if self._inflight_load_key not in (None, key):
+                self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            if self._latest_load_key != key:
+                raise RuntimeError("A newer load request replaced this one.")
+            # A repeat of the request that just finished loading is already served;
+            # a request that did not have to wait is a deliberate reload.
+            if waited and self.loaded_model is not None and self._loaded_key == key:
+                return self.loaded_model
+            self._load_aborted.clear()
+            self._inflight_load_key = key
+            try:
+                loaded = self._load_model_locked(**kwargs)
+            finally:
+                self._inflight_load_key = None
+            self._loaded_key = key
+            return loaded
+        finally:
+            self._load_lock.release()
+
+    def _abort_inflight_load(self) -> None:
+        """Make the load in flight fail now by ending its engine's process."""
+        self._load_aborted.set()
+        engine = self.engine
+        pid = engine.process_pid() if engine is not None else None
+        if pid:
+            try:
+                import psutil
+
+                psutil.Process(int(pid)).kill()
+                return
+            except Exception:  # noqa: BLE001 - already gone
+                pass
+        try:
+            engine.unload_model()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _load_model_locked(
         self,
         *,
         model_ref: str,
@@ -941,6 +1093,13 @@ class RuntimeController:
         try:
             loaded = self.engine.load_model(**_load_kwargs)
         except RuntimeError as _startup_exc:
+            if self._load_aborted.is_set():
+                self.loaded_model = None
+                self.runtime_note = None
+                self._loading_progress = None
+                self._loading_log_tail = []
+                self.prune_stale_backend_children()
+                raise RuntimeError("Model load cancelled.") from _startup_exc
             # An accelerator engine's startup failure → fall back to the
             # standard MLX worker (see ``_startup_fallback_label``).
             fallback_from = self._startup_fallback_label(
@@ -1020,10 +1179,18 @@ class RuntimeController:
         return self._loading_progress, list(self._loading_log_tail)
 
     def unload_model(self) -> None:
-        self.engine.unload_model()
-        self.loaded_model = None
-        self.runtime_note = None
-        self.prune_stale_backend_children()
+        self._latest_load_key = None  # queued loads give up instead of reloading
+        if not self._load_lock.acquire(timeout=0.2):
+            self._abort_inflight_load()
+            self._load_lock.acquire()
+        try:
+            self.engine.unload_model()
+            self.loaded_model = None
+            self._loaded_key = None
+            self.runtime_note = None
+            self.prune_stale_backend_children()
+        finally:
+            self._load_lock.release()
 
     def generate(
         self,

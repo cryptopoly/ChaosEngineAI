@@ -167,6 +167,8 @@ def _latest_server_line(log_path: Path | None) -> str | None:
     return None
 
 
+_COLD_START_NOTE = "A cold start can take a few minutes."
+
 class TensorFoldEngine(BaseInferenceEngine):
     engine_name = "tensorfold"
     engine_label = "TensorFold (exact speculative decoding)"
@@ -257,6 +259,10 @@ class TensorFoldEngine(BaseInferenceEngine):
         """Poll ``/health`` until the model is loaded and the port answers."""
         deadline = time.monotonic() + MLX_LOAD_TIMEOUT_SECONDS
         last_line: str | None = None
+        # A first start reads every weight, loads the draft model and times the
+        # decoder lanes: about two to three minutes for a 27B model. Say so, or a
+        # silent badge invites a second click that restarts the load.
+        _emit_progress(progress_callback, "loading", None, f"Starting TensorFold. {_COLD_START_NOTE}")
         while time.monotonic() < deadline:
             if self.process is not None and self.process.poll() is not None:
                 raise self._startup_failure()
@@ -269,7 +275,7 @@ class TensorFoldEngine(BaseInferenceEngine):
             line = _latest_server_line(self.log_path)
             if line and line != last_line:
                 last_line = line
-                _emit_progress(progress_callback, "loading", None, line)
+                _emit_progress(progress_callback, "loading", None, f"{line[:140]} · {_COLD_START_NOTE}")
             time.sleep(_HEALTH_POLL_SECONDS)
         raise self._startup_failure(
             f"TensorFold did not finish loading {model_name} within "

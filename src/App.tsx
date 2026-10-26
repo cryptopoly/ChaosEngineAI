@@ -9,6 +9,8 @@ import {
   loadModel,
   getWorkspace,
   resolveApiToken,
+  stopIdleModelProcesses,
+  stopModelProcess,
   updateSession,
   updateSettings as updateSettingsApi,
 } from "./api";
@@ -118,6 +120,7 @@ import {
 import { useMtplxInstall } from "./hooks/useMtplxInstall";
 import { useTensorfoldInstall } from "./hooks/useTensorfoldInstall";
 import type { TensorfoldLaunchControls } from "./components/tensorfoldSupport";
+import { newStickyScroll, stickToBottom, updateStickyScroll, type StickyScroll } from "./utils/stickyScroll";
 
 export default function App() {
   // FU-042: i18n hook — used for the workspace header tab label /
@@ -407,7 +410,7 @@ export default function App() {
       return {
         key: `library:${item.path}`,
         label: item.name,
-        detail: `${displayFormat} / ${number(item.sizeGb)} GB`,
+        detail: `${displayFormat} / ${number(item.loadSizeGb ?? item.sizeGb)} GB`,
         group: "Local library",
         model: item.name,
         modelRef: item.name,
@@ -416,7 +419,7 @@ export default function App() {
         path: item.path,
         backend: libraryItemBackend(item, matched),
         paramsB: matched?.paramsB,
-        sizeGb: item.sizeGb,
+        sizeGb: item.loadSizeGb ?? item.sizeGb,
         contextWindow: matched?.contextWindow,
         format: displayFormat,
         quantization: displayQuantization ?? undefined,
@@ -890,20 +893,27 @@ export default function App() {
     });
   }, [benchmarkOption?.key, setBenchmarkDraft]);
 
-  // Auto-scroll chat
+  // Auto-scroll chat: follow the stream until the user scrolls up (see
+  // utils/stickyScroll). A new chat or a new message turns the follow on.
+  const chatSticky = useRef<StickyScroll>(newStickyScroll());
   const lastMessageLength = activeChat?.messages[activeChat.messages.length - 1]?.text?.length ?? 0;
+  useEffect(() => {
+    if (activeTab !== "chat") return;
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const onScroll = () => { updateStickyScroll(el, chatSticky.current); };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [activeTab, activeChat?.id, chatScrollRef]);
+  useEffect(() => {
+    chatSticky.current.stuck = true;
+  }, [activeChat?.id, activeChat?.messages.length]);
   useEffect(() => {
     if (activeTab !== "chat") return;
     const handle = requestAnimationFrame(() => {
       const el = chatScrollRef.current;
-      if (!el) return;
-      // Only auto-scroll if the user is already near the bottom.
-      // This lets users scroll up to read earlier content during streaming
-      // without being yanked back to the bottom on every token.
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-      if (nearBottom) {
-        el.scrollTop = el.scrollHeight;
-      }
+      if (!el || !chatSticky.current.stuck) return;
+      stickToBottom(el, chatSticky.current);
     });
     return () => cancelAnimationFrame(handle);
   }, [activeTab, activeChat?.id, activeChat?.messages.length, lastMessageLength, chatScrollRef]);
@@ -1215,6 +1225,22 @@ export default function App() {
     runtime={workspace.runtime}
     activity={workspace.activity}
     backendOnline={backendOnline}
+    onStopProcess={async (pid) => {
+      try {
+        await stopModelProcess(pid);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop that process.");
+      }
+      await refreshWorkspace();
+    }}
+    onStopIdleProcesses={async () => {
+      try {
+        await stopIdleModelProcesses();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not stop idle processes.");
+      }
+      await refreshWorkspace();
+    }}
   />;
   if (activeTab === "online-models") {
     content = (

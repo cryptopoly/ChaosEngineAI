@@ -366,3 +366,36 @@ class PromptBuilderForwardsSwitchesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FlintOnMlxTests(unittest.TestCase):
+    """A Flint checkpoint MLX cannot load fails with a reason and the way out."""
+
+    def _dir(self, *, marker: bool) -> str:
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(directory, ignore_errors=True))
+        (directory / "config.json").write_text(json.dumps({"model_type": "flint"}), encoding="utf-8")
+        if marker:
+            (directory / "flint-int4.json").write_text("{}", encoding="utf-8")
+        return str(directory)
+
+    def test_recursives_int4_export_points_at_the_gguf(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with self.assertRaises(RuntimeError) as ctx:
+            _reject_unsupported_quant(self._dir(marker=True))
+        self.assertIn("RecursiveSI/flint-int4-gguf", str(ctx.exception))
+
+    def test_a_stack_without_the_architecture_says_so(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with mock.patch("importlib.util.find_spec", return_value=None):
+            with self.assertRaises(RuntimeError) as ctx:
+                _reject_unsupported_quant(self._dir(marker=False))
+        self.assertIn("do not include the Flint architecture", str(ctx.exception))
+
+    def test_a_stack_that_ships_it_is_left_alone(self) -> None:
+        from backend_service.mlx_worker_diagnostics import _reject_unsupported_quant
+
+        with mock.patch("importlib.util.find_spec", return_value=object()):
+            _reject_unsupported_quant(self._dir(marker=False))

@@ -183,6 +183,37 @@ def _read_safetensors_index(model_dir: _Path) -> dict[str, str] | None:
     return weight_map if isinstance(weight_map, dict) else None
 
 
+def _snapshot_dir(directory: _Path) -> _Path:
+    """The newest snapshot of a Hugging Face cache repo folder, else ``directory``.
+
+    The library hands the engine ``models--owner--name`` (no weights in it), so
+    without this the probe finds no index and callers fall back to a name match,
+    which a mis-matched catalog name can get wrong.
+    """
+    snapshots = directory / "snapshots"
+    if not snapshots.is_dir():
+        return directory
+    try:
+        found = [d for d in snapshots.iterdir() if d.is_dir()]
+    except OSError:
+        return directory
+    return max(found, key=lambda d: d.stat().st_mtime) if found else directory
+
+
+def _read_single_safetensors_keys(model_dir: _Path) -> dict[str, str] | None:
+    """Tensor names of an unsharded ``model.safetensors`` (its JSON header), or None."""
+    weights = model_dir / "model.safetensors"
+    try:
+        with weights.open("rb") as fh:
+            header_len = int.from_bytes(fh.read(8), "little")
+            if not 0 < header_len < 100 * 1024 * 1024:
+                return None
+            header = _json.loads(fh.read(header_len))
+    except (OSError, ValueError):
+        return None
+    return {name: "model.safetensors" for name in header if name != "__metadata__"}
+
+
 def model_has_mtp_tensors(path: str | None) -> bool | None:
     """Authoritative MTP-head probe via local model files.
 
@@ -225,10 +256,12 @@ def model_has_mtp_tensors(path: str | None) -> bool | None:
 
     # MLX / safetensors case: look for the dedicated shard or any
     # ``mtp_*`` key in the index.
-    model_dir = p if p.is_dir() else p.parent
+    model_dir = _snapshot_dir(p if p.is_dir() else p.parent)
     if (model_dir / "mtp.safetensors").exists():
         return True
     weight_map = _read_safetensors_index(model_dir)
+    if weight_map is None:
+        weight_map = _read_single_safetensors_keys(model_dir)
     if weight_map is None:
         return None
     for tensor_name in weight_map.keys():

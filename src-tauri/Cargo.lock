@@ -496,6 +496,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "unic-langid",
+ "webkit2gtk",
  "windows-sys 0.61.2",
 ]
 

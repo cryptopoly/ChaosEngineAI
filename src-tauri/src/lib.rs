@@ -307,6 +307,34 @@ mod sidecar_thread_tests {
     }
 }
 
+/// Linux: WebKitGTK ships with media capture off and refuses any permission
+/// request nobody answers, so the voice microphone would never open. Turn
+/// media streams on and allow microphone / camera requests from our own page.
+/// macOS (wry grants WKWebView capture requests; TCC asks the user once) and
+/// Windows (WebView2 shows its own prompt) need nothing here.
+#[cfg(target_os = "linux")]
+fn allow_microphone(app: &tauri::App) {
+    use webkit2gtk::glib::prelude::*;
+    use webkit2gtk::{PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, WebViewExt};
+
+    for window in app.webview_windows().values() {
+        let _ = window.with_webview(|webview| {
+            let view = webview.inner();
+            if let Some(settings) = WebViewExt::settings(&view) {
+                settings.set_enable_media_stream(true);
+            }
+            view.connect_permission_request(|_, request| {
+                if request.is::<UserMediaPermissionRequest>() {
+                    request.allow();
+                    true
+                } else {
+                    false
+                }
+            });
+        });
+    }
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -328,6 +356,9 @@ pub fn run() {
             // racing the bootstrap. The frontend already renders a
             // "Connecting..." state when started=false.
             app.manage(BackendManager::default());
+
+            #[cfg(target_os = "linux")]
+            allow_microphone(app);
 
             // The Python sidecar serves /api/* — without it the desktop
             // app is dead. Always bootstrap on launch, regardless of the

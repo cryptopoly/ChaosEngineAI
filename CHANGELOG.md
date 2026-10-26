@@ -19,6 +19,8 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 - New models: LFM2.5 24B-A2B (MLX 4/8-bit and GGUF), Muse Glimmer 30B GGUF (vision, DFlash 2 sidecar), Kolibri 1 GGUF Q3_K_M, Qwen3.8 Flash Next GGUF, Qwen3.6 35B-A3B MTP through TensorFold, Qwen-Image-2.1 Turbo and FLUX 3 Image Klein through mflux.
 - Image input for MLX vision models loaded through mlx-vlm (Gemma 4 on Apple Silicon).
 - Memory and speed estimates rebuilt for chat, image and video: real KV-cache layout per architecture, memory pressure from available memory, decode speed from this machine's history or its memory bandwidth, an advisory check before a chat model loads, and engine-aware image and video estimates (FU-110).
+- Dashboard process list: Stop per leftover model process and a Stop idle button; unloading cancels a load in flight and a newer load replaces the one running.
+- Disk usage breaks the shared Hugging Face blob store down by repo, and a cached repo can be deleted there through the cache API.
 - `release-constraints.txt` pins every package in release builds to the tested versions.
 
 ### Fixed

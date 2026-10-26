@@ -276,7 +276,34 @@ class StorageChildrenTests(unittest.TestCase):
             [(e["repoLabel"], e["sizeBytes"]) for e in entries],
             [("org/big (2 files)", 400), ("other/small (1 file)", 50)],
         )
-        self.assertFalse(any(e["deletable"] for e in entries))
+        self.assertEqual([e["hfRepo"] for e in entries], ["org/big", "other/small"])
+        self.assertTrue(all(e["deletable"] for e in entries))
+
+    def test_delete_hf_repo_frees_it_and_keeps_other_repos(self):
+        import os
+        from unittest import mock
+
+        hub = self.models / "hub"
+        for name, size in (("org--gone", 300), ("org--kept", 100)):
+            repo = hub / f"models--{name}"
+            (repo / "blobs").mkdir(parents=True)
+            (repo / "refs").mkdir()
+            (repo / "snapshots" / f"rev-{name}").mkdir(parents=True)
+            (repo / "blobs" / name).write_bytes(b"x" * size)
+            (repo / "snapshots" / f"rev-{name}" / "w.bin").symlink_to(repo / "blobs" / name)
+            (repo / "refs" / "main").write_text(f"rev-{name}")
+        with mock.patch.dict(os.environ, {"HF_HUB_CACHE": str(hub)}):
+            missing = self.client.post("/api/diagnostics/hf-repo/delete", json={"repo": "org/nope"})
+            self.assertEqual(missing.status_code, 404)
+            resp = self.client.post("/api/diagnostics/hf-repo/delete", json={"repo": "org/gone"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["freedBytes"], 300)
+        self.assertFalse((hub / "models--org--gone").exists())
+        self.assertTrue((hub / "models--org--kept" / "blobs" / "org--kept").exists())
+
+    def test_delete_hf_repo_rejects_a_path_shaped_repo(self):
+        resp = self.client.post("/api/diagnostics/hf-repo/delete", json={"repo": "../etc/passwd"})
+        self.assertEqual(resp.status_code, 422)
 
     def test_children_lists_files_and_folders_biggest_first(self):
         resp = self.client.get(

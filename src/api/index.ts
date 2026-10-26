@@ -637,6 +637,7 @@ export type {
 export {
   fetchDiagnosticsLogTail,
   fetchDiagnosticsSnapshot,
+  deleteHfRepo,
   fetchStorageChildren,
   fetchStorageTop,
   getModelMoveStatus,

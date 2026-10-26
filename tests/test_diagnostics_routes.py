@@ -258,6 +258,26 @@ class StorageChildrenTests(unittest.TestCase):
         ).json()["entries"]
         self.assertEqual([e["deletable"] for e in inner], [False])
 
+    def test_shared_blob_store_is_grouped_by_repo(self):
+        blobs = self.models / "blobs"
+        (blobs / "ab").mkdir(parents=True)
+        (blobs / ".huggingface-shared-blobs").write_bytes(b"1")
+        for name, size, ref in (
+            ("abc1", 300, "models--org--big/blobs/abc1"),
+            ("abc2", 100, "models--org--big/blobs/abc2"),
+            ("abc3", 50, "models--other--small/blobs/abc3"),
+        ):
+            (blobs / "ab" / name).write_bytes(b"x" * size)
+            (blobs / "ab" / f"{name}.refs").write_text(ref + "\n")
+        entries = self.client.get(
+            "/api/diagnostics/storage-children", params={"path": str(blobs)}
+        ).json()["entries"]
+        self.assertEqual(
+            [(e["repoLabel"], e["sizeBytes"]) for e in entries],
+            [("org/big (2 files)", 400), ("other/small (1 file)", 50)],
+        )
+        self.assertFalse(any(e["deletable"] for e in entries))
+
     def test_children_lists_files_and_folders_biggest_first(self):
         resp = self.client.get(
             "/api/diagnostics/storage-children", params={"path": str(self.models / "tool")}

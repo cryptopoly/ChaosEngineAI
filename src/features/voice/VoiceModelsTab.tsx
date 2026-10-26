@@ -387,7 +387,7 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
         <div className="voice-settings__worker">
           <span className="muted-text">
             {runtime.workerPid
-              ? t("voice.settings.workerRunning", { defaultValue: "Voice models are loaded (process {{pid}}).", pid: runtime.workerPid })
+              ? t("voice.settings.workerRunning", { defaultValue: "Voice models are loaded (process {pid}).", pid: runtime.workerPid })
               : t("voice.settings.workerStopped", { defaultValue: "Voice models are not loaded." })}
           </span>
           {runtime.workerPid ? (
@@ -407,7 +407,7 @@ export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRunt
 
   if (!backendOnline || !voiceRuntime) {
     return (
-      <div className="content-grid image-page-grid">
+      <div className="content-grid discover-page voice-page">
         <Panel title={t("voice.models.title", { defaultValue: "Voice" })} className="span-2">
           <div className="empty-state">
             <p className="muted-text">{t("voice.offline", { defaultValue: "Waiting for the backend…" })}</p>
@@ -422,7 +422,7 @@ export function VoiceModelsTab({ voiceRuntime, backendOnline, onRefreshVoiceRunt
     voiceRuntime.sttModels.find((m) => m.default)?.id;
 
   return (
-    <div className="content-grid image-page-grid">
+    <div className="content-grid discover-page voice-page">
       <VoicePackPanel runtime={voiceRuntime} onChanged={onRefreshVoiceRuntime} />
       {voiceRuntime.installed ? (
         <>

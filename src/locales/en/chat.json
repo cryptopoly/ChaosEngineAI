@@ -269,5 +269,20 @@
     "promptPlaceholder": "Enter a prompt to compare...",
     "cancel": "Cancel",
     "compareButton": "Compare"
+  },
+  "voice": {
+    "heardNothing": "No speech was heard. Try again closer to the microphone.",
+    "installToDictate": "Voice input needs the voice pack. Click to install it.",
+    "stopDictation": "Stop and transcribe (Esc cancels)",
+    "transcribing": "Transcribing…",
+    "startDictation": "Dictate (click, or hold to talk; Ctrl/Cmd+Shift+M)",
+    "installToRead": "Read aloud needs the voice pack. Click to install it.",
+    "stopReading": "Stop reading",
+    "readAloud": "Read aloud",
+    "dismiss": "Dismiss",
+    "resume": "Resume",
+    "pause": "Pause",
+    "stop": "Stop",
+    "preparing": "Preparing speech…"
   }
 }

@@ -432,5 +432,87 @@
       "revealFile": "Reveal File",
       "delete": "Delete"
     }
+  },
+  "voice": {
+    "pack": {
+      "title": "Voice pack",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "about": "Speech-to-text and text-to-speech run in their own environment on this computer (about 2 GB, plus the models you download). Nothing is sent online.",
+      "cancel": "Cancel",
+      "update": "Update voice pack",
+      "install": "Install voice pack",
+      "reinstall": "Repair / reinstall",
+      "done": "Voice pack installed.",
+      "log": "Install log"
+    },
+    "models": {
+      "recommended": "Recommended",
+      "downloaded": "Downloaded",
+      "use": "Use for dictation",
+      "download": "Download",
+      "firstUse": "Downloads on first use if you skip this.",
+      "title": "Voice",
+      "sttTitle": "Speech-to-text models",
+      "sttSubtitle": "Used by the microphone in chat and by Voice Studio."
+    },
+    "voices": {
+      "title": "Voices",
+      "subtitle": "Kokoro: 54 voices in 9 languages. Pick the one chat reads aloud with.",
+      "needsChinese": "Tick Mandarin Chinese voices in the voice pack.",
+      "notYet": "Not available on this computer yet.",
+      "useVoice": "Use this voice",
+      "preview": "Preview"
+    },
+    "settings": {
+      "title": "Voice settings",
+      "autoSend": "Send the message as soon as dictation finishes",
+      "autoRead": "Read every chat reply aloud when it finishes",
+      "language": "Dictation language",
+      "languageHint": "Whisper uses it; Parakeet detects the language itself.",
+      "speed": "Reading speed",
+      "idle": "Free voice memory after (minutes idle, 0 = never)",
+      "workerRunning": "Voice models are loaded (process {pid}).",
+      "workerStopped": "Voice models are not loaded.",
+      "unload": "Unload now"
+    },
+    "offline": "Waiting for the backend…",
+    "copy": "Copy",
+    "save": "Save to gallery",
+    "transcribe": {
+      "title": "Transcribe",
+      "subtitle": "Record, or drop an audio or video file",
+      "model": "Model",
+      "language": "Language",
+      "hint": "Click the button to record, or drop a file here.",
+      "choose": "Choose a file",
+      "took": "transcribed in {s} s",
+      "placeholder": "The transcript appears here. You can edit it.",
+      "segments": "Timestamps ({n})"
+    },
+    "stopRecording": "Stop recording",
+    "record": "Record",
+    "transcribing": "Transcribing",
+    "cancel": "Cancel",
+    "sendToChat": "Send to chat",
+    "copied": "Copied",
+    "saved": "Saved",
+    "speak": {
+      "title": "Speak",
+      "subtitle": "Turn text into speech",
+      "placeholder": "Type or paste text. Markdown and code are tidied up before speaking.",
+      "voice": "Voice",
+      "speed": "Speed",
+      "generating": "Generating…",
+      "generate": "Generate audio",
+      "readNow": "Read aloud now",
+      "download": "Download WAV"
+    },
+    "stop": "Stop",
+    "studio": {
+      "title": "Voice Studio",
+      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+      "openModels": "Open Voice Models"
+    }
   }
 }

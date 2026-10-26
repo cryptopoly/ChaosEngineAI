@@ -84,7 +84,7 @@ export function VoiceGalleryTab({ backendOnline }: VoiceGalleryTabProps) {
   }
 
   return (
-    <div className="content-grid image-page-grid">
+    <div className="content-grid discover-page voice-page">
       <Panel title="Voice Gallery" subtitle="Saved transcripts and audio clips" className="span-2">
         {!backendOnline ? (
           <div className="empty-state">

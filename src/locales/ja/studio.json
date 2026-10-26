@@ -432,5 +432,87 @@
       "revealFile": "ファイルを表示",
       "delete": "削除"
     }
+  },
+  "voice": {
+    "pack": {
+      "title": null,
+      "installed": null,
+      "notInstalled": null,
+      "about": null,
+      "cancel": null,
+      "update": null,
+      "install": null,
+      "reinstall": null,
+      "done": null,
+      "log": null
+    },
+    "models": {
+      "recommended": null,
+      "downloaded": null,
+      "use": null,
+      "download": null,
+      "firstUse": null,
+      "title": null,
+      "sttTitle": null,
+      "sttSubtitle": null
+    },
+    "voices": {
+      "title": null,
+      "subtitle": null,
+      "needsChinese": null,
+      "notYet": null,
+      "useVoice": null,
+      "preview": null
+    },
+    "settings": {
+      "title": null,
+      "autoSend": null,
+      "autoRead": null,
+      "language": null,
+      "languageHint": null,
+      "speed": null,
+      "idle": null,
+      "workerRunning": null,
+      "workerStopped": null,
+      "unload": null
+    },
+    "offline": null,
+    "copy": null,
+    "save": null,
+    "transcribe": {
+      "title": null,
+      "subtitle": null,
+      "model": null,
+      "language": null,
+      "hint": null,
+      "choose": null,
+      "took": null,
+      "placeholder": null,
+      "segments": null
+    },
+    "stopRecording": null,
+    "record": null,
+    "transcribing": null,
+    "cancel": null,
+    "sendToChat": null,
+    "copied": null,
+    "saved": null,
+    "speak": {
+      "title": null,
+      "subtitle": null,
+      "placeholder": null,
+      "voice": null,
+      "speed": null,
+      "generating": null,
+      "generate": null,
+      "readNow": null,
+      "download": null
+    },
+    "stop": null,
+    "studio": {
+      "title": null,
+      "needsPack": null,
+      "openModels": null
+    }
   }
 }

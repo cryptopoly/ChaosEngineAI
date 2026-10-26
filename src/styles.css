@@ -10241,3 +10241,15 @@ html[lang="ko"] select {
   font: inherit;
   text-decoration: underline;
 }
+
+.content-grid.voice-page {
+  grid-auto-rows: max-content;
+}
+
+.content-grid.voice-page > .panel {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: max-content;
+  overflow: visible;
+}

@@ -232,7 +232,7 @@ function TranscribePanel({ runtime, onSendToChat }: { runtime: VoiceRuntime; onS
           <p className="muted-text voice-studio__meta">
             {result.durationS != null ? `${formatClock(result.durationS)} · ` : ""}
             {result.language ? `${result.language} · ` : ""}
-            {result.seconds != null ? t("voice.transcribe.took", { defaultValue: "transcribed in {{s}} s", s: result.seconds.toFixed(1) }) : ""}
+            {result.seconds != null ? t("voice.transcribe.took", { defaultValue: "transcribed in {s} s", s: result.seconds.toFixed(1) }) : ""}
           </p>
         ) : null}
         <textarea
@@ -243,7 +243,7 @@ function TranscribePanel({ runtime, onSendToChat }: { runtime: VoiceRuntime; onS
         />
         {segments.length > 1 ? (
           <details className="voice-segments">
-            <summary>{t("voice.transcribe.segments", { defaultValue: "Timestamps ({{n}})", n: segments.length })}</summary>
+            <summary>{t("voice.transcribe.segments", { defaultValue: "Timestamps ({n})", n: segments.length })}</summary>
             <ol>
               {segments.map((segment, index) => (
                 <li key={index}>
@@ -400,7 +400,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat, onTa
 
   if (!backendOnline || !voiceRuntime) {
     return (
-      <div className="content-grid image-page-grid">
+      <div className="content-grid discover-page voice-page">
         <Panel title={t("voice.studio.title", { defaultValue: "Voice Studio" })} className="span-2">
           <div className="empty-state">
             <p className="muted-text">{t("voice.offline", { defaultValue: "Waiting for the backend…" })}</p>
@@ -412,7 +412,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat, onTa
 
   if (!voiceRuntime.installed) {
     return (
-      <div className="content-grid image-page-grid">
+      <div className="content-grid discover-page voice-page">
         <Panel title={t("voice.studio.title", { defaultValue: "Voice Studio" })} className="span-2">
           <div className="empty-state">
             <p className="muted-text">
@@ -430,7 +430,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, onSendToChat, onTa
   }
 
   return (
-    <div className="content-grid image-page-grid">
+    <div className="content-grid discover-page voice-page">
       <TranscribePanel runtime={voiceRuntime} onSendToChat={onSendToChat} />
       <SpeakPanel runtime={voiceRuntime} />
     </div>

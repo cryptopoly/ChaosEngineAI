@@ -269,5 +269,20 @@
     "promptPlaceholder": "輸入要比較的提示...",
     "cancel": "取消",
     "compareButton": "比較"
+  },
+  "voice": {
+    "heardNothing": null,
+    "installToDictate": null,
+    "stopDictation": null,
+    "transcribing": null,
+    "startDictation": null,
+    "installToRead": null,
+    "stopReading": null,
+    "readAloud": null,
+    "dismiss": null,
+    "resume": null,
+    "pause": null,
+    "stop": null,
+    "preparing": null
   }
 }

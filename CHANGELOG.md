@@ -6,7 +6,7 @@ First release since v0.9.4; versions 0.9.5 to 0.9.7 were internal. Full notes in
 
 ### Added
 
-- **Voice I/O** sidebar group: speech-to-text and text-to-speech with Studio, Models and Gallery tabs; per-platform STT sources and Parakeet on Apple Silicon.
+- **Voice I/O** backend (in progress, screens hidden): speech-to-text and text-to-speech with per-platform STT sources and Parakeet on Apple Silicon.
 - **TensorFold** exact speculative-decoding lane (Apple Silicon) with optional vision and structured-output extras.
 - **llama.cpp speculative lanes**: DFlash 2, EAGLE-3, ngram-mod, chosen from the drafter files beside a GGUF.
 - **mflux** image engine (Apple Silicon, isolated environment): Qwen-Image-2.1, FLUX.2 klein, FLUX.1.

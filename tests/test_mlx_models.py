@@ -399,3 +399,38 @@ class FlintOnMlxTests(unittest.TestCase):
 
         with mock.patch("importlib.util.find_spec", return_value=object()):
             _reject_unsupported_quant(self._dir(marker=False))
+
+
+QWEN38_EFFORT_TEMPLATE = (
+    "{%- set resolved_reasoning_effort = reasoning_effort|default('xhigh') %}"
+    "{%- if resolved_reasoning_effort not in ('xhigh', 'medium', 'low') %}"
+    "{{- raise_exception('Unexpected reasoning effort') }}{%- endif %}"
+    "{%- if enable_thinking %}x{%- endif %}"
+)
+
+
+class TemplateEffortLevelTests(unittest.TestCase):
+    def test_levels_are_read_from_the_template(self):
+        from backend_service.mlx_worker_prompt import template_effort_levels
+
+        self.assertEqual(template_effort_levels(QWEN38_EFFORT_TEMPLATE), ["low", "medium", "xhigh"])
+        self.assertIsNone(template_effort_levels("{{ messages }}"))
+
+    def test_high_maps_to_xhigh_on_qwen38(self):
+        request = {"thinkingMode": "auto", "reasoningEffort": "high"}
+        self.assertEqual(
+            chat_template_switches(_tok(QWEN38_EFFORT_TEMPLATE), request),
+            {"enable_thinking": True, "reasoning_effort": "xhigh"},
+        )
+
+    def test_supported_levels_pass_through(self):
+        for effort in ("low", "medium"):
+            request = {"thinkingMode": "auto", "reasoningEffort": effort}
+            self.assertEqual(
+                chat_template_switches(_tok(QWEN38_EFFORT_TEMPLATE), request)["reasoning_effort"], effort
+            )
+
+    def test_generate_module_has_the_transcript_filter(self):
+        import backend_service.mlx_worker_generate as generate
+
+        self.assertTrue(hasattr(generate, "TranscriptLoopFilter"))

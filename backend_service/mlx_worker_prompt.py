@@ -125,6 +125,32 @@ def _should_retry_cache_failure(exc: BaseException) -> bool:
 
 _NONE_LEVEL_RE = re.compile(r"""reasoning_effort\s*==\s*['"]none['"]""")
 
+_EFFORT_LADDER = ("none", "minimal", "low", "medium", "high", "xhigh")
+_EFFORT_NOT_IN_RE = re.compile(r"""reasoning_effort[^%]*?not\s+in\s*\(([^)]*)\)""")
+
+
+def template_effort_levels(template: str) -> list[str] | None:
+    """Reasoning levels a chat template accepts, or None when it does not say.
+
+    Only a template that rejects every level outside an explicit list says so
+    (Qwen3.8 raises on anything but ``xhigh`` / ``medium`` / ``low``). A template
+    that merely tests for one level (Kolibri 1's ``none``) accepts the rest.
+    """
+    listed = _EFFORT_NOT_IN_RE.search(template)
+    if not listed:
+        return None
+    names = re.findall(r"""['"](\w+)['"]""", listed.group(1))
+    levels = [name for name in _EFFORT_LADDER if name in names]
+    return levels or None
+
+
+def nearest_effort_level(requested: str, levels: list[str]) -> str:
+    """The supported level closest to ``requested`` (ties go to the higher one)."""
+    if requested in levels:
+        return requested
+    rank = _EFFORT_LADDER.index(requested) if requested in _EFFORT_LADDER else _EFFORT_LADDER.index("medium")
+    return min(levels, key=lambda lv: (abs(_EFFORT_LADDER.index(lv) - rank), -_EFFORT_LADDER.index(lv)))
+
 
 def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str, Any]:
     """Extra ``apply_chat_template`` arguments for templates with a reasoning switch.
@@ -150,7 +176,8 @@ def chat_template_switches(tokenizer: Any, request: dict[str, Any]) -> dict[str,
     if "reasoning_effort" in template:
         effort = request.get("reasoningEffort")
         if effort in {"low", "medium", "high"}:
-            switches["reasoning_effort"] = effort
+            levels = template_effort_levels(template)
+            switches["reasoning_effort"] = nearest_effort_level(effort, levels) if levels else effort
         elif thinking_off and _NONE_LEVEL_RE.search(template):
             switches["reasoning_effort"] = "none"
     return switches

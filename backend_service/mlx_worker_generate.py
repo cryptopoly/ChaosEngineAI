@@ -31,6 +31,7 @@ from backend_service.mlx_worker_prompt import (
     _plain_chat_fallback_active,
     _should_retry_cache_failure,
     _trim_transcript_continuation,
+    TranscriptLoopFilter,
     chat_template_switches,
 )
 from backend_service.mlx_worker_request import (

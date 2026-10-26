@@ -6,6 +6,7 @@ __pycache__/
 build/
 dist/
 .DS_Store
+node_modules
 node_modules/
 src-tauri/target/
 src-tauri/resources/embedded/

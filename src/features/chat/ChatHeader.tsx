@@ -58,6 +58,7 @@ export interface ChatHeaderProps {
   onDeleteSessionDocument: (sessionId: string, docId: string) => Promise<void>;
   onRefreshWorkspace: (preferredChatId?: string) => Promise<void>;
   onSetError: (msg: string | null) => void;
+  onUnloadModel: () => void;
 }
 
 export function ChatHeader({
@@ -78,6 +79,7 @@ export function ChatHeader({
   onDeleteSessionDocument,
   onRefreshWorkspace,
   onSetError,
+  onUnloadModel,
 }: ChatHeaderProps) {
   const { t } = useTranslation("chat");
   return (
@@ -158,6 +160,22 @@ export function ChatHeader({
                 </span>
               ))}
             </span>
+          ) : null}
+          {loadedModelRef || serverLoading || modelBusyLabel ? (
+            <button
+              className="secondary-button"
+              type="button"
+              title={
+                serverLoading || modelBusyLabel
+                  ? t("header.cancelLoadTitle", { defaultValue: "Stop loading and free the memory" })
+                  : t("header.unloadTitle", { defaultValue: "Unload the model and free its memory" })
+              }
+              onClick={onUnloadModel}
+            >
+              {serverLoading || modelBusyLabel
+                ? t("header.cancelLoad", { defaultValue: "Cancel load" })
+                : t("header.unload", { defaultValue: "Unload" })}
+            </button>
           ) : null}
           {activeChat?.modelRef === loadedModelRef ? (
             <span className="badge success">{t("header.ready", { defaultValue: "Ready" })}</span>

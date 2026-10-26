@@ -99,6 +99,7 @@ export interface ChatTabProps {
   onDetailsToggle: (opened: boolean) => void;
   onSendMessage: () => void;
   onSetError: (msg: string | null) => void;
+  onUnloadModel: () => void;
   enableTools: boolean;
   onToggleTools: (enabled: boolean) => void;
   onCancelGeneration: () => void;
@@ -177,6 +178,7 @@ export function ChatTab({
   onDetailsToggle,
   onSendMessage,
   onSetError,
+  onUnloadModel,
   enableTools,
   onToggleTools,
   onCancelGeneration,
@@ -433,6 +435,7 @@ export function ChatTab({
           onDeleteSessionDocument={onDeleteSessionDocument}
           onRefreshWorkspace={onRefreshWorkspace}
           onSetError={onSetError}
+          onUnloadModel={onUnloadModel}
         />
         <ChatThread
           activeChat={activeChat}

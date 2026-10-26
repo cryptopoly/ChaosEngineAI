@@ -1740,6 +1740,7 @@ export default function App() {
         onDeleteSession={handleDeleteSession}
         onRenameActiveThread={handleRenameActiveThread}
         onOpenModelSelector={openModelSelector}
+        onUnloadModel={() => void handleUnloadModel()}
         onLoadModel={handleLoadModel}
         onChatFileDrop={chat.handleChatFileDrop}
         onDeleteSessionDocument={deleteSessionDocument}

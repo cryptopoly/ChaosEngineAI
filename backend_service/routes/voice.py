@@ -92,7 +92,7 @@ def get_settings(request: Request) -> dict[str, Any]:
     return load_settings()
 
 
-@router.put("/api/voice/settings")
+@router.post("/api/voice/settings")
 def put_settings(request: Request, body: SettingsRequest) -> dict[str, Any]:
     from backend_service.voice_runtime import save_settings  # noqa: PLC0415
 

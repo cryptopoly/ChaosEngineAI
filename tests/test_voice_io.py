@@ -392,12 +392,12 @@ class VoiceRouteTests(unittest.TestCase):
     def test_limits_and_validation(self) -> None:
         self.assertEqual(self.client.post("/api/voice/synthesize", json={"text": "x" * 20_001}).status_code, 422)
         self.assertEqual(self.client.post("/api/voice/synthesize", json={"text": "hi", "speed": 9}).status_code, 422)
-        self.assertEqual(self.client.put("/api/voice/settings", json={"idleUnloadMinutes": -1}).status_code, 422)
+        self.assertEqual(self.client.post("/api/voice/settings", json={"idleUnloadMinutes": -1}).status_code, 422)
         self.assertEqual(self.client.post("/api/voice/install", json={"extras": ["bogus"]}).status_code, 400)
 
     def test_settings_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(tmp)):
-            self.assertEqual(self.client.put("/api/voice/settings", json={"autoSend": True}).json()["autoSend"], True)
+            self.assertEqual(self.client.post("/api/voice/settings", json={"autoSend": True}).json()["autoSend"], True)
             self.assertTrue(self.client.get("/api/voice/settings").json()["autoSend"])
 
 

@@ -449,6 +449,28 @@ class DFlashCompatibilityTests(unittest.TestCase):
                   "use_chat_template", "stop_token_ids", "prompt_tokens_override", "runtime_context"}
         self.assertLessEqual(required, passed, "dflash-mlx needs arguments the worker does not pass (FU-057)")
 
+    def _generate_with_reply(self, reply: str) -> str:
+        worker = WorkerState()
+        worker.model = object()
+        worker.tokenizer = _WorkingTemplateTokenizer()
+        fake_response = SimpleNamespace(
+            text=reply, finish_reason="stop", prompt_tokens=3, generation_tokens=2,
+            generation_tps=11.0, prompt_tps=0.0, peak_memory=1.0,
+        )
+        fake_mlx_lm = SimpleNamespace(stream_generate=lambda *args, **kwargs: [fake_response])
+        fake_sample_utils = SimpleNamespace(make_sampler=lambda **kwargs: object())
+        with patch.dict("sys.modules", {"mlx_lm": fake_mlx_lm, "mlx_lm.sample_utils": fake_sample_utils}):
+            return worker.generate({"prompt": "hello", "maxTokens": 8})["text"]
+
+    def test_generate_hides_reasoning_that_ends_in_an_unopened_close_tag(self):
+        # LFM3 after a tool result: the prompt closed an empty <think></think>,
+        # but the model reasons anyway and ends the reasoning with </think>.
+        text = self._generate_with_reply("The tool says 645498, so I report it.</think>It is 645,498.")
+        self.assertEqual(text, "It is 645,498.")
+
+    def test_generate_keeps_a_reply_without_reasoning_tags(self):
+        self.assertEqual(self._generate_with_reply("It is 645,498."), "It is 645,498.")
+
     def test_stream_generate_notes_speculative_fallback_when_dflash_stream_path_fails(self):
         worker = WorkerState()
         worker.model = object()

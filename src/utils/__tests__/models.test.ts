@@ -52,6 +52,14 @@ describe("normalizeCapability()", () => {
 });
 
 describe("Discover search helpers", () => {
+  it("searches a family that arrives without readme lines", () => {
+    // LFM2.5 / Muse Glimmer / LFM3 shipped without `readme`; the search threw
+    // and blanked the Discover tab.
+    const family = makeFamily({ id: "lfm-3", name: "LFM3", capabilities: [] });
+    delete (family as Partial<ModelFamily>).readme;
+    expect(modelFamilyMatchesDiscoverQuery(family, "lfm3")).toBe(true);
+  });
+
   it("normalizes punctuation and alpha-numeric joins", () => {
     expect(normalizeDiscoverSearchText(" Qwen3-Coder.Next 32B ")).toBe("qwen 3 coder next 32 b");
   });

@@ -209,8 +209,45 @@ class ToolCallParserTests(unittest.TestCase):
         calls = _parse_tool_calls_from_response(text)
         self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"expr": "2*3"})
 
+    def test_xml_call_body(self):
+        """LFM3 (and Qwen3-Coder) write the call as <function=...><parameter=...>.
+        This is the exact text LFM3-1.7B produced for a calculator request."""
+        text = (
+            "<tool_call>\n<function=calculator>\n<parameter=expression>\n1234 * 5678\n"
+            "</parameter>\n</function>\n</tool_call>"
+        )
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["function"]["name"], "calculator")
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"expression": "1234 * 5678"})
+
+    def test_xml_parameters_read_json_values_where_they_parse(self):
+        text = (
+            "<tool_call><function=web_search><parameter=query>LFM3 release</parameter>"
+            "<parameter=limit>5</parameter><parameter=tags>[\"a\", \"b\"]</parameter></function></tool_call>"
+            "<tool_call><function=list_files></function></tool_call>"
+        )
+        calls = _parse_tool_calls_from_response(text)
+        self.assertEqual(
+            json.loads(calls[0]["function"]["arguments"]),
+            {"query": "LFM3 release", "limit": 5, "tags": ["a", "b"]},
+        )
+        self.assertEqual(calls[1]["function"]["name"], "list_files")
+        self.assertEqual(json.loads(calls[1]["function"]["arguments"]), {})
+
+    def test_unfinished_xml_call_is_not_dispatched(self):
+        text = "<tool_call>\n<function=calculator>\n<parameter=expression>\n12"
+        self.assertIsNone(_parse_tool_calls_from_response(text))
+
 
 class StripToolCallXmlTests(unittest.TestCase):
+    def test_strip_xml_call_body(self):
+        text = (
+            "Let me compute that.\n<tool_call>\n<function=calculator>\n<parameter=expression>\n"
+            "1234 * 5678\n</parameter>\n</function>\n</tool_call>"
+        )
+        self.assertEqual(_strip_tool_call_xml(text), "Let me compute that.")
+
     def test_strip_closed_block_removes_entire_xml(self):
         text = (
             "Sure, let me check.\n"

@@ -2566,6 +2566,11 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "badges": ["MoE", "Fast", "On-device"],
         "capabilities": ["reasoning", "coding", "tool-use", "multilingual"],
         "defaultVariantId": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+        "readme": [
+            "LFM2.5-24B-A2B is a mixture-of-experts model: 64 experts with 4 active, so about 2B of its 24B parameters run per token.",
+            "Official MLX 4-bit (~13.6 GB) and 8-bit builds run on stock mlx-lm; the official GGUF runs on llama.cpp.",
+            "LFM Open License v1.0.",
+        ],
         "variants": [
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
@@ -2619,6 +2624,65 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "lfm-3",
+        "name": "LFM3",
+        "provider": "Liquid AI",
+        "headline": "Small agent model: 1.7B parameters, 256K context, about 1 GB at 4-bit.",
+        "summary": "Liquid AI's LFM3-1.7B (released 2026-10-23): convolution, sliding-window and global attention layers, built for tool calling and local agents.",
+        "description": (
+            "LFM3-1.7B is a text model for local agents, tool calling and structured output, with a 256K "
+            "context and 16 languages. It reasons before answering by default; Thinking Off is not always "
+            "honoured, as Liquid AI notes. Too small for agentic coding or long multi-step reasoning. "
+            "LFM Open License v1.0."
+        ),
+        "updatedLabel": "Released Oct 2026",
+        "popularityLabel": "Trending",
+        "likesLabel": "Liquid AI official",
+        "badges": ["Small", "Fast", "On-device"],
+        "capabilities": ["reasoning", "tool-use", "multilingual"],
+        "defaultVariantId": "LiquidAI/LFM3-1.7B-MLX-4bit",
+        "readme": [
+            "LFM3-1.7B mixes 13 gated short-convolution layers with 5 sliding-window and 6 global attention layers, for a 256K context at 1.7B parameters.",
+            "The official MLX 4-bit build is about 1 GB and runs at roughly 250 tok/s on an M4 Max. mlx-lm has no lfm3 yet, so the app runs it on a bundled port.",
+            "Reasoning is on by default and Thinking Off is not always honoured. Tool calls use Liquid AI's XML format, which the app reads.",
+            "No GGUF row yet: llama.cpp support has not reached a tagged release. LFM Open License v1.0.",
+        ],
+        "variants": [
+            {
+                "id": "LiquidAI/LFM3-1.7B-MLX-4bit",
+                "name": "LFM3 1.7B MLX 4-bit",
+                "repo": "LiquidAI/LFM3-1.7B-MLX-4bit",
+                "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-4bit",
+                "paramsB": 1.7,
+                "sizeGb": 1.0,
+                "format": "MLX",
+                "quantization": "4-bit",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": "Official MLX 4-bit; runs on a bundled port until mlx-lm ships lfm3.",
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+            {
+                "id": "LiquidAI/LFM3-1.7B-MLX-8bit",
+                "name": "LFM3 1.7B MLX 8-bit",
+                "repo": "LiquidAI/LFM3-1.7B-MLX-8bit",
+                "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-8bit",
+                "paramsB": 1.7,
+                "sizeGb": 1.9,
+                "format": "MLX",
+                "quantization": "8-bit",
+                "capabilities": ["reasoning", "tool-use", "multilingual"],
+                "note": "Official MLX 8-bit; runs on a bundled port until mlx-lm ships lfm3.",
+                "contextWindow": "256K",
+                "launchMode": "direct",
+                "backend": "mlx",
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
         "id": "muse-glimmer",
         "name": "Muse Glimmer",
         "provider": "Meta",
@@ -2636,6 +2700,11 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "badges": ["Agents", "Vision", "Apache 2.0"],
         "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision", "multilingual"],
         "defaultVariantId": "meta-models/Muse-Glimmer-30B-GGUF-q4km",
+        "readme": [
+            "Muse Glimmer 30B is distilled from Muse Spark for agents on consumer hardware: reasoning, tool use and image input.",
+            "The official Q4_K_M GGUF ships an mmproj for images and a DFlash draft model; llama.cpp uses the draft for speculative decoding (29 against 19.5 tok/s on an M4 Max).",
+            "It reasons even with Thinking Off. Apache 2.0.",
+        ],
         "variants": [
             {
                 "id": "meta-models/Muse-Glimmer-30B-GGUF-q4km",

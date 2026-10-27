@@ -494,7 +494,7 @@ export function OnlineModelsTab({
                         );
                       })}
                     </div>
-                    {family.readme.length > 0 ? (
+                    {family.readme?.length ? (
                       <div className="discover-readme">
                         {family.readme.slice(0, 2).map((line, i) => <p key={i}>{line}</p>)}
                       </div>

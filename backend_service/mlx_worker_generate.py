@@ -207,11 +207,18 @@ def generate_standard(state: WorkerState, request: dict[str, Any]) -> dict[str, 
     # Respect thinkingMode: only strip raw reasoning when thinking is on.
     thinking_mode = request.get("thinkingMode") or "off"
     _open_tag, _close_tag = reasoning_delimiters_for(state._loaded_model_ref)
+    starts_inside = prompt_opens_reasoning(prompt_text, _open_tag)
+    # Some models reason even when the prompt closed an empty block (LFM3
+    # after a tool result) and end with a close tag that has no opener. The
+    # whole reply is in hand here, so treat everything before it as reasoning
+    # instead of showing it, and the stray tag, as the answer.
+    if not starts_inside and _close_tag in raw_text and _open_tag not in raw_text:
+        starts_inside = True
     think_filter = ThinkingTokenFilter(
         detect_raw_reasoning=(thinking_mode != "off"),
         open_tag=_open_tag,
         close_tag=_close_tag,
-        starts_inside_reasoning=prompt_opens_reasoning(prompt_text, _open_tag),
+        starts_inside_reasoning=starts_inside,
     )
     filter_result = think_filter.feed(raw_text)
     flushed = think_filter.flush()

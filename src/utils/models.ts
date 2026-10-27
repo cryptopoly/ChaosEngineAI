@@ -50,7 +50,7 @@ export function modelFamilyDiscoverHaystack(family: ModelFamily): string {
     family.summary,
     family.description,
     ...family.capabilities,
-    ...family.readme,
+    ...(family.readme ?? []),
   ];
   for (const variant of family.variants) {
     fragments.push(

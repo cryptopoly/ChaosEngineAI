@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "Обновите голосовой пакет, чтобы использовать голосовые звонки в чате (добавляет детектор реплик на 2 МБ; около минуты)."
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "Голосовой звонок: пауза, завершающая вашу реплику",
+      "silenceHint": "Короче — ответ быстрее; длиннее — можно подумать.",
+      "bargeIn": "Голосовой звонок: перебивать модель голосом"
     },
     "offline": null,
     "copy": null,

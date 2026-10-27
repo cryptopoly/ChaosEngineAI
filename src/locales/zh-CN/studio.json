@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "更新语音包以在聊天中使用语音通话（添加 2 MB 的话轮检测器，约 1 分钟）。"
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "语音通话：结束你发言的停顿时长",
+      "silenceHint": "越短回复越快；越长越方便停下来思考。",
+      "bargeIn": "语音通话：开口说话即可打断模型"
     },
     "offline": null,
     "copy": null,

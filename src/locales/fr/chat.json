@@ -72,7 +72,14 @@
     "ready": "Prêt",
     "loadChatModel": "Charger le modèle de cette discussion",
     "loading": "Chargement...",
-    "loadModel": "Charger le modèle"
+    "loadModel": "Charger le modèle",
+    "cancelLoadTitle": "Arrêter le chargement et libérer la mémoire",
+    "unloadTitle": "Décharger le modèle et libérer sa mémoire",
+    "cancelLoad": "Annuler le chargement",
+    "unload": "Décharger",
+    "startCall": "Parler au modèle à la voix",
+    "call": "Appel",
+    "callNeedsModel": "Chargez un modèle de chat pour lancer un appel vocal"
   },
   "sidebar": {
     "title": "Discussions",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "Démarrage du micro…",
+    "listening": "À l'écoute…",
+    "hearing": "Je vous entends…",
+    "transcribing": "Compris…",
+    "thinking": "Réflexion…",
+    "speaking": "Parle…",
+    "error": "L'appel s'est arrêté",
+    "muted": "Muet",
+    "title": "Appel vocal",
+    "you": "Vous",
+    "model": "Modèle",
+    "interrupted": "(interrompu)",
+    "muteHint": "Couper le micro (Espace)",
+    "unmute": "Réactiver le micro",
+    "mute": "Couper",
+    "endHint": "Terminer l'appel (Échap)",
+    "end": "Raccrocher",
+    "meta": "Voix : {voice}",
+    "headphones": "Un casque fonctionne mieux pour interrompre"
   }
 }

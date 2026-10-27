@@ -5,9 +5,11 @@
 ### Added
 
 - **Voice I/O**: a mic in the chat composer (click or hold to talk, optional auto-send), read-aloud on every reply with an auto-read setting, Voice Studio (record or drop audio and video files, editable transcripts with timestamps, TXT/SRT/VTT export; speech with download) and Voice Models (one-click voice pack, model picker, 54 voices in 9 languages with previews). Runs on this computer only: Parakeet / Whisper and Kokoro on MLX on Apple Silicon; faster-whisper (CUDA when available) and kokoro-onnx on Windows and Linux.
+- **Voice calls** in Chat: a Call button opens a hands-free conversation with the loaded model. Silero VAD detects when you stop talking, the reply is spoken sentence by sentence while it is still being written, and speaking over the model interrupts it (the cut-off reply stays in the thread). Space mutes, Esc ends. Turn pause and interruption are in Voice > Models settings. Existing voice packs get an "Update voice pack" button (about 20 seconds).
 
 ### Fixed
 
+- Every chat message waited about 3 seconds before generating: the launch settings saved by the backend lack the speculative-decoding fields, and a context above the model's maximum is clamped at load, so each send looked like a settings change, re-requested the model load and refreshed the whole workspace.
 - Thinking High on Qwen3.8 failed with "name 'TranscriptLoopFilter' is not defined"; an effort level a model's template rejects is now mapped to the nearest one it accepts.
 - The chat header has an Unload button, which reads "Cancel load" while a model is loading.
 

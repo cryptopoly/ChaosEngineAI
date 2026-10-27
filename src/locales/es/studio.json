@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "Actualiza el paquete de voz para usar llamadas de voz en el chat (añade el detector de turnos de 2 MB; aproximadamente un minuto)."
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "Llamada de voz: pausa que termina tu turno",
+      "silenceHint": "Más corta responde antes; más larga te deja pausar para pensar.",
+      "bargeIn": "Llamada de voz: interrumpir al modelo hablando"
     },
     "offline": null,
     "copy": null,

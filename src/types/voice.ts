@@ -31,6 +31,10 @@ export interface VoiceSettings {
   speed: number;
   autoSend: boolean;
   autoRead: boolean;
+  /** Conversation mode: silence that ends a turn. */
+  vadSilenceMs: number;
+  /** Conversation mode: speaking over the model interrupts it. */
+  bargeIn: boolean;
   idleUnloadMinutes: number;
 }
 
@@ -62,6 +66,8 @@ export interface VoiceRuntime {
   sttAvailable: boolean;
   ttsAvailable: boolean;
   ttsModelInstalled: boolean;
+  /** Conversation mode's turn detector is installed (voice packs from before it need an update). */
+  vadAvailable: boolean;
   sttBackend: string | null;
   ttsBackend: string | null;
   cuda: boolean;

@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "채팅에서 음성 통화를 사용하려면 음성 팩을 업데이트하세요 (2 MB 발화 감지기 추가, 약 1분)."
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "음성 통화: 차례를 끝내는 멈춤 시간",
+      "silenceHint": "짧을수록 빨리 답하고, 길수록 생각할 여유가 생깁니다.",
+      "bargeIn": "음성 통화: 말해서 모델 끼어들기"
     },
     "offline": null,
     "copy": null,

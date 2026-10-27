@@ -1016,6 +1016,35 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
 
+    def test_a_clamped_context_records_what_was_requested(self):
+        body = {"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog",
+                "backend": "mock", "contextTokens": 2_000_000}
+        loaded = self.client.post("/api/models/load", json=body).json()["runtime"]["loadedModel"]
+        self.assertLess(loaded["contextTokens"], 2_000_000)
+        self.assertEqual(loaded["requestedContextTokens"], 2_000_000)
+        # The same request again is a no-op, not a reload.
+        again = self.client.post("/api/models/load", json=body).json()["runtime"]["loadedModel"]
+        self.assertEqual(again["loadedAt"], loaded["loadedAt"])
+        self.assertEqual(again["requestedContextTokens"], 2_000_000)
+
+    def test_voice_turn_does_not_save_its_thinking_mode_to_the_thread(self):
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        first = self.client.post("/api/chat/generate", json={"prompt": "Hi", "thinkingMode": "auto", "maxTokens": 16}).json()
+        session_id = first["session"]["id"]
+        self.assertEqual(first["session"]["thinkingMode"], "auto")
+        voice = self.client.post(
+            "/api/chat/generate",
+            json={"sessionId": session_id, "prompt": "Hello", "thinkingMode": "off", "voiceTurn": True, "maxTokens": 16},
+        ).json()
+        self.assertEqual(voice["session"]["thinkingMode"], "auto")
+        plain = self.client.post(
+            "/api/chat/generate", json={"sessionId": session_id, "prompt": "Again", "thinkingMode": "off", "maxTokens": 16}
+        ).json()
+        self.assertEqual(plain["session"]["thinkingMode"], "off")
+
     def test_generate_with_tools_enabled_returns_the_agent_answer(self):
         from types import SimpleNamespace
         from unittest import mock
@@ -1821,7 +1850,6 @@ class ChaosEngineBackendTests(unittest.TestCase):
                 self.assertGreater(slot["fileBytes"], 0)
                 self.assertTrue(slot["validHtmlDocument"])
                 self.assertEqual(slot["htmlValidation"]["status"], "valid")
-            self.assertEqual(self.client.app.state.chaosengine.runtime.last_generate_kwargs["thinking_mode"], "off")
             self.assertIsNone(self.client.app.state.chaosengine.runtime.last_generate_kwargs["reasoning_effort"])
 
             second_slot = challenge["slots"][1]

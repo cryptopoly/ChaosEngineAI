@@ -72,7 +72,14 @@
     "ready": "Bereit",
     "loadChatModel": "Modell dieses Chats laden",
     "loading": "Lädt...",
-    "loadModel": "Modell laden"
+    "loadModel": "Modell laden",
+    "cancelLoadTitle": "Laden stoppen und Speicher freigeben",
+    "unloadTitle": "Modell entladen und Speicher freigeben",
+    "cancelLoad": "Laden abbrechen",
+    "unload": "Entladen",
+    "startCall": "Per Sprache mit dem Modell sprechen",
+    "call": "Anrufen",
+    "callNeedsModel": "Lade ein Chat-Modell, um einen Sprachanruf zu starten"
   },
   "sidebar": {
     "title": "Chats",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "Mikrofon wird gestartet…",
+    "listening": "Hört zu…",
+    "hearing": "Ich höre dich…",
+    "transcribing": "Verstanden…",
+    "thinking": "Denkt nach…",
+    "speaking": "Spricht…",
+    "error": "Der Anruf wurde beendet",
+    "muted": "Stummgeschaltet",
+    "title": "Sprachanruf",
+    "you": "Du",
+    "model": "Modell",
+    "interrupted": "(unterbrochen)",
+    "muteHint": "Mikrofon stummschalten (Leertaste)",
+    "unmute": "Stummschaltung aufheben",
+    "mute": "Stumm",
+    "endHint": "Anruf beenden (Esc)",
+    "end": "Anruf beenden",
+    "meta": "Stimme: {voice}",
+    "headphones": "Mit Kopfhörern klappt das Unterbrechen am besten"
   }
 }

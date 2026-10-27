@@ -72,7 +72,14 @@
     "ready": "준비됨",
     "loadChatModel": "이 채팅의 모델 로드",
     "loading": "로딩 중...",
-    "loadModel": "모델 로드"
+    "loadModel": "모델 로드",
+    "cancelLoadTitle": "로드를 중지하고 메모리 해제",
+    "unloadTitle": "모델을 언로드하고 메모리 해제",
+    "cancelLoad": "로드 취소",
+    "unload": "언로드",
+    "startCall": "음성으로 모델과 대화",
+    "call": "통화",
+    "callNeedsModel": "음성 통화를 시작하려면 채팅 모델을 로드하세요"
   },
   "sidebar": {
     "title": "채팅",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "마이크를 시작하는 중…",
+    "listening": "듣는 중…",
+    "hearing": "듣고 있어요…",
+    "transcribing": "알겠습니다…",
+    "thinking": "생각 중…",
+    "speaking": "말하는 중…",
+    "error": "통화가 중지되었습니다",
+    "muted": "음소거됨",
+    "title": "음성 통화",
+    "you": "나",
+    "model": "모델",
+    "interrupted": "(중단됨)",
+    "muteHint": "마이크 음소거 (Space)",
+    "unmute": "음소거 해제",
+    "mute": "음소거",
+    "endHint": "통화 종료 (Esc)",
+    "end": "통화 종료",
+    "meta": "음성: {voice}",
+    "headphones": "끼어들기에는 헤드폰이 가장 좋습니다"
   }
 }

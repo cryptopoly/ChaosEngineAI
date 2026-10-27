@@ -335,6 +335,14 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
   library used for languages misaki has no rules for. Installed on the user's
   machine by the voice pack, not shipped by us.
 
+### Silero VAD and ONNX Runtime (voice-call turn detection)
+
+- **Silero VAD** — <https://github.com/snakers4/silero-vad> — MIT. The ONNX
+  model file is downloaded from `onnx-community/silero-vad` (MIT) at a pinned
+  revision when the voice pack is installed.
+- **ONNX Runtime** — <https://github.com/microsoft/onnxruntime> — MIT. Runs the
+  VAD model in the voice environment.
+
 ### PyAV (audio decoding)
 
 - **Upstream:** <https://github.com/PyAV-Org/PyAV>

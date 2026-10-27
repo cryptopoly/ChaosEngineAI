@@ -17,6 +17,9 @@ import { ChatThread } from "./ChatThread";
 import { SpeechPlayerBar } from "../voice/ReadAloud";
 import { speechPlayer } from "../voice/speechPlayer";
 import { useVoice } from "../voice/VoiceContext";
+import { VoiceCallOverlay } from "../voice/conversation/VoiceCallOverlay";
+import { cancelChatGeneration } from "../../api";
+import type { SendMessageOptions } from "../../hooks/useChat";
 import { ChatComposer } from "./ChatComposer";
 import { readSamplerOverrides, writeSamplerOverrides } from "./samplerOverrides";
 import { matchSlashCommands, type SlashCommand, type SlashCommandContext } from "./slashCommands";
@@ -100,7 +103,7 @@ export interface ChatTabProps {
   /** Phase 3.6: run the message through a critique pass. */
   onDelveMessage: (messageIndex: number) => void;
   onDetailsToggle: (opened: boolean) => void;
-  onSendMessage: (overrideText?: string) => void;
+  onSendMessage: (overrideText?: string, options?: SendMessageOptions) => Promise<void> | void;
   onSetError: (msg: string | null) => void;
   onUnloadModel: () => void;
   enableTools: boolean;
@@ -199,20 +202,21 @@ export function ChatTab({
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
   const voice = useVoice();
+  const [callOpen, setCallOpen] = useState(false);
 
   // Auto-read: speak a reply once it has finished streaming.
   const busyBeforeRef = useRef<string | null>(null);
   useEffect(() => {
     const wasBusy = busyBeforeRef.current;
     busyBeforeRef.current = chatBusySessionId;
-    if (!voice.settings.autoRead || !voice.runtime?.ttsAvailable) return;
+    if (!voice.settings.autoRead || !voice.runtime?.ttsAvailable || callOpen) return;
     if (!wasBusy || chatBusySessionId !== null || !activeChat || wasBusy !== activeChat.id) return;
     const index = activeChat.messages.length - 1;
     const last = activeChat.messages[index];
     if (last?.role === "assistant" && last.text.trim()) {
       void speechPlayer.play(`${activeChat.id}-${index}`, last.text, voice.settings.ttsVoice, voice.settings.speed);
     }
-  }, [activeChat, chatBusySessionId, voice.runtime?.ttsAvailable, voice.settings]);
+  }, [activeChat, callOpen, chatBusySessionId, voice.runtime?.ttsAvailable, voice.settings]);
   const modelBusyLabel =
     busyAction === "Loading model..." || busyAction === "Reloading model for updated launch settings..."
       ? busyAction
@@ -454,6 +458,15 @@ export function ChatTab({
           onRefreshWorkspace={onRefreshWorkspace}
           onSetError={onSetError}
           onUnloadModel={onUnloadModel}
+          onStartCall={() => {
+            if (voice.runtime?.vadAvailable && voice.runtime.ttsAvailable) setCallOpen(true);
+            else voice.openVoiceModels();
+          }}
+          callBlockedReason={
+            !loadedModelRef || modelBusyLabel
+              ? t("header.callNeedsModel", { defaultValue: "Load a chat model to start a voice call" })
+              : null
+          }
         />
         <ChatThread
           activeChat={activeChat}
@@ -524,6 +537,19 @@ export function ChatTab({
           onInstallPackage={onInstallPackage}
           installingPackage={installingPackage}
         />
+        {callOpen ? (
+          <VoiceCallOverlay
+            messages={activeChat?.messages ?? []}
+            modelName={loadedModelName ?? null}
+            send={(text) => onSendMessage(text, { voice: true })}
+            // Only flag the backend: the stream then ends on its own and the
+            // cut-off reply is saved, so the model sees it next turn.
+            cancel={() => {
+              if (chatBusySessionId) void cancelChatGeneration(chatBusySessionId).catch(() => {});
+            }}
+            onEnd={() => setCallOpen(false)}
+          />
+        ) : null}
       </Panel>
     </div>
   );

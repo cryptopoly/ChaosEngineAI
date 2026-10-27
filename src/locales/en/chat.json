@@ -72,7 +72,14 @@
     "ready": "Ready",
     "loadChatModel": "Load this chat's model",
     "loading": "Loading...",
-    "loadModel": "Load model"
+    "loadModel": "Load model",
+    "cancelLoadTitle": "Stop loading and free the memory",
+    "unloadTitle": "Unload the model and free its memory",
+    "cancelLoad": "Cancel load",
+    "unload": "Unload",
+    "startCall": "Talk with the model by voice",
+    "call": "Call",
+    "callNeedsModel": "Load a chat model to start a voice call"
   },
   "sidebar": {
     "title": "Chats",
@@ -284,5 +291,26 @@
     "pause": "Pause",
     "stop": "Stop",
     "preparing": "Preparing speech…"
+  },
+  "voiceCall": {
+    "starting": "Starting the microphone…",
+    "listening": "Listening…",
+    "hearing": "Hearing you…",
+    "transcribing": "Got it…",
+    "thinking": "Thinking…",
+    "speaking": "Speaking…",
+    "error": "The call stopped",
+    "muted": "Muted",
+    "title": "Voice call",
+    "you": "You",
+    "model": "Model",
+    "interrupted": "(interrupted)",
+    "muteHint": "Mute the microphone (Space)",
+    "unmute": "Unmute",
+    "mute": "Mute",
+    "endHint": "End the call (Esc)",
+    "end": "End call",
+    "meta": "Voice: {voice}",
+    "headphones": "Headphones work best for interrupting"
   }
 }

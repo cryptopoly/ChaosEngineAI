@@ -108,6 +108,12 @@ export async function speakStream(
   }
 }
 
+/** Silero VAD speech probability per 32 ms frame of 16 kHz PCM16 (base64). */
+export async function detectSpeech(session: string, pcm: string, reset = false): Promise<number[]> {
+  const result = await postJson<{ probs: number[] }>("/api/voice/vad", { session, pcm, reset }, 30000);
+  return result.probs;
+}
+
 export async function getVoiceSettings(): Promise<VoiceSettings> {
   return await fetchJson<VoiceSettings>("/api/voice/settings", 15000);
 }

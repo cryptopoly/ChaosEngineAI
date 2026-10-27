@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "更新語音包以在聊天中使用語音通話（新增 2 MB 的話輪偵測器，約 1 分鐘）。"
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "語音通話：結束你發言的停頓時間",
+      "silenceHint": "越短回覆越快；越長越方便停下來思考。",
+      "bargeIn": "語音通話：開口說話即可打斷模型"
     },
     "offline": null,
     "copy": null,

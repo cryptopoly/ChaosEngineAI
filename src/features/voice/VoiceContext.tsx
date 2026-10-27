@@ -22,6 +22,8 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   speed: 1,
   autoSend: false,
   autoRead: false,
+  vadSilenceMs: 700,
+  bargeIn: true,
   idleUnloadMinutes: 10,
 };
 

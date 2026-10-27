@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "チャットで音声通話を使うには音声パックを更新してください（2 MB の発話区切り検出を追加、約 1 分）。"
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "音声通話: 発話の終わりとみなす無音時間",
+      "silenceHint": "短いほど速く応答し、長いほど考える間を取れます。",
+      "bargeIn": "音声通話: 話しかけてモデルを中断する"
     },
     "offline": null,
     "copy": null,

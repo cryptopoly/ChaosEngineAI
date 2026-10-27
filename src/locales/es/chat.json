@@ -72,7 +72,14 @@
     "ready": "Listo",
     "loadChatModel": "Cargar el modelo de este chat",
     "loading": "Cargando...",
-    "loadModel": "Cargar modelo"
+    "loadModel": "Cargar modelo",
+    "cancelLoadTitle": "Detener la carga y liberar la memoria",
+    "unloadTitle": "Descargar el modelo y liberar su memoria",
+    "cancelLoad": "Cancelar carga",
+    "unload": "Descargar",
+    "startCall": "Hablar con el modelo por voz",
+    "call": "Llamar",
+    "callNeedsModel": "Carga un modelo de chat para iniciar una llamada de voz"
   },
   "sidebar": {
     "title": "Chats",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "Iniciando el micrófono…",
+    "listening": "Escuchando…",
+    "hearing": "Te escucho…",
+    "transcribing": "Entendido…",
+    "thinking": "Pensando…",
+    "speaking": "Hablando…",
+    "error": "La llamada se detuvo",
+    "muted": "Silenciado",
+    "title": "Llamada de voz",
+    "you": "Tú",
+    "model": "Modelo",
+    "interrupted": "(interrumpido)",
+    "muteHint": "Silenciar el micrófono (Espacio)",
+    "unmute": "Activar sonido",
+    "mute": "Silenciar",
+    "endHint": "Terminar la llamada (Esc)",
+    "end": "Colgar",
+    "meta": "Voz: {voice}",
+    "headphones": "Con auriculares es más fácil interrumpir"
   }
 }

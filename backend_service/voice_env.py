@@ -39,6 +39,11 @@ _SCHEMA = 1
 
 KOKORO_MLX_REPO = "prince-canuma/Kokoro-82M"
 
+# Silero VAD (MIT, 2 MB) for conversation mode's turn-taking.
+VAD_REPO = "onnx-community/silero-vad"
+VAD_REVISION = "e71cae966052b992a7eca6b17738916ce0eca4ec"
+VAD_FILE = "onnx/model.onnx"
+
 # spaCy's small English model: misaki's English front-end downloads it at
 # first use otherwise, through pip, which a packaged app cannot rely on.
 _EN_CORE_WEB_SM = (
@@ -53,12 +58,14 @@ _MLX_PACKAGES = [
     "parakeet-mlx>=0.5.3,<0.6",
     "mlx-whisper>=0.4.3,<0.5",
     "av>=13",
+    "onnxruntime>=1.20",
     _EN_CORE_WEB_SM,
 ]
 _PORTABLE_PACKAGES = [
     "faster-whisper>=1.2.1,<1.3",
     "kokoro-onnx>=0.6.1,<0.7",
     "av>=13",
+    "onnxruntime>=1.20",
 ]
 # ctranslate2 4.x runs on CUDA 12 with cuDNN 9; pip ships both libraries.
 _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
@@ -69,8 +76,8 @@ EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
 }
 
 _VERIFY_IMPORTS = {
-    "mlx": ["av", "numpy", "mlx_audio", "misaki.en", "parakeet_mlx", "mlx_whisper", "en_core_web_sm"],
-    "portable": ["av", "numpy", "faster_whisper", "kokoro_onnx"],
+    "mlx": ["av", "numpy", "mlx_audio", "misaki.en", "parakeet_mlx", "mlx_whisper", "en_core_web_sm", "onnxruntime"],
+    "portable": ["av", "numpy", "faster_whisper", "kokoro_onnx", "onnxruntime"],
 }
 
 
@@ -164,6 +171,21 @@ def tts_source() -> tuple[str, str]:
     return "kokoro-onnx", str(kokoro_onnx_dir())
 
 
+def vad_model_path() -> Path | None:
+    """The Silero VAD file in the Hugging Face cache, if downloaded."""
+    from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir
+
+    path = _hf_repo_cache_dir(VAD_REPO) / "snapshots" / VAD_REVISION / VAD_FILE
+    return path if path.is_file() else None
+
+
+def vad_installed() -> bool:
+    """Conversation mode needs onnxruntime (voice packs from before it lack
+    it; the marker records it) and the Silero model file."""
+    marker = read_marker() or {}
+    return is_installed() and "vad" in marker.get("features", []) and vad_model_path() is not None
+
+
 def tts_data_installed() -> bool:
     if lane() == "mlx":
         from backend_service.helpers.hf_cache_paths import _hf_repo_snapshot_dir
@@ -196,7 +218,7 @@ _PHASES: dict[str, str] = {
     "preflight": "Checking this machine",
     "creating-venv": "Creating the voice environment",
     "installing": "Installing speech packages",
-    "downloading-voice": "Downloading the Kokoro voice model",
+    "downloading-voice": "Downloading the voice models",
     "verifying": "Checking the install",
 }
 
@@ -329,6 +351,9 @@ def _run_install(extras: list[str]) -> None:
                 state = voice_kokoro_onnx.download_status()
                 if state.get("state") == "failed":
                     raise RuntimeError(f"Kokoro voice files: {state.get('error')}")
+        from huggingface_hub import hf_hub_download
+
+        hf_hub_download(VAD_REPO, VAD_FILE, revision=VAD_REVISION)
 
         _set_phase("verifying")
         modules = ", ".join(_VERIFY_IMPORTS[lane_name])
@@ -343,6 +368,7 @@ def _run_install(extras: list[str]) -> None:
                     "python": ".".join(map(str, sys.version_info[:3])),
                     "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "cuda": lane_name == "portable" and has_nvidia_gpu(),
+                    "features": ["vad"],
                 }
             ),
             encoding="utf-8",

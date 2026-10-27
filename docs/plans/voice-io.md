@@ -1,6 +1,11 @@
 # Voice I/O plan
 
-Status: draft for review, 2026-10-26. Voice is hidden in v0.9.8 (`src/components/Sidebar.tsx`), so nothing here is shipped.
+Status, 2026-10-27: P0, P1 and P2 are built on `feat/voice-io` and run on an M4 Max; Windows and Linux are not run yet. P3 and P4 are not started. Progress and open items: FU-117 in `CLAUDE.md`.
+
+Differences from this plan in what was built:
+- P2 turn detection runs Silero VAD over HTTP (`POST /api/voice/vad`, a second small worker), not a WebSocket: the backend has no WebSocket package on Windows / Linux.
+- P2 has no live captions while the user is still talking; their words appear once the turn is transcribed (about 0.1 s after it ends).
+- P1 voice messages are not tagged `inputMode: "voice"` yet.
 
 ## 1. Goal
 

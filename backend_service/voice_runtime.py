@@ -215,6 +215,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "speed": 1.0,
     "autoSend": False,
     "autoRead": False,
+    # Conversation mode: silence that ends a turn, and whether speaking over
+    # the model interrupts it.
+    "vadSilenceMs": 700,
+    "bargeIn": True,
     "idleUnloadMinutes": 10,
 }
 _SETTINGS_LOCK = threading.Lock()
@@ -266,6 +270,7 @@ def get_voice_capabilities() -> dict[str, Any]:
         "sttAvailable": installed,
         "ttsAvailable": installed and tts_data,
         "ttsModelInstalled": tts_data,
+        "vadAvailable": voice_env.vad_installed() if installed else False,
         "sttBackend": " + ".join(_lane_backends()) if installed else None,
         "ttsBackend": voice_env.tts_source()[0] if installed else None,
         "cuda": bool(marker.get("cuda")),
@@ -325,3 +330,14 @@ def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:
     engine, source = voice_env.tts_source()
     reply = get_worker().request("synthesize", timeout=300.0, engine=engine, source=source, text=text, voice=voice, speed=speed)
     return base64.b64decode(reply["wavB64"]), float(reply.get("durationS") or 0.0)
+
+
+def detect_speech(session: str, pcm_b64: str, reset: bool = False) -> list[float]:
+    """Silero VAD speech probabilities for 16 kHz PCM16 audio (base64)."""
+    from backend_service.voice_client import get_vad_worker  # noqa: PLC0415
+
+    path = voice_env.vad_model_path()
+    if path is None or not voice_env.vad_installed():
+        raise RuntimeError("Conversation mode needs a voice pack update. Update it from Voice > Models.")
+    reply = get_vad_worker().request("vad", timeout=30.0, path=str(path), session=session, pcm=pcm_b64, reset=reset)
+    return [float(p) for p in reply.get("probs", [])]

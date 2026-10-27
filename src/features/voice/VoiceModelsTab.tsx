@@ -92,6 +92,8 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
   const extrasChanged =
     runtime.installed &&
     runtime.extras.some((extra) => extra.installed !== extras.includes(extra.id));
+  // Voice packs from before conversation mode lack its turn detector.
+  const needsUpdate = extrasChanged || (runtime.installed && !runtime.vadAvailable);
 
   return (
     <Panel
@@ -150,7 +152,7 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
           </div>
         ) : (
           <div className="button-row">
-            {!runtime.installed || extrasChanged ? (
+            {!runtime.installed || needsUpdate ? (
               <button type="button" className="primary-button" onClick={() => void install()}>
                 {runtime.installed
                   ? t("voice.pack.update", { defaultValue: "Update voice pack" })
@@ -164,6 +166,13 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
           </div>
         )}
 
+        {runtime.installed && !runtime.vadAvailable && !job.running ? (
+          <p className="muted-text">
+            {t("voice.pack.updateForCalls", {
+              defaultValue: "Update the voice pack to use voice calls in Chat (adds the 2 MB turn detector; about a minute).",
+            })}
+          </p>
+        ) : null}
         {job.phase === "error" || job.phase === "cancelled" || error ? (
           <p className="voice-error" role="alert">
             {error ?? job.error}
@@ -372,6 +381,27 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
             value={settings.speed}
             onChange={(e) => void saveSettings({ speed: parseFloat(e.target.value) })}
           />
+        </label>
+        <label className="voice-settings__field">
+          <span>
+            {t("voice.settings.silence", { defaultValue: "Voice call: pause that ends your turn" })} (
+            {(settings.vadSilenceMs / 1000).toFixed(1)} s)
+          </span>
+          <input
+            type="range"
+            min={300}
+            max={2000}
+            step={100}
+            value={settings.vadSilenceMs}
+            onChange={(e) => void saveSettings({ vadSilenceMs: Number(e.target.value) })}
+          />
+          <small className="muted-text">
+            {t("voice.settings.silenceHint", { defaultValue: "Shorter replies faster; longer lets you pause to think." })}
+          </small>
+        </label>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={settings.bargeIn} onChange={(e) => void saveSettings({ bargeIn: e.target.checked })} />
+          {t("voice.settings.bargeIn", { defaultValue: "Voice call: interrupt the model by speaking" })}
         </label>
         <label className="voice-settings__field">
           <span>{t("voice.settings.idle", { defaultValue: "Free voice memory after (minutes idle, 0 = never)" })}</span>

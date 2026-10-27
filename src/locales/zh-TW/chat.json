@@ -72,7 +72,14 @@
     "ready": "就緒",
     "loadChatModel": "載入此對話的模型",
     "loading": "載入中...",
-    "loadModel": "載入模型"
+    "loadModel": "載入模型",
+    "cancelLoadTitle": "停止載入並釋放記憶體",
+    "unloadTitle": "卸載模型並釋放記憶體",
+    "cancelLoad": "取消載入",
+    "unload": "卸載",
+    "startCall": "透過語音與模型對話",
+    "call": "通話",
+    "callNeedsModel": "載入聊天模型後即可開始語音通話"
   },
   "sidebar": {
     "title": "對話",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "正在啟動麥克風…",
+    "listening": "正在聆聽…",
+    "hearing": "正在聽你說…",
+    "transcribing": "收到…",
+    "thinking": "思考中…",
+    "speaking": "正在說話…",
+    "error": "通話已停止",
+    "muted": "已靜音",
+    "title": "語音通話",
+    "you": "你",
+    "model": "模型",
+    "interrupted": "（已打斷）",
+    "muteHint": "麥克風靜音（空白鍵）",
+    "unmute": "取消靜音",
+    "mute": "靜音",
+    "endHint": "結束通話（Esc）",
+    "end": "結束通話",
+    "meta": "語音：{voice}",
+    "headphones": "使用耳機更便於打斷"
   }
 }

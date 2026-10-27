@@ -190,6 +190,8 @@ class GenerateRequest(BaseModel):
     # where sending with a different model permanently switches the
     # thread.
     oneTurnOverride: bool = False
+    # Sent from a voice call: its Thinking Off is not saved to the thread.
+    voiceTurn: bool = False
 
 
 class RemoteProviderRequest(BaseModel):

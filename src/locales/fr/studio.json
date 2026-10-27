@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "Mettez à jour le pack vocal pour utiliser les appels vocaux dans le chat (ajoute le détecteur de tours de parole de 2 Mo ; environ une minute)."
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "Appel vocal : pause qui termine votre tour",
+      "silenceHint": "Plus court répond plus vite ; plus long vous laisse le temps de réfléchir.",
+      "bargeIn": "Appel vocal : interrompre le modèle en parlant"
     },
     "offline": null,
     "copy": null,

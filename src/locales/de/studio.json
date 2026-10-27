@@ -444,7 +444,8 @@
       "install": null,
       "reinstall": null,
       "done": null,
-      "log": null
+      "log": null,
+      "updateForCalls": "Aktualisiere das Sprachpaket, um Sprachanrufe im Chat zu nutzen (fügt den 2 MB großen Sprechpausen-Erkenner hinzu; etwa eine Minute)."
     },
     "models": {
       "recommended": null,
@@ -474,7 +475,10 @@
       "idle": null,
       "workerRunning": null,
       "workerStopped": null,
-      "unload": null
+      "unload": null,
+      "silence": "Sprachanruf: Pause, die deinen Redebeitrag beendet",
+      "silenceHint": "Kürzer antwortet schneller; länger lässt dir Zeit zum Nachdenken.",
+      "bargeIn": "Sprachanruf: Modell durch Sprechen unterbrechen"
     },
     "offline": null,
     "copy": null,

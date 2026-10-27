@@ -38,7 +38,16 @@ class SettingsRequest(BaseModel):
     speed: float | None = Field(default=None, ge=0.5, le=2.0)
     autoSend: bool | None = None
     autoRead: bool | None = None
+    vadSilenceMs: int | None = Field(default=None, ge=300, le=3000)
+    bargeIn: bool | None = None
     idleUnloadMinutes: int | None = Field(default=None, ge=0, le=240)
+
+
+class VadRequest(BaseModel):
+    session: str = Field(default="default", pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    # Base64 PCM16 mono at 16 kHz; 2 s at most per call.
+    pcm: str = Field(max_length=90_000)
+    reset: bool = False
 
 
 class InstallRequest(BaseModel):
@@ -125,9 +134,9 @@ def cancel_install(request: Request) -> dict[str, Any]:
 
 @router.post("/api/voice/worker/stop")
 def stop_worker(request: Request) -> dict[str, Any]:
-    from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_client import stop_all  # noqa: PLC0415
 
-    get_worker().stop()
+    stop_all()
     return {"stopped": True}
 
 
@@ -170,6 +179,17 @@ def transcribe(
             raise _worker_error(exc) from exc
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+@router.post("/api/voice/vad")
+def voice_activity(request: Request, body: VadRequest) -> dict[str, Any]:
+    """Speech probability per 32 ms frame, for conversation mode."""
+    from backend_service.voice_runtime import detect_speech  # noqa: PLC0415
+
+    try:
+        return {"probs": detect_speech(body.session, body.pcm, body.reset)}
+    except Exception as exc:  # noqa: BLE001
+        raise _worker_error(exc) from exc
 
 
 # ---------------------------------------------------------------------------

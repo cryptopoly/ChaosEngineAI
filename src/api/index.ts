@@ -717,6 +717,7 @@ export {
   getGalleryAudio,
   transcribeBlob,
   speakStream,
+  detectSpeech,
   getVoiceSettings,
   saveVoiceSettings,
   startVoiceInstall,

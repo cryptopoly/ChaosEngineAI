@@ -173,7 +173,8 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
             session["modelSource"] = state.runtime.loaded_model.source
             session["modelPath"] = state.runtime.loaded_model.path
             session["modelBackend"] = state.runtime.loaded_model.backend
-        session["thinkingMode"] = effective_thinking_mode
+        if not request.voiceTurn:  # a voice call's Thinking Off is for that turn only
+            session["thinkingMode"] = effective_thinking_mode
         session["cacheLabel"] = state._cache_label(
             cache_strategy=str(state.runtime.loaded_model.cacheStrategy),
             bits=int(state.runtime.loaded_model.cacheBits),
@@ -433,7 +434,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest):
             session["modelSource"] = state.runtime.loaded_model.source
             session["modelPath"] = state.runtime.loaded_model.path
             session["modelBackend"] = state.runtime.loaded_model.backend
-        session["thinkingMode"] = effective_thinking_mode
+        if not request.voiceTurn:  # a voice call's Thinking Off is for that turn only
+            session["thinkingMode"] = effective_thinking_mode
         session["cacheLabel"] = state._cache_label(
             cache_strategy=str(state.runtime.loaded_model.cacheStrategy),
             bits=int(state.runtime.loaded_model.cacheBits),

@@ -72,7 +72,14 @@
     "ready": "準備完了",
     "loadChatModel": "このチャットのモデルを読み込む",
     "loading": "読み込み中...",
-    "loadModel": "モデルを読み込む"
+    "loadModel": "モデルを読み込む",
+    "cancelLoadTitle": "読み込みを中止してメモリを解放",
+    "unloadTitle": "モデルをアンロードしてメモリを解放",
+    "cancelLoad": "読み込みをキャンセル",
+    "unload": "アンロード",
+    "startCall": "音声でモデルと話す",
+    "call": "通話",
+    "callNeedsModel": "音声通話を始めるにはチャットモデルを読み込んでください"
   },
   "sidebar": {
     "title": "チャット",
@@ -284,5 +291,26 @@
     "pause": null,
     "stop": null,
     "preparing": null
+  },
+  "voiceCall": {
+    "starting": "マイクを起動しています…",
+    "listening": "聞いています…",
+    "hearing": "聞き取り中…",
+    "transcribing": "了解しました…",
+    "thinking": "考え中…",
+    "speaking": "話しています…",
+    "error": "通話が停止しました",
+    "muted": "ミュート中",
+    "title": "音声通話",
+    "you": "あなた",
+    "model": "モデル",
+    "interrupted": "（中断）",
+    "muteHint": "マイクをミュート（スペース）",
+    "unmute": "ミュート解除",
+    "mute": "ミュート",
+    "endHint": "通話を終了（Esc）",
+    "end": "通話を終了",
+    "meta": "音声: {voice}",
+    "headphones": "割り込むにはヘッドホンがおすすめです"
   }
 }

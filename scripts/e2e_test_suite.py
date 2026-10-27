@@ -1806,6 +1806,44 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "fail", "speak stream audio is not a WAV", {}
         return "pass", "", {"sentences": len(sentences)}
 
+    def _vad_turn():
+        """Conversation mode's turn detector: silence, speech, silence."""
+        if not runtime_payload.get("vadAvailable"):
+            return "skip", "voice pack has no turn detector (update it from Voice > Models)", {}
+        if not runtime_payload.get("ttsAvailable"):
+            return "skip", "TTS backend not installed (used to make the speech)", {}
+        payload = json.dumps({"text": "This is a voice call check.", "voice": "af_heart"}).encode("utf-8")
+        code, body = _voice_http("POST", "/api/voice/synthesize", body=payload, content_type="application/json", timeout=180.0)
+        if code != 200:
+            return "fail", f"synthesize HTTP {code}", {}
+        import array
+        import io
+        import wave as wave_module
+
+        with wave_module.open(io.BytesIO(body)) as handle:
+            rate = handle.getframerate()
+            speech = array.array("h", handle.readframes(handle.getnframes()))
+        # Resample to 16 kHz (nearest sample is enough for a VAD check).
+        step = rate / 16000
+        resampled = array.array("h", (speech[int(i * step)] for i in range(int(len(speech) / step))))
+        silence = array.array("h", [0] * 16000)
+        audio = silence + resampled + silence
+        probs: list[float] = []
+        for start in range(0, len(audio), 4096):
+            chunk = audio[start:start + 4096].tobytes()
+            req = json.dumps({"session": "e2e", "pcm": base64.b64encode(chunk).decode("ascii"), "reset": start == 0}).encode("utf-8")
+            code, body = _voice_http("POST", "/api/voice/vad", body=req, content_type="application/json", timeout=60.0)
+            if code != 200:
+                return "fail", f"vad HTTP {code}: {body[:200]!r}", {}
+            probs += json.loads(body.decode("utf-8"))["probs"]
+        lead = probs[: 16000 // 512 - 2]
+        speech_frames = sum(1 for p in probs if p >= 0.5)
+        if max(lead, default=1.0) >= 0.5:
+            return "fail", "speech detected in leading silence", {}
+        if speech_frames < 10:
+            return "fail", f"only {speech_frames} speech frames detected", {}
+        return "pass", "", {"frames": len(probs), "speechFrames": speech_frames}
+
     def _settings_roundtrip():
         code, body = _voice_http("GET", "/api/voice/settings", timeout=15.0)
         if code != 200:
@@ -1820,6 +1858,7 @@ def phase_8(cap: Capability) -> PhaseResult:
     for name, fn in [
         ("voice-runtime", _runtime), ("stt platform sources", _stt_sources),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
+        ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),
         ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),

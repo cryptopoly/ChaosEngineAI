@@ -30,6 +30,35 @@ export function resample(input: Float32Array, inputRate: number, outputRate = ST
   return output;
 }
 
+/**
+ * Linear-interpolation resampler for audio that arrives in small blocks.
+ * It keeps the fractional read position and the last sample between
+ * blocks, so 128-sample worklet blocks resample without drift or clicks.
+ */
+export class StreamResampler {
+  private position = 0;
+  private previous = 0;
+
+  constructor(private readonly inputRate: number, private readonly outputRate = STT_SAMPLE_RATE) {}
+
+  push(block: Float32Array): Float32Array {
+    if (this.inputRate === this.outputRate) return block.slice();
+    const step = this.inputRate / this.outputRate;
+    // Index -1 is the last sample of the previous block.
+    const at = (index: number) => (index < 0 ? this.previous : block[index]);
+    const out: number[] = [];
+    while (this.position <= block.length - 1) {
+      const left = Math.floor(this.position);
+      const fraction = this.position - left;
+      out.push(at(left) * (1 - fraction) + at(left + 1) * fraction);
+      this.position += step;
+    }
+    if (block.length > 0) this.previous = block[block.length - 1];
+    this.position -= block.length;
+    return Float32Array.from(out);
+  }
+}
+
 /** 16-bit PCM mono WAV. */
 export function encodeWav(samples: Float32Array, sampleRate = STT_SAMPLE_RATE): Blob {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -130,10 +159,16 @@ export function micErrorMessage(error: unknown, platform: string): string {
   return error instanceof Error ? error.message : "Could not open the microphone.";
 }
 
-export async function startMicCapture(options: MicCaptureOptions = {}): Promise<MicCapture> {
+interface MicGraph {
+  sampleRate: number;
+  teardown(): void;
+}
+
+/** Open the microphone and call ``onBlock`` with raw blocks at the device rate. */
+async function openMic(onBlock: (block: Float32Array, sampleRate: number) => void, deviceId?: string): Promise<MicGraph> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
-      deviceId: options.deviceId ? { exact: options.deviceId } : undefined,
+      deviceId: deviceId ? { exact: deviceId } : undefined,
       channelCount: 1,
       echoCancellation: true,
       noiseSuppression: true,
@@ -142,18 +177,9 @@ export async function startMicCapture(options: MicCaptureOptions = {}): Promise<
   });
   const context = new AudioContext();
   const source = context.createMediaStreamSource(stream);
-  const chunks: Float32Array[] = [];
-  let samples = 0;
   let finished = false;
-  const startedAt = Date.now();
-  const maxSamples = MAX_RECORDING_SECONDS * context.sampleRate;
-
-  const onBlock = (block: Float32Array) => {
-    if (finished) return;
-    chunks.push(block);
-    samples += block.length;
-    options.onLevel?.(levelOf(block));
-    if (samples >= maxSamples) options.onLimit?.();
+  const guarded = (block: Float32Array) => {
+    if (!finished) onBlock(block, context.sampleRate);
   };
 
   let node: AudioNode;
@@ -162,12 +188,12 @@ export async function startMicCapture(options: MicCaptureOptions = {}): Promise<
     workletUrl = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: "application/javascript" }));
     await context.audioWorklet.addModule(workletUrl);
     const worklet = new AudioWorkletNode(context, "chaos-capture");
-    worklet.port.onmessage = (event: MessageEvent<Float32Array>) => onBlock(event.data);
+    worklet.port.onmessage = (event: MessageEvent<Float32Array>) => guarded(event.data);
     node = worklet;
   } catch {
     // Older WebKitGTK: no AudioWorklet.
     const processor = context.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (event) => onBlock(new Float32Array(event.inputBuffer.getChannelData(0)));
+    processor.onaudioprocess = (event) => guarded(new Float32Array(event.inputBuffer.getChannelData(0)));
     node = processor;
   }
   // A muted sink keeps the graph pulling audio without playing it back.
@@ -177,30 +203,80 @@ export async function startMicCapture(options: MicCaptureOptions = {}): Promise<
   node.connect(sink);
   sink.connect(context.destination);
 
-  const teardown = () => {
-    finished = true;
-    stream.getTracks().forEach((track) => track.stop());
-    try {
-      source.disconnect();
-      node.disconnect();
-    } catch {
-      /* already disconnected */
-    }
-    void context.close().catch(() => {});
-    if (workletUrl) URL.revokeObjectURL(workletUrl);
+  return {
+    sampleRate: context.sampleRate,
+    teardown() {
+      finished = true;
+      stream.getTracks().forEach((track) => track.stop());
+      try {
+        source.disconnect();
+        node.disconnect();
+      } catch {
+        /* already disconnected */
+      }
+      void context.close().catch(() => {});
+      if (workletUrl) URL.revokeObjectURL(workletUrl);
+    },
   };
+}
+
+export async function startMicCapture(options: MicCaptureOptions = {}): Promise<MicCapture> {
+  const chunks: Float32Array[] = [];
+  let samples = 0;
+  let maxSamples = Infinity;
+  const startedAt = Date.now();
+  const graph = await openMic((block) => {
+    chunks.push(block);
+    samples += block.length;
+    options.onLevel?.(levelOf(block));
+    if (samples >= maxSamples) options.onLimit?.();
+  }, options.deviceId);
+  maxSamples = MAX_RECORDING_SECONDS * graph.sampleRate;
 
   return {
     startedAt,
     async stop() {
-      const rate = context.sampleRate;
-      teardown();
-      return encodeWav(resample(concatChunks(chunks), rate));
+      graph.teardown();
+      return encodeWav(resample(concatChunks(chunks), graph.sampleRate));
     },
     cancel() {
-      teardown();
+      graph.teardown();
     },
   };
+}
+
+export interface MicStream {
+  stop(): void;
+}
+
+/** Live microphone audio as 16 kHz mono blocks, for conversation mode. */
+export async function startMicStream(options: {
+  onAudio: (samples: Float32Array) => void;
+  onLevel?: (level: number) => void;
+  deviceId?: string;
+}): Promise<MicStream> {
+  let resampler: StreamResampler | null = null;
+  const graph = await openMic((block, rate) => {
+    resampler ??= new StreamResampler(rate);
+    options.onLevel?.(levelOf(block));
+    options.onAudio(resampler.push(block));
+  }, options.deviceId);
+  return { stop: () => graph.teardown() };
+}
+
+/** Float samples as base64 little-endian PCM16. */
+export function pcm16Base64(samples: Float32Array): string {
+  const bytes = new Uint8Array(samples.length * 2);
+  const view = new DataView(bytes.buffer);
+  for (let i = 0; i < samples.length; i += 1) {
+    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(i * 2, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+  }
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
 }
 
 // ---------------------------------------------------------------------------

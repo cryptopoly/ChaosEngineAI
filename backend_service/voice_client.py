@@ -4,6 +4,10 @@ One worker per backend. Requests are serialized (a speech model serves one
 request at a time anyway); a request that does not answer in time kills the
 worker, and the next request starts a fresh one. The worker exits after
 ``idle_minutes`` without use, which frees all of its memory.
+
+Conversation mode runs voice activity detection in a second, small worker
+(``get_vad_worker``) so a microphone frame never waits behind a sentence
+being spoken or a recording being transcribed.
 """
 
 from __future__ import annotations
@@ -29,14 +33,14 @@ class VoiceWorkerError(RuntimeError):
 
 
 class VoiceWorker:
-    def __init__(self) -> None:
+    def __init__(self, log_name: str = "worker.log") -> None:
         self._process: subprocess.Popen[str] | None = None
         self._lines: queue.Queue[dict[str, Any] | None] = queue.Queue()
         self._lock = threading.Lock()
         self._ids = itertools.count(1)
         self._last_used = 0.0
         self.idle_minutes = 10.0
-        self._log_path = voice_env.VOICE_DATA_DIR / "worker.log"
+        self._log_path = voice_env.VOICE_DATA_DIR / log_name
         threading.Thread(target=self._idle_watch, daemon=True).start()
 
     # -- lifecycle -----------------------------------------------------
@@ -157,6 +161,25 @@ def get_worker() -> VoiceWorker:
             _WORKER = VoiceWorker()
             atexit.register(_WORKER.stop)
         return _WORKER
+
+
+_VAD_WORKER: VoiceWorker | None = None
+
+
+def get_vad_worker() -> VoiceWorker:
+    global _VAD_WORKER
+    with _WORKER_LOCK:
+        if _VAD_WORKER is None:
+            _VAD_WORKER = VoiceWorker(log_name="vad-worker.log")
+            _VAD_WORKER.idle_minutes = 2.0
+            atexit.register(_VAD_WORKER.stop)
+        return _VAD_WORKER
+
+
+def stop_all() -> None:
+    for worker in (_WORKER, _VAD_WORKER):
+        if worker is not None:
+            worker.stop()
 
 
 def worker_pid() -> int | None:

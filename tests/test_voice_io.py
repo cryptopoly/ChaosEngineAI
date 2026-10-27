@@ -94,6 +94,9 @@ class LaneTests(unittest.TestCase):
         self.assertFalse(any(p.startswith("nvidia-") for p in portable))
         with mock.patch.object(voice_env, "has_nvidia_gpu", return_value=True):
             self.assertTrue(any(p.startswith("nvidia-cudnn") for p in voice_env.packages_for("portable")))
+        # Conversation mode's VAD runs on onnxruntime on both lanes.
+        self.assertTrue(any(p.startswith("onnxruntime") for p in mlx))
+        self.assertTrue(any(p.startswith("onnxruntime") for p in portable))
 
     def test_extras_apply_only_to_their_lane(self) -> None:
         self.assertTrue(any("misaki[zh]" in p for p in voice_env.packages_for("mlx", ["chinese"])))
@@ -161,6 +164,18 @@ class InstalledMarkerTests(unittest.TestCase):
     def test_a_corrupt_marker_is_not_installed(self) -> None:
         (self.venv / "chaosengine-voice.json").write_text("{nope", encoding="utf-8")
         self.assertFalse(voice_env.is_installed())
+
+    def test_vad_needs_the_marker_feature_and_the_model_file(self) -> None:
+        model = Path(self.tmp.name) / "model.onnx"
+        model.write_bytes(b"onnx")
+        marker = self.venv / "chaosengine-voice.json"
+        marker.write_text(json.dumps({"schema": 1, "lane": "portable"}), encoding="utf-8")
+        with mock.patch.object(voice_env, "vad_model_path", return_value=model):
+            self.assertFalse(voice_env.vad_installed())  # a voice pack from before conversation mode
+            marker.write_text(json.dumps({"schema": 1, "lane": "portable", "features": ["vad"]}), encoding="utf-8")
+            self.assertTrue(voice_env.vad_installed())
+        with mock.patch.object(voice_env, "vad_model_path", return_value=None):
+            self.assertFalse(voice_env.vad_installed())
 
 
 class CatalogTests(unittest.TestCase):
@@ -328,6 +343,45 @@ class RealWorkerProtocolTests(unittest.TestCase):
             self.assertEqual(handle.getnframes(), 4)
 
 
+class VadCommandTests(unittest.TestCase):
+    """The worker's VAD loop with a stand-in model: frame size, context and state carry-over."""
+
+    def test_frames_context_and_sessions(self) -> None:
+        import numpy as np
+
+        from backend_service import voice_worker
+
+        calls: list[tuple] = []
+
+        class FakeSession:
+            def __init__(self, *_args, **_kwargs) -> None:
+                pass
+
+            def run(self, _outputs, feeds):
+                frame, state = feeds["input"], feeds["state"]
+                calls.append((frame.shape, float(frame[0, 0]), float(state[0, 0, 0])))
+                return np.array([[float(frame[0, -1])]], dtype=np.float32), state + 1
+
+        fake_ort = mock.MagicMock()
+        fake_ort.InferenceSession = FakeSession
+        pcm = (np.arange(1100) % 100).astype("<i2")  # two whole frames and 76 left over
+        b64 = base64.b64encode(pcm.tobytes()).decode("ascii")
+        voice_worker._vad.update(path=None, session=None, streams={})
+        with mock.patch.dict(sys.modules, {"onnxruntime": fake_ort}):
+            first = voice_worker.vad({"path": "m.onnx", "session": "a", "pcm": b64})["probs"]
+            second = voice_worker.vad({"path": "m.onnx", "session": "a", "pcm": b64})["probs"]
+            reset = voice_worker.vad({"path": "m.onnx", "session": "a", "pcm": b64, "reset": True})["probs"]
+        self.assertEqual(len(first), 2)
+        self.assertEqual(first, reset)
+        self.assertEqual(calls[0][0], (1, 64 + 512))
+        self.assertEqual((calls[0][1], calls[0][2]), (0.0, 0.0))  # fresh stream: zero context and state
+        # The second frame starts with the last 64 samples of the first.
+        self.assertAlmostEqual(calls[1][1], float(pcm[512 - 64]) / 32768.0, places=5)
+        self.assertEqual(calls[2][2], 2.0)  # the session's state carried into the next call
+        self.assertEqual(calls[4][2], 0.0)  # reset starts over
+        self.assertNotEqual(second, [])
+
+
 class VoiceRouteTests(unittest.TestCase):
     def setUp(self) -> None:
         from tests.test_video_routes import make_client
@@ -394,6 +448,17 @@ class VoiceRouteTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/voice/synthesize", json={"text": "hi", "speed": 9}).status_code, 422)
         self.assertEqual(self.client.post("/api/voice/settings", json={"idleUnloadMinutes": -1}).status_code, 422)
         self.assertEqual(self.client.post("/api/voice/install", json={"extras": ["bogus"]}).status_code, 400)
+
+    def test_vad_route(self) -> None:
+        pcm = base64.b64encode(b"\x00\x00" * 1024).decode("ascii")
+        with mock.patch.object(voice_runtime, "detect_speech", return_value=[0.1, 0.9]) as detect:
+            resp = self.client.post("/api/voice/vad", json={"session": "call-1", "pcm": pcm, "reset": True})
+        self.assertEqual(resp.json(), {"probs": [0.1, 0.9]})
+        detect.assert_called_once_with("call-1", pcm, True)
+        self.assertEqual(self.client.post("/api/voice/vad", json={"session": "../x", "pcm": ""}).status_code, 422)
+        self.assertEqual(self.client.post("/api/voice/vad", json={"pcm": "A" * 90_001}).status_code, 422)
+        with mock.patch.object(voice_env, "vad_installed", return_value=False):
+            self.assertEqual(self.client.post("/api/voice/vad", json={"pcm": pcm}).status_code, 503)
 
     def test_settings_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(voice_env, "VOICE_DATA_DIR", Path(tmp)):

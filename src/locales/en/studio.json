@@ -444,7 +444,8 @@
       "install": "Install voice pack",
       "reinstall": "Repair / reinstall",
       "done": "Voice pack installed.",
-      "log": "Install log"
+      "log": "Install log",
+      "updateForCalls": "Update the voice pack to use voice calls in Chat (adds the 2 MB turn detector; about a minute)."
     },
     "models": {
       "recommended": "Recommended",
@@ -474,7 +475,10 @@
       "idle": "Free voice memory after (minutes idle, 0 = never)",
       "workerRunning": "Voice models are loaded (process {pid}).",
       "workerStopped": "Voice models are not loaded.",
-      "unload": "Unload now"
+      "unload": "Unload now",
+      "silence": "Voice call: pause that ends your turn",
+      "silenceHint": "Shorter replies faster; longer lets you pause to think.",
+      "bargeIn": "Voice call: interrupt the model by speaking"
     },
     "offline": "Waiting for the backend…",
     "copy": "Copy",

@@ -44,6 +44,13 @@ KOKORO_ONNX_LANG = {
 _stt: dict[str, Any] = {"key": None, "model": None}
 _tts: dict[str, Any] = {"key": None, "model": None}
 
+# Silero VAD: 512-sample frames at 16 kHz (32 ms), each run with the last 64
+# samples of the previous frame in front and the model's recurrent state.
+VAD_FRAME = 512
+VAD_CONTEXT = 64
+_VAD_MAX_SESSIONS = 8
+_vad: dict[str, Any] = {"path": None, "session": None, "streams": {}}
+
 
 # ---------------------------------------------------------------------------
 # Audio helpers
@@ -255,6 +262,53 @@ def synthesize(request: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Voice activity detection
+# ---------------------------------------------------------------------------
+
+def vad(request: dict[str, Any]) -> dict[str, Any]:
+    """Speech probability for each 32 ms frame of 16 kHz PCM16 audio.
+
+    ``session`` names a stream; its model state carries over between calls
+    so a microphone can be fed a few frames at a time. ``reset`` starts the
+    stream over. Samples past the last whole frame are dropped.
+    """
+    import numpy as np
+    import onnxruntime as ort  # type: ignore[import-untyped]
+
+    path = str(request["path"])
+    if _vad["path"] != path:
+        options = ort.SessionOptions()
+        options.inter_op_num_threads = 1
+        options.intra_op_num_threads = 1
+        _vad["session"] = ort.InferenceSession(path, sess_options=options, providers=["CPUExecutionProvider"])
+        _vad["path"], _vad["streams"] = path, {}
+    streams: dict[str, Any] = _vad["streams"]
+    name = str(request.get("session") or "default")
+    if request.get("reset") or name not in streams:
+        streams.pop(name, None)
+        while len(streams) >= _VAD_MAX_SESSIONS:
+            streams.pop(next(iter(streams)))
+        streams[name] = {
+            "state": np.zeros((2, 1, 128), dtype=np.float32),
+            "context": np.zeros((1, VAD_CONTEXT), dtype=np.float32),
+        }
+    stream = streams[name]
+
+    pcm = np.frombuffer(base64.b64decode(request.get("pcm") or ""), dtype="<i2")
+    audio = pcm.astype(np.float32) / 32768.0
+    sample_rate = np.array(STT_SAMPLE_RATE, dtype=np.int64)
+    probs = []
+    for start in range(0, len(audio) - VAD_FRAME + 1, VAD_FRAME):
+        frame = np.concatenate([stream["context"], audio[start:start + VAD_FRAME][None, :]], axis=1)
+        out, stream["state"] = _vad["session"].run(
+            None, {"input": frame, "state": stream["state"], "sr": sample_rate}
+        )
+        stream["context"] = frame[:, -VAD_CONTEXT:]
+        probs.append(round(float(out[0][0]), 3))
+    return {"probs": probs}
+
+
+# ---------------------------------------------------------------------------
 # Loop
 # ---------------------------------------------------------------------------
 
@@ -289,6 +343,7 @@ _COMMANDS = {
     "status": status,
     "transcribe": transcribe,
     "synthesize": synthesize,
+    "vad": vad,
     "unload": unload,
 }
 

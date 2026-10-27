@@ -18,6 +18,8 @@ from typing import Any
 _VENDORED: dict[str, Path] = {
     # Aleph Alpha Kolibri 1 (78B MoE, German + English); mlx-lm PR #1945.
     "kolibri1": Path(__file__).with_name("kolibri1.py"),
+    # Liquid AI LFM3 text models (LFM3-1.7B); not in mlx-lm 0.32.2.
+    "lfm3": Path(__file__).with_name("lfm3.py"),
 }
 
 
@@ -95,8 +97,16 @@ def vendored_load_kwargs(model_path: str | Path, load_fn: Any) -> dict[str, Any]
         return {}
     kwargs: dict[str, Any] = {"model_config": vendored}
     try:
-        if "trust_remote_code" in inspect.signature(load_fn).parameters:
-            kwargs["trust_remote_code"] = True
+        parameters = inspect.signature(load_fn).parameters
     except (TypeError, ValueError):
-        pass
+        return kwargs
+    if "trust_remote_code" in parameters:
+        kwargs["trust_remote_code"] = True
+    # The tokenizer must not run the checkpoint's own code either. Its config
+    # names an ``auto_map`` class (LFM3), and with trust_remote_code unset
+    # transformers asks on stdin, which in the worker is the request pipe.
+    # Refusing makes it fall back to the plain config, which is all the
+    # tokenizer needs.
+    if "tokenizer_config" in parameters:
+        kwargs["tokenizer_config"] = {"trust_remote_code": False}
     return kwargs

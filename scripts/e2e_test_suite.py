@@ -402,6 +402,8 @@ def phase_0(cap: Capability) -> PhaseResult:
             "kolibri-1": 4,
             # 2026-10: LFM2.5 (MLX 4/8-bit + GGUF) and Muse Glimmer GGUF.
             "lfm-2-5": 3, "muse-glimmer": 1,
+            # LFM3-1.7B (MLX 4/8-bit) on the vendored lfm3 architecture.
+            "lfm-3": 2,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -803,6 +805,20 @@ def phase_1(cap: Capability) -> PhaseResult:
             prompt="Antworte mit zwei Wörtern: Hallo!", load_timeout=1800.0,
         )
 
+    # 1d4. LFM3 (Liquid AI). mlx-lm 0.32 has no ``lfm3``; the worker loads the
+    # port vendored in backend_service/mlx_models. The official MLX builds are
+    # in mlx-vlm's layout (weights under ``language_model.``), which the port's
+    # sanitize reads. Skips when no LFM3 MLX build is on disk (about 1 GB).
+    def _lfm3():
+        pick = _pick_model_by_ref_prefix(cap.local_mlx_models, "lfm3")
+        if not pick:
+            return "skip", "no LFM3 MLX build on disk", {}
+        ref, path = pick
+        return _load_unload_prompt(
+            ref, path=path, backend="mlx", context=4096, max_tokens=24,
+            prompt="Reply with two words: hello there", load_timeout=600.0,
+        )
+
     # 1e. GGUF (llama.cpp backend). Cycle through .gguf files until one loads
     # so a single broken model doesn't fail the whole check.
     def _gguf():
@@ -997,6 +1013,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX + MTPLX speculative", _mtplx),
         ("MLX + TensorFold exact speculative (FU-093)", _tensorfold_engine),
         ("MLX Kolibri 1, vendored architecture (FU-103)", _kolibri),
+        ("MLX LFM3, vendored architecture", _lfm3),
         ("GGUF llama.cpp", _gguf),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),

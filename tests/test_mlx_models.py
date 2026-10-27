@@ -234,7 +234,7 @@ class KolibriTinyModelTests(unittest.TestCase):
     def test_load_kwargs_trust_only_our_file_and_only_where_supported(self) -> None:
         directory = _snapshot(TINY)
 
-        def new_load(path, model_config=None, trust_remote_code=False): ...
+        def new_load(path, model_config=None, trust_remote_code=False, tokenizer_config=None): ...
 
         def old_load(path, model_config=None): ...
 
@@ -244,7 +244,10 @@ class KolibriTinyModelTests(unittest.TestCase):
             plain = mlx_models.vendored_load_kwargs(_snapshot({"model_type": "qwen3"}), new_load)
         self.assertTrue(new["trust_remote_code"])
         self.assertEqual(new["model_config"]["model_file"], str(mlx_models._VENDORED["kolibri1"]))
+        # The tokenizer never runs checkpoint code and never asks on stdin.
+        self.assertEqual(new["tokenizer_config"], {"trust_remote_code": False})
         self.assertNotIn("trust_remote_code", old)
+        self.assertNotIn("tokenizer_config", old)
         self.assertEqual(plain, {})
 
     def test_sanitize_stacks_the_experts_and_renames_the_router_bias(self) -> None:
@@ -264,6 +267,202 @@ class KolibriTinyModelTests(unittest.TestCase):
         self.assertEqual(out["model.layers.0.mlp.switch_mlp.down_proj.weight"].shape, (experts, hidden, inter))
         self.assertEqual(float(out["model.layers.0.mlp.switch_mlp.up_proj.weight"][3, 0, 0]), 3.0)
         self.assertFalse([k for k in out if ".experts." in k])
+
+
+# Same layout as the published LFM3 configs, scaled down; a window of 4 so a
+# 12-token run crosses it.
+LFM3_TINY = {
+    "model_type": "lfm3",
+    "hidden_size": 32,
+    "intermediate_size": 48,
+    "num_hidden_layers": 7,
+    "num_attention_heads": 4,
+    "num_key_value_heads": 2,
+    "head_dim": 8,
+    "vocab_size": 64,
+    "norm_eps": 1e-5,
+    "conv_L_cache": 7,
+    "conv_bias": False,
+    "layer_types": [
+        "conv", "conv", "full_attention", "conv", "sliding_attention", "conv", "sliding_attention",
+    ],
+    "rope_parameters": {
+        "full_attention": {"partial_rotary_factor": 0.5, "rope_theta": 1000000.0, "rope_type": "default"},
+        "sliding_attention": {"rope_theta": 10000, "rope_type": "default"},
+    },
+    "sliding_window": 4,
+    "use_sandwich_norm": True,
+    "tie_word_embeddings": True,
+}
+
+
+class Lfm3TinyModelTests(unittest.TestCase):
+    """LFM3 on MLX, checked against NumPy written from Liquid AI's modeling_lfm3.py."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        try:
+            import mlx.core as mx
+        except ImportError:
+            raise unittest.SkipTest("mlx is not installed")
+
+        cls.mx = mx
+        path = Path(mlx_models.__file__).with_name("lfm3.py")
+        spec = importlib.util.spec_from_file_location("lfm3_under_test", path)
+        cls.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.module)
+
+    def _model(self):
+        mx = self.mx
+        mx.random.seed(0)
+        model = self.module.Model(self.module.ModelArgs.from_dict(LFM3_TINY))
+        # Non-unit norm weights, so a norm in the wrong place changes the output.
+        for layer in model.layers:
+            for name in ("operator_norm", "ffn_norm", "post_operator_norm", "post_ffn_norm"):
+                norm = getattr(layer, name)
+                norm.weight = 1.0 + 0.5 * mx.random.normal(norm.weight.shape)
+        mx.eval(model.parameters())
+        return model
+
+    def test_cache_types_follow_the_layer_pattern(self) -> None:
+        from mlx_lm.models.cache import ArraysCache, KVCache, RotatingKVCache
+
+        caches = self._model().make_cache()
+        self.assertEqual(
+            [type(c) for c in caches],
+            [ArraysCache, ArraysCache, KVCache, ArraysCache, RotatingKVCache, ArraysCache, RotatingKVCache],
+        )
+        self.assertEqual(caches[4].max_size, LFM3_TINY["sliding_window"])
+
+    def test_cached_decoding_matches_a_full_forward_pass_across_the_window(self) -> None:
+        # The conv layers carry 6 tokens of state and the sliding layers a window
+        # of 4: decoding one token at a time must give the full pass's logits.
+        import numpy as np
+
+        mx = self.mx
+        model = self._model()
+        tokens = mx.array([[3, 17, 5, 9, 41, 2, 28, 11, 7, 33, 19, 4]])
+        full = np.array(model(tokens))
+
+        caches = model.make_cache()
+        steps = [np.array(model(tokens[:, :3], cache=caches))]
+        for i in range(3, 12):
+            steps.append(np.array(model(tokens[:, i : i + 1], cache=caches)))
+        np.testing.assert_allclose(np.concatenate(steps, axis=1), full, rtol=1e-4, atol=1e-4)
+
+    def test_full_attention_rotates_only_the_leading_frequency_pairs(self) -> None:
+        import numpy as np
+
+        mx = self.mx
+        dim = 8
+        rope = self.module.RotaryEmbedding(dim, LFM3_TINY["rope_parameters"]["full_attention"])
+        x = np.random.default_rng(1).standard_normal((1, 1, 5, dim)).astype("float32")
+        got = np.array(rope(mx.array(x), offset=3))
+
+        # modeling_lfm3: inv_freq for 2 of the 4 pairs, zeros after, then
+        # x * cos + rotate_half(x) * sin with rotate_half(x) = cat(-x2, x1).
+        angles = int(0.5 * dim) // 2
+        inv_freq = 1.0 / (1e6 ** (np.arange(0, 2 * angles, 2) / dim))
+        inv_freq = np.concatenate([inv_freq, np.zeros(dim // 2 - angles)])
+        emb = np.concatenate([np.outer(np.arange(3, 8), inv_freq)] * 2, axis=-1)
+        rotate_half = np.concatenate([-x[..., dim // 2 :], x[..., : dim // 2]], axis=-1)
+        want = x * np.cos(emb) + rotate_half * np.sin(emb)
+        np.testing.assert_allclose(got, want, rtol=1e-5, atol=1e-5)
+        # Pairs 2 and 3 (dims 2, 3, 6, 7) are not rotated at all.
+        np.testing.assert_allclose(got[..., [2, 3, 6, 7]], x[..., [2, 3, 6, 7]], rtol=1e-6)
+
+    def test_attention_applies_the_sigmoid_head_gate(self) -> None:
+        import numpy as np
+
+        mx = self.mx
+        attn = self._model().layers[2].self_attn
+        x = mx.random.normal((1, 5, LFM3_TINY["hidden_size"]))
+        got = np.array(attn(x, mask="causal"))
+
+        heads, kv_heads, hd = 4, 2, 8
+        xs = np.array(x)[0]
+
+        def lin(layer, a):
+            return a @ np.array(layer.weight).T
+
+        def rms(a, w):
+            return a / np.sqrt((a**2).mean(-1, keepdims=True) + 1e-5) * w
+
+        q = rms(lin(attn.q_proj, xs).reshape(5, heads, hd), np.array(attn.q_norm.weight))
+        k = rms(lin(attn.k_proj, xs).reshape(5, kv_heads, hd), np.array(attn.k_norm.weight))
+        v = lin(attn.v_proj, xs).reshape(5, kv_heads, hd)
+        q = np.array(attn.rope(mx.array(q.transpose(1, 0, 2)[None]), 0))[0]
+        k = np.array(attn.rope(mx.array(k.transpose(1, 0, 2)[None]), 0))[0]
+        out = np.zeros((heads, 5, hd), dtype="float32")
+        causal = np.triu(np.full((5, 5), -np.inf), 1)
+        for h in range(heads):
+            scores = q[h] @ k[h // 2].T / np.sqrt(hd) + causal
+            p = np.exp(scores - scores.max(-1, keepdims=True))
+            out[h] = (p / p.sum(-1, keepdims=True)) @ v[:, h // 2]
+        gate = 1.0 / (1.0 + np.exp(-lin(attn.gate_proj, xs)))  # (5, heads)
+        out = out.transpose(1, 0, 2) * gate[..., None]
+        want = lin(attn.o_proj, out.reshape(5, -1))
+        np.testing.assert_allclose(got[0], want, rtol=1e-4, atol=1e-4)
+
+    def test_decoder_layer_norms_each_branch_before_the_residual(self) -> None:
+        # Lfm3DecoderLayer: x + post_operator_norm(op(operator_norm(x))), then
+        # + post_ffn_norm(ffn(ffn_norm(.))). The operator is taken as given.
+        import numpy as np
+
+        mx = self.mx
+        layer = self._model().layers[2]
+        x = mx.random.normal((1, 5, LFM3_TINY["hidden_size"]))
+        got = np.array(layer(x, mask="causal"))
+
+        def rms(a, norm):
+            return a / np.sqrt((a**2).mean(-1, keepdims=True) + 1e-5) * np.array(norm.weight)
+
+        def lin(m, a):
+            return a @ np.array(m.weight).T
+
+        xs = np.array(x)
+        op = np.array(layer.self_attn(mx.array(rms(xs, layer.operator_norm)), mask="causal"))
+        h = xs + rms(op, layer.post_operator_norm)
+        f = rms(h, layer.ffn_norm)
+        w1 = lin(layer.feed_forward.w1, f)
+        ffn = lin(layer.feed_forward.w2, w1 / (1.0 + np.exp(-w1)) * lin(layer.feed_forward.w3, f))
+        want = h + rms(ffn, layer.post_ffn_norm)
+        np.testing.assert_allclose(got, want, rtol=1e-4, atol=1e-4)
+
+    def test_sanitize_reads_the_mlx_vlm_layout_and_torch_conv_weights(self) -> None:
+        mx = self.mx
+        model = self._model()
+        out = model.sanitize({
+            "language_model.model.layers.0.conv.conv.weight": mx.zeros((32, 1, 7)),
+            "language_model.model.embed_tokens.weight": mx.zeros((64, 32)),
+            "lm_head.weight": mx.zeros((64, 32)),
+        })
+        self.assertEqual(out["model.layers.0.conv.conv.weight"].shape, (32, 7, 1))
+        self.assertIn("model.embed_tokens.weight", out)
+        self.assertNotIn("lm_head.weight", out)  # tied to the embeddings
+        # An already converted conv weight is left as it is.
+        again = model.sanitize({"model.layers.0.conv.conv.weight": mx.zeros((32, 7, 1))})
+        self.assertEqual(again["model.layers.0.conv.conv.weight"].shape, (32, 7, 1))
+
+    def test_mlx_lm_loads_an_mlx_vlm_layout_checkpoint_through_the_hook(self) -> None:
+        import numpy as np
+        from mlx.utils import tree_flatten
+        from mlx_lm.utils import load_model
+
+        mx = self.mx
+        model = self._model()
+        directory = _snapshot(LFM3_TINY)
+        weights = {f"language_model.{k}": v for k, v in tree_flatten(model.parameters())}
+        mx.save_safetensors(str(directory / "model.safetensors"), weights)
+
+        with mock.patch.object(mlx_models, "_mlx_lm_ships", return_value=False):
+            kwargs = mlx_models.vendored_load_kwargs(directory, load_model)
+        self.assertEqual(Path(kwargs["model_config"]["model_file"]).name, "lfm3.py")
+        loaded, config = load_model(directory, **kwargs)
+        self.assertEqual(config["model_type"], "lfm3")
+
+        tokens = mx.array([[1, 2, 3, 4, 5, 6]])
+        np.testing.assert_allclose(np.array(loaded(tokens)), np.array(model(tokens)), rtol=1e-5, atol=1e-5)
 
 
 KOLIBRI_TEMPLATE = (

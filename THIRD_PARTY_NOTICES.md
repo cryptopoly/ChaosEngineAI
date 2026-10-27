@@ -200,6 +200,19 @@ hosts. See FU-009 in CLAUDE.md.
   once an mlx-lm release carries the architecture. The weights keep their own
   licence (Apache 2.0, Aleph Alpha).
 
+### LFM3 architecture for mlx-lm (vendored)
+
+- **Upstream:** Liquid AI's reference `modeling_lfm3.py` in
+  <https://huggingface.co/LiquidAI/LFM3-1.7B> and the mlx-vlm port of it
+  (<https://github.com/Blaizzy/mlx-vlm>, `mlx_vlm/models/lfm3`, commit `701456f1`)
+- **Licence:** Apache 2.0 (SPDX header kept in the file)
+- **Location:** `backend_service/mlx_models/lfm3.py`, rewritten against mlx-lm's
+  model interface (reuses mlx-lm's LFM2 `ShortConv`)
+- **Usage:** mlx-lm ships no `lfm3` architecture yet, so `mlx_lm.load` reads this
+  file through its `model_file` hook for LFM3 checkpoints. It is no longer used
+  once an mlx-lm release carries the architecture. The weights keep their own
+  licence (LFM Open License v1.0, Liquid AI).
+
 ## Internationalization (FU-042)
 
 ### i18next (frontend i18n framework)

@@ -432,7 +432,7 @@ class RuntimeController:
 
         self._expire_orphan_records()
 
-    _OWNED_PROCESS_MARKERS = ("mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/")
+    _OWNED_PROCESS_MARKERS = ("mlx_worker", "llama-server", "/mtplx-venv/", "/tensorfold-venv/", "voice_worker.py")
 
     def stop_process(self, pid: int) -> dict[str, Any]:
         """Stop one process this app started that is not serving the loaded model.

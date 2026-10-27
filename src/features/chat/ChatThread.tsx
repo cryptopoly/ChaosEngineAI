@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ReadAloudButton } from "../voice/ReadAloud";
 import { CitationBadge } from "../../components/CitationBadge";
 import { ModelLoadingProgress } from "../../components/ModelLoadingProgress";
 import { PromptPhaseIndicator } from "../../components/PromptPhaseIndicator";
@@ -170,6 +171,9 @@ export function ChatThread({
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                       </svg>
                     </button>
+                    {message.role === "assistant" && message.text.trim() ? (
+                      <ReadAloudButton ownerId={`${activeChat?.id ?? "chat"}-${index}`} text={message.text} />
+                    ) : null}
                     {message.role === "assistant" ? (
                       <button
                         type="button"

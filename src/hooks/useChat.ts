@@ -53,6 +53,16 @@ function readSamplerPayload(sessionId: string | null | undefined): Record<string
   return samplerPayload(readSamplerOverrides(sessionId));
 }
 
+export interface SendMessageOptions {
+  /** Sent from a voice call: spoken-style answer, no thinking pass. */
+  voice?: boolean;
+}
+
+export const VOICE_CALL_PROMPT =
+  "You are talking with the user by voice and your reply will be read aloud. " +
+  "Answer in short, natural spoken sentences. Do not use markdown, lists, tables, code blocks or emoji " +
+  "unless the user asks for them.";
+
 export function useChat(
   workspace: WorkspaceData,
   setWorkspace: React.Dispatch<React.SetStateAction<WorkspaceData>>,
@@ -550,7 +560,7 @@ export function useChat(
     await refreshWorkspace(activeChat.id);
   }
 
-  async function sendMessage(overrideText?: string) {
+  async function sendMessage(overrideText?: string, options: SendMessageOptions = {}) {
     const rawPrompt = overrideText ?? draftMessage;
     const trimmed = rawPrompt.trim();
     if (!trimmed) return;
@@ -719,8 +729,10 @@ export function useChat(
         path: useOverride ? undefined : threadModel?.path,
         backend: useOverride ? overrideWarm!.engine : threadModel?.backend,
         oneTurnOverride: useOverride || undefined,
-        thinkingMode: activeThinkingMode,
-        reasoningEffort: activeThinkingMode === "auto" ? readReasoningEffort(sessionId) : undefined,
+        // Voice calls answer without a thinking pass so speech starts quickly.
+        thinkingMode: options.voice ? "off" : activeThinkingMode,
+        voiceTurn: options.voice || undefined,
+        reasoningEffort: activeThinkingMode === "auto" && !options.voice ? readReasoningEffort(sessionId) : undefined,
         temperature: readTemperatureOverride(sessionId) ?? launchSettings.temperature,
         maxTokens: launchSettings.maxTokens,
         // Phase 2.2: per-thread sampler overrides. Backend ignores fields
@@ -729,7 +741,9 @@ export function useChat(
         // Phase 3.3: when advanced-mode logprobs is on, ask llama-server
         // for top-5 alternatives per token. Default off.
         ...(workspace.settings?.advancedLogprobs ? { logprobs: 5 } : {}),
-        systemPrompt: systemPrompt || undefined,
+        systemPrompt: options.voice
+          ? [systemPrompt, VOICE_CALL_PROMPT].filter(Boolean).join("\n\n")
+          : systemPrompt || undefined,
         // Phase 3.2: per-thread KV strategy override. Falls through to
         // the session's runtime profile when no override is set.
         ...(() => {

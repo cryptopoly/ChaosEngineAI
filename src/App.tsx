@@ -6,6 +6,7 @@ import {
   convertModel,
   deleteSessionDocument,
   getVoiceRuntime,
+  saveVoiceSettings,
   loadModel,
   getWorkspace,
   resolveApiToken,
@@ -57,7 +58,9 @@ import { VideoStudioTab } from "./features/video/VideoStudioTab";
 import { VideoGalleryTab } from "./features/video/VideoGalleryTab";
 import { VoiceStudioTab } from "./features/voice/VoiceStudioTab";
 import { VoiceModelsTab } from "./features/voice/VoiceModelsTab";
-import { VoiceGalleryTab } from "./features/voice/VoiceGalleryTab";
+import { VoiceLibraryTab } from "./features/voice/VoiceLibraryTab";
+import type { OpenRequest as VoiceOpenRequest } from "./features/voice/VoiceStudioTab";
+import { VoiceProvider, type VoiceContextValue } from "./features/voice/VoiceContext";
 import type {
   ChatSession,
   LibraryItem,
@@ -144,6 +147,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
+  const [voiceOpenRequest, setVoiceOpenRequest] = useState<VoiceOpenRequest | null>(null);
   const sidebarPrefs = useSidebarPrefs();
   const uiScalePrefs = useUiScale();
   const gpuStatus = useGpuStatus(backendOnline);
@@ -823,6 +827,20 @@ export default function App() {
     }
     refreshVoiceRuntime();
   }, [backendOnline, refreshVoiceRuntime]);
+
+  const voiceContext = useMemo<VoiceContextValue>(
+    () => ({
+      runtime: voiceRuntime,
+      platform: workspace.system.platform,
+      refresh: refreshVoiceRuntime,
+      saveSettings: async (patch) => {
+        const settings = await saveVoiceSettings(patch);
+        setVoiceRuntime((current) => (current ? { ...current, settings } : current));
+      },
+      openVoiceModels: () => void setActiveTab("voice-models"),
+    }),
+    [voiceRuntime, workspace.system.platform, refreshVoiceRuntime, setActiveTab],
+  );
 
   // Benchmark page: sync benchmarkDraft sliders -> previewControls
   useEffect(() => {
@@ -1654,6 +1672,7 @@ export default function App() {
       <VoiceStudioTab
         voiceRuntime={voiceRuntime}
         backendOnline={backendOnline}
+        openRequest={voiceOpenRequest}
         onSendToChat={(text) => {
           // Append rather than overwrite so a half-typed draft survives.
           setDraftMessage((current) => (current.trim() ? `${current}\n${text}` : text));
@@ -1671,7 +1690,15 @@ export default function App() {
       />
     );
   } else if (activeTab === "voice-gallery") {
-    content = <VoiceGalleryTab backendOnline={backendOnline} />;
+    content = (
+      <VoiceLibraryTab
+        backendOnline={backendOnline}
+        onOpenTranscript={(id) => {
+          setVoiceOpenRequest({ id, nonce: Date.now() });
+          void setActiveTab("voice-studio");
+        }}
+      />
+    );
   } else if (activeTab === "conversion") {
     content = (
       <ConversionTab
@@ -1740,6 +1767,7 @@ export default function App() {
         onDeleteSession={handleDeleteSession}
         onRenameActiveThread={handleRenameActiveThread}
         onOpenModelSelector={openModelSelector}
+        onUnloadModel={() => void handleUnloadModel()}
         onLoadModel={handleLoadModel}
         onChatFileDrop={chat.handleChatFileDrop}
         onDeleteSessionDocument={deleteSessionDocument}
@@ -2120,7 +2148,7 @@ export default function App() {
             // is the active tab id so switching tabs unmounts the
             // boundary and gives the user a clean recovery path.
             <ErrorBoundary key={activeTab} scope={tabs.find((tab) => tab.id === activeTab)?.label ?? activeTab}>
-              {content}
+              <VoiceProvider value={voiceContext}>{content}</VoiceProvider>
             </ErrorBoundary>
           )}
         </div>

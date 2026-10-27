@@ -244,6 +244,8 @@ export interface GeneratePayload {
    * thread reverts to its default model on the next plain message.
    */
   oneTurnOverride?: boolean;
+  /** Sent from a voice call; its Thinking Off is not saved to the thread. */
+  voiceTurn?: boolean;
 }
 
 /**

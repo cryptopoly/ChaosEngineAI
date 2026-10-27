@@ -70,6 +70,8 @@ export interface LoadedModel {
   cacheStrategy: string;
   fitModelInMemory: boolean;
   contextTokens: number;
+  /** Context the load asked for before it was clamped to the model maximum. */
+  requestedContextTokens?: number | null;
   loadedAt: string;
   path: string | null;
   runtimeTarget?: string | null;

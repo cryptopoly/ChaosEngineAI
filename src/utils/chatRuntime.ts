@@ -39,8 +39,10 @@ export function loadedModelMatchesRuntimeProfile(
     loadedModel.fusedAttention === profile.fusedAttention &&
     loadedModel.cacheStrategy === profile.cacheStrategy &&
     loadedModel.fitModelInMemory === profile.fitModelInMemory &&
-    loadedModel.contextTokens === profile.contextTokens &&
-    (loadedModel.speculativeDecoding ?? false) === profile.speculativeDecoding &&
-    (loadedModel.treeBudget ?? 0) === profile.treeBudget
+    // A context above the model's maximum is clamped at load; compare what was asked for.
+    (loadedModel.requestedContextTokens ?? loadedModel.contextTokens) === profile.contextTokens &&
+    // Saved launch settings may lack these; missing means off.
+    (loadedModel.speculativeDecoding ?? false) === (profile.speculativeDecoding ?? false) &&
+    (loadedModel.treeBudget ?? 0) === (profile.treeBudget ?? 0)
   );
 }

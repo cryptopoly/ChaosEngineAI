@@ -1,5 +1,6 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useRef, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
+import { ComposerMicButton } from "../voice/ComposerMicButton";
 import { KvStrategyChip } from "../../components/KvStrategyChip";
 import { SamplerPanel } from "../../components/SamplerPanel";
 import { TemperatureChip } from "../../components/TemperatureChip";
@@ -52,7 +53,7 @@ export interface ChatComposerProps {
   setSlashIndex: Dispatch<SetStateAction<number>>;
   onDraftMessageChange: (message: string) => void;
   onPendingImagesChange: Dispatch<SetStateAction<string[]>>;
-  onSendMessage: () => void;
+  onSendMessage: (overrideText?: string) => void;
   onCancelGeneration: () => void;
   onClearDraft: () => void;
   onChatFileDrop: (files: FileList) => void;
@@ -125,6 +126,8 @@ export function ChatComposer({
   // present yet.  Hook lives at the top so every render gets a stable
   // ``t`` reference (re-renders only when the active language flips).
   const { t } = useTranslation("chat");
+  // The dictated draft, for auto-send (the draft prop updates a render later).
+  const dictatedRef = useRef("");
   // Phase 2.11: when capabilities are known, hide affordances the loaded
   // model can't honour. When capabilities are absent (unknown model or
   // freshly downloaded HF entry without a catalog mapping) all
@@ -398,6 +401,17 @@ export function ChatComposer({
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">
+          <ComposerMicButton
+            disabled={chatBusySessionId === activeChat?.id}
+            onTranscript={(text) => {
+              const next = draftMessage.trim() ? `${draftMessage.trimEnd()} ${text}` : text;
+              dictatedRef.current = next;
+              onDraftMessageChange(next);
+            }}
+            onAutoSend={() => {
+              if (loadedModelRef && !modelLoading && chatBusySessionId === null) onSendMessage(dictatedRef.current);
+            }}
+          />
           <button className="secondary-button" type="button" onClick={onClearDraft}>
             {t("composer.clear", { defaultValue: "Clear" })}
           </button>

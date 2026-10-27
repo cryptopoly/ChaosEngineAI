@@ -1,70 +1,56 @@
-"""Voice I/O runtime — STT via parakeet-mlx / mlx-whisper / faster-whisper, TTS via mlx-audio / kokoro-onnx."""
+"""Voice I/O: model catalogs, capabilities and settings, plus calls into the worker.
+
+The speech models never load in the backend process. ``voice_env`` builds
+the voice venv, ``voice_worker`` runs in it, ``voice_client`` talks to it;
+this module decides which model and voice a request uses on this machine.
+"""
 
 from __future__ import annotations
 
-import importlib.util
+import json
 import platform
-import shutil
-import sys
-import tempfile
 import threading
 from pathlib import Path
 from typing import Any
 
-
-# ---------------------------------------------------------------------------
-# Availability helpers — checked lazily, never imported at module top
-# ---------------------------------------------------------------------------
-
-def _is_available(module_name: str) -> bool:
-    return importlib.util.find_spec(module_name) is not None
+from backend_service import voice_env
 
 
 def _platform() -> str:
     system = platform.system()
-    machine = platform.machine()
-    if system == "Darwin" and machine in ("arm64", "arm"):
-        return "apple_silicon"
     if system == "Darwin":
-        return "macos_x86"
+        return "apple_silicon" if platform.machine() in ("arm64", "aarch64") else "macos_x86"
     if system == "Windows":
         return "windows"
     return "linux"
 
 
 # ---------------------------------------------------------------------------
-# Model / voice catalogs
+# Speech-to-text catalog
 # ---------------------------------------------------------------------------
 
-# Speech-to-text catalog. Each entry is one *logical* model with a
-# per-backend weight source, because the backends cannot read each
-# other's formats: mlx-whisper loads MLX safetensors, faster-whisper
-# loads CTranslate2 conversions, parakeet-mlx loads its own MLX port.
-# ``list_stt_models`` projects this onto the rows the current platform
-# can actually run (FU-092: non-Apple hosts used to be handed MLX ids).
-#
-# CTranslate2 sources (FU-092 decision): exactly the repos faster-whisper
-# itself resolves its size tokens to (``faster_whisper.utils._MODELS`` in
-# 1.2.1 — ``large-v3-turbo`` → mobiuslabsgmbh, ``small`` / ``base`` →
-# Systran, the faster-whisper maintainers). Pinning the ids explicitly
-# instead of passing the size token lets the Models tab download and
-# report "installed" through the normal HF-cache machinery, while
-# trusting nothing the library doesn't already trust.
+# One logical model per row, with a weight source per backend: mlx-whisper
+# reads MLX safetensors, faster-whisper CTranslate2 conversions, parakeet-mlx
+# its own MLX port. CTranslate2 sources are the repos faster-whisper itself
+# maps its size names to (``faster_whisper.utils._MODELS``, 1.2.1).
 _STT_MODELS: list[dict[str, Any]] = [
     {
         "key": "parakeet-tdt-v3",
-        "name": "Parakeet TDT 0.6B v3 (25 European languages)",
-        "default": False,
-        # Apple Silicon only — parakeet-mlx (Apache-2.0). NVIDIA's
-        # checkpoint (CC-BY-4.0), MLX port by mlx-community. Roughly 2x
-        # Whisper Turbo's speed on M-series; no CJK coverage, so Whisper
-        # stays in the list for everything else.
+        "name": "Parakeet TDT 0.6B v3",
+        "languages": "25 European languages",
+        "default": True,
+        "translate": False,
+        # NVIDIA weights (CC-BY-4.0), MLX port by mlx-community.
         "sources": {"parakeet-mlx": ("mlx-community/parakeet-tdt-0.6b-v3", 2.5)},
     },
     {
         "key": "whisper-large-v3-turbo",
         "name": "Whisper Large v3 Turbo",
+        "languages": "99 languages",
         "default": True,
+        # The turbo fine-tune was not trained to translate: it answers in
+        # the spoken language.
+        "translate": False,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-large-v3-turbo-q4", 0.8),
             "faster-whisper": ("mobiuslabsgmbh/faster-whisper-large-v3-turbo", 1.6),
@@ -74,7 +60,9 @@ _STT_MODELS: list[dict[str, Any]] = [
     {
         "key": "whisper-small",
         "name": "Whisper Small",
+        "languages": "99 languages",
         "default": False,
+        "translate": True,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-small-mlx", 0.24),
             "faster-whisper": ("Systran/faster-whisper-small", 0.48),
@@ -84,7 +72,9 @@ _STT_MODELS: list[dict[str, Any]] = [
     {
         "key": "whisper-base",
         "name": "Whisper Base",
+        "languages": "99 languages",
         "default": False,
+        "translate": True,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-base-mlx", 0.07),
             "faster-whisper": ("Systran/faster-whisper-base", 0.15),
@@ -98,252 +88,57 @@ class UnknownSttModelError(ValueError):
     """The requested STT model id isn't in the catalog (HTTP 400)."""
 
 
-_TTS_VOICES = [
-    {"id": "af_heart", "name": "American Female (Heart)", "language": "en-US"},
-    {"id": "am_adam", "name": "American Male (Adam)", "language": "en-US"},
-    {"id": "bf_emma", "name": "British Female (Emma)", "language": "en-GB"},
-    {"id": "bm_george", "name": "British Male (George)", "language": "en-GB"},
-    {"id": "jf_alpha", "name": "Japanese Female (Alpha)", "language": "ja-JP"},
-]
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-def _stt_available() -> bool:
-    plat = _platform()
-    if plat == "apple_silicon":
-        return _is_available("mlx_whisper")
-    return _is_available("faster_whisper")
-
-
-def _mlx_audio_tts_ready() -> bool:
-    """mlx-audio can speak only with misaki, its Kokoro text front-end.
-
-    mlx-vlm 0.7 depends on mlx-audio, so mlx-audio can be present without the
-    voice pack; mlx-audio 0.6 made misaki optional and swallows the import
-    error, so every synthesis then ended with no output file.
-    """
-    return _is_available("mlx_audio") and _is_available("misaki")
-
-
-# espeak-ng keeps its data path in a fixed buffer (about 160 characters). A
-# longer one is dropped silently, espeak falls back to the path baked in at
-# build time and then exits the process, taking the backend with it.
-_ESPEAK_PATH_LIMIT = 140
-
-
-def _ensure_short_espeak_data_path() -> None:
-    """Point misaki's espeak fallback at a short copy of its data when needed.
-
-    Must run before ``misaki.espeak`` is imported, which reads the path once.
-    """
-    try:
-        import espeakng_loader  # type: ignore[import-untyped]
-    except ImportError:
-        return
-    source = Path(espeakng_loader.get_data_path())
-    if len(str(source)) < _ESPEAK_PATH_LIMIT or not source.is_dir():
-        return
-    short = Path.home() / ".chaosengine" / "espeak-ng-data"
-    if not (short / "phontab").is_file():
-        shutil.copytree(source, short, dirs_exist_ok=True)
-    espeakng_loader.get_data_path = lambda: str(short)
-    misaki_espeak = sys.modules.get("misaki.espeak")
-    if misaki_espeak is not None:  # imported already: update the wrapper too
-        misaki_espeak.EspeakWrapper.set_data_path(str(short))
-
-
-def _tts_available() -> bool:
-    plat = _platform()
-    if plat == "apple_silicon":
-        return _mlx_audio_tts_ready()
-    return _is_available("kokoro_onnx")
-
-
-def _stt_install_packages() -> list[str]:
-    """Return pip package keys for the platform-appropriate STT backend."""
-    if _platform() == "apple_silicon":
-        # Parakeet rides along: it's the fast default when present, and
-        # mlx-whisper covers the languages Parakeet doesn't.
-        return ["mlx-whisper", "parakeet-mlx"]
-    return ["faster-whisper"]
-
-
-def _tts_install_packages() -> list[str]:
-    """Return pip package keys for the platform-appropriate TTS backend.
-
-    mlx-audio's Kokoro pipeline needs the ``misaki`` G2P package but does
-    not declare it as a dependency — and swallows the ImportError at
-    generate time (yields zero segments instead of raising). The trailing
-    entries are the Japanese G2P chain for the jf_* voices (see the
-    allowlist comment in routes/setup for why not ``misaki[ja]``).
-    """
-    if _platform() == "apple_silicon":
-        return [
-            "mlx-audio",
-            "misaki",
-            "fugashi",
-            "jaconv",
-            "mojimoji",
-            "pyopenjtalk",
-            "unidic-lite",
-        ]
-    return ["kokoro-onnx"]
-
-
-def _stt_backend() -> str | None:
-    plat = _platform()
-    if plat == "apple_silicon" and _is_available("parakeet_mlx") and _is_available("mlx_whisper"):
-        return "parakeet-mlx + mlx-whisper"
-    if plat == "apple_silicon" and _is_available("mlx_whisper"):
-        return "mlx-whisper"
-    if _is_available("faster_whisper"):
-        return "faster-whisper"
-    return None
-
-
-def _tts_backend() -> str | None:
-    plat = _platform()
-    if plat == "apple_silicon" and _mlx_audio_tts_ready():
-        return "mlx-audio"
-    if _is_available("kokoro_onnx"):
-        return "kokoro-onnx"
-    return None
+def _lane_backends() -> tuple[str, ...]:
+    return ("parakeet-mlx", "mlx-whisper") if voice_env.lane() == "mlx" else ("faster-whisper",)
 
 
 def _hf_snapshot_path(repo_id: str) -> Path | None:
-    """Return the active local HF snapshot dir for repo_id, or None.
-
-    Delegates to the shared resolver so a relocated cache (Settings →
-    ``hfCachePath``, injected as ``HF_HOME``) is honoured — the models
-    mlx-audio / mlx-whisper download land there, not in ``~/.cache``.
-    """
     from backend_service.helpers.hf_cache_paths import _hf_repo_snapshot_dir  # noqa: PLC0415
 
     return _hf_repo_snapshot_dir(repo_id)
 
 
-def _mime_to_suffix(mime_type: str) -> str:
-    mapping = {
-        "audio/webm": ".webm",
-        "audio/ogg": ".ogg",
-        "audio/wav": ".wav",
-        "audio/wave": ".wav",
-        "audio/x-wav": ".wav",
-        "audio/mp4": ".mp4",
-        "audio/mpeg": ".mp3",
-        "audio/mp3": ".mp3",
-        "audio/flac": ".flac",
-    }
-    base = mime_type.split(";")[0].strip().lower()
-    return mapping.get(base, ".webm")
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-def get_voice_capabilities() -> dict[str, Any]:
-    """Return platform/availability summary for the voice runtime."""
-    stt_ok = _stt_available()
-    tts_ok = _tts_available()
-    plat = _platform()
-    # The voice data TTS loads — surfaced so the UI can offer a pre-download
-    # instead of a silent multi-hundred-MB fetch on first Generate. Apple
-    # Silicon pulls an HF snapshot (repo id set, downloadable through the
-    # standard model-download machinery); other platforms use the kokoro-onnx
-    # GitHub release files (repo None, download via /api/voice/kokoro/*).
-    if plat == "apple_silicon":
-        tts_model_repo: str | None = _TTS_MODEL_REPO
-        tts_model_installed = _hf_snapshot_path(_TTS_MODEL_REPO) is not None
-    else:
-        from backend_service import voice_kokoro_onnx  # noqa: PLC0415
-
-        tts_model_repo = None
-        tts_model_installed = voice_kokoro_onnx.is_installed()
-    return {
-        "sttAvailable": stt_ok,
-        "ttsAvailable": tts_ok,
-        "platform": plat,
-        "sttBackend": _stt_backend(),
-        "ttsBackend": _tts_backend(),
-        # Package keys to pass to /api/setup/install-package when not available.
-        "sttInstallPackages": None if stt_ok else _stt_install_packages(),
-        "ttsInstallPackages": None if tts_ok else _tts_install_packages(),
-        "ttsModelRepo": tts_model_repo,
-        "ttsModelInstalled": tts_model_installed,
-    }
-
-
-def _platform_stt_backends() -> tuple[str, ...]:
-    """Backends this host can run, in preference order."""
-    if _platform() == "apple_silicon":
-        return ("parakeet-mlx", "mlx-whisper")
-    return ("faster-whisper",)
-
-
-_BACKEND_MODULES = {
-    "parakeet-mlx": "parakeet_mlx",
-    "mlx-whisper": "mlx_whisper",
-    "faster-whisper": "faster_whisper",
-}
-
-
 def list_stt_models() -> list[dict[str, Any]]:
-    """Return the STT rows this platform can run, with installed flags.
-
-    One row per (logical model, backend the platform supports). On Apple
-    Silicon Parakeet becomes the default once parakeet-mlx is installed —
-    it's the faster lane; otherwise the catalog default (Whisper Turbo)
-    stays default.
-    """
-    backends = _platform_stt_backends()
-    parakeet_ready = "parakeet-mlx" in backends and _is_available("parakeet_mlx")
-    models = []
+    """STT rows this machine can run: one per logical model, first backend that has it."""
+    installed = voice_env.is_installed()
+    rows: list[dict[str, Any]] = []
     for entry in _STT_MODELS:
-        for backend in backends:
+        for backend in _lane_backends():
             source = entry["sources"].get(backend)
             if source is None:
                 continue
             repo, size_gb = source
-            if parakeet_ready:
-                is_default = backend == "parakeet-mlx"
-            else:
-                is_default = bool(entry["default"]) and backend != "parakeet-mlx"
-            models.append({
+            rows.append({
                 "id": repo,
+                "key": entry["key"],
                 "name": entry["name"],
+                "languages": entry["languages"],
                 "sizeGb": size_gb,
                 "installed": _hf_snapshot_path(repo) is not None,
-                "default": is_default,
+                "default": False,
+                "translate": entry["translate"],
                 "backend": backend,
-                "backendInstalled": _is_available(_BACKEND_MODULES[backend]),
+                "backendInstalled": installed,
             })
             break
-    return models
+    if rows:
+        next(r for r in rows if r["key"] in {e["key"] for e in _STT_MODELS if e["default"]})["default"] = True
+    return rows
 
 
 def resolve_stt_model(model_id: str | None) -> tuple[str, str]:
-    """Map a requested model id onto ``(backend, repo)`` for this host.
+    """Map a catalog id, key, size alias or empty (default) onto ``(backend, repo)``.
 
-    Accepts any catalog id (from either platform — a transcript request
-    carrying the MLX id on Linux is translated to the CTranslate2
-    sibling, and vice versa), a faster-whisper size token, or empty for
-    the platform default. Anything else raises ``UnknownSttModelError``:
-    the id reaches ``from_pretrained`` / ``WhisperModel``, which also
-    accept local filesystem paths, so it must never be free-form.
+    Anything else is refused: the id reaches loaders that also accept local
+    paths, so it must never be free-form.
     """
     rows = list_stt_models()
     requested = (model_id or "").strip()
     if not requested:
-        chosen = next((r for r in rows if r["default"] and r["backendInstalled"]), None)
-        chosen = chosen or next((r for r in rows if r["backendInstalled"]), None) or (rows[0] if rows else None)
+        chosen = next((r for r in rows if r["default"]), rows[0] if rows else None)
         if chosen is None:
-            raise RuntimeError("No speech-to-text model is available on this platform.")
+            raise RuntimeError("No speech-to-text model is available on this machine.")
         return chosen["backend"], chosen["id"]
-
     entry = next(
         (
             e for e in _STT_MODELS
@@ -355,161 +150,263 @@ def resolve_stt_model(model_id: str | None) -> tuple[str, str]:
     )
     if entry is None:
         raise UnknownSttModelError(f"Unknown speech-to-text model '{requested}'.")
-    for backend in _platform_stt_backends():
+    for backend in _lane_backends():
         source = entry["sources"].get(backend)
         if source is not None:
             return backend, source[0]
-    raise RuntimeError(f"{entry['name']} is not supported on this platform.")
+    # Parakeet on a machine without MLX: fall back to the default Whisper.
+    return resolve_stt_model("")
 
 
-# Single-slot cache for the loaded STT model. mlx-whisper keeps its own
-# ModelHolder; Parakeet (~1.2 GB in bf16) and faster-whisper would
-# otherwise reload from disk on every utterance, which costs more than
-# the transcription itself. Keyed on the loader too, so swapping the
-# backend module (tests, reinstall) never serves a stale object.
-_STT_CACHE_LOCK = threading.Lock()
-_STT_CACHE: dict[str, Any] = {"key": None, "model": None}
+# ---------------------------------------------------------------------------
+# Text-to-speech voices (Kokoro v1.0)
+# ---------------------------------------------------------------------------
+
+_KOKORO_VOICES = (
+    "af_heart af_alloy af_aoede af_bella af_jessica af_kore af_nicole af_nova af_river af_sarah af_sky "
+    "am_adam am_echo am_eric am_fenrir am_liam am_michael am_onyx am_puck am_santa "
+    "bf_alice bf_emma bf_isabella bf_lily bm_daniel bm_fable bm_george bm_lewis "
+    "ef_dora em_alex em_santa ff_siwis hf_alpha hf_beta hm_omega hm_psi if_sara im_nicola "
+    "jf_alpha jf_gongitsune jf_nezumi jf_tebukuro jm_kumo pf_dora pm_alex pm_santa "
+    "zf_xiaobei zf_xiaoni zf_xiaoxiao zf_xiaoyi zm_yunjian zm_yunxi zm_yunxia zm_yunyang"
+).split()
+
+_LANGUAGES = {
+    "a": ("en-US", "English (US)"),
+    "b": ("en-GB", "English (UK)"),
+    "e": ("es", "Spanish"),
+    "f": ("fr", "French"),
+    "h": ("hi", "Hindi"),
+    "i": ("it", "Italian"),
+    "j": ("ja", "Japanese"),
+    "p": ("pt-BR", "Portuguese (Brazil)"),
+    "z": ("zh", "Chinese (Mandarin)"),
+}
+
+DEFAULT_VOICE = "af_heart"
 
 
-def _cached_stt_model(key: tuple[Any, ...], load: Any) -> Any:
-    with _STT_CACHE_LOCK:
-        if _STT_CACHE["key"] != key:
-            # Drop the old model before loading the next one so two
-            # models are never resident at once.
-            _STT_CACHE["key"] = None
-            _STT_CACHE["model"] = None
-            _STT_CACHE["model"] = load()
-            _STT_CACHE["key"] = key
-        return _STT_CACHE["model"]
-
-
-def release_stt_model() -> None:
-    with _STT_CACHE_LOCK:
-        _STT_CACHE["key"] = None
-        _STT_CACHE["model"] = None
+def _voice_language_ready(prefix: str) -> bool:
+    """mlx-audio needs extra front-ends for Japanese and Chinese."""
+    if voice_env.lane() != "mlx":
+        return True
+    if prefix == "z":
+        return "chinese" in voice_env.installed_extras()
+    return prefix != "j"  # Japanese needs a 0.8 GB dictionary; not offered yet
 
 
 def list_tts_voices() -> list[dict[str, Any]]:
-    return list(_TTS_VOICES)
+    voices = []
+    for voice_id in _KOKORO_VOICES:
+        prefix, gender, name = voice_id[0], voice_id[1], voice_id[3:]
+        language, language_label = _LANGUAGES[prefix]
+        voices.append({
+            "id": voice_id,
+            "name": name.replace("_", " ").title(),
+            "gender": "female" if gender == "f" else "male",
+            "language": language,
+            "languageLabel": language_label,
+            "available": _voice_language_ready(prefix),
+        })
+    return voices
 
 
-def transcribe_audio(audio_bytes: bytes, mime_type: str, model_id: str | None) -> str:
-    """Run STT on raw audio bytes and return the transcript text.
+# ---------------------------------------------------------------------------
+# Settings (``~/.chaosengine/voice/settings.json``)
+# ---------------------------------------------------------------------------
 
-    Writes audio to a tempfile, transcribes it, then cleans up.
-    Heavy deps are lazy-imported inside this function.
-    """
-    backend, repo = resolve_stt_model(model_id)
-    suffix = _mime_to_suffix(mime_type)
+DEFAULT_SETTINGS: dict[str, Any] = {
+    "sttModel": "",
+    "language": "",
+    "ttsVoice": DEFAULT_VOICE,
+    "speed": 1.0,
+    "autoSend": False,
+    "autoRead": False,
+    # Conversation mode: silence that ends a turn, and whether speaking over
+    # the model interrupts it.
+    "vadSilenceMs": 700,
+    "bargeIn": True,
+    "idleUnloadMinutes": 10,
+}
+_SETTINGS_LOCK = threading.Lock()
 
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(audio_bytes)
-        tmp_path = Path(tmp.name)
 
+def _settings_path() -> Path:
+    return voice_env.VOICE_DATA_DIR / "settings.json"
+
+
+def load_settings() -> dict[str, Any]:
+    settings = dict(DEFAULT_SETTINGS)
     try:
-        if backend == "parakeet-mlx":
-            if not _is_available("parakeet_mlx"):
-                raise RuntimeError(
-                    "Parakeet needs the parakeet-mlx package. Install it from Voice → Models."
-                )
-            from parakeet_mlx import from_pretrained  # type: ignore[import-untyped]
-
-            # A local snapshot dir skips the network round-trip
-            # from_pretrained otherwise makes through hf_hub_download.
-            source = str(_hf_snapshot_path(repo) or repo)
-            model = _cached_stt_model(("parakeet", source, from_pretrained), lambda: from_pretrained(source))
-            result = model.transcribe(str(tmp_path))
-            return (getattr(result, "text", "") or "").strip()
-
-        if backend == "mlx-whisper":
-            if not _is_available("mlx_whisper"):
-                raise RuntimeError(
-                    "No STT backend available. Install mlx-whisper from Voice → Models."
-                )
-            import mlx_whisper  # type: ignore[import-untyped]
-
-            result = mlx_whisper.transcribe(str(tmp_path), path_or_hf_repo=repo)
-            return (result.get("text") or "").strip()
-
-        if not _is_available("faster_whisper"):
-            raise RuntimeError(
-                "No STT backend available. Install faster-whisper from Voice → Models."
-            )
-        from faster_whisper import WhisperModel  # type: ignore[import-untyped]
-
-        source = str(_hf_snapshot_path(repo) or repo)
-        model = _cached_stt_model(
-            ("faster-whisper", source, WhisperModel),
-            lambda: WhisperModel(source, device="auto", compute_type="auto"),
-        )
-        segments, _ = model.transcribe(str(tmp_path))
-        # Segment texts carry their own leading space (and none for
-        # CJK) — concatenate like Whisper's own ``text`` field does.
-        return "".join(seg.text for seg in segments).strip()
-    finally:
-        try:
-            tmp_path.unlink()
-        except Exception:
-            pass
+        stored = json.loads(_settings_path().read_text(encoding="utf-8"))
+        if isinstance(stored, dict):
+            settings.update({k: v for k, v in stored.items() if k in DEFAULT_SETTINGS})
+    except (OSError, ValueError):
+        pass
+    return settings
 
 
-# Kokoro checkpoint mlx-audio loads for TTS. The upstream README's
-# canonical repo; ~350 MB, snapshot-downloaded to the HF cache on the
-# first synthesize call.
-_TTS_MODEL_REPO = "prince-canuma/Kokoro-82M"
+def save_settings(patch: dict[str, Any]) -> dict[str, Any]:
+    with _SETTINGS_LOCK:
+        settings = load_settings()
+        settings.update({k: v for k, v in patch.items() if k in DEFAULT_SETTINGS and v is not None})
+        path = _settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    get_worker().idle_minutes = float(settings["idleUnloadMinutes"])
+    return settings
 
 
-def synthesize_speech(text: str, voice: str, speed: float) -> bytes:
-    """Run TTS and return WAV bytes.
+# ---------------------------------------------------------------------------
+# Capabilities
+# ---------------------------------------------------------------------------
 
-    Heavy deps are lazy-imported inside this function.
+def get_voice_capabilities() -> dict[str, Any]:
+    from backend_service.voice_client import worker_pid  # noqa: PLC0415
+
+    installed = voice_env.is_installed()
+    tts_data = voice_env.tts_data_installed() if installed else False
+    marker = voice_env.read_marker() or {}
+    lane = voice_env.lane()
+    return {
+        "platform": _platform(),
+        "lane": lane,
+        "installed": installed,
+        "sttAvailable": installed,
+        "ttsAvailable": installed and tts_data,
+        "ttsModelInstalled": tts_data,
+        "vadAvailable": voice_env.vad_installed() if installed else False,
+        "speakersAvailable": voice_env.diarize_installed() if installed else False,
+        "updateAvailable": bool(voice_env.missing_features()),
+        "sttBackend": " + ".join(_lane_backends()) if installed else None,
+        "ttsBackend": voice_env.tts_source()[0] if installed else None,
+        "cuda": bool(marker.get("cuda")),
+        "nvidiaGpu": voice_env.has_nvidia_gpu(),
+        "extras": [
+            {"id": name, "label": label, "installed": name in voice_env.installed_extras()}
+            for name, (lanes, _specs, label) in voice_env.EXTRAS.items()
+            if lane in lanes
+        ],
+        "workerPid": worker_pid(),
+        "install": voice_env.job_status(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Work
+# ---------------------------------------------------------------------------
+
+def transcribe_file(
+    path: Path,
+    model_id: str | None,
+    language: str | None = None,
+    *,
+    task: str = "transcribe",
+    words: bool = False,
+    speakers: bool = False,
+    speaker_count: int = 0,
+) -> dict[str, Any]:
+    """Transcribe a file; ``speakers`` adds a speaker number to each segment.
+
+    ``task`` "translate" gives English text (Whisper models only).
     """
-    plat = _platform()
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_transcript import assign_speakers  # noqa: PLC0415
 
-    if plat == "apple_silicon" and _mlx_audio_tts_ready():
-        _ensure_short_espeak_data_path()
-        from mlx_audio.tts.generate import generate_audio  # type: ignore[import-untyped]
-
-        # Kokoro convention: the voice id's first letter is its language
-        # code (af_/am_ American, bf_/bm_ British, jf_ Japanese, ...).
-        # Without this the pipeline runs English G2P on non-English voices
-        # and produces garbled speech.
-        # ``voice[:1]`` guard: ``"" in "abc..."`` is True, so an empty id
-        # would otherwise reach ``voice[0]`` and raise IndexError.
-        lang_code = voice[0] if voice[:1] and voice[0] in "abefhipjz" else "a"
-
-        with tempfile.TemporaryDirectory(prefix="chaosengine-tts-") as tmpdir:
-            # join_audio=True collapses multi-segment output into a single
-            # ``<prefix>.wav``; the glob fallback covers the per-segment
-            # ``<prefix>_000.wav`` naming in case upstream changes the rule.
-            generate_audio(
-                text=text,
-                model=_TTS_MODEL_REPO,
-                voice=voice,
-                speed=speed,
-                lang_code=lang_code,
-                output_path=tmpdir,
-                file_prefix="tts",
-                audio_format="wav",
-                join_audio=True,
-                verbose=False,
-            )
-            out_path = Path(tmpdir) / "tts.wav"
-            if not out_path.is_file():
-                candidates = sorted(Path(tmpdir).glob("tts*.wav"))
-                if not candidates:
-                    raise RuntimeError(
-                        "mlx-audio completed without writing an output file."
-                    )
-                out_path = candidates[0]
-            return out_path.read_bytes()
-
-    if _is_available("kokoro_onnx"):
-        from backend_service import voice_kokoro_onnx  # noqa: PLC0415
-
-        return voice_kokoro_onnx.synthesize(text, voice, speed)
-
-    raise RuntimeError(
-        "No TTS backend available. Install the voice pack: mlx-audio and "
-        "misaki on Apple Silicon, kokoro-onnx on other platforms."
+    backend, repo = resolve_stt_model(model_id)
+    if task == "translate" and not _can_translate(repo):
+        raise ValueError("This model cannot translate. Choose Whisper Small or Whisper Base.")
+    if speakers and not voice_env.diarize_installed():
+        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
+    snapshot = _hf_snapshot_path(repo)
+    reply = get_worker().request(
+        "transcribe",
+        timeout=1800.0,
+        backend=backend,
+        source=str(snapshot or repo),
+        path=str(path),
+        language=(language or None),
+        task=task,
+        # Speaker labels split segments at word boundaries.
+        words=words or speakers,
     )
+    segments = reply.get("segments", [])
+    seconds = float(reply.get("seconds") or 0.0)
+    if speakers:
+        turns = diarize_file(path, speaker_count)
+        seconds += float(turns.pop("seconds", 0.0))
+        segments = assign_speakers(segments, turns["turns"], reply.get("language") or language)
+        if not words:
+            segments = [{k: v for k, v in s.items() if k != "words"} for s in segments]
+    return {
+        "text": reply.get("text", ""),
+        "language": reply.get("language"),
+        "segments": segments,
+        "durationS": reply.get("durationS"),
+        "model": repo,
+        "task": task,
+        "seconds": round(seconds, 3),
+    }
+
+
+def _can_translate(repo: str) -> bool:
+    return any(
+        entry["translate"] and any(repo == source[0] for source in entry["sources"].values()) for entry in _STT_MODELS
+    )
+
+
+def diarize_file(path: Path, speaker_count: int = 0) -> dict[str, Any]:
+    """Speaker turns for a file (``{"turns": [...], "seconds": ...}``)."""
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    models = voice_env.diarize_model_paths()
+    if models is None:
+        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
+    reply = get_worker().request(
+        "diarize",
+        timeout=1800.0,
+        path=str(path),
+        segmentation=str(models["segmentation"]),
+        embedding=str(models["embedding"]),
+        speakers=max(0, int(speaker_count)),
+    )
+    return {"turns": reply.get("turns", []), "seconds": reply.get("seconds", 0.0)}
+
+
+def encode_mp3(source: Path, target: Path) -> None:
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    get_worker().request("encode", timeout=600.0, path=str(source), out=str(target), format="mp3")
+
+
+def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:
+    """WAV bytes and audio length for one piece of text."""
+    import base64
+
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    known = {v["id"]: v for v in list_tts_voices()}
+    if voice not in known:
+        raise ValueError(f"Unknown voice '{voice}'.")
+    if not known[voice]["available"]:
+        raise ValueError(f"{known[voice]['languageLabel']} voices need an extra install on this machine.")
+    if not voice_env.tts_data_installed():
+        raise RuntimeError("The Kokoro voice model is not downloaded. Reinstall the voice pack from Voice > Models.")
+    # mlx-audio works out the model type from the repo name, so it gets the
+    # repo id (resolved from the local cache), not the snapshot folder.
+    engine, source = voice_env.tts_source()
+    reply = get_worker().request("synthesize", timeout=300.0, engine=engine, source=source, text=text, voice=voice, speed=speed)
+    return base64.b64decode(reply["wavB64"]), float(reply.get("durationS") or 0.0)
+
+
+def detect_speech(session: str, pcm_b64: str, reset: bool = False) -> list[float]:
+    """Silero VAD speech probabilities for 16 kHz PCM16 audio (base64)."""
+    from backend_service.voice_client import get_vad_worker  # noqa: PLC0415
+
+    path = voice_env.vad_model_path()
+    if path is None or not voice_env.vad_installed():
+        raise RuntimeError("Conversation mode needs a voice pack update. Update it from Voice > Models.")
+    reply = get_vad_worker().request("vad", timeout=30.0, path=str(path), session=session, pcm=pcm_b64, reset=reset)
+    return [float(p) for p in reply.get("probs", [])]

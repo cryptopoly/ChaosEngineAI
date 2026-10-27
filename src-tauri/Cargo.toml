@@ -46,6 +46,11 @@ tauri-plugin-process = "2"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# Linux: WebKitGTK ships with media capture off; the voice microphone needs it
+# switched on and its permission request answered (see allow_microphone).
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2.0", features = ["v2_8"] }
+
 # Windows: we need the Job Objects API + Threading handles to assign
 # spawned child processes to a kill-on-close job. That's the only way
 # to guarantee llama-server grandchildren die when Tauri does, even

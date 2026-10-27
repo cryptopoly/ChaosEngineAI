@@ -47,9 +47,9 @@ The first release since v0.9.4. Versions 0.9.5 to 0.9.7 were internal builds, so
 - Catalog **LoRA variants** (Hyper-SD, Turbo-Alpha, CausVid) now download their LoRA on first use.
 - Image and video Discover list every variant once. Variants that share a download are marked.
 
-### Voice I/O
+### Voice I/O (in progress)
 
-A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Models and Gallery tabs. Whisper and Parakeet (Apple Silicon) or faster-whisper (Windows and Linux) for transcription, Kokoro for speech.
+Speech-to-text and text-to-speech are not in this release. The backend is in place (Whisper and Parakeet on Apple Silicon, faster-whisper on Windows and Linux, Kokoro for speech), but the Voice screens stay hidden until they pass testing in the packaged app. They are planned for a following release, with voice input and read-aloud built into Chat.
 
 ### Chat and Settings
 
@@ -64,7 +64,6 @@ A Voice group in the sidebar: speech-to-text and text-to-speech with Studio, Mod
 - **GGUF chat**: models that reason even with reasoning off (Muse Glimmer) showed an empty reply. Launching a catalog model from Discover skipped its chosen quant and its drafter file.
 - **Apple Silicon chat**: LFM2.5's reasoning leaked into the answer. A reply cut short (for example by the repeat guard) made the next action fail with "invalid result payload".
 - **Downloads that would not load**: a cancelled download of another quant in the same repo, a library scan taken mid-download, or an organisation name ending in "models" each blocked a finished model.
-- **Text to speech** said it was ready when only part of the voice pack was installed, then produced no audio. On an install with a very long folder path, one speech request could shut down the backend.
 - **Linux AppImage** stuck on "Still loading". Fixed; the log path now appears on the loading screen. Not yet tested on Fedora.
 - **Local GGUF folders** from ModelScope and symlinked model folders are now listed.
 - **GGUF downloads** fetch only the quant a catalog row names (one 16 GB row used to pull 68 GB).
@@ -109,5 +108,5 @@ The in-app updater reads `latest.json`; the `.sig` files and `ChaosEngineAI_aarc
 
 - If your install keeps offering v0.9.4 although you are on it: v0.9.4 was built as 0.9.3 by mistake. Installing this release ends it.
 - No breaking changes: settings, sessions and APIs carry forward.
-- On first start the app moves older copies of mlx and mlx-lm that earlier Setup installs left in its extras folder to `extras/<python>/stale-core/`, so they cannot shadow the newer versions it ships. If the video runtime, voice pack or DFlash then misbehave, reinstall them from Setup.
+- On first start the app moves older copies of mlx and mlx-lm that earlier Setup installs left in its extras folder to `extras/<python>/stale-core/`, so they cannot shadow the newer versions it ships. If the video runtime or DFlash then misbehave, reinstall them from Setup.
 - TensorFold, MTPLX and mflux each install into their own environment under `~/.chaosengine/` on first use. TensorFold and mflux need Python 3.11 to 3.13 on the Mac.

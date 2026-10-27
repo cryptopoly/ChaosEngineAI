@@ -94,4 +94,22 @@ describe("loadedModelMatchesRuntimeProfile()", () => {
     const profile = resolveChatRuntimeProfile(null, updatedLaunch);
     expect(loadedModelMatchesRuntimeProfile(makeLoadedModel(), profile)).toBe(false);
   });
+
+  it("matches a model whose context was clamped below the launch setting", () => {
+    const profile = resolveChatRuntimeProfile(null, { ...launchSettings, contextTokens: 262144 });
+    const clamped = makeLoadedModel({ contextTokens: 131072, requestedContextTokens: 262144 });
+    expect(loadedModelMatchesRuntimeProfile(clamped, profile)).toBe(true);
+    // Without the requested value (older backends) it still counts as a change.
+    expect(loadedModelMatchesRuntimeProfile(makeLoadedModel({ contextTokens: 131072 }), profile)).toBe(false);
+  });
+
+  it("treats launch settings without the speculative fields as off", () => {
+    // The backend's saved launch preferences carry no speculativeDecoding /
+    // treeBudget; that must not count as a change on every message.
+    const saved = { ...launchSettings } as Partial<LaunchPreferences>;
+    delete saved.speculativeDecoding;
+    delete saved.treeBudget;
+    const profile = resolveChatRuntimeProfile(null, saved as LaunchPreferences);
+    expect(loadedModelMatchesRuntimeProfile(makeLoadedModel(), profile)).toBe(true);
+  });
 });

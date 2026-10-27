@@ -113,6 +113,7 @@ def load_model(
             detected_max = library_entry.get("maxContext")
         if detected_max is None and catalog_entry is not None:
             detected_max = _parse_context_label(catalog_entry.get("contextWindow"))
+        requested_context_tokens = request.contextTokens
         if detected_max is not None and request.contextTokens > detected_max:
             state.add_log(
                 "runtime",
@@ -195,6 +196,8 @@ def load_model(
             and state.runtime.loaded_model.engine == "mlx"
         )
         if same_loaded_model and not profile_changes:
+            if state.runtime.loaded_model is not None:
+                state.runtime.loaded_model.requestedContextTokens = requested_context_tokens
             if effective_canonical_repo is not None and state.runtime.loaded_model is not None:
                 state.runtime.loaded_model.canonicalRepo = effective_canonical_repo
             return state.runtime.status(active_requests=state.active_requests, requests_served=state.requests_served)
@@ -290,6 +293,7 @@ def load_model(
 
     with state._lock:
         state._loading_state = None
+        loaded.requestedContextTokens = requested_context_tokens
         loaded_cache_label = state._cache_label(
             cache_strategy=str(loaded.cacheStrategy),
             bits=int(loaded.cacheBits),

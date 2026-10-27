@@ -211,6 +211,9 @@ class LoadedModelInfo:
     # flag accordingly. The catalog `tags` keep "vision" so the UI can
     # still surface "this model supports vision once mmproj loads".
     visionEnabled: bool = False
+    # The context the load asked for, before it was clamped to the model's
+    # maximum; the app compares its launch settings against this.
+    requestedContextTokens: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Phase 2.11: include resolved capabilities so the frontend can
@@ -240,6 +243,7 @@ class LoadedModelInfo:
             "fusedAttention": self.fusedAttention,
             "fitModelInMemory": self.fitModelInMemory,
             "contextTokens": self.contextTokens,
+            "requestedContextTokens": self.requestedContextTokens,
             "loadedAt": self.loadedAt,
             "path": self.path,
             "runtimeTarget": self.runtimeTarget,

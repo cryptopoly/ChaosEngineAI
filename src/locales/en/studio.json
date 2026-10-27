@@ -445,7 +445,7 @@
       "reinstall": "Repair / reinstall",
       "done": "Voice pack installed.",
       "log": "Install log",
-      "updateForCalls": "Update the voice pack to use voice calls in Chat (adds the 2 MB turn detector; about a minute)."
+      "updateFeatures": "Update the voice pack for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two)."
     },
     "models": {
       "recommended": "Recommended",
@@ -492,7 +492,19 @@
       "choose": "Choose a file",
       "took": "transcribed in {s} s",
       "placeholder": "The transcript appears here. You can edit it.",
-      "segments": "Timestamps ({n})"
+      "segments": "Timestamps ({n})",
+      "tooBig": "{name} is larger than 500 MB.",
+      "recordingName": "Recording",
+      "subtitleQueue": "Record, or drop audio and video files",
+      "translateNeedsWhisper": "Translation to English needs Whisper Small or Whisper Base.",
+      "translate": "Translate to English",
+      "speakers": "Label speakers",
+      "speakerCount": "Number of speakers",
+      "speakersAuto": "Find how many",
+      "speakersN": "{n} speakers",
+      "speakersNeedUpdate": "Speaker labels need a voice pack update.",
+      "hintQueue": "Record, or drop files here (several at once is fine).",
+      "chooseFiles": "Choose files"
     },
     "stopRecording": "Stop recording",
     "record": "Record",
@@ -510,13 +522,79 @@
       "generating": "Generating…",
       "generate": "Generate audio",
       "readNow": "Read aloud now",
-      "download": "Download WAV"
+      "download": "Download WAV",
+      "subtitleLong": "Turn text into speech. Blank lines start a new paragraph; [pause] adds a pause.",
+      "preview": "Preview this voice",
+      "listen": "Listen",
+      "progress": "Part {done} of {total}",
+      "generateParts": "Generate audio ({n} parts)",
+      "encoding": "Encoding…"
     },
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
       "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
       "openModels": "Open Voice Models"
+    },
+    "savedToLibrary": "Saved to Library",
+    "saveToLibrary": "Save to Library",
+    "queue": {
+      "queued": "Waiting",
+      "running": "Transcribing",
+      "doneIn": "Done in {s} s",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "title": "Queue",
+      "open": "Open",
+      "remove": "Remove"
+    },
+    "editor": {
+      "heading": "Transcript",
+      "translated": "translated to English",
+      "subtitle": "Click a time or a word to play from there; double-click a line to edit it.",
+      "none": "Finished transcripts open here and are kept in the Library.",
+      "speaker": "Speaker {n}",
+      "title": "Title",
+      "saving": "Saving…",
+      "saveFailed": "Not saved",
+      "savedToLibrary": "Saved to Library",
+      "renameSpeaker": "Name for speaker {n}",
+      "empty": "No speech was found.",
+      "editHint": "Double-click to edit",
+      "edit": "Edit line",
+      "export": "Export"
+    },
+    "handoff": {
+      "summary": "Summarise in chat",
+      "actions": "Action items",
+      "notes": "Meeting notes",
+      "summaryPrompt": "Summarise this transcript in a few short paragraphs.",
+      "actionsPrompt": "List the action items in this transcript: who does what, and by when if it is said.",
+      "notesPrompt": "Write meeting notes for this transcript: attendees, topics discussed, decisions, and action items."
+    },
+    "library": {
+      "speakers": "{n} speakers",
+      "select": "Select {title}",
+      "transcript": "Transcript",
+      "speech": "Speech",
+      "play": "Play",
+      "working": "Working…",
+      "originalAudio": "Audio ({ext})",
+      "delete": "Delete",
+      "confirmDelete": "Delete this item and its audio? This cannot be undone.",
+      "confirmDeleteMany": "Delete {n} items and their audio? This cannot be undone.",
+      "all": "All",
+      "transcripts": "Transcripts",
+      "speechFilter": "Speech",
+      "title": "Voice Library",
+      "subtitle": "Transcripts and speech you have made, kept on this computer",
+      "search": "Search titles and text",
+      "filter": "Show",
+      "deleteSelected": "Delete selected ({n})",
+      "loading": "Loading…",
+      "noMatch": "Nothing matches.",
+      "empty": "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save."
     }
   }
 }

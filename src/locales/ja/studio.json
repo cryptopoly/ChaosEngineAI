@@ -445,7 +445,7 @@
       "reinstall": null,
       "done": null,
       "log": null,
-      "updateForCalls": "チャットで音声通話を使うには音声パックを更新してください（2 MB の発話区切り検出を追加、約 1 分）。"
+      "updateFeatures": "チャットの音声通話と文字起こしの話者区別のために音声パックを更新してください（約 40 MB のモデル、1〜2 分）。"
     },
     "models": {
       "recommended": null,
@@ -492,7 +492,19 @@
       "choose": null,
       "took": null,
       "placeholder": null,
-      "segments": null
+      "segments": null,
+      "tooBig": "{name} は 500 MB を超えています。",
+      "recordingName": "録音",
+      "subtitleQueue": "録音するか、音声・動画ファイルをドロップ",
+      "translateNeedsWhisper": "英語への翻訳には Whisper Small か Whisper Base が必要です。",
+      "translate": "英語に翻訳",
+      "speakers": "話者を区別",
+      "speakerCount": "話者の人数",
+      "speakersAuto": "自動で判定",
+      "speakersN": "{n} 人",
+      "speakersNeedUpdate": "話者の区別には音声パックの更新が必要です。",
+      "hintQueue": "録音するか、ここにファイルをドロップ（複数同時も可）。",
+      "chooseFiles": "ファイルを選択"
     },
     "stopRecording": null,
     "record": null,
@@ -510,13 +522,79 @@
       "generating": null,
       "generate": null,
       "readNow": null,
-      "download": null
+      "download": null,
+      "subtitleLong": "テキストを音声にします。空行で段落が変わり、[pause] で間を入れます。",
+      "preview": "この声を試聴",
+      "listen": "試聴",
+      "progress": "{total} 中 {done} 番目",
+      "generateParts": "音声を生成（{n} パート）",
+      "encoding": "エンコード中…"
     },
     "stop": null,
     "studio": {
       "title": null,
       "needsPack": null,
       "openModels": null
+    },
+    "savedToLibrary": "ライブラリに保存しました",
+    "saveToLibrary": "ライブラリに保存",
+    "queue": {
+      "queued": "待機中",
+      "running": "文字起こし中",
+      "doneIn": "{s} 秒で完了",
+      "done": "完了",
+      "cancelled": "キャンセル済み",
+      "failed": "失敗",
+      "title": "キュー",
+      "open": "開く",
+      "remove": "削除"
+    },
+    "editor": {
+      "heading": "文字起こし",
+      "translated": "英語に翻訳済み",
+      "subtitle": "時刻や単語をクリックするとそこから再生、行をダブルクリックで編集できます。",
+      "none": "完了した文字起こしはここで開き、ライブラリに保存されます。",
+      "speaker": "話者 {n}",
+      "title": "タイトル",
+      "saving": "保存中…",
+      "saveFailed": "未保存",
+      "savedToLibrary": "ライブラリに保存しました",
+      "renameSpeaker": "話者 {n} の名前",
+      "empty": "音声が見つかりませんでした。",
+      "editHint": "ダブルクリックで編集",
+      "edit": "行を編集",
+      "export": "書き出し"
+    },
+    "handoff": {
+      "summary": "チャットで要約",
+      "actions": "アクション項目",
+      "notes": "議事録",
+      "summaryPrompt": "この文字起こしを短い段落いくつかで要約してください。",
+      "actionsPrompt": "この文字起こしからアクション項目を挙げてください。誰が何をするか、期限が言及されていればそれも。",
+      "notesPrompt": "この文字起こしの議事録を作成してください：参加者、話し合った議題、決定事項、アクション項目。"
+    },
+    "library": {
+      "speakers": "話者 {n} 人",
+      "select": "{title} を選択",
+      "transcript": "文字起こし",
+      "speech": "音声",
+      "play": "再生",
+      "working": "処理中…",
+      "originalAudio": "音声（{ext}）",
+      "delete": "削除",
+      "confirmDelete": "この項目と音声を削除しますか？元に戻せません。",
+      "confirmDeleteMany": "{n} 件の項目と音声を削除しますか？元に戻せません。",
+      "all": "すべて",
+      "transcripts": "文字起こし",
+      "speechFilter": "音声",
+      "title": "ボイスライブラリ",
+      "subtitle": "このコンピューターに保存された文字起こしと音声",
+      "search": "タイトルと本文を検索",
+      "filter": "表示",
+      "deleteSelected": "選択項目を削除（{n}）",
+      "loading": "読み込み中…",
+      "noMatch": "一致する項目はありません。",
+      "empty": "まだ何もありません。Voice Studio で作った文字起こしと、保存した音声がここに保存されます。"
     }
   }
 }

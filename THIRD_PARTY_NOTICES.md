@@ -343,6 +343,17 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
 - **ONNX Runtime** — <https://github.com/microsoft/onnxruntime> — MIT. Runs the
   VAD model in the voice environment.
 
+### Speaker labels (diarization)
+
+- **sherpa-onnx** — <https://github.com/k2-fsa/sherpa-onnx> — Apache-2.0.
+  Installed in the voice environment; runs the two models below on the CPU.
+- **pyannote segmentation 3.0** — <https://huggingface.co/pyannote/segmentation-3.0>
+  — MIT. ONNX export from `csukuangfj/sherpa-onnx-pyannote-segmentation-3-0`,
+  downloaded at a pinned revision when the voice pack is installed.
+- **3D-Speaker CAM++ (VoxCeleb, English)** — <https://github.com/modelscope/3D-Speaker>
+  — Apache-2.0. ONNX file from `csukuangfj/speaker-embedding-models`,
+  downloaded at a pinned revision.
+
 ### PyAV (audio decoding)
 
 - **Upstream:** <https://github.com/PyAV-Org/PyAV>

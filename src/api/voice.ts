@@ -4,8 +4,17 @@
  * Re-exported from ``./index`` alongside the other domain modules.
  */
 
-import { apiFetch, deleteJson, fetchJson, postJson, readErrorDetail } from "./index";
-import type { TranscriptSegment, VoiceInstallJob, VoiceRuntime, VoiceSettings } from "../types";
+import { apiFetch, fetchJson, postJson, readErrorDetail } from "./index";
+import type {
+  VoiceLibraryItem,
+  VoiceLibraryKind,
+  VoiceLibraryPatch,
+  VoiceLibrarySummary,
+  TranscriptSegment,
+  VoiceInstallJob,
+  VoiceRuntime,
+  VoiceSettings,
+} from "../types";
 
 export async function getVoiceRuntime(): Promise<VoiceRuntime> {
   return await fetchJson<VoiceRuntime>("/api/voice/runtime", 20000);
@@ -17,7 +26,24 @@ export interface TranscribeResult {
   segments: TranscriptSegment[];
   durationS: number | null;
   model: string;
+  task?: "transcribe" | "translate";
   seconds: number | null;
+  /** Set when the request asked to save to the Library. */
+  libraryId?: string;
+}
+
+export interface TranscribeOptions {
+  model?: string;
+  language?: string;
+  signal?: AbortSignal;
+  /** "translate" gives English text (Whisper models only). */
+  task?: "transcribe" | "translate";
+  words?: boolean;
+  speakers?: boolean;
+  /** 0 or unset: work out how many people speak. */
+  speakerCount?: number;
+  /** Keep the file and transcript in the Library. */
+  save?: boolean;
 }
 
 export async function transcribeAudio(formData: FormData, signal?: AbortSignal): Promise<TranscribeResult> {
@@ -36,12 +62,17 @@ export async function transcribeAudio(formData: FormData, signal?: AbortSignal):
 export async function transcribeBlob(
   blob: Blob,
   filename: string,
-  options: { model?: string; language?: string; signal?: AbortSignal } = {},
+  options: TranscribeOptions = {},
 ): Promise<TranscribeResult> {
   const form = new FormData();
   form.append("audio", blob, filename);
   if (options.model) form.append("model", options.model);
   if (options.language) form.append("language", options.language);
+  if (options.task) form.append("task", options.task);
+  if (options.words) form.append("words", "true");
+  if (options.speakers) form.append("speakers", "true");
+  if (options.speakerCount) form.append("speakerCount", String(options.speakerCount));
+  if (options.save) form.append("save", "true");
   return await transcribeAudio(form, options.signal);
 }
 
@@ -138,43 +169,63 @@ export async function stopVoiceWorker(): Promise<void> {
   await postJson<{ stopped: boolean }>("/api/voice/worker/stop", {});
 }
 
-export interface VoiceGalleryItem {
-  id: string;
-  kind: "transcript" | "audio";
-  createdAt: number;
-  text: string;
-  voice?: string;
-}
-
-export async function getVoiceGallery(): Promise<VoiceGalleryItem[]> {
-  const result = await fetchJson<{ items: VoiceGalleryItem[] }>("/api/voice/gallery", 20000);
+export async function getLibrary(query = "", kind: "" | VoiceLibraryKind = ""): Promise<VoiceLibrarySummary[]> {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (kind) params.set("kind", kind);
+  const suffix = params.toString() ? `?${params}` : "";
+  const result = await fetchJson<{ items: VoiceLibrarySummary[] }>(`/api/voice/library${suffix}`, 20000);
   return result.items;
 }
 
-export async function saveGalleryTranscript(text: string): Promise<VoiceGalleryItem> {
-  return await postJson<VoiceGalleryItem>("/api/voice/gallery/transcript", { text });
+export async function getLibraryItem(id: string): Promise<VoiceLibraryItem> {
+  return await fetchJson<VoiceLibraryItem>(`/api/voice/library/${id}`, 20000);
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  let binary = "";
-  for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
-  return btoa(binary);
+export async function updateLibraryItem(id: string, patch: VoiceLibraryPatch): Promise<VoiceLibraryItem> {
+  return await postJson<VoiceLibraryItem>(`/api/voice/library/${id}`, patch);
 }
 
-export async function saveGalleryAudio(text: string, voice: string, audio: Blob): Promise<VoiceGalleryItem> {
-  const audioBase64 = await blobToBase64(audio);
-  return await postJson<VoiceGalleryItem>("/api/voice/gallery/audio", { text, voice, audioBase64 });
+export async function deleteLibraryItems(ids: string[]): Promise<string[]> {
+  const result = await postJson<{ deleted: string[] }>("/api/voice/library/delete", { ids });
+  return result.deleted;
 }
 
-export async function deleteGalleryItem(id: string): Promise<{ deleted: boolean }> {
-  return await deleteJson<{ deleted: boolean }>(`/api/voice/gallery/${id}`);
-}
-
-export async function getGalleryAudio(id: string): Promise<Blob> {
-  const response = await apiFetch(`/api/voice/gallery/${id}/audio`);
+/** Save generated speech (a WAV) to the Library. */
+export async function saveSpeech(
+  audio: Blob,
+  fields: { text: string; voice: string; speed: number; title?: string },
+): Promise<VoiceLibraryItem> {
+  const form = new FormData();
+  form.append("audio", audio, "speech.wav");
+  form.append("text", fields.text);
+  form.append("voice", fields.voice);
+  form.append("speed", String(fields.speed));
+  if (fields.title) form.append("title", fields.title);
+  const response = await apiFetch("/api/voice/library/speech", { method: "POST", body: form });
   if (!response.ok) {
-    throw new Error(`Failed to load audio (status ${response.status})`);
+    throw new Error(await readErrorDetail(response, `Saving failed with status ${response.status}`));
+  }
+  return (await response.json()) as VoiceLibraryItem;
+}
+
+/** An item's audio; ``mp3`` converts it first. */
+export async function getLibraryAudio(id: string, format: "" | "mp3" = ""): Promise<Blob> {
+  const response = await apiFetch(`/api/voice/library/${id}/audio${format ? `?format=${format}` : ""}`);
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `Loading audio failed with status ${response.status}`));
+  }
+  return await response.blob();
+}
+
+/** Convert audio (Speak studio output) to MP3. */
+export async function encodeMp3(audio: Blob): Promise<Blob> {
+  const form = new FormData();
+  form.append("audio", audio, "speech.wav");
+  form.append("format", "mp3");
+  const response = await apiFetch("/api/voice/encode", { method: "POST", body: form });
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `MP3 export failed with status ${response.status}`));
   }
   return await response.blob();
 }

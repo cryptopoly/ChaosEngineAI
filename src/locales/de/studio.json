@@ -445,7 +445,7 @@
       "reinstall": null,
       "done": null,
       "log": null,
-      "updateForCalls": "Aktualisiere das Sprachpaket, um Sprachanrufe im Chat zu nutzen (fügt den 2 MB großen Sprechpausen-Erkenner hinzu; etwa eine Minute)."
+      "updateFeatures": "Aktualisiere das Sprachpaket für Sprachanrufe im Chat und Sprecherkennzeichnung in Transkripten (etwa 40 MB Modelle; ein bis zwei Minuten)."
     },
     "models": {
       "recommended": null,
@@ -492,7 +492,19 @@
       "choose": null,
       "took": null,
       "placeholder": null,
-      "segments": null
+      "segments": null,
+      "tooBig": "{name} ist größer als 500 MB.",
+      "recordingName": "Aufnahme",
+      "subtitleQueue": "Aufnehmen oder Audio- und Videodateien ablegen",
+      "translateNeedsWhisper": "Für die Übersetzung ins Englische wird Whisper Small oder Whisper Base benötigt.",
+      "translate": "Ins Englische übersetzen",
+      "speakers": "Sprecher kennzeichnen",
+      "speakerCount": "Anzahl der Sprecher",
+      "speakersAuto": "Automatisch erkennen",
+      "speakersN": "{n} Sprecher",
+      "speakersNeedUpdate": "Für Sprecherkennzeichnung muss das Sprachpaket aktualisiert werden.",
+      "hintQueue": "Aufnehmen oder Dateien hier ablegen (auch mehrere auf einmal).",
+      "chooseFiles": "Dateien wählen"
     },
     "stopRecording": null,
     "record": null,
@@ -510,13 +522,79 @@
       "generating": null,
       "generate": null,
       "readNow": null,
-      "download": null
+      "download": null,
+      "subtitleLong": "Text in Sprache umwandeln. Leerzeilen beginnen einen neuen Absatz; [pause] fügt eine Pause ein.",
+      "preview": "Diese Stimme anhören",
+      "listen": "Anhören",
+      "progress": "Teil {done} von {total}",
+      "generateParts": "Audio erzeugen ({n} Teile)",
+      "encoding": "Wird kodiert…"
     },
     "stop": null,
     "studio": {
       "title": null,
       "needsPack": null,
       "openModels": null
+    },
+    "savedToLibrary": "In der Bibliothek gespeichert",
+    "saveToLibrary": "In der Bibliothek speichern",
+    "queue": {
+      "queued": "Wartet",
+      "running": "Wird transkribiert",
+      "doneIn": "Fertig in {s} s",
+      "done": "Fertig",
+      "cancelled": "Abgebrochen",
+      "failed": "Fehlgeschlagen",
+      "title": "Warteschlange",
+      "open": "Öffnen",
+      "remove": "Entfernen"
+    },
+    "editor": {
+      "heading": "Transkript",
+      "translated": "ins Englische übersetzt",
+      "subtitle": "Klicke auf eine Zeit oder ein Wort, um ab dort abzuspielen; Doppelklick auf eine Zeile zum Bearbeiten.",
+      "none": "Fertige Transkripte öffnen sich hier und werden in der Bibliothek aufbewahrt.",
+      "speaker": "Sprecher {n}",
+      "title": "Titel",
+      "saving": "Wird gespeichert…",
+      "saveFailed": "Nicht gespeichert",
+      "savedToLibrary": "In der Bibliothek gespeichert",
+      "renameSpeaker": "Name für Sprecher {n}",
+      "empty": "Keine Sprache gefunden.",
+      "editHint": "Doppelklick zum Bearbeiten",
+      "edit": "Zeile bearbeiten",
+      "export": "Exportieren"
+    },
+    "handoff": {
+      "summary": "Im Chat zusammenfassen",
+      "actions": "Aufgaben",
+      "notes": "Besprechungsnotizen",
+      "summaryPrompt": "Fasse dieses Transkript in wenigen kurzen Absätzen zusammen.",
+      "actionsPrompt": "Liste die Aufgaben aus diesem Transkript auf: wer was macht und bis wann, falls genannt.",
+      "notesPrompt": "Schreibe Besprechungsnotizen zu diesem Transkript: Teilnehmende, besprochene Themen, Entscheidungen und Aufgaben."
+    },
+    "library": {
+      "speakers": "{n} Sprecher",
+      "select": "{title} auswählen",
+      "transcript": "Transkript",
+      "speech": "Sprache",
+      "play": "Abspielen",
+      "working": "Wird bearbeitet…",
+      "originalAudio": "Audio ({ext})",
+      "delete": "Löschen",
+      "confirmDelete": "Diesen Eintrag und sein Audio löschen? Das kann nicht rückgängig gemacht werden.",
+      "confirmDeleteMany": "{n} Einträge und ihr Audio löschen? Das kann nicht rückgängig gemacht werden.",
+      "all": "Alle",
+      "transcripts": "Transkripte",
+      "speechFilter": "Sprache",
+      "title": "Sprachbibliothek",
+      "subtitle": "Deine Transkripte und Sprachaufnahmen, auf diesem Computer gespeichert",
+      "search": "Titel und Text durchsuchen",
+      "filter": "Anzeigen",
+      "deleteSelected": "Ausgewählte löschen ({n})",
+      "loading": "Wird geladen…",
+      "noMatch": "Keine Treffer.",
+      "empty": "Noch nichts hier. In Voice Studio erstellte Transkripte landen hier, ebenso gespeicherte Sprache."
     }
   }
 }

@@ -1,11 +1,15 @@
 # Voice I/O plan
 
-Status, 2026-10-27: P0, P1 and P2 are built on `feat/voice-io` and run on an M4 Max; Windows and Linux are not run yet. P3 and P4 are not started. Progress and open items: FU-117 in `CLAUDE.md`.
+Status, 2026-10-27: P0, P1, P2 and most of P3 are built on `feat/voice-io` and run on an M4 Max; Windows and Linux are not run yet. P3 dialogue (7) and voice cloning (8) and all of P4 are not started. Progress and open items: FU-117 in `CLAUDE.md`.
 
 Differences from this plan in what was built:
 - P2 turn detection runs Silero VAD over HTTP (`POST /api/voice/vad`, a second small worker), not a WebSocket: the backend has no WebSocket package on Windows / Linux.
 - P2 has no live captions while the user is still talking; their words appear once the turn is transcribed (about 0.1 s after it ends).
 - P1 voice messages are not tagged `inputMode: "voice"` yet.
+- P3 speaker labels use sherpa-onnx (pyannote segmentation 3.0 + 3D-Speaker CAM++, ONNX, ~37 MB) on every platform instead of Sortformer: one code path, no PyTorch, and no four-speaker limit.
+- P3 translation works only with Whisper Small and Base: Whisper Large v3 Turbo was not trained to translate and answers in the spoken language.
+- P3 "hand off to chat" puts a prompt and the transcript into the chat composer, not an attached document, so the user can edit before sending.
+- P3 library items are one JSON file each plus the audio (`library/<id>.json`), not a single `index.json`.
 
 ## 1. Goal
 

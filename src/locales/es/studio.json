@@ -445,7 +445,7 @@
       "reinstall": null,
       "done": null,
       "log": null,
-      "updateForCalls": "Actualiza el paquete de voz para usar llamadas de voz en el chat (añade el detector de turnos de 2 MB; aproximadamente un minuto)."
+      "updateFeatures": "Actualiza el paquete de voz para las llamadas de voz en el chat y la identificación de hablantes (unos 40 MB de modelos; uno o dos minutos)."
     },
     "models": {
       "recommended": null,
@@ -492,7 +492,19 @@
       "choose": null,
       "took": null,
       "placeholder": null,
-      "segments": null
+      "segments": null,
+      "tooBig": "{name} supera los 500 MB.",
+      "recordingName": "Grabación",
+      "subtitleQueue": "Graba, o suelta archivos de audio y vídeo",
+      "translateNeedsWhisper": "Traducir al inglés requiere Whisper Small o Whisper Base.",
+      "translate": "Traducir al inglés",
+      "speakers": "Identificar hablantes",
+      "speakerCount": "Número de hablantes",
+      "speakersAuto": "Detectar automáticamente",
+      "speakersN": "{n} hablantes",
+      "speakersNeedUpdate": "La identificación de hablantes requiere actualizar el paquete de voz.",
+      "hintQueue": "Graba, o suelta archivos aquí (puedes soltar varios a la vez).",
+      "chooseFiles": "Elegir archivos"
     },
     "stopRecording": null,
     "record": null,
@@ -510,13 +522,79 @@
       "generating": null,
       "generate": null,
       "readNow": null,
-      "download": null
+      "download": null,
+      "subtitleLong": "Convierte texto en voz. Una línea en blanco empieza un párrafo nuevo; [pause] añade una pausa.",
+      "preview": "Escuchar esta voz",
+      "listen": "Escuchar",
+      "progress": "Parte {done} de {total}",
+      "generateParts": "Generar audio ({n} partes)",
+      "encoding": "Codificando…"
     },
     "stop": null,
     "studio": {
       "title": null,
       "needsPack": null,
       "openModels": null
+    },
+    "savedToLibrary": "Guardado en la biblioteca",
+    "saveToLibrary": "Guardar en la biblioteca",
+    "queue": {
+      "queued": "En espera",
+      "running": "Transcribiendo",
+      "doneIn": "Listo en {s} s",
+      "done": "Listo",
+      "cancelled": "Cancelado",
+      "failed": "Error",
+      "title": "Cola",
+      "open": "Abrir",
+      "remove": "Quitar"
+    },
+    "editor": {
+      "heading": "Transcripción",
+      "translated": "traducido al inglés",
+      "subtitle": "Haz clic en una marca de tiempo o una palabra para reproducir desde ahí; doble clic en una línea para editarla.",
+      "none": "Las transcripciones terminadas se abren aquí y se guardan en la biblioteca.",
+      "speaker": "Hablante {n}",
+      "title": "Título",
+      "saving": "Guardando…",
+      "saveFailed": "Sin guardar",
+      "savedToLibrary": "Guardado en la biblioteca",
+      "renameSpeaker": "Nombre del hablante {n}",
+      "empty": "No se encontró voz.",
+      "editHint": "Doble clic para editar",
+      "edit": "Editar línea",
+      "export": "Exportar"
+    },
+    "handoff": {
+      "summary": "Resumir en el chat",
+      "actions": "Tareas",
+      "notes": "Notas de la reunión",
+      "summaryPrompt": "Resume esta transcripción en unos pocos párrafos breves.",
+      "actionsPrompt": "Enumera las tareas de esta transcripción: quién hace qué y para cuándo, si se dice.",
+      "notesPrompt": "Redacta notas de reunión para esta transcripción: asistentes, temas tratados, decisiones y tareas."
+    },
+    "library": {
+      "speakers": "{n} hablantes",
+      "select": "Seleccionar {title}",
+      "transcript": "Transcripción",
+      "speech": "Voz",
+      "play": "Reproducir",
+      "working": "Procesando…",
+      "originalAudio": "Audio ({ext})",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar este elemento y su audio? No se puede deshacer.",
+      "confirmDeleteMany": "¿Eliminar {n} elementos y su audio? No se puede deshacer.",
+      "all": "Todo",
+      "transcripts": "Transcripciones",
+      "speechFilter": "Voz",
+      "title": "Biblioteca de voz",
+      "subtitle": "Tus transcripciones y voces generadas, guardadas en este equipo",
+      "search": "Buscar en títulos y texto",
+      "filter": "Mostrar",
+      "deleteSelected": "Eliminar seleccionados ({n})",
+      "loading": "Cargando…",
+      "noMatch": "No hay coincidencias.",
+      "empty": "Aún no hay nada. Aquí se guardan las transcripciones hechas en Voice Studio y la voz que guardes."
     }
   }
 }

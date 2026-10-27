@@ -165,21 +165,48 @@ def _load_stt(backend: str, source: str) -> Any:
     return model
 
 
+def _word(start: float, end: float, text: str) -> dict[str, Any]:
+    # float(): faster-whisper and mlx-whisper give numpy floats, which json cannot write.
+    return {"start": round(float(start), 2), "end": round(float(end), 2), "text": text.strip()}
+
+
+def _parakeet_words(tokens: list[Any]) -> list[dict[str, Any]]:
+    """Join subword tokens into words: a token that starts with a space starts a word."""
+    words: list[dict[str, Any]] = []
+    for token in tokens:
+        if not words or token.text.startswith(" "):
+            words.append(_word(token.start, token.end, token.text))
+        else:
+            words[-1]["text"] += token.text
+            words[-1]["end"] = round(float(token.end), 2)
+    return [w for w in words if w["text"]]
+
+
 def transcribe(request: dict[str, Any]) -> dict[str, Any]:
+    """Text, segments and (when ``words``) word timings.
+
+    ``task`` "translate" turns the speech into English (Whisper only).
+    """
     backend = str(request["backend"])
     source = str(request["source"])
     path = str(request["path"])
     language = request.get("language") or None
+    task = "translate" if request.get("task") == "translate" else "transcribe"
+    want_words = bool(request.get("words"))
     model = _load_stt(backend, source)
 
     if backend == "parakeet-mlx":
+        if task == "translate":
+            raise ValueError("Translation to English needs a Whisper model.")
         duration = len(decode_audio(path)) / STT_SAMPLE_RATE
         chunk = 120.0 if duration > 150 else None
         result = model.transcribe(path, chunk_duration=chunk, overlap_duration=15.0)
-        segments = [
-            {"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
-            for s in getattr(result, "sentences", []) or []
-        ]
+        segments = []
+        for s in getattr(result, "sentences", []) or []:
+            segment = {"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
+            if want_words:
+                segment["words"] = _parakeet_words(s.tokens)
+            segments.append(segment)
         return {"text": result.text.strip(), "language": None, "segments": segments, "durationS": round(duration, 2)}
 
     audio = decode_audio(path)
@@ -187,11 +214,15 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
     if backend == "mlx-whisper":
         import mlx_whisper  # type: ignore[import-untyped]
 
-        result = mlx_whisper.transcribe(audio, path_or_hf_repo=model, language=language, verbose=None)
-        segments = [
-            {"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
-            for s in result.get("segments", [])
-        ]
+        result = mlx_whisper.transcribe(
+            audio, path_or_hf_repo=model, language=language, task=task, word_timestamps=want_words, verbose=None
+        )
+        segments = []
+        for s in result.get("segments", []):
+            segment = {"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
+            if want_words:
+                segment["words"] = [_word(w["start"], w["end"], w["word"]) for w in s.get("words", []) if w["word"].strip()]
+            segments.append(segment)
         return {
             "text": (result.get("text") or "").strip(),
             "language": result.get("language"),
@@ -199,8 +230,18 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
             "durationS": round(duration, 2),
         }
 
-    raw_segments, info = model.transcribe(audio, language=language)
-    segments = [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()} for s in raw_segments]
+    # Beam search makes the small models copy the speech instead of
+    # translating it (Whisper Base on Spanish); greedy decoding translates.
+    beam_size = 1 if task == "translate" else 5
+    raw_segments, info = model.transcribe(
+        audio, language=language, task=task, word_timestamps=want_words, beam_size=beam_size
+    )
+    segments = []
+    for s in raw_segments:
+        segment = {"start": round(float(s.start), 2), "end": round(float(s.end), 2), "text": s.text.strip()}
+        if want_words:
+            segment["words"] = [_word(w.start, w.end, w.word) for w in (s.words or []) if w.word.strip()]
+        segments.append(segment)
     # Segment texts carry their own leading space (none for CJK).
     text = " ".join(s["text"] for s in segments) if info.language not in ("zh", "ja", "ko") else "".join(
         s["text"] for s in segments
@@ -309,6 +350,74 @@ def vad(request: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Speaker labels and audio export
+# ---------------------------------------------------------------------------
+
+_diarizer: dict[str, Any] = {"key": None, "model": None}
+
+
+def diarize(request: dict[str, Any]) -> dict[str, Any]:
+    """Who speaks when: ``turns`` of ``{start, end, speaker}``.
+
+    Speakers are numbered 0, 1, ... in order of first appearance.
+    ``speakers`` > 0 fixes the count; otherwise it is worked out from
+    ``threshold`` (lower finds more speakers).
+    """
+    import sherpa_onnx  # type: ignore[import-untyped]
+
+    count = int(request.get("speakers") or 0)
+    threshold = float(request.get("threshold") or 0.5)
+    key = (str(request["segmentation"]), str(request["embedding"]), count, threshold)
+    if _diarizer["key"] != key:
+        config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
+            segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
+                pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(model=key[0]),
+            ),
+            embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=key[1]),
+            clustering=sherpa_onnx.FastClusteringConfig(num_clusters=count if count > 0 else -1, threshold=threshold),
+            min_duration_on=0.3,
+            min_duration_off=0.5,
+        )
+        if not config.validate():
+            raise RuntimeError("The speaker-label models could not be loaded.")
+        _diarizer["key"], _diarizer["model"] = key, sherpa_onnx.OfflineSpeakerDiarization(config)
+    model = _diarizer["model"]
+    audio = decode_audio(str(request["path"]), model.sample_rate)
+    numbers: dict[int, int] = {}
+    turns = []
+    for segment in model.process(audio).sort_by_start_time():
+        speaker = numbers.setdefault(segment.speaker, len(numbers))
+        turns.append({"start": round(segment.start, 2), "end": round(segment.end, 2), "speaker": speaker})
+    return {"turns": turns}
+
+
+def encode(request: dict[str, Any]) -> dict[str, Any]:
+    """Re-encode an audio file (``mp3`` only for now) next to ``out``."""
+    import av  # type: ignore[import-untyped]
+
+    if request.get("format") != "mp3":
+        raise ValueError("Only MP3 export is supported.")
+    with av.open(str(request["path"])) as source:
+        if not source.streams.audio:
+            raise ValueError("The file has no audio track.")
+        rate = source.streams.audio[0].rate or 24_000
+        with av.open(str(request["out"]), "w", format="mp3") as target:
+            stream = target.add_stream("libmp3lame", rate=rate, layout="mono")
+            stream.bit_rate = 128_000
+            resampler = av.AudioResampler(format=stream.format.name, layout="mono", rate=rate)
+            for frame in source.decode(audio=0):
+                for out in resampler.resample(frame):
+                    for packet in stream.encode(out):
+                        target.mux(packet)
+            for out in resampler.resample(None):
+                for packet in stream.encode(out):
+                    target.mux(packet)
+            for packet in stream.encode(None):
+                target.mux(packet)
+    return {"out": str(request["out"])}
+
+
+# ---------------------------------------------------------------------------
 # Loop
 # ---------------------------------------------------------------------------
 
@@ -318,6 +427,8 @@ def unload(request: dict[str, Any]) -> dict[str, Any]:
         _stt["key"], _stt["model"] = None, None
     if what in ("tts", "all"):
         _tts["key"], _tts["model"] = None, None
+    if what in ("speakers", "all"):
+        _diarizer["key"], _diarizer["model"] = None, None
     try:
         import gc
 
@@ -344,6 +455,8 @@ _COMMANDS = {
     "transcribe": transcribe,
     "synthesize": synthesize,
     "vad": vad,
+    "diarize": diarize,
+    "encode": encode,
     "unload": unload,
 }
 

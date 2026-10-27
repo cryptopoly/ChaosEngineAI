@@ -10255,6 +10255,351 @@ html[lang="ko"] select {
   overflow: visible;
 }
 
+/* ---- Voice Studio: transcribe queue, transcript editor, Library ---- */
+
+.voice-studio__modes {
+  justify-self: start;
+}
+
+.voice-studio__pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--app-gap);
+  align-items: start;
+}
+
+.voice-studio__pane > .panel {
+  min-width: 0;
+}
+
+.voice-studio__pane--hidden {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .voice-studio__pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.voice-studio__options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.voice-studio__voice {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-studio__voice > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-studio__progress {
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-textarea--long {
+  min-height: 220px;
+}
+
+.voice-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.voice-queue__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.voice-queue__item:first-child {
+  border-top: none;
+}
+
+.voice-queue__item--open {
+  background: var(--panel-alt);
+}
+
+.voice-queue__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-queue__status {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-queue__item--error .voice-queue__status {
+  color: var(--danger);
+  white-space: normal;
+}
+
+.voice-queue__item--done .voice-queue__status {
+  color: var(--success);
+}
+
+.voice-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.voice-editor__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.voice-editor__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.voice-editor__save {
+  flex: none;
+  font-size: 0.8rem;
+}
+
+.voice-editor__player {
+  width: 100%;
+}
+
+.voice-editor__speakers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.voice-editor__speaker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voice-editor__speaker .text-input {
+  width: 150px;
+}
+
+.voice-editor__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.voice-editor__dot--0 { background: var(--accent); }
+.voice-editor__dot--1 { background: var(--success); }
+.voice-editor__dot--2 { background: var(--warning); }
+.voice-editor__dot--3 { background: var(--danger); }
+.voice-editor__dot--4 { background: var(--accent-strong); }
+.voice-editor__dot--5 { background: var(--muted-strong); }
+
+.voice-editor__who {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.voice-editor__who--0 { color: var(--accent); }
+.voice-editor__who--1 { color: var(--success); }
+.voice-editor__who--2 { color: var(--warning); }
+.voice-editor__who--3 { color: var(--danger); }
+.voice-editor__who--4 { color: var(--accent-strong); }
+.voice-editor__who--5 { color: var(--muted-strong); }
+
+.voice-editor__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.voice-editor__line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border-left: 3px solid transparent;
+}
+
+.voice-editor__line--active {
+  background: var(--panel-alt);
+  border-left-color: var(--accent);
+}
+
+.voice-editor__time {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.voice-editor__time:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.voice-editor__time:disabled {
+  cursor: default;
+}
+
+.voice-editor__body {
+  min-width: 0;
+}
+
+.voice-editor__text,
+.voice-editor__plain {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.voice-editor__word {
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.voice-editor__word:hover {
+  color: var(--accent-strong);
+}
+
+.voice-editor__word--active {
+  background: rgba(143, 180, 255, 0.22);
+}
+
+.voice-editor__input {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+}
+
+.voice-editor__edit {
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.voice-editor__line:hover .voice-editor__edit,
+.voice-editor__edit:focus-visible {
+  opacity: 1;
+}
+
+.voice-editor__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voice-editor__exports {
+  align-items: center;
+}
+
+.voice-library__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-library__toolbar > input[type="search"] {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.voice-library__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+}
+
+.voice-library-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.voice-library-card--selected {
+  border-color: var(--accent);
+}
+
+.voice-library-card__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.voice-library-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.voice-library-card__title strong {
+  overflow-wrap: anywhere;
+}
+
+.voice-library-card__title .muted-text {
+  font-size: 0.8rem;
+}
+
+.voice-library-card__preview {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.voice-library-card audio {
+  width: 100%;
+}
+
+.voice-library-card .voice-library-card__export,
+.voice-studio .voice-studio__count {
+  width: auto;
+  flex: 0 1 auto;
+}
+
 /* ---- Voice call (conversation mode) ---- */
 
 .chat-call-button {

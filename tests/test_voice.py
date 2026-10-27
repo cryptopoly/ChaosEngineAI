@@ -1,6 +1,7 @@
-"""Voice gallery persistence and the Kokoro voice-file download.
+"""The Kokoro voice-file download.
 
-The speech lanes, worker and routes are covered in ``test_voice_io.py``.
+The speech lanes, worker and routes are covered in ``test_voice_io.py``;
+the Library in ``test_voice_library.py``.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from unittest import mock
 # numpy's "cannot load module more than once per process" guard.
 import numpy  # noqa: F401
 
-from backend_service import voice_gallery, voice_kokoro_onnx
+from backend_service import voice_kokoro_onnx
 
 
 
@@ -94,53 +95,6 @@ class KokoroOnnxTests(unittest.TestCase):
         self.assertEqual(status["state"], "failed")
         self.assertIn("network down", status["error"])
         self.assertFalse(voice_kokoro_onnx.is_installed())
-
-
-# ---------------------------------------------------------------------------
-# voice_gallery unit tests
-# ---------------------------------------------------------------------------
-
-class GalleryTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tempdir = tempfile.TemporaryDirectory()
-        self._patch = mock.patch.object(
-            voice_gallery, "_gallery_dir", return_value=Path(self._tempdir.name)
-        )
-        self._patch.start()
-
-    def tearDown(self) -> None:
-        self._patch.stop()
-        self._tempdir.cleanup()
-
-    def test_transcript_roundtrip(self) -> None:
-        meta = voice_gallery.save_transcript("hello world")
-        self.assertEqual(meta["kind"], "transcript")
-        items = voice_gallery.list_items()
-        self.assertEqual([i["id"] for i in items], [meta["id"]])
-        self.assertTrue(voice_gallery.delete_item(meta["id"]))
-        self.assertEqual(voice_gallery.list_items(), [])
-
-    def test_audio_roundtrip_with_wav_sidecar(self) -> None:
-        meta = voice_gallery.save_audio("some text", "af_heart", b"RIFF-bytes")
-        audio_path = voice_gallery.get_audio_path(meta["id"])
-        self.assertIsNotNone(audio_path)
-        self.assertEqual(audio_path.read_bytes(), b"RIFF-bytes")
-        self.assertTrue(voice_gallery.delete_item(meta["id"]))
-        self.assertIsNone(voice_gallery.get_audio_path(meta["id"]))
-
-    def test_delete_missing_returns_false(self) -> None:
-        self.assertFalse(voice_gallery.delete_item("1234567890_deadbeef"))
-
-    def test_id_validation_rejects_traversal(self) -> None:
-        self.assertFalse(voice_gallery.is_valid_id("../../etc/passwd"))
-        self.assertFalse(voice_gallery.is_valid_id("nope"))
-        self.assertTrue(voice_gallery.is_valid_id("1234567890_0123abcd"))
-
-    def test_list_skips_corrupt_sidecars(self) -> None:
-        (Path(self._tempdir.name) / "corrupt.json").write_text("{not json", encoding="utf-8")
-        good = voice_gallery.save_transcript("ok")
-        items = voice_gallery.list_items()
-        self.assertEqual([i["id"] for i in items], [good["id"]])
 
 
 # ---------------------------------------------------------------------------
@@ -248,70 +202,6 @@ class KokoroOnnxEdgeTests(unittest.TestCase):
     def test_download_status_returns_a_copy(self) -> None:
         voice_kokoro_onnx.download_status()["state"] = "mutated"
         self.assertEqual(voice_kokoro_onnx.download_status()["state"], "idle")
-
-
-class GalleryEdgeTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tempdir = tempfile.TemporaryDirectory()
-        self.root = Path(self._tempdir.name)
-        self._patch = mock.patch.object(voice_gallery, "_gallery_dir", return_value=self.root)
-        self._patch.start()
-
-    def tearDown(self) -> None:
-        self._patch.stop()
-        self._tempdir.cleanup()
-
-    def test_gallery_dir_lives_under_home(self) -> None:
-        self._patch.stop()
-        try:
-            with mock.patch.object(voice_gallery.Path, "home", return_value=self.root):
-                path = voice_gallery._gallery_dir()
-        finally:
-            self._patch.start()
-        self.assertEqual(path, self.root / ".chaosengine" / "voice" / "gallery")
-        self.assertTrue(path.is_dir())
-
-    def test_generated_ids_are_valid_and_unique(self) -> None:
-        ids = {voice_gallery.save_transcript(f"t{i}")["id"] for i in range(5)}
-        self.assertEqual(len(ids), 5)
-        self.assertTrue(all(voice_gallery.is_valid_id(item_id) for item_id in ids))
-
-    def test_is_valid_id_rejects_near_misses(self) -> None:
-        for bad in (
-            "1234567890_deadbeef\n",  # regression: ``$`` matched before a newline
-            "1234567890_DEADBEEF",
-            "1234567890_deadbee",
-            "1234567890_deadbeef0",
-            "_deadbeef",
-            "12345/_deadbeef",
-            "",
-        ):
-            self.assertFalse(voice_gallery.is_valid_id(bad), repr(bad))
-
-    def test_list_items_newest_first(self) -> None:
-        for item_id, created in (("1_aaaaaaaa", 100), ("3_cccccccc", 300), ("2_bbbbbbbb", 200)):
-            (self.root / f"{item_id}.json").write_text(
-                f'{{"id": "{item_id}", "kind": "transcript", "createdAt": {created}, "text": "x"}}',
-                encoding="utf-8",
-            )
-        self.assertEqual(
-            [item["id"] for item in voice_gallery.list_items()],
-            ["3_cccccccc", "2_bbbbbbbb", "1_aaaaaaaa"],
-        )
-
-    def test_save_audio_metadata(self) -> None:
-        meta = voice_gallery.save_audio("spoken", "bm_george", b"RIFF")
-        self.assertEqual(meta["kind"], "audio")
-        self.assertEqual(meta["voice"], "bm_george")
-        self.assertEqual(meta["text"], "spoken")
-        self.assertIsInstance(meta["createdAt"], int)
-        self.assertEqual(voice_gallery.list_items(), [meta])
-
-    def test_transcript_has_no_audio_file(self) -> None:
-        meta = voice_gallery.save_transcript("only text")
-        self.assertIsNone(voice_gallery.get_audio_path(meta["id"]))
-        self.assertTrue(voice_gallery.delete_item(meta["id"]))
-        self.assertEqual(list(self.root.iterdir()), [])
 
 
 if __name__ == "__main__":

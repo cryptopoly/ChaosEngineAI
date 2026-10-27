@@ -288,19 +288,31 @@ function pad(value: number, width = 2): string {
 }
 
 export function formatTimestamp(seconds: number, separator: "," | "." = ","): string {
-  const safe = Math.max(0, seconds);
-  const ms = Math.round((safe % 1) * 1000);
-  return `${pad(safe / 3600)}:${pad((safe % 3600) / 60)}:${pad(safe % 60)}${separator}${pad(ms, 3)}`;
+  // Whole milliseconds first, so 1.9996 s reads 00:00:02,000, not 00:00:01,1000.
+  const total = Math.round(Math.max(0, seconds) * 1000);
+  const ms = total % 1000;
+  const s = Math.floor(total / 1000);
+  return `${pad(s / 3600)}:${pad((s % 3600) / 60)}:${pad(s % 60)}${separator}${pad(ms, 3)}`;
 }
 
-export function toSrt(segments: TranscriptSegment[]): string {
+/** Speaker number -> display name; unnamed speakers read "Speaker 1", "Speaker 2", ... */
+export type SpeakerNamer = (speaker: number) => string;
+
+function cueText(segment: TranscriptSegment, name?: SpeakerNamer): string {
+  return name && segment.speaker != null ? `${name(segment.speaker)}: ${segment.text}` : segment.text;
+}
+
+export function toSrt(segments: TranscriptSegment[], name?: SpeakerNamer): string {
   return segments
-    .map((s, i) => `${i + 1}\n${formatTimestamp(s.start)} --> ${formatTimestamp(s.end)}\n${s.text}\n`)
+    .map((s, i) => `${i + 1}\n${formatTimestamp(s.start)} --> ${formatTimestamp(s.end)}\n${cueText(s, name)}\n`)
     .join("\n");
 }
 
-export function toVtt(segments: TranscriptSegment[]): string {
-  const cues = segments.map((s) => `${formatTimestamp(s.start, ".")} --> ${formatTimestamp(s.end, ".")}\n${s.text}\n`);
+export function toVtt(segments: TranscriptSegment[], name?: SpeakerNamer): string {
+  const cues = segments.map((s) => {
+    const text = name && s.speaker != null ? `<v ${name(s.speaker)}>${s.text}` : s.text;
+    return `${formatTimestamp(s.start, ".")} --> ${formatTimestamp(s.end, ".")}\n${text}\n`;
+  });
   return `WEBVTT\n\n${cues.join("\n")}`;
 }
 

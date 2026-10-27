@@ -10,6 +10,8 @@ export interface SttModel {
   default: boolean;
   /** "parakeet-mlx" | "mlx-whisper" | "faster-whisper". */
   backend?: string;
+  /** Can translate speech into English. */
+  translate?: boolean;
   /** False until the voice pack is installed. */
   backendInstalled?: boolean;
 }
@@ -68,6 +70,10 @@ export interface VoiceRuntime {
   ttsModelInstalled: boolean;
   /** Conversation mode's turn detector is installed (voice packs from before it need an update). */
   vadAvailable: boolean;
+  /** Speaker labels can be added to transcripts. */
+  speakersAvailable: boolean;
+  /** The installed pack lacks something this version provides. */
+  updateAvailable: boolean;
   sttBackend: string | null;
   ttsBackend: string | null;
   cuda: boolean;
@@ -80,8 +86,51 @@ export interface VoiceRuntime {
   settings: VoiceSettings;
 }
 
+export interface TranscriptWord {
+  start: number;
+  end: number;
+  text: string;
+}
+
 export interface TranscriptSegment {
   start: number;
   end: number;
   text: string;
+  /** Speaker number (0, 1, ...) when speaker labels were asked for. */
+  speaker?: number | null;
+  words?: TranscriptWord[];
+}
+
+export type VoiceLibraryKind = "transcript" | "speech";
+
+/** A Library item as listed (no segments; ``preview`` is the start of the text). */
+export interface VoiceLibrarySummary {
+  id: string;
+  kind: VoiceLibraryKind;
+  title: string;
+  preview: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Audio file extension, or null when the item has no audio. */
+  audio: string | null;
+  speakers: Record<string, string>;
+  speakerCount: number;
+  language?: string | null;
+  model?: string;
+  voice?: string | null;
+  durationS?: number | null;
+  source?: string | null;
+  task?: "transcribe" | "translate";
+}
+
+export interface VoiceLibraryItem extends Omit<VoiceLibrarySummary, "preview" | "speakerCount"> {
+  text: string;
+  segments: TranscriptSegment[];
+}
+
+export interface VoiceLibraryPatch {
+  title?: string;
+  text?: string;
+  segments?: TranscriptSegment[];
+  speakers?: Record<string, string>;
 }

@@ -409,8 +409,9 @@ class VoiceRouteTests(unittest.TestCase):
     def test_transcribe_passes_a_temp_file_and_cleans_it_up(self) -> None:
         seen: dict = {}
 
-        def fake(path, model, language=None):
+        def fake(path, model, language=None, **options):
             seen.update(path=path, exists=path.exists(), model=model, language=language, data=path.read_bytes())
+            self.assertEqual(options, {"task": "transcribe", "words": False, "speakers": False, "speaker_count": 0})
             return {"text": "hi", "segments": []}
 
         with mock.patch.object(voice_runtime, "transcribe_file", side_effect=fake):

@@ -1597,7 +1597,7 @@ def phase_7(cap: Capability) -> PhaseResult:
 
 
 # ---------------------------------------------------------------------------
-# Phase 8 — Voice I/O (STT + TTS + gallery)
+# Phase 8 — Voice I/O (STT + TTS + Library)
 # ---------------------------------------------------------------------------
 
 
@@ -1730,25 +1730,112 @@ def phase_8(cap: Capability) -> PhaseResult:
             "usedSynthesizedClip": synth_result["wav"] is not None,
         }
 
-    def _gallery():
-        payload = json.dumps({"text": "e2e voice gallery check"}).encode("utf-8")
-        code, body = _voice_http(
-            "POST", "/api/voice/gallery/transcript", body=payload,
-            content_type="application/json", timeout=15.0,
+    def _multipart(boundary: str, wav: bytes, fields: dict[str, str]) -> bytes:
+        parts = [
+            (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="audio"; filename="clip.wav"\r\n'
+                "Content-Type: audio/wav\r\n\r\n"
+            ).encode("utf-8") + wav + b"\r\n"
+        ]
+        for key, value in fields.items():
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode("utf-8"))
+        parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+        return b"".join(parts)
+
+    def _two_voice_clip() -> bytes | None:
+        """Two Kokoro voices one after the other, as one WAV."""
+        import io
+        import wave as wave_module
+
+        frames, rate = [], 24000
+        for text, voice in (
+            ("Good morning everyone, let us start the planning meeting now.", "am_adam"),
+            ("Thanks Adam, I will finish the budget report by Friday afternoon.", "af_heart"),
+        ):
+            payload = json.dumps({"text": text, "voice": voice}).encode("utf-8")
+            code, body = _voice_http("POST", "/api/voice/synthesize", body=payload, content_type="application/json", timeout=180.0)
+            if code != 200:
+                return None
+            with wave_module.open(io.BytesIO(body)) as handle:
+                rate = handle.getframerate()
+                frames.append(handle.readframes(handle.getnframes()))
+                frames.append(b"\x00\x00" * (rate // 2))
+        buffer = io.BytesIO()
+        with wave_module.open(buffer, "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(rate)
+            handle.writeframes(b"".join(frames))
+        return buffer.getvalue()
+
+    def _library():
+        """Transcribe two voices with speaker labels into the Library, rename a
+        speaker, export MP3, then delete the item."""
+        if not runtime_payload.get("sttAvailable") or not runtime_payload.get("ttsAvailable"):
+            return "skip", "voice pack not installed", {}
+        speakers = bool(runtime_payload.get("speakersAvailable"))
+        wav = _two_voice_clip()
+        if wav is None:
+            return "fail", "could not synthesize the two-voice clip", {}
+        boundary = "----chaosengine-e2e-library"
+        fields = {"save": "true", "words": "true"}
+        if speakers:
+            fields["speakers"] = "true"
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=_multipart(boundary, wav, fields),
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=600.0,
         )
         if code != 200:
-            return "fail", f"gallery save HTTP {code}", {}
-        item_id = json.loads(body.decode("utf-8")).get("id")
-        code, body = _voice_http("GET", "/api/voice/gallery", timeout=15.0)
+            return "fail", f"transcribe HTTP {code}: {resp[:200]!r}", {}
+        result = json.loads(resp.decode("utf-8"))
+        item_id = result.get("libraryId")
+        if not item_id:
+            return "fail", "transcribe with save returned no libraryId", {}
+        try:
+            labels = {s.get("speaker") for s in result.get("segments", [])}
+            if speakers and len(labels - {None}) != 2:
+                return "fail", f"expected 2 speakers, got {sorted(labels, key=str)}", {}
+            if not any(s.get("words") for s in result.get("segments", [])):
+                return "fail", "no word timings in the transcript", {}
+            payload = json.dumps({"speakers": {"0": "Adam"}, "title": "e2e library check"}).encode("utf-8")
+            code, body = _voice_http("POST", f"/api/voice/library/{item_id}", body=payload, content_type="application/json", timeout=15.0)
+            if code != 200 or json.loads(body.decode("utf-8")).get("speakers") != {"0": "Adam"}:
+                return "fail", f"library update HTTP {code}", {}
+            code, body = _voice_http("GET", "/api/voice/library?q=budget", timeout=15.0)
+            if code != 200 or item_id not in [i.get("id") for i in json.loads(body.decode("utf-8")).get("items", [])]:
+                return "fail", "saved transcript missing from a Library search", {}
+            code, body = _voice_http("GET", f"/api/voice/library/{item_id}/audio?format=mp3", timeout=120.0)
+            if code != 200 or not (body[:3] == b"ID3" or body[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")):
+                return "fail", f"MP3 export HTTP {code}", {}
+            return "pass", "", {"speakers": len(labels - {None}), "segments": len(result.get("segments", [])), "mp3Bytes": len(body)}
+        finally:
+            _voice_http("DELETE", f"/api/voice/library/{item_id}", timeout=15.0)
+
+    def _translate():
+        """Spanish speech comes back in English with a model trained to translate."""
+        if not runtime_payload.get("sttAvailable") or not runtime_payload.get("ttsAvailable"):
+            return "skip", "voice pack not installed", {}
+        model = next(
+            (m for m in runtime_payload.get("sttModels") or [] if m.get("translate") and m.get("installed")), None
+        )
+        if model is None:
+            return "skip", "no installed model can translate (Whisper Small or Base)", {}
+        payload = json.dumps({"text": "Hola, me llamo Dora. Hoy vamos a la playa con mis amigos.", "voice": "ef_dora"}).encode("utf-8")
+        code, wav = _voice_http("POST", "/api/voice/synthesize", body=payload, content_type="application/json", timeout=180.0)
         if code != 200:
-            return "fail", f"gallery list HTTP {code}", {}
-        ids = [item.get("id") for item in json.loads(body.decode("utf-8")).get("items", [])]
-        if item_id not in ids:
-            return "fail", "saved item missing from gallery listing", {}
-        code, _body = _voice_http("DELETE", f"/api/voice/gallery/{item_id}", timeout=15.0)
+            return "fail", f"synthesize HTTP {code}", {}
+        boundary = "----chaosengine-e2e-translate"
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=_multipart(boundary, wav, {"model": model["id"], "task": "translate"}),
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=600.0,
+        )
         if code != 200:
-            return "fail", f"gallery delete HTTP {code}", {}
-        return "pass", "", {"itemId": item_id}
+            return "fail", f"translate HTTP {code}: {resp[:200]!r}", {}
+        text = json.loads(resp.decode("utf-8")).get("text", "")
+        if "Dora" not in text or any(word in text.lower() for word in ("hola", "playa", "amigos")):
+            return "fail", f"not translated to English: {text!r}", {}
+        return "pass", "", {"model": model["id"], "text": text[:80]}
 
     # FU-092 regression guard: the STT list must only offer weights this
     # host's backend can read — never MLX ids on Windows/Linux.
@@ -1861,7 +1948,8 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),
-        ("transcribe smoke", _transcribe), ("gallery roundtrip", _gallery),
+        ("transcribe smoke", _transcribe), ("library with speaker labels", _library),
+        ("translate to English", _translate),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

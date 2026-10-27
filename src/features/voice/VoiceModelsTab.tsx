@@ -92,8 +92,8 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
   const extrasChanged =
     runtime.installed &&
     runtime.extras.some((extra) => extra.installed !== extras.includes(extra.id));
-  // Voice packs from before conversation mode lack its turn detector.
-  const needsUpdate = extrasChanged || (runtime.installed && !runtime.vadAvailable);
+  // Older voice packs lack the turn detector (voice calls) or speaker labels.
+  const needsUpdate = extrasChanged || (runtime.installed && (runtime.updateAvailable || !runtime.vadAvailable));
 
   return (
     <Panel
@@ -166,10 +166,11 @@ function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChang
           </div>
         )}
 
-        {runtime.installed && !runtime.vadAvailable && !job.running ? (
+        {runtime.installed && (runtime.updateAvailable || !runtime.vadAvailable) && !job.running ? (
           <p className="muted-text">
-            {t("voice.pack.updateForCalls", {
-              defaultValue: "Update the voice pack to use voice calls in Chat (adds the 2 MB turn detector; about a minute).",
+            {t("voice.pack.updateFeatures", {
+              defaultValue:
+                "Update the voice pack for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
             })}
           </p>
         ) : null}

@@ -39,6 +39,7 @@ _STT_MODELS: list[dict[str, Any]] = [
         "name": "Parakeet TDT 0.6B v3",
         "languages": "25 European languages",
         "default": True,
+        "translate": False,
         # NVIDIA weights (CC-BY-4.0), MLX port by mlx-community.
         "sources": {"parakeet-mlx": ("mlx-community/parakeet-tdt-0.6b-v3", 2.5)},
     },
@@ -47,6 +48,9 @@ _STT_MODELS: list[dict[str, Any]] = [
         "name": "Whisper Large v3 Turbo",
         "languages": "99 languages",
         "default": True,
+        # The turbo fine-tune was not trained to translate: it answers in
+        # the spoken language.
+        "translate": False,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-large-v3-turbo-q4", 0.8),
             "faster-whisper": ("mobiuslabsgmbh/faster-whisper-large-v3-turbo", 1.6),
@@ -58,6 +62,7 @@ _STT_MODELS: list[dict[str, Any]] = [
         "name": "Whisper Small",
         "languages": "99 languages",
         "default": False,
+        "translate": True,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-small-mlx", 0.24),
             "faster-whisper": ("Systran/faster-whisper-small", 0.48),
@@ -69,6 +74,7 @@ _STT_MODELS: list[dict[str, Any]] = [
         "name": "Whisper Base",
         "languages": "99 languages",
         "default": False,
+        "translate": True,
         "sources": {
             "mlx-whisper": ("mlx-community/whisper-base-mlx", 0.07),
             "faster-whisper": ("Systran/faster-whisper-base", 0.15),
@@ -110,6 +116,7 @@ def list_stt_models() -> list[dict[str, Any]]:
                 "sizeGb": size_gb,
                 "installed": _hf_snapshot_path(repo) is not None,
                 "default": False,
+                "translate": entry["translate"],
                 "backend": backend,
                 "backendInstalled": installed,
             })
@@ -271,6 +278,8 @@ def get_voice_capabilities() -> dict[str, Any]:
         "ttsAvailable": installed and tts_data,
         "ttsModelInstalled": tts_data,
         "vadAvailable": voice_env.vad_installed() if installed else False,
+        "speakersAvailable": voice_env.diarize_installed() if installed else False,
+        "updateAvailable": bool(voice_env.missing_features()),
         "sttBackend": " + ".join(_lane_backends()) if installed else None,
         "ttsBackend": voice_env.tts_source()[0] if installed else None,
         "cuda": bool(marker.get("cuda")),
@@ -289,10 +298,28 @@ def get_voice_capabilities() -> dict[str, Any]:
 # Work
 # ---------------------------------------------------------------------------
 
-def transcribe_file(path: Path, model_id: str | None, language: str | None = None) -> dict[str, Any]:
+def transcribe_file(
+    path: Path,
+    model_id: str | None,
+    language: str | None = None,
+    *,
+    task: str = "transcribe",
+    words: bool = False,
+    speakers: bool = False,
+    speaker_count: int = 0,
+) -> dict[str, Any]:
+    """Transcribe a file; ``speakers`` adds a speaker number to each segment.
+
+    ``task`` "translate" gives English text (Whisper models only).
+    """
     from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_transcript import assign_speakers  # noqa: PLC0415
 
     backend, repo = resolve_stt_model(model_id)
+    if task == "translate" and not _can_translate(repo):
+        raise ValueError("This model cannot translate. Choose Whisper Small or Whisper Base.")
+    if speakers and not voice_env.diarize_installed():
+        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
     snapshot = _hf_snapshot_path(repo)
     reply = get_worker().request(
         "transcribe",
@@ -301,15 +328,57 @@ def transcribe_file(path: Path, model_id: str | None, language: str | None = Non
         source=str(snapshot or repo),
         path=str(path),
         language=(language or None),
+        task=task,
+        # Speaker labels split segments at word boundaries.
+        words=words or speakers,
     )
+    segments = reply.get("segments", [])
+    seconds = float(reply.get("seconds") or 0.0)
+    if speakers:
+        turns = diarize_file(path, speaker_count)
+        seconds += float(turns.pop("seconds", 0.0))
+        segments = assign_speakers(segments, turns["turns"], reply.get("language") or language)
+        if not words:
+            segments = [{k: v for k, v in s.items() if k != "words"} for s in segments]
     return {
         "text": reply.get("text", ""),
         "language": reply.get("language"),
-        "segments": reply.get("segments", []),
+        "segments": segments,
         "durationS": reply.get("durationS"),
         "model": repo,
-        "seconds": reply.get("seconds"),
+        "task": task,
+        "seconds": round(seconds, 3),
     }
+
+
+def _can_translate(repo: str) -> bool:
+    return any(
+        entry["translate"] and any(repo == source[0] for source in entry["sources"].values()) for entry in _STT_MODELS
+    )
+
+
+def diarize_file(path: Path, speaker_count: int = 0) -> dict[str, Any]:
+    """Speaker turns for a file (``{"turns": [...], "seconds": ...}``)."""
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    models = voice_env.diarize_model_paths()
+    if models is None:
+        raise RuntimeError("Speaker labels need a voice pack update. Update it from Voice > Models.")
+    reply = get_worker().request(
+        "diarize",
+        timeout=1800.0,
+        path=str(path),
+        segmentation=str(models["segmentation"]),
+        embedding=str(models["embedding"]),
+        speakers=max(0, int(speaker_count)),
+    )
+    return {"turns": reply.get("turns", []), "seconds": reply.get("seconds", 0.0)}
+
+
+def encode_mp3(source: Path, target: Path) -> None:
+    from backend_service.voice_client import get_worker  # noqa: PLC0415
+
+    get_worker().request("encode", timeout=600.0, path=str(source), out=str(target), format="mp3")
 
 
 def synthesize(text: str, voice: str, speed: float) -> tuple[bytes, float]:

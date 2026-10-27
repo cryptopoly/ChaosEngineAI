@@ -17,7 +17,7 @@ import type {
   ImageGenerationResponse,
   ImageOutputArtifact,
   ImageRuntimeStatus,
-  LibraryItem,
+  VoiceLibraryItem,
   LoadModelPayload,
   ModelFamily,
   PreviewMetrics,
@@ -710,11 +710,13 @@ export {
   getVoiceRuntime,
   transcribeAudio,
   synthesizeSpeech,
-  getVoiceGallery,
-  saveGalleryTranscript,
-  saveGalleryAudio,
-  deleteGalleryItem,
-  getGalleryAudio,
+  getLibrary,
+  getLibraryItem,
+  updateLibraryItem,
+  deleteLibraryItems,
+  saveSpeech,
+  getLibraryAudio,
+  encodeMp3,
   transcribeBlob,
   speakStream,
   detectSpeech,
@@ -725,4 +727,4 @@ export {
   cancelVoiceInstall,
   stopVoiceWorker,
 } from "./voice";
-export type { TranscribeResult, VoiceGalleryItem, SpokenSentence } from "./voice";
+export type { TranscribeOptions, TranscribeResult, SpokenSentence } from "./voice";

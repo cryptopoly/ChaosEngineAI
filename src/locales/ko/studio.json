@@ -445,7 +445,7 @@
       "reinstall": null,
       "done": null,
       "log": null,
-      "updateForCalls": "채팅에서 음성 통화를 사용하려면 음성 팩을 업데이트하세요 (2 MB 발화 감지기 추가, 약 1분)."
+      "updateFeatures": "채팅 음성 통화와 받아쓰기 화자 구분을 위해 음성 팩을 업데이트하세요 (모델 약 40 MB, 1~2분)."
     },
     "models": {
       "recommended": null,
@@ -492,7 +492,19 @@
       "choose": null,
       "took": null,
       "placeholder": null,
-      "segments": null
+      "segments": null,
+      "tooBig": "{name}이(가) 500 MB를 넘습니다.",
+      "recordingName": "녹음",
+      "subtitleQueue": "녹음하거나 오디오·비디오 파일을 끌어다 놓으세요",
+      "translateNeedsWhisper": "영어로 번역하려면 Whisper Small 또는 Whisper Base가 필요합니다.",
+      "translate": "영어로 번역",
+      "speakers": "화자 구분",
+      "speakerCount": "화자 수",
+      "speakersAuto": "자동으로 찾기",
+      "speakersN": "화자 {n}명",
+      "speakersNeedUpdate": "화자 구분을 사용하려면 음성 팩을 업데이트해야 합니다.",
+      "hintQueue": "녹음하거나 여기에 파일을 끌어다 놓으세요 (여러 개도 가능).",
+      "chooseFiles": "파일 선택"
     },
     "stopRecording": null,
     "record": null,
@@ -510,13 +522,79 @@
       "generating": null,
       "generate": null,
       "readNow": null,
-      "download": null
+      "download": null,
+      "subtitleLong": "텍스트를 음성으로 바꿉니다. 빈 줄은 새 문단을 시작하고, [pause]는 쉼을 넣습니다.",
+      "preview": "이 음성 미리 듣기",
+      "listen": "듣기",
+      "progress": "{total}개 중 {done}번째",
+      "generateParts": "오디오 생성 ({n}개 부분)",
+      "encoding": "인코딩 중…"
     },
     "stop": null,
     "studio": {
       "title": null,
       "needsPack": null,
       "openModels": null
+    },
+    "savedToLibrary": "라이브러리에 저장됨",
+    "saveToLibrary": "라이브러리에 저장",
+    "queue": {
+      "queued": "대기 중",
+      "running": "받아쓰는 중",
+      "doneIn": "{s}초 만에 완료",
+      "done": "완료",
+      "cancelled": "취소됨",
+      "failed": "실패",
+      "title": "대기열",
+      "open": "열기",
+      "remove": "제거"
+    },
+    "editor": {
+      "heading": "받아쓰기",
+      "translated": "영어로 번역됨",
+      "subtitle": "시간이나 단어를 클릭하면 그 지점부터 재생하고, 줄을 더블클릭하면 편집합니다.",
+      "none": "완료된 받아쓰기는 여기서 열리고 라이브러리에 보관됩니다.",
+      "speaker": "화자 {n}",
+      "title": "제목",
+      "saving": "저장 중…",
+      "saveFailed": "저장되지 않음",
+      "savedToLibrary": "라이브러리에 저장됨",
+      "renameSpeaker": "화자 {n} 이름",
+      "empty": "음성을 찾지 못했습니다.",
+      "editHint": "더블클릭하여 편집",
+      "edit": "줄 편집",
+      "export": "내보내기"
+    },
+    "handoff": {
+      "summary": "채팅에서 요약",
+      "actions": "할 일",
+      "notes": "회의록",
+      "summaryPrompt": "이 받아쓰기를 짧은 문단 몇 개로 요약해 줘.",
+      "actionsPrompt": "이 받아쓰기의 할 일을 정리해 줘: 누가 무엇을 하는지, 기한이 언급되면 기한도.",
+      "notesPrompt": "이 받아쓰기로 회의록을 작성해 줘: 참석자, 논의한 주제, 결정 사항, 할 일."
+    },
+    "library": {
+      "speakers": "화자 {n}명",
+      "select": "{title} 선택",
+      "transcript": "받아쓰기",
+      "speech": "음성",
+      "play": "재생",
+      "working": "처리 중…",
+      "originalAudio": "오디오 ({ext})",
+      "delete": "삭제",
+      "confirmDelete": "이 항목과 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+      "confirmDeleteMany": "항목 {n}개와 오디오를 삭제할까요? 되돌릴 수 없습니다.",
+      "all": "전체",
+      "transcripts": "받아쓰기",
+      "speechFilter": "음성",
+      "title": "음성 라이브러리",
+      "subtitle": "이 컴퓨터에 보관된 받아쓰기와 음성",
+      "search": "제목과 본문 검색",
+      "filter": "보기",
+      "deleteSelected": "선택 항목 삭제 ({n})",
+      "loading": "불러오는 중…",
+      "noMatch": "일치하는 항목이 없습니다.",
+      "empty": "아직 아무것도 없습니다. Voice Studio에서 만든 받아쓰기와 저장한 음성이 여기에 보관됩니다."
     }
   }
 }

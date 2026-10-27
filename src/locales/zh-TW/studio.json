@@ -445,7 +445,7 @@
       "reinstall": null,
       "done": null,
       "log": null,
-      "updateForCalls": "更新語音包以在聊天中使用語音通話（新增 2 MB 的話輪偵測器，約 1 分鐘）。"
+      "updateFeatures": "更新語音包以在聊天中使用語音通話並為逐字稿區分說話者（約 40 MB 模型，一兩分鐘）。"
     },
     "models": {
       "recommended": null,
@@ -492,7 +492,19 @@
       "choose": null,
       "took": null,
       "placeholder": null,
-      "segments": null
+      "segments": null,
+      "tooBig": "{name} 超過 500 MB。",
+      "recordingName": "錄音",
+      "subtitleQueue": "錄音，或拖入音訊和影片檔案",
+      "translateNeedsWhisper": "翻譯成英文需要 Whisper Small 或 Whisper Base。",
+      "translate": "翻譯成英文",
+      "speakers": "區分說話者",
+      "speakerCount": "說話者人數",
+      "speakersAuto": "自動判斷",
+      "speakersN": "{n} 位說話者",
+      "speakersNeedUpdate": "區分說話者需要更新語音包。",
+      "hintQueue": "錄音，或把檔案拖到這裡（可一次拖入多個）。",
+      "chooseFiles": "選擇檔案"
     },
     "stopRecording": null,
     "record": null,
@@ -510,13 +522,79 @@
       "generating": null,
       "generate": null,
       "readNow": null,
-      "download": null
+      "download": null,
+      "subtitleLong": "把文字轉成語音。空行開始新段落；[pause] 插入停頓。",
+      "preview": "試聽這個聲音",
+      "listen": "試聽",
+      "progress": "第 {done} 部分，共 {total} 部分",
+      "generateParts": "產生音訊（{n} 部分）",
+      "encoding": "正在編碼…"
     },
     "stop": null,
     "studio": {
       "title": null,
       "needsPack": null,
       "openModels": null
+    },
+    "savedToLibrary": "已儲存到資料庫",
+    "saveToLibrary": "儲存到資料庫",
+    "queue": {
+      "queued": "等待中",
+      "running": "正在轉寫",
+      "doneIn": "{s} 秒完成",
+      "done": "完成",
+      "cancelled": "已取消",
+      "failed": "失敗",
+      "title": "佇列",
+      "open": "開啟",
+      "remove": "移除"
+    },
+    "editor": {
+      "heading": "逐字稿",
+      "translated": "已翻譯成英文",
+      "subtitle": "點擊時間或單字從該處播放；雙擊一行進行編輯。",
+      "none": "完成的逐字稿會在這裡開啟，並儲存在資料庫中。",
+      "speaker": "說話者 {n}",
+      "title": "標題",
+      "saving": "正在儲存…",
+      "saveFailed": "未儲存",
+      "savedToLibrary": "已儲存到資料庫",
+      "renameSpeaker": "說話者 {n} 的名字",
+      "empty": "沒有找到語音。",
+      "editHint": "雙擊編輯",
+      "edit": "編輯這一行",
+      "export": "匯出"
+    },
+    "handoff": {
+      "summary": "在聊天中摘要",
+      "actions": "待辦事項",
+      "notes": "會議記錄",
+      "summaryPrompt": "用幾個簡短的段落摘要這份逐字稿。",
+      "actionsPrompt": "列出這份逐字稿中的待辦事項：誰做什麼，如有提到則包括截止時間。",
+      "notesPrompt": "為這份逐字稿寫會議記錄：與會者、討論的議題、決定和待辦事項。"
+    },
+    "library": {
+      "speakers": "{n} 位說話者",
+      "select": "選擇 {title}",
+      "transcript": "逐字稿",
+      "speech": "語音",
+      "play": "播放",
+      "working": "處理中…",
+      "originalAudio": "音訊（{ext}）",
+      "delete": "刪除",
+      "confirmDelete": "刪除此項目及其音訊？此操作無法復原。",
+      "confirmDeleteMany": "刪除 {n} 個項目及其音訊？此操作無法復原。",
+      "all": "全部",
+      "transcripts": "逐字稿",
+      "speechFilter": "語音",
+      "title": "語音資料庫",
+      "subtitle": "你製作的逐字稿和語音，儲存在這台電腦上",
+      "search": "搜尋標題和內文",
+      "filter": "顯示",
+      "deleteSelected": "刪除所選（{n}）",
+      "loading": "正在載入…",
+      "noMatch": "沒有符合的項目。",
+      "empty": "這裡還沒有內容。在 Voice Studio 中製作的逐字稿和你儲存的語音都會放在這裡。"
     }
   }
 }

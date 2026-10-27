@@ -44,6 +44,26 @@ VAD_REPO = "onnx-community/silero-vad"
 VAD_REVISION = "e71cae966052b992a7eca6b17738916ce0eca4ec"
 VAD_FILE = "onnx/model.onnx"
 
+# Speaker labels (diarization) through sherpa-onnx: pyannote segmentation 3.0
+# (MIT, 6 MB) finds who-speaks-when, 3D-Speaker CAM++ (Apache-2.0, 30 MB)
+# tells the voices apart. ONNX on every platform.
+DIARIZE_FILES = {
+    "segmentation": (
+        "csukuangfj/sherpa-onnx-pyannote-segmentation-3-0",
+        "9403a6902bb58e3d5ae8c7e77c3422de279db2e0",
+        "model.onnx",
+    ),
+    "embedding": (
+        "csukuangfj/speaker-embedding-models",
+        "0743f301363dec56491a490f6d6cbc9d67f9a3bf",
+        "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+    ),
+}
+
+# What this version of the pack provides; an older pack lacks some and the
+# Models page offers an update.
+FEATURES = ["vad", "speakers"]
+
 # spaCy's small English model: misaki's English front-end downloads it at
 # first use otherwise, through pip, which a packaged app cannot rely on.
 _EN_CORE_WEB_SM = (
@@ -59,6 +79,7 @@ _MLX_PACKAGES = [
     "mlx-whisper>=0.4.3,<0.5",
     "av>=13",
     "onnxruntime>=1.20",
+    "sherpa-onnx>=2.0.1,<2.1",
     _EN_CORE_WEB_SM,
 ]
 _PORTABLE_PACKAGES = [
@@ -66,6 +87,7 @@ _PORTABLE_PACKAGES = [
     "kokoro-onnx>=0.6.1,<0.7",
     "av>=13",
     "onnxruntime>=1.20",
+    "sherpa-onnx>=2.0.1,<2.1",
 ]
 # ctranslate2 4.x runs on CUDA 12 with cuDNN 9; pip ships both libraries.
 _CUDA_PACKAGES = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
@@ -76,8 +98,11 @@ EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
 }
 
 _VERIFY_IMPORTS = {
-    "mlx": ["av", "numpy", "mlx_audio", "misaki.en", "parakeet_mlx", "mlx_whisper", "en_core_web_sm", "onnxruntime"],
-    "portable": ["av", "numpy", "faster_whisper", "kokoro_onnx", "onnxruntime"],
+    "mlx": [
+        "av", "numpy", "mlx_audio", "misaki.en", "parakeet_mlx", "mlx_whisper", "en_core_web_sm",
+        "onnxruntime", "sherpa_onnx",
+    ],
+    "portable": ["av", "numpy", "faster_whisper", "kokoro_onnx", "onnxruntime", "sherpa_onnx"],
 }
 
 
@@ -184,6 +209,30 @@ def vad_installed() -> bool:
     it; the marker records it) and the Silero model file."""
     marker = read_marker() or {}
     return is_installed() and "vad" in marker.get("features", []) and vad_model_path() is not None
+
+
+def diarize_model_paths() -> dict[str, Path] | None:
+    """The speaker-label model files in the Hugging Face cache, if downloaded."""
+    from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir
+
+    paths = {
+        role: _hf_repo_cache_dir(repo) / "snapshots" / revision / filename
+        for role, (repo, revision, filename) in DIARIZE_FILES.items()
+    }
+    return paths if all(p.is_file() for p in paths.values()) else None
+
+
+def diarize_installed() -> bool:
+    marker = read_marker() or {}
+    return is_installed() and "speakers" in marker.get("features", []) and diarize_model_paths() is not None
+
+
+def missing_features() -> list[str]:
+    """Features this pack version provides that the installed pack lacks."""
+    if not is_installed():
+        return []
+    have = set((read_marker() or {}).get("features", []))
+    return [name for name in FEATURES if name not in have]
 
 
 def tts_data_installed() -> bool:
@@ -354,6 +403,8 @@ def _run_install(extras: list[str]) -> None:
         from huggingface_hub import hf_hub_download
 
         hf_hub_download(VAD_REPO, VAD_FILE, revision=VAD_REVISION)
+        for repo, revision, filename in DIARIZE_FILES.values():
+            hf_hub_download(repo, filename, revision=revision)
 
         _set_phase("verifying")
         modules = ", ".join(_VERIFY_IMPORTS[lane_name])
@@ -368,7 +419,7 @@ def _run_install(extras: list[str]) -> None:
                     "python": ".".join(map(str, sys.version_info[:3])),
                     "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
                     "cuda": lane_name == "portable" and has_nvidia_gpu(),
-                    "features": ["vad"],
+                    "features": FEATURES,
                 }
             ),
             encoding="utf-8",

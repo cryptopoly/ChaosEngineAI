@@ -237,4 +237,9 @@ export type {
   VoiceInstallJob,
   VoiceExtra,
   TranscriptSegment,
+  TranscriptWord,
+  VoiceLibraryItem,
+  VoiceLibraryKind,
+  VoiceLibraryPatch,
+  VoiceLibrarySummary,
 } from "./types/voice";

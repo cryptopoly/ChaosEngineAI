@@ -166,7 +166,7 @@ class InstalledMarkerTests(unittest.TestCase):
         self.assertFalse(voice_env.is_installed())
 
     def test_vad_needs_the_marker_feature_and_the_model_file(self) -> None:
-        model = Path(self.tmp.name) / "model.onnx"
+        model = self.venv / "model.onnx"  # not Path(): os.name is patched to posix
         model.write_bytes(b"onnx")
         marker = self.venv / "chaosengine-voice.json"
         marker.write_text(json.dumps({"schema": 1, "lane": "portable"}), encoding="utf-8")
@@ -291,6 +291,14 @@ class VoiceClientTests(unittest.TestCase):
             self.worker.request("die")
         self.assertIsNone(self.worker.pid)
         self.assertEqual(self.worker.request("echo", value=4)["echo"], 4)
+
+    def test_a_dead_worker_is_reported_before_the_os_reaps_it(self) -> None:
+        # Windows: stdout closes before poll() sees the exit. Was reported as
+        # "did not answer within 300 s".
+        self.worker.request("echo", value=1)
+        with mock.patch.object(self.worker._process, "poll", return_value=None):
+            with self.assertRaisesRegex(voice_client.VoiceWorkerError, "exited"):
+                self.worker.request("die")
 
     def test_a_timeout_kills_the_worker(self) -> None:
         with self.assertRaisesRegex(voice_client.VoiceWorkerError, "did not answer"):

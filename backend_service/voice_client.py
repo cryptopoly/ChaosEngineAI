@@ -26,6 +26,9 @@ from backend_service import voice_env
 
 _WORKER_SCRIPT = Path(__file__).with_name("voice_worker.py")
 _READY_TIMEOUT_S = 120.0
+# Put on the line queue when the worker's stdout closes, so a dead worker is told
+# apart from a slow one even before the OS has reaped it (Windows lags here).
+_CLOSED: dict[str, Any] = {}
 
 
 class VoiceWorkerError(RuntimeError):
@@ -82,7 +85,7 @@ class VoiceWorker:
                 self._lines.put(json.loads(raw))
             except ValueError:
                 continue
-        self._lines.put(None)  # stdout closed: the worker exited
+        self._lines.put(_CLOSED)  # stdout closed: the worker exited
 
     def _next_line(self, timeout: float) -> dict[str, Any] | None:
         try:
@@ -136,8 +139,8 @@ class VoiceWorker:
             deadline = time.monotonic() + timeout
             while True:
                 reply = self._next_line(max(0.0, deadline - time.monotonic()))
-                if reply is None:
-                    exited = self._process is None or self._process.poll() is not None
+                if reply is None or reply is _CLOSED:
+                    exited = reply is _CLOSED or self._process is None or self._process.poll() is not None
                     self._kill()
                     if exited:
                         raise VoiceWorkerError(f"The voice worker exited. See {self._log_path}.")

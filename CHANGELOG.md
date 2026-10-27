@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.9 - 2026-10
+
+Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
+
+### Added
+
+- **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
+- **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
+- Unload / Cancel load button in the chat header.
+
+### Fixed
+
+- Typing in the Discover search blanked the page: LFM2.5, Muse Glimmer and LFM3 had no `readme` lines.
+- Tool calls written as `<function=...><parameter=...>` (LFM3, Qwen3-Coder) showed as text and never ran.
+- MLX: reasoning that ends in an unopened `</think>` after a tool result showed in the answer.
+- MLX: the tokenizer of a vendored architecture could ask on stdin whether to run checkpoint code.
+- A crashed voice worker on Windows was reported as "did not answer within 300 s".
+- Chat no longer re-requests the model load before every message.
+- A reasoning effort the chat template rejects is mapped to the nearest one it accepts.
+
 ## Unreleased
 
 ### Added

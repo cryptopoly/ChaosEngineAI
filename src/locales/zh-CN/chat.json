@@ -79,7 +79,16 @@
     "unload": "卸载",
     "startCall": "通过语音与模型对话",
     "call": "通话",
-    "callNeedsModel": "加载聊天模型后即可开始语音通话"
+    "callNeedsModel": "加载聊天模型后即可开始语音通话",
+    "callInfo": "用语音与已加载的模型对话。说话、停顿，它就会用语音回答；插话即可打断。每一轮都会保存在此聊天中。",
+    "callNeeds": "需要：",
+    "callReady": "就绪",
+    "callMissing": "缺少",
+    "callSetup": "点击“通话”打开语音模型并安装缺少的项目。",
+    "callNeedModel": "已加载的聊天模型",
+    "callNeedStt": "语音识别（语音模型）",
+    "callNeedTts": "回复用的语音（语音模型）",
+    "callNeedVad": "轮次检测（语音包内含）"
   },
   "sidebar": {
     "title": "对话",

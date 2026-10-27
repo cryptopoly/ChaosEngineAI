@@ -79,7 +79,16 @@
     "unload": "Entladen",
     "startCall": "Per Sprache mit dem Modell sprechen",
     "call": "Anrufen",
-    "callNeedsModel": "Lade ein Chat-Modell, um einen Sprachanruf zu starten"
+    "callNeedsModel": "Lade ein Chat-Modell, um einen Sprachanruf zu starten",
+    "callInfo": "Sprich laut mit dem geladenen Modell. Sprich, mach eine Pause, und es antwortet per Stimme; sprich dazwischen, um es zu unterbrechen. Jede Runde wird in diesem Chat gespeichert.",
+    "callNeeds": "Benötigt:",
+    "callReady": "Bereit",
+    "callMissing": "Fehlt",
+    "callSetup": "Klicke auf Anrufen, um Sprachmodelle zu öffnen und das Fehlende zu installieren.",
+    "callNeedModel": "ein geladenes Chat-Modell",
+    "callNeedStt": "Spracherkennung (Sprachmodelle)",
+    "callNeedTts": "eine Stimme für Antworten (Sprachmodelle)",
+    "callNeedVad": "Sprecherwechsel-Erkennung, Teil des Sprachpakets"
   },
   "sidebar": {
     "title": "Chats",

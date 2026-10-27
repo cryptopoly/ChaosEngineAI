@@ -79,7 +79,16 @@
     "unload": "Décharger",
     "startCall": "Parler au modèle à la voix",
     "call": "Appel",
-    "callNeedsModel": "Chargez un modèle de chat pour lancer un appel vocal"
+    "callNeedsModel": "Chargez un modèle de chat pour lancer un appel vocal",
+    "callInfo": "Parlez au modèle chargé à voix haute. Parlez, faites une pause, et il répond à voix haute ; parlez par-dessus pour l'interrompre. Chaque tour est enregistré dans ce chat.",
+    "callNeeds": "Nécessite :",
+    "callReady": "Prêt",
+    "callMissing": "Manquant",
+    "callSetup": "Cliquez sur Appel pour ouvrir Modèles vocaux et installer ce qui manque.",
+    "callNeedModel": "un modèle de chat chargé",
+    "callNeedStt": "la reconnaissance vocale (Modèles vocaux)",
+    "callNeedTts": "une voix pour les réponses (Modèles vocaux)",
+    "callNeedVad": "la détection des tours de parole, incluse dans le pack vocal"
   },
   "sidebar": {
     "title": "Discussions",

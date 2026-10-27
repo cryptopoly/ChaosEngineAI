@@ -79,7 +79,16 @@
     "unload": "卸載",
     "startCall": "透過語音與模型對話",
     "call": "通話",
-    "callNeedsModel": "載入聊天模型後即可開始語音通話"
+    "callNeedsModel": "載入聊天模型後即可開始語音通話",
+    "callInfo": "用語音與已載入的模型對話。說話、停頓，它就會用語音回答；搶話即可打斷。每一輪都會儲存在此聊天中。",
+    "callNeeds": "需要：",
+    "callReady": "就緒",
+    "callMissing": "缺少",
+    "callSetup": "按「通話」開啟語音模型並安裝缺少的項目。",
+    "callNeedModel": "已載入的聊天模型",
+    "callNeedStt": "語音辨識（語音模型）",
+    "callNeedTts": "回覆用的語音（語音模型）",
+    "callNeedVad": "輪次偵測（語音套件內含）"
   },
   "sidebar": {
     "title": "對話",

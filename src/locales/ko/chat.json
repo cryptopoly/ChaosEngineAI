@@ -79,7 +79,16 @@
     "unload": "언로드",
     "startCall": "음성으로 모델과 대화",
     "call": "통화",
-    "callNeedsModel": "음성 통화를 시작하려면 채팅 모델을 로드하세요"
+    "callNeedsModel": "음성 통화를 시작하려면 채팅 모델을 로드하세요",
+    "callInfo": "로드된 모델과 소리 내어 대화하세요. 말하고 잠시 멈추면 음성으로 답합니다. 말을 끊으려면 겹쳐 말하세요. 각 턴은 이 채팅에 저장됩니다.",
+    "callNeeds": "필요한 항목:",
+    "callReady": "준비됨",
+    "callMissing": "없음",
+    "callSetup": "통화를 클릭하면 음성 모델이 열리고 없는 항목을 설치할 수 있습니다.",
+    "callNeedModel": "로드된 채팅 모델",
+    "callNeedStt": "음성 인식 (음성 모델)",
+    "callNeedTts": "응답용 음성 (음성 모델)",
+    "callNeedVad": "발화 차례 감지 (음성 팩에 포함)"
   },
   "sidebar": {
     "title": "채팅",

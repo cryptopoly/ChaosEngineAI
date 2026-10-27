@@ -203,6 +203,14 @@ export function ChatTab({
   const { t } = useTranslation("chat");
   const voice = useVoice();
   const [callOpen, setCallOpen] = useState(false);
+  const voiceRuntime = voice.runtime;
+  const callRequirements = [
+    { label: t("header.callNeedModel", { defaultValue: "a chat model loaded" }), ready: Boolean(loadedModelRef) },
+    { label: t("header.callNeedStt", { defaultValue: "speech recognition (Voice Models)" }), ready: Boolean(voiceRuntime?.sttAvailable) },
+    { label: t("header.callNeedTts", { defaultValue: "a voice for replies (Voice Models)" }), ready: Boolean(voiceRuntime?.ttsAvailable) },
+    { label: t("header.callNeedVad", { defaultValue: "turn detection, part of the voice pack" }), ready: Boolean(voiceRuntime?.vadAvailable) },
+  ];
+  const voiceReady = Boolean(voiceRuntime?.sttAvailable && voiceRuntime.ttsAvailable && voiceRuntime.vadAvailable);
 
   // Auto-read: speak a reply once it has finished streaming.
   const busyBeforeRef = useRef<string | null>(null);
@@ -459,13 +467,43 @@ export function ChatTab({
           onSetError={onSetError}
           onUnloadModel={onUnloadModel}
           onStartCall={() => {
-            if (voice.runtime?.vadAvailable && voice.runtime.ttsAvailable) setCallOpen(true);
+            if (voiceReady) setCallOpen(true);
             else voice.openVoiceModels();
           }}
           callBlockedReason={
             !loadedModelRef || modelBusyLabel
               ? t("header.callNeedsModel", { defaultValue: "Load a chat model to start a voice call" })
               : null
+          }
+          callInfo={
+            <>
+              {t("header.callInfo", {
+                defaultValue:
+                  "Talk with the loaded model out loud. Speak, pause, and it answers by voice; talk over it to interrupt. Each turn is saved in this chat.",
+              })}
+              <br />
+              <br />
+              {t("header.callNeeds", { defaultValue: "Needs:" })}
+              {callRequirements.map((req) => (
+                <span key={req.label}>
+                  <br />
+                  {req.ready
+                    ? t("header.callReady", { defaultValue: "Ready" })
+                    : t("header.callMissing", { defaultValue: "Missing" })}
+                  {" · "}
+                  {req.label}
+                </span>
+              ))}
+              {voiceReady ? null : (
+                <>
+                  <br />
+                  <br />
+                  {t("header.callSetup", {
+                    defaultValue: "Click Call to open Voice Models and install what is missing.",
+                  })}
+                </>
+              )}
+            </>
           }
         />
         <ChatThread

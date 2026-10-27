@@ -79,7 +79,16 @@
     "unload": "Descarregar",
     "startCall": "Conversar com o modelo por voz",
     "call": "Ligar",
-    "callNeedsModel": "Carregue um modelo de chat para iniciar uma chamada de voz"
+    "callNeedsModel": "Carregue um modelo de chat para iniciar uma chamada de voz",
+    "callInfo": "Converse em voz alta com o modelo carregado. Fale, faça uma pausa e ele responde por voz; fale por cima para interromper. Cada turno é salvo neste chat.",
+    "callNeeds": "Precisa de:",
+    "callReady": "Pronto",
+    "callMissing": "Faltando",
+    "callSetup": "Clique em Ligar para abrir Modelos de voz e instalar o que falta.",
+    "callNeedModel": "um modelo de chat carregado",
+    "callNeedStt": "reconhecimento de fala (Modelos de voz)",
+    "callNeedTts": "uma voz para as respostas (Modelos de voz)",
+    "callNeedVad": "detecção de turnos, parte do pacote de voz"
   },
   "sidebar": {
     "title": "Chats",

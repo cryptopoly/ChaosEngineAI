@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTooltip } from "../../components/InfoTooltip";
 import type { ChatSession, ModelCapabilities, ModelLoadingState } from "../../types";
 import { RagStatusBadge } from "../../components/RagStatusBadge";
 import { downloadExport, type ExportFormat } from "./exportThread";
@@ -62,6 +64,8 @@ export interface ChatHeaderProps {
   /** Start a voice call; ``callBlockedReason`` explains why it is off. */
   onStartCall?: () => void;
   callBlockedReason?: string | null;
+  /** Explains the call and lists what it still needs. */
+  callInfo?: ReactNode;
 }
 
 export function ChatHeader({
@@ -85,6 +89,7 @@ export function ChatHeader({
   onUnloadModel,
   onStartCall,
   callBlockedReason = null,
+  callInfo = null,
 }: ChatHeaderProps) {
   const { t } = useTranslation("chat");
   return (
@@ -197,6 +202,7 @@ export function ChatHeader({
               {t("header.call", { defaultValue: "Call" })}
             </button>
           ) : null}
+          {onStartCall && callInfo ? <InfoTooltip text={callInfo} /> : null}
           {activeChat?.modelRef === loadedModelRef ? (
             <span className="badge success">{t("header.ready", { defaultValue: "Ready" })}</span>
           ) : serverLoading ? (

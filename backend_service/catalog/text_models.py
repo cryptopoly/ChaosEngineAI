@@ -2566,6 +2566,11 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "badges": ["MoE", "Fast", "On-device"],
         "capabilities": ["reasoning", "coding", "tool-use", "multilingual"],
         "defaultVariantId": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+        "readme": [
+            "LFM2.5-24B-A2B is a mixture-of-experts model: 64 experts with 4 active, so about 2B of its 24B parameters run per token.",
+            "Official MLX 4-bit (~13.6 GB) and 8-bit builds run on stock mlx-lm; the official GGUF runs on llama.cpp.",
+            "LFM Open License v1.0.",
+        ],
         "variants": [
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
@@ -2636,6 +2641,12 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "badges": ["Small", "Fast", "On-device"],
         "capabilities": ["reasoning", "tool-use", "multilingual"],
         "defaultVariantId": "LiquidAI/LFM3-1.7B-MLX-4bit",
+        "readme": [
+            "LFM3-1.7B mixes 13 gated short-convolution layers with 5 sliding-window and 6 global attention layers, for a 256K context at 1.7B parameters.",
+            "The official MLX 4-bit build is about 1 GB and runs at roughly 250 tok/s on an M4 Max. mlx-lm has no lfm3 yet, so the app runs it on a bundled port.",
+            "Reasoning is on by default and Thinking Off is not always honoured. Tool calls use Liquid AI's XML format, which the app reads.",
+            "No GGUF row yet: llama.cpp support has not reached a tagged release. LFM Open License v1.0.",
+        ],
         "variants": [
             {
                 "id": "LiquidAI/LFM3-1.7B-MLX-4bit",
@@ -2689,6 +2700,11 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "badges": ["Agents", "Vision", "Apache 2.0"],
         "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision", "multilingual"],
         "defaultVariantId": "meta-models/Muse-Glimmer-30B-GGUF-q4km",
+        "readme": [
+            "Muse Glimmer 30B is distilled from Muse Spark for agents on consumer hardware: reasoning, tool use and image input.",
+            "The official Q4_K_M GGUF ships an mmproj for images and a DFlash draft model; llama.cpp uses the draft for speculative decoding (29 against 19.5 tok/s on an M4 Max).",
+            "It reasons even with Thinking Off. Apache 2.0.",
+        ],
         "variants": [
             {
                 "id": "meta-models/Muse-Glimmer-30B-GGUF-q4km",

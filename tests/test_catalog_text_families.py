@@ -35,8 +35,11 @@ class NewTextFamiliesTests(unittest.TestCase):
         for fid in self._ALL_NEW_FAMILIES:
             self.assertIn(fid, self.by_id, f"{fid} missing from MODEL_FAMILIES")
 
-    def test_new_families_have_required_shape(self):
-        for fid in self._ALL_NEW_FAMILIES:
+    def test_every_family_has_required_shape(self):
+        # Every family, not only the listed ones: LFM2.5 and Muse Glimmer
+        # shipped without ``readme`` and any Discover search blanked the page
+        # (the search reads ``...family.readme``).
+        for fid in self.by_id:
             fam = self.by_id[fid]
             self.assertEqual(_REQUIRED_FAMILY_FIELDS - set(fam), set(), f"{fid} family fields")
             self.assertTrue(fam["variants"], f"{fid} has variants")

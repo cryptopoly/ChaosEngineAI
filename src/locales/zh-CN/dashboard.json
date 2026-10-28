@@ -45,7 +45,12 @@
       "system": "系统",
       "empty": "未检测到活动的本地 LLM 进程。",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "卸载待命的模型，并停止所有未为当前已加载模型提供服务的模型进程。",
+      "stopIdle": "停止闲置进程",
+      "stopHint": "未为已加载的模型提供服务。停止它即可释放其内存。",
+      "stopConfirm": "停止此进程并释放其内存？",
+      "stop": "停止"
     }
   },
   "hardwareFit": {

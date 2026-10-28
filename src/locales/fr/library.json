@@ -29,7 +29,14 @@
     "cancelled": "Annulé",
     "complete": "Terminé",
     "totalSize": "{size} au total",
-    "downloaded": "{downloaded} sur {total}"
+    "downloaded": "{downloaded} sur {total}",
+    "preparing": "Préparation du téléchargement...",
+    "pausedPercent": "En pause {percent}%",
+    "downloadingPercent": "Téléchargement {percent}%",
+    "pausedAtSize": "En pause à {size} Go",
+    "downloadingSize": "Téléchargement de {size} Go",
+    "sizeTotalGb": "{size} Go au total",
+    "sizeDownloadedGb": "{size} Go téléchargés"
   },
   "details": {
     "loadModel": "Charger le modèle",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Afficher les modèles compatibles avec {label} ({count})",
-      "dflashEmptyTooltip": "Les brouillons de décodage spéculatif DFlash n'existent que pour des modèles de base spécifiques : Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Les fine-tunes ne correspondent généralement pas. Téléchargez un modèle de base depuis Découvrir pour activer DFlash."
+      "dflashEmptyTooltip": "Les brouillons de décodage spéculatif DFlash n'existent que pour des modèles de base spécifiques : Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Les fine-tunes ne correspondent généralement pas. Téléchargez un modèle de base depuis Découvrir pour activer DFlash.",
+      "memorySaverLabel": "{label} · économiseur de mémoire",
+      "memorySaverTooltip": "Afficher les modèles pouvant utiliser {label}, un économiseur de mémoire pour le cache KV : les longues conversations tiennent dans moins de RAM, mais la génération est plus lente qu'avec Natif ({count})"
     },
     "column": {
       "model": "Modèle",
@@ -118,7 +127,9 @@
       "deleteDownload": "Supprimer le téléchargement",
       "chatWithModel": "Discuter avec le modèle",
       "loadForServer": "Charger pour le serveur",
-      "deleteModel": "Supprimer le modèle"
+      "deleteModel": "Supprimer le modèle",
+      "unstarModel": "Retirer des favoris",
+      "starModel": "Marquer comme favori"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, one {# variante} other {# variantes}}",
     "filter": {
       "all": "Tous",
-      "allFormats": "Tous les formats"
+      "allFormats": "Tous les formats",
+      "allAccel": "Toutes les accélérations"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "Aucun modèle ne correspond au filtre « {cap} ».",
       "search": "Aucun modèle ne correspond à « {query} ». Essayez un autre terme.",
       "prompt": "Saisissez pour rechercher des modèles."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · économiseur de mémoire",
+      "memorySaverTooltip": "Afficher les modèles pouvant utiliser {label}, un économiseur de mémoire pour le cache KV : les longues conversations tiennent dans moins de RAM, mais la génération est plus lente qu'avec Natif ({count})",
+      "tooltip": "Afficher les modèles compatibles avec {label} ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "en attente",
       "pendingTitle": "Estimation RAM/VRAM en attente tant que la taille des poids du modèle n'est pas connue."
     },
-    "releaseUnknown": "Inconnu"
+    "releaseUnknown": "Inconnu",
+    "sharedRepoTitle": "Utilise le même téléchargement que {count} autre(s) variante(s) de {repo}. Supprimer cette ligne supprime aussi ces fichiers.",
+    "sharedRepo": "stockage partagé · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "Supprimer le modèle",
       "openHuggingFace": "Ouvrir sur Hugging Face",
       "huggingFace": "Hugging Face",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "trackedOnly": "Suivi uniquement — pas encore lançable"
+    },
+    "trackedOnly": {
+      "tooltip": "Suivi en amont — l'utilisation dans Studio n'est pas encore branchée pour cette famille. L'entrée du catalogue est là à titre informatif ; le téléchargement ne débloquera pas Studio.",
+      "badge": "Suivi en amont"
     }
   },
   "videoDiscover": {

@@ -8,6 +8,7 @@
  * MediaRecorder container format.
  */
 
+import i18next from "i18next";
 import type { TranscriptSegment } from "../../types";
 
 export const STT_SAMPLE_RATE = 16_000;
@@ -140,23 +141,37 @@ export function micErrorMessage(error: unknown, platform: string): string {
   const name = error instanceof DOMException ? error.name : "";
   if (name === "NotAllowedError" || name === "SecurityError") {
     if (platform === "Darwin") {
-      return "Microphone access is blocked. Allow ChaosEngineAI in System Settings > Privacy & Security > Microphone, then try again.";
+      return i18next.t("studio:voice.micError.blockedMac", {
+        defaultValue: "Microphone access is blocked. Allow ChaosEngineAI in System Settings > Privacy & Security > Microphone, then try again.",
+      });
     }
     if (platform === "Windows") {
-      return "Microphone access is blocked. Allow desktop apps to use the microphone in Settings > Privacy & security > Microphone, then try again.";
+      return i18next.t("studio:voice.micError.blockedWindows", {
+        defaultValue: "Microphone access is blocked. Allow desktop apps to use the microphone in Settings > Privacy & security > Microphone, then try again.",
+      });
     }
-    return "Microphone access is blocked. Check your desktop's privacy settings and that no other app holds the microphone.";
+    return i18next.t("studio:voice.micError.blocked", {
+      defaultValue: "Microphone access is blocked. Check your desktop's privacy settings and that no other app holds the microphone.",
+    });
   }
   if (name === "NotFoundError" || name === "OverconstrainedError") {
-    return "No microphone was found. Connect one and try again.";
+    return i18next.t("studio:voice.micError.notFound", {
+      defaultValue: "No microphone was found. Connect one and try again.",
+    });
   }
   if (name === "NotReadableError") {
-    return "The microphone is in use by another app or could not be opened.";
+    return i18next.t("studio:voice.micError.inUse", {
+      defaultValue: "The microphone is in use by another app or could not be opened.",
+    });
   }
   if (typeof navigator !== "undefined" && !navigator.mediaDevices?.getUserMedia) {
-    return "This window cannot use the microphone (no media device support).";
+    return i18next.t("studio:voice.micError.unsupported", {
+      defaultValue: "This window cannot use the microphone (no media device support).",
+    });
   }
-  return error instanceof Error ? error.message : "Could not open the microphone.";
+  return error instanceof Error
+    ? error.message
+    : i18next.t("studio:voice.micError.generic", { defaultValue: "Could not open the microphone." });
 }
 
 interface MicGraph {

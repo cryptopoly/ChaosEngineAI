@@ -40,7 +40,36 @@
       "cancelled": "Generación de imagen cancelada",
       "failed": "Generación de imagen fallida",
       "imagesReady": "Imágenes listas",
-      "imageReady": "Imagen lista"
+      "imageReady": "Imagen lista",
+      "cancelledBody": "Cancelaste esta generación. No se guardó ninguna imagen.",
+      "modelStillLoaded": "El modelo sigue cargado — la próxima generación empezará sin la espera del arranque en frío.",
+      "savedToGallery": "Guardado en la galería",
+      "phaseLoading": "Cargando el modelo en memoria",
+      "phaseEncoding": "Codificando el prompt",
+      "phaseDiffusing": "Difusión de {count, plural, one {# imagen} other {# imágenes}}",
+      "phaseDecoding": "Decodificando píxeles",
+      "phaseSaving": "Guardando en la galería de salidas",
+      "errorHint": "Ajusta el prompt o los ajustes del runtime y vuelve a intentarlo. La galería conserva las salidas correctas anteriores.",
+      "settings": "Ajustes",
+      "stepsCount": "{count, plural, one {# paso} other {# pasos}}",
+      "seedValue": "Semilla {seed}",
+      "generatedCount": "Se generaron {count} imágenes en esta ejecución. Haz clic en una miniatura para ver otro resultado.",
+      "useSameSettings": "Usar los mismos ajustes",
+      "varySeed": "Variar la semilla",
+      "open": "Abrir",
+      "reveal": "Mostrar",
+      "delete": "Eliminar",
+      "cancelGeneration": "Cancelar generación",
+      "close": "Cerrar",
+      "done": "Listo"
+    },
+    "mflux": {
+      "outdated": "El motor mflux instalado aquí ({installed}) es más antiguo de lo que espera esta app ({required}), así que los modelos más recientes, como FLUX 3 y Qwen-Image-2.1 Turbo, no se ejecutarán. Al actualizar, se reinstala en su propio entorno.",
+      "notInstalled": "Este modelo se ejecuta en el motor MLX mflux, que aún no está instalado. Se instala en su propio entorno (unos 1,3 GB) y no modifica los paquetes de la app.",
+      "installing": "Instalando…",
+      "retry": "Reintentar instalación",
+      "update": "Actualizar motor mflux",
+      "install": "Instalar motor mflux"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "Generando video",
       "cancelled": "Generación de video cancelada",
       "failed": "Generación de video fallida",
-      "ready": "Video listo"
+      "ready": "Video listo",
+      "cancelledBody": "Cancelaste esta generación. No se guardó ningún clip.",
+      "modelStillLoaded": "El modelo sigue cargado — la próxima generación empezará sin la espera del arranque en frío.",
+      "savedToGallery": "Guardado en la galería",
+      "loadError": "No se pudo cargar el video.",
+      "phaseLoading": "Cargando el modelo en memoria",
+      "phaseEncoding": "Codificando el prompt",
+      "phaseDiffusing": "Difusión de {count, plural, one {# fotograma} other {# fotogramas}}",
+      "phaseDiffusingFrames": "Difusión de fotogramas",
+      "phaseEncodingMp4": "Codificando mp4",
+      "phaseSaving": "Guardando en la galería",
+      "errorHint": "Ajusta el prompt, la resolución o el número de fotogramas y vuelve a intentarlo. La galería conserva los clips correctos anteriores.",
+      "loadingClip": "Cargando clip...",
+      "framesCount": "{count, plural, one {# fotograma} other {# fotogramas}}",
+      "clipLength": "clip de {seconds} s",
+      "stepsCount": "{count, plural, one {# paso} other {# pasos}}",
+      "seedValue": "Semilla {seed}",
+      "renderTime": "render en {seconds} s",
+      "openGallery": "Abrir galería",
+      "revealFile": "Mostrar archivo",
+      "delete": "Eliminar",
+      "cancelGeneration": "Cancelar generación",
+      "close": "Cerrar",
+      "done": "Listo"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "Error del mejorador: {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "Cargando modelo en memoria..."
+    "loadingModel": "Cargando modelo en memoria...",
+    "cudaTorchInstalled": "torch CUDA instalado.",
+    "cudaTorchRestartHint": "El backend en ejecución aún tiene el torch antiguo en su caché de módulos. Reinicia el backend para activar el nuevo wheel{index}.",
+    "gpuNotActive": "Aceleración por GPU no activa.",
+    "restarting": "Reiniciando...",
+    "restartBackend": "Reiniciar el backend",
+    "installingCudaTorch": "Instalando torch CUDA...",
+    "installCudaTorch": "Instalar torch CUDA",
+    "realGenerationAvailable": "Generación local real disponible",
+    "runtimeUnavailable": "Runtime no disponible",
+    "usingPlaceholder": "Usando salidas de marcador de posición",
+    "cpuFallback": "Respaldo en CPU",
+    "engineChip": "Motor: {engine}",
+    "deviceExpected": "{device} (esperado)",
+    "deviceChip": "Dispositivo: {device}",
+    "summaryLoaded": "{selected} está cargado y listo para generar.",
+    "summarySwap": "{loaded} está cargado. Generar con {selected} cambiará el pipeline.",
+    "summaryNotLoaded": "{selected} está instalado localmente pero aún no cargado. La primera generación tardará más mientras se calienta el pipeline de difusión.",
+    "summaryNotInstalled": "{selected} no está instalado localmente. Descárgalo desde Descubrir para activar la generación local.",
+    "summaryOnDemand": "El modelo se cargará bajo demanda cuando generes.",
+    "preloadModel": "Precargar modelo",
+    "unloadModel": "Descargar modelo",
+    "unloadNamed": "Descargar {name}",
+    "gpuRuntimeInstalledIntro": "Runtime de GPU instalado en",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "El backend en ejecución aún conserva su antigua caché de importaciones — haz clic en Reiniciar el backend para activar el nuevo runtime; después la generación de imágenes usará tu GPU.",
+    "restartBackendToActivate": "Reiniciar el backend para activar",
+    "gpuRuntimeInstallPrompt": "Instala el runtime de imágenes para GPU (torch + diffusers + accelerate + transformers, ~2,5 GB) para activar la generación local real. Se guarda en una carpeta persistente del usuario para que las actualizaciones de la app no la borren.",
+    "installing": "Instalando...",
+    "installGpuRuntime": "Instalar runtime de GPU"
   },
   "imageStudio": {
     "generateTitle": {
@@ -190,6 +271,98 @@
       "openGallery": "Abrir Galería",
       "emptyHint": "Genera un prompt para crear la primera imagen guardada para esta rama.",
       "footnote": "Mostrando las {recent} imágenes guardadas más recientes aquí. Abre la Galería de imagen para explorar todo, filtrar por modelo y gestionar ejecuciones más antiguas."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "Cuadrado"
+      },
+      "portrait": {
+        "label": "Vertical"
+      },
+      "landscape": {
+        "label": "Horizontal"
+      },
+      "wide": {
+        "label": "Ancho"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "Rápido",
+        "hint": "Borradores rápidos"
+      },
+      "balanced": {
+        "label": "Equilibrado",
+        "hint": "Mejor opción por defecto"
+      },
+      "quality": {
+        "label": "Alta calidad",
+        "hint": "Pasada final más lenta"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "Predeterminado del modelo",
+        "hint": "Lo que traiga el modelo"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "Rápido, equilibrado — 20-30 pasos"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "Más suave con pocos pasos"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "Algo más ruidoso, creativo"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "Clásico, fiable con 25+ pasos"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "Creativo, no determinista"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "Determinista, más lento"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "Rápido con pocos pasos"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "Align Your Steps de 10 pasos · elige solo para SD1.5"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "Align Your Steps de 10 pasos · elige solo para SDXL"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "Desactivado",
+        "hint": "Pipeline original — sin caché"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Aceleración de 1,5–2× en DiTs · multiplataforma"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibrado para FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× mediante extrapolación polinómica (nativo en diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — reutiliza la atención entre pasos cercanos"
+      }
     }
   },
   "videoStudio": {
@@ -346,7 +519,47 @@
       "reasonCaution": "El modelo necesita ~{model} GB residentes. En {platform} con {total} GB totales, eso está por encima del objetivo de comodidad conservador (~{comfort} GB) pero por debajo del conjunto de trabajo estimado (~{working} GB). La generación debería caber; reduce los ajustes si se vuelve inestable."
     },
     "disabledHint": "Generación desactivada: {reason}",
-    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto para las variantes más grandes."
+    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto para las variantes más grandes.",
+    "cacheStrategies": {
+      "none": {
+        "label": "Desactivado",
+        "hint": "Pipeline original — sin caché"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Aceleración de 1,5–2× en DiTs · multiplataforma"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibrado para FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× mediante extrapolación polinómica (nativo en diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — reutiliza la atención entre pasos cercanos"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "Borrador",
+        "sub": "20 pasos"
+      },
+      "standard": {
+        "label": "Estándar",
+        "sub": "30 pasos"
+      },
+      "high": {
+        "label": "Alta",
+        "sub": "40 pasos"
+      },
+      "max": {
+        "label": "Máx.",
+        "sub": "50 pasos"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -435,64 +648,64 @@
   },
   "voice": {
     "pack": {
-      "title": null,
-      "installed": null,
-      "notInstalled": null,
-      "about": null,
-      "cancel": null,
-      "update": null,
-      "install": null,
-      "reinstall": null,
-      "done": null,
-      "log": null,
+      "title": "Paquete de voz",
+      "installed": "Instalado",
+      "notInstalled": "No instalado",
+      "about": "La voz a texto y el texto a voz se ejecutan en su propio entorno en este equipo (unos 2 GB, más los modelos que descargues). No se envía nada por internet.",
+      "cancel": "Cancelar",
+      "update": "Actualizar paquete de voz",
+      "install": "Instalar paquete de voz",
+      "reinstall": "Reparar / reinstalar",
+      "done": "Paquete de voz instalado.",
+      "log": "Registro de instalación",
       "updateFeatures": "Actualiza el paquete de voz para las llamadas de voz en el chat y la identificación de hablantes (unos 40 MB de modelos; uno o dos minutos)."
     },
     "models": {
-      "recommended": null,
-      "downloaded": null,
-      "use": null,
-      "download": null,
-      "firstUse": null,
-      "title": null,
-      "sttTitle": null,
-      "sttSubtitle": null
+      "recommended": "Recomendado",
+      "downloaded": "Descargado",
+      "use": "Usar para dictar",
+      "download": "Descargar",
+      "firstUse": "Se descarga en el primer uso si omites esto.",
+      "title": "Voice",
+      "sttTitle": "Modelos de reconocimiento de voz",
+      "sttSubtitle": "Los usan el micrófono del chat y Voice Studio."
     },
     "voices": {
-      "title": null,
-      "subtitle": null,
-      "needsChinese": null,
-      "notYet": null,
-      "useVoice": null,
-      "preview": null
+      "title": "Voces",
+      "subtitle": "Kokoro: 54 voces en 9 idiomas. Elige la que usa el chat para leer en voz alta.",
+      "needsChinese": "Marca las voces de chino mandarín en el paquete de voz.",
+      "notYet": "Aún no disponible en este equipo.",
+      "useVoice": "Usar esta voz",
+      "preview": "Vista previa"
     },
     "settings": {
-      "title": null,
-      "autoSend": null,
-      "autoRead": null,
-      "language": null,
-      "languageHint": null,
-      "speed": null,
-      "idle": null,
-      "workerRunning": null,
-      "workerStopped": null,
-      "unload": null,
+      "title": "Preferencias de voz",
+      "autoSend": "Enviar el mensaje en cuanto termine el dictado",
+      "autoRead": "Leer en voz alta cada respuesta del chat al terminar",
+      "language": "Idioma de dictado",
+      "languageHint": "Whisper la usa; Parakeet detecta el idioma por sí mismo.",
+      "speed": "Velocidad de lectura",
+      "idle": "Liberar la memoria de voz tras (minutos de inactividad, 0 = nunca)",
+      "workerRunning": "Los modelos de voz están cargados (proceso {pid}).",
+      "workerStopped": "Los modelos de voz no están cargados.",
+      "unload": "Descargar ahora",
       "silence": "Llamada de voz: pausa que termina tu turno",
       "silenceHint": "Más corta responde antes; más larga te deja pausar para pensar.",
       "bargeIn": "Llamada de voz: interrumpir al modelo hablando"
     },
-    "offline": null,
-    "copy": null,
-    "save": null,
+    "offline": "Esperando al backend…",
+    "copy": "Copiar",
+    "save": "Guardar en la galería",
     "transcribe": {
-      "title": null,
-      "subtitle": null,
-      "model": null,
-      "language": null,
-      "hint": null,
-      "choose": null,
-      "took": null,
-      "placeholder": null,
-      "segments": null,
+      "title": "Transcribir",
+      "subtitle": "Graba, o suelta un archivo de audio o vídeo",
+      "model": "Modelo",
+      "language": "Idioma",
+      "hint": "Haz clic en el botón para grabar, o suelta un archivo aquí.",
+      "choose": "Elegir un archivo",
+      "took": "transcrito en {s} s",
+      "placeholder": "La transcripción aparece aquí. Puedes editarla.",
+      "segments": "Marcas de tiempo ({n})",
       "tooBig": "{name} supera los 500 MB.",
       "recordingName": "Grabación",
       "subtitleQueue": "Graba, o suelta archivos de audio y vídeo",
@@ -506,23 +719,23 @@
       "hintQueue": "Graba, o suelta archivos aquí (puedes soltar varios a la vez).",
       "chooseFiles": "Elegir archivos"
     },
-    "stopRecording": null,
-    "record": null,
-    "transcribing": null,
-    "cancel": null,
-    "sendToChat": null,
-    "copied": null,
-    "saved": null,
+    "stopRecording": "Detener la grabación",
+    "record": "Grabar",
+    "transcribing": "Transcribiendo",
+    "cancel": "Cancelar",
+    "sendToChat": "Enviar al chat",
+    "copied": "Copiado",
+    "saved": "Guardado",
     "speak": {
-      "title": null,
-      "subtitle": null,
-      "placeholder": null,
-      "voice": null,
-      "speed": null,
-      "generating": null,
-      "generate": null,
-      "readNow": null,
-      "download": null,
+      "title": "Hablar",
+      "subtitle": "Convierte texto en voz",
+      "placeholder": "Escribe o pega texto. El Markdown y el código se limpian antes de hablar.",
+      "voice": "Voz",
+      "speed": "Velocidad",
+      "generating": "Generando…",
+      "generate": "Generar audio",
+      "readNow": "Leer en voz alta ahora",
+      "download": "Descargar WAV",
       "subtitleLong": "Convierte texto en voz. Una línea en blanco empieza un párrafo nuevo; [pause] añade una pausa.",
       "preview": "Escuchar esta voz",
       "listen": "Escuchar",
@@ -530,11 +743,11 @@
       "generateParts": "Generar audio ({n} partes)",
       "encoding": "Codificando…"
     },
-    "stop": null,
+    "stop": "Detener",
     "studio": {
-      "title": null,
-      "needsPack": null,
-      "openModels": null
+      "title": "Voice Studio",
+      "needsPack": "La voz se ejecuta en este equipo y necesita el paquete de voz (unos 2 GB). Instálalo una vez desde Voz > Mis modelos.",
+      "openModels": "Abrir Modelos de voz"
     },
     "savedToLibrary": "Guardado en la biblioteca",
     "saveToLibrary": "Guardar en la biblioteca",
@@ -595,6 +808,64 @@
       "loading": "Cargando…",
       "noMatch": "No hay coincidencias.",
       "empty": "Aún no hay nada. Aquí se guardan las transcripciones hechas en Voice Studio y la voz que guardes."
+    },
+    "languages": {
+      "auto": "Detectar automáticamente"
+    },
+    "lane": {
+      "mlx": "Apple Silicon: Parakeet y Whisper en MLX, voces de Kokoro",
+      "cuda": "GPU NVIDIA: Whisper en CUDA, voces de Kokoro",
+      "nvidia": "Whisper (la instalación añade las bibliotecas CUDA), voces de Kokoro",
+      "cpu": "Whisper en la CPU, voces de Kokoro"
+    },
+    "micError": {
+      "blockedMac": "El acceso al micrófono está bloqueado. Permite ChaosEngineAI en Ajustes del Sistema > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
+      "blockedWindows": "El acceso al micrófono está bloqueado. Permite que las aplicaciones de escritorio usen el micrófono en Configuración > Privacidad y seguridad > Micrófono y vuelve a intentarlo.",
+      "blocked": "El acceso al micrófono está bloqueado. Revisa la configuración de privacidad de tu escritorio y que ninguna otra aplicación esté usando el micrófono.",
+      "notFound": "No se encontró ningún micrófono. Conecta uno y vuelve a intentarlo.",
+      "inUse": "Otra aplicación está usando el micrófono o no se pudo abrir.",
+      "unsupported": "Esta ventana no puede usar el micrófono (no admite dispositivos multimedia).",
+      "generic": "No se pudo abrir el micrófono."
     }
+  },
+  "residentChatModelNote": "Un modelo de chat cargado ocupa unos {gb} GB de esta memoria; descargarlo la libera.",
+  "mediaStudioBoosters": {
+    "title": "Potenciadores de rendimiento",
+    "forModel": "para {model}",
+    "selectedModelFallback": "el modelo seleccionado"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "Mover el torch existente al directorio de rollback",
+      "install": "pip install torch (versión nueva)",
+      "deps": "pip install torch (dependencias transitivas)",
+      "constraint": "Fijar torch en constraints.txt",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "Reconstruir el paquete dependiente de la ABI",
+      "verify": "Verificar torch.cuda.is_available() en un subproceso",
+      "cleanup": "Limpiar directorios de rollback antiguos",
+      "rollbackRestore": "Restaurar el torch anterior desde el rollback",
+      "step": "paso"
+    },
+    "available": "Actualización de torch disponible:",
+    "starting": "Iniciando…",
+    "upgrade": "Actualizar torch",
+    "dismiss": "Cerrar",
+    "willRebuild": "También reconstruirá {count, plural, one {# paquete dependiente de la ABI} other {# paquetes dependientes de la ABI}}",
+    "abiExplainer": "Los saltos de versión {type} de torch rompen la ABI de C++, así que los wheels de estos paquetes no se cargarán hasta que se reinstalen con el nuevo torch:",
+    "rollbackLead": "Si la verificación de la actualización falla, tu torch anterior",
+    "rollbackTail": "se restaura automáticamente desde un directorio de rollback contiguo — no hace falta volver a descargar.",
+    "whatHappens": "¿Qué pasa cuando actualizo?",
+    "patchBumpExplainer": "Las actualizaciones de parche mantienen estable la ABI de C++ de torch, así que solo se reinstala el propio wheel de torch. Tu torch actual se mueve primero a un directorio de rollback contiguo; si el nuevo wheel no supera la verificación de CUDA, el anterior se restaura automáticamente. «Reiniciar el backend» activa el nuevo wheel.",
+    "upgrading": "Actualizando torch",
+    "complete": "Actualización de torch completada",
+    "failed": "Falló la actualización de torch",
+    "restarting": "Reiniciando…",
+    "restartToActivate": "Reiniciar el backend para activar",
+    "rolledBack": "torch anterior restaurado desde el rollback — la generación continúa con la versión anterior.",
+    "rollbackKeptLead": "Directorio de rollback conservado en",
+    "rollbackKeptTail": "para la recuperación manual.",
+    "close": "Cerrar",
+    "installLog": "Registro de instalación ({count, plural, one {# paso} other {# pasos}})"
   }
 }

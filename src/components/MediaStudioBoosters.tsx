@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { AcceleratorCard } from "./AcceleratorCard";
 import {
@@ -76,6 +77,7 @@ export function MediaStudioBoosters({
   selectedVariant,
   nativeBackends,
 }: MediaStudioBoostersProps) {
+  const { t } = useTranslation("studio");
   // Hold a local capabilities overlay so a fresh install flips the
   // card state immediately. The parent's ``nativeBackends`` is the
   // authoritative source; we just merge install responses on top.
@@ -140,9 +142,12 @@ export function MediaStudioBoosters({
   return (
     <section className="media-studio-boosters">
       <header className="media-studio-boosters-header">
-        <strong style={{ fontSize: "0.92rem" }}>Performance boosters</strong>
+        <strong style={{ fontSize: "0.92rem" }}>{t("mediaStudioBoosters.title", { defaultValue: "Performance boosters" })}</strong>
         <span className="muted-text" style={{ fontSize: "0.78rem", marginLeft: 8 }}>
-          for {selectedVariant?.name ?? "the selected model"}
+          {t("mediaStudioBoosters.forModel", {
+            defaultValue: "for {model}",
+            model: selectedVariant?.name ?? t("mediaStudioBoosters.selectedModelFallback", { defaultValue: "the selected model" }),
+          })}
         </span>
       </header>
       <div className="media-studio-boosters-stack" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>

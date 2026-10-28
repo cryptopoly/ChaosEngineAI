@@ -32,7 +32,10 @@
     "image": "画像スタジオ",
     "video": "動画スタジオ",
     "setup": "セットアップ",
-    "diagnostics": "診断"
+    "diagnostics": "診断",
+    "voiceStudio": "音声スタジオ",
+    "voiceModels": "音声モデル",
+    "voiceLibrary": "ボイスライブラリ"
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -57,7 +60,10 @@
     "promptLibrary": "再利用可能なプロンプトテンプレート",
     "plugins": "拡張機能とプラグインシステム",
     "logs": "ランタイムイベント",
-    "settings": "ディレクトリとデフォルト"
+    "settings": "ディレクトリとデフォルト",
+    "voiceStudio": "録音・文字起こし・読み上げ",
+    "voiceModels": "STT・TTS モデルの管理",
+    "voiceLibrary": "作成した文字起こしと音声"
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -78,7 +84,10 @@
     "conversion": "変換",
     "fineTuning": "ファインチューニング",
     "promptLibrary": "プロンプト",
-    "plugins": "プラグイン"
+    "plugins": "プラグイン",
+    "voiceStudio": "スタジオ",
+    "voiceModels": "マイモデル",
+    "voiceLibrary": "ライブラリ"
   },
   "tabGroups": {
     "chat": "チャット",
@@ -86,14 +95,16 @@
     "images": "画像",
     "video": "動画",
     "benchmarks": "ベンチマーク",
-    "tools": "ツール"
+    "tools": "ツール",
+    "voice": "音声"
   },
   "tabsCount": "{count, plural, other {# 個のタブ}}",
   "sidebar": {
     "backendOnline": "バックエンドオンライン",
     "backendOffline": "オフライン",
     "noModelLoaded": "モデルが読み込まれていません",
-    "groupTabsAriaLabel": "{group} タブ"
+    "groupTabsAriaLabel": "{group} タブ",
+    "primaryNavAriaLabel": "メイン"
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
@@ -128,7 +139,8 @@
     "tryAgain": "再試行",
     "copyDetails": "詳細をコピー",
     "switchTo": "{target} に切り替え",
-    "keepEnglish": "英語のまま"
+    "keepEnglish": "英語のまま",
+    "dismiss": "閉じる"
   },
   "status": {
     "loading": "読み込み中…",
@@ -164,7 +176,8 @@
     "detected": "{endonym} を検出しました。",
     "prompt": "アプリを {endonym} に切り替えますか?設定 → 言語 でいつでも変更できます。",
     "switch": "{endonym} に切り替え",
-    "keep": "英語のまま"
+    "keep": "英語のまま",
+    "ariaLabel": "言語設定"
   },
   "panels": {
     "mlxConversion": "MLX 変換",
@@ -260,6 +273,18 @@
       "remoteHealth": "リモートヘルス",
       "remoteModels": "リモートモデル",
       "close": "閉じる"
+    },
+    "connect": {
+      "title": "アプリを接続",
+      "subtitle": "OpenAI 互換のエンドポイントです。任意の OpenAI SDK または互換アプリで、上の API キーを使い、下のベース URL を指定してください。",
+      "baseUrl": "ベース URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev（設定）",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "管理者 → 設定 → 接続 → OpenAI API。ベース URL: {base} — 上の API キーを使用してください。",
+      "ollamaApps": "Ollama 互換アプリ",
+      "ollamaHint": "アプリの Ollama ホスト / ベース URL を下のアドレスに設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
     }
   },
   "conversionTab": {
@@ -434,6 +459,11 @@
       "close": "閉じる",
       "ok": "OK",
       "cancel": "ベンチマークをキャンセル"
+    },
+    "promptPresets": {
+      "balanced": "バランスの取れた要約",
+      "reasoning": "推論チェック",
+      "coding": "コーディングの回答"
     }
   },
   "benchmarkHistory": {
@@ -649,7 +679,10 @@
     "specTitle": "ツリーベースの投機的デコードが有効",
     "specTitleWithBudget": "ツリーベースの投機的デコードが有効(ステップあたりドラフトトークンの予算 {budget})",
     "acceptLabel": "平均受理 {value}",
-    "acceptTitle": "ステップあたりに受理された平均ドラフトトークン数({value})"
+    "acceptTitle": "ステップあたりに受理された平均ドラフトトークン数({value})",
+    "cacheTitleMemorySaver": "KV キャッシュ戦略（{label}）— メモリ節約型: 長いチャット向けにキャッシュを大幅に小さくする代わりに、生成が遅くなります",
+    "specLabelExact": "厳密ドラフト",
+    "specTitleExact": "投機的デコーディング有効 — すべてのドラフトがターゲットモデルで検証されるため、返信は逐次デコーディングと一致します"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +718,14 @@
     "speedSlow": "遅い",
     "speedGood": "良好",
     "speedFast": "高速",
-    "speedVeryFast": "非常に高速"
+    "speedVeryFast": "非常に高速",
+    "speedMeasuredTitle": "このモデルとこのキャッシュ戦略での、直近の実行結果の中央値です。",
+    "speedEstimateTitle": "メモリ帯域幅（{bandwidth}）と、トークンごとに読み出す重みの量から推定した値です。モデルを使用すると、実際の実行結果に置き換わります。",
+    "speedMeasured": "実測",
+    "speedEstimate": "推定",
+    "sourceModel": "キャッシュサイズはモデル自身の {source} から算出しています。",
+    "sourceHub": "キャッシュサイズは Hugging Face 上のモデル設定から算出しています。",
+    "sourceEstimate": "パラメータ数からの大まかなキャッシュ推定値です。モデルをダウンロードすると正確になります。"
   },
   "reasoningPanel": {
     "label": "思考",
@@ -766,7 +806,9 @@
       "storage": "ストレージ",
       "providers": "プロバイダー",
       "integrations": "連携",
-      "diagnostics": "診断"
+      "diagnostics": "診断",
+      "accelerators": "アクセラレータ",
+      "disk": "ディスク使用量"
     },
     "sectionsAria": "設定セクション",
     "badges": {
@@ -934,7 +976,8 @@
         "title": "まだ読み込み中",
         "detail": "コールドスタートのインポートに通常より時間がかかっています。これが 2 分以上停止する場合は、終了して再度開いてください — 古いマニフェストが再展開を強制することがあります。"
       }
-    }
+    },
+    "logPath": "バックエンドログ: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1023,227 @@
       "incomplete": "未完了",
       "notInstalled": "未インストール"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "モデルは標準配置で約 {model} GB の常駐を必要としますが、{platform}(合計 {total} GB)で安全に利用できるのは約 {working} GB のみです。ランタイムは自動的にシーケンシャル CPU オフロードにフォールバックします — 生成は成功しますが、各ステップごとにサブモジュールが CPU と {offloadDevice} メモリの間で入れ替わるため、数倍遅くなります。フルスピード生成にはより小さなモデル(LTX-Video は約 2 GB 常駐)、またはメモリの大きいマシンを選択してください。",
+      "reasonDangerNear": "モデルは約 {model} GB の常駐を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。ランタイムは収めるために CPU オフロードを使用する可能性があります — フルスピード生成にしたい場合は設定を下げるかより小さなモデルを選択してください。",
+      "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では推定ワーキングセットは約 {working} GB なので、モデル単独ですでにそれを超えています。小さな画像でもバックエンドがクラッシュする可能性が高いです。より小さなモデル(SD 1.5 は約 4 GB、SDXL は約 13 GB)、またはメモリの大きいマシンを試してください。",
+      "reasonDangerNear": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。生成によりバックエンドがクラッシュする可能性が高いです。解像度を下げるか、より小さなモデルを選択してください。",
+      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。"
+    }
+  },
+  "runHf": {
+    "resolveFailed": "そのリポジトリを確認できませんでした。",
+    "downloadStarted": "ダウンロードを開始しました — マイモデルで進捗を確認し、読み込んでください。",
+    "downloadFailed": "ダウンロードに失敗しました。",
+    "loaded": "{label} を読み込みました。",
+    "loadFailed": "読み込みに失敗しました。",
+    "title": "Hugging Face から実行",
+    "subtitle": "GGUF または MLX のリポジトリ（owner/name または URL）を貼り付けると、カタログに登録されていなくても実行できます。",
+    "resolving": "確認中…",
+    "resolve": "確認",
+    "ctx": "{ctx} コンテキスト",
+    "downloading": "開始中…",
+    "download": "ダウンロード",
+    "notRunnable": "このリポジトリはこのプラットフォームでは直接実行できません — 上の注記を参照してください。",
+    "loading": "読み込み中…",
+    "load": "読み込み"
+  },
+  "rag": {
+    "vectorTooltip": "ローカルの埋め込みモデルを使って、意味でドキュメントを検索します。",
+    "semantic": "セマンティック検索",
+    "lexicalTooltip": "キーワード（TF-IDF + BM25）でドキュメントを検索します。セマンティック検索を有効にすると、関連する内容をより漏れなく見つけられます。",
+    "binaryMissingTooltip": "キーワード検索のみ — llama-embedding バイナリが見つからないため、このインストールではセマンティック検索を利用できません。",
+    "keyword": "キーワード検索",
+    "verifying": "検証中…",
+    "downloading": "{sizeLabel} をダウンロード中…",
+    "enable": "セマンティック検索を有効にする",
+    "installFailed": "インストールに失敗"
+  },
+  "importModels": {
+    "failed": "インポートに失敗しました。",
+    "imported": "インポート済み",
+    "importing": "インポート中…",
+    "import": "インポート",
+    "title": "既存のモデルをインポート",
+    "subtitle": "別のローカルアプリのストアでモデルが見つかりました。インポートすると元の場所にリンクされるため、再ダウンロードは不要です。",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "CPU で実行中です。",
+    "recommendationFallback": "NVIDIA GPU は検出されていますが、torch が CUDA に接続できません — 画像と動画の生成が非常に遅くなります。",
+    "cudaInstalled": "CUDA torch をインストールしました{source}{python}。アプリを再起動して GPU を使用してください。",
+    "cudaInstalledSource": "（{index} から）",
+    "cudaInstalledPython": "（同梱の Python {version} に）",
+    "noWheel": "Python{version} 用の CUDA torch wheel がありません。",
+    "noWheelBundledVenv": "（同梱の venv）",
+    "noWheelDetail": "PyTorch が現在 CUDA wheel を提供している Python は 3.9–3.13 です。対応する Python を PATH に通した状態でアプリを再インストールして（例: 3.12 または 3.13）、もう一度お試しください。",
+    "installFailed": "インストールに失敗:",
+    "downloading": "約 2.5 GB の CUDA wheel をアプリ同梱の Python にダウンロード中 — 数分かかる場合があります。",
+    "installing": "CUDA torch をインストール中...",
+    "install": "CUDA torch をインストール"
+  },
+  "llamaRebuild": {
+    "rebuilding": "llama.cpp を再ビルド中...",
+    "rebuild": "llama.cpp を再ビルド"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count} 件ダウンロード済み",
+    "variants": "バリアント（{count}）",
+    "convert": "変換",
+    "chat": "チャット",
+    "server": "サーバー",
+    "pause": "一時停止",
+    "resume": "再開",
+    "downloadFailed": "ダウンロードに失敗",
+    "downloadComplete": "ダウンロード完了",
+    "overview": "概要"
+  },
+  "dataDirRestart": {
+    "title": "再起動が必要",
+    "body": "データディレクトリが変更されました。新しい場所でのファイルの読み書きを始めるため、ChaosEngineAI はバックエンドを再起動する必要があります。",
+    "from": "移動元: {path}",
+    "to": "移動先: {path}",
+    "copied": "コピー済み: {items}",
+    "skipped": "スキップ（コピー先に既に存在）: {items}",
+    "notNow": "後で",
+    "restarting": "バックエンドを再起動中...",
+    "notBackOnline": "再起動後、バックエンドがオンラインに復帰しませんでした。",
+    "failed": "バックエンドの再起動に失敗しました。",
+    "confirm": "OK、今すぐ再起動"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM ブリッジ",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動して WSL の状態を確認してください。",
+    "capsError": "WSL の状態を読み取れませんでした: {error}",
+    "probing": "WSL の状態を確認中...",
+    "ready": "✓ 準備完了{version}",
+    "notInstalled": "この Windows ホストには WSL2 がインストールされていません。vLLM にはネイティブの Windows 向け wheel がないため、現実的な方法は WSL2 の Ubuntu ディストリビューション内で vLLM を実行することです。",
+    "runInPowershell": "管理者として PowerShell を開き、次を実行してください:",
+    "rebootHint": "再起動を求められたら再起動し、その後 ChaosEngineAI を開き直してください。",
+    "microsoftDocs": "Microsoft ドキュメント",
+    "cudaMissingLead": "WSL2 はインストールされています（{distro}）が、",
+    "cudaMissingTail": "がディストリビューション内から利用できません。Windows に NVIDIA の WSL 用ドライバーをインストールしてください — GPU ドライバーの CUDA を WSL にパススルーできるようになります。",
+    "nvidiaGuide": "NVIDIA WSL ガイド ↗",
+    "installing": "インストール中...",
+    "reinstall": "WSL に vLLM を再インストール",
+    "install": "WSL に vLLM をインストール",
+    "installedSummary": "vLLM {version} は {distro} の ~/.chaosengine/vllm-venv にインストールされています。デスクトップアプリは、この venv 経由で vLLM のモデル読み込みを実行できます。",
+    "readySummary": "WSL2（{distro}）と CUDA パススルーの準備ができています。vLLM を ~/.chaosengine/vllm-venv の独立した venv にインストールします（約 2 GB のダウンロード、通常の環境で約 5-15 分）。"
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "インストールコマンドが 0 以外の終了コードで終了しました。",
+    "title": "ブーストパック",
+    "description": "画像・動画・チャット推論向けのオプションのアクセラレータです。どれも pip install ひとつで導入できます — お使いのハードウェアが対応している行で「インストール」をクリックしてください。",
+    "capError": "アクセラレータの対応状況を読み取れませんでした: {error}",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動してアクセラレータの状態を読み取ってください。",
+    "columns": {
+      "accelerator": "アクセラレータ",
+      "size": "サイズ",
+      "platform": "プラットフォーム",
+      "status": "ステータス",
+      "action": "操作"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "サイズと空き容量を確認中",
+      "copying": "コピー中",
+      "cleanup": "古いコピーを削除中",
+      "done": "完了",
+      "error": "失敗"
+    },
+    "pathSavedRestart": "パスを保存しました。新しいダウンロードが新しいドライブに保存されるよう、バックエンドを再起動してください。",
+    "pathSaved": "パスを保存しました。",
+    "resetDoneRestart": "デフォルトにリセットしました。デフォルトの場所を使うにはバックエンドを再起動してください。",
+    "resetDone": "デフォルトにリセットしました。",
+    "destinationRequired": "先に移動先のパスを設定してください（入力するか、上の「参照」を使用）。",
+    "moveConfirm": "{from} から {to} へ、{size} のモデルを移動しますか？\n\nコピーが正常に完了すると、元のフォルダは削除されます。回転ディスク式の HDD では、100 GB で 15〜45 分かかることがあります。\n\n開始する前に、実行中の生成をすべて閉じてください。",
+    "reading": "ストレージ情報を読み取り中...",
+    "loading": "ストレージ情報を読み込み中...",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動してストレージを設定してください。",
+    "currentLocation": "現在のキャッシュの場所",
+    "inCache": "キャッシュ内 {size}",
+    "free": "空き {size}",
+    "overridePath": "パスを上書き（再起動が必要）",
+    "usingDefault": "デフォルトを使用中",
+    "browse": "参照...",
+    "saving": "保存中...",
+    "savePath": "パスを保存",
+    "resetToDefault": "デフォルトにリセット",
+    "restarting": "再起動中...",
+    "restartBackendNow": "今すぐバックエンドを再起動",
+    "moveHint": "古い場所に {size} のモデルがあります。新しいパスでも使い続けられるよう、移動してください。回転ディスク式の HDD では、6 GB あたり約 1 分を見込んでください。",
+    "starting": "開始中...",
+    "moveModels": "既存のモデルを新しいパスに移動",
+    "filesProgress": "{copied} / {total} ファイル",
+    "restartBackend": "バックエンドを再起動"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "高速で軽量 — 一般消費者向けハードウェアを想定した設計です。最初に試すのにおすすめ。",
+      "wan22": "テキストから動画への生成品質が高いモデル。24GB 以上の VRAM、またはユニファイドメモリ搭載の Apple Silicon で動作します。",
+      "hunyuanVideo": "高い忠実度で、より長いクリップを生成。40GB クラス以上のハードウェアが必要です。",
+      "mochi1": "オープンウェイトで、動きの品質も高水準。Apache 2.0 ライセンス。"
+    },
+    "models": {
+      "title": "インストール済みの動画モデル",
+      "subtitle": "このマシン上のモデル",
+      "body": "ローカルにはまだ動画モデルが検出されていません。動画エンジンが提供されると、ダウンロードした重みが、量子化、ディスク上のサイズ、実行ターゲットとともにここに表示されます。"
+    },
+    "discover": {
+      "title": "動画モデルをディスカバー",
+      "subtitle": "動画生成モデルを検索してダウンロード",
+      "body": "以下のカタログは、最初にサポートする予定のエンジンのプレビューです。動画ランタイムが組み込まれると、ダウンロードボタンが有効になります。"
+    },
+    "studio": {
+      "title": "動画スタジオ",
+      "subtitle": "プロンプトを入力し、生成し、改善を重ねる",
+      "body": "スタジオには、プロンプトエディター、アスペクト比と長さの設定、シード固定、フレームごとのプレビューが用意される予定です。もう少しお待ちください — まだエンジンは読み込まれていません。"
+    },
+    "gallery": {
+      "title": "動画ギャラリー",
+      "subtitle": "保存した出力とフィルター",
+      "body": "完成したレンダリングはここに保存され、モデル・長さ・解像度で絞り込めます。ドラッグによる並べ替えとお気に入りは、今後の予定に入っています。"
+    },
+    "comingSoon": "近日公開",
+    "roadmap": "ローカルでの動画生成は ChaosEngineAI のロードマップに入っています。このタブはプレースホルダーで、ルーティングと UX の骨組みを先にリリースするためのものです — 推論エンジンは後からその裏側に組み込まれます。",
+    "planned": "予定"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "CUDA のみ",
+      "appleSilicon": "Apple Silicon のみ",
+      "any": "クロスプラットフォーム"
+    },
+    "installing": "インストール中…",
+    "retry": "再試行",
+    "installBackground": "インストール（バックグラウンド）",
+    "install": "インストール",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ インストール済み",
+    "installFailed": "インストールに失敗",
+    "installLabel": "{label} をインストール",
+    "requires": "必須: {platform}",
+    "appliesTo": "対象:",
+    "backgroundInstall": "バックグラウンドインストール",
+    "quickInstall": "クイックインストール",
+    "installFailureOutput": "インストール失敗 — 出力を表示",
+    "installOutput": "インストール出力"
+  },
+  "infoTooltip": {
+    "ariaLabel": "詳細情報"
+  },
+  "fileReveal": {
+    "finder": "Finder で表示",
+    "explorer": "エクスプローラーで表示",
+    "files": "ファイルで表示"
   }
 }

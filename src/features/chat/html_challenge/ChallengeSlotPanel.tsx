@@ -155,8 +155,12 @@ export function ChallengeSlotPanel({
           <button
             className="secondary-button html-challenge-icon-button"
             type="button"
-            aria-label={isExpanded ? "Collapse preview" : "Expand preview"}
-            title={isExpanded ? "Collapse preview" : "Expand preview"}
+            aria-label={isExpanded
+              ? t("htmlChallenge.slotPanel.collapsePreview", { defaultValue: "Collapse preview" })
+              : t("htmlChallenge.slotPanel.expandPreview", { defaultValue: "Expand preview" })}
+            title={isExpanded
+              ? t("htmlChallenge.slotPanel.collapsePreview", { defaultValue: "Collapse preview" })
+              : t("htmlChallenge.slotPanel.expandPreview", { defaultValue: "Expand preview" })}
             onClick={() => onSetExpanded(isExpanded ? null : slot.id)}
           >
             {isExpanded ? <CollapseIcon /> : <ExpandIcon />}
@@ -168,7 +172,9 @@ export function ChallengeSlotPanel({
             type="button"
             onClick={() => onToggleCodeView(slot.id)}
           >
-            {isCodeView ? "View Render" : "View HTML Code"}
+            {isCodeView
+              ? t("htmlChallenge.slotPanel.viewRender", { defaultValue: "View Render" })
+              : t("htmlChallenge.slotPanel.viewHtmlCode", { defaultValue: "View HTML Code" })}
           </button>
         ) : null}
       </div>
@@ -179,17 +185,17 @@ export function ChallengeSlotPanel({
     <div className="html-challenge-panel-actions">
       {isExpanded ? (
         <button className="secondary-button" type="button" onClick={() => onSetExpanded(null)}>
-          Collapse
+          {t("htmlChallenge.slotPanel.collapse", { defaultValue: "Collapse" })}
         </button>
       ) : null}
       {showLatestButton ? (
         <button className="secondary-button" type="button" onClick={() => onScrollStreamToBottom(slot.id)}>
-          Latest
+          {t("htmlChallenge.slotPanel.latest", { defaultValue: "Latest" })}
         </button>
       ) : null}
       {canChangeModel ? (
         <button className="secondary-button" type="button" disabled={busy} onClick={() => onChangeModel(slot.id)}>
-          Change Model
+          {t("htmlChallenge.slotPanel.changeModel", { defaultValue: "Change Model" })}
         </button>
       ) : null}
       {retryable ? (
@@ -202,7 +208,7 @@ export function ChallengeSlotPanel({
                 disabled={busy || !manifest?.id || !hasRetryPayload}
                 onClick={() => onRepairSlot("continue")}
               >
-                Continue HTML
+                {t("htmlChallenge.slotPanel.continueHtml", { defaultValue: "Continue HTML" })}
               </button>
               <button
                 className="secondary-button"
@@ -210,7 +216,7 @@ export function ChallengeSlotPanel({
                 disabled={busy || !manifest?.id || !hasRetryPayload}
                 onClick={() => onRepairSlot("repair")}
               >
-                Repair HTML
+                {t("htmlChallenge.slotPanel.repairHtml", { defaultValue: "Repair HTML" })}
               </button>
             </>
           ) : null}
@@ -220,7 +226,7 @@ export function ChallengeSlotPanel({
             disabled={busy || !manifest?.id || !hasRetryPayload}
             onClick={onRetrySlot}
           >
-            Retry
+            {t("htmlChallenge.slotPanel.retry", { defaultValue: "Retry" })}
           </button>
         </>
       ) : null}
@@ -250,8 +256,13 @@ export function ChallengeSlotPanel({
           <p style={{ color: "#f87171" }}>{state.error}</p>
         ) : state.deleted ? (
           <div className="html-challenge-deleted">
-            <strong>File deleted</strong>
-            <span>{state.filename ?? "The saved HTML file"} is no longer in this challenge folder.</span>
+            <strong>{t("htmlChallenge.slotPanel.fileDeleted", { defaultValue: "File deleted" })}</strong>
+            <span>
+              {t("htmlChallenge.slotPanel.fileDeletedDetail", {
+                defaultValue: "{filename} is no longer in this challenge folder.",
+                filename: state.filename ?? t("htmlChallenge.slotPanel.savedFileFallback", { defaultValue: "The saved HTML file" }),
+              })}
+            </span>
             <div className="html-challenge-file-row">
               {state.filename ? <span className="badge warning">{state.filename}</span> : null}
               {manifest?.folderPath ? (
@@ -260,21 +271,27 @@ export function ChallengeSlotPanel({
                   type="button"
                   onClick={() => onRevealPath(manifest.folderPath)}
                 >
-                  Open Folder
+                  {t("htmlChallenge.actions.openFolder", { defaultValue: "Open Folder" })}
                 </button>
               ) : null}
             </div>
           </div>
         ) : state.done && !state.html ? (
           <div className="html-challenge-empty-result">
-            <strong>No HTML output</strong>
-            <span>{validationMessage(validation) || "This model finished without a renderable HTML page."}</span>
+            <strong>{t("htmlChallenge.slotPanel.noHtmlOutput", { defaultValue: "No HTML output" })}</strong>
+            <span>
+              {validationMessage(validation)
+                || t("htmlChallenge.slotPanel.noRenderablePage", { defaultValue: "This model finished without a renderable HTML page." })}
+            </span>
             {renderFileActions()}
           </div>
         ) : state.html && validation?.status === "no-html" ? (
           <div className="html-challenge-empty-result">
-            <strong>No HTML output</strong>
-            <span>{validationMessage(validation) || "The saved output did not contain a standalone HTML document."}</span>
+            <strong>{t("htmlChallenge.slotPanel.noHtmlOutput", { defaultValue: "No HTML output" })}</strong>
+            <span>
+              {validationMessage(validation)
+                || t("htmlChallenge.slotPanel.noStandaloneDocument", { defaultValue: "The saved output did not contain a standalone HTML document." })}
+            </span>
             {renderFileActions()}
           </div>
         ) : state.html ? (
@@ -303,7 +320,10 @@ export function ChallengeSlotPanel({
                 <iframe
                   ref={(element) => onAttachFrame(slot.id, element)}
                   className="html-challenge-frame"
-                  title={`${compareTargetLabels[slot.id]} HTML preview`}
+                  title={t("htmlChallenge.slotPanel.previewTitle", {
+                    label: compareTargetLabels[slot.id],
+                    defaultValue: "{label} HTML preview",
+                  })}
                   srcDoc={previewSrcDoc(state.html, slot.id)}
                   sandbox="allow-scripts"
                   scrolling="yes"
@@ -331,7 +351,7 @@ export function ChallengeSlotPanel({
             <code dangerouslySetInnerHTML={{ __html: highlightHtmlCode(state.text) }} />
           </pre>
         ) : state.loading ? (
-          <p className="muted-text">{state.loadingMessage ?? "Loading model..."}</p>
+          <p className="muted-text">{state.loadingMessage ?? t("htmlChallenge.slotPanel.loadingModel", { defaultValue: "Loading model..." })}</p>
         ) : busy ? (
           <p className="muted-text">{waitingLabel}</p>
         ) : null}

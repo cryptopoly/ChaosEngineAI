@@ -35,14 +35,19 @@
     "finalStatus": "最終ステータス:",
     "statusNoun": {
       "longlive": "LongLive インストール",
-      "gpuBundle": "インストール"
+      "gpuBundle": "インストール",
+      "mtplx": "MTPLX インストール",
+      "tensorfold": "TensorFold インストール",
+      "mflux": "mflux インストール",
+      "vllmWsl": "vLLM-in-WSL インストール"
     },
     "status": {
       "failed": "{noun}失敗 — ログを参照",
       "complete": "{noun}完了 — ログを参照",
       "starting": "{noun}を開始中…",
       "verifyingCuda": "CUDA を検証中…",
-      "inProgress": "{noun}実行中"
+      "inProgress": "{noun}実行中",
+      "verifying": "インストールを検証中…"
     },
     "meta": {
       "target": "ターゲット: {dir}",
@@ -79,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Wan MLX ランタイム",
-    "ready": "準備完了"
+    "ready": "準備完了",
+    "inventoryError": "Wan 一覧: {error}",
+    "converted": "変換済み · mlx-video ネイティブ経由で実行",
+    "rawDownload": "元の重みをダウンロード {size} → MLX 変換（5〜30 分）",
+    "outputLabel": "出力先:",
+    "otherRunning": "別の Wan インストールが実行中です（{repo}）。完了を待つか、先にキャンセルしてください。",
+    "installTitle": "元の重みをダウンロードして MLX に変換",
+    "installing": "インストール中...",
+    "starting": "開始中...",
+    "install": "インストール"
   }
 }

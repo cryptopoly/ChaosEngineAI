@@ -57,7 +57,11 @@
     "contextSize": "Kontextgröße",
     "gpuLayers": "GPU-Schichten",
     "threads": "Threads",
-    "fitInMemory": "In Speicher passen"
+    "fitInMemory": "In Speicher passen",
+    "cacheStrategyTensorfoldNote": "(TensorFold verwaltet seinen eigenen KV-Cache)",
+    "moreInfo": "Weitere Infos",
+    "requiresLabel": "Erfordert:",
+    "installLabel": "Installation:"
   },
   "notes": {
     "binaryRequired": "Erfordert {binary}.",
@@ -87,7 +91,16 @@
     "requiresBody": "Apple Silicon + dflash-mlx oder Linux/CUDA + dflash. Kompatibles Draft-Modell für das Ziel.",
     "currentModelLabel": "Aktuelles Modell:",
     "supportedVia": "Unterstützt über {model}",
-    "compatibilityUnresolved": "Kompatibilität noch nicht aufgelöst."
+    "compatibilityUnresolved": "Kompatibilität noch nicht aufgelöst.",
+    "composerHint": "Spekulative Decodierung mit DFlash kann dieses Modell ohne Qualitätsverlust ~2× schneller machen.",
+    "registeredTargetsLabel": "Registrierte Ziele:",
+    "targetModelsCount": "{count} Zielmodelle",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "Verfügbar",
+    "ddtreeUnavailable": "Noch nicht verfügbar; stattdessen läuft lineares DFlash.",
+    "installLabel": "Installation:",
+    "treeBudgetTooltip": "DDTree: baumbasierte spekulative Decodierung. 0 = lineares DFlash, >0 = mehrere Draft-Pfade parallel erkunden, für höhere Akzeptanzraten.",
+    "treeBudgetLabel": "Baum-Budget (DDTree)"
   },
   "presets": {
     "quality": {
@@ -110,21 +123,125 @@
   "sliders": {
     "context": "Kontext",
     "maxTokens": "Max. Tokens",
-    "temperature": "Temperatur"
+    "temperature": "Temperatur",
+    "fp16Layers": "FP16-Schichten"
   },
   "fitInMemory": {
-    "body": "In Speicher passen weist ChaosEngineAI an, ein Runtime-/Cache-Profil zu wählen, das Modell und KV-Cache im verfügbaren Speicher hält. Deaktiviere es nur, wenn du ein größeres oder aggressiveres Profil erzwingen und mögliches Swapping oder Ladefehler in Kauf nehmen willst."
+    "body": "In Speicher passen weist ChaosEngineAI an, ein Runtime-/Cache-Profil zu wählen, das Modell und KV-Cache im verfügbaren Speicher hält. Deaktiviere es nur, wenn du ein größeres oder aggressiveres Profil erzwingen und mögliches Swapping oder Ladefehler in Kauf nehmen willst.",
+    "aboutTitle": "Über „In Speicher passen“"
   },
   "cacheFit": {
     "mayNotFit": "Passt evtl. nicht",
     "modelMayNotFit": "Modell passt evtl. nicht",
     "fitsEasily": "Passt locker",
     "tightFit": "Knapp",
-    "contextMayNotFit": "Voller Kontext passt evtl. nicht"
+    "contextMayNotFit": "Voller Kontext passt evtl. nicht",
+    "vramWontFit": "Cache passt nicht in die GPU"
   },
   "cacheAdvice": {
     "modelExceedsRam": "Modellgewichte allein überschreiten den geschätzten nutzbaren RAM. Wähle ein kleineres Modell oder eine aggressivere Quantisierung.",
     "nativeF16TooBig": "Das Modell kann laden, aber ein voller nativer f16-Cache bei diesem Kontext kann den System-RAM überschreiten, sobald der Thread voll wird. Reduziere den Kontext oder wähle eine komprimierte Strategie.",
-    "compressedTooBig": "Das Modell kann laden, aber der gewählte Kontext-Cache kann den System-RAM überschreiten, sobald der Thread voll wird. Reduziere den Kontext oder verringere FP16-Schichten."
+    "compressedTooBig": "Das Modell kann laden, aber der gewählte Kontext-Cache kann den System-RAM überschreiten, sobald der Thread voll wird. Reduziere den Kontext oder verringere FP16-Schichten.",
+    "vramNativeF16": "Ein vollständiger nativer f16-KV-Cache umfasst bei diesem Kontext ~{cacheGb} GB und ist damit größer als die verfügbaren {vramGb} GB GPU-VRAM. llama.cpp lagert dann in den Systemspeicher aus (langsame PCIe-Übertragungen pro Token) oder kann den Speicher nicht allozieren. Senke den Kontext, verzichte auf FP16-Schichten oder wähle den TurboQuant-Speicherspar-Modus, damit der Cache in den VRAM passt.",
+    "vramSelected": "Der ausgewählte KV-Cache umfasst bei diesem Kontext ~{cacheGb} GB und ist damit größer als die verfügbaren {vramGb} GB GPU-VRAM. llama.cpp lagert dann in den Systemspeicher aus (langsame PCIe-Übertragungen pro Token) oder kann den Speicher nicht allozieren. Senke den Kontext, verzichte auf FP16-Schichten oder wähle den TurboQuant-Speicherspar-Modus, damit der Cache in den VRAM passt."
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold: exakte spekulative Decodierung. Drafts aus dem MTP-Head des Modells und/oder einem Draft-Modell werden gegen das Zielmodell geprüft, daher sind die Antworten identisch mit serieller Decodierung — nur schneller.",
+    "label": "TensorFold (DFlash 2 / MTP-Drafting)",
+    "requiredNote": "für dieses Modell erforderlich",
+    "installing": "Wird installiert...",
+    "installButton": "TensorFold installieren",
+    "addVisionTitle": "Lässt dieses Modell angehängte Bilder lesen (experimentell). Fügt Pillow, transformers und mlx-vlm zur eigenen Umgebung von TensorFold hinzu.",
+    "addVision": "Bildunterstützung hinzufügen",
+    "imageInputOn": "Bildeingabe aktiv (experimentell)",
+    "aboutTitle": "Über die spekulative Decodierung von TensorFold",
+    "memoryShortfall": "Dieser Checkpoint benötigt einen Mac mit mindestens {needed} GB Speicher; dieser hat {have} GB.",
+    "body": "TensorFold ist eine lokale Inferenz-Engine mit handgeschriebenen Kernels für jede Modellfamilie. Sie schlägt mehrere Tokens auf einmal vor (aus dem MTP-Head des Modells und bei manchen Familien aus einem kleinen Draft-Modell) und prüft jeden Vorschlag gegen das Zielmodell, sodass die Antwort byte-identisch mit einer Decodierung Token für Token ist.",
+    "requiresLabel": "Erfordert:",
+    "requiresBody": "Apple Silicon und eine separate Python-Umgebung für TensorFold (wird über dieses Panel installiert). Bedient nur die Checkpoints, mit denen es getestet wurde.",
+    "memoryLabel": "Speicher:",
+    "memoryBody": "{needed} GB Unified Memory oder mehr.",
+    "statusLabel": "Status:",
+    "statusInstalled": "Installiert{version} — aktiv, wenn die spekulative Decodierung angehakt ist.",
+    "statusNotInstalled": "Nicht installiert. Klicke auf „TensorFold installieren“, um die separate Umgebung einzurichten.",
+    "visionLabel": "Bildeingabe:",
+    "visionInstalled": "Installiert (experimentell) — hänge im Chat Bilder an, solange TensorFold angehakt ist. Eine Anfrage mit Bildern beginnt mit einem frischen KV-Cache.",
+    "visionNotInstalled": "Nicht installiert. Liest Bilder mit dem Vision-Encoder des Modells selbst. Fügt Pillow, transformers und mlx-vlm hinzu; die Autoren von TensorFold stufen es weiterhin als experimentell ein.",
+    "grammarLabel": "Strukturierte Ausgabe:",
+    "grammarInstalled": "Installiert — ein im Sampler-Panel gesetztes JSON-Schema wird durchgesetzt.",
+    "grammarNotInstalled": "Nicht installiert. Nötig, um ein JSON-Schema durchzusetzen; ohne wird eine solche Anfrage abgelehnt. Fügt PyTorch hinzu, ein großer Download.",
+    "addGrammar": "Strukturierte Ausgabe hinzufügen",
+    "exclusiveLabel": "Hinweis:",
+    "exclusiveBody": "Keine andere Engine der App kann dieses Modell laden, daher läuft es immer auf TensorFold; das Kontrollkästchen schaltet nur das Drafting ein und aus."
+  },
+  "strategyRole": {
+    "memorySaverTitle": "Verkleinert den KV-Cache, damit lange Kontexte in weniger Speicher passen. Die Generierung ist langsamer als bei Nativ.",
+    "memorySaver": "Speicherspar-Modus"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX: native spekulative MTP-Decodierung. Nutzt eingebaute Vorhersage-Heads für ~1,8–2,2× schnellere Generierung ohne Qualitätsverlust.",
+    "label": "MTPLX",
+    "installing": "Wird installiert...",
+    "installButton": "MTPLX installieren",
+    "aboutTitle": "Über die spekulative Decodierung von MTPLX",
+    "body": "MTPLX nutzt eingebaute Multi-Token-Prediction-Heads (MTP), die direkt in das Modell hineintrainiert wurden. Bei der Inferenz schlagen die Heads pro Vorwärtsdurchlauf 1–3 Tokens vor, die im selben Durchlauf verifiziert werden — ein separates Draft-Modell ist nicht nötig. Ergibt ~1,8–2,2× schnellere Generierung ohne Qualitätsverlust.",
+    "requiresLabel": "Erfordert:",
+    "requiresBody": "Apple Silicon + isolierte MTPLX-venv. Das Modell muss eingebaute MTP-Heads haben (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+    "statusLabel": "Status:",
+    "statusInstalled": "Installiert — aktiv, wenn die spekulative Decodierung aktiviert ist.",
+    "statusNotInstalled": "Nicht installiert. Klicke auf „MTPLX installieren“, um die isolierte venv einzurichten (~500 MB)."
+  },
+  "ggufMtp": {
+    "tooltip": "Spekulative GGUF-MTP-Decodierung: nutzt die eingebauten MTP-Heads des Modells über llama.cpp --spec-type draft-mtp für ~1,8–2,2× schnellere Generierung ohne Qualitätsverlust.",
+    "label": "GGUF MTP",
+    "body": "Dieses GGUF bringt eingebaute Multi-Token-Prediction-Heads (MTP) mit. llama.cpp führt sie über --spec-type draft-mtp aus (PR #22673) — verlustfreie spekulative Decodierung ohne separates Draft-Modell.",
+    "requiresLabel": "Erfordert:"
+  },
+  "ggufSpec": {
+    "tooltip": "Spekulative Decodierung in llama.cpp: nutzt einen DFlash- / DFlash-2- / EAGLE-3- / MTP-Drafter, der neben diesem GGUF liegt, falls vorhanden, sonst eine Draft-freie n-Gramm-Suche. Verlustfrei — die Ausgabe wird vom Modell verifiziert.",
+    "label": "Spekulative Decodierung",
+    "aboutTitle": "Über die spekulative Decodierung in llama.cpp",
+    "body": "Liegt im Modellordner eine Drafter-Datei (mtp-, dflash-, dspark- oder eagle3-*.gguf — DFlash-2-Drafter verwenden das Präfix dflash-), erstellt llama.cpp damit die Drafts. Andernfalls greift ngram-mod, das wiederholten Text (Code-Änderungen, Zusammenfassungen, in die Antwort übernommenes Reasoning) ohne zusätzliches Modell wiederverwendet. Jedes vorgeschlagene Token wird verifiziert, daher bleibt die Ausgabe unverändert.",
+    "requiresBody": "Ein aktueller llama-server (scripts/update-llama-cpp.sh ausführen). Ältere Binärdateien fallen mit einem Laufzeit-Hinweis auf Standard-Decodierung zurück."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "KV-Cache in voller FP16-Präzision. Keine Kompression, daher die schnellste Wahl mit der höchsten Qualität; er funktioniert mit spekulativer Decodierung. Bei langem Kontext braucht er am meisten Speicher. Funktioniert mit allen Backends.",
+      "requires": "Integriert"
+    },
+    "triattention": {
+      "description": "Transparente KV-Cache-Kompression, über vLLM integriert. Nur Linux + CUDA; ChaosEngineAI unterstützt TriAttention unter macOS nicht.",
+      "requires": "Linux + CUDA-GPU + vLLM-Backend. Unter macOS nicht unterstützt.",
+      "installHint": "Nur in einer von ChaosEngineAI genutzten Linux/CUDA-Umgebung verwenden, danach die App neu starten."
+    },
+    "turboquant": {
+      "description": "Speicherspar-Modus. Speichert den KV-Cache mit 1-4 Bit (bei 3 Bit etwa 4-5× kleiner), damit lange Chats in deutlich weniger RAM passen. Der Preis ist die Geschwindigkeit: Rechne mit langsamerer Generierung als bei Nativ; unter MLX wird außerdem die Wiederverwendung des Chat-Verlaufs-Caches abgeschaltet, und es lässt sich nicht mit spekulativer Decodierung kombinieren. Wähle es, wenn ein langer Kontext nicht in den Speicher passt; ansonsten bleib bei Nativ. Unter MLX nutzt es Hadamard-Rotation + Lloyd-Max-Codebücher; bei GGUF nutzt es llama-server-turbo.",
+      "requires": "Apple Silicon + MLX für den MLX-Pfad; llama-server-turbo für den GGUF-Pfad.",
+      "installHint": "Für MLX: turboquant-mlx-full installieren. Für GGUF: scripts/build-llama-turbo.sh ausführen. Danach ChaosEngineAI neu starten."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "läuft",
+    "statusComplete": "abgeschlossen",
+    "statusFailed": "fehlgeschlagen",
+    "statusReady": "bereit",
+    "noOutputYet": "Noch keine Installationsausgabe. Starte den Installer, um stdout und stderr hier zu erfassen.",
+    "title": "{label}-Installationsterminal",
+    "startedAt": "Gestartet {time}",
+    "collapsedHint": "Standardmäßig eingeklappt. Nach einem Installationsversuch öffnen, um Fehler zu untersuchen.",
+    "finishedAt": "Beendet {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "Benötigt die Binärdatei llama-server-turbo. Zum Installieren scripts/build-llama-turbo.sh ausführen.",
+    "badgeNotApplicable": "n. z.",
+    "badgeNoTurbo": "Keine Turbo-Binärdatei",
+    "badgeReady": "Bereit",
+    "badgeInstall": "Installieren",
+    "buildingTurbo": "llama-server-turbo wird kompiliert...",
+    "installing": "Wird installiert...",
+    "installNow": "Jetzt installieren",
+    "runInTerminal": "Im Terminal ausführen und dann ChaosEngineAI neu starten.",
+    "updating": "Wird aktualisiert...",
+    "updateAvailable": "Update verfügbar"
   }
 }

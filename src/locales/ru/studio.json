@@ -40,7 +40,36 @@
       "cancelled": "Генерация изображения отменена",
       "failed": "Генерация изображения не удалась",
       "imagesReady": "Изображения готовы",
-      "imageReady": "Изображение готово"
+      "imageReady": "Изображение готово",
+      "cancelledBody": "Вы отменили эту генерацию. Изображение не сохранено.",
+      "modelStillLoaded": "Модель всё ещё загружена — следующая генерация начнётся без ожидания холодного старта.",
+      "savedToGallery": "Сохранено в галерее",
+      "phaseLoading": "Загрузка модели в память",
+      "phaseEncoding": "Кодирование промпта",
+      "phaseDiffusing": "Диффузия: {count, plural, one {# изображение} few {# изображения} many {# изображений} other {# изображения}}",
+      "phaseDecoding": "Декодирование пикселей",
+      "phaseSaving": "Сохранение в галерею результатов",
+      "errorHint": "Измените промпт или настройки среды выполнения и повторите попытку. Предыдущие удачные результаты остаются в галерее.",
+      "settings": "Настройки",
+      "stepsCount": "{count, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}}",
+      "seedValue": "Сид {seed}",
+      "generatedCount": "За этот запуск создано изображений: {count}. Нажмите на миниатюру, чтобы посмотреть другой результат.",
+      "useSameSettings": "Использовать те же настройки",
+      "varySeed": "Изменить сид",
+      "open": "Открыть",
+      "reveal": "Показать",
+      "delete": "Удалить",
+      "cancelGeneration": "Отменить генерацию",
+      "close": "Закрыть",
+      "done": "Готово"
+    },
+    "mflux": {
+      "outdated": "Установленный здесь движок mflux ({installed}) старше, чем требуется приложению ({required}), поэтому новые модели, такие как FLUX 3 и Qwen-Image-2.1 Turbo, не запустятся. Обновление переустанавливает его в отдельной среде.",
+      "notInstalled": "Эта модель работает на движке mflux (MLX), который ещё не установлен. Он устанавливается в отдельную среду (около 1,3 ГБ) и не меняет пакеты приложения.",
+      "installing": "Установка…",
+      "retry": "Повторить установку",
+      "update": "Обновить движок mflux",
+      "install": "Установить движок mflux"
     }
   },
   "video": {
@@ -63,7 +92,30 @@
       "generating": "Генерация видео",
       "cancelled": "Генерация видео отменена",
       "failed": "Генерация видео не удалась",
-      "ready": "Видео готово"
+      "ready": "Видео готово",
+      "cancelledBody": "Вы отменили эту генерацию. Клип не сохранён.",
+      "modelStillLoaded": "Модель всё ещё загружена — следующая генерация начнётся без ожидания холодного старта.",
+      "savedToGallery": "Сохранено в галерее",
+      "loadError": "Не удалось загрузить видео.",
+      "phaseLoading": "Загрузка модели в память",
+      "phaseEncoding": "Кодирование промпта",
+      "phaseDiffusing": "Диффузия: {count, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}}",
+      "phaseDiffusingFrames": "Диффузия кадров",
+      "phaseEncodingMp4": "Кодирование mp4",
+      "phaseSaving": "Сохранение в галерею",
+      "errorHint": "Измените промпт, разрешение или число кадров и повторите попытку. Предыдущие удачные клипы остаются в галерее.",
+      "loadingClip": "Загрузка клипа...",
+      "framesCount": "{count, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}}",
+      "clipLength": "Клип {seconds} с",
+      "stepsCount": "{count, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}}",
+      "seedValue": "Сид {seed}",
+      "renderTime": "Рендер {seconds} с",
+      "openGallery": "Открыть галерею",
+      "revealFile": "Показать файл",
+      "delete": "Удалить",
+      "cancelGeneration": "Отменить генерацию",
+      "close": "Закрыть",
+      "done": "Готово"
     }
   },
   "progress": {
@@ -82,7 +134,36 @@
     "error": "Ошибка улучшителя: {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "Загрузка модели в память..."
+    "loadingModel": "Загрузка модели в память...",
+    "cudaTorchInstalled": "CUDA torch установлен.",
+    "cudaTorchRestartHint": "Запущенный бэкенд всё ещё хранит старый torch в кэше модулей. Перезапустите бэкенд, чтобы активировать новое колесо{index}.",
+    "gpuNotActive": "Ускорение на GPU не активно.",
+    "restarting": "Перезапуск...",
+    "restartBackend": "Перезапустить бэкенд",
+    "installingCudaTorch": "Установка CUDA torch...",
+    "installCudaTorch": "Установить CUDA torch",
+    "realGenerationAvailable": "Доступна реальная локальная генерация",
+    "runtimeUnavailable": "Среда выполнения недоступна",
+    "usingPlaceholder": "Используются заглушки вместо результатов",
+    "cpuFallback": "Откат на CPU",
+    "engineChip": "Движок: {engine}",
+    "deviceExpected": "{device} (ожидается)",
+    "deviceChip": "Устройство: {device}",
+    "summaryLoaded": "Модель {selected} загружена и готова к генерации.",
+    "summarySwap": "Загружена модель {loaded}. Генерация с {selected} заменит конвейер.",
+    "summaryNotLoaded": "Модель {selected} установлена локально, но ещё не загружена. Первая генерация займёт больше времени, пока прогревается диффузионный конвейер.",
+    "summaryNotInstalled": "Модель {selected} не установлена локально. Скачайте её в разделе «Обзор», чтобы включить локальную генерацию.",
+    "summaryOnDemand": "Модель загрузится по требованию при генерации.",
+    "preloadModel": "Предзагрузить модель",
+    "unloadModel": "Выгрузить модель",
+    "unloadNamed": "Выгрузить {name}",
+    "gpuRuntimeInstalledIntro": "GPU-среда выполнения установлена в",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "Запущенный бэкенд всё ещё использует старый кэш импорта — нажмите «Перезапустить бэкенд», чтобы активировать новую среду выполнения, после чего генерация изображений будет использовать вашу GPU.",
+    "restartBackendToActivate": "Перезапустите бэкенд для активации",
+    "gpuRuntimeInstallPrompt": "Установите GPU-среду для генерации изображений (torch + diffusers + accelerate + transformers, ~2,5 ГБ), чтобы включить реальную локальную генерацию. Файлы записываются в постоянную пользовательскую папку, поэтому обновления приложения их не затрут.",
+    "installing": "Установка...",
+    "installGpuRuntime": "Установить GPU-среду выполнения"
   },
   "imageStudio": {
     "generateTitle": {
@@ -190,6 +271,98 @@
       "openGallery": "Открыть галерею",
       "emptyHint": "Сгенерируйте промпт, чтобы создать первый сохранённый артефакт изображения для этой ветки.",
       "footnote": "Показаны {recent} самых новых сохранённых изображений. Откройте Галерею изображений, чтобы просмотреть всё, отфильтровать по модели и управлять более старыми запусками."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "Квадрат"
+      },
+      "portrait": {
+        "label": "Портрет"
+      },
+      "landscape": {
+        "label": "Альбом"
+      },
+      "wide": {
+        "label": "Широкий"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "Быстро",
+        "hint": "Быстрые черновики"
+      },
+      "balanced": {
+        "label": "Сбалансировано",
+        "hint": "Лучший вариант по умолчанию"
+      },
+      "quality": {
+        "label": "Высокое качество",
+        "hint": "Более медленный финальный проход"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "По умолчанию для модели",
+        "hint": "Как задано в модели"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "Быстрый, сбалансированный — 20-30 шагов"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "Плавнее при малом числе шагов"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "Чуть более шумный, творческий"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "Классический, надёжен от 25 шагов"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "Творческий, недетерминированный"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "Детерминированный, медленнее"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "Быстрый при малом числе шагов"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10 шагов Align Your Steps · выбирайте только для SD1.5"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10 шагов Align Your Steps · выбирайте только для SDXL"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "Выкл",
+        "hint": "Стандартный конвейер — без кэширования"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Ускорение в 1,5–2× на DiT · кроссплатформенно"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Откалибровано для FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× за счёт полиномиальной экстраполяции (нативно в diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — повторное использование внимания на соседних шагах"
+      }
     }
   },
   "videoStudio": {
@@ -346,7 +519,47 @@
       "reasonCaution": "Модели требуется ~{model} ГБ резидентной памяти. На {platform} с {total} ГБ всего это выше консервативного комфортного порога (~{comfort} ГБ), но ниже расчётного рабочего набора (~{working} ГБ). Генерация должна уместиться; уменьшите настройки, если она станет нестабильной."
     },
     "disabledHint": "Генерация отключена: {reason}",
-    "willLoadHint": "Выбранная модель будет загружена в память при следующей генерации. Первая загрузка может занять минуту для более крупных вариантов."
+    "willLoadHint": "Выбранная модель будет загружена в память при следующей генерации. Первая загрузка может занять минуту для более крупных вариантов.",
+    "cacheStrategies": {
+      "none": {
+        "label": "Выкл",
+        "hint": "Стандартный конвейер — без кэширования"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Ускорение в 1,5–2× на DiT · кроссплатформенно"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Откалибровано для FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× за счёт полиномиальной экстраполяции (нативно в diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — повторное использование внимания на соседних шагах"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "Черновик",
+        "sub": "20 шагов"
+      },
+      "standard": {
+        "label": "Стандарт",
+        "sub": "30 шагов"
+      },
+      "high": {
+        "label": "Высокое",
+        "sub": "40 шагов"
+      },
+      "max": {
+        "label": "Максимум",
+        "sub": "50 шагов"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -435,64 +648,64 @@
   },
   "voice": {
     "pack": {
-      "title": null,
-      "installed": null,
-      "notInstalled": null,
-      "about": null,
-      "cancel": null,
-      "update": null,
-      "install": null,
-      "reinstall": null,
-      "done": null,
-      "log": null,
+      "title": "Голосовой пакет",
+      "installed": "Установлено",
+      "notInstalled": "Не установлено",
+      "about": "Распознавание и синтез речи работают в отдельной среде на этом компьютере (около 2 ГБ плюс скачиваемые модели). Ничего не отправляется в интернет.",
+      "cancel": "Отмена",
+      "update": "Обновить голосовой пакет",
+      "install": "Установить голосовой пакет",
+      "reinstall": "Восстановить / переустановить",
+      "done": "Голосовой пакет установлен.",
+      "log": "Журнал установки",
       "updateFeatures": "Обновите голосовой пакет для голосовых звонков в чате и разметки говорящих (около 40 МБ моделей; минута-две)."
     },
     "models": {
-      "recommended": null,
-      "downloaded": null,
-      "use": null,
-      "download": null,
-      "firstUse": null,
-      "title": null,
-      "sttTitle": null,
-      "sttSubtitle": null
+      "recommended": "Рекомендуется",
+      "downloaded": "Загружено",
+      "use": "Использовать для диктовки",
+      "download": "Скачать",
+      "firstUse": "Если пропустить, загрузится при первом использовании.",
+      "title": "Голос",
+      "sttTitle": "Модели распознавания речи",
+      "sttSubtitle": "Используется микрофоном в чате и в Voice Studio."
     },
     "voices": {
-      "title": null,
-      "subtitle": null,
-      "needsChinese": null,
-      "notYet": null,
-      "useVoice": null,
-      "preview": null
+      "title": "Голоса",
+      "subtitle": "Kokoro: 54 голоса на 9 языках. Выберите голос, которым чат читает вслух.",
+      "needsChinese": "Отметьте китайские (путунхуа) голоса в голосовом пакете.",
+      "notYet": "Пока недоступно на этом компьютере.",
+      "useVoice": "Использовать этот голос",
+      "preview": "Прослушать"
     },
     "settings": {
-      "title": null,
-      "autoSend": null,
-      "autoRead": null,
-      "language": null,
-      "languageHint": null,
-      "speed": null,
-      "idle": null,
-      "workerRunning": null,
-      "workerStopped": null,
-      "unload": null,
+      "title": "Настройки голоса",
+      "autoSend": "Отправлять сообщение сразу после завершения диктовки",
+      "autoRead": "Читать вслух каждый ответ в чате по его завершении",
+      "language": "Язык диктовки",
+      "languageHint": "Используется Whisper; Parakeet определяет язык сам.",
+      "speed": "Скорость чтения",
+      "idle": "Освобождать память голосовых моделей через (минут простоя, 0 — никогда)",
+      "workerRunning": "Голосовые модели загружены (процесс {pid}).",
+      "workerStopped": "Голосовые модели не загружены.",
+      "unload": "Выгрузить сейчас",
       "silence": "Голосовой звонок: пауза, завершающая вашу реплику",
       "silenceHint": "Короче — ответ быстрее; длиннее — можно подумать.",
       "bargeIn": "Голосовой звонок: перебивать модель голосом"
     },
-    "offline": null,
-    "copy": null,
-    "save": null,
+    "offline": "Ожидание бэкенда…",
+    "copy": "Копировать",
+    "save": "Сохранить в галерею",
     "transcribe": {
-      "title": null,
-      "subtitle": null,
-      "model": null,
-      "language": null,
-      "hint": null,
-      "choose": null,
-      "took": null,
-      "placeholder": null,
-      "segments": null,
+      "title": "Расшифровка",
+      "subtitle": "Запишите или перетащите аудио- или видеофайл",
+      "model": "Модель",
+      "language": "Язык",
+      "hint": "Нажмите кнопку, чтобы записать, или перетащите сюда файл.",
+      "choose": "Выбрать файл",
+      "took": "расшифровано за {s} с",
+      "placeholder": "Здесь появится расшифровка. Её можно править.",
+      "segments": "Метки времени ({n})",
       "tooBig": "Файл {name} больше 500 МБ.",
       "recordingName": "Запись",
       "subtitleQueue": "Запишите или перетащите аудио- и видеофайлы",
@@ -506,23 +719,23 @@
       "hintQueue": "Запишите или перетащите сюда файлы (можно несколько сразу).",
       "chooseFiles": "Выбрать файлы"
     },
-    "stopRecording": null,
-    "record": null,
-    "transcribing": null,
-    "cancel": null,
-    "sendToChat": null,
-    "copied": null,
-    "saved": null,
+    "stopRecording": "Остановить запись",
+    "record": "Записать",
+    "transcribing": "Расшифровка",
+    "cancel": "Отмена",
+    "sendToChat": "Отправить в чат",
+    "copied": "Скопировано",
+    "saved": "Сохранено",
     "speak": {
-      "title": null,
-      "subtitle": null,
-      "placeholder": null,
-      "voice": null,
-      "speed": null,
-      "generating": null,
-      "generate": null,
-      "readNow": null,
-      "download": null,
+      "title": "Озвучка",
+      "subtitle": "Превратите текст в речь",
+      "placeholder": "Введите или вставьте текст. Markdown и код приводятся в порядок перед озвучиванием.",
+      "voice": "Голос",
+      "speed": "Скорость",
+      "generating": "Создание…",
+      "generate": "Создать аудио",
+      "readNow": "Прочитать вслух сейчас",
+      "download": "Скачать WAV",
       "subtitleLong": "Превращайте текст в речь. Пустая строка начинает новый абзац; [pause] добавляет паузу.",
       "preview": "Прослушать этот голос",
       "listen": "Прослушать",
@@ -530,11 +743,11 @@
       "generateParts": "Создать аудио (частей: {n})",
       "encoding": "Кодирование…"
     },
-    "stop": null,
+    "stop": "Остановить",
     "studio": {
-      "title": null,
-      "needsPack": null,
-      "openModels": null
+      "title": "Voice Studio",
+      "needsPack": "Голосовые функции работают на этом компьютере и требуют голосового пакета (около 2 ГБ). Установите его один раз в разделе «Голос» > «Мои модели».",
+      "openModels": "Открыть голосовые модели"
     },
     "savedToLibrary": "Сохранено в библиотеке",
     "saveToLibrary": "Сохранить в библиотеку",
@@ -595,6 +808,64 @@
       "loading": "Загрузка…",
       "noMatch": "Ничего не найдено.",
       "empty": "Пока пусто. Здесь хранятся расшифровки из Voice Studio и сохранённая речь."
+    },
+    "languages": {
+      "auto": "Определять автоматически"
+    },
+    "lane": {
+      "mlx": "Apple Silicon: Parakeet и Whisper на MLX, голоса Kokoro",
+      "cuda": "GPU NVIDIA: Whisper на CUDA, голоса Kokoro",
+      "nvidia": "Whisper (библиотеки CUDA добавляются при установке), голоса Kokoro",
+      "cpu": "Whisper на CPU, голоса Kokoro"
+    },
+    "micError": {
+      "blockedMac": "Доступ к микрофону заблокирован. Разрешите ChaosEngineAI в разделе «Системные настройки > Конфиденциальность и безопасность > Микрофон» и повторите попытку.",
+      "blockedWindows": "Доступ к микрофону заблокирован. Разрешите классическим приложениям использовать микрофон в разделе «Параметры > Конфиденциальность и защита > Микрофон» и повторите попытку.",
+      "blocked": "Доступ к микрофону заблокирован. Проверьте настройки конфиденциальности рабочего стола и что микрофон не занят другим приложением.",
+      "notFound": "Микрофон не найден. Подключите микрофон и повторите попытку.",
+      "inUse": "Микрофон занят другим приложением или не открывается.",
+      "unsupported": "Это окно не может использовать микрофон (нет поддержки медиаустройств).",
+      "generic": "Не удалось открыть микрофон."
     }
+  },
+  "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",
+  "mediaStudioBoosters": {
+    "title": "Ускорители производительности",
+    "forModel": "для {model}",
+    "selectedModelFallback": "выбранной модели"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "Переместить текущий torch в каталог отката",
+      "install": "pip install torch (новая версия)",
+      "deps": "pip install torch (транзитивные зависимости)",
+      "constraint": "Закрепить torch в constraints.txt",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "Пересобрать пакет, зависящий от ABI",
+      "verify": "Проверить torch.cuda.is_available() в подпроцессе",
+      "cleanup": "Удалить старые каталоги отката",
+      "rollbackRestore": "Восстановить прежний torch из отката",
+      "step": "шаг"
+    },
+    "available": "Доступно обновление torch:",
+    "starting": "Запуск…",
+    "upgrade": "Обновить torch",
+    "dismiss": "Закрыть",
+    "willRebuild": "Также будет пересобрано: {count, plural, one {# пакет, зависящий от ABI} few {# пакета, зависящих от ABI} many {# пакетов, зависящих от ABI} other {# пакета, зависящих от ABI}}",
+    "abiExplainer": "Обновления torch уровня {type} ломают C++ ABI, поэтому колёса этих пакетов не загрузятся, пока их не переустановят под новый torch:",
+    "rollbackLead": "Если обновление не пройдёт проверку, ваш предыдущий torch",
+    "rollbackTail": "автоматически восстановится из соседнего каталога отката — повторная загрузка не требуется.",
+    "whatHappens": "Что произойдёт при обновлении?",
+    "patchBumpExplainer": "Обновления уровня patch сохраняют стабильность C++ ABI torch, поэтому переустанавливается только само колесо torch. Сначала текущий torch перемещается в соседний каталог отката; если новое колесо не проходит проверку CUDA, прежнее восстанавливается автоматически. Перезапуск бэкенда активирует новое колесо.",
+    "upgrading": "Обновление torch",
+    "complete": "Обновление torch завершено",
+    "failed": "Не удалось обновить torch",
+    "restarting": "Перезапуск…",
+    "restartToActivate": "Перезапустите бэкенд для активации",
+    "rolledBack": "Прежний torch восстановлен из отката — генерация продолжит работать на прежней версии.",
+    "rollbackKeptLead": "Каталог отката сохранён в",
+    "rollbackKeptTail": "для ручного восстановления.",
+    "close": "Закрыть",
+    "installLog": "Журнал установки ({count, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}})"
   }
 }

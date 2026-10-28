@@ -20,13 +20,13 @@ const CAPABILITY_BADGES: Array<{
   titleKey: string;
   titleDefault: string;
 }> = [
-  { flag: "supportsVision", labelKey: "capability.vision.label", labelDefault: "Vision", titleKey: "capability.vision.title", titleDefault: "Model accepts image input" },
-  { flag: "supportsTools", labelKey: "capability.tools.label", labelDefault: "Tools", titleKey: "capability.tools.title", titleDefault: "Model supports tool / function calling" },
-  { flag: "supportsReasoning", labelKey: "capability.reasoning.label", labelDefault: "Reasoning", titleKey: "capability.reasoning.title", titleDefault: "Model emits a reasoning trace" },
-  { flag: "supportsCoding", labelKey: "capability.code.label", labelDefault: "Code", titleKey: "capability.code.title", titleDefault: "Model is tuned for code generation" },
-  { flag: "supportsAgents", labelKey: "capability.agents.label", labelDefault: "Agents", titleKey: "capability.agents.title", titleDefault: "Model is tuned for multi-step agentic flows" },
-  { flag: "supportsAudio", labelKey: "capability.audio.label", labelDefault: "Audio", titleKey: "capability.audio.title", titleDefault: "Model accepts audio input" },
-  { flag: "supportsVideo", labelKey: "capability.video.label", labelDefault: "Video", titleKey: "capability.video.title", titleDefault: "Model accepts video input" },
+  { flag: "supportsVision", labelKey: "modelLaunchModal.capability.vision.label", labelDefault: "Vision", titleKey: "modelLaunchModal.capability.vision.title", titleDefault: "Model accepts image input" },
+  { flag: "supportsTools", labelKey: "modelLaunchModal.capability.tools.label", labelDefault: "Tools", titleKey: "modelLaunchModal.capability.tools.title", titleDefault: "Model supports tool / function calling" },
+  { flag: "supportsReasoning", labelKey: "modelLaunchModal.capability.reasoning.label", labelDefault: "Reasoning", titleKey: "modelLaunchModal.capability.reasoning.title", titleDefault: "Model emits a reasoning trace" },
+  { flag: "supportsCoding", labelKey: "modelLaunchModal.capability.code.label", labelDefault: "Code", titleKey: "modelLaunchModal.capability.code.title", titleDefault: "Model is tuned for code generation" },
+  { flag: "supportsAgents", labelKey: "modelLaunchModal.capability.agents.label", labelDefault: "Agents", titleKey: "modelLaunchModal.capability.agents.title", titleDefault: "Model is tuned for multi-step agentic flows" },
+  { flag: "supportsAudio", labelKey: "modelLaunchModal.capability.audio.label", labelDefault: "Audio", titleKey: "modelLaunchModal.capability.audio.title", titleDefault: "Model accepts audio input" },
+  { flag: "supportsVideo", labelKey: "modelLaunchModal.capability.video.label", labelDefault: "Video", titleKey: "modelLaunchModal.capability.video.title", titleDefault: "Model accepts video input" },
 ];
 
 function CapabilityBadges({ capabilities }: { capabilities: ModelCapabilities | null | undefined }) {

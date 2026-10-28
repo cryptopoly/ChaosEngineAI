@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import {
@@ -58,6 +59,7 @@ const WSL_INSTALL_DOCS_URL = "https://learn.microsoft.com/en-us/windows/wsl/inst
 const NVIDIA_WSL_DOCS_URL = "https://docs.nvidia.com/cuda/wsl-user-guide/";
 
 export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
+  const { t } = useTranslation("common");
   const [caps, setCaps] = useState<NativeBackendStatus | null>(null);
   const [capsError, setCapsError] = useState<string | null>(null);
   const [job, setJob] = useState<VllmWslJobState | null>(null);
@@ -158,10 +160,10 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
     return (
       <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
         <header>
-          <strong style={{ fontSize: "0.95rem" }}>WSL2 vLLM bridge</strong>
+          <strong style={{ fontSize: "0.95rem" }}>{t("wslBridgePanel.title", { defaultValue: "WSL2 vLLM bridge" })}</strong>
         </header>
         <p className="muted-text" style={{ fontSize: "0.84rem", margin: "4px 0 0" }}>
-          Backend offline — start the sidecar to probe WSL state.
+          {t("wslBridgePanel.backendOffline", { defaultValue: "Backend offline — start the sidecar to probe WSL state." })}
         </p>
       </section>
     );
@@ -171,10 +173,10 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
     return (
       <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
         <header>
-          <strong style={{ fontSize: "0.95rem" }}>WSL2 vLLM bridge</strong>
+          <strong style={{ fontSize: "0.95rem" }}>{t("wslBridgePanel.title", { defaultValue: "WSL2 vLLM bridge" })}</strong>
         </header>
         <p className="muted-text" style={{ color: "rgb(252, 165, 165)", fontSize: "0.82rem", margin: "4px 0 0" }}>
-          Could not read WSL state: {capsError}
+          {t("wslBridgePanel.capsError", { error: capsError, defaultValue: "Could not read WSL state: {error}" })}
         </p>
       </section>
     );
@@ -184,10 +186,10 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
     return (
       <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
         <header>
-          <strong style={{ fontSize: "0.95rem" }}>WSL2 vLLM bridge</strong>
+          <strong style={{ fontSize: "0.95rem" }}>{t("wslBridgePanel.title", { defaultValue: "WSL2 vLLM bridge" })}</strong>
         </header>
         <p className="muted-text" style={{ fontSize: "0.84rem", margin: "4px 0 0" }}>
-          Probing WSL state...
+          {t("wslBridgePanel.probing", { defaultValue: "Probing WSL state..." })}
         </p>
       </section>
     );
@@ -203,7 +205,7 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
   // one section the user can find by name.
   const header = (
     <header className="wsl-bridge-panel-header" style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-      <strong style={{ fontSize: "0.95rem" }}>WSL2 vLLM bridge</strong>
+      <strong style={{ fontSize: "0.95rem" }}>{t("wslBridgePanel.title", { defaultValue: "WSL2 vLLM bridge" })}</strong>
       {wsl2 && wslCuda && vllmInstalled ? (
         <span
           className="badge subtle"
@@ -216,7 +218,10 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
             fontWeight: 600,
           }}
         >
-          ✓ Ready{vllmVersion ? ` · v${vllmVersion}` : ""}
+          {t("wslBridgePanel.ready", {
+            version: vllmVersion ? ` · v${vllmVersion}` : "",
+            defaultValue: "✓ Ready{version}",
+          })}
         </span>
       ) : null}
     </header>
@@ -228,12 +233,12 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
       <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
         {header}
         <p className="muted-text" style={{ fontSize: "0.84rem", margin: "6px 0 0" }}>
-          WSL2 isn't installed on this Windows host. vLLM ships no native
-          Windows wheels, so the practical path is to run vLLM inside a
-          WSL2 Ubuntu distro.
+          {t("wslBridgePanel.notInstalled", {
+            defaultValue: "WSL2 isn't installed on this Windows host. vLLM ships no native Windows wheels, so the practical path is to run vLLM inside a WSL2 Ubuntu distro.",
+          })}
         </p>
         <p className="muted-text" style={{ fontSize: "0.82rem", margin: "8px 0 0" }}>
-          Open an admin PowerShell and run:
+          {t("wslBridgePanel.runInPowershell", { defaultValue: "Open an admin PowerShell and run:" })}
         </p>
         <pre style={{
           margin: "4px 0",
@@ -244,8 +249,8 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
         }}>wsl --install</pre>
         <p className="muted-text" style={{ fontSize: "0.78rem", margin: 0 }}>
-          Reboot when prompted, then reopen ChaosEngineAI.{" "}
-          <a href={WSL_INSTALL_DOCS_URL} target="_blank" rel="noreferrer">Microsoft docs</a>
+          {t("wslBridgePanel.rebootHint", { defaultValue: "Reboot when prompted, then reopen ChaosEngineAI." })}{" "}
+          <a href={WSL_INSTALL_DOCS_URL} target="_blank" rel="noreferrer">{t("wslBridgePanel.microsoftDocs", { defaultValue: "Microsoft docs" })}</a>
         </p>
       </section>
     );
@@ -257,14 +262,14 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
       <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
         {header}
         <p className="muted-text" style={{ fontSize: "0.84rem", margin: "6px 0 0" }}>
-          WSL2 is installed ({distro}), but{" "}
-          <code style={{ fontSize: "0.82em" }}>nvidia-smi</code> isn't
-          reachable inside the distro. Install the NVIDIA WSL driver
-          kicker on Windows — it lets CUDA passthrough from your GPU
-          driver into WSL.
+          {t("wslBridgePanel.cudaMissingLead", { distro, defaultValue: "WSL2 is installed ({distro}), but" })}{" "}
+          <code style={{ fontSize: "0.82em" }}>nvidia-smi</code>{" "}
+          {t("wslBridgePanel.cudaMissingTail", {
+            defaultValue: "isn't reachable inside the distro. Install the NVIDIA WSL driver kicker on Windows — it lets CUDA passthrough from your GPU driver into WSL.",
+          })}
         </p>
         <p className="muted-text" style={{ fontSize: "0.78rem", margin: "8px 0 0" }}>
-          <a href={NVIDIA_WSL_DOCS_URL} target="_blank" rel="noreferrer">NVIDIA WSL guide ↗</a>
+          <a href={NVIDIA_WSL_DOCS_URL} target="_blank" rel="noreferrer">{t("wslBridgePanel.nvidiaGuide", { defaultValue: "NVIDIA WSL guide ↗" })}</a>
         </p>
       </section>
     );
@@ -274,18 +279,25 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
   const installRunning = job != null
     && (job.phase === "preflight" || job.phase === "installing");
   const buttonLabel = installRunning
-    ? job?.message || "Installing..."
+    ? job?.message || t("wslBridgePanel.installing", { defaultValue: "Installing..." })
     : vllmInstalled
-      ? "Reinstall vLLM in WSL"
-      : "Install vLLM in WSL";
+      ? t("wslBridgePanel.reinstall", { defaultValue: "Reinstall vLLM in WSL" })
+      : t("wslBridgePanel.install", { defaultValue: "Install vLLM in WSL" });
 
   return (
     <section className="wsl-bridge-panel" style={{ marginTop: 18 }}>
       {header}
       <p className="muted-text" style={{ fontSize: "0.84rem", margin: "6px 0 0" }}>
         {vllmInstalled
-          ? `vLLM ${vllmVersion ?? ""} is installed in ${distro} at ~/.chaosengine/vllm-venv. The desktop app can route vLLM model loads through this venv.`
-          : `WSL2 (${distro}) + CUDA passthrough are ready. Install vLLM into an isolated venv at ~/.chaosengine/vllm-venv (~2 GB download, ~5-15 min on a warm box).`}
+          ? t("wslBridgePanel.installedSummary", {
+            version: vllmVersion ?? "",
+            distro,
+            defaultValue: "vLLM {version} is installed in {distro} at ~/.chaosengine/vllm-venv. The desktop app can route vLLM model loads through this venv.",
+          })
+          : t("wslBridgePanel.readySummary", {
+            distro,
+            defaultValue: "WSL2 ({distro}) + CUDA passthrough are ready. Install vLLM into an isolated venv at ~/.chaosengine/vllm-venv (~2 GB download, ~5-15 min on a warm box).",
+          })}
       </p>
       <div className="button-row" style={{ marginTop: 10 }}>
         <button

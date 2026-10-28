@@ -29,7 +29,14 @@
     "cancelled": "Отменено",
     "complete": "Завершено",
     "totalSize": "Всего {size}",
-    "downloaded": "{downloaded} из {total}"
+    "downloaded": "{downloaded} из {total}",
+    "preparing": "Подготовка к скачиванию...",
+    "pausedPercent": "Пауза {percent}%",
+    "downloadingPercent": "Скачивание {percent}%",
+    "pausedAtSize": "Пауза на {size} ГБ",
+    "downloadingSize": "Скачивание: {size} ГБ",
+    "sizeTotalGb": "{size} ГБ всего",
+    "sizeDownloadedGb": "Скачано {size} ГБ"
   },
   "details": {
     "loadModel": "Загрузить модель",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Показать модели, совместимые с {label} ({count})",
-      "dflashEmptyTooltip": "Черновики спекулятивного декодирования DFlash существуют только для конкретных базовых моделей: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Файн-тюны, как правило, не подходят. Скачайте базовую модель из «Обзор», чтобы включить DFlash."
+      "dflashEmptyTooltip": "Черновики спекулятивного декодирования DFlash существуют только для конкретных базовых моделей: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Файн-тюны, как правило, не подходят. Скачайте базовую модель из «Обзор», чтобы включить DFlash.",
+      "memorySaverLabel": "{label} · экономия памяти",
+      "memorySaverTooltip": "Показать модели, которые могут использовать {label} — экономию памяти KV cache: длинные чаты умещаются в меньшем объёме RAM, но генерация медленнее, чем при стратегии «Нативный» ({count})"
     },
     "column": {
       "model": "Модель",
@@ -118,7 +127,9 @@
       "deleteDownload": "Удалить скачивание",
       "chatWithModel": "Чат с моделью",
       "loadForServer": "Загрузить для сервера",
-      "deleteModel": "Удалить модель"
+      "deleteModel": "Удалить модель",
+      "unstarModel": "Убрать из избранного",
+      "starModel": "Добавить в избранное"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, one {# вариант} few {# варианта} many {# вариантов} other {# варианта}}",
     "filter": {
       "all": "Все",
-      "allFormats": "Все форматы"
+      "allFormats": "Все форматы",
+      "allAccel": "Все ускорения"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "Ни одна модель не соответствует фильтру «{cap}».",
       "search": "Ни одна модель не соответствует «{query}». Попробуйте другой запрос.",
       "prompt": "Введите запрос для поиска моделей."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · экономия памяти",
+      "memorySaverTooltip": "Показать модели, которые могут использовать {label} — экономию памяти KV cache: длинные чаты умещаются в меньшем объёме RAM, но генерация медленнее, чем при стратегии «Нативный» ({count})",
+      "tooltip": "Показать модели, совместимые с {label} ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "ожидание",
       "pendingTitle": "Оценка RAM/VRAM ожидается, пока неизвестен размер весов модели."
     },
-    "releaseUnknown": "Неизвестно"
+    "releaseUnknown": "Неизвестно",
+    "sharedRepoTitle": "Использует ту же загрузку, что и другие варианты {repo} (всего {count}). Удаление этой строки удалит и эти файлы.",
+    "sharedRepo": "общее хранилище · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "Удалить модель",
       "openHuggingFace": "Открыть на Hugging Face",
       "huggingFace": "Hugging Face",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "trackedOnly": "Только отслеживается — пока нельзя запустить"
+    },
+    "trackedOnly": {
+      "tooltip": "Следим за исходным проектом — запуск этого семейства в Студии пока не подключён. Запись в каталоге нужна для информации; скачивание не откроет доступ к Студии.",
+      "badge": "Следим за upstream"
     }
   },
   "videoDiscover": {

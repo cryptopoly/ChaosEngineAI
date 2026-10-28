@@ -44,5 +44,35 @@
     "subtitle": "Vista buscable sobre los canales sidecar, runtime y servidor.",
     "filterPlaceholder": "Filtrar registros",
     "emptyFiltered": "Ninguna línea de registro coincide con el filtro actual."
+  },
+  "accelerators": {
+    "title": "Aceleradores",
+    "subtitle": "Aceleraciones opcionales para la inferencia de imagen, video y chat, y el puente WSL de Windows."
+  },
+  "diskUsage": {
+    "title": "Uso del disco",
+    "subtitle": "Qué repos de modelos ocupan el espacio, para que sepas qué eliminar.",
+    "topTitle": "Top 20 repos de modelos",
+    "topHint": "Recorre cada directorio de modelos activado y lista los repos más grandes del disco. Cuenta los bytes de los blobs una sola vez (los snapshots/ de Hugging Face son enlaces simbólicos a blobs/, por lo que los escáneres simples cuentan de más).",
+    "scanning": "Escaneando…",
+    "rescan": "Volver a escanear",
+    "scan": "Escanear uso del disco",
+    "total": "Total de todos los directorios activados:",
+    "shown": "{repos} repos mostrados / {dirs} directorio(s) raíz escaneado(s)",
+    "freed": "{gb} GB liberados desde el escaneo",
+    "colRepo": "Repo",
+    "colSize": "Tamaño",
+    "colSource": "Origen",
+    "colPath": "Ruta",
+    "unknownSize": "tamaño desconocido",
+    "deleteConfirm": "¿Eliminar {name} ({size}) de forma permanente?\n\nSe quitará del disco y no se puede deshacer.",
+    "collapse": "Contraer {name}",
+    "expand": "Expandir {name}",
+    "sharedTitle": "Almacén compartido de Hugging Face: muchos repos enlazan a él",
+    "shared": "compartido",
+    "deleting": "Eliminando…",
+    "delete": "Eliminar",
+    "reading": "Leyendo…",
+    "empty": "Vacío"
   }
 }

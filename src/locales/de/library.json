@@ -29,7 +29,14 @@
     "cancelled": "Abgebrochen",
     "complete": "Abgeschlossen",
     "totalSize": "{size} gesamt",
-    "downloaded": "{downloaded} von {total}"
+    "downloaded": "{downloaded} von {total}",
+    "preparing": "Download wird vorbereitet...",
+    "pausedPercent": "Pausiert {percent}%",
+    "downloadingPercent": "Wird heruntergeladen {percent}%",
+    "pausedAtSize": "Pausiert bei {size} GB",
+    "downloadingSize": "{size} GB werden heruntergeladen",
+    "sizeTotalGb": "{size} GB gesamt",
+    "sizeDownloadedGb": "{size} GB heruntergeladen"
   },
   "details": {
     "loadModel": "Modell laden",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Modelle anzeigen, die mit {label} kompatibel sind ({count})",
-      "dflashEmptyTooltip": "DFlash-Spec-Decode-Drafts existieren nur für bestimmte Basismodelle: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-Tunes passen typischerweise nicht. Lade ein Basismodell aus „Entdecken“, um DFlash zu aktivieren."
+      "dflashEmptyTooltip": "DFlash-Spec-Decode-Drafts existieren nur für bestimmte Basismodelle: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-Tunes passen typischerweise nicht. Lade ein Basismodell aus „Entdecken“, um DFlash zu aktivieren.",
+      "memorySaverLabel": "{label} · Speicherspar-Modus",
+      "memorySaverTooltip": "Modelle anzeigen, die {label} nutzen können, einen KV-Cache-Speichersparer: Lange Chats passen in weniger RAM, aber die Generierung ist langsamer als bei Nativ ({count})"
     },
     "column": {
       "model": "Modell",
@@ -118,7 +127,9 @@
       "deleteDownload": "Download löschen",
       "chatWithModel": "Mit Modell chatten",
       "loadForServer": "Für Server laden",
-      "deleteModel": "Modell löschen"
+      "deleteModel": "Modell löschen",
+      "unstarModel": "Aus Favoriten entfernen",
+      "starModel": "Als Favorit markieren"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, one {# Variante} other {# Varianten}}",
     "filter": {
       "all": "Alle",
-      "allFormats": "Alle Formate"
+      "allFormats": "Alle Formate",
+      "allAccel": "Alle Beschleunigungen"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "Keine Modelle entsprechen dem Filter „{cap}“.",
       "search": "Keine Modelle entsprechen „{query}“. Anderen Suchbegriff versuchen.",
       "prompt": "Tippen, um nach Modellen zu suchen."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · Speicherspar-Modus",
+      "memorySaverTooltip": "Modelle anzeigen, die {label} nutzen können, einen KV-Cache-Speichersparer: Lange Chats passen in weniger RAM, aber die Generierung ist langsamer als bei Nativ ({count})",
+      "tooltip": "Modelle anzeigen, die mit {label} kompatibel sind ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "ausstehend",
       "pendingTitle": "RAM/VRAM-Schätzung ausstehend, bis Modellgewichts-Größe bekannt ist."
     },
-    "releaseUnknown": "Unbekannt"
+    "releaseUnknown": "Unbekannt",
+    "sharedRepoTitle": "Nutzt denselben Download wie {count} weitere Variante(n) von {repo}. Beim Löschen dieser Zeile werden auch diese Dateien entfernt.",
+    "sharedRepo": "teilt Speicherplatz · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "Modell löschen",
       "openHuggingFace": "Auf Hugging Face öffnen",
       "huggingFace": "Hugging Face",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "trackedOnly": "Nur beobachtet — noch nicht startbar"
+    },
+    "trackedOnly": {
+      "tooltip": "Wird upstream beobachtet — die Nutzung im Studio ist für diese Familie noch nicht angebunden. Der Katalogeintrag dient nur zur Information; ein Download schaltet das Studio nicht frei.",
+      "badge": "Upstream beobachtet"
     }
   },
   "videoDiscover": {

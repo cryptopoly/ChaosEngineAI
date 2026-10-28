@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../types";
 import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api";
@@ -30,32 +31,17 @@ const LAUNCH_PRESETS: Array<{
   { id: "memory", labelKey: "presets.memory.label", labelFallback: "Min Memory", hintKey: "presets.memory.hint", hintFallback: "Tight RAM", values: { contextTokens: 4096, fusedAttention: true, fitModelInMemory: false, maxTokens: 2048 } },
 ];
 
-const STRATEGY_INFO: Record<string, { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string }> = {
-  native: {
-    description: "Full-precision FP16 KV cache. No compression, so it is the fastest and highest-quality choice, and it works with speculative decoding. It uses the most memory at long context. Works with all backends.",
-    install: "",
-    requires: "Built-in",
-  },
+type StrategyInfo = { description: string; install: string; requires: string; installHint?: string; autoInstallPackage?: string };
+
+// Retired strategy ids (FU-030): the registry no longer lists them, so their
+// text is left as plain English.
+const STRATEGY_INFO: Record<string, StrategyInfo> = {
   rotorquant: {
     description: "IsoQuant/PlanarQuant KV cache compression using 4D quaternion or 2D Givens rotations. 3-4 bit quantisation with minimal quality loss.",
     install: "./scripts/build-llama-turbo.sh && ./.venv/bin/python3 -m pip install turboquant",
     requires: "llama-server-turbo (TurboQuant fork) + CUDA/Metal GPU",
     installHint: "Run scripts/build-llama-turbo.sh to build the forked llama-server, then install the Python marker package and restart ChaosEngineAI.",
     autoInstallPackage: "turboquant",
-  },
-  triattention: {
-    description: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
-    install: "./.venv/bin/python3 -m pip install triattention vllm",
-    requires: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
-    installHint: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
-    autoInstallPackage: "triattention",
-  },
-  turboquant: {
-    description: "Memory saver. Stores the KV cache in 1-4 bits (about 4-5x smaller at 3-bit) so long conversations fit in far less RAM. The trade is speed: expect slower generation than Native, and on MLX it turns off chat-history cache reuse and cannot be combined with speculative decoding. Pick it when a long context will not fit in memory; otherwise stay on Native. On MLX it uses Hadamard rotation + Lloyd-Max codebooks; on GGUF it uses llama-server-turbo.",
-    install: "./.venv/bin/python3 -m pip install turboquant-mlx-full && ./scripts/build-llama-turbo.sh",
-    requires: "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
-    installHint: "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI.",
-    autoInstallPackage: "turboquant-mlx",
   },
   chaosengine: {
     description: "PCA-based decorrelation + channel truncation + hybrid quantization. Achieves ~3.7x KV cache compression with minimal quality loss (0.034 avg attention error). Supports 2-8 bit compression tiers.",
@@ -64,6 +50,49 @@ const STRATEGY_INFO: Record<string, { description: string; install: string; requ
     installHint: "Desktop builds can bundle a vendored ChaosEngine checkout automatically. For source/dev installs, clone the repo, pip install it into ChaosEngineAI's backend Python, then restart.",
   },
 };
+
+function strategyInfoFor(id: string, t: TFunction<"runtime">): StrategyInfo | undefined {
+  switch (id) {
+    case "native":
+      return {
+        description: t("strategyInfo.native.description", {
+          defaultValue: "Full-precision FP16 KV cache. No compression, so it is the fastest and highest-quality choice, and it works with speculative decoding. It uses the most memory at long context. Works with all backends.",
+        }),
+        install: "",
+        requires: t("strategyInfo.native.requires", { defaultValue: "Built-in" }),
+      };
+    case "triattention":
+      return {
+        description: t("strategyInfo.triattention.description", {
+          defaultValue: "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
+        }),
+        install: "./.venv/bin/python3 -m pip install triattention vllm",
+        requires: t("strategyInfo.triattention.requires", {
+          defaultValue: "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
+        }),
+        installHint: t("strategyInfo.triattention.installHint", {
+          defaultValue: "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app.",
+        }),
+        autoInstallPackage: "triattention",
+      };
+    case "turboquant":
+      return {
+        description: t("strategyInfo.turboquant.description", {
+          defaultValue: "Memory saver. Stores the KV cache in 1-4 bits (about 4-5x smaller at 3-bit) so long conversations fit in far less RAM. The trade is speed: expect slower generation than Native, and on MLX it turns off chat-history cache reuse and cannot be combined with speculative decoding. Pick it when a long context will not fit in memory; otherwise stay on Native. On MLX it uses Hadamard rotation + Lloyd-Max codebooks; on GGUF it uses llama-server-turbo.",
+        }),
+        install: "./.venv/bin/python3 -m pip install turboquant-mlx-full && ./scripts/build-llama-turbo.sh",
+        requires: t("strategyInfo.turboquant.requires", {
+          defaultValue: "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
+        }),
+        installHint: t("strategyInfo.turboquant.installHint", {
+          defaultValue: "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI.",
+        }),
+        autoInstallPackage: "turboquant-mlx",
+      };
+    default:
+      return STRATEGY_INFO[id];
+  }
+}
 
 function activePresetId(settings: LaunchPreferences): string | null {
   for (const preset of LAUNCH_PRESETS) {
@@ -173,31 +202,34 @@ function StrategyInstallTerminal({
   label: string;
   log?: StrategyInstallLog;
 }) {
+  const { t } = useTranslation("runtime");
   const status = log?.status ?? "idle";
   const summaryStatus =
-    status === "running" ? "running" :
-    status === "success" ? "complete" :
-    status === "failed" ? "failed" :
-    "ready";
+    status === "running" ? t("installTerminal.statusRunning", { defaultValue: "running" }) :
+    status === "success" ? t("installTerminal.statusComplete", { defaultValue: "complete" }) :
+    status === "failed" ? t("installTerminal.statusFailed", { defaultValue: "failed" }) :
+    t("installTerminal.statusReady", { defaultValue: "ready" });
   const lines = log?.steps.length
     ? log.steps.map((step) => [
       `$ ${step.command}`,
       `[${step.status.toUpperCase()}] ${step.label}`,
       formatStrategyInstallOutput(step.output, step.status),
     ].join("\n")).join("\n\n")
-    : "No install output yet. Run the installer to capture stdout and stderr here.";
+    : t("installTerminal.noOutputYet", { defaultValue: "No install output yet. Run the installer to capture stdout and stderr here." });
 
   return (
     <details className={`strategy-install-terminal strategy-install-terminal--${status}`}>
       <summary className="strategy-install-terminal-summary">
-        <span>{label} install terminal</span>
+        <span>{t("installTerminal.title", { label, defaultValue: "{label} install terminal" })}</span>
         <span className={`strategy-install-terminal-status strategy-install-terminal-status--${status}`}>
           {summaryStatus}
         </span>
       </summary>
       <div className="strategy-install-terminal-meta">
-        {log?.startedAt ? <span>Started {log.startedAt}</span> : <span>Collapsed by default. Open after an install attempt to inspect failures.</span>}
-        {log?.finishedAt ? <span>Finished {log.finishedAt}</span> : null}
+        {log?.startedAt
+          ? <span>{t("installTerminal.startedAt", { time: log.startedAt, defaultValue: "Started {time}" })}</span>
+          : <span>{t("installTerminal.collapsedHint", { defaultValue: "Collapsed by default. Open after an install attempt to inspect failures." })}</span>}
+        {log?.finishedAt ? <span>{t("installTerminal.finishedAt", { time: log.finishedAt, defaultValue: "Finished {time}" })}</span> : null}
       </div>
       <pre className="strategy-install-terminal-output">{lines}</pre>
     </details>
@@ -442,7 +474,7 @@ export function RuntimeControls({
       <span className="eyebrow">{t("controls.cacheStrategy")} {specActive ? <small style={{ fontWeight: "normal", opacity: 0.6 }}> {tensorfoldRuns ? t("controls.cacheStrategyTensorfoldNote", { defaultValue: "(TensorFold manages its own KV cache)" }) : t("controls.cacheStrategyLockedNote", { defaultValue: "(locked to Native during speculative decoding)" })}</small> : null}</span>
       <div className="cache-strategy-cards">
         {strategies.map((strategy) => {
-          const info = STRATEGY_INFO[strategy.id];
+          const info = strategyInfoFor(strategy.id, t);
           const isSelected = specActive ? strategy.id === "native" : settings.cacheStrategy === strategy.id;
           const isExpanded = expandedInfo === strategy.id;
           const incompatReason = strategyIncompatReason(strategy.id, selectedBackend);
@@ -467,7 +499,7 @@ export function RuntimeControls({
           }
 
           return (
-            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." : undefined)}>
+            <div key={strategy.id} className={`cache-strategy-card${isSelected ? " cache-strategy-card--active" : ""}${isDisabled ? " cache-strategy-card--disabled" : ""}`} title={incompatReason ?? (turboMissing ? t("strategyCard.turboMissingTooltip", { defaultValue: "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install." }) : undefined)}>
               <div className="cache-strategy-card-header">
                 <button
                   type="button"
@@ -494,7 +526,13 @@ export function RuntimeControls({
                       isIncompat ? "warning" : turboMissing ? "warning" : runtimeAvailable ? "ready" : strategy.availabilityTone ?? "install"
                     }`}
                   >
-                    {isIncompat ? "N/A" : turboMissing ? "No turbo binary" : runtimeAvailable ? "Ready" : strategy.availabilityBadge ?? "Install"}
+                    {isIncompat
+                      ? t("strategyCard.badgeNotApplicable", { defaultValue: "N/A" })
+                      : turboMissing
+                        ? t("strategyCard.badgeNoTurbo", { defaultValue: "No turbo binary" })
+                        : runtimeAvailable
+                          ? t("strategyCard.badgeReady", { defaultValue: "Ready" })
+                          : strategy.availabilityBadge ?? t("strategyCard.badgeInstall", { defaultValue: "Install" })}
                   </span>
                 </button>
                 {info ? (
@@ -502,7 +540,7 @@ export function RuntimeControls({
                     type="button"
                     className="cache-strategy-info-btn"
                     onClick={() => setExpandedInfo(isExpanded ? null : strategy.id)}
-                    title="More info"
+                    title={t("controls.moreInfo", { defaultValue: "More info" })}
                   >
                     i
                   </button>
@@ -515,12 +553,12 @@ export function RuntimeControls({
                     <p className="cache-strategy-status-note">{strategy.availabilityReason}</p>
                   ) : null}
                   <div className="cache-strategy-meta">
-                    <span className="cache-strategy-meta-label">Requires:</span>
+                    <span className="cache-strategy-meta-label">{t("controls.requiresLabel", { defaultValue: "Requires:" })}</span>
                     <span>{info.requires}</span>
                   </div>
                   {info.install ? (
                     <div className="cache-strategy-install">
-                      <span className="cache-strategy-meta-label">Install:</span>
+                      <span className="cache-strategy-meta-label">{t("controls.installLabel", { defaultValue: "Install:" })}</span>
                       <code>{info.install}</code>
                       {info.autoInstallPackage && onInstallPackage && !runtimeAvailable ? (
                         <button
@@ -531,12 +569,12 @@ export function RuntimeControls({
                         >
                           {installingPackage === strategy.id
                             ? strategy.requiredLlamaBinary === "turbo" && isGgufBackend && !turboInstalled
-                              ? "Building llama-server-turbo..."
-                              : "Installing..."
-                            : "Install now"}
+                              ? t("strategyCard.buildingTurbo", { defaultValue: "Building llama-server-turbo..." })
+                              : t("strategyCard.installing", { defaultValue: "Installing..." })
+                            : t("strategyCard.installNow", { defaultValue: "Install now" })}
                         </button>
                       ) : (
-                        <p className="cache-strategy-install-hint">{info.installHint ?? "Run in your terminal, then restart ChaosEngineAI."}</p>
+                        <p className="cache-strategy-install-hint">{info.installHint ?? t("strategyCard.runInTerminal", { defaultValue: "Run in your terminal, then restart ChaosEngineAI." })}</p>
                       )}
                       {strategy.available && strategy.requiredLlamaBinary === "turbo" && isGgufBackend && turboUpdateAvailable && onInstallPackage ? (
                         <button
@@ -545,7 +583,9 @@ export function RuntimeControls({
                           disabled={installingPackage != null}
                           onClick={() => onInstallPackage(strategy.id)}
                         >
-                          {installingPackage === strategy.id ? "Updating..." : "Update available"}
+                          {installingPackage === strategy.id
+                            ? t("strategyCard.updating", { defaultValue: "Updating..." })
+                            : t("strategyCard.updateAvailable", { defaultValue: "Update available" })}
                         </button>
                       ) : null}
                       {info.autoInstallPackage || installLogs?.[strategy.id] ? (
@@ -590,7 +630,7 @@ export function RuntimeControls({
         ) : null}
         {fp16LayersSupported ? (
           <SliderField
-            label="FP16 layers"
+            label={t("sliders.fp16Layers", { defaultValue: "FP16 layers" })}
             value={settings.fp16Layers}
             min={0} max={16} step={1}
             ticks={[{ value: 0, label: "0" }, { value: 4, label: "4" }, { value: 8, label: "8" }, { value: 12, label: "12" }, { value: 16, label: "16" }]}
@@ -651,7 +691,7 @@ export function RuntimeControls({
             type="button"
             className="cache-strategy-info-btn"
             onClick={() => setExpandedInfo(expandedInfo === "fit-memory" ? null : "fit-memory")}
-            title="About fit in memory"
+            title={t("fitInMemory.aboutTitle", { defaultValue: "About fit in memory" })}
           >
             i
           </button>
@@ -787,16 +827,18 @@ export function RuntimeControls({
                 : dflashUnavailableReason ?? t("dflash.compatibilityUnresolved", { defaultValue: "Compatibility not resolved yet." })}</span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">Registered targets:</span>
-              <span>{dflashInfo?.supportedModels?.length ?? 0} target models</span>
+              <span className="cache-strategy-meta-label">{t("dflash.registeredTargetsLabel", { defaultValue: "Registered targets:" })}</span>
+              <span>{t("dflash.targetModelsCount", { count: dflashInfo?.supportedModels?.length ?? 0, defaultValue: "{count} target models" })}</span>
             </div>
             <div className="cache-strategy-meta">
-              <span className="cache-strategy-meta-label">DDTree:</span>
-              <span>{ddtreeAvailable ? "Available" : "Not available yet; linear DFlash runs instead."}</span>
+              <span className="cache-strategy-meta-label">{t("dflash.ddtreeLabel", { defaultValue: "DDTree:" })}</span>
+              <span>{ddtreeAvailable
+                ? t("dflash.ddtreeAvailable", { defaultValue: "Available" })
+                : t("dflash.ddtreeUnavailable", { defaultValue: "Not available yet; linear DFlash runs instead." })}</span>
             </div>
             {!dflashInstalled && canInstallDflashForModel ? (
               <div className="cache-strategy-install">
-                <span className="cache-strategy-meta-label">Install:</span>
+                <span className="cache-strategy-meta-label">{t("dflash.installLabel", { defaultValue: "Install:" })}</span>
                 {/* Pin string mirrors pyproject.toml + scripts/stage-runtime.mjs.
                     Update all three together when bumping (FU-033 pin-sync probe
                     catches drift between the latter two). */}
@@ -810,8 +852,13 @@ export function RuntimeControls({
         ) : null}
         {settings.speculativeDecoding && dflashAvailable && ddtreeAvailable && !mtplxSupersedesDflash ? (
           <div className="slider-row" style={{ marginTop: 6 }}>
-            <label className="slider-label" title="DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.">
-              Tree budget (DDTree)
+            <label
+              className="slider-label"
+              title={t("dflash.treeBudgetTooltip", {
+                defaultValue: "DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.",
+              })}
+            >
+              {t("dflash.treeBudgetLabel", { defaultValue: "Tree budget (DDTree)" })}
             </label>
             <input
               type="range"
@@ -930,7 +977,7 @@ export function RuntimeControls({
               <span className="cache-strategy-meta-label">{t("mtplx.statusLabel", { defaultValue: "Status:" })}</span>
               <span>
                 {mtplxInfo.available
-                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculativeDecoding is enabled." })
+                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculative decoding is ticked." })
                   : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
               </span>
             </div>

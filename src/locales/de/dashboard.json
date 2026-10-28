@@ -45,7 +45,12 @@
       "system": "System",
       "empty": "Keine aktiven lokalen LLM-Prozesse erkannt.",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "Geparkte Modelle entladen und jeden Modellprozess beenden, der das geladene Modell nicht bedient.",
+      "stopIdle": "Inaktive stoppen",
+      "stopHint": "Bedient das geladene Modell nicht. Stoppe den Prozess, um seinen Speicher freizugeben.",
+      "stopConfirm": "Diesen Prozess stoppen und seinen Speicher freigeben?",
+      "stop": "Stoppen"
     }
   },
   "hardwareFit": {

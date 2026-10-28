@@ -35,14 +35,19 @@
     "finalStatus": "Status final:",
     "statusNoun": {
       "longlive": "Instalação do LongLive",
-      "gpuBundle": "Instalação"
+      "gpuBundle": "Instalação",
+      "mtplx": "Instalação do MTPLX",
+      "tensorfold": "Instalação do TensorFold",
+      "mflux": "Instalação do mflux",
+      "vllmWsl": "Instalação do vLLM no WSL"
     },
     "status": {
       "failed": "Falha na {noun} — ver log",
       "complete": "{noun} concluída — ver log",
       "starting": "{noun} iniciando…",
       "verifyingCuda": "Verificando CUDA…",
-      "inProgress": "{noun} em andamento"
+      "inProgress": "{noun} em andamento",
+      "verifying": "Verificando a instalação…"
     },
     "meta": {
       "target": "Destino: {dir}",
@@ -79,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Runtime Wan MLX",
-    "ready": "Pronto"
+    "ready": "Pronto",
+    "inventoryError": "Inventário do Wan: {error}",
+    "converted": "Convertido · roteado via mlx-video nativo",
+    "rawDownload": "Download bruto de {size} → conversão para MLX (5-30 min)",
+    "outputLabel": "Saída:",
+    "otherRunning": "Outra instalação do Wan está em andamento ({repo}). Aguarde ou cancele-a primeiro.",
+    "installTitle": "Baixar pesos brutos + converter para MLX",
+    "installing": "Instalando...",
+    "starting": "Iniciando...",
+    "install": "Instalar"
   }
 }

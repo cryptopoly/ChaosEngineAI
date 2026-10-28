@@ -29,7 +29,14 @@
     "cancelled": "Cancelled",
     "complete": "Complete",
     "totalSize": "{size} total",
-    "downloaded": "{downloaded} of {total}"
+    "downloaded": "{downloaded} of {total}",
+    "preparing": "Preparing download...",
+    "pausedPercent": "Paused {percent}%",
+    "downloadingPercent": "Downloading {percent}%",
+    "pausedAtSize": "Paused at {size} GB",
+    "downloadingSize": "Downloading {size} GB",
+    "sizeTotalGb": "{size} GB total",
+    "sizeDownloadedGb": "{size} GB downloaded"
   },
   "details": {
     "loadModel": "Load model",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Show models compatible with {label} ({count})",
-      "dflashEmptyTooltip": "DFlash speculative-decode drafts only exist for specific base models: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes typically don't match. Download a base model from Discover to enable DFlash."
+      "dflashEmptyTooltip": "DFlash speculative-decode drafts only exist for specific base models: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes typically don't match. Download a base model from Discover to enable DFlash.",
+      "memorySaverLabel": "{label} · memory saver",
+      "memorySaverTooltip": "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})"
     },
     "column": {
       "model": "Model",
@@ -118,7 +127,9 @@
       "deleteDownload": "Delete download",
       "chatWithModel": "Chat with model",
       "loadForServer": "Load for server",
-      "deleteModel": "Delete model"
+      "deleteModel": "Delete model",
+      "unstarModel": "Remove from favourites",
+      "starModel": "Mark as favourite"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, one {# variant} other {# variants}}",
     "filter": {
       "all": "All",
-      "allFormats": "All formats"
+      "allFormats": "All formats",
+      "allAccel": "All acceleration"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "No models match the \"{cap}\" filter.",
       "search": "No models match \"{query}\". Try a different search term.",
       "prompt": "Type to search for models."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · memory saver",
+      "memorySaverTooltip": "Show models that can use {label}, a KV-cache memory saver: long chats fit in less RAM, but generation is slower than Native ({count})",
+      "tooltip": "Show {label}-compatible models ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "pending",
       "pendingTitle": "RAM/VRAM estimate pending until model weight size is known."
     },
-    "releaseUnknown": "Unknown"
+    "releaseUnknown": "Unknown",
+    "sharedRepoTitle": "Uses the same download as {count} other variant(s) of {repo}. Deleting this row removes those files too.",
+    "sharedRepo": "shares storage · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "Delete model",
       "openHuggingFace": "Open on Hugging Face",
       "huggingFace": "Hugging Face",
-      "settings": "Settings"
+      "settings": "Settings",
+      "trackedOnly": "Tracked only — not yet launchable"
+    },
+    "trackedOnly": {
+      "tooltip": "Watching upstream — Studio playback for this family isn't wired yet. Catalog entry is for awareness; download won't unlock Studio.",
+      "badge": "Watching upstream"
     }
   },
   "videoDiscover": {

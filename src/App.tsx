@@ -718,8 +718,8 @@ export default function App() {
   const libraryTotalSizeGb = chatLibrary.reduce((sum, item) => sum + item.sizeGb, 0);
   const localVariantCount = allFeaturedVariants.filter((variant) => variant.availableLocally).length;
   const fileRevealLabel =
-    workspace.system.platform === "Darwin" ? "Show in Finder" :
-    workspace.system.platform === "Windows" ? "Show in Explorer" : "Show in Files";
+    workspace.system.platform === "Darwin" ? tCommon("fileReveal.finder", { defaultValue: "Show in Finder" }) :
+    workspace.system.platform === "Windows" ? tCommon("fileReveal.explorer", { defaultValue: "Show in Explorer" }) : tCommon("fileReveal.files", { defaultValue: "Show in Files" });
 
   const activeThreadOption =
     threadModelOptions.find((option) => option.modelRef === activeChat?.modelRef && option.path === (activeChat?.modelPath ?? undefined)) ??
@@ -2049,18 +2049,30 @@ export default function App() {
           {gpuStatus.showBanner && gpuStatus.status ? (
             <div className="notice-banner warn-banner">
               <span>
-                <strong>Running on CPU.</strong>{" "}
+                <strong>{tCommon("gpuBanner.runningOnCpu", { defaultValue: "Running on CPU." })}</strong>{" "}
                 {gpuStatus.status.recommendation ??
-                  "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow."}
+                  tCommon("gpuBanner.recommendationFallback", {
+                    defaultValue: "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow.",
+                  })}
                 {cudaTorchResult?.ok ? (
                   <>
                     {" "}
                     <strong>
-                      CUDA torch installed{cudaTorchResult.indexUrl
-                        ? ` from ${cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", "")}`
-                        : ""}
-                      {cudaTorchResult.pythonVersion ? ` into bundled Python ${cudaTorchResult.pythonVersion}` : ""}
-                      . Restart the app to use the GPU.
+                      {tCommon("gpuBanner.cudaInstalled", {
+                        defaultValue: "CUDA torch installed{source}{python}. Restart the app to use the GPU.",
+                        source: cudaTorchResult.indexUrl
+                          ? tCommon("gpuBanner.cudaInstalledSource", {
+                            defaultValue: " from {index}",
+                            index: cudaTorchResult.indexUrl.replace("https://download.pytorch.org/whl/", ""),
+                          })
+                          : "",
+                        python: cudaTorchResult.pythonVersion
+                          ? tCommon("gpuBanner.cudaInstalledPython", {
+                            defaultValue: " into bundled Python {version}",
+                            version: cudaTorchResult.pythonVersion,
+                          })
+                          : "",
+                      })}
                     </strong>
                   </>
                 ) : cudaTorchResult && !cudaTorchResult.ok ? (
@@ -2069,17 +2081,20 @@ export default function App() {
                     {cudaTorchResult.noWheelForPython ? (
                       <>
                         <strong>
-                          No CUDA torch wheel for Python{cudaTorchResult.pythonVersion
-                            ? ` ${cudaTorchResult.pythonVersion}`
-                            : " (bundled venv)"}
-                          .
+                          {tCommon("gpuBanner.noWheel", {
+                            defaultValue: "No CUDA torch wheel for Python{version}.",
+                            version: cudaTorchResult.pythonVersion
+                              ? ` ${cudaTorchResult.pythonVersion}`
+                              : tCommon("gpuBanner.noWheelBundledVenv", { defaultValue: " (bundled venv)" }),
+                          })}
                         </strong>{" "}
-                        PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the
-                        app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.
+                        {tCommon("gpuBanner.noWheelDetail", {
+                          defaultValue: "PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.",
+                        })}
                       </>
                     ) : (
                       <>
-                        <strong>Install failed:</strong>{" "}
+                        <strong>{tCommon("gpuBanner.installFailed", { defaultValue: "Install failed:" })}</strong>{" "}
                         <span className="mono-text">{cudaTorchResult.message}</span>
                       </>
                     )}
@@ -2087,7 +2102,9 @@ export default function App() {
                 ) : installingCudaTorch ? (
                   <>
                     {" "}
-                    <em>Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.</em>
+                    <em>{tCommon("gpuBanner.downloading", {
+                      defaultValue: "Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.",
+                    })}</em>
                   </>
                 ) : null}
               </span>
@@ -2098,13 +2115,13 @@ export default function App() {
                 onClick={() => void handleInstallCudaTorch()}
               >
                 {installingCudaTorch
-                  ? "Installing CUDA torch..."
+                  ? tCommon("gpuBanner.installing", { defaultValue: "Installing CUDA torch..." })
                   : cudaTorchResult?.ok
-                    ? "Installed"
-                    : "Install CUDA torch"}
+                    ? tCommon("status.installed", { defaultValue: "Installed" })
+                    : tCommon("gpuBanner.install", { defaultValue: "Install CUDA torch" })}
               </button>
               <button className="secondary-button" type="button" onClick={gpuStatus.dismiss}>
-                Dismiss
+                {tCommon("actions.dismiss", { defaultValue: "Dismiss" })}
               </button>
             </div>
           ) : null}
@@ -2113,7 +2130,9 @@ export default function App() {
               <span>{error}</span>
               {error.includes("update-llama-cpp.sh") ? (
                 <button className="primary-button" type="button" disabled={rebuildingLlama} onClick={() => void handleRebuildLlamaCpp()}>
-                  {rebuildingLlama ? "Rebuilding llama.cpp..." : "Rebuild llama.cpp"}
+                  {rebuildingLlama
+                    ? tCommon("llamaRebuild.rebuilding", { defaultValue: "Rebuilding llama.cpp..." })
+                    : tCommon("llamaRebuild.rebuild", { defaultValue: "Rebuild llama.cpp" })}
                 </button>
               ) : null}
             </div>
@@ -2121,7 +2140,7 @@ export default function App() {
           {rebuildOutput ? (
             <div className="notice-banner">
               <pre className="mono-text rebuild-output">{rebuildOutput.slice(-2000)}</pre>
-              <button className="secondary-button" type="button" onClick={() => setRebuildOutput(null)}>Dismiss</button>
+              <button className="secondary-button" type="button" onClick={() => setRebuildOutput(null)}>{tCommon("actions.dismiss", { defaultValue: "Dismiss" })}</button>
             </div>
           ) : null}
         </div>
@@ -2235,7 +2254,7 @@ export default function App() {
                     {family.variants.map((v) => v.format).filter((f, i, a) => a.indexOf(f) === i).map((f) => (
                       <span key={f} className="badge muted">{f}</span>
                     ))}
-                    {localCount > 0 ? <span className="badge success">{localCount} downloaded</span> : null}
+                    {localCount > 0 ? <span className="badge success">{tCommon("discoverModal.downloadedCount", { count: localCount, defaultValue: "{count} downloaded" })}</span> : null}
                     <span className="badge muted">{family.updatedLabel}</span>
                   </div>
                   <p className="muted-text">{family.headline}</p>
@@ -2245,7 +2264,7 @@ export default function App() {
                 <p className="discover-summary">{family.summary}</p>
                 <CapabilityStrip capabilities={family.capabilities} max={12} />
                 <div className="detail-variants">
-                  <span className="eyebrow">Variants ({family.variants.length})</span>
+                  <span className="eyebrow">{tCommon("discoverModal.variants", { count: family.variants.length, defaultValue: "Variants ({count})" })}</span>
                   {family.variants.map((variant) => {
                     const matchedLocal = findLibraryItemForVariant(chatLibrary, variant);
                     const downloadState = activeDownloads[variant.repo];
@@ -2271,33 +2290,33 @@ export default function App() {
                           {variant.availableLocally ? (
                             <>
                               {variant.launchMode === "convert" ? (
-                                <button className="primary-button action-convert" type="button" onClick={() => { prepareCatalogConversion(variant); setDetailFamilyId(null); }}>Convert</button>
+                                <button className="primary-button action-convert" type="button" onClick={() => { prepareCatalogConversion(variant); setDetailFamilyId(null); }}>{tCommon("discoverModal.convert", { defaultValue: "Convert" })}</button>
                               ) : null}
-                              <button className="primary-button action-chat" type="button" onClick={() => { openModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>Chat</button>
-                              <button className="primary-button action-server" type="button" onClick={() => { openModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>Server</button>
+                              <button className="primary-button action-chat" type="button" onClick={() => { openModelSelector("thread", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>{tCommon("discoverModal.chat", { defaultValue: "Chat" })}</button>
+                              <button className="primary-button action-server" type="button" onClick={() => { openModelSelector("server", matchedLocal ? `library:${matchedLocal.path}` : `catalog:${variant.id}`); setDetailFamilyId(null); }}>{tCommon("discoverModal.server", { defaultValue: "Server" })}</button>
                             </>
                           ) : isDownloading ? (
                             <>
                               <span className="badge accent">{downloadProgressLabel(downloadState)}</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleCancelModelDownload(variant.repo)}>Pause</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>Cancel</button>
+                              <button className="secondary-button" type="button" onClick={() => void handleCancelModelDownload(variant.repo)}>{tCommon("discoverModal.pause", { defaultValue: "Pause" })}</button>
+                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.cancel", { defaultValue: "Cancel" })}</button>
                             </>
                           ) : isDownloadPaused ? (
                             <>
                               <span className="badge warning">{downloadProgressLabel(downloadState)}</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>Resume</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>Delete</button>
+                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("discoverModal.resume", { defaultValue: "Resume" })}</button>
+                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.delete", { defaultValue: "Delete" })}</button>
                             </>
                           ) : isDownloadFailed ? (
                             <>
-                              <span className="badge warning">Download failed</span>
-                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>Retry</button>
-                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>Delete</button>
+                              <span className="badge warning">{tCommon("discoverModal.downloadFailed", { defaultValue: "Download failed" })}</span>
+                              <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("actions.retry", { defaultValue: "Retry" })}</button>
+                              <button className="secondary-button danger-button" type="button" onClick={() => void handleDeleteModelDownload(variant.repo)}>{tCommon("actions.delete", { defaultValue: "Delete" })}</button>
                             </>
                           ) : isDownloadComplete ? (
-                            <span className="badge success">Download complete</span>
+                            <span className="badge success">{tCommon("discoverModal.downloadComplete", { defaultValue: "Download complete" })}</span>
                           ) : (
-                            <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>Download</button>
+                            <button className="secondary-button" type="button" onClick={() => void handleDownloadModel(variant.repo)}>{tCommon("actions.download", { defaultValue: "Download" })}</button>
                           )}
                           <a
                             className="text-link"
@@ -2315,13 +2334,13 @@ export default function App() {
                 </div>
                 {family.readme && family.readme.length > 0 ? (
                   <div className="detail-readme">
-                    <span className="eyebrow">Overview</span>
+                    <span className="eyebrow">{tCommon("discoverModal.overview", { defaultValue: "Overview" })}</span>
                     {family.readme.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
                 ) : null}
               </div>
               <div className="modal-footer">
-                <button className="primary-button" type="button" onClick={() => setDetailFamilyId(null)}>Close</button>
+                <button className="primary-button" type="button" onClick={() => setDetailFamilyId(null)}>{tCommon("actions.close", { defaultValue: "Close" })}</button>
               </div>
             </div>
           </div>
@@ -2330,23 +2349,23 @@ export default function App() {
       {dataDirRestartPrompt ? (
         <div className="modal-overlay" onClick={() => setDataDirRestartPrompt(null)}>
           <div className="modal-content" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header"><h3>Restart required</h3></div>
+            <div className="modal-header"><h3>{tCommon("dataDirRestart.title", { defaultValue: "Restart required" })}</h3></div>
             <div className="modal-body">
-              <p>The data directory has been changed. ChaosEngineAI needs to restart the backend to start reading and writing files in the new location.</p>
+              <p>{tCommon("dataDirRestart.body", { defaultValue: "The data directory has been changed. ChaosEngineAI needs to restart the backend to start reading and writing files in the new location." })}</p>
               {dataDirRestartPrompt.migration ? (
                 <div className="control-stack">
-                  <p className="mono-text">From: {dataDirRestartPrompt.migration.from}</p>
-                  <p className="mono-text">To: {dataDirRestartPrompt.migration.to}</p>
-                  {dataDirRestartPrompt.migration.copied.length > 0 ? <p>Copied: {dataDirRestartPrompt.migration.copied.join(", ")}</p> : null}
-                  {dataDirRestartPrompt.migration.skipped.length > 0 ? <p>Skipped (already present at destination): {dataDirRestartPrompt.migration.skipped.join(", ")}</p> : null}
+                  <p className="mono-text">{tCommon("dataDirRestart.from", { path: dataDirRestartPrompt.migration.from, defaultValue: "From: {path}" })}</p>
+                  <p className="mono-text">{tCommon("dataDirRestart.to", { path: dataDirRestartPrompt.migration.to, defaultValue: "To: {path}" })}</p>
+                  {dataDirRestartPrompt.migration.copied.length > 0 ? <p>{tCommon("dataDirRestart.copied", { items: dataDirRestartPrompt.migration.copied.join(", "), defaultValue: "Copied: {items}" })}</p> : null}
+                  {dataDirRestartPrompt.migration.skipped.length > 0 ? <p>{tCommon("dataDirRestart.skipped", { items: dataDirRestartPrompt.migration.skipped.join(", "), defaultValue: "Skipped (already present at destination): {items}" })}</p> : null}
                 </div>
               ) : null}
             </div>
             <div className="modal-footer">
-              <button className="secondary-button" type="button" onClick={() => setDataDirRestartPrompt(null)}>Not now</button>
+              <button className="secondary-button" type="button" onClick={() => setDataDirRestartPrompt(null)}>{tCommon("dataDirRestart.notNow", { defaultValue: "Not now" })}</button>
               <button className="primary-button" type="button" onClick={async () => {
                 setDataDirRestartPrompt(null);
-                setBusyAction("Restarting backend...");
+                setBusyAction(tCommon("dataDirRestart.restarting", { defaultValue: "Restarting backend..." }));
                 try {
                   const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
                   await tauriInvoke("restart_backend_sidecar");
@@ -2363,14 +2382,14 @@ export default function App() {
                     setBackendOnline(true);
                     await refreshWorkspace(activeChatId || undefined);
                   } else {
-                    setError("Backend did not come back online after restart.");
+                    setError(tCommon("dataDirRestart.notBackOnline", { defaultValue: "Backend did not come back online after restart." }));
                   }
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : "Failed to restart backend.");
+                  setError(err instanceof Error ? err.message : tCommon("dataDirRestart.failed", { defaultValue: "Failed to restart backend." }));
                 } finally {
                   setBusyAction(null);
                 }
-              }}>OK, restart now</button>
+              }}>{tCommon("dataDirRestart.confirm", { defaultValue: "OK, restart now" })}</button>
             </div>
           </div>
         </div>

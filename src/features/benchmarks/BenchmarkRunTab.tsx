@@ -156,7 +156,7 @@ export function BenchmarkRunTab({
                     >
                       {BENCHMARK_PROMPTS.map((preset) => (
                         <option key={preset.id} value={preset.id}>
-                          {preset.label}
+                          {t(`benchmarkTab.promptPresets.${preset.id}`, { defaultValue: preset.label })}
                         </option>
                       ))}
                     </select>

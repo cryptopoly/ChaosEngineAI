@@ -35,14 +35,19 @@
     "finalStatus": "最終狀態:",
     "statusNoun": {
       "longlive": "LongLive 安裝",
-      "gpuBundle": "安裝"
+      "gpuBundle": "安裝",
+      "mtplx": "MTPLX 安裝",
+      "tensorfold": "TensorFold 安裝",
+      "mflux": "mflux 安裝",
+      "vllmWsl": "vLLM-in-WSL 安裝"
     },
     "status": {
       "failed": "{noun}失敗 — 查看記錄",
       "complete": "{noun}完成 — 查看記錄",
       "starting": "{noun}啟動中…",
       "verifyingCuda": "正在驗證 CUDA…",
-      "inProgress": "{noun}進行中"
+      "inProgress": "{noun}進行中",
+      "verifying": "正在驗證安裝…"
     },
     "meta": {
       "target": "目標：{dir}",
@@ -79,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Wan MLX 執行階段",
-    "ready": "就緒"
+    "ready": "就緒",
+    "inventoryError": "Wan 清單：{error}",
+    "converted": "已轉換 · 透過 mlx-video 原生路徑執行",
+    "rawDownload": "原始權重下載 {size} → MLX 轉換（5-30 分鐘）",
+    "outputLabel": "輸出位置：",
+    "otherRunning": "另一個 Wan 安裝正在執行（{repo}）。請等待其完成或先取消它。",
+    "installTitle": "下載原始權重並轉換為 MLX",
+    "installing": "安裝中...",
+    "starting": "正在開始...",
+    "install": "安裝"
   }
 }

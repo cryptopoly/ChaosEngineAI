@@ -29,7 +29,14 @@
     "cancelled": "キャンセル済み",
     "complete": "完了",
     "totalSize": "合計 {size}",
-    "downloaded": "{downloaded} / {total}"
+    "downloaded": "{downloaded} / {total}",
+    "preparing": "ダウンロードを準備中...",
+    "pausedPercent": "一時停止中 {percent}%",
+    "downloadingPercent": "ダウンロード中 {percent}%",
+    "pausedAtSize": "{size} GB で一時停止",
+    "downloadingSize": "{size} GB をダウンロード中",
+    "sizeTotalGb": "合計 {size} GB",
+    "sizeDownloadedGb": "{size} GB ダウンロード済み"
   },
   "details": {
     "loadModel": "モデルを読み込む",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label}({count})",
       "compatTooltip": "{label} と互換性のあるモデルを表示({count})",
-      "dflashEmptyTooltip": "DFlash の投機的デコード用ドラフトは特定のベースモデルにのみ存在します:Qwen/Qwen3(4B、8B)、Qwen/Qwen3-Coder(4B、8B、30B-A3B、Next)、Qwen/Qwen3.5(4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss(20B、120B)、moonshotai/Kimi-K2.5。ファインチューン版は通常合致しません。DFlash を有効化するにはディスカバーからベースモデルをダウンロードしてください。"
+      "dflashEmptyTooltip": "DFlash の投機的デコード用ドラフトは特定のベースモデルにのみ存在します:Qwen/Qwen3(4B、8B)、Qwen/Qwen3-Coder(4B、8B、30B-A3B、Next)、Qwen/Qwen3.5(4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss(20B、120B)、moonshotai/Kimi-K2.5。ファインチューン版は通常合致しません。DFlash を有効化するにはディスカバーからベースモデルをダウンロードしてください。",
+      "memorySaverLabel": "{label} · メモリ節約",
+      "memorySaverTooltip": "KV キャッシュのメモリ節約方式である {label} を使えるモデルを表示: 長いチャットが少ない RAM に収まりますが、生成はネイティブより遅くなります({count})"
     },
     "column": {
       "model": "モデル",
@@ -118,7 +127,9 @@
       "deleteDownload": "ダウンロードを削除",
       "chatWithModel": "モデルとチャット",
       "loadForServer": "サーバー用に読み込む",
-      "deleteModel": "モデルを削除"
+      "deleteModel": "モデルを削除",
+      "unstarModel": "お気に入りから削除",
+      "starModel": "お気に入りに追加"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, other {# 個のバリアント}}",
     "filter": {
       "all": "すべて",
-      "allFormats": "すべてのフォーマット"
+      "allFormats": "すべてのフォーマット",
+      "allAccel": "すべての高速化"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "「{cap}」フィルターに一致するモデルはありません。",
       "search": "「{query}」に一致するモデルはありません。別の検索語を試してください。",
       "prompt": "モデルを検索するために入力してください。"
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · メモリ節約",
+      "memorySaverTooltip": "KV キャッシュのメモリ節約方式である {label} を使えるモデルを表示: 長いチャットが少ない RAM に収まりますが、生成はネイティブより遅くなります({count})",
+      "tooltip": "{label} と互換性のあるモデルを表示({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "保留中",
       "pendingTitle": "モデルの重みサイズが判明するまで RAM/VRAM 推定は保留中です。"
     },
-    "releaseUnknown": "不明"
+    "releaseUnknown": "不明",
+    "sharedRepoTitle": "{repo} の他の {count} 個のバリアントと同じダウンロードを使用しています。この行を削除すると、それらのファイルも削除されます。",
+    "sharedRepo": "保存領域を共有 · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "モデルを削除",
       "openHuggingFace": "Hugging Face で開く",
       "huggingFace": "Hugging Face",
-      "settings": "設定"
+      "settings": "設定",
+      "trackedOnly": "追跡のみ — まだ起動できません"
+    },
+    "trackedOnly": {
+      "tooltip": "上流を監視中 — このファミリーのスタジオでの実行にはまだ対応していません。カタログへの掲載は情報提供のためで、ダウンロードしてもスタジオでは使えません。",
+      "badge": "上流を監視中"
     }
   },
   "videoDiscover": {

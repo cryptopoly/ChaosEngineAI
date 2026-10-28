@@ -428,10 +428,13 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
 // the snapshot grew that panel and pushed them off screen with no way to scroll
 // to them, so they now have their own tab.
 export function AcceleratorsPanel({ backendOnline }: { backendOnline: boolean }) {
+  const { t } = useTranslation("diagnostics");
   return (
     <Panel
-      title="Accelerators"
-      subtitle="Optional speed-ups for image, video and chat inference, and the Windows WSL bridge."
+      title={t("accelerators.title", { defaultValue: "Accelerators" })}
+      subtitle={t("accelerators.subtitle", {
+        defaultValue: "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge.",
+      })}
     >
       <AcceleratorsBoostPack backendOnline={backendOnline} />
       <WslBridgePanel backendOnline={backendOnline} />
@@ -441,10 +444,11 @@ export function AcceleratorsPanel({ backendOnline }: { backendOnline: boolean })
 
 // Settings > Disk usage (FU-055), for the same reason.
 export function DiskUsagePanel({ backendOnline }: { backendOnline: boolean }) {
+  const { t } = useTranslation("diagnostics");
   return (
     <Panel
-      title="Disk usage"
-      subtitle="Which model repos take the space, so you know what to delete."
+      title={t("diskUsage.title", { defaultValue: "Disk usage" })}
+      subtitle={t("diskUsage.subtitle", { defaultValue: "Which model repos take the space, so you know what to delete." })}
     >
       <StorageTopSection backendOnline={backendOnline} />
     </Panel>
@@ -457,6 +461,7 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
   // FU-055: in-app top-disk-consumers view. Walks every enabled model dir
   // and reports the biggest repo dirs, sorted by actual byte size. Closes
   // the Stuff Diver gap on HF cache symlink layouts.
+  const { t } = useTranslation("diagnostics");
   const [data, setData] = useState<StorageTopResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -479,11 +484,12 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
 
   return (
     <div className="diagnostics-section">
-      <h3>Top 20 model repos</h3>
+      <h3>{t("diskUsage.topTitle", { defaultValue: "Top 20 model repos" })}</h3>
       <p className="muted-text" style={{ marginBottom: 8 }}>
-        Walks every enabled model directory and lists the biggest repos on disk.
-        Counts blob bytes once (Hugging Face's ``snapshots/`` are symlinks to
-        ``blobs/`` so naive scanners over-count).
+        {t("diskUsage.topHint", {
+          defaultValue:
+            "Walks every enabled model directory and lists the biggest repos on disk. Counts blob bytes once (Hugging Face's snapshots/ are symlinks to blobs/ so naive scanners over-count).",
+        })}
       </p>
       <button
         className="secondary-button"
@@ -491,30 +497,39 @@ function StorageTopSection({ backendOnline }: { backendOnline: boolean }) {
         onClick={() => void scan()}
         disabled={!backendOnline || busy}
       >
-        {busy ? "Scanning..." : data ? "Rescan" : "Scan disk usage"}
+        {busy
+          ? t("diskUsage.scanning", { defaultValue: "Scanning…" })
+          : data
+            ? t("diskUsage.rescan", { defaultValue: "Rescan" })
+            : t("diskUsage.scan", { defaultValue: "Scan disk usage" })}
       </button>
       {err ? <p className="muted-text" style={{ color: "#f87171", marginTop: 8 }}>{err}</p> : null}
       {data ? (
         <div style={{ marginTop: 12 }}>
           <p className="muted-text">
-            Total across all enabled directories:{" "}
+            {t("diskUsage.total", { defaultValue: "Total across all enabled directories:" })}{" "}
             <strong>{data.totalGb !== null ? `${data.totalGb.toFixed(1)} GB` : "—"}</strong>
             {" · "}
-            {data.entries.length} repos shown / scanned{" "}
-            {data.scannedDirectories.length} root dir(s)
+            {t("diskUsage.shown", {
+              defaultValue: "{repos} repos shown / scanned {dirs} root dir(s)",
+              repos: data.entries.length,
+              dirs: data.scannedDirectories.length,
+            })}
             {freedBytes > 0 ? (
               <>
                 {" · "}
-                <strong>{(freedBytes / 1e9).toFixed(1)} GB freed since scan</strong>
+                <strong>
+                  {t("diskUsage.freed", { defaultValue: "{gb} GB freed since scan", gb: (freedBytes / 1e9).toFixed(1) })}
+                </strong>
               </>
             ) : null}
           </p>
           <div className="storage-top-table">
             <div className="storage-top-head">
-              <span>Repo</span>
-              <span>Size</span>
-              <span>Source</span>
-              <span>Path</span>
+              <span>{t("diskUsage.colRepo", { defaultValue: "Repo" })}</span>
+              <span>{t("diskUsage.colSize", { defaultValue: "Size" })}</span>
+              <span>{t("diskUsage.colSource", { defaultValue: "Source" })}</span>
+              <span>{t("diskUsage.colPath", { defaultValue: "Path" })}</span>
               <span />
             </div>
             {data.entries.map((entry) => (
@@ -541,6 +556,7 @@ function StorageRow({
   depth: number;
   onDeleted: (entry: StorageTopEntry) => void;
 }) {
+  const { t } = useTranslation("diagnostics");
   const [open, setOpen] = useState(false);
   const [gone, setGone] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -564,9 +580,15 @@ function StorageRow({
   };
 
   const remove = async () => {
-    const size = entry.sizeGb !== null ? `${entry.sizeGb.toFixed(1)} GB` : "unknown size";
+    const size = entry.sizeGb !== null
+      ? `${entry.sizeGb.toFixed(1)} GB`
+      : t("diskUsage.unknownSize", { defaultValue: "unknown size" });
     const confirmed = window.confirm(
-      `Permanently delete ${entry.hfRepo ?? entry.path} (${size})?\n\nThis removes it from disk and cannot be undone.`,
+      t("diskUsage.deleteConfirm", {
+        defaultValue: "Permanently delete {name} ({size})?\n\nThis removes it from disk and cannot be undone.",
+        name: entry.hfRepo ?? entry.path,
+        size,
+      }),
     );
     if (!confirmed) return;
     setDeleting(true);
@@ -595,7 +617,9 @@ function StorageRow({
               className="storage-top-toggle"
               onClick={() => void toggle()}
               aria-expanded={open}
-              aria-label={open ? `Collapse ${entry.repoLabel}` : `Expand ${entry.repoLabel}`}
+              aria-label={open
+                ? t("diskUsage.collapse", { defaultValue: "Collapse {name}", name: entry.repoLabel })
+                : t("diskUsage.expand", { defaultValue: "Expand {name}", name: entry.repoLabel })}
             >
               {open ? "▾" : "▸"}
             </button>
@@ -610,7 +634,12 @@ function StorageRow({
           {entry.path}
         </span>
         {entry.deletable === false ? (
-          <span className="muted-text" title="Shared Hugging Face store: many repos link into it">shared</span>
+          <span
+            className="muted-text"
+            title={t("diskUsage.sharedTitle", { defaultValue: "Shared Hugging Face store: many repos link into it" })}
+          >
+            {t("diskUsage.shared", { defaultValue: "shared" })}
+          </span>
         ) : (
           <button
             type="button"
@@ -618,17 +647,23 @@ function StorageRow({
             onClick={() => void remove()}
             disabled={deleting}
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting
+              ? t("diskUsage.deleting", { defaultValue: "Deleting…" })
+              : t("diskUsage.delete", { defaultValue: "Delete" })}
           </button>
         )}
       </div>
-      {open && loading ? <div className="storage-top-row muted-text">Reading…</div> : null}
+      {open && loading ? (
+        <div className="storage-top-row muted-text">{t("diskUsage.reading", { defaultValue: "Reading…" })}</div>
+      ) : null}
       {open && err ? <div className="storage-top-row" style={{ color: "#f87171" }}>{err}</div> : null}
       {open && children?.map((child) => (
         <StorageRow key={child.path} entry={child} depth={depth + 1} onDeleted={onDeleted} />
       ))}
       {open && children?.length === 0 ? (
-        <div className="storage-top-row muted-text" style={{ paddingLeft: 12 + (depth + 1) * 16 }}>Empty</div>
+        <div className="storage-top-row muted-text" style={{ paddingLeft: 12 + (depth + 1) * 16 }}>
+          {t("diskUsage.empty", { defaultValue: "Empty" })}
+        </div>
       ) : null}
     </>
   );

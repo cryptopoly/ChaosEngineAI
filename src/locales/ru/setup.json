@@ -35,14 +35,19 @@
     "finalStatus": "Итоговый статус:",
     "statusNoun": {
       "longlive": "Установка LongLive",
-      "gpuBundle": "Установка"
+      "gpuBundle": "Установка",
+      "mtplx": "Установка MTPLX",
+      "tensorfold": "Установка TensorFold",
+      "mflux": "Установка mflux",
+      "vllmWsl": "Установка vLLM в WSL"
     },
     "status": {
       "failed": "{noun} не удалась — см. журнал",
       "complete": "{noun} завершена — см. журнал",
       "starting": "{noun} запускается…",
       "verifyingCuda": "Проверка CUDA…",
-      "inProgress": "{noun} в процессе"
+      "inProgress": "{noun} в процессе",
+      "verifying": "Проверка установки…"
     },
     "meta": {
       "target": "Цель: {dir}",
@@ -79,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Среда выполнения Wan MLX",
-    "ready": "Готово"
+    "ready": "Готово",
+    "inventoryError": "Список Wan: {error}",
+    "converted": "Сконвертировано · маршрутизируется через нативный mlx-video",
+    "rawDownload": "Исходная загрузка {size} → конвертация в MLX (5-30 мин)",
+    "outputLabel": "Результат:",
+    "otherRunning": "Уже выполняется другая установка Wan ({repo}). Дождитесь её завершения или сначала отмените.",
+    "installTitle": "Скачать исходные веса и конвертировать в MLX",
+    "installing": "Установка...",
+    "starting": "Запуск...",
+    "install": "Установить"
   }
 }

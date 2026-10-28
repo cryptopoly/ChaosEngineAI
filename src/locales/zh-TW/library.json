@@ -29,7 +29,14 @@
     "cancelled": "已取消",
     "complete": "已完成",
     "totalSize": "共 {size}",
-    "downloaded": "已下載 {downloaded} / 共 {total}"
+    "downloaded": "已下載 {downloaded} / 共 {total}",
+    "preparing": "正在準備下載...",
+    "pausedPercent": "已暫停 {percent}%",
+    "downloadingPercent": "下載中 {percent}%",
+    "pausedAtSize": "已暫停於 {size} GB",
+    "downloadingSize": "正在下載 {size} GB",
+    "sizeTotalGb": "共 {size} GB",
+    "sizeDownloadedGb": "已下載 {size} GB"
   },
   "details": {
     "loadModel": "載入模型",
@@ -74,7 +81,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "顯示相容於 {label} 的模型 ({count})",
-      "dflashEmptyTooltip": "DFlash 推測解碼草稿模型僅存在於特定的基礎模型:Qwen/Qwen3 (4B, 8B)、Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next)、Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B, 120B)、moonshotai/Kimi-K2.5。微調模型通常不相符。請從 探索 下載基礎模型以啟用 DFlash。"
+      "dflashEmptyTooltip": "DFlash 推測解碼草稿模型僅存在於特定的基礎模型:Qwen/Qwen3 (4B, 8B)、Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next)、Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B, 120B)、moonshotai/Kimi-K2.5。微調模型通常不相符。請從 探索 下載基礎模型以啟用 DFlash。",
+      "memorySaverLabel": "{label} · 節省記憶體",
+      "memorySaverTooltip": "顯示可使用 {label} 的模型（一種節省記憶體的 KV 快取方案）：長對話佔用更少 RAM，但生成比原生慢 ({count})"
     },
     "column": {
       "model": "模型",
@@ -118,7 +127,9 @@
       "deleteDownload": "刪除下載",
       "chatWithModel": "與模型對話",
       "loadForServer": "為伺服器載入",
-      "deleteModel": "刪除模型"
+      "deleteModel": "刪除模型",
+      "unstarModel": "從我的最愛中移除",
+      "starModel": "加入我的最愛"
     }
   },
   "onlineModels": {
@@ -127,7 +138,8 @@
     "variantCount": "{count, plural, other {# 個變體}}",
     "filter": {
       "all": "全部",
-      "allFormats": "所有格式"
+      "allFormats": "所有格式",
+      "allAccel": "所有加速"
     },
     "capability": {
       "title": {
@@ -225,6 +237,11 @@
       "capFilter": "沒有模型符合「{cap}」篩選。",
       "search": "沒有模型符合「{query}」。請嘗試其他搜尋字詞。",
       "prompt": "輸入以搜尋模型。"
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · 節省記憶體",
+      "memorySaverTooltip": "顯示可使用 {label} 的模型（一種節省記憶體的 KV 快取方案）：長對話佔用更少 RAM，但生成比原生慢 ({count})",
+      "tooltip": "顯示相容於 {label} 的模型 ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +337,9 @@
       "pending": "等待中",
       "pendingTitle": "RAM/VRAM 估算將在模型權重大小確定後提供。"
     },
-    "releaseUnknown": "未知"
+    "releaseUnknown": "未知",
+    "sharedRepoTitle": "與 {repo} 的另外 {count} 個變體共用同一份下載。刪除此項目也會一併刪除這些檔案。",
+    "sharedRepo": "共用儲存空間 · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +523,12 @@
       "deleteModel": "刪除模型",
       "openHuggingFace": "在 Hugging Face 開啟",
       "huggingFace": "Hugging Face",
-      "settings": "設定"
+      "settings": "設定",
+      "trackedOnly": "僅追蹤 — 尚無法啟動"
+    },
+    "trackedOnly": {
+      "tooltip": "持續關注上游 — 此系列在工作室中的執行尚未串接。目錄項目僅供參考，下載後也無法在工作室中使用。",
+      "badge": "關注上游中"
     }
   },
   "videoDiscover": {

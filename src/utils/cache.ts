@@ -147,19 +147,21 @@ export function getCacheFitStatus(
   if (vramUsable > 0 && optimizedCacheGb > vramUsable) {
     const cacheGbStr = optimizedCacheGb >= 10 ? optimizedCacheGb.toFixed(0) : optimizedCacheGb.toFixed(1);
     const vramGbStr = gpuVramGb && gpuVramGb >= 10 ? gpuVramGb.toFixed(0) : (gpuVramGb ?? 0).toFixed(1);
-    const cacheKindHint = bits <= 0
-      ? "a full native f16 KV cache"
-      : "the selected KV cache";
+    const advice = bits <= 0
+      ? i18next.t("runtime:cacheAdvice.vramNativeF16", {
+        cacheGb: cacheGbStr,
+        vramGb: vramGbStr,
+        defaultValue: "A full native f16 KV cache at this context is ~{cacheGb} GB, larger than the {vramGb} GB of GPU VRAM available. llama.cpp will spill to system RAM (slow PCIe transfers per token) or fail to allocate. Lower context, drop FP16 layers, or pick the TurboQuant memory saver so the cache fits in VRAM.",
+      })
+      : i18next.t("runtime:cacheAdvice.vramSelected", {
+        cacheGb: cacheGbStr,
+        vramGb: vramGbStr,
+        defaultValue: "The selected KV cache at this context is ~{cacheGb} GB, larger than the {vramGb} GB of GPU VRAM available. llama.cpp will spill to system RAM (slow PCIe transfers per token) or fail to allocate. Lower context, drop FP16 layers, or pick the TurboQuant memory saver so the cache fits in VRAM.",
+      });
     return {
-      label: "Cache won't fit GPU",
+      label: i18next.t("runtime:cacheFit.vramWontFit", { defaultValue: "Cache won't fit GPU" }),
       className: "warning",
-      advice: (
-        `${cacheKindHint} at this context is ~${cacheGbStr} GB, larger than the `
-        + `${vramGbStr} GB of GPU VRAM available. llama.cpp will spill to system RAM `
-        + "(slow PCIe transfers per token) or fail to allocate. Lower context, drop "
-        + "FP16 layers, or pick the TurboQuant memory saver so "
-        + "the cache fits in VRAM."
-      ),
+      advice,
     };
   }
 

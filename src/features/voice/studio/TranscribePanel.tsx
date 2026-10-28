@@ -5,7 +5,7 @@ import { getLibraryAudio, getLibraryItem, transcribeBlob } from "../../../api";
 import type { VoiceLibraryItem, SttModel, VoiceRuntime } from "../../../types";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
-import { VOICE_LANGUAGES } from "../VoiceModelsTab";
+import { VOICE_LANGUAGES, voiceLanguageName } from "../VoiceModelsTab";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 const ACCEPTED_FILES = "audio/*,video/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.webm,.mp4,.mov,.mkv,.m4v,.aiff,.caf";
@@ -57,7 +57,7 @@ export interface TranscribePanelProps {
 }
 
 export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenModels }: TranscribePanelProps) {
-  const { t } = useTranslation("studio");
+  const { t, i18n } = useTranslation("studio");
   const { settings, platform } = useVoice();
   const [options, setOptions] = useState<JobOptions>({
     model: "",
@@ -274,7 +274,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
               <select className="text-input" value={options.language} onChange={(e) => setOptions({ ...options, language: e.target.value })}>
                 {VOICE_LANGUAGES.map(([code, label]) => (
                   <option key={code} value={code}>
-                    {label}
+                    {voiceLanguageName(code, label, i18n.language)}
                   </option>
                 ))}
               </select>

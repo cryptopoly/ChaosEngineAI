@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import i18next from "i18next";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
@@ -54,11 +55,28 @@ const LANGUAGES: Array<[string, string]> = [
 
 export const VOICE_LANGUAGES = LANGUAGES;
 
+/** A language's name in the UI language (the list above is the English fallback). */
+export function voiceLanguageName(code: string, fallback: string, uiLanguage: string): string {
+  if (!code) return i18next.t("studio:voice.languages.auto", { defaultValue: fallback });
+  try {
+    const name = new Intl.DisplayNames([uiLanguage], { type: "language" }).of(code);
+    return name ? name.charAt(0).toLocaleUpperCase(uiLanguage) + name.slice(1) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function laneDescription(runtime: VoiceRuntime): string {
-  if (runtime.lane === "mlx") return "Apple Silicon: Parakeet and Whisper on MLX, Kokoro voices";
-  if (runtime.cuda) return "NVIDIA GPU: Whisper on CUDA, Kokoro voices";
-  if (runtime.nvidiaGpu) return "Whisper (CUDA libraries are added by the install), Kokoro voices";
-  return "Whisper on the CPU, Kokoro voices";
+  if (runtime.lane === "mlx") {
+    return i18next.t("studio:voice.lane.mlx", { defaultValue: "Apple Silicon: Parakeet and Whisper on MLX, Kokoro voices" });
+  }
+  if (runtime.cuda) return i18next.t("studio:voice.lane.cuda", { defaultValue: "NVIDIA GPU: Whisper on CUDA, Kokoro voices" });
+  if (runtime.nvidiaGpu) {
+    return i18next.t("studio:voice.lane.nvidia", {
+      defaultValue: "Whisper (CUDA libraries are added by the install), Kokoro voices",
+    });
+  }
+  return i18next.t("studio:voice.lane.cpu", { defaultValue: "Whisper on the CPU, Kokoro voices" });
 }
 
 function VoicePackPanel({ runtime, onChanged }: { runtime: VoiceRuntime; onChanged: () => void }) {
@@ -344,7 +362,7 @@ function VoicesPanel({ voices }: { voices: TtsVoice[] }) {
 }
 
 function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
-  const { t } = useTranslation("studio");
+  const { t, i18n } = useTranslation("studio");
   const { settings, saveSettings, refresh } = useVoice();
   return (
     <Panel title={t("voice.settings.title", { defaultValue: "Voice settings" })} className="span-2">
@@ -362,7 +380,7 @@ function SettingsPanel({ runtime }: { runtime: VoiceRuntime }) {
           <select className="text-input" value={settings.language} onChange={(e) => void saveSettings({ language: e.target.value })}>
             {LANGUAGES.map(([code, label]) => (
               <option key={code} value={code}>
-                {label}
+                {voiceLanguageName(code, label, i18n.language)}
               </option>
             ))}
           </select>

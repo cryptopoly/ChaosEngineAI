@@ -117,7 +117,7 @@ console.log("=== ChaosEngineAI Pre-Build Checks ===\n");
 // ------------------------------------------------------------------
 // 1. Python tests
 // ------------------------------------------------------------------
-console.log("[1/8] Python tests...");
+console.log("[1/9] Python tests...");
 {
   const py = venvPython();
   const result = run(py, ["-m", "pytest", "tests/", "-q", "--tb=line"]);
@@ -129,7 +129,7 @@ console.log();
 // ------------------------------------------------------------------
 // 2. TypeScript tests
 // ------------------------------------------------------------------
-console.log("[2/8] TypeScript tests...");
+console.log("[2/9] TypeScript tests...");
 {
   // The vitest config defaults to watch mode in TTY; --run forces a
   // single CI-friendly pass.
@@ -142,7 +142,7 @@ console.log();
 // ------------------------------------------------------------------
 // 3. TypeScript type checking
 // ------------------------------------------------------------------
-console.log("[3/8] TypeScript type checking...");
+console.log("[3/9] TypeScript type checking...");
 {
   const result = run(npxCommand(), ["tsc", "--noEmit"]);
   if (result.ok) pass("TypeScript types");
@@ -153,7 +153,7 @@ console.log();
 // ------------------------------------------------------------------
 // 4. Licence notices
 // ------------------------------------------------------------------
-console.log("[4/8] Licence notices...");
+console.log("[4/9] Licence notices...");
 {
   const noticesPath = path.join(REPO_ROOT, "THIRD_PARTY_NOTICES.md");
   if (!existsSync(noticesPath) || statSync(noticesPath).size === 0) {
@@ -179,7 +179,7 @@ console.log();
 // ------------------------------------------------------------------
 // 5. Cache strategy + FU-056 accelerator catalog validation
 // ------------------------------------------------------------------
-console.log("[5/8] Cache strategy + accelerator catalog validation...");
+console.log("[5/9] Cache strategy + accelerator catalog validation...");
 {
   const probe = `
 from cache_compression import registry
@@ -286,7 +286,7 @@ console.log();
 // ------------------------------------------------------------------
 // 6. Upstream dependency update check
 // ------------------------------------------------------------------
-console.log("[6/8] Upstream dependency check...");
+console.log("[6/9] Upstream dependency check...");
 {
   // Turbo fork: read version file (commit | branch | build_date) +
   // compare to live HEAD via git ls-remote. Mirrors the .sh exactly,
@@ -417,9 +417,25 @@ console.log("[6/8] Upstream dependency check...");
 console.log();
 
 // ------------------------------------------------------------------
+// 7. Dependency audit (known vulnerabilities + out-of-date packages)
+// ------------------------------------------------------------------
+// Checks every pinned Python package, Rust crate and npm package against
+// osv.dev. A high or critical advisory blocks; accept one on purpose in
+// scripts/dependency-audit-ignore.json (reason + expiry). Packages behind the
+// newest release are listed but never block. Needs network access.
+console.log("[7/9] Dependency audit (osv.dev)...");
+{
+  const result = run(venvPython(), ["scripts/audit-dependencies.py"]);
+  if (result.ok) pass("dependency audit — no blocking advisories");
+  else if (result.code === 2) warn("dependency audit could not run (no network?) — re-run when online; the release workflow runs it too");
+  else fail("dependency audit — a shipped package has a high or critical advisory (see above); upgrade it or accept it in scripts/dependency-audit-ignore.json");
+}
+console.log();
+
+// ------------------------------------------------------------------
 // 7. Binary availability
 // ------------------------------------------------------------------
-console.log("[7/8] Binary availability...");
+console.log("[8/9] Binary availability...");
 {
   const isWin = platform() === "win32";
   const exeSuffix = isWin ? ".exe" : "";
@@ -451,7 +467,7 @@ console.log();
 // 8. i18n locale validation (FU-042)
 // ------------------------------------------------------------------
 // Warn-only by default; --strict upgrades to fail-on-coverage <95 %.
-console.log("[8/8] i18n locale validation...");
+console.log("[9/9] i18n locale validation...");
 {
   const result = run("node", ["scripts/i18n-validate.mjs"]);
   if (result.ok) pass("i18n locale catalogs");

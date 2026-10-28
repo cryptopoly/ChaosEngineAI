@@ -1,20 +1,4 @@
 {
   "_comment": "Advisories we accept for now. One entry per advisory id (any alias works); a reason and an expires date (YYYY-MM-DD) are required, and an entry stops working on its date so the decision is revisited. scripts/audit-dependencies.py reads this file.",
-  "ignore": [
-    {
-      "id": "RUSTSEC-2026-0367",
-      "reason": "zip is used only by tauri-plugin-updater to unpack a Windows update archive, after the archive's minisign signature is verified, so exploiting it needs our signing key. The fix is tauri-plugin-updater 2.14 (zip 9), which needs tauri 2.12 (FU-120).",
-      "expires": "2026-12-31"
-    },
-    {
-      "id": "RUSTSEC-2026-0368",
-      "reason": "zip is used only by tauri-plugin-updater to unpack a Windows update archive, after the archive's minisign signature is verified, so exploiting it needs our signing key. The fix is tauri-plugin-updater 2.14 (zip 9), which needs tauri 2.12 (FU-120).",
-      "expires": "2026-12-31"
-    },
-    {
-      "id": "RUSTSEC-2026-0369",
-      "reason": "zip is used only by tauri-plugin-updater to unpack a Windows update archive, after the archive's minisign signature is verified, so exploiting it needs our signing key. The fix is tauri-plugin-updater 2.14 (zip 9), which needs tauri 2.12 (FU-120).",
-      "expires": "2026-12-31"
-    }
-  ]
+  "ignore": []
 }

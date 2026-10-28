@@ -42,11 +42,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.advisory }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
@@ -127,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -145,7 +145,7 @@ jobs:
 
       # ── Node.js ────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -159,7 +159,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -170,7 +170,7 @@ jobs:
 
       # ── Python + venv ──────────────────────────────────────────
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 

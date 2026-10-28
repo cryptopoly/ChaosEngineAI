@@ -37,6 +37,7 @@
 
 ### Fixes
 
+- **Wan 2.2 TI2V 5B video** no longer comes out over-bright with colour blocks at the default settings (the default guidance now matches the model card).
 - **Discover went blank** when you typed in the search box.
 - Apple Silicon: a model that reasons after a tool result, even with Thinking Off, no longer shows that reasoning in its answer.
 - A reasoning level that a model's chat template does not accept is mapped to the nearest one it does.

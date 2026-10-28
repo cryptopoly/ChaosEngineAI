@@ -419,6 +419,66 @@ class GgufTargetDetectionTests(unittest.TestCase):
         )
 
 
+class LlamaCppToolCallTests(unittest.TestCase):
+    """llama-server parses tool calls itself and returns them structured with
+    empty ``content``. The engine dropped them, so tool use on GGUF models
+    returned an empty answer and never ran the tool."""
+
+    def _engine(self) -> LlamaCppEngine:
+        engine = LlamaCppEngine(LlamaCppCommandTests._capabilities(None))  # type: ignore[arg-type]
+        engine.loaded_model = LoadedModelInfo(
+            ref="LiquidAI/LFM3-1.7B-GGUF", name="LFM3", backend="llama.cpp", source="catalog",
+            engine="llama.cpp", cacheStrategy="native", cacheBits=0, fp16Layers=0,
+            fusedAttention=False, fitModelInMemory=True, contextTokens=4096, loadedAt="now",
+        )
+        engine.process = mock.Mock(poll=mock.Mock(return_value=None))
+        engine.port = 1
+        return engine
+
+    def _generate(self, engine, response, **kwargs):
+        sent = {}
+
+        def fake_http(url, payload=None, timeout=None):
+            sent.update(payload or {})
+            return response
+
+        with mock.patch("backend_service.inference.llama_cpp_engine._http_json", side_effect=fake_http):
+            result = engine.generate(system_prompt=None, max_tokens=64, temperature=0.1, **kwargs)
+        return result, sent
+
+    def test_structured_tool_calls_are_returned(self):
+        response = {"choices": [{"finish_reason": "tool_calls", "message": {"content": "", "tool_calls": [
+            {"id": "abc", "type": "function",
+             "function": {"name": "calculator", "arguments": "{\"expression\":\"1234 * 5678\"}"}},
+        ]}}]}
+        result, _ = self._generate(self._engine(), response, prompt="compute", history=[], tools=[{"type": "function"}])
+        self.assertEqual(result.tool_calls, [{
+            "id": "abc", "type": "function",
+            "function": {"name": "calculator", "arguments": "{\"expression\":\"1234 * 5678\"}"},
+        }])
+
+    def test_a_plain_reply_has_no_tool_calls(self):
+        response = {"choices": [{"message": {"content": "Hello."}}]}
+        result, _ = self._generate(self._engine(), response, prompt="hi", history=[])
+        self.assertIsNone(result.tool_calls)
+        self.assertEqual(result.text, "Hello.")
+
+    def test_follow_up_keeps_the_call_and_result_structured(self):
+        history = [
+            {"role": "user", "text": "compute"},
+            {"role": "assistant", "text": "", "tool_calls": [
+                {"id": "abc", "type": "function", "function": {"name": "calculator", "arguments": "{}"}},
+            ]},
+            {"role": "tool", "text": "7006652", "tool_call_id": "abc", "name": "calculator"},
+        ]
+        response = {"choices": [{"message": {"content": "It is 7,006,652."}}]}
+        _, sent = self._generate(self._engine(), response, prompt="", history=history)
+        messages = sent["messages"]
+        self.assertEqual([m["role"] for m in messages], ["user", "assistant", "tool"])  # no empty user turn
+        self.assertEqual(messages[1]["tool_calls"][0]["id"], "abc")
+        self.assertEqual(messages[2]["tool_call_id"], "abc")
+
+
 class LlamaCppFallbackMetadataTests(unittest.TestCase):
     def _capabilities(self) -> BackendCapabilities:
         return BackendCapabilities(

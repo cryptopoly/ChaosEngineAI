@@ -48,6 +48,7 @@ from backend_service.inference._constants import (
     DEFAULT_LLAMA_TIMEOUT_SECONDS,
     WORKSPACE_ROOT,
 )
+from backend_service.inference._tensorfold_wire import _TOOL_CALL_BLOCK, _structured_calls
 from backend_service.inference._utils import (
     _append_runtime_note,
     _find_open_port,
@@ -441,6 +442,46 @@ def _gguf_startup_fallback_note(strategy_name: str) -> str:
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
+
+
+def _chat_messages(
+    system_prompt: str | None,
+    history: list[dict[str, Any]],
+    prompt: str,
+    images: list[str] | None,
+) -> list[dict[str, Any]]:
+    """Chat state -> llama-server messages, keeping tool calls structured.
+
+    The agent loop records an assistant tool call with ``tool_calls`` and its
+    result as a ``tool`` turn with ``tool_call_id``; both are passed on so the
+    model's chat template renders them natively. Its follow-up requests send
+    an empty ``prompt`` (the tool result is the last turn), which adds no
+    user turn.
+    """
+    messages: list[dict[str, Any]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    for message in history:
+        role = message.get("role")
+        if role not in {"system", "user", "assistant", "tool"}:
+            continue
+        entry: dict[str, Any] = {"role": role, "content": _normalize_message_content(message.get("text", ""))}
+        if role == "assistant":
+            calls = _structured_calls(message.get("tool_calls"))
+            if calls:
+                entry["tool_calls"] = calls
+                entry["content"] = _TOOL_CALL_BLOCK.sub("", entry["content"]).strip()
+        elif role == "tool" and message.get("tool_call_id"):
+            entry["tool_call_id"] = str(message["tool_call_id"])
+        messages.append(entry)
+    if images:
+        content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+        for img_b64 in images:
+            content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
+        messages.append({"role": "user", "content": content_parts})
+    elif prompt:
+        messages.append({"role": "user", "content": prompt})
+    return messages
 
 
 class LlamaCppEngine(BaseInferenceEngine):
@@ -844,22 +885,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             logs = _read_text_tail(self.log_path)
             raise RuntimeError(logs or "The llama.cpp server is not running.")
 
-        messages: list[dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        for message in history:
-            role = message.get("role")
-            if role not in {"system", "user", "assistant", "tool"}:
-                continue
-            messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
-        # Build user message with optional images
-        if images:
-            content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-            for img_b64 in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
-            messages.append({"role": "user", "content": content_parts})
-        else:
-            messages.append({"role": "user", "content": prompt})
+        messages = _chat_messages(system_prompt, history, prompt, images)
 
         # Phase 3.8 follow-up: apply known chat-template auto-fixes
         # before the messages reach llama-server (e.g. Gemma family
@@ -905,6 +931,9 @@ class LlamaCppEngine(BaseInferenceEngine):
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
         total_tokens = int(usage.get("total_tokens") or (prompt_tokens + completion_tokens))
         text = _strip_thinking_tokens(str(message.get("content") or ""))
+        # llama-server parses tool calls with the model's own template and
+        # returns them structured, leaving ``content`` empty.
+        tool_calls = _structured_calls(message.get("tool_calls"))
 
         return GenerationResult(
             text=text,
@@ -919,6 +948,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 if template_fix_note
                 else self.loaded_model.runtimeNote
             ),
+            tool_calls=tool_calls or None,
         )
 
     def stream_generate(
@@ -942,21 +972,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             logs = _read_text_tail(self.log_path)
             raise RuntimeError(logs or "The llama.cpp server is not running.")
 
-        messages: list[dict[str, Any]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        for message in history:
-            role = message.get("role")
-            if role not in {"system", "user", "assistant", "tool"}:
-                continue
-            messages.append({"role": role, "content": _normalize_message_content(message.get("text", ""))})
-        if images:
-            content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-            for img_b64 in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}})
-            messages.append({"role": "user", "content": content_parts})
-        else:
-            messages.append({"role": "user", "content": prompt})
+        messages = _chat_messages(system_prompt, history, prompt, images)
 
         # Phase 3.8 follow-up: chat-template auto-fix on the streaming
         # path matches the non-stream behaviour. The note is forwarded

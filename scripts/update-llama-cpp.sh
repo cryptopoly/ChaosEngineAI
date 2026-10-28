@@ -10,9 +10,9 @@
 #
 # Builds a pinned release tag (LLAMA_CPP_REF) rather than whatever the
 # branch HEAD happens to be, so two installs ship the same binary (the
-# FU-065 drift lesson). b11810 carries DFlash + DFlash 2
+# FU-065 drift lesson). b11938 carries DFlash + DFlash 2
 # (--spec-type draft-dflash), EAGLE-3, DSpark, the draft-free ngram-mod
-# mode, drafter sidecar discovery and the Metal-4 M5 prefill path, plus the kolibri1 (2026-10-17) and flint (2026-10-21) architectures.
+# mode, drafter sidecar discovery and the Metal-4 M5 prefill path, plus the kolibri1 (2026-10-17), flint (2026-10-21) and lfm3 (2026-10-27) architectures.
 # LLAMA_CPP_REF=master tracks upstream HEAD instead.
 
 set -euo pipefail
@@ -33,7 +33,7 @@ cd "$LLAMA_DIR"
 echo "==> git fetch"
 git fetch --all --tags --prune
 
-LLAMA_CPP_REF="${LLAMA_CPP_REF:-b11810}"
+LLAMA_CPP_REF="${LLAMA_CPP_REF:-b11938}"
 
 # Warn loudly if there are uncommitted changes — then refuse unless FORCE=1.
 if [[ -n "$(git status --porcelain)" ]]; then

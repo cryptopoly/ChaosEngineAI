@@ -403,8 +403,9 @@ def phase_0(cap: Capability) -> PhaseResult:
             "kolibri-1": 4,
             # 2026-10: LFM2.5 (MLX 4/8-bit + GGUF) and Muse Glimmer GGUF.
             "lfm-2-5": 3, "muse-glimmer": 1,
-            # LFM3-1.7B (MLX 4/8-bit) on the vendored lfm3 architecture.
-            "lfm-3": 2,
+            # LFM3-1.7B: MLX 4/8-bit on the vendored lfm3 architecture, and the
+            # official GGUF on llama.cpp b11938+.
+            "lfm-3": 3,
         }
         missing = []
         for fid, min_variants in expected.items():

@@ -44,5 +44,35 @@
     "subtitle": "对 sidecar、运行时和服务器通道的可搜索视图。",
     "filterPlaceholder": "筛选日志",
     "emptyFiltered": "没有日志行匹配当前筛选条件。"
+  },
+  "accelerators": {
+    "title": "加速器",
+    "subtitle": "图像、视频和聊天推理的可选加速组件，以及 Windows WSL 桥接。"
+  },
+  "diskUsage": {
+    "title": "磁盘占用",
+    "subtitle": "查看哪些模型仓库占用了空间，方便你决定删除什么。",
+    "topTitle": "前 20 个模型仓库",
+    "topHint": "遍历每个已启用的模型目录，列出磁盘上最大的仓库。blob 字节只计算一次（Hugging Face 的 snapshots/ 是指向 blobs/ 的符号链接，简单的扫描器会重复计算）。",
+    "scanning": "正在扫描…",
+    "rescan": "重新扫描",
+    "scan": "扫描磁盘占用",
+    "total": "所有已启用目录的总计：",
+    "shown": "显示 {repos} 个仓库 / 已扫描 {dirs} 个根目录",
+    "freed": "自扫描以来已释放 {gb} GB",
+    "colRepo": "仓库",
+    "colSize": "大小",
+    "colSource": "来源",
+    "colPath": "路径",
+    "unknownSize": "大小未知",
+    "deleteConfirm": "永久删除 {name}（{size}）？\n\n这会将其从磁盘上移除，且无法撤销。",
+    "collapse": "折叠 {name}",
+    "expand": "展开 {name}",
+    "sharedTitle": "共享的 Hugging Face 存储：许多仓库都链接到这里",
+    "shared": "共享",
+    "deleting": "正在删除…",
+    "delete": "删除",
+    "reading": "正在读取…",
+    "empty": "空"
   }
 }

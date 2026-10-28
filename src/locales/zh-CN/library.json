@@ -74,7 +74,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "显示与 {label} 兼容的模型 ({count})",
-      "dflashEmptyTooltip": "DFlash 推测解码草稿仅适用于特定的基础模型:Qwen/Qwen3 (4B、8B)、Qwen/Qwen3-Coder (4B、8B、30B-A3B、Next)、Qwen/Qwen3.5 (4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B、120B)、moonshotai/Kimi-K2.5。微调模型通常不匹配。从 发现 下载基础模型以启用 DFlash。"
+      "dflashEmptyTooltip": "DFlash 推测解码草稿仅适用于特定的基础模型:Qwen/Qwen3 (4B、8B)、Qwen/Qwen3-Coder (4B、8B、30B-A3B、Next)、Qwen/Qwen3.5 (4B、7B、9B、14B、27B、35B-A3B)、Qwen/Qwen3.6-35B-A3B、meta-llama/Llama-3.1-8B-Instruct、gpt-oss (20B、120B)、moonshotai/Kimi-K2.5。微调模型通常不匹配。从 发现 下载基础模型以启用 DFlash。",
+      "memorySaverLabel": "{label} · 节省内存",
+      "memorySaverTooltip": "显示可使用 {label} 的模型（一种节省内存的 KV 缓存方案）：长对话占用更少 RAM，但生成比原生慢 ({count})"
     },
     "column": {
       "model": "模型",
@@ -118,7 +120,9 @@
       "deleteDownload": "删除下载",
       "chatWithModel": "与模型对话",
       "loadForServer": "为服务器加载",
-      "deleteModel": "删除模型"
+      "deleteModel": "删除模型",
+      "unstarModel": "从收藏中移除",
+      "starModel": "添加到收藏"
     }
   },
   "onlineModels": {
@@ -127,7 +131,8 @@
     "variantCount": "{count, plural, other {# 个变体}}",
     "filter": {
       "all": "全部",
-      "allFormats": "所有格式"
+      "allFormats": "所有格式",
+      "allAccel": "所有加速"
     },
     "capability": {
       "title": {
@@ -225,6 +230,11 @@
       "capFilter": "没有模型匹配 \"{cap}\" 筛选。",
       "search": "没有模型匹配 \"{query}\"。请尝试不同的搜索词。",
       "prompt": "输入以搜索模型。"
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · 节省内存",
+      "memorySaverTooltip": "显示可使用 {label} 的模型（一种节省内存的 KV 缓存方案）：长对话占用更少 RAM，但生成比原生慢 ({count})",
+      "tooltip": "显示与 {label} 兼容的模型 ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +330,9 @@
       "pending": "待定",
       "pendingTitle": "在已知模型权重大小前,RAM/VRAM 估算暂时无法计算。"
     },
-    "releaseUnknown": "未知"
+    "releaseUnknown": "未知",
+    "sharedRepoTitle": "与 {repo} 的另外 {count} 个变体共享同一份下载。删除此行也会删除这些文件。",
+    "sharedRepo": "共享存储 · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +516,12 @@
       "deleteModel": "删除模型",
       "openHuggingFace": "在 Hugging Face 上打开",
       "huggingFace": "Hugging Face",
-      "settings": "设置"
+      "settings": "设置",
+      "trackedOnly": "仅追踪 — 暂时无法启动"
+    },
+    "trackedOnly": {
+      "tooltip": "正在关注上游 — 该系列在工作室中的运行尚未接入。目录条目仅供了解，下载后也无法在工作室中使用。",
+      "badge": "关注上游中"
     }
   },
   "videoDiscover": {

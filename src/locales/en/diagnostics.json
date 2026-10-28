@@ -44,5 +44,35 @@
     "subtitle": "Searchable view over the sidecar, runtime, and server channels.",
     "filterPlaceholder": "Filter logs",
     "emptyFiltered": "No log lines match the current filter."
+  },
+  "accelerators": {
+    "title": "Accelerators",
+    "subtitle": "Optional speed-ups for image, video and chat inference, and the Windows WSL bridge."
+  },
+  "diskUsage": {
+    "title": "Disk usage",
+    "subtitle": "Which model repos take the space, so you know what to delete.",
+    "topTitle": "Top 20 model repos",
+    "topHint": "Walks every enabled model directory and lists the biggest repos on disk. Counts blob bytes once (Hugging Face's snapshots/ are symlinks to blobs/ so naive scanners over-count).",
+    "scanning": "Scanning…",
+    "rescan": "Rescan",
+    "scan": "Scan disk usage",
+    "total": "Total across all enabled directories:",
+    "shown": "{repos} repos shown / scanned {dirs} root dir(s)",
+    "freed": "{gb} GB freed since scan",
+    "colRepo": "Repo",
+    "colSize": "Size",
+    "colSource": "Source",
+    "colPath": "Path",
+    "unknownSize": "unknown size",
+    "deleteConfirm": "Permanently delete {name} ({size})?\n\nThis removes it from disk and cannot be undone.",
+    "collapse": "Collapse {name}",
+    "expand": "Expand {name}",
+    "sharedTitle": "Shared Hugging Face store: many repos link into it",
+    "shared": "shared",
+    "deleting": "Deleting…",
+    "delete": "Delete",
+    "reading": "Reading…",
+    "empty": "Empty"
   }
 }

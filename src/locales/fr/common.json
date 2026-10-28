@@ -32,7 +32,10 @@
     "image": "Studio image",
     "video": "Studio vidéo",
     "setup": "Configuration",
-    "diagnostics": "Diagnostic"
+    "diagnostics": "Diagnostic",
+    "voiceStudio": "Studio vocal",
+    "voiceModels": "Modèles vocaux",
+    "voiceLibrary": "Bibliothèque vocale"
   },
   "tabCaptions": {
     "dashboard": "Vue d'ensemble du système",
@@ -57,7 +60,10 @@
     "promptLibrary": "Modèles d'invites réutilisables",
     "plugins": "Extensions et système de plugins",
     "logs": "Événements d'exécution",
-    "settings": "Répertoires et valeurs par défaut"
+    "settings": "Répertoires et valeurs par défaut",
+    "voiceStudio": "Enregistrer, transcrire et parler",
+    "voiceModels": "Gestion des modèles STT et TTS",
+    "voiceLibrary": "Vos transcriptions et synthèses vocales"
   },
   "tabShortLabels": {
     "chat": "Discussion",
@@ -78,7 +84,10 @@
     "conversion": "Conversion",
     "fineTuning": "Affinage",
     "promptLibrary": "Invites",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "voiceStudio": "Studio",
+    "voiceModels": "Mes modèles",
+    "voiceLibrary": "Bibliothèque"
   },
   "tabGroups": {
     "chat": "Discussion",
@@ -86,7 +95,8 @@
     "images": "Images",
     "video": "Vidéo",
     "benchmarks": "Benchmarks",
-    "tools": "Outils"
+    "tools": "Outils",
+    "voice": "Voix"
   },
   "tabsCount": "{count, plural, one {# onglet} other {# onglets}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "État distant",
       "remoteModels": "Modèles distants",
       "close": "Fermer"
+    },
+    "connect": {
+      "title": "Connectez votre application",
+      "subtitle": "Point d'accès compatible OpenAI. Pointez n'importe quel SDK OpenAI ou application compatible vers l'URL de base ci-dessous, avec la clé API ci-dessus.",
+      "baseUrl": "URL de base",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (config)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "Admin → Paramètres → Connexions → OpenAI API. URL de base : {base} — utilisez la clé API ci-dessus.",
+      "ollamaApps": "Applications compatibles Ollama",
+      "ollamaHint": "Définissez l'hôte Ollama / l'URL de base de l'application sur l'adresse ci-dessous — les points d'accès natifs /api sont servis en plus de /v1."
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "Décodage spéculatif arborescent actif",
     "specTitleWithBudget": "Décodage spéculatif arborescent actif (budget {budget} tokens brouillon par étape)",
     "acceptLabel": "{value} accepté en moyenne",
-    "acceptTitle": "Tokens brouillon acceptés en moyenne par étape ({value})"
+    "acceptTitle": "Tokens brouillon acceptés en moyenne par étape ({value})",
+    "cacheTitleMemorySaver": "Stratégie de KV cache ({label}) — un économiseur de mémoire : un cache bien plus petit pour les longues conversations, au prix d'une génération plus lente",
+    "specLabelExact": "Brouillons exacts",
+    "specTitleExact": "Décodage spéculatif actif — chaque brouillon est vérifié par le modèle cible, la réponse est donc identique à un décodage séquentiel"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "Lent",
     "speedGood": "Bon",
     "speedFast": "Rapide",
-    "speedVeryFast": "Très rapide"
+    "speedVeryFast": "Très rapide",
+    "speedMeasuredTitle": "Médiane de vos propres exécutions récentes de ce modèle avec cette stratégie de cache.",
+    "speedEstimateTitle": "Estimée d'après la bande passante mémoire ({bandwidth}) et les poids lus par token. Vos propres exécutions la remplacent dès que vous avez utilisé le modèle.",
+    "speedMeasured": "mesurée",
+    "speedEstimate": "est.",
+    "sourceModel": "Taille du cache calculée d'après les données du modèle lui-même ({source}).",
+    "sourceHub": "Taille du cache calculée d'après la configuration du modèle sur Hugging Face.",
+    "sourceEstimate": "Estimation approximative du cache d'après le nombre de paramètres ; elle devient exacte une fois le modèle téléchargé."
   },
   "reasoningPanel": {
     "label": "Réflexion",
@@ -766,7 +798,9 @@
       "storage": "Stockage",
       "providers": "Fournisseurs",
       "integrations": "Intégrations",
-      "diagnostics": "Diagnostic"
+      "diagnostics": "Diagnostic",
+      "accelerators": "Accélérateurs",
+      "disk": "Utilisation du disque"
     },
     "sectionsAria": "Sections des préférences",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "Chargement toujours en cours",
         "detail": "Les imports à froid prennent plus de temps que d'habitude. Si cela se prolonge au-delà de deux minutes, quittez et rouvrez — un manifeste obsolète peut forcer une nouvelle extraction."
       }
-    }
+    },
+    "logPath": "Journal du backend : {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "Incomplet",
       "notInstalled": "Non installé"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "Le modèle a besoin d'environ {model} Go résidents à l'emplacement standard, mais {platform} avec {total} Go au total ne dispose en toute sécurité que d'environ {working} Go. Le runtime basculera automatiquement sur le déchargement séquentiel CPU — la génération réussira mais chaque étape sera plusieurs fois plus lente car les sous-modules permutent entre la mémoire CPU et {offloadDevice} à chaque passe. Pour une génération à pleine vitesse, choisissez un modèle plus petit (LTX-Video fait environ 2 Go résidents) ou une machine avec plus de mémoire.",
+      "reasonDangerNear": "Le modèle a besoin d'environ {model} Go résidents et ce run culmine autour de {peak} Go. Sur {platform} avec {total} Go au total, c'est au-dessus du seuil de risque élevé (environ {highRisk} Go) et proche de l'ensemble de travail estimé (environ {working} Go). Le runtime peut engager le déchargement CPU pour faire tenir l'ensemble — baissez les paramètres ou choisissez un modèle plus petit si vous voulez une génération à pleine vitesse.",
+      "reasonCaution": "Le modèle a besoin d'environ {model} Go résidents. Sur {platform} avec {total} Go au total, c'est au-dessus de la cible de confort conservatrice (environ {comfort} Go) mais en dessous de l'ensemble de travail estimé (environ {working} Go). La génération devrait tenir ; baissez les paramètres si elle devient instable."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "Le modèle a besoin d'environ {model} Go juste pour contenir ses poids + encodeur de texte. Sur {platform} avec {total} Go au total, l'ensemble de travail estimé est d'environ {working} Go, donc le modèle seul est déjà au-delà. Même de petites images planteraient probablement le backend. Essayez un modèle plus petit (SD 1.5 fait environ 4 Go, SDXL environ 13 Go) ou une machine avec plus de mémoire.",
+      "reasonDangerNear": "Le modèle a besoin d'environ {model} Go juste pour contenir ses poids + encodeur de texte, et ce run culmine autour de {peak} Go. Sur {platform} avec {total} Go au total, c'est au-dessus du seuil de risque élevé (environ {highRisk} Go) et proche de l'ensemble de travail estimé (environ {working} Go). La génération risque fortement de planter le backend ; baissez la résolution ou choisissez un modèle plus petit.",
+      "reasonCaution": "Le modèle a besoin d'environ {model} Go juste pour contenir ses poids + encodeur de texte. Sur {platform} avec {total} Go au total, c'est au-dessus de la cible de confort conservatrice (environ {comfort} Go) mais en dessous de l'ensemble de travail estimé (environ {working} Go). La génération peut être lente ou échouer ; baissez la résolution si elle devient instable."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "Impossible de résoudre ce repo.",
+    "downloadStarted": "Téléchargement démarré — suivez la progression dans Mes modèles, puis cliquez sur Charger.",
+    "downloadFailed": "Échec du téléchargement.",
+    "loaded": "Chargé : {label}",
+    "loadFailed": "Échec du chargement.",
+    "title": "Exécuter depuis Hugging Face",
+    "subtitle": "Collez n'importe quel repo GGUF ou MLX (owner/name ou URL) pour l'exécuter sans entrée de catalogue.",
+    "resolving": "Résolution…",
+    "resolve": "Résoudre",
+    "ctx": "{ctx} ctx",
+    "downloading": "Démarrage…",
+    "download": "Télécharger",
+    "notRunnable": "Ce repo ne peut pas s'exécuter directement sur cette plateforme — voir la note ci-dessus.",
+    "loading": "Chargement…",
+    "load": "Charger"
+  },
+  "rag": {
+    "vectorTooltip": "Les documents sont recherchés par sens à l'aide d'un modèle d'embedding local.",
+    "semantic": "Recherche sémantique",
+    "lexicalTooltip": "Les documents sont recherchés par mot-clé (TF-IDF + BM25). Activez la recherche sémantique pour un meilleur rappel.",
+    "binaryMissingTooltip": "Recherche par mot-clé uniquement — le binaire llama-embedding est introuvable, la recherche sémantique n'est donc pas disponible sur cette installation.",
+    "keyword": "Recherche par mot-clé",
+    "verifying": "Vérification…",
+    "downloading": "Téléchargement de {sizeLabel}…",
+    "enable": "Activer la recherche sémantique",
+    "installFailed": "Échec de l'installation"
+  },
+  "importModels": {
+    "failed": "Échec de l'importation.",
+    "imported": "Importé",
+    "importing": "Importation…",
+    "import": "Importer",
+    "title": "Importer des modèles existants",
+    "subtitle": "Des modèles ont été trouvés dans le stockage d'une autre application locale. L'importation les relie sur place — sans nouveau téléchargement.",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

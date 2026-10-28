@@ -57,7 +57,8 @@
     "contextSize": "上下文大小",
     "gpuLayers": "GPU 層數",
     "threads": "執行緒數",
-    "fitInMemory": "適配記憶體"
+    "fitInMemory": "適配記憶體",
+    "cacheStrategyTensorfoldNote": "(TensorFold 自行管理 KV 快取)"
   },
   "notes": {
     "binaryRequired": "需要 {binary}。",
@@ -87,7 +88,8 @@
     "requiresBody": "Apple Silicon + dflash-mlx,或 Linux/CUDA + dflash。目標模型需有相容的草稿模型。",
     "currentModelLabel": "目前模型:",
     "supportedVia": "透過 {model} 支援",
-    "compatibilityUnresolved": "相容性尚未確定。"
+    "compatibilityUnresolved": "相容性尚未確定。",
+    "composerHint": "DFlash 推測解碼可在不損失品質的情況下，將此模型加速約 2 倍。"
   },
   "presets": {
     "quality": {
@@ -126,5 +128,64 @@
     "modelExceedsRam": "僅模型權重就超出預估可用記憶體。請選擇更小的模型或更積極的量化。",
     "nativeF16TooBig": "模型可以載入,但在此上下文下完整的原生 f16 快取可能在執行緒填充時超出系統記憶體。降低上下文或選擇壓縮策略。",
     "compressedTooBig": "模型可以載入,但所選上下文快取可能在執行緒填充時超出系統記憶體。降低上下文或減少 FP16 層數。"
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold：精確推測解碼。由模型的 MTP 頭和/或草稿模型產生的草稿會經目標模型驗證，因此回覆與循序解碼完全相同，只是更快。",
+    "label": "TensorFold（DFlash 2 / MTP 草稿）",
+    "requiredNote": "此模型必須",
+    "installing": "安裝中...",
+    "installButton": "安裝 TensorFold",
+    "addVisionTitle": "讓此模型讀取附加的影像（實驗性）。會在 TensorFold 自己的環境中加入 Pillow、transformers 和 mlx-vlm。",
+    "addVision": "加入影像支援",
+    "imageInputOn": "影像輸入已開啟（實驗性）",
+    "aboutTitle": "關於 TensorFold 推測解碼",
+    "memoryShortfall": "此檢查點需要至少 {needed} GB 記憶體的 Mac；這台只有 {have} GB。",
+    "body": "TensorFold 是一款本地推論引擎，為每個模型系列配備手寫核心。它一次產生多個草稿 token（來自模型本身的 MTP 頭，部分系列還會用到小型草稿模型），並以目標模型逐一驗證每個草稿，因此回覆與逐個 token 解碼的結果逐位元組相同。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon，以及獨立的 TensorFold Python 環境（在此面板中安裝）。僅支援經過測試的檢查點。",
+    "memoryLabel": "記憶體:",
+    "memoryBody": "{needed} GB 或更多的統一記憶體。",
+    "statusLabel": "狀態:",
+    "statusInstalled": "已安裝{version} — 勾選推測解碼後生效。",
+    "statusNotInstalled": "尚未安裝。點擊「安裝 TensorFold」以設定其獨立環境。",
+    "visionLabel": "影像輸入:",
+    "visionInstalled": "已安裝（實驗性）— 勾選 TensorFold 時，可在聊天中附加影像。含影像的請求會從全新的 KV 快取開始。",
+    "visionNotInstalled": "尚未安裝。使用模型本身的視覺編碼器讀取影像。會加入 Pillow、transformers 和 mlx-vlm；TensorFold 的作者仍將其標示為實驗性。",
+    "grammarLabel": "結構化輸出:",
+    "grammarInstalled": "已安裝 — 在取樣器面板中設定的 JSON Schema 會被強制執行。",
+    "grammarNotInstalled": "尚未安裝。強制執行 JSON Schema 需要它；沒有它時，此類請求會被拒絕。會加入 PyTorch，下載體積較大。",
+    "addGrammar": "加入結構化輸出",
+    "exclusiveLabel": "說明:",
+    "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。"
+  },
+  "strategyRole": {
+    "memorySaverTitle": "壓縮 KV 快取，讓長上下文佔用更少記憶體。生成速度比原生慢。",
+    "memorySaver": "節省記憶體"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX：原生 MTP 推測解碼。利用內建的預測頭，在不損失品質的前提下將生成速度提升約 1.8–2.2 倍。",
+    "label": "MTPLX",
+    "installing": "安裝中...",
+    "installButton": "安裝 MTPLX",
+    "aboutTitle": "關於 MTPLX 推測解碼",
+    "body": "MTPLX 使用直接訓練進模型的內建多 token 預測（MTP）頭。推論時，這些頭會在每次前向傳遞中產生 1–3 個草稿 token，並在同一次傳遞中完成驗證，不需要另外的草稿模型。生成速度提升約 1.8–2.2 倍，且無品質損失。",
+    "requiresLabel": "需要:",
+    "requiresBody": "Apple Silicon + MTPLX 獨立 venv。模型必須內建 MTP 頭（Qwen3.5/3.6、DeepSeek V3/R1、Qwen3-Coder-Next）。",
+    "statusLabel": "狀態:",
+    "statusInstalled": "已安裝 — 啟用推測解碼後生效。",
+    "statusNotInstalled": "尚未安裝。點擊「安裝 MTPLX」以設定獨立 venv（約 500 MB）。"
+  },
+  "ggufMtp": {
+    "tooltip": "GGUF MTP 推測解碼：透過 llama.cpp 的 --spec-type draft-mtp 使用模型內建的 MTP 頭，在不損失品質的前提下將生成速度提升約 1.8-2.2 倍。",
+    "label": "GGUF MTP",
+    "body": "此 GGUF 內建多 token 預測（MTP）頭。llama.cpp 透過 --spec-type draft-mtp（PR #22673）執行它們 — 不需要另外的草稿模型，是無損的推測解碼。",
+    "requiresLabel": "需要:"
+  },
+  "ggufSpec": {
+    "tooltip": "llama.cpp 推測解碼：如果此 GGUF 旁附有 DFlash / DFlash 2 / EAGLE-3 / MTP 草稿模型，就使用它；否則使用不需草稿模型的 n-gram 查找。無損 — 輸出由模型驗證。",
+    "label": "推測解碼",
+    "aboutTitle": "關於 llama.cpp 推測解碼",
+    "body": "如果模型資料夾中有草稿模型檔案（mtp-、dflash-、dspark- 或 eagle3-*.gguf — DFlash 2 的草稿模型使用 dflash- 前綴），llama.cpp 會用它來產生草稿。否則退回使用 ngram-mod：它不需要額外的模型，直接重複使用重複出現的文字（程式碼修改、摘要、回顯到答案中的推理內容）。每個草稿 token 都會經過驗證，因此輸出不變。",
+    "requiresBody": "需要較新的 llama-server（執行 scripts/update-llama-cpp.sh）。舊版二進位檔案會退回標準解碼，並附上執行階段說明。"
   }
 }

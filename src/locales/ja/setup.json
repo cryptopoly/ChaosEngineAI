@@ -35,14 +35,19 @@
     "finalStatus": "最終ステータス:",
     "statusNoun": {
       "longlive": "LongLive インストール",
-      "gpuBundle": "インストール"
+      "gpuBundle": "インストール",
+      "mtplx": "MTPLX インストール",
+      "tensorfold": "TensorFold インストール",
+      "mflux": "mflux インストール",
+      "vllmWsl": "vLLM-in-WSL インストール"
     },
     "status": {
       "failed": "{noun}失敗 — ログを参照",
       "complete": "{noun}完了 — ログを参照",
       "starting": "{noun}を開始中…",
       "verifyingCuda": "CUDA を検証中…",
-      "inProgress": "{noun}実行中"
+      "inProgress": "{noun}実行中",
+      "verifying": "インストールを検証中…"
     },
     "meta": {
       "target": "ターゲット: {dir}",

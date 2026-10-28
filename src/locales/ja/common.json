@@ -32,7 +32,10 @@
     "image": "画像スタジオ",
     "video": "動画スタジオ",
     "setup": "セットアップ",
-    "diagnostics": "診断"
+    "diagnostics": "診断",
+    "voiceStudio": "音声スタジオ",
+    "voiceModels": "音声モデル",
+    "voiceLibrary": "ボイスライブラリ"
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -57,7 +60,10 @@
     "promptLibrary": "再利用可能なプロンプトテンプレート",
     "plugins": "拡張機能とプラグインシステム",
     "logs": "ランタイムイベント",
-    "settings": "ディレクトリとデフォルト"
+    "settings": "ディレクトリとデフォルト",
+    "voiceStudio": "録音・文字起こし・読み上げ",
+    "voiceModels": "STT・TTS モデルの管理",
+    "voiceLibrary": "作成した文字起こしと音声"
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -78,7 +84,10 @@
     "conversion": "変換",
     "fineTuning": "ファインチューニング",
     "promptLibrary": "プロンプト",
-    "plugins": "プラグイン"
+    "plugins": "プラグイン",
+    "voiceStudio": "スタジオ",
+    "voiceModels": "マイモデル",
+    "voiceLibrary": "ライブラリ"
   },
   "tabGroups": {
     "chat": "チャット",
@@ -86,7 +95,8 @@
     "images": "画像",
     "video": "動画",
     "benchmarks": "ベンチマーク",
-    "tools": "ツール"
+    "tools": "ツール",
+    "voice": "音声"
   },
   "tabsCount": "{count, plural, other {# 個のタブ}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "リモートヘルス",
       "remoteModels": "リモートモデル",
       "close": "閉じる"
+    },
+    "connect": {
+      "title": "アプリを接続",
+      "subtitle": "OpenAI 互換のエンドポイントです。任意の OpenAI SDK または互換アプリで、上の API キーを使い、下のベース URL を指定してください。",
+      "baseUrl": "ベース URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev（設定）",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "管理者 → 設定 → 接続 → OpenAI API。ベース URL: {base} — 上の API キーを使用してください。",
+      "ollamaApps": "Ollama 互換アプリ",
+      "ollamaHint": "アプリの Ollama ホスト / ベース URL を下のアドレスに設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "ツリーベースの投機的デコードが有効",
     "specTitleWithBudget": "ツリーベースの投機的デコードが有効(ステップあたりドラフトトークンの予算 {budget})",
     "acceptLabel": "平均受理 {value}",
-    "acceptTitle": "ステップあたりに受理された平均ドラフトトークン数({value})"
+    "acceptTitle": "ステップあたりに受理された平均ドラフトトークン数({value})",
+    "cacheTitleMemorySaver": "KV キャッシュ戦略（{label}）— メモリ節約型: 長いチャット向けにキャッシュを大幅に小さくする代わりに、生成が遅くなります",
+    "specLabelExact": "厳密ドラフト",
+    "specTitleExact": "投機的デコーディング有効 — すべてのドラフトがターゲットモデルで検証されるため、返信は逐次デコーディングと一致します"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "遅い",
     "speedGood": "良好",
     "speedFast": "高速",
-    "speedVeryFast": "非常に高速"
+    "speedVeryFast": "非常に高速",
+    "speedMeasuredTitle": "このモデルとこのキャッシュ戦略での、直近の実行結果の中央値です。",
+    "speedEstimateTitle": "メモリ帯域幅（{bandwidth}）と、トークンごとに読み出す重みの量から推定した値です。モデルを使用すると、実際の実行結果に置き換わります。",
+    "speedMeasured": "実測",
+    "speedEstimate": "推定",
+    "sourceModel": "キャッシュサイズはモデル自身の {source} から算出しています。",
+    "sourceHub": "キャッシュサイズは Hugging Face 上のモデル設定から算出しています。",
+    "sourceEstimate": "パラメータ数からの大まかなキャッシュ推定値です。モデルをダウンロードすると正確になります。"
   },
   "reasoningPanel": {
     "label": "思考",
@@ -766,7 +798,9 @@
       "storage": "ストレージ",
       "providers": "プロバイダー",
       "integrations": "連携",
-      "diagnostics": "診断"
+      "diagnostics": "診断",
+      "accelerators": "アクセラレータ",
+      "disk": "ディスク使用量"
     },
     "sectionsAria": "設定セクション",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "まだ読み込み中",
         "detail": "コールドスタートのインポートに通常より時間がかかっています。これが 2 分以上停止する場合は、終了して再度開いてください — 古いマニフェストが再展開を強制することがあります。"
       }
-    }
+    },
+    "logPath": "バックエンドログ: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "未完了",
       "notInstalled": "未インストール"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "モデルは標準配置で約 {model} GB の常駐を必要としますが、{platform}(合計 {total} GB)で安全に利用できるのは約 {working} GB のみです。ランタイムは自動的にシーケンシャル CPU オフロードにフォールバックします — 生成は成功しますが、各ステップごとにサブモジュールが CPU と {offloadDevice} メモリの間で入れ替わるため、数倍遅くなります。フルスピード生成にはより小さなモデル(LTX-Video は約 2 GB 常駐)、またはメモリの大きいマシンを選択してください。",
+      "reasonDangerNear": "モデルは約 {model} GB の常駐を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。ランタイムは収めるために CPU オフロードを使用する可能性があります — フルスピード生成にしたい場合は設定を下げるかより小さなモデルを選択してください。",
+      "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では推定ワーキングセットは約 {working} GB なので、モデル単独ですでにそれを超えています。小さな画像でもバックエンドがクラッシュする可能性が高いです。より小さなモデル(SD 1.5 は約 4 GB、SDXL は約 13 GB)、またはメモリの大きいマシンを試してください。",
+      "reasonDangerNear": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とし、この実行は約 {peak} GB がピークです。{platform}(合計 {total} GB)では、これは高リスク閾値(約 {highRisk} GB)を超え、推定ワーキングセット(約 {working} GB)に近接しています。生成によりバックエンドがクラッシュする可能性が高いです。解像度を下げるか、より小さなモデルを選択してください。",
+      "reasonCaution": "モデルは重み + テキストエンコーダを保持するだけで約 {model} GB を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は遅くなったり失敗したりする可能性があります。不安定になった場合は解像度を下げてください。"
+    }
+  },
+  "runHf": {
+    "resolveFailed": "そのリポジトリを確認できませんでした。",
+    "downloadStarted": "ダウンロードを開始しました — マイモデルで進捗を確認し、読み込んでください。",
+    "downloadFailed": "ダウンロードに失敗しました。",
+    "loaded": "{label} を読み込みました。",
+    "loadFailed": "読み込みに失敗しました。",
+    "title": "Hugging Face から実行",
+    "subtitle": "GGUF または MLX のリポジトリ（owner/name または URL）を貼り付けると、カタログに登録されていなくても実行できます。",
+    "resolving": "確認中…",
+    "resolve": "確認",
+    "ctx": "{ctx} コンテキスト",
+    "downloading": "開始中…",
+    "download": "ダウンロード",
+    "notRunnable": "このリポジトリはこのプラットフォームでは直接実行できません — 上の注記を参照してください。",
+    "loading": "読み込み中…",
+    "load": "読み込み"
+  },
+  "rag": {
+    "vectorTooltip": "ローカルの埋め込みモデルを使って、意味でドキュメントを検索します。",
+    "semantic": "セマンティック検索",
+    "lexicalTooltip": "キーワード（TF-IDF + BM25）でドキュメントを検索します。セマンティック検索を有効にすると、関連する内容をより漏れなく見つけられます。",
+    "binaryMissingTooltip": "キーワード検索のみ — llama-embedding バイナリが見つからないため、このインストールではセマンティック検索を利用できません。",
+    "keyword": "キーワード検索",
+    "verifying": "検証中…",
+    "downloading": "{sizeLabel} をダウンロード中…",
+    "enable": "セマンティック検索を有効にする",
+    "installFailed": "インストールに失敗"
+  },
+  "importModels": {
+    "failed": "インポートに失敗しました。",
+    "imported": "インポート済み",
+    "importing": "インポート中…",
+    "import": "インポート",
+    "title": "既存のモデルをインポート",
+    "subtitle": "別のローカルアプリのストアでモデルが見つかりました。インポートすると元の場所にリンクされるため、再ダウンロードは不要です。",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

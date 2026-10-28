@@ -45,7 +45,12 @@
       "system": "Système",
       "empty": "Aucun processus LLM local actif détecté.",
       "memoryGb": "{value} Go",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "Décharge les modèles en attente et arrête tous les processus de modèle qui ne servent pas le modèle chargé.",
+      "stopIdle": "Arrêter les inactifs",
+      "stopHint": "Ne sert pas le modèle chargé. Arrêtez-le pour libérer sa mémoire.",
+      "stopConfirm": "Arrêter ce processus et libérer sa mémoire ?",
+      "stop": "Arrêter"
     }
   },
   "hardwareFit": {

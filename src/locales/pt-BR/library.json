@@ -74,7 +74,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "Mostrar modelos compatíveis com {label} ({count})",
-      "dflashEmptyTooltip": "Drafts de decodificação especulativa DFlash só existem para modelos base específicos: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes geralmente não combinam. Baixe um modelo base em Descobrir para habilitar o DFlash."
+      "dflashEmptyTooltip": "Drafts de decodificação especulativa DFlash só existem para modelos base específicos: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. Fine-tunes geralmente não combinam. Baixe um modelo base em Descobrir para habilitar o DFlash.",
+      "memorySaverLabel": "{label} · economia de memória",
+      "memorySaverTooltip": "Mostrar modelos que podem usar {label}, uma economia de memória do cache KV: conversas longas cabem em menos RAM, mas a geração é mais lenta que com Nativo ({count})"
     },
     "column": {
       "model": "Modelo",
@@ -118,7 +120,9 @@
       "deleteDownload": "Excluir download",
       "chatWithModel": "Conversar com o modelo",
       "loadForServer": "Carregar para servidor",
-      "deleteModel": "Excluir modelo"
+      "deleteModel": "Excluir modelo",
+      "unstarModel": "Remover dos favoritos",
+      "starModel": "Marcar como favorito"
     }
   },
   "onlineModels": {
@@ -127,7 +131,8 @@
     "variantCount": "{count, plural, one {# variante} other {# variantes}}",
     "filter": {
       "all": "Todos",
-      "allFormats": "Todos os formatos"
+      "allFormats": "Todos os formatos",
+      "allAccel": "Todas as acelerações"
     },
     "capability": {
       "title": {
@@ -225,6 +230,11 @@
       "capFilter": "Nenhum modelo corresponde ao filtro \"{cap}\".",
       "search": "Nenhum modelo corresponde a \"{query}\". Tente um termo de pesquisa diferente.",
       "prompt": "Digite para pesquisar modelos."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · economia de memória",
+      "memorySaverTooltip": "Mostrar modelos que podem usar {label}, uma economia de memória do cache KV: conversas longas cabem em menos RAM, mas a geração é mais lenta que com Nativo ({count})",
+      "tooltip": "Mostrar modelos compatíveis com {label} ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +330,9 @@
       "pending": "pendente",
       "pendingTitle": "Estimativa de RAM/VRAM pendente até que o tamanho dos pesos do modelo seja conhecido."
     },
-    "releaseUnknown": "Desconhecido"
+    "releaseUnknown": "Desconhecido",
+    "sharedRepoTitle": "Usa o mesmo download de mais {count} variante(s) de {repo}. Excluir esta linha também remove esses arquivos.",
+    "sharedRepo": "armazenamento compartilhado · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +516,12 @@
       "deleteModel": "Excluir modelo",
       "openHuggingFace": "Abrir no Hugging Face",
       "huggingFace": "Hugging Face",
-      "settings": "Configurações"
+      "settings": "Configurações",
+      "trackedOnly": "Apenas monitorado — ainda não executável"
+    },
+    "trackedOnly": {
+      "tooltip": "Acompanhando o upstream — a execução desta família no Estúdio ainda não foi integrada. A entrada do catálogo é só para conhecimento; baixar não habilita o Estúdio.",
+      "badge": "Acompanhando upstream"
     }
   },
   "videoDiscover": {

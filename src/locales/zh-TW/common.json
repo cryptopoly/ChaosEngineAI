@@ -32,7 +32,10 @@
     "image": "影像工作室",
     "video": "影片工作室",
     "setup": "設定",
-    "diagnostics": "診斷"
+    "diagnostics": "診斷",
+    "voiceStudio": "語音工作室",
+    "voiceModels": "語音模型",
+    "voiceLibrary": "語音資料庫"
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -57,7 +60,10 @@
     "promptLibrary": "可重複使用的提示詞範本",
     "plugins": "擴充功能與外掛程式系統",
     "logs": "執行階段事件",
-    "settings": "目錄與預設值"
+    "settings": "目錄與預設值",
+    "voiceStudio": "錄音、轉寫與朗讀",
+    "voiceModels": "STT 與 TTS 模型管理",
+    "voiceLibrary": "你建立的轉寫與語音"
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -78,7 +84,10 @@
     "conversion": "轉換",
     "fineTuning": "微調",
     "promptLibrary": "提示詞",
-    "plugins": "外掛程式"
+    "plugins": "外掛程式",
+    "voiceStudio": "工作室",
+    "voiceModels": "我的模型",
+    "voiceLibrary": "資料庫"
   },
   "tabGroups": {
     "chat": "對話",
@@ -86,7 +95,8 @@
     "images": "影像",
     "video": "影片",
     "benchmarks": "基準測試",
-    "tools": "工具"
+    "tools": "工具",
+    "voice": "語音"
   },
   "tabsCount": "{count, plural, other {# 個分頁}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "遠端健康檢查",
       "remoteModels": "遠端模型",
       "close": "關閉"
+    },
+    "connect": {
+      "title": "連接你的應用程式",
+      "subtitle": "相容 OpenAI 的端點。讓任何 OpenAI SDK 或相容的應用程式使用上方的 API 金鑰，並指向下方的基礎網址。",
+      "baseUrl": "基礎網址",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev（設定）",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "管理員 → 設定 → 連線 → OpenAI API。基礎網址：{base} — 請使用上方的 API 金鑰。",
+      "ollamaApps": "相容 Ollama 的應用程式",
+      "ollamaHint": "將應用程式的 Ollama 主機 / 基礎網址設定為下方的位址 — 原生 /api 端點會與 /v1 一同提供。"
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "已啟用基於樹狀結構的推測解碼",
     "specTitleWithBudget": "已啟用基於樹狀結構的推測解碼(每步預算 {budget} 個草稿 token)",
     "acceptLabel": "平均接受 {value}",
-    "acceptTitle": "每步平均接受的草稿 token 數 ({value})"
+    "acceptTitle": "每步平均接受的草稿 token 數 ({value})",
+    "cacheTitleMemorySaver": "KV 快取策略（{label}）— 節省記憶體型：長對話所需的快取小得多，代價是生成較慢",
+    "specLabelExact": "精確草稿",
+    "specTitleExact": "推測解碼已啟用 — 每個草稿都會經目標模型驗證，因此回覆與循序解碼的結果一致"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "緩慢",
     "speedGood": "良好",
     "speedFast": "快速",
-    "speedVeryFast": "非常快"
+    "speedVeryFast": "非常快",
+    "speedMeasuredTitle": "你最近以此快取策略執行此模型的結果中位數。",
+    "speedEstimateTitle": "根據記憶體頻寬（{bandwidth}）和每個 token 讀取的權重量估算。使用過此模型後，會改用你自己的執行結果。",
+    "speedMeasured": "實測",
+    "speedEstimate": "估算",
+    "sourceModel": "快取大小根據模型本身的 {source} 計算。",
+    "sourceHub": "快取大小根據 Hugging Face 上的模型設定計算。",
+    "sourceEstimate": "根據參數量得出的快取粗略估算；模型下載後會變得精確。"
   },
   "reasoningPanel": {
     "label": "思考",
@@ -766,7 +798,9 @@
       "storage": "儲存",
       "providers": "提供者",
       "integrations": "整合",
-      "diagnostics": "診斷"
+      "diagnostics": "診斷",
+      "accelerators": "加速器",
+      "disk": "磁碟用量"
     },
     "sectionsAria": "設定區段",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "仍在載入",
         "detail": "冷啟動匯入花費的時間比平常長。若停滯超過兩分鐘,請關閉並重新開啟 — 過期的 manifest 可能會強制重新解壓縮。"
       }
-    }
+    },
+    "logPath": "後端記錄：{path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "未完成",
       "notInstalled": "未安裝"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "模型在標準放置下需要約 {model} GB 常駐,但 {platform} 上總共 {total} GB,只有約 {working} GB 可安全使用。執行環境會自動回退至循序 CPU 卸載 -- 生成會成功,但每步都會慢上數倍,因為子模組會在每次傳遞時於 CPU 與 {offloadDevice} 記憶體之間交換。若要全速生成,請選擇較小型的模型 (LTX-Video 約 2 GB 常駐) 或記憶體較多的機器。",
+      "reasonDangerNear": "模型需要約 {model} GB 常駐,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。執行環境可能啟用 CPU 卸載以容納 -- 若要全速生成,請降低設定或選擇較小型的模型。",
+      "reasonCaution": "模型需要約 {model} GB 常駐。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成應該可以容納;若變得不穩定請降低設定。"
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,估計工作集約為 {working} GB,因此光是模型本身就已超出。即使是小型影像也可能讓後端崩潰。請嘗試較小型的模型 (SD 1.5 約 4 GB、SDXL 約 13 GB) 或記憶體較多的機器。",
+      "reasonDangerNear": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB,此次執行峰值約 {peak} GB。在 {platform} 上,總共 {total} GB,這已超過高風險閾值 (約 {highRisk} GB),並接近估計的工作集 (約 {working} GB)。生成可能會讓後端崩潰;請降低解析度或選擇較小型的模型。",
+      "reasonCaution": "模型光是要保存權重 + 文字編碼器就需要約 {model} GB。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成可能會緩慢或失敗;若變得不穩定請降低解析度。"
+    }
+  },
+  "runHf": {
+    "resolveFailed": "無法解析該 repo。",
+    "downloadStarted": "已開始下載 — 請在「我的模型」中查看進度，然後載入。",
+    "downloadFailed": "下載失敗。",
+    "loaded": "已載入 {label}。",
+    "loadFailed": "載入失敗。",
+    "title": "從 Hugging Face 執行",
+    "subtitle": "貼上任何 GGUF 或 MLX repo（owner/name 或 URL），即可在沒有目錄項目的情況下執行。",
+    "resolving": "正在解析…",
+    "resolve": "解析",
+    "ctx": "{ctx} 上下文",
+    "downloading": "正在開始…",
+    "download": "下載",
+    "notRunnable": "此 repo 無法在此平台上直接執行 — 請參閱上方的說明。",
+    "loading": "載入中…",
+    "load": "載入"
+  },
+  "rag": {
+    "vectorTooltip": "使用本地嵌入模型，依語意搜尋文件。",
+    "semantic": "語意搜尋",
+    "lexicalTooltip": "依關鍵字（TF-IDF + BM25）搜尋文件。啟用語意搜尋可找到更多相關內容。",
+    "binaryMissingTooltip": "僅支援關鍵字搜尋 — 找不到 llama-embedding 二進位檔案，因此此安裝無法使用語意搜尋。",
+    "keyword": "關鍵字搜尋",
+    "verifying": "正在驗證…",
+    "downloading": "正在下載 {sizeLabel}…",
+    "enable": "啟用語意搜尋",
+    "installFailed": "安裝失敗"
+  },
+  "importModels": {
+    "failed": "匯入失敗。",
+    "imported": "已匯入",
+    "importing": "正在匯入…",
+    "import": "匯入",
+    "title": "匯入現有模型",
+    "subtitle": "在另一個本地應用程式的儲存空間中找到了模型。匯入會就地連結它們，不需要重新下載。",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

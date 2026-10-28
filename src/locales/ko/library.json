@@ -74,7 +74,9 @@
     "strategy": {
       "chip": "{label} ({count})",
       "compatTooltip": "{label}와 호환되는 모델 표시 ({count})",
-      "dflashEmptyTooltip": "DFlash 추측 디코드 드래프트는 특정 베이스 모델에만 존재합니다: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. 파인 튜닝 모델은 일반적으로 일치하지 않습니다. DFlash를 활성화하려면 둘러보기에서 베이스 모델을 다운로드하세요."
+      "dflashEmptyTooltip": "DFlash 추측 디코드 드래프트는 특정 베이스 모델에만 존재합니다: Qwen/Qwen3 (4B, 8B), Qwen/Qwen3-Coder (4B, 8B, 30B-A3B, Next), Qwen/Qwen3.5 (4B, 7B, 9B, 14B, 27B, 35B-A3B), Qwen/Qwen3.6-35B-A3B, meta-llama/Llama-3.1-8B-Instruct, gpt-oss (20B, 120B), moonshotai/Kimi-K2.5. 파인 튜닝 모델은 일반적으로 일치하지 않습니다. DFlash를 활성화하려면 둘러보기에서 베이스 모델을 다운로드하세요.",
+      "memorySaverLabel": "{label} · 메모리 절약",
+      "memorySaverTooltip": "{label}을(를) 사용할 수 있는 모델 표시 — KV cache 메모리 절약 방식으로, 긴 채팅이 더 적은 RAM에 들어가지만 생성 속도는 네이티브보다 느립니다 ({count})"
     },
     "column": {
       "model": "모델",
@@ -118,7 +120,9 @@
       "deleteDownload": "다운로드 삭제",
       "chatWithModel": "모델로 채팅",
       "loadForServer": "서버용으로 로드",
-      "deleteModel": "모델 삭제"
+      "deleteModel": "모델 삭제",
+      "unstarModel": "즐겨찾기에서 제거",
+      "starModel": "즐겨찾기에 추가"
     }
   },
   "onlineModels": {
@@ -127,7 +131,8 @@
     "variantCount": "{count, plural, other {변형 #개}}",
     "filter": {
       "all": "전체",
-      "allFormats": "모든 형식"
+      "allFormats": "모든 형식",
+      "allAccel": "모든 가속"
     },
     "capability": {
       "title": {
@@ -225,6 +230,11 @@
       "capFilter": "\"{cap}\" 필터와 일치하는 모델이 없습니다.",
       "search": "\"{query}\"와 일치하는 모델이 없습니다. 다른 검색어를 시도해 보세요.",
       "prompt": "모델을 검색하려면 입력하세요."
+    },
+    "accelFilter": {
+      "memorySaverLabel": "{label} · 메모리 절약",
+      "memorySaverTooltip": "{label}을(를) 사용할 수 있는 모델 표시 — KV cache 메모리 절약 방식으로, 긴 채팅이 더 적은 RAM에 들어가지만 생성 속도는 네이티브보다 느립니다 ({count})",
+      "tooltip": "{label} 호환 모델 표시 ({count})"
     }
   },
   "imageModels": {
@@ -320,7 +330,9 @@
       "pending": "대기 중",
       "pendingTitle": "모델 가중치 크기를 알 때까지 RAM/VRAM 추정이 대기 중입니다."
     },
-    "releaseUnknown": "알 수 없음"
+    "releaseUnknown": "알 수 없음",
+    "sharedRepoTitle": "{repo}의 다른 변형 {count}개와 같은 다운로드를 사용합니다. 이 행을 삭제하면 해당 파일도 함께 삭제됩니다.",
+    "sharedRepo": "저장소 공유 · +{count}"
   },
   "videoModels": {
     "subtitle": {
@@ -504,7 +516,12 @@
       "deleteModel": "모델 삭제",
       "openHuggingFace": "Hugging Face에서 열기",
       "huggingFace": "Hugging Face",
-      "settings": "설정"
+      "settings": "설정",
+      "trackedOnly": "추적 전용 — 아직 실행 불가"
+    },
+    "trackedOnly": {
+      "tooltip": "업스트림을 지켜보는 중입니다. 이 모델 계열은 아직 Studio에서 재생할 수 없습니다. 카탈로그 항목은 참고용이며, 다운로드해도 Studio에서 사용할 수 없습니다.",
+      "badge": "업스트림 주시 중"
     }
   },
   "videoDiscover": {

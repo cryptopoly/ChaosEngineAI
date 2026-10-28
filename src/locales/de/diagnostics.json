@@ -44,5 +44,35 @@
     "subtitle": "Durchsuchbare Ansicht über Sidecar-, Laufzeit- und Server-Kanäle.",
     "filterPlaceholder": "Logs filtern",
     "emptyFiltered": "Keine Logzeilen entsprechen dem aktuellen Filter."
+  },
+  "accelerators": {
+    "title": "Beschleuniger",
+    "subtitle": "Optionale Beschleunigungen für Bild-, Video- und Chat-Inferenz sowie die Windows-WSL-Brücke."
+  },
+  "diskUsage": {
+    "title": "Speicherplatznutzung",
+    "subtitle": "Welche Modell-Repos den Platz belegen, damit du weißt, was du löschen kannst.",
+    "topTitle": "Top 20 Modell-Repos",
+    "topHint": "Durchsucht jedes aktivierte Modellverzeichnis und listet die größten Repos auf der Festplatte auf. Zählt Blob-Bytes nur einmal (die snapshots/ von Hugging Face sind Symlinks auf blobs/, daher zählen einfache Scanner doppelt).",
+    "scanning": "Wird gescannt…",
+    "rescan": "Erneut scannen",
+    "scan": "Speicherplatz scannen",
+    "total": "Gesamt über alle aktivierten Verzeichnisse:",
+    "shown": "{repos} Repos angezeigt / {dirs} Stammverzeichnis(se) gescannt",
+    "freed": "{gb} GB seit dem Scan freigegeben",
+    "colRepo": "Repo",
+    "colSize": "Größe",
+    "colSource": "Quelle",
+    "colPath": "Pfad",
+    "unknownSize": "Größe unbekannt",
+    "deleteConfirm": "{name} ({size}) endgültig löschen?\n\nDadurch wird es von der Festplatte entfernt und kann nicht rückgängig gemacht werden.",
+    "collapse": "{name} einklappen",
+    "expand": "{name} ausklappen",
+    "sharedTitle": "Gemeinsamer Hugging-Face-Speicher: viele Repos verweisen darauf",
+    "shared": "geteilt",
+    "deleting": "Wird gelöscht…",
+    "delete": "Löschen",
+    "reading": "Wird gelesen…",
+    "empty": "Leer"
   }
 }

@@ -35,14 +35,19 @@
     "finalStatus": "Status final:",
     "statusNoun": {
       "longlive": "Instalação do LongLive",
-      "gpuBundle": "Instalação"
+      "gpuBundle": "Instalação",
+      "mtplx": "Instalação do MTPLX",
+      "tensorfold": "Instalação do TensorFold",
+      "mflux": "Instalação do mflux",
+      "vllmWsl": "Instalação do vLLM no WSL"
     },
     "status": {
       "failed": "Falha na {noun} — ver log",
       "complete": "{noun} concluída — ver log",
       "starting": "{noun} iniciando…",
       "verifyingCuda": "Verificando CUDA…",
-      "inProgress": "{noun} em andamento"
+      "inProgress": "{noun} em andamento",
+      "verifying": "Verificando a instalação…"
     },
     "meta": {
       "target": "Destino: {dir}",

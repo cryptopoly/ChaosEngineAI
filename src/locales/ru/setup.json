@@ -35,14 +35,19 @@
     "finalStatus": "Итоговый статус:",
     "statusNoun": {
       "longlive": "Установка LongLive",
-      "gpuBundle": "Установка"
+      "gpuBundle": "Установка",
+      "mtplx": "Установка MTPLX",
+      "tensorfold": "Установка TensorFold",
+      "mflux": "Установка mflux",
+      "vllmWsl": "Установка vLLM в WSL"
     },
     "status": {
       "failed": "{noun} не удалась — см. журнал",
       "complete": "{noun} завершена — см. журнал",
       "starting": "{noun} запускается…",
       "verifyingCuda": "Проверка CUDA…",
-      "inProgress": "{noun} в процессе"
+      "inProgress": "{noun} в процессе",
+      "verifying": "Проверка установки…"
     },
     "meta": {
       "target": "Цель: {dir}",

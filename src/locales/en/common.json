@@ -32,7 +32,10 @@
     "image": "Image Studio",
     "video": "Video Studio",
     "setup": "Setup",
-    "diagnostics": "Diagnostics"
+    "diagnostics": "Diagnostics",
+    "voiceStudio": "Voice Studio",
+    "voiceModels": "Voice Models",
+    "voiceLibrary": "Voice Library"
   },
   "tabCaptions": {
     "dashboard": "System overview",
@@ -57,7 +60,10 @@
     "promptLibrary": "Reusable prompt templates",
     "plugins": "Extensions and plugin system",
     "logs": "Runtime events",
-    "settings": "Directories and defaults"
+    "settings": "Directories and defaults",
+    "voiceStudio": "Record, transcribe, and speak",
+    "voiceModels": "STT and TTS model management",
+    "voiceLibrary": "Transcripts and speech you made"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -78,7 +84,10 @@
     "conversion": "Conversion",
     "fineTuning": "Fine-Tuning",
     "promptLibrary": "Prompts",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "voiceStudio": "Studio",
+    "voiceModels": "My Models",
+    "voiceLibrary": "Library"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -86,7 +95,8 @@
     "images": "Images",
     "video": "Video",
     "benchmarks": "Benchmarks",
-    "tools": "Tools"
+    "tools": "Tools",
+    "voice": "Voice"
   },
   "tabsCount": "{count, plural, one {# tab} other {# tabs}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "Remote health",
       "remoteModels": "Remote models",
       "close": "Close"
+    },
+    "connect": {
+      "title": "Connect your app",
+      "subtitle": "OpenAI-compatible endpoint. Point any OpenAI SDK or compatible app at the base URL below with the API key above.",
+      "baseUrl": "Base URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (config)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "Admin → Settings → Connections → OpenAI API. Base URL: {base} — use the API key above.",
+      "ollamaApps": "Ollama-compatible apps",
+      "ollamaHint": "Set the app's Ollama host / base URL to the address below — native /api endpoints are served alongside /v1."
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "Tree-based speculative decoding active",
     "specTitleWithBudget": "Tree-based speculative decoding active (budget {budget} draft tokens per step)",
     "acceptLabel": "{value} avg accepted",
-    "acceptTitle": "Average draft tokens accepted per step ({value})"
+    "acceptTitle": "Average draft tokens accepted per step ({value})",
+    "cacheTitleMemorySaver": "KV cache strategy ({label}) — a memory saver: a much smaller cache for long chats, at the cost of slower generation",
+    "specLabelExact": "Exact drafts",
+    "specTitleExact": "Speculative decoding active — every draft is verified against the target model, so the reply matches serial decoding"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "Slow",
     "speedGood": "Good",
     "speedFast": "Fast",
-    "speedVeryFast": "Very fast"
+    "speedVeryFast": "Very fast",
+    "speedMeasuredTitle": "Median of your own recent runs of this model with this cache strategy.",
+    "speedEstimateTitle": "Estimated from memory bandwidth ({bandwidth}) and the weights read per token. Your own runs replace it once you have used the model.",
+    "speedMeasured": "measured",
+    "speedEstimate": "est.",
+    "sourceModel": "Cache sized from the model's own {source}.",
+    "sourceHub": "Cache sized from the model's config on Hugging Face.",
+    "sourceEstimate": "Rough cache estimate from the parameter count; it gets exact once the model is downloaded."
   },
   "reasoningPanel": {
     "label": "Thinking",
@@ -766,7 +798,9 @@
       "storage": "Storage",
       "providers": "Providers",
       "integrations": "Integrations",
-      "diagnostics": "Diagnostics"
+      "diagnostics": "Diagnostics",
+      "accelerators": "Accelerators",
+      "disk": "Disk usage"
     },
     "sectionsAria": "Settings sections",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "Still loading",
         "detail": "Cold-start imports are taking longer than usual. If this stalls for more than two minutes, quit and reopen — a stale manifest can force a re-extract."
       }
-    }
+    },
+    "logPath": "Backend log: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "Incomplete",
       "notInstalled": "Not installed"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "The model needs ~{model} GB resident at the standard placement, but {platform} with {total} GB total only has ~{working} GB safely available. The runtime will fall back to sequential CPU offload automatically -- generation will succeed but each step will be a few times slower because submodules swap between CPU and {offloadDevice} memory each pass. For full-speed generation, pick a smaller model (LTX-Video is ~2 GB resident) or a machine with more memory.",
+      "reasonDangerNear": "The model needs ~{model} GB resident and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that's above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). The runtime may engage CPU offload to make it fit -- lower the settings or pick a smaller model if you want full-speed generation.",
+      "reasonCaution": "The model needs ~{model} GB resident. On {platform} with {total} GB total, that's above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation should fit; lower the settings if it becomes unstable."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, the estimated working set is ~{working} GB, so the model alone is already over that. Even small images would likely crash the backend. Try a smaller model (SD 1.5 is ~4 GB, SDXL ~13 GB) or a machine with more memory.",
+      "reasonDangerNear": "The model needs ~{model} GB just to hold its weights + text encoder, and this run peaks around ~{peak} GB. On {platform} with {total} GB total, that is above the high-risk threshold (~{highRisk} GB) and close to the estimated working set (~{working} GB). Generation is likely to crash the backend; lower the resolution or choose a smaller model.",
+      "reasonCaution": "The model needs ~{model} GB just to hold its weights + text encoder. On {platform} with {total} GB total, that is above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation may run slowly or fail; lower the resolution if it becomes unstable."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "Could not resolve that repo.",
+    "downloadStarted": "Download started — track progress in My Models, then Load.",
+    "downloadFailed": "Download failed.",
+    "loaded": "Loaded {label}.",
+    "loadFailed": "Load failed.",
+    "title": "Run from Hugging Face",
+    "subtitle": "Paste any GGUF or MLX repo (owner/name or URL) to run it without a catalog entry.",
+    "resolving": "Resolving…",
+    "resolve": "Resolve",
+    "ctx": "{ctx} ctx",
+    "downloading": "Starting…",
+    "download": "Download",
+    "notRunnable": "This repo can't run directly on this platform — see the note above.",
+    "loading": "Loading…",
+    "load": "Load"
+  },
+  "rag": {
+    "vectorTooltip": "Documents are searched by meaning using a local embedding model.",
+    "semantic": "Semantic search",
+    "lexicalTooltip": "Documents are searched by keyword (TF-IDF + BM25). Enable semantic search for better recall.",
+    "binaryMissingTooltip": "Keyword search only — the llama-embedding binary was not found, so semantic search is unavailable on this install.",
+    "keyword": "Keyword search",
+    "verifying": "Verifying…",
+    "downloading": "Downloading {sizeLabel}…",
+    "enable": "Enable semantic search",
+    "installFailed": "Install failed"
+  },
+  "importModels": {
+    "failed": "Import failed.",
+    "imported": "Imported",
+    "importing": "Importing…",
+    "import": "Import",
+    "title": "Import existing models",
+    "subtitle": "Found models in another local app's store. Import links them in place — no re-download.",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

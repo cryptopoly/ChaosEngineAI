@@ -930,7 +930,7 @@ export function RuntimeControls({
               <span className="cache-strategy-meta-label">{t("mtplx.statusLabel", { defaultValue: "Status:" })}</span>
               <span>
                 {mtplxInfo.available
-                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculativeDecoding is enabled." })
+                  ? t("mtplx.statusInstalled", { defaultValue: "Installed — active when speculative decoding is ticked." })
                   : t("mtplx.statusNotInstalled", { defaultValue: "Not installed. Click Install MTPLX to set up the isolated venv (~500 MB)." })}
               </span>
             </div>

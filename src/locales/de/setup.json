@@ -35,14 +35,19 @@
     "finalStatus": "Endstatus:",
     "statusNoun": {
       "longlive": "LongLive-Installation",
-      "gpuBundle": "Installation"
+      "gpuBundle": "Installation",
+      "mtplx": "MTPLX-Installation",
+      "tensorfold": "TensorFold-Installation",
+      "mflux": "mflux-Installation",
+      "vllmWsl": "vLLM-in-WSL-Installation"
     },
     "status": {
       "failed": "{noun} fehlgeschlagen — Log einsehen",
       "complete": "{noun} abgeschlossen — Log einsehen",
       "starting": "{noun} startet…",
       "verifyingCuda": "CUDA wird verifiziert…",
-      "inProgress": "{noun} läuft"
+      "inProgress": "{noun} läuft",
+      "verifying": "Installation wird überprüft…"
     },
     "meta": {
       "target": "Ziel: {dir}",

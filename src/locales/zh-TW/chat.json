@@ -5,7 +5,8 @@
     "send": "傳送",
     "stop": "停止",
     "clear": "清除",
-    "sendDisabledTooltip": "請先載入模型再傳送訊息"
+    "sendDisabledTooltip": "請先載入模型再傳送訊息",
+    "sendLoadingTooltip": "請等待模型載入完成"
   },
   "thinkingMode": {
     "label": "思考",
@@ -196,7 +197,8 @@
       "cancel": "取消",
       "usePromptInNewChallenge": "在新挑戰中使用提示詞",
       "runChallenge": "執行挑戰",
-      "runNewChallenge": "執行新挑戰"
+      "runNewChallenge": "執行新挑戰",
+      "browsePrompts": "提示詞庫"
     },
     "status": {
       "generating": "正在生成...",
@@ -230,6 +232,17 @@
       "titleForSlot": "選擇 {slot}",
       "confirm": "使用模型",
       "confirmForSlot": "用於 {slot}"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "全部"
+      },
+      "title": "提示詞庫",
+      "subtitle": "選擇一個現成的挑戰，或關閉後自行撰寫。",
+      "searchPlaceholder": "搜尋提示詞（名稱、機制、關鍵字）...",
+      "resultCount": "顯示 {count} 項",
+      "empty": "沒有符合搜尋的提示詞。",
+      "close": "取消"
     }
   },
   "samplerPanel": {
@@ -246,7 +259,9 @@
     "revertTooltip": "恢復至工作階段預設值",
     "dialogAriaLabel": "KV 快取策略",
     "headingTitle": "下一輪的 KV 快取",
-    "reloadNote": "切換將在需要時重新載入執行階段。"
+    "reloadNote": "切換將在需要時重新載入執行階段。",
+    "memorySaverTitle": "壓縮 KV 快取，讓長對話佔用更少記憶體。生成速度比原生慢。",
+    "memorySaver": "節省記憶體"
   },
   "citations": {
     "sourcesLabel": "來源：",
@@ -287,19 +302,19 @@
     "compareButton": "比較"
   },
   "voice": {
-    "heardNothing": null,
-    "installToDictate": null,
-    "stopDictation": null,
-    "transcribing": null,
-    "startDictation": null,
-    "installToRead": null,
-    "stopReading": null,
-    "readAloud": null,
-    "dismiss": null,
-    "resume": null,
-    "pause": null,
-    "stop": null,
-    "preparing": null
+    "heardNothing": "沒有聽到語音。請靠近麥克風再試一次。",
+    "installToDictate": "語音輸入需要語音包。點擊以安裝。",
+    "stopDictation": "停止並轉寫（按 Esc 取消）",
+    "transcribing": "正在轉寫…",
+    "startDictation": "語音輸入（點擊，或按住說話；Ctrl/Cmd+Shift+M）",
+    "installToRead": "朗讀需要語音包。點擊以安裝。",
+    "stopReading": "停止朗讀",
+    "readAloud": "朗讀",
+    "dismiss": "關閉",
+    "resume": "恢復",
+    "pause": "暫停",
+    "stop": "停止",
+    "preparing": "正在準備語音…"
   },
   "voiceCall": {
     "starting": "正在啟動麥克風…",
@@ -321,5 +336,12 @@
     "end": "結束通話",
     "meta": "語音：{voice}",
     "headphones": "使用耳機更便於打斷"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 歡迎使用 ChaosEngineAI 對話",
+    "welcomeBody": "請先在「探索」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
+    "browseDiscover": "瀏覽「探索」",
+    "noModelLoaded": "需要先載入模型才能聊天。請從模型庫中選擇一個，將它載入記憶體。",
+    "loadModel": "載入模型"
   }
 }

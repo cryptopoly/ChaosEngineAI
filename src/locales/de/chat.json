@@ -5,7 +5,8 @@
     "send": "Senden",
     "stop": "Stoppen",
     "clear": "Leeren",
-    "sendDisabledTooltip": "Erst ein Modell laden, um Nachrichten zu senden"
+    "sendDisabledTooltip": "Erst ein Modell laden, um Nachrichten zu senden",
+    "sendLoadingTooltip": "Warte, bis das Modell fertig geladen ist"
   },
   "thinkingMode": {
     "label": "Denken",
@@ -196,7 +197,8 @@
       "cancel": "Abbrechen",
       "usePromptInNewChallenge": "Prompt in neuer Challenge verwenden",
       "runChallenge": "Challenge ausführen",
-      "runNewChallenge": "Neue Challenge ausführen"
+      "runNewChallenge": "Neue Challenge ausführen",
+      "browsePrompts": "Prompt-Bibliothek"
     },
     "status": {
       "generating": "Wird generiert...",
@@ -230,6 +232,17 @@
       "titleForSlot": "{slot} auswählen",
       "confirm": "Modell verwenden",
       "confirmForSlot": "Für {slot} verwenden"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "Alle"
+      },
+      "title": "Prompt-Bibliothek",
+      "subtitle": "Wähle eine fertige Challenge oder schließe das Fenster, um eine eigene zu schreiben.",
+      "searchPlaceholder": "Prompts suchen (Name, Mechanik, Stichwort)...",
+      "resultCount": "{count} angezeigt",
+      "empty": "Keine Prompts entsprechen deiner Suche.",
+      "close": "Abbrechen"
     }
   },
   "samplerPanel": {
@@ -246,7 +259,9 @@
     "revertTooltip": "Auf Sitzungs-Standard zurücksetzen",
     "dialogAriaLabel": "KV-Cache-Strategie",
     "headingTitle": "KV-Cache für nächste Runde",
-    "reloadNote": "Beim Wechsel wird die Laufzeit bei Bedarf neu geladen."
+    "reloadNote": "Beim Wechsel wird die Laufzeit bei Bedarf neu geladen.",
+    "memorySaverTitle": "Verkleinert den KV-Cache, damit lange Chats in weniger Speicher passen. Die Generierung ist langsamer als bei Nativ.",
+    "memorySaver": "Speicherspar-Modus"
   },
   "citations": {
     "sourcesLabel": "Quellen:",
@@ -287,19 +302,19 @@
     "compareButton": "Vergleichen"
   },
   "voice": {
-    "heardNothing": null,
-    "installToDictate": null,
-    "stopDictation": null,
-    "transcribing": null,
-    "startDictation": null,
-    "installToRead": null,
-    "stopReading": null,
-    "readAloud": null,
-    "dismiss": null,
-    "resume": null,
-    "pause": null,
-    "stop": null,
-    "preparing": null
+    "heardNothing": "Es wurde keine Sprache erkannt. Versuche es näher am Mikrofon noch einmal.",
+    "installToDictate": "Die Spracheingabe benötigt das Sprachpaket. Klicke, um es zu installieren.",
+    "stopDictation": "Stoppen und transkribieren (Esc bricht ab)",
+    "transcribing": "Wird transkribiert…",
+    "startDictation": "Diktieren (klicken oder zum Sprechen gedrückt halten; Ctrl/Cmd+Shift+M)",
+    "installToRead": "Vorlesen benötigt das Sprachpaket. Klicke, um es zu installieren.",
+    "stopReading": "Vorlesen stoppen",
+    "readAloud": "Vorlesen",
+    "dismiss": "Schließen",
+    "resume": "Fortsetzen",
+    "pause": "Pause",
+    "stop": "Stoppen",
+    "preparing": "Sprache wird vorbereitet…"
   },
   "voiceCall": {
     "starting": "Mikrofon wird gestartet…",
@@ -321,5 +336,12 @@
     "end": "Anruf beenden",
     "meta": "Stimme: {voice}",
     "headphones": "Mit Kopfhörern klappt das Unterbrechen am besten"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 Willkommen im ChaosEngineAI-Chat",
+    "welcomeBody": "Wähle unter „Entdecken“ ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
+    "browseDiscover": "Entdecken öffnen",
+    "noModelLoaded": "Zum Chatten muss zuerst ein Modell geladen sein. Wähle eines aus deiner Bibliothek, um es in den Speicher zu laden.",
+    "loadModel": "Modell laden"
   }
 }

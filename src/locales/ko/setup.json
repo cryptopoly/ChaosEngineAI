@@ -35,14 +35,19 @@
     "finalStatus": "최종 상태:",
     "statusNoun": {
       "longlive": "LongLive 설치",
-      "gpuBundle": "설치"
+      "gpuBundle": "설치",
+      "mtplx": "MTPLX 설치",
+      "tensorfold": "TensorFold 설치",
+      "mflux": "mflux 설치",
+      "vllmWsl": "WSL에 vLLM 설치"
     },
     "status": {
       "failed": "{noun} 실패 — 로그 확인",
       "complete": "{noun} 완료 — 로그 확인",
       "starting": "{noun} 시작 중…",
       "verifyingCuda": "CUDA 검증 중…",
-      "inProgress": "{noun} 진행 중"
+      "inProgress": "{noun} 진행 중",
+      "verifying": "설치 확인 중…"
     },
     "meta": {
       "target": "대상: {dir}",

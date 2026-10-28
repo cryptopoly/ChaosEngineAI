@@ -57,7 +57,8 @@
     "contextSize": "Tamanho do contexto",
     "gpuLayers": "Camadas de GPU",
     "threads": "Threads",
-    "fitInMemory": "Caber na memória"
+    "fitInMemory": "Caber na memória",
+    "cacheStrategyTensorfoldNote": "(o TensorFold gerencia o próprio KV cache)"
   },
   "notes": {
     "binaryRequired": "Requer {binary}.",
@@ -87,7 +88,8 @@
     "requiresBody": "Apple Silicon + dflash-mlx, ou Linux/CUDA + dflash. Modelo rascunho compatível para o alvo.",
     "currentModelLabel": "Modelo atual:",
     "supportedVia": "Suportado via {model}",
-    "compatibilityUnresolved": "Compatibilidade ainda não resolvida."
+    "compatibilityUnresolved": "Compatibilidade ainda não resolvida.",
+    "composerHint": "A decodificação especulativa DFlash pode acelerar este modelo em ~2× sem perda de qualidade."
   },
   "presets": {
     "quality": {
@@ -126,5 +128,64 @@
     "modelExceedsRam": "Os pesos do modelo sozinhos excedem a RAM utilizável estimada. Escolha um modelo menor ou uma quantização mais agressiva.",
     "nativeF16TooBig": "O modelo pode carregar, mas um cache f16 nativo completo neste contexto pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou escolha uma estratégia comprimida.",
     "compressedTooBig": "O modelo pode carregar, mas o cache de contexto selecionado pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou reduza as camadas FP16."
+  },
+  "tensorfold": {
+    "tooltip": "TensorFold: decodificação especulativa exata. Drafts da cabeça MTP do modelo e/ou de um modelo draft são verificados pelo modelo-alvo, então as respostas são idênticas à decodificação serial — só mais rápidas.",
+    "label": "TensorFold (drafting DFlash 2 / MTP)",
+    "requiredNote": "necessário para este modelo",
+    "installing": "Instalando...",
+    "installButton": "Instalar TensorFold",
+    "addVisionTitle": "Permite que este modelo leia imagens anexadas (experimental). Adiciona Pillow, transformers e mlx-vlm ao ambiente próprio do TensorFold.",
+    "addVision": "Adicionar suporte a imagens",
+    "imageInputOn": "entrada de imagem ativada (experimental)",
+    "aboutTitle": "Sobre a decodificação especulativa do TensorFold",
+    "memoryShortfall": "Este checkpoint precisa de um Mac com pelo menos {needed} GB de memória; este tem {have} GB.",
+    "body": "O TensorFold é um motor de inferência local com kernels escritos à mão para cada família de modelos. Ele gera vários tokens por vez (a partir da própria cabeça MTP do modelo e, em algumas famílias, de um pequeno modelo draft) e confere cada draft com o modelo-alvo, então a resposta é idêntica, byte a byte, à decodificação de um token por vez.",
+    "requiresLabel": "Requer:",
+    "requiresBody": "Apple Silicon e um ambiente Python separado do TensorFold (instalado por este painel). Atende apenas os checkpoints com os quais foi testado.",
+    "memoryLabel": "Memória:",
+    "memoryBody": "{needed} GB de memória unificada ou mais.",
+    "statusLabel": "Status:",
+    "statusInstalled": "Instalado{version} — ativo quando a decodificação especulativa está marcada.",
+    "statusNotInstalled": "Não instalado. Clique em Instalar TensorFold para configurar o ambiente separado.",
+    "visionLabel": "Entrada de imagem:",
+    "visionInstalled": "Instalado (experimental) — anexe imagens no chat enquanto o TensorFold estiver marcado. Uma solicitação com imagens começa com um KV cache novo.",
+    "visionNotInstalled": "Não instalado. Lê imagens com a vision tower do próprio modelo. Adiciona Pillow, transformers e mlx-vlm; os autores do TensorFold ainda a marcam como experimental.",
+    "grammarLabel": "Saída estruturada:",
+    "grammarInstalled": "Instalado — um esquema JSON definido no painel do sampler é aplicado.",
+    "grammarNotInstalled": "Não instalado. Necessário para aplicar um esquema JSON; sem isso essas solicitações são recusadas. Adiciona o PyTorch, que é um download grande.",
+    "addGrammar": "Adicionar saída estruturada",
+    "exclusiveLabel": "Observação:",
+    "exclusiveBody": "Nenhum outro motor do app consegue carregar este modelo, então ele sempre roda no TensorFold; a caixa de seleção apenas liga e desliga o drafting."
+  },
+  "strategyRole": {
+    "memorySaverTitle": "Reduz o KV cache para que contextos longos caibam em menos memória. A geração é mais lenta que com Nativo.",
+    "memorySaver": "Economia de memória"
+  },
+  "mtplx": {
+    "tooltip": "MTPLX: decodificação especulativa MTP nativa. Usa cabeças de predição embutidas para uma geração ~1,8–2,2× mais rápida sem perda de qualidade.",
+    "label": "MTPLX",
+    "installing": "Instalando...",
+    "installButton": "Instalar MTPLX",
+    "aboutTitle": "Sobre a decodificação especulativa do MTPLX",
+    "body": "O MTPLX usa cabeças de Multi-Token Prediction (MTP) embutidas, treinadas diretamente no modelo. Na inferência, as cabeças geram 1–3 tokens por passagem direta, que são verificados na mesma passagem — sem precisar de um modelo draft separado. Dá uma geração ~1,8–2,2× mais rápida sem perda de qualidade.",
+    "requiresLabel": "Requer:",
+    "requiresBody": "Apple Silicon + venv isolado do MTPLX. O modelo precisa ter cabeças MTP embutidas (Qwen3.5/3.6, DeepSeek V3/R1, Qwen3-Coder-Next).",
+    "statusLabel": "Status:",
+    "statusInstalled": "Instalado — ativo quando a decodificação especulativa está ativada.",
+    "statusNotInstalled": "Não instalado. Clique em Instalar MTPLX para configurar o venv isolado (~500 MB)."
+  },
+  "ggufMtp": {
+    "tooltip": "Decodificação especulativa GGUF MTP: usa as cabeças MTP embutidas do modelo via llama.cpp --spec-type draft-mtp para uma geração ~1,8–2,2× mais rápida sem perda de qualidade.",
+    "label": "GGUF MTP",
+    "body": "Este GGUF vem com cabeças de Multi-Token Prediction (MTP) embutidas. O llama.cpp as executa via --spec-type draft-mtp (PR #22673) — decodificação especulativa sem perdas, sem modelo draft separado.",
+    "requiresLabel": "Requer:"
+  },
+  "ggufSpec": {
+    "tooltip": "Decodificação especulativa do llama.cpp: usa um drafter DFlash / DFlash 2 / EAGLE-3 / MTP fornecido junto a este GGUF, quando houver; caso contrário, busca por n-gramas sem draft. Sem perdas — a saída é verificada pelo modelo.",
+    "label": "Decodificação especulativa",
+    "aboutTitle": "Sobre a decodificação especulativa do llama.cpp",
+    "body": "Se a pasta do modelo tiver um arquivo de drafter (mtp-, dflash-, dspark- ou eagle3-*.gguf — drafters DFlash 2 usam o prefixo dflash-), o llama.cpp gera drafts com ele. Caso contrário, recorre ao ngram-mod, que reaproveita texto repetido (edições de código, resumos, raciocínio repetido na resposta) sem nenhum modelo extra. Cada token do draft é verificado, então a saída não muda.",
+    "requiresBody": "Um llama-server atual (execute scripts/update-llama-cpp.sh). Binários antigos voltam à decodificação padrão com uma nota de runtime."
   }
 }

@@ -32,7 +32,10 @@
     "image": "Bildstudio",
     "video": "Videostudio",
     "setup": "Einrichtung",
-    "diagnostics": "Diagnose"
+    "diagnostics": "Diagnose",
+    "voiceStudio": "Sprachstudio",
+    "voiceModels": "Sprachmodelle",
+    "voiceLibrary": "Sprachbibliothek"
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -57,7 +60,10 @@
     "promptLibrary": "Wiederverwendbare Prompt-Vorlagen",
     "plugins": "Erweiterungen und Plugin-System",
     "logs": "Laufzeitereignisse",
-    "settings": "Verzeichnisse und Standardwerte"
+    "settings": "Verzeichnisse und Standardwerte",
+    "voiceStudio": "Aufnehmen, transkribieren und sprechen",
+    "voiceModels": "STT- und TTS-Modelle verwalten",
+    "voiceLibrary": "Deine Transkripte und Sprachausgaben"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -78,7 +84,10 @@
     "conversion": "Konvertierung",
     "fineTuning": "Fine-Tuning",
     "promptLibrary": "Prompts",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "voiceStudio": "Studio",
+    "voiceModels": "Meine Modelle",
+    "voiceLibrary": "Bibliothek"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -86,7 +95,8 @@
     "images": "Bilder",
     "video": "Video",
     "benchmarks": "Benchmarks",
-    "tools": "Werkzeuge"
+    "tools": "Werkzeuge",
+    "voice": "Sprache"
   },
   "tabsCount": "{count, plural, one {# Tab} other {# Tabs}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "Remote-Health",
       "remoteModels": "Remote-Modelle",
       "close": "Schließen"
+    },
+    "connect": {
+      "title": "Verbinde deine App",
+      "subtitle": "OpenAI-kompatibler Endpunkt. Richte ein beliebiges OpenAI-SDK oder eine kompatible App auf die Basis-URL unten ein und verwende den API-Schlüssel von oben.",
+      "baseUrl": "Basis-URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (Konfiguration)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "Admin → Einstellungen → Verbindungen → OpenAI API. Basis-URL: {base} — verwende den API-Schlüssel von oben.",
+      "ollamaApps": "Ollama-kompatible Apps",
+      "ollamaHint": "Setze den Ollama-Host bzw. die Basis-URL der App auf die Adresse unten — native /api-Endpunkte werden neben /v1 bereitgestellt."
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "Baumbasierte spekulative Dekodierung aktiv",
     "specTitleWithBudget": "Baumbasierte spekulative Dekodierung aktiv (Budget {budget} Draft-Tokens pro Schritt)",
     "acceptLabel": "{value} Ø akzeptiert",
-    "acceptTitle": "Durchschnittlich akzeptierte Draft-Tokens pro Schritt ({value})"
+    "acceptTitle": "Durchschnittlich akzeptierte Draft-Tokens pro Schritt ({value})",
+    "cacheTitleMemorySaver": "KV-Cache-Strategie ({label}) — ein Speicherspar-Modus: ein deutlich kleinerer Cache für lange Chats, dafür langsamere Generierung",
+    "specLabelExact": "Exakte Drafts",
+    "specTitleExact": "Spekulative Dekodierung aktiv — jeder Draft wird gegen das Zielmodell geprüft, daher entspricht die Antwort der seriellen Dekodierung"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "Langsam",
     "speedGood": "Gut",
     "speedFast": "Schnell",
-    "speedVeryFast": "Sehr schnell"
+    "speedVeryFast": "Sehr schnell",
+    "speedMeasuredTitle": "Median deiner letzten eigenen Läufe dieses Modells mit dieser Cache-Strategie.",
+    "speedEstimateTitle": "Geschätzt aus der Speicherbandbreite ({bandwidth}) und den pro Token gelesenen Gewichten. Deine eigenen Läufe ersetzen den Wert, sobald du das Modell benutzt hast.",
+    "speedMeasured": "gemessen",
+    "speedEstimate": "gesch.",
+    "sourceModel": "Cache-Größe nach den Angaben des Modells selbst ({source}) berechnet.",
+    "sourceHub": "Cache-Größe nach der Konfiguration des Modells auf Hugging Face berechnet.",
+    "sourceEstimate": "Grobe Cache-Schätzung anhand der Parameteranzahl; sie wird genau, sobald das Modell heruntergeladen ist."
   },
   "reasoningPanel": {
     "label": "Denken",
@@ -766,7 +798,9 @@
       "storage": "Speicher",
       "providers": "Anbieter",
       "integrations": "Integrationen",
-      "diagnostics": "Diagnose"
+      "diagnostics": "Diagnose",
+      "accelerators": "Beschleuniger",
+      "disk": "Speicherplatznutzung"
     },
     "sectionsAria": "Einstellungs-Bereiche",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "Lädt noch",
         "detail": "Die Kaltstart-Imports dauern länger als üblich. Wenn dies länger als zwei Minuten hängt, beende die App und öffne sie erneut — ein veraltetes Manifest kann ein erneutes Extrahieren erzwingen."
       }
-    }
+    },
+    "logPath": "Backend-Log: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "Unvollständig",
       "notInstalled": "Nicht installiert"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "Das Modell benötigt ~{model} GB resident an der Standardposition, aber {platform} mit insgesamt {total} GB hat nur ~{working} GB sicher verfügbar. Die Laufzeit fällt automatisch auf sequentielles CPU-Offload zurück — die Generierung gelingt, aber jeder Schritt wird einige Male langsamer, weil Submodule pro Durchgang zwischen CPU- und {offloadDevice}-Speicher wechseln. Für Generierung mit voller Geschwindigkeit wähle ein kleineres Modell (LTX-Video ist ~2 GB resident) oder einen Rechner mit mehr Speicher.",
+      "reasonDangerNear": "Das Modell benötigt ~{model} GB resident und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Laufzeit aktiviert möglicherweise CPU-Offload, damit es passt — senke die Einstellungen oder wähle ein kleineres Modell, wenn du Generierung mit voller Geschwindigkeit möchtest.",
+      "reasonCaution": "Das Modell benötigt ~{model} GB resident. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung sollte passen; senke die Einstellungen, falls es instabil wird."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das geschätzte Working Set bei ~{working} GB, sodass das Modell allein bereits darüber liegt. Selbst kleine Bilder würden das Backend wahrscheinlich zum Absturz bringen. Probiere ein kleineres Modell (SD 1.5 ist ~4 GB, SDXL ~13 GB) oder einen Rechner mit mehr Speicher.",
+      "reasonDangerNear": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten, und dieser Lauf erreicht eine Spitze von ~{peak} GB. Auf {platform} mit insgesamt {total} GB liegt das über der Hochrisiko-Schwelle (~{highRisk} GB) und nahe am geschätzten Working Set (~{working} GB). Die Generierung wird das Backend wahrscheinlich zum Absturz bringen; senke die Auflösung oder wähle ein kleineres Modell.",
+      "reasonCaution": "Das Modell benötigt ~{model} GB allein, um seine Gewichte + den Text-Encoder zu halten. Auf {platform} mit insgesamt {total} GB liegt das über dem konservativen Komfort-Ziel (~{comfort} GB), aber unter dem geschätzten Working Set (~{working} GB). Die Generierung kann langsam laufen oder fehlschlagen; senke die Auflösung, falls es instabil wird."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "Dieses Repo konnte nicht aufgelöst werden.",
+    "downloadStarted": "Download gestartet — verfolge den Fortschritt unter „Meine Modelle“ und klicke dann auf „Laden“.",
+    "downloadFailed": "Download fehlgeschlagen.",
+    "loaded": "Geladen: {label}",
+    "loadFailed": "Laden fehlgeschlagen.",
+    "title": "Von Hugging Face ausführen",
+    "subtitle": "Füge ein beliebiges GGUF- oder MLX-Repo (owner/name oder URL) ein, um es ohne Katalogeintrag auszuführen.",
+    "resolving": "Wird aufgelöst…",
+    "resolve": "Auflösen",
+    "ctx": "{ctx} ctx",
+    "downloading": "Wird gestartet…",
+    "download": "Herunterladen",
+    "notRunnable": "Dieses Repo kann auf dieser Plattform nicht direkt ausgeführt werden — siehe Hinweis oben.",
+    "loading": "Wird geladen…",
+    "load": "Laden"
+  },
+  "rag": {
+    "vectorTooltip": "Dokumente werden mit einem lokalen Embedding-Modell nach Bedeutung durchsucht.",
+    "semantic": "Semantische Suche",
+    "lexicalTooltip": "Dokumente werden nach Stichwort durchsucht (TF-IDF + BM25). Aktiviere die semantische Suche für bessere Trefferquoten.",
+    "binaryMissingTooltip": "Nur Stichwortsuche — die Binärdatei llama-embedding wurde nicht gefunden, daher ist die semantische Suche in dieser Installation nicht verfügbar.",
+    "keyword": "Stichwortsuche",
+    "verifying": "Wird überprüft…",
+    "downloading": "{sizeLabel} werden heruntergeladen…",
+    "enable": "Semantische Suche aktivieren",
+    "installFailed": "Installation fehlgeschlagen"
+  },
+  "importModels": {
+    "failed": "Import fehlgeschlagen.",
+    "imported": "Importiert",
+    "importing": "Wird importiert…",
+    "import": "Importieren",
+    "title": "Vorhandene Modelle importieren",
+    "subtitle": "Im Speicher einer anderen lokalen App wurden Modelle gefunden. Der Import verknüpft sie an Ort und Stelle — kein erneuter Download.",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

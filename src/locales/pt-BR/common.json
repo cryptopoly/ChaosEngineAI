@@ -32,7 +32,10 @@
     "image": "Estúdio de imagem",
     "video": "Estúdio de vídeo",
     "setup": "Configuração",
-    "diagnostics": "Diagnóstico"
+    "diagnostics": "Diagnóstico",
+    "voiceStudio": "Estúdio de voz",
+    "voiceModels": "Modelos de voz",
+    "voiceLibrary": "Biblioteca de voz"
   },
   "tabCaptions": {
     "dashboard": "Visão geral do sistema",
@@ -57,7 +60,10 @@
     "promptLibrary": "Modelos de prompts reutilizáveis",
     "plugins": "Extensões e sistema de plugins",
     "logs": "Eventos do runtime",
-    "settings": "Diretórios e padrões"
+    "settings": "Diretórios e padrões",
+    "voiceStudio": "Gravar, transcrever e falar",
+    "voiceModels": "Gerenciamento de modelos STT e TTS",
+    "voiceLibrary": "Suas transcrições e falas geradas"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -78,7 +84,10 @@
     "conversion": "Conversão",
     "fineTuning": "Ajuste fino",
     "promptLibrary": "Prompts",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "voiceStudio": "Estúdio",
+    "voiceModels": "Meus modelos",
+    "voiceLibrary": "Biblioteca"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -86,7 +95,8 @@
     "images": "Imagens",
     "video": "Vídeo",
     "benchmarks": "Benchmarks",
-    "tools": "Ferramentas"
+    "tools": "Ferramentas",
+    "voice": "Voz"
   },
   "tabsCount": "{count, plural, one {# aba} other {# abas}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "Saúde remota",
       "remoteModels": "Modelos remotos",
       "close": "Fechar"
+    },
+    "connect": {
+      "title": "Conecte seu app",
+      "subtitle": "Endpoint compatível com OpenAI. Aponte qualquer SDK da OpenAI ou app compatível para a URL base abaixo, usando a chave de API acima.",
+      "baseUrl": "URL base",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (config)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "Admin → Configurações → Conexões → OpenAI API. URL base: {base} — use a chave de API acima.",
+      "ollamaApps": "Apps compatíveis com Ollama",
+      "ollamaHint": "Defina o host / URL base do Ollama do app como o endereço abaixo — os endpoints nativos /api são servidos junto com /v1."
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "Decodificação especulativa baseada em árvore ativa",
     "specTitleWithBudget": "Decodificação especulativa baseada em árvore ativa (orçamento de {budget} tokens draft por passo)",
     "acceptLabel": "{value} aceitos em média",
-    "acceptTitle": "Média de tokens draft aceitos por passo ({value})"
+    "acceptTitle": "Média de tokens draft aceitos por passo ({value})",
+    "cacheTitleMemorySaver": "Estratégia de KV cache ({label}) — economia de memória: um cache bem menor para conversas longas, ao custo de uma geração mais lenta",
+    "specLabelExact": "Drafts exatos",
+    "specTitleExact": "Decodificação especulativa ativa — cada draft é verificado pelo modelo-alvo, então a resposta é idêntica à decodificação serial"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "Lento",
     "speedGood": "Bom",
     "speedFast": "Rápido",
-    "speedVeryFast": "Muito rápido"
+    "speedVeryFast": "Muito rápido",
+    "speedMeasuredTitle": "Mediana das suas execuções recentes deste modelo com esta estratégia de cache.",
+    "speedEstimateTitle": "Estimado a partir da largura de banda da memória ({bandwidth}) e dos pesos lidos por token. Suas próprias execuções o substituem depois que você usar o modelo.",
+    "speedMeasured": "medido",
+    "speedEstimate": "est.",
+    "sourceModel": "Cache dimensionado a partir dos dados do próprio modelo ({source}).",
+    "sourceHub": "Tamanho do cache calculado a partir da configuração do modelo no Hugging Face.",
+    "sourceEstimate": "Estimativa aproximada do cache a partir do número de parâmetros; fica exata depois que o modelo for baixado."
   },
   "reasoningPanel": {
     "label": "Raciocínio",
@@ -766,7 +798,9 @@
       "storage": "Armazenamento",
       "providers": "Provedores",
       "integrations": "Integrações",
-      "diagnostics": "Diagnóstico"
+      "diagnostics": "Diagnóstico",
+      "accelerators": "Aceleradores",
+      "disk": "Uso de disco"
     },
     "sectionsAria": "Seções de preferências",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "Ainda carregando",
         "detail": "Os imports de cold-start estão demorando mais do que o usual. Se isso travar por mais de dois minutos, feche e reabra — um manifest desatualizado pode forçar uma nova extração."
       }
-    }
+    },
+    "logPath": "Log do backend: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "Incompleto",
       "notInstalled": "Não instalado"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "O modelo precisa de ~{model} GB residentes no posicionamento padrão, mas {platform} com {total} GB no total tem apenas ~{working} GB disponíveis com segurança. O runtime fará fallback automático para CPU offload sequencial -- a geração será bem-sucedida mas cada passo será algumas vezes mais lento porque submódulos trocam entre CPU e memória {offloadDevice} a cada passagem. Para geração em velocidade máxima, escolha um modelo menor (LTX-Video é ~2 GB residente) ou uma máquina com mais memória.",
+      "reasonDangerNear": "O modelo precisa de ~{model} GB residentes e esta execução tem pico em torno de ~{peak} GB. Em {platform} com {total} GB no total, isso está acima do limiar de alto risco (~{highRisk} GB) e próximo do working set estimado (~{working} GB). O runtime pode acionar CPU offload para encaixar -- reduza as configurações ou escolha um modelo menor se quiser geração em velocidade máxima.",
+      "reasonCaution": "O modelo precisa de ~{model} GB residentes. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração deve caber; reduza as configurações se ficar instável."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, o working set estimado é ~{working} GB, então o modelo sozinho já ultrapassa esse valor. Mesmo imagens pequenas provavelmente travariam o backend. Tente um modelo menor (SD 1.5 ~4 GB, SDXL ~13 GB) ou uma máquina com mais memória.",
+      "reasonDangerNear": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder, e esta execução tem pico em torno de ~{peak} GB. Em {platform} com {total} GB no total, isso está acima do limiar de alto risco (~{highRisk} GB) e próximo do working set estimado (~{working} GB). A geração provavelmente travará o backend; reduza a resolução ou escolha um modelo menor.",
+      "reasonCaution": "O modelo precisa de ~{model} GB só para manter seus pesos + text encoder. Em {platform} com {total} GB no total, isso está acima do alvo conservador de conforto (~{comfort} GB) mas abaixo do working set estimado (~{working} GB). A geração pode rodar lentamente ou falhar; reduza a resolução se ficar instável."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "Não foi possível resolver esse repositório.",
+    "downloadStarted": "Download iniciado — acompanhe o progresso em Meus modelos e depois clique em Carregar.",
+    "downloadFailed": "Falha no download.",
+    "loaded": "{label} carregado.",
+    "loadFailed": "Falha ao carregar.",
+    "title": "Executar do Hugging Face",
+    "subtitle": "Cole qualquer repositório GGUF ou MLX (dono/nome ou URL) para executá-lo sem uma entrada no catálogo.",
+    "resolving": "Resolvendo…",
+    "resolve": "Resolver",
+    "ctx": "contexto {ctx}",
+    "downloading": "Iniciando…",
+    "download": "Baixar",
+    "notRunnable": "Este repositório não pode ser executado diretamente nesta plataforma — veja a observação acima.",
+    "loading": "Carregando…",
+    "load": "Carregar"
+  },
+  "rag": {
+    "vectorTooltip": "Os documentos são pesquisados por significado, usando um modelo de embedding local.",
+    "semantic": "Busca semântica",
+    "lexicalTooltip": "Os documentos são pesquisados por palavra-chave (TF-IDF + BM25). Ative a busca semântica para melhor recall.",
+    "binaryMissingTooltip": "Somente busca por palavra-chave — o binário llama-embedding não foi encontrado, então a busca semântica não está disponível nesta instalação.",
+    "keyword": "Busca por palavra-chave",
+    "verifying": "Verificando…",
+    "downloading": "Baixando {sizeLabel}…",
+    "enable": "Ativar busca semântica",
+    "installFailed": "Falha na instalação"
+  },
+  "importModels": {
+    "failed": "Falha na importação.",
+    "imported": "Importado",
+    "importing": "Importando…",
+    "import": "Importar",
+    "title": "Importar modelos existentes",
+    "subtitle": "Modelos encontrados no armazenamento de outro app local. A importação os vincula no local — sem baixar de novo.",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

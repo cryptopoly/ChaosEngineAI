@@ -45,7 +45,12 @@
       "system": "システム",
       "empty": "アクティブなローカル LLM プロセスは検出されませんでした。",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "待機中のモデルをアンロードし、読み込み中のモデルを担当していないモデルプロセスをすべて停止します。",
+      "stopIdle": "アイドルを停止",
+      "stopHint": "読み込み中のモデルを担当していません。停止してメモリを解放できます。",
+      "stopConfirm": "このプロセスを停止してメモリを解放しますか？",
+      "stop": "停止"
     }
   },
   "hardwareFit": {

@@ -32,7 +32,10 @@
     "image": "이미지 스튜디오",
     "video": "비디오 스튜디오",
     "setup": "설정",
-    "diagnostics": "진단"
+    "diagnostics": "진단",
+    "voiceStudio": "음성 스튜디오",
+    "voiceModels": "음성 모델",
+    "voiceLibrary": "음성 라이브러리"
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -57,7 +60,10 @@
     "promptLibrary": "재사용 가능한 프롬프트 템플릿",
     "plugins": "확장 및 플러그인 시스템",
     "logs": "런타임 이벤트",
-    "settings": "디렉터리 및 기본값"
+    "settings": "디렉터리 및 기본값",
+    "voiceStudio": "녹음, 받아쓰기, 음성 합성",
+    "voiceModels": "STT 및 TTS 모델 관리",
+    "voiceLibrary": "만든 받아쓰기와 음성"
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -78,7 +84,10 @@
     "conversion": "변환",
     "fineTuning": "파인 튜닝",
     "promptLibrary": "프롬프트",
-    "plugins": "플러그인"
+    "plugins": "플러그인",
+    "voiceStudio": "스튜디오",
+    "voiceModels": "내 모델",
+    "voiceLibrary": "라이브러리"
   },
   "tabGroups": {
     "chat": "채팅",
@@ -86,7 +95,8 @@
     "images": "이미지",
     "video": "비디오",
     "benchmarks": "벤치마크",
-    "tools": "도구"
+    "tools": "도구",
+    "voice": "음성"
   },
   "tabsCount": "{count, plural, other {탭 #개}}",
   "sidebar": {
@@ -260,6 +270,18 @@
       "remoteHealth": "원격 상태",
       "remoteModels": "원격 모델",
       "close": "닫기"
+    },
+    "connect": {
+      "title": "앱 연결",
+      "subtitle": "OpenAI 호환 엔드포인트입니다. 모든 OpenAI SDK 또는 호환 앱에서 아래 기본 URL과 위의 API 키를 사용하도록 설정하세요.",
+      "baseUrl": "기본 URL",
+      "python": "Python · openai",
+      "javascript": "JavaScript · openai",
+      "continueDev": "Continue.dev (설정)",
+      "openWebui": "Open WebUI",
+      "openWebuiHint": "관리자 → 설정 → 연결 → OpenAI API. 기본 URL: {base} — 위의 API 키를 사용하세요.",
+      "ollamaApps": "Ollama 호환 앱",
+      "ollamaHint": "앱의 Ollama 호스트 / 기본 URL을 아래 주소로 설정하세요. 기본 /api 엔드포인트가 /v1과 함께 제공됩니다."
     }
   },
   "conversionTab": {
@@ -649,7 +671,10 @@
     "specTitle": "트리 기반 추측 디코딩 활성",
     "specTitleWithBudget": "트리 기반 추측 디코딩 활성 (단계당 드래프트 토큰 예산 {budget})",
     "acceptLabel": "평균 수락 {value}",
-    "acceptTitle": "단계당 평균 드래프트 토큰 수락 수 ({value})"
+    "acceptTitle": "단계당 평균 드래프트 토큰 수락 수 ({value})",
+    "cacheTitleMemorySaver": "KV cache 전략 ({label}) — 메모리 절약: 긴 채팅용 캐시가 훨씬 작아지는 대신 생성 속도가 느려집니다",
+    "specLabelExact": "정확한 드래프트",
+    "specTitleExact": "추측 디코딩 활성 — 모든 드래프트를 대상 모델이 검증하므로 응답이 순차 디코딩과 동일합니다"
   },
   "gpuCard": {
     "heading": "GPU",
@@ -685,7 +710,14 @@
     "speedSlow": "느림",
     "speedGood": "양호",
     "speedFast": "빠름",
-    "speedVeryFast": "매우 빠름"
+    "speedVeryFast": "매우 빠름",
+    "speedMeasuredTitle": "이 모델과 이 캐시 전략으로 최근 실행한 결과의 중앙값입니다.",
+    "speedEstimateTitle": "메모리 대역폭({bandwidth})과 토큰당 읽는 가중치를 바탕으로 추정한 값입니다. 모델을 사용하고 나면 직접 실행한 결과로 대체됩니다.",
+    "speedMeasured": "측정값",
+    "speedEstimate": "추정",
+    "sourceModel": "캐시 크기는 모델 자체 정보({source})로 계산했습니다.",
+    "sourceHub": "Hugging Face에 있는 모델 구성을 기준으로 캐시 크기를 계산했습니다.",
+    "sourceEstimate": "파라미터 수로 계산한 대략적인 캐시 추정치이며, 모델을 다운로드하면 정확해집니다."
   },
   "reasoningPanel": {
     "label": "사고",
@@ -766,7 +798,9 @@
       "storage": "저장소",
       "providers": "공급자",
       "integrations": "통합",
-      "diagnostics": "진단"
+      "diagnostics": "진단",
+      "accelerators": "가속기",
+      "disk": "디스크 사용량"
     },
     "sectionsAria": "환경설정 섹션",
     "badges": {
@@ -934,7 +968,8 @@
         "title": "여전히 로드 중",
         "detail": "콜드 스타트 임포트가 평소보다 더 오래 걸리고 있습니다. 2분 이상 중단되면 종료 후 다시 여세요 — 오래된 매니페스트가 재추출을 강제할 수 있습니다."
       }
-    }
+    },
+    "logPath": "백엔드 로그: {path}"
   },
   "imageDiscover": {
     "sortLabel": {
@@ -980,5 +1015,57 @@
       "incomplete": "불완전",
       "notInstalled": "설치되지 않음"
     }
+  },
+  "videoStudio": {
+    "safety": {
+      "reasonDangerOver": "모델은 표준 배치에서 상주하는 데 ~{model} GB가 필요하지만, 총 {total} GB의 {platform}에는 ~{working} GB만 안전하게 사용 가능합니다. 런타임은 순차적 CPU 오프로드로 자동 폴백합니다 — 생성은 성공하지만 서브모듈이 매 패스마다 CPU와 {offloadDevice} 메모리 간을 스왑하므로 각 스텝이 몇 배 느려집니다. 풀 스피드 생성을 위해서는 더 작은 모델(LTX-Video는 ~2 GB 상주) 또는 더 많은 메모리를 갖춘 머신을 선택하세요.",
+      "reasonDangerNear": "모델은 상주하는 데 ~{model} GB가 필요하며 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 런타임이 CPU 오프로드를 활성화해 맞출 수 있습니다 — 풀 스피드 생성을 원한다면 설정을 낮추거나 더 작은 모델을 선택하세요.",
+      "reasonCaution": "모델은 상주하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성은 맞을 수 있으니 불안정해지면 설정을 낮추세요."
+    }
+  },
+  "imageStudio": {
+    "safety": {
+      "reasonDangerOver": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 추정 작업 세트는 ~{working} GB이므로 모델만으로도 이미 초과합니다. 작은 이미지조차 백엔드가 크래시할 가능성이 높습니다. 더 작은 모델(SD 1.5는 ~4 GB, SDXL은 ~13 GB) 또는 더 많은 메모리를 갖춘 머신을 시도하세요.",
+      "reasonDangerNear": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요하며, 이 실행은 약 ~{peak} GB에서 정점을 찍습니다. 총 {total} GB의 {platform}에서 이는 고위험 임계값(~{highRisk} GB)을 초과하고 추정 작업 세트(~{working} GB)에 근접합니다. 생성 시 백엔드가 크래시할 가능성이 높으니 해상도를 낮추거나 더 작은 모델을 선택하세요.",
+      "reasonCaution": "모델은 가중치 + 텍스트 인코더만 저장하는 데 ~{model} GB가 필요합니다. 총 {total} GB의 {platform}에서 이는 보수적 안정 목표(~{comfort} GB)를 초과하지만 추정 작업 세트(~{working} GB) 아래입니다. 생성이 느리거나 실패할 수 있으니 불안정해지면 해상도를 낮추세요."
+    }
+  },
+  "runHf": {
+    "resolveFailed": "해당 저장소를 확인할 수 없습니다.",
+    "downloadStarted": "다운로드를 시작했습니다. 내 모델에서 진행 상황을 확인한 다음 로드하세요.",
+    "downloadFailed": "다운로드 실패.",
+    "loaded": "{label}을(를) 로드했습니다.",
+    "loadFailed": "로드 실패.",
+    "title": "Hugging Face에서 실행",
+    "subtitle": "GGUF 또는 MLX 저장소(owner/name 또는 URL)를 붙여 넣으면 카탈로그 항목 없이 실행할 수 있습니다.",
+    "resolving": "확인 중…",
+    "resolve": "확인",
+    "ctx": "컨텍스트 {ctx}",
+    "downloading": "시작 중…",
+    "download": "다운로드",
+    "notRunnable": "이 저장소는 이 플랫폼에서 바로 실행할 수 없습니다. 위의 안내를 확인하세요.",
+    "loading": "로딩 중…",
+    "load": "불러오기"
+  },
+  "rag": {
+    "vectorTooltip": "로컬 임베딩 모델을 사용해 의미 기반으로 문서를 검색합니다.",
+    "semantic": "시맨틱 검색",
+    "lexicalTooltip": "키워드(TF-IDF + BM25)로 문서를 검색합니다. 더 나은 재현율을 위해 시맨틱 검색을 켜세요.",
+    "binaryMissingTooltip": "키워드 검색만 가능합니다. llama-embedding 바이너리를 찾을 수 없어 이 설치에서는 시맨틱 검색을 사용할 수 없습니다.",
+    "keyword": "키워드 검색",
+    "verifying": "확인 중…",
+    "downloading": "{sizeLabel} 다운로드 중…",
+    "enable": "시맨틱 검색 켜기",
+    "installFailed": "설치 실패"
+  },
+  "importModels": {
+    "failed": "가져오기 실패.",
+    "imported": "가져옴",
+    "importing": "가져오는 중…",
+    "import": "가져오기",
+    "title": "기존 모델 가져오기",
+    "subtitle": "다른 로컬 앱의 저장소에서 모델을 찾았습니다. 가져오기는 해당 위치에 연결만 하므로 다시 다운로드하지 않습니다.",
+    "ollama": "Ollama",
+    "lmstudio": "LM Studio"
   }
 }

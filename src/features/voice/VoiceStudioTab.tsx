@@ -46,7 +46,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
           <div className="empty-state">
             <p className="muted-text">
               {t("voice.studio.needsPack", {
-                defaultValue: "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+                defaultValue: "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > My Models.",
               })}
             </p>
             <button type="button" className="primary-button" onClick={() => onTabChange("voice-models")}>

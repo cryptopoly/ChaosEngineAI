@@ -35,14 +35,19 @@
     "finalStatus": "最终状态:",
     "statusNoun": {
       "longlive": "LongLive 安装",
-      "gpuBundle": "安装"
+      "gpuBundle": "安装",
+      "mtplx": "MTPLX 安装",
+      "tensorfold": "TensorFold 安装",
+      "mflux": "mflux 安装",
+      "vllmWsl": "vLLM-in-WSL 安装"
     },
     "status": {
       "failed": "{noun}失败 — 查看日志",
       "complete": "{noun}完成 — 查看日志",
       "starting": "{noun}启动中…",
       "verifyingCuda": "正在验证 CUDA…",
-      "inProgress": "{noun}进行中"
+      "inProgress": "{noun}进行中",
+      "verifying": "正在验证安装…"
     },
     "meta": {
       "target": "目标：{dir}",

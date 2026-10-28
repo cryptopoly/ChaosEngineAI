@@ -5,7 +5,8 @@
     "send": "보내기",
     "stop": "중지",
     "clear": "지우기",
-    "sendDisabledTooltip": "메시지를 보내려면 먼저 모델을 로드하세요"
+    "sendDisabledTooltip": "메시지를 보내려면 먼저 모델을 로드하세요",
+    "sendLoadingTooltip": "모델 로드가 끝날 때까지 기다리세요"
   },
   "thinkingMode": {
     "label": "사고",
@@ -196,7 +197,8 @@
       "cancel": "취소",
       "usePromptInNewChallenge": "새 챌린지에서 프롬프트 사용",
       "runChallenge": "챌린지 실행",
-      "runNewChallenge": "새 챌린지 실행"
+      "runNewChallenge": "새 챌린지 실행",
+      "browsePrompts": "프롬프트 라이브러리"
     },
     "status": {
       "generating": "생성 중...",
@@ -230,6 +232,17 @@
       "titleForSlot": "{slot} 선택",
       "confirm": "모델 사용",
       "confirmForSlot": "{slot}에 사용"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "전체"
+      },
+      "title": "프롬프트 라이브러리",
+      "subtitle": "준비된 챌린지를 고르거나, 창을 닫고 직접 작성하세요.",
+      "searchPlaceholder": "프롬프트 검색 (이름, 메커닉, 키워드)...",
+      "resultCount": "{count}개 표시됨",
+      "empty": "검색과 일치하는 프롬프트가 없습니다.",
+      "close": "취소"
     }
   },
   "samplerPanel": {
@@ -246,7 +259,9 @@
     "revertTooltip": "세션 기본값으로 되돌리기",
     "dialogAriaLabel": "KV 캐시 전략",
     "headingTitle": "다음 턴의 KV 캐시",
-    "reloadNote": "전환 시 필요하면 런타임이 다시 로드됩니다."
+    "reloadNote": "전환 시 필요하면 런타임이 다시 로드됩니다.",
+    "memorySaverTitle": "KV 캐시를 줄여 긴 채팅이 더 적은 메모리에 들어가도록 합니다. 생성 속도는 네이티브보다 느립니다.",
+    "memorySaver": "메모리 절약"
   },
   "citations": {
     "sourcesLabel": "출처:",
@@ -287,19 +302,19 @@
     "compareButton": "비교"
   },
   "voice": {
-    "heardNothing": null,
-    "installToDictate": null,
-    "stopDictation": null,
-    "transcribing": null,
-    "startDictation": null,
-    "installToRead": null,
-    "stopReading": null,
-    "readAloud": null,
-    "dismiss": null,
-    "resume": null,
-    "pause": null,
-    "stop": null,
-    "preparing": null
+    "heardNothing": "음성이 감지되지 않았습니다. 마이크에 더 가까이 대고 다시 시도하세요.",
+    "installToDictate": "음성 입력에는 음성 팩이 필요합니다. 클릭하여 설치하세요.",
+    "stopDictation": "중지하고 받아쓰기 (Esc로 취소)",
+    "transcribing": "받아쓰는 중…",
+    "startDictation": "음성 입력 (클릭하거나 길게 눌러 말하기; Ctrl/Cmd+Shift+M)",
+    "installToRead": "소리 내어 읽으려면 음성 팩이 필요합니다. 클릭하여 설치하세요.",
+    "stopReading": "읽기 중지",
+    "readAloud": "소리 내어 읽기",
+    "dismiss": "닫기",
+    "resume": "재개",
+    "pause": "일시 중지",
+    "stop": "중지",
+    "preparing": "음성을 준비하는 중…"
   },
   "voiceCall": {
     "starting": "마이크를 시작하는 중…",
@@ -321,5 +336,12 @@
     "end": "통화 종료",
     "meta": "음성: {voice}",
     "headphones": "끼어들기에는 헤드폰이 가장 좋습니다"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 ChaosEngineAI 채팅에 오신 것을 환영합니다",
+    "welcomeBody": "시작하려면 둘러보기에서 채팅 모델을 선택하세요. 처음에는 작은 Qwen3 또는 Llama 3 모델을 추천합니다. 1~2분이면 다운로드되고 어떤 노트북에서도 실행됩니다.",
+    "browseDiscover": "둘러보기 열기",
+    "noModelLoaded": "채팅하려면 먼저 모델을 로드해야 합니다. 라이브러리에서 모델을 선택해 메모리에 로드하세요.",
+    "loadModel": "모델 로드"
   }
 }

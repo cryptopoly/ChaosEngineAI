@@ -41,6 +41,14 @@
       "failed": "Image generation failed",
       "imagesReady": "Images ready",
       "imageReady": "Image ready"
+    },
+    "mflux": {
+      "outdated": "The mflux engine installed here ({installed}) is older than this app expects ({required}), so newer models such as FLUX 3 and Qwen-Image-2.1 Turbo will not run. Updating reinstalls it in its own environment.",
+      "notInstalled": "This model runs on the mflux MLX engine, which is not installed yet. It installs into its own environment (about 1.3 GB) and does not change the app's packages.",
+      "installing": "Installing…",
+      "retry": "Retry install",
+      "update": "Update mflux engine",
+      "install": "Install mflux engine"
     }
   },
   "video": {
@@ -533,7 +541,7 @@
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > Models.",
+      "needsPack": "Voice runs on this computer and needs the voice pack (about 2 GB). Install it once from Voice > My Models.",
       "openModels": "Open Voice Models"
     },
     "savedToLibrary": "Saved to Library",
@@ -595,6 +603,25 @@
       "loading": "Loading…",
       "noMatch": "Nothing matches.",
       "empty": "Nothing here yet. Transcripts made in Voice Studio are kept here, and so is speech you save."
+    },
+    "languages": {
+      "auto": "Detect automatically"
+    },
+    "lane": {
+      "mlx": "Apple Silicon: Parakeet and Whisper on MLX, Kokoro voices",
+      "cuda": "NVIDIA GPU: Whisper on CUDA, Kokoro voices",
+      "nvidia": "Whisper (CUDA libraries are added by the install), Kokoro voices",
+      "cpu": "Whisper on the CPU, Kokoro voices"
+    },
+    "micError": {
+      "blockedMac": "Microphone access is blocked. Allow ChaosEngineAI in System Settings > Privacy & Security > Microphone, then try again.",
+      "blockedWindows": "Microphone access is blocked. Allow desktop apps to use the microphone in Settings > Privacy & security > Microphone, then try again.",
+      "blocked": "Microphone access is blocked. Check your desktop's privacy settings and that no other app holds the microphone.",
+      "notFound": "No microphone was found. Connect one and try again.",
+      "inUse": "The microphone is in use by another app or could not be opened.",
+      "unsupported": "This window cannot use the microphone (no media device support).",
+      "generic": "Could not open the microphone."
     }
-  }
+  },
+  "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that."
 }

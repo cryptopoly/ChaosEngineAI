@@ -44,5 +44,35 @@
     "subtitle": "對 sidecar、執行階段與伺服器通道的可搜尋檢視。",
     "filterPlaceholder": "篩選記錄",
     "emptyFiltered": "沒有記錄行符合目前的篩選條件。"
+  },
+  "accelerators": {
+    "title": "加速器",
+    "subtitle": "影像、影片和聊天推論的選用加速元件，以及 Windows WSL 橋接。"
+  },
+  "diskUsage": {
+    "title": "磁碟用量",
+    "subtitle": "查看哪些模型 repo 佔用了空間，方便你決定要刪除什麼。",
+    "topTitle": "前 20 個模型 repo",
+    "topHint": "走訪每個已啟用的模型目錄，列出磁碟上最大的 repo。blob 位元組只計算一次（Hugging Face 的 snapshots/ 是指向 blobs/ 的符號連結，單純的掃描器會重複計算）。",
+    "scanning": "正在掃描…",
+    "rescan": "重新掃描",
+    "scan": "掃描磁碟用量",
+    "total": "所有已啟用目錄的總計：",
+    "shown": "顯示 {repos} 個 repo / 已掃描 {dirs} 個根目錄",
+    "freed": "自掃描以來已釋放 {gb} GB",
+    "colRepo": "Repo",
+    "colSize": "大小",
+    "colSource": "來源",
+    "colPath": "路徑",
+    "unknownSize": "大小未知",
+    "deleteConfirm": "永久刪除 {name}（{size}）？\n\n這會將它從磁碟上移除，且無法復原。",
+    "collapse": "摺疊 {name}",
+    "expand": "展開 {name}",
+    "sharedTitle": "共用的 Hugging Face 儲存區：許多 repo 都連結到這裡",
+    "shared": "共用",
+    "deleting": "正在刪除…",
+    "delete": "刪除",
+    "reading": "正在讀取…",
+    "empty": "空"
   }
 }

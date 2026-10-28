@@ -45,7 +45,12 @@
       "system": "Sistema",
       "empty": "No se detectaron procesos LLM locales activos.",
       "memoryGb": "{value} GB",
-      "cpuPercent": "{value}%"
+      "cpuPercent": "{value}%",
+      "stopIdleHint": "Descarga los modelos en reserva y detiene todos los procesos de modelo que no sirven al modelo cargado.",
+      "stopIdle": "Detener inactivos",
+      "stopHint": "No sirve al modelo cargado. Deténlo para liberar su memoria.",
+      "stopConfirm": "¿Detener este proceso y liberar su memoria?",
+      "stop": "Detener"
     }
   },
   "hardwareFit": {

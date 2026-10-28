@@ -44,5 +44,35 @@
     "subtitle": "サイドカー、ランタイム、サーバーチャネルを横断する検索可能なビュー。",
     "filterPlaceholder": "ログを絞り込む",
     "emptyFiltered": "現在のフィルターに一致するログ行はありません。"
+  },
+  "accelerators": {
+    "title": "アクセラレータ",
+    "subtitle": "画像・動画・チャット推論向けのオプションの高速化機能と、Windows の WSL ブリッジ。"
+  },
+  "diskUsage": {
+    "title": "ディスク使用量",
+    "subtitle": "どのモデルリポジトリが容量を使っているかを確認して、削除の判断に役立てられます。",
+    "topTitle": "上位 20 のモデルリポジトリ",
+    "topHint": "有効なすべてのモデルディレクトリを走査し、ディスク上で最も大きいリポジトリを一覧表示します。blob のバイト数は一度だけ数えます（Hugging Face の snapshots/ は blobs/ へのシンボリックリンクのため、単純なスキャナーでは二重にカウントされます）。",
+    "scanning": "スキャン中…",
+    "rescan": "再スキャン",
+    "scan": "ディスク使用量をスキャン",
+    "total": "有効なすべてのディレクトリの合計:",
+    "shown": "{repos} 件のリポジトリを表示 / {dirs} 個のルートディレクトリをスキャン済み",
+    "freed": "スキャン以降 {gb} GB を解放",
+    "colRepo": "リポジトリ",
+    "colSize": "サイズ",
+    "colSource": "ソース",
+    "colPath": "パス",
+    "unknownSize": "サイズ不明",
+    "deleteConfirm": "{name}（{size}）を完全に削除しますか？\n\nディスクから削除され、元に戻せません。",
+    "collapse": "{name} を折りたたむ",
+    "expand": "{name} を展開",
+    "sharedTitle": "共有の Hugging Face ストア: 多くのリポジトリがここにリンクしています",
+    "shared": "共有",
+    "deleting": "削除中…",
+    "delete": "削除",
+    "reading": "読み取り中…",
+    "empty": "空"
   }
 }

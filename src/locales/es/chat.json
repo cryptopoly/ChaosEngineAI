@@ -5,7 +5,8 @@
     "send": "Enviar",
     "stop": "Detener",
     "clear": "Limpiar",
-    "sendDisabledTooltip": "Carga primero un modelo para enviar mensajes"
+    "sendDisabledTooltip": "Carga primero un modelo para enviar mensajes",
+    "sendLoadingTooltip": "Espera a que el modelo termine de cargar"
   },
   "thinkingMode": {
     "label": "Razonamiento",
@@ -196,7 +197,8 @@
       "cancel": "Cancelar",
       "usePromptInNewChallenge": "Usar prompt en nuevo reto",
       "runChallenge": "Ejecutar reto",
-      "runNewChallenge": "Ejecutar nuevo reto"
+      "runNewChallenge": "Ejecutar nuevo reto",
+      "browsePrompts": "Biblioteca de prompts"
     },
     "status": {
       "generating": "Generando...",
@@ -230,6 +232,17 @@
       "titleForSlot": "Seleccionar {slot}",
       "confirm": "Usar modelo",
       "confirmForSlot": "Usar para {slot}"
+    },
+    "promptLibrary": {
+      "tabs": {
+        "all": "Todos"
+      },
+      "title": "Biblioteca de prompts",
+      "subtitle": "Elige un reto ya preparado, o cierra para escribir el tuyo.",
+      "searchPlaceholder": "Buscar prompts (nombre, mecánica, palabra clave)...",
+      "resultCount": "{count} mostrados",
+      "empty": "Ningún prompt coincide con tu búsqueda.",
+      "close": "Cancelar"
     }
   },
   "samplerPanel": {
@@ -246,7 +259,9 @@
     "revertTooltip": "Volver al valor por defecto de la sesión",
     "dialogAriaLabel": "Estrategia de caché KV",
     "headingTitle": "Caché KV para el siguiente turno",
-    "reloadNote": "Al cambiar se recarga el runtime si es necesario."
+    "reloadNote": "Al cambiar se recarga el runtime si es necesario.",
+    "memorySaverTitle": "Reduce la caché KV para que las conversaciones largas quepan en menos memoria. La generación es más lenta que con Nativo.",
+    "memorySaver": "ahorro de memoria"
   },
   "citations": {
     "sourcesLabel": "Fuentes:",
@@ -287,19 +302,19 @@
     "compareButton": "Comparar"
   },
   "voice": {
-    "heardNothing": null,
-    "installToDictate": null,
-    "stopDictation": null,
-    "transcribing": null,
-    "startDictation": null,
-    "installToRead": null,
-    "stopReading": null,
-    "readAloud": null,
-    "dismiss": null,
-    "resume": null,
-    "pause": null,
-    "stop": null,
-    "preparing": null
+    "heardNothing": "No se oyó nada. Inténtalo de nuevo más cerca del micrófono.",
+    "installToDictate": "La entrada de voz necesita el paquete de voz. Haz clic para instalarlo.",
+    "stopDictation": "Detener y transcribir (Esc cancela)",
+    "transcribing": "Transcribiendo…",
+    "startDictation": "Dictar (haz clic, o mantén pulsado para hablar; Ctrl/Cmd+Shift+M)",
+    "installToRead": "Leer en voz alta necesita el paquete de voz. Haz clic para instalarlo.",
+    "stopReading": "Detener la lectura",
+    "readAloud": "Leer en voz alta",
+    "dismiss": "Cerrar",
+    "resume": "Reanudar",
+    "pause": "Pausa",
+    "stop": "Detener",
+    "preparing": "Preparando la voz…"
   },
   "voiceCall": {
     "starting": "Iniciando el micrófono…",
@@ -321,5 +336,12 @@
     "end": "Colgar",
     "meta": "Voz: {voice}",
     "headphones": "Con auriculares es más fácil interrumpir"
+  },
+  "emptyBanner": {
+    "welcomeTitle": "👋 Te damos la bienvenida al chat de ChaosEngineAI",
+    "welcomeBody": "Elige un modelo de chat en Descubrir para empezar. Para la primera vez recomendamos una variante pequeña de Qwen3 o Llama 3: se descarga en uno o dos minutos y funciona en cualquier portátil.",
+    "browseDiscover": "Explorar Descubrir",
+    "noModelLoaded": "Hay que cargar un modelo antes de poder chatear. Elige uno de tu biblioteca para cargarlo en memoria.",
+    "loadModel": "Cargar modelo"
   }
 }

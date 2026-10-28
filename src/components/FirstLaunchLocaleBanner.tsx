@@ -101,22 +101,23 @@ export function FirstLaunchLocaleBanner({
       className="locale-banner"
       role="dialog"
       aria-live="polite"
-      aria-label="Language preference"
+      aria-label={t("localeBanner.ariaLabel", { defaultValue: "Language preference" })}
     >
       <div className="locale-banner__copy">
-        <strong>{`Detected ${endonym}.`}</strong>
+        <strong>{t("localeBanner.detected", { endonym, defaultValue: "Detected {endonym}." })}</strong>
         <span>
-          Switch the app to {endonym}? You can change this any time in Settings → Language.
+          {t("localeBanner.prompt", {
+            endonym,
+            defaultValue: "Switch the app to {endonym}? You can change this any time in Settings → Language.",
+          })}
         </span>
       </div>
       <div className="locale-banner__actions">
         <button type="button" className="primary-button" onClick={handleSwitch}>
-          {`Switch to ${endonym}`}
+          {t("localeBanner.switch", { endonym, defaultValue: "Switch to {endonym}" })}
         </button>
         <button type="button" className="ghost-button" onClick={handleKeepEnglish}>
-          {t("status.success") /* placeholder to ensure ns loaded; replaced inline below */}
-          {/* eslint-disable-next-line react/jsx-no-literals */}
-          Keep English
+          {t("localeBanner.keep", { defaultValue: "Keep English" })}
         </button>
       </div>
     </div>

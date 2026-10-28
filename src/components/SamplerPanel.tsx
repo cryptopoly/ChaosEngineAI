@@ -29,6 +29,7 @@ interface NumericInputProps {
 }
 
 function NumericInput({ label, hint, value, min, max, step, defaultLabel, onChange, disabled }: NumericInputProps) {
+  const { t } = useTranslation("chat");
   const isOverridden = value != null;
   return (
     <div className="sampler-row">
@@ -62,9 +63,9 @@ function NumericInput({ label, hint, value, min, max, step, defaultLabel, onChan
             className="sampler-row__reset"
             onClick={() => onChange(null)}
             disabled={disabled}
-            title="Use backend default"
+            title={t("samplerPanel.useBackendDefault", { defaultValue: "Use backend default" })}
           >
-            Reset
+            {t("samplerPanel.reset", { defaultValue: "Reset" })}
           </button>
         ) : null}
       </div>
@@ -104,11 +105,11 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
     try {
       const parsed = JSON.parse(schemaText);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return "Schema must be a JSON object";
+        return t("samplerPanel.schemaNotObject", { defaultValue: "Schema must be a JSON object" });
       }
       return null;
     } catch (err) {
-      return err instanceof Error ? err.message : "Invalid JSON";
+      return err instanceof Error ? err.message : t("samplerPanel.invalidJson", { defaultValue: "Invalid JSON" });
     }
   })();
 
@@ -152,62 +153,62 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
           </div>
           <NumericInput
             label="top_p"
-            hint="Nucleus cutoff (lower = focused)"
+            hint={t("samplerPanel.hints.topP", { defaultValue: "Nucleus cutoff (lower = focused)" })}
             value={overrides.topP}
             min={0}
             max={1}
             step={0.01}
-            defaultLabel="default"
+            defaultLabel={t("samplerPanel.placeholderDefault", { defaultValue: "default" })}
             disabled={disabled}
             onChange={(v) => patch("topP", v)}
           />
           <NumericInput
             label="top_k"
-            hint="Keep N most-likely tokens (0 = disabled)"
+            hint={t("samplerPanel.hints.topK", { defaultValue: "Keep N most-likely tokens (0 = disabled)" })}
             value={overrides.topK}
             min={0}
             max={200}
             step={1}
-            defaultLabel="default"
+            defaultLabel={t("samplerPanel.placeholderDefault", { defaultValue: "default" })}
             disabled={disabled}
             onChange={(v) => patch("topK", v == null ? null : Math.round(v))}
           />
           <NumericInput
             label="min_p"
-            hint="Minimum probability cutoff"
+            hint={t("samplerPanel.hints.minP", { defaultValue: "Minimum probability cutoff" })}
             value={overrides.minP}
             min={0}
             max={1}
             step={0.01}
-            defaultLabel="default"
+            defaultLabel={t("samplerPanel.placeholderDefault", { defaultValue: "default" })}
             disabled={disabled}
             onChange={(v) => patch("minP", v)}
           />
           <NumericInput
             label="repeat_penalty"
-            hint="1.0 = none; >1 = penalise repeats"
+            hint={t("samplerPanel.hints.repeatPenalty", { defaultValue: "1.0 = none; >1 = penalise repeats" })}
             value={overrides.repeatPenalty}
             min={0}
             max={2}
             step={0.01}
-            defaultLabel="default"
+            defaultLabel={t("samplerPanel.placeholderDefault", { defaultValue: "default" })}
             disabled={disabled}
             onChange={(v) => patch("repeatPenalty", v)}
           />
           <NumericInput
             label="xtc_probability"
-            hint="XTC: chance to drop top tokens for variety (0 = off)"
+            hint={t("samplerPanel.hints.xtcProbability", { defaultValue: "XTC: chance to drop top tokens for variety (0 = off)" })}
             value={overrides.xtcProbability}
             min={0}
             max={1}
             step={0.05}
-            defaultLabel="off"
+            defaultLabel={t("samplerPanel.placeholderOff", { defaultValue: "off" })}
             disabled={disabled}
             onChange={(v) => patch("xtcProbability", v)}
           />
           <NumericInput
             label="xtc_threshold"
-            hint="XTC: only fires when the top token prob is at least this"
+            hint={t("samplerPanel.hints.xtcThreshold", { defaultValue: "XTC: only fires when the top token prob is at least this" })}
             value={overrides.xtcThreshold}
             min={0}
             max={1}
@@ -218,30 +219,30 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
           />
           <NumericInput
             label="dry_multiplier"
-            hint="DRY anti-repetition strength (0 = off; llama.cpp only)"
+            hint={t("samplerPanel.hints.dryMultiplier", { defaultValue: "DRY anti-repetition strength (0 = off; llama.cpp only)" })}
             value={overrides.dryMultiplier}
             min={0}
             max={4}
             step={0.1}
-            defaultLabel="off"
+            defaultLabel={t("samplerPanel.placeholderOff", { defaultValue: "off" })}
             disabled={disabled}
             onChange={(v) => patch("dryMultiplier", v)}
           />
           <NumericInput
             label="seed"
-            hint="Deterministic decode (any non-negative int)"
+            hint={t("samplerPanel.hints.seed", { defaultValue: "Deterministic decode (any non-negative int)" })}
             value={overrides.seed}
             min={0}
             max={2 ** 31 - 1}
             step={1}
-            defaultLabel="random"
+            defaultLabel={t("samplerPanel.placeholderRandom", { defaultValue: "random" })}
             disabled={disabled}
             onChange={(v) => patch("seed", v == null ? null : Math.round(v))}
           />
           <div className="sampler-row sampler-row--mirostat">
             <div className="sampler-row__label">
               <strong>mirostat</strong>
-              <small>Adaptive sampling target entropy</small>
+              <small>{t("samplerPanel.mirostatHint", { defaultValue: "Adaptive sampling target entropy" })}</small>
             </div>
             <div className="sampler-row__input">
               <select
@@ -260,8 +261,8 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
                   }
                 }}
               >
-                <option value="">default</option>
-                <option value="0">off</option>
+                <option value="">{t("samplerPanel.placeholderDefault", { defaultValue: "default" })}</option>
+                <option value="0">{t("samplerPanel.placeholderOff", { defaultValue: "off" })}</option>
                 <option value="1">v1</option>
                 <option value="2">v2</option>
               </select>
@@ -271,7 +272,7 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
             <>
               <NumericInput
                 label="mirostat_tau"
-                hint="Target entropy"
+                hint={t("samplerPanel.hints.mirostatTau", { defaultValue: "Target entropy" })}
                 value={overrides.mirostatTau}
                 min={0}
                 max={10}
@@ -282,7 +283,7 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
               />
               <NumericInput
                 label="mirostat_eta"
-                hint="Learning rate"
+                hint={t("samplerPanel.hints.mirostatEta", { defaultValue: "Learning rate" })}
                 value={overrides.mirostatEta}
                 min={0}
                 max={1}
@@ -295,8 +296,8 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
           ) : null}
           <div className="sampler-row sampler-row--schema">
             <div className="sampler-row__label">
-              <strong>JSON schema</strong>
-              <small>Constrained output (llama.cpp only)</small>
+              <strong>{t("samplerPanel.jsonSchema", { defaultValue: "JSON schema" })}</strong>
+              <small>{t("samplerPanel.jsonSchemaHint", { defaultValue: "Constrained output (llama.cpp only)" })}</small>
             </div>
             <textarea
               className="text-input sampler-row__schema"
@@ -313,13 +314,13 @@ export function SamplerPanel({ overrides, onChange, disabled }: SamplerPanelProp
             {schemaError ? (
               <small className="sampler-row__error">{schemaError}</small>
             ) : schemaText.trim() ? (
-              <small className="sampler-row__ok">Schema parsed; will constrain next response.</small>
+              <small className="sampler-row__ok">{t("samplerPanel.schemaOk", { defaultValue: "Schema parsed; will constrain next response." })}</small>
             ) : null}
           </div>
           <p className="sampler-panel__hint">
-            Per-thread overrides. llama.cpp applies all; mlx-lm uses what it
-            supports (top_p / top_k / min_p) and ignores the rest. Empty
-            field = use the backend default.
+            {t("samplerPanel.panelHint", {
+              defaultValue: "Per-thread overrides. llama.cpp applies all; mlx-lm uses what it supports (top_p / top_k / min_p) and ignores the rest. Empty field = use the backend default.",
+            })}
           </p>
         </div>
       ) : null}

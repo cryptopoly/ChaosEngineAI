@@ -130,7 +130,7 @@ export function Sidebar({
         </span>
       </div>
 
-      <nav className="nav-list" aria-label="Primary">
+      <nav className="nav-list" aria-label={t("sidebar.primaryNavAriaLabel", { defaultValue: "Primary" })}>
         {items.map((item) => {
           if (item.kind === "tab") {
             const Icon = standaloneTabIcon[item.tab.id];

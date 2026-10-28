@@ -40,7 +40,28 @@
       "cancelled": "Génération d'image annulée",
       "failed": "Échec de la génération d'image",
       "imagesReady": "Images prêtes",
-      "imageReady": "Image prête"
+      "imageReady": "Image prête",
+      "cancelledBody": "Vous avez annulé cette génération. Aucune image n'a été enregistrée.",
+      "modelStillLoaded": "Le modèle est toujours chargé — la prochaine génération démarrera sans attente de démarrage à froid.",
+      "savedToGallery": "Enregistré dans la galerie",
+      "phaseLoading": "Chargement du modèle en mémoire",
+      "phaseEncoding": "Encodage de l'invite",
+      "phaseDiffusing": "Diffusion de {count, plural, one {# image} other {# images}}",
+      "phaseDecoding": "Décodage des pixels",
+      "phaseSaving": "Enregistrement dans la galerie de sorties",
+      "errorHint": "Ajustez l'invite ou les paramètres d'exécution, puis réessayez. La galerie conserve les sorties réussies précédentes.",
+      "settings": "Paramètres",
+      "stepsCount": "{count, plural, one {# étape} other {# étapes}}",
+      "seedValue": "Graine {seed}",
+      "generatedCount": "{count} images générées lors de cette exécution. Cliquez sur une miniature pour examiner un autre résultat.",
+      "useSameSettings": "Réutiliser les mêmes paramètres",
+      "varySeed": "Varier la graine",
+      "open": "Ouvrir",
+      "reveal": "Afficher",
+      "delete": "Supprimer",
+      "cancelGeneration": "Annuler la génération",
+      "close": "Fermer",
+      "done": "Terminé"
     },
     "mflux": {
       "outdated": "Le moteur mflux installé ici ({installed}) est plus ancien que ce que l'application attend ({required}) ; les modèles plus récents comme FLUX 3 et Qwen-Image-2.1 Turbo ne fonctionneront donc pas. La mise à jour le réinstalle dans son propre environnement.",
@@ -71,7 +92,30 @@
       "generating": "Génération de la vidéo",
       "cancelled": "Génération vidéo annulée",
       "failed": "Échec de la génération vidéo",
-      "ready": "Vidéo prête"
+      "ready": "Vidéo prête",
+      "cancelledBody": "Vous avez annulé cette génération. Aucun clip n'a été enregistré.",
+      "modelStillLoaded": "Le modèle est toujours chargé — la prochaine génération démarrera sans attente de démarrage à froid.",
+      "savedToGallery": "Enregistré dans la galerie",
+      "loadError": "Impossible de charger la vidéo.",
+      "phaseLoading": "Chargement du modèle en mémoire",
+      "phaseEncoding": "Encodage de l'invite",
+      "phaseDiffusing": "Diffusion de {count, plural, one {# image} other {# images}}",
+      "phaseDiffusingFrames": "Diffusion des images",
+      "phaseEncodingMp4": "Encodage du mp4",
+      "phaseSaving": "Enregistrement dans la galerie",
+      "errorHint": "Ajustez l'invite, la résolution ou le nombre d'images, puis réessayez. La galerie conserve les clips réussis précédents.",
+      "loadingClip": "Chargement du clip...",
+      "framesCount": "{count, plural, one {# image} other {# images}}",
+      "clipLength": "clip de {seconds} s",
+      "stepsCount": "{count, plural, one {# étape} other {# étapes}}",
+      "seedValue": "Graine {seed}",
+      "renderTime": "rendu en {seconds} s",
+      "openGallery": "Ouvrir la galerie",
+      "revealFile": "Afficher le fichier",
+      "delete": "Supprimer",
+      "cancelGeneration": "Annuler la génération",
+      "close": "Fermer",
+      "done": "Terminé"
     }
   },
   "progress": {
@@ -90,7 +134,36 @@
     "error": "Erreur de l'enhancer : {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "Chargement du modèle en mémoire..."
+    "loadingModel": "Chargement du modèle en mémoire...",
+    "cudaTorchInstalled": "torch CUDA installé.",
+    "cudaTorchRestartHint": "Le backend en cours contient encore l'ancien torch dans son cache de modules. Redémarrez le backend pour activer le nouveau wheel{index}.",
+    "gpuNotActive": "Accélération GPU non active.",
+    "restarting": "Redémarrage...",
+    "restartBackend": "Redémarrer le backend",
+    "installingCudaTorch": "Installation de torch CUDA...",
+    "installCudaTorch": "Installer torch CUDA",
+    "realGenerationAvailable": "Génération locale réelle disponible",
+    "runtimeUnavailable": "Runtime indisponible",
+    "usingPlaceholder": "Sorties factices utilisées",
+    "cpuFallback": "Repli sur le CPU",
+    "engineChip": "Moteur : {engine}",
+    "deviceExpected": "{device} (attendu)",
+    "deviceChip": "Appareil : {device}",
+    "summaryLoaded": "{selected} est chargé et prêt à générer.",
+    "summarySwap": "{loaded} est chargé. Générer avec {selected} remplacera le pipeline.",
+    "summaryNotLoaded": "{selected} est installé localement mais pas encore chargé. La première génération sera plus longue pendant la préparation du pipeline de diffusion.",
+    "summaryNotInstalled": "{selected} n'est pas installé localement. Téléchargez-le depuis Découvrir pour activer la génération locale.",
+    "summaryOnDemand": "Le modèle sera chargé à la demande lorsque vous générerez.",
+    "preloadModel": "Précharger le modèle",
+    "unloadModel": "Décharger le modèle",
+    "unloadNamed": "Décharger {name}",
+    "gpuRuntimeInstalledIntro": "Runtime GPU installé dans",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "Le backend en cours conserve son ancien cache d'imports — cliquez sur Redémarrer le backend pour activer le nouveau runtime ; la génération d'images utilisera ensuite votre GPU.",
+    "restartBackendToActivate": "Redémarrer le backend pour activer",
+    "gpuRuntimeInstallPrompt": "Installez le runtime d'images GPU (torch + diffusers + accelerate + transformers, ~2,5 Go) pour activer la vraie génération locale. Il s'installe dans un dossier utilisateur persistant afin que les mises à jour de l'application ne l'effacent pas.",
+    "installing": "Installation...",
+    "installGpuRuntime": "Installer le runtime GPU"
   },
   "imageStudio": {
     "generateTitle": {
@@ -198,6 +271,98 @@
       "openGallery": "Ouvrir la galerie",
       "emptyHint": "Générez une invite pour créer le premier artefact d'image sauvegardé pour cette branche.",
       "footnote": "Affichage des {recent} images sauvegardées les plus récentes ici. Ouvrez la galerie d'images pour tout parcourir, filtrer par modèle et gérer les anciens runs."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "Carré"
+      },
+      "portrait": {
+        "label": "Portrait"
+      },
+      "landscape": {
+        "label": "Paysage"
+      },
+      "wide": {
+        "label": "Large"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "Rapide",
+        "hint": "Brouillons rapides"
+      },
+      "balanced": {
+        "label": "Équilibré",
+        "hint": "Meilleur choix par défaut"
+      },
+      "quality": {
+        "label": "Haute qualité",
+        "hint": "Passe finale plus lente"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "Par défaut du modèle",
+        "hint": "Ce qui est livré avec le modèle"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "Rapide, équilibré — 20-30 étapes"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "Plus lisse avec peu d'étapes"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "Légèrement plus bruité, créatif"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "Classique, fiable à partir de 25 étapes"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "Créatif, non déterministe"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "Déterministe, plus lent"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "Rapide avec peu d'étapes"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "Align Your Steps en 10 étapes · à choisir uniquement pour SD1.5"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "Align Your Steps en 10 étapes · à choisir uniquement pour SDXL"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "Désactivé",
+        "hint": "Pipeline d'origine — sans cache"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Accélération 1,5–2× sur les DiT · multiplateforme"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibré pour FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× par extrapolation polynomiale (natif dans diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — réutilise l'attention entre des étapes voisines"
+      }
     }
   },
   "videoStudio": {
@@ -354,7 +519,47 @@
       "reasonCaution": "Le modèle a besoin d'environ {model} Go résidents. Sur {platform} avec {total} Go au total, c'est au-dessus de la cible de confort conservatrice (environ {comfort} Go) mais en dessous de l'ensemble de travail estimé (environ {working} Go). La génération devrait tenir ; baissez les paramètres si elle devient instable."
     },
     "disabledHint": "Génération désactivée : {reason}",
-    "willLoadHint": "Le modèle sélectionné sera chargé en mémoire à la prochaine génération. Le premier chargement peut prendre une minute pour les variantes les plus grandes."
+    "willLoadHint": "Le modèle sélectionné sera chargé en mémoire à la prochaine génération. Le premier chargement peut prendre une minute pour les variantes les plus grandes.",
+    "cacheStrategies": {
+      "none": {
+        "label": "Désactivé",
+        "hint": "Pipeline d'origine — sans cache"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "Accélération 1,5–2× sur les DiT · multiplateforme"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibré pour FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2,4× par extrapolation polynomiale (natif dans diffusers 0.38)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — réutilise l'attention entre des étapes voisines"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "Brouillon",
+        "sub": "20 étapes"
+      },
+      "standard": {
+        "label": "Standard",
+        "sub": "30 étapes"
+      },
+      "high": {
+        "label": "Élevée",
+        "sub": "40 étapes"
+      },
+      "max": {
+        "label": "Max",
+        "sub": "50 étapes"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -623,5 +828,44 @@
       "generic": "Impossible d'ouvrir le micro."
     }
   },
-  "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère."
+  "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère.",
+  "mediaStudioBoosters": {
+    "title": "Boosters de performance",
+    "forModel": "pour {model}",
+    "selectedModelFallback": "le modèle sélectionné"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "Déplacer le torch existant vers le répertoire de rollback",
+      "install": "pip install torch (nouvelle version)",
+      "deps": "pip install torch (dépendances transitives)",
+      "constraint": "Épingler torch dans constraints.txt",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "Reconstruire le paquet dépendant de l'ABI",
+      "verify": "Vérifier torch.cuda.is_available() dans un sous-processus",
+      "cleanup": "Nettoyer les anciens répertoires de rollback",
+      "rollbackRestore": "Restaurer le torch précédent depuis le rollback",
+      "step": "étape"
+    },
+    "available": "Mise à niveau de torch disponible :",
+    "starting": "Démarrage…",
+    "upgrade": "Mettre à niveau torch",
+    "dismiss": "Fermer",
+    "willRebuild": "Reconstruira aussi {count, plural, one {# paquet dépendant de l'ABI} other {# paquets dépendants de l'ABI}}",
+    "abiExplainer": "Les changements de version {type} de torch cassent l'ABI C++ ; les wheels de ces paquets ne se chargeront donc pas tant qu'ils ne seront pas réinstallés avec le nouveau torch :",
+    "rollbackLead": "Si la vérification de la mise à niveau échoue, votre torch précédent",
+    "rollbackTail": "est automatiquement restauré depuis un répertoire de rollback voisin — aucun nouveau téléchargement nécessaire.",
+    "whatHappens": "Que se passe-t-il lors de la mise à niveau ?",
+    "patchBumpExplainer": "Les mises à jour de correctif gardent l'ABI C++ de torch stable ; seul le wheel de torch lui-même est donc réinstallé. Votre torch actuel est d'abord déplacé vers un répertoire de rollback voisin ; si le nouveau wheel échoue à la vérification CUDA, le précédent est restauré automatiquement. « Redémarrer le backend » active le nouveau wheel.",
+    "upgrading": "Mise à niveau de torch",
+    "complete": "Mise à niveau de torch terminée",
+    "failed": "Échec de la mise à niveau de torch",
+    "restarting": "Redémarrage…",
+    "restartToActivate": "Redémarrer le backend pour activer",
+    "rolledBack": "torch précédent restauré depuis le rollback — la génération continue sur la version précédente.",
+    "rollbackKeptLead": "Répertoire de rollback conservé dans",
+    "rollbackKeptTail": "pour une récupération manuelle.",
+    "close": "Fermer",
+    "installLog": "Journal d'installation ({count, plural, one {# étape} other {# étapes}})"
+  }
 }

@@ -29,7 +29,14 @@
     "cancelled": "已取消",
     "complete": "已完成",
     "totalSize": "共 {size}",
-    "downloaded": "已下载 {downloaded} / 共 {total}"
+    "downloaded": "已下载 {downloaded} / 共 {total}",
+    "preparing": "正在准备下载...",
+    "pausedPercent": "已暂停 {percent}%",
+    "downloadingPercent": "下载中 {percent}%",
+    "pausedAtSize": "已暂停于 {size} GB",
+    "downloadingSize": "正在下载 {size} GB",
+    "sizeTotalGb": "共 {size} GB",
+    "sizeDownloadedGb": "已下载 {size} GB"
   },
   "details": {
     "loadModel": "加载模型",

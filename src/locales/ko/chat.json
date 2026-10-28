@@ -99,7 +99,15 @@
     "collapseChatList": "채팅 목록 접기",
     "searchThreadsPlaceholder": "스레드 검색...",
     "searchThreadsAriaLabel": "스레드 검색",
-    "clearSearch": "검색 지우기"
+    "clearSearch": "검색 지우기",
+    "noThreadsMatch": "\"{query}\"와(과) 일치하는 대화가 없습니다.",
+    "unpin": "고정 해제",
+    "pin": "고정",
+    "deleteChat": "채팅 삭제",
+    "forkedFrom": "다른 대화의 메시지 #{number}에서 분기됨",
+    "forkBadge": "⑂ 포크",
+    "modelReadyTooltip": "모델이 이미 로드되어 있어 이 채팅은 다시 로드할 필요 없이 즉시 응답합니다.",
+    "readyBadge": "준비됨"
   },
   "swapMenu": {
     "clearOverride": "재정의 지우기",
@@ -242,7 +250,36 @@
       "searchPlaceholder": "프롬프트 검색 (이름, 메커닉, 키워드)...",
       "resultCount": "{count}개 표시됨",
       "empty": "검색과 일치하는 프롬프트가 없습니다.",
-      "close": "취소"
+      "close": "취소",
+      "categories": {
+        "games": "게임",
+        "simulations": "시뮬레이션",
+        "tech-demos": "기술 데모",
+        "creative-tools": "창작 도구"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "미리보기 접기",
+      "expandPreview": "미리보기 펼치기",
+      "viewRender": "렌더링 보기",
+      "viewHtmlCode": "HTML 코드 보기",
+      "collapse": "접기",
+      "latest": "최신",
+      "changeModel": "모델 변경",
+      "continueHtml": "HTML 이어가기",
+      "repairHtml": "HTML 복구",
+      "retry": "재시도",
+      "fileDeleted": "파일 삭제됨",
+      "fileDeletedDetail": "{filename}이(가) 더 이상 이 챌린지 폴더에 없습니다.",
+      "savedFileFallback": "저장된 HTML 파일",
+      "noHtmlOutput": "HTML 출력 없음",
+      "noRenderablePage": "이 모델은 렌더링 가능한 HTML 페이지 없이 종료되었습니다.",
+      "noStandaloneDocument": "저장된 출력에 독립형 HTML 문서가 없습니다.",
+      "previewTitle": "{label} HTML 미리보기",
+      "loadingModel": "모델 로드 중...",
+      "waitingFor": "{label}이(가) 끝나기를 기다리는 중...",
+      "waiting": "대기 중...",
+      "waitingToStart": "시작 대기 중..."
     }
   },
   "samplerPanel": {
@@ -252,7 +289,31 @@
     "dialogAriaLabel": "샘플러 재정의",
     "headerTitle": "샘플러 재정의",
     "resetAll": "모두 재설정",
-    "resetAllTooltip": "모두 백엔드 기본값으로 재설정"
+    "resetAllTooltip": "모두 백엔드 기본값으로 재설정",
+    "useBackendDefault": "백엔드 기본값 사용",
+    "reset": "초기화",
+    "schemaNotObject": "스키마는 JSON 객체여야 합니다",
+    "invalidJson": "잘못된 JSON",
+    "hints": {
+      "topP": "Nucleus 컷오프 (낮을수록 집중됨)",
+      "topK": "확률이 가장 높은 N개 토큰 유지 (0 = 사용 안 함)",
+      "minP": "최소 확률 컷오프",
+      "repeatPenalty": "1.0 = 없음; >1 = 반복에 페널티",
+      "xtcProbability": "XTC: 다양성을 위해 상위 토큰을 제외할 확률 (0 = 끔)",
+      "xtcThreshold": "XTC: 최상위 토큰 확률이 이 값 이상일 때만 작동",
+      "dryMultiplier": "DRY 반복 방지 강도 (0 = 끔, llama.cpp 전용)",
+      "seed": "결정적 디코딩 (0 이상의 정수)",
+      "mirostatTau": "목표 엔트로피",
+      "mirostatEta": "학습률"
+    },
+    "placeholderDefault": "기본값",
+    "placeholderOff": "끔",
+    "placeholderRandom": "랜덤",
+    "mirostatHint": "적응형 샘플링의 목표 엔트로피",
+    "jsonSchema": "JSON 스키마",
+    "jsonSchemaHint": "출력 제약 (llama.cpp 전용)",
+    "schemaOk": "스키마를 파싱했습니다. 다음 응답에 적용됩니다.",
+    "panelHint": "대화별 재정의입니다. llama.cpp는 모두 적용하고, mlx-lm은 지원하는 항목(top_p / top_k / min_p)만 사용하며 나머지는 무시합니다. 비어 있는 필드는 백엔드 기본값을 사용합니다."
   },
   "kvChip": {
     "clearOverride": "KV 재정의 지우기",
@@ -342,6 +403,13 @@
     "welcomeBody": "시작하려면 둘러보기에서 채팅 모델을 선택하세요. 처음에는 작은 Qwen3 또는 Llama 3 모델을 추천합니다. 1~2분이면 다운로드되고 어떤 노트북에서도 실행됩니다.",
     "browseDiscover": "둘러보기 열기",
     "noModelLoaded": "채팅하려면 먼저 모델을 로드해야 합니다. 라이브러리에서 모델을 선택해 메모리에 로드하세요.",
-    "loadModel": "모델 로드"
+    "loadModel": "모델 로드",
+    "getStartedAriaLabel": "채팅 시작하기",
+    "loadModelAriaLabel": "채팅할 모델 로드"
+  },
+  "codeBlock": {
+    "copied": "복사됨",
+    "copyCode": "코드 복사",
+    "copy": "복사"
   }
 }

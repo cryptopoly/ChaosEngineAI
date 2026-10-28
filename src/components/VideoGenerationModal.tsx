@@ -94,7 +94,7 @@ export function VideoGenerationModal({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setVideoLoadError(err instanceof Error ? err.message : "Could not load video.");
+        setVideoLoadError(err instanceof Error ? err.message : t("video.modal.loadError", { defaultValue: "Could not load video." }));
       });
     return () => {
       cancelled = true;
@@ -128,16 +128,21 @@ export function VideoGenerationModal({
   const decodeEstimate = Math.max(15, Math.round(numFrames * 0.4));
   const videoPhases: LiveProgressPhase[] = [
     ...(runInfo?.needsPipelineLoad
-      ? [{ id: "loading", label: "Loading model into memory", estimatedSeconds: 60 }]
+      ? [{ id: "loading", label: t("video.modal.phaseLoading", { defaultValue: "Loading model into memory" }), estimatedSeconds: 60 }]
       : []),
-    { id: "encoding", label: "Encoding prompt", estimatedSeconds: 8 },
+    { id: "encoding", label: t("video.modal.phaseEncoding", { defaultValue: "Encoding prompt" }), estimatedSeconds: 8 },
     {
       id: "diffusing",
-      label: numFrames > 0 ? `Diffusing ${numFrames} frames` : "Diffusing frames",
+      label: numFrames > 0
+        ? t("video.modal.phaseDiffusing", {
+          count: numFrames,
+          defaultValue: "Diffusing {count, plural, one {# frame} other {# frames}}",
+        })
+        : t("video.modal.phaseDiffusingFrames", { defaultValue: "Diffusing frames" }),
       estimatedSeconds: diffuseEstimate,
     },
-    { id: "decoding", label: "Encoding mp4", estimatedSeconds: decodeEstimate },
-    { id: "saving", label: "Saving to gallery", estimatedSeconds: 4 },
+    { id: "decoding", label: t("video.modal.phaseEncodingMp4", { defaultValue: "Encoding mp4" }), estimatedSeconds: decodeEstimate },
+    { id: "saving", label: t("video.modal.phaseSaving", { defaultValue: "Saving to gallery" }), estimatedSeconds: 4 },
   ];
 
   const artifact = videoGenerationArtifact;
@@ -180,9 +185,11 @@ export function VideoGenerationModal({
             />
           ) : videoGenerationCancelled ? (
             <div className="callout">
-              <p>You cancelled this generation. No clip was saved.</p>
+              <p>{t("video.modal.cancelledBody", { defaultValue: "You cancelled this generation. No clip was saved." })}</p>
               <p className="muted-text">
-                The model is still loaded — next Generate will start without the cold-start wait.
+                {t("video.modal.modelStillLoaded", {
+                  defaultValue: "The model is still loaded — next Generate will start without the cold-start wait.",
+                })}
               </p>
             </div>
           ) : videoGenerationError ? (
@@ -190,7 +197,9 @@ export function VideoGenerationModal({
               <h3>{t("video.modal.failed", { defaultValue: "Video generation failed" })}</h3>
               <p>{videoGenerationError}</p>
               <p className="muted-text">
-                Adjust the prompt, resolution, or frame count, then try again. The gallery keeps any earlier successful clips.
+                {t("video.modal.errorHint", {
+                  defaultValue: "Adjust the prompt, resolution, or frame count, then try again. The gallery keeps any earlier successful clips.",
+                })}
               </p>
             </div>
           ) : artifact ? (
@@ -212,13 +221,13 @@ export function VideoGenerationModal({
                     className="image-generation-preview"
                     style={{ display: "grid", placeItems: "center", minHeight: 220 }}
                   >
-                    <span className="muted-text">{videoLoadError ?? "Loading clip..."}</span>
+                    <span className="muted-text">{videoLoadError ?? t("video.modal.loadingClip", { defaultValue: "Loading clip..." })}</span>
                   </div>
                 )}
               </div>
               <div className="image-generation-info">
                 <div className="chip-row">
-                  <span className="badge success">Saved To Gallery</span>
+                  <span className="badge success">{t("video.modal.savedToGallery", { defaultValue: "Saved To Gallery" })}</span>
                   {artifact.runtimeLabel ? <span className="badge subtle">{artifact.runtimeLabel}</span> : null}
                 </div>
                 <div>
@@ -228,13 +237,13 @@ export function VideoGenerationModal({
                 </div>
                 <div className="image-output-meta">
                   <span>{artifact.width} x {artifact.height}</span>
-                  <span>{artifact.numFrames} frames</span>
+                  <span>{t("video.modal.framesCount", { count: artifact.numFrames, defaultValue: "{count, plural, one {# frame} other {# frames}}" })}</span>
                   <span>{artifact.fps} fps</span>
-                  <span>{number(clipSeconds)}s clip</span>
-                  <span>{artifact.steps} steps</span>
+                  <span>{t("video.modal.clipLength", { seconds: number(clipSeconds), defaultValue: "{seconds}s clip" })}</span>
+                  <span>{t("video.modal.stepsCount", { count: artifact.steps, defaultValue: "{count, plural, one {# step} other {# steps}}" })}</span>
                   <span>CFG {artifact.guidance}</span>
-                  <span>Seed {artifact.seed}</span>
-                  <span>{number(artifact.durationSeconds)}s render</span>
+                  <span>{t("video.modal.seedValue", { seed: artifact.seed, defaultValue: "Seed {seed}" })}</span>
+                  <span>{t("video.modal.renderTime", { seconds: number(artifact.durationSeconds), defaultValue: "{seconds}s render" })}</span>
                 </div>
                 <div className="button-row">
                   <button
@@ -245,7 +254,7 @@ export function VideoGenerationModal({
                       onActiveTabChange("video-gallery");
                     }}
                   >
-                    Open Gallery
+                    {t("video.modal.openGallery", { defaultValue: "Open Gallery" })}
                   </button>
                   {artifact.videoPath ? (
                     <button
@@ -253,7 +262,7 @@ export function VideoGenerationModal({
                       type="button"
                       onClick={() => onRevealPath(artifact.videoPath as string)}
                     >
-                      Reveal File
+                      {t("video.modal.revealFile", { defaultValue: "Reveal File" })}
                     </button>
                   ) : null}
                   <button
@@ -261,7 +270,7 @@ export function VideoGenerationModal({
                     type="button"
                     onClick={() => onDeleteArtifact(artifact.artifactId)}
                   >
-                    Delete
+                    {t("video.modal.delete", { defaultValue: "Delete" })}
                   </button>
                 </div>
               </div>
@@ -276,7 +285,9 @@ export function VideoGenerationModal({
               onClick={onCancelGeneration}
               disabled={videoGenerationCancelling}
             >
-              {videoGenerationCancelling ? "Cancelling..." : "Cancel generation"}
+              {videoGenerationCancelling
+                ? t("video.modal.cancelling", { defaultValue: "Cancelling..." })
+                : t("video.modal.cancelGeneration", { defaultValue: "Cancel generation" })}
             </button>
           ) : (
             <button
@@ -284,11 +295,9 @@ export function VideoGenerationModal({
               type="button"
               onClick={() => onShowVideoGenerationModalChange(false)}
             >
-              {videoGenerationError
-                ? "Close"
-                : videoGenerationCancelled
-                  ? "Close"
-                  : "Done"}
+              {videoGenerationError || videoGenerationCancelled
+                ? t("video.modal.close", { defaultValue: "Close" })
+                : t("video.modal.done", { defaultValue: "Done" })}
             </button>
           )}
         </div>

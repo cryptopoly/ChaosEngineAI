@@ -29,7 +29,14 @@
     "cancelled": "Abgebrochen",
     "complete": "Abgeschlossen",
     "totalSize": "{size} gesamt",
-    "downloaded": "{downloaded} von {total}"
+    "downloaded": "{downloaded} von {total}",
+    "preparing": "Download wird vorbereitet...",
+    "pausedPercent": "Pausiert {percent}%",
+    "downloadingPercent": "Wird heruntergeladen {percent}%",
+    "pausedAtSize": "Pausiert bei {size} GB",
+    "downloadingSize": "{size} GB werden heruntergeladen",
+    "sizeTotalGb": "{size} GB gesamt",
+    "sizeDownloadedGb": "{size} GB heruntergeladen"
   },
   "details": {
     "loadModel": "Modell laden",

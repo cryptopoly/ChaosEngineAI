@@ -40,7 +40,28 @@
       "cancelled": "影像生成已取消",
       "failed": "影像生成失敗",
       "imagesReady": "影像已就緒",
-      "imageReady": "影像已就緒"
+      "imageReady": "影像已就緒",
+      "cancelledBody": "你已取消這次生成，未儲存任何影像。",
+      "modelStillLoaded": "模型仍已載入 — 下次點擊「生成」時無需等待冷啟動。",
+      "savedToGallery": "已儲存到圖庫",
+      "phaseLoading": "正在將模型載入記憶體",
+      "phaseEncoding": "正在編碼提示詞",
+      "phaseDiffusing": "正在擴散 {count, plural, other {# 張影像}}",
+      "phaseDecoding": "正在解碼像素",
+      "phaseSaving": "正在儲存到輸出圖庫",
+      "errorHint": "請調整提示詞或執行階段設定後再試一次。圖庫會保留先前所有成功的輸出。",
+      "settings": "設定",
+      "stepsCount": "{count, plural, other {# 步}}",
+      "seedValue": "種子 {seed}",
+      "generatedCount": "本次執行產生了 {count} 張影像。點擊縮圖可查看其他結果。",
+      "useSameSettings": "使用相同設定",
+      "varySeed": "變更種子",
+      "open": "開啟",
+      "reveal": "顯示位置",
+      "delete": "刪除",
+      "cancelGeneration": "取消生成",
+      "close": "關閉",
+      "done": "完成"
     },
     "mflux": {
       "outdated": "此處安裝的 mflux 引擎（{installed}）比本應用程式所需的版本（{required}）更舊，因此 FLUX 3、Qwen-Image-2.1 Turbo 等較新的模型將無法執行。更新會在其獨立環境中重新安裝它。",
@@ -71,7 +92,30 @@
       "generating": "正在生成影片",
       "cancelled": "影片生成已取消",
       "failed": "影片生成失敗",
-      "ready": "影片已就緒"
+      "ready": "影片已就緒",
+      "cancelledBody": "你已取消這次生成，未儲存任何片段。",
+      "modelStillLoaded": "模型仍已載入 — 下次點擊「生成」時無需等待冷啟動。",
+      "savedToGallery": "已儲存到圖庫",
+      "loadError": "無法載入影片。",
+      "phaseLoading": "正在將模型載入記憶體",
+      "phaseEncoding": "正在編碼提示詞",
+      "phaseDiffusing": "正在擴散 {count, plural, other {# 幀}}",
+      "phaseDiffusingFrames": "正在擴散幀",
+      "phaseEncodingMp4": "正在編碼 mp4",
+      "phaseSaving": "正在儲存到圖庫",
+      "errorHint": "請調整提示詞、解析度或幀數後再試一次。圖庫會保留先前所有成功的片段。",
+      "loadingClip": "正在載入片段...",
+      "framesCount": "{count, plural, other {# 幀}}",
+      "clipLength": "{seconds} 秒片段",
+      "stepsCount": "{count, plural, other {# 步}}",
+      "seedValue": "種子 {seed}",
+      "renderTime": "渲染耗時 {seconds} 秒",
+      "openGallery": "開啟圖庫",
+      "revealFile": "顯示檔案位置",
+      "delete": "刪除",
+      "cancelGeneration": "取消生成",
+      "close": "關閉",
+      "done": "完成"
     }
   },
   "progress": {
@@ -90,7 +134,36 @@
     "error": "增強器錯誤:{message}"
   },
   "runtimeBanner": {
-    "loadingModel": "正在將模型載入記憶體..."
+    "loadingModel": "正在將模型載入記憶體...",
+    "cudaTorchInstalled": "CUDA torch 已安裝。",
+    "cudaTorchRestartHint": "執行中的後端仍在模組快取中保留舊版 torch。請重新啟動後端以啟用新的 wheel{index}。",
+    "gpuNotActive": "GPU 加速未啟用。",
+    "restarting": "正在重新啟動...",
+    "restartBackend": "重新啟動後端",
+    "installingCudaTorch": "正在安裝 CUDA torch...",
+    "installCudaTorch": "安裝 CUDA torch",
+    "realGenerationAvailable": "可使用真實的本地生成",
+    "runtimeUnavailable": "執行階段無法使用",
+    "usingPlaceholder": "正在使用預留位置輸出",
+    "cpuFallback": "CPU 備援",
+    "engineChip": "引擎: {engine}",
+    "deviceExpected": "{device} (預期)",
+    "deviceChip": "裝置: {device}",
+    "summaryLoaded": "{selected} 已載入，可以開始生成。",
+    "summarySwap": "已載入 {loaded}。使用 {selected} 生成會切換管線。",
+    "summaryNotLoaded": "{selected} 已安裝在本地，但尚未載入。首次生成會花較長時間，因為擴散管線需要預熱。",
+    "summaryNotInstalled": "{selected} 尚未安裝到本地。請從「探索」下載它以啟用本地生成。",
+    "summaryOnDemand": "生成時會依需求載入模型。",
+    "preloadModel": "預先載入模型",
+    "unloadModel": "卸載模型",
+    "unloadNamed": "卸載 {name}",
+    "gpuRuntimeInstalledIntro": "GPU 執行階段已安裝至",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "執行中的後端仍保留舊的 import 快取 — 請點擊「重新啟動後端」以啟用新的執行階段，接著影像生成就會使用你的 GPU。",
+    "restartBackendToActivate": "重新啟動後端以啟用",
+    "gpuRuntimeInstallPrompt": "安裝 GPU 影像執行階段（torch + diffusers + accelerate + transformers，約 2.5 GB），即可啟用真實的本地生成。它會寫入持久性的使用者本機資料夾，因此應用程式更新不會將其清除。",
+    "installing": "安裝中...",
+    "installGpuRuntime": "安裝 GPU 執行階段"
   },
   "imageStudio": {
     "generateTitle": {
@@ -198,6 +271,98 @@
       "openGallery": "開啟圖庫",
       "emptyHint": "輸入提示詞以為此分支建立第一個已儲存的影像產出。",
       "footnote": "此處顯示最新 {recent} 張已儲存影像。開啟影像圖庫以瀏覽全部、依模型篩選,並管理較舊的執行紀錄。"
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "正方形"
+      },
+      "portrait": {
+        "label": "直向"
+      },
+      "landscape": {
+        "label": "橫向"
+      },
+      "wide": {
+        "label": "寬螢幕"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "快速",
+        "hint": "快速產出草稿"
+      },
+      "balanced": {
+        "label": "平衡",
+        "hint": "最佳預設選擇"
+      },
+      "quality": {
+        "label": "高品質",
+        "hint": "最終處理較慢"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "模型預設",
+        "hint": "沿用模型內建的設定"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "快速、均衡 — 20-30 步"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "低步數下更平滑"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "雜訊稍多，更具創意"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "經典，25 步以上時穩定可靠"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "具創意，非確定性"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "確定性，較慢"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "低步數下速度快"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10 步 Align Your Steps · 僅適用於 SD1.5"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10 步 Align Your Steps · 僅適用於 SDXL"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "關閉",
+        "hint": "原始管線 — 不使用快取"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "在 DiT 上加速 1.5–2 倍 · 跨平台"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "已針對 FLUX / Hunyuan / LTX / CogVideoX / Mochi 校準"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "透過多項式外插達成約 2.4 倍（diffusers 0.38 原生）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 在相鄰步驟間重複使用注意力"
+      }
     }
   },
   "videoStudio": {
@@ -354,7 +519,47 @@
       "reasonCaution": "模型需要約 {model} GB 常駐。在 {platform} 上,總共 {total} GB,這已超過保守的舒適目標 (約 {comfort} GB),但仍低於估計的工作集 (約 {working} GB)。生成應該可以容納;若變得不穩定請降低設定。"
     },
     "disabledHint": "生成已停用:{reason}",
-    "willLoadHint": "選定的模型將在下次生成時載入記憶體。較大的變體首次載入可能需要一分鐘。"
+    "willLoadHint": "選定的模型將在下次生成時載入記憶體。較大的變體首次載入可能需要一分鐘。",
+    "cacheStrategies": {
+      "none": {
+        "label": "關閉",
+        "hint": "原始管線 — 不使用快取"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "在 DiT 上加速 1.5–2 倍 · 跨平台"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "已針對 FLUX / Hunyuan / LTX / CogVideoX / Mochi 校準"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "透過多項式外插達成約 2.4 倍（diffusers 0.38 原生）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 在相鄰步驟間重複使用注意力"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "草稿",
+        "sub": "20 步"
+      },
+      "standard": {
+        "label": "標準",
+        "sub": "30 步"
+      },
+      "high": {
+        "label": "高",
+        "sub": "40 步"
+      },
+      "max": {
+        "label": "最高",
+        "sub": "50 步"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -623,5 +828,44 @@
       "generic": "無法開啟麥克風。"
     }
   },
-  "residentChatModelNote": "已載入的聊天模型佔用了其中約 {gb} GB 記憶體；卸載它即可釋放這部分記憶體。"
+  "residentChatModelNote": "已載入的聊天模型佔用了其中約 {gb} GB 記憶體；卸載它即可釋放這部分記憶體。",
+  "mediaStudioBoosters": {
+    "title": "效能增強",
+    "forModel": "適用於 {model}",
+    "selectedModelFallback": "所選模型"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "將現有 torch 移至復原用目錄",
+      "install": "pip install torch（新版本）",
+      "deps": "pip install torch（遞移相依套件）",
+      "constraint": "在 constraints.txt 中固定 torch",
+      "rebuildPackage": "pip install {package}（--force-reinstall）",
+      "rebuild": "重新建置相依 ABI 的套件",
+      "verify": "在子處理程序中驗證 torch.cuda.is_available()",
+      "cleanup": "清理舊的復原用目錄",
+      "rollbackRestore": "從復原用目錄還原先前的 torch",
+      "step": "步驟"
+    },
+    "available": "有可用的 Torch 升級：",
+    "starting": "正在開始…",
+    "upgrade": "升級 torch",
+    "dismiss": "關閉",
+    "willRebuild": "還會重新建置 {count, plural, other {# 個相依 ABI 的套件}}",
+    "abiExplainer": "Torch 的 {type} 升級會破壞 C++ ABI，因此這些套件的 wheel 在針對新 torch 重新安裝之前無法載入：",
+    "rollbackLead": "若升級未通過驗證，先前的 torch",
+    "rollbackTail": "會自動從同層級的復原用目錄還原 — 不需要重新下載。",
+    "whatHappens": "升級時會發生什麼事？",
+    "patchBumpExplainer": "修補版升級不會改變 torch 的 C++ ABI，因此只會重新安裝 torch 的 wheel 本身。目前的 torch 會先被移到同層級的復原用目錄；若新的 wheel 未通過 CUDA 驗證，會自動還原先前的版本。重新啟動後端即可啟用新的 wheel。",
+    "upgrading": "正在升級 torch",
+    "complete": "Torch 升級完成",
+    "failed": "Torch 升級失敗",
+    "restarting": "正在重新啟動…",
+    "restartToActivate": "重新啟動後端以啟用",
+    "rolledBack": "已從復原用目錄還原先前的 torch — 生成將繼續使用先前的版本。",
+    "rollbackKeptLead": "復原用目錄保留在",
+    "rollbackKeptTail": "以便手動復原。",
+    "close": "關閉",
+    "installLog": "安裝記錄（{count, plural, other {# 步}}）"
+  }
 }

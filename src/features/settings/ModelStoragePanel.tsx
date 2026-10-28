@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import {
@@ -32,18 +33,18 @@ function fmtBytes(value: number | null | undefined): string {
   return `${size.toFixed(unit === 0 ? 0 : 2)} ${units[unit]}`;
 }
 
-function fmtPhase(phase: ModelMoveJobState["phase"]): string {
+function fmtPhase(phase: ModelMoveJobState["phase"], t: TFunction<"common">): string {
   switch (phase) {
     case "preflight":
-      return "Checking sizes + free space";
+      return t("modelStoragePanel.phase.preflight", { defaultValue: "Checking sizes + free space" });
     case "copying":
-      return "Copying";
+      return t("modelStoragePanel.phase.copying", { defaultValue: "Copying" });
     case "cleanup":
-      return "Removing old copy";
+      return t("modelStoragePanel.phase.cleanup", { defaultValue: "Removing old copy" });
     case "done":
-      return "Done";
+      return t("modelStoragePanel.phase.done", { defaultValue: "Done" });
     case "error":
-      return "Failed";
+      return t("modelStoragePanel.phase.error", { defaultValue: "Failed" });
     default:
       return "";
   }
@@ -149,8 +150,8 @@ export function ModelStoragePanel({
       const result = await updateHfCachePath(draftPath.trim());
       setSavedMessage(
         result.restartRequired
-          ? "Path saved. Restart the backend for new downloads to land on the new drive."
-          : "Path saved.",
+          ? t("modelStoragePanel.pathSavedRestart", { defaultValue: "Path saved. Restart the backend for new downloads to land on the new drive." })
+          : t("modelStoragePanel.pathSaved", { defaultValue: "Path saved." }),
       );
       await refresh();
     } catch (err) {
@@ -170,8 +171,8 @@ export function ModelStoragePanel({
       const result = await updateHfCachePath("");
       setSavedMessage(
         result.restartRequired
-          ? "Reset to default. Restart the backend to use the default location."
-          : "Reset to default.",
+          ? t("modelStoragePanel.resetDoneRestart", { defaultValue: "Reset to default. Restart the backend to use the default location." })
+          : t("modelStoragePanel.resetDone", { defaultValue: "Reset to default." }),
       );
       await refresh();
     } catch (err) {
@@ -185,14 +186,17 @@ export function ModelStoragePanel({
     if (!snapshot) return;
     const target = (draftPath || snapshot.configuredPath || "").trim();
     if (!target) {
-      setError("Set a destination path first (type or Browse above).");
+      setError(t("modelStoragePanel.destinationRequired", { defaultValue: "Set a destination path first (type or Browse above)." }));
       return;
     }
     const bytes = snapshot.currentHubSizeBytes;
     const confirmed = window.confirm(
-      `Move ${fmtBytes(bytes)} of models from ${snapshot.effectiveHubPath} to ${target}?\n\n`
-        + "The source tree will be deleted after a successful copy. On a spinning HDD this can take 15-45 min for 100 GB.\n\n"
-        + "Close any running generations before starting.",
+      t("modelStoragePanel.moveConfirm", {
+        size: fmtBytes(bytes),
+        from: snapshot.effectiveHubPath,
+        to: target,
+        defaultValue: "Move {size} of models from {from} to {to}?\n\nThe source tree will be deleted after a successful copy. On a spinning HDD this can take 15-45 min for 100 GB.\n\nClose any running generations before starting.",
+      }),
     );
     if (!confirmed) return;
     setStartingMove(true);
@@ -233,12 +237,14 @@ export function ModelStoragePanel({
       })}
     >
       {!snapshot && loading ? (
-        <p className="muted-text">Reading storage info...</p>
+        <p className="muted-text">{t("modelStoragePanel.reading", { defaultValue: "Reading storage info..." })}</p>
       ) : null}
 
       {!snapshot && !loading && !error ? (
         <p className="muted-text">
-          {backendOnline ? "Loading storage info..." : "Backend offline — start the sidecar to configure storage."}
+          {backendOnline
+            ? t("modelStoragePanel.loading", { defaultValue: "Loading storage info..." })
+            : t("modelStoragePanel.backendOffline", { defaultValue: "Backend offline — start the sidecar to configure storage." })}
         </p>
       ) : null}
 
@@ -249,7 +255,7 @@ export function ModelStoragePanel({
       {snapshot ? (
         <div className="control-stack">
           <div className="field-label-row">
-            <label className="field-label">Current cache location</label>
+            <label className="field-label">{t("modelStoragePanel.currentLocation", { defaultValue: "Current cache location" })}</label>
           </div>
           <div className="directory-add-row">
             <input
@@ -258,13 +264,13 @@ export function ModelStoragePanel({
               readOnly
               value={snapshot.effectiveHubPath}
             />
-            <span className="badge muted">{fmtBytes(snapshot.currentHubSizeBytes)} in cache</span>
-            <span className="badge muted">{fmtBytes(snapshot.currentFreeBytes)} free</span>
+            <span className="badge muted">{t("modelStoragePanel.inCache", { size: fmtBytes(snapshot.currentHubSizeBytes), defaultValue: "{size} in cache" })}</span>
+            <span className="badge muted">{t("modelStoragePanel.free", { size: fmtBytes(snapshot.currentFreeBytes), defaultValue: "{size} free" })}</span>
           </div>
 
           <div className="field-label-row" style={{ marginTop: 14 }}>
-            <label className="field-label">Override path (requires restart)</label>
-            {!configuredPath ? <span className="badge muted">using default</span> : null}
+            <label className="field-label">{t("modelStoragePanel.overridePath", { defaultValue: "Override path (requires restart)" })}</label>
+            {!configuredPath ? <span className="badge muted">{t("modelStoragePanel.usingDefault", { defaultValue: "using default" })}</span> : null}
           </div>
           <div className="directory-add-row">
             <input
@@ -281,7 +287,7 @@ export function ModelStoragePanel({
               onClick={() => void handleBrowse()}
               disabled={saving || moveActive}
             >
-              Browse...
+              {t("modelStoragePanel.browse", { defaultValue: "Browse..." })}
             </button>
             <button
               className="primary-button"
@@ -289,7 +295,9 @@ export function ModelStoragePanel({
               onClick={() => void handleSavePath()}
               disabled={saving || moveActive || !pathDirty}
             >
-              {saving ? "Saving..." : "Save path"}
+              {saving
+                ? t("modelStoragePanel.saving", { defaultValue: "Saving..." })
+                : t("modelStoragePanel.savePath", { defaultValue: "Save path" })}
             </button>
             <button
               className="secondary-button"
@@ -297,7 +305,7 @@ export function ModelStoragePanel({
               onClick={() => void handleReset()}
               disabled={saving || moveActive || !configuredPath}
             >
-              Reset to default
+              {t("modelStoragePanel.resetToDefault", { defaultValue: "Reset to default" })}
             </button>
           </div>
 
@@ -312,7 +320,9 @@ export function ModelStoragePanel({
                 onClick={() => onRestartServer()}
                 disabled={Boolean(busyAction)}
               >
-                {busyAction === "Restarting server..." ? "Restarting..." : "Restart backend now"}
+                {busyAction === "Restarting server..."
+                  ? t("modelStoragePanel.restarting", { defaultValue: "Restarting..." })
+                  : t("modelStoragePanel.restartBackendNow", { defaultValue: "Restart backend now" })}
               </button>
             </div>
           ) : null}
@@ -320,9 +330,10 @@ export function ModelStoragePanel({
           {showMoveButton ? (
             <div style={{ marginTop: 14 }}>
               <p className="help-text" style={{ margin: "0 0 6px" }}>
-                You have {fmtBytes(snapshot.currentHubSizeBytes)} of models at the old location.
-                Move them so they keep working from the new path. On a spinning HDD, budget
-                ~1 minute per 6 GB.
+                {t("modelStoragePanel.moveHint", {
+                  size: fmtBytes(snapshot.currentHubSizeBytes),
+                  defaultValue: "You have {size} of models at the old location. Move them so they keep working from the new path. On a spinning HDD, budget ~1 minute per 6 GB.",
+                })}
               </p>
               <div className="button-row">
                 <button
@@ -331,7 +342,9 @@ export function ModelStoragePanel({
                   onClick={() => void handleMove()}
                   disabled={startingMove || !backendOnline}
                 >
-                  {startingMove ? "Starting..." : "Move existing models to new path"}
+                  {startingMove
+                    ? t("modelStoragePanel.starting", { defaultValue: "Starting..." })
+                    : t("modelStoragePanel.moveModels", { defaultValue: "Move existing models to new path" })}
                 </button>
               </div>
             </div>
@@ -340,7 +353,7 @@ export function ModelStoragePanel({
           {moveJob && (moveActive || moveDone || moveError) ? (
             <div className="callout image-callout" style={{ marginTop: 14 }}>
               <div className="field-label-row">
-                <strong>{fmtPhase(moveJob.phase)}</strong>
+                <strong>{fmtPhase(moveJob.phase, t)}</strong>
                 {moveActive ? (
                   <span className="badge muted">{moveJob.percent.toFixed(1)}%</span>
                 ) : null}
@@ -356,7 +369,11 @@ export function ModelStoragePanel({
                   </div>
                   <p className="muted-text" style={{ fontSize: 12 }}>
                     {fmtBytes(moveJob.bytesCopied)} / {fmtBytes(moveJob.bytesTotal)} ·
-                    {" "}{moveJob.filesCopied.toLocaleString()} / {moveJob.filesTotal.toLocaleString()} files
+                    {" "}{t("modelStoragePanel.filesProgress", {
+                      copied: moveJob.filesCopied.toLocaleString(),
+                      total: moveJob.filesTotal.toLocaleString(),
+                      defaultValue: "{copied} / {total} files",
+                    })}
                     {moveJob.currentEntry ? <> · <code>{moveJob.currentEntry}</code></> : null}
                   </p>
                 </>
@@ -369,7 +386,9 @@ export function ModelStoragePanel({
                     onClick={() => onRestartServer()}
                     disabled={Boolean(busyAction)}
                   >
-                    {busyAction === "Restarting server..." ? "Restarting..." : "Restart backend"}
+                    {busyAction === "Restarting server..."
+                      ? t("modelStoragePanel.restarting", { defaultValue: "Restarting..." })
+                      : t("modelStoragePanel.restartBackend", { defaultValue: "Restart backend" })}
                   </button>
                 </div>
               ) : null}

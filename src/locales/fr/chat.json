@@ -99,7 +99,15 @@
     "collapseChatList": "Replier la liste des discussions",
     "searchThreadsPlaceholder": "Rechercher des fils...",
     "searchThreadsAriaLabel": "Rechercher des fils",
-    "clearSearch": "Effacer la recherche"
+    "clearSearch": "Effacer la recherche",
+    "noThreadsMatch": "Aucun fil ne correspond à « {query} ».",
+    "unpin": "Désépingler",
+    "pin": "Épingler",
+    "deleteChat": "Supprimer la discussion",
+    "forkedFrom": "Dérivé d'un autre fil au message #{number}",
+    "forkBadge": "⑂ dérivé",
+    "modelReadyTooltip": "Le modèle est déjà chargé — cette discussion répondra instantanément, sans temps de rechargement.",
+    "readyBadge": "prêt"
   },
   "swapMenu": {
     "clearOverride": "Effacer la surcharge",
@@ -242,7 +250,36 @@
       "searchPlaceholder": "Rechercher des invites (nom, mécanique, mot-clé)...",
       "resultCount": "{count} affichées",
       "empty": "Aucune invite ne correspond à votre recherche.",
-      "close": "Annuler"
+      "close": "Annuler",
+      "categories": {
+        "games": "Jeux",
+        "simulations": "Simulations",
+        "tech-demos": "Démos techniques",
+        "creative-tools": "Outils créatifs"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "Replier l'aperçu",
+      "expandPreview": "Déplier l'aperçu",
+      "viewRender": "Voir le rendu",
+      "viewHtmlCode": "Voir le code HTML",
+      "collapse": "Replier",
+      "latest": "Dernier",
+      "changeModel": "Changer de modèle",
+      "continueHtml": "Continuer le HTML",
+      "repairHtml": "Réparer le HTML",
+      "retry": "Réessayer",
+      "fileDeleted": "Fichier supprimé",
+      "fileDeletedDetail": "{filename} n'est plus dans le dossier de ce défi.",
+      "savedFileFallback": "Le fichier HTML enregistré",
+      "noHtmlOutput": "Aucune sortie HTML",
+      "noRenderablePage": "Ce modèle a terminé sans produire de page HTML affichable.",
+      "noStandaloneDocument": "La sortie enregistrée ne contenait pas de document HTML autonome.",
+      "previewTitle": "Aperçu HTML de {label}",
+      "loadingModel": "Chargement du modèle...",
+      "waitingFor": "En attente de la fin de {label}...",
+      "waiting": "En attente...",
+      "waitingToStart": "En attente de démarrage..."
     }
   },
   "samplerPanel": {
@@ -252,7 +289,31 @@
     "dialogAriaLabel": "Surcharges d'échantillonneur",
     "headerTitle": "Surcharges d'échantillonneur",
     "resetAll": "Tout réinitialiser",
-    "resetAllTooltip": "Tout réinitialiser aux valeurs par défaut du backend"
+    "resetAllTooltip": "Tout réinitialiser aux valeurs par défaut du backend",
+    "useBackendDefault": "Utiliser la valeur par défaut du backend",
+    "reset": "Réinitialiser",
+    "schemaNotObject": "Le schéma doit être un objet JSON",
+    "invalidJson": "JSON invalide",
+    "hints": {
+      "topP": "Seuil du noyau (plus bas = plus ciblé)",
+      "topK": "Conserver les N tokens les plus probables (0 = désactivé)",
+      "minP": "Seuil de probabilité minimale",
+      "repeatPenalty": "1.0 = aucune ; >1 = pénalise les répétitions",
+      "xtcProbability": "XTC : probabilité d'écarter les meilleurs tokens pour plus de variété (0 = désactivé)",
+      "xtcThreshold": "XTC : ne se déclenche que si la probabilité du meilleur token atteint au moins cette valeur",
+      "dryMultiplier": "Force anti-répétition DRY (0 = désactivé ; llama.cpp uniquement)",
+      "seed": "Décodage déterministe (tout entier non négatif)",
+      "mirostatTau": "Entropie cible",
+      "mirostatEta": "Taux d'apprentissage"
+    },
+    "placeholderDefault": "par défaut",
+    "placeholderOff": "désactivé",
+    "placeholderRandom": "aléatoire",
+    "mirostatHint": "Entropie cible de l'échantillonnage adaptatif",
+    "jsonSchema": "Schéma JSON",
+    "jsonSchemaHint": "Sortie contrainte (llama.cpp uniquement)",
+    "schemaOk": "Schéma analysé ; contraindra la prochaine réponse.",
+    "panelHint": "Surcharges par fil. llama.cpp les applique toutes ; mlx-lm utilise celles qu'il prend en charge (top_p / top_k / min_p) et ignore le reste. Champ vide = valeur par défaut du backend."
   },
   "kvChip": {
     "clearOverride": "Effacer la surcharge KV",
@@ -342,6 +403,13 @@
     "welcomeBody": "Choisissez un modèle de chat dans Découvrir pour commencer. Nous recommandons une petite variante de Qwen3 ou de Llama 3 pour un premier essai : elle se télécharge en une à deux minutes et tourne sur n'importe quel ordinateur portable.",
     "browseDiscover": "Parcourir Découvrir",
     "noModelLoaded": "Un modèle doit être chargé avant de pouvoir discuter. Choisissez-en un dans votre bibliothèque pour le charger en mémoire.",
-    "loadModel": "Charger le modèle"
+    "loadModel": "Charger le modèle",
+    "getStartedAriaLabel": "Démarrer avec la discussion",
+    "loadModelAriaLabel": "Charger un modèle pour discuter"
+  },
+  "codeBlock": {
+    "copied": "Copié",
+    "copyCode": "Copier le code",
+    "copy": "Copier"
   }
 }

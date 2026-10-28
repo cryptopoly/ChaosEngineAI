@@ -1,4 +1,6 @@
+import i18next from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   checkTorchUpgradeAvailable,
@@ -56,6 +58,7 @@ export interface TorchUpgradePillProps {
 const POLL_INTERVAL_MS = 1500;
 
 export function TorchUpgradePill({ backendOnline, onRestartBackend, busy }: TorchUpgradePillProps) {
+  const { t } = useTranslation("studio");
   const [availability, setAvailability] = useState<TorchUpgradeAvailability | null>(null);
   const [job, setJob] = useState<TorchUpgradeJobState | null>(null);
   const [starting, setStarting] = useState(false);
@@ -185,7 +188,7 @@ export function TorchUpgradePill({ backendOnline, onRestartBackend, busy }: Torc
   return (
     <div className="torch-upgrade-pill torch-upgrade-pill-available">
       <div className="torch-upgrade-pill-summary">
-        <strong>Torch upgrade available:</strong>{" "}
+        <strong>{t("torchUpgradePill.available", { defaultValue: "Torch upgrade available:" })}</strong>{" "}
         <code>{availability.current}</code> → <code>{availability.latest}</code>{" "}
         <span className={`torch-upgrade-badge torch-upgrade-badge-${availability.upgradeType}`}>
           {availability.upgradeType}
@@ -198,26 +201,31 @@ export function TorchUpgradePill({ backendOnline, onRestartBackend, busy }: Torc
           onClick={handleUpgrade}
           disabled={starting}
         >
-          {starting ? "Starting…" : "Upgrade torch"}
+          {starting
+            ? t("torchUpgradePill.starting", { defaultValue: "Starting…" })
+            : t("torchUpgradePill.upgrade", { defaultValue: "Upgrade torch" })}
         </button>
         <button
           className="link-button"
           type="button"
           onClick={() => setHidden(true)}
         >
-          Dismiss
+          {t("torchUpgradePill.dismiss", { defaultValue: "Dismiss" })}
         </button>
       </div>
       {isMajorMinor && availability.rebuildPackages.length > 0 ? (
         <details className="torch-upgrade-pill-details">
           <summary>
-            Will also rebuild {availability.rebuildPackages.length}{" "}
-            ABI-dependent package{availability.rebuildPackages.length === 1 ? "" : "s"}
+            {t("torchUpgradePill.willRebuild", {
+              count: availability.rebuildPackages.length,
+              defaultValue: "Will also rebuild {count, plural, one {# ABI-dependent package} other {# ABI-dependent packages}}",
+            })}
           </summary>
           <p className="muted-text">
-            Torch {availability.upgradeType} bumps break the C++ ABI, so wheels
-            for these packages won't load until they're reinstalled against the
-            new torch:
+            {t("torchUpgradePill.abiExplainer", {
+              type: availability.upgradeType,
+              defaultValue: "Torch {type} bumps break the C++ ABI, so wheels for these packages won't load until they're reinstalled against the new torch:",
+            })}
           </p>
           <ul className="torch-upgrade-pill-pkg-list">
             {availability.rebuildPackages.map((pkg) => (
@@ -227,20 +235,22 @@ export function TorchUpgradePill({ backendOnline, onRestartBackend, busy }: Torc
             ))}
           </ul>
           <p className="muted-text">
-            If the upgrade fails verification, your previous torch{" "}
-            (<code>{availability.current}</code>) is automatically restored
-            from a sibling rollback directory — no re-download needed.
+            {t("torchUpgradePill.rollbackLead", {
+              defaultValue: "If the upgrade fails verification, your previous torch",
+            })}{" "}
+            (<code>{availability.current}</code>){" "}
+            {t("torchUpgradePill.rollbackTail", {
+              defaultValue: "is automatically restored from a sibling rollback directory — no re-download needed.",
+            })}
           </p>
         </details>
       ) : (
         <details className="torch-upgrade-pill-details">
-          <summary>What happens when I upgrade?</summary>
+          <summary>{t("torchUpgradePill.whatHappens", { defaultValue: "What happens when I upgrade?" })}</summary>
           <p className="muted-text">
-            Patch bumps keep the torch C++ ABI stable, so only the torch wheel
-            itself is reinstalled. Your current torch is moved to a sibling
-            rollback directory first; if the new wheel fails CUDA verification,
-            the previous one is restored automatically. Restart Backend
-            activates the new wheel.
+            {t("torchUpgradePill.patchBumpExplainer", {
+              defaultValue: "Patch bumps keep the torch C++ ABI stable, so only the torch wheel itself is reinstalled. Your current torch is moved to a sibling rollback directory first; if the new wheel fails CUDA verification, the previous one is restored automatically. Restart Backend activates the new wheel.",
+            })}
           </p>
         </details>
       )}
@@ -256,6 +266,7 @@ interface TorchUpgradeJobStatusProps {
 }
 
 function TorchUpgradeJobStatus({ job, onRestartBackend, onClose, restartBusy }: TorchUpgradeJobStatusProps) {
+  const { t } = useTranslation("studio");
   const inFlight = !job.done;
   const success = job.done && !job.error && job.cudaVerified === true;
   const failed = job.done && (job.error !== null || job.cudaVerified === false);
@@ -264,7 +275,11 @@ function TorchUpgradeJobStatus({ job, onRestartBackend, onClose, restartBusy }: 
     <>
       <div className="torch-upgrade-pill-summary">
         <strong>
-          {inFlight ? "Upgrading torch" : success ? "Torch upgrade complete" : "Torch upgrade failed"}
+          {inFlight
+            ? t("torchUpgradePill.upgrading", { defaultValue: "Upgrading torch" })
+            : success
+              ? t("torchUpgradePill.complete", { defaultValue: "Torch upgrade complete" })
+              : t("torchUpgradePill.failed", { defaultValue: "Torch upgrade failed" })}
         </strong>
         {job.currentVersion && job.targetVersion ? (
           <>
@@ -282,10 +297,12 @@ function TorchUpgradeJobStatus({ job, onRestartBackend, onClose, restartBusy }: 
             onClick={onRestartBackend}
             disabled={restartBusy}
           >
-            {restartBusy ? "Restarting…" : "Restart Backend to activate"}
+            {restartBusy
+              ? t("torchUpgradePill.restarting", { defaultValue: "Restarting…" })
+              : t("torchUpgradePill.restartToActivate", { defaultValue: "Restart Backend to activate" })}
           </button>
           <button className="link-button" type="button" onClick={onClose}>
-            Dismiss
+            {t("torchUpgradePill.dismiss", { defaultValue: "Dismiss" })}
           </button>
         </div>
       ) : null}
@@ -293,23 +310,29 @@ function TorchUpgradeJobStatus({ job, onRestartBackend, onClose, restartBusy }: 
         <div className="torch-upgrade-pill-actions">
           {job.rolledBack ? (
             <span className="muted-text">
-              Previous torch restored from rollback — generation continues on the prior version.
+              {t("torchUpgradePill.rolledBack", {
+                defaultValue: "Previous torch restored from rollback — generation continues on the prior version.",
+              })}
             </span>
           ) : job.rollbackPath ? (
             <span className="muted-text">
-              Rollback dir kept at <code>{job.rollbackPath}</code> for manual recovery.
+              {t("torchUpgradePill.rollbackKeptLead", { defaultValue: "Rollback dir kept at" })}{" "}
+              <code>{job.rollbackPath}</code>{" "}
+              {t("torchUpgradePill.rollbackKeptTail", { defaultValue: "for manual recovery." })}
             </span>
           ) : null}
           <button className="link-button" type="button" onClick={onClose}>
-            Close
+            {t("torchUpgradePill.close", { defaultValue: "Close" })}
           </button>
         </div>
       ) : null}
       {job.attempts.length > 0 ? (
         <details className="torch-upgrade-pill-details" open={failed}>
           <summary>
-            Install log ({job.attempts.length}{" "}
-            {job.attempts.length === 1 ? "step" : "steps"})
+            {t("torchUpgradePill.installLog", {
+              count: job.attempts.length,
+              defaultValue: "Install log ({count, plural, one {# step} other {# steps}})",
+            })}
           </summary>
           <pre className="torch-upgrade-pill-terminal">
             {job.attempts
@@ -336,22 +359,27 @@ function TorchUpgradeJobStatus({ job, onRestartBackend, onClose, restartBusy }: 
 function attemptLabel(attempt: TorchUpgradeJobState["attempts"][number]): string {
   switch (attempt.phase) {
     case "rollback-prepare":
-      return "Move existing torch to rollback dir";
+      return i18next.t("studio:torchUpgradePill.attempt.rollbackPrepare", { defaultValue: "Move existing torch to rollback dir" });
     case "install":
-      return "pip install torch (new version)";
+      return i18next.t("studio:torchUpgradePill.attempt.install", { defaultValue: "pip install torch (new version)" });
     case "deps":
-      return "pip install torch (transitive deps)";
+      return i18next.t("studio:torchUpgradePill.attempt.deps", { defaultValue: "pip install torch (transitive deps)" });
     case "constraint":
-      return "Pin torch in constraints.txt";
+      return i18next.t("studio:torchUpgradePill.attempt.constraint", { defaultValue: "Pin torch in constraints.txt" });
     case "rebuild":
-      return attempt.package ? `pip install ${attempt.package} (--force-reinstall)` : "Rebuild ABI-dependent package";
+      return attempt.package
+        ? i18next.t("studio:torchUpgradePill.attempt.rebuildPackage", {
+          package: attempt.package,
+          defaultValue: "pip install {package} (--force-reinstall)",
+        })
+        : i18next.t("studio:torchUpgradePill.attempt.rebuild", { defaultValue: "Rebuild ABI-dependent package" });
     case "verify":
-      return "Verify torch.cuda.is_available() in subprocess";
+      return i18next.t("studio:torchUpgradePill.attempt.verify", { defaultValue: "Verify torch.cuda.is_available() in subprocess" });
     case "cleanup":
-      return "Prune old rollback dirs";
+      return i18next.t("studio:torchUpgradePill.attempt.cleanup", { defaultValue: "Prune old rollback dirs" });
     case "rollback-restore":
-      return "Restore previous torch from rollback";
+      return i18next.t("studio:torchUpgradePill.attempt.rollbackRestore", { defaultValue: "Restore previous torch from rollback" });
     default:
-      return attempt.phase ?? "step";
+      return attempt.phase ?? i18next.t("studio:torchUpgradePill.attempt.step", { defaultValue: "step" });
   }
 }

@@ -41,7 +41,7 @@ export function ChatEmptyStateBanner({
 
   if (noChatModelsInstalled) {
     return (
-      <div className="chat-empty-banner" role="region" aria-label="Get started with chat">
+      <div className="chat-empty-banner" role="region" aria-label={t("emptyBanner.getStartedAriaLabel", { defaultValue: "Get started with chat" })}>
         <h3 className="chat-empty-banner-title">
           {t("emptyBanner.welcomeTitle", {
             defaultValue: "👋 Welcome to ChaosEngineAI Chat",
@@ -67,7 +67,7 @@ export function ChatEmptyStateBanner({
   }
 
   return (
-    <div className="chat-empty-banner" role="region" aria-label="Load a model to chat">
+    <div className="chat-empty-banner" role="region" aria-label={t("emptyBanner.loadModelAriaLabel", { defaultValue: "Load a model to chat" })}>
       <p className="chat-empty-banner-body">
         {t("emptyBanner.noModelLoaded", {
           defaultValue:

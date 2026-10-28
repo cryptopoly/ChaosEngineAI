@@ -29,7 +29,14 @@
     "cancelled": "Отменено",
     "complete": "Завершено",
     "totalSize": "Всего {size}",
-    "downloaded": "{downloaded} из {total}"
+    "downloaded": "{downloaded} из {total}",
+    "preparing": "Подготовка к скачиванию...",
+    "pausedPercent": "Пауза {percent}%",
+    "downloadingPercent": "Скачивание {percent}%",
+    "pausedAtSize": "Пауза на {size} ГБ",
+    "downloadingSize": "Скачивание: {size} ГБ",
+    "sizeTotalGb": "{size} ГБ всего",
+    "sizeDownloadedGb": "Скачано {size} ГБ"
   },
   "details": {
     "loadModel": "Загрузить модель",

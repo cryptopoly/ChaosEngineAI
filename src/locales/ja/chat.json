@@ -99,7 +99,15 @@
     "collapseChatList": "チャットリストを折りたたむ",
     "searchThreadsPlaceholder": "スレッドを検索...",
     "searchThreadsAriaLabel": "スレッドを検索",
-    "clearSearch": "検索をクリア"
+    "clearSearch": "検索をクリア",
+    "noThreadsMatch": "「{query}」に一致するスレッドはありません。",
+    "unpin": "ピン留めを解除",
+    "pin": "ピン留め",
+    "deleteChat": "チャットを削除",
+    "forkedFrom": "別のスレッドのメッセージ #{number} から分岐",
+    "forkBadge": "⑂ 分岐",
+    "modelReadyTooltip": "モデルは読み込み済みです — このチャットは再読み込みの待ち時間なしですぐに応答します。",
+    "readyBadge": "準備完了"
   },
   "swapMenu": {
     "clearOverride": "オーバーライドをクリア",
@@ -242,7 +250,36 @@
       "searchPlaceholder": "プロンプトを検索（名前、仕組み、キーワード）...",
       "resultCount": "{count} 件を表示",
       "empty": "検索に一致するプロンプトはありません。",
-      "close": "キャンセル"
+      "close": "キャンセル",
+      "categories": {
+        "games": "ゲーム",
+        "simulations": "シミュレーション",
+        "tech-demos": "技術デモ",
+        "creative-tools": "クリエイティブツール"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "プレビューを折りたたむ",
+      "expandPreview": "プレビューを展開",
+      "viewRender": "レンダリングを表示",
+      "viewHtmlCode": "HTML コードを表示",
+      "collapse": "折りたたむ",
+      "latest": "最新",
+      "changeModel": "モデルを変更",
+      "continueHtml": "HTML を継続",
+      "repairHtml": "HTML を修復",
+      "retry": "再試行",
+      "fileDeleted": "ファイルが削除されました",
+      "fileDeletedDetail": "{filename} はこのチャレンジフォルダに存在しません。",
+      "savedFileFallback": "保存された HTML ファイル",
+      "noHtmlOutput": "HTML 出力なし",
+      "noRenderablePage": "このモデルは、表示可能な HTML ページを生成せずに終了しました。",
+      "noStandaloneDocument": "保存された出力に、単独で完結する HTML ドキュメントが含まれていませんでした。",
+      "previewTitle": "{label} の HTML プレビュー",
+      "loadingModel": "モデルを読み込み中...",
+      "waitingFor": "{label} の完了を待っています...",
+      "waiting": "待機中...",
+      "waitingToStart": "開始を待っています..."
     }
   },
   "samplerPanel": {
@@ -252,7 +289,31 @@
     "dialogAriaLabel": "サンプラーオーバーライド",
     "headerTitle": "サンプラーオーバーライド",
     "resetAll": "すべてリセット",
-    "resetAllTooltip": "すべてバックエンドのデフォルトにリセット"
+    "resetAllTooltip": "すべてバックエンドのデフォルトにリセット",
+    "useBackendDefault": "バックエンドのデフォルトを使用",
+    "reset": "リセット",
+    "schemaNotObject": "スキーマは JSON オブジェクトである必要があります",
+    "invalidJson": "無効な JSON",
+    "hints": {
+      "topP": "核サンプリングのしきい値（低いほど集中的）",
+      "topK": "確率の高い上位 N 個のトークンを残す（0 = 無効）",
+      "minP": "最小確率のしきい値",
+      "repeatPenalty": "1.0 = なし、>1 = 繰り返しにペナルティ",
+      "xtcProbability": "XTC: 多様性のために上位トークンを除外する確率（0 = オフ）",
+      "xtcThreshold": "XTC: 最上位トークンの確率がこの値以上のときだけ作動",
+      "dryMultiplier": "DRY 繰り返し抑制の強さ（0 = オフ、llama.cpp のみ）",
+      "seed": "決定的デコード（0 以上の整数）",
+      "mirostatTau": "目標エントロピー",
+      "mirostatEta": "学習率"
+    },
+    "placeholderDefault": "デフォルト",
+    "placeholderOff": "オフ",
+    "placeholderRandom": "ランダム",
+    "mirostatHint": "適応的サンプリングの目標エントロピー",
+    "jsonSchema": "JSON スキーマ",
+    "jsonSchemaHint": "出力の制約（llama.cpp のみ）",
+    "schemaOk": "スキーマを解析しました。次の応答に適用されます。",
+    "panelHint": "スレッドごとの上書き設定です。llama.cpp はすべて適用し、mlx-lm は対応するもの（top_p / top_k / min_p）のみ使用して、残りは無視します。空欄 = バックエンドのデフォルトを使用。"
   },
   "kvChip": {
     "clearOverride": "KV オーバーライドをクリア",
@@ -342,6 +403,13 @@
     "welcomeBody": "始めるには、ディスカバーからチャットモデルを選んでください。最初は小さめの Qwen3 または Llama 3 のバリアントがおすすめです。1〜2 分でダウンロードでき、どのノート PC でも動作します。",
     "browseDiscover": "ディスカバーを見る",
     "noModelLoaded": "チャットを始めるには、モデルを読み込む必要があります。ライブラリから選んでメモリに読み込んでください。",
-    "loadModel": "モデルを読み込む"
+    "loadModel": "モデルを読み込む",
+    "getStartedAriaLabel": "チャットを始める",
+    "loadModelAriaLabel": "チャットするためにモデルを読み込む"
+  },
+  "codeBlock": {
+    "copied": "コピーしました",
+    "copyCode": "コードをコピー",
+    "copy": "コピー"
   }
 }

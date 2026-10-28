@@ -7,6 +7,7 @@
  * (streaming, abort, run/retry/repair) stays on the tab.
  */
 
+import i18next from "i18next";
 import { number } from "../../../utils";
 import type { ChatModelOption } from "../../../types/chat";
 import { sizeLabel } from "../../../utils";
@@ -184,8 +185,12 @@ export function slotBusyMessage(
 ) {
   const state = slotStates[slot.id];
   if (state.loadingMessage) return state.loadingMessage;
-  if (manifestSlot?.status === "loading") return "Loading model...";
-  if (manifestSlot?.status === "running") return "Generating...";
+  if (manifestSlot?.status === "loading") {
+    return i18next.t("chat:htmlChallenge.slotPanel.loadingModel", { defaultValue: "Loading model..." });
+  }
+  if (manifestSlot?.status === "running") {
+    return i18next.t("chat:htmlChallenge.status.generating", { defaultValue: "Generating..." });
+  }
 
   const previousPending = slots.slice(0, index).find((previousSlot) => {
     const previousState = slotStates[previousSlot.id];
@@ -196,8 +201,15 @@ export function slotBusyMessage(
       || previousManifestSlot?.status === "running"
       || previousManifestSlot?.status === "queued";
   });
-  if (previousPending) return `Waiting for ${compareTargetLabels[previousPending.id]} to finish...`;
-  return index === 0 ? "Waiting..." : "Waiting to start...";
+  if (previousPending) {
+    return i18next.t("chat:htmlChallenge.slotPanel.waitingFor", {
+      label: compareTargetLabels[previousPending.id],
+      defaultValue: "Waiting for {label} to finish...",
+    });
+  }
+  return index === 0
+    ? i18next.t("chat:htmlChallenge.slotPanel.waiting", { defaultValue: "Waiting..." })
+    : i18next.t("chat:htmlChallenge.slotPanel.waitingToStart", { defaultValue: "Waiting to start..." });
 }
 
 /**

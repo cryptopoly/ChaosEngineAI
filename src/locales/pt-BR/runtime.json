@@ -58,7 +58,10 @@
     "gpuLayers": "Camadas de GPU",
     "threads": "Threads",
     "fitInMemory": "Caber na memória",
-    "cacheStrategyTensorfoldNote": "(o TensorFold gerencia o próprio KV cache)"
+    "cacheStrategyTensorfoldNote": "(o TensorFold gerencia o próprio KV cache)",
+    "moreInfo": "Mais informações",
+    "requiresLabel": "Requer:",
+    "installLabel": "Instalação:"
   },
   "notes": {
     "binaryRequired": "Requer {binary}.",
@@ -89,7 +92,15 @@
     "currentModelLabel": "Modelo atual:",
     "supportedVia": "Suportado via {model}",
     "compatibilityUnresolved": "Compatibilidade ainda não resolvida.",
-    "composerHint": "A decodificação especulativa DFlash pode acelerar este modelo em ~2× sem perda de qualidade."
+    "composerHint": "A decodificação especulativa DFlash pode acelerar este modelo em ~2× sem perda de qualidade.",
+    "registeredTargetsLabel": "Alvos registrados:",
+    "targetModelsCount": "{count} modelos-alvo",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "Disponível",
+    "ddtreeUnavailable": "Ainda não disponível; o DFlash linear é executado no lugar.",
+    "installLabel": "Instalação:",
+    "treeBudgetTooltip": "DDTree: decodificação especulativa baseada em árvore. 0 = DFlash linear, >0 = explora vários caminhos de draft em paralelo para taxas de aceitação maiores.",
+    "treeBudgetLabel": "Orçamento da árvore (DDTree)"
   },
   "presets": {
     "quality": {
@@ -112,22 +123,27 @@
   "sliders": {
     "context": "Contexto",
     "maxTokens": "Tokens máx.",
-    "temperature": "Temperatura"
+    "temperature": "Temperatura",
+    "fp16Layers": "Camadas FP16"
   },
   "fitInMemory": {
-    "body": "Caber na memória pede ao ChaosEngineAI para escolher um perfil de runtime/cache que mantenha o modelo e o cache KV dentro da memória disponível. Desative apenas quando quiser forçar um perfil maior ou mais agressivo e aceitar possível swap ou falha de carregamento."
+    "body": "Caber na memória pede ao ChaosEngineAI para escolher um perfil de runtime/cache que mantenha o modelo e o cache KV dentro da memória disponível. Desative apenas quando quiser forçar um perfil maior ou mais agressivo e aceitar possível swap ou falha de carregamento.",
+    "aboutTitle": "Sobre Caber na memória"
   },
   "cacheFit": {
     "mayNotFit": "Pode não caber",
     "modelMayNotFit": "Modelo pode não caber",
     "fitsEasily": "Cabe fácil",
     "tightFit": "Cabe apertado",
-    "contextMayNotFit": "Contexto completo pode não caber"
+    "contextMayNotFit": "Contexto completo pode não caber",
+    "vramWontFit": "O cache não cabe na GPU"
   },
   "cacheAdvice": {
     "modelExceedsRam": "Os pesos do modelo sozinhos excedem a RAM utilizável estimada. Escolha um modelo menor ou uma quantização mais agressiva.",
     "nativeF16TooBig": "O modelo pode carregar, mas um cache f16 nativo completo neste contexto pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou escolha uma estratégia comprimida.",
-    "compressedTooBig": "O modelo pode carregar, mas o cache de contexto selecionado pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou reduza as camadas FP16."
+    "compressedTooBig": "O modelo pode carregar, mas o cache de contexto selecionado pode exceder a RAM do sistema à medida que a thread enche. Reduza o contexto ou reduza as camadas FP16.",
+    "vramNativeF16": "Um cache KV f16 nativo completo neste contexto tem ~{cacheGb} GB, maior que os {vramGb} GB de VRAM da GPU disponíveis. O llama.cpp vai transbordar para a RAM do sistema (transferências PCIe lentas a cada token) ou falhar ao alocar. Reduza o contexto, elimine camadas FP16 ou escolha a economia de memória do TurboQuant para que o cache caiba na VRAM.",
+    "vramSelected": "O cache KV selecionado neste contexto tem ~{cacheGb} GB, maior que os {vramGb} GB de VRAM da GPU disponíveis. O llama.cpp vai transbordar para a RAM do sistema (transferências PCIe lentas a cada token) ou falhar ao alocar. Reduza o contexto, elimine camadas FP16 ou escolha a economia de memória do TurboQuant para que o cache caiba na VRAM."
   },
   "tensorfold": {
     "tooltip": "TensorFold: decodificação especulativa exata. Drafts da cabeça MTP do modelo e/ou de um modelo draft são verificados pelo modelo-alvo, então as respostas são idênticas à decodificação serial — só mais rápidas.",
@@ -187,5 +203,45 @@
     "aboutTitle": "Sobre a decodificação especulativa do llama.cpp",
     "body": "Se a pasta do modelo tiver um arquivo de drafter (mtp-, dflash-, dspark- ou eagle3-*.gguf — drafters DFlash 2 usam o prefixo dflash-), o llama.cpp gera drafts com ele. Caso contrário, recorre ao ngram-mod, que reaproveita texto repetido (edições de código, resumos, raciocínio repetido na resposta) sem nenhum modelo extra. Cada token do draft é verificado, então a saída não muda.",
     "requiresBody": "Um llama-server atual (execute scripts/update-llama-cpp.sh). Binários antigos voltam à decodificação padrão com uma nota de runtime."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "KV cache FP16 de precisão total. Sem compressão, por isso é a escolha mais rápida e de maior qualidade, e funciona com decodificação especulativa. Usa mais memória em contexto longo. Funciona com todos os backends.",
+      "requires": "Integrado"
+    },
+    "triattention": {
+      "description": "Compressão transparente de KV cache integrada via vLLM. Somente Linux + CUDA; o ChaosEngineAI não oferece suporte ao TriAttention no macOS.",
+      "requires": "Linux + GPU CUDA + backend vLLM. Sem suporte no macOS.",
+      "installHint": "Use isso apenas em um ambiente Linux/CUDA usado pelo ChaosEngineAI e depois reinicie o app."
+    },
+    "turboquant": {
+      "description": "Economia de memória. Armazena o KV cache em 1-4 bits (cerca de 4-5× menor com 3 bits) para que conversas longas caibam em bem menos RAM. A troca é velocidade: espere uma geração mais lenta que com Nativo; no MLX, ela desativa a reutilização do cache do histórico do chat e não pode ser combinada com decodificação especulativa. Escolha-a quando um contexto longo não couber na memória; caso contrário, fique no Nativo. No MLX usa rotação de Hadamard + codebooks de Lloyd-Max; no GGUF usa llama-server-turbo.",
+      "requires": "Apple Silicon + MLX para o caminho MLX; llama-server-turbo para o caminho GGUF.",
+      "installHint": "Para MLX: instale turboquant-mlx-full. Para GGUF: execute scripts/build-llama-turbo.sh. Depois reinicie o ChaosEngineAI."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "em execução",
+    "statusComplete": "concluído",
+    "statusFailed": "falhou",
+    "statusReady": "pronto",
+    "noOutputYet": "Ainda não há saída da instalação. Execute o instalador para capturar stdout e stderr aqui.",
+    "title": "Terminal de instalação de {label}",
+    "startedAt": "Iniciado: {time}",
+    "collapsedHint": "Recolhido por padrão. Abra após uma tentativa de instalação para inspecionar falhas.",
+    "finishedAt": "Concluído: {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "Requer o binário llama-server-turbo. Execute scripts/build-llama-turbo.sh para instalar.",
+    "badgeNotApplicable": "N/D",
+    "badgeNoTurbo": "Sem binário turbo",
+    "badgeReady": "Pronto",
+    "badgeInstall": "Instalar",
+    "buildingTurbo": "Compilando llama-server-turbo...",
+    "installing": "Instalando...",
+    "installNow": "Instalar agora",
+    "runInTerminal": "Execute no seu terminal e depois reinicie o ChaosEngineAI.",
+    "updating": "Atualizando...",
+    "updateAvailable": "Atualização disponível"
   }
 }

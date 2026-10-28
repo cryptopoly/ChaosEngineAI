@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -10,6 +11,7 @@ interface CodeBlockProps {
 const COPY_RESET_MS = 1500;
 
 export function CodeBlock({ code, language }: CodeBlockProps) {
+  const { t } = useTranslation("chat");
   const [copied, setCopied] = useState(false);
   const lang = (language ?? "").toLowerCase().trim();
   const displayLang = lang || "text";
@@ -37,7 +39,9 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
           type="button"
           className="code-block__copy"
           onClick={handleCopy}
-          aria-label={copied ? "Copied" : "Copy code"}
+          aria-label={copied
+            ? t("codeBlock.copied", { defaultValue: "Copied" })
+            : t("codeBlock.copyCode", { defaultValue: "Copy code" })}
         >
           {copied ? (
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -49,7 +53,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           )}
-          <span>{copied ? "Copied" : "Copy"}</span>
+          <span>{copied ? t("codeBlock.copied", { defaultValue: "Copied" }) : t("codeBlock.copy", { defaultValue: "Copy" })}</span>
         </button>
       </div>
       <SyntaxHighlighter

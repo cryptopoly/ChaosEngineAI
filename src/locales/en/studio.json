@@ -40,7 +40,28 @@
       "cancelled": "Image generation cancelled",
       "failed": "Image generation failed",
       "imagesReady": "Images ready",
-      "imageReady": "Image ready"
+      "imageReady": "Image ready",
+      "cancelledBody": "You cancelled this generation. No image was saved.",
+      "modelStillLoaded": "The model is still loaded — next Generate will start without the cold-start wait.",
+      "savedToGallery": "Saved To Gallery",
+      "phaseLoading": "Loading model into memory",
+      "phaseEncoding": "Encoding prompt",
+      "phaseDiffusing": "Diffusing {count, plural, one {# image} other {# images}}",
+      "phaseDecoding": "Decoding pixels",
+      "phaseSaving": "Saving to output gallery",
+      "errorHint": "Adjust the prompt or runtime settings, then try again. The gallery keeps any earlier successful outputs.",
+      "settings": "Settings",
+      "stepsCount": "{count, plural, one {# step} other {# steps}}",
+      "seedValue": "Seed {seed}",
+      "generatedCount": "Generated {count} images in this run. Click a thumbnail to inspect a different result.",
+      "useSameSettings": "Use Same Settings",
+      "varySeed": "Vary Seed",
+      "open": "Open",
+      "reveal": "Reveal",
+      "delete": "Delete",
+      "cancelGeneration": "Cancel generation",
+      "close": "Close",
+      "done": "Done"
     },
     "mflux": {
       "outdated": "The mflux engine installed here ({installed}) is older than this app expects ({required}), so newer models such as FLUX 3 and Qwen-Image-2.1 Turbo will not run. Updating reinstalls it in its own environment.",
@@ -71,7 +92,30 @@
       "generating": "Generating video",
       "cancelled": "Video generation cancelled",
       "failed": "Video generation failed",
-      "ready": "Video ready"
+      "ready": "Video ready",
+      "cancelledBody": "You cancelled this generation. No clip was saved.",
+      "modelStillLoaded": "The model is still loaded — next Generate will start without the cold-start wait.",
+      "savedToGallery": "Saved To Gallery",
+      "loadError": "Could not load video.",
+      "phaseLoading": "Loading model into memory",
+      "phaseEncoding": "Encoding prompt",
+      "phaseDiffusing": "Diffusing {count, plural, one {# frame} other {# frames}}",
+      "phaseDiffusingFrames": "Diffusing frames",
+      "phaseEncodingMp4": "Encoding mp4",
+      "phaseSaving": "Saving to gallery",
+      "errorHint": "Adjust the prompt, resolution, or frame count, then try again. The gallery keeps any earlier successful clips.",
+      "loadingClip": "Loading clip...",
+      "framesCount": "{count, plural, one {# frame} other {# frames}}",
+      "clipLength": "{seconds}s clip",
+      "stepsCount": "{count, plural, one {# step} other {# steps}}",
+      "seedValue": "Seed {seed}",
+      "renderTime": "{seconds}s render",
+      "openGallery": "Open Gallery",
+      "revealFile": "Reveal File",
+      "delete": "Delete",
+      "cancelGeneration": "Cancel generation",
+      "close": "Close",
+      "done": "Done"
     }
   },
   "progress": {
@@ -90,7 +134,36 @@
     "error": "Enhancer error: {message}"
   },
   "runtimeBanner": {
-    "loadingModel": "Loading model into memory..."
+    "loadingModel": "Loading model into memory...",
+    "cudaTorchInstalled": "CUDA torch installed.",
+    "cudaTorchRestartHint": "The running backend still has the old torch in its module cache. Restart the backend to activate the new wheel{index}.",
+    "gpuNotActive": "GPU acceleration not active.",
+    "restarting": "Restarting...",
+    "restartBackend": "Restart Backend",
+    "installingCudaTorch": "Installing CUDA torch...",
+    "installCudaTorch": "Install CUDA torch",
+    "realGenerationAvailable": "Real local generation available",
+    "runtimeUnavailable": "Runtime unavailable",
+    "usingPlaceholder": "Using placeholder outputs",
+    "cpuFallback": "CPU fallback",
+    "engineChip": "Engine: {engine}",
+    "deviceExpected": "{device} (expected)",
+    "deviceChip": "Device: {device}",
+    "summaryLoaded": "{selected} is loaded and ready to generate.",
+    "summarySwap": "{loaded} is loaded. Generating with {selected} will swap the pipeline.",
+    "summaryNotLoaded": "{selected} is installed locally but not loaded yet. The first generate will take longer while the diffusion pipeline warms up.",
+    "summaryNotInstalled": "{selected} is not installed locally. Download it from Discover to enable local generation.",
+    "summaryOnDemand": "Model will load on demand when you generate.",
+    "preloadModel": "Preload Model",
+    "unloadModel": "Unload Model",
+    "unloadNamed": "Unload {name}",
+    "gpuRuntimeInstalledIntro": "GPU runtime installed to",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "The running backend still has its old import cache — click Restart Backend to activate the new runtime, then image generation will use your GPU.",
+    "restartBackendToActivate": "Restart Backend to activate",
+    "gpuRuntimeInstallPrompt": "Install the GPU image runtime (torch + diffusers + accelerate + transformers, ~2.5 GB) to enable real local generation. Writes to a persistent user-local folder so app updates don't wipe it.",
+    "installing": "Installing...",
+    "installGpuRuntime": "Install GPU runtime"
   },
   "imageStudio": {
     "generateTitle": {
@@ -198,6 +271,98 @@
       "openGallery": "Open Gallery",
       "emptyHint": "Generate a prompt to create the first saved image artifact for this branch.",
       "footnote": "Showing the newest {recent} saved images here. Open Image Gallery to browse everything, filter by model, and manage older runs."
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "Square"
+      },
+      "portrait": {
+        "label": "Portrait"
+      },
+      "landscape": {
+        "label": "Landscape"
+      },
+      "wide": {
+        "label": "Wide"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "Fast",
+        "hint": "Quick drafts"
+      },
+      "balanced": {
+        "label": "Balanced",
+        "hint": "Best default"
+      },
+      "quality": {
+        "label": "High Quality",
+        "hint": "Slower final pass"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "Model default",
+        "hint": "Whatever the model shipped with"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "Fast, balanced — 20-30 steps"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "Smoother at low steps"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "Slightly noisier, creative"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "Classic, reliable at 25+ steps"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "Creative, non-deterministic"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "Deterministic, slower"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "Fast at low step counts"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10-step Align Your Steps · pick for SD1.5 only"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10-step Align Your Steps · pick for SDXL only"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "Off",
+        "hint": "Stock pipeline — no caching"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "1.5–2× speedup on DiTs · cross-platform"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibrated for FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2.4× via polynomial extrapolation (diffusers 0.38 native)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — reuse attention across nearby steps"
+      }
     }
   },
   "videoStudio": {
@@ -354,7 +519,47 @@
       "reasonCaution": "The model needs ~{model} GB resident. On {platform} with {total} GB total, that's above the conservative comfort target (~{comfort} GB) but below the estimated working set (~{working} GB). Generation should fit; lower the settings if it becomes unstable."
     },
     "disabledHint": "Generate disabled: {reason}",
-    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants."
+    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants.",
+    "cacheStrategies": {
+      "none": {
+        "label": "Off",
+        "hint": "Stock pipeline — no caching"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "1.5–2× speedup on DiTs · cross-platform"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "Calibrated for FLUX / Hunyuan / LTX / CogVideoX / Mochi"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "~2.4× via polynomial extrapolation (diffusers 0.38 native)"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — reuse attention across nearby steps"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "Draft",
+        "sub": "20 steps"
+      },
+      "standard": {
+        "label": "Standard",
+        "sub": "30 steps"
+      },
+      "high": {
+        "label": "High",
+        "sub": "40 steps"
+      },
+      "max": {
+        "label": "Max",
+        "sub": "50 steps"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -623,5 +828,44 @@
       "generic": "Could not open the microphone."
     }
   },
-  "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that."
+  "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",
+  "mediaStudioBoosters": {
+    "title": "Performance boosters",
+    "forModel": "for {model}",
+    "selectedModelFallback": "the selected model"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "Move existing torch to rollback dir",
+      "install": "pip install torch (new version)",
+      "deps": "pip install torch (transitive deps)",
+      "constraint": "Pin torch in constraints.txt",
+      "rebuildPackage": "pip install {package} (--force-reinstall)",
+      "rebuild": "Rebuild ABI-dependent package",
+      "verify": "Verify torch.cuda.is_available() in subprocess",
+      "cleanup": "Prune old rollback dirs",
+      "rollbackRestore": "Restore previous torch from rollback",
+      "step": "step"
+    },
+    "available": "Torch upgrade available:",
+    "starting": "Starting…",
+    "upgrade": "Upgrade torch",
+    "dismiss": "Dismiss",
+    "willRebuild": "Will also rebuild {count, plural, one {# ABI-dependent package} other {# ABI-dependent packages}}",
+    "abiExplainer": "Torch {type} bumps break the C++ ABI, so wheels for these packages won't load until they're reinstalled against the new torch:",
+    "rollbackLead": "If the upgrade fails verification, your previous torch",
+    "rollbackTail": "is automatically restored from a sibling rollback directory — no re-download needed.",
+    "whatHappens": "What happens when I upgrade?",
+    "patchBumpExplainer": "Patch bumps keep the torch C++ ABI stable, so only the torch wheel itself is reinstalled. Your current torch is moved to a sibling rollback directory first; if the new wheel fails CUDA verification, the previous one is restored automatically. Restart Backend activates the new wheel.",
+    "upgrading": "Upgrading torch",
+    "complete": "Torch upgrade complete",
+    "failed": "Torch upgrade failed",
+    "restarting": "Restarting…",
+    "restartToActivate": "Restart Backend to activate",
+    "rolledBack": "Previous torch restored from rollback — generation continues on the prior version.",
+    "rollbackKeptLead": "Rollback dir kept at",
+    "rollbackKeptTail": "for manual recovery.",
+    "close": "Close",
+    "installLog": "Install log ({count, plural, one {# step} other {# steps}})"
+  }
 }

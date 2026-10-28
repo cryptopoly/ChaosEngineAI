@@ -84,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Wan MLX 运行时",
-    "ready": "就绪"
+    "ready": "就绪",
+    "inventoryError": "Wan 清单：{error}",
+    "converted": "已转换 · 通过 mlx-video 原生路径运行",
+    "rawDownload": "原始权重下载 {size} → MLX 转换（5-30 分钟）",
+    "outputLabel": "输出位置：",
+    "otherRunning": "另一个 Wan 安装正在运行（{repo}）。请等待其完成或先取消它。",
+    "installTitle": "下载原始权重并转换为 MLX",
+    "installing": "安装中...",
+    "starting": "正在开始...",
+    "install": "安装"
   }
 }

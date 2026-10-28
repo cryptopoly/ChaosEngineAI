@@ -103,7 +103,8 @@
     "backendOnline": "백엔드 온라인",
     "backendOffline": "오프라인",
     "noModelLoaded": "로드된 모델 없음",
-    "groupTabsAriaLabel": "{group} 탭"
+    "groupTabsAriaLabel": "{group} 탭",
+    "primaryNavAriaLabel": "기본"
   },
   "slashCommands": {
     "menuAriaLabel": "슬래시 명령"
@@ -138,7 +139,8 @@
     "tryAgain": "다시 시도",
     "copyDetails": "세부 정보 복사",
     "switchTo": "{target}(으)로 전환",
-    "keepEnglish": "영어 유지"
+    "keepEnglish": "영어 유지",
+    "dismiss": "닫기"
   },
   "status": {
     "loading": "로딩 중…",
@@ -174,7 +176,8 @@
     "detected": "{endonym}이(가) 감지되었습니다.",
     "prompt": "앱을 {endonym}(으)로 전환하시겠습니까? 환경설정 → 언어에서 언제든지 변경할 수 있습니다.",
     "switch": "{endonym}(으)로 전환",
-    "keep": "영어 유지"
+    "keep": "영어 유지",
+    "ariaLabel": "언어 설정"
   },
   "panels": {
     "mlxConversion": "MLX 변환",
@@ -456,6 +459,11 @@
       "close": "닫기",
       "ok": "확인",
       "cancel": "벤치마크 취소"
+    },
+    "promptPresets": {
+      "balanced": "균형 잡힌 요약",
+      "reasoning": "추론 점검",
+      "coding": "코딩 답변"
     }
   },
   "benchmarkHistory": {
@@ -1067,5 +1075,175 @@
     "subtitle": "다른 로컬 앱의 저장소에서 모델을 찾았습니다. 가져오기는 해당 위치에 연결만 하므로 다시 다운로드하지 않습니다.",
     "ollama": "Ollama",
     "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "CPU에서 실행 중입니다.",
+    "recommendationFallback": "NVIDIA GPU가 감지되었지만 torch가 CUDA에 접근할 수 없습니다. 이미지와 비디오 생성이 매우 느려집니다.",
+    "cudaInstalled": "CUDA torch가{source}{python} 설치되었습니다. GPU를 사용하려면 앱을 다시 시작하세요.",
+    "cudaInstalledSource": " {index}에서",
+    "cudaInstalledPython": " 내장 Python {version}에",
+    "noWheel": "Python{version}용 CUDA torch wheel이 없습니다.",
+    "noWheelBundledVenv": " (내장 venv)",
+    "noWheelDetail": "현재 PyTorch는 Python 3.9–3.13용 CUDA wheel을 제공합니다. 지원되는 Python(예: 3.12 또는 3.13)이 PATH에 있는 상태에서 앱을 다시 설치한 뒤 다시 시도하세요.",
+    "installFailed": "설치 실패:",
+    "downloading": "약 2.5 GB의 CUDA wheel을 앱에 내장된 Python으로 다운로드하는 중입니다. 몇 분 걸릴 수 있습니다.",
+    "installing": "CUDA torch 설치 중...",
+    "install": "CUDA torch 설치"
+  },
+  "llamaRebuild": {
+    "rebuilding": "llama.cpp 다시 빌드 중...",
+    "rebuild": "llama.cpp 다시 빌드"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count}개 다운로드됨",
+    "variants": "변형 ({count})",
+    "convert": "변환",
+    "chat": "채팅",
+    "server": "서버",
+    "pause": "일시 중지",
+    "resume": "재개",
+    "downloadFailed": "다운로드 실패",
+    "downloadComplete": "다운로드 완료",
+    "overview": "개요"
+  },
+  "dataDirRestart": {
+    "title": "재시작 필요",
+    "body": "데이터 디렉터리가 변경되었습니다. 새 위치에서 파일을 읽고 쓰려면 ChaosEngineAI가 백엔드를 다시 시작해야 합니다.",
+    "from": "원본: {path}",
+    "to": "대상: {path}",
+    "copied": "복사됨: {items}",
+    "skipped": "건너뜀(대상에 이미 있음): {items}",
+    "notNow": "나중에",
+    "restarting": "백엔드를 다시 시작하는 중...",
+    "notBackOnline": "재시작 후 백엔드가 다시 온라인 상태가 되지 않았습니다.",
+    "failed": "백엔드를 다시 시작하지 못했습니다.",
+    "confirm": "확인, 지금 다시 시작"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM 브리지",
+    "backendOffline": "백엔드가 오프라인입니다. WSL 상태를 확인하려면 사이드카를 시작하세요.",
+    "capsError": "WSL 상태를 읽을 수 없습니다: {error}",
+    "probing": "WSL 상태 확인 중...",
+    "ready": "✓ 준비됨{version}",
+    "notInstalled": "이 Windows 호스트에는 WSL2가 설치되어 있지 않습니다. vLLM은 Windows용 네이티브 wheel을 제공하지 않으므로, WSL2 Ubuntu 배포판 안에서 vLLM을 실행하는 것이 현실적인 방법입니다.",
+    "runInPowershell": "관리자 권한으로 PowerShell을 열고 다음을 실행하세요:",
+    "rebootHint": "안내가 나오면 재부팅한 다음 ChaosEngineAI를 다시 여세요.",
+    "microsoftDocs": "Microsoft 문서",
+    "cudaMissingLead": "WSL2가 설치되어 있지만({distro}),",
+    "cudaMissingTail": "명령을 배포판 안에서 사용할 수 없습니다. Windows에 NVIDIA WSL 드라이버를 설치하세요. GPU 드라이버의 CUDA를 WSL로 전달할 수 있게 해 줍니다.",
+    "nvidiaGuide": "NVIDIA WSL 가이드 ↗",
+    "installing": "설치 중...",
+    "reinstall": "WSL에 vLLM 재설치",
+    "install": "WSL에 vLLM 설치",
+    "installedSummary": "vLLM {version}이(가) {distro}의 ~/.chaosengine/vllm-venv에 설치되어 있습니다. 데스크톱 앱은 이 venv를 통해 vLLM 모델을 로드할 수 있습니다.",
+    "readySummary": "WSL2({distro})와 CUDA 패스스루가 준비되었습니다. ~/.chaosengine/vllm-venv의 격리된 venv에 vLLM을 설치하세요(약 2 GB 다운로드, 캐시가 준비된 환경에서 약 5-15분)."
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "설치 명령이 0이 아닌 종료 코드로 끝났습니다.",
+    "title": "부스트 팩",
+    "description": "이미지, 비디오, 채팅 추론을 위한 선택적 가속기입니다. 각각 pip install 한 번이면 설치됩니다. 사용 중인 하드웨어가 지원하는 항목에서 설치를 클릭하세요.",
+    "capError": "가속기 기능 정보를 읽을 수 없습니다: {error}",
+    "backendOffline": "백엔드가 오프라인입니다. 가속기 상태를 읽으려면 사이드카를 시작하세요.",
+    "columns": {
+      "accelerator": "가속기",
+      "size": "크기",
+      "platform": "플랫폼",
+      "status": "상태",
+      "action": "작업"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "크기 및 여유 공간 확인 중",
+      "copying": "복사 중",
+      "cleanup": "이전 사본 삭제 중",
+      "done": "완료",
+      "error": "실패"
+    },
+    "pathSavedRestart": "경로가 저장되었습니다. 새 다운로드가 새 드라이브에 저장되도록 백엔드를 다시 시작하세요.",
+    "pathSaved": "경로가 저장되었습니다.",
+    "resetDoneRestart": "기본값으로 되돌렸습니다. 기본 위치를 사용하려면 백엔드를 다시 시작하세요.",
+    "resetDone": "기본값으로 되돌렸습니다.",
+    "destinationRequired": "먼저 대상 경로를 지정하세요(위에 입력하거나 찾아보기 사용).",
+    "moveConfirm": "모델 {size}을(를) {from}에서 {to}(으)로 이동할까요?\n\n복사가 성공하면 원본 폴더 트리가 삭제됩니다. 회전식 HDD에서는 100 GB에 15-45분이 걸릴 수 있습니다.\n\n시작하기 전에 실행 중인 생성 작업을 모두 닫으세요.",
+    "reading": "저장소 정보를 읽는 중...",
+    "loading": "저장소 정보를 불러오는 중...",
+    "backendOffline": "백엔드가 오프라인입니다. 저장소를 설정하려면 사이드카를 시작하세요.",
+    "currentLocation": "현재 캐시 위치",
+    "inCache": "캐시에 {size}",
+    "free": "{size} 여유",
+    "overridePath": "경로 재정의 (재시작 필요)",
+    "usingDefault": "기본값 사용 중",
+    "browse": "찾아보기...",
+    "saving": "저장 중...",
+    "savePath": "경로 저장",
+    "resetToDefault": "기본값으로 되돌리기",
+    "restarting": "다시 시작 중...",
+    "restartBackendNow": "지금 백엔드 다시 시작",
+    "moveHint": "이전 위치에 모델 {size}이(가) 있습니다. 새 경로에서도 계속 쓸 수 있도록 이동하세요. 회전식 HDD에서는 6 GB당 약 1분을 예상하세요.",
+    "starting": "시작 중...",
+    "moveModels": "기존 모델을 새 경로로 이동",
+    "filesProgress": "{copied} / {total}개 파일",
+    "restartBackend": "백엔드 다시 시작"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "빠르고 가벼우며 일반 소비자용 하드웨어를 위해 설계되었습니다. 처음 시도하기에 좋습니다.",
+      "wan22": "텍스트-투-비디오 품질이 뛰어납니다. VRAM 24GB 이상 또는 통합 메모리를 갖춘 Apple Silicon에서 실행됩니다.",
+      "hunyuanVideo": "높은 충실도와 더 긴 클립을 지원합니다. 40GB 이상급 하드웨어가 필요합니다.",
+      "mochi1": "오픈 웨이트이며 경쟁력 있는 모션 품질을 제공합니다. Apache 2.0 라이선스."
+    },
+    "models": {
+      "title": "설치된 비디오 모델",
+      "subtitle": "이 컴퓨터의 모델",
+      "body": "아직 로컬에서 감지된 비디오 모델이 없습니다. 비디오 엔진이 출시되면 다운로드한 가중치가 양자화 방식, 디스크 크기, 실행 대상과 함께 여기에 표시됩니다."
+    },
+    "discover": {
+      "title": "비디오 모델 둘러보기",
+      "subtitle": "비디오 생성기를 둘러보고 다운로드합니다",
+      "body": "아래 카탈로그는 우선 지원할 예정인 엔진을 미리 보여 줍니다. 비디오 런타임이 연결되면 다운로드 버튼이 활성화됩니다."
+    },
+    "studio": {
+      "title": "비디오 스튜디오",
+      "subtitle": "프롬프트 입력, 생성, 반복",
+      "body": "스튜디오에는 프롬프트 편집기, 화면 비율과 길이 조절, 시드 고정, 프레임별 미리보기가 제공될 예정입니다. 조금만 기다려 주세요. 아직 엔진이 로드되지 않았습니다."
+    },
+    "gallery": {
+      "title": "비디오 갤러리",
+      "subtitle": "저장된 결과물과 필터",
+      "body": "완성된 렌더링은 모델, 길이, 해상도별 필터와 함께 여기에 표시됩니다. 끌어서 순서 바꾸기와 즐겨찾기는 로드맵에 있습니다."
+    },
+    "comingSoon": "출시 예정",
+    "roadmap": "로컬 비디오 생성은 ChaosEngineAI 로드맵에 있습니다. 이 탭은 라우팅과 UX 틀을 먼저 선보이기 위한 임시 화면이며, 추론 엔진은 이후에 연결됩니다.",
+    "planned": "예정"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "CUDA 전용",
+      "appleSilicon": "Apple Silicon 전용",
+      "any": "크로스 플랫폼"
+    },
+    "installing": "설치 중…",
+    "retry": "재시도",
+    "installBackground": "설치 (백그라운드)",
+    "install": "설치",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ 설치됨",
+    "installFailed": "설치 실패",
+    "installLabel": "{label} 설치",
+    "requires": "필요: {platform}",
+    "appliesTo": "적용 대상:",
+    "backgroundInstall": "백그라운드 설치",
+    "quickInstall": "빠른 설치",
+    "installFailureOutput": "설치 실패 — 출력 보기",
+    "installOutput": "설치 출력"
+  },
+  "infoTooltip": {
+    "ariaLabel": "자세한 정보"
+  },
+  "fileReveal": {
+    "finder": "Finder에서 보기",
+    "explorer": "탐색기에서 보기",
+    "files": "파일에서 보기"
   }
 }

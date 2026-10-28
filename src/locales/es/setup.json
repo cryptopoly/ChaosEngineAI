@@ -84,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Runtime Wan MLX",
-    "ready": "Listo"
+    "ready": "Listo",
+    "inventoryError": "Inventario de Wan: {error}",
+    "converted": "Convertido · se enruta por mlx-video nativo",
+    "rawDownload": "Descarga sin procesar {size} → conversión a MLX (5-30 min)",
+    "outputLabel": "Salida:",
+    "otherRunning": "Hay otra instalación de Wan en curso ({repo}). Espera o cancélala primero.",
+    "installTitle": "Descargar los pesos sin procesar + convertir a MLX",
+    "installing": "Instalando...",
+    "starting": "Iniciando...",
+    "install": "Instalar"
   }
 }

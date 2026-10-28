@@ -103,7 +103,8 @@
     "backendOnline": "Backend online",
     "backendOffline": "Offline",
     "noModelLoaded": "No model loaded",
-    "groupTabsAriaLabel": "{group} tabs"
+    "groupTabsAriaLabel": "{group} tabs",
+    "primaryNavAriaLabel": "Primary"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash commands"
@@ -138,7 +139,8 @@
     "tryAgain": "Try again",
     "copyDetails": "Copy details",
     "switchTo": "Switch to {target}",
-    "keepEnglish": "Keep English"
+    "keepEnglish": "Keep English",
+    "dismiss": "Dismiss"
   },
   "status": {
     "loading": "Loading…",
@@ -174,7 +176,8 @@
     "detected": "Detected {endonym}.",
     "prompt": "Switch the app to {endonym}? You can change this any time in Settings → Language.",
     "switch": "Switch to {endonym}",
-    "keep": "Keep English"
+    "keep": "Keep English",
+    "ariaLabel": "Language preference"
   },
   "panels": {
     "mlxConversion": "MLX Conversion",
@@ -456,6 +459,11 @@
       "close": "Close",
       "ok": "OK",
       "cancel": "Cancel benchmark"
+    },
+    "promptPresets": {
+      "balanced": "Balanced summary",
+      "reasoning": "Reasoning check",
+      "coding": "Coding reply"
     }
   },
   "benchmarkHistory": {
@@ -1067,5 +1075,175 @@
     "subtitle": "Found models in another local app's store. Import links them in place — no re-download.",
     "ollama": "Ollama",
     "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "Running on CPU.",
+    "recommendationFallback": "An NVIDIA GPU is visible but torch can't reach CUDA — image and video generation will be very slow.",
+    "cudaInstalled": "CUDA torch installed{source}{python}. Restart the app to use the GPU.",
+    "cudaInstalledSource": " from {index}",
+    "cudaInstalledPython": " into bundled Python {version}",
+    "noWheel": "No CUDA torch wheel for Python{version}.",
+    "noWheelBundledVenv": " (bundled venv)",
+    "noWheelDetail": "PyTorch currently ships CUDA wheels for Python 3.9–3.13. Reinstall the app with a supported Python on PATH (e.g. 3.12 or 3.13) and try again.",
+    "installFailed": "Install failed:",
+    "downloading": "Downloading ~2.5 GB CUDA wheel into the app's bundled Python — this can take several minutes.",
+    "installing": "Installing CUDA torch...",
+    "install": "Install CUDA torch"
+  },
+  "llamaRebuild": {
+    "rebuilding": "Rebuilding llama.cpp...",
+    "rebuild": "Rebuild llama.cpp"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count} downloaded",
+    "variants": "Variants ({count})",
+    "convert": "Convert",
+    "chat": "Chat",
+    "server": "Server",
+    "pause": "Pause",
+    "resume": "Resume",
+    "downloadFailed": "Download failed",
+    "downloadComplete": "Download complete",
+    "overview": "Overview"
+  },
+  "dataDirRestart": {
+    "title": "Restart required",
+    "body": "The data directory has been changed. ChaosEngineAI needs to restart the backend to start reading and writing files in the new location.",
+    "from": "From: {path}",
+    "to": "To: {path}",
+    "copied": "Copied: {items}",
+    "skipped": "Skipped (already present at destination): {items}",
+    "notNow": "Not now",
+    "restarting": "Restarting backend...",
+    "notBackOnline": "Backend did not come back online after restart.",
+    "failed": "Failed to restart backend.",
+    "confirm": "OK, restart now"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM bridge",
+    "backendOffline": "Backend offline — start the sidecar to probe WSL state.",
+    "capsError": "Could not read WSL state: {error}",
+    "probing": "Probing WSL state...",
+    "ready": "✓ Ready{version}",
+    "notInstalled": "WSL2 isn't installed on this Windows host. vLLM ships no native Windows wheels, so the practical path is to run vLLM inside a WSL2 Ubuntu distro.",
+    "runInPowershell": "Open an admin PowerShell and run:",
+    "rebootHint": "Reboot when prompted, then reopen ChaosEngineAI.",
+    "microsoftDocs": "Microsoft docs",
+    "cudaMissingLead": "WSL2 is installed ({distro}), but",
+    "cudaMissingTail": "isn't reachable inside the distro. Install the NVIDIA WSL driver kicker on Windows — it lets CUDA passthrough from your GPU driver into WSL.",
+    "nvidiaGuide": "NVIDIA WSL guide ↗",
+    "installing": "Installing...",
+    "reinstall": "Reinstall vLLM in WSL",
+    "install": "Install vLLM in WSL",
+    "installedSummary": "vLLM {version} is installed in {distro} at ~/.chaosengine/vllm-venv. The desktop app can route vLLM model loads through this venv.",
+    "readySummary": "WSL2 ({distro}) + CUDA passthrough are ready. Install vLLM into an isolated venv at ~/.chaosengine/vllm-venv (~2 GB download, ~5-15 min on a warm box)."
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "Install command exited non-zero.",
+    "title": "Boost Pack",
+    "description": "Optional accelerators for image, video, and chat inference. Each is a single pip install away — click Install on the rows your hardware supports.",
+    "capError": "Could not read accelerator capabilities: {error}",
+    "backendOffline": "Backend offline — start the sidecar to read accelerator state.",
+    "columns": {
+      "accelerator": "Accelerator",
+      "size": "Size",
+      "platform": "Platform",
+      "status": "Status",
+      "action": "Action"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "Checking sizes + free space",
+      "copying": "Copying",
+      "cleanup": "Removing old copy",
+      "done": "Done",
+      "error": "Failed"
+    },
+    "pathSavedRestart": "Path saved. Restart the backend for new downloads to land on the new drive.",
+    "pathSaved": "Path saved.",
+    "resetDoneRestart": "Reset to default. Restart the backend to use the default location.",
+    "resetDone": "Reset to default.",
+    "destinationRequired": "Set a destination path first (type or Browse above).",
+    "moveConfirm": "Move {size} of models from {from} to {to}?\n\nThe source tree will be deleted after a successful copy. On a spinning HDD this can take 15-45 min for 100 GB.\n\nClose any running generations before starting.",
+    "reading": "Reading storage info...",
+    "loading": "Loading storage info...",
+    "backendOffline": "Backend offline — start the sidecar to configure storage.",
+    "currentLocation": "Current cache location",
+    "inCache": "{size} in cache",
+    "free": "{size} free",
+    "overridePath": "Override path (requires restart)",
+    "usingDefault": "using default",
+    "browse": "Browse...",
+    "saving": "Saving...",
+    "savePath": "Save path",
+    "resetToDefault": "Reset to default",
+    "restarting": "Restarting...",
+    "restartBackendNow": "Restart backend now",
+    "moveHint": "You have {size} of models at the old location. Move them so they keep working from the new path. On a spinning HDD, budget ~1 minute per 6 GB.",
+    "starting": "Starting...",
+    "moveModels": "Move existing models to new path",
+    "filesProgress": "{copied} / {total} files",
+    "restartBackend": "Restart backend"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "Fast, lightweight — designed for consumer hardware. Good first target.",
+      "wan22": "Strong text-to-video quality. Runs on 24GB+ VRAM or Apple Silicon with unified memory.",
+      "hunyuanVideo": "High fidelity, longer clips. Needs 40GB+ class hardware.",
+      "mochi1": "Open-weight with competitive motion quality. Apache 2.0 licence."
+    },
+    "models": {
+      "title": "Installed Video Models",
+      "subtitle": "Models on this machine",
+      "body": "No video models detected locally yet. Once the video engine ships, downloaded weights will show up here alongside their quantisation, size on disk, and runtime target."
+    },
+    "discover": {
+      "title": "Discover Video Models",
+      "subtitle": "Browse and download video generators",
+      "body": "The catalogue below previews the engines we plan to support first. Download buttons will light up once the video runtime is wired in."
+    },
+    "studio": {
+      "title": "Video Studio",
+      "subtitle": "Prompt, generate, and iterate",
+      "body": "Studio will host the prompt editor, aspect ratio and duration controls, seed pinning, and per-frame previews. Sit tight — no engine loaded yet."
+    },
+    "gallery": {
+      "title": "Video Gallery",
+      "subtitle": "Saved outputs and filters",
+      "body": "Finished renders will land here with filters by model, duration, and resolution. Drag-to-reorder and favourites are on the roadmap."
+    },
+    "comingSoon": "Coming soon",
+    "roadmap": "Local video generation is on the ChaosEngineAI roadmap. This tab is a placeholder so we can ship the routing and UX shell early — the inference engine will slot in behind it.",
+    "planned": "Planned"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "CUDA only",
+      "appleSilicon": "Apple Silicon only",
+      "any": "Cross-platform"
+    },
+    "installing": "Installing…",
+    "retry": "Retry",
+    "installBackground": "Install (background)",
+    "install": "Install",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ Installed",
+    "installFailed": "Install failed",
+    "installLabel": "Install {label}",
+    "requires": "Requires: {platform}",
+    "appliesTo": "Applies to:",
+    "backgroundInstall": "Background install",
+    "quickInstall": "Quick install",
+    "installFailureOutput": "Install failure — show output",
+    "installOutput": "Install output"
+  },
+  "infoTooltip": {
+    "ariaLabel": "More info"
+  },
+  "fileReveal": {
+    "finder": "Show in Finder",
+    "explorer": "Show in Explorer",
+    "files": "Show in Files"
   }
 }

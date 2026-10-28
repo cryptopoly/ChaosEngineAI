@@ -29,7 +29,14 @@
     "cancelled": "キャンセル済み",
     "complete": "完了",
     "totalSize": "合計 {size}",
-    "downloaded": "{downloaded} / {total}"
+    "downloaded": "{downloaded} / {total}",
+    "preparing": "ダウンロードを準備中...",
+    "pausedPercent": "一時停止中 {percent}%",
+    "downloadingPercent": "ダウンロード中 {percent}%",
+    "pausedAtSize": "{size} GB で一時停止",
+    "downloadingSize": "{size} GB をダウンロード中",
+    "sizeTotalGb": "合計 {size} GB",
+    "sizeDownloadedGb": "{size} GB ダウンロード済み"
   },
   "details": {
     "loadModel": "モデルを読み込む",

@@ -99,7 +99,15 @@
     "collapseChatList": "Recolher a lista de chats",
     "searchThreadsPlaceholder": "Pesquisar threads...",
     "searchThreadsAriaLabel": "Pesquisar threads",
-    "clearSearch": "Limpar pesquisa"
+    "clearSearch": "Limpar pesquisa",
+    "noThreadsMatch": "Nenhuma conversa corresponde a \"{query}\".",
+    "unpin": "Desafixar",
+    "pin": "Fixar",
+    "deleteChat": "Excluir chat",
+    "forkedFrom": "Bifurcado de outra conversa na mensagem #{number}",
+    "forkBadge": "⑂ fork",
+    "modelReadyTooltip": "O modelo já está carregado — este chat responderá na hora, sem tempo de recarga.",
+    "readyBadge": "pronto"
   },
   "swapMenu": {
     "clearOverride": "Limpar substituição",
@@ -242,7 +250,36 @@
       "searchPlaceholder": "Pesquisar prompts (nome, mecânica, palavra-chave)...",
       "resultCount": "{count} exibidos",
       "empty": "Nenhum prompt corresponde à sua pesquisa.",
-      "close": "Cancelar"
+      "close": "Cancelar",
+      "categories": {
+        "games": "Jogos",
+        "simulations": "Simulações",
+        "tech-demos": "Demos técnicas",
+        "creative-tools": "Ferramentas criativas"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "Recolher pré-visualização",
+      "expandPreview": "Expandir pré-visualização",
+      "viewRender": "Ver renderização",
+      "viewHtmlCode": "Ver código HTML",
+      "collapse": "Recolher",
+      "latest": "Mais recente",
+      "changeModel": "Alterar modelo",
+      "continueHtml": "Continuar HTML",
+      "repairHtml": "Reparar HTML",
+      "retry": "Tentar novamente",
+      "fileDeleted": "Arquivo excluído",
+      "fileDeletedDetail": "{filename} não está mais nesta pasta de desafio.",
+      "savedFileFallback": "O arquivo HTML salvo",
+      "noHtmlOutput": "Sem saída HTML",
+      "noRenderablePage": "Este modelo terminou sem uma página HTML renderizável.",
+      "noStandaloneDocument": "A saída salva não continha um documento HTML independente.",
+      "previewTitle": "Pré-visualização HTML de {label}",
+      "loadingModel": "Carregando modelo...",
+      "waitingFor": "Aguardando {label} terminar...",
+      "waiting": "Aguardando...",
+      "waitingToStart": "Aguardando para iniciar..."
     }
   },
   "samplerPanel": {
@@ -252,7 +289,31 @@
     "dialogAriaLabel": "Substituições de sampler",
     "headerTitle": "Substituições de sampler",
     "resetAll": "Redefinir tudo",
-    "resetAllTooltip": "Redefinir tudo para os padrões do backend"
+    "resetAllTooltip": "Redefinir tudo para os padrões do backend",
+    "useBackendDefault": "Usar padrão do backend",
+    "reset": "Redefinir",
+    "schemaNotObject": "O esquema deve ser um objeto JSON",
+    "invalidJson": "JSON inválido",
+    "hints": {
+      "topP": "Corte nucleus (menor = mais focado)",
+      "topK": "Manter os N tokens mais prováveis (0 = desativado)",
+      "minP": "Corte mínimo de probabilidade",
+      "repeatPenalty": "1.0 = nenhuma; >1 = penaliza repetições",
+      "xtcProbability": "XTC: chance de descartar os tokens principais para dar variedade (0 = desligado)",
+      "xtcThreshold": "XTC: só é acionado quando a probabilidade do token principal é no mínimo esta",
+      "dryMultiplier": "Força do anti-repetição DRY (0 = desligado; somente llama.cpp)",
+      "seed": "Decodificação determinística (qualquer inteiro não negativo)",
+      "mirostatTau": "Entropia alvo",
+      "mirostatEta": "Taxa de aprendizado"
+    },
+    "placeholderDefault": "padrão",
+    "placeholderOff": "desligado",
+    "placeholderRandom": "aleatório",
+    "mirostatHint": "Entropia alvo da amostragem adaptativa",
+    "jsonSchema": "Esquema JSON",
+    "jsonSchemaHint": "Saída restrita (somente llama.cpp)",
+    "schemaOk": "Esquema analisado; vai restringir a próxima resposta.",
+    "panelHint": "Substituições por conversa. O llama.cpp aplica todas; o mlx-lm usa o que suporta (top_p / top_k / min_p) e ignora o resto. Campo vazio = usar o padrão do backend."
   },
   "kvChip": {
     "clearOverride": "Limpar substituição KV",
@@ -342,6 +403,13 @@
     "welcomeBody": "Escolha um modelo de chat em Descobrir para começar. Recomendamos uma variante pequena do Qwen3 ou do Llama 3 para a primeira execução — elas baixam em um ou dois minutos e rodam em qualquer notebook.",
     "browseDiscover": "Abrir Descobrir",
     "noModelLoaded": "É preciso carregar um modelo antes de conversar. Escolha um da sua biblioteca para carregá-lo na memória.",
-    "loadModel": "Carregar modelo"
+    "loadModel": "Carregar modelo",
+    "getStartedAriaLabel": "Começar a usar o chat",
+    "loadModelAriaLabel": "Carregue um modelo para conversar"
+  },
+  "codeBlock": {
+    "copied": "Copiado",
+    "copyCode": "Copiar código",
+    "copy": "Copiar"
   }
 }

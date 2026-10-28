@@ -99,7 +99,15 @@
     "collapseChatList": "摺疊對話清單",
     "searchThreadsPlaceholder": "搜尋執行緒...",
     "searchThreadsAriaLabel": "搜尋執行緒",
-    "clearSearch": "清除搜尋"
+    "clearSearch": "清除搜尋",
+    "noThreadsMatch": "沒有符合「{query}」的執行緒。",
+    "unpin": "取消釘選",
+    "pin": "釘選",
+    "deleteChat": "刪除對話",
+    "forkedFrom": "從另一個執行緒的第 #{number} 則訊息分支",
+    "forkBadge": "⑂ 分支",
+    "modelReadyTooltip": "模型已載入 — 此對話無需重新載入，會立即回應。",
+    "readyBadge": "就緒"
   },
   "swapMenu": {
     "clearOverride": "清除覆寫",
@@ -242,7 +250,36 @@
       "searchPlaceholder": "搜尋提示詞（名稱、機制、關鍵字）...",
       "resultCount": "顯示 {count} 項",
       "empty": "沒有符合搜尋的提示詞。",
-      "close": "取消"
+      "close": "取消",
+      "categories": {
+        "games": "遊戲",
+        "simulations": "模擬",
+        "tech-demos": "技術展示",
+        "creative-tools": "創意工具"
+      }
+    },
+    "slotPanel": {
+      "collapsePreview": "摺疊預覽",
+      "expandPreview": "展開預覽",
+      "viewRender": "檢視渲染結果",
+      "viewHtmlCode": "檢視 HTML 程式碼",
+      "collapse": "摺疊",
+      "latest": "最新",
+      "changeModel": "更換模型",
+      "continueHtml": "接續 HTML",
+      "repairHtml": "修復 HTML",
+      "retry": "重試",
+      "fileDeleted": "檔案已刪除",
+      "fileDeletedDetail": "{filename} 已不在此挑戰資料夾中。",
+      "savedFileFallback": "已儲存的 HTML 檔案",
+      "noHtmlOutput": "沒有 HTML 輸出",
+      "noRenderablePage": "此模型已結束，但未產生可渲染的 HTML 頁面。",
+      "noStandaloneDocument": "儲存的輸出中不包含獨立的 HTML 文件。",
+      "previewTitle": "{label} 的 HTML 預覽",
+      "loadingModel": "正在載入模型...",
+      "waitingFor": "正在等待 {label} 完成...",
+      "waiting": "等待中...",
+      "waitingToStart": "等待開始..."
     }
   },
   "samplerPanel": {
@@ -252,7 +289,31 @@
     "dialogAriaLabel": "取樣器覆寫",
     "headerTitle": "取樣器覆寫",
     "resetAll": "全部重設",
-    "resetAllTooltip": "全部重設為後端預設值"
+    "resetAllTooltip": "全部重設為後端預設值",
+    "useBackendDefault": "使用後端預設值",
+    "reset": "重設",
+    "schemaNotObject": "Schema 必須是 JSON 物件",
+    "invalidJson": "無效的 JSON",
+    "hints": {
+      "topP": "核取樣截斷（越低越集中）",
+      "topK": "保留機率最高的 N 個 token（0 = 停用）",
+      "minP": "最小機率閾值",
+      "repeatPenalty": "1.0 = 無；>1 = 懲罰重複",
+      "xtcProbability": "XTC：為增加多樣性而排除高機率 token 的機率（0 = 關閉）",
+      "xtcThreshold": "XTC：僅當最高機率 token 的機率不低於此值時才觸發",
+      "dryMultiplier": "DRY 防重複強度（0 = 關閉；僅限 llama.cpp）",
+      "seed": "確定性解碼（任意非負整數）",
+      "mirostatTau": "目標熵",
+      "mirostatEta": "學習率"
+    },
+    "placeholderDefault": "預設",
+    "placeholderOff": "關閉",
+    "placeholderRandom": "隨機",
+    "mirostatHint": "自適應取樣的目標熵",
+    "jsonSchema": "JSON Schema",
+    "jsonSchemaHint": "限制輸出（僅限 llama.cpp）",
+    "schemaOk": "Schema 已解析，將限制下一次回覆。",
+    "panelHint": "針對每個執行緒的覆寫設定。llama.cpp 會全部套用；mlx-lm 僅使用其支援的項目（top_p / top_k / min_p），其餘忽略。留空 = 使用後端預設值。"
   },
   "kvChip": {
     "clearOverride": "清除 KV 覆寫",
@@ -342,6 +403,13 @@
     "welcomeBody": "請先在「探索」中選擇一個聊天模型。首次使用建議選擇較小的 Qwen3 或 Llama 3 變體，下載只需一兩分鐘，任何筆記型電腦都能執行。",
     "browseDiscover": "瀏覽「探索」",
     "noModelLoaded": "需要先載入模型才能聊天。請從模型庫中選擇一個，將它載入記憶體。",
-    "loadModel": "載入模型"
+    "loadModel": "載入模型",
+    "getStartedAriaLabel": "開始使用對話",
+    "loadModelAriaLabel": "載入模型以開始對話"
+  },
+  "codeBlock": {
+    "copied": "已複製",
+    "copyCode": "複製程式碼",
+    "copy": "複製"
   }
 }

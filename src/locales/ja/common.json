@@ -103,7 +103,8 @@
     "backendOnline": "バックエンドオンライン",
     "backendOffline": "オフライン",
     "noModelLoaded": "モデルが読み込まれていません",
-    "groupTabsAriaLabel": "{group} タブ"
+    "groupTabsAriaLabel": "{group} タブ",
+    "primaryNavAriaLabel": "メイン"
   },
   "slashCommands": {
     "menuAriaLabel": "スラッシュコマンド"
@@ -138,7 +139,8 @@
     "tryAgain": "再試行",
     "copyDetails": "詳細をコピー",
     "switchTo": "{target} に切り替え",
-    "keepEnglish": "英語のまま"
+    "keepEnglish": "英語のまま",
+    "dismiss": "閉じる"
   },
   "status": {
     "loading": "読み込み中…",
@@ -174,7 +176,8 @@
     "detected": "{endonym} を検出しました。",
     "prompt": "アプリを {endonym} に切り替えますか?設定 → 言語 でいつでも変更できます。",
     "switch": "{endonym} に切り替え",
-    "keep": "英語のまま"
+    "keep": "英語のまま",
+    "ariaLabel": "言語設定"
   },
   "panels": {
     "mlxConversion": "MLX 変換",
@@ -456,6 +459,11 @@
       "close": "閉じる",
       "ok": "OK",
       "cancel": "ベンチマークをキャンセル"
+    },
+    "promptPresets": {
+      "balanced": "バランスの取れた要約",
+      "reasoning": "推論チェック",
+      "coding": "コーディングの回答"
     }
   },
   "benchmarkHistory": {
@@ -1067,5 +1075,175 @@
     "subtitle": "別のローカルアプリのストアでモデルが見つかりました。インポートすると元の場所にリンクされるため、再ダウンロードは不要です。",
     "ollama": "Ollama",
     "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "CPU で実行中です。",
+    "recommendationFallback": "NVIDIA GPU は検出されていますが、torch が CUDA に接続できません — 画像と動画の生成が非常に遅くなります。",
+    "cudaInstalled": "CUDA torch をインストールしました{source}{python}。アプリを再起動して GPU を使用してください。",
+    "cudaInstalledSource": "（{index} から）",
+    "cudaInstalledPython": "（同梱の Python {version} に）",
+    "noWheel": "Python{version} 用の CUDA torch wheel がありません。",
+    "noWheelBundledVenv": "（同梱の venv）",
+    "noWheelDetail": "PyTorch が現在 CUDA wheel を提供している Python は 3.9–3.13 です。対応する Python を PATH に通した状態でアプリを再インストールして（例: 3.12 または 3.13）、もう一度お試しください。",
+    "installFailed": "インストールに失敗:",
+    "downloading": "約 2.5 GB の CUDA wheel をアプリ同梱の Python にダウンロード中 — 数分かかる場合があります。",
+    "installing": "CUDA torch をインストール中...",
+    "install": "CUDA torch をインストール"
+  },
+  "llamaRebuild": {
+    "rebuilding": "llama.cpp を再ビルド中...",
+    "rebuild": "llama.cpp を再ビルド"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count} 件ダウンロード済み",
+    "variants": "バリアント（{count}）",
+    "convert": "変換",
+    "chat": "チャット",
+    "server": "サーバー",
+    "pause": "一時停止",
+    "resume": "再開",
+    "downloadFailed": "ダウンロードに失敗",
+    "downloadComplete": "ダウンロード完了",
+    "overview": "概要"
+  },
+  "dataDirRestart": {
+    "title": "再起動が必要",
+    "body": "データディレクトリが変更されました。新しい場所でのファイルの読み書きを始めるため、ChaosEngineAI はバックエンドを再起動する必要があります。",
+    "from": "移動元: {path}",
+    "to": "移動先: {path}",
+    "copied": "コピー済み: {items}",
+    "skipped": "スキップ（コピー先に既に存在）: {items}",
+    "notNow": "後で",
+    "restarting": "バックエンドを再起動中...",
+    "notBackOnline": "再起動後、バックエンドがオンラインに復帰しませんでした。",
+    "failed": "バックエンドの再起動に失敗しました。",
+    "confirm": "OK、今すぐ再起動"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM ブリッジ",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動して WSL の状態を確認してください。",
+    "capsError": "WSL の状態を読み取れませんでした: {error}",
+    "probing": "WSL の状態を確認中...",
+    "ready": "✓ 準備完了{version}",
+    "notInstalled": "この Windows ホストには WSL2 がインストールされていません。vLLM にはネイティブの Windows 向け wheel がないため、現実的な方法は WSL2 の Ubuntu ディストリビューション内で vLLM を実行することです。",
+    "runInPowershell": "管理者として PowerShell を開き、次を実行してください:",
+    "rebootHint": "再起動を求められたら再起動し、その後 ChaosEngineAI を開き直してください。",
+    "microsoftDocs": "Microsoft ドキュメント",
+    "cudaMissingLead": "WSL2 はインストールされています（{distro}）が、",
+    "cudaMissingTail": "がディストリビューション内から利用できません。Windows に NVIDIA の WSL 用ドライバーをインストールしてください — GPU ドライバーの CUDA を WSL にパススルーできるようになります。",
+    "nvidiaGuide": "NVIDIA WSL ガイド ↗",
+    "installing": "インストール中...",
+    "reinstall": "WSL に vLLM を再インストール",
+    "install": "WSL に vLLM をインストール",
+    "installedSummary": "vLLM {version} は {distro} の ~/.chaosengine/vllm-venv にインストールされています。デスクトップアプリは、この venv 経由で vLLM のモデル読み込みを実行できます。",
+    "readySummary": "WSL2（{distro}）と CUDA パススルーの準備ができています。vLLM を ~/.chaosengine/vllm-venv の独立した venv にインストールします（約 2 GB のダウンロード、通常の環境で約 5-15 分）。"
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "インストールコマンドが 0 以外の終了コードで終了しました。",
+    "title": "ブーストパック",
+    "description": "画像・動画・チャット推論向けのオプションのアクセラレータです。どれも pip install ひとつで導入できます — お使いのハードウェアが対応している行で「インストール」をクリックしてください。",
+    "capError": "アクセラレータの対応状況を読み取れませんでした: {error}",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動してアクセラレータの状態を読み取ってください。",
+    "columns": {
+      "accelerator": "アクセラレータ",
+      "size": "サイズ",
+      "platform": "プラットフォーム",
+      "status": "ステータス",
+      "action": "操作"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "サイズと空き容量を確認中",
+      "copying": "コピー中",
+      "cleanup": "古いコピーを削除中",
+      "done": "完了",
+      "error": "失敗"
+    },
+    "pathSavedRestart": "パスを保存しました。新しいダウンロードが新しいドライブに保存されるよう、バックエンドを再起動してください。",
+    "pathSaved": "パスを保存しました。",
+    "resetDoneRestart": "デフォルトにリセットしました。デフォルトの場所を使うにはバックエンドを再起動してください。",
+    "resetDone": "デフォルトにリセットしました。",
+    "destinationRequired": "先に移動先のパスを設定してください（入力するか、上の「参照」を使用）。",
+    "moveConfirm": "{from} から {to} へ、{size} のモデルを移動しますか？\n\nコピーが正常に完了すると、元のフォルダは削除されます。回転ディスク式の HDD では、100 GB で 15〜45 分かかることがあります。\n\n開始する前に、実行中の生成をすべて閉じてください。",
+    "reading": "ストレージ情報を読み取り中...",
+    "loading": "ストレージ情報を読み込み中...",
+    "backendOffline": "バックエンドがオフラインです — sidecar を起動してストレージを設定してください。",
+    "currentLocation": "現在のキャッシュの場所",
+    "inCache": "キャッシュ内 {size}",
+    "free": "空き {size}",
+    "overridePath": "パスを上書き（再起動が必要）",
+    "usingDefault": "デフォルトを使用中",
+    "browse": "参照...",
+    "saving": "保存中...",
+    "savePath": "パスを保存",
+    "resetToDefault": "デフォルトにリセット",
+    "restarting": "再起動中...",
+    "restartBackendNow": "今すぐバックエンドを再起動",
+    "moveHint": "古い場所に {size} のモデルがあります。新しいパスでも使い続けられるよう、移動してください。回転ディスク式の HDD では、6 GB あたり約 1 分を見込んでください。",
+    "starting": "開始中...",
+    "moveModels": "既存のモデルを新しいパスに移動",
+    "filesProgress": "{copied} / {total} ファイル",
+    "restartBackend": "バックエンドを再起動"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "高速で軽量 — 一般消費者向けハードウェアを想定した設計です。最初に試すのにおすすめ。",
+      "wan22": "テキストから動画への生成品質が高いモデル。24GB 以上の VRAM、またはユニファイドメモリ搭載の Apple Silicon で動作します。",
+      "hunyuanVideo": "高い忠実度で、より長いクリップを生成。40GB クラス以上のハードウェアが必要です。",
+      "mochi1": "オープンウェイトで、動きの品質も高水準。Apache 2.0 ライセンス。"
+    },
+    "models": {
+      "title": "インストール済みの動画モデル",
+      "subtitle": "このマシン上のモデル",
+      "body": "ローカルにはまだ動画モデルが検出されていません。動画エンジンが提供されると、ダウンロードした重みが、量子化、ディスク上のサイズ、実行ターゲットとともにここに表示されます。"
+    },
+    "discover": {
+      "title": "動画モデルをディスカバー",
+      "subtitle": "動画生成モデルを検索してダウンロード",
+      "body": "以下のカタログは、最初にサポートする予定のエンジンのプレビューです。動画ランタイムが組み込まれると、ダウンロードボタンが有効になります。"
+    },
+    "studio": {
+      "title": "動画スタジオ",
+      "subtitle": "プロンプトを入力し、生成し、改善を重ねる",
+      "body": "スタジオには、プロンプトエディター、アスペクト比と長さの設定、シード固定、フレームごとのプレビューが用意される予定です。もう少しお待ちください — まだエンジンは読み込まれていません。"
+    },
+    "gallery": {
+      "title": "動画ギャラリー",
+      "subtitle": "保存した出力とフィルター",
+      "body": "完成したレンダリングはここに保存され、モデル・長さ・解像度で絞り込めます。ドラッグによる並べ替えとお気に入りは、今後の予定に入っています。"
+    },
+    "comingSoon": "近日公開",
+    "roadmap": "ローカルでの動画生成は ChaosEngineAI のロードマップに入っています。このタブはプレースホルダーで、ルーティングと UX の骨組みを先にリリースするためのものです — 推論エンジンは後からその裏側に組み込まれます。",
+    "planned": "予定"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "CUDA のみ",
+      "appleSilicon": "Apple Silicon のみ",
+      "any": "クロスプラットフォーム"
+    },
+    "installing": "インストール中…",
+    "retry": "再試行",
+    "installBackground": "インストール（バックグラウンド）",
+    "install": "インストール",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ インストール済み",
+    "installFailed": "インストールに失敗",
+    "installLabel": "{label} をインストール",
+    "requires": "必須: {platform}",
+    "appliesTo": "対象:",
+    "backgroundInstall": "バックグラウンドインストール",
+    "quickInstall": "クイックインストール",
+    "installFailureOutput": "インストール失敗 — 出力を表示",
+    "installOutput": "インストール出力"
+  },
+  "infoTooltip": {
+    "ariaLabel": "詳細情報"
+  },
+  "fileReveal": {
+    "finder": "Finder で表示",
+    "explorer": "エクスプローラーで表示",
+    "files": "ファイルで表示"
   }
 }

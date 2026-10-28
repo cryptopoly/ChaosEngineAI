@@ -58,7 +58,10 @@
     "gpuLayers": "GPU レイヤー",
     "threads": "スレッド",
     "fitInMemory": "メモリに収める",
-    "cacheStrategyTensorfoldNote": "(TensorFold は独自の KV キャッシュを管理します)"
+    "cacheStrategyTensorfoldNote": "(TensorFold は独自の KV キャッシュを管理します)",
+    "moreInfo": "詳細情報",
+    "requiresLabel": "必須:",
+    "installLabel": "インストール:"
   },
   "notes": {
     "binaryRequired": "{binary} が必要です。",
@@ -89,7 +92,15 @@
     "currentModelLabel": "現在のモデル:",
     "supportedVia": "{model} 経由でサポート",
     "compatibilityUnresolved": "互換性はまだ確認されていません。",
-    "composerHint": "DFlash 投機的デコーディングで、このモデルを品質を損なわずに約 2 倍高速化できます。"
+    "composerHint": "DFlash 投機的デコーディングで、このモデルを品質を損なわずに約 2 倍高速化できます。",
+    "registeredTargetsLabel": "登録済みターゲット:",
+    "targetModelsCount": "ターゲットモデル {count} 個",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "利用可能",
+    "ddtreeUnavailable": "まだ利用できません。代わりに通常の（線形）DFlash が実行されます。",
+    "installLabel": "インストール:",
+    "treeBudgetTooltip": "DDTree: ツリー型の投機的デコーディング。0 = 線形 DFlash、0 より大きい値 = 複数のドラフト経路を並列に探索して受理率を高めます。",
+    "treeBudgetLabel": "ツリー予算（DDTree）"
   },
   "presets": {
     "quality": {
@@ -112,22 +123,27 @@
   "sliders": {
     "context": "コンテキスト",
     "maxTokens": "最大トークン",
-    "temperature": "温度"
+    "temperature": "温度",
+    "fp16Layers": "FP16 レイヤー"
   },
   "fitInMemory": {
-    "body": "メモリに収めるは、モデルと KV キャッシュを利用可能なメモリ内に保つランタイム/キャッシュプロファイルを ChaosEngineAI が選択するよう指示します。より大きくまたはより積極的なプロファイルを強制し、スワップやロード失敗の可能性を受け入れる場合にのみ無効にしてください。"
+    "body": "メモリに収めるは、モデルと KV キャッシュを利用可能なメモリ内に保つランタイム/キャッシュプロファイルを ChaosEngineAI が選択するよう指示します。より大きくまたはより積極的なプロファイルを強制し、スワップやロード失敗の可能性を受け入れる場合にのみ無効にしてください。",
+    "aboutTitle": "「メモリに収める」について"
   },
   "cacheFit": {
     "mayNotFit": "収まらない可能性",
     "modelMayNotFit": "モデルが収まらない可能性",
     "fitsEasily": "余裕で収まる",
     "tightFit": "ギリギリ収まる",
-    "contextMayNotFit": "完全なコンテキストは収まらない可能性"
+    "contextMayNotFit": "完全なコンテキストは収まらない可能性",
+    "vramWontFit": "キャッシュが GPU に収まらない"
   },
   "cacheAdvice": {
     "modelExceedsRam": "モデルの重みだけで推定使用可能 RAM を超えています。より小さなモデルまたはより積極的な量子化を選択してください。",
     "nativeF16TooBig": "モデルは読み込めますが、このコンテキストでの完全なネイティブ f16 キャッシュはスレッドが満たされるにつれてシステム RAM を超える可能性があります。コンテキストを下げるか、圧縮戦略を選択してください。",
-    "compressedTooBig": "モデルは読み込めますが、選択したコンテキストキャッシュはスレッドが満たされるにつれてシステム RAM を超える可能性があります。コンテキストを下げるか FP16 レイヤーを減らしてください。"
+    "compressedTooBig": "モデルは読み込めますが、選択したコンテキストキャッシュはスレッドが満たされるにつれてシステム RAM を超える可能性があります。コンテキストを下げるか FP16 レイヤーを減らしてください。",
+    "vramNativeF16": "このコンテキストでの完全なネイティブ f16 KV キャッシュは約 {cacheGb} GB で、利用可能な GPU VRAM の {vramGb} GB を超えています。llama.cpp はシステム RAM にあふれ出す（トークンごとに低速な PCIe 転送が発生）か、割り当てに失敗します。コンテキストを下げる、FP16 レイヤーを減らす、または TurboQuant のメモリ節約を選んで、キャッシュを VRAM に収めてください。",
+    "vramSelected": "選択した KV キャッシュはこのコンテキストで約 {cacheGb} GB あり、利用可能な GPU VRAM の {vramGb} GB を超えています。llama.cpp はシステム RAM にあふれ出す（トークンごとに低速な PCIe 転送が発生）か、割り当てに失敗します。コンテキストを下げる、FP16 レイヤーを減らす、または TurboQuant のメモリ節約を選んで、キャッシュを VRAM に収めてください。"
   },
   "tensorfold": {
     "tooltip": "TensorFold: 厳密な投機的デコーディング。モデルの MTP ヘッドやドラフトモデルが生成したドラフトはターゲットモデルで検証されるため、返信は逐次デコーディングと同一で、速度だけが向上します。",
@@ -187,5 +203,45 @@
     "aboutTitle": "llama.cpp の投機的デコーディングについて",
     "body": "モデルのフォルダにドラフトモデルのファイル（mtp-、dflash-、dspark-、eagle3-*.gguf — DFlash 2 のドラフトモデルは dflash- プレフィックスを使用）があれば、llama.cpp はそれを使ってドラフトを生成します。なければ ngram-mod にフォールバックします。これは追加のモデルなしで、繰り返されるテキスト（コードの編集、要約、回答に再掲される推論内容など）を再利用します。ドラフトされたトークンはすべて検証されるため、出力は変わりません。",
     "requiresBody": "最新の llama-server が必要です（scripts/update-llama-cpp.sh を実行してください）。古いバイナリでは標準のデコードにフォールバックし、ランタイムの注記が表示されます。"
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "フル精度（FP16）の KV キャッシュです。圧縮を行わないため、最も高速で高品質な選択肢であり、投機的デコーディングとも併用できます。長いコンテキストでは最も多くのメモリを使用します。すべてのバックエンドで動作します。",
+      "requires": "組み込み"
+    },
+    "triattention": {
+      "description": "vLLM 経由で統合される、透過的な KV キャッシュ圧縮です。Linux + CUDA のみ対応で、ChaosEngineAI は macOS 上の TriAttention をサポートしていません。",
+      "requires": "Linux + CUDA GPU + vLLM バックエンド。macOS は非対応。",
+      "installHint": "ChaosEngineAI が使用する Linux/CUDA 環境でのみ使用し、その後アプリを再起動してください。"
+    },
+    "turboquant": {
+      "description": "メモリ節約。KV キャッシュを 1〜4 ビットで保存し（3 ビットで約 4〜5 倍小さくなります）、長い会話をはるかに少ない RAM に収めます。代償は速度です。ネイティブより生成が遅くなり、MLX ではチャット履歴のキャッシュ再利用がオフになり、投機的デコーディングとは併用できません。長いコンテキストがメモリに収まらないときに選び、それ以外はネイティブのままにしてください。MLX ではアダマール回転 + Lloyd-Max コードブックを使用し、GGUF では llama-server-turbo を使用します。",
+      "requires": "MLX 経路には Apple Silicon + MLX、GGUF 経路には llama-server-turbo が必要です。",
+      "installHint": "MLX の場合: turboquant-mlx-full をインストールします。GGUF の場合: scripts/build-llama-turbo.sh を実行します。その後、ChaosEngineAI を再起動してください。"
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "実行中",
+    "statusComplete": "完了",
+    "statusFailed": "失敗",
+    "statusReady": "準備完了",
+    "noOutputYet": "インストールの出力はまだありません。インストーラーを実行すると、stdout と stderr がここに記録されます。",
+    "title": "{label} インストールターミナル",
+    "startedAt": "開始: {time}",
+    "collapsedHint": "デフォルトでは折りたたまれています。インストールを試みた後に開くと、失敗の内容を確認できます。",
+    "finishedAt": "終了: {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "llama-server-turbo バイナリが必要です。scripts/build-llama-turbo.sh を実行してインストールしてください。",
+    "badgeNotApplicable": "対象外",
+    "badgeNoTurbo": "turbo バイナリなし",
+    "badgeReady": "準備完了",
+    "badgeInstall": "インストール",
+    "buildingTurbo": "llama-server-turbo をビルド中...",
+    "installing": "インストール中...",
+    "installNow": "今すぐインストール",
+    "runInTerminal": "ターミナルで実行し、その後 ChaosEngineAI を再起動してください。",
+    "updating": "アップデート中...",
+    "updateAvailable": "アップデートあり"
   }
 }

@@ -84,6 +84,15 @@
   },
   "wanRuntime": {
     "title": "Wan MLX 런타임",
-    "ready": "준비됨"
+    "ready": "준비됨",
+    "inventoryError": "Wan 목록: {error}",
+    "converted": "변환됨 · mlx-video 네이티브로 라우팅",
+    "rawDownload": "원본 다운로드 {size} → MLX 변환 (5-30분)",
+    "outputLabel": "출력:",
+    "otherRunning": "다른 Wan 설치가 진행 중입니다({repo}). 기다리거나 먼저 취소하세요.",
+    "installTitle": "원본 가중치 다운로드 + MLX로 변환",
+    "installing": "설치 중...",
+    "starting": "시작 중...",
+    "install": "설치"
   }
 }

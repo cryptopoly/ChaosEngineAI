@@ -40,7 +40,28 @@
       "cancelled": "画像生成がキャンセルされました",
       "failed": "画像生成に失敗しました",
       "imagesReady": "画像の準備ができました",
-      "imageReady": "画像の準備ができました"
+      "imageReady": "画像の準備ができました",
+      "cancelledBody": "この生成をキャンセルしました。画像は保存されていません。",
+      "modelStillLoaded": "モデルはまだ読み込まれています — 次回の「生成」はコールドスタートの待ち時間なしで始まります。",
+      "savedToGallery": "ギャラリーに保存しました",
+      "phaseLoading": "モデルをメモリに読み込み中",
+      "phaseEncoding": "プロンプトをエンコード中",
+      "phaseDiffusing": "{count, plural, other {# 枚の画像}}を拡散中",
+      "phaseDecoding": "ピクセルをデコード中",
+      "phaseSaving": "出力ギャラリーに保存中",
+      "errorHint": "プロンプトまたはランタイム設定を調整して、もう一度お試しください。ギャラリーには、以前に成功した出力がそのまま残ります。",
+      "settings": "設定",
+      "stepsCount": "{count, plural, other {# ステップ}}",
+      "seedValue": "シード {seed}",
+      "generatedCount": "この実行で {count} 枚の画像を生成しました。サムネイルをクリックすると別の結果を確認できます。",
+      "useSameSettings": "同じ設定を使用",
+      "varySeed": "シードを変更",
+      "open": "開く",
+      "reveal": "場所を表示",
+      "delete": "削除",
+      "cancelGeneration": "生成をキャンセル",
+      "close": "閉じる",
+      "done": "完了"
     },
     "mflux": {
       "outdated": "ここにインストールされている mflux エンジン（{installed}）は、このアプリが想定するバージョン（{required}）より古いため、FLUX 3 や Qwen-Image-2.1 Turbo などの新しいモデルは実行できません。アップデートすると、専用の環境に再インストールされます。",
@@ -71,7 +92,30 @@
       "generating": "動画を生成中",
       "cancelled": "動画生成がキャンセルされました",
       "failed": "動画生成に失敗しました",
-      "ready": "動画の準備ができました"
+      "ready": "動画の準備ができました",
+      "cancelledBody": "この生成をキャンセルしました。クリップは保存されていません。",
+      "modelStillLoaded": "モデルはまだ読み込まれています — 次回の「生成」はコールドスタートの待ち時間なしで始まります。",
+      "savedToGallery": "ギャラリーに保存しました",
+      "loadError": "動画を読み込めませんでした。",
+      "phaseLoading": "モデルをメモリに読み込み中",
+      "phaseEncoding": "プロンプトをエンコード中",
+      "phaseDiffusing": "{count, plural, other {# フレーム}}を拡散中",
+      "phaseDiffusingFrames": "フレームを拡散中",
+      "phaseEncodingMp4": "mp4 をエンコード中",
+      "phaseSaving": "ギャラリーに保存中",
+      "errorHint": "プロンプト、解像度、またはフレーム数を調整して、もう一度お試しください。ギャラリーには、以前に成功したクリップがそのまま残ります。",
+      "loadingClip": "クリップを読み込み中...",
+      "framesCount": "{count, plural, other {# フレーム}}",
+      "clipLength": "{seconds} 秒のクリップ",
+      "stepsCount": "{count, plural, other {# ステップ}}",
+      "seedValue": "シード {seed}",
+      "renderTime": "レンダリング時間 {seconds} 秒",
+      "openGallery": "ギャラリーを開く",
+      "revealFile": "ファイルの場所を表示",
+      "delete": "削除",
+      "cancelGeneration": "生成をキャンセル",
+      "close": "閉じる",
+      "done": "完了"
     }
   },
   "progress": {
@@ -90,7 +134,36 @@
     "error": "エンハンサーエラー:{message}"
   },
   "runtimeBanner": {
-    "loadingModel": "モデルをメモリに読み込み中..."
+    "loadingModel": "モデルをメモリに読み込み中...",
+    "cudaTorchInstalled": "CUDA torch がインストール済みです。",
+    "cudaTorchRestartHint": "実行中のバックエンドにはまだ古い torch がモジュールキャッシュに残っています。新しい wheel を有効化するにはバックエンドを再起動してください{index}。",
+    "gpuNotActive": "GPU アクセラレーションが有効ではありません。",
+    "restarting": "再起動中...",
+    "restartBackend": "バックエンドを再起動",
+    "installingCudaTorch": "CUDA torch をインストール中...",
+    "installCudaTorch": "CUDA torch をインストール",
+    "realGenerationAvailable": "実際のローカル生成が利用可能",
+    "runtimeUnavailable": "ランタイムを利用できません",
+    "usingPlaceholder": "プレースホルダー出力を使用中",
+    "cpuFallback": "CPU フォールバック",
+    "engineChip": "エンジン:{engine}",
+    "deviceExpected": "{device}(予想)",
+    "deviceChip": "デバイス:{device}",
+    "summaryLoaded": "{selected} は読み込み済みで、生成できる状態です。",
+    "summarySwap": "{loaded} が読み込まれています。{selected} で生成するとパイプラインが入れ替わります。",
+    "summaryNotLoaded": "{selected} はローカルにインストール済みですが、まだ読み込まれていません。拡散パイプラインのウォームアップがあるため、最初の生成は時間がかかります。",
+    "summaryNotInstalled": "{selected} はローカルにインストールされていません。ローカル生成を有効にするには、ディスカバーからダウンロードしてください。",
+    "summaryOnDemand": "生成時にモデルが必要に応じて読み込まれます。",
+    "preloadModel": "モデルをプリロード",
+    "unloadModel": "モデルをアンロード",
+    "unloadNamed": "{name} をアンロード",
+    "gpuRuntimeInstalledIntro": "GPU ランタイムがインストールされました:",
+    "extrasFallback": "extras",
+    "gpuRuntimeInstalledOutro": "実行中のバックエンドにはまだ古いインポートキャッシュが残っています — バックエンドを再起動して新しいランタイムを有効化すると、画像生成で GPU が使用されます。",
+    "restartBackendToActivate": "有効化するにはバックエンドを再起動してください",
+    "gpuRuntimeInstallPrompt": "実際のローカル生成を有効にするには、GPU 画像ランタイム（torch + diffusers + accelerate + transformers、約 2.5 GB）をインストールしてください。ユーザーローカルの永続フォルダに書き込まれるため、アプリを更新しても消えません。",
+    "installing": "インストール中...",
+    "installGpuRuntime": "GPU ランタイムをインストール"
   },
   "imageStudio": {
     "generateTitle": {
@@ -198,6 +271,98 @@
       "openGallery": "ギャラリーを開く",
       "emptyHint": "このブランチの最初の保存済み画像アーティファクトを作成するにはプロンプトを生成してください。",
       "footnote": "ここには最新の保存済み画像 {recent} 個を表示しています。すべてを閲覧し、モデルでフィルターし、古い実行を管理するには画像ギャラリーを開いてください。"
+    },
+    "aspectRatios": {
+      "square": {
+        "label": "正方形"
+      },
+      "portrait": {
+        "label": "縦長"
+      },
+      "landscape": {
+        "label": "横長"
+      },
+      "wide": {
+        "label": "ワイド"
+      }
+    },
+    "quality": {
+      "fast": {
+        "label": "高速",
+        "hint": "素早くドラフトを作成"
+      },
+      "balanced": {
+        "label": "バランス",
+        "hint": "最適なデフォルト"
+      },
+      "quality": {
+        "label": "高品質",
+        "hint": "最終パスは低速"
+      }
+    },
+    "samplers": {
+      "default": {
+        "label": "モデルのデフォルト",
+        "hint": "モデルに同梱されていた設定のまま"
+      },
+      "dpmpp_2m": {
+        "label": "DPM++ 2M",
+        "hint": "高速でバランス型 — 20-30 ステップ"
+      },
+      "dpmpp_2m_karras": {
+        "label": "DPM++ 2M Karras",
+        "hint": "少ないステップでもより滑らか"
+      },
+      "dpmpp_sde": {
+        "label": "DPM++ SDE",
+        "hint": "ややノイズが多く、創造的"
+      },
+      "euler": {
+        "label": "Euler",
+        "hint": "定番で、25 ステップ以上で安定"
+      },
+      "euler_a": {
+        "label": "Euler ancestral",
+        "hint": "創造的で、非決定的"
+      },
+      "ddim": {
+        "label": "DDIM",
+        "hint": "決定的で、やや遅い"
+      },
+      "unipc": {
+        "label": "UniPC",
+        "hint": "少ないステップ数で高速"
+      },
+      "ays_dpmpp_2m_sd15": {
+        "label": "AYS DPM++ 2M (SD1.5)",
+        "hint": "10 ステップの Align Your Steps · SD1.5 専用"
+      },
+      "ays_dpmpp_2m_sdxl": {
+        "label": "AYS DPM++ 2M (SDXL)",
+        "hint": "10 ステップの Align Your Steps · SDXL 専用"
+      }
+    },
+    "cacheStrategies": {
+      "none": {
+        "label": "オフ",
+        "hint": "標準パイプライン — キャッシュなし"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT で 1.5–2 倍高速化 · クロスプラットフォーム"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi 向けにキャリブレーション済み"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "多項式外挿で約 2.4 倍（diffusers 0.38 ネイティブ）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 近いステップ間でアテンションを再利用"
+      }
     }
   },
   "videoStudio": {
@@ -354,7 +519,47 @@
       "reasonCaution": "モデルは約 {model} GB の常駐を必要とします。{platform}(合計 {total} GB)では、これは保守的な快適目標(約 {comfort} GB)を超えていますが、推定ワーキングセット(約 {working} GB)以下です。生成は収まるはずですが、不安定になった場合は設定を下げてください。"
     },
     "disabledHint": "生成は無効:{reason}",
-    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。"
+    "willLoadHint": "次の生成時に選択されたモデルがメモリに読み込まれます。大きなバリアントの初回読み込みは 1 分程度かかることがあります。",
+    "cacheStrategies": {
+      "none": {
+        "label": "オフ",
+        "hint": "標準パイプライン — キャッシュなし"
+      },
+      "fbcache": {
+        "label": "First Block Cache",
+        "hint": "DiT で 1.5–2 倍高速化 · クロスプラットフォーム"
+      },
+      "teacache": {
+        "label": "TeaCache",
+        "hint": "FLUX / Hunyuan / LTX / CogVideoX / Mochi 向けにキャリブレーション済み"
+      },
+      "taylorseer": {
+        "label": "TaylorSeer",
+        "hint": "多項式外挿で約 2.4 倍（diffusers 0.38 ネイティブ）"
+      },
+      "pab": {
+        "label": "PAB",
+        "hint": "Pyramid Attention Broadcast — 近いステップ間でアテンションを再利用"
+      }
+    },
+    "quality": {
+      "draft": {
+        "label": "ドラフト",
+        "sub": "20 ステップ"
+      },
+      "standard": {
+        "label": "標準",
+        "sub": "30 ステップ"
+      },
+      "high": {
+        "label": "高",
+        "sub": "40 ステップ"
+      },
+      "max": {
+        "label": "最大",
+        "sub": "50 ステップ"
+      }
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -623,5 +828,44 @@
       "generic": "マイクを開けませんでした。"
     }
   },
-  "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。"
+  "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
+  "mediaStudioBoosters": {
+    "title": "パフォーマンス向上機能",
+    "forModel": "{model} 向け",
+    "selectedModelFallback": "選択中のモデル"
+  },
+  "torchUpgradePill": {
+    "attempt": {
+      "rollbackPrepare": "既存の torch をロールバック用ディレクトリに移動",
+      "install": "pip install torch（新バージョン）",
+      "deps": "pip install torch（間接的な依存関係）",
+      "constraint": "constraints.txt で torch を固定",
+      "rebuildPackage": "pip install {package}（--force-reinstall）",
+      "rebuild": "ABI に依存するパッケージを再ビルド",
+      "verify": "サブプロセスで torch.cuda.is_available() を検証",
+      "cleanup": "古いロールバック用ディレクトリを整理",
+      "rollbackRestore": "ロールバックから以前の torch を復元",
+      "step": "ステップ"
+    },
+    "available": "Torch のアップグレードが利用可能:",
+    "starting": "開始中…",
+    "upgrade": "torch をアップグレード",
+    "dismiss": "閉じる",
+    "willRebuild": "{count, plural, other {ABI に依存する # 個のパッケージ}}も再ビルドします",
+    "abiExplainer": "Torch の {type} アップデートは C++ ABI を壊すため、これらのパッケージの wheel は、新しい torch に合わせて再インストールするまで読み込めません:",
+    "rollbackLead": "アップグレードの検証に失敗した場合、以前の torch",
+    "rollbackTail": "は、隣接するロールバック用ディレクトリから自動的に復元されます — 再ダウンロードは不要です。",
+    "whatHappens": "アップグレードすると何が起こりますか？",
+    "patchBumpExplainer": "パッチ更新では torch の C++ ABI が変わらないため、torch の wheel だけが再インストールされます。現在の torch は先に隣接するロールバック用ディレクトリへ移動され、新しい wheel が CUDA の検証に失敗した場合は、以前のものが自動的に復元されます。「バックエンドを再起動」すると、新しい wheel が有効になります。",
+    "upgrading": "torch をアップグレード中",
+    "complete": "Torch のアップグレードが完了",
+    "failed": "Torch のアップグレードに失敗",
+    "restarting": "再起動中…",
+    "restartToActivate": "有効化するにはバックエンドを再起動してください",
+    "rolledBack": "ロールバックから以前の torch を復元しました — 生成は以前のバージョンで続行されます。",
+    "rollbackKeptLead": "ロールバック用ディレクトリの保存場所:",
+    "rollbackKeptTail": "（手動復旧用）。",
+    "close": "閉じる",
+    "installLog": "インストールログ（{count, plural, other {# ステップ}}）"
+  }
 }

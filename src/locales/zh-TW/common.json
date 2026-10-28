@@ -103,7 +103,8 @@
     "backendOnline": "後端線上",
     "backendOffline": "離線",
     "noModelLoaded": "未載入模型",
-    "groupTabsAriaLabel": "{group} 分頁"
+    "groupTabsAriaLabel": "{group} 分頁",
+    "primaryNavAriaLabel": "主導覽"
   },
   "slashCommands": {
     "menuAriaLabel": "斜線命令"
@@ -138,7 +139,8 @@
     "tryAgain": "重試",
     "copyDetails": "複製詳細資訊",
     "switchTo": "切換至 {target}",
-    "keepEnglish": "保持英文"
+    "keepEnglish": "保持英文",
+    "dismiss": "關閉"
   },
   "status": {
     "loading": "載入中…",
@@ -174,7 +176,8 @@
     "detected": "偵測到 {endonym}。",
     "prompt": "將應用程式切換至 {endonym}?您可以隨時在 偏好設定 → 語言 中變更。",
     "switch": "切換至 {endonym}",
-    "keep": "保持英文"
+    "keep": "保持英文",
+    "ariaLabel": "語言偏好"
   },
   "panels": {
     "mlxConversion": "MLX 轉換",
@@ -456,6 +459,11 @@
       "close": "關閉",
       "ok": "確定",
       "cancel": "取消基準測試"
+    },
+    "promptPresets": {
+      "balanced": "均衡摘要",
+      "reasoning": "推理檢驗",
+      "coding": "程式回覆"
     }
   },
   "benchmarkHistory": {
@@ -1067,5 +1075,175 @@
     "subtitle": "在另一個本地應用程式的儲存空間中找到了模型。匯入會就地連結它們，不需要重新下載。",
     "ollama": "Ollama",
     "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "正在使用 CPU 執行。",
+    "recommendationFallback": "偵測到 NVIDIA GPU，但 torch 無法存取 CUDA — 影像和影片生成會非常慢。",
+    "cudaInstalled": "CUDA torch 已安裝{source}{python}。請重新啟動應用程式以使用 GPU。",
+    "cudaInstalledSource": "（來自 {index}）",
+    "cudaInstalledPython": "（安裝到內建的 Python {version}）",
+    "noWheel": "Python{version} 沒有可用的 CUDA torch wheel。",
+    "noWheelBundledVenv": "（內建 venv）",
+    "noWheelDetail": "PyTorch 目前為 Python 3.9–3.13 提供 CUDA wheel。請在 PATH 中有受支援的 Python（例如 3.12 或 3.13）的情況下重新安裝應用程式，然後再試一次。",
+    "installFailed": "安裝失敗：",
+    "downloading": "正在將約 2.5 GB 的 CUDA wheel 下載到應用程式內建的 Python 中 — 可能需要幾分鐘。",
+    "installing": "正在安裝 CUDA torch...",
+    "install": "安裝 CUDA torch"
+  },
+  "llamaRebuild": {
+    "rebuilding": "正在重新建置 llama.cpp...",
+    "rebuild": "重新建置 llama.cpp"
+  },
+  "discoverModal": {
+    "downloadedCount": "已下載 {count} 個",
+    "variants": "變體（{count}）",
+    "convert": "轉換",
+    "chat": "對話",
+    "server": "伺服器",
+    "pause": "暫停",
+    "resume": "恢復",
+    "downloadFailed": "下載失敗",
+    "downloadComplete": "下載完成",
+    "overview": "概覽"
+  },
+  "dataDirRestart": {
+    "title": "需要重新啟動",
+    "body": "資料目錄已變更。ChaosEngineAI 需要重新啟動後端，才能開始在新位置讀寫檔案。",
+    "from": "原位置：{path}",
+    "to": "新位置：{path}",
+    "copied": "已複製：{items}",
+    "skipped": "已略過（目的地已存在）：{items}",
+    "notNow": "暫不",
+    "restarting": "正在重新啟動後端...",
+    "notBackOnline": "重新啟動後，後端沒有恢復上線。",
+    "failed": "重新啟動後端失敗。",
+    "confirm": "好，立即重新啟動"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2 vLLM 橋接",
+    "backendOffline": "後端離線 — 請啟動 sidecar 以偵測 WSL 狀態。",
+    "capsError": "無法讀取 WSL 狀態：{error}",
+    "probing": "正在偵測 WSL 狀態...",
+    "ready": "✓ 就緒{version}",
+    "notInstalled": "這台 Windows 主機上尚未安裝 WSL2。vLLM 不提供原生 Windows wheel，因此可行的做法是在 WSL2 的 Ubuntu 發行版中執行 vLLM。",
+    "runInPowershell": "以系統管理員身分開啟 PowerShell，然後執行：",
+    "rebootHint": "依提示重新開機，然後重新開啟 ChaosEngineAI。",
+    "microsoftDocs": "Microsoft 文件",
+    "cudaMissingLead": "WSL2 已安裝（{distro}），但",
+    "cudaMissingTail": "在該發行版內無法存取。請在 Windows 上安裝 NVIDIA WSL 驅動程式 — 它能讓 CUDA 從 GPU 驅動程式直通到 WSL。",
+    "nvidiaGuide": "NVIDIA WSL 指南 ↗",
+    "installing": "安裝中...",
+    "reinstall": "在 WSL 中重新安裝 vLLM",
+    "install": "在 WSL 中安裝 vLLM",
+    "installedSummary": "vLLM {version} 已安裝在 {distro} 的 ~/.chaosengine/vllm-venv 中。桌面應用程式可以透過此 venv 載入 vLLM 模型。",
+    "readySummary": "WSL2（{distro}）和 CUDA 直通已就緒。將把 vLLM 安裝到 ~/.chaosengine/vllm-venv 的獨立 venv 中（約 2 GB 下載，一般環境下約 5-15 分鐘）。"
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "安裝指令以非零狀態結束。",
+    "title": "加速包",
+    "description": "用於影像、影片和聊天推論的選用加速器。每個都只需一次 pip install — 在你的硬體支援的項目上點擊「安裝」即可。",
+    "capError": "無法讀取加速器功能資訊：{error}",
+    "backendOffline": "後端離線 — 請啟動 sidecar 以讀取加速器狀態。",
+    "columns": {
+      "accelerator": "加速器",
+      "size": "大小",
+      "platform": "平台",
+      "status": "狀態",
+      "action": "操作"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "正在檢查大小與可用空間",
+      "copying": "正在複製",
+      "cleanup": "正在移除舊副本",
+      "done": "完成",
+      "error": "失敗"
+    },
+    "pathSavedRestart": "路徑已儲存。請重新啟動後端，讓新的下載存放到新的磁碟機。",
+    "pathSaved": "路徑已儲存。",
+    "resetDoneRestart": "已重設為預設值。請重新啟動後端以使用預設位置。",
+    "resetDone": "已重設為預設值。",
+    "destinationRequired": "請先設定目的地路徑（直接輸入，或使用上方的「瀏覽」）。",
+    "moveConfirm": "要將 {size} 的模型從 {from} 移動到 {to}？\n\n複製成功後，來源目錄樹將被刪除。在傳統機械硬碟上，100 GB 可能需要 15-45 分鐘。\n\n開始之前，請先關閉所有正在進行的生成作業。",
+    "reading": "正在讀取儲存空間資訊...",
+    "loading": "正在載入儲存空間資訊...",
+    "backendOffline": "後端離線 — 請啟動 sidecar 以設定儲存空間。",
+    "currentLocation": "目前快取位置",
+    "inCache": "快取中 {size}",
+    "free": "可用 {size}",
+    "overridePath": "覆寫路徑（需要重新啟動）",
+    "usingDefault": "使用預設值",
+    "browse": "瀏覽...",
+    "saving": "正在儲存...",
+    "savePath": "儲存路徑",
+    "resetToDefault": "重設為預設值",
+    "restarting": "正在重新啟動...",
+    "restartBackendNow": "立即重新啟動後端",
+    "moveHint": "舊位置上有 {size} 的模型。請將它們移動過來，以便在新路徑下繼續使用。在傳統機械硬碟上，請預留每 6 GB 約 1 分鐘的時間。",
+    "starting": "正在開始...",
+    "moveModels": "將現有模型移動到新路徑",
+    "filesProgress": "{copied} / {total} 個檔案",
+    "restartBackend": "重新啟動後端"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "快速、輕量 — 專為消費級硬體設計。適合作為首次嘗試。",
+      "wan22": "出色的文字轉影片品質。可在 24GB 以上 VRAM 或配備統一記憶體的 Apple Silicon 上執行。",
+      "hunyuanVideo": "高擬真度，可產生較長的片段。需要 40GB 以上等級的硬體。",
+      "mochi1": "開放權重，動態品質具競爭力。採用 Apache 2.0 授權。"
+    },
+    "models": {
+      "title": "已安裝的影片模型",
+      "subtitle": "這台機器上的模型",
+      "body": "尚未在本地偵測到影片模型。影片引擎推出後，下載的權重會連同其量化方式、磁碟佔用大小和執行目標一併顯示在這裡。"
+    },
+    "discover": {
+      "title": "探索影片模型",
+      "subtitle": "瀏覽並下載影片生成模型",
+      "body": "下方目錄預覽了我們計劃優先支援的引擎。影片執行階段接入後，下載按鈕就會啟用。"
+    },
+    "studio": {
+      "title": "影片工作室",
+      "subtitle": "輸入提示詞、生成、反覆調整",
+      "body": "工作室將提供提示詞編輯器、長寬比與長度控制、種子固定以及逐幀預覽。敬請期待 — 目前尚未載入任何引擎。"
+    },
+    "gallery": {
+      "title": "影片圖庫",
+      "subtitle": "已儲存的輸出與篩選",
+      "body": "完成的渲染結果會存放在這裡，並可依模型、長度和解析度篩選。拖曳排序與我的最愛功能已列入路線圖。"
+    },
+    "comingSoon": "即將推出",
+    "roadmap": "本地影片生成已列入 ChaosEngineAI 的路線圖。此分頁是預留位置，讓我們能提早推出路由與 UX 外殼 — 推論引擎之後會接入其中。",
+    "planned": "計劃中"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "僅限 CUDA",
+      "appleSilicon": "僅限 Apple Silicon",
+      "any": "跨平台"
+    },
+    "installing": "安裝中…",
+    "retry": "重試",
+    "installBackground": "安裝（背景）",
+    "install": "安裝",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ 已安裝",
+    "installFailed": "安裝失敗",
+    "installLabel": "安裝 {label}",
+    "requires": "需要：{platform}",
+    "appliesTo": "適用於：",
+    "backgroundInstall": "背景安裝",
+    "quickInstall": "快速安裝",
+    "installFailureOutput": "安裝失敗 — 顯示輸出",
+    "installOutput": "安裝輸出"
+  },
+  "infoTooltip": {
+    "ariaLabel": "更多資訊"
+  },
+  "fileReveal": {
+    "finder": "在 Finder 中顯示",
+    "explorer": "在檔案總管中顯示",
+    "files": "在「檔案」中顯示"
   }
 }

@@ -103,7 +103,8 @@
     "backendOnline": "Backend online",
     "backendOffline": "Offline",
     "noModelLoaded": "Kein Modell geladen",
-    "groupTabsAriaLabel": "{group}-Tabs"
+    "groupTabsAriaLabel": "{group}-Tabs",
+    "primaryNavAriaLabel": "Primär"
   },
   "slashCommands": {
     "menuAriaLabel": "Slash-Befehle"
@@ -138,7 +139,8 @@
     "tryAgain": "Erneut versuchen",
     "copyDetails": "Details kopieren",
     "switchTo": "Zu {target} wechseln",
-    "keepEnglish": "Englisch beibehalten"
+    "keepEnglish": "Englisch beibehalten",
+    "dismiss": "Schließen"
   },
   "status": {
     "loading": "Lädt…",
@@ -174,7 +176,8 @@
     "detected": "{endonym} erkannt.",
     "prompt": "App auf {endonym} umstellen? Sie können dies jederzeit unter Einstellungen → Sprache ändern.",
     "switch": "Zu {endonym} wechseln",
-    "keep": "Englisch beibehalten"
+    "keep": "Englisch beibehalten",
+    "ariaLabel": "Spracheinstellung"
   },
   "panels": {
     "mlxConversion": "MLX-Konvertierung",
@@ -456,6 +459,11 @@
       "close": "Schließen",
       "ok": "OK",
       "cancel": "Benchmark abbrechen"
+    },
+    "promptPresets": {
+      "balanced": "Ausgewogene Zusammenfassung",
+      "reasoning": "Reasoning-Test",
+      "coding": "Coding-Antwort"
     }
   },
   "benchmarkHistory": {
@@ -1067,5 +1075,175 @@
     "subtitle": "Im Speicher einer anderen lokalen App wurden Modelle gefunden. Der Import verknüpft sie an Ort und Stelle — kein erneuter Download.",
     "ollama": "Ollama",
     "lmstudio": "LM Studio"
+  },
+  "gpuBanner": {
+    "runningOnCpu": "Läuft auf der CPU.",
+    "recommendationFallback": "Eine NVIDIA-GPU ist sichtbar, aber torch kann CUDA nicht erreichen — Bild- und Videogenerierung werden sehr langsam sein.",
+    "cudaInstalled": "CUDA-torch installiert{source}{python}. Starte die App neu, um die GPU zu nutzen.",
+    "cudaInstalledSource": " von {index}",
+    "cudaInstalledPython": " in das mitgelieferte Python {version}",
+    "noWheel": "Kein CUDA-torch-Wheel für Python{version}.",
+    "noWheelBundledVenv": " (mitgelieferte venv)",
+    "noWheelDetail": "PyTorch liefert CUDA-Wheels derzeit für Python 3.9–3.13. Installiere die App mit einem unterstützten Python im PATH (z. B. 3.12 oder 3.13) neu und versuche es erneut.",
+    "installFailed": "Installation fehlgeschlagen:",
+    "downloading": "Ein ~2,5 GB großes CUDA-Wheel wird in das mitgelieferte Python der App heruntergeladen — das kann mehrere Minuten dauern.",
+    "installing": "CUDA-torch wird installiert...",
+    "install": "CUDA-torch installieren"
+  },
+  "llamaRebuild": {
+    "rebuilding": "llama.cpp wird neu kompiliert...",
+    "rebuild": "llama.cpp neu kompilieren"
+  },
+  "discoverModal": {
+    "downloadedCount": "{count} heruntergeladen",
+    "variants": "Varianten ({count})",
+    "convert": "Konvertieren",
+    "chat": "Chat",
+    "server": "Server",
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "downloadFailed": "Download fehlgeschlagen",
+    "downloadComplete": "Download abgeschlossen",
+    "overview": "Übersicht"
+  },
+  "dataDirRestart": {
+    "title": "Neustart erforderlich",
+    "body": "Das Datenverzeichnis wurde geändert. ChaosEngineAI muss das Backend neu starten, um Dateien am neuen Ort zu lesen und zu schreiben.",
+    "from": "Von: {path}",
+    "to": "Nach: {path}",
+    "copied": "Kopiert: {items}",
+    "skipped": "Übersprungen (am Ziel bereits vorhanden): {items}",
+    "notNow": "Jetzt nicht",
+    "restarting": "Backend wird neu gestartet...",
+    "notBackOnline": "Das Backend ist nach dem Neustart nicht wieder online gegangen.",
+    "failed": "Backend konnte nicht neu gestartet werden.",
+    "confirm": "OK, jetzt neu starten"
+  },
+  "wslBridgePanel": {
+    "title": "WSL2-vLLM-Brücke",
+    "backendOffline": "Backend offline — starte den Sidecar, um den WSL-Status zu prüfen.",
+    "capsError": "WSL-Status konnte nicht gelesen werden: {error}",
+    "probing": "WSL-Status wird geprüft...",
+    "ready": "✓ Bereit{version}",
+    "notInstalled": "WSL2 ist auf diesem Windows-Rechner nicht installiert. vLLM liefert keine nativen Windows-Wheels, daher ist der praktikable Weg, vLLM in einer WSL2-Ubuntu-Distribution auszuführen.",
+    "runInPowershell": "Öffne eine PowerShell als Administrator und führe aus:",
+    "rebootHint": "Starte neu, wenn du dazu aufgefordert wirst, und öffne dann ChaosEngineAI erneut.",
+    "microsoftDocs": "Microsoft-Dokumentation",
+    "cudaMissingLead": "WSL2 ist installiert ({distro}), aber",
+    "cudaMissingTail": "ist in der Distribution nicht erreichbar. Installiere den NVIDIA-WSL-Treiber unter Windows — er ermöglicht die CUDA-Durchreichung von deinem GPU-Treiber an WSL.",
+    "nvidiaGuide": "NVIDIA-WSL-Anleitung ↗",
+    "installing": "Wird installiert...",
+    "reinstall": "vLLM in WSL neu installieren",
+    "install": "vLLM in WSL installieren",
+    "installedSummary": "vLLM {version} ist in {distro} unter ~/.chaosengine/vllm-venv installiert. Die Desktop-App kann vLLM-Modellladevorgänge über diese venv leiten.",
+    "readySummary": "WSL2 ({distro}) + CUDA-Durchreichung sind bereit. Installiere vLLM in eine isolierte venv unter ~/.chaosengine/vllm-venv (~2 GB Download, ~5-15 Min., wenn die Caches schon warm sind)."
+  },
+  "acceleratorsBoostPack": {
+    "installFailed": "Der Installationsbefehl wurde mit einem Fehlercode beendet.",
+    "title": "Boost Pack",
+    "description": "Optionale Beschleuniger für Bild-, Video- und Chat-Inferenz. Jeder ist nur ein pip install entfernt — klicke bei den Zeilen, die deine Hardware unterstützt, auf Installieren.",
+    "capError": "Beschleuniger-Fähigkeiten konnten nicht gelesen werden: {error}",
+    "backendOffline": "Backend offline — starte den Sidecar, um den Beschleuniger-Status zu lesen.",
+    "columns": {
+      "accelerator": "Beschleuniger",
+      "size": "Größe",
+      "platform": "Plattform",
+      "status": "Status",
+      "action": "Aktion"
+    }
+  },
+  "modelStoragePanel": {
+    "phase": {
+      "preflight": "Größen und freier Speicherplatz werden geprüft",
+      "copying": "Wird kopiert",
+      "cleanup": "Alte Kopie wird entfernt",
+      "done": "Fertig",
+      "error": "Fehlgeschlagen"
+    },
+    "pathSavedRestart": "Pfad gespeichert. Starte das Backend neu, damit neue Downloads auf dem neuen Laufwerk landen.",
+    "pathSaved": "Pfad gespeichert.",
+    "resetDoneRestart": "Auf Standard zurückgesetzt. Starte das Backend neu, um den Standardort zu verwenden.",
+    "resetDone": "Auf Standard zurückgesetzt.",
+    "destinationRequired": "Lege zuerst einen Zielpfad fest (oben eintippen oder „Durchsuchen“ verwenden).",
+    "moveConfirm": "{size} an Modellen von {from} nach {to} verschieben?\n\nDer Quellordner wird nach erfolgreichem Kopieren gelöscht. Auf einer drehenden HDD kann das bei 100 GB 15–45 Min. dauern.\n\nBeende vor dem Start alle laufenden Generierungen.",
+    "reading": "Speicherinfos werden gelesen...",
+    "loading": "Speicherinfos werden geladen...",
+    "backendOffline": "Backend offline — starte den Sidecar, um den Speicher zu konfigurieren.",
+    "currentLocation": "Aktueller Cache-Speicherort",
+    "inCache": "{size} im Cache",
+    "free": "{size} frei",
+    "overridePath": "Pfad überschreiben (Neustart erforderlich)",
+    "usingDefault": "Standard wird verwendet",
+    "browse": "Durchsuchen...",
+    "saving": "Wird gespeichert...",
+    "savePath": "Pfad speichern",
+    "resetToDefault": "Auf Standard zurücksetzen",
+    "restarting": "Wird neu gestartet...",
+    "restartBackendNow": "Backend jetzt neu starten",
+    "moveHint": "Am alten Speicherort liegen {size} an Modellen. Verschiebe sie, damit sie vom neuen Pfad aus weiter funktionieren. Auf einer drehenden HDD solltest du etwa 1 Minute pro 6 GB einplanen.",
+    "starting": "Wird gestartet...",
+    "moveModels": "Vorhandene Modelle an den neuen Pfad verschieben",
+    "filesProgress": "{copied} / {total} Dateien",
+    "restartBackend": "Backend neu starten"
+  },
+  "videoPlaceholderTab": {
+    "engines": {
+      "ltxVideo": "Schnell und leichtgewichtig — für Consumer-Hardware ausgelegt. Ein gutes erstes Ziel.",
+      "wan22": "Starke Text-zu-Video-Qualität. Läuft mit 24 GB+ VRAM oder auf Apple Silicon mit Unified Memory.",
+      "hunyuanVideo": "Hohe Detailtreue, längere Clips. Benötigt Hardware der 40-GB+-Klasse.",
+      "mochi1": "Open-Weight mit konkurrenzfähiger Bewegungsqualität. Apache-2.0-Lizenz."
+    },
+    "models": {
+      "title": "Installierte Videomodelle",
+      "subtitle": "Modelle auf diesem Rechner",
+      "body": "Noch keine Videomodelle lokal erkannt. Sobald die Video-Engine erscheint, tauchen heruntergeladene Gewichte hier zusammen mit Quantisierung, Größe auf der Festplatte und Laufzeitziel auf."
+    },
+    "discover": {
+      "title": "Videomodelle entdecken",
+      "subtitle": "Videogeneratoren durchsuchen und herunterladen",
+      "body": "Der Katalog unten gibt einen Vorgeschmack auf die Engines, die wir zuerst unterstützen wollen. Die Download-Schaltflächen werden aktiv, sobald die Video-Laufzeit angebunden ist."
+    },
+    "studio": {
+      "title": "Videostudio",
+      "subtitle": "Prompten, generieren und iterieren",
+      "body": "Das Studio wird den Prompt-Editor, Steuerelemente für Seitenverhältnis und Dauer, Seed-Fixierung und Vorschauen pro Frame enthalten. Noch etwas Geduld — es ist noch keine Engine geladen."
+    },
+    "gallery": {
+      "title": "Videogalerie",
+      "subtitle": "Gespeicherte Ausgaben und Filter",
+      "body": "Fertige Renderings landen hier, mit Filtern nach Modell, Dauer und Auflösung. Neu anordnen per Drag-and-drop und Favoriten stehen auf der Roadmap."
+    },
+    "comingSoon": "Demnächst",
+    "roadmap": "Lokale Videogenerierung steht auf der Roadmap von ChaosEngineAI. Dieser Tab ist ein Platzhalter, damit wir Routing und UX-Hülle früh ausliefern können — die Inferenz-Engine wird dahinter eingesetzt.",
+    "planned": "Geplant"
+  },
+  "acceleratorCard": {
+    "platform": {
+      "cuda": "Nur CUDA",
+      "appleSilicon": "Nur Apple Silicon",
+      "any": "Plattformübergreifend"
+    },
+    "installing": "Wird installiert…",
+    "retry": "Erneut versuchen",
+    "installBackground": "Installieren (im Hintergrund)",
+    "install": "Installieren",
+    "installedVersion": "✓ v{version}",
+    "installedBadge": "✓ Installiert",
+    "installFailed": "Installation fehlgeschlagen",
+    "installLabel": "{label} installieren",
+    "requires": "Erfordert: {platform}",
+    "appliesTo": "Gilt für:",
+    "backgroundInstall": "Installation im Hintergrund",
+    "quickInstall": "Schnellinstallation",
+    "installFailureOutput": "Installation fehlgeschlagen — Ausgabe anzeigen",
+    "installOutput": "Installationsausgabe"
+  },
+  "infoTooltip": {
+    "ariaLabel": "Weitere Infos"
+  },
+  "fileReveal": {
+    "finder": "Im Finder anzeigen",
+    "explorer": "Im Explorer anzeigen",
+    "files": "In Dateien anzeigen"
   }
 }

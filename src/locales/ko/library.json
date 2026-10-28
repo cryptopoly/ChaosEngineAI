@@ -29,7 +29,14 @@
     "cancelled": "취소됨",
     "complete": "완료",
     "totalSize": "총 {size}",
-    "downloaded": "{total} 중 {downloaded}"
+    "downloaded": "{total} 중 {downloaded}",
+    "preparing": "다운로드 준비 중...",
+    "pausedPercent": "{percent}%에서 일시 중지됨",
+    "downloadingPercent": "다운로드 중 {percent}%",
+    "pausedAtSize": "{size} GB에서 일시 중지됨",
+    "downloadingSize": "{size} GB 다운로드 중",
+    "sizeTotalGb": "총 {size} GB",
+    "sizeDownloadedGb": "{size} GB 다운로드됨"
   },
   "details": {
     "loadModel": "모델 로드",

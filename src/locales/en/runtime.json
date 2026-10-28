@@ -58,7 +58,10 @@
     "gpuLayers": "GPU layers",
     "threads": "Threads",
     "fitInMemory": "Fit in memory",
-    "cacheStrategyTensorfoldNote": "(TensorFold manages its own KV cache)"
+    "cacheStrategyTensorfoldNote": "(TensorFold manages its own KV cache)",
+    "moreInfo": "More info",
+    "requiresLabel": "Requires:",
+    "installLabel": "Install:"
   },
   "notes": {
     "binaryRequired": "Requires {binary}.",
@@ -89,7 +92,15 @@
     "currentModelLabel": "Current model:",
     "supportedVia": "Supported via {model}",
     "compatibilityUnresolved": "Compatibility not resolved yet.",
-    "composerHint": "DFlash speculative decoding can ~2× this model with no quality loss."
+    "composerHint": "DFlash speculative decoding can ~2× this model with no quality loss.",
+    "registeredTargetsLabel": "Registered targets:",
+    "targetModelsCount": "{count} target models",
+    "ddtreeLabel": "DDTree:",
+    "ddtreeAvailable": "Available",
+    "ddtreeUnavailable": "Not available yet; linear DFlash runs instead.",
+    "installLabel": "Install:",
+    "treeBudgetTooltip": "DDTree: tree-based speculative decoding. 0 = linear DFlash, >0 = explore multiple draft paths in parallel for higher acceptance rates.",
+    "treeBudgetLabel": "Tree budget (DDTree)"
   },
   "presets": {
     "quality": {
@@ -112,22 +123,27 @@
   "sliders": {
     "context": "Context",
     "maxTokens": "Max tokens",
-    "temperature": "Temperature"
+    "temperature": "Temperature",
+    "fp16Layers": "FP16 layers"
   },
   "fitInMemory": {
-    "body": "Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure."
+    "body": "Fit in memory asks ChaosEngineAI to choose a runtime/cache profile that keeps the model and KV cache within available memory. Disable it only when you want to force a larger or more aggressive profile and accept possible swapping or load failure.",
+    "aboutTitle": "About fit in memory"
   },
   "cacheFit": {
     "mayNotFit": "May not fit",
     "modelMayNotFit": "Model may not fit",
     "fitsEasily": "Fits easily",
     "tightFit": "Tight fit",
-    "contextMayNotFit": "Full context may not fit"
+    "contextMayNotFit": "Full context may not fit",
+    "vramWontFit": "Cache won't fit GPU"
   },
   "cacheAdvice": {
     "modelExceedsRam": "Model weights alone exceed estimated usable RAM. Pick a smaller model or a more aggressive quantisation.",
     "nativeF16TooBig": "The model can load, but a full native f16 cache at this context may exceed system RAM as the thread fills. Lower context, or pick a compressed strategy.",
-    "compressedTooBig": "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers."
+    "compressedTooBig": "The model can load, but the selected context cache may exceed system RAM as the thread fills. Lower context or reduce FP16 layers.",
+    "vramNativeF16": "A full native f16 KV cache at this context is ~{cacheGb} GB, larger than the {vramGb} GB of GPU VRAM available. llama.cpp will spill to system RAM (slow PCIe transfers per token) or fail to allocate. Lower context, drop FP16 layers, or pick the TurboQuant memory saver so the cache fits in VRAM.",
+    "vramSelected": "The selected KV cache at this context is ~{cacheGb} GB, larger than the {vramGb} GB of GPU VRAM available. llama.cpp will spill to system RAM (slow PCIe transfers per token) or fail to allocate. Lower context, drop FP16 layers, or pick the TurboQuant memory saver so the cache fits in VRAM."
   },
   "tensorfold": {
     "tooltip": "TensorFold: exact speculative decoding. Drafts from the model's MTP head and/or a draft model are verified against the target model, so replies are identical to serial decoding — only faster.",
@@ -187,5 +203,45 @@
     "aboutTitle": "About llama.cpp speculative decoding",
     "body": "If the model folder has a drafter file (mtp-, dflash-, dspark- or eagle3-*.gguf — DFlash 2 drafters use the dflash- prefix), llama.cpp drafts with it. Otherwise it falls back to ngram-mod, which reuses repeated text (code edits, summaries, reasoning echoed into the answer) with no extra model. Every drafted token is verified, so output is unchanged.",
     "requiresBody": "A current llama-server (run scripts/update-llama-cpp.sh). Older binaries fall back to standard decode with a runtime note."
+  },
+  "strategyInfo": {
+    "native": {
+      "description": "Full-precision FP16 KV cache. No compression, so it is the fastest and highest-quality choice, and it works with speculative decoding. It uses the most memory at long context. Works with all backends.",
+      "requires": "Built-in"
+    },
+    "triattention": {
+      "description": "Transparent KV cache compression integrated via vLLM. Linux + CUDA only; ChaosEngineAI does not support TriAttention on macOS.",
+      "requires": "Linux + CUDA GPU + vLLM backend. Not supported on macOS.",
+      "installHint": "Use this only in a Linux/CUDA environment used by ChaosEngineAI, then restart the app."
+    },
+    "turboquant": {
+      "description": "Memory saver. Stores the KV cache in 1-4 bits (about 4-5x smaller at 3-bit) so long conversations fit in far less RAM. The trade is speed: expect slower generation than Native, and on MLX it turns off chat-history cache reuse and cannot be combined with speculative decoding. Pick it when a long context will not fit in memory; otherwise stay on Native. On MLX it uses Hadamard rotation + Lloyd-Max codebooks; on GGUF it uses llama-server-turbo.",
+      "requires": "Apple Silicon + MLX for MLX path; llama-server-turbo for GGUF path.",
+      "installHint": "For MLX: install turboquant-mlx-full. For GGUF: run scripts/build-llama-turbo.sh. Then restart ChaosEngineAI."
+    }
+  },
+  "installTerminal": {
+    "statusRunning": "running",
+    "statusComplete": "complete",
+    "statusFailed": "failed",
+    "statusReady": "ready",
+    "noOutputYet": "No install output yet. Run the installer to capture stdout and stderr here.",
+    "title": "{label} install terminal",
+    "startedAt": "Started {time}",
+    "collapsedHint": "Collapsed by default. Open after an install attempt to inspect failures.",
+    "finishedAt": "Finished {time}"
+  },
+  "strategyCard": {
+    "turboMissingTooltip": "Requires llama-server-turbo binary. Run scripts/build-llama-turbo.sh to install.",
+    "badgeNotApplicable": "N/A",
+    "badgeNoTurbo": "No turbo binary",
+    "badgeReady": "Ready",
+    "badgeInstall": "Install",
+    "buildingTurbo": "Building llama-server-turbo...",
+    "installing": "Installing...",
+    "installNow": "Install now",
+    "runInTerminal": "Run in your terminal, then restart ChaosEngineAI.",
+    "updating": "Updating...",
+    "updateAvailable": "Update available"
   }
 }

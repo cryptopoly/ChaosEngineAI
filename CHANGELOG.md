@@ -9,8 +9,19 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - **Voice I/O** (FU-117): a voice pack in its own environment (MLX Whisper, Parakeet and Kokoro on Apple Silicon; faster-whisper and kokoro-onnx on Windows and Linux), dictation and read-aloud in Chat, voice calls with turn detection and barge-in, Voice Studio (transcription queue, speaker labels, translation, transcript editor, Speak) and Voice Library, which replaces Gallery.
 - **LFM3-1.7B** (Liquid AI) on MLX through a vendored `lfm3` architecture, official MLX 4-bit and 8-bit rows (FU-118).
 - Unload / Cancel load button in the chat header.
+- **LFM3-1.7B GGUF** (official Q4_K_M) on llama.cpp, now pinned at b11938 (adds the `lfm3` architecture); the language catalogs cover the whole frontend in all 10 locales (FU-119).
+- `scripts/audit-dependencies.py`: checks every pinned Python package, Rust crate and npm package against osv.dev for known vulnerabilities and lists what is behind the newest release. `pre-build-check` and the release workflow run it; a high or critical advisory blocks, and an accepted one needs a reason and an expiry date in `scripts/dependency-audit-ignore.json` (FU-120).
+
+### Security
+
+- Python pins (`release-constraints.txt`): certifi 2026.10.19, pypdf 6.21.2 (the PDF reader also refuses anything older), Pillow 13.0.0, python-multipart 0.0.31, aiohttp 3.14.4, yarl 1.25.1, urllib3 2.8.0, anyio 4.14.2, idna 3.15, msgpack 1.2.3, fsspec 2026.6.0, multidict 6.9.1, filelock 4.2.1, datasets 5.0.1, accelerate 1.15.0; docs tools mkdocs-material 9.7.7 and pymdown-extensions 11.0.1.
+- Rust: tokio, rustls, rustls-webpki, webpki-root-certs (the certificate fix), plist and quick-xml, serde_with, anyhow and others, within their compatible ranges. `zip` 4.6.1 (Windows updater) stays, accepted until 2026-12-31: archives are signature-checked before they are unpacked, and the fix needs tauri 2.12.
+- Frontend: react-syntax-highlighter 16 (removes a PrismJS DOM-clobbering issue), vite 7.3.7, vitest 4.1.12, postcss, nanoid, browserslist and source-map-js. `npm audit` is down to four low-severity KaTeX findings.
 
 ### Fixed
+
+- Tools never ran on GGUF models: llama.cpp returns tool calls as structured data and the engine ignored them, so the answer was empty.
+- `release-constraints.txt` pinned pypdf 6.10.2 and the other vulnerable versions, so release builds shipped them.
 
 - Typing in the Discover search blanked the page: LFM2.5, Muse Glimmer and LFM3 had no `readme` lines.
 - Tool calls written as `<function=...><parameter=...>` (LFM3, Qwen3-Coder) showed as text and never ran.

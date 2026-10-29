@@ -46,9 +46,9 @@ dflash-mlx = ["dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@fada1e
 desktop = [
     "fastapi>=0.115.0",
     "huggingface-hub>=0.26.0",
-    "pypdf>=6.10.2",
+    "pypdf>=6.21.2",
     "psutil>=5.9.0",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.31",
     "uvicorn>=0.30.0",
     # FU-042 i18n: Babel powers gettext-style message catalogs
     # (``backend_service/locales/{lang}/LC_MESSAGES/messages.po``) for

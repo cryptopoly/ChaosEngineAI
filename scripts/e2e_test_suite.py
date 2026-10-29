@@ -186,7 +186,68 @@ def probe_capabilities() -> Capability:
                 if any(model_dir.glob("*.safetensors")):
                     cap.local_mlx_models.append((ref, str(model_dir)))
 
+    # Models downloaded through the app or the Hub client live in the Hugging
+    # Face cache, not under ~/AI_Models. Without this the suite reported "no
+    # model on disk" and skipped the LFM3, GGUF and spec-dec checks on a
+    # machine that had the models.
+    _scan_hf_cache(cap)
+    cap.local_mlx_models.sort(key=lambda item: _dir_bytes(Path(item[1])))
+    cap.local_gguf_files.sort(key=lambda item: _dir_bytes(Path(item[1])))
+
     return cap
+
+
+_CHAT_ARCH_SUFFIXES = ("ForCausalLM", "ForConditionalGeneration", "LMHeadModel")
+
+
+def _dir_bytes(path: Path) -> int:
+    """Size of a file or folder, following the snapshot symlinks into blobs/."""
+    try:
+        if path.is_file():
+            return path.stat().st_size
+        return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+    except OSError:
+        return 0
+
+
+def _hf_cache_root() -> Path:
+    explicit = os.environ.get("HF_HUB_CACHE")
+    if explicit:
+        return Path(explicit)
+    home = os.environ.get("HF_HOME")
+    return (Path(home) / "hub") if home else (Path.home() / ".cache" / "huggingface" / "hub")
+
+
+def _scan_hf_cache(cap: Capability) -> None:
+    """Add chat-capable models from the Hugging Face cache to the inventory."""
+    root = _hf_cache_root()
+    if not root.is_dir():
+        return
+    known = {ref for ref, _ in cap.local_mlx_models} | {ref for ref, _ in cap.local_gguf_files}
+    for repo_dir in sorted(root.glob("models--*--*")):
+        owner, _, name = repo_dir.name[len("models--"):].partition("--")
+        ref = f"{owner}/{name}"
+        # Test fixtures other tools drop in the cache are not real models.
+        if ref in known or "internal-testing" in owner or name.lower().startswith("tiny"):
+            continue
+        snapshots = repo_dir / "snapshots"
+        try:
+            snapshot = max((d for d in snapshots.iterdir() if d.is_dir()), key=lambda d: d.stat().st_mtime)
+        except (OSError, ValueError):
+            continue
+        for gguf in sorted(snapshot.glob("*.gguf")):
+            low = gguf.name.lower()
+            if "mmproj" not in low and not low.startswith(("dflash-", "dspark-", "eagle3-", "mtp-", "t5", "clip_")):
+                cap.local_gguf_files.append((ref, str(gguf)))
+        if not any(snapshot.glob("*.safetensors")) or (snapshot / "model_index.json").exists():
+            continue  # no weights, or a diffusion pipeline
+        try:
+            config = json.loads((snapshot / "config.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        archs = config.get("architectures") if isinstance(config, dict) else None
+        if isinstance(archs, list) and archs and str(archs[0]).endswith(_CHAT_ARCH_SUFFIXES):
+            cap.local_mlx_models.append((ref, str(snapshot)))
 
 
 # ---------------------------------------------------------------------------

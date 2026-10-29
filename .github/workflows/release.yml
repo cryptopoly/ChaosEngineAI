@@ -38,6 +38,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: node scripts/check-version-sync.mjs --tag "$RELEASE_TAG"
+      # Known vulnerabilities in what ships (pinned Python packages, Rust crates,
+      # npm packages), checked against osv.dev. A high or critical advisory stops
+      # the release before anything is built; accept one on purpose in
+      # scripts/dependency-audit-ignore.json with a reason and an expiry date.
+      - name: Dependency audit
+        run: python3 scripts/audit-dependencies.py
       - name: Find or create release
         id: find-or-create
         uses: actions/github-script@v9
@@ -222,21 +228,21 @@ jobs:
         run: |
           .python-portable/bin/python3 -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -c release-constraints.txt mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv/bin/pip install -c release-constraints.txt mlx mlx-lm gguf fastapi psutil uvicorn "pypdf>=6.21.2" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Linux)
         if: matrix.platform == 'linux'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv/bin/pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.2" python-multipart huggingface_hub babel
 
       - name: Create Python venv (Windows)
         if: matrix.platform == 'windows'
         run: |
           python -m venv .venv
           .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.10.2" python-multipart huggingface_hub babel
+          .venv\Scripts\pip install -c release-constraints.txt fastapi psutil uvicorn "pypdf>=6.21.2" python-multipart huggingface_hub babel
 
       - name: Set Python embed path (Unix)
         if: matrix.platform != 'windows'

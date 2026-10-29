@@ -15,7 +15,6 @@ import type {
   ImageQualityPreset,
   ImageSamplerId,
   ImageRuntimeStatus,
-  TabId,
   TauriBackendInfo,
 } from "../../types";
 import type { NativeBackendStatus } from "../../types/server";
@@ -41,6 +40,7 @@ import {
   isFlowMatchingRepo,
   isUnetImageRepo,
 } from "../../constants";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 export interface ImageStudioTabProps {
   imageCatalog: ImageModelFamily[];
@@ -88,7 +88,7 @@ export interface ImageStudioTabProps {
   onImageSeedInputChange: (value: string) => void;
   imageOutputs: ImageOutputArtifact[];
   recentImageOutputs: ImageOutputArtifact[];
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenImageStudio: (modelId?: string) => void;
   onOpenImageGallery: (modelId?: string) => void;
   onSubmitImageGeneration: () => void;
@@ -469,10 +469,10 @@ export function ImageStudioTab({
         className="span-2"
         actions={
           <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
               {t("imageStudio.actions.discover", { defaultValue: "Discover" })}
             </button>
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-models")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "installed"))}>
               {t("imageStudio.actions.installed", { defaultValue: "Installed" })}
             </button>
             <button className="secondary-button" type="button" onClick={() => onOpenImageGallery()}>
@@ -582,7 +582,7 @@ export function ImageStudioTab({
                 })}
               </p>
               <div className="button-row">
-                <button className="secondary-button" type="button" onClick={() => onActiveTabChange("image-discover")}>
+                <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}>
                   {t("imageStudio.noModelsCallout.openDiscover", { defaultValue: "Open Image Discover" })}
                 </button>
               </div>
@@ -1085,7 +1085,7 @@ export function ImageStudioTab({
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={() => onActiveTabChange("image-discover")}
+                    onClick={() => onActiveTabChange(modelsPageRequest("image", "available"))}
                     disabled={imageBusy}
                   >
                     {t("imageStudio.safety.browseSmaller", { defaultValue: "Browse smaller models" })}

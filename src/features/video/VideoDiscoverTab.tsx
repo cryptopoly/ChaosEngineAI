@@ -7,7 +7,6 @@ import { Panel } from "../../components/Panel";
 import type { DownloadStatus, InstallResult, LongLiveJobState } from "../../api";
 import type {
   SystemStats,
-  TabId,
   VideoModelVariant,
   VideoRuntimeStatus,
 } from "../../types";
@@ -34,6 +33,7 @@ import {
   getAccelerator,
   getApplicableAccelerators,
 } from "../../components/acceleratorCatalog";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 type MediaStatusFilter = "all" | "installed" | "not-installed" | "downloading" | "paused" | "failed" | "incomplete";
 type SortDir = "asc" | "desc";
@@ -70,7 +70,7 @@ export interface VideoDiscoverTabProps {
   longLiveStatus: VideoRuntimeStatus | null;
   installingLongLive: boolean;
   longLiveJob: LongLiveJobState | null;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
   onCancelVideoDownload: (repo: string) => void;
@@ -379,7 +379,7 @@ export function VideoDiscoverTab({
             </p>
           </div>
           <div className="image-hero-actions">
-            <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-models")}>
+            <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "installed"))}>
               {tLib("videoDiscover.hero.installedModels", { defaultValue: "Installed Models" })}
             </button>
             <button className="primary-button" type="button" onClick={() => onOpenVideoStudio(selectedVideoVariant?.id)}>

@@ -1,13 +1,13 @@
+// The old Discover / My Models ids ("online-models", "my-models",
+// "image-discover", "video-discover") are no longer tabs: one Models page
+// per area replaced them. ``constants/tabRedirects.ts`` maps them.
 export type TabId =
   | "dashboard"
-  | "online-models"
-  | "my-models"
-  | "image-discover"
+  | "chat-models"
   | "image-models"
   | "image-studio"
   | "image-gallery"
   | "video-models"
-  | "video-discover"
   | "video-studio"
   | "video-gallery"
   | "voice-studio"

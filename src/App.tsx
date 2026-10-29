@@ -48,8 +48,7 @@ import { BenchmarkRunTab } from "./features/benchmarks/BenchmarkRunTab";
 import { BenchmarkHistoryTab } from "./features/benchmarks/BenchmarkHistoryTab";
 import { OnlineModelsTab } from "./features/models/OnlineModelsTab";
 import { MyModelsTab } from "./features/models/MyModelsTab";
-import { ImageDiscoverTab } from "./features/images/ImageDiscoverTab";
-import { ImageModelsTab } from "./features/images/ImageModelsTab";
+import { ImageModelsPage } from "./features/images/ImageModelsPage";
 import { ImageStudioTab } from "./features/images/ImageStudioTab";
 import { ImageGalleryTab } from "./features/images/ImageGalleryTab";
 import { VideoDiscoverTab } from "./features/video/VideoDiscoverTab";
@@ -70,7 +69,10 @@ import type {
   VoiceRuntime,
 } from "./types";
 import type { ChatModelOption } from "./types/chat";
-import { tabs } from "./constants";
+import { modelsAreaForTab, modelsPageRequest, resolveTabRequest, tabs } from "./constants";
+import type { TabRequest } from "./constants";
+import { LegacyModelsSwitch, legacyModelsView } from "./components/models/LegacyModelsSwitch";
+import type { ModelAvailabilityFilter, ModelsArea } from "./components/models/modelEntry";
 import { CapabilityStrip } from "./components/CapabilityStrip";
 import {
   number,
@@ -145,7 +147,27 @@ export default function App() {
     refreshWorkspace,
   } = ws;
 
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [activeTab, setActiveTabState] = useState<TabId>("dashboard");
+  // Availability filter of each area's Models page (FU-129). Lives here so
+  // it survives tab switches and so a navigation can preset it.
+  const [modelsAvailability, setModelsAvailability] = useState<Record<ModelsArea, ModelAvailabilityFilter>>({
+    chat: "all",
+    image: "all",
+    video: "all",
+  });
+  const setAreaAvailability = useCallback((area: ModelsArea, value: ModelAvailabilityFilter) => {
+    setModelsAvailability((previous) => (previous[area] === value ? previous : { ...previous, [area]: value }));
+  }, []);
+  // The one tab setter every caller gets. Old Discover / My Models ids
+  // redirect to the area's Models page with a preset filter
+  // (``constants/tabRedirects.ts``).
+  const setActiveTab = useCallback((request: TabRequest) => {
+    const navigation = resolveTabRequest(request);
+    if (!navigation) return;
+    const area = modelsAreaForTab(navigation.tab);
+    if (area && navigation.modelsPreset) setAreaAvailability(area, navigation.modelsPreset);
+    setActiveTabState(navigation.tab);
+  }, [setAreaAvailability]);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [voiceRuntime, setVoiceRuntime] = useState<VoiceRuntime | null>(null);
   const [voiceOpenRequest, setVoiceOpenRequest] = useState<VoiceOpenRequest | null>(null);
@@ -762,7 +784,7 @@ export default function App() {
     activeTab === "server"
       ? findVariantForReference(workspace.featuredModels, selectedServerOption?.modelRef ?? workspace.runtime.loadedModel?.ref, selectedServerOption?.model ?? workspace.runtime.loadedModel?.name) ??
         findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant
-      : activeTab === "my-models"
+      : activeTab === "chat-models" && legacyModelsView(modelsAvailability.chat) === "installed"
         ? selectedLibraryVariant ?? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ?? defaultChatVariant
       : activeTab === "chat"
         ? findVariantForReference(workspace.featuredModels, activeChat?.modelRef, activeChat?.model) ??
@@ -1261,7 +1283,9 @@ export default function App() {
       await refreshWorkspace();
     }}
   />;
-  if (activeTab === "online-models") {
+  if (activeTab === "chat-models" && legacyModelsView(modelsAvailability.chat) === "catalog") {
+    // TEMPORARY (FU-129): the Chat Models page still shows the old
+    // Discover / My Models tabs until ui-chat ports it to ModelsPage.
     content = (
       <OnlineModelsTab
         searchResults={filterFamiliesForHost(searchResults, workspace.system)}
@@ -1304,7 +1328,7 @@ export default function App() {
         availableMemoryGb={workspace.system.availableMemoryGb}
       />
     );
-  } else if (activeTab === "my-models") {
+  } else if (activeTab === "chat-models") {
     content = (
       <MyModelsTab
         filteredLibraryRows={filteredLibraryRows}
@@ -1353,40 +1377,24 @@ export default function App() {
         }}
       />
     );
-  } else if (activeTab === "image-discover") {
-    content = (
-      <ImageDiscoverTab
-        combinedImageDiscoverResults={imgState.combinedImageDiscoverResults}
-        imageDiscoverSearchInput={imgState.imageDiscoverSearchInput}
-        onImageDiscoverSearchInputChange={imgState.setImageDiscoverSearchInput}
-        imageDiscoverTaskFilter={imgState.imageDiscoverTaskFilter}
-        onImageDiscoverTaskFilterChange={imgState.setImageDiscoverTaskFilter}
-        imageDiscoverAccessFilter={imgState.imageDiscoverAccessFilter}
-        onImageDiscoverAccessFilterChange={imgState.setImageDiscoverAccessFilter}
-        imageDiscoverSort={imgState.imageDiscoverSort}
-        onImageDiscoverSortChange={imgState.setImageDiscoverSort}
-        imageDiscoverHasActiveFilters={imgState.imageDiscoverHasActiveFilters}
-        imageDiscoverSearchQuery={imgState.imageDiscoverSearchQuery}
-        activeImageDownloads={imgState.activeImageDownloads}
-        selectedImageVariant={imgState.selectedImageVariant}
-        fileRevealLabel={fileRevealLabel}
-        nativeBackends={nativeBackends}
-        hostSystem={workspace.system}
-        onActiveTabChange={setActiveTab}
-        onOpenImageStudio={imgState.openImageStudio}
-        onImageDownload={(repo) => void imgState.handleImageDownload(repo)}
-        onCancelImageDownload={(repo) => void imgState.handleCancelImageDownload(repo)}
-        onDeleteImageDownload={(repo) => void imgState.handleDeleteImageDownload(repo)}
-        onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
-        onRevealPath={(path) => void handleRevealPath(path)}
-      />
-    );
   } else if (activeTab === "image-models") {
     content = (
-      <ImageModelsTab
-        installedImageVariants={imgState.installedImageVariants}
-        imageCatalog={imgState.imageCatalog}
+      <ImageModelsPage
+        catalog={imgState.imageCatalog}
+        latest={imgState.latestImageDiscoverResults}
+        searchInput={imgState.imageDiscoverSearchInput}
+        onSearchInputChange={imgState.setImageDiscoverSearchInput}
+        taskFilter={imgState.imageDiscoverTaskFilter}
+        onTaskFilterChange={imgState.setImageDiscoverTaskFilter}
+        accessFilter={imgState.imageDiscoverAccessFilter}
+        onAccessFilterChange={imgState.setImageDiscoverAccessFilter}
+        sort={imgState.imageDiscoverSort}
+        onSortChange={imgState.setImageDiscoverSort}
+        availability={modelsAvailability.image}
+        onAvailabilityChange={(value) => setAreaAvailability("image", value)}
         activeImageDownloads={imgState.activeImageDownloads}
+        selectedImageVariant={imgState.selectedImageVariant}
+        loadedImageRepo={imgState.imageRuntimeStatus.loadedModelRepo ?? null}
         fileRevealLabel={fileRevealLabel}
         nativeBackends={nativeBackends}
         hostSystem={workspace.system}
@@ -1516,7 +1524,9 @@ export default function App() {
         onDeleteImageArtifact={(id) => void imgState.handleDeleteImageArtifact(id)}
       />
     );
-  } else if (activeTab === "video-discover") {
+  } else if (activeTab === "video-models" && legacyModelsView(modelsAvailability.video) === "catalog") {
+    // TEMPORARY (FU-129): the Video Models page still shows the old
+    // Discover / My Models tabs until ui-video ports it to ModelsPage.
     content = (
       <VideoDiscoverTab
         combinedVideoDiscoverResults={videoState.combinedVideoDiscoverResults}
@@ -1795,8 +1805,8 @@ export default function App() {
         onInstallPackage={handleInstallPackage}
         installingPackage={installingPackage}
         noChatModelsInstalled={libraryChatOptions.length === 0}
-        onBrowseDiscover={() => setActiveTab("online-models")}
-        onOpenModels={() => setActiveTab("my-models")}
+        onBrowseDiscover={() => setActiveTab(modelsPageRequest("chat", "available"))}
+        onOpenModels={() => setActiveTab(modelsPageRequest("chat", "installed"))}
       />
     );
   } else if (activeTab === "chat-compare") {
@@ -2042,6 +2052,15 @@ export default function App() {
             </p>
           </div>
           <div className="header-badges">
+            {activeTab === "chat-models" || activeTab === "video-models" ? (
+              // TEMPORARY (FU-129): picks the old view until the page is ported.
+              <LegacyModelsSwitch
+                view={legacyModelsView(modelsAvailability[activeTab === "chat-models" ? "chat" : "video"])}
+                onViewChange={(view) =>
+                  setAreaAvailability(activeTab === "chat-models" ? "chat" : "video", view === "catalog" ? "available" : "installed")
+                }
+              />
+            ) : null}
             <span className="badge muted">{workspace.system.platform}</span>
             <span className="badge muted">{workspace.system.arch}</span>
             <span className="badge accent">{workspace.runtime.loadedModel ? loadedModelCacheLabel : launchCacheLabel}</span>

@@ -10761,3 +10761,414 @@ html[lang="ko"] select {
   color: var(--muted);
   font-size: 0.82rem;
 }
+
+/* ==========================================================================
+   Models pages (FU-129): one page per area replaces Discover + My Models.
+   Shared shell: src/components/models/. Reference port: Images > Models.
+   Rows reuse the .media-model-* table styles above; everything new is here.
+   ========================================================================== */
+
+.models-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  gap: var(--app-gap);
+  width: 100%;
+  height: auto;
+  min-height: max-content;
+  align-content: start;
+  overflow: visible;
+}
+
+.models-page > .panel {
+  flex: none;
+  height: auto;
+  min-height: unset;
+  overflow: visible;
+}
+
+/* The page grows with its rows; the workspace frame scrolls (R24). */
+.workspace-content-frame:has(.models-page) {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.models-page__intro {
+  margin: -4px 0 12px;
+}
+
+.models-page__intro p {
+  margin: 0;
+}
+
+.models-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.models-availability {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.models-availability__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-strong);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.models-availability__option:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.models-availability__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.models-availability__option.is-active {
+  border-color: var(--accent);
+  background: rgba(143, 180, 255, 0.12);
+  color: var(--accent-strong);
+}
+
+.models-availability__option.is-empty {
+  color: var(--muted);
+}
+
+.models-availability__count {
+  min-width: 1.6em;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.models-filter-row {
+  display: grid;
+  grid-template-columns:
+    minmax(240px, 2fr)
+    repeat(var(--models-filter-selects, 3), minmax(140px, 0.8fr))
+    auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.models-filter-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.models-filter-search .text-input {
+  min-width: 0;
+}
+
+.models-filter-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.models-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.models-chip-group__label {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.models-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-strong);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.models-chip.is-active {
+  border-color: var(--chip-color, var(--accent));
+  color: var(--chip-color, var(--accent-strong));
+  background: rgba(143, 180, 255, 0.1);
+}
+
+.models-chip__count {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.models-summary {
+  margin-top: 0;
+}
+
+.models-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.models-card__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.models-card__toggle strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-card__toggle:hover strong {
+  color: var(--accent-strong);
+}
+
+.models-card__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.models-card__chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 120ms ease;
+}
+
+.models-card__chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.models-card.is-expanded > .models-card__row {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.models-card--incompatible .models-card__name > small,
+.models-card--incompatible .models-card__toggle strong {
+  color: var(--muted);
+}
+
+.models-incompatible-chip {
+  padding: 1px 8px;
+  border-color: rgba(228, 190, 117, 0.45);
+  color: var(--warning);
+  font-size: 0.74rem;
+}
+
+.models-card__detail {
+  padding: 4px 14px 14px 32px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.86rem;
+}
+
+.models-card__note {
+  margin: 10px 0 8px;
+  color: var(--muted-strong);
+  max-width: 90ch;
+}
+
+.models-detail-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 8px 0 10px;
+}
+
+.models-detail-list__row {
+  display: contents;
+}
+
+.models-detail-list dt {
+  color: var(--muted);
+}
+
+.models-detail-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted-strong);
+}
+
+.models-detail-list code {
+  font-size: 0.82rem;
+}
+
+.models-memory-cell .fit-badge {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.fit-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.fit-badge__basis {
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.fit-badge--fits {
+  border-color: rgba(143, 207, 159, 0.5);
+  background: rgba(143, 207, 159, 0.1);
+  color: var(--success);
+}
+
+.fit-badge--tight {
+  border-color: rgba(228, 190, 117, 0.5);
+  background: rgba(228, 190, 117, 0.1);
+  color: var(--warning);
+}
+
+.fit-badge--wont-fit {
+  border-color: rgba(224, 154, 154, 0.5);
+  background: rgba(224, 154, 154, 0.1);
+  color: var(--danger);
+}
+
+.fit-badge--unknown {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.best-fit-ribbon {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: rgba(143, 180, 255, 0.16);
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.model-action-menu {
+  position: relative;
+}
+
+.model-action-menu > summary {
+  list-style: none;
+}
+
+.model-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.model-action-menu__list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.model-action-menu__item {
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-action-menu__item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.model-action-menu__item:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.models-empty .button-row {
+  justify-content: center;
+}
+
+/* TEMPORARY (FU-129): view switch in the workspace header for the Chat and
+   Video Models pages until they are ported. */
+.models-legacy-switch {
+  align-self: center;
+}
+
+@media (max-width: 1280px) {
+  .models-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .models-filter-search,
+  .models-filter-actions {
+    grid-column: span 2;
+  }
+
+  .models-filter-actions {
+    justify-content: flex-start;
+  }
+}
+/* ======================== end of Models pages block ======================= */

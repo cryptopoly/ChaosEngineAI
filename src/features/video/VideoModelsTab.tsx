@@ -5,7 +5,6 @@ import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons"
 import type { DownloadStatus } from "../../api";
 import type {
   SystemStats,
-  TabId,
   VideoModelFamily,
   VideoModelVariant,
   VideoRuntimeStatus,
@@ -30,6 +29,7 @@ import {
   getAccelerator,
   getApplicableAccelerators,
 } from "../../components/acceleratorCatalog";
+import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
 
 type InstalledVideoSort = "name" | "provider" | "tasks" | "size" | "ram" | "date" | "status";
 type SortDir = "asc" | "desc";
@@ -52,7 +52,7 @@ export interface VideoModelsTabProps {
   /** FU-056 follow-up: host platform info for hiding MLX-only video
    * variants (mlx-video / LTX-2 family) on Windows + Linux. */
   hostSystem?: Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb">;
-  onActiveTabChange: (tab: TabId) => void;
+  onActiveTabChange: (tab: TabRequest) => void;
   onOpenVideoStudio: (modelId?: string) => void;
   onVideoDownload: (repo: string, modelId?: string) => void;
   onCancelVideoDownload: (repo: string) => void;
@@ -281,7 +281,7 @@ export function VideoModelsTab({
           : t("videoModels.subtitle.none", { defaultValue: "No video models detected locally yet" })}
         className="span-2"
         actions={
-          <button className="secondary-button" type="button" onClick={() => onActiveTabChange("video-discover")}>
+          <button className="secondary-button" type="button" onClick={() => onActiveTabChange(modelsPageRequest("video", "available"))}>
             {t("videoModels.action.browseCatalog", { defaultValue: "Browse Catalog" })}
           </button>
         }

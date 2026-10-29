@@ -18,4 +18,5 @@ Rules:
 | Stream | File | Status | Owner |
 |---|---|---|---|
 | Release v0.9.9 runs: DDTree on 27B, LTX-2.5, block 8 | [runs-2026-10-29.md](runs-2026-10-29.md) | in progress | Claude (Opus) |
+| Models page merge, fit badges, recommended settings, size limits (team, branch `feat/models-fit`) | progress files `fit-backend.md`, `limits.md`, `settings-rec.md`, `map-models-pages.md` and later `ui-core.md`, `ui-video.md`, `ui-chat.md` in this folder (linked once they exist) | in progress | Claude + agents, plan in `docs/plans/models-fit.md` |
 | RAM estimates (older stream) | [fix-ram-estimates](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/progress/fix-ram-estimates.md) | done | Claude |

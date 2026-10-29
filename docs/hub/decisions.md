@@ -27,15 +27,14 @@ Priority: P1 blocks launch or reworks built work; P2 is needed before the next m
 ### P3: later
 
 6. **oMLX as an MLX engine lane** ([FU-132](tracker/open.md)). An Apache-2.0 MLX server with continuous batching and an SSD-persistent KV cache, over HTTP only. **Explainer:** it already works as a remote provider (Settings, OpenAI-compatible base URL) with no code; a real lane means another MLX stack in its own venv and it cannot use our DFlash or TurboQuant. **Recommendation:** do not build a lane yet; measure it against our MLX lane first (needs your yes to install it in an isolated venv, about 45 minutes). **Why:** our MLX path already reuses prompt caches; the SSD cache and concurrent requests are the only clear gains, and they matter more for agents and the API server than for one chat.
-7. **"Best fit for your hardware" badges and recommended settings** ([FU-133](tracker/open.md)). Fit badge on every model row (fits well, tight, will not fit, plus a best-fit pick by newest-that-fits) and a "recommended for this Mac" row of settings in Image and Video Studio (TeaCache, threshold, CFG decay, steps) with an Apply button. **Recommendation:** build after v0.9.9 with the Models page merge below; the badge first (about 1.5 days, the data exists), settings second (about 2 days, needs speed and quality measurements on 3 to 4 families). **Why:** only the M4 Max can be measured here, so other hardware tiers must be labelled as estimates.
-8. **Merge Discover and My Models into one Models page per area** ([FU-129](tracker/open.md)). **Recommendation:** after v0.9.9, image and video first, redirects for the old routes, 2 to 4 days. **Why:** the screens are nearly identical, but it touches about 4,000 lines and the release should not wait for it.
-9. **Local agents building a game through the app** ([FU-126](tracker/open.md)). Banked by you; revisit when a local coding model clearly matches a hosted frontier model. No action now.
+7. **Local agents building a game through the app** ([FU-126](tracker/open.md)). Banked by you; revisit when a local coding model clearly matches a hosted frontier model. No action now.
 
 <details>
 <summary>Decision log (made decisions, newest section last)</summary>
 
 ## 2026-10-28 and 2026-10-29
 
+- **Build the Models page merge (FU-129), fit badges and recommended settings (FU-133) and per-model size limits now, with a team of agents, in the same release if they pass the gate.** Decided by Dan ("I have the creds"). Claude's guard: the work is on branch `feat/models-fit`, stacked on PR 119, so PR 119 can ship alone if the gate fails; the gate and the file ownership are in [docs/plans/models-fit.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/plans/models-fit.md). The 2048 px cap goes (per-model limits instead).
 - **DFlash on hybrid Qwen models: fixed, not switched off.** The cause was found the same day (the adapter read the output head from the wrong object under mlx-lm 0.32, [FU-135](tracker/open.md)); a load-time self-check now protects the lane. Claude's call, within the "no null results" brief.
 - **Prefer newer and faster models when choosing defaults.** Your rule of thumb. Saved to memory and used for the LTX and Wan choices.
 - **Wan 2.2 TI2V 5B is replaced by LTX-2.3 on its own MLX engine** (`ltx-2-mlx`), on Claude's recommendation. The 5B family and its caches are removed; Wan 2.2 A14B and Wan 2.1 rows stay. See [FU-128](tracker/closed.md).
